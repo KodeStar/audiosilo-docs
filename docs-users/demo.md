@@ -1,6 +1,6 @@
 ---
 title: "Trying the demo"
-description: "Try AudioSilo without installing anything — a public demo with instant throwaway accounts, seeded with public-domain audiobooks."
+description: "Try AudioSilo without installing anything - a public demo with instant throwaway accounts, seeded with public-domain audiobooks."
 ---
 
 ## The public demo
@@ -14,7 +14,7 @@ web player with a library of public-domain audiobooks ready to browse and play.
 
 ![The demo landing page: a fresh account, a QR code to continue on your phone, and a button to browse in the browser](/img/screenshots/web-player/demo.png)
 
-The landing page also shows a **QR code** — scan it with the AudioSilo mobile app
+The landing page also shows a **QR code** - scan it with the AudioSilo mobile app
 and your phone joins as the *same* demo user, so you can see progress sync between
 the browser and the app. Or just hit the browse button and explore in the browser.
 
@@ -22,9 +22,9 @@ the browser and the app. Or just hit the browse button and explore in the browse
 
 Demo accounts are deliberately disposable:
 
-- They're created automatically — no email, no password.
+- They're created automatically - no email, no password.
 - They're **reaped after being idle** (by default, 24 hours without activity), and
-  everything they saved — progress, bookmarks — goes with them.
+  everything they saved - progress, bookmarks - goes with them.
 - The demo caps how many live demo accounts can exist at once (200 by default) and
   rate-limits how fast one visitor can create them, so you may occasionally see
   "demo is at capacity, try again later".
@@ -33,8 +33,8 @@ Demo accounts are deliberately disposable:
 
 To keep throwaway accounts throwaway, two things are switched off for them:
 
-- **Setting a password** — refused for demo accounts.
-- **Minting a recovery code** — likewise refused.
+- **Setting a password** - refused for demo accounts.
+- **Minting a recovery code** - likewise refused.
 
 Those are the two ways a normal account makes itself durable
 ([Your account](listening/account.md)), so a demo session can never turn itself
@@ -42,12 +42,12 @@ into a permanent login. Sign out (or go idle long enough) and it's gone.
 
 Everything else is the real player: browsing and search, full playback with
 chapters and speed control, bookmarks, favourites, and progress that follows you
-between the browser and the app — for as long as the account lives. See
+between the browser and the app - for as long as the account lives. See
 [Playback](listening/playback.md) for what you're looking at.
 
 ## Running your own demo instance
 
-Demo mode is a standard server feature — you can run your own public demo (or a
+Demo mode is a standard server feature - you can run your own public demo (or a
 "kick the tyres" instance for friends) with any AudioSilo server.
 
 In the server's `config.yaml`, enable the `demo` block and name the library demo
@@ -61,8 +61,8 @@ demo:
   idle_ttl: "24h"           # reap demo accounts idle longer than this
 ```
 
-(The same settings exist as environment variables — `AUDIOSILO_DEMO_ENABLED`,
-`AUDIOSILO_DEMO_LIBRARY`, `AUDIOSILO_DEMO_MAX_USERS`, `AUDIOSILO_DEMO_IDLE_TTL` —
+(The same settings exist as environment variables - `AUDIOSILO_DEMO_ENABLED`,
+`AUDIOSILO_DEMO_LIBRARY`, `AUDIOSILO_DEMO_MAX_USERS`, `AUDIOSILO_DEMO_IDLE_TTL` -
 which is handy in Docker; see the
 [Docker quickstart](getting-started/quickstart-docker.md).)
 
@@ -79,7 +79,7 @@ at a library of **public-domain audiobooks**, not your personal collection.
 
 The server ships a helper script, `scripts/seed-librivox.sh`, that fills a folder
 with free, public-domain [LibriVox](https://librivox.org/) recordings (Austen,
-Conan Doyle, Dickens, and more) downloaded from the Internet Archive — already
+Conan Doyle, Dickens, and more) downloaded from the Internet Archive - already
 arranged in the `Author/Title/` folder layout the server recognizes, cover images
 included:
 

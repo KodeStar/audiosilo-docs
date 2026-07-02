@@ -1,4 +1,4 @@
-# CLAUDE.md — AudioSilo Docs
+# CLAUDE.md - AudioSilo Docs
 
 The documentation site for the AudioSilo product (Docusaurus 3, TypeScript
 config). Two independent docs instances: `docs-users/` (User Guide, `/users`,
@@ -13,7 +13,7 @@ npm run build     # MUST pass before a change is done
 ```
 
 The build **fails on** broken internal links, broken anchors, and missing
-embedded images (`onBrokenLinks/onBrokenAnchors: 'throw'`) — that's the
+embedded images (`onBrokenLinks/onBrokenAnchors: 'throw'`) - that's the
 mechanical consistency check. `npm start` for the live dev loop.
 Node 24 (workspace convention; `.nvmrc` in the sibling repos).
 
@@ -28,18 +28,22 @@ Node 24 (workspace convention; `.nvmrc` in the sibling repos).
 - **Screenshots**: pages may embed only files listed in
   `screenshots/manifest.mjs` (as `/img/screenshots/<area>/<name>.png`).
   Add the manifest entry first; regenerate with `screenshots/run.sh` (see
-  `screenshots/README.md`). Never hand-edit a captured PNG — fix the capture
+  `screenshots/README.md`). Never hand-edit a captured PNG - fix the capture
   script/seed state and re-run. Placeholders backfill anything uncapturable so
   the build never breaks.
 - **Accuracy over completeness**: verify behaviour in the sibling repos'
   source before documenting it; never document a route/flag/UI element you
   didn't find in code. Features that are designed-but-unshipped (web transcode
   auto-negotiation, WebSocket sync, `POST /uploads`, manager installers) are
-  explicitly marked "planned" — when one ships, search the whole tree for it.
+  explicitly marked "planned" - when one ships, search the whole tree for it.
 - **Audience separation**: no Go/TS symbols or source paths in the User Guide;
   the Developer Docs reference symbols/paths as inline code (not links).
+- **Hyphens, not em dashes**: use `-` or restructure the sentence, never `—`
+  (em dashes read as an AI tell and produce messy heading anchors). The sole
+  exception is a code block that reproduces literal program output. Full note in
+  `docs-developers/contributing/documentation.md`.
 - The change→page mapping table lives in
-  `docs-developers/contributing/documentation.md` — it is the single copy;
+  `docs-developers/contributing/documentation.md` - it is the single copy;
   don't duplicate it here.
 
 ## The docs are part of every change

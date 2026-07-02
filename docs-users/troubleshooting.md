@@ -1,6 +1,6 @@
 ---
 title: Troubleshooting
-description: Fixes for the most common AudioSilo problems, organized by symptom — server, connecting, playback, library, and downloads.
+description: Fixes for the most common AudioSilo problems, organized by symptom - server, connecting, playback, library, and downloads.
 ---
 
 Find the symptom that matches what you're seeing. Each entry explains what's
@@ -14,25 +14,25 @@ its own page, the entry links there instead of repeating it.
 Work through these in order:
 
 1. **Are you using `https://`?** Out of the box the server uses a self-signed
-   certificate, which means it speaks **HTTPS** — even on your home network. If
+   certificate, which means it speaks **HTTPS** - even on your home network. If
    you open `http://your-server:8080` against an HTTPS server, the connection
    simply fails. Try `https://your-server:8080` instead (and see the
    certificate warning entry below).
 2. **Is the port right?** The default listen address is `0.0.0.0:8080`. With
-   Docker, check that the port is actually published — the example
+   Docker, check that the port is actually published - the example
    `docker-compose.yml` maps `"8080:8080"`. You can change the address and port
    with the `bind` setting in `config.yaml`.
 3. **Is a firewall in the way?** If the server machine runs a firewall, allow
    incoming connections on the port you chose (8080 by default). This is the
    usual culprit when the server works on the machine itself
    (`https://localhost:8080`) but not from your phone.
-4. **Reaching it from outside your home?** That needs its own setup — see
+4. **Reaching it from outside your home?** That needs its own setup - see
    [Remote access](./getting-started/remote-access.md).
 
 ### My browser warns about the certificate
 
 That's expected with the default setup. The server generates a **self-signed
-certificate** so your connection is encrypted from the very first start — but
+certificate** so your connection is encrypted from the very first start - but
 browsers can't verify who signed it, so they show a warning.
 
 You have three options:
@@ -40,7 +40,7 @@ You have three options:
 - **Accept the warning** (usually under "Advanced" → "Proceed"). Fine on your
   own home network; the connection is still encrypted.
 - **Switch to automatic real certificates** (`tls.mode: autocert` in
-  `config.yaml`) — free Let's Encrypt certificates with no warnings. This needs
+  `config.yaml`) - free Let's Encrypt certificates with no warnings. This needs
   a public domain name pointing at your server, and Let's Encrypt must be able
   to reach it on **port 443** (the server logs a warning if it isn't bound or
   forwarded there).
@@ -54,17 +54,17 @@ Both public options are covered step by step in
 ### I lost the first-run admin password
 
 The admin password and auth code are printed **exactly once**, in the server's
-output on its very first start — the server itself never stores or shows them
+output on its very first start - the server itself never stores or shows them
 again (only a secure hash is kept). In order of least to most drastic:
 
 1. **Check the logs.** The first-run banner is part of the server's log output.
    With Docker, `docker compose logs` often still has it, as long as the
    container hasn't been recreated since first run.
 2. **Ask another admin.** Any other admin can set a new password for your
-   account in the admin console — see
+   account in the admin console - see
    [Users & invites](./admin/users-and-invites.md).
 3. **Still signed in somewhere?** If you saved the first-run **auth code**, it
-   still works (it has no expiry) — it can pair the player app as the admin
+   still works (it has no expiry) - it can pair the player app as the admin
    user, so you can keep listening. It does not open the admin console, though;
    that needs the password.
 4. **Last resort: reset the database.** Stop the server, move the database
@@ -73,7 +73,7 @@ again (only a secure hash is kept). In order of least to most drastic:
    fresh install and prints a brand-new admin password and auth code.
 
 :::warning
-Resetting the database is safe for your **audiobooks** — files on disk are
+Resetting the database is safe for your **audiobooks** - files on disk are
 never touched, and the book index rebuilds automatically. But it erases all
 **accounts, listening progress, bookmarks, notes, shares, and folder
 overrides**. Move the database files aside rather than deleting them, so you
@@ -87,7 +87,7 @@ can restore them if you change your mind.
 A few things can cause this:
 
 - **It expired or was used up.** Unless the admin chose otherwise, an invite is
-  valid for **1 day** and **5 uses**. Ask the admin to resend it — the resend
+  valid for **1 day** and **5 uses**. Ask the admin to resend it - the resend
   button issues a fresh code with a renewed expiry.
 - **A newer invite replaced it.** Each user has exactly one active invite:
   when an admin creates a new invite for you, any older still-usable invite
@@ -101,7 +101,7 @@ connect flow itself is described in [Connecting](./listening/connecting.md).
 
 :::tip
 If you're signed in but worried about getting locked out later, mint a
-**recovery code** from the player's Settings — it's a durable personal code
+**recovery code** from the player's Settings - it's a durable personal code
 that never expires and lets you sign back in without an admin. See
 [Your account](./listening/account.md).
 :::
@@ -112,15 +112,15 @@ that never expires and lets you sign back in without an admin. See
 
 Web browsers can only decode certain audio codecs: AAC (the usual codec in
 `.m4b`/`.m4a`), MP3, FLAC, Opus, and Vorbis all work. Files encoded with
-something a browser can't decode — Apple Lossless (ALAC) is the common
-example — stream fine to the iOS and Android apps but fail in the web
+something a browser can't decode - Apple Lossless (ALAC) is the common
+example - stream fine to the iOS and Android apps but fail in the web
 player.
 
 The server can convert such files to MP3 on the fly (it needs ffmpeg for
-this), but the web player **doesn't yet request that automatically** — it's a
+this), but the web player **doesn't yet request that automatically** - it's a
 planned improvement. Until then, your options are:
 
-- **Listen in the mobile app** ([Mobile apps](./listening/mobile-apps.md)) —
+- **Listen in the mobile app** ([Mobile apps](./listening/mobile-apps.md)) -
   the native players handle more formats than browsers do.
 - **Convert the file** to `.m4b` (AAC) or `.mp3` once, and let the server
   rescan. Your listening progress survives the swap as long as the file keeps
@@ -131,7 +131,7 @@ planned improvement. Until then, your options are:
 The player watches every playback attempt: if the audio doesn't start (or
 stalls and doesn't recover) within a few seconds, it shows an error with a
 **Retry** button instead of leaving you with a silent spinner. Retry fully
-reloads the track, which recovers from a dropped connection — plain
+reloads the track, which recovers from a dropped connection - plain
 play/pause often can't.
 
 If this happens a lot, it's usually a flaky network between you and the
@@ -141,7 +141,7 @@ it locally.
 
 ### My book restarted from the beginning
 
-It shouldn't lose your place — the player has several protections stacked up:
+It shouldn't lose your place - the player has several protections stacked up:
 
 - Your position is saved to the server every 15 seconds while playing, and
   on every pause, seek, and stop.
@@ -154,7 +154,7 @@ It shouldn't lose your place — the player has several protections stacked up:
 - A save guard refuses to overwrite real progress with a position near the
   start unless you deliberately seeked back there.
 
-So if you see the book at 0:00 with an error showing, don't scrub around —
+So if you see the book at 0:00 with an error showing, don't scrub around -
 just hit **Retry**, and the player re-fetches your real position. Your
 progress on the server is intact.
 
@@ -170,19 +170,19 @@ Two usual causes:
   path on the host.
 - **A network share is unmounted.** If your books live on a NAS mounted into
   the server machine (SMB/NFS), and the mount drops, the folder looks empty.
-  The server detects this and **deliberately refuses to update the index** —
+  The server detects this and **deliberately refuses to update the index** -
   it logs "library root unavailable" and keeps every book, and everyone's
   progress and bookmarks, exactly as they were. Remount the share, then
   trigger a **Rescan** from the admin console and everything reappears.
 
-Nothing is deleted from disk in either case — the server never modifies your
+Nothing is deleted from disk in either case - the server never modifies your
 audio files.
 
 ### New books I added aren't showing up
 
 Two different views are involved:
 
-- The **folder view** reads your disk live — new files show up there
+- The **folder view** reads your disk live - new files show up there
   immediately, and opening one indexes it on the spot.
 - **Search and the metadata-driven lists** come from the index, which is
   built by a scan. The server scans every library at startup and after
@@ -191,13 +191,13 @@ Two different views are involved:
 So after copying new books in, either click **Rescan** on the library in the
 admin console, or just browse to the new book in the folder view and open it.
 
-### One folder shows as a single giant book — or as lots of one-chapter books
+### One folder shows as a single giant book - or as lots of one-chapter books
 
 The scanner assumes the common convention: **a folder that contains audio
 files is one book**, with those files as its chapters. Loose files sitting at
 the very top of the library are each their own book. When a folder doesn't
-fit that model — say, a "Short Stories" folder holding twenty separate
-single-file books — the detection gets it wrong.
+fit that model - say, a "Short Stories" folder holding twenty separate
+single-file books - the detection gets it wrong.
 
 The fix is a **per-folder override** in the admin console: mark the folder as
 a *collection* (one book per file) or force it to be a single *book*. See
@@ -228,23 +228,23 @@ the server picks it up.
 It depends on what "reinstalling" meant:
 
 - **Updating the app in place** keeps your downloads. (Early versions had a
-  bug on iOS where downloads seemed to vanish after an update — that's fixed;
+  bug on iOS where downloads seemed to vanish after an update - that's fixed;
   the app now re-locates its files after the update.)
 - **Deleting the app and installing it again** removes everything the app
-  stored, downloads included — that's how phones work, and there's no way
+  stored, downloads included - that's how phones work, and there's no way
   around it. You'll need to download the books again.
-- **Interrupted downloads don't survive** — if the app is killed mid-download,
+- **Interrupted downloads don't survive** - if the app is killed mid-download,
   the partial download is discarded on next launch and has to be started
   over. Only fully finished downloads are kept.
 
-Your listening progress is safe throughout — it lives on the server, not in
+Your listening progress is safe throughout - it lives on the server, not in
 the downloaded files. See [Offline downloads](./listening/offline-downloads.md).
 
 ### The web player won't offer downloads (or downloaded books won't play offline)
 
 Offline playback in a browser needs a **service worker**, which browsers only
 allow on a secure connection (HTTPS, or `localhost`). If the app detects that
-offline files can't actually be served — for example you're on plain HTTP —
+offline files can't actually be served - for example you're on plain HTTP -
 it hides the download buttons rather than offering downloads that wouldn't
 play. Access the server over HTTPS (see
 [Remote access](./getting-started/remote-access.md)) and downloads appear.
@@ -256,5 +256,5 @@ play. Access the server over HTTPS (see
 The public demo caps how many live demo accounts can exist at once (200 by
 default), and each visitor's address is also rate-limited. Idle demo accounts
 are cleaned up automatically after about a day, so capacity frees up on its
-own — try again later. See [Demo](./demo.md) for what the demo is and how it
+own - try again later. See [Demo](./demo.md) for what the demo is and how it
 works.

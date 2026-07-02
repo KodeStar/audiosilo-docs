@@ -48,10 +48,10 @@ flowchart TB
     webimg -->|"scripts/fetch-web-player.sh → -tags embedplayer"| relyml
 ```
 
-## 1. Web image — `audiosilo-frontend/.github/workflows/web.yml`
+## 1. Web image - `audiosilo-frontend/.github/workflows/web.yml`
 
 Runs on pushes to `main` **and** on `v*` tags (plus manual dispatch). It exports
-the player as a static site (`npx expo export --platform web --output-dir dist` —
+the player as a static site (`npx expo export --platform web --output-dir dist` -
 `app.json` `experiments.baseUrl: "/web"` makes asset URLs resolve under the
 server's `/web` mount) and packages the export into a tiny image via
 `Dockerfile.web`, pushed as `ghcr.io/<owner>/audiosilo-web`.
@@ -60,7 +60,7 @@ Tagging: `:latest` only from the default branch, a semver tag on `v*` tags, and 
 `:sha` tag always. GHCR references must be lowercase; the workflows lowercase
 `${{ github.repository_owner }}` themselves.
 
-## 2. Server Docker image — `audiosilo-server/.github/workflows/image.yml`
+## 2. Server Docker image - `audiosilo-server/.github/workflows/image.yml`
 
 Runs on `v*` tags (plus manual dispatch with a `web_version` input, default
 `latest`). The multi-stage `Dockerfile`:
@@ -71,15 +71,15 @@ Runs on `v*` tags (plus manual dispatch with a `web_version` input, default
   (`image.yml` passes the tag as the `VERSION` build-arg; the default is `dev`);
 - pins the player: `FROM ${WEB_IMAGE} AS web` … `COPY --from=web /web /app/web`,
   with `ARG WEB_IMAGE=ghcr.io/kodestar/audiosilo-web:latest`;
-- final stage is `alpine:3.20` with **ffmpeg installed from apk** — the Docker
-  image, unlike the native binaries, does bundle ffmpeg — plus a `PUID`/`PGID`
+- final stage is `alpine:3.20` with **ffmpeg installed from apk** - the Docker
+  image, unlike the native binaries, does bundle ffmpeg - plus a `PUID`/`PGID`
   entrypoint and `AUDIOSILO_WEB_DIR=/app/web` preset.
 
 Because the image pins one specific web build, the server + bundled player always
 ship as a **known-compatible pair**; native apps talking to any server version
 negotiate via the `GET /api/v1/server` capability flags instead.
 
-## 3. Native binaries — `release.yml` + `.goreleaser.yml`
+## 3. Native binaries - `release.yml` + `.goreleaser.yml`
 
 The same `v*` tag triggers GoReleaser on a single Linux runner. The server is
 CGO-free (modernc SQLite), so everything cross-compiles with no C toolchain:
@@ -92,7 +92,7 @@ CGO-free (modernc SQLite), so everything cross-compiles with no C toolchain:
   and install a systemd unit (`packaging/systemd/audiosilo.service`).
 - **`checksums.txt`**, and the release is created as a **draft** for human review
   before publishing.
-- **Version stamping:** the same ldflags as the Docker build —
+- **Version stamping:** the same ldflags as the Docker build -
   `-X …/internal/api.Version={{ .Version }}` overrides `var Version = "dev"` in
   `internal/api/api.go`, and `GET /server`, the admin console, and the web player
   all report it.
@@ -132,7 +132,7 @@ transcoding/probing (both are optional by design) and retries on the next start.
 The `.deb`/`.rpm` packages sidestep all of this by declaring a dependency on the
 distro's `ffmpeg`.
 
-## 4. Manager desktop builds — `audiosilo-manager/.github/workflows/desktop.yml`
+## 4. Manager desktop builds - `audiosilo-manager/.github/workflows/desktop.yml`
 
 The Wails UI can't cross-compile, so `desktop.yml` runs a per-OS matrix on `v*`
 tags: `darwin/universal` on macOS, `windows/amd64` on Windows, `linux/amd64` on
@@ -142,7 +142,7 @@ server module via a local `replace`, for `pkg/launcher` and `pkg/match`), runs
 `-ldflags "-X main.version=<tag>"`.
 
 :::caution Installers are planned, not shipped
-Today the workflow uploads the build outputs as **unsigned CI artifacts** — it
+Today the workflow uploads the build outputs as **unsigned CI artifacts** - it
 does not publish a GitHub Release. The signed installers described in the
 workspace `DISTRIBUTION.md` (macOS `.dmg` + notarization, Windows NSIS `.exe`,
 Linux AppImage) are **planned**: the signing/notarization steps are stubbed in
@@ -154,7 +154,7 @@ Gatekeeper/SmartScreen warnings.
 ## Ordering and compatibility, in one place
 
 - **Web image first.** Both `image.yml` (`COPY --from`) and `release.yml`
-  (`fetch-web-player.sh`) pull `audiosilo-web` — publish it before either runs, or
+  (`fetch-web-player.sh`) pull `audiosilo-web` - publish it before either runs, or
   re-run them after. On a plain tag push all workflows fire together; the web
   image resolved is whatever `:latest` (or the dispatched `web_version`) points at,
   which is why the runbook publishes the web image first.
@@ -163,9 +163,9 @@ Gatekeeper/SmartScreen warnings.
   the player is attached (`/app/web` + `AUDIOSILO_WEB_DIR` vs. `-tags embedplayer`).
 - **Version stamping** is the same mechanism everywhere: ldflags →
   `api.Version` → reported by `GET /server` and surfaced in the UIs.
-- **Native app ↔ server compatibility** is *not* pinned — it's negotiated at
+- **Native app ↔ server compatibility** is *not* pinned - it's negotiated at
   runtime via `GET /api/v1/server` capability flags
-  ([cross-repo contract, seam 8](cross-repo-contract.md#8-capability-flags--get-apiv1server)).
+  ([cross-repo contract, seam 8](cross-repo-contract.md#8-capability-flags-get-apiv1server)).
 
 For the human checklist (what to click, in what order, and how to smoke-test the
 result), see [Releasing](../contributing/releasing.md).

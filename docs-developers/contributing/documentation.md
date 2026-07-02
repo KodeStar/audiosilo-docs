@@ -25,7 +25,7 @@ audiosilo-docs/
 ```
 
 It's a standard [Docusaurus](https://docusaurus.io) site with **two docs
-instances** — one per audience. The User Guide assumes a self-hoster who is
+instances** - one per audience. The User Guide assumes a self-hoster who is
 not a programmer; the Developer Docs assume a contributor. Keep material in
 the right instance and cross-link sparingly.
 
@@ -35,23 +35,23 @@ the right instance and cross-link sparingly.
 cd audiosilo-docs
 npm install        # first time
 npm start          # live-reloading dev server
-npm run build      # the docs gate — MUST pass before a change is done
+npm run build      # the docs gate - MUST pass before a change is done
 ```
 
 `npm run build` is deliberately strict: broken internal links, broken anchors,
 and missing embedded images all **fail the build**. That is the mechanical
-check that pages and screenshots stay consistent — treat it exactly like the
+check that pages and screenshots stay consistent - treat it exactly like the
 code repos' gates.
 
 ## When a code change needs a docs change
 
-Grep these docs for the symbol, flag, route, or UI label you changed —
+Grep these docs for the symbol, flag, route, or UI label you changed -
 `onBrokenLinks` can't catch a stale *claim*, only a stale link. The common
 mappings:
 
 | You changed… | Update |
 |---|---|
-| An API route, envelope, or field | [server/api/reference.md](../server/api/reference.md) (+ [conventions](../server/api/index.md)), [cross-repo contract](../architecture/cross-repo-contract.md) — after updating the workspace `CROSS-REPO.md` itself |
+| An API route, envelope, or field | [server/api/reference.md](../server/api/reference.md) (+ [conventions](../server/api/index.md)), [cross-repo contract](../architecture/cross-repo-contract.md) - after updating the workspace `CROSS-REPO.md` itself |
 | Config keys, env vars, CLI flags | [server/configuration.md](../server/configuration.md) + the User Guide pages that mention them (`/users/getting-started/remote-access`, quickstarts) |
 | Admin console UI | `/users/admin/*` pages + the `admin/` screenshots |
 | Player screens or strings | `/users/listening/*` pages + the `web-player/` screenshots |
@@ -66,7 +66,7 @@ mappings:
 :::tip
 When you flip something from "planned" to "shipped" (transcode negotiation,
 WebSocket sync, uploads, manager installers…), search the whole docs tree for
-the feature name — several pages deliberately mark these as not-yet-shipped.
+the feature name - several pages deliberately mark these as not-yet-shipped.
 :::
 
 ## Screenshots
@@ -81,25 +81,35 @@ machine) gets a labelled placeholder so the build never breaks.
 Rules that keep this maintainable:
 
 1. **Pages embed only manifest-listed images.** Add the manifest entry first.
-2. **Never hand-edit a generated screenshot** — fix the capture script or the
+2. **Never hand-edit a generated screenshot** - fix the capture script or the
    seeded state, then re-run; otherwise the next regeneration loses your edit.
 3. **UI changed? Re-run `screenshots/run.sh`** and commit the refreshed images
    alongside the docs change.
-4. Manager screenshots are captured semi-manually — see
+4. Manager screenshots are captured semi-manually - see
    `screenshots/README.md` for the exact procedure and framing rules.
 
 ## Adding a page
 
 1. Create the `.md` file under `docs-users/` or `docs-developers/` with
    `title:` and `description:` frontmatter (body starts at `##`).
-2. Add its id to the matching `sidebars-*.ts` — sidebars are hand-written so
+2. Add its id to the matching `sidebars-*.ts` - sidebars are hand-written so
    reading order stays deliberate; the build fails if the ids drift.
 3. Link related pages with relative `.md` links (validated at build time).
 4. `npm run build`.
+
+## Writing style
+
+- **Hyphens, not em dashes.** Use a hyphen (`-`) or restructure the sentence -
+  never `—`. A spaced hyphen reads fine mid-sentence, and em dashes also produce
+  messy heading anchors. The one exception: a code block that reproduces literal
+  program output verbatim must match the source (e.g. the server's first-run
+  banner genuinely prints an em dash, so the docs keep it there).
+- Cross-referenced headings should use a colon or rephrase rather than a dash,
+  so the auto-generated anchor stays clean and stable.
 
 ## Deployment
 
 Pushes to `main` build and publish the site via GitHub Actions
 (`.github/workflows/deploy.yml`) to GitHub Pages. For a custom domain
 (e.g. `docs.audiosilo.app`), set `url`/`baseUrl` in `docusaurus.config.ts` and
-add a `static/CNAME` file — nothing else changes.
+add a `static/CNAME` file - nothing else changes.

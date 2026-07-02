@@ -10,7 +10,7 @@ storage layers.
 
 ## The API client (`src/api/client.ts`)
 
-`ApiClient` is a thin, fully-typed fetch wrapper over the server's REST API —
+`ApiClient` is a thin, fully-typed fetch wrapper over the server's REST API -
 one instance per server connection, holding the base URL and (optional) session
 token. See the [API reference](../server/api/reference.md) for the endpoints
 themselves.
@@ -23,27 +23,27 @@ themselves.
 - **Error mapping.** Any non-2xx throws `ApiError(status, message)` carrying
   the server's `{ error }` string. A request that exceeds the client timeout
   (default 15 s, enforced with an internal `AbortController`) throws
-  `TimeoutError` — deliberately distinct from the `AbortError` a
+  `TimeoutError` - deliberately distinct from the `AbortError` a
   caller-supplied signal raises, so the reachability layer can classify a
   timeout as "server unreachable" while ignoring deliberate cancels.
 - **Path-addressed everything.** Content calls are
   `GET /libraries/{id}/{item,chapters,cover,stream}?path=…` etc.; the path
-  rides as a query param (never a URL segment — encoded slashes are a trap).
+  rides as a query param (never a URL segment - encoded slashes are a trap).
 - **`mediaTokenQuery`.** Cover and stream URLs embed the session token as
-  `?token=` **on every platform** — required on web, where `<img>`/`<audio>`
+  `?token=` **on every platform** - required on web, where `<img>`/`<audio>`
   can't set an `Authorization` header, and used uniformly so media auth never
   depends on whether a given native library forwards custom headers. Native
   additionally passes `authHeaders()` on the playback track/artwork requests as
   belt-and-braces. The server side of this seam is the media-GET `?token=`
-  fallback in `internal/api/middleware.go` — see
+  fallback in `internal/api/middleware.go` - see
   [auth & security](../server/auth-and-security.md).
 - **`streamUrl(libraryId, path, download?, opts?)`** can request the
   download-disposition variant (`download=1`, used by the download engines) and
   an on-the-fly MP3 transcode (`transcode=1`, `t=<seconds>` for a mid-file
-  start). Note: nothing *automatically* requests the transcode yet — the
+  start). Note: nothing *automatically* requests the transcode yet - the
   `direct_playable` negotiation on web is a known open follow-up.
 
-## `types.ts` — the mirroring rule
+## `types.ts` - the mirroring rule
 
 `src/api/types.ts` holds hand-written TypeScript mirrors of the server's JSON
 shapes (`ServerInfo`, `User`, `Book`, `Chapter`, `ChaptersResponse`,
@@ -54,7 +54,7 @@ both sides) in one logical change. This is the core of the
 described in [making cross-repo changes](../contributing/cross-repo-changes.md).
 
 Also worth internalizing from the comments in that file: `Book.id` exists but
-is an internal index artifact — identity is `(library_id, rel_path)`, and
+is an internal index artifact - identity is `(library_id, rel_path)`, and
 `dedup_key` is a display-grouping hint, never something to key durable state on.
 
 ## React Query (`src/api/hooks.ts`, `src/api/provider.tsx`)
@@ -64,11 +64,11 @@ with `retry: 1`, `staleTime: 30s`, and `refetchOnWindowFocus: false`. Being
 module-level matters: non-React code (the playback and downloads stores) uses
 it to invalidate and seed queries.
 
-**Key conventions.** All keys come from the `qk` factory —
+**Key conventions.** All keys come from the `qk` factory -
 `qk.item(lib, path)`, `qk.chapters(lib, path)`, `qk.progress(lib, path)`,
 `qk.allProgress()`, `qk.bookmarks/notes/history(lib, path)`,
 `qk.favourites(connectionId)`, `qk.libraries()`, `qk.browse(lib, path)`,
-`qk.server()` — so mutations can invalidate precisely. Content keys are
+`qk.server()` - so mutations can invalidate precisely. Content keys are
 `(libraryId, path)` tuples, matching the path-is-identity rule.
 
 Patterns to copy when adding an endpoint:
@@ -99,7 +99,7 @@ tag results with their connection, and de-duplicate books via `src/lib/dedup.ts`
 where a result lives ("server · library") for de-duplicated rows.
 
 `provider.tsx` also registers an `onReconnect` handler that invalidates **all**
-queries when the server becomes reachable again — screens that errored or
+queries when the server becomes reachable again - screens that errored or
 emptied while offline repopulate without a remount.
 
 ## Zustand stores
@@ -109,7 +109,7 @@ emptied while offline repopulate without a remount.
 Multi-connection: a `Connection` is `{ id, serverUrl, name, token, user }`.
 Connection **metadata** persists to AsyncStorage (`audiosilo.connections` +
 `audiosilo.activeConnection`); each connection's **token** lives in
-secure-store under `audiosilo.token.<id>` — tokens are stripped before the
+secure-store under `audiosilo.token.<id>` - tokens are stripped before the
 metadata is persisted. `hydrate()` restores everything on launch (and migrates
 the pre-multi-connection single-session keys once); `setSession` adds or
 updates by server URL and makes it active; `logout` removes the active
@@ -137,7 +137,7 @@ the built queue), the engine `snapshot`, `rate`, and the actions
 (`playBook`, `toggle`, `pause`, `retry`, `seekBook`, `seekInTrack`,
 `goToTrack`, `skipSeconds`, `setRate`, `stop`) plus selectors
 (`selectBookPosition`, `selectCurrentChapter`, `selectIsPlaying`). Everything
-behind that surface — timeline math, the stall watchdog, resume protection —
+behind that surface - timeline math, the stall watchdog, resume protection -
 is documented in [Playback](playback.md). `useDownloads`
 (`src/downloads/store.ts`) is covered in [Offline](offline.md). Both follow the
 same shape: a Zustand store for reactive state, module-level variables for
@@ -149,7 +149,7 @@ The offline-safe write path for listening progress:
 
 - **Last-write-wins.** Every save carries `version: 0`, a per-install
   `device_id` (generated once, cached under `audiosilo.deviceId`), and an
-  `updated_at` captured **at save time** — so replays that land late still
+  `updated_at` captured **at save time** - so replays that land late still
   reconcile correctly by timestamp. The server's `SaveProgress` applies the
   same newest-`updated_at`-wins rule (see the
   [server data model](../server/data-model.md)).
@@ -168,12 +168,12 @@ The offline-safe write path for listening progress:
   `onReconnect` at module load), after any successful direct save, and when a
   book starts playing. A connection drop mid-flush keeps the remaining items.
 - **`loadInitialProgress`** reconciles server + mirror + queue into the
-  `ResumeLookup` (`progress`/`empty`/`failed`) that drives resume — the
+  `ResumeLookup` (`progress`/`empty`/`failed`) that drives resume - the
   semantics live in [Playback](playback.md#resume-protection).
 
 :::note No realtime sync
 Progress sync is REST-only. The server advertises a `websocket` capability flag
-for a future realtime channel, but no WebSocket client exists in the frontend —
+for a future realtime channel, but no WebSocket client exists in the frontend -
 don't document or rely on one.
 :::
 
@@ -186,12 +186,12 @@ hammering a dead endpoint:
 - Starts optimistic (`online: true`).
 - `noteError(e)` classifies failures: an `ApiError` means the server *answered*
   (even a 500) → reachable; an `AbortError` (deliberate cancel) is ignored;
-  anything else — including the client's `TimeoutError` — flips to offline.
+  anything else - including the client's `TimeoutError` - flips to offline.
   `noteSuccess()` flips back.
 - While offline, a 20 s probe loop calls `serverInfo()` on the client that
   `ApiProvider` registered via `setReachabilityApi` until it answers.
 - On web only, the browser's `online`/`offline` events short-circuit the loop
-  (an `online` event triggers an immediate probe — the NIC being up doesn't
+  (an `online` event triggers an immediate probe - the NIC being up doesn't
   prove the *server* is).
 - `onReconnect(cb)` is the hook everything else builds on: the progress queue
   flush and the global query invalidation both register here. The offline
@@ -205,7 +205,7 @@ dedicated heartbeat while healthy.
 
 ## Storage layers
 
-Two deliberate tiers — know which one you're writing to:
+Two deliberate tiers - know which one you're writing to:
 
 | Layer | Module | Backing | Used for |
 |---|---|---|---|
@@ -215,6 +215,6 @@ Two deliberate tiers — know which one you're writing to:
 The split exists because tokens are the only true secret the app holds:
 hardware-backed storage on native is worth the extra API, while everything else
 is non-sensitive state that benefits from the simpler JSON layer. On web both
-tiers degrade to localStorage — same-origin script access is the trust boundary
+tiers degrade to localStorage - same-origin script access is the trust boundary
 there regardless. Both modules swallow storage errors (best-effort semantics),
 so callers never need try/catch for a full disk or a blocked localStorage.

@@ -9,7 +9,7 @@ the code *testable* in the first place.
 
 ## The harness
 
-- **jest-expo** preset (Jest 29 runtime) — resolves and transforms React
+- **jest-expo** preset (Jest 29 runtime) - resolves and transforms React
   Native / Expo modules. Config lives in `jest.config.js`:
   - `moduleNameMapper` maps the `@/` alias to `src/` (and `@/assets/` to
     `assets/`);
@@ -18,10 +18,10 @@ the code *testable* in the first place.
     transpiled instead of failing on `import`;
   - `testMatch` picks up `**/*.test.ts` and `**/*.test.tsx`;
   - `collectCoverageFrom` covers `src/**/*.{ts,tsx}` but **excludes
-    `src/app/**`** — screens are intentionally out of coverage scope (see
+    `src/app/**`** - screens are intentionally out of coverage scope (see
     conventions below).
 - **@testing-library/react-native 14** for component and hook tests. Its
-  matchers are **built in** — there is no `@testing-library/jest-native`
+  matchers are **built in** - there is no `@testing-library/jest-native`
   dependency; don't add one.
 
 Run with `npm test`; coverage with `npm test -- --coverage`.
@@ -30,10 +30,10 @@ Run with `npm test`; coverage with `npm test -- --coverage`.
 
 Loaded via `setupFilesAfterEnv`, it does four things:
 
-1. **Imports `@/i18n`** so i18next is initialised with the English catalog —
+1. **Imports `@/i18n`** so i18next is initialised with the English catalog -
    components using `useTranslation` and the locale-aware formatters resolve
    real strings under the fallback.
-2. Sets **`IS_REACT_ACT_ENVIRONMENT = true`** — React 19 gates `act(...)`
+2. Sets **`IS_REACT_ACT_ENVIRONMENT = true`** - React 19 gates `act(...)`
    support behind this flag, and `render`/`renderHook` need it to flush state
    updates. Pure-logic suites are unaffected.
 3. Mocks **`@react-native-async-storage/async-storage`** with an in-memory
@@ -42,7 +42,7 @@ Loaded via `setupFilesAfterEnv`, it does four things:
    (`getItemAsync`/`setItemAsync`/`deleteItemAsync`).
 
 Together these let the storage, session, sync, settings and downloads layers
-run unchanged without a device or browser. Nothing else is mocked globally —
+run unchanged without a device or browser. Nothing else is mocked globally -
 `fetch`, reachability, `expo-localization` etc. are mocked per test file as
 needed.
 
@@ -50,14 +50,14 @@ needed.
 
 - **Logic stays out of `src/app/**` screens.** Screens compose hooks and
   components; behavior lives in `src/lib`, `src/api`, `src/playback`,
-  `src/downloads`, `src/stores`, `src/i18n` — pure or framework-light modules
+  `src/downloads`, `src/stores`, `src/i18n` - pure or framework-light modules
   that get **co-located `*.test.ts(x)` files**. This is why the coverage
   config can exclude screens outright.
 - **Test the seam you changed.** A wire-format change needs a test on the
-  frontend *and* the server side — see
+  frontend *and* the server side - see
   [cross-repo changes](../contributing/cross-repo-changes.md).
 - Prefer direct function tests for pure modules. For hooks, note that
-  `renderHook` is incompatible with this jest-expo + React 19 setup — the hook
+  `renderHook` is incompatible with this jest-expo + React 19 setup - the hook
   tests (e.g. `src/components/account/use-sign-out.test.tsx`) instead **mount a
   tiny probe component** with `render(...)` that calls the hook and exposes its
   result.
@@ -103,7 +103,7 @@ Flipping `isReachable` per test is how the offline-queue branches are covered.
 ### Flipping `Platform.OS`
 
 jest-expo defaults `Platform.OS` to `ios`. Modules that branch on it **at call
-time** (not at import time) can be covered for both platforms by mutating it —
+time** (not at import time) can be covered for both platforms by mutating it -
 the pattern from `src/lib/secure-store.test.ts`:
 
 ```ts
@@ -140,7 +140,7 @@ Co-located suites exist for:
 | `src/lib` helpers | `alpha-sections`, `app-resume`, `base-url`, `dedup`, `format`, `nav`, `pairing`, `paths`, `progress-view`, `recovery`, `scroll-memory`, `secure-store`, `share`, `support` |
 
 Not covered by unit tests, by design or necessity: `src/app/**` screens (kept
-logic-free), and the **native module** (`modules/audiosilo-player`) — Swift and
+logic-free), and the **native module** (`modules/audiosilo-player`) - Swift and
 Kotlin can only be validated by a device rebuild, which is why its invariants
 are documented so heavily in [Playback](playback.md).
 
@@ -152,11 +152,11 @@ Before calling any change done:
 npx tsc --noEmit && npm run lint && npm run format && npm test
 ```
 
-CI (`.github/workflows/ci.yml`) gates all four on every PR/push — typecheck,
+CI (`.github/workflows/ci.yml`) gates all four on every PR/push - typecheck,
 ESLint, **prettier `--check`** (the `format` script; use
 `npx prettier --write .` to fix locally), and the Jest suite. CI reads the Node
 version from `.nvmrc` (`24.16.0`) via `node-version-file`, and installs with a
-frozen `npm ci` — keep `package-lock.json` committed in sync after dependency
+frozen `npm ci` - keep `package-lock.json` committed in sync after dependency
 changes. See [Gates and CI](../contributing/gates-and-ci.md) for the
 workspace-wide picture.
 
