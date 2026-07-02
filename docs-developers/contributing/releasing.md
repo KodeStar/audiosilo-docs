@@ -107,7 +107,7 @@ committed `internal/web/player/.gitkeep` keeps the embed compiling.)
 
 The end-to-end smoke test from `RELEASING.md`:
 
-1. `docker compose pull && docker compose up -d`; grab the admin password from
+1. `docker compose up -d`; grab the admin password from
    `docker compose logs`.
 2. Open `/admin`, sign in, add a library, create a user, click **Copy invite**.
 3. **Web:** open the invite link → connect screen → **Open web player** (or
@@ -124,8 +124,8 @@ Worth checking at the same time: `GET /api/v1/server` reports the new version
 
 The native apps are a **separate pipeline** from everything above - nothing about
 a server/web release touches them, and they don't run in CI. The full personal
-runbook is the workspace `~/dev/audiosilo/STORE-DEPLOYMENT.md` (kept at the
-workspace root, deliberately uncommitted). The honest summary:
+runbook is the workspace `~/dev/audiosilo/STORE-DEPLOYMENT.md` (committed to the
+meta repo at the workspace root). The honest summary:
 
 - **Builds go through EAS Build** - the app has a custom native module
   (`modules/audiosilo-player`) so it must be compiled; Expo Go can't run it.

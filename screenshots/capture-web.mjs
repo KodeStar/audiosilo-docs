@@ -1,7 +1,7 @@
 // Captures the web-player documentation screenshots against a locally-running
 // AudioSilo server in demo mode (run.sh starts it). Two passes:
 //   1. warm a demo session (seek several books to varied positions so the home
-//      screen's Continue Listening shelf looks lived-in) — same technique as
+//      screen's Continue Listening shelf looks lived-in) - same technique as
 //      store/tools/login.mjs in the workspace,
 //   2. capture desktop + phone profiles into static/img/screenshots/web-player/.
 import {chromium} from 'playwright';

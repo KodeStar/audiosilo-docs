@@ -65,8 +65,10 @@ again (only a secure hash is kept). In order of least to most drastic:
    [Users & invites](./admin/users-and-invites.md).
 3. **Still signed in somewhere?** If you saved the first-run **auth code**, it
    still works (it has no expiry) - it can pair the player app as the admin
-   user, so you can keep listening. It does not open the admin console, though;
-   that needs the password.
+   user, so you can keep listening. The one exception is if an admin later
+   minted a fresh invite for that admin account: a new invite supersedes and
+   deletes the still-redeemable first-run code. It does not open the admin
+   console, though; that needs the password.
 4. **Last resort: reset the database.** Stop the server, move the database
    files (`audiosilo.db`, plus any `audiosilo.db-wal` / `audiosilo.db-shm`) out
    of the data directory, and start it again. The server treats this as a
@@ -245,8 +247,9 @@ the downloaded files. See [Offline downloads](./listening/offline-downloads.md).
 Offline playback in a browser needs a **service worker**, which browsers only
 allow on a secure connection (HTTPS, or `localhost`). If the app detects that
 offline files can't actually be served - for example you're on plain HTTP -
-it hides the download buttons rather than offering downloads that wouldn't
-play. Access the server over HTTPS (see
+it hides the Downloads tab from the navigation, and a book's download button
+appears as a disabled "Downloads unavailable" button rather than offering
+downloads that wouldn't play. Access the server over HTTPS (see
 [Remote access](./getting-started/remote-access.md)) and downloads appear.
 
 ## Demo
