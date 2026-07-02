@@ -1,7 +1,7 @@
 # Documentation screenshots
 
 Every image the docs embed lives in `../static/img/screenshots/` and is listed
-in [`manifest.mjs`](manifest.mjs) — that file is the single source of truth.
+in [`manifest.mjs`](manifest.mjs) - that file is the single source of truth.
 Doc pages may only reference images that appear in the manifest, and the
 pipeline guarantees every manifest entry exists (a real capture, or a styled
 placeholder so the site build never breaks).
@@ -21,7 +21,7 @@ frontend's web export (plus a `--setup` instance on `:8791` for the wizard
 shot), then runs the Playwright captures and backfills placeholders.
 
 Every capture is optimized in place with **pngquant** (`brew install pngquant`)
-— a lossy-palette pass that shrinks the retina PNGs ~60% with no perceptible
+- a lossy-palette pass that shrinks the retina PNGs ~60% with no perceptible
 loss, so the committed image is the optimized one. It's optional: if pngquant
 isn't on `PATH` the shots are just left raw (with a one-time warning).
 
@@ -36,7 +36,7 @@ automatically when missing).
 2. Teach the matching `capture-*.mjs` script to take it (or leave it to the
    placeholder generator if it can't be automated yet).
 3. Reference it from the doc page as `![alt](/img/screenshots/<file>)`.
-4. Run `./run.sh` (or at minimum `node placeholders.mjs`) so the file exists —
+4. Run `./run.sh` (or at minimum `node placeholders.mjs`) so the file exists -
    the Docusaurus build fails on missing images by design.
 
 ## Desktop manager captures
@@ -53,7 +53,7 @@ semi-manually instead:
 4. Save over the placeholder in `../static/img/screenshots/manager/` using the
    exact manifest filename.
 
-Anything not replaced stays a labelled placeholder — visible in the docs as
+Anything not replaced stays a labelled placeholder - visible in the docs as
 "regenerate me", never a broken image.
 
 ## The store/marketing pipeline is separate
@@ -61,5 +61,5 @@ Anything not replaced stays a labelled placeholder — visible in the docs as
 `~/dev/audiosilo/store/tools` + `SCREENSHOTS.md` produce the app-store and
 marketing-site assets (device frames, captions, icons). The two pipelines share
 the same technique (demo-mode server + Playwright + the `Audio` constructor
-hook for warming progress) but different outputs — a UI change usually means
+hook for warming progress) but different outputs - a UI change usually means
 running both.

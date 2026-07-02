@@ -7,7 +7,7 @@
 #      plus a second --setup instance (port 8791) for the wizard shot,
 #   4. runs the Playwright captures (web player + admin console + public pages),
 #   5. backfills placeholders for anything not captured (e.g. the desktop
-#      manager on a headless run — see README.md for manager captures).
+#      manager on a headless run - see README.md for manager captures).
 #
 # Prereqs: Go 1.25+, Node 24, ffmpeg/ffprobe, `npm install` +
 # `npx playwright install chromium` in this directory, and a web export at

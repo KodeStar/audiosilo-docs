@@ -12,7 +12,10 @@ in the [API conventions](index.md) page and are not repeated per endpoint.
 *Admin*: session token + `admin` role.
 
 All `/api/v1` bodies and responses are JSON. Timestamps are RFC 3339. Remember
-that empty list fields may serialize as `null`.
+that empty list fields may serialize as `null`. The one exception is the
+media file-serving layer (`stream`/`transcode`): its 404s and transcode
+failures are plain-text `http.Error` responses, not the JSON `{ "error": … }`
+envelope.
 
 ## Server & meta
 
@@ -322,7 +325,7 @@ with indexed-book metadata attached where available. Offset-paginated.
       "is_dir": true,
       "is_audio": false,
       "size": 0,
-      "mod_time": 1747213964,
+      "mod_time": 0,
       "is_book": true,
       "title": "The Final Empire",
       "author": "Brandon Sanderson",
@@ -408,8 +411,8 @@ de-duplication annotations:
 | Field | Type | Notes |
 |---|---|---|
 | `dedup_key` | string | groups copies of the same logical book; a display hint, **not** an identity |
-| `multi_file` | bool | whether this copy is multipart (single-file copies win de-dup) |
-| `other_locations` | array | the non-winning copies: `{ library_id, library_name, path, format?, size?, multi_file? }` |
+| `multi_file` | bool | whether this copy is multipart. De-dup ranks format tier first (M4B/AAC > MP3 > other), then single-file over multipart - so a multipart M4B can beat a single-file MP3 |
+| `other_locations` | array | at most one entry per **other** library (the best copy in each); additional copies inside the winner's own library are omitted: `{ library_id, library_name, path, format?, size?, multi_file? }` |
 
 ### `GET /api/v1/books/recent`
 
@@ -722,8 +725,8 @@ Response: `{ "history": [ … ] }`.
 
 | Body field | Type | Required | Notes |
 |---|---|---|---|
-| `from_pos` | float | yes | span start position (seconds) |
-| `to_pos` | float | yes | span end position |
+| `from_pos` | float | no | span start position (seconds); not validated - defaults to `0` if omitted |
+| `to_pos` | float | no | span end position; not validated - defaults to `0` if omitted |
 | `started_at` | string | no | RFC 3339; defaults to server time |
 | `ended_at` | string | no | RFC 3339; defaults to server time |
 
@@ -797,8 +800,9 @@ Create an account.
 | `password` | string | admins only | optional for non-admins (pairing-only accounts); required for `role: "admin"` |
 | `role` | string | yes | `"admin"` or `"user"` |
 
-Response `201`: the created user object. `400` with a specific message on any
-validation failure (duplicate username, missing admin password, …).
+Response `201`: the created user object. `409` `username already taken` on a
+duplicate username; `400` with a specific message on a validation failure (missing
+admin password, password too short, …).
 
 ### `GET /api/v1/admin/users/{id}`
 
@@ -810,7 +814,8 @@ One account plus everything the console needs to manage it:
             "has_password": false, "has_recovery": true, "is_demo": false },
   "accessible_libraries": [ { "id": 1, "name": "Audiobooks", "root": "/srv/audiobooks",
                               "default_view": "hybrid", "sort_order": 0 } ],
-  "shares": [ { "id": 2, "name": "Fantasy shelf", "description": "", "read_only": true } ],
+  "shares": [ { "id": 2, "name": "Fantasy shelf", "description": "", "read_only": true,
+                "paths": [ { "library_id": 1, "path": "Brandon Sanderson" } ] } ],
   "auth_codes": [
     {
       "id": 9,

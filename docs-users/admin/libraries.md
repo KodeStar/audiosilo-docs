@@ -58,9 +58,12 @@ recognises moved files and carries progress across).
 ## Library order
 
 The **↑ / ↓** buttons reorder libraries. Order matters in one subtle way: when
-the same book exists in more than one library, the copy in the **higher
-(earlier) library wins** de-duplication in search and "recently added". Put
-your primary library first.
+the same book exists in more than one library, de-duplication in search and
+"recently added" picks the **best-quality copy first** - it prefers the better
+format (M4B/AAC over MP3 over anything else), then a single-file copy over a
+multipart one, then the higher bitrate. Library order is only the final
+tiebreaker when copies are otherwise equal, so putting your primary library
+first decides those ties.
 
 ## Folder detection
 

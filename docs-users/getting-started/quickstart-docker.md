@@ -56,7 +56,7 @@ On the very first start, the server creates an admin account and prints the cred
 
 ```text
 ========================================================
- AudioSilo first-run setup — store these now, shown once
+ AudioSilo first-run setup - store these now, shown once
 ========================================================
   Admin username : admin
   Admin password : <generated password>
