@@ -1,0 +1,41 @@
+/**
+ * AudioSilo docs theme — matches the product's pink-accented, dark-first look
+ * (accent #db2777, same as the player and admin console).
+ */
+
+:root {
+  --ifm-color-primary: #db2777;
+  --ifm-color-primary-dark: #c62169;
+  --ifm-color-primary-darker: #bb1f63;
+  --ifm-color-primary-darkest: #9a1a52;
+  --ifm-color-primary-light: #e13a85;
+  --ifm-color-primary-lighter: #e2468c;
+  --ifm-color-primary-lightest: #e86ba2;
+  --ifm-code-font-size: 95%;
+  --docusaurus-highlighted-code-line-bg: rgba(0, 0, 0, 0.1);
+}
+
+/* Dark mode is the product default; use a lighter pink for contrast. */
+[data-theme='dark'] {
+  --ifm-color-primary: #ec4899;
+  --ifm-color-primary-dark: #e92c8b;
+  --ifm-color-primary-darker: #e11d84;
+  --ifm-color-primary-darkest: #b9186d;
+  --ifm-color-primary-light: #ef64a7;
+  --ifm-color-primary-lighter: #f172ae;
+  --ifm-color-primary-lightest: #f59cc4;
+  --docusaurus-highlighted-code-line-bg: rgba(0, 0, 0, 0.3);
+}
+
+/* Screenshots: frame them like UI, not inline images. */
+.markdown img[src*='/img/screenshots/'] {
+  border: 1px solid var(--ifm-color-emphasis-300);
+  border-radius: 10px;
+  box-shadow: 0 4px 24px rgba(0, 0, 0, 0.25);
+  margin: 0.5rem 0 1rem;
+}
+
+/* Phone-sized screenshots shouldn't span the full content column. */
+.markdown img[src*='/phone-'] {
+  max-width: 320px;
+}

@@ -1,0 +1,14 @@
+{
+  "name": "audiosilo-docs-screenshots",
+  "private": true,
+  "type": "module",
+  "description": "Regenerates every documentation screenshot from a locally-run AudioSilo stack. Entry point: run.sh (see README.md).",
+  "scripts": {
+    "placeholders": "node placeholders.mjs",
+    "web": "node capture-web.mjs",
+    "admin": "node capture-admin.mjs"
+  },
+  "dependencies": {
+    "playwright": "^1.61.1"
+  }
+}
