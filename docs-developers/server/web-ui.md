@@ -6,16 +6,16 @@ description: "internal/web: the baked-in admin/connect pages, the /web player mo
 The server ships two very different web surfaces from one package
 (`internal/web`):
 
-- The **admin/connect UI** — small, dependency-free vanilla HTML/CSS/JS pages
+- The **admin/connect UI** - small, dependency-free vanilla HTML/CSS/JS pages
   **embedded in the binary** (`//go:embed assets`). No build step, no
   framework, and a strict same-origin CSP that the assets are written to
   satisfy.
-- The **web player** at `/web` — the audiosilo-frontend Expo export. It is
+- The **web player** at `/web` - the audiosilo-frontend Expo export. It is
   **not vendored** in this repo: it is served at runtime from `web_dir`
   (env `AUDIOSILO_WEB_DIR`), or baked into the binary by the `embedplayer`
   build tag for native releases.
 
-Both are static clients over the JSON API — the HTML itself is unprivileged;
+Both are static clients over the JSON API - the HTML itself is unprivileged;
 authorization always happens at the API (see
 [Auth & security](auth-and-security.md)).
 
@@ -27,15 +27,15 @@ specific patterns.
 
 | Route | Serves | CSP |
 |---|---|---|
-| `GET /` (exact), `GET /connect[/]` | `index.html` — the connect page | strict site-wide |
-| `GET /admin[/]` | `admin.html` — the admin console | strict site-wide |
+| `GET /` (exact), `GET /connect[/]` | `index.html` - the connect page | strict site-wide |
+| `GET /admin[/]` | `admin.html` - the admin console | strict site-wide |
 | `GET /assets/…` | embedded CSS/JS/fonts/icons (+ `nosniff`) | strict site-wide |
-| `GET /favicon.ico` | 301 → `/assets/favicon.svg` | — |
+| `GET /favicon.ico` | 301 → `/assets/favicon.svg` | - |
 | `GET /sw.js`, `GET /manifest.webmanifest` | admin-console PWA worker + manifest, served from the **site root** so the worker's scope covers `/admin` (`sw.js` is `Cache-Control: no-cache` so updates land promptly) | strict site-wide |
 | `GET /web/…` | the web player (only mounted when a build with an `index.html` is available) | per-document `htmlCSP` |
 
 Two related routes live in `internal/api`, not `internal/web`: the setup
-wizard (`GET`/`POST /setup`, below) and — in demo mode with a player present —
+wizard (`GET`/`POST /setup`, below) and - in demo mode with a player present -
 a `GET /{$}` redirect that sends the exact site root to `/web/demo`
 (`webDemoPath` in `api.go`) so a demo instance lands visitors straight on the
 instant-demo flow.
@@ -56,13 +56,13 @@ base-uri 'none'; frame-ancestors 'none'
   redeem response) renders.
 - `manifest-src`/`worker-src 'self'` let the admin console install as a PWA.
 - There is **no** `'unsafe-inline'` anywhere: the pages contain no inline
-  `<style>`, no `style=` attributes and no inline `<script>` — all styling
+  `<style>`, no `style=` attributes and no inline `<script>` - all styling
   lives in `assets/style.css` and all behaviour in external JS files using
   `addEventListener`. Keep it that way: an inline handler added to
   `admin.html` will silently do nothing under this CSP.
 
 :::warning
-`web.htmlCSP` and this policy are on the security-critical list — changes
+`web.htmlCSP` and this policy are on the security-critical list - changes
 require both an allowed **and** a denied regression test (see
 `internal/web/web_test.go` and [Gates & CI](../contributing/gates-and-ci.md)).
 :::
@@ -76,7 +76,7 @@ which shares `<base>/connect#code=…`. The auth code rides in the URL
 ```mermaid
 sequenceDiagram
     participant U as Invitee's browser
-    participant W as Connect page — connect.js
+    participant W as Connect page - connect.js
     participant S as Server API
 
     U->>W: open /connect#35;code=XXXX
@@ -87,16 +87,16 @@ sequenceDiagram
 ```
 
 `connect.js` auto-fills and submits when a fragment code is present (a code
-can also be typed into the form — invite and recovery codes redeem through
+can also be typed into the form - invite and recovery codes redeem through
 the same field). The redeem response (`PairingPayload`, built by
 `buildPairing` in `internal/api/qr.go`) carries the single-use pairing token
 in two carriers:
 
-- **`web_url`** = `<base>/web/connect?token=…` — what the **QR encodes**.
+- **`web_url`** = `<base>/web/connect?token=…` - what the **QR encodes**.
   Scanning it opens the native app when the app claims the domain (Universal
   / App Link), otherwise the embedded web player's connect route, which
   exchanges the token.
-- **`uri`** = `audiosilo://connect?server=…&token=…` — the custom-scheme
+- **`uri`** = `audiosilo://connect?server=…&token=…` - the custom-scheme
   "Open in app" button; custom schemes are not domain-bound, so this launches
   an installed app on any self-hosted domain.
 
@@ -107,7 +107,7 @@ in two carriers:
 `playerFS(webDir)` picks the source: a player **embedded in the binary**
 takes precedence; otherwise `os.DirFS(webDir)` (config `web_dir` / env
 `AUDIOSILO_WEB_DIR`, which the Docker image bakes in at `/app/web`). `/web/`
-is only mounted when the chosen source actually contains an `index.html` —
+is only mounted when the chosen source actually contains an `index.html` -
 `web.HasPlayer` gates both the mount and the `web_player` capability flag in
 `GET /server`. Empty `web_dir` and no embedded player simply means no `/web`.
 
@@ -125,7 +125,7 @@ per-route HTML). When nothing matches:
   or with a non-`.html` extension (`isAsset`). A missing fingerprinted bundle
   must fail loudly, not return HTML.
 - Anything else is treated as a **client-routed deep link** and falls back to
-  `index.html` so the SPA boots — this is what makes
+  `index.html` so the SPA boots - this is what makes
   `/web/connect?token=…` work.
 
 Caching: HTML is `Cache-Control: no-cache`; `_expo/`/`assets/` files are
@@ -138,7 +138,7 @@ The Expo export ships HTML with inline bootstrap `<script>`s, which the strict
 site-wide CSP would block. Instead of granting `'unsafe-inline'`, each HTML
 response gets a **scoped policy computed from the served bytes**: `htmlCSP`
 finds every inline `<script>` in that document (skipping ones with a `src=`
-attribute — those are covered by `'self'`), hashes each body with SHA-256,
+attribute - those are covered by `'self'`), hashes each body with SHA-256,
 and emits:
 
 ```
@@ -148,7 +148,7 @@ script-src 'self' 'sha256-…' […]; connect-src 'self';
 base-uri 'none'; frame-ancestors 'none'
 ```
 
-- **`script-src` stays strict** — only the exact inline scripts present in
+- **`script-src` stays strict** - only the exact inline scripts present in
   that document run; no `'unsafe-inline'`.
 - **`style-src` allows `'unsafe-inline'`** deliberately: react-native-web and
   NativeWind inject style rules at runtime, which cannot be hashed ahead of
@@ -167,14 +167,14 @@ Native single-binary releases bake the player in so `/web` works with no
 
 - `internal/web/player_embed.go` (built with `-tags embedplayer`) embeds
   `internal/web/player/` (`//go:embed all:player`). That directory is
-  **gitignored** — only a `.gitkeep` is committed — and the release pipeline
+  **gitignored** - only a `.gitkeep` is committed - and the release pipeline
   populates it from the pinned web image via `scripts/fetch-web-player.sh`
   before building.
 - `internal/web/player_disk.go` (the default, `!embedplayer`) reports no
   embedded player, so serving falls through to `web_dir`.
 - A `-tags embedplayer` build **without** the population step still compiles
   (the `.gitkeep` satisfies the embed) but exposes no player: there is no
-  `index.html`, so `HasPlayer` is false — exactly like an empty `web_dir`.
+  `index.html`, so `HasPlayer` is false - exactly like an empty `web_dir`.
 
 ## First-run setup wizard (`/setup`)
 
@@ -204,11 +204,11 @@ A successful `POST /setup` creates the admin (username defaults to `admin`;
 library folder exists on the server, creates the library, and kicks off a
 background scan. If library creation fails after the admin was created, the
 wizard still closes (an admin now exists) and the admin finishes in the
-console — intentionally fail-safe.
+console - intentionally fail-safe.
 
 The launcher prints the token-carrying URL in a startup banner and also
 reports it through `Options.OnURL`, which is how the desktop manager (running
-the server in-process) knows what to open in a browser — see
+the server in-process) knows what to open in a browser - see
 [Configuration](configuration.md) and
 [Manager server integration](../manager/server-integration.md).
 
@@ -226,13 +226,13 @@ mobile app (iOS Universal Links / Android App Links):
 - When the relevant identifiers are unset, each endpoint returns **404** and
   clients fall back to the embedded web player plus the custom-scheme
   "Open in app" button.
-- The advertised paths are `appLinkPaths` = `/web/connect*` and `/connect*` —
+- The advertised paths are `appLinkPaths` = `/web/connect*` and `/connect*` -
   the pairing handoff and the copy-invite target.
 
 :::note
 Serving these files is necessary but not sufficient: the shipped app build
 must also claim the domain in its own entitlements/manifest. Arbitrary
-self-hosted domains therefore never get auto-app-launch from a QR scan — by
+self-hosted domains therefore never get auto-app-launch from a QR scan - by
 design they get the web player, and the custom-scheme button covers the
 installed-app case.
 :::

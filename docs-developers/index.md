@@ -11,9 +11,9 @@ write/management side. Everything else in these docs hangs off that split.
 
 | Repo | Role | Stack |
 |---|---|---|
-| `audiosilo-server` | The **server** — source of truth for content and the API. JSON API + baked-in admin/connect UI; serves the web player at `/web`. Safe to expose to the internet. | Go 1.25, SQLite (modernc, pure Go), FTS5 |
-| `audiosilo-frontend` | The **player** — one codebase shipping to web PWA + iOS + Android. Read side of the product; its web export is served *by* the server at `/web`. | Expo SDK 56, React Native 0.85 (new architecture), React 19, Expo Router, NativeWind v4 |
-| `audiosilo-manager` | The desktop **manager** — the write/management side: set up or connect to servers, organize and transfer books (SFTP or local copy), back up an owned Audible library. Consumes the server API read-only. | Wails v2 (Go 1.25 + React/Vite/TypeScript) |
+| `audiosilo-server` | The **server** - source of truth for content and the API. JSON API + baked-in admin/connect UI; serves the web player at `/web`. Safe to expose to the internet. | Go 1.25, SQLite (modernc, pure Go), FTS5 |
+| `audiosilo-frontend` | The **player** - one codebase shipping to web PWA + iOS + Android. Read side of the product; its web export is served *by* the server at `/web`. | Expo SDK 56, React Native 0.85 (new architecture), React 19, Expo Router, NativeWind v4 |
+| `audiosilo-manager` | The desktop **manager** - the write/management side: set up or connect to servers, organize and transfer books (SFTP or local copy), back up an owned Audible library. Consumes the server API read-only. | Wails v2 (Go 1.25 + React/Vite/TypeScript) |
 
 The three code repos (plus this docs site) live side by side in a single
 workspace folder (`~/dev/audiosilo`), whose root is itself the small
@@ -26,13 +26,13 @@ out and work across the repos.
 
 ```mermaid
 flowchart LR
-    subgraph fe["audiosilo-frontend — the player (read side)"]
+    subgraph fe["audiosilo-frontend - the player (read side)"]
         ios["iOS app"]
         droid["Android app"]
         pwa["Web PWA"]
     end
 
-    subgraph srv["audiosilo-server — source of truth"]
+    subgraph srv["audiosilo-server - source of truth"]
         api["JSON API<br/>/api/v1"]
         webmount["/web<br/>web player (static export)"]
         adminui["/admin + /connect<br/>baked-in UI"]
@@ -42,7 +42,7 @@ flowchart LR
         api --- files
     end
 
-    subgraph mgr["audiosilo-manager — desktop (write side)"]
+    subgraph mgr["audiosilo-manager - desktop (write side)"]
         wails["Wails app"]
         launcher["embedded server<br/>via pkg/launcher"]
     end
@@ -58,7 +58,7 @@ flowchart LR
 Three structural facts to internalize before reading anything else:
 
 - **The server is the only writer of the API contract.** The frontend (and the
-  manager's `internal/serverapi`) mirror its JSON shapes **by hand** — there is no
+  manager's `internal/serverapi`) mirror its JSON shapes **by hand** - there is no
   codegen, so a wire change is always a multi-repo change. See
   [Cross-repo contract](architecture/cross-repo-contract.md).
 - **The filesystem is the source of truth; the database is a rebuildable index.**
@@ -73,7 +73,7 @@ Three structural facts to internalize before reading anything else:
 
 **Streaming.** The player fetches a book's chapters
 (`GET /libraries/{id}/chapters?path=` → `{chapters, files, duration}`), then
-streams individual **audio files** — never a folder/book path — with HTTP Range
+streams individual **audio files** - never a folder/book path - with HTTP Range
 requests (`GET /libraries/{id}/stream?path=`). Media auth rides as a `?token=`
 query param because browsers can't set headers on `<img>`/`<audio>`. A transcode
 fallback exists (`?transcode=1`, ffmpeg → MP3, gated by the `transcode`
@@ -84,7 +84,7 @@ yet wired.
 on pause/seek/rate/stop), path-keyed, via `PUT /libraries/{id}/progress?path=`.
 The server reconciles last-write-wins by `updated_at` (`catalog.SaveProgress`);
 the client keeps an offline replay queue (`src/playback/progress-sync.ts`).
-Realtime WebSocket sync is **planned** (Phase C remainder) — the `websocket`
+Realtime WebSocket sync is **planned** (Phase C remainder) - the `websocket`
 capability flag is already reserved for it.
 
 **Pairing.** An admin mints an invite code; the code rides a URL **fragment**
@@ -94,8 +94,8 @@ capability flag is already reserved for it.
 deep link. The app or web player exchanges the pairing token for a device-scoped
 session (`POST /auth/exchange`).
 
-**File placement.** The manager places files itself — over SFTP or into a
-local/mounted copy of the library — then asks the server for a non-destructive
+**File placement.** The manager places files itself - over SFTP or into a
+local/mounted copy of the library - then asks the server for a non-destructive
 reindex (`POST /admin/libraries/{id}/scan`). Its only server-side write is
 path-keyed metadata enrichment (`PUT /admin/libraries/{id}/enrichment?path=`,
 ASIN/ISBN), which touches no file. A server-side `POST /uploads` endpoint is
@@ -103,14 +103,14 @@ ASIN/ISBN), which touches no file. A server-side `POST /uploads` endpoint is
 
 ## Design priorities
 
-The server's priorities, in order — when they conflict, the earlier one wins:
+The server's priorities, in order - when they conflict, the earlier one wins:
 
 1. **Safe to expose to the internet.** Secure defaults, no default passwords,
    hashed secrets, app-layer hardening, configurable TLS. Inexperienced users will
    port-forward this.
 2. **Fast regardless of library size.** FTS5 search + keyset pagination; never
    OFFSET on large tables.
-3. **No-wait first connection.** The filesystem view (`/fs`) needs no indexing —
+3. **No-wait first connection.** The filesystem view (`/fs`) needs no indexing -
    a fresh server is browsable and playable immediately, with the index catching
    up in the background.
 4. **Portable.** The filesystem is the source of truth; the database is a
@@ -118,22 +118,22 @@ The server's priorities, in order — when they conflict, the earlier one wins:
 
 ## How these docs are organized
 
-- **[Architecture](architecture/invariants.md)** — start here. The
+- **[Architecture](architecture/invariants.md)** - start here. The
   [invariants](architecture/invariants.md) every change must preserve, the
   [cross-repo contract](architecture/cross-repo-contract.md) (every seam between
   the repos), and the [release pipeline](architecture/release-pipeline.md).
-- **[Server](server/overview.md)** — package layout, [data model](server/data-model.md),
+- **[Server](server/overview.md)** - package layout, [data model](server/data-model.md),
   [auth and security](server/auth-and-security.md), the [scanner](server/scanner.md),
   [media serving](server/media.md), the [baked-in web UI](server/web-ui.md),
   [configuration](server/configuration.md), and the [HTTP API](server/api/index.md).
-- **[Player app](frontend/overview.md)** — the Expo codebase:
+- **[Player app](frontend/overview.md)** - the Expo codebase:
   [playback](frontend/playback.md) (the fiddly part),
   [offline downloads](frontend/offline.md), [state and data](frontend/state-and-data.md),
   [i18n](frontend/i18n.md), [testing](frontend/testing.md).
-- **[Desktop manager](manager/overview.md)** — the Wails app:
+- **[Desktop manager](manager/overview.md)** - the Wails app:
   [server integration](manager/server-integration.md), the
   [Audible backup pipeline](manager/audible.md), and [transfers](manager/transfers.md).
-- **[Contributing](contributing/workspace.md)** — the
+- **[Contributing](contributing/workspace.md)** - the
   [workspace setup](contributing/workspace.md), [per-repo gates and CI](contributing/gates-and-ci.md),
   [how to land a cross-repo change](contributing/cross-repo-changes.md),
   [cutting a release](contributing/releasing.md), and
@@ -145,7 +145,7 @@ If you just want to *run* AudioSilo rather than hack on it, the
 :::info The normative contract lives in the workspace
 `~/dev/audiosilo/CROSS-REPO.md` (checked into the workspace root, alongside
 `CLAUDE.md` and `CODE-HEALTH.md`) is the **normative** integration contract
-between the repos. These docs are a readable tour of the same material — when a
+between the repos. These docs are a readable tour of the same material - when a
 seam changes, CROSS-REPO.md is updated first and these pages follow.
 :::
 

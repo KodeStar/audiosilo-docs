@@ -8,7 +8,7 @@ description: "Architecture of the AudioSilo Manager desktop app: Wails v2 struct
 `audiosilo-manager` is the **write/management side** of AudioSilo: a cross-platform
 desktop app that sets up, connects to, and manages content for one or more
 audiosilo-server instances. The load-bearing principle is that **the server stays
-read-only over the network** — every file write happens client-side from this app,
+read-only over the network** - every file write happens client-side from this app,
 over SFTP or a local/mounted copy (see [Transfers](transfers.md)), and the server's
 HTTP API is consumed read-only for content, plus one non-destructive metadata write
 (see [Server integration](server-integration.md)).
@@ -40,7 +40,7 @@ flowchart LR
 Native installers are **planned, not shipped**. A release workflow
 (`.github/workflows/desktop.yml`) builds per-OS artifacts via `wails build` on
 tagged releases, but code-signing/notarization is stubbed pending Apple Developer
-ID and Windows Authenticode certificates — until then builds are unsigned. See
+ID and Windows Authenticode certificates - until then builds are unsigned. See
 [Releasing](../contributing/releasing.md).
 :::
 
@@ -56,7 +56,7 @@ wails.json               Wails project config (frontend install/build/dev comman
 build/{darwin,windows}   packaging assets (Info.plist, icons, NSIS)
 frontend/                React + Vite + TypeScript webview app
 internal/
-  services/    transport-only Wails facades — marshal JSON-able DTOs, emit events
+  services/    transport-only Wails facades - marshal JSON-able DTOs, emit events
   serverapi/   hand-mirrored, read-only HTTP client for audiosilo-server
   registry/    persisted state: server registry, app settings, series-watch and
                sync-status stores, OS-keychain Secrets, encrypted BlobStore
@@ -75,7 +75,7 @@ internal/
                in-place container stack updates
   audio/       recognized audio extensions (mirrors the server's list)
   progress/    throttled byte-progress Reader/Writer wrappers
-  state/       resumable per-book import state (JSON) — absorbed from the old CLI
+  state/       resumable per-book import state (JSON) - absorbed from the old CLI
   update/      GitHub-Releases update check (never self-applies)
 ```
 
@@ -89,7 +89,7 @@ and `provision → {serverapi, registry, launcher(server)}`. Nothing under
 `internal/state` (resumable import outcomes) and `internal/source/openaudible`
 (OpenAudible `books.json` metadata recovery) were absorbed from the former
 `audiosilo-audible` CLI and compile with tests, but are **not currently imported by
-any Wails flow** — the desktop pipeline gets its re-run safety from idempotent
+any Wails flow** - the desktop pipeline gets its re-run safety from idempotent
 placement and the skip-if-on-server check instead (see
 [Transfers](transfers.md)).
 :::
@@ -107,7 +107,7 @@ placement and the skip-if-on-server check instead (see
    `TransferService`, `ProvisionService`, `AudibleService`, `UpdateService`,
    `SettingsService`, `SeriesService`.
 4. Calls `wails.Run` with the frontend embedded via `//go:embed all:frontend/dist`,
-   `DragAndDrop.EnableFileDrop`, and the full `Bind:` list — binding is what
+   `DragAndDrop.EnableFileDrop`, and the full `Bind:` list - binding is what
    generates the TypeScript API under `frontend/wailsjs/`.
 
 The `App` struct in `app.go` owns only the lifecycle: `startup` captures the Wails
@@ -119,7 +119,7 @@ user-facing API lives on the bound services, not on `App`.
 The build version is injected at release with
 `-ldflags "-X main.version=v1.2.3"` (`"dev"` locally); `UpdateService.Check`
 compares it against the latest GitHub release and the frontend shows a download
-banner — the manager never self-updates.
+banner - the manager never self-updates.
 
 ## Bound services and events
 
@@ -145,7 +145,7 @@ via the shared `Emitter`; the React side subscribes with `EventsOn`. Events in u
 Non-secret state is plain JSON under the per-user config dir
 (`os.UserConfigDir()/audiosilo-manager/`, e.g. `~/Library/Application Support/audiosilo-manager`
 on macOS), always saved atomically (temp file + rename). **Secrets live only in
-the OS keychain** — never in the JSON files, and tests assert it.
+the OS keychain** - never in the JSON files, and tests assert it.
 
 | Location | Contents |
 |---|---|
@@ -158,7 +158,7 @@ the OS keychain** — never in the JSON files, and tests assert it.
 | `local-servers/<id>/` | data dir of each embedded local server |
 | `tools/` | cached `cloudflared` download |
 
-OS keychain (service `audiosilo-manager`, via `github.com/zalando/go-keyring` —
+OS keychain (service `audiosilo-manager`, via `github.com/zalando/go-keyring` -
 macOS Keychain / Windows Credential Manager / libsecret):
 
 | Key | Secret |
@@ -175,7 +175,7 @@ device key PEM plus tokens), hence the `BlobStore` envelope scheme: the bulk is 
 
 ## Frontend stack
 
-`frontend/` is a deliberately plain **React 18 + Vite 5 + TypeScript** app — no
+`frontend/` is a deliberately plain **React 18 + Vite 5 + TypeScript** app - no
 router, no state library, no CSS framework:
 
 - **Bindings**: `frontend/wailsjs/` is **generated** by Wails from the bound Go
@@ -189,7 +189,7 @@ router, no state library, no CSS framework:
   `src/lib/` hold the few pure helpers (`errors.ts`, `fspath.ts`,
   `series-badges.ts`) which carry co-located vitest tests.
 - **Styling**: a single hand-written stylesheet, `src/style.css`, using CSS custom
-  properties — dark-first, pink `--primary: #db2777`, Roboto — matching the design
+  properties - dark-first, pink `--primary: #db2777`, Roboto - matching the design
   tokens of the server's admin console and the player. Components use plain
   `className`s (`btn`, `modal`, `grid`, …).
 - **Testing**: vitest + Testing Library (jsdom), gated in CI alongside
@@ -199,7 +199,7 @@ router, no state library, no CSS framework:
 
 Requires **Go 1.25**, **Node 24**, and the Wails CLI
 (`go install github.com/wailsapp/wails/v2/cmd/wails@latest`), plus a **sibling
-checkout of `audiosilo-server`** — the manager compiles the server in via a
+checkout of `audiosilo-server`** - the manager compiles the server in via a
 `replace ../audiosilo-server` directive (see
 [Server integration](server-integration.md#the-gomod-replace-coupling)).
 

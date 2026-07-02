@@ -1,13 +1,13 @@
 ---
 title: Endpoint reference
-description: "Every route the server exposes: method, auth requirement, parameters, response envelope, and status codes — grouped by area."
+description: "Every route the server exposes: method, auth requirement, parameters, response envelope, and status codes - grouped by area."
 ---
 
 The complete HTTP surface, derived from the route table in
 `internal/api/api.go`. Conventions (auth, errors, pagination, rate limits) are
 in the [API conventions](index.md) page and are not repeated per endpoint.
 
-**Auth legend** — *Public*: no token. *Session*: bearer session token.
+**Auth legend** - *Public*: no token. *Session*: bearer session token.
 *Session (media)*: session token via header **or** `?token=` query parameter.
 *Admin*: session token + `admin` role.
 
@@ -18,7 +18,7 @@ that empty list fields may serialize as `null`.
 
 ### `GET /api/v1/server`
 
-*Public.* Server identity and capability discovery — call this before anything
+*Public.* Server identity and capability discovery - call this before anything
 else and gate features on the flags.
 
 ```json
@@ -60,13 +60,13 @@ container healthchecks).
 
 ## Authentication & pairing
 
-See [API conventions — Authentication](index.md#authentication) for the flow
+See [API conventions - Authentication](index.md#authentication) for the flow
 overview and [Auth & security](../auth-and-security.md) for the trust model.
 
 ### `POST /api/v1/auth/redeem`
 
 *Public.* Exchanges an auth code (admin-minted invite **or** user-owned
-recovery code — both redeem identically) for a short-lived pairing payload.
+recovery code - both redeem identically) for a short-lived pairing payload.
 Rate-limited: 10 failed attempts per IP per 15 minutes.
 
 Request body:
@@ -75,7 +75,7 @@ Request body:
 |---|---|---|---|
 | `code` | string | yes | human-typable code, e.g. `9M4K-P2TQ-WX7V-3RHD`; common look-alikes (O/0, I/L/1) are normalized |
 
-Response `200` — the pairing payload (`PairingPayload` in `internal/api/qr.go`):
+Response `200` - the pairing payload (`PairingPayload` in `internal/api/qr.go`):
 
 ```json
 {
@@ -102,7 +102,7 @@ via Universal/App Links on claimed domains, else the embedded web player);
 | Status | Meaning |
 |---|---|
 | `400` | `code` missing |
-| `401` | invalid or expired auth code (also: code owner disabled/deleted — a rejected attempt never burns a use) |
+| `401` | invalid or expired auth code (also: code owner disabled/deleted - a rejected attempt never burns a use) |
 | `429` | redeem lockout tripped |
 
 ### `POST /api/v1/auth/exchange`
@@ -149,17 +149,17 @@ attempts per IP per 15 minutes.
 | `password` | string | yes |
 | `device_name` | string | no |
 
-Response `200`: `{ "token": "…", "user": { … } }` — same shape as
+Response `200`: `{ "token": "…", "user": { … } }` - same shape as
 `/auth/exchange`.
 
 | Status | Meaning |
 |---|---|
-| `401` | invalid credentials (also returned for disabled or password-less accounts — deliberately indistinguishable) |
+| `401` | invalid credentials (also returned for disabled or password-less accounts - deliberately indistinguishable) |
 | `429` | login lockout tripped |
 
 ### `POST /api/v1/auth/pair`
 
-*Session.* Issues a fresh pairing payload for the calling user — "add another
+*Session.* Issues a fresh pairing payload for the calling user - "add another
 device" from an existing session. No request body. Response `200`: a
 `PairingPayload` (same shape as `/auth/redeem`).
 
@@ -214,7 +214,7 @@ Response: `204 No Content`.
 
 ### `POST /api/v1/auth/recovery`
 
-*Session.* Mints (or replaces) the caller's durable **recovery code** — an auth
+*Session.* Mints (or replaces) the caller's durable **recovery code** - an auth
 code with unlimited uses and no expiry, owned by the user, redeemable through
 the normal `/auth/redeem` flow. Returned exactly once; only its hash is stored.
 
@@ -246,7 +246,7 @@ Request body (optional):
 |---|---|---|---|
 | `device_name` | string | no | defaults to `"Demo"` |
 
-Response `200` — a session **plus** a pairing payload so a phone can scan the
+Response `200` - a session **plus** a pairing payload so a phone can scan the
 QR and join as the same demo user:
 
 ```json
@@ -301,7 +301,7 @@ are untouched.
 
 ### `GET /api/v1/libraries/{id}/fs`
 
-*Session.* The filtered filesystem view — the real directory tree, scoped to
+*Session.* The filtered filesystem view - the real directory tree, scoped to
 the caller's share rules, requiring no prior indexing. Lists **audio files and
 directories only** (covers/NFOs are filtered out so every entry is actionable),
 with indexed-book metadata attached where available. Offset-paginated.
@@ -339,7 +339,7 @@ with indexed-book metadata attached where available. Offset-paginated.
 `next_offset` is present when more entries remain. The book annotation fields
 (`is_book`, `title`, `author`, `series`, `series_index`, `duration`) are
 omitted for plain directories/files; `override` (`"book"` or `"collection"`)
-appears when an explicit folder-detection override is set (admin concern — see
+appears when an explicit folder-detection override is set (admin concern - see
 [Scanner](../scanner.md)). Dotfiles are hidden; directories sort before files.
 
 | Status | Meaning |
@@ -355,11 +355,11 @@ Keyset-paginated (see [conventions](index.md#pagination)).
 
 | Query param | Type | Default | Notes |
 |---|---|---|---|
-| `author` | string | — | exact-match filter |
-| `series` | string | — | exact-match filter |
+| `author` | string | - | exact-match filter |
+| `series` | string | - | exact-match filter |
 | `sort` | string | `author` | `author` \| `title` \| `recent` (`recent` = newest `added_at` first) |
 | `limit` | int | `50` | ≤ 0 or > 200 falls back to 50 |
-| `cursor` | string | — | opaque cursor from a previous page's `next_cursor` |
+| `cursor` | string | - | opaque cursor from a previous page's `next_cursor` |
 
 ```json
 {
@@ -399,10 +399,10 @@ Results are relevance-ranked and de-duplicated across libraries.
 
 | Query param | Type | Default | Notes |
 |---|---|---|---|
-| `q` | string | — | alphanumeric tokens are AND-ed with prefix matching; empty/symbol-only queries return no results |
+| `q` | string | - | alphanumeric tokens are AND-ed with prefix matching; empty/symbol-only queries return no results |
 | `limit` | int | `50` | ≤ 0 or > 200 falls back to 50 |
 
-Response `200`: `{ "books": [ … ] }` — Book objects as in `/books`, plus the
+Response `200`: `{ "books": [ … ] }` - Book objects as in `/books`, plus the
 de-duplication annotations:
 
 | Field | Type | Notes |
@@ -415,7 +415,7 @@ de-duplication annotations:
 
 *Session.* Most recently added books across **all** accessible libraries,
 merged and de-duplicated (same annotations as `/search`), newest `added_at`
-first — one call for a "recently added" shelf.
+first - one call for a "recently added" shelf.
 
 | Query param | Type | Default | Notes |
 |---|---|---|---|
@@ -426,7 +426,7 @@ Response `200`: `{ "books": [ … ] }`.
 ## Books & content
 
 These endpoints resolve `(library, path)` to a book via the index, **indexing
-on demand** if the background scan hasn't reached the path yet — so a freshly
+on demand** if the background scan hasn't reached the path yet - so a freshly
 added book is playable immediately.
 
 ### `GET /api/v1/libraries/{id}/item`
@@ -437,7 +437,7 @@ added book is playable immediately.
 |---|---|---|
 | `path` | string | yes |
 
-Response `200` — a Book including files, chapters, and playability:
+Response `200` - a Book including files, chapters, and playability:
 
 ```json
 {
@@ -492,7 +492,7 @@ fails). Durations/positions are seconds (float).
 ### `GET /api/v1/libraries/{id}/chapters`
 
 *Session.* A book's normalized playable units. Every chapter carries
-`file_path` — the actual audio file to stream — plus its in-file `start`/`end`
+`file_path` - the actual audio file to stream - plus its in-file `start`/`end`
 and `book_offset` on the whole-book timeline, so single-file m4b chapters and
 multi-file mp3 parts render identically.
 
@@ -541,20 +541,20 @@ Both routes take *media auth* (header **or** `?token=`) and are exempt from the
 ### `GET /api/v1/libraries/{id}/stream`
 
 *Session (media).* Streams one **audio file** by path. The path must be a real
-file — a chapter's `file_path` or a `files[].rel_path` — never a book/folder
+file - a chapter's `file_path` or a `files[].rel_path` - never a book/folder
 path.
 
 | Query param | Type | Default | Notes |
 |---|---|---|---|
 | `path` | string | required | library-relative audio file path |
-| `download` | `1` | — | sets `Content-Disposition: attachment` so browsers save the file |
-| `transcode` | `1` | — | re-encode to MP3 via ffmpeg for codecs browsers can't decode |
+| `download` | `1` | - | sets `Content-Disposition: attachment` so browsers save the file |
+| `transcode` | `1` | - | re-encode to MP3 via ffmpeg for codecs browsers can't decode |
 | `t` | float | `0` | with `transcode=1`: start the transcode this many seconds in |
-| `token` | string | — | session token (media-auth fallback) |
+| `token` | string | - | session token (media-auth fallback) |
 
 Direct serving (default) supports HTTP **Range** (`206 Partial Content`) and
 sets the audio `Content-Type` from the file. Transcoded output is MP3 and **not
-byte-seekable** — no Range, no `Content-Length`; a client seeks by re-requesting
+byte-seekable** - no Range, no `Content-Length`; a client seeks by re-requesting
 with a new `t`. The ffmpeg process is bound to the request, so disconnecting
 kills it.
 
@@ -583,7 +583,7 @@ Response `200`: image bytes with the appropriate `Content-Type`; `404`
 
 ## Listening state
 
-Per-user durable state, addressed by `(library, path)` — the **book** path.
+Per-user durable state, addressed by `(library, path)` - the **book** path.
 Positions are seconds on the whole-book timeline. Every path-scoped route below
 requires `?path=` and authorizes it against the caller's share scope (`400`
 missing path, `403` out of scope apply throughout). Cross-book list routes
@@ -615,13 +615,13 @@ revoked share isn't returned.
 ### `GET /api/v1/libraries/{id}/progress`
 
 *Session.* Progress for one book. Response `200`:
-`{ "progress": { … } }` — or `{ "progress": null }` when none exists.
+`{ "progress": { … } }` - or `{ "progress": null }` when none exists.
 
 ### `PUT /api/v1/libraries/{id}/progress`
 
 *Session.* Upserts progress with **last-write-wins** reconciliation: the newer
 `updated_at` wins; `version` breaks exact-timestamp ties. A stale write is not
-an error — the response returns the *effective stored* progress, so clients
+an error - the response returns the *effective stored* progress, so clients
 converge.
 
 | Body field | Type | Notes |
@@ -632,8 +632,8 @@ converge.
 | `playback_speed` | float | values ≤ 0 are normalized to `1.0` |
 | `version` | int | send the last version you saw; `0` lets the server assign (stored + 1) |
 | `device_id` | string | free-form writer identifier |
-| `updated_at` | string | RFC 3339; empty = server time. **This drives the merge** — send the real client-side write time when replaying offline queues |
-| `library_id`, `path` | — | accepted but ignored; taken from the URL and `?path=` |
+| `updated_at` | string | RFC 3339; empty = server time. **This drives the merge** - send the real client-side write time when replaying offline queues |
+| `library_id`, `path` | - | accepted but ignored; taken from the URL and `?path=` |
 
 Response `200`: `{ "progress": { … } }` (the winning row).
 
@@ -644,7 +644,7 @@ Response `200`: `{ "progress": { … } }` (the winning row).
 GET response: `{ "bookmarks": [ … ] }` (objects as below).
 
 POST body: `{ "position": 4211.5, "note": "great line" }` (`note` optional).
-Response `201` — the created bookmark **unwrapped**:
+Response `201` - the created bookmark **unwrapped**:
 
 ```json
 {
@@ -660,14 +660,14 @@ Response `201` — the created bookmark **unwrapped**:
 ### `DELETE /api/v1/bookmarks/{id}`
 
 *Session.* Deletes one of the **caller's own** bookmarks by id (another user's
-id is a silent no-op). Response: `204 No Content` (idempotent — no 404).
+id is a silent no-op). Response: `204 No Content` (idempotent - no 404).
 
 ### `GET /api/v1/libraries/{id}/notes` · `POST /api/v1/libraries/{id}/notes`
 
 *Session.* List / add free-form notes for a book (`?path=` on both).
 
 POST body: `{ "position": 0, "body": "re-read ch. 12 for the foreshadowing" }`
-(`position` optional). Response `201` — the created note unwrapped:
+(`position` optional). Response `201` - the created note unwrapped:
 
 ```json
 {
@@ -752,7 +752,7 @@ first, enriched from the index where a book exists at the path:
 }
 ```
 
-A favourite may also be a plain navigation folder — then `is_book` is `false`
+A favourite may also be a plain navigation folder - then `is_book` is `false`
 and the book fields are empty (render it by its path leaf).
 
 ### `POST /api/v1/libraries/{id}/favourites` · `DELETE /api/v1/libraries/{id}/favourites`
@@ -763,7 +763,7 @@ DELETE → `204 No Content`.
 
 ## Admin: users & auth codes
 
-All *Admin*. Plaintext codes/passwords are never retrievable after creation —
+All *Admin*. Plaintext codes/passwords are never retrievable after creation -
 responses that include a code are the one time you see it.
 
 ### `GET /api/v1/admin/users`
@@ -826,13 +826,13 @@ One account plus everything the console needs to manage it:
 ```
 
 `auth_codes` is **invite metadata only** (never the code itself, and never
-recovery codes — recovery presence surfaces as `user.has_recovery`).
+recovery codes - recovery presence surfaces as `user.has_recovery`).
 `expires_at` empty/omitted = no expiry; `max_uses: 0` = unlimited;
 `redeemed_at` omitted = never redeemed. `404` if the user doesn't exist.
 
 ### `PATCH /api/v1/admin/users/{id}`
 
-Edit an account in place — any subset of:
+Edit an account in place - any subset of:
 
 | Body field | Type | Notes |
 |---|---|---|
@@ -872,7 +872,7 @@ remain as history). Body optional:
 | `max_uses` | int | `5` | explicit `0` = unlimited (negative values are clamped to 0) |
 | `ttl_days` | int | `1` | explicit `0` = never expires |
 
-Response `201` — shown once:
+Response `201` - shown once:
 
 ```json
 {
@@ -907,7 +907,7 @@ All *Admin*.
 
 ### `GET /api/v1/admin/libraries`
 
-All libraries in display order, wrapped as `{ "libraries": [ … ] }` — the same
+All libraries in display order, wrapped as `{ "libraries": [ … ] }` - the same
 library object shape as [`GET /api/v1/libraries`](#get-apiv1libraries).
 
 ### `POST /api/v1/admin/libraries`
@@ -934,7 +934,7 @@ new order.
 
 ### `PATCH /api/v1/admin/libraries/{id}`
 
-Edits `name`, `root`, and/or `default_view` — empty/omitted fields keep their
+Edits `name`, `root`, and/or `default_view` - empty/omitted fields keep their
 current values (`sort_order` is managed via `/order`). Changing anything
 triggers a background rescan. Response `200`: the updated library. `404` /
 `409` as for create.
@@ -949,7 +949,7 @@ FTS rows). Audio files on disk are untouched. `204 No Content`.
 Forces how the auto-detector classifies a folder, then rescans. `?path=`
 required (must resolve inside the root).
 
-Body: `{ "mode": "collection" }` — `"book"` = the folder is one multi-file
+Body: `{ "mode": "collection" }` - `"book"` = the folder is one multi-file
 book; `"collection"` = one book per file inside it.
 
 Response `200`: `{ "status": "override set", "path": "…", "mode": "collection" }`.
@@ -1008,7 +1008,7 @@ A rule's `path: ""` means the whole library.
 
 ### `POST /api/v1/admin/shares`
 
-Creates a share, optionally with initial path rules (inserted atomically — a
+Creates a share, optionally with initial path rules (inserted atomically - a
 bad rule rolls the whole thing back).
 
 | Body field | Type | Required | Notes |
@@ -1028,7 +1028,7 @@ One share with its `paths`. `404` if missing.
 
 Updates share metadata. An empty `name` keeps the current one, but
 `description` and `read_only` are **replaced with whatever the body says**
-(send the full desired values). Path rules are *not* editable here — use the
+(send the full desired values). Path rules are *not* editable here - use the
 `/paths` sub-routes. Response `200`: the updated share. `404` / `409`.
 
 ### `DELETE /api/v1/admin/shares/{id}`
@@ -1094,8 +1094,8 @@ a cross-user "currently listening" feed (up to 200 rows, newest first; `title`/
 ## Well-known
 
 Native deep-link association files. Both are *Public*, config-driven
-(`app_links` in the YAML — see [Configuration](../configuration.md)), and
-**404 when the relevant identifiers are unset** — clients then fall back to the
+(`app_links` in the YAML - see [Configuration](../configuration.md)), and
+**404 when the relevant identifiers are unset** - clients then fall back to the
 web player and the custom-scheme "Open in app" button.
 
 ### `GET /.well-known/apple-app-site-association`
@@ -1175,6 +1175,6 @@ Response `201`: `{ "user": { … }, "library": { … } }`.
 `internal/api/api.go` also mounts the baked-in static UI via `web.Register`:
 `GET /` (connect page), `/connect`, `/admin`, `/assets/…`, `/favicon.ico`,
 `/sw.js`, `/manifest.webmanifest`, and the web player at `/web/…` (when
-configured). These are plain pages *over* the API — they hold no privilege of
+configured). These are plain pages *over* the API - they hold no privilege of
 their own and are documented in [Web UI](../web-ui.md), not here.
 :::

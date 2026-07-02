@@ -33,7 +33,7 @@ const tracks = [
     to: '/users',
     description:
       'Install the server, organize your audiobooks, invite your household, ' +
-      'and listen anywhere — web, phone, or offline. No programming required.',
+      'and listen anywhere - web, phone, or offline. No programming required.',
     cta: 'Get started',
   },
   {
@@ -70,7 +70,7 @@ function Tracks() {
 
 export default function Home(): ReactNode {
   return (
-    <Layout description="Documentation for AudioSilo — the self-hosted audiobook server, player app, and desktop manager.">
+    <Layout description="Documentation for AudioSilo - the self-hosted audiobook server, player app, and desktop manager.">
       <Hero />
       <Tracks />
     </Layout>

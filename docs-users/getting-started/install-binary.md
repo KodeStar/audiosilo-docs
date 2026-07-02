@@ -5,7 +5,7 @@ description: "Run AudioSilo without Docker: download a self-contained release, l
 
 ## Install the native binary
 
-If you'd rather not use Docker — say, on a desktop machine or a small home server — AudioSilo ships as a single self-contained program for Linux, macOS and Windows.
+If you'd rather not use Docker - say, on a desktop machine or a small home server - AudioSilo ships as a single self-contained program for Linux, macOS and Windows.
 
 ### Download a release
 
@@ -17,7 +17,7 @@ Each release includes:
 - `.deb` and `.rpm` packages for Linux, which also install a systemd service (see below).
 - `checksums.txt`, so you can verify your download.
 
-Unpack the archive and you have one executable, `audiosilo`. **The web player is built into the release binary**, so `/web` works out of the box — no extra downloads or configuration.
+Unpack the archive and you have one executable, `audiosilo`. **The web player is built into the release binary**, so `/web` works out of the box - no extra downloads or configuration.
 
 ### ffmpeg and ffprobe
 
@@ -25,7 +25,7 @@ AudioSilo uses ffmpeg/ffprobe for durations, chapter extraction and on-the-fly t
 
 1. It first looks for `ffmpeg`/`ffprobe` next to the `audiosilo` executable, then on your `PATH`.
 2. If neither is found, it downloads a trusted static build **once** into `tools/` inside your data directory (over HTTPS, and checked by running it before use) and reuses it from then on.
-3. If you're offline or on a platform with no static build available, the server still runs — you just lose durations/chapters and transcoding until a tool is available. It retries on the next start.
+3. If you're offline or on a platform with no static build available, the server still runs - you just lose durations/chapters and transcoding until a tool is available. It retries on the next start.
 
 In short: on the common path there is nothing to install, and if the download can't happen, nothing breaks.
 
@@ -35,7 +35,7 @@ In short: on the common path there is nothing to install, and if the download ca
 ./audiosilo --data ./data
 ```
 
-The very first start creates an admin account and prints the credentials **once** — save them. Then open `https://localhost:8080` (the default is HTTPS with a self-signed certificate, so expect a browser warning). See [First run](./first-run.md) for the full walkthrough.
+The very first start creates an admin account and prints the credentials **once** - save them. Then open `https://localhost:8080` (the default is HTTPS with a self-signed certificate, so expect a browser warning). See [First run](./first-run.md) for the full walkthrough.
 
 Prefer a guided setup in the browser instead of a printed password? Start with the setup wizard:
 
@@ -81,9 +81,9 @@ go build -o audiosilo ./cmd/audiosilo
 ```
 
 :::note
-A plain source build does not include the embedded web player — the admin console and the API work as normal, but `/web` stays off unless you point the server at a built player. The release downloads and the Docker image both include the player, so for everyday use prefer those. How the player gets bundled is covered in the [developer docs](/developers/server/web-ui).
+A plain source build does not include the embedded web player - the admin console and the API work as normal, but `/web` stays off unless you point the server at a built player. The release downloads and the Docker image both include the player, so for everyday use prefer those. How the player gets bundled is covered in the [developer docs](/developers/server/web-ui).
 :::
 
 :::tip
-Running an always-on, multi-user or reverse-proxied setup? [Docker](./quickstart-docker.md) is the recommended path there — the native binary is aimed at home users who want one download and no container runtime.
+Running an always-on, multi-user or reverse-proxied setup? [Docker](./quickstart-docker.md) is the recommended path there - the native binary is aimed at home users who want one download and no container runtime.
 :::

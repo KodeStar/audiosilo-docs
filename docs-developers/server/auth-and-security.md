@@ -14,7 +14,7 @@ Two different hashing strategies, chosen by entropy:
 
 - **Passwords** (low-entropy, user-chosen) use **argon2id** (`auth/hash.go`).
   Parameters: `time=2`, `memory=64 MiB` (`argonMemory = 64*1024` KiB),
-  `threads=4`, 32-byte key, 16-byte random salt — tuned for interactive login
+  `threads=4`, 32-byte key, 16-byte random salt - tuned for interactive login
   on modest self-hosted hardware, with memory comfortably above the OWASP
   floor. Hashes are stored PHC-style
   (`$argon2id$v=19$m=65536,t=2,p=4$<salt>$<key>`); `VerifyPassword` compares
@@ -22,7 +22,7 @@ Two different hashing strategies, chosen by entropy:
   8 (`auth.MinPasswordLen`).
 - **Tokens and auth codes** (full-entropy, machine-generated) are stored only
   as **SHA-256 hashes** (`hashSecret`). A fast hash is appropriate here because
-  the secrets are 256-bit random values — argon2id is reserved for passwords.
+  the secrets are 256-bit random values - argon2id is reserved for passwords.
   A database leak exposes no live credential of either kind.
 
 Timing hygiene: `auth.Authenticate` runs a dummy argon2id verification (against
@@ -52,20 +52,20 @@ codes/tokens in the response body and store only the hash.
 
 `auth.ResolveToken` validates a presented secret for a specific kind: it hashes
 the secret, looks up the row, and rejects revoked tokens, expired tokens, and
-tokens whose user is disabled. On success it bumps `tokens.last_seen` — which
+tokens whose user is disabled. On success it bumps `tokens.last_seen` - which
 is how a user's "last activity" is derived (`MAX(tokens.last_seen)`); there is
 deliberately no `last_login` column.
 
 The middleware wrappers in `internal/api/middleware.go`:
 
-- `requireAuth` — session token from the `Authorization` header only.
-- `requireMediaAuth` — additionally accepts `?token=` as a query parameter,
+- `requireAuth` - session token from the `Authorization` header only.
+- `requireMediaAuth` - additionally accepts `?token=` as a query parameter,
   used **only** for the two media GETs (`/cover`, `/stream`) because browser
   `<img>`/`<audio>` elements cannot set headers. `bearerToken(r, allowQuery)`
   confines the fallback deliberately: a session token in a query string can
   leak into access logs and `Referer` headers, so no other route accepts it.
-- `requireAdmin` — `requireAuth` plus a role check; every `/admin/*` route uses
-  it. The baked-in admin HTML is unprivileged — the API enforces the role.
+- `requireAdmin` - `requireAuth` plus a role check; every `/admin/*` route uses
+  it. The baked-in admin HTML is unprivileged - the API enforces the role.
 
 ## Auth codes: invite vs recovery
 
@@ -81,7 +81,7 @@ four. `normalizeCode` strips spacing/case and maps look-alikes (`O→0`, `I/L→
 | Minted by | Admin (`POST /admin/users/{id}/authcode`) | The user themself (`POST /auth/recovery`) |
 | Defaults | 5 uses / 1-day expiry (`defaultAuthCodeMaxUses`/`defaultAuthCodeTTLDays` in `handlers_admin.go`; explicit `0` means unlimited/never) | Unlimited uses, never expires |
 | Cardinality | One *active* invite per user | At most one recovery code per user |
-| Listable | Yes (`ListAuthCodes`, metadata only) | No — surfaces only as `User.HasRecovery` |
+| Listable | Yes (`ListAuthCodes`, metadata only) | No - surfaces only as `User.HasRecovery` |
 | Revocation | `DELETE /admin/authcodes/{id}` | `DELETE /auth/recovery` (self) or `DELETE /admin/users/{id}/recovery` (admin, the only lever for a leaked code) |
 
 Both redeem through the same path. The full onboarding flow:
@@ -105,20 +105,20 @@ touch it:
   (`UPDATE … SET uses = uses + 1 WHERE … AND (max_uses = 0 OR uses <
   max_uses)`), so concurrent redemptions can't push `uses` past `max_uses`. The
   first-redemption `redeemed_at` stamp rides in the same write
-  (`COALESCE(redeemed_at, ?)` — an earlier stamp is preserved, since recovery
+  (`COALESCE(redeemed_at, ?)` - an earlier stamp is preserved, since recovery
   codes redeem repeatedly).
-- **No burn on a rejected user.** The bound user is resolved — and a
-  disabled/deleted account rejected — *before* the claim, so a rejected attempt
+- **No burn on a rejected user.** The bound user is resolved - and a
+  disabled/deleted account rejected - *before* the claim, so a rejected attempt
   never consumes a use or flips an invite to "accepted".
 
 **Invite hygiene.** `auth.CreateInvite` mints and, in the same transaction,
 deletes the user's other *still-redeemable* invites
-(`supersedeActiveInvites` — not used up, not expired), so there is exactly one
+(`supersedeActiveInvites` - not used up, not expired), so there is exactly one
 active invite per user; spent/expired invites remain as history. `POST
 /admin/authcodes/{id}/rotate` (`RotateAuthCode`, the admin "Resend")
 regenerates an invite's secret **in place**: `max_uses` is preserved, the use
 counter and `redeemed_at` reset, and the expiry is renewed for the invite's
-*original* window — never silently downgraded to defaults. Only invite-kind
+*original* window - never silently downgraded to defaults. Only invite-kind
 codes rotate. (`CreateAuthCode`, without the supersede step, exists solely for
 the first-run bootstrap, which has nothing to supersede.)
 
@@ -137,7 +137,7 @@ Three fences keep a demo session from becoming a durable login:
 - Both endpoints, plus demo-session creation itself, are rate-limited (see
   [the limiter table](#rate-limiting)).
 - A background reaper (`launcher.demoReaper`, every 15 minutes) deletes demo
-  accounts idle past `demo.idle_ttl` — by the `is_demo` flag, never by username
+  accounts idle past `demo.idle_ttl` - by the `is_demo` flag, never by username
   prefix. Deletion cascades all their state.
 
 ## Self-service password rules
@@ -148,7 +148,7 @@ or change their own password:
 - Setting a **first** password requires no challenge (the primary case is a
   password-less, pairing-onboarded player user establishing a way back in).
 - **Changing** an existing password requires `current_password`
-  (`auth.CheckPassword`) — so a stolen session token can't plant a persistent
+  (`auth.CheckPassword`) - so a stolen session token can't plant a persistent
   credential.
 - An **empty** password is rejected (clearing is admin-only via `PATCH
   /admin/users/{id}`), and the admin-must-keep-a-password guard still applies
@@ -159,18 +159,18 @@ or change their own password:
 Account-safety invariants live in `internal/auth`, not in handlers, so every
 caller gets them:
 
-- **`ErrLastAdmin`** — the last *enabled* admin cannot be demoted
+- **`ErrLastAdmin`** - the last *enabled* admin cannot be demoted
   (`SetRole`), disabled (`SetDisabled`), or deleted (`DeleteUser`). The console
   can never be locked out.
-- **`ErrAdminNeedsPassword`** — an account cannot become (or remain) an admin
+- **`ErrAdminNeedsPassword`** - an account cannot become (or remain) an admin
   without a password: enforced on create, on promote (`SetRole`), and on
   password clear (`SetPassword`).
-- **No self-delete** — enforced additionally in the delete *handler*: an admin
+- **No self-delete** - enforced additionally in the delete *handler*: an admin
   may disable their own account (reversible) but never delete it
   (irreversible). `DeleteUser` cascades sessions, auth codes, progress,
   bookmarks, notes, history and share grants via `ON DELETE CASCADE`; files on
   disk are untouched.
-- **Passwords are optional for non-admins** — stored as an empty hash, and
+- **Passwords are optional for non-admins** - stored as an empty hash, and
   `Authenticate` rejects empty-hash accounts outright, so a password-less user
   can only ever authenticate via code pairing.
 
@@ -182,15 +182,15 @@ are granted shares, and a user's access is the union of their granted rules.
 `catalog.GrantWholeLibrary` is sugar that ensures a `"Library: <name>"` share
 with a `""` rule exists and grants it.
 
-At request time the rules are compiled into a `catalog.Scope` per library —
+At request time the rules are compiled into a `catalog.Scope` per library -
 `AllowAll` (admins always; or any `""` rule) or a list of granted `Paths`. The
 scope is then enforced through **three functions, each matched to a different
 query shape**:
 
 | Function | Semantics | Enforced where |
 |---|---|---|
-| `Scope.Allows(p)` | `p` is equal to or under a granted rule (segment-boundary prefix match) | `authorizedPath` in `handlers_library.go` — **every** path-addressed endpoint (`item`, `chapters`, `cover`, `stream`, progress/bookmarks/notes/history/favourites writes) |
-| `Scope.VisibleInBrowse(p)` | `Allows(p)` **or** `p` is an *ancestor* of a rule — so the user can navigate toward granted content | `handleBrowseFS` → passed as the `allow` filter to `library.BrowseFS` (applied before pagination so pages stay full) |
+| `Scope.Allows(p)` | `p` is equal to or under a granted rule (segment-boundary prefix match) | `authorizedPath` in `handlers_library.go` - **every** path-addressed endpoint (`item`, `chapters`, `cover`, `stream`, progress/bookmarks/notes/history/favourites writes) |
+| `Scope.VisibleInBrowse(p)` | `Allows(p)` **or** `p` is an *ancestor* of a rule - so the user can navigate toward granted content | `handleBrowseFS` → passed as the `allow` filter to `library.BrowseFS` (applied before pagination so pages stay full) |
 | `pathFilterSQL(col, scope)` | The same grant logic as a SQL `WHERE` fragment (`col = ?` OR `col LIKE ? ESCAPE '\'`), with LIKE metacharacters escaped so `Sci_Fi` can't over-match `SciXFi` | `ListBooks`, `Search`, `RecentBooks`; `scopesFilterSQL` extends it across libraries for the cross-library listings (`/me/progress`, `/me/history`, `/me/favourites`) |
 
 The Go predicate (`pathAllowedBy`) is authoritative; `pathFilterSQL` must stay
@@ -202,17 +202,17 @@ behaviorally identical to it. A non-admin whose scope is empty gets 403 from
 Any filesystem access derived from user input goes through
 `library.SafeJoin(root, relPath)`. It defends in two layers:
 
-1. **Lexical containment** — the joined path must not escape the (symlink
+1. **Lexical containment** - the joined path must not escape the (symlink
    resolved) root via `..`; absolute injections are neutralized by
    `filepath.Join` semantics. This also covers not-yet-existing paths.
-2. **Symlink-aware containment** — symlinks in the longest *existing* prefix of
+2. **Symlink-aware containment** - symlinks in the longest *existing* prefix of
    the target are resolved (`resolveExisting`) and containment is re-checked,
    so a symlink inside the root pointing outside it is rejected rather than
    followed.
 
 Both `BrowseFS` and the stream/cover handlers call it; `Scanner.IndexPath` uses
 it as the security gate too (while deriving the working path from the
-unresolved join so `rel_path` keys stay consistent — see
+unresolved join so `rel_path` keys stay consistent - see
 [Scanner](scanner.md#on-demand-indexing-indexpath)).
 
 ## Rate limiting
@@ -229,7 +229,7 @@ Two mechanisms in `internal/api/ratelimit.go`, five buckets wired in `api.New`:
 
 The failure-lockout `limiter` has two usage patterns: `Allowed`/`Fail`/`Reset`
 counts only *failed* attempts (right for login/redeem, where success should not
-lock anyone out), while `Acquire` atomically admits-and-counts every attempt —
+lock anyone out), while `Acquire` atomically admits-and-counts every attempt -
 used for account-creating/mutating endpoints where even successful requests
 must be metered and a check-then-count pair could race. Both structures sweep
 stale entries so a flood of distinct IPs can't grow memory without bound.
@@ -251,7 +251,7 @@ configured origins, cross-origin browser requests simply get no CORS headers
 (native apps and same-origin web are unaffected).
 
 Non-streaming requests are bounded by a 30 s timeout (`requestTimeout`) that
-cancels the request context and returns 503 — resilience against a stuck
+cancels the request context and returns 503 - resilience against a stuck
 writer connection, not latency policing. Streaming paths (`/stream`, `/cover`,
 `/web/...`) are exempt because audio must run long.
 
@@ -273,7 +273,7 @@ Details and the reasoning live in [Web UI](web-ui.md).
 ## The fragment-carried-secret convention
 
 Secrets that must ride in a URL go in the **fragment**, which browsers never
-send to the server — so they cannot appear in server or proxy logs:
+send to the server - so they cannot appear in server or proxy logs:
 
 - Invite links: `<base>/connect#code=…` (the connect page auto-redeems it).
 - First-run setup: `<base>/setup#token=…` (the POST then verifies the token in
@@ -281,7 +281,7 @@ send to the server — so they cannot appear in server or proxy logs:
 
 The single-use **pairing token** in the QR payload's `web_url`
 (`/web/connect?token=…`) is a query parameter by necessity (it must survive
-Universal/App Link routing) — acceptable because it is single-use and expires
+Universal/App Link routing) - acceptable because it is single-use and expires
 in 10 minutes. Follow the fragment convention for any new durable secret.
 
 ## The allowed + denied test rule
@@ -299,6 +299,6 @@ The enumerated critical list:
 Anything touching these must land with a test showing the permitted case *and*
 a test showing the rejected case (traversal rejected, out-of-scope path 403'd,
 locked-out IP refused, expired/revoked token rejected, …). Handler-level tests
-use the `newTestEnv` harness; pure logic tests sit next to the code — see
+use the `newTestEnv` harness; pure logic tests sit next to the code - see
 [Server overview](overview.md#test-landscape) and
 [Gates & CI](../contributing/gates-and-ci.md).

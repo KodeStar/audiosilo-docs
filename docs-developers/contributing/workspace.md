@@ -4,13 +4,13 @@ description: "How the multi-repo workspace is laid out, the toolchain you need, 
 ---
 
 AudioSilo is one product across four repositories, and they are developed
-together from a single **workspace folder**. Get the layout right first — some of
+together from a single **workspace folder**. Get the layout right first - some of
 the build machinery assumes it.
 
 ## The layout
 
-The workspace root is itself a small git repo — the
-**`audiosilo-workspace` meta repo** — holding the cross-repo glue (the
+The workspace root is itself a small git repo - the
+**`audiosilo-workspace` meta repo** - holding the cross-repo glue (the
 integration contract, code-health checklist, distribution/store runbooks, and
 the app-store asset pipeline). The code repos are independent clones **inside**
 it, gitignored by the meta repo:
@@ -25,7 +25,7 @@ it, gitignored by the meta repo:
 └── audiosilo-docs/        this documentation site (Docusaurus)
 ```
 
-Setting up from scratch is two commands — the bootstrap script clones any child
+Setting up from scratch is two commands - the bootstrap script clones any child
 repo that's missing (`PROTO=https` to clone over HTTPS instead of SSH):
 
 ```sh
@@ -42,7 +42,7 @@ cd ~/dev/audiosilo && scripts/bootstrap.sh
   permission friction of working in a single repo.
 - **The manager literally won't build without a sibling server checkout.**
   `audiosilo-manager/go.mod` contains
-  `replace github.com/kodestar/audiosilo-server => ../audiosilo-server` — it
+  `replace github.com/kodestar/audiosilo-server => ../audiosilo-server` - it
   compiles the server's public `pkg/launcher` and `pkg/match` straight from the
   sibling directory. The manager's CI checks out both repos side by side for the
   same reason.
@@ -62,10 +62,10 @@ manager expects). If the manager suddenly fails to compile, `git -C
 | Tool | Needed for | Install / notes |
 |---|---|---|
 | **Go 1.25+** | server, manager | Both `go.mod` files declare `go 1.25.3`. |
-| **Node 24** | frontend, manager UI | `.nvmrc` pins `24.16.0` (frontend and `audiosilo-manager/frontend`) — run `nvm use` in each. **Older Node breaks Expo**: React Native 0.85 needs ≥ 20.19.4, and the Expo CLI's env-file loader uses `util.parseEnv` (Node ≥ 20.12), so an old system `node` crashes the moment a `.env` file exists. |
+| **Node 24** | frontend, manager UI | `.nvmrc` pins `24.16.0` (frontend and `audiosilo-manager/frontend`) - run `nvm use` in each. **Older Node breaks Expo**: React Native 0.85 needs ≥ 20.19.4, and the Expo CLI's env-file loader uses `util.parseEnv` (Node ≥ 20.12), so an old system `node` crashes the moment a `.env` file exists. |
 | **golangci-lint v2** | server, manager lint gates | v2 is required for Go 1.25. Config is each repo's `.golangci.yml`; both are adopted at a *green baseline* (see [gates and CI](gates-and-ci.md)). |
 | **Wails CLI** | manager builds / dev loop | `go install github.com/wailsapp/wails/v2/cmd/wails@latest`, then make sure `$(go env GOPATH)/bin` is on `PATH`. Linux also needs `libgtk-3-dev` and `libwebkit2gtk-4.1-dev`. |
-| **ffmpeg / ffprobe** | server scanner tests, transcoding, manager DRM-strip | Optional at runtime (the server degrades gracefully), but a few scanner tests `t.Skip` without ffprobe — install it so they actually run (CI installs it). The manager's Audible pipeline also shells out to ffmpeg. |
+| **ffmpeg / ffprobe** | server scanner tests, transcoding, manager DRM-strip | Optional at runtime (the server degrades gracefully), but a few scanner tests `t.Skip` without ffprobe - install it so they actually run (CI installs it). The manager's Audible pipeline also shells out to ffmpeg. |
 | **Docker** | container images, `scripts/fetch-web-player.sh` | Only needed for image builds / release work, not day-to-day dev. |
 | **Playwright** | regenerating documentation screenshots | Only if you work on the docs screenshot pipeline (`audiosilo-docs/screenshots/`) or the marketing/store asset runbook (workspace `SCREENSHOTS.md`). See [documentation](documentation.md). |
 | **Xcode / Android Studio (JDK 17 + SDK)** | native frontend dev builds | Only for running the player on iOS/Android; web dev needs neither. |
@@ -89,7 +89,7 @@ AUDIOSILO_WEB_DIR=~/dev/audiosilo/audiosilo-frontend/dist \
   ./bin/audiosilo --data ./data
 ```
 
-The **first run prints the admin credentials and an auth code once** — copy them
+The **first run prints the admin credentials and an auth code once** - copy them
 then. You get the web player at `http://localhost:8080/web`, the admin console at
 `/admin`, and the public connect page at `/`.
 
@@ -105,12 +105,12 @@ cd ~/dev/audiosilo/audiosilo-frontend && npm run web   # http://localhost:8081
 The player and API are now different origins, so set the server's config
 `cors_origins` to include `http://localhost:8081` (see
 [server configuration](../server/configuration.md)). The server's default TLS is
-self-signed — either trust it in the browser or run with
+self-signed - either trust it in the browser or run with
 `AUDIOSILO_TLS_MODE=off` locally.
 
 ## Per-repo dev commands
 
-Run commands **from each repo's own root** — the toolchains are fully
+Run commands **from each repo's own root** - the toolchains are fully
 independent.
 
 **audiosilo-server**
@@ -157,23 +157,23 @@ The full pre-merge quality gate for each repo is on
 
 ## Environment gotchas
 
-These are the ones that repeatedly bite new setups — each is documented in the
+These are the ones that repeatedly bite new setups - each is documented in the
 repos' own guides and verified here:
 
 - **Use Node 24 via nvm, every shell.** The frontend and the manager UI both pin
   `24.16.0` in `.nvmrc`. A machine's default `node` being too old fails in
   confusing ways (the Expo env loader crash above).
-- **Don't `cd` into `node_modules`.** Run tool commands from the repo root — in a
+- **Don't `cd` into `node_modules`.** Run tool commands from the repo root - in a
   persistent shell a stray `cd` into `node_modules` breaks Expo's config
   resolution for every subsequent command.
 - **Native runs need a dev build, not Expo Go.** The player has a custom native
   module (`modules/audiosilo-player`), plus `react-native-svg` and
-  `expo-secure-store` — Expo Go can't load them. Use `npx expo prebuild`, then
+  `expo-secure-store` - Expo Go can't load them. Use `npx expo prebuild`, then
   `npx expo run:ios` / `npx expo run:android`. Web (`npm run web`) needs no
   native build at all.
 - **Editing native module code requires a full rebuild.** Changes under
   `modules/audiosilo-player/{ios,android}` are **not** picked up by a Metro/JS
-  reload — rerun `npx expo run:ios` / `run:android` on a device or simulator.
+  reload - rerun `npx expo run:ios` / `run:android` on a device or simulator.
   Treat any native edit as unverified until a device build confirms it.
 - **No FontAwesome token is needed to build.** Icons are vendored as plain SVG in
   the frontend (`src/components/ui/icon-data.ts`); `npm install` pulls nothing

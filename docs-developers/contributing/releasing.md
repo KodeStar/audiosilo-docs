@@ -15,22 +15,22 @@ step-by-step runbook. The maintainer notes it follows are
 
 | Artifact | Built by | Trigger | Where it lands |
 |---|---|---|---|
-| `ghcr.io/kodestar/audiosilo-web` | `audiosilo-frontend/.github/workflows/web.yml` | push to `main` (`:latest`); `v*` tags (semver) | GHCR — a tiny image holding only the static web export (`baseUrl=/web`) |
-| `ghcr.io/kodestar/audiosilo-server` | `audiosilo-server/.github/workflows/image.yml` | `v*` tags; manual dispatch | GHCR — the deployable image, web player baked in at `/app/web` |
+| `ghcr.io/kodestar/audiosilo-web` | `audiosilo-frontend/.github/workflows/web.yml` | push to `main` (`:latest`); `v*` tags (semver) | GHCR - a tiny image holding only the static web export (`baseUrl=/web`) |
+| `ghcr.io/kodestar/audiosilo-server` | `audiosilo-server/.github/workflows/image.yml` | `v*` tags; manual dispatch | GHCR - the deployable image, web player baked in at `/app/web` |
 | Native server binaries | `audiosilo-server/.github/workflows/release.yml` (GoReleaser) | `v*` tags; manual dispatch | **Draft** GitHub Release on `KodeStar/audiosilo-server` |
 | iOS / Android apps | EAS Build (manual, outside CI) | on demand | App Store Connect / Google Play Console |
 | Manager desktop app | `audiosilo-manager/.github/workflows/desktop.yml` | `v*` tags; manual dispatch | Workflow artifacts (installers via GitHub Releases are **planned**) |
 
-## Step 1 — publish the web player image (audiosilo-frontend)
+## Step 1 - publish the web player image (audiosilo-frontend)
 
 Push to `main` (or tag `v*`) in **audiosilo-frontend**. `web.yml` runs
 `npx expo export --platform web` (built with `baseUrl=/web` from `app.json`) and
-pushes `ghcr.io/kodestar/audiosilo-web:latest` — plus the semver tag on `v*`
+pushes `ghcr.io/kodestar/audiosilo-web:latest` - plus the semver tag on `v*`
 tags. `:latest` is only published from the default branch.
 
 **Do this first.** Both server release workflows pull this image.
 
-## Step 2 — tag the server (audiosilo-server)
+## Step 2 - tag the server (audiosilo-server)
 
 Push a `v*` tag (e.g. `v1.4.0`) in **audiosilo-server**. One tag triggers two
 independent pipelines:
@@ -71,14 +71,14 @@ amd64/arm64 all cross-compile from one Linux runner.
 - **Web player embedded:** builds with `-tags embedplayer`;
   `scripts/fetch-web-player.sh` populates `internal/web/player/` from the pinned
   web image (the `WEB_IMAGE` env, defaulting to `:latest`, overridable via the
-  dispatch input) — so `/web` works with no `web_dir`.
+  dispatch input) - so `/web` works with no `web_dir`.
 - **ffmpeg/ffprobe are NOT bundled** (large, usually present). At runtime the
   server prefers a local copy (explicit flag → next to the binary → `$PATH`) and
-  otherwise downloads a cached static build into `<data>/tools` on first run —
+  otherwise downloads a cached static build into `<data>/tools` on first run -
   see the [media docs](../server/media.md).
 - Outputs: `.tar.gz` (Linux/macOS), `.zip` (Windows), `.deb`/`.rpm` (which depend
   on the distro's ffmpeg and install a systemd unit), and `checksums.txt`.
-- The GitHub Release is created as a **draft** — a human reviews the notes and
+- The GitHub Release is created as a **draft** - a human reviews the notes and
   artifacts, then publishes.
 
 Validate the GoReleaser config locally without releasing:
@@ -103,7 +103,7 @@ committed `internal/web/player/.gitkeep` keeps the embed compiling.)
 - Frontend `v*` tags version the **web image**; the native app's marketing
   version is separate (`app.json` → `expo.version`, below).
 
-## Step 3 — post-release verification
+## Step 3 - post-release verification
 
 The end-to-end smoke test from `RELEASING.md`:
 
@@ -122,31 +122,31 @@ Worth checking at the same time: `GET /api/v1/server` reports the new version
 
 ## The app-store track (iOS / Android)
 
-The native apps are a **separate pipeline** from everything above — nothing about
+The native apps are a **separate pipeline** from everything above - nothing about
 a server/web release touches them, and they don't run in CI. The full personal
 runbook is the workspace `~/dev/audiosilo/STORE-DEPLOYMENT.md` (kept at the
 workspace root, deliberately uncommitted). The honest summary:
 
-- **Builds go through EAS Build** — the app has a custom native module
+- **Builds go through EAS Build** - the app has a custom native module
   (`modules/audiosilo-player`) so it must be compiled; Expo Go can't run it.
   `eas.json` uses `appVersionSource: remote` with `autoIncrement: true`, so build
   numbers are managed by EAS; the user-facing **marketing version** is bumped by
   hand in `app.json` → `expo.version` for each real release.
 - **The project is on the EAS free tier**, so the preferred path is
-  **`eas build --local`** — it compiles on your own machine (no build-quota
+  **`eas build --local`** - it compiles on your own machine (no build-quota
   usage, no cloud queue) while still using EAS-managed signing credentials and
   the remote version counter. One platform per invocation; iOS needs Xcode +
   Fastlane, Android needs JDK 17 + `ANDROID_HOME`.
 - **Submission:** `eas submit --latest` per platform, with documented escape
-  hatches — uploading the `.ipa` directly with `xcrun altool` when the EAS
+  hatches - uploading the `.ipa` directly with `xcrun altool` when the EAS
   submit queue is slow, and manual `.aab` upload in the Play Console (which
   Google *requires* for the very first Android release anyway).
-- **No OTA updates.** `expo-updates` is not installed, so every change — JS or
-  native — ships as a full store build.
+- **No OTA updates.** `expo-updates` is not installed, so every change - JS or
+  native - ships as a full store build.
 - **Current status: working through the stores' release processes, not
   generally available.** Builds flow to TestFlight and Play testing tracks. On
   Google Play, a personal developer account must run a closed test with ≥ 12
-  opted-in testers for 14 continuous days before production unlocks — that
+  opted-in testers for 14 continuous days before production unlocks - that
   tenure, not the build, is the long pole. On Apple, the gate is human App
   Review; the "reviewer needs a server" problem (guideline 2.1) is answered with
   the public demo server noted in `store/metadata/ios/review_notes.txt`, which
@@ -156,14 +156,14 @@ workspace root, deliberately uncommitted). The honest summary:
 
 `audiosilo-manager/.github/workflows/desktop.yml` builds the Wails app on `v*`
 tags across a native-runner matrix (macOS `darwin/universal`, Windows
-`windows/amd64`, Linux `linux/amd64` — the webview UI can't cross-compile),
+`windows/amd64`, Linux `linux/amd64` - the webview UI can't cross-compile),
 checking out the server repo as a sibling for the `replace` directive and
 stamping the version via `-ldflags "-X main.version=<tag>"`.
 
 Today the outputs are **unsigned workflow artifacts**, not a published release.
 Per the workspace `DISTRIBUTION.md`, the plan is native installers on GitHub
-Releases — macOS `.dmg` with notarization, Windows NSIS `.exe`, Linux
-`AppImage` — but signing is credential-gated: it needs an Apple Developer ID
+Releases - macOS `.dmg` with notarization, Windows NSIS `.exe`, Linux
+`AppImage` - but signing is credential-gated: it needs an Apple Developer ID
 certificate + notarization credentials and a Windows Authenticode certificate.
 Until those exist, the signing steps in `desktop.yml` are stubbed and unsigned
 builds hit Gatekeeper/SmartScreen warnings.

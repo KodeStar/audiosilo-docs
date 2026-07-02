@@ -6,7 +6,7 @@ import type * as Preset from '@docusaurus/preset-classic';
 
 const config: Config = {
   title: 'AudioSilo',
-  tagline: 'Your audiobooks, your server — on every device.',
+  tagline: 'Your audiobooks, your server - on every device.',
   favicon: 'img/favicon-32x32.png',
 
   future: {
@@ -22,7 +22,7 @@ const config: Config = {
   deploymentBranch: 'gh-pages',
   trailingSlash: false,
 
-  // Broken internal links / images fail the build — this is the docs gate.
+  // Broken internal links / images fail the build - this is the docs gate.
   onBrokenLinks: 'throw',
   onBrokenAnchors: 'throw',
 

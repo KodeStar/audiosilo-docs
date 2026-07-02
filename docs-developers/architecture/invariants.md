@@ -1,6 +1,6 @@
 ---
 title: Invariants
-description: "The golden rules every AudioSilo change must preserve — path is identity, filesystem is truth, stream the file, hand-mirrored wire format, secure by default — and why each one holds."
+description: "The golden rules every AudioSilo change must preserve - path is identity, filesystem is truth, stream the file, hand-mirrored wire format, secure by default - and why each one holds."
 ---
 
 These are the cross-cutting rules that shape all three repos. Each exists because
@@ -9,7 +9,7 @@ is, why it holds, what breaks if you violate it, and where it's enforced.
 
 :::tip
 When a proposed change fights one of these rules, the rule wins. If you genuinely
-need to change a rule, that's a workspace-level design decision — update
+need to change a rule, that's a workspace-level design decision - update
 `~/dev/audiosilo/CROSS-REPO.md` first, not just the code.
 :::
 
@@ -17,15 +17,15 @@ need to change a rule, that's a workspace-level design decision — update
 
 **The rule.** All content is addressed by `(library_id, rel_path)`. The path is
 passed as a `?path=` query param (a query param, not a URL path segment, to dodge
-encoded-slash issues). `books.id` is an internal, rebuildable index artifact — it
+encoded-slash issues). `books.id` is an internal, rebuildable index artifact - it
 must **never** appear in the API contract or in durable user state. Durable user
 state (progress, bookmarks, notes, listening history, folder overrides, book
 enrichment) is keyed on `(user_id, library_id, rel_path)` with **no foreign key to
 the `books` index**. A cheap content fingerprint (sha256 of size + first/last
-64 KB, stored in `books.content_hash`) exists **only** to detect moves — it is not
+64 KB, stored in `books.content_hash`) exists **only** to detect moves - it is not
 an identity.
 
-**Why.** Audiobook metadata is unreliable — tags are wrong, missing, or change
+**Why.** Audiobook metadata is unreliable - tags are wrong, missing, or change
 when a user re-tags files. The one thing a self-hosted library reliably has is its
 directory structure. Making the path the identity means:
 
@@ -56,14 +56,14 @@ could cascade-delete a user's entire listening history.
 ## 2. The filesystem is the truth; the database is a rebuildable index
 
 **The rule.** Content lives on disk. The SQLite database is an index/cache that
-can be deleted and rebuilt from the filesystem at any time. Never put content —
-or anything the user would miss — *only* in the DB. Durable user state is the
+can be deleted and rebuilt from the filesystem at any time. Never put content -
+or anything the user would miss - *only* in the DB. Durable user state is the
 exception that proves the rule: it lives in the DB but is path-keyed and decoupled
 from the index (rule 1), so it survives a rebuild.
 
 **Why.** Portability and trust. A self-hosted user's library must outlive the
 server install: they can move the folder to a new machine, point a fresh server at
-it, and everything works. It also makes the scanner safe to be aggressive — it can
+it, and everything works. It also makes the scanner safe to be aggressive - it can
 re-derive everything (books, chapters, codecs, covers) because nothing canonical
 lives in its output. And it enables the no-wait first connection: the `/fs` view
 (`internal/library/fsview.go`) browses the real filesystem directly, so a brand-new
@@ -75,12 +75,12 @@ two sources of truth that drift.
 
 **Where it's enforced.**
 
-- `internal/library/scanner.go` — the scanner (re)builds the index; book/folder
+- `internal/library/scanner.go` - the scanner (re)builds the index; book/folder
   detection is automatic (`booksInDir`), with durable path-keyed
   `folder_overrides` for the exceptions.
 - The unavailable-root guard: the scanner aborts with `ErrLibraryUnavailable` and
   does **not** prune when a library root is missing/unreadable or suspiciously
-  empty — protecting the index (and everything users associate with it) when an
+  empty - protecting the index (and everything users associate with it) when an
   SMB/NFS mount drops.
 - The manager respects it from the other side: it writes **files**, then triggers
   `POST /admin/libraries/{id}/scan` (a non-destructive reindex) rather than
@@ -89,7 +89,7 @@ two sources of truth that drift.
 ## 3. Stream the file, never the book
 
 **The rule.** A track URL handed to any playback engine must be a **real audio
-file path** — a chapter's `file_path` or a `BookFile.rel_path` — never a
+file path** - a chapter's `file_path` or a `BookFile.rel_path` - never a
 folder/book path. Corollary: playback starts only after chapters/files have
 loaded, because until then the client may only know the book's (folder) path.
 
@@ -110,28 +110,28 @@ work, hiding the bug.
 **Where it's enforced.**
 
 - Frontend: `src/playback/book-queue.ts` builds tracks from `files`, else derives
-  distinct files from the chapters' `file_path`, else the single-file book path —
+  distinct files from the chapters' `file_path`, else the single-file book path -
   never a folder. The player gates playback start on `useChapters` settling.
 - Server: `metadata.Chapter` carries `file_path` precisely so clients always have
   a streamable path per chapter; `media.ServeFile` does the byte-sniffing.
 
-## 4. The wire format is hand-mirrored — a wire change is a multi-repo change
+## 4. The wire format is hand-mirrored - a wire change is a multi-repo change
 
 **The rule.** There is **no codegen**. The Go handlers
 (`internal/api/handlers_*.go`) define the JSON; the frontend re-declares the same
 shapes in `src/api/types.ts` and unwraps them in `src/api/client.ts`; the manager
 hand-mirrors the subset it reads in `internal/serverapi`. Any change to the wire
-format — a field rename, a new envelope, changed semantics — is made in **all
+format - a field rename, a new envelope, changed semantics - is made in **all
 affected repos in one logical change**, with tests on each side.
 
 **Why.** Codegen was deliberately rejected: the surface is small, and hand-written
 types stay idiomatic on each side (Go structs vs. TypeScript unions vs. the
-manager's narrow client). The cost is that nothing *mechanical* catches drift — a
+manager's narrow client). The cost is that nothing *mechanical* catches drift - a
 renamed Go JSON tag compiles fine in both repos and fails only at runtime as an
 `undefined` field. So the discipline is procedural: paired changes, paired tests,
 and the seam catalog in the workspace `CROSS-REPO.md`.
 
-**What breaks if violated.** Silent runtime breakage — the worst kind. TypeScript
+**What breaks if violated.** Silent runtime breakage - the worst kind. TypeScript
 trusts `types.ts`, `types.ts` no longer matches the wire, and the symptom shows up
 far from the cause (an empty screen, a `NaN` duration, a book that "has no
 chapters").
@@ -142,7 +142,7 @@ chapters").
   [Cross-repo contract](cross-repo-contract.md#the-wire-change-checklist) and the
   workspace `CODE-HEALTH.md` Definition of Done.
 - By tests: `internal/api/*_test.go` on the server, `src/api/client.test.ts` on
-  the frontend, and the manager's `serverapi` tests — a shape change without a
+  the frontend, and the manager's `serverapi` tests - a shape change without a
   matching test update fails the corresponding CI.
 
 ## 5. Secure by default
@@ -171,7 +171,7 @@ audiobooks" into "remote file read on your NAS".
   passwords use argon2id (`internal/auth/hash.go`). `auth.ResolveToken` resolves
   opaque bearer tokens against the hashes.
 - **Fragment-carried codes**: invite links are `<base>/connect#code=…` and the
-  setup wizard is `/setup#token=…` — fragments never reach the server or its
+  setup wizard is `/setup#token=…` - fragments never reach the server or its
   access logs. The setup POST verifies its token in constant time.
 - **Path safety**: `library.SafeJoin` rejects traversal outside the library root;
   every filesystem access derived from user input goes through it. Share scoping
@@ -187,11 +187,11 @@ audiobooks" into "remote file read on your NAS".
   tokens can't leak into logs or Referer headers elsewhere.
 - **Tested both ways**: security-critical code (`SafeJoin`, scope checks, rate
   limiters, `ResolveToken`, `htmlCSP`) requires both an *allowed* and a *denied*
-  regression test — see [gates and CI](../contributing/gates-and-ci.md).
+  regression test - see [gates and CI](../contributing/gates-and-ci.md).
 
 ## Quick self-check before you ship
 
-- Did anything new address content by a DB id? (Rule 1 — stop.)
+- Did anything new address content by a DB id? (Rule 1 - stop.)
 - Would this survive deleting the database? (Rule 2.)
 - Can any code path hand a folder path to a playback engine? (Rule 3.)
 - Did the JSON change? Then did `types.ts`/`client.ts` (and `serverapi`, if it
