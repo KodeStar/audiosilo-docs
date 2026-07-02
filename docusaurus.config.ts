@@ -13,10 +13,10 @@ const config: Config = {
     v4: true,
   },
 
-  // GitHub Pages by default. For a custom domain (e.g. docs.audiosilo.app),
-  // set url to the domain, baseUrl to '/', and add a static/CNAME file.
-  url: 'https://kodestar.github.io',
-  baseUrl: '/audiosilo-docs/',
+  // Custom domain (docs.audiosilo.app) served via GitHub Pages. The domain is
+  // pinned by static/CNAME; url is the canonical host and baseUrl is root.
+  url: 'https://docs.audiosilo.app',
+  baseUrl: '/',
   organizationName: 'KodeStar',
   projectName: 'audiosilo-docs',
   deploymentBranch: 'gh-pages',
