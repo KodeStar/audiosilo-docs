@@ -80,15 +80,19 @@ background reaper deletes by flag, not by username prefix (which could catch a
 real account named `demo_*`). There is deliberately **no `last_login` column** -
 last activity is derived from `MAX(tokens.last_seen)`.
 
-**`tokens`** *(0001)* - opaque bearer tokens: `user_id` (FK CASCADE),
-`token_hash` (UNIQUE - only the SHA-256 hash is stored), `kind`
-(`'session'`/`'pairing'`), `device_name`, `created_at`, `last_seen` (bumped on
-every authenticated request), `expires_at` (NULL = no expiry), `revoked`.
+**`tokens`** *(0001; `auth_code_id` added in 0014)* - opaque bearer tokens:
+`user_id` (FK CASCADE), `token_hash` (UNIQUE - only the SHA-256 hash is
+stored), `kind` (`'session'`/`'pairing'`), `device_name`, `created_at`,
+`last_seen` (bumped on every authenticated request), `expires_at` (NULL = no
+expiry), `revoked`, and `auth_code_id` (FK CASCADE to `auth_codes`, NULL for
+sessions and unlinked pairing tokens) - a pairing token minted by redeeming a
+code is linked to it, inherits its uses/expiry at exchange, and dies with it.
 
 **`auth_codes`** *(0001; `kind` + `redeemed_at` added in 0010)* - redeemable
 codes: `code_hash` (UNIQUE, SHA-256 of the normalized code), `user_id` (FK
-CASCADE), `label`, `max_uses` (0 = unlimited), `uses`, `expires_at`,
-`redeemed_at` (first-redemption stamp, informational), `created_at`, and
+CASCADE), `label`, `max_uses` (0 = unlimited), `uses` (counts devices that
+completed exchange - redeeming alone consumes nothing), `expires_at`,
+`redeemed_at` (first-exchange stamp, informational), `created_at`, and
 `kind`:
 
 - `'invite'` - admin-minted onboarding secret, bounded (default 5 uses / 1 day).
@@ -214,6 +218,8 @@ The migration history so far:
 | 0010 | `authcode_kind` | `auth_codes.kind` (invite/recovery) + `redeemed_at` |
 | 0011 | `library_sort_order` | `libraries.sort_order` (display order + dedup tiebreak) |
 | 0012 | `book_enrichment` | Path-keyed ASIN/ISBN enrichment |
+| 0013 | `book_list_indexes` | Composite indexes so `ListBooks` keyset pages serve `sort=title`/`sort=recent` from an index |
+| 0014 | `token_auth_code` | `tokens.auth_code_id` (FK CASCADE) - pairing tokens live and die with the code that minted them |
 
 ## SQLite choices
 

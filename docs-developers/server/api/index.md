@@ -58,10 +58,12 @@ the token's `last_seen`, which is what surfaces as a user's "last activity".
 There are three ways to obtain a session token:
 
 1. **Auth-code pairing** (the primary flow): `POST /auth/redeem` with an
-   invite or recovery code returns a *pairing payload* - a single-use pairing
-   token (10-minute TTL) plus QR/deep-link carriers. `POST /auth/exchange`
-   trades the pairing token for a durable session token (`{ token, user }`) and
-   revokes the pairing token.
+   invite or recovery code returns a *pairing payload* - a pairing token plus
+   QR/deep-link carriers - without consuming a use. `POST /auth/exchange`
+   trades the pairing token for a durable session token (`{ token, user }`),
+   claiming one invite use per device that pairs. An invite-derived pairing
+   token stays valid for as long as the invite has uses left (one QR can pair
+   several devices); a recovery-derived one lasts 10 minutes.
 2. **Password login**: `POST /auth/login` with `username`/`password` returns
    `{ token, user }` directly. Passwords are optional for non-admin accounts, so
    this only works for accounts that have one.
@@ -69,8 +71,10 @@ There are three ways to obtain a session token:
    mints a throwaway account and returns a session token immediately.
 
 An already-authenticated client can mint a fresh pairing payload for another
-device with `POST /auth/pair`. See [Auth & security](../auth-and-security.md)
-for the trust model behind codes, tokens, and hashes.
+device with `POST /auth/pair` - that token is single-use with a 10-minute TTL,
+since the user is present and can mint another. See
+[Auth & security](../auth-and-security.md) for the trust model behind codes,
+tokens, and hashes.
 
 ### Media requests: `?token=` - media GETs only
 

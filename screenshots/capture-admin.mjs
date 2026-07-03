@@ -61,7 +61,8 @@ await step('provision listener + share', async () => {
   }
   if (samId) {
     const inv = await api(token, 'POST', `/admin/users/${samId}/authcode`, {}).catch(() => null);
-    inviteCode = inv?.auth_code?.code || inv?.code || '';
+    // The mint response carries the code as a plain string field: {"auth_code": "XXXX-..."}.
+    inviteCode = (typeof inv?.auth_code === 'string' && inv.auth_code) || inv?.code || '';
   }
   if (libId) {
     const share = await api(token, 'POST', '/admin/shares', {name: 'Carroll classics'}).catch(() => null);

@@ -50,10 +50,11 @@ Promoting an account to admin requires it to have a password first.
 
 Open a user's drawer and click **Create invite** (or **New invite**). Choose:
 
-- **Uses** - how many times the code can be redeemed: 1 use, **5 uses**
-  (the default), Unlimited, or a custom number. Each redemption signs in one
-  device, so the default lets the same person connect a phone, a tablet, a
-  browser and still have spares.
+- **Uses** - how many devices the invite can sign in: 1 use, **5 uses**
+  (the default), Unlimited, or a custom number. A use is spent only when a
+  device actually finishes signing in - opening the link or showing the QR
+  costs nothing - so the default lets the same person connect a phone, a
+  tablet, a browser and still have spares, all from one link or one QR.
 - **Expires** - **1 day** (the default), 7 days, 30 days, Never, or a custom
   number of days.
 
@@ -66,8 +67,10 @@ Click **Create invite** and you get two things, each with its own copy button:
 
 Send either one to the person, by whatever channel you like. When they open the
 link, the connect page **redeems the code automatically** and shows them a QR
-code plus **Open in app** and **Open web player** buttons - see
-[Connecting](../listening/connecting.md) for what that looks like on their end.
+code plus **Open in app** and **Open web player** buttons. The QR stays good
+for as long as the invite has uses left, so each of their devices can scan the
+same one - see [Connecting](../listening/connecting.md) for what that looks
+like on their end.
 
 :::note The code never reaches the server's logs
 The invite link carries the code after a `#` in the URL. That part of a URL is
@@ -89,8 +92,9 @@ you keep a record of what was issued and accepted.
 
 If an invite went astray or the person lost it, click **Resend** on the active
 invite. This regenerates the secret in place: the **old link and code stop
-working immediately**, and you get a fresh link and code to share. The invite
-keeps its uses limit, and its expiry clock restarts for the same window it was
+working immediately** - including any QR code still on someone's screen from
+the old link - and you get a fresh link and code to share. The invite keeps
+its uses limit, and its expiry clock restarts for the same window it was
 originally given (a 7-day invite gets another 7 days - resending never quietly
 downgrades it to the defaults).
 
