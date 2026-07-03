@@ -99,17 +99,17 @@ Rules that keep this maintainable:
 
 ## Writing style
 
-- **Hyphens, not em dashes.** Use a hyphen (`-`) or restructure the sentence -
-  never `—`. A spaced hyphen reads fine mid-sentence, and em dashes also produce
-  messy heading anchors. The one exception: a code block that reproduces literal
-  program output verbatim must match the source (e.g. the server's first-run
-  banner genuinely prints an em dash, so the docs keep it there).
+- **Hyphens, not em dashes.** Use a spaced hyphen (`-`) or restructure the
+  sentence; do not use the em dash character. A spaced hyphen reads fine
+  mid-sentence, and em dashes also produce messy heading anchors. The one
+  exception: a code block that reproduces literal program output verbatim must
+  match the source, em dashes included (no current output contains one).
 - Cross-referenced headings should use a colon or rephrase rather than a dash,
   so the auto-generated anchor stays clean and stable.
 
 ## Deployment
 
 Pushes to `main` build and publish the site via GitHub Actions
-(`.github/workflows/deploy.yml`) to GitHub Pages. For a custom domain
-(e.g. `docs.audiosilo.app`), set `url`/`baseUrl` in `docusaurus.config.ts` and
-add a `static/CNAME` file - nothing else changes.
+(`.github/workflows/deploy.yml`) to GitHub Pages. The site serves at its custom
+domain `docs.audiosilo.app`: `docusaurus.config.ts` sets `url`/`baseUrl` and a
+`static/CNAME` file is committed.

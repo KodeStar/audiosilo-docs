@@ -45,8 +45,9 @@ Both exist, and they're the same player. The server ships with the **web
 player** built in at `https://your-server/web` - nothing to install, works in
 any modern browser, and can be added to your phone's home screen as an app
 (PWA). The **iOS and Android apps** add the deepest device integration:
-lock-screen chapter controls, better background audio, and wider codec
-support. See [Mobile apps](./listening/mobile-apps.md).
+better background audio, wider codec support, and lock-screen playback
+controls (chapter-aware on Android). See
+[Mobile apps](./listening/mobile-apps.md).
 
 The admin console at `/admin` is also built into the server - no separate
 install for that either.

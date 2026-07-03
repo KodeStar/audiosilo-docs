@@ -62,7 +62,7 @@ manager expects). If the manager suddenly fails to compile, `git -C
 | Tool | Needed for | Install / notes |
 |---|---|---|
 | **Go 1.25+** | server, manager | Both `go.mod` files declare `go 1.25.3`. |
-| **Node 24** | frontend, manager UI | `.nvmrc` pins `24.16.0` (frontend and `audiosilo-manager/frontend`) - run `nvm use` in each. **Older Node breaks Expo**: React Native 0.85 needs ≥ 20.19.4, and the Expo CLI's env-file loader uses `util.parseEnv` (Node ≥ 20.12), so an old system `node` crashes the moment a `.env` file exists. |
+| **Node 24** | frontend, manager UI | `.nvmrc` pins `24.16.0` (in `audiosilo-frontend` and at the `audiosilo-manager` repo root) - run `nvm use` in each. **Older Node breaks Expo**: React Native 0.85 needs ≥ 20.19.4, and the Expo CLI's env-file loader uses `util.parseEnv` (Node ≥ 20.12), so an old system `node` crashes the moment a `.env` file exists. |
 | **golangci-lint v2** | server, manager lint gates | v2 is required for Go 1.25. Config is each repo's `.golangci.yml`; both are adopted at a *green baseline* (see [gates and CI](gates-and-ci.md)). |
 | **Wails CLI** | manager builds / dev loop | `go install github.com/wailsapp/wails/v2/cmd/wails@latest`, then make sure `$(go env GOPATH)/bin` is on `PATH`. Linux also needs `libgtk-3-dev` and `libwebkit2gtk-4.1-dev`. |
 | **ffmpeg / ffprobe** | server scanner tests, transcoding, manager DRM-strip | Optional at runtime (the server degrades gracefully), but a few scanner tests `t.Skip` without ffprobe - install it so they actually run (CI installs it). The manager's Audible pipeline also shells out to ffmpeg. |
@@ -160,9 +160,10 @@ The full pre-merge quality gate for each repo is on
 These are the ones that repeatedly bite new setups - each is documented in the
 repos' own guides and verified here:
 
-- **Use Node 24 via nvm, every shell.** The frontend and the manager UI both pin
-  `24.16.0` in `.nvmrc`. A machine's default `node` being too old fails in
-  confusing ways (the Expo env loader crash above).
+- **Use Node 24 via nvm, every shell.** The frontend and the manager both pin
+  `24.16.0` in `.nvmrc` (locations in the toolchain matrix above). A machine's
+  default `node` being too old fails in confusing ways (the Expo env loader
+  crash above).
 - **Don't `cd` into `node_modules`.** Run tool commands from the repo root - in a
   persistent shell a stray `cd` into `node_modules` breaks Expo's config
   resolution for every subsequent command.

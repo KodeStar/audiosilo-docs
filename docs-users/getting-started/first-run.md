@@ -13,7 +13,7 @@ Started normally (including under Docker), the server creates the admin account 
 
 ```text
 ========================================================
- AudioSilo first-run setup — store these now, shown once
+ AudioSilo first-run setup - store these now, shown once
 ========================================================
   Admin username : admin
   Admin password : <generated password>
@@ -68,9 +68,9 @@ The [desktop manager](../manager/index.md) uses this same wizard when it sets up
 
 The `--data` directory (mounted at `/data` under Docker) is the server's home. After the first run it contains:
 
-- `config.yaml` - all server settings, with comments. Edit it and restart to change things like TLS mode; see [Remote access](./remote-access.md).
+- `config.yaml` - all server settings. Edit it and restart to change things like TLS mode; see [Remote access](./remote-access.md).
 - `audiosilo.db` - the database: user accounts, listening progress, bookmarks, and a searchable index of your books. The index part is rebuildable from your files at any time; the accounts and progress are the part you'd back up.
-- `certs/` - the generated self-signed certificate, or the Let's Encrypt certificate cache.
+- `certs/` - the Let's Encrypt (autocert) certificate cache. In self-signed TLS mode the certificate and key are written at the data directory root instead, as `selfsigned-cert.pem` / `selfsigned-key.pem`.
 - `tools/` - ffmpeg/ffprobe, if the native binary had to download them (see [Install the native binary](./install-binary.md)).
 
 Your audiobooks are **never** copied in here. The books folder you point a library at stays untouched, and stays the source of truth - see [Organizing your library](./organizing-your-library.md).

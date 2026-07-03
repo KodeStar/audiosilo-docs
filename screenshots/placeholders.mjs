@@ -28,7 +28,7 @@ const pageHtml = (title, hint) => `<!doctype html><html><head><meta charset="utf
   <div class="dot"></div>
   <h1>${title}</h1>
   <p>${hint}</p>
-  <div class="tag">placeholder — regenerate with audiosilo-docs/screenshots/run.sh</div>
+  <div class="tag">placeholder - regenerate with audiosilo-docs/screenshots/run.sh</div>
 </div></body></html>`;
 
 const missing = SHOTS.filter((s) => {

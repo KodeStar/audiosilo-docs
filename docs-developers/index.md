@@ -51,7 +51,7 @@ flowchart LR
     droid -->|"JSON API + media streams"| api
     pwa -->|"JSON API + media streams"| api
     webmount -.->|"serves the web build"| pwa
-    wails -->|"API, read-only<br/>(+ metadata enrichment)"| api
+    wails -->|"API, read-only<br/>(+ metadata enrichment, progress sync)"| api
     wails -->|"file placement:<br/>SFTP / local copy"| files
 ```
 
@@ -96,9 +96,11 @@ session (`POST /auth/exchange`).
 
 **File placement.** The manager places files itself - over SFTP or into a
 local/mounted copy of the library - then asks the server for a non-destructive
-reindex (`POST /admin/libraries/{id}/scan`). Its only server-side write is
+reindex (`POST /admin/libraries/{id}/scan`). Its server-side writes are
 path-keyed metadata enrichment (`PUT /admin/libraries/{id}/enrichment?path=`,
-ASIN/ISBN), which touches no file. A server-side `POST /uploads` endpoint is
+ASIN/ISBN) and, for the Audible listening-position sync, per-user progress
+(`PUT /libraries/{id}/progress?path=`) - the same progress call the player
+makes. Neither touches a file. A server-side `POST /uploads` endpoint is
 **planned** (Phase B), not shipped.
 
 ## Design priorities
