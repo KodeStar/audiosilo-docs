@@ -57,10 +57,9 @@ server's `/web` mount) and packages the export into a tiny image via
 `Dockerfile.web`, pushed as `ghcr.io/<owner>/audiosilo-web`.
 
 Tagging: `:latest` only from the default branch, a semver tag on `v*` tags, and a
-`:sha` tag always. GHCR references must be lowercase; here `docker/metadata-action`
-normalizes the owner's case, so `web.yml` has no explicit lowercase step. (The
-server's `image.yml`/`release.yml` do lowercase `${{ github.repository_owner }}`
-themselves.)
+`:sha` tag always. GHCR references must be lowercase; `docker/metadata-action`
+handles that here, so `web.yml` needs no explicit lowercase step (the server's
+`image.yml`/`release.yml` lowercase the owner themselves).
 
 ## 2. Server Docker image - `audiosilo-server/.github/workflows/image.yml`
 

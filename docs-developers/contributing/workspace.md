@@ -161,9 +161,9 @@ These are the ones that repeatedly bite new setups - each is documented in the
 repos' own guides and verified here:
 
 - **Use Node 24 via nvm, every shell.** The frontend and the manager both pin
-  `24.16.0` in `.nvmrc` (the manager's lives at its repo root, not in
-  `frontend/`). A machine's default `node` being too old fails in confusing ways
-  (the Expo env loader crash above).
+  `24.16.0` in `.nvmrc` (locations in the toolchain matrix above). A machine's
+  default `node` being too old fails in confusing ways (the Expo env loader
+  crash above).
 - **Don't `cd` into `node_modules`.** Run tool commands from the repo root - in a
   persistent shell a stray `cd` into `node_modules` breaks Expo's config
   resolution for every subsequent command.

@@ -37,7 +37,7 @@ tls:
 
 (The same settings are available as `AUDIOSILO_TLS_MODE` and `AUDIOSILO_TLS_HOSTS`.)
 
-For issuance to work, Let's Encrypt must be able to reach your server on **port 443** of that hostname. Either bind directly to 443 as above, or keep the default port and forward external 443 to it in your router/firewall - the server logs a clear warning at startup whenever autocert is configured but the server isn't bound to port 443 (it can't tell whether your router forwards 443 to it, so the warning fires on the port alone). Certificates are cached in `certs/` inside the data directory, so renewals are automatic and restarts are instant.
+For issuance to work, Let's Encrypt must be able to reach your server on **port 443** of that hostname. Either bind directly to 443 as above, or keep the default port and forward external 443 to it in your router/firewall. If autocert is configured but the server itself isn't bound to 443, it logs a clear warning at startup - it can't see your router, so the warning appears even when forwarding is set up correctly. Certificates are cached in `certs/` inside the data directory, so renewals are automatic and restarts are instant.
 
 ### Behind a reverse proxy
 

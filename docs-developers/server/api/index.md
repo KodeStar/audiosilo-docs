@@ -26,11 +26,10 @@ A few routes deliberately live *outside* the prefix:
 ## Requests
 
 - Bodies are JSON. `decodeJSON` (in `internal/api/respond.go`) caps every
-  control-plane body at **1 MiB** and decodes with `DisallowUnknownFields` - on
-  nearly every control-plane body a field the server doesn't know is a **400**,
-  not silently ignored. Keep client payloads exactly in sync with the documented
-  shapes. The exception is `POST /demo/session`, which tolerates an
-  empty/omitted or loose body (it discards the decode error).
+  control-plane body at **1 MiB** and decodes with `DisallowUnknownFields` - a
+  body containing a field the server doesn't know is a **400**, not silently
+  ignored (the one exception: `POST /demo/session` tolerates an empty or loose
+  body). Keep client payloads exactly in sync with the documented shapes.
 - Path parameters like the library `id` must be integers; anything else is a 400.
 - Timestamps on the wire are RFC 3339 strings (e.g. `2026-07-01T19:42:07Z`).
 

@@ -61,9 +61,8 @@ The **↑ / ↓** buttons reorder libraries. Order matters in one subtle way: wh
 the same book exists in more than one library, de-duplication in search and
 "recently added" picks the **best-quality copy first** - it prefers the better
 format (M4B/AAC over MP3 over anything else), then a single-file copy over a
-multipart one, then the higher bitrate. Library order is only the final
-tiebreaker when copies are otherwise equal, so putting your primary library
-first decides those ties.
+multipart one, then the higher bitrate. Library order only breaks ties between
+otherwise-equal copies, so put your primary library first.
 
 ## Folder detection
 

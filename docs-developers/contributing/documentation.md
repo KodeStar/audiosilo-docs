@@ -103,14 +103,13 @@ Rules that keep this maintainable:
   sentence; do not use the em dash character. A spaced hyphen reads fine
   mid-sentence, and em dashes also produce messy heading anchors. The one
   exception: a code block that reproduces literal program output verbatim must
-  match the source, so if a program's output ever contained one, the docs would
-  keep it as-is (none currently do).
+  match the source, em dashes included (no current output contains one).
 - Cross-referenced headings should use a colon or rephrase rather than a dash,
   so the auto-generated anchor stays clean and stable.
 
 ## Deployment
 
 Pushes to `main` build and publish the site via GitHub Actions
-(`.github/workflows/deploy.yml`) to GitHub Pages. The site already serves at its
-custom domain `docs.audiosilo.app`: `docusaurus.config.ts` sets `url`/`baseUrl`
-accordingly and a `static/CNAME` file is in place - nothing else is needed.
+(`.github/workflows/deploy.yml`) to GitHub Pages. The site serves at its custom
+domain `docs.audiosilo.app`: `docusaurus.config.ts` sets `url`/`baseUrl` and a
+`static/CNAME` file is committed.
