@@ -64,12 +64,15 @@ with `retry: 1`, `staleTime: 30s`, and `refetchOnWindowFocus: false`. Being
 module-level matters: non-React code (the playback and downloads stores) uses
 it to invalidate and seed queries.
 
-**Key conventions.** All keys come from the `qk` factory -
-`qk.item(lib, path)`, `qk.chapters(lib, path)`, `qk.progress(lib, path)`,
-`qk.allProgress()`, `qk.bookmarks/notes/history(lib, path)`,
-`qk.favourites(connectionId)`, `qk.libraries()`, `qk.browse(lib, path)`,
-`qk.server()` - so mutations can invalidate precisely. Content keys are
-`(libraryId, path)` tuples, matching the path-is-identity rule.
+**Key conventions.** All keys come from the `qk` factory and are **scoped by
+connection id** as their first coordinate (the app can be signed in to several
+servers at once, and two of them can each have a "library 1"): `qk.item(cid, lib,
+path)`, `qk.chapters(cid, lib, path)`, `qk.progress(cid, lib, path)`,
+`qk.allProgress(cid)`, `qk.bookmarks/notes/history(cid, lib, path)`,
+`qk.favourites(cid)`, `qk.libraries(cid)`, `qk.browse(cid, lib, path)`,
+`qk.server(cid)` - so mutations can invalidate precisely and one server's cache
+never shadows another's. Content keys are `(connectionId, libraryId, path)` tuples,
+extending the path-is-identity rule across connections.
 
 Patterns to copy when adding an endpoint:
 
@@ -112,8 +115,13 @@ Connection **metadata** persists to AsyncStorage (`audiosilo.connections` +
 secure-store under `audiosilo.token.<id>` - tokens are stripped before the
 metadata is persisted. `hydrate()` restores everything on launch (and migrates
 the pre-multi-connection single-session keys once); `setSession` adds or
-updates by server URL and makes it active; `logout` removes the active
-connection and deletes its token. `status` is
+updates by server URL and makes it active; `removeConnection` (and `logout`,
+which removes the active one) deletes its token **and purges the connection's
+scoped state** - downloads, the progress mirror + offline queue, cached queries,
+and scroll memory. It does this by running an `onConnectionRemoved` cleanup
+registry that those owners subscribe to (they can't be imported directly here -
+they import the session store, so a direct import would cycle); a failing cleanup
+is logged, never blocks removal. `status` is
 `loading | unauthenticated | authenticated`, and the `(app)` layout guard
 redirects on it. Mirror fields (`user`, `activeServerUrl`,
 `activeConnectionId`) are derived for ergonomic selectors.
@@ -153,23 +161,40 @@ The offline-safe write path for listening progress:
   reconcile correctly by timestamp. The server's `SaveProgress` applies the
   same newest-`updated_at`-wins rule (see the
   [server data model](../server/data-model.md)).
+- **Connection-scoped.** Every `ProgressSave` carries a `connectionId`, and both
+  the mirror and the queue key on `(connectionId, libraryId, path)`. This is what
+  stops two servers' "library 1" from sharing progress and, crucially, stops the
+  queue from replaying one server's positions against another.
 - **Durable mirror first.** `saveProgress` always upserts the local mirror
-  (`audiosilo.progressMirror`, keep-newest per `(libraryId, path)`) before
-  touching the network. The mirror is never pruned on sync; it is the resume
-  fallback when the server can't be reached.
+  (`audiosilo.progressMirror`, keep-newest per `(connectionId, libraryId, path)`)
+  before touching the network. The mirror is never pruned on sync; it is the
+  resume fallback when the server can't be reached.
 - **Offline replay queue.** If the server is known unreachable the save is
-  queued locally (`audiosilo.progressQueue`, latest save per book) without
-  firing a doomed request; a network failure en route also queues. 4xx
-  responses are treated as unrecoverable and dropped (retrying forever can't
-  help an auth/forbidden error). Read-modify-write access to both the queue and
-  the mirror is serialized through in-module promise locks so a flush and a
-  concurrent save can't clobber each other.
-- **Flush triggers.** `flushQueue` runs on reconnect (registered via
+  queued locally (`audiosilo.progressQueue`, latest save per
+  `(connectionId, libraryId, path)`) without firing a doomed request; a network
+  failure en route also queues. 4xx responses are treated as unrecoverable and
+  dropped (retrying forever can't help an auth/forbidden error). Read-modify-write
+  access to both the queue and the mirror is serialized through in-module promise
+  locks so a flush and a concurrent save can't clobber each other.
+- **Flush routes per connection.** `flushQueue` runs on reconnect (registered via
   `onReconnect` at module load), after any successful direct save, and when a
-  book starts playing. A connection drop mid-flush keeps the remaining items.
-- **`loadInitialProgress`** reconciles server + mirror + queue into the
-  `ResumeLookup` (`progress`/`empty`/`failed`) that drives resume - the
-  semantics live in [Playback](playback.md#resume-protection).
+  book starts playing. It groups the queue **by connection** and replays each save
+  through **its own** connection's client (`resolveClient`, keyed on the save's
+  `connectionId`) - never against whichever server happens to be active - so a
+  position captured on server B can never be written to server A. A save whose
+  connection was removed is unroutable and dropped; a connection drop mid-flush
+  keeps the remaining items; only the active connection's success/failure moves
+  the reachability banner. It also waits for the session to hydrate
+  (`sessionReady`) so a flush racing startup can't null-route the whole queue.
+- **`loadInitialProgress(api, connectionId, libraryId, path)`** reconciles
+  server + mirror + queue into the `ResumeLookup` (`progress`/`empty`/`failed`)
+  that drives resume - the semantics live in
+  [Playback](playback.md#resume-protection).
+- **One-time migration + purge.** `ensureMigrated` (memoized, run before any
+  read-modify-write and gated on `whenSessionReady()`) adopts pre-multi-server
+  records into `adoptionTarget()` (or drops them when no connection exists),
+  re-keying and re-deduping mirror and queue. An `onConnectionRemoved` handler
+  drops a removed connection's mirror records and queued saves.
 
 :::note No realtime sync
 Progress sync is REST-only. The server advertises a `websocket` capability flag

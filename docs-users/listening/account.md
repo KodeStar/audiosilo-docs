@@ -11,6 +11,10 @@ The **Settings** tab is where you tune the player and look after your account:
 
 The servers this app is connected to. You can **Add a server** to connect a second (or third) one - your home screen, search, and favourites then combine everything - and remove one you no longer use. See [Connecting and signing in](connecting.md).
 
+:::warning
+Removing a server also **deletes that server's downloaded books from this device**, plus any listening progress that hasn't synced back yet. The app warns you first if the server has downloads on the device. Your other servers are unaffected, and nothing on the server itself is touched. See [Offline downloads](offline-downloads.md).
+:::
+
 ## Appearance
 
 **Light**, **Dark**, or **System** (follow your device's setting). AudioSilo is designed dark-first, but the light theme is fully supported.
@@ -58,6 +62,8 @@ Treat a recovery code like a password: anyone who has it can sign in as you. If 
 ### Signing out
 
 **Sign out** disconnects this device. If you're about to sign out with **neither a password nor a recovery code**, the app stops you with a warning - *"Without one you'll need a new invite from your admin to sign back in"* - and offers to **Set a recovery code** right there. Take the offer; it's the whole reason the button exists.
+
+Signing out also **removes this server from the app**, so it deletes that server's downloaded books from the device and any progress that hasn't synced yet. The app warns you when there are downloads to lose. (Books, progress, and bookmarks stored on the server are safe - sign back in and they're all there.)
 
 ## Devices
 

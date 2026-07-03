@@ -56,8 +56,11 @@ Two conventions keep this layout healthy:
   `src/playback`, `src/downloads` or `src/stores`, where it gets a co-located
   unit test (the coverage config excludes `src/app/**` entirely - see
   [Testing](testing.md)).
-- **Path is identity.** Every content call passes `?path=<rel_path>`; client
-  state persists keyed by `(library_id, path)`, never a database id.
+- **Path is identity, scoped by connection.** Every content call passes
+  `?path=<rel_path>`, never a database id. Because the app can be signed in to
+  several servers at once (and two can share a library id), durable and cached
+  client state keys on `(connectionId, library_id, path)` - see
+  [State & data](state-and-data.md).
 
 ## Route map
 
