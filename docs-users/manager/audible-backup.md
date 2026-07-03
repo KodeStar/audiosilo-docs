@@ -65,8 +65,26 @@ cross-checks them against the server library.
 - The **Destination** column shows where each new book would land, using the same
   [auto or template placement](organizing.md#auto-placement-matching-your-existing-conventions)
   as a manual import.
-- Got a wrong or missing match? **Match…** on the row lets you point the book at
-  the right item on the server (or clear a manual match).
+- Some titles are tagged **not downloadable** (hover the tag for the reason):
+  Audible shows/periodicals released as episodes, titles your account has no
+  download rights for (typically a Plus title that left the catalog), and
+  pre-orders. They can't be selected - Audible refuses a download license for
+  them, so the manager says why up front instead of failing mid-import.
+
+Each row has a **⋯ menu** with the manual fixes:
+
+- **Match…** - the automatic match is wrong or missing? Browse the library and
+  point the book at the right item on the server.
+- **Locate folder…** - the suggested destination isn't where you keep that
+  series? Browse the library, pick a folder, and the book is placed inside it,
+  keeping its own folder and filename; the picker shows the exact resulting
+  path before you confirm. Say a new book wants to go to
+  `Various/Halo/Evolutions/` but you already have a top-level `HALO` folder:
+  pick `HALO` and it lands at `HALO/Evolutions/` instead.
+- **Remove match** / **Remove folder choice** - undo either manual fix.
+
+Your manual matches and folder choices are **remembered**, even across manager
+restarts, until you remove them.
 
 ## Backing up: what actually happens
 

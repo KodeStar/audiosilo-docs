@@ -89,10 +89,12 @@ capability flag is already reserved for it.
 
 **Pairing.** An admin mints an invite code; the code rides a URL **fragment**
 (`/connect#code=…`) so it never reaches server logs. The connect page redeems it
-(`POST /auth/redeem` → single-use pairing token) and offers two carriers: an HTTPS
-`web_url` (QR / Universal Links) and an `audiosilo://connect?...` custom-scheme
-deep link. The app or web player exchanges the pairing token for a device-scoped
-session (`POST /auth/exchange`).
+(`POST /auth/redeem` → a pairing token that inherits the invite's uses/expiry)
+and offers two carriers: an HTTPS `web_url` (QR / Universal Links) and an
+`audiosilo://connect?...` custom-scheme deep link. The app or web player
+exchanges the pairing token for a device-scoped session (`POST /auth/exchange`),
+claiming one invite use per device - so each device being set up can scan the
+same QR.
 
 **File placement.** The manager places files itself - over SFTP or into a
 local/mounted copy of the library - then asks the server for a non-destructive

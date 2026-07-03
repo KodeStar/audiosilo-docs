@@ -59,8 +59,9 @@ frontend/                React + Vite + TypeScript webview app
 internal/
   services/    transport-only Wails facades - marshal JSON-able DTOs, emit events
   serverapi/   hand-mirrored, read-only HTTP client for audiosilo-server
-  registry/    persisted state: server registry, app settings, series-watch and
-               sync-status stores, OS-keychain Secrets, encrypted BlobStore
+  registry/    persisted state: server registry, app settings, series-watch,
+               sync-status and Audible-override stores, OS-keychain Secrets,
+               encrypted BlobStore
   importjob/   orchestration: plan placements → transfer → single rescan; the
                shared BookMatcher over the server's pkg/match
   placement/   destination naming: Auto sibling-anchored mode + the path-template
@@ -154,6 +155,7 @@ the OS keychain** - never in the JSON files, and tests assert it.
 | `settings.json` | app-wide prefs: default SSH key path/user (`SettingsStore`) |
 | `series-watch.json` | watched-series ASIN snapshots (`SeriesWatchStore`) |
 | `stats-sync.json` | last Audible stats-sync time per library (`SyncStatusStore`) |
+| `audible-overrides.json` | manual Audible match + folder-destination overrides per (server, library) (`OverrideStore`) |
 | `secrets/*.enc` | AES-256-GCM-sealed large secrets (Audible credentials), data key in the keychain (`BlobStore`) |
 | `audible-tmp/` | per-book staging dirs during an Audible backup (removed after transfer) |
 | `local-servers/<id>/` | data dir of each embedded local server |

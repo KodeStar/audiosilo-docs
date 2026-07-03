@@ -80,12 +80,27 @@ implemented: none of the endpoints the manager calls need one (the
 ## Stage 2 - library listing
 
 `Client.Library` (`library.go`) pages `GET /1.0/library` (signed) with
-`response_groups=contributors,series,product_desc,product_attrs`, 1000 items per
-page, and maps each item to a `source.Record`: first author and narrator, series
-title + parsed sequence (only a clean single number counts - "1-3" leaves the book
-unsequenced), release year, ASIN as the dedup `Key`, and a sanitized
-`"<Title>.m4b"` destination filename. `SrcPath` stays empty - bytes are fetched
-on demand at import time.
+`response_groups=contributors,series,product_desc,product_attrs,customer_rights`,
+1000 items per page, and maps each item to a `source.Record`: first author and
+narrator, series title + parsed sequence (only a clean single number counts -
+"1-3" leaves the book unsequenced), release year, ASIN as the dedup `Key`, and a
+sanitized `"<Title>.m4b"` destination filename. `SrcPath` stays empty - bytes are
+fetched on demand at import time.
+
+Not everything in an Audible library is downloadable, and the license endpoint
+fails those with opaque errors (an HTTP 400, or an empty voucher).
+`libItem.unavailableReason` classifies them at listing time and sets
+`Record.UnavailableReason` ("" = downloadable):
+
+- a **future release date** - a pre-order,
+- `content_delivery_type` `Periodical`/`PodcastParent` - an Audible show made of
+  episodes, with no single audiobook file,
+- `customer_rights.is_consumable_offline` false - no download rights (typically
+  a Plus/included title that left the catalog).
+
+All checks are defensive - a missing field never marks a book unavailable. The
+UI disables selection and tags these rows, and `AudibleService.ImportSelected`
+fails them up front with the reason instead of attempting a license request.
 
 ## Stage 3: pre-flight and matching
 
@@ -111,11 +126,36 @@ Audible library against the destination server library:
   background, emitting `audible:backfill` when done. The server stores this as a
   durable path-keyed row and modifies no file, so the read-only model holds;
   the next pre-flight then matches those books by exact ASIN.
-- **Manual override**: when the automatic match is wrong or missing, the
+### Manual overrides
+
+Each row's ⋯ menu (a `MoreMenu`) carries the manual fixes:
+
+- **Match…** - when the automatic match is wrong or missing, the
   `ServerMatchPicker` component lets the user browse the destination library's
   server-side folder tree (`LibrariesService.Browse` → `GET /libraries/{id}/fs`)
-  and pick the corresponding book. Overrides are an ASIN → server-path map held
-  in the Audible view and fed into the stats sync.
+  and pick the corresponding book. Matches are an ASIN → server-path map, which
+  also feeds the stats sync.
+- **Locate folder…** - when the *planned destination* is wrong (say the library
+  already has a top-level series folder the placement engine didn't pick), the
+  `ServerFolderPicker` component browses the same tree and places the book
+  inside the chosen folder. The book keeps its planned folder name and
+  filename - `overrideDest` in `frontend/src/lib/destpath.ts` grafts them onto
+  the pick; placing the file loose could merge it into an adjacent book, since
+  [a folder that directly contains audio is one book](../server/scanner.md#book-detection-booksindir)
+  to the server. The resulting full rel path rides into `ImportSelected` as an
+  ASIN → destination map, applied after planning by
+  `importjob.ApplyDestinations` (which ignores unsafe paths; `transfer.SafeJoin`
+  [re-checks at place time](transfers.md#path-safety-safejoin)).
+- **Remove match** / **Remove folder choice** clear the corresponding override.
+
+Both override maps are **manager-local** - unlike the automatic ASIN backfill
+they are never written back to the server - and **persist per (server,
+library)** across view reloads and app restarts.
+`AudibleService.{Load,Save}Overrides` back them with `registry.OverrideStore`
+(`audible-overrides.json`, one of the
+[persisted JSON stores](overview.md#where-state-persists)); the view hydrates on
+open and saves the full maps after each change, guarded so the initial empty
+state can't overwrite the stored maps.
 
 ## Stage 4 - license, download, and DRM removal
 
@@ -125,7 +165,10 @@ At import time, `audible.Source.Acquire` fetches one book to a local temp `.m4b`
    `Client.License` POSTs a signed
    `/1.0/content/{asin}/licenserequest` (`supported_drm_types: [Mpeg, Adrm]`,
    quality High) and receives a presigned `offline_url` plus a base64
-   `license_response` voucher. `DecryptVoucher` unwraps it with AES-128-CBC using
+   `license_response` voucher. When Audible refuses the license anyway (a title
+   the listing-time availability checks passed), the error surfaces Audible's
+   `license_denial_reasons`/`status_code` detail. `DecryptVoucher` unwraps the
+   voucher with AES-128-CBC using
    a **derived** key/iv - `SHA256(deviceType + deviceSerial + customerID + asin)`,
    first 16 bytes key, next 16 iv - and extracts the JSON `{key, iv}`: the
    per-book ffmpeg decryption parameters. (The device RSA key signs the request;
@@ -161,8 +204,8 @@ voucher keys only**; there is no activation-bytes extraction flow.
 
 ## Stage 5 - import through the shared pipeline
 
-`AudibleService.ImportSelected(serverID, libraryID, asins, templateMode, template)`
-runs the same orchestrator as any other import:
+`AudibleService.ImportSelected(serverID, libraryID, asins, templateMode,
+template, destOverrides)` runs the same orchestrator as any other import:
 
 - re-lists the library, filters to the selected ASINs, plans placements with the
   bulk-fetched server book list (naming via `match.CleanTitle` + the placement

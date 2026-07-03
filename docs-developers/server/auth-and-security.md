@@ -44,11 +44,17 @@ codes/tokens in the response body and store only the hash.
 - **Session tokens** are the durable bearer credential (`Authorization: Bearer
   …`). Issued by `POST /auth/login` and `POST /auth/exchange` with **no
   expiry**; revoked by `POST /auth/logout` or admin action.
-- **Pairing tokens** are single-use, short-lived (`pairingTTL` = 10 minutes)
-  intermediaries minted by `POST /auth/redeem` (auth code → pairing) or `POST
-  /auth/pair` (add another device from an existing session). `POST
-  /auth/exchange` turns one into a device-named session token and **revokes it
-  on success**.
+- **Pairing tokens** are intermediaries minted by `POST /auth/redeem` (auth
+  code → pairing) or `POST /auth/pair` (add another device from an existing
+  session). `POST /auth/exchange` turns one into a device-named session token.
+  A pairing token is **as redeemable as its origin** (`tokens.auth_code_id`
+  links it to the code that minted it): invite-derived tokens inherit the
+  invite's uses and expiry - exchange claims one use per device, so one QR can
+  pair several devices - and die with the code (delete/supersede cascade,
+  rotate revokes); recovery-derived tokens last `pairingTTL` = 10 minutes
+  (multi-scan within it, since recovery codes are unlimited); `/auth/pair` and
+  demo tokens are unlinked - single-use (revoked on exchange) with the same
+  10-minute TTL.
 
 `auth.ResolveToken` validates a presented secret for a specific kind: it hashes
 the secret, looks up the row, and rejects revoked tokens, expired tokens, and
@@ -279,10 +285,15 @@ send to the server - so they cannot appear in server or proxy logs:
 - First-run setup: `<base>/setup#token=…` (the POST then verifies the token in
   constant time).
 
-The single-use **pairing token** in the QR payload's `web_url`
-(`/web/connect?token=…`) is a query parameter by necessity (it must survive
-Universal/App Link routing) - acceptable because it is single-use and expires
-in 10 minutes. Follow the fragment convention for any new durable secret.
+The **pairing token** in the QR payload's `web_url` (`/web/connect?token=…`)
+is a query parameter by necessity (it must survive Universal/App Link routing).
+An invite-derived token lives as long as the invite it came from (same trust
+class as the invite link itself), which is acceptable because the server keeps
+no access log, sends `Referrer-Policy: no-referrer`, and the token dies with
+the invite (revoke, Resend/rotate, supersede, expiry, use cap) - the exposure
+class matches the media `?token=` fallback. Recovery-derived and `/auth/pair`
+tokens stay 10-minute-bounded. Follow the fragment convention for any new
+durable secret.
 
 ## The allowed + denied test rule
 

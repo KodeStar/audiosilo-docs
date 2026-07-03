@@ -17,7 +17,7 @@ Opening it takes you to the server's **connect page**, which signs the invite in
 
 - **Open web player** - start listening right there in your browser. Nothing to install.
 - **Open in app** - if you have the AudioSilo app installed on this device, this signs the app in and opens it.
-- **Scan to pair** - a QR code for signing in a *different* device, typically your phone (see below).
+- **Scan to pair** - a QR code for signing in your *other* devices, typically your phone (see below).
 
 :::tip
 The secret code in an invite link is never sent anywhere by your browser - it stays in the link itself. Still, treat an invite link like a key: anyone who opens it can sign in as you, so don't post it publicly.
@@ -32,6 +32,12 @@ The connect page's QR code is the quickest way to get your phone signed in:
 1. Open the invite link on any computer (or ask your admin to show you their screen).
 2. Point your phone's **camera app** at the QR code and tap the link it finds.
 3. Your phone opens signed in and ready to listen - in the server's web player, or straight into the AudioSilo app on servers set up for it.
+
+The QR is as reusable as the invite behind it: each device you're setting up
+can scan the **same** code, and every device that signs in uses up one of the
+invite's uses (the page tells you how many are left). So a 5-use invite really
+does mean a phone, a tablet and a laptop from one QR - no fresh invite per
+device.
 
 If you have the **AudioSilo app** installed, the surest way to sign *it* in with a QR is to scan from inside the app: on the app's connect screen, tap **Scan QR code** and point the camera at the pairing QR. (This button appears in the iOS/Android app only - a web browser can't scan.) The connect page's **Open in app** button does the same job without a camera.
 
