@@ -15,14 +15,14 @@ export const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 // Raw Playwright PNGs at deviceScaleFactor 2 are large (a full desktop shot is
 // ~0.5-1.3 MB); pngquant's lossy-palette pass shrinks them ~60% with no
 // perceptible loss on UI captures. It's a deterministic transform run on every
-// capture, so the committed PNG is the optimized one — this is part of
+// capture, so the committed PNG is the optimized one - this is part of
 // generation, NOT a hand-edit of a captured file. Degrades gracefully when
 // pngquant is absent (the shot is just left raw + a one-time warning).
 let pngquant; // undefined = unchecked, true/false = availability
 export function optimize(file) {
   if (pngquant === undefined) {
     pngquant = spawnSync('pngquant', ['--version'], {stdio: 'ignore'}).status === 0;
-    if (!pngquant) console.log('  ! pngquant not found — screenshots left unoptimized (brew install pngquant)');
+    if (!pngquant) console.log('  ! pngquant not found - screenshots left unoptimized (brew install pngquant)');
   }
   if (!pngquant) return;
   const r = spawnSync(
@@ -45,7 +45,7 @@ export async function shoot(page, relFile) {
   console.log(`  ✓ ${relFile}`);
 }
 
-// Best-effort step wrapper: a single failed capture shouldn't kill the run —
+// Best-effort step wrapper: a single failed capture shouldn't kill the run -
 // placeholders.mjs backfills anything missing afterwards.
 export async function step(name, fn) {
   try {

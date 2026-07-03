@@ -206,7 +206,7 @@ the web image must exist before the server image builds.
 
 **Frontend:** `.github/workflows/web.yml` exports the web build and pushes
 `ghcr.io/<owner>/audiosilo-web`.
-**Server:** `Dockerfile` does `COPY --from=${WEB_IMAGE}`;
+**Server:** `Dockerfile` does `FROM ${WEB_IMAGE} AS web` then `COPY --from=web /web /app/web`;
 `.github/workflows/image.yml` builds and pushes
 `ghcr.io/<owner>/audiosilo-server`; `.github/workflows/release.yml` +
 `scripts/fetch-web-player.sh` embed the same pinned build into native binaries.

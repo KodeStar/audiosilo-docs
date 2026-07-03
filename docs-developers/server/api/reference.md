@@ -322,7 +322,7 @@ with indexed-book metadata attached where available. Offset-paginated.
       "is_dir": true,
       "is_audio": false,
       "size": 0,
-      "mod_time": 1747213964,
+      "mod_time": 0,
       "is_book": true,
       "title": "The Final Empire",
       "author": "Brandon Sanderson",
@@ -395,7 +395,10 @@ cursor → `400`.
 
 *Session.* Full-text search (FTS5 over title/author/series/narrator) across
 every library the caller can reach, scoped per-library to their share rules.
-Results are relevance-ranked and de-duplicated across libraries.
+Results are relevance-ranked and de-duplicated across libraries. De-dup keeps
+the best copy of a book: format tier first (M4B/AAC over MP3 over anything
+else), then single-file over multipart, then higher bitrate, then library
+order (`internal/catalog/dedup.go`).
 
 | Query param | Type | Default | Notes |
 |---|---|---|---|
@@ -408,8 +411,8 @@ de-duplication annotations:
 | Field | Type | Notes |
 |---|---|---|
 | `dedup_key` | string | groups copies of the same logical book; a display hint, **not** an identity |
-| `multi_file` | bool | whether this copy is multipart (single-file copies win de-dup) |
-| `other_locations` | array | the non-winning copies: `{ library_id, library_name, path, format?, size?, multi_file? }` |
+| `multi_file` | bool | whether this copy is multipart |
+| `other_locations` | array | the best copy in each **other** library, one entry per library (copies in the winner's own library are omitted): `{ library_id, library_name, path, format?, size?, multi_file? }` |
 
 ### `GET /api/v1/books/recent`
 
@@ -722,8 +725,8 @@ Response: `{ "history": [ … ] }`.
 
 | Body field | Type | Required | Notes |
 |---|---|---|---|
-| `from_pos` | float | yes | span start position (seconds) |
-| `to_pos` | float | yes | span end position |
+| `from_pos` | float | no | span start position (seconds); not validated - defaults to `0` if omitted |
+| `to_pos` | float | no | span end position; not validated - defaults to `0` if omitted |
 | `started_at` | string | no | RFC 3339; defaults to server time |
 | `ended_at` | string | no | RFC 3339; defaults to server time |
 
@@ -797,8 +800,9 @@ Create an account.
 | `password` | string | admins only | optional for non-admins (pairing-only accounts); required for `role: "admin"` |
 | `role` | string | yes | `"admin"` or `"user"` |
 
-Response `201`: the created user object. `400` with a specific message on any
-validation failure (duplicate username, missing admin password, …).
+Response `201`: the created user object. `409` `username already taken` on a
+duplicate username; `400` with a specific message on a validation failure (missing
+admin password, password too short, …).
 
 ### `GET /api/v1/admin/users/{id}`
 
@@ -810,7 +814,8 @@ One account plus everything the console needs to manage it:
             "has_password": false, "has_recovery": true, "is_demo": false },
   "accessible_libraries": [ { "id": 1, "name": "Audiobooks", "root": "/srv/audiobooks",
                               "default_view": "hybrid", "sort_order": 0 } ],
-  "shares": [ { "id": 2, "name": "Fantasy shelf", "description": "", "read_only": true } ],
+  "shares": [ { "id": 2, "name": "Fantasy shelf", "description": "", "read_only": true,
+                "paths": [ { "library_id": 1, "path": "Brandon Sanderson" } ] } ],
   "auth_codes": [
     {
       "id": 9,
@@ -926,8 +931,8 @@ Response `201`: the created library. `409` `name already taken`.
 ### `PUT /api/v1/admin/libraries/order`
 
 Sets display order from an ordered id list (position 0 first); ids not listed
-keep their order. This order is also the de-duplication tiebreaker when the same
-book exists in multiple libraries.
+keep their order. This order is also the final de-duplication tiebreaker between
+otherwise-equal copies of the same book (see [`GET /api/v1/search`](#get-apiv1search)).
 
 Body: `{ "ids": [2, 1, 3] }`. Response `200`: `{ "libraries": [ … ] }` in the
 new order.

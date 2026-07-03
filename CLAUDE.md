@@ -38,10 +38,10 @@ Node 24 (workspace convention; `.nvmrc` in the sibling repos).
   explicitly marked "planned" - when one ships, search the whole tree for it.
 - **Audience separation**: no Go/TS symbols or source paths in the User Guide;
   the Developer Docs reference symbols/paths as inline code (not links).
-- **Hyphens, not em dashes**: use `-` or restructure the sentence, never `—`
-  (em dashes read as an AI tell and produce messy heading anchors). The sole
-  exception is a code block that reproduces literal program output. Full note in
-  `docs-developers/contributing/documentation.md`.
+- **Hyphens, not em dashes**: use `-` or restructure the sentence; do not use the
+  em dash character (em dashes read as an AI tell and produce messy heading
+  anchors). The sole exception is a code block that reproduces literal program
+  output. Full note in `docs-developers/contributing/documentation.md`.
 - The change→page mapping table lives in
   `docs-developers/contributing/documentation.md` - it is the single copy;
   don't duplicate it here.

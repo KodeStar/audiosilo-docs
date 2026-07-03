@@ -10,8 +10,9 @@ desktop app that sets up, connects to, and manages content for one or more
 audiosilo-server instances. The load-bearing principle is that **the server stays
 read-only over the network** - every file write happens client-side from this app,
 over SFTP or a local/mounted copy (see [Transfers](transfers.md)), and the server's
-HTTP API is consumed read-only for content, plus one non-destructive metadata write
-(see [Server integration](server-integration.md)).
+HTTP API is consumed read-only for content, plus two non-destructive writes -
+path-keyed metadata enrichment and per-user progress for the Audible position
+sync (see [Server integration](server-integration.md)).
 
 Architecturally it is a **Wails v2** app: a Go backend whose exported service
 methods are *bound* into a native webview running a React frontend. Wails generates
@@ -31,7 +32,7 @@ flowchart LR
     end
     UI --> BIND --> SVC --> CORE
     SVC -- "runtime.EventsEmit" --> UI
-    CORE -- "HTTP JSON (read-only + enrichment)" --> SRV["audiosilo-server"]
+    CORE -- "HTTP JSON (read-only + enrichment, progress sync)" --> SRV["audiosilo-server"]
     CORE -- "SFTP / local copy (file writes)" --> FS["library filesystem"]
     CORE -- "secrets" --> KC["OS keychain"]
 ```

@@ -16,7 +16,7 @@ AudioSilo is made of three pieces that work together. You only *have* to run the
 
 ### The server
 
-The heart of the system. It watches your audiobook folders, builds a fast search index, and streams the audio to your devices. It also includes a built-in admin console for managing libraries, users and sharing, and it can serve the web player itself - so one running server is a complete, listen-in-the-browser setup. It is designed from the start to be safe to expose to the internet.
+The heart of the system. It scans your audiobook folders, builds a fast search index, and streams the audio to your devices (new files show up when you browse to them or after a rescan). It also includes a built-in admin console for managing libraries, users and sharing, and it can serve the web player itself - so one running server is a complete, listen-in-the-browser setup. It is designed from the start to be safe to expose to the internet.
 
 Install it with [Docker](./getting-started/quickstart-docker.md) or as a [single downloadable program](./getting-started/install-binary.md).
 

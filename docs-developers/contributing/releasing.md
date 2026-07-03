@@ -37,8 +37,9 @@ independent pipelines:
 
 ### 2a. Docker image (`image.yml`, name: *server image*)
 
-Builds the multi-stage `Dockerfile`, baking the web player in at `/app/web` via
-`COPY --from` of the `WEB_IMAGE` build-arg, and pushes
+Builds the multi-stage `Dockerfile`, baking the web player in at `/app/web` from
+the `WEB_IMAGE` build-arg (mechanism in the
+[release pipeline](../architecture/release-pipeline.md)), and pushes
 `ghcr.io/kodestar/audiosilo-server` tagged with the semver version, the commit
 sha, and `latest`.
 
@@ -107,8 +108,9 @@ committed `internal/web/player/.gitkeep` keeps the embed compiling.)
 
 The end-to-end smoke test from `RELEASING.md`:
 
-1. `docker compose pull && docker compose up -d`; grab the admin password from
-   `docker compose logs`.
+1. `docker compose up -d`; grab the admin password from `docker compose logs`.
+   (If this machine ran a previous release, `docker compose pull` first - `up`
+   won't re-pull an already-cached `:latest`.)
 2. Open `/admin`, sign in, add a library, create a user, click **Copy invite**.
 3. **Web:** open the invite link → connect screen → **Open web player** (or
    visit `/web`) → it exchanges the token and drops you into the player.
@@ -124,8 +126,8 @@ Worth checking at the same time: `GET /api/v1/server` reports the new version
 
 The native apps are a **separate pipeline** from everything above - nothing about
 a server/web release touches them, and they don't run in CI. The full personal
-runbook is the workspace `~/dev/audiosilo/STORE-DEPLOYMENT.md` (kept at the
-workspace root, deliberately uncommitted). The honest summary:
+runbook is the workspace `~/dev/audiosilo/STORE-DEPLOYMENT.md` (committed to the
+meta repo at the workspace root). The honest summary:
 
 - **Builds go through EAS Build** - the app has a custom native module
   (`modules/audiosilo-player`) so it must be compiled; Expo Go can't run it.

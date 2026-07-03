@@ -225,8 +225,8 @@ requirement of the native-distribution pipeline (see
 **Pragmas.** Every connection gets `journal_mode(WAL)`, `busy_timeout(5000)`,
 and `foreign_keys(ON)` appended to its DSN (`store.dsnPragmas`).
 `foreign_keys` defaults **off** per SQLite connection, and the schema relies on
-~28 `ON DELETE CASCADE` rules (deleting a user removes their sessions, codes,
-progress, bookmarks, notes, history, and grants) - so the pragmas are appended
+`ON DELETE CASCADE` rules throughout (deleting a user removes their sessions,
+codes, progress, bookmarks, notes, history, and grants) - so the pragmas are appended
 unconditionally, with the correct `?`/`&` separator, rather than skipped when a
 DSN already carries query params.
 

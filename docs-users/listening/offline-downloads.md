@@ -47,7 +47,7 @@ Yes, the **web player can download books too** - no app required. Downloads are 
 
 A few browser realities to know:
 
-- It needs a **secure connection** (an `https://` address, which your server normally has). On a plain `http://` connection the Downloads tab will tell you: *"Offline downloads aren't available in this browser. Use the installed app or a secure (https) connection."*
+- It needs a **secure connection** (an `https://` address, which your server normally has). On a plain `http://` connection the Downloads tab disappears from the navigation, and a book's download button shows as a disabled **Downloads unavailable** instead.
 - Storage belongs to that browser on that machine. **Clearing the browser's site data deletes your downloads** (never your books or progress - those live on the server).
 - Browsers can evict stored data if the disk runs very low. AudioSilo asks the browser to keep its storage persistent, and installing the web player as an app (below) makes the browser much more protective of it - but a native [mobile app](mobile-apps.md) download is still the most bomb-proof option for long trips.
 - Very old browsers may not support offline storage at all; the Downloads screen will say so rather than fail silently.
@@ -63,5 +63,5 @@ The web player is an installable app - a *Progressive Web App*. Installing it ge
 Once installed, it behaves like any other app - and because installation marks the site as important to you, the browser guards your downloaded books' storage far more strongly.
 
 :::note
-Installing the web player and installing the native mobile app are different things. The PWA is the web player in an app suit; the native apps add lock-screen chapter controls, tighter background playback, and the like - see [The mobile apps](mobile-apps.md).
+Installing the web player and installing the native mobile app are different things. The PWA is the web player in an app suit; the native apps add richer lock-screen controls (chapter-aware on Android), tighter background playback, and the like - see [The mobile apps](mobile-apps.md).
 :::
