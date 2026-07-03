@@ -65,8 +65,10 @@ overview and [Auth & security](../auth-and-security.md) for the trust model.
 
 ### `POST /api/v1/auth/redeem`
 
-*Public.* Exchanges an auth code (admin-minted invite **or** user-owned
-recovery code - both redeem identically) for a short-lived pairing payload.
+*Public.* Validates an auth code (admin-minted invite **or** user-owned
+recovery code - both redeem identically) and returns a pairing payload
+**without consuming a use** - the use is claimed when a device actually
+completes `/auth/exchange`, so opening an invite link costs nothing.
 Rate-limited: 10 failed attempts per IP per 15 minutes.
 
 Request body:
@@ -88,13 +90,21 @@ Response `200` - the pairing payload (`PairingPayload` in `internal/api/qr.go`):
   "links": {
     "web": "https://books.example.com/web",
     "admin": "https://books.example.com/admin"
-  }
+  },
+  "code_expires_at": "2026-07-04T09:30:00Z",
+  "uses_remaining": 5
 }
 ```
 
-`pairing_token` is **single-use** and expires after **10 minutes**; complete it
-with `/auth/exchange`. `web_url` is what the QR encodes (opens the native app
-via Universal/App Links on claimed domains, else the embedded web player);
+`pairing_token` is **as redeemable as the code that minted it**: redeemed from
+an invite it inherits the invite's remaining uses and expiry (one QR can pair
+several devices, each exchange claiming one use); redeemed from a recovery code
+it lasts 10 minutes (multi-scan within that window, since recovery codes are
+unlimited). Complete it with `/auth/exchange`. `code_expires_at` and
+`uses_remaining` describe the parent invite's budget (advisory - concurrent
+exchanges may consume uses after the redeem); both are omitted for recovery
+codes and unlimited invites. `web_url` is what the QR encodes (opens the native
+app via Universal/App Links on claimed domains, else the embedded web player);
 `uri` is the custom-scheme equivalent for an explicit "Open in app" action.
 `links.ios`/`links.android` (store links) are omitted until the store apps ship.
 `base_url` honors the configured `public_url`, falling back to the request host.
@@ -107,8 +117,12 @@ via Universal/App Links on claimed domains, else the embedded web player);
 
 ### `POST /api/v1/auth/exchange`
 
-*Public.* Turns a pairing token into a durable, device-named session token. The
-pairing token is revoked on success.
+*Public.* Turns a pairing token into a durable, device-named session token.
+This is where an invite use is claimed: a token minted by redeeming an invite
+stays valid afterwards (governed by the invite's remaining uses and expiry, so
+one QR can pair several devices), while a token from `/auth/pair` or the demo
+flow is single-use and revoked on success. Shares the redeem rate limiter:
+10 failed attempts per IP per 15 minutes.
 
 | Field | Type | Required | Notes |
 |---|---|---|---|
@@ -135,7 +149,12 @@ Response `200`:
 | Status | Meaning |
 |---|---|
 | `400` | `pairing_token` missing |
-| `401` | invalid, expired, or already-used pairing token |
+| `401` | `invite already used on all its devices - ask for a new invite` (the parent invite's use cap is spent) |
+| `401` | `invite has expired - ask for a new invite` (the parent invite expired after the redeem) |
+| `401` | `invalid or expired pairing token` (anything else: bogus/revoked token, single-use token already exchanged, code owner disabled) |
+| `429` | redeem lockout tripped |
+
+A refused exchange never burns an invite use.
 
 ### `POST /api/v1/auth/login`
 

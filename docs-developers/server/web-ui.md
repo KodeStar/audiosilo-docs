@@ -88,9 +88,12 @@ sequenceDiagram
 
 `connect.js` auto-fills and submits when a fragment code is present (a code
 can also be typed into the form - invite and recovery codes redeem through
-the same field). The redeem response (`PairingPayload`, built by
-`buildPairing` in `internal/api/qr.go`) carries the single-use pairing token
-in two carriers:
+the same field). Redeeming consumes nothing: the pairing token in the
+response is linked to the code and honors its uses/expiry, so the page tells
+the user each device can scan the QR (and, for a bounded invite, how many
+devices it can still pair, from `uses_remaining`). The redeem response
+(`PairingPayload`, built by `buildPairing` in `internal/api/qr.go`) carries
+the pairing token in two carriers:
 
 - **`web_url`** = `<base>/web/connect?token=…` - what the **QR encodes**.
   Scanning it opens the native app when the app claims the domain (Universal
