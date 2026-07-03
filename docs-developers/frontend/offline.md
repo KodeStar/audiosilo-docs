@@ -29,8 +29,11 @@ by Metro exactly like the playback service (`engine.native.ts` /
 - `probe?()` - *does offline playback work at all in this environment?* A
   self-test needing no real download; web-only.
 - `localUri?(connectionId, libraryId, path, fileName)` - recompute a stored
-  file's current absolute URI from the live storage root; **native-only** (see
-  relocation below).
+  file's current URI from the live storage root (see relocation below). **Both
+  engines** implement it: native rebuilds the container-current absolute path
+  (it drifts between installs); web recomputes the deterministic virtual cache
+  URL so a legacy download adopted into a connection on hydrate picks up its new
+  connection-scoped prefix.
 - `migrateLegacyBook(libraryId, path, target)` - one-time adoption of a
   pre-connection-scoping download: move its files under `target`'s scoped
   location and return `true`, or delete them and return `false` when `target`
@@ -167,9 +170,11 @@ player needs to build a queue and render with no network.
    `engine.localUri(connectionId, libraryId, path, fileName(i, relPath))`. This
    only works because the on-disk filename scheme is owned by the store
    (`fileName` + `cover.jpg`) and `engine.localUri` computes the same
-   deterministic layout - **keep those two in agreement**. On web `localUri` is
-   absent and relocation is a no-op (cache URLs are stable keys, not container
-   paths).
+   deterministic layout - **keep those two in agreement**. Web implements
+   `localUri` too: its cache URLs are stable keys rather than container paths, so
+   there is no drift to correct, but a legacy download adopted into a connection
+   on hydrate has been re-put under the new scoped prefix - relocation recomputes
+   its URL there as well so the existence check finds it.
 3. **Only fully-downloaded books survive a relaunch.** The engines can't resume
    a download interrupted by an app kill, so partial entries are dropped and
    cleaned up. A surviving entry requires `status === 'downloaded'` and every
