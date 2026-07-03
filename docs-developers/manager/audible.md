@@ -99,8 +99,10 @@ fails those with opaque errors (an HTTP 400, or an empty voucher).
   a Plus/included title that left the catalog).
 
 All checks are defensive - a missing field never marks a book unavailable. The
-UI disables selection and tags these rows, and `AudibleService.ImportSelected`
-fails them up front with the reason instead of attempting a license request.
+UI disables selection and tags these rows, and `importjob.Run` fails any
+unavailable record with the reason instead of attempting a license request -
+the guard lives in the pipeline, so it holds for every source, not just this
+view.
 
 ## Stage 3: pre-flight and matching
 
