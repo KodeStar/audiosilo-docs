@@ -150,15 +150,16 @@ player needs to build a queue and render with no network.
 `hydrate()` (called from the root layout) reloads the registry and prunes it:
 
 1. **Adopt legacy (pre-connection-scoping) downloads.** An entry saved by an
-   older build has no `connectionId`. Hydrate first `await whenSessionReady()`
-   (the session store hydrates in parallel and itself migrates a legacy
-   single-session install into the connection list, so reading the connection
-   list any earlier would see none), then picks `adoptionTarget()` - the sole
-   connection, else the active one, else the first, else `null`. Each legacy
+   older build has no `connectionId`. Only when such an entry exists does hydrate
+   `await whenSessionReady()` (the session store hydrates in parallel and itself
+   migrates a legacy single-session install into the connection list, so reading
+   the connection list any earlier would see none), then pick `adoptionTarget()` -
+   the active connection, else the first, else `null`. Each legacy
    entry is passed to `engine.migrateLegacyBook(libraryId, path, target)`, which
    moves its files once into the scoped location (or deletes them when the target
    is `null`), and is then re-keyed under `(target, libraryId, path)`. This is a
-   one-time migration - once every entry carries a `connectionId` it's a no-op.
+   one-time migration - once every entry carries a `connectionId`, hydration skips
+   the session wait entirely instead of serializing behind it every launch.
 2. **`relocateEntry`.** Downloads store *absolute* file URIs, but the iOS
    app's document-container path can change between installs - notably across
    dev rebuilds. A persisted URI then goes stale even though the file is still

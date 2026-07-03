@@ -181,7 +181,9 @@ The offline-safe write path for listening progress:
   book starts playing. It groups the queue **by connection** and replays each save
   through **its own** connection's client (`resolveClient`, keyed on the save's
   `connectionId`) - never against whichever server happens to be active - so a
-  position captured on server B can never be written to server A. A save whose
+  position captured on server B can never be written to server A. Groups replay
+  concurrently (order preserved within each connection), so one slow or dead
+  server can't stall another server's replay. A save whose
   connection was removed is unroutable and dropped; a connection drop mid-flush
   keeps the remaining items; only the active connection's success/failure moves
   the reachability banner. It also waits for the session to hydrate
@@ -191,10 +193,12 @@ The offline-safe write path for listening progress:
   that drives resume - the semantics live in
   [Playback](playback.md#resume-protection).
 - **One-time migration + purge.** `ensureMigrated` (memoized, run before any
-  read-modify-write and gated on `whenSessionReady()`) adopts pre-multi-server
-  records into `adoptionTarget()` (or drops them when no connection exists),
-  re-keying and re-deduping mirror and queue. An `onConnectionRemoved` handler
-  drops a removed connection's mirror records and queued saves.
+  read-modify-write) adopts pre-multi-server records into `adoptionTarget()`
+  (or drops them when no connection exists), re-keying and re-deduping mirror
+  and queue. It waits on `whenSessionReady()` only when a legacy record actually
+  exists - with nothing to migrate it returns without blocking on session
+  hydration. An `onConnectionRemoved` handler drops a removed connection's
+  mirror records and queued saves.
 
 :::note No realtime sync
 Progress sync is REST-only. The server advertises a `websocket` capability flag
