@@ -65,10 +65,10 @@ again (only a secure hash is kept). In order of least to most drastic:
    [Users & invites](./admin/users-and-invites.md).
 3. **Still signed in somewhere?** If you saved the first-run **auth code**, it
    still works (it has no expiry) - it can pair the player app as the admin
-   user, so you can keep listening. The one exception is if an admin later
-   minted a fresh invite for that admin account: a new invite supersedes and
-   deletes the still-redeemable first-run code. It does not open the admin
-   console, though; that needs the password.
+   user, so you can keep listening, though it won't open the admin console
+   (that needs the password). The exception: minting a fresh invite for the
+   admin account retires the first-run code, like any older invite (see
+   [one active invite per user](./admin/users-and-invites.md#one-active-invite-per-user)).
 4. **Last resort: reset the database.** Stop the server, move the database
    files (`audiosilo.db`, plus any `audiosilo.db-wal` / `audiosilo.db-shm`) out
    of the data directory, and start it again. The server treats this as a

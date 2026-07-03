@@ -53,7 +53,7 @@ selected section on the right. The sidebar has four sections:
 
 | Section | What it's for |
 |---|---|
-| **Overview** | Totals and a snapshot of what people are listening to, current as of when you open it. |
+| **Overview** | Totals and a snapshot of what people are listening to. |
 | **Libraries** | The folders scanned for audiobooks: add, reorder, rescan, correct folder detection, delete. See [Libraries](libraries.md). |
 | **Users** | Accounts: create users, manage roles and passwords, mint invite codes, grant access, disable or delete. See [Users and invites](users-and-invites.md). |
 | **Shares** | Named sets of folders you grant to users to control who sees what. See [Sharing](sharing.md). |
@@ -76,8 +76,8 @@ Four totals across the whole server:
 - **Libraries** - how many library folders are configured.
 - **Users** - how many accounts exist (admins and listeners).
 - **Listening now** - how many books are currently in progress (started but not
-  finished) across all users. This is counted from the currently-listening feed
-  below, which lists only the newest 200 in-progress items, so on a very busy
+  finished) across all users. It counts the currently-listening feed below,
+  which lists only the most recent in-progress items, so on a very busy
   instance it can undercount.
 
 ### Books per library
@@ -96,9 +96,9 @@ A cross-user feed of listening activity. Each row shows:
 - **when they last listened** (as a relative time like "2h ago"),
 - a **progress bar** with a percentage - or "done" once the book is finished.
 
-The feed reflects saved listening progress as of when you open the Overview -
-it doesn't refresh on its own, so reopen the section to get the latest
-(players report progress periodically while playing).
+The feed shows saved listening progress as of when you opened the Overview -
+reopen the section to refresh (players report progress periodically while
+playing).
 
 :::note
 The console holds no special powers of its own - every action it performs is

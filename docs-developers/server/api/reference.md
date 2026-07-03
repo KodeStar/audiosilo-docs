@@ -12,10 +12,7 @@ in the [API conventions](index.md) page and are not repeated per endpoint.
 *Admin*: session token + `admin` role.
 
 All `/api/v1` bodies and responses are JSON. Timestamps are RFC 3339. Remember
-that empty list fields may serialize as `null`. The one exception is the
-media file-serving layer (`stream`/`transcode`): its 404s and transcode
-failures are plain-text `http.Error` responses, not the JSON `{ "error": … }`
-envelope.
+that empty list fields may serialize as `null`.
 
 ## Server & meta
 
@@ -398,7 +395,10 @@ cursor → `400`.
 
 *Session.* Full-text search (FTS5 over title/author/series/narrator) across
 every library the caller can reach, scoped per-library to their share rules.
-Results are relevance-ranked and de-duplicated across libraries.
+Results are relevance-ranked and de-duplicated across libraries. De-dup keeps
+the best copy of a book: format tier first (M4B/AAC over MP3 over anything
+else), then single-file over multipart, then higher bitrate, then library
+order (`internal/catalog/dedup.go`).
 
 | Query param | Type | Default | Notes |
 |---|---|---|---|
@@ -411,8 +411,8 @@ de-duplication annotations:
 | Field | Type | Notes |
 |---|---|---|
 | `dedup_key` | string | groups copies of the same logical book; a display hint, **not** an identity |
-| `multi_file` | bool | whether this copy is multipart. De-dup ranks format tier first (M4B/AAC > MP3 > other), then single-file over multipart - so a multipart M4B can beat a single-file MP3 |
-| `other_locations` | array | at most one entry per **other** library (the best copy in each); additional copies inside the winner's own library are omitted: `{ library_id, library_name, path, format?, size?, multi_file? }` |
+| `multi_file` | bool | whether this copy is multipart |
+| `other_locations` | array | the best copy in each **other** library, one entry per library (copies in the winner's own library are omitted): `{ library_id, library_name, path, format?, size?, multi_file? }` |
 
 ### `GET /api/v1/books/recent`
 
@@ -931,8 +931,8 @@ Response `201`: the created library. `409` `name already taken`.
 ### `PUT /api/v1/admin/libraries/order`
 
 Sets display order from an ordered id list (position 0 first); ids not listed
-keep their order. This order is also the de-duplication tiebreaker when the same
-book exists in multiple libraries.
+keep their order. This order is also the final de-duplication tiebreaker between
+otherwise-equal copies of the same book (see [`GET /api/v1/search`](#get-apiv1search)).
 
 Body: `{ "ids": [2, 1, 3] }`. Response `200`: `{ "libraries": [ … ] }` in the
 new order.
