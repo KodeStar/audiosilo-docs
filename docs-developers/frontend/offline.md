@@ -37,12 +37,12 @@ by Metro exactly like the playback service (`engine.native.ts` /
   is `null`. See the migration step below.
 - `removeBook(connectionId, libraryId, path)`, `totalBytesUsed`.
 
-Every content op is now scoped by **connection id** (`Connection.id` from the
-session store) as its first coordinate: the app can be signed in to several
-servers at once, and two of them can each have a "library 1", so a download
-addressed by `(libraryId, path)` alone would collide across servers (and the
-offline progress queue could replay one server's positions onto another). Threading
-`connectionId` through the storage keys and file layout is what keeps them apart.
+Every content op is scoped by **connection id** (`Connection.id` from the
+session store) as its first coordinate - the same `(connectionId, libraryId,
+path)` scoping all client state uses (see [State & data](state-and-data.md)).
+Without it a download addressed by `(libraryId, path)` alone would collide
+across two servers that each have a "library 1"; threading `connectionId`
+through the storage keys and file layout keeps them apart.
 
 ### Native engine (`engine.native.ts`) - expo-file-system
 
@@ -71,13 +71,12 @@ There is no filesystem on web. Downloaded bytes live in the **Cache API**
 <origin><BASE_URL>/_offline/<connectionId>/<libraryId>/<slug(rel_path)>/<fileName>
 ```
 
-The extra `<connectionId>` segment needs **no service-worker change**: `public/sw.js`
-matches offline media by `path.includes('/_offline/')`, so it serves the scoped
-URLs unchanged. The store treats that virtual URL exactly like a native `file://`
-URI. At play
-time, the service worker intercepts requests for `…/_offline/…` and serves the
-cached bytes - **with Range support** - so a downloaded book plays in `<audio>`
-with no network.
+The extra `<connectionId>` segment needs **no service-worker change**:
+`public/sw.js` matches offline media by `path.includes('/_offline/')`, so it
+serves the scoped URLs unchanged. The store treats that virtual URL exactly
+like a native `file://` URI. At play time, the service worker intercepts
+requests for `…/_offline/…` and serves the cached bytes - **with Range
+support** - so a downloaded book plays in `<audio>` with no network.
 
 Implementation notes worth knowing before touching it:
 
@@ -105,8 +104,7 @@ Implementation notes worth knowing before touching it:
 `useDownloads` (Zustand) keeps a `Registry` of `DownloadEntry` keyed by
 `downloadKey(connectionId, libraryId, path)`
 (`"<connectionId>:<libraryId>:<path>"`), persisted as JSON under
-`audiosilo.downloads` in AsyncStorage. Every entry carries its `connectionId`, so
-downloads from two servers that share a library id never collide.
+`audiosilo.downloads` in AsyncStorage. Every entry carries its `connectionId`.
 
 **Entry shape** (`src/downloads/types.ts`): `status` (`queued → downloading →
 downloaded | error`), aggregate `progress` (0..1), `bytes`/`totalBytes`, an
@@ -150,16 +148,16 @@ player needs to build a queue and render with no network.
 `hydrate()` (called from the root layout) reloads the registry and prunes it:
 
 1. **Adopt legacy (pre-connection-scoping) downloads.** An entry saved by an
-   older build has no `connectionId`. Only when such an entry exists does hydrate
-   `await whenSessionReady()` (the session store hydrates in parallel and itself
-   migrates a legacy single-session install into the connection list, so reading
-   the connection list any earlier would see none), then pick `adoptionTarget()` -
-   the active connection, else the first, else `null`. Each legacy
-   entry is passed to `engine.migrateLegacyBook(libraryId, path, target)`, which
-   moves its files once into the scoped location (or deletes them when the target
-   is `null`), and is then re-keyed under `(target, libraryId, path)`. This is a
-   one-time migration - once every entry carries a `connectionId`, hydration skips
-   the session wait entirely instead of serializing behind it every launch.
+   older build has no `connectionId`: each is passed to
+   `engine.migrateLegacyBook(libraryId, path, target)`, which moves its files
+   once into the scoped location (or deletes them when the target is `null`),
+   then re-keyed under `(target, libraryId, path)`. The `target` comes from
+   `adoptionTarget()` - the active connection, else the first, else `null` -
+   which needs the connection list, so hydrate `await whenSessionReady()` first
+   (the session store hydrates in parallel and itself migrates a legacy
+   single-session install into the connection list, so reading it any earlier
+   would see none). This runs **only when a legacy entry exists**; once every
+   entry carries a `connectionId`, hydration skips the session wait.
 2. **`relocateEntry`.** Downloads store *absolute* file URIs, but the iOS
    app's document-container path can change between installs - notably across
    dev rebuilds. A persisted URI then goes stale even though the file is still
