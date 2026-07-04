@@ -15,7 +15,7 @@ Tap **Listen** on any book and the player opens. On a phone it's a full-screen v
 - **Chapter list** - tap the chapter title itself to open the full list of chapters (or files) and jump anywhere. On the book's detail page, tapping a chapter row does the same.
 - **Seek bar** - the scrubber is **chapter-relative**: it spans the current chapter, with the chapter's elapsed and remaining time at each end. The centre readout shows time left in the whole book at your current speed, e.g. *"5h 12m left (1.25×)"*.
 
-Along the bottom of the player: **playback speed**, **history**, **notes**, and the **sleep timer**. The bookmark button sits at the top right.
+Along the bottom of the player: **playback speed**, **history**, an **AirPlay / cast** button, and the **sleep timer**. The **notes** and **bookmark** buttons sit at the top right.
 
 ![The player on a phone](/img/screenshots/web-player/phone-player.png)
 
@@ -46,6 +46,16 @@ The countdown is real ("wall clock") time: listening at 2× speed, an end-of-cha
 - **History** - your past listening sessions on this book, labelled by chapter.
 
 All three are saved to your account, not the device.
+
+## Play to another speaker (AirPlay / Cast)
+
+The **AirPlay / cast** button along the bottom of the player hands audio off to another output:
+
+- **iPhone / iPad** - opens the AirPlay picker, so you can send playback to a HomePod, an Apple TV, or AirPlay speakers.
+- **Android** - opens the system output switcher, for a Bluetooth speaker (an Echo paired as a speaker, for example) or a Cast device.
+- **Web** - uses AirPlay in Safari, or the browser's Cast picker in Chrome. The button only appears in browsers that support one of these; elsewhere it's hidden.
+
+Your position keeps syncing as normal while playing to another device.
 
 ## Your position follows you
 
