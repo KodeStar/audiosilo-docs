@@ -32,6 +32,20 @@ The **Downloads** tab lists everything stored on the current device:
 
 Downloads are per-device: what you downloaded on your phone isn't automatically on your tablet.
 
+## Downloads belong to their server
+
+Each downloaded book belongs to the **server you downloaded it from**. If you've connected the app to [more than one server](connecting.md), the Downloads screen shows all of them together, but each book stays tied to its own server.
+
+That matters when you disconnect a server:
+
+- **Removing a server** (Settings → Servers) or **signing out** of it **deletes that server's downloaded books from this device**, along with any listening progress that hadn't synced back to the server yet.
+- The app warns you first when the server you're removing has books downloaded on the device, so you're never caught out.
+- Your other servers' downloads are untouched, and nothing on the server itself is affected - reconnect and you can re-download any time.
+
+:::tip
+If you just want to free up space, use the **trash button** on a single book instead - that removes one book and leaves the server connected.
+:::
+
 ## How downloaded playback differs
 
 Honestly? Barely at all - that's the point:

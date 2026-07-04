@@ -21,17 +21,31 @@ moment its download finishes.
 by Metro exactly like the playback service (`engine.native.ts` /
 `engine.web.ts`; `engine.ts` is an unsupported stub for type resolution):
 
-- `downloadFile(libraryId, path, fileName, url, onProgress?, signal?)` →
-  local URI
+- `downloadFile(connectionId, libraryId, path, fileName, url, onProgress?,
+  signal?)` → local URI
 - `fileExists(localUri)`
 - `verify?(localUri)` - *can this file actually be played back offline right
   now?* Stronger than existence; web-only.
 - `probe?()` - *does offline playback work at all in this environment?* A
   self-test needing no real download; web-only.
-- `localUri?(libraryId, path, fileName)` - recompute a stored file's current
-  absolute URI from the live storage root; **native-only** (see relocation
-  below).
-- `removeBook`, `totalBytesUsed`.
+- `localUri?(connectionId, libraryId, path, fileName)` - recompute a stored
+  file's current URI from the live storage root (see relocation below). **Both
+  engines** implement it: native rebuilds the container-current absolute path
+  (it drifts between installs); web recomputes the deterministic virtual cache
+  URL so a legacy download adopted into a connection on hydrate picks up its new
+  connection-scoped prefix.
+- `migrateLegacyBook(libraryId, path, target)` - one-time adoption of a
+  pre-connection-scoping download: move its files under `target`'s scoped
+  location and return `true`, or delete them and return `false` when `target`
+  is `null`. See the migration step below.
+- `removeBook(connectionId, libraryId, path)`, `totalBytesUsed`.
+
+Every content op is scoped by **connection id** (`Connection.id` from the
+session store) as its first coordinate - the same `(connectionId, libraryId,
+path)` scoping all client state uses (see [State & data](state-and-data.md)).
+Without it a download addressed by `(libraryId, path)` alone would collide
+across two servers that each have a "library 1"; threading `connectionId`
+through the storage keys and file layout keeps them apart.
 
 ### Native engine (`engine.native.ts`) - expo-file-system
 
@@ -39,7 +53,7 @@ Uses the **new expo-file-system API** (`Directory`/`File`/`Paths`). Files live
 under the **document directory** (persistent, not cache-evicted):
 
 ```
-<Paths.document>/downloads/<libraryId>/<slug(rel_path)>/
+<Paths.document>/downloads/<connectionId>/<libraryId>/<slug(rel_path)>/
     0.mp3, 1.mp3, …      # fileName(i, relPath): file index + original extension
     cover.jpg
 ```
@@ -57,13 +71,15 @@ There is no filesystem on web. Downloaded bytes live in the **Cache API**
 **synthetic same-origin URLs** inside the service worker's scope:
 
 ```
-<origin><BASE_URL>/_offline/<libraryId>/<slug(rel_path)>/<fileName>
+<origin><BASE_URL>/_offline/<connectionId>/<libraryId>/<slug(rel_path)>/<fileName>
 ```
 
-The store treats that virtual URL exactly like a native `file://` URI. At play
-time, the service worker intercepts requests for `…/_offline/…` and serves the
-cached bytes - **with Range support** - so a downloaded book plays in `<audio>`
-with no network.
+The extra `<connectionId>` segment needs **no service-worker change**:
+`public/sw.js` matches offline media by `path.includes('/_offline/')`, so it
+serves the scoped URLs unchanged. The store treats that virtual URL exactly
+like a native `file://` URI. At play time, the service worker intercepts
+requests for `…/_offline/…` and serves the cached bytes - **with Range
+support** - so a downloaded book plays in `<audio>` with no network.
 
 Implementation notes worth knowing before touching it:
 
@@ -89,8 +105,9 @@ Implementation notes worth knowing before touching it:
 ## The registry store (`src/downloads/store.ts`)
 
 `useDownloads` (Zustand) keeps a `Registry` of `DownloadEntry` keyed by
-`downloadKey(libraryId, path)` (`"<libraryId>:<path>"`), persisted as JSON under
-`audiosilo.downloads` in AsyncStorage.
+`downloadKey(connectionId, libraryId, path)`
+(`"<connectionId>:<libraryId>:<path>"`), persisted as JSON under
+`audiosilo.downloads` in AsyncStorage. Every entry carries its `connectionId`.
 
 **Entry shape** (`src/downloads/types.ts`): `status` (`queued → downloading →
 downloaded | error`), aggregate `progress` (0..1), `bytes`/`totalBytes`, an
@@ -101,10 +118,14 @@ player needs to build a queue and render with no network.
 
 ### Lifecycle
 
-- **Queue**: `download(api, libraryId, book, chapterData?)` registers a
+- **Queue**: `download(connectionId, libraryId, book, chapterData?)` registers a
   `queued` entry and pushes its key onto a module-level FIFO; **one book
   downloads at a time** (`runQueue`/`runOne`). Repeat requests for a
-  non-errored entry are ignored.
+  non-errored entry are ignored. No `ApiClient` is passed in - `runOne` resolves
+  the entry's **own** server client via `resolveClient(entry.connectionId)`
+  (`src/api/connection-clients.ts`), so two servers' queued downloads never race a
+  shared client; a queued download whose connection was removed errors the entry
+  instead of downloading against the wrong server.
 - **Run** (`runOne`): file specs come from `bookFileSpecs` in
   `src/playback/book-queue.ts`, so **download order ≡ play order**. The cover
   downloads first (optional - a cover failure is swallowed, but an abort still
@@ -129,25 +150,48 @@ player needs to build a queue and render with no network.
 
 `hydrate()` (called from the root layout) reloads the registry and prunes it:
 
-1. **`relocateEntry` first.** Downloads store *absolute* file URIs, but the iOS
+1. **Adopt legacy (pre-connection-scoping) downloads.** An entry saved by an
+   older build has no `connectionId`: each is passed to
+   `engine.migrateLegacyBook(libraryId, path, target)`, which moves its files
+   once into the scoped location (or deletes them when the target is `null`),
+   then re-keyed under `(target, libraryId, path)`. The `target` comes from
+   `adoptionTarget()` - the active connection, else the first, else `null` -
+   which needs the connection list, so hydrate `await whenSessionReady()` first
+   (the session store hydrates in parallel and itself migrates a legacy
+   single-session install into the connection list, so reading it any earlier
+   would see none). This runs **only when a legacy entry exists**; once every
+   entry carries a `connectionId`, hydration skips the session wait.
+2. **`relocateEntry`.** Downloads store *absolute* file URIs, but the iOS
    app's document-container path can change between installs - notably across
    dev rebuilds. A persisted URI then goes stale even though the file is still
    on disk at the same relative location; without relocation the existence
    check below fails and the book is dropped **and deleted**. `relocateEntry`
    rebuilds every file URI (and `cover.jpg`) from the live root via
-   `engine.localUri(libraryId, path, fileName(i, relPath))`. This only works
-   because the on-disk filename scheme is owned by the store (`fileName` +
-   `cover.jpg`) and `engine.localUri` computes the same deterministic layout -
-   **keep those two in agreement**. On web `localUri` is absent and relocation
-   is a no-op (cache URLs are stable keys, not container paths).
-2. **Only fully-downloaded books survive a relaunch.** The engines can't resume
+   `engine.localUri(connectionId, libraryId, path, fileName(i, relPath))`. This
+   only works because the on-disk filename scheme is owned by the store
+   (`fileName` + `cover.jpg`) and `engine.localUri` computes the same
+   deterministic layout - **keep those two in agreement**. Web implements
+   `localUri` too: its cache URLs are stable keys rather than container paths, so
+   there is no drift to correct, but a legacy download adopted into a connection
+   on hydrate has been re-put under the new scoped prefix - relocation recomputes
+   its URL there as well so the existence check finds it.
+3. **Only fully-downloaded books survive a relaunch.** The engines can't resume
    a download interrupted by an app kill, so partial entries are dropped and
    cleaned up. A surviving entry requires `status === 'downloaded'` and every
    file passing `engine.fileExists`.
-3. Surviving manifests **seed the React Query cache** (`qk.item` and
-   `qk.chapters`), so the book screen renders instantly offline.
-4. On web, `probe()` then runs and may downgrade `supported` - the UI hides
+4. Surviving manifests **seed the React Query cache** (`qk.item(connectionId, …)`
+   and `qk.chapters(connectionId, …)`), so the book screen renders instantly
+   offline.
+5. On web, `probe()` then runs and may downgrade `supported` - the UI hides
    downloads rather than offering ones that won't play offline.
+
+**Purge on connection removal.** The store registers an `onConnectionRemoved`
+handler (from `src/stores/session.ts`): when a connection is removed (Settings →
+Servers, or sign-out), it aborts any in-flight transfer for that connection,
+deletes its books' files (`engine.removeBook`), and drops their entries. Re-adding
+the server mints a **new** id, so those records would otherwise be unreachable
+forever. The connection-remove and sign-out UI warn the user first when the server
+has downloads on the device.
 
 ## Playing downloaded content
 
