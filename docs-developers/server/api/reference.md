@@ -24,6 +24,7 @@ else and gate features on the flags.
 ```json
 {
   "name": "AudioSilo",
+  "server_id": "kx8Qz1c7m2Vw0aB3dEfGh",
   "version": "1.4.2",
   "api": "v1",
   "capabilities": {
@@ -38,7 +39,12 @@ else and gate features on the flags.
 }
 ```
 
-`version` is stamped from the release tag (`"dev"` for local builds).
+`server_id` is a stable, per-install identity minted once and persisted in
+`config.yaml` (so it survives a database rebuild). It never changes for the life of
+the install; clients use it as the identity for a paired server and key their
+per-server state (downloads, progress, cache) on it. It is also returned by the
+pairing exchange (`POST /auth/exchange`) and login/demo responses, so a client has
+it the moment it pairs. `version` is stamped from the release tag (`"dev"` for local builds).
 `transcode` is true only when ffmpeg is configured; `web_player` only when the
 `/web` mount is populated; `upload` and `websocket` are reserved for future
 phases and currently always false.
@@ -134,6 +140,7 @@ Response `200`:
 ```json
 {
   "token": "Qm9WZbT5nR8sHc2fLdA7yUqPgVi4oXk1NwsE3vJx0eK",
+  "server_id": "kx8Qz1c7m2Vw0aB3dEfGh",
   "user": {
     "id": 4,
     "username": "sam",
@@ -145,6 +152,9 @@ Response `200`:
   }
 }
 ```
+
+`server_id` is the paired server's stable identity (see `GET /server`); the client
+adopts it as the connection's id.
 
 | Status | Meaning |
 |---|---|
