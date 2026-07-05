@@ -49,7 +49,10 @@ Selecting a server in the sidebar shows its detail view.
   (see [Deployment settings](#deployment-settings-and-in-place-updates)), an
   **Update now** button updates it in place; otherwise the banner tells you what
   to configure first. An up-to-date, manageable server instead offers **Re-pull &
-  restart stack**.
+  restart stack**. If the manager can't reach GitHub to look up the latest release
+  (for example when it has been rate-limited, or you're offline), it says so and
+  offers a **Retry** in place of the version comparison - the **Re-pull & restart
+  stack** button still works.
 - **Local server panel** - for a server created on this computer: running/stopped
   state, the folder it serves, **Start**/**Stop**, and **Open setup page** while
   first-run setup is pending.
