@@ -156,13 +156,31 @@ The plan shows each matched book's position on both sides, and the rule is
 **furthest wins**:
 
 - Positions further along **on Audible** are written to your server progress when
-  you click **Sync**.
-- Positions further along **on the server** are written back to Audible **only**
-  if you tick the confirmation checkbox - that write path is experimental.
+  you click **Sync**. A book that looks **finished** (its Audible position is at or
+  near the end) is marked finished on the server - so it shows under "Finished", not
+  as a stuck 99% "Continue listening". Each row shows the position **of** the book's
+  total length so you can judge; if the guess is wrong, **click the status** (`→
+  server` / `✓ finished`) to flip it before syncing.
+- Positions further along **on the server** are written back to Audible **only** if
+  you tick the **"Also write positions back to your Audible account"** box (that
+  write path is experimental). Until you tick it, the `→ Audible` rows are greyed out
+  and are **not** synced even if their own checkbox looks ticked - the box is the
+  master switch for writing to Audible.
 - Books within a few seconds of each other count as in sync; books with no server
   match are listed so you can fix the match from the backup table.
 
-The Audible view shows when stats last synced.
+Reconciling a large library takes a moment (the manager reads every book's
+position from Audible), so the plan shows a **progress bar** while it works.
+
+Every book in the plan has a **checkbox** (all ticked to start). Untick any you
+don't want to sync this time, or use the header checkbox to select or clear them
+all - only ticked books are synced.
+
+To leave a book out **permanently** - say a series your kids listen to on a shared
+Audible account - click **Ignore** on its row. Ignored books are remembered per
+library and skipped on every future sync; they collect under a collapsible
+**Ignored** list where you can **Restore** any of them. The Audible view also shows
+when stats last synced.
 
 ## Manager settings
 
