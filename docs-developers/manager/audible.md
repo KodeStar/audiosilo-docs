@@ -247,13 +247,51 @@ Audible and the server (`PlanStatsSync` / `ApplyStatsSync`):
   (`Client.LastPositions`, `GET /1.0/annotations/lastpositions`, tolerant of
   number-or-string `position_ms`); server positions from one
   `GET /me/progress` call. Books pair via the shared matcher plus any manual
-  overrides.
+  overrides. The ASIN list is **chunked** (a whole library in one query 414s;
+  the endpoint also 400s an over-long list) and the client **splits and retries
+  on a 400**, converging on Audible's undocumented per-request cap.
 - Direction is **furthest-wins** with a 5-second threshold (`syncDirection`):
   `to-server`, `to-audible`, `in-sync`, or `no-match`.
 - **Audible → server** writes reuse the player's own progress endpoint
-  (`PutProgress`), preserving the row's duration/finished/playback-speed and
-  bumping the version so last-write-wins accepts it - and re-check the fresh
-  server position so a user who listened between plan and apply isn't rewound.
+  (`PutProgress`), preserving the row's duration/playback-speed and bumping the
+  version so last-write-wins accepts it - and re-check the fresh server position
+  so a user who listened between plan and apply isn't rewound. A position **at
+  the end of the book** is written as **finished** (`StatsSyncItemView.Finish`,
+  the default guess from `atBookEnd`: within 2% of, or 3 minutes from, the
+  library's `runtime_length_min`) so a completed book lands under "Finished"
+  instead of a ~99% "Continue listening" entry; otherwise the existing finished
+  flag is kept. The guess is only a default - `PlanStatsSync` also returns each
+  book's `RuntimeSec`, the UI shows position **of** runtime per row, and clicking
+  a row's status flips `finished` (`ApplyStatsSync` receives the effective flag).
+  When the server has no prior progress row its `duration` is 0, so the write
+  falls back to `RuntimeSec` for the duration (else the player can't draw a bar or
+  "time left"; `resolveToServerWrite` centralises this) and clamps a position that
+  overshoots the minute-rounded runtime. A row that already matches on position but
+  is **missing its duration** (from an earlier sync that wrote 0) reads as
+  `in-sync`, so it would never be revisited - `PlanStatsSync` re-classifies such a
+  row as `to-server` when the runtime is known, so a re-sync repairs it.
+- **Mismatch guard**: the fuzzy matcher can grab the wrong book (a different volume
+  in a series); a matched **server position beyond the book's runtime** is the tell.
+  `PlanStatsSync` demotes such a match to `no-match` (synced in neither direction),
+  and `ApplyStatsSync` refuses it defensively - so a bad match never pushes a bogus
+  position to the real Audible account.
+- Both phases stream progress: `stats:plan` while reconciling, `stats:apply` while
+  writing, so the plan bar and the Sync button both show a percentage.
+- The plan UI (`StatsSyncView`) gives every changed row a **checkbox** (all
+  selected on load, plus a select-all header); only ticked books are sent to
+  `ApplyStatsSync`. The action column tags each row `→ server`, `✓ finished`, or
+  `→ Audible`. `PlanStatsSync` streams a **`stats:plan`** progress event
+  (`StatsPlanProgress`) as it fetches positions so a large library shows a moving
+  bar instead of a frozen spinner. The `→ Audible` rows are gated on the opt-in
+  below (disabled/dimmed until it's ticked), so an unchecked opt-in never writes
+  to Audible regardless of a row's own checkbox.
+- **Ignore** persists an ASIN in the override store's `Ignored` set
+  (`registry.Overrides.Ignored`, via `AudibleService.SetStatsIgnored` - the manual
+  match/destination overrides are preserved). `PlanStatsSync` flags those items
+  (`StatsSyncItemView.Ignored`); the UI drops them from the sync and lists them
+  under a collapsible "Ignored" group with a restore control. This is a permanent,
+  per-library opt-out (a shared account's kids' series), distinct from the
+  per-sync checkbox.
 - **Server → Audible** writes are opt-in (`allowAudibleWrite`, confirmed
   separately in the UI): each needs an ACR (`Client.ContentACR`, read from a
   license request - the only documented source) and then
