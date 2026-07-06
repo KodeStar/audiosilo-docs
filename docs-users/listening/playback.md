@@ -3,7 +3,7 @@ title: Playing a book
 description: "The player screen: chapters, skips, playback speed, the sleep timer, lock-screen controls, and how your position syncs across devices."
 ---
 
-Tap **Listen** on any book and the player opens. On a phone it's a full-screen view; on a desktop-sized window it lives in a panel beside the book's details. A mini player bar also floats at the bottom of every screen while something is playing - tap it to bring the full player back.
+Tap **Listen** on any book and the player opens. On a phone it's a full-screen view; on a desktop-sized window it lives in a panel beside the book's details. A **mini-player** also docks along the bottom of every screen while something is playing: the cover, the title and current chapter, the **time left in the book** at your current speed, and a skip-back and play/pause button, with a thin progress line underneath. Tap it to bring the full player back.
 
 ![The full player screen with cover, seek bar, and transport controls](/img/screenshots/web-player/player.png)
 
@@ -14,6 +14,10 @@ Tap **Listen** on any book and the player opens. On a phone it's a full-screen v
 - **Previous / next chapter** - the small arrows either side of the chapter title.
 - **Chapter list** - tap the chapter title itself to open the full list of chapters (or files) and jump anywhere. On the book's detail page, tapping a chapter row does the same.
 - **Seek bar** - the scrubber is **chapter-relative**: it spans the current chapter, with the chapter's elapsed and remaining time at each end. The centre readout shows time left in the whole book at your current speed, e.g. *"5h 12m left (1.25×)"*.
+
+:::tip
+If a book's chapters are just named after their audio files, AudioSilo tidies those names for display - dropping the file extension and turning underscores into spaces - so the title line stays readable. Real chapter titles are left exactly as they are.
+:::
 
 Along the bottom of the player: **playback speed**, **history**, an **AirPlay / cast** button, and the **sleep timer**. The **notes** and **bookmark** buttons sit at the top right.
 
