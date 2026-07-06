@@ -52,7 +52,7 @@ console.log('== warm demo session ==');
   const page = await ctx.newPage();
   await page.goto(BASE + 'demo', {waitUntil: 'networkidle', timeout: 60000});
   for (let i = 0; i < 30; i++) {
-    if ((await page.locator('div[tabindex="0"]:has(img)').count().catch(() => 0)) > 0) break;
+    if ((await page.locator('[role="button"]:has(img)').count().catch(() => 0)) > 0) break;
     await sleep(1000);
   }
   await sleep(1500);
@@ -107,7 +107,7 @@ async function captureProfile(name, viewport, dsf, shots) {
   });
 
   await step('book + player', async () => {
-    const card = page.locator('div[tabindex="0"]:has(img)').first();
+    const card = page.locator('[role="button"]:has(img)').first();
     await card.waitFor({state: 'visible', timeout: 20000});
     await card.scrollIntoViewIfNeeded().catch(() => {});
     await card.click({timeout: 12000});
