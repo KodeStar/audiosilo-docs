@@ -85,6 +85,8 @@ const config: Config = {
       logo: {
         alt: 'AudioSilo logo',
         src: 'img/logo.svg',
+        href: 'https://audiosilo.app',
+        target: '_self',
       },
       items: [
         {
