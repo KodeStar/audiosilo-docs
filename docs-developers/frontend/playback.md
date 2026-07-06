@@ -436,3 +436,25 @@ local files (`switchCurrentBookToLocal`, preferring the engine's gapless
 the engines do **not** yet auto-negotiate it for non-`direct_playable` codecs on
 web. That negotiation is a known open follow-up, not a shipped behavior.
 :::
+
+## The player controls and title display
+
+Two smaller UI concerns round out the player:
+
+- **Speed and sleep-timer are bottom sheets.** `SpeedButton` / `SleepTimerButton`
+  are only the footer readouts; the controls themselves (`SpeedSheet`,
+  `SleepSheet`) are mounted at the player's *root* and use the shared `Sheet`
+  primitive from `src/components/ui/` - a footer-nested sheet would be clipped to
+  the footer's bounds. Speed drives a `Stepper` (0.5-2x, 0.05 steps); the sleep
+  sheet offers duration presets, an end-of-chapter list (from `chapterCountdowns`
+  at the live rate), and an end-of-book fallback.
+- **`prettify-title.ts` cleans filename-shaped labels for display.** Audiobook
+  "chapter" labels are often just the underlying audio *filename*
+  (`01_the_hobbit_ch1.mp3`). `prettifyChapterTitle` strips a recognised audio
+  extension, turns underscores into spaces, and drops a trailing encoder bitrate
+  tag (`64kb`, `128 kbps`) - but only for labels that already look like filenames,
+  leaving genuine titles ("Chapter 1", "The Shadow of the Past") untouched. It is
+  **display-only**: it never changes the streamed path, the saved position, or the
+  chapter model, and is applied wherever a chapter/track label surfaces - the full
+  player title, the mini-player caption, the chapter list, and the sleep-timer
+  chapter picker.

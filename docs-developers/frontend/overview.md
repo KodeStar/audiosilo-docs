@@ -37,13 +37,16 @@ src/playback/       PlaybackService interface + per-platform engines, the player
                     sleep-timer, rate helpers
 src/downloads/      offline downloads: native/web engines + registry store (a sibling
                     of playback, not inside it)
-src/components/     ui/ (primitives incl. Icon and Text), layout/ (shell/header/nav),
+src/components/     ui/ (design-system primitives - Text, Icon, Button, Card, Sheet,
+                    SegmentedControl, Stepper, Skeleton, EmptyState, SectionHeader,
+                    AnimatedPressable, OverlayHost), layout/ (shell/header/nav),
                     player/, library/, account/, brand/
 src/stores/         Zustand: session (connections + tokens), settings, search
 src/i18n/           i18next init, LanguageProvider, locale catalogs (locales/*.json)
 src/theme/          ThemeProvider + raw color tokens (tokens.ts)
 src/lib/            storage, secure-store, paths, format, pairing, recovery, device,
-                    base-url, register-sw, and other pure helpers
+                    base-url, layout (the one phone->desktop breakpoint),
+                    register-sw, and other pure helpers
 modules/audiosilo-player/  the local Expo module (Swift + Kotlin + TS bridge)
 public/             sw.js (service worker) + manifest.json (PWA), copied verbatim
                     into the web export
@@ -110,6 +113,22 @@ handful of standalone screens.
 - **Text goes through `<Text variant=… />`** (`src/components/ui/text.tsx`) -
   variants `body`, `muted`, `heading`, `title`, `subtitle`, `label`, `caption`
   encode the type scale; add a `className` for overrides.
+- **Compose the shared UI primitives** in `src/components/ui/` rather than
+  restyling raw RN components ad hoc. Beyond `Icon` and `Text` the design system
+  provides `Button`, `Card`, `Sheet` (the bottom sheet behind the speed and
+  sleep-timer controls), `SegmentedControl`, `Stepper`, `Skeleton` (loading
+  placeholders), `EmptyState` (the "nothing here yet" screens), `SectionHeader`,
+  and `AnimatedPressable` - a `className`-aware `Pressable` that adds a press-in
+  scale/opacity via reanimated (and honours reduce-motion), used for tappable
+  rows and buttons. `OverlayHost` mounts sheets and dialogs above the app tree.
+- **One layout breakpoint.** `src/lib/layout.ts` `WIDE_BREAKPOINT` (1024px) is the
+  single phone->desktop switch every screen flips at (bottom nav + full-screen
+  modal player below it; sidebar rail + docked player at or above) - never
+  re-declare a local width constant.
+- **Web `role="button"` workaround.** `src/lib/rnw-button-fix.web.ts` patches
+  react-native-web so `role="button"` renders a `<div role="button">` instead of
+  a real `<button>` (which nests illegally and trips an older-Safari flex bug);
+  the native `rnw-button-fix.ts` is a no-op.
 
 ## Environment gotchas
 
