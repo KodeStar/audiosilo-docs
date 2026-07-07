@@ -19,9 +19,17 @@ Tap **Listen** on any book and the player opens. On a phone it's a full-screen v
 If a book's chapters are just named after their audio files, AudioSilo tidies those names for display - dropping the file extension and turning underscores into spaces - so the title line stays readable. Real chapter titles are left exactly as they are.
 :::
 
-Along the bottom of the player: **playback speed**, **history**, an **AirPlay / cast** button, and the **sleep timer**. The **notes** and **bookmark** buttons sit at the top right.
+Along the bottom of the player: **playback speed**, **history**, an **AirPlay / cast** button, and the **sleep timer**. The **notes** and **bookmark** buttons, and a **three-dot menu**, sit at the top right.
 
 ![The player on a phone](/img/screenshots/web-player/phone-player.png)
+
+## The three-dot menu
+
+The **three-dot (More) menu** at the top right of the player has three actions:
+
+- **View book details** - jumps to the book's detail page. Playback carries on.
+- **View end credits** - opens the [end credits screen](#when-a-book-finishes) early. Handy for a book with a long spoken credits or acknowledgements section you'd rather skip past to see what's next - playback carries on while the screen is open.
+- **Mark as Finished** - marks the book finished right now, stops it, and takes you to its end credits screen. Use it when you've heard enough and want the book off your *Continue listening* shelf.
 
 ## Playback speed
 
@@ -50,6 +58,30 @@ The countdown is real ("wall clock") time: listening at 2× speed, an end-of-cha
 - **History** - your past listening sessions on this book, labelled by chapter.
 
 All three are saved to your account, not the device.
+
+## When a book finishes
+
+When a book reaches its end, AudioSilo marks it **finished** (so it drops off your *Continue listening* shelf), hides the mini-player, and shows an **end credits** screen:
+
+- The finished book's **cover, title, and author**, plus its **folder name**. The folder name is shown on purpose - audiobook file metadata is often wrong or missing, and the folder is usually the most reliable label.
+- An **Up next** card suggesting the next book in the same folder - the sibling that comes next in natural order (so *Book 2* comes before *Book 10*). It shows the next book's folder name, with its title and author underneath if they're known. Tap **Play next** to mark the current book finished and start it.
+- If there's nothing after the current book, you'll see *"You have reached the end of this folder."* instead.
+
+You can also reach this screen at any time from the player's [three-dot menu](#the-three-dot-menu), via **View end credits** or **Mark as Finished**.
+
+### Playing the next book automatically
+
+Turn on **Automatically play next book** in [Settings](account.md#up-next) and the end credits screen starts the next book for you:
+
+- After a book finishes naturally, a short **15-second countdown** runs ("Starting in 15s") before the next one begins.
+- If you opened the credits screen *early* (from the menu) while the book is still playing, the countdown instead shows the **time left in the current book** - the next one starts when this one actually ends.
+- A **Cancel** button next to the countdown stops the auto-start, leaving you on the screen with the **Play next** button.
+
+:::note
+On iPhone and iPad, if the screen is **locked** when a book ends, the next book starts **straight away** with no countdown. Once audio stops the system can suspend the app, so there's no reliable way to show a countdown in the background.
+:::
+
+Two related settings help the next book be ready and keep your device tidy - **Automatically download books** and **Automatically delete finished books**. Both are covered under [Up next in Settings](account.md#up-next).
 
 ## Play to another speaker (AirPlay / Cast)
 

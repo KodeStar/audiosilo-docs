@@ -73,7 +73,7 @@ handful of standalone screens.
 
 | Route | File | Purpose |
 |---|---|---|
-| - (root layout) | `src/app/_layout.tsx` | Mounts the provider tree (`GestureHandlerRootView` → `SafeAreaProvider` → `LanguageProvider` → `ThemeProvider` → `ApiProvider`), hydrates the session/settings/downloads stores, imports `@/lib/register-sw` for its side effect, and runs `useAppResume` (foreground refresh + the Android swipe-from-recents reset). Declares the `(app)` stack and the `player` screen as a `fullScreenModal`. |
+| - (root layout) | `src/app/_layout.tsx` | Mounts the provider tree (`GestureHandlerRootView` → `SafeAreaProvider` → `LanguageProvider` → `ThemeProvider` → `ApiProvider`), hydrates the session/settings/downloads stores, imports `@/lib/register-sw` for its side effect, mounts the headless `BookEndedListener` (drives the end-of-book flow, see [Playback](playback.md#ending-a-book-end-credits-up-next-prefetch)), and runs `useAppResume` (foreground refresh + the Android swipe-from-recents reset). Declares the `(app)` stack and the `player`/`finished` screens as `fullScreenModal`s. |
 | - (web HTML shell) | `src/app/+html.tsx` | The static HTML wrapper for every exported web route: PWA manifest/favicon links (base-prefixed) and a dark backdrop painted before React mounts so there is no white flash. |
 | `(app)` guard | `src/app/(app)/_layout.tsx` | The auth gate: `loading` → spinner, `unauthenticated` → `<Redirect href="/connect" />`, otherwise wraps children in `AppShell` (header + nav). Also backfills `has_password`/`has_recovery` on sessions persisted before those flags existed. |
 | `/` | `(app)/index.tsx` | Home: continue-listening cards, recently-added shelf, favourites - aggregated **across every connected server** via the `use*All` hooks. |
@@ -87,6 +87,7 @@ handful of standalone screens.
 | `/downloads` | `(app)/downloads.tsx` | Downloaded books + storage used ([Offline](offline.md)). |
 | `/settings` | `(app)/settings.tsx` | Playback tunables, language, theme, connections, self-service password/recovery, sign-out. |
 | `/player` | `src/app/player.tsx` | The full player, presented as a full-screen modal above the shell. Accepts `libraryId`/`path` (+ optional `position`/`track`) params and gates playback start on the chapters query settling. |
+| `/finished` | `src/app/finished.tsx` | The end-credits screen shown when a book finishes (or from the player's menu). A root modal sibling of the player; renders `EndCredits` with an "up next" suggestion. See [Playback](playback.md#ending-a-book-end-credits-up-next-prefetch). |
 | `/connect` layout | `src/app/connect/_layout.tsx` | Onboarding stack. An **authenticated** user is bounced home unless they are adding another server (`?add=1`, a pairing `?token=`, or a sign-in mid-flow via `pendingServerUrl`) - the app supports multiple simultaneous server connections. |
 | `/connect` | `connect/index.tsx` | Enter a server URL (or auto-redeem a pairing token arriving via deep link / QR `web_url`). |
 | `/connect/scan` | `connect/scan.tsx` | Camera QR scanner (`expo-camera`) for the pairing QR. |

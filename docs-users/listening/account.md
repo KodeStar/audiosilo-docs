@@ -35,6 +35,20 @@ Your playback preferences (kept per device, so your phone and your desktop can d
 | **Auto-rewind on resume** | How far playback backs up after a pause, so you regain the thread | Off–30 s (default 5 s) |
 | **Chapter length (unchaptered)** | Size of the virtual chapters created for long books with no chapter markers | 5–60 min (default 30 min) |
 
+## Up next
+
+Controls for what happens as one book ends and the next begins (see [When a book finishes](playback.md#when-a-book-finishes)). Like Playback, these are kept per device.
+
+| Setting | What it does | Options (default) |
+|---|---|---|
+| **Automatically play next book** | Start the next book in the folder when one finishes, after a short countdown on the end credits screen | On / Off (default **Off**) |
+| **Automatically download books** | Once you're most of the way through a book, quietly download the next one in the folder so it's ready to listen offline | Never / Wi-Fi only / Always (default **Wi-Fi only**) |
+| **Automatically delete finished books** | Remove a book's downloaded files from the device when it's marked finished, to free up space | On / Off (default **On**) |
+
+:::note
+**Wi-Fi only** skips the automatic download on a known mobile-data connection, so it won't eat your data allowance. In the web player, and when the connection type can't be determined, it goes ahead. You can always download a book by hand on the book's page - see [Offline downloads](offline-downloads.md).
+:::
+
 ## Account
 
 Shows who you're signed in as, your role, and the server address - plus the two credentials worth setting up:

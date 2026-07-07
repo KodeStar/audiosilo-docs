@@ -437,6 +437,78 @@ the engines do **not** yet auto-negotiate it for non-`direct_playable` codecs on
 web. That negotiation is a known open follow-up, not a shipped behavior.
 :::
 
+## Ending a book: end credits, up next, prefetch
+
+When the last track finishes the engine reports `ended`, and the store
+**deliberately keeps `nowPlaying` populated** rather than tearing down - the
+`ended` snapshot is a signal a UI-layer listener acts on. `selectIsEnded`
+(`snapshot.state === 'ended'`) exposes it; the final `haltAndPersist` on that
+transition records `finished: true`.
+
+- **`finishBook()` (`store.ts`)** is the single "this book is done" action, used
+  both by the natural end and the player's *Mark as Finished* menu item. It
+  captures a `FinishedBook` identity (connection/library/path/title/author/cover),
+  clears playback intent, stops the save loop, does one forced
+  `persist({ forceFinished: true })` (the last write; the server is
+  last-write-wins), invalidates the connection's `allProgress` query, then
+  **nulls `nowPlaying`** (which hides the mini-player) and resets the snapshot.
+  Best-effort and async, it tears the engine down and - **only if
+  `autoDeleteFinished` is on and the book's download `status === 'downloaded'`** -
+  removes the local files via the downloads store.
+- **`BookEndedListener` (`src/components/player/book-ended-listener.tsx`)** is a
+  headless component mounted once in `src/app/_layout.tsx`, so it covers the phone
+  modal and the desktop docked player alike. It watches `selectIsEnded` with
+  **transition-edge detection** (a `wasEnded` ref, fires once per ended book) and
+  on the false→true edge calls `finishBook()` then navigates: `router.replace` to
+  `/finished` when currently on `/player` (credits take the player's place), else
+  `router.push`. If the app is backgrounded and `autoPlayNext` is on it skips the
+  countdown UI and jumps straight to the player (on iOS the OS may suspend JS once
+  audio stops, so a visible countdown can't be relied on).
+- **`/finished` (`src/app/finished.tsx`)** is a root modal, a sibling of the
+  player modal, that carries `connection`/`libraryId`/`path` params (it sits
+  outside any route scope) and renders `EndCredits`. The screen derives its
+  "still playing early vs. genuinely ended" state from the live player store, not
+  a URL flag. `end-credits-logic.ts` is the pure decision function: with
+  `autoPlayNext` on and a next book resolved, it counts down `GRACE_SECONDS` (15)
+  after a real end, or the remaining audio time when opened early while the book
+  still plays, and only reports `fireNext` after a genuine end.
+
+### Sibling resolution (`next-book.ts`)
+
+"Up next" is the next sibling of the current book's **folder**, resolved
+client-side. `resolveNextBook` browses the parent folder via `client.browse`
+(paging to exhaustion, `PAGE_LIMIT` 200); `findNextSibling` keeps entries that
+are `is_book || is_dir` (an unindexed sibling book folder comes back
+`is_dir: true, is_book: false` and must still count, while loose non-audio files
+are ignored), sorts them with `naturalCompare`, and returns the first whose name
+sorts strictly after the current leaf:
+
+```ts
+export function naturalCompare(a: string, b: string) {
+  return a.localeCompare(b, undefined, { numeric: true, sensitivity: 'base' });
+}
+```
+
+The sort is **client-side and numeric-aware** so `Book 2` precedes `Book 10`
+(the server's `/fs` listing is a plain string order). It never throws - any
+failure resolves to `null`, which the screen renders as "end of folder".
+
+### Auto-download prefetch
+
+`maybePrefetchNext()` runs off the store's 15 s save loop (so, only while
+playing). Once the whole-book position crosses `PREFETCH_AT_FRACTION` (0.9) it
+fires **once per loaded book** (latched by a `prefetchedFor` download key, reset
+in `playBook`) and calls `maybeAutoDownloadNext` in `next-book.ts`. That resolves
+the next sibling to a full `Book` + chapters and enqueues it on `useDownloads`,
+skipping anything already downloaded/queued. The policy gate is
+`canAutoDownload(mode)` in `src/lib/network.ts`, backed by **`expo-network`**:
+`never` → false, `always` → true, and `wifi` allows web (the browser can't report
+the connection type) plus native `WIFI`/`ETHERNET`, and **fails open** on an
+`UNKNOWN`/undefined type or a probe error, so only a positively-known metered
+connection is skipped. The three settings (`autoPlayNext`, `autoDownloadNext`,
+`autoDeleteFinished`) live in `src/stores/settings.ts` with defaults `false` /
+`'wifi'` / `true`.
+
 ## The player controls and title display
 
 Two smaller UI concerns round out the player:
