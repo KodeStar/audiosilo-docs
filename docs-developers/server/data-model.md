@@ -82,7 +82,8 @@ last activity is derived from `MAX(tokens.last_seen)`.
 
 **`tokens`** *(0001; `auth_code_id` added in 0014)* - opaque bearer tokens:
 `user_id` (FK CASCADE), `token_hash` (UNIQUE - only the SHA-256 hash is
-stored), `kind` (`'session'`/`'pairing'`), `device_name`, `created_at`,
+stored), `kind` (`'session'`/`'pairing'`/`'api'`, the last being a user-minted personal
+API key whose label rides in `device_name`), `device_name`, `created_at`,
 `last_seen` (bumped on every authenticated request), `expires_at` (NULL = no
 expiry), `revoked`, and `auth_code_id` (FK CASCADE to `auth_codes`, NULL for
 sessions and unlinked pairing tokens) - a pairing token minted by redeeming a

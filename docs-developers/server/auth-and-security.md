@@ -65,7 +65,14 @@ codes/tokens in the response body and store only the hash.
   the SHA-256 hash is stored (the secret is returned once at creation) and the
   user's label rides in `tokens.device_name`. All three routes go through
   `gateSelfService`, so they share the `accountLimiter` and are refused for demo
-  accounts, exactly like the password/recovery routes.
+  accounts, exactly like the password/recovery routes. **Containment:** an API-key
+  caller is additionally barred (403, via `denyAPIKey` in
+  `internal/api/handlers_auth.go`) from the four credential-minting routes
+  (`POST /auth/{tokens,recovery,pair,password}`), so a leaked key can never spawn a
+  fresh durable credential - another key, recovery code, pairing token, or
+  password - that would outlive its own revocation (mirrors GitHub's "a token
+  cannot create tokens"). It can still list/revoke keys and clear a recovery code,
+  which only reduce access.
 
 `auth.ResolveToken` validates a presented secret for a specific kind: it hashes
 the secret, looks up the row, and rejects revoked tokens, expired tokens, and

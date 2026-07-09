@@ -9,9 +9,10 @@ in the [API conventions](index.md) page and are not repeated per endpoint.
 
 **Auth legend** - *Public*: no token. *Session*: bearer session token.
 *Session (media)*: session token via header **or** `?token=` query parameter.
-*Admin*: session token + `admin` role. A personal **API key** works anywhere a
-*Session* token does and authenticates as its owner, so an admin's key also
-satisfies *Admin* (see [Personal API keys](#personal-api-keys)).
+*Admin*: session token + `admin` role. A personal **API key** authenticates as
+its owner anywhere a *Session* token does - so an admin's key also satisfies
+*Admin* - with one carve-out: it is refused on the credential-minting routes (see
+[Personal API keys](#personal-api-keys)).
 
 All `/api/v1` bodies and responses are JSON. Timestamps are RFC 3339. Remember
 that empty list fields may serialize as `null`.
@@ -277,6 +278,15 @@ expires. All three routes share the [self-service](#self-service-account) rate
 limit (10 attempts per IP per 15 minutes) and are **refused for demo accounts**
 (403).
 
+**Containment.** A key cannot mint a *fresh durable credential*. A request that
+authenticates with an API key is refused (**403**) on the four credential-minting
+routes - `POST /auth/tokens` (another key), `POST /auth/recovery`,
+`POST /auth/pair`, and `POST /auth/password` - so revoking a leaked key cuts off
+everything it could reach: it can't spawn a key, recovery code, pairing token, or
+password that would outlive its own revocation (mirrors GitHub's "a token cannot
+create tokens"). It may still **list and revoke** keys and clear a recovery code,
+since those only reduce access.
+
 ### `POST /api/v1/auth/tokens`
 
 *Session.* Mints an API key and returns the secret **exactly once**.
@@ -306,7 +316,7 @@ authenticates a request.
 | Status | Meaning |
 |---|---|
 | `400` | `label` missing/empty, or longer than 100 characters |
-| `403` | demo account |
+| `403` | demo account, or the caller is itself authenticating with an API key (containment - a key can't mint another) |
 | `429` | account-mutation limit tripped |
 
 ### `GET /api/v1/auth/tokens`
