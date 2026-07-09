@@ -36,10 +36,10 @@ plaintext credential ever appears, exactly once. Handlers return freshly-minted
 codes/tokens in the response body and store only the hash.
 :::
 
-## Tokens: session vs pairing
+## Tokens: session, pairing, and API keys
 
-`tokens.kind` distinguishes two lifetimes (`auth.KindSession`,
-`auth.KindPairing`):
+`tokens.kind` distinguishes three kinds (`auth.KindSession`, `auth.KindPairing`,
+`auth.KindAPI`):
 
 - **Session tokens** are the durable bearer credential (`Authorization: Bearer
   …`). Issued by `POST /auth/login` and `POST /auth/exchange` with **no
@@ -55,6 +55,17 @@ codes/tokens in the response body and store only the hash.
   (multi-scan within it, since recovery codes are unlimited); `/auth/pair` and
   demo tokens are unlinked - single-use (revoked on exchange) with the same
   10-minute TTL.
+- **API keys** (`auth.KindAPI`) are user-minted, **non-expiring** bearer
+  credentials for headless integrations (dashboards, cron), created / listed /
+  revoked via `POST` / `GET` / `DELETE /auth/tokens`
+  (`IssueAPIToken` / `ListAPITokens` / `RevokeTokenByID`). A key authenticates
+  exactly like a session token and **acts as its owner** - an admin's key also
+  passes `requireAdmin` - but it is never valid for `/auth/exchange` (pairing),
+  and its lifecycle is mint / list / revoke rather than sign-in / sign-out. Only
+  the SHA-256 hash is stored (the secret is returned once at creation) and the
+  user's label rides in `tokens.device_name`. All three routes go through
+  `gateSelfService`, so they share the `accountLimiter` and are refused for demo
+  accounts, exactly like the password/recovery routes.
 
 `auth.ResolveToken` validates a presented secret for a specific kind: it hashes
 the secret, looks up the row, and rejects revoked tokens, expired tokens, and
@@ -64,12 +75,16 @@ deliberately no `last_login` column.
 
 The middleware wrappers in `internal/api/middleware.go`:
 
-- `requireAuth` - session token from the `Authorization` header only.
+- `requireAuth` - a **session token or an API key** from the `Authorization`
+  header only (`ResolveTokenKinds(secret, KindSession, KindAPI)`); a pairing
+  token is never accepted here, so a QR/pairing secret can't be used as a durable
+  credential.
 - `requireMediaAuth` - additionally accepts `?token=` as a query parameter,
   used **only** for the two media GETs (`/cover`, `/stream`) because browser
   `<img>`/`<audio>` elements cannot set headers. `bearerToken(r, allowQuery)`
-  confines the fallback deliberately: a session token in a query string can
-  leak into access logs and `Referer` headers, so no other route accepts it.
+  confines the fallback deliberately: a token in a query string can leak into
+  access logs and `Referer` headers, so no other route accepts it. An API key
+  works here too, since it authenticates wherever a session does.
 - `requireAdmin` - `requireAuth` plus a role check; every `/admin/*` route uses
   it. The baked-in admin HTML is unprivileged - the API enforces the role.
 
@@ -138,9 +153,10 @@ atomically replaces any existing recovery code for the user.
 Public demo mode (`config.demo.*`) creates throwaway `is_demo` accounts.
 Three fences keep a demo session from becoming a durable login:
 
-- `POST /auth/password` and `POST /auth/recovery` are **refused for demo
-  accounts** (`User.IsDemo` checked in the handlers).
-- Both endpoints, plus demo-session creation itself, are rate-limited (see
+- `POST /auth/password`, `POST /auth/recovery`, and the `/auth/tokens`
+  (API-key) routes are **refused for demo accounts** (`User.IsDemo` checked in
+  the handlers / `gateSelfService`).
+- These endpoints, plus demo-session creation itself, are rate-limited (see
   [the limiter table](#rate-limiting)).
 - A background reaper (`launcher.demoReaper`, every 15 minutes) deletes demo
   accounts idle past `demo.idle_ttl` - by the `is_demo` flag, never by username
@@ -231,7 +247,7 @@ Two mechanisms in `internal/api/ratelimit.go`, five buckets wired in `api.New`:
 | `loginLimiter` | Failure lockout per IP (`limiter`) | 10 failures / 15 min | `POST /auth/login` |
 | `redeemLimiter` | Failure lockout per IP | 10 failures / 15 min | `POST /auth/redeem` |
 | `demoLimiter` | **Attempt** cap per IP (`Acquire`) | 5 / 15 min | `POST /demo/session` |
-| `accountLimiter` | **Attempt** cap per IP (`Acquire`) | 10 / 15 min | `POST /auth/password`, `POST /auth/recovery` |
+| `accountLimiter` | **Attempt** cap per IP (`Acquire`) | 10 / 15 min | `POST /auth/password`, `POST /auth/recovery`, `/auth/tokens` (create/list/revoke) |
 
 The failure-lockout `limiter` has two usage patterns: `Allowed`/`Fail`/`Reset`
 counts only *failed* attempts (right for login/redeem, where success should not

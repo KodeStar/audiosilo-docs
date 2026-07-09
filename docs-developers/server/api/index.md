@@ -76,6 +76,14 @@ since the user is present and can mint another. See
 [Auth & security](../auth-and-security.md) for the trust model behind codes,
 tokens, and hashes.
 
+A user can also mint a **personal API key** (`POST /auth/tokens`) - a
+non-expiring bearer credential for headless integrations such as dashboards and
+cron. It is presented in the same `Authorization: Bearer …` header and
+authenticates exactly like a session token, **acting as its owner**: an admin's
+key satisfies the admin-role check, a regular user's does not. Pairing tokens
+are never accepted as a bearer credential, and an API key is never valid for
+`/auth/exchange`. See the [reference](reference.md#personal-api-keys).
+
 ### Media requests: `?token=` - media GETs only
 
 `GET /libraries/{id}/cover` and `GET /libraries/{id}/stream` accept the session
@@ -104,7 +112,7 @@ Status mapping is consistent across handlers:
 |---|---|
 | `400` | malformed body / unknown JSON field, missing or invalid parameter (`path is required`, `invalid cursor`, non-integer `{id}`), path escaping the library root, domain validation (`mode must be "book" or "collection"`, admin needs a password, password too short) |
 | `401` | missing/invalid/expired token, bad credentials, invalid auth code, wrong `current_password` |
-| `403` | authenticated but not allowed: no share grants the library or path, `admin only`, demo accounts on password/recovery routes, bad setup token |
+| `403` | authenticated but not allowed: no share grants the library or path, `admin only`, demo accounts on the self-service routes (password/recovery/API keys), bad setup token |
 | `404` | library/user/share/invite not found, `no book at that path`, feature not configured (demo mode off, well-known files unset) |
 | `409` | conflicts: `name already taken` (library/share), last-enabled-admin guard, setup already completed |
 | `429` | a rate limiter tripped (see below) |
@@ -185,7 +193,8 @@ a `limit` and no pagination.
     "web_player": true,
     "transcode": true,
     "upload": false,
-    "websocket": false
+    "websocket": false,
+    "api_keys": true
   },
   "auth": { "methods": ["auth_code", "password"] },
   "demo": { "enabled": false }
@@ -194,9 +203,10 @@ a `limit` and no pagination.
 
 Clients **must** feature-gate on these flags rather than probing endpoints:
 `transcode` reflects whether ffmpeg is configured (without it, `?transcode=1`
-is 503), `web_player` whether `/web` is mounted, `upload`/`websocket` are
-roadmap phases that will flip on when they land. `demo.enabled` drives the
-"Try the demo" affordance.
+is 503), `web_player` whether `/web` is mounted, `api_keys` whether the server
+supports user-minted [API keys](reference.md#personal-api-keys),
+`upload`/`websocket` are roadmap phases that will flip on when they land.
+`demo.enabled` drives the "Try the demo" affordance.
 
 ## Rate limiting
 
@@ -209,7 +219,7 @@ client IP. Tripping any of them returns **429** with an error envelope.
 | Login lockout | `POST /auth/login` | 10 *failed* attempts per 15 min per IP; a success resets the counter |
 | Redeem lockout | `POST /auth/redeem` | 10 *failed* attempts per 15 min per IP; a success resets |
 | Demo cap | `POST /demo/session` | at most 5 demo sessions per IP per 15 min, metered at admission (failures count too) |
-| Account mutations | `POST /auth/password`, `POST /auth/recovery` | at most 10 attempts per IP per 15 min, metered at admission |
+| Account mutations | `POST /auth/password`, `POST /auth/recovery`, `/auth/tokens` (create/list/revoke) | at most 10 attempts per IP per 15 min, metered at admission |
 
 **Client IP resolution:** `X-Forwarded-For` is honored only when the direct
 peer is inside a `trusted_proxies` CIDR (config); otherwise the TCP peer address

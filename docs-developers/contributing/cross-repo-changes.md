@@ -102,8 +102,8 @@ each side gated by its own CI.
 
 Any shipped app build must be able to talk to any server version, so features
 are negotiated, never assumed. `GET /api/v1/server` advertises capability flags -
-`admin_ui`, `web_player`, `upload`, `transcode`, `websocket` - plus the server
-version.
+`admin_ui`, `web_player`, `upload`, `transcode`, `websocket`, `api_keys` - plus
+the server version.
 
 Adding a feature that isn't universally available is a two-repo pattern:
 
