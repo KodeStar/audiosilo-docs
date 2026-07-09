@@ -85,7 +85,7 @@ handful of standalone screens.
 | `/library/[libraryId]/[...path]` | `(app)/library/[libraryId]/[...path].tsx` | Nested folder browse - same `BrowseScreen`, the catch-all segments become the folder `path` (helpers in `src/lib/paths.ts`). |
 | `/book/[libraryId]/[...path]` | `(app)/book/[libraryId]/[...path].tsx` | Book detail: play/resume, download control, chapters, bookmarks, notes, listening history, other versions of the same book. |
 | `/downloads` | `(app)/downloads.tsx` | Downloaded books + storage used ([Offline](offline.md)). |
-| `/settings` | `(app)/settings.tsx` | Playback tunables, language, theme, connections, self-service password/recovery, sign-out. |
+| `/settings` | `(app)/settings.tsx` | Playback tunables, language, theme, connections, self-service password/recovery, per-server API keys (capability-gated), sign-out. |
 | `/player` | `src/app/player.tsx` | The full player, presented as a full-screen modal above the shell. Accepts `libraryId`/`path` (+ optional `position`/`track`) params and gates playback start on the chapters query settling. |
 | `/finished` | `src/app/finished.tsx` | The end-credits screen shown when a book finishes (or from the player's menu). A root modal sibling of the player; renders `EndCredits` with an "up next" suggestion. See [Playback](playback.md#ending-a-book-end-credits-and-up-next). |
 | `/connect` layout | `src/app/connect/_layout.tsx` | Onboarding stack. An **authenticated** user is bounced home unless they are adding another server (`?add=1`, a pairing `?token=`, or a sign-in mid-flow via `pendingServerUrl`) - the app supports multiple simultaneous server connections. |

@@ -102,7 +102,7 @@ schema and the SQLite rationale.
 ### `internal/auth`
 
 Accounts and credentials: argon2id password hashing (`hash.go`), opaque
-SHA-256-hashed bearer tokens (session + pairing kinds), and redeemable auth
+SHA-256-hashed bearer tokens (session, pairing, and API-key kinds), and redeemable auth
 codes (invite + recovery kinds) with atomic redemption. Also owns the admin
 safety guards (`ErrLastAdmin`, `ErrAdminNeedsPassword`) and the demo-account
 reaper queries. See [Auth & security](auth-and-security.md).

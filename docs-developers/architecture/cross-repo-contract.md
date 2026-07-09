@@ -156,10 +156,12 @@ and `app.json` together, or pairing breaks.
 version.
 
 **Server:** `handleServerInfo` advertises `admin_ui`, `web_player`, `upload`,
-`transcode`, `websocket`, plus the server version (`api.Version`, stamped from the
-release tag via ldflags). `transcode` reflects ffmpeg availability; `web_player`
-reflects whether `/web` is populated. (`upload` and `websocket` are reserved for
-**planned** phases - `POST /uploads` and WebSocket sync are not shipped.)
+`transcode`, `websocket`, `api_keys`, plus the server version (`api.Version`,
+stamped from the release tag via ldflags). `transcode` reflects ffmpeg
+availability; `web_player` reflects whether `/web` is populated; `api_keys`
+reflects that the server accepts user-minted API keys. (`upload` and `websocket`
+are reserved for **planned** phases - `POST /uploads` and WebSocket sync are not
+shipped.)
 **Frontend:** the `ServerInfo` type; feature gating and the "connected server
 version" display key off it.
 

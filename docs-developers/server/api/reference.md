@@ -9,7 +9,10 @@ in the [API conventions](index.md) page and are not repeated per endpoint.
 
 **Auth legend** - *Public*: no token. *Session*: bearer session token.
 *Session (media)*: session token via header **or** `?token=` query parameter.
-*Admin*: session token + `admin` role.
+*Admin*: session token + `admin` role. A personal **API key** authenticates as
+its owner anywhere a *Session* token does - so an admin's key also satisfies
+*Admin* - with one carve-out: it is refused on the credential-minting routes (see
+[Personal API keys](#personal-api-keys)).
 
 All `/api/v1` bodies and responses are JSON. Timestamps are RFC 3339. Remember
 that empty list fields may serialize as `null`.
@@ -32,7 +35,8 @@ else and gate features on the flags.
     "web_player": true,
     "transcode": true,
     "upload": false,
-    "websocket": false
+    "websocket": false,
+    "api_keys": true
   },
   "auth": { "methods": ["auth_code", "password"] },
   "demo": { "enabled": false }
@@ -47,7 +51,8 @@ pairing exchange (`POST /auth/exchange`) and login/demo responses, so a client h
 it the moment it pairs. `version` is stamped from the release tag (`"dev"` for local builds).
 `transcode` is true only when ffmpeg is configured; `web_player` only when the
 `/web` mount is populated; `upload` and `websocket` are reserved for future
-phases and currently always false.
+phases and currently always false. `api_keys` is true on servers that support
+user-minted [personal API keys](#personal-api-keys).
 
 ### `GET /healthz` · `GET /api/v1/healthz`
 
@@ -219,9 +224,10 @@ omitted when there is none. `role` is `"admin"` or `"user"`.
 
 ## Self-service account
 
-Both mutating routes here share a rate limit (10 attempts per IP per 15
-minutes) and are **refused for demo accounts** (403), so a throwaway session
-can't mint a durable login.
+The routes in this section, together with the [API keys](#personal-api-keys)
+below, share one rate limit (10 attempts per IP per 15 minutes) and are
+**refused for demo accounts** (403), so a throwaway session can't mint a durable
+credential.
 
 ### `POST /api/v1/auth/password`
 
@@ -259,6 +265,90 @@ Response `201`:
 
 *Session.* Removes the caller's recovery code (no-op if none). Response:
 `204 No Content`.
+
+## Personal API keys
+
+User-minted, **non-expiring** bearer credentials ("API keys") for headless
+integrations - dashboards, cron jobs, monitoring. A key authenticates on any
+*Session* or *Session (media)* route exactly like a session token and **acts as
+its owner**: an admin's key also passes *Admin* routes, a regular user's does
+not. A pairing token is never accepted as a bearer credential, and an API key is
+never valid for `/auth/exchange`. Revocation is the only lifecycle - a key never
+expires. All three routes share the [self-service](#self-service-account) rate
+limit (10 attempts per IP per 15 minutes) and are **refused for demo accounts**
+(403).
+
+**Containment.** A key cannot mint a *fresh durable credential*. A request that
+authenticates with an API key is refused (**403**) on the four credential-minting
+routes - `POST /auth/tokens` (another key), `POST /auth/recovery`,
+`POST /auth/pair`, and `POST /auth/password` - so revoking a leaked key cuts off
+everything it could reach: it can't spawn a key, recovery code, pairing token, or
+password that would outlive its own revocation (mirrors GitHub's "a token cannot
+create tokens"). It may still **list and revoke** keys and clear a recovery code,
+since those only reduce access.
+
+### `POST /api/v1/auth/tokens`
+
+*Session.* Mints an API key and returns the secret **exactly once**.
+
+| Field | Type | Required | Notes |
+|---|---|---|---|
+| `label` | string | yes | display name; trimmed, 1-100 characters |
+
+Response `200`:
+
+```json
+{
+  "token": "Qm9WZbT5nR8sHc2fLdA7yUqPgVi4oXk1NwsE3vJx0eK",
+  "api_key": {
+    "id": 3,
+    "label": "Home dashboard",
+    "created_at": "2026-07-08T14:02:11Z",
+    "last_seen": null
+  }
+}
+```
+
+`token` is the bearer secret - only its SHA-256 hash is stored, so this is the
+one time it appears. `api_key.last_seen` is `null` until the key first
+authenticates a request.
+
+| Status | Meaning |
+|---|---|
+| `400` | `label` missing/empty, or longer than 100 characters |
+| `403` | demo account, or the caller is itself authenticating with an API key (containment - a key can't mint another) |
+| `429` | account-mutation limit tripped |
+
+### `GET /api/v1/auth/tokens`
+
+*Session.* The caller's live (non-revoked) API keys, newest first - **metadata
+only** (never the secret or its hash):
+
+```json
+{
+  "api_keys": [
+    {
+      "id": 3,
+      "label": "Home dashboard",
+      "created_at": "2026-07-08T14:02:11Z",
+      "last_seen": "2026-07-09T06:30:00Z"
+    }
+  ]
+}
+```
+
+`403` for demo accounts; `429` on the shared limit.
+
+### `DELETE /api/v1/auth/tokens/{id}`
+
+*Session.* Revokes one of the caller's **own** API keys by id; it stops working
+immediately. Response: `204 No Content`.
+
+| Status | Meaning |
+|---|---|
+| `403` | demo account |
+| `404` | no such API key for this caller (missing, already revoked, another user's, or not an API-key token id) |
+| `429` | account-mutation limit tripped |
 
 ## Demo
 

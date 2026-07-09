@@ -36,6 +36,7 @@ const sidebars: SidebarsConfig = {
         'listening/playback',
         'listening/offline-downloads',
         'listening/account',
+        'listening/api-keys',
         'listening/mobile-apps',
       ],
     },

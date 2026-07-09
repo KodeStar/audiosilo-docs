@@ -73,6 +73,10 @@ Why you want one: if you sign out (or get a new phone) and have **no password an
 Treat a recovery code like a password: anyone who has it can sign in as you. If yours ever leaks, regenerate it (or ask your admin to revoke it).
 :::
 
+### API keys
+
+If your server supports them, an **API keys** section here lets you create keys for dashboards, scripts, and other tools that reach your server on your behalf. See [API keys for integrations](api-keys.md).
+
 ### Signing out
 
 **Sign out** disconnects this device. If you're about to sign out with **neither a password nor a recovery code**, the app stops you with a warning - *"Without one you'll need a new invite from your admin to sign back in"* - and offers to **Set a recovery code** right there. Take the offer; it's the whole reason the button exists.
