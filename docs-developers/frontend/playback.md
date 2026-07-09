@@ -437,7 +437,7 @@ the engines do **not** yet auto-negotiate it for non-`direct_playable` codecs on
 web. That negotiation is a known open follow-up, not a shipped behavior.
 :::
 
-## Ending a book: end credits, up next, prefetch
+## Ending a book: end credits and up next
 
 When the last track finishes the engine reports `ended`, and the store
 **deliberately keeps `nowPlaying` populated** rather than tearing down - the
@@ -493,21 +493,35 @@ The sort is **client-side and numeric-aware** so `Book 2` precedes `Book 10`
 (the server's `/fs` listing is a plain string order). It never throws - any
 failure resolves to `null`, which the screen renders as "end of folder".
 
-### Auto-download prefetch
+### Auto-download on play
 
-`maybePrefetchNext()` runs off the store's 15 s save loop (so, only while
-playing). Once the whole-book position crosses `PREFETCH_AT_FRACTION` (0.9) it
-fires **once per loaded book** (latched by a `prefetchedFor` download key, reset
-in `playBook`) and calls `maybeAutoDownloadNext` in `next-book.ts`. That resolves
-the next sibling to a full `Book` + chapters and enqueues it on `useDownloads`,
-skipping anything already downloaded/queued. The policy gate is
-`canAutoDownload(mode)` in `src/lib/network.ts`, backed by **`expo-network`**:
-`never` → false, `always` → true, and `wifi` allows web (the browser can't report
-the connection type) plus native `WIFI`/`ETHERNET`, and **fails open** on an
-`UNKNOWN`/undefined type or a probe error, so only a positively-known metered
-connection is skipped. The three settings (`autoPlayNext`, `autoDownloadNext`,
-`autoDeleteFinished`) live in `src/stores/settings.ts` with defaults `false` /
-`'wifi'` / `true`.
+`maybeAutoDownloadCurrent(connectionId, libraryId, book, chapterData?)` in
+`store.ts` downloads **the book the user just started listening to**. It is
+fired fire-and-forget at the end of `playBook`'s start path, after `svc.play()` -
+never awaited, so it can neither delay nor break starting the book. Because the
+store hot-swaps playback onto the local files the moment a download completes
+(`switchCurrentBookToLocal` - see [Offline](offline.md)), downloading on start
+also covers a series: the next book downloads as soon as *Play next* starts it.
+(An earlier design prefetched the next sibling at 90% of the current book; that
+is gone.)
+
+Guards, in order: `autoDownloadNext === 'never'` skips; an existing download
+entry whose `status` isn't `error` skips (already downloaded, queued, or
+downloading - only an errored entry is retried, matching the downloads store's
+own guard); then the network policy `canAutoDownload(mode)`; then it enqueues
+via the downloads store's `download()`, which itself no-ops when the engine
+can't store offline (e.g. web without a controlling service worker), so no
+extra support guard is needed. `next-book.ts` now does sibling resolution only.
+
+The policy gate is `canAutoDownload(mode)` in `src/lib/network.ts`, backed by
+**`expo-network`**: `never` → false, `always` → true, and `wifi` allows web (the
+browser can't report the connection type) plus native `WIFI`/`ETHERNET`, and
+**fails open** on an `UNKNOWN`/undefined type or a probe error, so only a
+positively-known metered connection is skipped. The three settings
+(`autoPlayNext`, `autoDownloadNext`, `autoDeleteFinished`) live in
+`src/stores/settings.ts` with defaults `false` / `'wifi'` / `true` - the
+persisted `autoDownloadNext` key name predates the download-on-start behavior
+and is kept for hydration compatibility.
 
 ## The player controls and title display
 

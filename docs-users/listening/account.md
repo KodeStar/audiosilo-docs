@@ -42,7 +42,7 @@ Controls for what happens as one book ends and the next begins (see [When a book
 | Setting | What it does | Options (default) |
 |---|---|---|
 | **Automatically play next book** | Start the next book in the folder when one finishes, after a short countdown on the end credits screen | On / Off (default **Off**) |
-| **Automatically download books** | Once you're most of the way through a book, quietly download the next one in the folder so it's ready to listen offline | Never / Wi-Fi only / Always (default **Wi-Fi only**) |
+| **Automatically download books** | Download the book you start listening to, so it's ready to hear offline. Streaming begins straight away, and playback switches to the downloaded copy quietly once it's on the device | Never / Wi-Fi only / Always (default **Wi-Fi only**) |
 | **Automatically delete finished books** | Remove a book's downloaded files from the device when it's marked finished, to free up space | On / Off (default **On**) |
 
 :::note
