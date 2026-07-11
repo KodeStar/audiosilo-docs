@@ -5,11 +5,11 @@ description: "Create a personal API key so a dashboard, script, or monitoring to
 
 An **API key** is a long, secret token you create for yourself so another app can talk to your AudioSilo server *as you*, without handing over your password. It is the right tool when you want a home dashboard (such as Heimdall), a script, a cron job, or an uptime monitor to reach your server automatically.
 
-Each key acts as you for everyday requests - browsing your libraries, reading your books, saving your listening progress. You can create as many as you like, name each one, and revoke any of them at any time. (The one thing a key can't do is manage your account itself - it can't create another key, set your password, or generate a recovery code. Those always need you signed in normally, so a leaked key can't lock you out or quietly multiply itself.)
+Each key acts as you for everyday requests - browsing your libraries, reading your books, saving your listening progress. You can create as many as you like, name each one, and revoke any of them at any time. (The one thing a key can't do is manage your account itself - it can't create another key or set your password. Those always need you signed in normally, so a leaked key can't lock you out or quietly multiply itself.)
 
 ## Where to find it
 
-In the player, open **Settings** and go to your server's account area - the same place you set a password or a recovery code (see [Your account and settings](account.md)). There you'll find an **API keys** section.
+In the player, open **Settings** and go to your server's account area - the same place you set a password (see [Your account and settings](account.md)). There you'll find an **API keys** section.
 
 :::note
 The section only appears on servers new enough to support API keys, and it is hidden for **demo accounts** - a throwaway demo login can't create keys.

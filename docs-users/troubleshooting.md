@@ -102,11 +102,25 @@ Invites are managed in [Users & invites](./admin/users-and-invites.md); the
 connect flow itself is described in [Connecting](./listening/connecting.md).
 
 :::tip
-If you're signed in but worried about getting locked out later, mint a
-**recovery code** from the player's Settings - it's a durable personal code
-that never expires and lets you sign back in without an admin. See
-[Your account](./listening/account.md).
+If you're signed in but worried about getting locked out later, **set a
+password** from the player's Settings. It's the durable way to sign back in on
+any device without an admin - especially handy if you were invited by pairing
+and never set one. See [Your account](./listening/account.md#set-a-password).
 :::
+
+### I was signed out, or a "Reconnect" bar appeared
+
+Being signed out is rare - app updates no longer sign you out. If it does
+happen, it usually means the server stopped accepting this device: an admin
+revoked it, or the server was rebuilt. The app doesn't fail silently - it shows
+a **Reconnect to &lt;your server&gt;** bar (tap it to sign in again, with the
+address already filled in), and after a full sign-out the connect screen lists
+your previous servers as one-tap **Reconnect** shortcuts.
+
+Either way you only re-enter your code or password, never the server address. If
+you have no password set, [set one](./listening/account.md#set-a-password) so
+you can always get back in on any device without waiting on a fresh invite from
+your admin.
 
 ## Playback
 

@@ -1,6 +1,6 @@
 ---
 title: Connecting and signing in
-description: "All the ways to sign in to an AudioSilo server: invite links, QR codes, invite or recovery codes, and username + password."
+description: "All the ways to sign in to an AudioSilo server: invite links, QR codes, invite codes, and username + password."
 ---
 
 To listen to anything, the AudioSilo player first needs to be connected to a server - the computer where your audiobooks live. There are several ways to get connected, and they all end in the same place: signed in, with your libraries ready to browse.
@@ -43,7 +43,7 @@ If you have the **AudioSilo app** installed, the surest way to sign *it* in with
 
 ## Typing a code into the app
 
-If you have a code rather than a link - an **invite code** from your admin, or a **recovery code** you saved earlier - you can type it in:
+If you have an **invite code** from your admin rather than a link, you can type it in:
 
 ![The app's connect screen asking for a server address](/img/screenshots/web-player/connect.png)
 
@@ -51,18 +51,23 @@ If you have a code rather than a link - an **invite code** from your admin, or a
 2. Enter the **server address** (e.g. `https://books.example.com`) and tap **Connect**. If you don't know the address, ask your admin.
 3. On the **Sign in** screen, choose the **Code** tab, enter your code, and tap **Connect**.
 
-The code box accepts either kind of code:
-
-- **Invite code** - given to you by your admin. Invites can expire or be limited to a few uses, so if one doesn't work, ask for a new invite.
-- **Recovery code** - a durable code you can create for yourself in [Settings](account.md) so you can always get back in without bothering your admin. It never expires.
+Invite codes are given to you by your admin. They can expire or be limited to a few uses, so if one doesn't work, ask for a new invite.
 
 ## Username and password
 
-If you've set a password for your account (see [Your account and settings](account.md)), you can also sign in the classic way: on the **Sign in** screen, switch to the **Password** tab and enter your username and password.
+If you've set a password for your account (see [Your account and settings](account.md#set-a-password)), you can also sign in the classic way: on the **Sign in** screen, switch to the **Password** tab and enter your username and password.
 
 :::note
-Many AudioSilo accounts don't have a password at all - that's normal. Accounts are usually created by invite, and codes and QR pairing cover everyday sign-in. A password is optional and yours to set whenever you like.
+Many AudioSilo accounts don't have a password at all - that's normal. Accounts are usually created by invite, and codes and QR pairing cover everyday sign-in. A password is optional and yours to set whenever you like - and it's the most dependable way to sign back in later (see below).
 :::
+
+## Getting back in after signing out
+
+Signing out is not a big deal - the app remembers every server you've connected to before. The next time you open the connect screen, each remembered server shows a one-tap **Reconnect to &lt;server name&gt;** shortcut with its address already filled in, so you only re-enter your code or password - never the server address again. (A **Forget** option removes a server from that list if you no longer use it.)
+
+If your session is ever rejected while you're using the app - for example your admin revoked this device, or the server was rebuilt - a **Reconnect to &lt;server name&gt;** bar appears at the top of the screen instead of failing silently. Tapping it takes you to the sign-in screen with the address pre-filled, ready for a fresh code or password.
+
+The most dependable key of all is a [password](account.md#set-a-password) you set in Settings: with one, reconnecting is just your username and password on any device, with no code or invite needed.
 
 ## What the `audiosilo://` link does
 
@@ -75,7 +80,7 @@ If nothing happens when you tap one, the app simply isn't installed on that devi
 Already signed in on one device and want another? You don't need a new invite:
 
 - In the app, go to **Settings → Devices → Add a device**. It shows a QR code (and a shareable link) that signs your other phone, tablet, or browser into the same account.
-- Or create a **recovery code** in Settings and type it into the new device's code box.
+- Or, if you've [set a password](account.md#set-a-password), just sign in with your username and password on the new device.
 
 You can even connect the app to **more than one server** - go to **Settings → Servers → Add a server**. Your home screen and search then span all of them.
 

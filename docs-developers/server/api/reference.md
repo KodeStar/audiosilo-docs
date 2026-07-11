@@ -249,6 +249,13 @@ Response: `204 No Content`.
 
 ### `POST /api/v1/auth/recovery`
 
+:::caution Legacy - being retired
+The frontend player no longer offers recovery codes; it nudges users to set a
+password and relies on the reconnect flow instead. This endpoint (and the two
+recovery revoke routes below) is kept only so older app builds keep working, and
+is slated for removal once those clients age out. New clients should not call it.
+:::
+
 *Session.* Mints (or replaces) the caller's durable **recovery code** - an auth
 code with unlimited uses and no expiry, owned by the user, redeemable through
 the normal `/auth/redeem` flow. Returned exactly once; only its hash is stored.
@@ -263,8 +270,8 @@ Response `201`:
 
 ### `DELETE /api/v1/auth/recovery`
 
-*Session.* Removes the caller's recovery code (no-op if none). Response:
-`204 No Content`.
+*Legacy (see above).* *Session.* Removes the caller's recovery code (no-op if
+none). Response: `204 No Content`.
 
 ## Personal API keys
 
@@ -1010,8 +1017,9 @@ logs; the connect page auto-redeems it client-side.
 
 ### `DELETE /api/v1/admin/users/{id}/recovery`
 
-Revokes a user's recovery code (the admin's only lever for a leaked one, since
-recovery codes are not listable). No-op if none. `204 No Content`.
+*Legacy - being retired alongside `POST /auth/recovery` once old clients age
+out.* Revokes a user's recovery code (the admin's only lever for a leaked one,
+since recovery codes are not listable). No-op if none. `204 No Content`.
 
 ### `POST /api/v1/admin/authcodes/{id}/rotate`
 

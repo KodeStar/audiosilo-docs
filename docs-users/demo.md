@@ -31,12 +31,8 @@ Demo accounts are deliberately disposable:
 
 ## What demo accounts can't do
 
-To keep throwaway accounts throwaway, two things are switched off for them:
-
-- **Setting a password** - refused for demo accounts.
-- **Minting a recovery code** - likewise refused.
-
-Those are the two ways a normal account makes itself durable
+To keep throwaway accounts throwaway, **setting a password is switched off** for
+them. That's how a normal account makes itself durable
 ([Your account](listening/account.md)), so a demo session can never turn itself
 into a permanent login. Sign out (or go idle long enough) and it's gone.
 

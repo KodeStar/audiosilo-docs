@@ -18,7 +18,7 @@ export const SHOTS = [
   {file: 'web-player/book-detail.png', capture: 'web', title: 'Web player - Book detail', hint: 'book page with chapters + Listen button'},
   {file: 'web-player/player.png', capture: 'web', title: 'Web player - Now playing', hint: 'player with chapter list, speed, seek bar'},
   {file: 'web-player/search.png', capture: 'web', title: 'Web player - Search', hint: 'search results for a query'},
-  {file: 'web-player/settings.png', capture: 'web', title: 'Web player - Settings', hint: 'settings screen (account, recovery, language)'},
+  {file: 'web-player/settings.png', capture: 'web', title: 'Web player - Settings', hint: 'settings screen (account, password, language)'},
   {file: 'web-player/downloads.png', capture: 'web', title: 'Web player - Downloads', hint: 'offline downloads screen'},
   {file: 'web-player/connect.png', capture: 'web', title: 'Web player - Connect', hint: 'connect/pairing screen with code field'},
   {file: 'web-player/demo.png', capture: 'web', title: 'Web player - Demo mode', hint: 'the /web/demo landing screen'},

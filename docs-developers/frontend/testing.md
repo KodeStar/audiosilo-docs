@@ -135,9 +135,9 @@ Co-located suites exist for:
 | Downloads | `src/downloads/store.test.ts` |
 | Stores | `src/stores/session.test.ts`, `settings.test.ts` |
 | i18n | `src/i18n/language.test.ts`, `language-provider.test.tsx` |
-| Account flows | `src/components/account/use-recovery-code.test.tsx`, `use-sign-out.test.tsx` |
+| Account flows | `src/components/account/use-api-keys-manager.test.tsx`, `use-sign-out.test.tsx` |
 | UI data | `src/components/ui/icon-data.test.ts` (validates every vendored SVG glyph) |
-| `src/lib` helpers | `alpha-sections`, `app-resume`, `base-url`, `dedup`, `format`, `nav`, `pairing`, `paths`, `progress-view`, `recovery`, `scroll-memory`, `secure-store`, `share`, `support` |
+| `src/lib` helpers | `alpha-sections`, `app-resume`, `auth-failure`, `base-url`, `dedup`, `format`, `known-servers`, `nav`, `pairing`, `paths`, `progress-view`, `scroll-memory`, `secure-store`, `share`, `support` |
 
 Not covered by unit tests, by design or necessity: `src/app/**` screens (kept
 logic-free), and the **native module** (`modules/audiosilo-player`) - Swift and

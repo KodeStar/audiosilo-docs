@@ -1,6 +1,6 @@
 ---
 title: "Users and invites"
-description: "Creating AudioSilo accounts, getting people connected with invite links, recovery codes, and the safety rails around admin accounts."
+description: "Creating AudioSilo accounts, getting people connected with invite links, and the safety rails around admin accounts."
 ---
 
 The **Users** section of the [admin console](console-tour.md) is where you
@@ -100,19 +100,6 @@ downgrades it to the defaults).
 
 To kill an invite outright, click **Revoke**.
 
-## Recovery codes
-
-A **recovery code** is a listener's own durable way back in: a code they mint
-for themselves from the player's settings (see
-[Your account](../listening/account.md)), which never expires and has no use
-limit. It means someone with no password can sign out - or lose their phone -
-and reconnect without needing you to mint a new invite.
-
-In the drawer, the **Recovery code** row only tells you whether one is *set* or
-*none*. As the admin you can **Revoke** a recovery code (for example if it
-leaked), but you can never view it - recovery codes belong to the user, and the
-server stores only a fingerprint.
-
 ## The user detail drawer
 
 ![The user detail drawer](/img/screenshots/admin/user-detail.png)
@@ -122,8 +109,7 @@ Clicking a user opens a drawer with four blocks:
 - **Account** - the **Role** dropdown; **Status** with an **Enable/Disable**
   button; **Password** with a **Set password**/**Change** control (for a
   listener, saving an empty password clears it, returning the account to
-  invite-only pairing); the **Recovery code** status with its **Revoke**
-  button; and **Last active**.
+  invite-only pairing); and **Last active**.
 - **Access** - the shares granted to this user, each with a **Revoke** button,
   plus a **Grant access** control: pick **Whole library** or **Share**, choose
   the target, and click **Grant**. (For an admin this block just notes they

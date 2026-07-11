@@ -155,6 +155,15 @@ password-less user who saved a recovery code can re-pair on any device via the
 normal connect screen, with no admin involved. `GenerateRecoveryCode`
 atomically replaces any existing recovery code for the user.
 
+:::note Client UI retired
+The frontend player no longer mints or reads recovery codes - it nudges users to
+set a password and uses the reconnect flow (see
+[Frontend overview](../frontend/overview.md)) instead. The server keeps `POST
+/auth/recovery` and the admin revoke route so older app builds still redeem
+codes they minted earlier; both are slated for removal once those clients age
+out.
+:::
+
 ## Demo-account restrictions
 
 Public demo mode (`config.demo.*`) creates throwaway `is_demo` accounts.
