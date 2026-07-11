@@ -66,7 +66,7 @@ button, the language selector, and the server's version number.
 ![The Overview section with stat cards, per-library counts and the listening feed](/img/screenshots/admin/overview.png)
 
 **Overview** is the console's home screen ("Library size and what people are
-listening to"). It has three parts:
+listening to"). It has four parts:
 
 ### Stat cards
 
@@ -99,6 +99,27 @@ A cross-user feed of listening activity. Each row shows:
 The feed shows saved listening progress as of when you opened the Overview -
 reopen the section to refresh (players report progress periodically while
 playing).
+
+### Community metadata lookup
+
+A single switch that turns the **community metadata lookup** on or off for the
+whole server. When it is on, books that can be matched (they carry an ASIN or
+ISBN) gain an extra "About this book" section in the player - a description,
+production details, and the series they belong to - drawn from the free,
+community-run catalogue at
+[meta.audiosilo.app](https://meta.audiosilo.app). See
+[About this book](../listening/browsing.md#about-this-book) for what listeners
+see.
+
+- Flipping the switch takes effect immediately for **everyone connected**, and
+  the choice is remembered across restarts.
+- Turning it **off** is a one-tap privacy switch: your server stops contacting
+  the metadata service at all, and the extra section disappears from every
+  player.
+- The card also shows the **Source** - the metadata service address your server
+  uses. If no service is configured, the switch is greyed out and a note explains
+  that a service address must be set in the server configuration first (see the
+  metadata setting in the [configuration reference](/developers/server/configuration)).
 
 :::note
 The console holds no special powers of its own - every action it performs is

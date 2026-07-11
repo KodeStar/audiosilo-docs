@@ -119,12 +119,22 @@ off all outbound calls.
 
 | Key | Type / default | Meaning |
 |---|---|---|
-| `metadata.enabled` | bool, `true` | Turn the metadata lookup on. When `false`, the server makes **no outbound metadata calls**, `GET /libraries/{id}/meta` returns 404, and the `metadata` capability reports false so players hide the enriched-book section entirely |
+| `metadata.enabled` | bool, `true` | Turn the metadata lookup on. When `false`, the server makes **no outbound metadata calls**, `GET /libraries/{id}/meta` returns 404, and the `metadata` capability reports false so players hide the enriched-book section entirely. Seeds the initial state only - an admin can flip this at runtime (see below) |
 | `metadata.base_url` | string, `"https://meta.audiosilo.app"` | Base URL of the metadata service (the site is served at `/` and the API at `/api/v1`). **Must be an absolute `http`/`https` URL when metadata is enabled** |
 
-Turning it off is the one-key privacy switch: with `metadata.enabled: false`
-the server never contacts the metadata service, and every player connected to it
-stops showing the section (they gate on the `metadata` capability). Enrichment is
+`metadata.enabled` is **runtime-toggleable**: an admin can switch the lookup on
+or off from the console's **Overview** section (or via
+[`PATCH /admin/settings`](api/reference.md#patch-apiv1adminsettings)) with no
+restart, and the change is **persisted back to `config.yaml`**. The YAML value
+and `AUDIOSILO_METADATA_ENABLED` only **seed** the initial state at startup; the
+admin toggle is the durable source of truth thereafter. `metadata.base_url`
+stays config-only - it defines whether the feature is *available* at all (a valid
+absolute `http(s)` URL), and the toggle can only enable the lookup when a valid
+base URL is set.
+
+Turning it off is the one-key privacy switch: with the lookup disabled the server
+never contacts the metadata service, and every player connected to it stops
+showing the section (they gate on the `metadata` capability). Enrichment is
 strictly additive and cached - a slow or unreachable service degrades to no
 section, never a broken page.
 

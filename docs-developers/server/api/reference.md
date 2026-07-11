@@ -53,10 +53,13 @@ it the moment it pairs. `version` is stamped from the release tag (`"dev"` for l
 `transcode` is true only when ffmpeg is configured; `web_player` only when the
 `/web` mount is populated; `upload` and `websocket` are reserved for future
 phases and currently always false. `api_keys` is true on servers that support
-user-minted [personal API keys](#personal-api-keys). `metadata` is true when the
-server has [community metadata lookup](#get-apiv1librariesidmeta) configured
-(`metadata.enabled` and a `metadata.base_url`); clients gate the enriched-book
-section on it.
+user-minted [personal API keys](#personal-api-keys). `metadata` reflects the
+**runtime** state of [community metadata lookup](#get-apiv1librariesidmeta): it
+is true only when a valid `metadata.base_url` is configured **and** the lookup is
+switched on. An admin can flip it on or off at runtime via
+[`PATCH /api/v1/admin/settings`](#patch-apiv1adminsettings) (no restart), so this
+flag can change during a server's lifetime; clients gate the enriched-book
+section on it and should re-read it after reconnecting.
 
 ### `GET /healthz` · `GET /api/v1/healthz`
 
@@ -1313,6 +1316,56 @@ a cross-user "currently listening" feed (up to 200 rows, newest first; `title`/
   ]
 }
 ```
+
+## Admin: settings
+
+Runtime-toggleable server settings, surfaced in the console's **Overview**
+section. The envelope is a feature-keyed object so future settings can join it
+without reshaping the wire contract; today it carries only `metadata`.
+
+### `GET /api/v1/admin/settings`
+
+*Admin.* Returns the current runtime settings.
+
+```json
+{
+  "metadata": {
+    "enabled": true,
+    "base_url": "https://meta.audiosilo.app",
+    "available": true
+  }
+}
+```
+
+For `metadata`: `enabled` is the runtime on/off flag; `base_url` is the
+configured metadata service URL (empty when none is set); `available` reports
+whether the lookup **can** be enabled at all - true only when `base_url` is a
+valid absolute `http(s)` URL. When `available` is false the feature is
+permanently off until the server config gains a valid `base_url`, and any attempt
+to enable it is rejected. The live `metadata` [capability](#get-apiv1server) is
+`enabled && available`.
+
+### `PATCH /api/v1/admin/settings`
+
+*Admin.* Flips runtime settings and persists them to `config.yaml` (so the change
+survives a restart). Send only the fields you want to change - an **absent field
+is left unchanged**. Returns the same envelope as `GET` with the new state.
+
+```json
+{ "metadata": { "enabled": false } }
+```
+
+Setting `metadata.enabled` to `true` when the lookup is unavailable (no valid
+`metadata.base_url`) is a **`400`** - configure `metadata.base_url` first.
+Toggling the flag takes effect immediately across the server: it gates
+`GET /libraries/{id}/meta` and the `metadata` capability, so every connected
+player starts or stops showing the enriched-book section without a restart.
+
+| Status | Meaning |
+|---|---|
+| `200` | updated; body is the current settings envelope |
+| `400` | invalid body, or enabling metadata when no valid `metadata.base_url` is configured |
+| `500` | the settings could not be persisted (the in-memory change is rolled back) |
 
 ## Well-known
 
