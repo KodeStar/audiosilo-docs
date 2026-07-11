@@ -70,8 +70,8 @@ servers at once, and two of them can each have a "library 1"): `qk.item(cid, lib
 path)`, `qk.chapters(cid, lib, path)`, `qk.progress(cid, lib, path)`,
 `qk.allProgress(cid)`, `qk.bookmarks/notes/history(cid, lib, path)`,
 `qk.favourites(cid)`, `qk.libraries(cid)`, `qk.browse(cid, lib, path)`,
-`qk.server(cid)` - so mutations can invalidate precisely and one server's cache
-never shadows another's. Content keys are `(connectionId, libraryId, path)` tuples,
+`qk.bookMeta(cid, lib, path)`, `qk.server(cid)` - so mutations can invalidate
+precisely and one server's cache never shadows another's. Content keys are `(connectionId, libraryId, path)` tuples,
 extending the path-is-identity rule across connections.
 
 Patterns to copy when adding an endpoint:
@@ -104,6 +104,43 @@ where a result lives ("server · library") for de-duplicated rows.
 `provider.tsx` also registers an `onReconnect` handler that invalidates **all**
 queries when the server becomes reachable again - screens that errored or
 emptied while offline repopulate without a remount.
+
+### Enriched book metadata
+
+The book screen (`src/app/(app)/book/[libraryId].tsx`) draws a
+`BookMetaSection` (`src/components/library/book-meta.tsx`) beneath the
+file/chapter list, in both the wide and phone branches, following the
+section-per-concern pattern (the same shape as the bookmarks/notes sections). It
+shows a description (collapsed past ~300 characters with a show-more toggle),
+compact production details (publisher, release date, first published, an
+"abridged" badge), a horizontal **more in this series** rail, and a quiet **View
+on AudioSilo Meta** link.
+
+Three details make it safe to add to a screen everyone sees:
+
+- **Capability-gated.** The section mounts only when the server advertises the
+  `metadata` capability (`!!server.capabilities.metadata`, optional in
+  `types.ts` so an older server reads as absent → false). On a server without
+  the feature the query never fires.
+- **Progressive enhancement.** The component renders **nothing** while loading,
+  on error, or on `{ matched: false }` - the page is never worse for having the
+  section, and its absence is indistinguishable from a book the metadata service
+  doesn't know.
+- **Fetch tuned for a best-effort side dish.** `useBookMeta` keys on
+  `qk.bookMeta(cid, lib, path)` with a **1 h `staleTime`** (the server caches the
+  composed envelope too, so re-fetching sooner buys nothing) and **`retry: false`**
+  so a 502 from a down metadata service resolves once and stops - it must not
+  spin or block the rest of the screen.
+
+`client.bookMeta(libraryId, path, signal)` calls `GET /libraries/{id}/meta`; the
+`BookMeta` discriminated union (`{ matched: false } | { matched: true; work;
+recording?; series?; web_url }`) in `types.ts` is hand-mirrored from the server's
+envelope (the mirroring rule above applies - a change to the shape is a two-repo
+change with tests on both sides). Every series-rail entry
+carries its own `web_url`, so tapping a series work or the footer link opens the
+metadata site **externally** (a real new tab on web, an in-app browser tab on
+native) - the client never constructs a metadata URL. UI strings live under
+`book.meta.*` in the locale catalogs.
 
 ## Zustand stores
 

@@ -51,6 +51,16 @@ Tap a book to open its detail page:
 
 If the same book exists in more than one place (say, an M4B copy and an MP3 copy), the detail page offers **Choose a version** so you can pick which copy to play.
 
+### About this book
+
+Some books show an extra section below the chapters with more about the title:
+
+- An **About** description of the story, and production details such as the **publisher**, **release date** and when the work was **first published**.
+- A **More in this series** row - other books in the same series, each opening its page on the metadata site so you can see what to read next.
+- A **View on AudioSilo Meta** link to the book's full entry.
+
+This information comes from the **AudioSilo community metadata database** at [meta.audiosilo.app](https://meta.audiosilo.app), a free, community-run catalogue of audiobook details. It appears only when the book can be matched (it carries an ASIN or ISBN) and your server has the metadata lookup switched on. If a book has no extra section, it simply isn't matched or your admin has turned the feature off - nothing else on the page changes. A server admin can disable the lookup entirely, in which case no book shows this section (see the metadata setting in the [configuration reference](/developers/server/configuration)).
+
 ## Search
 
 The **Search** tab (or the search box in the desktop header) searches **titles, authors, and series** across every library you have access to - and across every server you've added:
