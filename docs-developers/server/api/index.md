@@ -197,7 +197,8 @@ a `limit` and no pagination.
     "transcode": true,
     "upload": false,
     "websocket": false,
-    "api_keys": true
+    "api_keys": true,
+    "metadata": true
   },
   "auth": { "methods": ["auth_code", "password"] },
   "demo": { "enabled": false }
@@ -207,7 +208,9 @@ a `limit` and no pagination.
 Clients **must** feature-gate on these flags rather than probing endpoints:
 `transcode` reflects whether ffmpeg is configured (without it, `?transcode=1`
 is 503), `web_player` whether `/web` is mounted, `api_keys` whether the server
-supports user-minted [API keys](reference.md#personal-api-keys),
+supports user-minted [API keys](reference.md#personal-api-keys), `metadata`
+whether [community metadata lookup](reference.md#get-apiv1librariesidmeta) is
+configured (the enriched-book section is drawn only when it is true),
 `upload`/`websocket` are roadmap phases that will flip on when they land.
 `demo.enabled` drives the "Try the demo" affordance.
 

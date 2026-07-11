@@ -108,6 +108,26 @@ case they live only in the database. There is deliberately **no layout key**
 | `demo.max_users` | int (optional), unset | Cap on concurrent live demo accounts. **Unset → safe default 200** (`config.DefaultDemoMaxUsers`); **explicit `0` = unlimited** (opt-in risk: per-IP creation limits are bypassable by rotating IPs) |
 | `demo.idle_ttl` | duration string, `"24h"` | Reap demo accounts idle longer than this (background reaper sweeps every 15 min). Must parse as a positive `time.Duration`; empty falls back to 24h |
 
+### Community metadata (`metadata.*`)
+
+The server can enrich a book with a description, production details and its
+series by resolving the book's ASIN/ISBN against the community metadata API
+([meta.audiosilo.app](https://meta.audiosilo.app)) and serving the result at
+`GET /libraries/{id}/meta` (players draw it beneath the chapter list). The
+lookup is server-side by design - one cached seam, and one config key that turns
+off all outbound calls.
+
+| Key | Type / default | Meaning |
+|---|---|---|
+| `metadata.enabled` | bool, `true` | Turn the metadata lookup on. When `false`, the server makes **no outbound metadata calls**, `GET /libraries/{id}/meta` returns 404, and the `metadata` capability reports false so players hide the enriched-book section entirely |
+| `metadata.base_url` | string, `"https://meta.audiosilo.app"` | Base URL of the metadata service (the site is served at `/` and the API at `/api/v1`). **Must be an absolute `http`/`https` URL when metadata is enabled** |
+
+Turning it off is the one-key privacy switch: with `metadata.enabled: false`
+the server never contacts the metadata service, and every player connected to it
+stops showing the section (they gate on the `metadata` capability). Enrichment is
+strictly additive and cached - a slow or unreachable service degrades to no
+section, never a broken page.
+
 ## Environment variables
 
 `applyEnv` overrides a fixed set of keys from `AUDIOSILO_*` variables - this
@@ -128,6 +148,8 @@ is the complete list (anything not here, e.g. `app_links`, `libraries`,
 | `AUDIOSILO_DEMO_LIBRARY` | `demo.library` | string |
 | `AUDIOSILO_DEMO_MAX_USERS` | `demo.max_users` | integer (`0` = unlimited) |
 | `AUDIOSILO_DEMO_IDLE_TTL` | `demo.idle_ttl` | Go duration, e.g. `24h` |
+| `AUDIOSILO_METADATA_ENABLED` | `metadata.enabled` | `strconv.ParseBool` (`true`/`1`/…) |
+| `AUDIOSILO_METADATA_BASE_URL` | `metadata.base_url` | URL |
 
 List values are split on commas with whitespace trimmed and empties dropped
 (`splitList`). Numeric/boolean variables that fail to parse are **silently
@@ -144,7 +166,8 @@ overrides). It rejects:
 - any `trusted_proxies` entry that isn't a valid CIDR;
 - a library with an empty name or root, or a duplicate library name;
 - demo mode without `demo.library`; a `demo.idle_ttl` that doesn't parse or
-  isn't positive (rejected loudly rather than silently replaced by 24h).
+  isn't positive (rejected loudly rather than silently replaced by 24h);
+- metadata enabled with an empty or non-absolute-`http(s)` `metadata.base_url`.
 
 Secure-by-default choices baked into `Default()` and first-run: TLS on
 (`selfsigned`) out of the box, no default passwords (credentials are minted

@@ -36,7 +36,8 @@ else and gate features on the flags.
     "transcode": true,
     "upload": false,
     "websocket": false,
-    "api_keys": true
+    "api_keys": true,
+    "metadata": true
   },
   "auth": { "methods": ["auth_code", "password"] },
   "demo": { "enabled": false }
@@ -52,7 +53,10 @@ it the moment it pairs. `version` is stamped from the release tag (`"dev"` for l
 `transcode` is true only when ffmpeg is configured; `web_player` only when the
 `/web` mount is populated; `upload` and `websocket` are reserved for future
 phases and currently always false. `api_keys` is true on servers that support
-user-minted [personal API keys](#personal-api-keys).
+user-minted [personal API keys](#personal-api-keys). `metadata` is true when the
+server has [community metadata lookup](#get-apiv1librariesidmeta) configured
+(`metadata.enabled` and a `metadata.base_url`); clients gate the enriched-book
+section on it.
 
 ### `GET /healthz` · `GET /api/v1/healthz`
 
@@ -661,6 +665,93 @@ multi-file mp3 parts render identically.
 ```
 
 Same status codes as `/item`.
+
+### `GET /api/v1/libraries/{id}/meta`
+
+*Session.* Community metadata enrichment for a book - a description, production
+details, and the series it belongs to - composed server-side from the community
+metadata API ([meta.audiosilo.app](https://meta.audiosilo.app)) and cached. The
+path is authorized against the caller's share scope exactly like `/item`. Gated
+by the `metadata` [capability](#get-apiv1server): when it is false the route
+returns 404, so a client that honours the flag never calls this.
+
+The server resolves the book's `asin`/`isbn` (the fields on the indexed book,
+backfilled by the manager into `book_enrichment`), looks the recording up
+upstream, and folds the matched recording plus up to three series rails into one
+envelope. Every series-rail entry carries its own `web_url`, so a client links to
+the metadata site without ever building a URL itself.
+
+| Query param | Type | Required |
+|---|---|---|
+| `path` | string | yes |
+
+Response `200` on a match:
+
+```json
+{
+  "matched": true,
+  "work": {
+    "id": "the-martian",
+    "title": "The Martian",
+    "subtitle": "",
+    "authors": [{ "id": "andy-weir", "name": "Andy Weir" }],
+    "language": "en",
+    "first_published": "2011",
+    "description": "An astronaut is stranded on Mars…"
+  },
+  "recording": {
+    "id": "podium-2013",
+    "narrators": [{ "id": "r-c-bray", "name": "R. C. Bray" }],
+    "abridged": false,
+    "runtime_min": 634,
+    "release_date": "2013-03-22",
+    "publisher": "Podium Audio",
+    "cover_url": "https://…"
+  },
+  "series": [
+    {
+      "id": "wandering-earth",
+      "name": "The Wandering Earth",
+      "position": "1",
+      "works": [
+        {
+          "id": "the-martian",
+          "title": "The Martian",
+          "position": "1",
+          "authors": [{ "id": "andy-weir", "name": "Andy Weir" }],
+          "cover_url": "https://…",
+          "web_url": "https://meta.audiosilo.app/work?id=the-martian"
+        }
+      ]
+    }
+  ],
+  "web_url": "https://meta.audiosilo.app/work?id=the-martian"
+}
+```
+
+`work` is always present on a match; `recording` and `series` are omitted when
+the upstream has none, and every `omitempty` string/number field (`subtitle`,
+`first_published`, `description`, `abridged`, `runtime_min`, `release_date`,
+`publisher`, `cover_url`) is dropped when empty. `series[].position` is this
+work's position in that series; `series[].works` is the full ordered rail,
+**including the current work** (the client filters it out before drawing a "more
+in this series" row). Positions are strings ("1", "2.5", "1-3.5").
+
+When the book has neither an `asin` nor an `isbn`, or the upstream reports no
+match, the response is `200 { "matched": false }` - a normal, non-error result
+that the client treats as "nothing to show":
+
+```json
+{ "matched": false }
+```
+
+| Status | Meaning |
+|---|---|
+| `200` | `{ "matched": true, … }` on a match, or `{ "matched": false }` when there is nothing to show |
+| `400` | missing `path` / invalid library id |
+| `403` | path outside the caller's share scope |
+| `404` | `no book at that path`, **or** metadata lookup is disabled on this server (`metadata` capability false) |
+| `502` | `metadata service unavailable` - the upstream was unreachable or errored |
 
 ## Streaming & media
 
