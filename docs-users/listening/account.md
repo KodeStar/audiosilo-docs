@@ -1,6 +1,6 @@
 ---
 title: Your account and settings
-description: "The Settings screen: appearance, language, playback preferences, passwords, recovery codes, pairing extra devices, and signing out safely."
+description: "The Settings screen: appearance, language, playback preferences, setting a password, pairing extra devices, and signing out safely."
 ---
 
 The **Settings** tab is where you tune the player and look after your account:
@@ -55,23 +55,12 @@ Shows who you're signed in as, your role, and the server address - plus the two 
 
 ### Set a password
 
-Accounts created by invite often start **without** a password - you signed in with a code, and that's fine day to day. Setting one gives you a normal username + password sign-in:
+Accounts created by invite often start **without** a password - you signed in with a code, and that's fine day to day. Setting a password is your **reliable way back in** on any device:
 
 - Tap **Set a password** (or **Change password**), enter a new password of at least 8 characters, and save.
 - Changing an existing password asks for your **current password** first.
 
-### Recovery code - your way back in
-
-A **recovery code** is a code only you hold that signs you back in on any device - *"A code you keep to sign back in yourself - no admin needed."*
-
-Why you want one: if you sign out (or get a new phone) and have **no password and no recovery code**, the only way back into your account is asking your admin for a fresh invite. A recovery code removes that dependency entirely - it never expires and works any number of times, typed into the same code box as an invite (see [Connecting](connecting.md)).
-
-- Tap **Generate recovery code**. The code is shown **once** - *save it somewhere safe* (a password manager is ideal). It won't be shown again.
-- **Regenerate recovery code** replaces it; the app warns you first, because the old code stops working the moment a new one exists.
-
-:::warning
-Treat a recovery code like a password: anyone who has it can sign in as you. If yours ever leaks, regenerate it (or ask your admin to revoke it).
-:::
+Why it's worth doing, especially if you were invited by pairing and never set one: if you ever sign out or get a new phone, a username and password sign you straight back in with no help from anyone. Without one, getting back in means asking your admin for a fresh invite - so setting a password once is the safety net that keeps your account in your own hands.
 
 ### API keys
 
@@ -79,9 +68,13 @@ If your server supports them, an **API keys** section here lets you create keys 
 
 ### Signing out
 
-**Sign out** disconnects this device. If you're about to sign out with **neither a password nor a recovery code**, the app stops you with a warning - *"Without one you'll need a new invite from your admin to sign back in"* - and offers to **Set a recovery code** right there. Take the offer; it's the whole reason the button exists.
+**Sign out** disconnects this device. If you're about to sign out **without a password set**, the app stops you with a warning - *"Without one you'll need a new invite from your admin to sign back in on this server"* - and offers to **Set a password** right there. Take the offer; it's the whole reason the button exists.
 
 Signing out also **removes this server from the app**, so it deletes that server's downloaded books from the device and any progress that hasn't synced yet. The app warns you when there are downloads to lose. (Books, progress, and bookmarks stored on the server are safe - sign back in and they're all there.)
+
+:::tip
+Signing out isn't a big deal. Next time you open the connect screen, any server you've connected to before shows a one-tap **"Reconnect to &lt;your server&gt;"** shortcut with the address already filled in - so you only re-enter your code or password, never the server address. See [Connecting and signing in](connecting.md#getting-back-in-after-signing-out).
+:::
 
 ## Devices
 

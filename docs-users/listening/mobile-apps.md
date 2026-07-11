@@ -26,7 +26,7 @@ Signing the app in is usually a scan, not typing - all the routes are covered in
 
 - **Scan a QR code** - tap **Scan QR code** on the app's connect screen and point it at the pairing QR on your server's connect page (or at the **Settings → Devices** QR on a device that's already signed in).
 - **Tap a link** - an invite link, or an `audiosilo://` link, opens the app and signs it in automatically.
-- **Type it in** - server address plus an invite/recovery code or username and password, if you prefer.
+- **Type it in** - server address plus an invite code or username and password, if you prefer.
 
 ## Background playback
 

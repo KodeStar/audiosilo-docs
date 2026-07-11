@@ -44,7 +44,7 @@ src/components/     ui/ (design-system primitives - Text, Icon, Button, Card, Sh
 src/stores/         Zustand: session (connections + tokens), settings, search
 src/i18n/           i18next init, LanguageProvider, locale catalogs (locales/*.json)
 src/theme/          ThemeProvider + raw color tokens (tokens.ts)
-src/lib/            storage, secure-store, paths, format, pairing, recovery, device,
+src/lib/            storage, secure-store, paths, format, pairing, known-servers, device,
                     base-url, layout (the one phone->desktop breakpoint),
                     register-sw, and other pure helpers
 modules/audiosilo-player/  the local Expo module (Swift + Kotlin + TS bridge)
@@ -75,7 +75,7 @@ handful of standalone screens.
 |---|---|---|
 | - (root layout) | `src/app/_layout.tsx` | Mounts the provider tree (`GestureHandlerRootView` → `SafeAreaProvider` → `LanguageProvider` → `ThemeProvider` → `ApiProvider`), hydrates the session/settings/downloads stores, imports `@/lib/register-sw` for its side effect, mounts the headless `BookEndedListener` (drives the end-of-book flow, see [Playback](playback.md#ending-a-book-end-credits-and-up-next)), and runs `useAppResume` (foreground refresh + the Android swipe-from-recents reset). Declares the `(app)` stack and the `player`/`finished` screens as `fullScreenModal`s. |
 | - (web HTML shell) | `src/app/+html.tsx` | The static HTML wrapper for every exported web route: PWA manifest/favicon links (base-prefixed) and a dark backdrop painted before React mounts so there is no white flash. |
-| `(app)` guard | `src/app/(app)/_layout.tsx` | The auth gate: `loading` → spinner, `unauthenticated` → `<Redirect href="/connect" />`, otherwise wraps children in `AppShell` (header + nav). Also backfills `has_password`/`has_recovery` on sessions persisted before those flags existed. |
+| `(app)` guard | `src/app/(app)/_layout.tsx` | The auth gate: `loading` → spinner, `unauthenticated` → `<Redirect href="/connect" />`, otherwise wraps children in `AppShell` (header + nav, which renders the `ReconnectBanner` when a connection's token is rejected - see below). Also backfills `has_password`/`has_recovery` on sessions persisted before those flags existed. |
 | `/` | `(app)/index.tsx` | Home: continue-listening cards, recently-added shelf, favourites - aggregated **across every connected server** via the `use*All` hooks. |
 | `/browse?type=recent\|finished` | `(app)/browse.tsx` | The "see all" grid behind a home shelf. |
 | `/search` | `(app)/search.tsx` | Search across all connections, de-duplicated; shares its query text with the desktop top bar via `useSearchStore`. |
@@ -85,13 +85,13 @@ handful of standalone screens.
 | `/library/[libraryId]/[...path]` | `(app)/library/[libraryId]/[...path].tsx` | Nested folder browse - same `BrowseScreen`, the catch-all segments become the folder `path` (helpers in `src/lib/paths.ts`). |
 | `/book/[libraryId]/[...path]` | `(app)/book/[libraryId]/[...path].tsx` | Book detail: play/resume, download control, chapters, bookmarks, notes, listening history, other versions of the same book. |
 | `/downloads` | `(app)/downloads.tsx` | Downloaded books + storage used ([Offline](offline.md)). |
-| `/settings` | `(app)/settings.tsx` | Playback tunables, language, theme, connections, self-service password/recovery, per-server API keys (capability-gated), sign-out. |
+| `/settings` | `(app)/settings.tsx` | Playback tunables, language, theme, connections, self-service password (the sign-out guard nudges a password-less user to set one via `sign-out-confirm.tsx`), per-server API keys (capability-gated), sign-out. |
 | `/player` | `src/app/player.tsx` | The full player, presented as a full-screen modal above the shell. Accepts `libraryId`/`path` (+ optional `position`/`track`) params and gates playback start on the chapters query settling. |
 | `/finished` | `src/app/finished.tsx` | The end-credits screen shown when a book finishes (or from the player's menu). A root modal sibling of the player; renders `EndCredits` with an "up next" suggestion. See [Playback](playback.md#ending-a-book-end-credits-and-up-next). |
 | `/connect` layout | `src/app/connect/_layout.tsx` | Onboarding stack. An **authenticated** user is bounced home unless they are adding another server (`?add=1`, a pairing `?token=`, or a sign-in mid-flow via `pendingServerUrl`) - the app supports multiple simultaneous server connections. |
-| `/connect` | `connect/index.tsx` | Enter a server URL (or auto-redeem a pairing token arriving via deep link / QR `web_url`). |
+| `/connect` | `connect/index.tsx` | Enter a server URL (or auto-redeem a pairing token arriving via deep link / QR `web_url`). When signed out of everything, also lists previously-connected servers as one-tap **Reconnect** shortcuts (`src/lib/known-servers.ts`), each pre-filling the address so the user only re-enters a code or password. |
 | `/connect/scan` | `connect/scan.tsx` | Camera QR scanner (`expo-camera`) for the pairing QR. |
-| `/connect/sign-in` | `connect/sign-in.tsx` | Auth-code **or** username/password sign-in against the pending server. The code field accepts both invites and recovery codes - they redeem through the same path. |
+| `/connect/sign-in` | `connect/sign-in.tsx` | Auth-code **or** username/password sign-in against the pending server. Reached fresh, from a **Reconnect** shortcut, or from the dead-token `ReconnectBanner` (`src/components/layout/reconnect-banner.tsx`), all with the address pre-filled via `pendingServerUrl`. The code field redeems invite codes (legacy recovery codes still redeem server-side, but the app no longer mints them). |
 | `/demo` | `src/app/demo.tsx` | Public demo landing: mints a throwaway session on a demo-mode server and shows the pairing QR so the same demo user opens on a phone. |
 
 ## Styling conventions
