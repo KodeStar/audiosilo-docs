@@ -56,10 +56,12 @@ If the same book exists in more than one place (say, an M4B copy and an MP3 copy
 Some books show an extra section below the chapters with more about the title:
 
 - An **About** description of the story, and production details such as the **publisher**, **release date** and when the work was **first published**.
+- A **Characters** section - community-written cards for the people in the book. Each card shows the name, role and any aliases, plus which chapter the character first appears in; tap a card to reveal its short description. Cards stay closed until you tap them, so you decide when to read on.
+- A **Story so far** section - short "what's happened up to here" recaps, each labelled with the chapter it's safe to read after. They stay closed by default, so you only open the one for as far as you've listened and don't spoil what's ahead. A recap marked for the very start reads "Previously, in earlier books" - a catch-up from earlier in the series.
 - A **More in this series** row - other books in the same series, each opening its page on the metadata site so you can see what to read next.
 - A **View on AudioSilo Meta** link to the book's full entry.
 
-This information comes from the **AudioSilo community metadata database** at [meta.audiosilo.app](https://meta.audiosilo.app), a free, community-run catalogue of audiobook details. It appears only when the book can be matched (it carries an ASIN or ISBN) and your server has the metadata lookup switched on. If a book has no extra section, it simply isn't matched or your admin has turned the feature off - nothing else on the page changes. A server admin can switch the lookup on or off at any time from the admin console's Overview section (see the [console tour](../admin/console-tour.md#community-metadata-lookup)); when it is off, no book shows this section.
+This information comes from the **AudioSilo community metadata database** at [meta.audiosilo.app](https://meta.audiosilo.app), a free, community-run catalogue of audiobook details. It appears only when the book can be matched (it carries an ASIN or ISBN) and your server has the metadata lookup switched on. The **Characters** and **Story so far** sections are contributed by the community, so a matched book shows them only once someone has written them - many books will have the About and series details but not these yet. If a book has no extra section, it simply isn't matched or your admin has turned the feature off - nothing else on the page changes. A server admin can switch the lookup on or off at any time from the admin console's Overview section (see the [console tour](../admin/console-tour.md#community-metadata-lookup)); when it is off, no book shows this section.
 
 ## Search
 

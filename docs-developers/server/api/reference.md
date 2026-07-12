@@ -700,7 +700,24 @@ Response `200` on a match:
     "authors": [{ "id": "andy-weir", "name": "Andy Weir" }],
     "language": "en",
     "first_published": "2011",
-    "description": "An astronaut is stranded on Mars…"
+    "description": "An astronaut is stranded on Mars…",
+    "characters": [
+      {
+        "id": "mark-watney",
+        "name": "Mark Watney",
+        "aliases": ["The Martian"],
+        "role": "protagonist",
+        "reveal": { "chapter": 1 },
+        "description": "The stranded astronaut, an engineer-botanist…"
+      }
+    ],
+    "recaps": [
+      {
+        "through": { "chapter": 6 },
+        "scope": "book",
+        "text": "Watney has survived the storm and taken stock of Hab…"
+      }
+    ]
   },
   "recording": {
     "id": "podium-2013",
@@ -739,6 +756,30 @@ the upstream has none, and every `omitempty` string/number field (`subtitle`,
 work's position in that series; `series[].works` is the full ordered rail,
 **including the current work** (the client filters it out before drawing a "more
 in this series" row). Positions are strings ("1", "2.5", "1-3.5").
+
+`work.characters` and `work.recaps` are the community **expressive layer** (the
+CC BY-SA content, spoiler-tagged and position-keyed); both are `omitempty`, so
+they are absent when the upstream has none. A **position** is
+`{ "chapter": <int >= 0> }` on the work's own, edition-independent timeline (the
+logical work chapter, 1-based; `0` = front matter / prior-book knowledge), which
+the client maps onto its recording's chapters.
+
+- Each **character** carries an `id` (unique within the work, not global), a
+  `name`, optional `aliases` and `role` (`protagonist`/`antagonist`/`supporting`/
+  `minor`), a `reveal` position (where the character is first disclosed - the
+  spoiler gate), and an own-words `description`. Recurring characters are
+  re-described per book (Kindle-X-Ray style), so a client reveals only up to
+  where the listener is.
+- Each **recap** carries a `through` position (safe to show once the listener has
+  finished that chapter), an optional `scope` (`book` or `series` - a
+  `chapter: 0` + `series` recap is the "previously, in earlier books" summary),
+  and own-words `text`.
+
+These fields are additive: they are passed straight through from the upstream
+`GET /works/{id}` (see the [three-repo seam](../../architecture/cross-repo-contract.md)),
+not composed or reshaped like `recording`/`series`. The one field the server
+drops is the character cross-reference (`xref`) - it is not exposed to clients. A
+client that ignores these fields is unaffected.
 
 When the book has neither an `asin` nor an `isbn`, or the upstream reports no
 match, the response is `200 { "matched": false }` - a normal, non-error result
