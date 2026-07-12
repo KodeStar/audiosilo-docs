@@ -113,8 +113,20 @@ file/chapter list, in both the wide and phone branches, following the
 section-per-concern pattern (the same shape as the bookmarks/notes sections). It
 shows a description (collapsed past ~300 characters with a show-more toggle),
 compact production details (publisher, release date, first published, an
-"abridged" badge), a horizontal **more in this series** rail, and a quiet **View
-on AudioSilo Meta** link.
+"abridged" badge), a **Characters** section, a **Story so far** recap section, a
+horizontal **more in this series** rail, and a quiet **View on AudioSilo Meta**
+link.
+
+The **Characters** and **Story so far** sections are the community expressive
+layer (`work.characters` / `work.recaps`, the `BookMetaCharacter` /
+`BookMetaRecap` types). They are spoiler-aware and rendered closed by default:
+each character card shows name/role/aliases and "from chapter N" up front, with a
+per-card accordion for the own-words description (no blur - a tap reveals it);
+each recap likewise opens only when tapped, so the reader goes only as far as
+they have listened. Both are absent from the envelope when the upstream has
+none, so a work without them simply shows no such section. Pure label helpers
+(`roleLabelKey`, `revealFromStart`, `recapDescriptor`, `sortRecaps`) are
+unit-tested, and the strings live under `book.meta.*` in all locale catalogs.
 
 Three details make it safe to add to a screen everyone sees:
 
