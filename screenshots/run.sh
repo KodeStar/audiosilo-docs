@@ -5,28 +5,36 @@
 #   2. seeds a small public-domain library (LibriVox; cached in .cache/library),
 #   3. starts a demo-mode server (port 8790) serving the frontend's web export,
 #      plus a second --setup instance (port 8791) for the wizard shot,
-#   4. runs the Playwright captures (web player + admin console + public pages),
-#   5. backfills placeholders for anything not captured (e.g. the desktop
+#   4. builds the AudioSilo Meta data artifact + site and starts a local
+#      metaserve (port 8795) for the meta.audiosilo.app site captures,
+#   5. runs the Playwright captures (web player + admin console + public pages
+#      + the meta site),
+#   6. backfills placeholders for anything not captured (e.g. the desktop
 #      manager on a headless run - see README.md for manager captures).
 #
 # Prereqs: Go 1.25+, Node 24, ffmpeg/ffprobe, `npm install` +
 # `npx playwright install chromium` in this directory, and a web export at
 # ../audiosilo-frontend/dist (run audiosilo-server/scripts/build-web.sh once).
+# The meta section also needs yarn (for the sibling audiosilo-meta site build);
+# once its caches are warm, only remote cover images touch the network.
 #
 # Env knobs: MAX_FILES (chapter files per seeded book, default 3),
-#            SKIP_SEED=1 (reuse the cached library as-is).
+#            SKIP_SEED=1 (reuse the cached library as-is),
+#            SKIP_META=1 (skip the meta site stack + its captures).
 set -euo pipefail
 
 HERE="$(cd "$(dirname "$0")" && pwd)"
 WORKSPACE="$(cd "$HERE/../.." && pwd)"
 SERVER="$WORKSPACE/audiosilo-server"
 FRONTEND="$WORKSPACE/audiosilo-frontend"
+META="$WORKSPACE/audiosilo-meta"
 CACHE="$HERE/.cache"
 LIBRARY="$CACHE/library"
 DATA="$CACHE/data"
 SETUP_DATA="$CACHE/setup-data"
 PORT=8790
 SETUP_PORT=8791
+META_PORT=8795
 
 mkdir -p "$CACHE"
 
@@ -54,8 +62,17 @@ fi
 cleanup() {
   [ -n "${MAIN_PID:-}" ] && kill "$MAIN_PID" 2>/dev/null || true
   [ -n "${SETUP_PID:-}" ] && kill "$SETUP_PID" 2>/dev/null || true
+  [ -n "${META_PID:-}" ] && kill "$META_PID" 2>/dev/null || true
 }
 trap cleanup EXIT
+
+wait_healthy() { # <url> <logfile> <name>
+  for i in $(seq 1 60); do
+    curl -fsS "$1" >/dev/null 2>&1 && return 0
+    [ "$i" = 60 ] && { echo "$3 never became healthy; see $2"; exit 1; }
+    sleep 1
+  done
+}
 
 echo "==> starting demo server on :$PORT (fresh data dir)"
 rm -rf "$DATA" && mkdir -p "$DATA"
@@ -83,11 +100,7 @@ AUDIOSILO_BIND="127.0.0.1:$SETUP_PORT" AUDIOSILO_TLS_MODE=off \
 SETUP_PID=$!
 
 echo "==> waiting for the demo server"
-for i in $(seq 1 60); do
-  curl -fsS "http://127.0.0.1:$PORT/healthz" >/dev/null 2>&1 && break
-  [ "$i" = 60 ] && { echo "server never became healthy; see $CACHE/server.log"; exit 1; }
-  sleep 1
-done
+wait_healthy "http://127.0.0.1:$PORT/healthz" "$CACHE/server.log" "server"
 sleep 8   # let the startup scan index the seeded books
 
 ADMIN_PASSWORD="$(grep 'Admin password' "$CACHE/server.log" | awk -F': ' '{print $2}' | tr -d ' ')"
@@ -96,7 +109,28 @@ if [ -z "$ADMIN_PASSWORD" ]; then
 fi
 SETUP_URL="$(grep -o "http://[^ ]*/setup#token=[^ ]*" "$CACHE/setup.log" | head -1 || true)"
 
-# ── 4. Captures ─────────────────────────────────────────────────────────────
+# ── 4. AudioSilo Meta site (data artifact + site build + metaserve) ─────────
+if [ "${SKIP_META:-0}" != "1" ]; then
+  echo "==> building the meta data artifact"
+  (cd "$META" && go run ./cmd/metabuild -o "$CACHE/meta.sqlite")
+
+  if [ ! -f "$META/site/dist/index.html" ]; then
+    echo "==> no meta site build found; building (yarn, Node 24)"
+    (cd "$META/site" && yarn install --frozen-lockfile && yarn build)
+  fi
+
+  echo "==> starting metaserve on :$META_PORT"
+  (cd "$META" && go build -o bin/metaserve ./cmd/metaserve)
+  "$META/bin/metaserve" --db "$CACHE/meta.sqlite" \
+    --site "$META/site/dist" --addr "127.0.0.1:$META_PORT" \
+    > "$CACHE/metaserve.log" 2>&1 &
+  META_PID=$!
+
+  echo "==> waiting for metaserve"
+  wait_healthy "http://127.0.0.1:$META_PORT/healthz" "$CACHE/metaserve.log" "metaserve"
+fi
+
+# ── 5. Captures ─────────────────────────────────────────────────────────────
 cd "$HERE"
 echo "==> capturing web player"
 AS_BASE="http://127.0.0.1:$PORT/web/" node capture-web.mjs
@@ -105,7 +139,12 @@ echo "==> capturing admin console + public pages"
 AS_ORIGIN="http://127.0.0.1:$PORT" ADMIN_PASSWORD="$ADMIN_PASSWORD" \
   SETUP_URL="$SETUP_URL" node capture-admin.mjs
 
-# ── 5. Backfill placeholders for anything missing ──────────────────────────
+if [ "${SKIP_META:-0}" != "1" ]; then
+  echo "==> capturing the meta site"
+  META_BASE="http://127.0.0.1:$META_PORT" node capture-meta.mjs
+fi
+
+# ── 6. Backfill placeholders for anything missing ──────────────────────────
 echo "==> backfilling placeholders"
 node placeholders.mjs
 

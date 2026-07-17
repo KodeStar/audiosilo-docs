@@ -12,6 +12,16 @@ export const CACHE = path.resolve(here, '.cache');
 
 export const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
+// The standard desktop capture context (retina, dark, motion-reduced) shared by
+// the capture scripts. capture-web builds its own parameterized contexts (phone
+// profile, connect/demo variants) on purpose.
+export const DESKTOP_CONTEXT = {
+  viewport: {width: 1440, height: 900},
+  deviceScaleFactor: 2,
+  colorScheme: 'dark',
+  reducedMotion: 'reduce',
+};
+
 // Raw Playwright PNGs at deviceScaleFactor 2 are large (a full desktop shot is
 // ~0.5-1.3 MB); pngquant's lossy-palette pass shrinks them ~60% with no
 // perceptible loss on UI captures. It's a deterministic transform run on every

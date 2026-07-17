@@ -60,6 +60,7 @@ mappings:
 | Scanner, detection, metadata | [server/scanner.md](../server/scanner.md) + `/users/getting-started/organizing-your-library` |
 | Auth, invites, shares | [server/auth-and-security.md](../server/auth-and-security.md) + `/users/admin/users-and-invites`, `/users/admin/sharing` |
 | Manager features | `/users/manager/*` + [manager developer pages](../manager/overview.md) + `manager/` screenshots |
+| Meta schemas, `metaserve` API, or intake tooling | [meta developer pages](../meta/overview.md) (data model, API, contributing) - and the [cross-repo contract](../architecture/cross-repo-contract.md) when the server's `/meta` envelope is affected |
 | Build / release / distribution | [release-pipeline.md](../architecture/release-pipeline.md) + [releasing.md](./releasing.md) |
 | A capability flag | [server/api/index.md](../server/api/index.md) + the feature's user page |
 

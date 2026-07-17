@@ -9,6 +9,7 @@
 // `capture` says which script produces it:
 //   'web'     - capture-web.mjs (web player via a warmed demo session)
 //   'admin'   - capture-admin.mjs (admin console + public pages)
+//   'meta'    - capture-meta.mjs (the meta.audiosilo.app site via a local metaserve)
 //   'manager' - capture-manager.mjs (Wails dev server; falls back to placeholder)
 
 export const SHOTS = [
@@ -38,6 +39,15 @@ export const SHOTS = [
   {file: 'admin/shares.png', capture: 'admin', title: 'Admin - Shares', hint: 'shares section with path rules'},
   {file: 'server/connect-page.png', capture: 'admin', title: 'Connect page', hint: 'public connect page (auth-code box / QR)'},
   {file: 'server/setup-wizard.png', capture: 'admin', title: 'Setup wizard', hint: 'first-run --setup wizard page'},
+
+  // ── AudioSilo Meta site (meta.audiosilo.app; desktop 1440x900, dark) ────
+  {file: 'meta/home.png', capture: 'meta', title: 'Meta - Home', hint: 'search hero, live stats band, latest additions grid'},
+  {file: 'meta/search.png', capture: 'meta', title: 'Meta - Search', hint: 'search dropdown with grouped work/person/series results'},
+  {file: 'meta/work.png', capture: 'meta', title: 'Meta - Work detail', hint: 'a work page with its cover, metadata and multiple recordings'},
+  {file: 'meta/characters.png', capture: 'meta', title: 'Meta - Characters', hint: 'the community characters section, one card opened'},
+  {file: 'meta/series.png', capture: 'meta', title: 'Meta - Series', hint: 'a series page listing its ordered volumes'},
+  {file: 'meta/contribute.png', capture: 'meta', title: 'Meta - Contribute', hint: 'the coverage browser (what still needs characters/recaps)'},
+  {file: 'meta/import.png', capture: 'meta', title: 'Meta - Import', hint: 'the in-browser library-export diff results'},
 
   // ── Desktop manager (Wails) ─────────────────────────────────────────────
   {file: 'manager/servers.png', capture: 'manager', title: 'Manager - Servers', hint: 'server list home'},

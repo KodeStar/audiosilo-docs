@@ -7,7 +7,7 @@
 // Before capturing it provisions a little demo state through the admin API
 // (a listener account, an invite, a share) so the console looks lived-in.
 import {chromium} from 'playwright';
-import {sleep, shoot, step} from './lib.mjs';
+import {sleep, shoot, step, DESKTOP_CONTEXT} from './lib.mjs';
 
 const ORIGIN = (process.env.AS_ORIGIN || 'http://127.0.0.1:8790').replace(/\/$/, '');
 const PASSWORD = process.env.ADMIN_PASSWORD;
@@ -77,12 +77,7 @@ await step('provision listener + share', async () => {
 
 // ── Capture ────────────────────────────────────────────────────────────────
 const browser = await chromium.launch();
-const ctx = await browser.newContext({
-  viewport: {width: 1440, height: 900},
-  deviceScaleFactor: 2,
-  colorScheme: 'dark',
-  reducedMotion: 'reduce',
-});
+const ctx = await browser.newContext(DESKTOP_CONTEXT);
 const page = await ctx.newPage();
 
 const nav = async (section) => {
