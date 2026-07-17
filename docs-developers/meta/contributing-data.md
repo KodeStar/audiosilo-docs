@@ -56,7 +56,9 @@ Two behaviors are worth knowing:
 
 - **Envelope sniffing.** For an import, `metaissue` sniffs a self-identifying
   `audiosilo-books` envelope and routes it to that importer regardless of the
-  form's export-type dropdown - the file is trusted over the form.
+  form's export-type dropdown - the file is trusted over the form. If you are
+  building a tool that produces such a file, the [Import file format](./import-format.md)
+  page is the producer-facing spec.
 - **The `labeled` trigger is load-bearing.** The GitHub API silently drops labels
   on issues opened by non-collaborators (the sibling `audiosilo-sidecars`
   contributor tool creates intake issues over the API), so such an issue arrives
