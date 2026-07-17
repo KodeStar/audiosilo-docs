@@ -100,6 +100,15 @@ your files at any time - but the database also holds the things that
 favourites, shares, and folder overrides. That's why the data directory
 belongs in your backups.
 
+### Where does the extra "About this book" information come from?
+
+The description, characters, story-so-far recaps and series links that some
+books show in the player come from **AudioSilo Meta**, a free, community-built
+audiobook database at [meta.audiosilo.app](https://meta.audiosilo.app). It's
+optional (your admin switches the lookup on or off), and you can browse and add
+to the catalogue yourself - see
+[The community metadata site](./community/meta-site.md).
+
 ## Users & sharing
 
 ### How many users can I have, and can I limit what each one sees?

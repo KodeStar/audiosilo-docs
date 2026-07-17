@@ -3,7 +3,7 @@ title: Workspace setup
 description: "How the multi-repo workspace is laid out, the toolchain you need, and how to run the whole stack locally."
 ---
 
-AudioSilo is one product across four repositories, and they are developed
+AudioSilo is one product across several repositories, and they are developed
 together from a single **workspace folder**. Get the layout right first - some of
 the build machinery assumes it.
 
@@ -22,6 +22,9 @@ it, gitignored by the meta repo:
 ├── audiosilo-server/      github.com/KodeStar/audiosilo-server    (Go)
 ├── audiosilo-frontend/    github.com/KodeStar/audiosilo-frontend  (Expo / React Native)
 ├── audiosilo-manager/     github.com/KodeStar/audiosilo-manager   (Wails desktop)
+├── audiosilo-meta/        github.com/KodeStar/audiosilo-meta      (community metadata DB)
+├── audiosilo-sidecars/    github.com/KodeStar/audiosilo-sidecars  (contributor extraction tool)
+├── audiosilo-site/        github.com/KodeStar/audiosilo-site      (marketing site)
 └── audiosilo-docs/        this documentation site (Docusaurus)
 ```
 

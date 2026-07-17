@@ -50,6 +50,11 @@ const sidebars: SidebarsConfig = {
         'manager/audible-backup',
       ],
     },
+    {
+      type: 'category',
+      label: 'Community metadata',
+      items: ['community/meta-site'],
+    },
     'demo',
     'troubleshooting',
     'faq',

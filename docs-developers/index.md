@@ -137,6 +137,10 @@ The server's priorities, in order - when they conflict, the earlier one wins:
 - **[Desktop manager](manager/overview.md)** - the Wails app:
   [server integration](manager/server-integration.md), the
   [Audible backup pipeline](manager/audible.md), and [transfers](manager/transfers.md).
+- **[Metadata database](meta/overview.md)** - `audiosilo-meta`, the
+  community audiobook metadata database behind meta.audiosilo.app that the server
+  and player enrich books from: the [data model](meta/data-model.md), the
+  [`metaserve` HTTP API](meta/api.md), and [contributing data](meta/contributing-data.md).
 - **[Contributing](contributing/workspace.md)** - the
   [workspace setup](contributing/workspace.md), [per-repo gates and CI](contributing/gates-and-ci.md),
   [how to land a cross-repo change](contributing/cross-repo-changes.md),

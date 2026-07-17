@@ -265,6 +265,27 @@ handler **and** `serverapi`, with tests on both. Changes to `pkg/match` or
 against them before calling it done. See
 [manager server integration](../manager/server-integration.md).
 
+## 14. Community metadata: a three-repo seam
+
+**What couples:** enriched book metadata (description, characters, recaps, "more
+in this series") originates in a fourth repo, `audiosilo-meta`, and flows through
+the server to the player.
+
+**Upstream (`audiosilo-meta`):** `metaserve` serves the community metadata
+read-only (`GET /lookup`, `/works/{id}`, `/series/{id}`) - see the
+[metadata database developer pages](../meta/overview.md).
+**Server:** `internal/meta` resolves a book's ASIN/ISBN against `metaserve` and
+composes an enrichment envelope, returned at `GET /libraries/{id}/meta` behind an
+admin off-switch and a bounded cache; the `metadata` capability on `GET /server`
+reflects whether the lookup is live.
+**Frontend:** the `BookMeta` envelope (hand-mirrored in `src/api/types.ts`) is
+fetched by `client.bookMeta` and rendered capability-gated on the book screen.
+
+**A change requires:** because the server consumes `metaserve`'s response shapes,
+a change to those shapes ripples audiosilo-meta -> the server's `internal/meta` ->
+the player (only if the server's outward `/meta` envelope changes). Keep it
+additive, same as every other seam here.
+
 ## The wire-change checklist
 
 Every change to the wire format follows the same shape (the worked example in

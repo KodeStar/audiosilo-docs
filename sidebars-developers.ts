@@ -57,6 +57,16 @@ const sidebars: SidebarsConfig = {
     },
     {
       type: 'category',
+      label: 'Metadata database (audiosilo-meta)',
+      items: [
+        'meta/overview',
+        'meta/data-model',
+        'meta/api',
+        'meta/contributing-data',
+      ],
+    },
+    {
+      type: 'category',
       label: 'Contributing',
       items: [
         'contributing/workspace',

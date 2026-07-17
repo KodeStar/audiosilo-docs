@@ -18,7 +18,10 @@ npm install && npx playwright install chromium   # first time only
 LibriVox library (cached in `.cache/library`; `MAX_FILES=3` chapter files per
 book keeps it ~100 MB), starts a demo-mode server on `:8790` serving the
 frontend's web export (plus a `--setup` instance on `:8791` for the wizard
-shot), then runs the Playwright captures and backfills placeholders.
+shot), builds the `audiosilo-meta` data artifact + site and starts a
+`metaserve` on `:8795` for the meta-site shots, then runs the Playwright
+captures and backfills placeholders. `SKIP_META=1` skips the meta stack (for a
+web/admin-only run).
 
 Every capture is optimized in place with **pngquant** (`brew install pngquant`)
 - a lossy-palette pass that shrinks the retina PNGs ~60% with no perceptible
@@ -55,6 +58,27 @@ semi-manually instead:
 
 Anything not replaced stays a labelled placeholder - visible in the docs as
 "regenerate me", never a broken image.
+
+## AudioSilo Meta site captures
+
+The `meta/` shots come from `capture-meta.mjs`, which drives the
+meta.audiosilo.app site (the sibling `audiosilo-meta` repo: an Astro static
+site served same-origin by the Go `metaserve` together with its read-only
+`/api/v1` JSON). `run.sh` handles it end-to-end: it builds the data artifact
+(`metabuild` into `.cache/meta.sqlite`), builds the site once if
+`audiosilo-meta/site/dist` is missing, and starts `metaserve` on `:8795`.
+Because the site build is reused while it exists, **delete
+`audiosilo-meta/site/dist` after changing the meta site's UI** so the next run
+rebuilds it - otherwise the shots silently show the old UI.
+
+Needs: Go 1.25+, and (only for the site build) yarn + Node 24. After the caches
+are warm (node_modules, Go modules, `site/dist`), a run only touches the network
+for remote cover images - and the capture waits on rendered content, not on
+covers, so missing cover art never fails a shot.
+
+`capture-meta.mjs` is standalone: point `META_BASE` at any `metaserve` (or the
+live site) and run `META_BASE=http://127.0.0.1:8795 node capture-meta.mjs` - it
+needs no other services (the /import fixture is vendored in `fixtures/`).
 
 ## The store/marketing pipeline is separate
 
