@@ -69,7 +69,7 @@ internal/importer   OpenAudible / Libation export -> canonical records (ASIN ded
 internal/issueform  issue-form body -> canonical records + an ok/duplicate/needs-human/invalid verdict
 internal/build      the deterministic SQLite builder (FTS5, ASIN/ISBN indexes, added_at)
 internal/serve      the read-only HTTP API + ABS provider + GitHub-release poller/hot-swap
-Dockerfile     image: site build + metaserve + baked data
+Dockerfile     image: the site build + the metaserve binary - no data (see below)
 .github/       issue forms + CI workflows (check, release, image, intake, ai-verify)
 ```
 
@@ -86,7 +86,7 @@ run ./cmd/<name>`.
 |---|---|
 | `metacheck` | Validates the whole `data/` tree - schema, id/shard agreement, referential integrity, uniqueness, chapter ordering, series positions. Prints one line per problem and exits 1 if any are found. |
 | `metafmt` | Enforces canonical JSON for `data/**/*.json` (sorted keys, 2-space indent, single trailing LF). `--check` lists non-canonical files and exits 1; `--write` rewrites them. |
-| `metabuild` | Compiles `data/` into the SQLite artifact (`-o meta.sqlite`). Runs the full validation first and refuses to build invalid data; `--added` dates each work from a git-history-derived list. |
+| `metabuild` | Compiles `data/` into the SQLite artifact (`-o meta.sqlite`). Runs the full validation first and refuses to build invalid data. Deterministic: identical data produces an identical artifact. |
 | `metaserve` | Serves the compiled artifact read-only over HTTP (and optionally the static site at `/`), hot-swapping newer GitHub releases. See [the HTTP API](api.md). |
 | `metascan` | Scans a local audiobook folder into an import JSON - see [contributing data](contributing-data.md#scanning-local-files-metascan). |
 | `metaimport` | Ingests an OpenAudible/Libation library export into `data/` - see [contributing data](contributing-data.md#bulk-importers-metaimport). |
@@ -114,8 +114,10 @@ go run ./cmd/metaserve --db meta.sqlite --addr :8080
 ## Release artifacts
 
 On merge to `main`, `.github/workflows/release.yml` publishes a **dated data
-release** tagged `data-vYYYY.MM.DD-<shortsha>` when data or schema changes land.
-The asset contract:
+release** tagged `data-vYYYY.MM.DD-<shortsha>` when data or schema changes land -
+and also when the builder itself changes (`internal/build/**`, `cmd/metabuild/**`),
+so an artifact-shaping change such as a new index actually reaches a published
+artifact. The asset contract:
 
 - `meta.sqlite.gz` + `meta.sqlite.gz.sha256` - the universal anchor every
   consumer verifies against.
@@ -130,6 +132,28 @@ non-prerelease release carrying `meta.sqlite.gz` with the maximum `published_at`
 (GitHub's release list order is not publish-chronological, and its "latest" can be
 either kind). The [`metaserve` refresh loop](api.md#serving-and-refresh) applies
 the same rule.
+
+## The published image
+
+`ghcr.io/kodestar/audiosilo-meta` is **the site build plus the `metaserve` binary,
+and no data at all**. The catalogue is not baked in: the container fetches the
+newest data release at boot and hot-swaps every release after that, which keeps
+image size and image build time independent of how large the catalogue grows.
+
+The practical consequences for a deployment:
+
+- **Give it a cache volume.** The image runs with `--poll --cache /data/cache` and
+  declares `/data` as a volume. A restart that finds the current release's artifact
+  already in the cache verifies it against the release's `meta.sqlite.sha256` and
+  adopts it **without downloading** - so restarts stay cheap. Without a persistent
+  volume every restart re-downloads the catalogue. Budget for two artifacts at
+  peak, one in steady state.
+- **A boot with no data is a valid state, not a crash.** The server stays up and
+  degrades visibly if GitHub is unreachable - full detail in
+  [boot and degraded start](api.md#boot-and-degraded-start).
+- **Probe `/healthz` for readiness only.** It reports readiness, not liveness; a
+  liveness probe on it will restart-loop a server that is correctly waiting out an
+  outage.
 
 ## How it connects to the rest of AudioSilo
 

@@ -17,11 +17,30 @@ routes are `GET`.
 
 ## `/healthz`
 
-Liveness plus a cheap freshness signal. Always 200 while a snapshot is loaded:
+A **readiness** check, not a liveness check. Until an artifact is loaded it
+answers **503** with a `Retry-After` header carrying the real seconds until the
+next fetch attempt:
+
+```json
+{ "status": "starting" }
+```
+
+Once a snapshot is loaded it answers 200 with a cheap freshness signal - `built_at`
+is the build time of the artifact currently being served, so a stuck poller shows
+up as an ageing timestamp:
 
 ```json
 { "status": "ok", "built_at": "2026-07-15T...", "works": 1234 }
 ```
+
+:::warning Readiness probe yes, liveness probe no
+Wire `/healthz` as the **readiness/startup probe** so an orchestrator holds traffic
+back until the catalogue is in. Do **not** wire it as a liveness probe: that
+restart-loops a server that is patiently waiting out a GitHub outage. The degraded
+boot is deliberate (see [boot and degraded start](#boot-and-degraded-start)) - the
+process is healthy, it simply has no data yet, and killing it only resets the
+backoff it is already managing.
+:::
 
 ## `/api/v1/stats`
 
@@ -75,27 +94,42 @@ The chapter list for one recording of a work: `{"chapters": [{title, start_ms,
 length_ms}]}`, ordered by chapter index. An unknown work/recording yields an empty
 list, not a 404.
 
-## `/api/v1/people/{id}`
+## `/api/v1/people/{id}?limit=&offset=`
 
-A person plus their works, or 404 `person not found`:
+A person plus their works, or 404 `person not found`. Both credit lists are
+**paged**:
 
 ```json
 { "id": "...", "name": "...", "sort_name": "...",
   "authored": [workCard...],
-  "narrated": [{ "work": workCard, "recording_id": "..." }] }
+  "narrated": [{ "work": workCard, "recording_id": "..." }],
+  "authored_total": 0, "narrated_total": 0,
+  "limit": 100, "offset": 0 }
 ```
 
-## `/api/v1/series/{id}`
+`limit` defaults to **100** and is clamped to a maximum of **500**; `offset` is a
+non-negative row offset. An unparseable or non-positive value falls back to the
+default rather than erroring. The window applies to `authored` and `narrated`
+**independently**, and `authored_total` / `narrated_total` are the unpaged counts
+of each. A client must page against those totals rather than assume the arrays are
+complete - a prolific narrator will exceed one page.
+
+## `/api/v1/series/{id}?limit=&offset=`
 
 A series with its ordered member works, or 404 `series not found`:
 
 ```json
 { "id": "...", "name": "...", "authors": [personRef...],
-  "works": [{ "position": "2.5", "work": workCard }] }
+  "works": [{ "position": "2.5", "work": workCard }],
+  "works_total": 0, "limit": 0, "offset": 0 }
 ```
 
 `works` is sorted by the numeric start of each `position` string (so `"1-3.5"`
-sorts by 1).
+sorts by 1). Paging here is **opt-in**: with no `?limit=` the whole member list is
+returned and the echoed `limit` is `0` (the player's series rail depends on getting
+the complete list). Pass `?limit=` - clamped to a maximum of **500** - with an
+optional `?offset=` to window it. `works_total` is always the unpaged member count,
+so it is the reliable "how long is this series" number either way.
 
 ## `/api/v1/lookup?asin=|isbn=`
 
@@ -123,7 +157,11 @@ These back the site's contribute page and stay small at any catalogue size.
 - **`/api/v1/coverage/works?filter=&q=&limit=&offset=`** - the paginated,
   searchable per-work browser. `filter` selects the dimension - `missing` (missing
   any dimension) or `has_characters` / `has_recaps` / `has_recap_summary` - and an
-  unknown filter is 400 `unknown filter`. `q` matches title/author; `limit`
+  unknown filter is 400 `unknown filter`. `q` is a **full-text** match over the
+  work's title and subtitle, its authors, its recordings' narrators, and its series
+  names - it runs through the same escaped FTS path as `/api/v1/search`, so it
+  matches **whole words with the final token as a prefix**, not arbitrary
+  substrings (`tolki` matches "Tolkien"; `olkien` does not). `limit`
   defaults to 25, clamped to `[1, 100]`; `offset` is a non-negative row offset. The
   response carries a per-filter `available` flag that is false when the dimension
   is not evaluable at the artifact's schema version.
@@ -172,7 +210,7 @@ is non-fatal - the fallback poller still discovers the release.
 | Flag / env | Default | Purpose |
 |---|---|---|
 | `--addr` | `:8080` | listen address |
-| `--db` | (none) | a local `meta.sqlite` artifact to serve (dev) |
+| `--db` | (none) | a local `meta.sqlite` artifact to serve immediately (dev; the published image ships none and relies on `--poll`) |
 | `--site` | (none) | a static site directory to serve at `/` |
 | `--poll` | `false` | fetch and hot-swap the newest data release from GitHub Releases |
 | `--repo` | `KodeStar/audiosilo-meta` | GitHub `owner/name` to poll |
@@ -181,9 +219,43 @@ is non-fatal - the fallback poller still discovers the release.
 | `GITHUB_TOKEN` (env) | (none) | raises the GitHub API rate limit |
 | `METASERVE_WEBHOOK_SECRET` (env) | (none) | enables the signed release webhook (requires `--poll`) |
 
-With `--poll` and no `--db`, metaserve fetches the newest data release on boot so
-it never starts empty. With both, the baked `--db` serves immediately and the
-poller still runs one refresh at startup.
+At least one of `--db` and `--poll` is required (`New` refuses "nothing to serve"
+otherwise). With `--poll` and no `--db` - the production shape - metaserve fetches
+its catalogue at boot and **can legitimately start empty**; see below. With both,
+the local `--db` serves immediately and the poller still runs one refresh at
+startup.
+
+## Boot and degraded start
+
+The published image ships **no data** (see
+[the overview](overview.md#the-published-image)), so a production boot always
+fetches its catalogue. A fetch that fails does not stop the process - it degrades
+visibly instead, in one of three states:
+
+- **GitHub reachable** - the newest data release loads and the server is ready. If
+  the `--cache` directory already holds that release's artifact, it is verified
+  against the release's `meta.sqlite.sha256` and adopted **without downloading**
+  (matched by digest, never trusted by filename). This is what makes a restart on a
+  persistent cache volume cheap.
+- **GitHub unreachable, something cached** - the newest cached artifact is adopted
+  and served, logged loudly as stale, and replaced by the first poll that succeeds.
+  Serving slightly old data beats refusing to serve data that is on disk. The
+  staleness is a **log-only** signal: no endpoint reports it, and `built_at` on
+  `/healthz` or `/api/v1/stats` is the only hint a client gets.
+- **GitHub unreachable, nothing cached** - the process listens anyway. A static
+  `--site` still serves, but `/healthz`, every `/api/v1` route and `/abs/search`
+  answer **503** with an honest `Retry-After` and the envelope:
+
+  ```json
+  { "error": "no data loaded yet: the server is fetching the latest release" }
+  ```
+
+  Retries back off from **30 seconds**, doubling until they reach `--interval`, and
+  `Retry-After` always reports the wait actually scheduled. The moment a release
+  loads, the backoff resets and the server becomes ready without a restart.
+
+Every one of those states is a correctly-working process, which is why `/healthz`
+must be a readiness probe and never a liveness one.
 
 ## Serving and refresh
 
@@ -204,7 +276,9 @@ webhook keep it current:
   handle (closed after a grace delay). A rejected patch never swaps, and a poll
   failure only logs and retries - it never crashes the process.
 
-The startup refresh means a recreated production container catches up to the
-newest release within seconds instead of serving build-time data for a full
-`--interval`. The release asset contract these steps rely on is described on
+The startup refresh means a recreated production container reaches the newest
+release within seconds rather than at the first `--interval` tick. Superseded cache
+files are pruned on every adopt, sparing any artifact still draining its swap
+grace, so the cache does not grow release by release. The release asset contract
+these steps rely on is described on
 [the overview](overview.md#release-artifacts).
