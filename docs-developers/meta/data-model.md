@@ -12,6 +12,13 @@ keeps any one directory small as the catalogue grows. The slug is the identity -
 there is no numeric id anywhere in the data, and the file path encodes exactly
 where a record lives.
 
+Two slugs are **reserved** in the works, people, and series namespaces: `search`
+and `latest`. Both are literal route segments of the HTTP API (`/api/v1/works/search`,
+`/api/v1/works/latest`, ...), so a record at either id would be unreachable
+through its family's `{id}` route. Validation rejects them, and the importers and
+intake bot mint a disambiguated slug instead (a book titled "Search" gets the
+author-suffixed form automatically).
+
 The JSON Schemas in `schema/*.schema.json` (JSON Schema draft 2020-12, every
 object `additionalProperties: false`) are the **authoritative, public contract**.
 They are embedded into the tooling via `schema.go`, so a schema edit is a code
