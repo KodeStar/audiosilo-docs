@@ -15,6 +15,13 @@ artifact without a restart.
 Errors are a JSON envelope `{"error": "..."}` with the matching HTTP status. All
 routes are `GET`.
 
+The same surface is published in two other forms: an interactive, human-readable
+reference at [meta.audiosilo.app/docs/api](https://meta.audiosilo.app/docs/api),
+and the machine-readable OpenAPI document it is rendered from at
+[meta.audiosilo.app/api/v1/openapi.json](https://meta.audiosilo.app/api/v1/openapi.json).
+Both are the same file (`internal/serve/openapi.json`), so the reference, the
+served spec, and this page describe one API.
+
 ## `/healthz`
 
 A **readiness** check, not a liveness check. Until an artifact is loaded it
@@ -42,6 +49,23 @@ process is healthy, it simply has no data yet, and killing it only resets the
 backoff it is already managing.
 :::
 
+## `/api/v1/openapi.json`
+
+The **OpenAPI 3.1** description of every route on this page, embedded in the
+binary (`//go:embed openapi.json` in `internal/serve/openapi.go`) and served
+verbatim. It is static - it reads no snapshot and touches no database - so it is
+registered **outside** the loaded-artifact gate and never answers 503: a client
+discovering the API on a boot that is still downloading its first release still
+gets the contract. Like the rest of `/api/v1` it is CORS-open and gzipped, and it
+is served with an `ETag` and `Cache-Control: public, max-age=3600` - a
+revalidating `If-None-Match` request gets a bodiless **304**.
+
+The document is hand-authored rather than generated, and kept honest
+mechanically: `TestOpenAPICoversEveryRoute` pins its path set to the mux's own
+route table, so a route added on one side only fails the build. The site's
+`/docs/api` page imports the same file at build time, so the human reference and
+the machine contract are one document rather than two copies to keep in step.
+
 ## `/api/v1/stats`
 
 Catalogue totals, precomputed once per loaded snapshot:
@@ -64,6 +88,28 @@ distinguished by `kind`:
 
 FTS input is escaped defensively (every token quoted, the final token
 prefixed with `*`), so no user input can break the underlying `MATCH`.
+
+## `/api/v1/works/search`, `/api/v1/people/search`, `/api/v1/series/search`
+
+The same search restricted to one kind. Each takes the same `?q=&limit=`, shares
+the combined search's contract exactly - `q` **required** (400 `q is required`),
+`limit` default 20 clamped to `[1, 50]`, the same defensive FTS escaping,
+`{"results": [...]}` ranked best-first - and returns only that kind's shape from
+the list above: `works/search` returns **work** results, `people/search` returns
+**person** results, `series/search` returns **series** results. The `kind`
+discriminator is still on every result, so a client can consume either endpoint
+with one parser.
+
+The filter is applied inside the query (`search_fts` stores `kind` as an
+unindexed column), so `?limit=20` on `works/search` returns up to 20 works rather
+than the works among 20 mixed hits - and because no new index is involved, the
+three answer against every already-published artifact.
+
+A query that names a series and a volume number (`jack reacher 2`) resolves that
+volume and returns it **first**, ahead of the ranked FTS hits. That boost applies
+to the combined `/api/v1/search` and to `works/search`, and to those only: the
+ids it resolves are always works, so prepending them to a people or series page
+would put a work on a page that promises neither.
 
 ## `/api/v1/works/latest?limit=`
 
