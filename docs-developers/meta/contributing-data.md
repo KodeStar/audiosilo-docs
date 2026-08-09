@@ -82,9 +82,9 @@ the workspace-wide CI rules.
 Every pull request touching `data/**` is checked twice:
 
 - **`check.yml` (mechanical, blocking).** Runs `go build`/`vet`/`test`,
-  `metacheck` (schema, id/shard agreement, referential integrity, uniqueness,
-  chapter/series rules), and `metafmt --check` (canonical JSON). A red pull
-  request never merges. It uses the plain `pull_request` trigger, so fork pull
+  `metacheck` (schema, pack placement and caps, referential integrity,
+  uniqueness, chapter/series rules), and `metafmt --check` (canonical JSON +
+  pack invariants). A red pull request never merges. It uses the plain `pull_request` trigger, so fork pull
   requests run with a read-only token and no secrets.
 - **`ai-verify.yml` (advisory, never blocking).** An AI judgement layer on top of
   the mechanical check: it posts a `PASS` / `FLAG` comment and label but **never
