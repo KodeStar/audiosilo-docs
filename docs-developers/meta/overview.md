@@ -56,20 +56,21 @@ public `pkg/*` (consumed by the sibling `audiosilo-sidecars` module as ordinary
 dependencies) and the private `internal/*`.
 
 ```
-data/          the database: works/, people/, series/ (sharded JSON) + per-work sidecars
+data/          the database, range-packed (PACK-SPEC.md): works/ (composites), works-community/ (the CC BY-SA sidecars), people/, series/
 schema/        JSON Schemas (one per entity) - the public contract, embedded via schema.go
 cmd/           thin CLIs: metacheck, metafmt, metabuild, metaserve, metascan,
                metaimport, metaissue, metaextract (flag wiring only)
-pkg/model      PUBLIC entity structs, slug/shard rules, location parsing
+pkg/model      PUBLIC entity structs, slug rules, reserved slugs, pack addressing
+pkg/pack       PUBLIC pack-file storage: bounds, splits, and the read-through Store every writer uses
 pkg/canonical  PUBLIC canonical JSON (sorted keys, 2-space indent, trailing LF)
-pkg/check      PUBLIC schema validation + integrity/uniqueness/chapter/series rules
+pkg/check      PUBLIC schema validation + pack-storage invariants + integrity/uniqueness/chapter/series rules
 pkg/extract    PUBLIC epub split + the word-shingle near-verbatim check
 pkg/scan       PUBLIC local folder scanner (tags + path/filename heuristics + ffprobe)
 internal/importer   OpenAudible / Libation export -> canonical records (ASIN dedup)
 internal/issueform  issue-form body -> canonical records + an ok/duplicate/needs-human/invalid verdict
 internal/build      the deterministic SQLite builder (FTS5, ASIN/ISBN indexes, added_at)
 internal/serve      the read-only HTTP API + ABS provider + GitHub-release poller/hot-swap
-Dockerfile     image: the site build + the metaserve binary - no data (see below)
+Dockerfile     image: the site build + the metaserve binary - no baked data; the catalogue is fetched from the newest data release at boot (see below)
 .github/       issue forms + CI workflows (check, release, image, intake, ai-verify)
 ```
 
@@ -84,9 +85,9 @@ run ./cmd/<name>`.
 
 | Command | What it does |
 |---|---|
-| `metacheck` | Validates the whole `data/` tree - schema, id/shard agreement, referential integrity, uniqueness, chapter ordering, series positions. Prints one line per problem and exits 1 if any are found. |
-| `metafmt` | Enforces canonical JSON for `data/**/*.json` (sorted keys, 2-space indent, single trailing LF). `--check` lists non-canonical files and exits 1; `--write` rewrites them. |
-| `metabuild` | Compiles `data/` into the SQLite artifact (`-o meta.sqlite`). Runs the full validation first and refuses to build invalid data. Deterministic: identical data produces an identical artifact. |
+| `metacheck` | Validates the whole `data/` tree - schema, pack placement and caps, referential integrity, uniqueness, chapter ordering, series positions. Prints one line per problem and exits 1 if any are found. |
+| `metafmt` | Enforces canonical JSON for `data/**/*.json` (sorted keys, 2-space indent, single trailing LF) and the pack-storage invariants: `--write` also relocates misplaced entries, performs due pack splits, and rebinds, so placement self-heals and nobody computes it by hand. `--check` reports and exits 1. |
+| `metabuild` | Compiles `data/` into the SQLite artifact (`-o meta.sqlite`). Runs the full validation first and refuses to build invalid data. Deterministic: identical data produces an identical artifact; each record is dated by its own `added_at`, falling back to its newest `sources[].imported_at`. |
 | `metaserve` | Serves the compiled artifact read-only over HTTP (and optionally the static site at `/`), hot-swapping newer GitHub releases. See [the HTTP API](api.md). |
 | `metascan` | Scans a local audiobook folder into an import JSON - see [contributing data](contributing-data.md#scanning-local-files-metascan). |
 | `metaimport` | Ingests an OpenAudible/Libation library export into `data/` - see [contributing data](contributing-data.md#bulk-importers-metaimport). |
