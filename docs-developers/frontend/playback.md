@@ -38,6 +38,13 @@ identically.
 - `swapTo?(…)` - optional gapless queue swap, used to move a streaming book onto
   its just-finished download without an audible gap (returns `false` when
   refused; see [Offline](offline.md)).
+- `setVolume(volume)` - **required** linear output gain (0-1) applied to the
+  engine's own volume, **not** the device volume. It exists for the sleep
+  timer's fade-out on **duration** timers (below). It is deliberately not
+  optional: both engines implement it, and the one real "no volume here" case is
+  each engine's own private business, which it degrades internally (below).
+  Callers pass an already-clamped value - `usePlayer.setOutputVolume` is the only
+  route in and clamps once.
 - `configure(config)` - runtime tunables from the settings store: auto-rewind
   window, lock-screen skip intervals.
 - `getSnapshot()` / `subscribe(listener)` - a single merged
@@ -265,7 +272,14 @@ Other queue math that lives here:
   coordinates; **`chapterAt`** finds the active chapter by `book_offset`;
   **`chapterCountdowns`** feeds the sleep timer's end-of-chapter picker
   (wall-clock times scaled by the playback rate via `rate.ts`
-  `wallClockSeconds`).
+  `wallClockSeconds`), and **`nextChapterEnd`** answers the sleep timer's "where
+  does the next worthwhile chapter end?" from the same `chapterEndPosition`, so
+  the list the listener picks from and the boundary a shake retargets cannot
+  disagree. Neither assumes the chapters ascend by position - `chapterBookOffset`'s
+  out-of-range `file_index` fallback degrades to 0 preceding files, so stale or
+  duplicated metadata yields non-monotonic ends; `chapterCountdowns` locates the
+  current chapter with `chapterAt` and `nextChapterEnd` takes the **nearest**
+  qualifying end rather than the first qualifying array element.
 
 `total` is the max of the book's reported duration, the summed file durations,
 and the furthest chapter end - so `duration: 0` metadata degrades instead of
@@ -523,6 +537,322 @@ positively-known metered connection is skipped. The three settings
 persisted `autoDownloadNext` key name predates the download-on-start behavior
 and is kept for hydration compatibility.
 
+## The sleep timer (`sleep-timer.ts`)
+
+`useSleepTimer` is a second Zustand store, deliberately framework-free. It reads
+`usePlayer` through `getState()` and subscribes to it for exactly one thing -
+"is the transport running?", which freezes a duration countdown while playback is
+paused (see below). It arms three ways - `startDuration(minutes)`,
+`startUntilPosition(position, label)` and `startChapterTimer(opts?)` - which all
+funnel through one private `arm()` that restores the volume, clears the
+ending/grace flags and restarts the 1 s tick. The tick counts down, fires, and
+expires the grace window; nothing else drives the machine.
+
+```mermaid
+stateDiagram-v2
+    idle --> running: startDuration / startUntilPosition / startChapterTimer
+    running --> ending: remaining <= FADE_SECONDS (30 s) - duration timers ramp the gain down at 4 Hz
+    ending --> running: backward seek pushes the target back out of the window, or the countdown freezes
+    ending --> grace: fire() - pause first, then restore the gain
+    grace --> idle: tick() - GRACE_SECONDS (30 s) elapsed, no shake - records 'expired'
+    ending --> running: keepListening() re-arms from origin
+    grace --> running: keepListening() re-arms from origin AND resumes playback
+    running --> idle: cancel() - records 'cancelled'
+    running --> idle: a freeze longer than ABANDON_AFTER_PAUSE_SECONDS - records 'expired'
+```
+
+Every edge back to `idle` goes through `endTimer(reason)`, which notifies the
+`onSleepTimerEnded(fn)` registry synchronously - once per ending, with the store
+already back at `idle` - so the auto sleep controller below can tell a dismissal
+from a timer that simply ran out. That is the only event this store emits; a
+timer armed with nothing loaded (`bookKey === null`) notifies nothing.
+
+The pieces worth knowing before touching it:
+
+- **Two selectors are the whole public surface for UI.** The phase
+  (`idle | running | ending | grace`) is **stored**, not derived - three booleans
+  could spell out twice as many combinations as are legal, and the UI kept
+  re-deriving the phase from them by hand - so `selectSleepPhase` simply reads it
+  and `selectSleepExtendable` is `phase === 'ending' || phase === 'grace'`
+  (nothing branches on `graceUntil`; it is only ever the answer to "until
+  when?"). The second one answers "can a shake or a *Keep listening* tap do
+  anything right now?" and also **gates the accelerometer listener**, so the
+  sensor runs only in those two short windows rather than for the whole timer.
+  That gate is why the phase must be *true*: a frozen countdown leaves `ending`
+  (below), or a book paused with 20 seconds left would keep the sensor
+  subscribed - and the badge solid pink, and the sheet saying "Fading out" about
+  a paused book at full volume - indefinitely.
+- **Only a duration timer fades.** The phase is called `ending`, not `fading`,
+  because it means "about to stop, a shake still saves it" for **both** kinds of
+  timer while only one of them touches the gain. `fadesAudio(origin)` is the
+  single gate: `{kind:'duration'}` fades, because its stopping point is arbitrary
+  and an abrupt cut mid-sentence is jarring; `{kind:'chapter'}` (which includes
+  the end-of-book target and every `startUntilPosition` timer) plays its last 30
+  seconds at **full volume**, because those are the words the listener stayed
+  awake for and the chapter ending is its own signal. On the chapter path the
+  fade ticker never starts, so there are **no gain writes at all** - a unit test
+  asserts the gain is never below 1 for a whole chapter-timer run, including
+  through its pause and grace.
+- **The fade has its own faster ticker.** The 1 s countdown tick is far too
+  coarse to ramp against, so `FADE_TICK_MS` (250 ms) drives `syncFade` - the one
+  reconciler that owns both the fade ticker and the engine gain, holding the rule
+  *the ramp runs iff `phase === 'ending'` and the origin fades and it is not
+  frozen*, so every site that writes `phase` or `frozenAt` just calls it
+  afterwards. It ramps only while a **duration** timer is `ending`.
+  `fadeGain(remaining)` is the
+  exported, unit-tested curve: `(remaining / FADE_SECONDS)²`, squared because
+  perceived loudness is roughly the square root of linear gain, so a linear ramp
+  stays loud and then drops off a cliff. The gain is **never written into the
+  store** - it changes four times a second and nothing renders it, so storing it
+  would re-render every subscriber at 4 Hz.
+- **`syncEndingPhase` works in both directions.** It enters the `ending` phase
+  when the remaining time drops into the window *and leaves it, restoring full
+  volume, when the remaining time climbs back out* - which a backward seek on an
+  end-of-chapter timer does; without the second half the rest of the chapter
+  would be stranded at a fraction of its volume (back when that timer still
+  faded). A **frozen** countdown is never in the phase either, by the same rule
+  rather than a second one: `ending` means "about to stop", and a countdown that
+  is not counting is not about to stop. Otherwise the phase change is
+  unconditional; only the ramp is gated on `fadesAudio`.
+- **`fire()` pauses first, then restores the gain**, chained in a `finally` so a
+  rejected pause can't leave a manual resume silently muted. It does not go to
+  `idle`: it opens the `GRACE_SECONDS` (30 s) window and keeps ticking.
+- **`keepListening()` is a no-op outside the `ending` phase and the grace.**
+  Inside them it re-arms from the recorded `origin` (`{kind:'duration', minutes}`
+  or `{kind:'chapter'}`), so a duration timer restarts its full length and a
+  chapter timer retargets. From the grace it additionally calls
+  `resumePlayback()`, which checks the live snapshot before calling `toggle()` -
+  `toggle` from a *playing* state would pause a book the listener had already
+  resumed by hand.
+- **One constant makes "one more chapter" work.**
+  `nextChapterTarget(allowEndOfBook)` picks the **nearest** upcoming chapter end
+  more than `MIN_CHAPTER_SECONDS` (30 s) away (`nextChapterEnd` in
+  `book-queue.ts`, which scans for the nearest qualifying end rather than the
+  first qualifying array element - chapter offsets are not guaranteed to ascend).
+  In the `ending` phase the current chapter's end *is* the boundary being stopped
+  at, so it fails that test and the re-arm naturally lands on the **next**
+  chapter; for a timer armed at the start of playback the current chapter usually
+  qualifies. It is deliberately its **own** constant and not an alias of
+  `FADE_SECONDS`: they share a value but are unrelated, and while they were tied
+  together retuning the fade silently changed what "one more chapter" retargets.
+- **Who asked decides the fallback**, which is what `startChapterTimer`'s
+  `{ allowEndOfBook }` option carries. The **listener's** reset (`keepListening`
+  passes `{ allowEndOfBook: true }`) means "one more chapter", and where there is
+  no next chapter the end of the book is the honest answer. The **automatic**
+  nightly arm passes nothing (the default is `false`) and refuses both the
+  end-of-book fallback *and* a chapter that ends exactly where the book does,
+  degrading to a 15-minute duration timer instead. A folder of MP3s with no
+  chapter metadata has `queue.chapters === []` (`buildBookQueue` synthesizes
+  virtual chapters only for a single-file book), so the shared fallback armed a
+  target ten hours out: it never fired, so the timer never returned to `idle`, so
+  the controller's "a timer already stands" guard blocked every later arm and
+  stopped its poll - no working sleep timer at all, all night. Whichever
+  fallback applies, a chapter arm always ends up with a timer that fires.
+
+### Freezing the countdown while paused (`syncPlaybackFreeze`)
+
+A duration timer counts **listening** time, not wall-clock time: it must not
+expire while the book is paused, which it used to do silently - pause with a
+headphone button, never look at the screen, and come back to no timer armed.
+Every open-source *audiobook* player does the same (Audiobookshelf, Absorb,
+Voice; AntennaPod switched off wall clock in 2025). The subtleties are all in
+*how* it freezes:
+
+- **The freeze must survive the JS runtime being suspended.** iOS suspends the
+  app once it stops producing audio and a hidden web tab is throttled, so **no
+  ticks arrive at all** while paused - any scheme that decrements a balance per
+  tick silently loses an untick'd hour. So the representation is a **stopped
+  clock**, not a running total: a duration timer stays a `Date.now()` deadline
+  (`endsAt`), pausing records **`frozenAt`** (the moment the clock stopped), and
+  `preciseRemaining` reads the deadline against `frozenAt` instead of the live
+  clock. That answer needs no ticks to stay correct. Resuming slides `endsAt`
+  forward by `Date.now() - frozenAt` - two timestamps, so any length of gap
+  reconciles exactly.
+- **The same shape fixes the other direction.** Because the countdown is a
+  deadline rather than a per-tick decrement, a *playing* context whose ticks are
+  throttled to one a minute can't make the timer run long either.
+- **The play state is a level, read from a subscription - not a transition.**
+  `playbackWatch` subscribes to `usePlayer` while a countdown is running and
+  **ignores the `(state, prev)` payload**, re-reading `isTransportLive()`
+  (`playing || loading`) instead. The engine's resume stream is a jumble of
+  `ready` / `loading` / spurious `paused` (see [the stall watchdog](#the-stall--error-watchdog)),
+  and matching individual transitions is the approach that has failed repeatedly
+  here. Subscribing (rather than waiting for the tick) is what makes the
+  suspension case airtight: the store write happens while the app is still awake
+  handling the pause, so `frozenAt` is always recorded. The 1 s tick and every
+  `arm()` call the same reconcile as a backstop, so a missed notification costs
+  at most one second.
+- **A thaw has three outcomes, by how long the freeze lasted.** Freezing
+  introduces the inverse failure - a timer frozen with 3 minutes left, forgotten,
+  firing 3 minutes into tomorrow's session - and nothing ever cancels a frozen
+  timer, so the length of the freeze is the only evidence there is. On the
+  transition back to playing:
+  - **under `RESET_AFTER_PAUSE_SECONDS` (20 min)**: the frozen countdown
+    continues untouched. 20 minutes clears the longest ordinary in-session
+    interruption while being far short of "later that day"; Audiobookshelf
+    re-arms unconditionally above 3 seconds, which throws away a 25-minute
+    countdown because someone answered the door.
+  - **between that and `ABANDON_AFTER_PAUSE_SECONDS` (2 h)**: a new sitting, so
+    the timer is re-armed at its **full original** `origin.minutes`.
+  - **beyond 2 h**: the timer is **ended** (`endTimer('expired')`), not
+    resurrected. Re-arming at any length there was the "armed at 22:30, paused at
+    22:40, resumed at 08:00, book fades out at 08:30" bug - no user action, hours
+    outside the auto sleep window, and no re-check of why the timer existed.
+    `expired` rather than `cancelled`, so auto sleep is free to arm a fresh one on
+    tonight's terms.
+
+  There is deliberately **no setting** for any of it. The frozen span is also
+  **clamped at zero**: it is two readings of a clock the device owns, so a
+  backward jump (an NTP correction, a manual change) would otherwise slide
+  `endsAt` *earlier* and fire the timer early once the clock came back.
+- **Chapter timers and the grace window are exempt** (both have `endsAt ===
+  null`). A position target does not advance while paused and stays valid however
+  long the pause was, so it is frozen by construction and must not be re-armed.
+  The post-pause grace is genuinely wall-clock - it exists to expire *while* the
+  audio is stopped.
+- **A pause mid-fade hands the volume back, and leaves the `ending` phase.**
+  Freezing stops the fade ticker and writes gain 1 immediately: the listener may
+  hit play on the next breath, and near-silent audio with no visible cause is the
+  worst outcome this feature has. With the ramp suspended and the volume back,
+  the phase is no longer true either, so the freeze drops to `running` (see
+  `syncEndingPhase` above) - which is what takes the accelerometer back off, the
+  badge back to a countdown, and a stray shake out of the picture (outside the
+  `ending`/grace windows `keepListening()` is a no-op, and there it would have
+  silently reset the timer without resuming). The ramp is not lost: the thaw
+  re-enters the phase if the remaining time still warrants it and `syncFade()`
+  picks up at the gain the frozen countdown implies, so it neither restarts nor
+  jumps. A frozen timer also never `fire()`s (it would be pausing an
+  already-paused book) and never writes a gain at all.
+
+### Writing the gain: `setVolume` is required, degraded per engine
+
+The fade reaches the engine through `usePlayer.setOutputVolume(gain)`, which
+clamps once and calls `service.setVolume(…)`. The interface method is
+**required** (`types.ts` says so, with the reasoning): an optional marker would
+push a `?.` onto every caller to model something no caller can act on. Instead
+each engine handles its own "no volume here" case internally and still resolves:
+
+- **`service.native.ts` feature-detects the native function**
+  (`typeof AudiosiloPlayer.setVolume !== 'function'`) and also wraps the call in
+  a `try`. The JS bundle can be **newer than the native binary it runs on** - an
+  installed dev build, or a shipped App Store / Play build from before
+  `setVolume` existed - and calling a function the native module doesn't define
+  *throws*, which would turn every sleep-timer fade into a playback-breaking
+  rejection on those installs. Older binaries degrade to "no fade" and resolve.
+- **`service.web.ts`** sets the element's `volume` and swallows the failure on
+  **iOS Safari**, which refuses per-element volume outright (system volume is the
+  only control there). The fade is inaudible on iPhone/iPad web; it must never
+  become a thrown error.
+- **`playBook` resets the gain to 1** (`svc.setVolume(1)`, with the store's
+  cached `outputVolume` written alongside it) when starting a book. The timer
+  restores the volume on every path it owns; this is the backstop for the one it
+  doesn't, because near-silent audio with no visible cause is the worst outcome
+  this feature can produce. It runs **immediately after `nowPlaying` is swapped**
+  to the new book, at every site that swaps it - the fade ticker stands down by
+  comparing the *playing* book against the timer's own, so a restore written
+  while `nowPlaying` still held the old book was one the 4 Hz ticker could
+  overwrite during the resume lookup's network round trip, and the new book could
+  start attenuated.
+
+### Shake to extend (`use-shake-to-extend.ts`)
+
+A shake **extends** the timer; it does not cancel it. (The hook replaces an
+earlier `use-shake-to-cancel.ts`, which is gone.) `useShakeToExtend` subscribes
+the accelerometer only while `selectSleepExtendable` holds, so the sensor is off
+for the other 29 minutes of a 30-minute timer.
+
+It is mounted **exactly once, at the app root**: the headless
+`ShakeToExtendListener` (`src/components/player/shake-to-extend-listener.tsx`)
+rendered by `src/app/_layout.tsx`, alongside `startAutoSleep()`. Deliberately
+**not** from `player-view.tsx` - the feature's main case is a nightly timer on a
+locked phone with no player screen open, where a hook mounted in the player modal
+would never be listening; mounting it in both places would double-fire a single
+shake.
+
+- It imports **`expo-sensors/build/Accelerometer` directly**, never the
+  `expo-sensors` barrel: the barrel does `import * as Pedometer`, and
+  `Pedometer.ts` resolves its native module at load time, throwing
+  "Cannot find native module 'ExponentPedometer'" on builds that don't link it -
+  crashing the player for a sensor we never use.
+- Detection requires a **burst**, not a single sample: 100 ms sampling, total
+  acceleration above **1.4 g**, **two** qualifying samples inside a 1 s window,
+  then a 2 s debounce. A single-sample threshold both false-fires on a pocket
+  bump and misses a genuine shake landing between samples. The bar is
+  deliberately low: a false positive only grants more listening time, while a
+  false negative stops the book on someone who was awake.
+- Native only, and the whole subscription is wrapped in a `try` so a build
+  without the sensor degrades to a no-op. The sheet's **Keep listening** button
+  is the equivalent, mandatory on web (no accelerometer) and offered on native
+  too.
+
+### Auto sleep timer (`auto-sleep.ts` + `auto-sleep-controller.ts`)
+
+The nightly auto-arm is split into a pure decision function and a framework-free
+controller, so all the policy is unit-tested and none of it lives in a component.
+
+- **`decideAutoSleep(input)`** takes the four `autoSleep*` settings, `now`, the
+  `bookKey` and the per-book memory, and returns
+  `{arm:'none'} | {arm:'chapter'} | {arm:'duration', minutes}`. It bails when the
+  feature is off, when the memory says this book is blocked (`canAutoSleepArm`),
+  and when the clock is outside the window. A persisted `autoSleepType` that isn't
+  `chapter` or a positive number arms nothing rather than a nonsense timer.
+  "A timer is already standing" is deliberately **not** an input: that is a live
+  reading of the timer store, enforced by the controller (below), and restating it
+  here would be a second, always-false copy of a rule enforced elsewhere.
+  An `{arm:'chapter'}` decision arms through `startChapterTimer()` with **no**
+  options - i.e. `allowEndOfBook: false`, the automatic fallback rules above - so
+  a chapterless book gets a duration timer that fires rather than a target hours
+  away that would block every later arm for the session.
+- **The window test is `withinAutoSleepWindow` (`src/lib/hhmm.ts`, with
+  `parseHhMm`/`formatHhMm`)**, half-open `[from, until)` over local wall-clock
+  "HH:MM", wrapping past midnight (the 22:00-06:00 default). `from === until` reads
+  as **never**, and a malformed bound is `false`, so a corrupt value can't arm a
+  timer unexpectedly. It lives in `lib`, not in the settings store that persists the
+  strings, so `@/lib/format` (imported by some twenty modules) doesn't drag zustand
+  and the persisted settings into their graphs.
+- **The timer says how it ended**, through `onSleepTimerEnded(fn)` - see the sleep
+  timer above. `cancel()` reports `cancelled`; the grace closing, a fire against a
+  book that was not playing, and `cancelIfBookChanged` all report `expired`. A book
+  change is an expiry, not a cancellation: nobody dismissed that timer, and blocking
+  the book for the night because the listener dipped into another one would recreate
+  the failure this design fixes. Never infer the reason from the leftover fields -
+  the version that read `graceUntil !== null` as "it fired" filed a cancellation made
+  *during* the grace window as an expiry, which is precisely the case that must not
+  re-arm.
+- **The anti-nag memory** (`AutoSleepMemory`) is ONE bounded, insertion-ordered set
+  of book keys: the books the listener has **cancelled** a timer on. It is folded by
+  the pure `recordAutoSleepOutcome` (a `cancelled` outcome adds, an `expired` one
+  changes nothing) and read by `canAutoSleepArm`, and it caps at
+  `MAX_REMEMBERED_BOOKS` (50), evicting the oldest. A block is final for the session:
+  never unblocked by anything later, including the listener's own manual timer
+  running out on the same book.
+  The other half - "a timer is standing for this book right now, so nothing may arm
+  a second one" - is **not remembered at all**: the timer store answers it live as
+  `phase !== 'idle'`, and answers it better. A remembered copy was only as good as the
+  bookkeeping that maintained it, and could go stale in a way the live reading cannot.
+- **Re-arming can't loop.** Firing pauses playback, so the only route back to an
+  armed timer is a fresh transition into `playing` - the listener's own hand. The
+  one case with no such edge is a listener who resumed by hand *during* the grace
+  window; there the poll (60s) picks it up once the grace closes, which is also the
+  floor on how often anything can be armed.
+- **`startAutoSleep()` (`src/playback/auto-sleep-controller.ts`)** is started once
+  from `src/app/_layout.tsx` (`useEffect(() => startAutoSleep(), [])`) and returns its
+  teardown. It is a module with subscriptions rather than a component that renders
+  `null` - it uses no context, router, props or rendering - and it holds the session
+  memory in **module state**, so "never again for this book" lasts as long as the JS
+  context rather than as long as a mounted component. It must run whether or not the
+  player modal is open: the timer has to arm for a book started from the mini player,
+  the library, or a lock-screen play.
+  It listens to three things: the **setting** (which attaches and detaches everything
+  else - `autoSleepTimer` defaults to off, and the player subscription would otherwise
+  run on every progress write for a feature nobody switched on); the **player**, for
+  the transition edge into `playing` (one look per resume, not one per progress tick);
+  and **`onSleepTimerEnded`**, which is installed for the whole session because a
+  cancellation counts even if auto sleep is enabled later. The 60s poll
+  (`ticker` from `src/lib/ticker.ts`) runs only while a book plays with the feature
+  on, no timer standing and the book unblocked - each gate being a "re-asking cannot
+  change the answer" test.
+
 ## The player controls and title display
 
 Two smaller UI concerns round out the player:
@@ -533,7 +863,17 @@ Two smaller UI concerns round out the player:
   primitive from `src/components/ui/` - a footer-nested sheet would be clipped to
   the footer's bounds. Speed drives a `Stepper` (0.5-2x, 0.05 steps); the sleep
   sheet offers duration presets, an end-of-chapter list (from `chapterCountdowns`
-  at the live rate), and an end-of-book fallback.
+  at the live rate), and an end-of-book fallback. `SleepSheetBody` is a child of
+  `Sheet` so the per-tick countdown scan mounts only while the sheet is open, and
+  it swaps its header for a **Keep listening** call to action whenever
+  `selectSleepPhase` is `ending` or `grace` (demoting *Cancel timer* to a neutral
+  button so the two can't compete). That header reads the timer's `origin` so it
+  can only promise what is happening: `player.sleepTimer.fading` ("Fading out")
+  for a duration timer, `player.sleepTimer.ending` ("Ending soon") for a chapter
+  one, and `player.sleepTimer.grace` once playback has paused. `SleepTimerButton`
+  and the badge over the cover in `player-view.tsx` read only the phase - a
+  countdown while `running`, solid pink plus a short "keep going" label once the
+  timer is ending or has paused - so they are identical for both kinds.
 - **`prettify-title.ts` cleans filename-shaped labels for display.** Audiobook
   "chapter" labels are often just the underlying audio *filename*
   (`01_the_hobbit_ch1.mp3`). `prettifyChapterTitle` strips a recognised audio

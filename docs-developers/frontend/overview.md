@@ -34,7 +34,7 @@ src/api/            client.ts (typed fetch wrapper), types.ts (wire mirrors),
                     reachability.ts (online/offline tracking)
 src/playback/       PlaybackService interface + per-platform engines, the player store,
                     book-queue (timeline math), progress-sync (offline-safe saves),
-                    sleep-timer, rate helpers
+                    sleep-timer (+ auto-sleep, use-shake-to-extend), rate helpers
 src/downloads/      offline downloads: native/web engines + registry store (a sibling
                     of playback, not inside it)
 src/components/     ui/ (design-system primitives - Text, Icon, Button, Card, Sheet,
@@ -44,7 +44,8 @@ src/components/     ui/ (design-system primitives - Text, Icon, Button, Card, Sh
 src/stores/         Zustand: session (connections + tokens), settings, search
 src/i18n/           i18next init, LanguageProvider, locale catalogs (locales/*.json)
 src/theme/          ThemeProvider + raw color tokens (tokens.ts)
-src/lib/            storage, secure-store, paths, format, pairing, known-servers, device,
+src/lib/            storage, secure-store, paths, format, hhmm (wall-clock "HH:MM"),
+                    ticker (one start/stop interval), pairing, known-servers, device,
                     base-url, layout (the one phone->desktop breakpoint),
                     register-sw, and other pure helpers
 modules/audiosilo-player/  the local Expo module (Swift + Kotlin + TS bridge)
@@ -73,7 +74,7 @@ handful of standalone screens.
 
 | Route | File | Purpose |
 |---|---|---|
-| - (root layout) | `src/app/_layout.tsx` | Mounts the provider tree (`GestureHandlerRootView` → `SafeAreaProvider` → `LanguageProvider` → `ThemeProvider` → `ApiProvider`), hydrates the session/settings/downloads stores, imports `@/lib/register-sw` for its side effect, mounts the headless `BookEndedListener` (drives the end-of-book flow, see [Playback](playback.md#ending-a-book-end-credits-and-up-next)), and runs `useAppResume` (foreground refresh + the Android swipe-from-recents reset). Declares the `(app)` stack and the `player`/`finished` screens as `fullScreenModal`s. |
+| - (root layout) | `src/app/_layout.tsx` | Mounts the provider tree (`GestureHandlerRootView` → `SafeAreaProvider` → `LanguageProvider` → `ThemeProvider` → `ApiProvider`), hydrates the session/settings/downloads stores, imports `@/lib/register-sw` for its side effect, mounts the headless `BookEndedListener` (drives the end-of-book flow, see [Playback](playback.md#ending-a-book-end-credits-and-up-next)), starts the framework-free `startAutoSleep()` controller (arms the nightly sleep timer, see [Playback](playback.md#auto-sleep-timer-auto-sleepts--auto-sleep-controllerts)), and runs `useAppResume` (foreground refresh + the Android swipe-from-recents reset). Declares the `(app)` stack and the `player`/`finished` screens as `fullScreenModal`s. |
 | - (web HTML shell) | `src/app/+html.tsx` | The static HTML wrapper for every exported web route: PWA manifest/favicon links (base-prefixed) and a dark backdrop painted before React mounts so there is no white flash. |
 | `(app)` guard | `src/app/(app)/_layout.tsx` | The auth gate: `loading` → spinner, `unauthenticated` → `<Redirect href="/connect" />`, otherwise wraps children in `AppShell` (header + nav, which renders the `ReconnectBanner` when a connection's token is rejected - see below). Also backfills `has_password`/`has_recovery` on sessions persisted before those flags existed. |
 | `/` | `(app)/index.tsx` | Home: continue-listening cards, recently-added shelf, favourites - aggregated **across every connected server** via the `use*All` hooks. |
@@ -84,7 +85,7 @@ handful of standalone screens.
 | `/library/[libraryId]?connection=…&path=…` | `(app)/library/[libraryId].tsx` | Library browse, root and nested folders alike - a two-line re-export of `src/components/library/browse-screen.tsx`. Content routes are **flat**: the connection id and the library-relative folder `path` ride as query params, never as nested route segments (an in-app `router.push` cannot resolve a route nested under a dynamic layout segment - it lands on the group's first child; rationale and helpers in `src/lib/paths.ts`). The `(app)` layout republishes `?connection=` as the scope the content hooks read via `useScopedCid()`. |
 | `/book/[libraryId]?connection=…&path=…` | `(app)/book/[libraryId].tsx` | Book detail: play/resume, download control, chapters, bookmarks, notes, listening history, other versions of the same book, and a capability-gated community-metadata section ([State & data](state-and-data.md#enriched-book-metadata)). Same flat query-param addressing as the library routes. |
 | `/downloads` | `(app)/downloads.tsx` | Downloaded books + storage used ([Offline](offline.md)). |
-| `/settings` | `(app)/settings.tsx` | App-level preferences only: playback tunables, language, theme, plus the Servers list that opens each connection's account screen. |
+| `/settings` | `(app)/settings.tsx` | App-level preferences only: playback tunables, the auto sleep timer's window and type, up-next/download behaviour, language, theme, plus the Servers list that opens each connection's account screen. |
 | `/account?connection=…` | `(app)/account.tsx` | Per-connection account screen, reached from the Settings screen's Servers list: set/change the self-service password (the sign-out guard nudges a password-less user here via `sign-out-confirm.tsx`), personal API keys (capability-gated, demo-hidden), and sign-out. |
 | `/player` | `src/app/player.tsx` | The full player, presented as a full-screen modal above the shell. Accepts `libraryId`/`path` (+ optional `position`/`track`) params and gates playback start on the chapters query settling. |
 | `/finished` | `src/app/finished.tsx` | The end-credits screen shown when a book finishes (or from the player's menu). A root modal sibling of the player; renders `EndCredits` with an "up next" suggestion. See [Playback](playback.md#ending-a-book-end-credits-and-up-next). |

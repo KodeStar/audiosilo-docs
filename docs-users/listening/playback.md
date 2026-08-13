@@ -45,11 +45,55 @@ Tap the moon icon to set a sleep timer. You can stop:
 - at the **end of a chapter** - the current one or any of the next few;
 - at the **end of the book**, for books without chapters.
 
-While a timer runs, a countdown shows on the moon icon and on the cover, and the sheet offers **Cancel timer**. When it fires, playback simply pauses - nothing is lost. In the mobile apps you can also **shake your phone** to cancel a running timer without looking.
+While a timer runs, a countdown shows on the moon icon and on the cover, and the sheet offers **Cancel timer**. When it fires, playback simply pauses - nothing is lost.
+
+A timer belongs to the book you set it on. Start a different book, or finish the one you're on, and the timer goes with it instead of following you to the next book. And if a timer reaches its point when you'd already paused by hand, it just ends quietly: there was nothing left to stop.
 
 :::tip
 The countdown is real ("wall clock") time: listening at 2× speed, an end-of-chapter timer shows how long the chapter actually takes to reach at that speed.
 :::
+
+### Pausing with a timer running
+
+**A set-time timer pauses with the book.** Pause, and the countdown stops where it is; press play and it carries on from there. Thirty minutes means thirty minutes of *listening*, not thirty minutes on the clock - so answering the door, taking a call, or pausing with a headphone button without ever looking at the screen can't quietly use up a timer you were relying on. It works the same way if you arm a timer before you press play: the countdown starts when the audio does.
+
+**Come back after more than 20 minutes and the timer starts again at its full length.** A break that long is a new sitting rather than an interruption, and the alternative is worse: a timer frozen with three minutes left, forgotten about, stopping you three minutes into the next evening's listening. Under 20 minutes it simply picks up where it left off. There's nothing to configure.
+
+An **end-of-chapter** timer needs none of this: it stops at a place in the book, not after an amount of time, so it waits exactly where you left it however long you're away, and still stops at the chapter you chose.
+
+If you pause during a set-time timer's fade-out (the last 30 seconds, below), the volume comes straight back up so the book is never left sounding quiet, and the fade picks up where it stopped when you press play again.
+
+### The last 30 seconds, and how to keep listening
+
+Every timer has a **final 30 seconds** that are your cue it's about to stop - and your chance to carry on if you're still awake. The badge on the cover turns solid pink for them, and the sheet shows the seconds left.
+
+What you hear in that window depends on the kind of timer:
+
+- A **set-time** timer stops at an arbitrary point mid-chapter, so it doesn't cut the book off mid-word: the audio **fades out gently** over those 30 seconds. The sheet shows *Fading out*.
+- An **end-of-chapter** timer (and an end-of-book one) plays those 30 seconds at **full volume** and stops at the boundary. Those closing words are the ones you stayed awake for, and the chapter ending is its own signal that the book is about to stop. The sheet shows *Ending soon*.
+
+During that final window, **and for 30 seconds after playback has paused**, one gesture keeps you going:
+
+- **Shake your phone** - in the iOS and Android apps.
+- **Tap "Keep listening"** - open the sleep timer from the moon icon and tap the pink **Keep listening** button. This works everywhere, and it's the only way in the web player, because browsers can't feel the phone move.
+
+Either one brings the volume straight back up (if it had started to fade) and **starts the timer again at the setting you chose**: a 30-minute timer becomes a fresh 30 minutes, and an end-of-chapter timer moves its target to the end of the **next** chapter. If playback had already stopped, it starts playing again too - so you never have to unlock the phone to rescue a book you were still listening to.
+
+Once those 30 seconds are up, the timer is finished and the book stays paused where it was. Shaking the phone at any other time does nothing, so a bump in your pocket can't disturb a running timer.
+
+:::note
+Safari on iPhone and iPad doesn't let a web page change its own volume, so in the **web player on those devices** a set-time timer's last 30 seconds don't audibly fade. Everything else works as described: the badge, the countdown, and the **Keep listening** button. (An end-of-chapter timer never fades anywhere, so it behaves identically on every platform.)
+:::
+
+### Starting a timer automatically at night
+
+If you listen yourself to sleep most nights, you can have AudioSilo arm the timer for you instead of remembering to. Turn on **Auto sleep timer** in [Settings](account.md#sleep-timer), choose the hours it applies to (10:00 PM to 6:00 AM out of the box) and what kind of timer it should set. Any book you start inside that window gets one automatically.
+
+It's deliberately unobtrusive: never more than one timer at a time, and never on top of a timer you set yourself.
+
+**If a timer runs out and you press play again inside the window, you get a fresh one.** Starting the book again at 3:00 AM is you saying you're still listening, so the night's remaining hours are covered too rather than leaving you unprotected after the first timer.
+
+**Cancel a timer and that's final.** Nothing will arm another one for that book for the rest of the session (until you next start the app), because a timer you've just dismissed coming quietly back is the last thing you want. That holds for the timers you set by hand as well: cancelling your own keeps the automatic one away too, while letting your own run out doesn't.
 
 ## Bookmarks, notes, and history
 
