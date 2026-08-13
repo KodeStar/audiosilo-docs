@@ -35,6 +35,22 @@ Your playback preferences (kept per device, so your phone and your desktop can d
 | **Auto-rewind on resume** | How far playback backs up after a pause, so you regain the thread | Off–30 s (default 5 s) |
 | **Chapter length (unchaptered)** | Size of the virtual chapters created for long books with no chapter markers | 5–60 min (default 30 min) |
 
+## Sleep timer
+
+Whether AudioSilo should set a [sleep timer](playback.md#sleep-timer) for you at night, so you don't have to remember. Off out of the box; the three settings below only appear once it's on. Like Playback, these are kept per device.
+
+| Setting | What it does | Options (default) |
+|---|---|---|
+| **Auto sleep timer** | Start a sleep timer automatically for playback that begins between the hours below | On / Off (default **Off**) |
+| **From** / **Until** | The nightly window it applies to, adjustable in **30-minute steps** and shown in your device's own clock format | Any times (default **10:00 PM** to **6:00 AM**) |
+| **Timer type** | What the automatic timer does | End of chapter, or 15 / 30 / 45 / 60 minutes (default **End of chapter**) |
+
+The window may cross midnight, which is the whole point of the default. Setting **From** and **Until** to the same time switches it off rather than covering the whole day.
+
+:::note
+The automatic timer stays out of your way: only ever one at a time, and it never replaces a timer you set yourself. If one runs out and you press play again inside the window, you get a fresh one - waking at 3:00 AM shouldn't leave you unprotected. **Cancel** one, though, and nothing will arm another for that book for the rest of the session.
+:::
+
 ## Up next
 
 Controls for what happens as one book ends and the next begins (see [When a book finishes](playback.md#when-a-book-finishes)). Like Playback, these are kept per device.

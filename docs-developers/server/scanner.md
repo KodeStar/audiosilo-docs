@@ -132,9 +132,11 @@ embedded data winning where it is trustworthy:
    free.
 2. **Embedded tags + probe** (`metadata.Extract` on the primary file - the
    first part for folder books) overlay the baseline: tags via `dhowden/tag`
-   in-process (album ≻ title for the book title, album-artist ≻ artist for the
-   author, composer as narrator, plus raw-tag lookups for series/narrator
-   atoms), then ffprobe (when configured) for duration, chapters, the audio
+   in-process (album ≻ title for the book title - except when the title tag
+   extends the album with a real subtitle, the Audible shape where album holds
+   the *series* and only the title tag carries the actual book title; album-artist
+   ≻ artist for the author, composer as narrator, plus raw-tag lookups for
+   series/narrator atoms), then ffprobe (when configured) for duration, chapters, the audio
    `codec` (`codec_name` of the first audio stream - this is what feeds the
    `direct_playable` API flag), and richer container tags.
 3. **Generic-title guard**: `chooseTitle` keeps the path-derived title when the

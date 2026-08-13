@@ -174,7 +174,11 @@ so the manager and the server can never drift apart on identity. Where the
 manager uses each entry point:
 
 - **`match.Best`** - the scoring matcher (ASIN → author + series +
-  series-stripped title-token overlap, sequence-boosted). Wrapped by
+  series-stripped title-token overlap; sequence agreement boosts the score, and
+  when *both* titles reduce to bare "series + number", a sequence conflict
+  disqualifies the candidate - so a not-yet-imported volume can't match an indexed
+  sibling, while titles with real words still match on words even when sub-series
+  numbering disagrees). Wrapped by
   `importjob.BookMatcher` (converts a fetched book list once, so matching a whole
   Audible library is O(library)), it drives: the plan-time *exists-on-server*
   check, the Audible pre-flight, the stats-sync book pairing, and the series-gap

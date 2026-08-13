@@ -37,7 +37,7 @@ Playback keeps going when you switch apps, turn the screen off, or pocket the ph
 - **Android** gives you full audiobook controls on the lock screen and in the notification: **previous chapter**, a **draggable chapter scrubber**, **next chapter**, and **30-second skip back/forward** buttons - no need to unlock the phone to hop around a book.
 - **iOS** shows the book on the lock screen and in Control Centre with play/pause, a scrubber, and **skip back/forward** buttons that use the skip lengths from your in-app Settings.
 
-Headphone and earbud buttons work everywhere, and the sleep timer can be cancelled with a **shake of the phone**.
+Headphone and earbud buttons work everywhere. And in the [sleep timer](playback.md#the-last-30-seconds-and-how-to-keep-listening)'s last 30 seconds - or just after it has paused the book - a **shake of the phone** sets the timer again (bringing the volume back if it had started to fade) and resumes playback if it had stopped.
 
 ## Gapless, chapter-aware listening
 
