@@ -717,7 +717,11 @@ Response `200` on a match:
         "scope": "book",
         "text": "Watney has survived the storm and taken stock of Hab…"
       }
-    ]
+    ],
+    "recap_summary": {
+      "in_short": "A botanist is left behind on Mars and has to keep himself alive…",
+      "ending": "The Ares 3 crew slingshots back and catches him mid-intercept…"
+    }
   },
   "recording": {
     "id": "podium-2013",
@@ -757,9 +761,10 @@ work's position in that series; `series[].works` is the full ordered rail,
 **including the current work** (the client filters it out before drawing a "more
 in this series" row). Positions are strings ("1", "2.5", "1-3.5").
 
-`work.characters` and `work.recaps` are the community **expressive layer** (the
-CC BY-SA content, spoiler-tagged and position-keyed); both are `omitempty`, so
-they are absent when the upstream has none. A **position** is
+`work.characters`, `work.recaps` and `work.recap_summary` are the community
+**expressive layer** (the CC BY-SA content, spoiler-tagged and position-keyed);
+all three are `omitempty`, so they are absent when the upstream has none. A
+**position** is
 `{ "chapter": <int >= 0> }` on the work's own, edition-independent timeline (the
 logical work chapter, 1-based; `0` = front matter / prior-book knowledge), which
 the client maps onto its recording's chapters.
@@ -774,6 +779,13 @@ the client maps onto its recording's chapters.
   finished that chapter), an optional `scope` (`book` or `series` - a
   `chapter: 0` + `series` recap is the "previously, in earlier books" summary),
   and own-words `text`.
+- **`recap_summary`** is the whole-book refresher, not keyed to a position:
+  `{ "in_short": …, "ending": … }`, both fields `omitempty`. `in_short` is a
+  spoiler-light "what this book is" summary a client can show up front; `ending`
+  is **by construction a full spoiler** and must only be revealed deliberately
+  (the player shows it once the book is finished, or behind an explicit tap on a
+  previous book). The whole object is omitted when the work has neither, and an
+  all-blank upstream object is never emitted.
 
 These fields are additive: they are passed straight through from the upstream
 `GET /works/{id}` (see the [three-repo seam](../../architecture/cross-repo-contract.md)),
@@ -795,6 +807,58 @@ that the client treats as "nothing to show":
 | `400` | missing `path` / invalid library id |
 | `403` | path outside the caller's share scope |
 | `404` | `no book at that path`, **or** metadata lookup is disabled on this server (`metadata` capability false) |
+| `502` | `metadata service unavailable` - the upstream was unreachable or errored |
+
+### `GET /api/v1/meta/work`
+
+*Session.* One community **work** document by its metadata-database id, with no
+book, library, or path involved. This is what the player uses to catch a listener
+up on the **earlier books of a series**: the series rails returned by
+`/libraries/{id}/meta` name works the caller may not own, so there is no path to
+address them by.
+
+| Query param | Type | Required |
+|---|---|---|
+| `id` | string | yes - the work id from a `series[].works[].id` (or `work.id`) |
+
+The id rides in the **query string, not a path segment**, because metadata-site
+work slugs are not guaranteed to be path-segment safe.
+
+Unlike `/libraries/{id}/meta` this route is **plain authed, not scope-checked**:
+a work id says nothing about what is on this server, so a scoped user may read
+any work. It is gated by the same `metadata` [capability](#get-apiv1server) and
+served from the same bounded cache as the enrichment lookups (its own `w:` key
+space; 24 h positive / 1 h not-found / 2 min transport-error TTLs).
+
+Response `200`:
+
+```json
+{
+  "work": {
+    "id": "the-martian",
+    "title": "The Martian",
+    "authors": [{ "id": "andy-weir", "name": "Andy Weir" }],
+    "language": "en",
+    "first_published": "2011",
+    "description": "An astronaut is stranded on Mars…",
+    "characters": [],
+    "recaps": [],
+    "recap_summary": { "in_short": "…", "ending": "…" }
+  }
+}
+```
+
+`work` is exactly the same shape as `work` inside the `/libraries/{id}/meta`
+envelope (documented above, same `omitempty` rules) - there is deliberately no
+second work type. The enrichment fields that only make sense for a matched local
+book (`matched`, `recording`, `series`, `web_url`) are **not** returned here.
+
+| Status | Meaning |
+|---|---|
+| `200` | `{ "work": … }` |
+| `400` | `id is required` - the `id` param is missing or blank; `invalid id` - it is longer than 200 bytes or contains control characters |
+| `404` | `no such work` - the upstream has no work with that id |
+| `404` | `metadata lookup not enabled` - the lookup is off on this server |
 | `502` | `metadata service unavailable` - the upstream was unreachable or errored |
 
 ## Streaming & media

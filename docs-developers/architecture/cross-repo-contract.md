@@ -276,10 +276,15 @@ read-only (`GET /lookup`, `/works/{id}`, `/series/{id}`) - see the
 [metadata database developer pages](../meta/overview.md).
 **Server:** `internal/meta` resolves a book's ASIN/ISBN against `metaserve` and
 composes an enrichment envelope, returned at `GET /libraries/{id}/meta` behind an
-admin off-switch and a bounded cache; the `metadata` capability on `GET /server`
-reflects whether the lookup is live.
+admin off-switch and a bounded cache; `GET /meta/work?id=…` serves one work
+document straight through (authed but **not** library-scoped, since a work id
+names nothing on this server) from the same cache, for the earlier books of a
+series the caller does not own. The `metadata` capability on `GET /server`
+reflects whether either lookup is live.
 **Frontend:** the `BookMeta` envelope (hand-mirrored in `src/api/types.ts`) is
-fetched by `client.bookMeta` and rendered capability-gated on the book screen.
+fetched by `client.bookMeta` and rendered capability-gated on the book screen's
+Recaps/Characters/Series tabs; `client.metaWork` / `useMetaWork` lazily fetch a
+previous book's work when the reader opens its row.
 
 **A change requires:** because the server consumes `metaserve`'s response shapes,
 a change to those shapes ripples audiosilo-meta -> the server's `internal/meta` ->

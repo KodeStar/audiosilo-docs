@@ -104,8 +104,9 @@ playing).
 
 A single switch that turns the **community metadata lookup** on or off for the
 whole server. When it is on, books that can be matched (they carry an ASIN or
-ISBN) gain an extra "About this book" section in the player - a description,
-production details, and the series they belong to - drawn from the free,
+ISBN) gain an extra "About this book" block in the player - a description,
+production details, the series they belong to, and (where the community has
+written them) character cards and story-so-far recaps - drawn from the free,
 community-run catalogue at
 [meta.audiosilo.app](https://meta.audiosilo.app). See
 [About this book](../listening/browsing.md#about-this-book) for what listeners
