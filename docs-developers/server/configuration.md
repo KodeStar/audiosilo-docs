@@ -113,13 +113,16 @@ case they live only in the database. There is deliberately **no layout key**
 The server can enrich a book with a description, production details and its
 series by resolving the book's ASIN/ISBN against the community metadata API
 ([meta.audiosilo.app](https://meta.audiosilo.app)) and serving the result at
-`GET /libraries/{id}/meta` (players draw it beneath the chapter list). The
-lookup is server-side by design - one cached seam, and one config key that turns
-off all outbound calls.
+`GET /libraries/{id}/meta` (players draw it as an "About this book" block plus
+the recaps/characters/series tabs). The same config also gates
+`GET /meta/work?id=…`, which passes a single work document through so a player
+can catch a listener up on the earlier books of a series. The lookup is
+server-side by design - one cached seam, and one config key that turns off all
+outbound calls.
 
 | Key | Type / default | Meaning |
 |---|---|---|
-| `metadata.enabled` | bool, `true` | Turn the metadata lookup on. When `false`, the server makes **no outbound metadata calls**, `GET /libraries/{id}/meta` returns 404, and the `metadata` capability reports false so players hide the enriched-book section entirely. Seeds the initial state only - an admin can flip this at runtime (see below) |
+| `metadata.enabled` | bool, `true` | Turn the metadata lookup on. When `false`, the server makes **no outbound metadata calls**, `GET /libraries/{id}/meta` and `GET /meta/work` both return 404, and the `metadata` capability reports false so players hide the enriched-book material entirely. Seeds the initial state only - an admin can flip this at runtime (see below) |
 | `metadata.base_url` | string, `"https://meta.audiosilo.app"` | Base URL of the metadata service (the site is served at `/` and the API at `/api/v1`). **Must be an absolute `http`/`https` URL when metadata is enabled** |
 
 `metadata.enabled` is **runtime-toggleable**: an admin can switch the lookup on

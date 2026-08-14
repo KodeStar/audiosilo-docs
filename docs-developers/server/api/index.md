@@ -210,7 +210,9 @@ Clients **must** feature-gate on these flags rather than probing endpoints:
 is 503), `web_player` whether `/web` is mounted, `api_keys` whether the server
 supports user-minted [API keys](reference.md#personal-api-keys), `metadata`
 whether [community metadata lookup](reference.md#get-apiv1librariesidmeta) is
-configured (the enriched-book section is drawn only when it is true),
+configured (it gates the standalone
+[work lookup](reference.md#get-apiv1metawork) too, and the enriched-book
+material is drawn only when it is true),
 `upload`/`websocket` are roadmap phases that will flip on when they land.
 `demo.enabled` drives the "Try the demo" affordance.
 

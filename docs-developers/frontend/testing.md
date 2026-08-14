@@ -220,8 +220,8 @@ Co-located suites exist for:
 | i18n | `src/i18n/language.test.ts`, `language-provider.test.tsx` |
 | Account flows | `src/components/account/use-api-keys-manager.test.tsx`, `use-sign-out.test.tsx` |
 | Player UI | `src/components/player/sleep-timer-button.test.tsx`, `end-credits-logic.test.ts` |
-| Library UI | `src/components/library/book-meta.test.ts`, `book-meta.render.test.tsx`, `entry-row.test.tsx`, `progress-card.test.tsx`, `skeletons.test.tsx`; `src/components/layout/content-scope.test.tsx` |
-| UI primitives | `src/components/ui/` - `animated-pressable`, `empty-state`, `icon-data` (validates every vendored SVG glyph), `overlay-host`, `section-header`, `segmented-control`, `select-row`, `sheet`, `skeleton`, `time-stepper` |
+| Library UI | `src/components/library/book-meta.test.ts`, `book-meta.render.test.tsx`, `book-tabs.test.ts`, `meta-gating.test.ts`, `entry-row.test.tsx`, `progress-card.test.tsx`, `skeletons.test.tsx`; `src/components/layout/content-scope.test.tsx` |
+| UI primitives | `src/components/ui/` - `animated-pressable`, `empty-state`, `icon-data` (validates every vendored SVG glyph), `overlay-host`, `section-header`, `segmented-control`, `select-row`, `sheet`, `skeleton`, `tab-bar`, `time-stepper` |
 | `src/lib` helpers | `account`, `alpha-sections`, `app-resume`, `auth-failure`, `base-url`, `clipboard`, `content-key`, `dedup`, `format`, `hhmm`, `known-servers`, `nav`, `network`, `pairing`, `paths`, `progress-view`, `rnw-button-fix`, `scroll-memory`, `secure-store`, `share`, `support`, `ticker` |
 
 The shared test double for the player store lives outside that list, in

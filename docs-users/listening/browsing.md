@@ -43,25 +43,57 @@ Tap a book to open its detail page:
 
 ![A book's detail page with cover, stats, and chapter list](/img/screenshots/web-player/book-detail.png)
 
+The top of the page is the same for every book:
+
 - **Cover, title, and author**, plus the **series and number** (e.g. *"Stormlight Archive #2"*) and the **narrator** when known.
 - A **stats strip**: a heart to favourite the book, its download size and audio format, and its total length.
 - A **Listen** button to start (or resume) playing, and a **download button** for [offline listening](offline-downloads.md).
-- The **Chapters** list (or **Files**, for books without chapter info) with each part's duration - tap any chapter to start playing from there. Green dots on the rows show the book is downloaded to this device.
-- Your **Bookmarks**, **History** (past listening sessions), and **Notes** for this book. Notes support markdown formatting.
+- An **About this book** block, when the book is matched in the community database (see below).
 
 If the same book exists in more than one place (say, an M4B copy and an MP3 copy), the detail page offers **Choose a version** so you can pick which copy to play.
 
+### The book's tabs
+
+Everything else sits in a row of **tabs** below that, so a long chapter list no longer buries the rest of the page. Swipe the tab row sideways if it doesn't all fit:
+
+- **Chapters** (or **Files**, for books without chapter info) - each part with its duration; tap any chapter to start playing from there. Green dots on the rows show the book is downloaded to this device.
+- **Recaps** - "what's happened up to here" catch-ups (see below).
+- **Characters** - community-written cards for the people in the book (see below).
+- **Bookmarks**, **History** (past listening sessions), and **Notes** for this book. Notes support markdown formatting.
+- **Series** - the other books in the same series, each opening its page on the metadata site so you can see what to read next.
+
+**Chapters**, **Bookmarks**, **History** and **Notes** are always there. **Recaps**, **Characters** and **Series** appear only when the community database has that material for the book, so most pages show a shorter row than the full list above.
+
 ### About this book
 
-Some books show an extra section below the chapters with more about the title:
+Some books show an extra **About this book** block above the tabs, plus the community tabs:
 
-- An **About** description of the story, and production details such as the **publisher**, **release date** and when the work was **first published**.
-- A **Characters** section - community-written cards for the people in the book. Each card shows the name, role and any aliases, plus which chapter the character first appears in; tap a card to reveal its short description. Cards stay closed until you tap them, so you decide when to read on.
-- A **Story so far** section - short "what's happened up to here" recaps, each labelled with the chapter it's safe to read after. They stay closed by default, so you only open the one for as far as you've listened and don't spoil what's ahead. A recap marked for the very start reads "Previously, in earlier books" - a catch-up from earlier in the series.
-- A **More in this series** row - other books in the same series, each opening its page on the metadata site so you can see what to read next.
-- A **View on AudioSilo Meta** link to the book's full entry.
+- An **About** description of the story, and production details such as the **publisher**, **release date** and when the work was **first published**, with a **View on AudioSilo Meta** link to the book's full entry.
+- The **Characters** tab - a card for each person in the book. Each card shows the name, role and any aliases, plus which chapter the character first appears in; tap a card to reveal its short description. Cards stay closed until you tap them, so you decide when to read on.
+- The **Recaps** tab - short "what's happened up to here" recaps, each labelled with the chapter it's safe to read after. They stay closed by default, so you only open the one for as far as you've listened. Some books also open with an **In short** summary of the whole book, and a separate **How it ends** recap that only appears once you've finished. A recap marked for the very start reads "Previously, in earlier books" - a catch-up from earlier in the series.
 
-This information comes from the **AudioSilo community metadata database** at [meta.audiosilo.app](https://meta.audiosilo.app), a free, community-run catalogue of audiobook details that you can also browse and contribute to yourself (see [The community metadata site](../community/meta-site.md)). It appears only when the book can be matched (it carries an ASIN or ISBN) and your server has the metadata lookup switched on. The **Characters** and **Story so far** sections are contributed by the community, so a matched book shows them only once someone has written them - many books will have the About and series details but not these yet. If a book has no extra section, it simply isn't matched or your admin has turned the feature off - nothing else on the page changes. A server admin can switch the lookup on or off at any time from the admin console's Overview section (see the [console tour](../admin/console-tour.md#community-metadata-lookup)); when it is off, no book shows this section.
+#### Nothing gets spoiled before you reach it
+
+The Characters and Recaps tabs follow **where you are in the book**, using your current playback position (or your saved progress if you aren't playing it right now):
+
+- A character you haven't met yet is hidden, and so is any recap that covers chapters you haven't finished.
+- A line at the bottom of the tab says how many entries are hidden - "**3 hidden to avoid spoilers**" - with a **Show anyway** toggle if you want to see them regardless. Anything you reveal that way is marked with a small **Spoiler** chip so you know you're reading ahead. Revealing applies to both tabs at once, so switching between Characters and Recaps doesn't hide it all again.
+- Once you've **finished** a book, everything is shown - including "How it ends", which is a full spoiler by design.
+
+:::note
+Chapter numbers here are the *book's* chapters as the community catalogued them, which can differ slightly from your particular edition's file or chapter numbering. So treat the gating as a close guide rather than an exact line - and if it hides something you've already heard, **Show anyway** (or marking the book finished) is the escape hatch.
+:::
+
+#### Catching up on earlier books in a series
+
+At the bottom of both the **Recaps** and **Characters** tabs, a series book adds a **Previous books** block - one closed row per earlier book in the series, most recent first. Open a row and the app fetches that book from the community database on the spot:
+
+- Under **Recaps** you get that book's **In short** summary, plus a separate **How it ends** row you have to tap for yourself (it carries a Spoiler chip, since you've presumably finished that book already). If a book has no summary written yet, its furthest recap is used instead.
+- Under **Characters** you get that book's character cards.
+
+It's the "wait, who is this again?" fix before starting book four of a series. If a book can't be loaded (your server is older than this feature, or the metadata service is unreachable) the row shows a quiet "couldn't load" note and a link to open that book on the metadata site instead.
+
+This information comes from the **AudioSilo community metadata database** at [meta.audiosilo.app](https://meta.audiosilo.app), a free, community-run catalogue of audiobook details that you can also browse and contribute to yourself (see [The community metadata site](../community/meta-site.md)). It appears only when the book can be matched (it carries an ASIN or ISBN) and your server has the metadata lookup switched on. The **Characters** and **Recaps** material is contributed by the community, so a matched book gets those tabs only once someone has written them - many books will have the About block and the Series tab but not these yet. If a book shows none of this, it simply isn't matched or your admin has turned the feature off - the Chapters, Bookmarks, History and Notes tabs are unaffected. A server admin can switch the lookup on or off at any time from the admin console's Overview section (see the [console tour](../admin/console-tour.md#community-metadata-lookup)); when it is off, no book shows this section.
 
 ## Search
 

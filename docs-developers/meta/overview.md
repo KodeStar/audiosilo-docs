@@ -160,7 +160,8 @@ The practical consequences for a deployment:
 
 audiosilo-meta is the **upstream** of a three-repo metadata seam. `metaserve`
 serves the community data; the AudioSilo server composes a book's enrichment from
-it; the player renders that enrichment.
+it (and re-exposes a single work document, unchanged, for the earlier books of a
+series the listener may not own); the player renders both.
 
 ```mermaid
 flowchart LR
@@ -168,7 +169,7 @@ flowchart LR
     srv["audiosilo-server<br/>internal/meta"]
     player["audiosilo-frontend<br/>book screen"]
     meta -->|"GET /lookup, /works/{id}, /series/{id}"| srv
-    srv -->|"GET /libraries/{id}/meta<br/>(composed envelope)"| player
+    srv -->|"GET /libraries/{id}/meta (composed envelope)<br/>GET /meta/work?id= (one work, passed through)"| player
 ```
 
 The seam of record is
