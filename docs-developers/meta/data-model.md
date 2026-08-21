@@ -113,7 +113,7 @@ Two **per-work sidecars** carry the community-authored, spoiler-tagged content:
 the `characters` and `recaps` members of a work's entry in the separate
 `data/works-community/` family, keyed by the **work's** slug. They are
 structurally separated from the core: their `license` field accepts only
-`CC-BY-SA-3.0` (`$defs/license_content`), and the family boundary makes the
+`CC-BY-SA-4.0` (`$defs/license_content`), and the family boundary makes the
 licensing split visible in the directory tree. Authoring them is documented in
 the repo's `AUTHORING.md` (see [contributing data](contributing-data.md)).
 

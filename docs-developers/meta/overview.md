@@ -35,13 +35,13 @@ data is split across two licence layers (below).
 
 Data lives in two layers, and the boundary is **enforced structurally by the JSON
 Schema**, not by convention (see `LICENSING.md` in the repo): the `license` field
-of a core record accepts only `CC0-1.0`, and a sidecar's only `CC-BY-SA-3.0`
+of a core record accepts only `CC0-1.0`, and a sidecar's only `CC-BY-SA-4.0`
 (`common.schema.json` `$defs/license` vs `$defs/license_content`).
 
 | Layer | Entities | Licence |
 |---|---|---|
 | **Factual core** | works, recordings, people, series | **CC0-1.0** public-domain dedication |
-| **Expressive layer** | per-work characters + recaps sidecars | **CC BY-SA 3.0** |
+| **Expressive layer** | per-work characters + recaps sidecars | **CC BY-SA 4.0** |
 
 Publisher blurbs and cover art are referenced, never copied: descriptions are
 community-written and covers are URLs. Every entity also carries a `sources[]`
