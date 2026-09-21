@@ -46,6 +46,8 @@ export const SHOTS = [
   {file: 'meta/work.png', capture: 'meta', title: 'Meta - Work detail', hint: 'a work page with its cover, metadata and multiple recordings'},
   {file: 'meta/characters.png', capture: 'meta', title: 'Meta - Characters', hint: 'the community characters section, one card opened'},
   {file: 'meta/series.png', capture: 'meta', title: 'Meta - Series', hint: 'a series page listing its ordered volumes'},
+  {file: 'meta/series-watching.png', capture: 'meta', title: 'Meta - Series (watched)', hint: 'a watched series page: the Watching toggle, "I have this" marks, release dates'},
+  {file: 'meta/watching.png', capture: 'meta', title: 'Meta - Watching', hint: 'the /watching page: available + preorder entries with New badges'},
   {file: 'meta/contribute.png', capture: 'meta', title: 'Meta - Contribute', hint: 'the coverage browser (what still needs characters/recaps)'},
   {file: 'meta/import.png', capture: 'meta', title: 'Meta - Import', hint: 'the in-browser library-export diff results'},
 
