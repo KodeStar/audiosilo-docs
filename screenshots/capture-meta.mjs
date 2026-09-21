@@ -128,6 +128,41 @@ await step('series', async () => {
   await shoot(page, 'meta/series.png');
 });
 
+// ── Series (watched): the Watch toggle + "I have this" marks ─────────────────
+// Drives the real controls rather than seeding localStorage, so the shot can
+// only succeed if the toggle and the ownership checkboxes actually work. The
+// marks it leaves behind are what the /watching step below reads - the browser
+// context is shared, and the watchlist lives in localStorage on this origin.
+await step('series-watching', async () => {
+  await goto(`/series/${SERIES_ID}`);
+  const watch = page.getByRole('button', {name: /watch this series/i}).first();
+  await watch.waitFor({state: 'visible', timeout: 20000});
+  await watch.click();
+  await page.getByRole('button', {name: /^watching$/i}).first().waitFor({timeout: 10000});
+  // Ownership marks only exist while watching; tick the first two volumes so the
+  // shot shows both states and /watching has something under "you already have".
+  const owns = page.locator('input[type="checkbox"][aria-label^="I have "]');
+  await owns.first().waitFor({state: 'visible', timeout: 10000});
+  const count = await owns.count();
+  for (let i = 0; i < Math.min(2, count); i += 1) await owns.nth(i).check();
+  await sleep(1200); // thumbnail covers settle (bounded)
+  await shoot(page, 'meta/series-watching.png');
+});
+
+// ── Watching: what is new across the watched series ──────────────────────────
+// Continues from the step above (same context, same localStorage). A Preorder
+// group only appears when the catalogue holds a future release_date; the shot is
+// valid without one.
+await step('watching', async () => {
+  await goto('/watching');
+  await page.getByText(/preorders? across/i).first().waitFor({timeout: 20000});
+  // The per-series panel fills from the API; the ownership checkboxes are the
+  // proof its entries rendered.
+  await page.waitForSelector('input[type="checkbox"][aria-label^="I have "]', {timeout: 20000});
+  await sleep(1200);
+  await shoot(page, 'meta/watching.png');
+});
+
 // ── Contribute: the coverage browser ─────────────────────────────────────────
 await step('contribute', async () => {
   await goto('/contribute');

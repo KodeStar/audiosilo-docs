@@ -61,6 +61,7 @@ mappings:
 | Auth, invites, shares | [server/auth-and-security.md](../server/auth-and-security.md) + `/users/admin/users-and-invites`, `/users/admin/sharing` |
 | Manager features | `/users/manager/*` + [manager developer pages](../manager/overview.md) + `manager/` screenshots |
 | Meta schemas, `metaserve` API, or intake tooling | [meta developer pages](../meta/overview.md) (data model, API, contributing) - and the [cross-repo contract](../architecture/cross-repo-contract.md) when the server's `/meta` envelope is affected |
+| meta.audiosilo.app site UI | `/users/community/meta-site` + the `meta/` screenshots (+ [meta/overview.md](../meta/overview.md) when it is a site-architecture change) |
 | Build / release / distribution | [release-pipeline.md](../architecture/release-pipeline.md) + [releasing.md](./releasing.md) |
 | A capability flag | [server/api/index.md](../server/api/index.md) + the feature's user page |
 

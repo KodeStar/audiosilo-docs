@@ -82,7 +82,9 @@ required` when empty). `limit` defaults to 20, clamped to `[1, 50]`. Returns
 `{"results": [...]}`, best-ranked first; each result is one of three shapes
 distinguished by `kind`:
 
-- **work**: `{kind, id, title, authors[], series, cover_url, added_at, narrators[]}`
+- **work**: `{kind, id, title, authors[], series, release_date?, cover_url, added_at, narrators[]}`
+  (`release_date` carries the same rule as on a workCard below - omitted when no
+  recording states one)
 - **person**: `{kind, id, name}`
 - **series**: `{kind, id, name, works}` (`works` = member count)
 
@@ -117,7 +119,150 @@ The newest works, for the site's landing grid. `limit` defaults to 12, clamped t
 `[1, 50]`. Returns `{"works": [workCard...]}` ordered by `added_at` descending
 (then title), with at most two works from any one series so a bulk import sharing
 one date can't fill the grid. A **workCard** is the compact shape reused across
-lists and lookups: `{id, title, authors[], series, cover_url, added_at}`.
+lists and lookups: `{id, title, authors[], series, release_date?, cover_url,
+added_at}`.
+
+`release_date` is the **earliest release date across the work's recordings**, at
+whatever precision the source stated - `YYYY`, `YYYY-MM` or `YYYY-MM-DD`
+(`recording.schema.json` permits all three). "Earliest" is the minimum by plain
+**string** order over the recordings that state one, which sorts chronologically
+for any pair that differs in the part they share; where two recordings state the
+same year at different precisions the shorter value wins. The rule lives in one
+place, `snapshot.cardFactsByWork` in `internal/serve/store.go`, alongside the
+"which cover wins" rule it now shares a query with.
+
+Unlike `series`, `cover_url` and `added_at` - which are always present and null
+when unknown - `release_date` is **omitted** (`omitempty`) when no recording of
+the work states one, so a card from a `metaserve` predating the field and a card
+for a work with no dated recording look the same to a client. A date in the
+**future** is a catalogued preorder, not an error; the site's watchlist uses
+exactly that to split a series into available and preorderable entries.
+
+## `/api/v1/watch/feed.atom`, `/api/v1/watch/feed.json`
+
+A **stateless** notification feed for a list of series, in Atom 1.0
+(`application/atom+xml; charset=utf-8`) and JSON Feed 1.1
+(`application/feed+json; charset=utf-8`). Both routes share one implementation
+(`internal/serve/watchfeed.go`) and differ only in the renderer.
+
+Stateless is the whole design: **the series list is carried in the request URL**
+and the server stores no subscription, no reader identity and no delivery state.
+The site builds the URL in the browser from the reader's local watchlist
+(`site/src/lib/feed-url.ts`) and the reader pastes it into a feed reader - so a
+watchlist that never leaves the browser can still produce notifications, at the
+cost that the URL must be re-copied whenever the list changes, and that anyone
+holding the URL can see which series it names.
+
+### Parameters
+
+| Parameter | Required | Default | Meaning |
+|---|---|---|---|
+| `s` | yes | - | 1 to 200 series slugs (`maxWatchSeries`), comma-separated, or the compact `z:` form below. Empty or invalid is 400. |
+| `window` | no | `90` | How many days back of released or newly catalogued works to include. An integer in `[1, 365]`; anything else is 400. |
+
+`window` bounds only the **backward** look. Entries whose release date is in the
+future are always included, however far ahead they are - a preorder is the news.
+
+### The `s` encodings
+
+`s` has two spellings, both parsed by `decodeSeriesParam`
+(`internal/serve/seriesparam.go`):
+
+- **CSV** - `s=the-stormlight-archive,mistborn`. Readable, and what a hand-written
+  subscription uses.
+- **Compact** - `s=z:<base64url(deflate(csv))>`: raw DEFLATE (no zlib header, no
+  gzip framing) then **unpadded base64url**, prefixed `z:` so it can never be
+  mistaken for a slug list (a slug cannot contain `:`).
+
+The site emits CSV while the complete Atom URL stays under 1500 characters and
+switches to the compact form beyond that (`PLAIN_URL_LIMIT`), so a short
+watchlist produces a URL a human can read and a long one still fits every
+reader's URL limits.
+
+Decoding is bounded before it is split: the decompressed stream is read through
+an `io.LimitReader` capped at `maxWatchSeries * (model.MaxSlugLen + 1) - 1`
+bytes, the largest a valid CSV can be, so a compact parameter cannot become a
+decompression bomb. Past that bound, both spellings run the same
+`validateSeriesList` - at most 200 entries, every one a valid slug - so the two
+forms have identical contracts.
+
+### What is in the feed
+
+Each requested slug is resolved with the same redirect handling as the rest of
+the API: a **retired** series slug follows its redirect to the surviving series.
+A slug that resolves to nothing is **omitted** and named in the feed's
+subtitle/description ("*n* slugs not found: ..."), rather than failing the
+request - a stale entry in a long-lived subscription URL must not take the whole
+feed down. Duplicate slugs, and distinct slugs that redirect to the same series,
+are collapsed.
+
+For each member work of each resolved series, one item is emitted when:
+
+- its `release_date` is in the **future** - a preorder, always included; or
+- its `release_date` is within `window` days of today; or
+- it has **no** `release_date` but its `added_at` is within `window` days.
+
+A work with a `release_date` this server can't parse (anything but a 4, 7 or 10
+character value) is skipped rather than guessed at, as is a dateless work with no
+`added_at`.
+
+Items are sorted by `updated` **descending** (the release date, or the added-at
+date for a dateless work), then deterministically by series name, the numeric
+start of the position string, the position string, and finally the item id. The
+list is capped at **200** items (`maxWatchFeedItems`).
+
+### Item identity
+
+Every item's id is a tag URI:
+
+```
+tag:meta.audiosilo.app,2026:work/<work-slug>/<state>
+```
+
+where `<state>` is `preorder` or `released`. Feed readers deduplicate by id, so
+the state is deliberately part of it: when a preorder's date passes, the same
+work emits a **different** id and the reader announces it again - which is the
+point, since "you can listen to it now" is the news the first item couldn't
+carry. A dateless work uses `released` in its id (there is nothing to be waiting
+for) even though its displayed state reads `date unknown`.
+
+The feed's own id is `tag:meta.audiosilo.app,2026:watch/<identity>`, where the
+identity is the same FNV-1a hash of the path and the raw parameters that backs
+the ETag - so two different watchlists are two different feeds to a reader.
+
+### Item shape
+
+| Atom | JSON Feed | Value |
+|---|---|---|
+| `<title>` | `title` | `<series name> #<position>: <work title>` (the `#<position>` part is dropped when the entry has no position) |
+| `<link rel="alternate">` | `url` | `<site URL>/works/<work slug>` |
+| `<updated>` | `date_published`, `date_modified` | RFC 3339 UTC; both JSON fields carry the same value |
+| `<author><name>` | `authors[].name` | the work's authors |
+| `<category term>` | `tags[0]` | `preorder`, `released` or `date unknown` |
+| `<summary>` | `content_text` | `Preorder - due 1 Nov 2026`, `Released 20 Oct 2026`, or `Added to the catalogue, release date unknown` |
+
+The feed title is the constant `AudioSilo Meta: new in your series`; the subtitle
+(`description` in JSON Feed) is the resolved series names, plus the not-found
+note when there is one. The self link (`feed_url`) is the request URI joined onto
+the configured public site URL, not the `Host` header.
+
+### Caching
+
+A successful response carries `Cache-Control: public, max-age=3600` and a **weak**
+`ETag` computed from the loaded artifact's release tag (falling back to its
+`built_at`), the configured site URL, the route path, and the **raw** `s` and
+`window` strings. Raw, not normalized: the CSV and compact spellings of the same
+list are different cache entries, which is the conservative choice for a
+validator and costs nothing in practice because a given subscription URL is
+fixed.
+
+An `If-None-Match` that matches, or that carries `*`, answers **304** with the
+`ETag` and `Cache-Control` and no body. A new data release changes the artifact
+tag and so invalidates every watch feed at once.
+
+Errors are the usual envelope: **400** for a missing/invalid `s` (bad slug, more
+than 200 entries, undecodable `z:` payload) or an out-of-range `window`, **500**
+for a snapshot read failure, and **503** while no artifact is loaded.
 
 ## `/api/v1/works/{id}`
 

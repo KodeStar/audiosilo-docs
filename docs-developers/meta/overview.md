@@ -183,3 +183,20 @@ change ripples into. The consumer sides are documented on
 `metaserve` additionally doubles as an **Audiobookshelf custom metadata
 provider** (`GET /abs/search`) for that competitor's users - see
 [the HTTP API](api.md#get-abssearch-audiobookshelf-provider).
+
+## The site's watchlist is client-side only
+
+The static site (`site/`, Astro + React islands) carries one feature that looks
+like an account and deliberately isn't: the **series watchlist** behind
+`/watching`. Which series a reader follows, which volumes they have marked as
+owned, which entries they have already been shown, and which series they have
+dismissed all live in a single `localStorage` key in the reader's browser
+(`site/src/lib/watchlist.ts`), never in a database and never in a request body -
+the API is read-only and there is nothing to attach a reader to. The rules are
+pure functions over a store value, the library-import path shares its matching
+code with `/import`, and the only network traffic the page generates is the same
+public series lookups the series page makes. The consequences are the honest
+ones: clearing site data clears the list (hence the page's download/merge
+backup), nothing syncs between devices by itself, and notifications are served by
+the stateless [watch feed](api.md#apiv1watchfeedatom-apiv1watchfeedjson), whose
+subscription URL carries the series list rather than pointing at stored state.

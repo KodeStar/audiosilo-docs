@@ -80,6 +80,16 @@ covers, so missing cover art never fails a shot.
 live site) and run `META_BASE=http://127.0.0.1:8795 node capture-meta.mjs` - it
 needs no other services (the /import fixture is vendored in `fixtures/`).
 
+The two watchlist shots (`meta/series-watching.png`, `meta/watching.png`) need a
+site build that has the `/watching` page in it, and they run as a **pair**: the
+series step presses **Watch this series** and ticks two volumes, and the
+`/watching` step reads the marks that left in `localStorage` (same browser
+context, same origin). Nothing else is seeded, so the catalogue behind
+`META_BASE` must hold the series `capture-meta.mjs` names (`SERIES_ID`) with
+more than two volumes in it. A **Preorder** group appears only when some
+recording of a member work carries a future `release_date`; without one the shot
+is still valid, it simply has no preorder section.
+
 ## The store/marketing pipeline is separate
 
 `~/dev/audiosilo/store/tools` + `SCREENSHOTS.md` produce the app-store and
