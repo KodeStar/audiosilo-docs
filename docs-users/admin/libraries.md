@@ -103,6 +103,29 @@ Overrides are durable settings, not scan results - they survive rescans and
 even a full index rebuild. Set one once and forget it.
 :::
 
+## Exporting a library
+
+Click **Export** on a library to download its book list as a `.json` file
+(named after the library and today's date, e.g.
+`audiosilo-fiction-2026-09-21.json`).
+
+The file is meant for [AudioSilo Meta](../community/meta-site.md), the community
+metadata site: open its **Watching** page at
+[meta.audiosilo.app](https://meta.audiosilo.app) and import the file to mark
+which entries of a series you already own, so the site can show you what you are
+missing and what is coming next.
+
+It is a plain list of books - title, authors, narrators, series and position,
+ASIN/ISBN, runtime and chapter count. Nothing about your server goes into it:
+**no file paths, no folder names, no file sizes or formats, and not the
+library's root folder**. It is safe to hand to the site or keep as a record of
+what a library holds.
+
+:::note
+Export is an admin action and covers the **whole** library, not just the parts
+you have shared with a particular user.
+:::
+
 ## Renaming or moving a library
 
 The console doesn't currently have an edit control for a library's name or root

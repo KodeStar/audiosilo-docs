@@ -67,6 +67,28 @@ require both an allowed **and** a denied regression test (see
 `internal/web/web_test.go` and [Gates & CI](../contributing/gates-and-ci.md)).
 :::
 
+### Downloading a file from an authenticated endpoint
+
+The **Export** button on each row of the console's Libraries table (added by
+`exportBtn` in `assets/admin.js`) downloads the library's book list from
+[`GET /api/v1/admin/libraries/{id}/export`](api/reference.md#get-apiv1adminlibrariesidexport)
+- the file a user imports on meta.audiosilo.app's Watching page.
+
+The console authenticates with a bearer token held in `localStorage`, so this
+cannot be a plain `<a href>` download: the request has to carry the
+`Authorization` header. `downloadLibraryExport` therefore `fetch`es the
+endpoint, reads the file name out of the response's `Content-Disposition`
+header, wraps the body in a blob object URL and clicks a temporary
+`<a download>` (revoking the URL afterwards).
+
+This needs **no CSP change**. An object URL the page creates for itself is not
+a fetched resource, and a download triggered by `a.download` is not a resource
+load either, so nothing in the strict policy above applies to it. The i18n
+strings are `admin.libraries.export` / `admin.libraries.exporting` and the
+`admin.toast.libraryExport*` toasts, present in all six locales in
+`assets/i18n-dict.js` (a key-parity check in `internal/web/web_test.go` now
+enforces that every locale defines the same keys).
+
 ## The connect page flow
 
 The connect page is the target of the admin console's **Copy invite** button,

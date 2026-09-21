@@ -37,7 +37,8 @@ else and gate features on the flags.
     "upload": false,
     "websocket": false,
     "api_keys": true,
-    "metadata": true
+    "metadata": true,
+    "export": true
   },
   "auth": { "methods": ["auth_code", "password"] },
   "demo": { "enabled": false }
@@ -59,7 +60,9 @@ is true only when a valid `metadata.base_url` is configured **and** the lookup i
 switched on. An admin can flip it on or off at runtime via
 [`PATCH /api/v1/admin/settings`](#patch-apiv1adminsettings) (no restart), so this
 flag can change during a server's lifetime; clients gate the enriched-book
-section on it and should re-read it after reconnecting.
+section on it and should re-read it after reconnecting. `export` is true on
+servers that support the admin
+[library export](#get-apiv1adminlibrariesidexport).
 
 ### `GET /healthz` · `GET /api/v1/healthz`
 
@@ -1303,6 +1306,77 @@ rescans; modifies no file on disk. `?path=` required.
 | `isbn` | string | at least one of the two |
 
 Response `200`: `{ "status": "enrichment set", "path": "…" }`.
+
+### `GET /api/v1/admin/libraries/{id}/export`
+
+Downloads the library's book list as a JSON **file**, in the envelope the
+community metadata site ([meta.audiosilo.app](https://meta.audiosilo.app)) imports
+on its Watching page - so a user can mark which entries of a series they own.
+Advertised by the `export` [capability](#get-apiv1server).
+
+Unlike every other endpoint this one answers with a file download rather than a
+plain JSON body:
+
+| Header | Value |
+|---|---|
+| `Content-Type` | `application/json; charset=utf-8` |
+| `Content-Disposition` | `attachment; filename="audiosilo-<library-slug>-<YYYY-MM-DD>.json"` |
+
+```json
+{
+  "format": "audiosilo-books",
+  "version": 1,
+  "source": "audiosilo-server",
+  "server_version": "1.4.2",
+  "library": { "id": 1, "name": "My Books" },
+  "exported_at": "2026-09-21T10:00:00Z",
+  "books": [
+    {
+      "title": "Die Trying",
+      "authors": ["Lee Child"],
+      "narrators": ["Dick Hill"],
+      "series": "Jack Reacher",
+      "series_position": "2",
+      "asin": "B002V0QK4C",
+      "isbn": "9780553505405",
+      "runtime_min": 612,
+      "chapters": 24
+    }
+  ]
+}
+```
+
+**The file is meant to leave the server**, so it carries bibliographic facts
+only. It contains **no path, size, codec, format or any other filesystem
+detail** - not even the library's root.
+
+Per-book notes:
+
+- Every field except `title` is omitted when it is unknown or empty, so a
+  sparsely-tagged library yields short entries rather than blank ones.
+- `authors` / `narrators` are lists. The index stores one string per book, so it
+  is split only where it clearly holds several names: on `;`, ` & ` and ` and `
+  always, and on a comma **only** when every resulting part still has at least
+  two words. That keeps suffixed names such as `Alexandre Dumas, pere` and
+  surname-first forms such as `Dumas, Alexandre` whole.
+- `series_position` is a string so half-positions survive: `2` for book two,
+  `2.5` for a novella between books. Omitted when there is no position.
+- `runtime_min` is the book's duration in whole minutes (rounded);
+  `chapters` is the number of indexed chapters. Both are omitted when unknown.
+- `asin` / `isbn` come from the book's identifiers, including any attached via
+  [`PUT …/enrichment`](#put-apiv1adminlibrariesidenrichment).
+- A multi-file (folder) book is **one** entry, and copies of the same book within
+  the library collapse to one entry - the same grouping search and
+  "recently added" de-duplicate on.
+
+`404 { "error": "library not found" }` for an unknown library; `403` for a
+non-admin caller; `401` unauthenticated. The bearer token must be sent in the
+`Authorization` header (the media-only `?token=` fallback does not apply here).
+
+```sh
+curl -OJ -H "Authorization: Bearer $TOKEN" \
+  https://books.example.com/api/v1/admin/libraries/1/export
+```
 
 ### `POST /api/v1/admin/libraries/{id}/scan`
 
