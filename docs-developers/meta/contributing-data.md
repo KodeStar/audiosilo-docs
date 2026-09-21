@@ -94,6 +94,12 @@ Every pull request touching `data/**` is checked twice:
   branch to the repo or re-runs it - fork secrets are never reached. The diff is
   passed to the model as untrusted data and never executed.
 
+The one place that verdict is *not* advisory is the
+[series-completion bot](./sync-bot.md): its bounded, `data/`-only batch imports
+merge themselves once the required checks pass and `ai-verified` is applied, and
+every other batch import - opened by a person or composed from the "Import a
+library" form - still needs a maintainer's approval however green it is.
+
 ## Bulk importers: metaimport
 
 `metaimport` ingests an external library export into `data/` as reviewable

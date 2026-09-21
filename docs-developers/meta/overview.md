@@ -180,6 +180,11 @@ change ripples into. The consumer sides are documented on
 [HTTP API reference](../server/api/reference.md), and the frontend's
 [state and data](../frontend/state-and-data.md).
 
+One more service sits upstream of the data rather than downstream of it: the
+[series-completion bot](./sync-bot.md), a daily job that keeps the series the
+catalogue already holds complete and is the only automation allowed to merge its
+own pull requests.
+
 `metaserve` additionally doubles as an **Audiobookshelf custom metadata
 provider** (`GET /abs/search`) for that competitor's users - see
 [the HTTP API](api.md#get-abssearch-audiobookshelf-provider).
