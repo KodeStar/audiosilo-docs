@@ -21,8 +21,10 @@ its own runtime, publisher, chapters and store identifiers.
 
 The home page has a single search box. It searches **books, people (authors and
 narrators), and series** at once, and if you paste an ASIN or ISBN it jumps
-straight to the exact recording. Below the search box you'll find the latest
-additions and a running count of what the community has catalogued so far.
+straight to the exact recording. You don't need to get apostrophes right:
+"enders game" finds *Ender's Game*, and "finnegan's wake" finds *Finnegans Wake*.
+Below the search box you'll find the latest additions and a running count of what
+the community has catalogued so far.
 
 ![Search results for a series query](/img/screenshots/meta/search.png)
 
@@ -227,6 +229,19 @@ story-so-far recaps, to send in a correction, and to submit a whole library at
 once. The import page above turns each new book it finds into a one-click "add
 this book" link.
 
+To submit a whole library, drag your exported JSON file into the library form's
+**Export file** box; GitHub uploads it and puts a link in its place. Files up to
+**25 MB** are accepted, which covers a large OpenAudible or Libation export.
+Anything else you want to tell the maintainers can go on its own lines after
+the file link.
+
+When you send a correction, the bot tells you straight away if it can't be
+applied as written: a field that belongs to the other kind of record (a runtime
+belongs to one narration, not to the book as a whole, so it is corrected on the
+recording), or a value the catalogue doesn't allow, in which case it lists the
+values that are. A correction that repeats what the record already says gets an
+"already in the database" reply, since there is nothing to change.
+
 The [contribute page](https://meta.audiosilo.app/contribute) shows where help is
 most needed: which books still need characters or recaps, and which series are
 missing volumes. From there, a **guided builder** walks you through writing the
@@ -255,4 +270,5 @@ provider** for it, so your Audiobookshelf library can pull narrators, recordings
 series order and cover art from the community database. The
 [Audiobookshelf page](https://meta.audiosilo.app/audiobookshelf) has the setup
 steps, and also shows how to send your Audiobookshelf library back to help fill
-in the catalogue.
+in the catalogue. Titles match even when Audiobookshelf reads them from a file
+name that has lost its apostrophes.

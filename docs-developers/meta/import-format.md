@@ -124,7 +124,8 @@ so the same identity and dedup rules apply as any other import (full detail unde
 ## Submitting a generated file
 
 The file is attached to the **Import a library** issue form
-(`data:import`). The intake workflow sniffs the envelope, runs it through the
+(`data:import`), dragged into its **Export file** field - files up to 25 MiB are
+accepted. The intake workflow sniffs the envelope, runs it through the
 importer, and - on a clean result - opens a bot pull request with the canonical
 records for review. See
 [Intake automation](./contributing-data.md#intake-automation-issue-form-to-bot-pull-request)

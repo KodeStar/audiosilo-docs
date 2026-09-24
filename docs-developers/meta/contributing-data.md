@@ -1,6 +1,6 @@
 ---
 title: Contributing data to Meta
-description: "How metadata enters audiosilo-meta: the six GitHub issue forms and the intake automation that turns them into validated bot pull requests, the advisory ai-verify layer, the OpenAudible/Libation importers, metascan, the in-browser site tools, and the authoring rules."
+description: "How metadata enters audiosilo-meta: the GitHub issue forms (four in the core repository, two in audiosilo-meta-community) and the intake automation that turns them into validated bot pull requests, the advisory ai-verify layer, the OpenAudible/Libation importers, metascan, the in-browser site tools, and the authoring rules."
 ---
 
 ## The rules that govern everything
@@ -22,20 +22,36 @@ Because the GitHub repository is the database, **all writes go through GitHub** 
 there are no server-side accounts. A contribution is either a direct pull request
 editing `data/**`, or an issue form that the intake automation turns into one.
 
-## The six issue forms
+## The issue forms
 
 `.github/ISSUE_TEMPLATE/*.yml` are structured forms (machine-parseable field ids)
 so a non-programmer can contribute without touching JSON. Each carries a
-`data:<kind>` routing label that the intake workflow branches on:
+`data:<kind>` routing label that the intake workflow branches on. The core
+repository, `audiosilo-meta`, holds the four forms for the CC0 factual core:
 
-| Form | Routing label | For |
-|---|---|---|
-| Add a work (book) and its first recording | `data:add-work` | a new book plus its first narration |
-| Add a recording (narration) | `data:add-recording` | another narration of a work already in the database |
-| Correct data | `data:correction` | a single-field fix to an existing record |
-| Add characters (the cast) | `data:characters` | the per-work characters sidecar (CC BY-SA) |
-| Add recaps (story so far) | `data:recaps` | the per-work recaps sidecar (CC BY-SA) |
-| Import a library export | `data:import` | an OpenAudible / Libation / Audiobookshelf / metascan export to bulk-import |
+| Form | Template | Routing label | For |
+|---|---|---|---|
+| Add a work (book) and its first recording | `add-work.yml` | `data:add-work` | a new book plus its first narration |
+| Add a recording (narration) | `add-recording.yml` | `data:add-recording` | another narration of a work already in the database |
+| Correct data | `correct-data.yml` | `data:correction` | a single-field fix to an existing record |
+| Import a library export | `import-library.yml` | `data:import` | an OpenAudible / Libation / Audiobookshelf / metascan export to bulk-import |
+
+The CC BY-SA sidecars live in their own repository,
+[`KodeStar/audiosilo-meta-community`](https://github.com/KodeStar/audiosilo-meta-community),
+since the community-repo split, and so do their two forms
+([choose one there](https://github.com/KodeStar/audiosilo-meta-community/issues/new/choose)):
+
+| Form | Template | Routing label | For |
+|---|---|---|---|
+| Add characters (the cast) | `add-characters.yml` | `data:characters` | the per-work characters sidecar |
+| Add recaps (story so far) | `add-recaps.yml` | `data:recaps` | the per-work recaps sidecar |
+
+The core repository's issue chooser links there, and the spoiler-free
+description member has no form at all - it arrives as a hand-authored pull
+request on the community repository. Both repositories run the same `metaissue`
+composer, each under its own tree profile (`--profile core` here), so a sidecar
+label applied to an issue in the core repository is refused with a pointer to
+the community repository's chooser rather than composed into the wrong tree.
 
 ## Intake automation: issue form to bot pull request
 
@@ -52,7 +68,19 @@ machine-readable verdict the workflow branches on:
 | `needs-human` | ambiguous - e.g. an import that produced and deduped nothing | labels for maintainer attention |
 | `invalid` | the submission fails schema/validation | labels + comments with the errors |
 
-Two behaviors are worth knowing:
+The bot's pull-request body lists the files it changed as they stand in the
+working tree after every step has run (including the libex fill, which can
+rewrite packs `metaissue` never listed), capped at 50 with a count of the rest -
+the pull request's own Files changed tab is the full list. Its **Notes**, and the
+messages of a verdict comment, are bounded too: at most 50 lines and 40 KB (each
+line at most 2 KB), then one "... and N more" line, since GitHub stops an issue
+comment or pull-request body at 65,536 characters. The complete list is
+`all_messages` in the `result.json` printed to the workflow run log. Because the
+bound keeps the head, an import's run-level summary lines come first, then the
+**conflict** lines (a row refused for contradicting a recorded runtime or release
+date), then every other per-row warning.
+
+Three behaviors are worth knowing:
 
 - **Envelope sniffing.** For an import, `metaissue` sniffs a self-identifying
   `audiosilo-books` envelope and routes it to that importer regardless of the
@@ -66,13 +94,27 @@ Two behaviors are worth knowing:
   applies the routing label, the `labeled` trigger admits it. The job gate
   excludes the workflow's own outcome labels (`data:invalid` / `data:needs-human`
   / `data:duplicate`) so outcome-labeling can't re-fire intake.
+- **Corrections are judged against the schema first.** A correction naming a
+  field that lives on the *other* record kind - `runtime_min` against a work
+  URL, say, when a runtime belongs to one narration - is `invalid`, and the
+  verdict points at the right record (it lists the work's recording references,
+  or gives a recording's work page URL). A value outside the schema's closed
+  vocabulary (a `license` other than `CC0-1.0`, a person `kind`, a genre) is
+  `invalid` naming the allowed values; an allowed value is stored in the
+  schema's own spelling (`Publisher` becomes `publisher`). A correction that
+  restates the value the record already carries is a no-op `duplicate` that
+  writes nothing.
 
 :::note Intake runs on `issues`, not fork code
 `intake.yml` triggers on the `issues` event, so there is **no fork code
 execution**. The only untrusted input is the issue body and any attachment: it is
 written to a file via an environment variable (never interpolated into a shell
 command), parsed by `metaissue`, and never executed. Attachments are fetched
-HTTPS-only from GitHub's user-attachment hosts with a size cap. The security
+HTTPS-only from GitHub's user-attachment hosts with a size cap set per form: up
+to 25 MiB for the import form's **Export file** (GitHub's own ceiling for a
+non-image issue attachment), and 1 MiB for a characters or recaps sidecar. The
+fetch deadline scales with the cap, so a sidecar fetch does not wait out an
+export's timeout on a dead link. The security
 posture is deliberate - see [gates and CI](../contributing/gates-and-ci.md) for
 the workspace-wide CI rules.
 :::
@@ -158,8 +200,10 @@ User Guide's [community metadata site page](/users/community/meta-site):
 
 ## Authoring the expressive layer
 
-The CC BY-SA characters/recaps layer has its own documented process and tooling,
-all at the root of the `audiosilo-meta` repository:
+The CC BY-SA characters/recaps layer has its own documented process. The
+process documents moved with the layer to the root of the
+`audiosilo-meta-community` repository (`audiosilo-meta` keeps pointer stubs at the
+old paths), while the tooling they use stays in `audiosilo-meta`:
 
 - `AUTHORING.md` - the reusable authoring process for characters/recaps:
   positions, the spoiler model, the copyright length caps, and the submission
@@ -169,7 +213,7 @@ all at the root of the `audiosilo-meta` repository:
   `metaextract split` + `ngram`.
 - `EXTRACTION-AUDIO.md` - the audio-only variant (chapter-isolated ASR +
   proper-noun verification), the process the `audiosilo-sidecars` tool automates.
-- `GOVERNANCE.md` - the merge policy and contributor trust tiers
+- `GOVERNANCE.md` (in `audiosilo-meta`) - the merge policy and contributor trust tiers
   (schema/tooling/`.github` changes always need maintainer review via
   CODEOWNERS).
 

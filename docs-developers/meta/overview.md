@@ -56,7 +56,7 @@ public `pkg/*` (consumed by the sibling `audiosilo-sidecars` module as ordinary
 dependencies) and the private `internal/*`.
 
 ```
-data/          the database, range-packed (PACK-SPEC.md): works/ (composites), works-community/ (the CC BY-SA sidecars), people/, series/
+data/          the CC0 core, range-packed (PACK-SPEC.md): works/ (composites), people/, series/, redirects.json - the CC BY-SA works-community/ family lives in audiosilo-meta-community
 schema/        JSON Schemas (one per entity) - the public contract, embedded via schema.go
 cmd/           thin CLIs: metacheck, metafmt, metabuild, metaserve, metascan,
                metaimport, metaissue, metaextract (flag wiring only)
@@ -92,11 +92,14 @@ run ./cmd/<name>`.
 | `metascan` | Scans a local audiobook folder into an import JSON - see [contributing data](contributing-data.md#scanning-local-files-metascan). |
 | `metaimport` | Ingests an OpenAudible/Libation library export into `data/` - see [contributing data](contributing-data.md#bulk-importers-metaimport). |
 | `metaissue` | Issue-form body to canonical records + verdict, for the intake bot - see [contributing data](contributing-data.md#intake-automation-issue-form-to-bot-pull-request). |
-| `metaextract` | Supports the source-to-sidecar extraction pipeline: `split` (epub -> chapter text + manifest) and `ngram` (near-verbatim overlap check against the source text). |
+| `metaextract` | Supports the source-to-sidecar extraction pipeline: `split` (epub -> chapter text + manifest) and `ngram` (near-verbatim overlap check against the source text). `split` refuses a crafted epub rather than exhausting memory: any archive member over 64 MiB decompressed, or a spine over 256 MiB in total, rejects the whole book before anything is written. |
 
 ## Build, validate, and serve locally
 
-Requires **Go 1.25+** (pure Go, no cgo, no external services). The full gate,
+Requires **Go 1.26+** (pure Go, no cgo, no external services). CI reads the Go
+minor from the one-line `.go-version` file at the repo root and resolves it to
+the newest patch, so a local `govulncheck` should run under the newest 1.26.x
+too, or it reports standard-library advisories CI does not. The full gate,
 matching CI (`.github/workflows/check.yml`):
 
 ```sh
@@ -110,6 +113,13 @@ go run ./cmd/metafmt --check --profile core # canonical formatting (--write to f
 `audiosilo-meta-community` - `metacheck`/`metafmt` default to `--profile all`
 (the whole database in one tree) for backward compatibility, so CI and this
 snippet pass `--profile core` explicitly rather than relying on that default.
+
+The `-race` suite takes under a minute: every test that walks the real data tree
+skips under the race detector, since the fixture suites cover the concurrent code
+and `metacheck`/`metafmt` validate the real tree anyway. The linter set is pinned
+by the committed `.golangci.yml` (errcheck, govet, ineffassign, staticcheck,
+unused), so a new golangci-lint release cannot change which linters run; adding
+one is an edit there, with its findings fixed in the same change.
 
 CI runs that same build/vet/`go test -race`/golangci-lint gate, plus a
 `govulncheck` scan, in `check.yml`'s `check`/`lint`/`vuln` jobs - but only when a

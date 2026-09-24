@@ -1,6 +1,6 @@
 ---
 title: Meta HTTP API
-description: "The metaserve read-only JSON API reference: every /api/v1 route, the Audiobookshelf provider at /abs/search, the production release webhook, CORS behavior, and how the server refreshes its artifact from GitHub Releases."
+description: "The metaserve read-only JSON API reference: every /api/v1 route, the Audiobookshelf provider at /abs/search, the production release webhook, CORS behavior, connection deadlines and security headers, and how the server refreshes its artifact from GitHub Releases."
 ---
 
 `metaserve` (`cmd/metaserve` over `internal/serve`) is a **read-only** JSON API
@@ -102,6 +102,21 @@ those a request can cost; an oversized query is **truncated to the leading
 phrases it keeps**, never rejected, since a 400 mid-typing is a worse answer than
 the page for what has been typed so far. The same bound applies to
 `works/search`, `people/search`, and `series/search` below.
+
+A **possessive matches in either spelling.** The FTS tokenizer indexes "Ender's"
+as two terms, `ender` + `s`, so a query typed without the apostrophe - which is
+how a title read off a file name arrives - used to find nothing. Now a word of
+four or more characters ending in a single `s` (`enders`, but not `its`, `das`
+or `darkness`) also matches the possessive it may be: `enders game` finds
+"Ender's Game". The mirror holds too: a possessive written with its apostrophe
+also matches a title stored without one, so `finnegan's wake` finds "Finnegans
+Wake". Each such word becomes a two-spelling group, and a group counts as
+**two** of the 64 phrases, so both spellings of a query cost the same against
+the bound. A query that is a work's whole title returns that work first, and
+that comparison ignores a possessive's apostrophe as well, so `enders game` leads
+with "Ender's Game". A query
+with neither form is matched exactly as before; one containing a possessive may
+now return a slightly different page, since it matches the other spelling too.
 
 ## `/api/v1/works/search`, `/api/v1/people/search`, `/api/v1/series/search`
 
@@ -386,7 +401,10 @@ with optional `&author=` and `&isbn=`, and **never** an ASIN.
   hyphens ABS sends are stripped to the bare stored form); otherwise, or on an
   ISBN miss, an FTS work search runs, with works whose authors loosely match
   `author` boosted ahead of the rest (a wrong author boosts rather than filters,
-  so it never empties results).
+  so it never empties results). `query` is matched like the `q` of
+  `/api/v1/search`, possessives included, so a title Audiobookshelf read off a
+  file name without its apostrophes (`Enders Game`) still finds the work, and a
+  title written with one finds a work stored without it.
 - The response is `{"matches": [...]}`, **one entry per recording** (a recording is
   what ABS matches a local audiobook against), capped at 10. Each match carries
   `title` (the only required field) plus, when present, `subtitle`, `author`,
@@ -444,6 +462,38 @@ otherwise). With `--poll` and no `--db` - the production shape - metaserve fetch
 its catalogue at boot and **can legitimately start empty**; see below. With both,
 the local `--db` serves immediately and the poller still runs one refresh at
 startup.
+
+## Deadlines, security headers, and reverse proxies
+
+The listener bounds how long a **client** can hold a connection; none of these
+limits how long the server may work, since nothing artifact-sized runs inside a
+request (the release webhook answers 202 and refreshes in the background):
+
+| Deadline | Value | Bounds |
+|---|---|---|
+| `ReadHeaderTimeout` | 10s | the request line and headers |
+| `ReadTimeout` | 30s | the whole request read - every route is a bodyless `GET` except the webhook, whose body is capped at 1 MiB |
+| `WriteTimeout` | 2m | the handler plus the response transfer, sized so the largest body (a 50,000-URL sitemap shard) still reaches a slow client |
+| `IdleTimeout` | 3m | how long a keep-alive connection waits for its next request |
+
+:::warning Keep the proxy's upstream idle timeout below 3 minutes
+When metaserve closes an idle keep-alive connection at the moment a reverse proxy
+reuses it, the proxy answers **502**. The proxy has to be the side that gives up
+first, so its upstream idle timeout must stay shorter than metaserve's 3 minutes.
+Production runs behind nginx, whose upstream `keepalive_timeout` defaults to 60s,
+which satisfies this; raise it past 3 minutes and intermittent 502s follow.
+:::
+
+Every response carries `X-Content-Type-Options: nosniff`, the router's own 404
+included, so a browser never second-guesses a declared content type. HTML
+documents - the static site's pages and the server-rendered entity pages, along
+with their 301, 304 and 404 answers - additionally carry
+`Referrer-Policy: strict-origin-when-cross-origin` and
+`Content-Security-Policy: frame-ancestors 'none'`: **the pages cannot be
+framed** by any site, and a page's path and query stay out of the `Referer` sent
+to another origin (a purchase link leaves the site from a page naming the book).
+The CSP sets that one directive only. The JSON API, the feeds and the sitemaps
+carry neither document header.
 
 ## Boot and degraded start
 
