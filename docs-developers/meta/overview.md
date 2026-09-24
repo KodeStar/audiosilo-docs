@@ -101,9 +101,22 @@ matching CI (`.github/workflows/check.yml`):
 
 ```sh
 go build ./... && go vet ./... && go test -race ./... && golangci-lint run
-go run ./cmd/metacheck            # validate the data tree
-go run ./cmd/metafmt --check      # canonical formatting (--write to fix)
+go run ./cmd/metacheck --profile core       # validate the data tree
+go run ./cmd/metafmt --check --profile core # canonical formatting (--write to fix)
 ```
+
+`--profile core` is what this repo's `data/` tree now is (works, people, series,
+`redirects.json`) since the CC BY-SA sidecar layer moved to
+`audiosilo-meta-community` - `metacheck`/`metafmt` default to `--profile all`
+(the whole database in one tree) for backward compatibility, so CI and this
+snippet pass `--profile core` explicitly rather than relying on that default.
+
+CI runs that same build/vet/`go test -race`/golangci-lint gate, plus a
+`govulncheck` scan, in `check.yml`'s `check`/`lint`/`vuln` jobs - but only when a
+`changes` job classifies the diff as touching Go code. A data-and-prose-only pull
+request (most of them here, from the intake and sync bots) skips those three jobs
+straight through; `metacheck` and `metafmt` are never gated, since they are the
+data's own check regardless of what else changed.
 
 Build the artifact and serve it:
 
@@ -115,10 +128,23 @@ go run ./cmd/metaserve --db meta.sqlite --addr :8080
 ## Release artifacts
 
 On merge to `main`, `.github/workflows/release.yml` publishes a **dated data
-release** tagged `data-vYYYY.MM.DD-<shortsha>` when data or schema changes land -
-and also when the builder itself changes (`internal/build/**`, `cmd/metabuild/**`),
-so an artifact-shaping change such as a new index actually reaches a published
-artifact. The asset contract:
+release** tagged `data-vYYYY.MM.DD-<core7>-<community7>` - the short SHAs of both
+this repo's core tree and the composed `audiosilo-meta-community` checkout, since
+a community-only merge can trigger a release too and the core SHA alone stopped
+being unique - when data or schema changes land, when the builder itself changes
+(`internal/build/**`, `cmd/metabuild/**`), or when the cross-repo compose code
+changes (`pkg/check/**`, `pkg/pack/**`), so an artifact-shaping change such as a
+new index actually reaches a published artifact.
+
+The release is **created as a draft**, every asset is then verified against the
+GitHub API's own reported size and sha256 digest for the bytes it actually
+stored (never re-downloaded and re-hashed locally), and only once every asset
+checks out is the draft published - so a consumer can never select a release
+whose assets are still uploading, and a verification failure deletes the draft
+instead of leaving a broken release visible. A manual `workflow_dispatch` run is
+refused unless it is checked out on `main` (the push trigger is already
+main-only; dispatch is the one door that takes any ref, and a release cut from a
+branch would become the catalogue the moment it lands). The asset contract:
 
 - `meta.sqlite.gz` + `meta.sqlite.gz.sha256` - the universal anchor every
   consumer verifies against.
@@ -154,7 +180,11 @@ The practical consequences for a deployment:
   [boot and degraded start](api.md#boot-and-degraded-start).
 - **Probe `/healthz` for readiness only.** It reports readiness, not liveness; a
   liveness probe on it will restart-loop a server that is correctly waiting out an
-  outage.
+  outage. For the same reason, the image deliberately ships **no Dockerfile
+  `HEALTHCHECK`** of its own - an orchestrator's own "unhealthy" verdict is
+  exactly what triggers an automatic restart, which would turn the degraded boot
+  above into the crash loop it exists to avoid. Wire `/healthz` as
+  readiness/startup in the orchestrator instead.
 
 ## How it connects to the rest of AudioSilo
 
