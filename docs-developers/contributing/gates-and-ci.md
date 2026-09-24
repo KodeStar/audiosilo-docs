@@ -64,6 +64,17 @@ Every workflow across the three repos, verified against
 | `ci.yml` | `CI` | every PR; push to `main` | Job **go**: checks out `KodeStar/audiosilo-server@main` **as a sibling** (the `replace` directive needs it), then `go build ./...`, `go vet ./...`, `go test -race ./...`, plus `golangci-lint-action@v6`. Job **frontend**: `npm ci`, `npx tsc --noEmit`, `npm run lint`, `npm run format`, `npm test` in `frontend/`. |
 | `desktop.yml` | `Desktop build` | `v*` tags; manual dispatch | Native-runner matrix (macOS `darwin/universal`, Windows `windows/amd64`, Linux `linux/amd64` - a webview UI can't cross-compile): installs the Wails CLI, `wails build` with the version injected via ldflags, uploads `build/bin/*` as workflow artifacts. Signing/notarization steps are stubbed pending certificates. |
 
+### audiosilo-meta
+
+| Workflow | Name | Triggers | What it does |
+|---|---|---|---|
+| `check.yml` | `check` | every PR; push to `main` | A `changes` job classifies the diff first, then: **check** runs `go build`, `go vet`, `go test -race` (Go-gated) plus `metacheck --profile core` and `metafmt --check --profile core` (unconditional - they're the data's own check); **lint** runs `golangci-lint run` (v2.12, Go-gated); **vuln** runs `govulncheck` directly (pinned to v1.7.0, Go-gated); **compose** (pull requests only, compose-gated) builds the artifact against a shallow `audiosilo-meta-community` checkout to catch the cross-repo rules a single tree can't see; **site** builds/typechecks/tests `site/` when present. |
+| `release.yml` | `release` | push to `main` (paths touching data, schema, the builder, or the compose code); `community-data` repository_dispatch from `audiosilo-meta-community`; manual dispatch (refused unless run on `main`) | Composes the SQLite artifact from both repositories, creates the release as a **draft**, verifies every asset against the GitHub API's own reported size and sha256 digest, publishes only once verification passes, and sends the signed webhook notification. |
+| `image.yml` | `image` | `v*` tags; manual dispatch | Builds and publishes the `metaserve` + static-site container image to `ghcr.io/kodestar/audiosilo-meta` (no catalogue data baked in). |
+| `intake.yml` | `intake` | issue opened/edited/labeled; push to `main` | Turns a data issue-form submission into a validated bot pull request (`metaissue --profile core`), and rebases the bot's own open pull requests whenever a data change lands on `main`. |
+| `ai-verify.yml` | `ai-verify` | PR touching `data/**`; manual dispatch | Advisory, non-blocking AI review of a data pull request's records, reading an entry-level change summary from `metadiff` rather than the raw diff. |
+| `workflows.yml` | `workflows` | PR/push touching `.github/workflows/**` or `.github/scripts/**` | Lints the workflows themselves (actionlint) and the shell scripts they call out to (shellcheck); paths-filtered, so it is not a required check. |
+
 :::note CI can't see cross-repo drift
 Each repo's CI is independent, so a server-side wire change with no matching
 frontend change sails through both pipelines green. The
@@ -72,8 +83,9 @@ frontend change sails through both pipelines green. The
 
 ## The green-baseline lint policy
 
-Both Go repos run **golangci-lint v2** from a *green baseline*: the suppressions
-in each `.golangci.yml` are documented and intentional. The policy is simple -
+All three Go repos - server, manager, and audiosilo-meta - run **golangci-lint
+v2** in CI from a *green baseline*: the suppressions in each `.golangci.yml` are
+documented and intentional. The policy is simple -
 
 - **fix new findings** in the code you touched;
 - **never widen the excludes** to make a finding go away.

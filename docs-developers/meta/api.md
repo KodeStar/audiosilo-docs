@@ -13,7 +13,10 @@ can also serve a static site at `/` (`--site`) and hot-swaps a newer release
 artifact without a restart.
 
 Errors are a JSON envelope `{"error": "..."}` with the matching HTTP status. All
-routes are `GET`.
+routes are `GET`. Every **500** carries the same fixed body regardless of what
+actually failed - the real error (a SQL statement, a cache-volume path, a driver
+message) goes to the server log instead, since every route here is public and
+CORS-open and would otherwise reflect that detail to anyone who could provoke it.
 
 The same surface is published in two other forms: an interactive, human-readable
 reference at [meta.audiosilo.app/docs/api](https://meta.audiosilo.app/docs/api),
@@ -46,7 +49,10 @@ back until the catalogue is in. Do **not** wire it as a liveness probe: that
 restart-loops a server that is patiently waiting out a GitHub outage. The degraded
 boot is deliberate (see [boot and degraded start](#boot-and-degraded-start)) - the
 process is healthy, it simply has no data yet, and killing it only resets the
-backoff it is already managing.
+backoff it is already managing. For the same reason the published image ships
+**no Dockerfile `HEALTHCHECK`** of its own - an orchestrator's own "unhealthy"
+verdict is exactly what triggers an automatic restart, and the orchestrator wires
+`/healthz` as readiness/startup itself.
 :::
 
 ## `/api/v1/openapi.json`
@@ -89,7 +95,13 @@ distinguished by `kind`:
 - **series**: `{kind, id, name, works}` (`works` = member count)
 
 FTS input is escaped defensively (every token quoted, the final token
-prefixed with `*`), so no user input can break the underlying `MATCH`.
+prefixed with `*`), so no user input can break the underlying `MATCH`. `q` is
+also bounded - 256 bytes and 64 FTS phrases - since one phrase is one
+posting-list walk and the server, not a per-keystroke caller, decides how many of
+those a request can cost; an oversized query is **truncated to the leading
+phrases it keeps**, never rejected, since a 400 mid-typing is a worse answer than
+the page for what has been typed so far. The same bound applies to
+`works/search`, `people/search`, and `series/search` below.
 
 ## `/api/v1/works/search`, `/api/v1/people/search`, `/api/v1/series/search`
 
@@ -388,11 +400,28 @@ with optional `&author=` and `&isbn=`, and **never** an ASIN.
 When `METASERVE_WEBHOOK_SECRET` (at least 32 bytes) is set **and** `--poll` is
 enabled, metaserve registers `POST /hooks/github/release`, authenticated by the
 standard `X-Hub-Signature-256: sha256=...` HMAC header. `release.yml` calls it
-only after every release asset has finished uploading. The request body is only a
+only after every release asset has been uploaded **and** read back verified
+against the GitHub API's own digest **and** the release has been published (see
+[release artifacts](overview.md#release-artifacts)) - so the receiver is never
+woken to a release it cannot trust or cannot yet see. The request body is only a
 **trigger**: metaserve re-queries GitHub and goes through the same verified
 refresh path as polling, never trusting or installing data from the request body.
 The endpoint is not registered when the secret is absent, and a missed delivery
 is non-fatal - the fallback poller still discovers the release.
+
+:::warning History: the payload was malformed until 2026-09-24
+From the webhook's introduction until 2026-09-24, the notification body was
+composed with a shell `printf` inside single quotes, so its backslash escapes
+were sent as literal characters instead of JSON escapes. The body was therefore
+never valid JSON, and `webhook.go` rejected **every** delivery with 400 - silently,
+since delivery failure is non-fatal by design. Any operator who had
+`METASERVE_WEBHOOK_SECRET` configured was, in practice, running on the hourly
+fallback poller the whole time. The sender was rewritten to compose the payload
+with `jq` and is now pinned to the receiver by a test that runs it against the
+real handler, so the two cannot drift apart again; delivery status (the HTTP
+response code, or the reason it could not be sent) is now reported in the
+`release.yml` workflow log.
+:::
 
 ## Flags
 
