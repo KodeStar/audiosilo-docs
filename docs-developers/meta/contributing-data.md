@@ -1,6 +1,6 @@
 ---
 title: Contributing data to Meta
-description: "How metadata enters audiosilo-meta: the six GitHub issue forms and the intake automation that turns them into validated bot pull requests, the advisory ai-verify layer, the OpenAudible/Libation importers, metascan, the in-browser site tools, and the authoring rules."
+description: "How metadata enters audiosilo-meta: the GitHub issue forms (four in the core repository, two in audiosilo-meta-community) and the intake automation that turns them into validated bot pull requests, the advisory ai-verify layer, the OpenAudible/Libation importers, metascan, the in-browser site tools, and the authoring rules."
 ---
 
 ## The rules that govern everything
@@ -22,20 +22,36 @@ Because the GitHub repository is the database, **all writes go through GitHub** 
 there are no server-side accounts. A contribution is either a direct pull request
 editing `data/**`, or an issue form that the intake automation turns into one.
 
-## The six issue forms
+## The issue forms
 
 `.github/ISSUE_TEMPLATE/*.yml` are structured forms (machine-parseable field ids)
 so a non-programmer can contribute without touching JSON. Each carries a
-`data:<kind>` routing label that the intake workflow branches on:
+`data:<kind>` routing label that the intake workflow branches on. The core
+repository, `audiosilo-meta`, holds the four forms for the CC0 factual core:
 
-| Form | Routing label | For |
-|---|---|---|
-| Add a work (book) and its first recording | `data:add-work` | a new book plus its first narration |
-| Add a recording (narration) | `data:add-recording` | another narration of a work already in the database |
-| Correct data | `data:correction` | a single-field fix to an existing record |
-| Add characters (the cast) | `data:characters` | the per-work characters sidecar (CC BY-SA) |
-| Add recaps (story so far) | `data:recaps` | the per-work recaps sidecar (CC BY-SA) |
-| Import a library export | `data:import` | an OpenAudible / Libation / Audiobookshelf / metascan export to bulk-import |
+| Form | Template | Routing label | For |
+|---|---|---|---|
+| Add a work (book) and its first recording | `add-work.yml` | `data:add-work` | a new book plus its first narration |
+| Add a recording (narration) | `add-recording.yml` | `data:add-recording` | another narration of a work already in the database |
+| Correct data | `correct-data.yml` | `data:correction` | a single-field fix to an existing record |
+| Import a library export | `import-library.yml` | `data:import` | an OpenAudible / Libation / Audiobookshelf / metascan export to bulk-import |
+
+The CC BY-SA sidecars live in their own repository,
+[`KodeStar/audiosilo-meta-community`](https://github.com/KodeStar/audiosilo-meta-community),
+since the community-repo split, and so do their two forms
+([choose one there](https://github.com/KodeStar/audiosilo-meta-community/issues/new/choose)):
+
+| Form | Template | Routing label | For |
+|---|---|---|---|
+| Add characters (the cast) | `add-characters.yml` | `data:characters` | the per-work characters sidecar |
+| Add recaps (story so far) | `add-recaps.yml` | `data:recaps` | the per-work recaps sidecar |
+
+The core repository's issue chooser links there, and the spoiler-free
+description member has no form at all - it arrives as a hand-authored pull
+request on the community repository. Both repositories run the same `metaissue`
+composer, each under its own tree profile (`--profile core` here), so a sidecar
+label applied to an issue in the core repository is refused with a pointer to
+the community repository's chooser rather than composed into the wrong tree.
 
 ## Intake automation: issue form to bot pull request
 
@@ -184,8 +200,10 @@ User Guide's [community metadata site page](/users/community/meta-site):
 
 ## Authoring the expressive layer
 
-The CC BY-SA characters/recaps layer has its own documented process and tooling,
-all at the root of the `audiosilo-meta` repository:
+The CC BY-SA characters/recaps layer has its own documented process. The
+process documents moved with the layer to the root of the
+`audiosilo-meta-community` repository (`audiosilo-meta` keeps pointer stubs at the
+old paths), while the tooling they use stays in `audiosilo-meta`:
 
 - `AUTHORING.md` - the reusable authoring process for characters/recaps:
   positions, the spoiler model, the copyright length caps, and the submission
@@ -195,7 +213,7 @@ all at the root of the `audiosilo-meta` repository:
   `metaextract split` + `ngram`.
 - `EXTRACTION-AUDIO.md` - the audio-only variant (chapter-isolated ASR +
   proper-noun verification), the process the `audiosilo-sidecars` tool automates.
-- `GOVERNANCE.md` - the merge policy and contributor trust tiers
+- `GOVERNANCE.md` (in `audiosilo-meta`) - the merge policy and contributor trust tiers
   (schema/tooling/`.github` changes always need maintainer review via
   CODEOWNERS).
 

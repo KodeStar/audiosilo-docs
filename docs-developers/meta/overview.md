@@ -56,7 +56,7 @@ public `pkg/*` (consumed by the sibling `audiosilo-sidecars` module as ordinary
 dependencies) and the private `internal/*`.
 
 ```
-data/          the database, range-packed (PACK-SPEC.md): works/ (composites), works-community/ (the CC BY-SA sidecars), people/, series/
+data/          the CC0 core, range-packed (PACK-SPEC.md): works/ (composites), people/, series/, redirects.json - the CC BY-SA works-community/ family lives in audiosilo-meta-community
 schema/        JSON Schemas (one per entity) - the public contract, embedded via schema.go
 cmd/           thin CLIs: metacheck, metafmt, metabuild, metaserve, metascan,
                metaimport, metaissue, metaextract (flag wiring only)
