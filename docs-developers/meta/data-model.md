@@ -29,6 +29,16 @@ through its family's `{id}` route. Validation rejects them, and the importers an
 intake bot mint a disambiguated slug instead (a book titled "Search" gets the
 author-suffixed form automatically).
 
+A slug can also be **retired**: when a repair wave merges two duplicate records,
+the losing slug is tombstoned in `data/redirects.json` (one map per family)
+rather than deleted, and `metaserve` resolves a request for it with a 301 to the
+surviving slug. The bulk importers and the intake bot honor the same table when
+*minting* records, so a later import can't recreate what a merge just retired: a
+person's retired slug resolves to the person they were merged into, a series
+name on a retired slug joins the surviving series, and a work candidate on a
+retired slug is judged against its survivor by the same identity rules an
+ordinary duplicate would be.
+
 The JSON Schemas in `schema/*.schema.json` (JSON Schema draft 2020-12, every
 object `additionalProperties: false`) are the **authoritative, public contract**.
 They are embedded into the tooling via `schema.go`, so a schema edit is a code
