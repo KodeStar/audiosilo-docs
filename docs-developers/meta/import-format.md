@@ -120,6 +120,10 @@ so the same identity and dedup rules apply as any other import (full detail unde
 - **Edition markers.** A trailing `(Unabridged)`/`(Abridged)` in the title is
   stripped before identity and, if `abridged` was not set, seeds the recording's
   tri-state abridged flag.
+- **Retired slugs.** A person, series, or work whose identity resolves to a slug
+  a repair merge has already retired is matched against the surviving record
+  rather than minted fresh at the old address (see
+  [the data model](./data-model.md#slug-is-identity-the-file-is-only-storage)).
 
 ## Submitting a generated file
 
