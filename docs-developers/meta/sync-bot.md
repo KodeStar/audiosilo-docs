@@ -135,14 +135,22 @@ A few properties of that pass are worth knowing:
   reports the queue length and each feed's cursor.
 - **Two budgets bound the rest of a cycle**: at most 400 queued series are
   expanded (what does not fit stays queued), and at most 1,500 chapter lookups.
-  Rows past the chapter budget ship without chapters and are not memoized, so a
-  later cycle fetches them.
+  Rows past the chapter budget still ship, without chapters - a book arriving
+  matters more than its chapter list - and no later cycle looks them up again:
+  once catalogued, a row gets a chapter list only if a later series listing
+  carries one for enrichment to fill in.
+- **A feed row is imported even when the series listing lags it.** The queue
+  entry carries the news ASINs the feed showed; any the series listing does not
+  carry yet (likeliest for a freshly announced preorder) is fetched on its own
+  and imported with the rest. A claim naming a catalogued series without a
+  series ASIN is queued under the libex series ASIN already known for it.
 - **Errors from external services are gaps, not failures.** A feed page that did
   not arrive stops that walk where it is and the next cycle resumes from there;
   a series libex does not hold leaves the queue; a series listing that did not
   arrive stays queued (after five failed cycles it is dropped until a feed names
-  it again); a chapters payload libex refuses is counted and logged. None of it
-  is fatal.
+  it again - each drop is named in the cycle log and counted on the last cycle in
+  `GET /status`); a news row libex returns no record for is counted; a chapters
+  payload libex refuses is counted and logged. None of it is fatal.
 - **`metacheck` is the gate on the way out.** A cycle whose `metafmt`/`metacheck`
   pass fails discards its whole tree back to the base commit and opens nothing.
 
