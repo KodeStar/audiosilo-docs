@@ -43,7 +43,8 @@ repo's `GOVERNANCE.md`.
 - **It is capped per pull request.** At most `SYNC_MAX_WORKS_PER_PR` new works
   (default 100) land at a time, whole series first, in position order, so a
   cycle stays something a person can read. What the cap cuts is not discarded -
-  those rows are simply not consumed, and the next cycle finds them again.
+  the series those rows came from stay queued, and a later cycle expands them
+  again.
 - **One pull request at a time.** A cycle that finds one still open stops before
   it touches libex.
 - **Coming-soon (preorder) titles are included**, imported with their announced
@@ -70,7 +71,10 @@ overwrites a recorded value.
   clone/refresh  --->  read the catalogue index (series names, positions, ASINs)
       |
       v
-  poll 11 marketplaces x 2 feeds  --->  rows naming a series we already hold
+  walk 11 marketplaces x 2 feeds incrementally  --->  rows naming a series we already hold
+      |                                                  (queued, with the feed cursor, in one save)
+      v
+  take up to 400 series off the queue: news first, then oldest first
       |
       v
   fetch every book of those series from libex  --->  rows.ndjson
@@ -91,23 +95,62 @@ overwrites a recorded value.
 
 A few properties of that pass are worth knowing:
 
-- **Discovery is the expensive phase.** Each feed is read to a 50-page cap (100
-  rows a page) over a 30-day window, paced at 250ms between requests, so a full
-  eleven-region cycle spends roughly forty minutes reading feeds. The US
-  new-release feed does hit the cap; because the feed is newest-first the pages
-  the cap drops are the oldest of the window, which earlier cycles already read.
-  A cut is written to the cycle log every time, since a silently truncated feed
-  would look exactly like a quiet month.
-- **Two further budgets bound a cycle**: at most 400 candidate series are
-  expanded, taken from each feed in turn rather than by concatenating the
-  marketplaces (one region's feed alone exceeds the bound, so poll order would
-  starve every later region forever), and at most 1,500 chapter lookups. Rows
-  past the chapter budget ship without chapters and are not memoized, so a later
-  cycle fetches them.
+- **Discovery is complete: nothing a feed shows is dropped, only deferred.**
+  That is what the watchlist on meta.audiosilo.app depends on - a book the bot
+  never picks up is a new-volume notification that never arrives. Four
+  mechanisms, each the fix for a way books used to be lost (measured against
+  the live API on 2026-09-26):
+  - **Feeds are paged sorted by `updatedAt`.** libex's default order is
+    `releaseDate`, which ties tens of thousands of rows at midnight, and offset
+    paging over ties returns some rows twice and others never: all 75 pages of
+    the US new-release feed returned 7,498 rows but only 5,287 distinct books.
+    Sorted by `updatedAt`, 3,000 rows were 3,000 distinct books.
+  - **Each feed is read incrementally and resumably.** A walk reads from page 1
+    down to where the previous one reached (a watermark, less an hour of
+    overlap), so a steady-state day costs a few pages per feed. The feeds are
+    deep - 75 pages for US new releases, 845 for UK new releases, 84 for US
+    coming-soon over a year - so a walk is capped at 200 pages a cycle and the
+    next cycle **resumes** where it stopped, seeking back to that exact row
+    (with single-row probes) even after rows have moved or left the feed. The old 50-page cap simply cut the
+    rest. Once a week each feed is walked to its end again, for rows an
+    incremental walk cannot see (a preorder entering the window with an old
+    `updatedAt`).
+  - **coming-soon is read a year ahead** rather than 30 days, so a preorder
+    announced months before release is picked up when it is announced.
+  - **Series wait in a persistent queue.** A cycle expands at most 400 series,
+    taken from the head of the queue (news first, then oldest first; work that
+    only enriches existing records is promoted after a week so nothing
+    starves), and a series leaves the queue only when the cycle that expanded
+    it succeeded. The old bound took 400 and dropped the rest - 615 on one live
+    cycle - with nothing to bring them back. A series whose feed rows are all
+    catalogued already is queued again only if it has not been expanded in 30
+    days, so a libex re-scrape burst (9,502 UK rows in one day) cannot flood
+    the queue. A sync pull request that is recycled or closed without merging
+    puts its series back on the queue.
+
+  A feed's cursor is saved together with the queue entries its rows produced,
+  so a crash can make a cycle re-read rows but never skip them. A dry run works
+  on a copy and moves neither. The cycle log carries one line per feed saying
+  what its walk did (pages, rows, completed or resuming), and `GET /status`
+  reports the queue length and each feed's cursor.
+- **Two budgets bound the rest of a cycle**: at most 400 queued series are
+  expanded (what does not fit stays queued), and at most 1,500 chapter lookups.
+  Rows past the chapter budget still ship, without chapters - a book arriving
+  matters more than its chapter list - and no later cycle looks them up again:
+  once catalogued, a row gets a chapter list only if a later series listing
+  carries one for enrichment to fill in.
+- **A feed row is imported even when the series listing lags it.** The queue
+  entry carries the news ASINs the feed showed; any the series listing does not
+  carry yet (likeliest for a freshly announced preorder) is fetched on its own
+  and imported with the rest. A claim naming a catalogued series without a
+  series ASIN is queued under the libex series ASIN already known for it.
 - **Errors from external services are gaps, not failures.** A feed page that did
-  not arrive, a series libex does not hold, a chapters payload it refuses: all
-  counted, logged, never fatal. The window is 30 days and the service runs
-  daily, so the next cycle sees the same rows.
+  not arrive stops that walk where it is and the next cycle resumes from there;
+  a series libex does not hold leaves the queue; a series listing that did not
+  arrive stays queued (after five failed cycles it is dropped until a feed names
+  it again - each drop is named in the cycle log and counted on the last cycle in
+  `GET /status`); a news row libex returns no record for is counted; a chapters
+  payload libex refuses is counted and logged. None of it is fatal.
 - **`metacheck` is the gate on the way out.** A cycle whose `metafmt`/`metacheck`
   pass fails discards its whole tree back to the base commit and opens nothing.
 
@@ -140,8 +183,8 @@ and requires all of:
 The merge call pins the SHA the gate judged, so if the sweep moves the branch in
 between, GitHub answers 409 and the next tick re-decides. A 405 or 409 is "wait
 for the next tick", never a failure. After a merge the branch is deleted, and if
-the per-PR cap carried work over, the next cycle starts immediately rather than
-tomorrow.
+the per-PR cap carried work over or series are still queued, the next cycle
+starts immediately rather than tomorrow.
 
 Here, and only here, the `ai-verified` verdict is not advisory: it stands in for
 the maintainer approval a batch import otherwise needs. A pull request that stops
@@ -197,7 +240,7 @@ which is what makes that safe, since `POST /run` triggers work.
 | Endpoint | What it does |
 |---|---|
 | `GET /healthz` | `{"status":"ok"}` or `{"status":"degraded","detail":"..."}`. Always 200 once the process is up: this is a **liveness** check, and a service whose last cycle failed is still alive and will try again. |
-| `GET /status` | The whole observable state: last cycle, open pull request, parked pull requests, next run time, the resolver backend, the pinned `META_REF`, the required check names. |
+| `GET /status` | The whole observable state: last cycle, open pull request, parked pull requests, next run time, the series queue (length and how many carry news), each feed's cursor (watermark, a walk in progress, last full rescan), the resolver backend, the pinned `META_REF`, the required check names. |
 | `POST /run` | Run a cycle now. 202 when queued, 409 when a cycle is already running or queued - a request is never stacked behind a running cycle. |
 
 Configuration is environment variables only; one struct reads them all, so the
