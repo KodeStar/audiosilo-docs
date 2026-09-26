@@ -188,21 +188,63 @@ starts immediately rather than tomorrow.
 
 Here, and only here, the `ai-verified` verdict is not advisory: it stands in for
 the maintainer approval a batch import otherwise needs. A pull request that stops
-short is **parked** - labelled `sync:needs-human`, commented on, and never
-touched again by the service - when a data check failed, when the resolver's
-attempts ran out, or when the head has sat six hours with no verdict at all (the
-safety valve for an `ai-verify` run that died for an infrastructure reason and so
-left no label and no failed check).
+short **never waits for a human because of its data or flaky CI**; every such
+state ends in a decision the service makes itself:
+
+- **A required check failed** (`check`, `compose` or `site`): its workflow run's
+  failed jobs are re-run **once** per head, because a flaky runner is not
+  evidence about the data. If it fails again, it climbs the escalation ladder
+  below, with the failed job's log as the evidence.
+- **`ai-verify` flagged it** (on a head whose `verify` run has concluded): the
+  escalation ladder.
+- **`ai-verify` never gave a verdict** - its run failed until the re-dispatches
+  ran out (10, 30, then 60 minutes apart, at most `SYNC_VERIFY_REDISPATCHES`
+  per head), or the head sat six hours with no verdict at all: the pull request
+  is **recycled** (closed and re-imported fresh), since nothing is known to be
+  wrong with the data. Three of these in a row, with no merge in between, stop
+  the next cycle from starting at once - it waits for the normal interval - and
+  `/healthz` reports degraded until a pull request merges, so a broken
+  `ai-verify` cannot spin.
+
+Only **configuration errors** still **park** a pull request - label it
+`sync:needs-human`, comment and stop watching it: `SYNC_AGENT=none` when there
+is evidence to resolve, and a 403 from dispatching `ai-verify` or re-running a
+check (the PAT lacks Actions: read and write). Removing the label hands it back.
+
+None of this weakens the merge gate: a pull request still merges only when every
+required check concluded well on the exact head and it carries `ai-verified`.
 
 The decision is a pure function over one tick's observation
 (`internal/watcher`), which is what makes every allowed and denied case a table
 test.
 
+## The escalation ladder
+
+Evidence against a pull request's data - an `ai-verify` flag, or a required
+check that failed again after its re-run - is resolved rung by rung:
+
+| Rung | What happens |
+|---|---|
+| **Fix** | Up to `SYNC_RESOLVE_ATTEMPTS` (default 3) resolver attempts, each allowed to edit a field or remove an entry the pull request added. |
+| **Drop** | One more attempt whose **only** allowed action is removing the entries the evidence concerns, with their series placements and any person record only they reference. If the agent cannot tell which entries, it removes every work the pull request added in the series the evidence names; if it names none, it removes nothing and says so. |
+| **Exclude** | The pull request is closed with a comment listing exactly which rows are excluded and quoting the evidence, labelled `sync:auto-excluded`, and its branch deleted. Every row it imported is memoized as a selector refusal for 45 days, the series its cycle expanded go back on the queue - so the rest of each series is re-imported - and the next cycle starts at once. |
+
+Every attempt that runs is consumed, pushed or not, and the count does not reset
+when the head moves, so the ladder always ends; the step reached is kept in the
+state file, so a restart resumes where it was. `sync:auto-excluded` is an audit
+trail for a maintainer to look through later
+(`is:pr is:closed label:sync:auto-excluded`): nothing reads it back, it never
+blocks a cycle and it never counts against `SYNC_MAX_PARKED`. `/status` reports
+how many pull requests have been excluded.
+
 ## The resolver
 
-When `ai-verify` flags a pull request, the service can hand the flag to a coding
-agent CLI, which edits the data and pushes an amendment - at most
-`SYNC_RESOLVE_ATTEMPTS` times (default 2; `0` disables it).
+The first two rungs hand the evidence to a coding agent CLI, which edits the
+data and pushes an amendment. For an `ai-verify` flag the evidence is the
+reviewer's comment; for a failed check it is the last 200 lines (at most 20KB) of
+the failed job's log, redacted, or - when the log cannot be read - a note naming
+the check and telling the agent to reproduce it with `metafmt` and `metacheck`.
+Either way it goes into the brief fenced as data, never as instructions.
 
 - **Auth is always a subscription login, never an API key.** Claude reads
   `CLAUDE_CODE_OAUTH_TOKEN` (the long-lived token `claude setup-token` mints -
@@ -214,10 +256,11 @@ agent CLI, which edits the data and pushes an amendment - at most
   network, it is steered by text an automated reviewer wrote, and it has no use
   for the PAT because the service does the pushing. That is a barrier against
   accidental pickup, not a sandbox - the agent shares the service's uid.
-- **The brief is narrow.** The agent may edit or remove records *this* pull
-  request added (it may drop a flagged record entirely), must never touch a
-  record that predates it (compared against `origin/main`), must never write
-  outside `data/`, and must finish with `metafmt --write` and `metacheck`
+- **The brief is narrow.** In fix mode the agent may edit or remove records
+  *this* pull request added; in drop mode it may only remove the ones the
+  evidence concerns. Either way it must never touch a record that predates the
+  pull request (compared against the branch's merge base with main), must never
+  write outside `data/`, and must finish with `metafmt --write` and `metacheck`
   passing. The service then verifies that itself before committing: a diff that
   strays outside `data/`, a tree that does not validate, or an agent that changed
   nothing all mean the work is discarded and the attempt spent.
@@ -226,11 +269,12 @@ agent CLI, which edits the data and pushes an amendment - at most
   that is not the agent's fault, so the attempt is **not** consumed and the next
   tick tries again.
 
-If the flag survives its attempts, the pull request parks. The service stops
-opening new ones once `SYNC_MAX_PARKED` (default 3) are parked, so a systematic
-fault produces a short queue rather than a backlog; parked pull requests are
-re-read from the API each cycle, so merging or closing them by hand clears the
-limit.
+If the evidence survives the drop attempt too, the pull request is excluded (the
+ladder above) - it does not park. Parking is reserved for configuration errors:
+the service stops opening new pull requests once `SYNC_MAX_PARKED` (default 3)
+are parked, so a misconfiguration produces a short queue rather than a backlog;
+parked pull requests are re-read from the API every watch tick, so merging,
+closing or handing them back by hand clears the limit.
 
 ## Operating it
 
@@ -240,7 +284,7 @@ which is what makes that safe, since `POST /run` triggers work.
 | Endpoint | What it does |
 |---|---|
 | `GET /healthz` | `{"status":"ok"}` or `{"status":"degraded","detail":"..."}`. Always 200 once the process is up: this is a **liveness** check, and a service whose last cycle failed is still alive and will try again. |
-| `GET /status` | The whole observable state: last cycle, open pull request, parked pull requests, next run time, the series queue (length and how many carry news), each feed's cursor (watermark, a walk in progress, last full rescan), the resolver backend, the pinned `META_REF`, the required check names. |
+| `GET /status` | The whole observable state: last cycle, open pull request, parked pull requests, how many pull requests the ladder has excluded, how many `ai-verify` infrastructure recycles in a row, next run time, the series queue (length and how many carry news), each feed's cursor (watermark, a walk in progress, last full rescan), the resolver backend, the pinned `META_REF`, the required check names. |
 | `POST /run` | Run a cycle now. 202 when queued, 409 when a cycle is already running or queued - a request is never stacked behind a running cycle. |
 
 Configuration is environment variables only; one struct reads them all, so the
@@ -248,7 +292,7 @@ config surface is exactly this table. Only `GITHUB_TOKEN` is required.
 
 | Variable | Default | What it does |
 |---|---|---|
-| `GITHUB_TOKEN` | *(required)* | Fine-grained PAT on audiosilo-meta: Contents read/write, Pull requests read/write, Metadata read. Not required when `SYNC_DRY_RUN=1`. |
+| `GITHUB_TOKEN` | *(required)* | Fine-grained PAT on audiosilo-meta: Contents read/write, Pull requests read/write, Actions read/write, Metadata read. Actions is what re-dispatches `ai-verify`, re-runs a failed check's jobs and reads the failed job's log. Not required when `SYNC_DRY_RUN=1`. |
 | `SYNC_REPO` | `KodeStar/audiosilo-meta` | The data repository, `owner/name`. |
 | `DATA_DIR` | `/data` | Holds the clone, `state.json` and `logs/`. |
 | `SYNC_ADDR` | `:8090` | Admin HTTP listen address. No auth - bind loopback. |
@@ -256,9 +300,10 @@ config surface is exactly this table. Only `GITHUB_TOKEN` is required.
 | `SYNC_WATCH_INTERVAL` | `5m` | How often the open pull request is re-judged. |
 | `SYNC_START_DELAY` | `0` | Wait this long before the first cycle. |
 | `SYNC_MAX_WORKS_PER_PR` | `100` | Cap on new works per pull request. |
-| `SYNC_RESOLVE_ATTEMPTS` | `2` | Resolver amendments per flagged pull request. `0` disables the resolver. |
-| `SYNC_MAX_PARKED` | `3` | Stop opening new pull requests once this many are parked. |
-| `SYNC_AGENT` | `none` | `claude`, `codex` or `none`. |
+| `SYNC_RESOLVE_ATTEMPTS` | `3` | Fix-mode resolver attempts per pull request, before the one drop-mode attempt and then exclusion. `0` goes straight to the drop attempt. |
+| `SYNC_VERIFY_REDISPATCHES` | `4` | Maximum `ai-verify.yml` re-dispatches per head after runs that failed without a verdict; then the pull request is recycled. |
+| `SYNC_MAX_PARKED` | `3` | Stop opening new pull requests once this many are parked (configuration errors only; an excluded pull request never counts). |
+| `SYNC_AGENT` | `none` | `claude`, `codex` or `none`. With `none` a flagged pull request parks, because nobody can climb the ladder. |
 | `CLAUDE_CODE_OAUTH_TOKEN` | - | Claude's subscription token (`claude setup-token`). Preferred over mounting `~/.claude`. |
 | `SYNC_AGENT_MODEL` | - | Optional backend-specific model id for the resolver. |
 | `SYNC_REGIONS` | all 11 | `us uk ca au de fr es it jp in br` - exactly the meta schema's region enum. |
