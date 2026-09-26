@@ -191,20 +191,21 @@ the maintainer approval a batch import otherwise needs. A pull request that stop
 short **never waits for a human because of its data or flaky CI**; every such
 state ends in a decision the service makes itself:
 
-- **A required check failed** (`check`, `compose` or `site`): its workflow run's
-  failed jobs are re-run **once** per head, because a flaky runner is not
-  evidence about the data. If it fails again, it climbs the escalation ladder
-  below, with the failed job's log as the evidence.
+- **A required check failed** (`check`, `compose` or `site`): on a head that is
+  behind main it only waits, since the intake sweep is about to rebase it.
+  Otherwise its workflow run's failed jobs are re-run **once** per head, because
+  a flaky runner is not evidence about the data. If it fails again, it climbs
+  the escalation ladder below, with the failed job's log as the evidence.
 - **`ai-verify` flagged it** (on a head whose `verify` run has concluded): the
   escalation ladder.
 - **`ai-verify` never gave a verdict** - its run failed until the re-dispatches
   ran out (10, 30, then 60 minutes apart, at most `SYNC_VERIFY_REDISPATCHES`
   per head), or the head sat six hours with no verdict at all: the pull request
   is **recycled** (closed and re-imported fresh), since nothing is known to be
-  wrong with the data. Three of these in a row, with no merge in between, stop
-  the next cycle from starting at once - it waits for the normal interval - and
-  `/healthz` reports degraded until a pull request merges, so a broken
-  `ai-verify` cannot spin.
+  wrong with the data. Three of these in a row, with no merge and no verdict in
+  between, stop the next cycle from starting at once - it waits for the normal
+  interval - and `/healthz` reports degraded until a pull request merges or
+  `ai-verify` gives a verdict again, so a broken `ai-verify` cannot spin.
 
 Only **configuration errors** still **park** a pull request - label it
 `sync:needs-human`, comment and stop watching it: `SYNC_AGENT=none` when there
@@ -227,7 +228,7 @@ check that failed again after its re-run - is resolved rung by rung:
 |---|---|
 | **Fix** | Up to `SYNC_RESOLVE_ATTEMPTS` (default 3) resolver attempts, each allowed to edit a field or remove an entry the pull request added. |
 | **Drop** | One more attempt whose **only** allowed action is removing the entries the evidence concerns, with their series placements and any person record only they reference. If the agent cannot tell which entries, it removes every work the pull request added in the series the evidence names; if it names none, it removes nothing and says so. |
-| **Exclude** | The pull request is closed with a comment listing exactly which rows are excluded and quoting the evidence, labelled `sync:auto-excluded`, and its branch deleted. Every row it imported is memoized as a selector refusal for 45 days, the series its cycle expanded go back on the queue - so the rest of each series is re-imported - and the next cycle starts at once. |
+| **Exclude** | The pull request is closed, then commented on - listing exactly which rows are excluded and quoting the evidence - labelled `sync:auto-excluded`, and its branch deleted. For an `ai-verify` flag every row it imported is memoized as a selector refusal for 45 days; for a failed check the rows are released instead (a check that outlives a re-run and every attempt is almost always systemic, not about those rows). The series its cycle expanded go back on the queue - so the rest of each series is re-imported - and the next cycle starts at once, except from the second exclusion in a row on (see below). |
 
 Every attempt that runs is consumed, pushed or not, and the count does not reset
 when the head moves, so the ladder always ends; the step reached is kept in the
@@ -236,6 +237,11 @@ trail for a maintainer to look through later
 (`is:pr is:closed label:sync:auto-excluded`): nothing reads it back, it never
 blocks a cycle and it never counts against `SYNC_MAX_PARKED`. `/status` reports
 how many pull requests have been excluded.
+
+A **circuit breaker** stops a systemic failure from excluding every pull request
+back to back: from the second exclusion in a row (no merge in between) the
+service still excludes, but the next cycle waits for the normal interval and
+`/healthz` reports degraded, naming the count and the last reason.
 
 ## The resolver
 
@@ -284,7 +290,7 @@ which is what makes that safe, since `POST /run` triggers work.
 | Endpoint | What it does |
 |---|---|
 | `GET /healthz` | `{"status":"ok"}` or `{"status":"degraded","detail":"..."}`. Always 200 once the process is up: this is a **liveness** check, and a service whose last cycle failed is still alive and will try again. |
-| `GET /status` | The whole observable state: last cycle, open pull request, parked pull requests, how many pull requests the ladder has excluded, how many `ai-verify` infrastructure recycles in a row, next run time, the series queue (length and how many carry news), each feed's cursor (watermark, a walk in progress, last full rescan), the resolver backend, the pinned `META_REF`, the required check names. |
+| `GET /status` | The whole observable state: last cycle, open pull request, parked pull requests, how many pull requests the ladder has excluded (and how many in a row, with the last reason), how many `ai-verify` infrastructure recycles in a row, next run time, the series queue (length and how many carry news), each feed's cursor (watermark, a walk in progress, last full rescan), the resolver backend, the pinned `META_REF`, the required check names. |
 | `POST /run` | Run a cycle now. 202 when queued, 409 when a cycle is already running or queued - a request is never stacked behind a running cycle. |
 
 Configuration is environment variables only; one struct reads them all, so the
