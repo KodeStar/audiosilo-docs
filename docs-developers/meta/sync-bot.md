@@ -110,8 +110,8 @@ A few properties of that pass are worth knowing:
     overlap), so a steady-state day costs a few pages per feed. The feeds are
     deep - 75 pages for US new releases, 845 for UK new releases, 84 for US
     coming-soon over a year - so a walk is capped at 200 pages a cycle and the
-    next cycle **resumes** where it stopped, seeking back to that point even
-    after rows have moved or left the feed. The old 50-page cap simply cut the
+    next cycle **resumes** where it stopped, seeking back to that exact row
+    (with single-row probes) even after rows have moved or left the feed. The old 50-page cap simply cut the
     rest. Once a week each feed is walked to its end again, for rows an
     incremental walk cannot see (a preorder entering the window with an old
     `updatedAt`).
