@@ -17,6 +17,11 @@ workflow agree.
 It serves no public traffic. It talks to libexdb.com and api.github.com, and to
 nothing else.
 
+The same container can also run [the steward](./steward.md) (`SYNC_STEWARD=on`),
+which reviews and merges everyone else's data pull requests and triages data
+issues on the maintainer's behalf. It is off by default, and with it off nothing
+on this page changes.
+
 The reason it exists: the catalogue's import posture is a bounded, curated
 tranche and never a mirror of a retailer database, but a catalogue whose series
 stop at the volume that was out on the day it was seeded decays. Something has
@@ -291,7 +296,7 @@ which is what makes that safe, since `POST /run` triggers work.
 |---|---|
 | `GET /healthz` | `{"status":"ok"}` or `{"status":"degraded","detail":"..."}`. Always 200 once the process is up: this is a **liveness** check, and a service whose last cycle failed is still alive and will try again. |
 | `GET /status` | The whole observable state: last cycle, open pull request, parked pull requests, how many pull requests the ladder has excluded (and how many in a row, with the last reason), how many `ai-verify` infrastructure recycles in a row, next run time, the series queue (length and how many carry news), each feed's cursor (watermark, a walk in progress, last full rescan), the resolver backend, the pinned `META_REF`, the required check names. |
-| `POST /run` | Run a cycle now. 202 when queued, 409 when a cycle is already running or queued - a request is never stacked behind a running cycle. |
+| `POST /run` | Run a cycle now. 202 when queued, 409 when a cycle is already running or queued - a request is never stacked behind a running cycle. With the steward on it also needs `Authorization: Bearer` with the token in `/data/admin-token`, since the steward's agent shares the container's loopback. |
 
 Configuration is environment variables only; one struct reads them all, so the
 config surface is exactly this table. Only `GITHUB_TOKEN` is required.
