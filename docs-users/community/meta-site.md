@@ -240,12 +240,18 @@ catalogue, and nobody has confirmed those entries yet. If you add a book or a
 narration that is already there from that automatic import, and your submission
 includes its **ASIN**, your details win: the bot replaces the imported runtime,
 release date, publisher and cover with yours (anything you left blank keeps the
-imported value, and a year on its own never replaces a full date) and opens the change for review. If your details disagree
-sharply with what was imported - a runtime more than 10% different, or a
-different release date - nothing is changed and a maintainer takes a look
-instead. Without the ASIN the bot can't be sure it is the same edition, so it
-asks a maintainer and tells you which ASIN to add to your submission to let it
-go through automatically.
+imported value, and a year on its own never replaces a full date) and opens the
+change for review. If your details disagree sharply with what was imported - a
+runtime more than 10% different, or a different release date - or name
+different authors, narrators or language than the entry that ASIN belongs to,
+nothing is changed and a maintainer takes a look instead. Without the ASIN the
+bot can't be sure it is the same edition, so it asks a maintainer and tells you
+which ASIN to add to your submission to let it go through automatically.
+
+A book that shares its title with one by a different author is simply added as
+its own book, next to the other one. If the two authors' names are very close,
+the bot can't tell a typo from a different person, so a maintainer checks
+first.
 
 When you send a correction, the bot tells you straight away if it can't be
 applied as written: a field that belongs to the other kind of record (a runtime

@@ -80,52 +80,63 @@ bound keeps the head, an import's run-level summary lines come first, then the
 **conflict** lines (a row refused for contradicting a recorded runtime or release
 date), then every other per-row warning.
 
-A non-ok verdict is commented on the issue **once per distinct verdict**. An
-issue opened with its labels fires both `opened` and a `labeled` event for the
-routing label, and both are admitted (see the `labeled` trigger below), so two
-runs compose the same verdict one after the other. The comment carries a hidden
-marker digesting the status and messages, and a run whose verdict is already on
-the issue (posted by the bot itself) does not post it again; an edit that
-changes the verdict is posted as a new comment.
-
-Four behaviors are worth knowing:
+Five behaviors are worth knowing:
 
 - **Mirror-seeded records are taken over by ASIN.** When an Add a work or Add a
   recording submission names, by ASIN, a recording that was seeded from the
   libex mirror and that no user has attested (every `sources[]` entry is
   `libex-import`), the bot does not close it as a duplicate: it applies the
-  submission over that record through the bulk importer's own attestation
-  (`importer.Attest`, the hook a library import takes at its ASIN-dedup skip).
-  The stated runtime, release date, publisher, cover and recording ISBNs replace
-  the mirror's (a stated date never coarsens a recorded one), blank fields keep
-  the mirror's values, genres are added to the
-  work's set, and a `user` source citing the form's Sources field is appended -
-  to the work too when it is also a mirror seed. The pull request carries a
-  *modified* record, which the rebase sweep and `ai-verify` (through
-  `cmd/metadiff`) handle like any other change, and a maintainer still approves
-  it. A runtime more than 10% apart, or a release date that is not the same date
-  at another precision, applies nothing and is `needs-human` naming both values.
-  Identity (title, authors, narrators, identifier sets) is never rewritten, and
-  the verdict names any stated field the takeover does not carry. Only an ASIN
-  match takes a record over: a mirror-seeded record met by title, ISBN or
-  narrator set is `needs-human` with a message naming the record's ASINs (adding
-  the matching one to the issue turns it into a takeover), and a work slug held
-  by a mirror seed none of whose authors the form names is reported as a
-  different book of the same title that needs its own slug. The rule itself is
-  LICENSING.md's "Trust tiers and the user-overwrite rule" (in `audiosilo-meta`).
-
+  submission over that record through `importer.AttestAt`, which runs it as a
+  one-row user-library import over the store `metaissue` already opened and
+  hands it to `attestExisting` - the hook a library import takes at its
+  ASIN-dedup skip. The stated runtime, release date, publisher and cover replace
+  the mirror's (a stated date never coarsens a recorded one), a stated recording
+  ISBN is appended when no recording carries it yet, blank fields keep the
+  mirror's values, genres are added to the work's set, and a `user` source
+  citing the form's Sources field is appended - to the work too when it is also
+  a mirror seed. The pull request carries a *modified* record, which the rebase
+  sweep and `ai-verify` (through `cmd/metadiff`) handle like any other change,
+  and a maintainer still approves it. Nothing is applied, and the verdict is
+  `needs-human` naming why, when the submission disagrees with the seed (a
+  runtime more than 10% apart, or a release date that is not the same date at
+  another precision), when it describes a different book than the record its
+  ASIN names (authors, narrators or language - a mistyped ASIN must not attest
+  somebody else's record), when a submitted ISBN is recorded on a different
+  recording, or when its ASINs name two different recordings. Every matched
+  ASIN is classified before the verdict, so their order never changes it. A
+  title that differs is only a note, and identity is never rewritten. Only an
+  ASIN match takes a record over: a mirror-seeded record met by title, ISBN or
+  narrator set is `needs-human`, and on the add forms the message names the
+  record's mirror-only ASINs (adding the matching one to the issue turns it
+  into a takeover). The rule itself is LICENSING.md's "Trust tiers and the
+  user-overwrite rule" (in `audiosilo-meta`).
+- **A taken title slug is judged by author.** On Add a work, a title whose slug
+  another work already holds is a duplicate only when that work is by the
+  submitting author, judged by the importer's same-person rule (so "J. Doe"
+  meets "Jane Doe"). A clearly different author's book of the same title is a
+  different book: it is composed at the author-suffixed slug the bulk importer
+  would mint (`the-good-shepherd-c-s-forester` beside Kenneth E. Bailey's
+  `the-good-shepherd`), whoever attested the existing record. An author close to
+  the incumbent's - the same surname, or one edit apart - may be a misspelling,
+  so that submission is `needs-human` rather than composed, as is one whose
+  author-suffixed slug is held by yet another author's book.
 - **Envelope sniffing.** For an import, `metaissue` sniffs a self-identifying
   `audiosilo-books` envelope and routes it to that importer regardless of the
   form's export-type dropdown - the file is trusted over the form. If you are
   building a tool that produces such a file, the [Import file format](./import-format.md)
   page is the producer-facing spec.
-- **The `labeled` trigger is load-bearing.** The GitHub API silently drops labels
-  on issues opened by non-collaborators (the sibling `audiosilo-sidecars`
-  contributor tool creates intake issues over the API), so such an issue arrives
-  label-less and the `opened`/`edited` runs skip it. When a maintainer later
-  applies the routing label, the `labeled` trigger admits it. The job gate
-  excludes the workflow's own outcome labels (`data:invalid` / `data:needs-human`
-  / `data:duplicate`) so outcome-labeling can't re-fire intake.
+- **A submission is admitted by its routing label, not by `opened`.** The
+  workflow triggers on `labeled` (for a routing `data:*` label) and `edited`
+  (for an issue carrying a `data:` label). An issue opened with its routing
+  label fires that label's `labeled` event too, so admitting `opened` as well
+  ran intake twice and posted every verdict twice. And the GitHub API silently
+  drops labels on issues opened by non-collaborators (the sibling
+  `audiosilo-sidecars` contributor tool creates intake issues over the API), so
+  such an issue arrives label-less and is admitted when a maintainer applies the
+  routing label later - a `labeled` event. The job gate excludes the workflow's
+  own outcome labels (`data:invalid` / `data:needs-human` / `data:duplicate`) so
+  outcome-labeling can't re-fire intake. Each run posts its non-ok verdict as a
+  comment, so an edit always gets an answer.
 - **Corrections are judged against the schema first.** A correction naming a
   field that lives on the *other* record kind - `runtime_min` against a work
   URL, say, when a runtime belongs to one narration - is `invalid`, and the
