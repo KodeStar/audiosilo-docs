@@ -63,9 +63,9 @@ machine-readable verdict the workflow branches on:
 
 | Verdict | Meaning | Workflow action |
 |---|---|---|
-| `ok` | valid new/changed records produced | opens a PR on branch `intake/issue-<n>` |
+| `ok` | valid new/changed records produced (including a mirror-seed takeover, below) | opens a PR on branch `intake/issue-<n>` |
 | `duplicate` | everything already exists (requires at least one skip) | labels + comments, no PR |
-| `needs-human` | ambiguous - e.g. an import that produced and deduped nothing | labels for maintainer attention |
+| `needs-human` | ambiguous - e.g. an import that produced and deduped nothing, or a submission that disagrees with a mirror-seeded record | labels + comments for maintainer attention |
 | `invalid` | the submission fails schema/validation | labels + comments with the errors |
 
 The bot's pull-request body lists the files it changed as they stand in the
@@ -80,7 +80,39 @@ bound keeps the head, an import's run-level summary lines come first, then the
 **conflict** lines (a row refused for contradicting a recorded runtime or release
 date), then every other per-row warning.
 
-Three behaviors are worth knowing:
+A non-ok verdict is commented on the issue **once per distinct verdict**. An
+issue opened with its labels fires both `opened` and a `labeled` event for the
+routing label, and both are admitted (see the `labeled` trigger below), so two
+runs compose the same verdict one after the other. The comment carries a hidden
+marker digesting the status and messages, and a run whose verdict is already on
+the issue (posted by the bot itself) does not post it again; an edit that
+changes the verdict is posted as a new comment.
+
+Four behaviors are worth knowing:
+
+- **Mirror-seeded records are taken over by ASIN.** When an Add a work or Add a
+  recording submission names, by ASIN, a recording that was seeded from the
+  libex mirror and that no user has attested (every `sources[]` entry is
+  `libex-import`), the bot does not close it as a duplicate: it applies the
+  submission over that record through the bulk importer's own attestation
+  (`importer.Attest`, the hook a library import takes at its ASIN-dedup skip).
+  The stated runtime, release date, publisher, cover and recording ISBNs replace
+  the mirror's (a stated date never coarsens a recorded one), blank fields keep
+  the mirror's values, genres are added to the
+  work's set, and a `user` source citing the form's Sources field is appended -
+  to the work too when it is also a mirror seed. The pull request carries a
+  *modified* record, which the rebase sweep and `ai-verify` (through
+  `cmd/metadiff`) handle like any other change, and a maintainer still approves
+  it. A runtime more than 10% apart, or a release date that is not the same date
+  at another precision, applies nothing and is `needs-human` naming both values.
+  Identity (title, authors, narrators, identifier sets) is never rewritten, and
+  the verdict names any stated field the takeover does not carry. Only an ASIN
+  match takes a record over: a mirror-seeded record met by title, ISBN or
+  narrator set is `needs-human` with a message naming the record's ASINs (adding
+  the matching one to the issue turns it into a takeover), and a work slug held
+  by a mirror seed none of whose authors the form names is reported as a
+  different book of the same title that needs its own slug. The rule itself is
+  LICENSING.md's "Trust tiers and the user-overwrite rule" (in `audiosilo-meta`).
 
 - **Envelope sniffing.** For an import, `metaissue` sniffs a self-identifying
   `audiosilo-books` envelope and routes it to that importer regardless of the
