@@ -51,8 +51,8 @@ repo's `GOVERNANCE.md`.
   release date.
 - **Every record it writes carries the typed `libex-import` provenance**, so the
   whole source stays retractable in one act, and the trust tiers rank it exactly
-  as any other bulk-mirror record: the first user-library import that matches it
-  takes the record over.
+  as any other bulk-mirror record: the first user-library import, or Add a work /
+  Add a recording submission, that matches it by ASIN takes the record over.
 - **It never writes a retailer's prose.** The row projection drops
   `description`, `summary`, `rating`, `copyright` and `isbn` before anything is
   written - a licensing rule, not a preference.
