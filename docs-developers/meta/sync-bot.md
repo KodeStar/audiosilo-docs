@@ -304,7 +304,7 @@ which is what makes that safe, since `POST /run` triggers work.
 | Endpoint | What it does |
 |---|---|
 | `GET /healthz` | `{"status":"ok"}` or `{"status":"degraded","detail":"..."}`. Always 200 once the process is up: this is a **liveness** check, and a service whose last cycle failed is still alive and will try again. |
-| `GET /status` | The whole observable state: last cycle, open pull request, parked pull requests, how many pull requests the ladder has excluded (and how many in a row, with the last reason), how many `ai-verify` infrastructure recycles in a row, next run time, the series queue (length and how many carry news), each feed's cursor (watermark, a walk in progress, last full rescan), the resolver backend, the pinned `META_REF`, the required check names. |
+| `GET /status` | The whole observable state: last cycle, open pull request, parked pull requests, how many pull requests the ladder has excluded (and how many in a row, with the last reason), how many `ai-verify` infrastructure recycles in a row, next run time, the series queue (length and how many carry news), each feed's cursor (watermark, a walk in progress, last full rescan), the resolver backend, the pinned `META_REF`, the required check names, and `memo_reasons` - the refusal memo counted by why each row was refused (the selector's reason codes; `unknown` for entries from before reasons were recorded). |
 | `POST /run` | Run a cycle now. 202 when queued, 409 when a cycle is already running or queued - a request is never stacked behind a running cycle. With the steward on it also needs `Authorization: Bearer` with the token in `/data/admin-token`, since the steward's agent shares the container's loopback. |
 
 Configuration is environment variables only; one struct reads them all, so the
@@ -320,7 +320,9 @@ config surface is exactly this table. Only `GITHUB_TOKEN` is required.
 | `SYNC_WATCH_INTERVAL` | `5m` | How often the open pull request is re-judged. |
 | `SYNC_START_DELAY` | `0` | Wait this long before the first cycle. |
 | `SYNC_MAX_WORKS_PER_PR` | `100` | Cap on new works per pull request. |
+| `SYNC_MAX_ATTACHMENTS_PER_PR` | `100` | Cap on attached editions per pull request (editions of books the catalogue already holds; they never count as works). Editions over it wait for a later cycle. |
 | `SYNC_RESOLVE_ATTEMPTS` | `3` | Fix-mode resolver attempts per pull request, before the one drop-mode attempt and then exclusion. `0` goes straight to the drop attempt. |
+| `SYNC_RESOLVE_MAX_TOTAL` | `8` | Ceiling on resolver attempts per pull request across all findings; an attempt on a NEW finding is progress and does not count against `SYNC_RESOLVE_ATTEMPTS`. |
 | `SYNC_VERIFY_REDISPATCHES` | `4` | Maximum `ai-verify.yml` re-dispatches per head after runs that failed without a verdict; then the pull request is recycled. |
 | `SYNC_MAX_PARKED` | `3` | Stop opening new pull requests once this many are parked (configuration errors only; an excluded pull request never counts). |
 | `SYNC_AGENT` | `none` | `claude`, `codex` or `none`. With `none` a flagged pull request parks, because nobody can climb the ladder. |
