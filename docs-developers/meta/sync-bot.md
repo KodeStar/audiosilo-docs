@@ -10,7 +10,9 @@ allowed to merge its own work into
 [audiosilo-meta](./overview.md). Once a day it reads libex's new-release and
 coming-soon feeds across every Audible marketplace, finds the series the
 catalogue **already** tracks, fetches every volume of those series, imports the
-ones the catalogue is missing through audiosilo-meta's own CLI tooling, and
+ones the catalogue is missing through audiosilo-meta's own CLI tooling (and
+attaches another edition of a volume it already holds as a recording of that
+volume), and
 opens one pull request - which it merges itself once CI and the `ai-verify`
 workflow agree.
 
@@ -38,8 +40,15 @@ repo's `GOVERNANCE.md`.
   already hold is dropped in discovery, and after the import the importer's own
   summary is re-read: a run reporting any new series discards its whole tree
   instead of opening a pull request.
-- **It never contests an occupied position.** `metaimport libex-select` keeps
-  only rows that fill a free position in a catalogued series.
+- **It never adds a second work at an occupied position.** A new work only
+  ever fills a free position in a catalogued series. A row for a volume the
+  catalogue already holds is attached to that work - as another recording, or
+  as another ASIN on an existing recording - only when its series, position,
+  authors and title match the incumbent (audiosilo-meta's own work-identity
+  rules resolve it to exactly that work); every other row at an occupied
+  position is refused, by `metaimport libex-select` and again by the import
+  itself. It never changes the incumbent. The service turns this on with
+  `--attach-editions`, passed to both tools.
 - **It writes nothing outside `data/`.** The commit stages `data` alone, and the
   resolver's diff is refused outright if it strays. Schema, tooling and
   workflows are out of reach (`CODEOWNERS` would stop it anyway).
@@ -295,7 +304,7 @@ which is what makes that safe, since `POST /run` triggers work.
 | Endpoint | What it does |
 |---|---|
 | `GET /healthz` | `{"status":"ok"}` or `{"status":"degraded","detail":"..."}`. Always 200 once the process is up: this is a **liveness** check, and a service whose last cycle failed is still alive and will try again. |
-| `GET /status` | The whole observable state: last cycle, open pull request, parked pull requests, how many pull requests the ladder has excluded (and how many in a row, with the last reason), how many `ai-verify` infrastructure recycles in a row, next run time, the series queue (length and how many carry news), each feed's cursor (watermark, a walk in progress, last full rescan), the resolver backend, the pinned `META_REF`, the required check names. |
+| `GET /status` | The whole observable state: last cycle, open pull request, parked pull requests, how many pull requests the ladder has excluded (and how many in a row, with the last reason), how many `ai-verify` infrastructure recycles in a row, next run time, the series queue (length and how many carry news), each feed's cursor (watermark, a walk in progress, last full rescan), the resolver backend, the pinned `META_REF`, the required check names, and `memo_reasons` - the refusal memo counted by why each row was refused (the selector's reason codes; `unknown` for entries from before reasons were recorded). |
 | `POST /run` | Run a cycle now. 202 when queued, 409 when a cycle is already running or queued - a request is never stacked behind a running cycle. With the steward on it also needs `Authorization: Bearer` with the token in `/data/admin-token`, since the steward's agent shares the container's loopback. |
 
 Configuration is environment variables only; one struct reads them all, so the
@@ -311,7 +320,9 @@ config surface is exactly this table. Only `GITHUB_TOKEN` is required.
 | `SYNC_WATCH_INTERVAL` | `5m` | How often the open pull request is re-judged. |
 | `SYNC_START_DELAY` | `0` | Wait this long before the first cycle. |
 | `SYNC_MAX_WORKS_PER_PR` | `100` | Cap on new works per pull request. |
+| `SYNC_MAX_ATTACHMENTS_PER_PR` | `100` | Cap on attached editions per pull request (editions of books the catalogue already holds; they never count as works). Editions over it wait for a later cycle. |
 | `SYNC_RESOLVE_ATTEMPTS` | `3` | Fix-mode resolver attempts per pull request, before the one drop-mode attempt and then exclusion. `0` goes straight to the drop attempt. |
+| `SYNC_RESOLVE_MAX_TOTAL` | `8` | Ceiling on resolver attempts per pull request across all findings; an attempt on a NEW finding is progress and does not count against `SYNC_RESOLVE_ATTEMPTS`. |
 | `SYNC_VERIFY_REDISPATCHES` | `4` | Maximum `ai-verify.yml` re-dispatches per head after runs that failed without a verdict; then the pull request is recycled. |
 | `SYNC_MAX_PARKED` | `3` | Stop opening new pull requests once this many are parked (configuration errors only; an excluded pull request never counts). |
 | `SYNC_AGENT` | `none` | `claude`, `codex` or `none`. With `none` a flagged pull request parks, because nobody can climb the ladder. |
@@ -342,8 +353,8 @@ from a pinned commit of that repository:
 
 | Binary | What it does here |
 |---|---|
-| `metaimport libex-select` | The authoritative selector. Keeps only rows that genuinely complete a catalogued series at a free position, with mappable language and region and acceptable credits. Writes no records. |
-| `metaimport libex` | The create path (over the selected subset) and, with `--enrich`, the fill-absent-facts path over every row - which is why rows the catalogue already holds are fetched too. |
+| `metaimport libex-select` | The authoritative selector. Keeps rows that complete a catalogued series at a free position, with mappable language and region and acceptable credits, plus - with `--attach-editions` - rows that are another edition of the work already at their position (same series, position, authors and title), which the import attaches to that work. Writes no records. `--refusals <path>` writes one `{"asin","reason"}` line per refused copy of a row (an ASIN may repeat, and one carrying a `duplicate-asin` line is not a clean refusal; never an ASIN the subset carries, never an empty one) and `--attachments <path>` one `{"asin","work","series","position"}` line per row kept for attachment, so a caller can tell those from completions; the subset and both files are written together or not at all, the subset last. |
+| `metaimport libex` | The create path (over the selected subset) and, with `--enrich`, the fill-absent-facts path over every row - which is why rows the catalogue already holds are fetched too. With `--attach-editions` it attaches those rows and refuses a row at an occupied position that is not another edition of the work there (`--existing-series-only` separately forbids founding a series), and `--skipped <path>` lists every row it refused for a reason with a refusal code in the `--refusals` shape (`position-claimed` for those), so the service can memoize them as refusals rather than select them again. |
 | `metafmt --write` | Canonical rendering, entry relocation, due pack splits. Nothing here computes pack placement by hand. |
 | `metacheck` | The gate. A cycle whose `metacheck` fails discards its whole tree. |
 
@@ -362,7 +373,11 @@ layout rather than a Go import, a change in audiosilo-meta to any of the
 following must be followed by a pin bump and a check in the sync repository.
 
 - The CLI flags of `metaimport libex-select`, `metaimport libex` (including
-  `--enrich` and `--conflicts`), `metafmt` or `metacheck`.
+  `--enrich` and `--conflicts`), `metafmt` or `metacheck`, the reason codes
+  `libex-select --refusals` writes (defined once, in
+  `internal/importer/refusalcodes.go`), the line shapes of
+  `libex-select --attachments` and `metaimport libex --skipped`, and the
+  `--attach-editions` flag both tools take.
 - The libex NDJSON row shape the service emits, or the row projection and
   chapter-acceptance rules it hand-mirrors from `internal/importer`.
 - The pack layout under `data/series` and `data/works`, which the service reads

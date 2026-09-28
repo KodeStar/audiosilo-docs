@@ -25,11 +25,16 @@ request labelled `bot-sync`. Merging beside the sync is exactly what a human
 maintainer merging by hand always did; the intake sweep and the sync's
 rebase-before-open already handle a `main` that moves under them.
 
-**The sync has priority.** The steward starts no clone, tool or agent work while
-the sync is running a cycle or a resolver attempt, and a sync cycle that starts
-while a steward task is running cancels that task (it is retried later and
-spends no attempt). `metacheck` over the whole catalogue needs about 2GB, and
-two of them at once is how a small host runs out of memory.
+**The sync has priority.** A whole-catalogue tool run (an import, `metafmt`,
+`metacheck`) needs about 2GB, and two at once is how a small host runs out of
+memory, so the sync, the steward and the steward's agent share one heavy-tool
+lock: at most one such run at a time. The sync never stalls on it - it waits at
+most five minutes in total per cycle, then runs without the lock. Light work
+(counting a pull request's entries, merges, check re-runs) never waits. An agent
+task starts only when the lock is free and the host has enough memory available
+(`SYNC_STEWARD_MIN_AVAILABLE_MB`), and at most `SYNC_STEWARD_DAILY_AGENT_RUNS`
+agent runs start per day; a subscription usage-limit error pauses agent work
+until the stated reset. None of these waits spends an attempt.
 
 ## Pull requests
 
@@ -156,6 +161,8 @@ loopback.
 | `SYNC_STEWARD_MAX_ENTRIES` | `25` | The most entries one steward-authored change may touch. |
 | `SYNC_STEWARD_MERGE_MAX_ENTRIES` | `100` | The largest data pull request the steward will merge. |
 | `SYNC_STEWARD_REPORT_ISSUE` | - | Optional `owner/repo#n` whose body carries the report. |
+| `SYNC_STEWARD_MIN_AVAILABLE_MB` | `3072` | An agent task starts only when at least this much memory is available (the host's, or the container limit's headroom). |
+| `SYNC_STEWARD_DAILY_AGENT_RUNS` | `24` | The most agent runs the steward starts per UTC day (`0` = no cap). |
 
 With `SYNC_STEWARD` off none of these are read, and nothing of the steward
 exists: no goroutine, no clone, no state file, no `/status` section.
