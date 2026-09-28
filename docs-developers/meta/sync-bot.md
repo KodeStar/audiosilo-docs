@@ -10,7 +10,9 @@ allowed to merge its own work into
 [audiosilo-meta](./overview.md). Once a day it reads libex's new-release and
 coming-soon feeds across every Audible marketplace, finds the series the
 catalogue **already** tracks, fetches every volume of those series, imports the
-ones the catalogue is missing through audiosilo-meta's own CLI tooling, and
+ones the catalogue is missing through audiosilo-meta's own CLI tooling (and
+attaches another edition of a volume it already holds as a recording of that
+volume), and
 opens one pull request - which it merges itself once CI and the `ai-verify`
 workflow agree.
 
@@ -38,8 +40,15 @@ repo's `GOVERNANCE.md`.
   already hold is dropped in discovery, and after the import the importer's own
   summary is re-read: a run reporting any new series discards its whole tree
   instead of opening a pull request.
-- **It never contests an occupied position.** `metaimport libex-select` keeps
-  only rows that fill a free position in a catalogued series.
+- **It never adds a second work at an occupied position.** A new work only
+  ever fills a free position in a catalogued series. A row for a volume the
+  catalogue already holds is attached to that work - as another recording, or
+  as another ASIN on an existing recording - only when its series, position,
+  authors and title match the incumbent (audiosilo-meta's own work-identity
+  rules resolve it to exactly that work); every other row at an occupied
+  position is refused, by `metaimport libex-select` and again by the import
+  itself. It never changes the incumbent. The service turns this on with
+  `--attach-editions`, passed to both tools.
 - **It writes nothing outside `data/`.** The commit stages `data` alone, and the
   resolver's diff is refused outright if it strays. Schema, tooling and
   workflows are out of reach (`CODEOWNERS` would stop it anyway).
@@ -342,8 +351,8 @@ from a pinned commit of that repository:
 
 | Binary | What it does here |
 |---|---|
-| `metaimport libex-select` | The authoritative selector. Keeps only rows that genuinely complete a catalogued series at a free position, with mappable language and region and acceptable credits. Writes no records. |
-| `metaimport libex` | The create path (over the selected subset) and, with `--enrich`, the fill-absent-facts path over every row - which is why rows the catalogue already holds are fetched too. |
+| `metaimport libex-select` | The authoritative selector. Keeps rows that complete a catalogued series at a free position, with mappable language and region and acceptable credits, plus - with `--attach-editions` - rows that are another edition of the work already at their position (same series, position, authors and title), which the import attaches to that work. Writes no records. `--refusals <path>` writes one `{"asin","reason"}` line per refused copy of a row (an ASIN may repeat, and one carrying a `duplicate-asin` line is not a clean refusal; never an ASIN the subset carries, never an empty one) and `--attachments <path>` one `{"asin","work","series","position"}` line per row kept for attachment, so a caller can tell those from completions; the subset and both files are written together or not at all, the subset last. |
+| `metaimport libex` | The create path (over the selected subset) and, with `--enrich`, the fill-absent-facts path over every row - which is why rows the catalogue already holds are fetched too. With `--attach-editions` it attaches those rows and refuses a row at an occupied position that is not another edition of the work there (`--existing-series-only` separately forbids founding a series), and `--skipped <path>` lists every row it refused for a reason with a refusal code in the `--refusals` shape (`position-claimed` for those), so the service can memoize them as refusals rather than select them again. |
 | `metafmt --write` | Canonical rendering, entry relocation, due pack splits. Nothing here computes pack placement by hand. |
 | `metacheck` | The gate. A cycle whose `metacheck` fails discards its whole tree. |
 
@@ -362,7 +371,11 @@ layout rather than a Go import, a change in audiosilo-meta to any of the
 following must be followed by a pin bump and a check in the sync repository.
 
 - The CLI flags of `metaimport libex-select`, `metaimport libex` (including
-  `--enrich` and `--conflicts`), `metafmt` or `metacheck`.
+  `--enrich` and `--conflicts`), `metafmt` or `metacheck`, the reason codes
+  `libex-select --refusals` writes (defined once, in
+  `internal/importer/refusalcodes.go`), the line shapes of
+  `libex-select --attachments` and `metaimport libex --skipped`, and the
+  `--attach-editions` flag both tools take.
 - The libex NDJSON row shape the service emits, or the row projection and
   chapter-acceptance rules it hand-mirrors from `internal/importer`.
 - The pack layout under `data/series` and `data/works`, which the service reads
