@@ -166,10 +166,10 @@ for a work with no dated recording look the same to a client. A date in the
 exactly that to split a series into available and preorderable entries.
 
 `language` is the work's BCP 47 language tag, always lowercase (`en`, `fr`,
-`pt-br`), the same value `GET /api/v1/works/{id}` serves. It is **always
-present** - every work states one - and is what lets a list tell a work from its
-translations ("Throne of Glass" and its French and German editions otherwise read
-as one book three times). A card from a `metaserve` that predates the field carries none, so a
+`pt-br`) - the value `GET /api/v1/works/{id}` serves. Every work states one, so
+it is **always present**; it is what tells a work from its translations on a
+list ("Throne of Glass" and its French and German editions otherwise read as one
+book three times). A `metaserve` older than the field sends no `language`, so a
 client should treat it as optional.
 
 ## `/api/v1/watch/feed.atom`, `/api/v1/watch/feed.json`
