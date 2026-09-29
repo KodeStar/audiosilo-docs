@@ -80,7 +80,7 @@ bound keeps the head, an import's run-level summary lines come first, then the
 **conflict** lines (a row refused for contradicting a recorded runtime or release
 date), then every other per-row warning.
 
-Five behaviors are worth knowing:
+Six behaviors are worth knowing:
 
 - **Mirror-seeded records are taken over by ASIN.** When an Add a work or Add a
   recording submission names, by ASIN, a recording that was seeded from the
@@ -147,6 +147,29 @@ Five behaviors are worth knowing:
   schema's own spelling (`Publisher` becomes `publisher`). A correction that
   restates the value the record already carries is a no-op `duplicate` that
   writes nothing.
+- **Translation and reading-order links are correctable one at a time.** Four
+  fields take a correction (the rules they must satisfy are the
+  [data model's](data-model.md#translations-and-reading-orders)):
+  - a work's `translation_of` is **additive**: the correction contributes ONE
+    original, given as a work reference (a `/works/{slug}` page URL, the legacy
+    `?id=` URL, a data path or a bare slug). A retired slug is followed through
+    the tombstone table and composed under its survivor with a note; a slug
+    nothing holds is `invalid` naming it. A link to the work itself, to a work
+    in the same language, to a work that is itself a translation, or from a work
+    that is already some other work's original (it would make a chain) is
+    `invalid` naming the fix. A target already listed is the no-op `duplicate`,
+    and the set is re-sorted after the add;
+  - a series' `translation_of` is the same, with a series reference (a series
+    page URL or slug) and the series' derived language - the language rule is
+    skipped when either series has none;
+  - a series' `ordering` is a scalar from the enum (`publication`,
+    `chronological`, `recommended`), refused when another series of the same
+    ordering family already states that order;
+  - a series' `ordering_of` is a series reference naming the primary ordering.
+    It is refused when the target is not a live series, is the series itself,
+    is itself a variant, or would give the family two series in one order - and
+    a series that states no `ordering` yet is `invalid` with "state this series'
+    ordering first", because the schema requires the ordering beside the link.
 
 :::note Intake runs on `issues`, not fork code
 `intake.yml` triggers on the `issues` event, so there is **no fork code

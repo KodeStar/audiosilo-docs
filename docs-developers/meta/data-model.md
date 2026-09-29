@@ -65,6 +65,7 @@ edit is a read-modify-write of its work.
 | `description` | no | community-written, never a publisher blurb |
 | `genres` | no | values from the project's controlled vocabulary (`$defs/genre`, a flat retailer-neutral list), sorted ascending |
 | `credits` | no | role-qualified contributors as `{person, role}` pairs; `role` from the `$defs/credit_role` enum (adaptation, afterword, contributor, editor, foreword, illustrator, introduction, preface, translator). Additive and parallel to `authors`; emitted only when a source stated the role |
+| `translation_of` | no | the work(s) this one is a **translation** of, as a set of work slugs (`$defs/slug_set`: at least one, unique, ascending). Almost always one; a translated omnibus names every original it collects. Stated evidence only, never inferred - see [translations and reading orders](#translations-and-reading-orders) |
 | `xref` | no | `wikidata` (`Q\d+`), `openlibrary` (`OL\d+W`), `goodreads`, print `isbn[]` |
 | `added_at` | no | `YYYY-MM-DD`, or a full RFC 3339 timestamp for migration-backfilled records |
 | `recordings` | yes | the nested map of this work's recordings (below) |
@@ -115,7 +116,67 @@ A named, ordered set of works. Each entry is `{work, position}`, where
 `"1"`, `"2.5"`, or a range spanning several entries `"1-3.5"` (pattern
 `^\d+(\.\d+)?(-\d+(\.\d+)?)?$`). `metacheck` enforces that **no two works share a
 position** within a series. Fields: `id`, `name`, optional `authors`, `works`,
-optional `xref` (`wikidata`, `goodreads`), `license` (`CC0-1.0`), `sources`.
+optional `translation_of` (the series this one translates, a slug set like the
+work's - a series-level claim, independent of any work-level pairing), optional
+`ordering` (which reading order this series' positions state: `publication`,
+`chronological` or `recommended`), optional `ordering_of` (set only on a
+**variant** ordering: the slug of the franchise's primary series; the schema
+requires `ordering` beside it), optional `xref` (`wikidata`, `goodreads`),
+`license` (`CC0-1.0`), `sources`. A series states no language of its own - see
+[translations and reading orders](#translations-and-reading-orders) for the one
+it is given.
+
+## Translations and reading orders
+
+Two kinds of link tie records together across languages and across ways of
+reading a franchise. Both are **stated evidence only**: nothing infers them, and
+no record carries one until somebody states it.
+
+**Translations.** A work's `translation_of` points from a translation to the
+work(s) it translates - the direction is always translation to original. A
+series can carry the same claim about another series. `metacheck` holds both
+families to five rules:
+
+1. every target is a **live** slug of the same family; a target that has been
+   retired (a source in `redirects.json`) is refused with a message naming the
+   survivor to point at instead;
+2. a record never names **itself**;
+3. the two sides are in **different languages**, compared by primary subtag
+   (`en-GB` and `en` are one language). For a work that is its `language`; for a
+   series it is the series' **derived** language (below), and the rule is
+   skipped when either side has none, since a tie cannot be judged;
+4. **no chains**: a target may not itself carry `translation_of` - the original
+   is always one hop away;
+5. the set is stored in **ascending** order, so one set has one byte-form
+   (uniqueness is the schema's own rule).
+
+**Reading orders.** A franchise often has more than one order worth listening in
+(publication, chronological, an author's recommended order). The **primary**
+ordering is the series itself; a **variant** is a series of its own whose
+`ordering_of` names the primary and whose `ordering` says which kind of order it
+is. An author's preferred order and a recommended listening order both map to
+`recommended`; the series name keeps the exact wording. `metacheck` refuses:
+
+6. an `ordering_of` whose target is not a live series (a retired target names
+   its survivor);
+7. a series naming itself;
+8. a **chain**: the target may not have an `ordering_of` of its own, so a family
+   is always one hop deep;
+9. two members of one **ordering family** (a primary and every series whose
+   `ordering_of` names it) stating the **same** `ordering` - a second series in
+   the same order is a duplicate to fold, not a view. The message names both
+   series.
+
+A variant that lists a work its primary does not is reported as the
+**advisory** class `ordering-variant-not-subset`, never a failure: a
+chronological list legitimately holds a prequel novella the publication list
+never numbered.
+
+**A series' language is derived, not stated.** It is the strict majority of its
+members' primary subtags, or nothing when the leading languages tie or no member
+states one (`model.SeriesLanguage`, the one definition `metacheck`, the audit and
+the artifact builder share). The compiled artifact writes it down for readers;
+the data never does.
 
 ## The expressive layer (CC BY-SA)
 
@@ -200,13 +261,22 @@ expressive layer was added in later versions:
 | 2 | the `characters`, `character_aliases`, and `recaps` tables |
 | 3 | the per-work `recap_summaries` table (the `in_short` / `ending` fields) |
 | 4 | the `work_genres` set table |
+| 5 | the `redirects` table (retired slugs and their survivors) |
+| 6 | the `work_descriptions` table (the community spoiler-free description) |
+| 7 | the languages layer: the `translations` table (every work and series `translation_of` link), the series table's derived `language`, `ordering` and `ordering_of` columns, and a `language` column on the search index |
 
-`metaserve` returns characters, recaps and genres inline on `GET /works/{id}`
-(`characters` / `recaps` / `recap_summary` / `genres`, all `omitempty`). The
-serve queries **degrade gracefully** when a newer binary briefly serves an older
-release: the characters/recaps queries no-op below `schema_version` 2, the recap
-summary below 3, and genres below 4, so a missing table reads as "no data",
-never a 500. The same versioning
+`metaserve` returns characters, recaps, genres, the community description and
+the translation links inline on `GET /works/{id}` (`characters` / `recaps` /
+`recap_summary` / `genres` / `community_description` / `translation_of` /
+`translations`, all `omitempty`), and a series' language, ordering and ordering
+family on `GET /series/{id}` (see [the API](api.md#apiv1seriesidlimitoffset)).
+The serve queries **degrade gracefully** when a newer binary briefly serves an
+older release: the characters/recaps queries no-op below `schema_version` 2, the
+recap summary below 3, genres below 4, redirects below 5, the description below 6
+and the languages layer below 7, so a missing table reads as "no data", never a
+500. An artifact that *claims* version 5, 6 or 7 but lacks the table that version
+adds is refused when it is loaded, naming the claim, because the builder always
+writes the two together. The same versioning
 drives the [coverage endpoints](api.md#coverage-endpoints), which omit a
 dimension's count rather than report it as a misleading zero when the artifact
 predates its table.
