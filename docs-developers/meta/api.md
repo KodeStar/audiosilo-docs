@@ -88,9 +88,9 @@ required` when empty). `limit` defaults to 20, clamped to `[1, 50]`. Returns
 `{"results": [...]}`, best-ranked first; each result is one of three shapes
 distinguished by `kind`:
 
-- **work**: `{kind, id, title, authors[], series, release_date?, cover_url, added_at, narrators[]}`
-  (`release_date` carries the same rule as on a workCard below - omitted when no
-  recording states one)
+- **work**: `{kind, id, title, authors[], language, series, release_date?, cover_url, added_at, narrators[]}`
+  (every workCard field below, with the same rules - `release_date` omitted when
+  no recording states one - plus `kind` and `narrators`)
 - **person**: `{kind, id, name}`
 - **series**: `{kind, id, name, works}` (`works` = member count)
 
@@ -146,8 +146,8 @@ The newest works, for the site's landing grid. `limit` defaults to 12, clamped t
 `[1, 50]`. Returns `{"works": [workCard...]}` ordered by `added_at` descending
 (then title), with at most two works from any one series so a bulk import sharing
 one date can't fill the grid. A **workCard** is the compact shape reused across
-lists and lookups: `{id, title, authors[], series, release_date?, cover_url,
-added_at}`.
+lists and lookups: `{id, title, authors[], language, series, release_date?,
+cover_url, added_at}`.
 
 `release_date` is the **earliest release date across the work's recordings**, at
 whatever precision the source stated - `YYYY`, `YYYY-MM` or `YYYY-MM-DD`
@@ -164,6 +164,13 @@ the work states one, so a card from a `metaserve` predating the field and a card
 for a work with no dated recording look the same to a client. A date in the
 **future** is a catalogued preorder, not an error; the site's watchlist uses
 exactly that to split a series into available and preorderable entries.
+
+`language` is the work's BCP 47 language tag, always lowercase (`en`, `fr`,
+`pt-br`) - the value `GET /api/v1/works/{id}` serves. Every work states one, so
+it is **always present**; it is what tells a work from its translations on a
+list ("Throne of Glass" and its French and German editions otherwise read as one
+book three times). A `metaserve` older than the field sends no `language`, so a
+client should treat it as optional.
 
 ## `/api/v1/watch/feed.atom`, `/api/v1/watch/feed.json`
 
