@@ -89,9 +89,8 @@ required` when empty). `limit` defaults to 20, clamped to `[1, 50]`. Returns
 distinguished by `kind`:
 
 - **work**: `{kind, id, title, authors[], language, series, release_date?, cover_url, added_at, narrators[]}`
-  (every workCard field below, plus `kind` and `narrators`)
-  (`release_date` carries the same rule as on a workCard below - omitted when no
-  recording states one)
+  (every workCard field below, with the same rules - `release_date` omitted when
+  no recording states one - plus `kind` and `narrators`)
 - **person**: `{kind, id, name}`
 - **series**: `{kind, id, name, works}` (`works` = member count)
 
@@ -166,11 +165,11 @@ for a work with no dated recording look the same to a client. A date in the
 **future** is a catalogued preorder, not an error; the site's watchlist uses
 exactly that to split a series into available and preorderable entries.
 
-`language` is the work's BCP 47 language tag (`en`, `fr`), the same value
-`GET /api/v1/works/{id}` serves. It is **always present** - every work states
-one - and is what lets a list tell a work from its translations ("Throne of
-Glass" and its French and German editions otherwise read as one book three
-times). A card from a `metaserve` that predates the field carries none, so a
+`language` is the work's BCP 47 language tag, always lowercase (`en`, `fr`,
+`pt-br`), the same value `GET /api/v1/works/{id}` serves. It is **always
+present** - every work states one - and is what lets a list tell a work from its
+translations ("Throne of Glass" and its French and German editions otherwise read
+as one book three times). A card from a `metaserve` that predates the field carries none, so a
 client should treat it as optional.
 
 ## `/api/v1/watch/feed.atom`, `/api/v1/watch/feed.json`
