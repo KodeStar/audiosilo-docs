@@ -170,7 +170,7 @@ A few properties of that pass are worth knowing:
 
 The `bot-intake` label is load-bearing rather than decorative: audiosilo-meta's
 `intake.yml` rebases every open pull request carrying it onto `main` on every
-push to main, with the pack merge driver configured (see
+push to it, with the pack merge driver configured (see
 [contributing data](./contributing-data.md#intake-automation-issue-form-to-bot-pull-request)).
 So a sync pull request stays mergeable while other work lands, for free. The
 service rebases only once itself: the moment before it opens a pull request,

@@ -61,6 +61,15 @@ the judged SHA. The changed-file list is read again for that head immediately
 before the merge, so a non-data file pushed at the last moment is still refused.
 A merged pull request's linked data issue is closed with a comment.
 
+A merge is a push to `main`, on which the intake sweep rebases every open
+`bot-intake` branch, so in a tick that merged, a fix or rebase on such a pull
+request waits for the next tick rather than working on a head about to move.
+The tick after that hold merges nothing, so the held task gets the first
+chance to start and a ready pull request waits one tick, rather than a steady
+stream of merges holding a fix back behind every one of them. And nothing
+merges while such a fix or rebase is running, since its sweep would move the
+branch under it: a ready pull request waits for that one task instead.
+
 ### Fixing
 
 Nothing is left red or flagged, and nothing is closed unmerged:
