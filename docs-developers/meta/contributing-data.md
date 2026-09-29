@@ -147,29 +147,48 @@ Six behaviors are worth knowing:
   schema's own spelling (`Publisher` becomes `publisher`). A correction that
   restates the value the record already carries is a no-op `duplicate` that
   writes nothing.
-- **Translation and reading-order links are correctable one at a time.** Four
-  fields take a correction (the rules they must satisfy are the
-  [data model's](data-model.md#translations-and-reading-orders)):
-  - a work's `translation_of` is **additive**: the correction contributes ONE
+- **Translation and reading-order links are correctable one at a time**, and
+  judged by the same link rules `metacheck` runs (the
+  [data model's](data-model.md#translations-and-reading-orders)) before anything
+  is written. The verdict follows **where the fault lies**: a fault in what the
+  submitter wrote is `invalid` naming the fix, while a conflict that lies in
+  OTHER records - where either statement could be the wrong one - is
+  `needs-human` for a maintainer to decide.
+  - A work's `translation_of` is **additive**: the correction contributes ONE
     original, given as a work reference (a `/works/{slug}` page URL, the legacy
     `?id=` URL, a data path or a bare slug). A retired slug is followed through
-    the tombstone table and composed under its survivor with a note; a slug
-    nothing holds is `invalid` naming it. A link to the work itself, to a work
-    in the same language, to a work that is itself a translation, or from a work
-    that is already some other work's original (it would make a chain) is
-    `invalid` naming the fix. A target already listed is the no-op `duplicate`,
-    and the set is re-sorted after the add;
-  - a series' `translation_of` is the same, with a series reference (a series
-    page URL or slug) and the series' derived language - the language rule is
-    skipped when either series has none;
-  - a series' `ordering` is a scalar from the enum (`publication`,
-    `chronological`, `recommended`), refused when another series of the same
-    ordering family already states that order;
-  - a series' `ordering_of` is a series reference naming the primary ordering.
-    It is refused when the target is not a live series, is the series itself,
-    is itself a variant, or would give the family two series in one order - and
-    a series that states no `ordering` yet is `invalid` with "state this series'
-    ordering first", because the schema requires the ordering beside the link.
+    the tombstone table and composed under its survivor with a note; a
+    reference that names nothing is `invalid` naming it. A target already listed
+    is the no-op `duplicate`, and the set is re-sorted after the add. A link to
+    the record itself, to a work in the same language, or to a work that is
+    itself a translation (the verdict names ITS original to use instead) is
+    `invalid`. When the record being corrected is already the original other
+    records translate, or the target already names this record as its
+    original, the correction would make a chain out of links somebody else
+    stated, so it is `needs-human`.
+  - A series' `translation_of` is the same, with a series reference (a series
+    page URL or slug) and the two series' derived languages - the language test
+    is skipped when either series has none. The form still refuses a
+    same-language series link as `invalid`, though `metacheck` only reports one
+    already in the tree as an advisory.
+  - A series' `ordering` is a scalar from the enum (`publication`,
+    `chronological`, `recommended`); a value another series of the same
+    ordering family already states is `invalid` - two series in one order are
+    a duplicate to report, not two views.
+  - A series' `ordering_of` is a series reference naming the primary ordering.
+    A series that states no `ordering` yet is `invalid` with "state this
+    series' ordering first", because the schema requires the ordering beside
+    the link. Naming itself, a target that is itself a variant (the verdict
+    names that variant's primary to use instead), or a family that already
+    holds a series in this series' order is `invalid`; a series that other
+    variants already name as THEIR primary would stop being one, which is
+    `needs-human`.
+  - A work's `language` correction is judged by the translation rule too: a
+    language that puts the work in the same language as a work it translates,
+    or as a work translating it, is `needs-human`, since either the language or
+    the link is wrong. A series it belongs to changing derived language is
+    never a reason to refuse it - correcting a misfiled member's language is
+    how a series-level language clash gets fixed.
 
 :::note Intake runs on `issues`, not fork code
 `intake.yml` triggers on the `issues` event, so there is **no fork code

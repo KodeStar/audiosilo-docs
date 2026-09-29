@@ -142,9 +142,13 @@ families to five rules:
    survivor to point at instead;
 2. a record never names **itself**;
 3. the two sides are in **different languages**, compared by primary subtag
-   (`en-GB` and `en` are one language). For a work that is its `language`; for a
-   series it is the series' **derived** language (below), and the rule is
-   skipped when either side has none, since a tie cannot be judged;
+   (`en-GB` and `en` are one language). For two works this is a problem over
+   their stated `language`. For two series it is judged on each series'
+   **derived** language (below), is skipped when either side has none (a tie
+   cannot be judged), and is only an **advisory**,
+   `series-translation-same-language`: the link is still true when a member is
+   misfiled in the wrong language, and a sync-bot addition that tips a series'
+   majority must never turn a check it did not write red;
 4. **no chains**: a target may not itself carry `translation_of` - the original
    is always one hop away;
 5. the set is stored in **ascending** order, so one set has one byte-form
@@ -170,7 +174,8 @@ is. An author's preferred order and a recommended listening order both map to
 A variant that lists a work its primary does not is reported as the
 **advisory** class `ordering-variant-not-subset`, never a failure: a
 chronological list legitimately holds a prequel novella the publication list
-never numbered.
+never numbered. It and `series-translation-same-language` (rule 3) are the two
+advisories; every other rule above is a problem that fails the check.
 
 **A series' language is derived, not stated.** It is the strict majority of its
 members' primary subtags, or nothing when the leading languages tie or no member
