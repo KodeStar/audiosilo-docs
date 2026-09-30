@@ -279,9 +279,10 @@ The serve queries **degrade gracefully** when a newer binary briefly serves an
 older release: the characters/recaps queries no-op below `schema_version` 2, the
 recap summary below 3, genres below 4, redirects below 5, the description below 6
 and the languages layer below 7, so a missing table reads as "no data", never a
-500. An artifact that *claims* version 5, 6 or 7 but lacks the table that version
-adds is refused when it is loaded, naming the claim, because the builder always
-writes the two together. The same versioning
+500. An artifact that *claims* version 5, 6 or 7 but lacks what that version adds
+(for 7: the `translations` table or any of the series table's `language`,
+`ordering` and `ordering_of` columns) is refused when it is loaded, naming the
+claim, because the builder always writes the two together. The same versioning
 drives the [coverage endpoints](api.md#coverage-endpoints), which omit a
 dimension's count rather than report it as a misleading zero when the artifact
 predates its table.
