@@ -64,9 +64,11 @@ A merged pull request's linked data issue is closed with a comment.
 A merge is a push to `main`, on which the intake sweep rebases every open
 `bot-intake` branch, so in a tick that merged, a fix or rebase on such a pull
 request waits for the next tick rather than working on a head about to move.
-The tick after that hold merges nothing, so the held task gets the first
-chance to start and a ready pull request waits one tick, rather than a steady
-stream of merges holding a fix back behind every one of them. And nothing
+After that hold nothing merges until the held task has started (or its pull
+request merges or closes, or 30 minutes pass), rather than a steady stream of
+merges holding a fix back behind every one of them: the merge leaves the held
+branch behind `main`, so its fix can only run once the sweep and a fresh verify
+have caught up. And nothing
 merges while such a fix or rebase is running, since its sweep would move the
 branch under it: a ready pull request waits for that one task instead.
 
