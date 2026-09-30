@@ -206,6 +206,47 @@ nothing when the leading languages tie or no member states one (`model.SeriesLan
 the artifact builder share). The compiled artifact writes it down for readers;
 the data never does.
 
+**When a series mixes languages.** A bulk import could join a same-named series
+whatever its language, so a German edition's volumes sometimes sit in the English
+series of that name (or the reverse). The maintainers' data-quality audit reports
+every series whose members state two or more languages under its `L-MIX` class,
+reading it against one **keeper** language: the series' derived language, or for a
+tie the language its name's edition decoration states ("[German Edition]"), else
+the half holding the member catalogued first. Each member in another language is
+filed once, and three repair ops act on it:
+
+- **already homed** (`drop-membership`): the work also sits in a series of its own
+  language, so the membership here is dropped;
+- **a target exists** (`move-membership`): exactly one other series in the work's
+  language is this series under another name - the same name once an edition
+  decoration is set aside, or a `translation_of` link either way - and its slot at
+  the work's position is free, so the membership moves there at the same position;
+- **no target** (`split-series`): the members in that language move to a **new**
+  series of the same name, at the next free slug on the importer's own chain, with
+  their positions kept; the keeper language keeps the original slug. A series in
+  three languages yields one split per minority language.
+
+A proposal is applied only when nothing casts doubt on it. It is left for a human
+when the series is a tie decided by which half came first, when a member carries a
+recording in the keeper language (that recording is relocated to a work in its
+own language first), when a member's **narrators** record in another language
+than the work states, when the series is part of a reading-order family, or when
+another proposal in the same audit changes the same record. A split is also left
+for review when the two halves share no author, when the members moving out are
+themselves more than one author's series, when the half keeping the slug
+states that it is a translation and the moving half does not, when the moving half
+was catalogued first, or when the new series would carry an edition-decorated name
+onto works of another language.
+
+**Narrators are evidence, never a statement.** The narration-language profile
+(`check.NarrationProfile`) asks what language a work's narrators record in across
+their recordings of **other** works (at least two, 80% in one language; group,
+publisher and synthetic credits and the shared catch-all person are not
+counted). It can withhold a change and put a question in front of a human - the
+audit's `narration-contradicts` subclass proposes `set-work-language` for a work
+whose narrators contradict its stated language - but that op is always advisory:
+a language is only ever set by a reviewed decision, never inferred.
+
 ## The expressive layer (CC BY-SA)
 
 Two **per-work sidecars** carry the community-authored, spoiler-tagged content:
