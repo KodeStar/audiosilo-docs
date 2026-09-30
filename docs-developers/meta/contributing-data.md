@@ -219,7 +219,10 @@ Every pull request touching `data/**` is checked twice:
   `pull_request_target`, which is forbidden here as the "pwn request" pattern), so
   a fork pull request gets a neutral skip notice until a maintainer pushes its
   branch to the repo or re-runs it - fork secrets are never reached. The diff is
-  passed to the model as untrusted data and never executed.
+  passed to the model as untrusted data and never executed. When a rebase leaves
+  what it judged unchanged, the last verdict is re-applied without a model call
+  (each verdict comment carries a hidden key for this); a manual dispatch or a
+  re-run always judges afresh.
 
 The one place that verdict is *not* advisory is the
 [series-completion bot](./sync-bot.md): its bounded, `data/`-only batch imports

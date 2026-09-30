@@ -77,7 +77,7 @@ branch under it: a ready pull request waits for that one task instead.
 Nothing is left red or flagged, and nothing is closed unmerged:
 
 1. A failed required check is re-run once per head.
-2. A failed `ai-verify` run (no verdict) is re-dispatched with the sync's
+2. A failed `ai-verify` run (no verdict) is re-run with the sync's
    backoff.
 3. A branch the intake sweep could not rebase is rebased mechanically with the
    same pack merge driver the sweep uses; if the driver refuses, an agent
@@ -165,7 +165,7 @@ loopback.
 |---|---|---|
 | `SYNC_STEWARD` | `off` | `on` runs the steward. Requires `SYNC_AGENT=claude`, a subscription token, and a PAT that also has Issues: read and write. |
 | `SYNC_STEWARD_OAUTH_TOKEN` | - | The steward agent's own subscription token. Falls back to `CLAUDE_CODE_OAUTH_TOKEN`. |
-| `SYNC_STEWARD_INTERVAL` | `10m` | The steward's tick. |
+| `SYNC_STEWARD_INTERVAL` | `10m` | The steward's tick. After a round that merged, the next four come three minutes apart, so the pull requests the sweep rebased merge as soon as they are ready again. |
 | `SYNC_STEWARD_MODEL` | `claude-opus-5-5` | The model for every steward agent task. |
 | `SYNC_STEWARD_MAX_TURNS` | `200` | Tool-loop budget for one agent task. |
 | `SYNC_STEWARD_TIMEOUT` | `60m` | Wall-clock budget for one agent task. |
