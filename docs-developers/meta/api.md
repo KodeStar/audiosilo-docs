@@ -151,7 +151,9 @@ would put a work on a page that promises neither.
 The newest works, for the site's landing grid. `limit` defaults to 12, clamped to
 `[1, 50]`. Returns `{"works": [workCard...]}` ordered by `added_at` descending
 (then title), with at most two works from any one series so a bulk import sharing
-one date can't fill the grid. A **workCard** is the compact shape reused across
+one date can't fill the grid. Two reading orders of one franchise - a series and a
+chronological or recommended variant of it - count as one series for that cap
+(`schema_version` 7). A **workCard** is the compact shape reused across
 lists and lookups: `{id, title, authors[], language, series, release_date?,
 cover_url, added_at}`.
 
@@ -177,7 +179,8 @@ not a variant reading order (a chronological or recommended listing whose
 `ordering_of` names a primary series) is chosen before every variant one, then by
 series id - so a work in "The Saga" and "The Saga (Chronological Order)" is carded
 under the series itself however the two slugs sort. `ordering_of` is present only on a variant's
-reference. The same choice caps `works/latest` per series, orders the work
+reference. The same choice, keyed by its ordering family (the primary a variant
+names), caps `works/latest` per series; it also orders the work
 page's `series[]` and is the work page's JSON-LD `isPartOf`.
 
 `language` is the work's BCP 47 language tag, always lowercase (`en`, `fr`,
