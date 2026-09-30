@@ -182,7 +182,9 @@ That rebase sweep force-pushes the branch, and a force-push re-runs both
 workflows - but the outcome **labels** are only rewritten when the new
 `ai-verify` run finishes. For a few minutes the new head carries the previous
 run's `ai-verified` label and no check runs at all. A gate that trusted the label
-would merge a rebase nobody verified.
+would merge a rebase nobody verified. (When the rebase left the judged content
+unchanged, the new run re-applies the last verdict without a model call, so that
+window is a minute or two; the gate still waits for the run on the new head.)
 
 So every tick (`SYNC_WATCH_INTERVAL`, default 5 minutes) re-reads everything from
 the API - head SHA, labels, merged/closed state, check runs, commit statuses -
