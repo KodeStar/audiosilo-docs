@@ -177,9 +177,10 @@ chronological list legitimately holds a prequel novella the publication list
 never numbered. It and `series-translation-same-language` (rule 3) are the two
 advisories; every other rule above is a problem that fails the check.
 
-**A series' language is derived, not stated.** It is the strict majority of its
-members' primary subtags, or nothing when the leading languages tie or no member
-states one (`model.SeriesLanguage`, the one definition `metacheck`, the audit and
+**A series' language is derived, not stated.** It is the primary subtag more of
+its members state than any other - a strict plurality, so two English members
+beside one French and one German make an English series though not over half - or
+nothing when the leading languages tie or no member states one (`model.SeriesLanguage`, the one definition `metacheck`, the audit and
 the artifact builder share). The compiled artifact writes it down for readers;
 the data never does.
 

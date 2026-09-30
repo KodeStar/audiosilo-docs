@@ -172,11 +172,11 @@ for a work with no dated recording look the same to a client. A date in the
 exactly that to split a series into available and preorderable entries.
 
 `series` is the work's **first** series membership, `{id, name, position,
-ordering_of?}`, or null. With artifact `schema_version` 7 a **primary** series is
-chosen before any variant reading order of it (a chronological or recommended
-listing whose `ordering_of` names the primary), then by series id - so a work in
-"The Saga" and "The Saga (Chronological Order)" is carded under the series itself
-however the two slugs sort. `ordering_of` is present only on a variant's
+ordering_of?}`, or null. With artifact `schema_version` 7 every series that is
+not a variant reading order (a chronological or recommended listing whose
+`ordering_of` names a primary series) is chosen before every variant one, then by
+series id - so a work in "The Saga" and "The Saga (Chronological Order)" is carded
+under the series itself however the two slugs sort. `ordering_of` is present only on a variant's
 reference. The same choice caps `works/latest` per series, orders the work
 page's `series[]` and is the work page's JSON-LD `isPartOf`.
 
@@ -335,8 +335,8 @@ both `[{id, title, language}]` in work id order and both omitted when empty:
   translated omnibus names every original it collects.
 - `translations[]` - the works that translate this one.
 
-`series[]` lists every membership, a primary series before any variant reading
-order of it (see the workCard's `series` above); each variant's entry carries
+`series[]` lists every membership, every non-variant series before every variant
+reading order (see the workCard's `series` above); each variant's entry carries
 `ordering_of`, the primary's slug.
 
 ## `/api/v1/works/{id}/recordings/{rid}/chapters`
@@ -385,8 +385,9 @@ The fields after `name` that the original shape lacked are the **languages
 layer** (`schema_version` 7), each omitted when it has nothing to say and all
 omitted on an older artifact:
 
-- `language` is **derived**, not stated: the language most of the member works
-  share (by primary subtag), omitted when they tie.
+- `language` is **derived**, not stated: the primary language subtag more of the
+  series' members state than any other (a plurality - it need not be over half),
+  omitted when the leading languages tie or no member states one.
 - `ordering` is the reading order this series' positions state
   (`publication`, `chronological` or `recommended`); `ordering_of` is set only on
   a **variant** ordering and names the franchise's primary series.
