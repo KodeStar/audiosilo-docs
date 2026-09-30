@@ -78,8 +78,14 @@ Catalogue totals, precomputed once per loaded snapshot:
 
 ```json
 { "works": 0, "recordings": 0, "people": 0, "series": 0,
-  "total_runtime_min": 0, "total_chapters": 0, "built_at": "..." }
+  "total_runtime_min": 0, "total_chapters": 0, "built_at": "...",
+  "languages": [{ "language": "en", "works": 0 }] }
 ```
+
+`languages` is the works census by language: one `{language, works}` row per
+BCP 47 tag exactly as the works carry it, most works first (ties by tag). It is
+computed once when an artifact loads, not per request, and is **omitted** when
+the loaded artifact predates `schema_version` 7.
 
 ## `/api/v1/search?q=&limit=`
 
@@ -145,7 +151,9 @@ would put a work on a page that promises neither.
 The newest works, for the site's landing grid. `limit` defaults to 12, clamped to
 `[1, 50]`. Returns `{"works": [workCard...]}` ordered by `added_at` descending
 (then title), with at most two works from any one series so a bulk import sharing
-one date can't fill the grid. A **workCard** is the compact shape reused across
+one date can't fill the grid. Two reading orders of one franchise - a series and a
+chronological or recommended variant of it - count as one series for that cap
+(`schema_version` 7). A **workCard** is the compact shape reused across
 lists and lookups: `{id, title, authors[], language, series, release_date?,
 cover_url, added_at}`.
 
@@ -164,6 +172,16 @@ the work states one, so a card from a `metaserve` predating the field and a card
 for a work with no dated recording look the same to a client. A date in the
 **future** is a catalogued preorder, not an error; the site's watchlist uses
 exactly that to split a series into available and preorderable entries.
+
+`series` is the work's **first** series membership, `{id, name, position,
+ordering_of?}`, or null. With artifact `schema_version` 7 every series that is
+not a variant reading order (a chronological or recommended listing whose
+`ordering_of` names a primary series) is chosen before every variant one, then by
+series id - so a work in "The Saga" and "The Saga (Chronological Order)" is carded
+under the series itself however the two slugs sort. `ordering_of` is present only on a variant's
+reference. The same choice, keyed by its ordering family (the primary a variant
+names), caps `works/latest` per series; it also orders the work
+page's `series[]` and is the work page's JSON-LD `isPartOf`.
 
 `language` is the work's BCP 47 language tag, always lowercase (`en`, `fr`,
 `pt-br`) - the value `GET /api/v1/works/{id}` serves. Every work states one, so
@@ -313,6 +331,17 @@ All three are `omitempty` and gated on the artifact `schema_version`
 (characters/recaps at 2, recap summary at 3), so an older artifact simply omits
 them (see [the data model](data-model.md#the-compiled-artifact-and-schema-versioning)).
 
+Two more fields carry the work's **translation links** (`schema_version` 7),
+both `[{id, title, language}]` in work id order and both omitted when empty:
+
+- `translation_of[]` - the work(s) this one translates. Almost always one; a
+  translated omnibus names every original it collects.
+- `translations[]` - the works that translate this one.
+
+`series[]` lists every membership, every non-variant series before every variant
+reading order (see the workCard's `series` above); each variant's entry carries
+`ordering_of`, the primary's slug.
+
 ## `/api/v1/works/{id}/recordings/{rid}/chapters`
 
 The chapter list for one recording of a work: `{"chapters": [{title, start_ms,
@@ -344,10 +373,34 @@ complete - a prolific narrator will exceed one page.
 A series with its ordered member works, or 404 `series not found`:
 
 ```json
-{ "id": "...", "name": "...", "authors": [personRef...],
+{ "id": "...", "name": "...", "language": "en",
+  "ordering": "chronological", "ordering_of": "the-saga",
+  "authors": [personRef...],
   "works": [{ "position": "2.5", "work": workCard }],
-  "works_total": 0, "limit": 0, "offset": 0 }
+  "works_total": 0, "limit": 0, "offset": 0,
+  "translation_of": [{ "id": "...", "name": "...", "language": "de" }],
+  "translations": [{ "id": "...", "name": "...", "language": "fr" }],
+  "orderings": [{ "id": "the-saga", "name": "The Saga", "ordering": "publication" },
+                { "id": "...", "name": "...", "ordering": "chronological" }] }
 ```
+
+The fields after `name` that the original shape lacked are the **languages
+layer** (`schema_version` 7), each omitted when it has nothing to say and all
+omitted on an older artifact:
+
+- `language` is **derived**, not stated: the primary language subtag more of the
+  series' members state than any other (a plurality - it need not be over half),
+  omitted when the leading languages tie or no member states one.
+- `ordering` is the reading order this series' positions state
+  (`publication`, `chronological` or `recommended`); `ordering_of` is set only on
+  a **variant** ordering and names the franchise's primary series.
+- `translation_of[]` / `translations[]` are the series' translation links in
+  both directions, `{id, name, language?}` in id order (`language` being that
+  series' derived language).
+- `orderings[]` is the whole ordering **family** - the primary first, then every
+  variant of it by id, each `{id, name, ordering?}` - served identically on the
+  primary and on every variant, so a reader can switch order from any of them.
+  It is omitted when the series has no variant ordering.
 
 `works` is sorted by the numeric start of each `position` string (so `"1-3.5"`
 sorts by 1). Paging here is **opt-in**: with no `?limit=` the whole member list is
