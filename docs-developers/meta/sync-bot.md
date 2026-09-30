@@ -49,6 +49,14 @@ repo's `GOVERNANCE.md`.
   position is refused, by `metaimport libex-select` and again by the import
   itself. It never changes the incumbent. The service turns this on with
   `--attach-editions`, passed to both tools.
+- **It never completes another author's, or another language's, series.** A
+  same-named catalogued series counts as the row's only when its authors and its
+  language fit the row (audiosilo-meta's series resolution, the rule every
+  writer shares): an English edition of a book is not a volume of the German
+  series of the same name. The selector refuses such a row
+  (`series-other-authors`, `series-other-language`), and under
+  `--existing-series-only` the import drops any such claim rather than founding
+  the row's own series.
 - **It writes nothing outside `data/`.** The commit stages `data` alone, and the
   resolver's diff is refused outright if it strays. Schema, tooling and
   workflows are out of reach (`CODEOWNERS` would stop it anyway).

@@ -251,7 +251,10 @@ a trailing `(Unabridged)`/`(Abridged)` marker is stripped before identity (and
 seeds the recording's tri-state `abridged` when the source didn't state it), and a
 same-work/same-narrator entry whose only new fact is another ASIN **merges that
 ASIN into the existing recording** (guarded by runtime and abridged checks) rather
-than minting a sibling. A row whose person, series, or work identity resolves to a
+than minting a sibling. A series claim joins a same-named catalogued series only
+when its authors and its language fit that series (see
+[the import format](./import-format.md)); otherwise the row founds its own series
+of that name at the next slug. A row whose person, series, or work identity resolves to a
 slug a repair merge has since **retired** is judged against the surviving record
 instead of minting a new one at the old address - the same `data/redirects.json`
 table `metaserve` uses to 301 a retired id (see [the data model](./data-model.md#slug-is-identity-the-file-is-only-storage)).
