@@ -117,6 +117,18 @@ so the same identity and dedup rules apply as any other import (full detail unde
 - **ASIN merge.** A same-work, same-narrator entry whose only new fact is another
   ASIN merges that ASIN into the existing recording (guarded by runtime and
   abridged deltas) rather than minting a duplicate recording.
+- **Series joining.** A series is found by its name, and a name is not an
+  identity, so a row joins a same-named catalogued series only when the series
+  fits it. Its **authors** must fit (a series one author dominates is closed to
+  an unrelated author's book of the same name), and so must its **language**: a
+  series whose derived language - the strict majority of its members'
+  languages - is known and differs from the row's is closed to the row, even
+  when the author is the same (an Italian edition does not join the Spanish
+  series of the same name). A closed series is stepped past: the row joins or
+  founds the next series of that name (`lost-fleet-2`), or, under
+  `--existing-series-only`, the claim is dropped and reported. A series whose
+  members tie between two languages, and a row whose language is unknown, are
+  never judged by language.
 - **Edition markers.** A trailing `(Unabridged)`/`(Abridged)` in the title is
   stripped before identity and, if `abridged` was not set, seeds the recording's
   tri-state abridged flag.
