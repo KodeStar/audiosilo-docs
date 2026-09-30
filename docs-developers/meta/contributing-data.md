@@ -259,6 +259,61 @@ slug a repair merge has since **retired** is judged against the surviving record
 instead of minting a new one at the old address - the same `data/redirects.json`
 table `metaserve` uses to 301 a retired id (see [the data model](./data-model.md#slug-is-identity-the-file-is-only-storage)).
 
+### Libex modes and recording relocation
+
+The `libex` source reads factual JSON or NDJSON rows, with four mutually
+exclusive planning modes:
+
+| Mode | Effect |
+|---|---|
+| Default | Creates works and recordings from a selected row set. |
+| `--enrich` | Fills absent facts on ASIN-matched records. |
+| `--recordings-only` | Adds alternate narrations to existing works; creates no work or series. |
+| `--relocate` | Moves a cross-language recording to the work its source rows resolve to in its stated language, creating that work when needed. |
+
+For relocation, export rows for **all ASINs of the cross-language recordings**
+in one batch. The metadata repository's `scripts/README.md` documents deriving
+the list from the pack tree and running `scripts/libex-relocate-rows.sql` against
+the libex dump. The query retains every copy so contradictory source evidence
+cannot disappear behind an export filter.
+
+```sh
+go run ./cmd/metaimport libex /tmp/xrec-rows.ndjson --relocate \
+  --data /tmp/review-data --dry-run --skipped /tmp/relocate-skipped.ndjson
+```
+
+Every supplied row naming the recording must agree on its language, and that
+language must match the recording. The old work must be in another primary
+language and retain an own-language recording. Narrators' recordings of other
+works can veto the move through the shared narration-language profile; thin or
+mixed evidence does not veto, and no language is inferred. Work resolution uses
+the ordinary create path's slug chain, identity guard, credit cleaning and genre
+mapping. Conflicting destinations are refused for review.
+
+The recording moves as raw fields, preserving chapters, cover, `added_at`,
+identifiers and sources, with the run's provenance appended. A colliding id is
+numbered. A same-narrator sibling with compatible runtime and abridgement instead
+absorbs its identifiers and sources; notes name each discarded field and value.
+Series claims always use `--existing-series-only` semantics. When the old work
+holds a claimed slot of a catalogued series deriving the recording's language,
+that membership is re-pointed to the destination. Other old-work fields and
+memberships stay as they were. No translation link is written.
+
+Review the three disjoint recording counts (`relocated-to-existing`,
+`relocated-to-new-work`, `merged-into-sibling`), memberships re-pointed, notes and
+refusals before repeating without `--dry-run`. New-work counts include recordings
+joining a work minted earlier in the run. `--skipped` writes one atomic NDJSON
+`{"asin","reason"}` line per refused input copy; unlike create mode, those ASINs
+are already catalogued. Refusal counts in the summary count recordings. New
+stable codes start with `relocate-`: `rows-language`, `recording-language`,
+`work-language`, `no-home-recording`, `narration-contradicts`,
+`destination-conflict`, and `row-unusable`. Existing create admission and
+`identity-duplicate` codes also apply.
+
+Relocation cannot be combined with `--enrich`, `--recordings-only`, or the
+create-only `--attach-editions`. A repeated run moves nothing already relocated
+and repeats unresolved refusals. A real run validates the whole written tree.
+
 ## Scanning local files: metascan
 
 `metascan` is the low-friction path when you have only audio files - no export.
