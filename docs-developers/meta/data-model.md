@@ -154,6 +154,28 @@ families to five rules:
 5. the set is stored in **ascending** order, so one set has one byte-form
    (uniqueness is the schema's own rule).
 
+**Where translation links come from.** Beside the correction form (see
+[contributing data](contributing-data.md)), the maintainers' data-quality audit
+proposes links from the one statement a record makes about its own language: a
+retailer's own-language **edition decoration**, such as "(German Edition)" or
+"[Spanish Edition]". Its `T-LINK` class has two subclasses, each applied by a
+repair op named for the family it links:
+
+- **series-edition** (`add-series-link`): a series named
+  `<name> [<Language> Edition]` whose members are in that language is linked to
+  the one other series called `<name>` that shares a member's author and is in
+  another language;
+- **work-edition** (`add-work-link`): a work whose title or subtitle states its
+  own language's edition is linked to the one work in another language that is
+  the same book by the project's own identity rule. A translator credit marks a work as a
+  translation but never makes one an original, and is not enough on its own.
+
+Exactly one original, or no proposal. A proposal is applied only when nothing
+casts doubt on it (for a work, the translation's title must be the original's
+title left untranslated); the rest are left for a human to review. Proposals are
+applied by the repair pass as ordinary reviewed data pull requests, and every one
+is held to the rules above before anything is written.
+
 **Reading orders.** A franchise often has more than one order worth listening in
 (publication, chronological, an author's recommended order). The **primary**
 ordering is the series itself; a **variant** is a series of its own whose
