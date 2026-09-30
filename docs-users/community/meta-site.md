@@ -197,11 +197,26 @@ a book released in the last 90 days, a newly catalogued one, or a preorder with 
 date still ahead. There's an **Atom feed** and a **JSON Feed** link beside it if
 your reader prefers one or the other.
 
-A few ways people use it:
+The easiest way is the **AudioSilo Discord bot**, which we run, so there's
+nothing to set up:
+
+1. Join the [AudioSilo Discord](https://discord.gg/nFFqRbkRn6).
+2. Allow direct messages from the server (server menu > **Privacy Settings** >
+   **Direct Messages**).
+3. Open a direct message with the AudioSilo bot and paste your **Atom feed**
+   URL. It replies with how many series it's watching.
+
+From then on, new releases, newly catalogued books and preorders in your series
+arrive as DMs. Send `help` for the commands (`status`, `pause`, `resume`,
+`stop`). The bot keeps your Discord ID, your feed URL and a record of what it
+has sent you, so it knows what's new. `stop` deletes all of it.
+
+Other ways people use the feed:
 
 - **Any RSS reader** - Feedly, NetNewsWire, Miniflux, FreshRSS: paste the URL as
   a new subscription.
-- **Slack or Discord** - add it through their RSS apps, or a feed-to-channel bot.
+- **Slack or your own Discord server** - add it through their RSS apps, or a
+  feed-to-channel bot.
 - **Automation** - an IFTTT or Zapier "new item in feed" trigger can turn it into
   a phone notification.
 - **Self-hosted push** - hand the URL to an RSS-to-ntfy bridge.
@@ -210,8 +225,9 @@ Two things are worth knowing about how it works:
 
 - **The URL *is* the subscription.** It carries the list of series inside it and
   the site stores nothing - there's no account and no subscription record. So
-  whenever you start or stop watching a series, come back and copy the URL again;
-  the old one keeps reporting the old list. Series you've hidden are left out of
+  whenever you start or stop watching a series, come back and copy the URL again
+  (and paste the new one to the Discord bot, if you use it); the old one keeps
+  reporting the old list. Series you've hidden are left out of
   it.
 - **Treat it as private.** Anyone who has the URL can see which series it lists.
   It grants no access to anything else - the database is public and read-only -
