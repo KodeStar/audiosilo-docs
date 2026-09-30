@@ -65,6 +65,7 @@ const sidebars: SidebarsConfig = {
         'meta/contributing-data',
         'meta/sync-bot',
         'meta/steward',
+        'meta/discord-bot',
         'meta/import-format',
       ],
     },
