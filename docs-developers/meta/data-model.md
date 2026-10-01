@@ -247,10 +247,11 @@ keeper-language member states it is a translation (a `translation_of` link, an
 own-language edition decoration, a translator credit), when the halves share no
 author (two series of one name), or when the series' principal author writes
 mostly in a minority language across the catalogue (collective and classified
-credits are not evidence of either). A contested or tied series' split is also
-proposed in **every other orientation** (subclass `other-keeper`, keyed
-`<series>/<language>/keep-<keeper>`), so the reviewer accepts exactly the
-orientation that is right; accepting two orientations of one series, or a drop the
+credits are not evidence of either). And since no signal sees every case, every
+mixed series' split is also proposed in **every other orientation** (subclass
+`other-keeper`, keyed `<series>/<language>/keep-<keeper>`), even beside a same-name
+series in the moving language, so the reviewer can always accept the orientation
+that is right - rejecting an uncontested majority split in the same list; accepting two orientations of one series, or a drop the
 chosen orientation contradicts, is refused at audit time.
 
 **Narrators are evidence, never a statement.** The narration-language profile
