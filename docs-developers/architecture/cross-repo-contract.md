@@ -284,7 +284,13 @@ reflects whether either lookup is live.
 **Frontend:** the `BookMeta` envelope (hand-mirrored in `src/api/types.ts`) is
 fetched by `client.bookMeta` and rendered capability-gated on the book screen's
 Recaps/Characters/Series tabs; `client.metaWork` / `useMetaWork` lazily fetch a
-previous book's work when the reader opens its row.
+previous book's work when the reader opens its row. Reading-order families
+(metaserve `schema_version` 7 `ordering` / `ordering_of` / `orderings`) are
+collapsed **server-side** into one rail per family, with the other orders as
+additive alternates, so a shipped player that ignores them still sees one rail in
+the primary order; the current player adds a per-family order toggle that its
+"previous books" list follows (see
+[Reading-order families](../server/api/reference.md#reading-order-families)).
 
 **A change requires:** because the server consumes `metaserve`'s response shapes,
 a change to those shapes ripples audiosilo-meta -> the server's `internal/meta` ->

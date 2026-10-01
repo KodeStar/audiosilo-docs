@@ -60,7 +60,7 @@ Everything else sits in a row of **tabs** below that, so a long chapter list no 
 - **Recaps** - "what's happened up to here" catch-ups (see below).
 - **Characters** - community-written cards for the people in the book (see below).
 - **Bookmarks**, **History** (past listening sessions), and **Notes** for this book. Notes support markdown formatting.
-- **Series** - the other books in the same series, each opening its page on the metadata site so you can see what to read next.
+- **Series** - the other books in the same series, each opening its page on the metadata site so you can see what to read next. Series that can be read in more than one order get a reading-order switch (see [Series with more than one reading order](#series-with-more-than-one-reading-order)).
 
 **Chapters**, **Bookmarks**, **History** and **Notes** are always there. **Recaps**, **Characters** and **Series** appear only when the community database has that material for the book, so most pages show a shorter row than the full list above.
 
@@ -92,6 +92,14 @@ At the bottom of both the **Recaps** and **Characters** tabs, a series book adds
 - Under **Characters** you get that book's character cards.
 
 It's the "wait, who is this again?" fix before starting book four of a series. If a book can't be loaded (your server is older than this feature, or the metadata service is unreachable) the row shows a quiet "couldn't load" note and a link to open that book on the metadata site instead.
+
+#### Series with more than one reading order
+
+Some series can be read in more than one order - The Chronicles of Narnia in the order the books were published or in the story's chronological order, for example. When the community database knows a series' other orders, the **Series** tab shows it as **one** row with a small switch above it - **Publication**, **Chronological** or **Recommended** (or the name of that order, if it doesn't say which kind it is). Pick one and the row lists the series in that order.
+
+- **Your choice is remembered per series, on that device.** Choose Chronological on one Narnia book and every Narnia book on that phone or browser opens in chronological order too. Other series keep their own choice, and another device starts from the default (usually publication order).
+- **The Previous books catch-up follows your choice.** The earlier books offered under Recaps and Characters are the ones before this book *in the order you picked* - so if you're reading in publication order you won't be offered a book that only comes earlier in the story's timeline, and its recap can't give anything away.
+- If the book you're looking at isn't part of the order you picked, the row still lists that order and says "This book isn't part of this reading order." - and in that case it adds no previous books of its own.
 
 This information comes from the **AudioSilo community metadata database** at [meta.audiosilo.app](https://meta.audiosilo.app), a free, community-run catalogue of audiobook details that you can also browse and contribute to yourself (see [The community metadata site](../community/meta-site.md)). It appears only when the book can be matched (it carries an ASIN or ISBN) and your server has the metadata lookup switched on. The **Characters** and **Recaps** material is contributed by the community, so a matched book gets those tabs only once someone has written them - many books will have the About block and the Series tab but not these yet. If a book shows none of this, it simply isn't matched or your admin has turned the feature off - the Chapters, Bookmarks, History and Notes tabs are unaffected. A server admin can switch the lookup on or off at any time from the admin console's Overview section (see the [console tour](../admin/console-tour.md#community-metadata-lookup)); when it is off, no book shows this section.
 
