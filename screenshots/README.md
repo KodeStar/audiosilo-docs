@@ -90,6 +90,15 @@ more than two volumes in it. A **Preorder** group appears only when some
 recording of a member work carries a future `release_date`; without one the shot
 is still valid, it simply has no preorder section.
 
+The language shots (`meta/languages.png`, `meta/language-prompt.png`,
+`meta/language-search.png`) need a site build with the header **Languages**
+selector and an artifact whose `/api/v1/stats` lists more than one language.
+The selector shot opens the list in the shared context (opening it stores
+nothing). The other two run in a **fresh `de-DE` context** with empty
+`localStorage`, the one state the "Show only Deutsch audiobooks?" line appears
+in; the search shot then answers it with **Only Deutsch**, so that choice never
+reaches the other shots.
+
 ## The store/marketing pipeline is separate
 
 `~/dev/audiosilo/store/tools` + `SCREENSHOTS.md` produce the app-store and
