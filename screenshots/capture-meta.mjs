@@ -201,6 +201,23 @@ await step('languages', async () => {
   // The selector hydrates on idle; its trigger is labelled "Languages: <summary>".
   const trigger = page.locator('button[aria-label^="Languages:"]').first();
   await trigger.waitFor({state: 'visible', timeout: 20000});
+  // The community counters peek in at the foot of the viewport; let them load
+  // and count up first, so the shot never shows a placeholder 0. Best-effort:
+  // an artifact with no community layer really does read 0.
+  await page
+    .waitForFunction(
+      () =>
+        [...document.querySelectorAll('*')].some(
+          (el) =>
+            el.children.length === 0 &&
+            /works with characters/i.test(el.textContent || '') &&
+            /^[1-9]/.test((el.parentElement?.textContent || '').trim()),
+        ),
+      null,
+      {timeout: 15000},
+    )
+    .catch(() => {});
+  await sleep(1500);
   await trigger.click();
   // The rows come from /stats once the list opens; wait for a counted language.
   await page.waitForSelector('ul[aria-label="Languages to show"] input[type="checkbox"]', {timeout: 15000});

@@ -18,10 +18,10 @@ npm install && npx playwright install chromium   # first time only
 LibriVox library (cached in `.cache/library`; `MAX_FILES=3` chapter files per
 book keeps it ~100 MB), starts a demo-mode server on `:8790` serving the
 frontend's web export (plus a `--setup` instance on `:8791` for the wizard
-shot), builds the `audiosilo-meta` data artifact + site and starts a
-`metaserve` on `:8795` for the meta-site shots, then runs the Playwright
-captures and backfills placeholders. `SKIP_META=1` skips the meta stack (for a
-web/admin-only run).
+shot), builds the `audiosilo-meta` data artifact (composed with
+`audiosilo-meta-community`) + site and starts a `metaserve` on `:8795` for the
+meta-site shots, then runs the Playwright captures and backfills placeholders.
+`SKIP_META=1` skips the meta stack (for a web/admin-only run).
 
 Every capture is optimized in place with **pngquant** (`brew install pngquant`)
 - a lossy-palette pass that shrinks the retina PNGs ~60% with no perceptible
@@ -67,11 +67,25 @@ site served same-origin by the Go `metaserve` together with its read-only
 `/api/v1` JSON). `run.sh` handles it end-to-end: it builds the data artifact
 (`metabuild` into `.cache/meta.sqlite`), builds the site once if
 `audiosilo-meta/site/dist` is missing, and starts `metaserve` on `:8795`.
+
+The artifact is the **composed** one, exactly as every data release is since
+the community split: `metabuild -data data --community
+"$META_COMMUNITY/data"`, the CC0 core from `audiosilo-meta` plus the CC BY-SA
+layer (characters, recaps, descriptions) from the sibling
+`audiosilo-meta-community` clone. A core-only build has none of that layer, so
+the home page's community counters and the contribute page's coverage totals
+read 0 and the work page has no Characters tab - which is why `run.sh` refuses
+to start (before anything slow) when `$META_COMMUNITY/data/works-community` is
+missing, and says to run the workspace's `scripts/bootstrap.sh` or clone the
+repo. Two env knobs point the meta stack elsewhere: `META` (default the sibling
+`audiosilo-meta`; a worktree captures an unmerged branch) and `META_COMMUNITY`
+(default the sibling `audiosilo-meta-community`).
 Because the site build is reused while it exists, **delete
 `audiosilo-meta/site/dist` after changing the meta site's UI** so the next run
 rebuilds it - otherwise the shots silently show the old UI.
 
-Needs: Go 1.25+, and (only for the site build) yarn + Node 24. After the caches
+Needs: Go 1.25+, the `audiosilo-meta-community` clone, and (only for the site
+build) yarn + Node 24. After the caches
 are warm (node_modules, Go modules, `site/dist`), a run only touches the network
 for remote cover images - and the capture waits on rendered content, not on
 covers, so missing cover art never fails a shot.
