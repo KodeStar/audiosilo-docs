@@ -50,6 +50,9 @@ export const SHOTS = [
   {file: 'meta/watching.png', capture: 'meta', title: 'Meta - Watching', hint: 'the /watching page: available + preorder entries with New badges'},
   {file: 'meta/contribute.png', capture: 'meta', title: 'Meta - Contribute', hint: 'the coverage browser (what still needs characters/recaps)'},
   {file: 'meta/import.png', capture: 'meta', title: 'Meta - Import', hint: 'the in-browser library-export diff results'},
+  {file: 'meta/languages.png', capture: 'meta', title: 'Meta - Languages', hint: 'the header Languages selector open: every catalogue language with its book count'},
+  {file: 'meta/language-prompt.png', capture: 'meta', title: 'Meta - Language suggestion', hint: 'a German browser with nothing stored: "Show only Deutsch audiobooks?" under the header'},
+  {file: 'meta/language-search.png', capture: 'meta', title: 'Meta - Search (language filter)', hint: 'the search panel with "Only Deutsch" chosen: the filter line and Search all languages'},
 
   // ── Desktop manager (Wails) ─────────────────────────────────────────────
   {file: 'manager/servers.png', capture: 'manager', title: 'Manager - Servers', hint: 'server list home'},

@@ -41,6 +41,12 @@ const page = await ctx.newPage();
 // step's own content wait (+ a bounded settle for cover paint) gates the shot.
 const goto = (route) => page.goto(`${BASE}${route}`, {waitUntil: 'domcontentloaded', timeout: 45000});
 
+// The home page's HERO search box. The header also carries a compact search
+// (placeholder "Search books, narrators..."), which on the home page sits under
+// the nav until the hero scrolls away, so a bare combobox locator can land on
+// the covered one and its click never lands.
+const heroSearch = (pg) => pg.locator('input[role="combobox"][placeholder^="Search by title"]').first();
+
 // ── Home: search hero + stats band + latest additions ───────────────────────
 await step('home', async () => {
   await goto('/');
@@ -58,7 +64,7 @@ await step('home', async () => {
       await new Promise((r) => setTimeout(r, 150));
     }
   });
-  await page.waitForSelector('a[href^="/work?id="]', {timeout: 20000});
+  await page.waitForSelector('a[href^="/works/"]', {timeout: 20000});
   await page.evaluate(() => window.scrollTo(0, 0));
   await sleep(2000); // let the stats count-up settle + covers paint (bounded)
   await shoot(page, 'meta/home.png');
@@ -71,7 +77,7 @@ await step('search', async () => {
     await goto('/');
     await page.waitForSelector('input[role="combobox"]', {timeout: 20000});
   }
-  const box = page.locator('input[role="combobox"]').first();
+  const box = heroSearch(page);
   await box.click();
   await box.fill('harry potter');
   // Results render as role=option rows inside the listbox once the debounced
@@ -123,7 +129,7 @@ await step('series', async () => {
   await goto(`/series?id=${SERIES_ID}`);
   await page.getByRole('heading', {level: 1}).first().waitFor({state: 'visible', timeout: 20000});
   // Each volume is a work link in an ordered list; wait for the list to fill.
-  await page.waitForSelector('ol li a[href^="/work?id="]', {timeout: 20000});
+  await page.waitForSelector('ol li a[href^="/works/"]', {timeout: 20000});
   await sleep(1500); // thumbnail covers settle (bounded)
   await shoot(page, 'meta/series.png');
 });
@@ -187,6 +193,81 @@ await step('import', async () => {
   await shoot(page, 'meta/import.png');
 });
 
+// ── Languages: the header selector opened on the catalogue's census ──────────
+// Opening the list stores nothing (only ticking a box does), so this leaves the
+// shared context exactly as it found it.
+await step('languages', async () => {
+  await goto('/');
+  // The selector hydrates on idle; its trigger is labelled "Languages: <summary>".
+  const trigger = page.locator('button[aria-label^="Languages:"]').first();
+  await trigger.waitFor({state: 'visible', timeout: 20000});
+  // The community counters peek in at the foot of the viewport; let them load
+  // and count up first, so the shot never shows a placeholder 0. Best-effort:
+  // an artifact with no community layer really does read 0.
+  await page
+    .waitForFunction(
+      () =>
+        [...document.querySelectorAll('*')].some(
+          (el) =>
+            el.children.length === 0 &&
+            /works with characters/i.test(el.textContent || '') &&
+            /^[1-9]/.test((el.parentElement?.textContent || '').trim()),
+        ),
+      null,
+      {timeout: 15000},
+    )
+    .catch(() => {});
+  await sleep(1500);
+  await trigger.click();
+  // The rows come from /stats once the list opens; wait for a counted language.
+  await page.waitForSelector('ul[aria-label="Languages to show"] input[type="checkbox"]', {timeout: 15000});
+  await sleep(1200);
+  await shoot(page, 'meta/languages.png');
+});
+
 await ctx.close();
+
+// ── Language suggestion: a German browser that has never answered ────────────
+// A FRESH context (empty localStorage) with a German locale, which is the one
+// state the one-line prompt under the header appears in. Its own context so the
+// choice the next step makes never reaches the shots above.
+const deCtx = await browser.newContext({...DESKTOP_CONTEXT, locale: 'de-DE'});
+const dePage = await deCtx.newPage();
+const deGoto = (route) => dePage.goto(`${BASE}${route}`, {waitUntil: 'domcontentloaded', timeout: 45000});
+
+await step('language-prompt', async () => {
+  await deGoto('/');
+  await dePage.locator('aside[aria-label="Language suggestion"]').waitFor({state: 'visible', timeout: 20000});
+  await dePage.waitForSelector('input[role="combobox"]', {timeout: 20000});
+  await sleep(1500);
+  await shoot(dePage, 'meta/language-prompt.png');
+});
+
+// ── Search with a language filter: the prompt answered "Only Deutsch" ─────────
+// Continues from the prompt above: accepting it stores the filter, and the
+// search panel then says which languages it shows and offers to search them all.
+await step('language-search', async () => {
+  if (!dePage.url().startsWith(`${BASE}/`)) await deGoto('/');
+  const prompt = dePage.locator('aside[aria-label="Language suggestion"]');
+  await prompt.getByRole('button', {name: /^Only /}).click({timeout: 20000});
+  await prompt.waitFor({state: 'detached', timeout: 10000});
+  const box = heroSearch(dePage);
+  await box.click();
+  await box.fill('harry potter');
+  await dePage.waitForSelector('[role="option"]', {timeout: 15000});
+  // The filter line sits at the foot of the results panel, below the fold at the
+  // hero's resting scroll. Scroll the typed query up to just under the sticky
+  // header so the shot holds the query, the German results AND the line that
+  // says so.
+  const all = dePage.getByRole('button', {name: /search all languages/i}).first();
+  await all.waitFor({timeout: 10000});
+  await box.evaluate((el) => {
+    window.scrollTo(0, el.getBoundingClientRect().top + window.scrollY - 80);
+  });
+  await sleep(1200); // covers in the option rows settle
+  await shoot(dePage, 'meta/language-search.png');
+});
+
+await deCtx.close();
 await browser.close();
 console.log('capture-meta: done.');

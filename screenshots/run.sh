@@ -15,19 +15,27 @@
 # Prereqs: Go 1.25+, Node 24, ffmpeg/ffprobe, `npm install` +
 # `npx playwright install chromium` in this directory, and a web export at
 # ../audiosilo-frontend/dist (run audiosilo-server/scripts/build-web.sh once).
-# The meta section also needs yarn (for the sibling audiosilo-meta site build);
-# once its caches are warm, only remote cover images touch the network.
+# The meta section also needs yarn (for the sibling audiosilo-meta site build)
+# and the sibling audiosilo-meta-community clone, whose CC BY-SA layer
+# (characters, recaps, descriptions) is composed into the data artifact exactly
+# as the real release does; once its caches are warm, only remote cover images
+# touch the network.
 #
 # Env knobs: MAX_FILES (chapter files per seeded book, default 3),
 #            SKIP_SEED=1 (reuse the cached library as-is),
-#            SKIP_META=1 (skip the meta site stack + its captures).
+#            SKIP_META=1 (skip the meta site stack + its captures),
+#            META=<dir> (the audiosilo-meta checkout, default the sibling
+#              clone - point it at a worktree to capture an unmerged branch),
+#            META_COMMUNITY=<dir> (the audiosilo-meta-community checkout,
+#              default the sibling clone; its data/ is composed in).
 set -euo pipefail
 
 HERE="$(cd "$(dirname "$0")" && pwd)"
 WORKSPACE="$(cd "$HERE/../.." && pwd)"
 SERVER="$WORKSPACE/audiosilo-server"
 FRONTEND="$WORKSPACE/audiosilo-frontend"
-META="$WORKSPACE/audiosilo-meta"
+META="${META:-$WORKSPACE/audiosilo-meta}"
+META_COMMUNITY="${META_COMMUNITY:-$WORKSPACE/audiosilo-meta-community}"
 CACHE="$HERE/.cache"
 LIBRARY="$CACHE/library"
 DATA="$CACHE/data"
@@ -37,6 +45,17 @@ SETUP_PORT=8791
 META_PORT=8795
 
 mkdir -p "$CACHE"
+
+# The meta artifact composes the community layer (section 4), so check for it
+# before anything slow runs rather than after the server stack is up.
+if [ "${SKIP_META:-0}" != "1" ] && [ ! -d "$META_COMMUNITY/data/works-community" ]; then
+  echo "no community data at $META_COMMUNITY/data/works-community"
+  echo "  the meta shots need the sibling audiosilo-meta-community clone:"
+  echo "  run scripts/bootstrap.sh at the workspace root (or clone"
+  echo "  KodeStar/audiosilo-meta-community there), or point META_COMMUNITY"
+  echo "  at a checkout - or set SKIP_META=1 to skip the meta shots."
+  exit 1
+fi
 
 # ── 1. Server binary ────────────────────────────────────────────────────────
 echo "==> building audiosilo-server"
@@ -111,8 +130,14 @@ SETUP_URL="$(grep -o "http://[^ ]*/setup#token=[^ ]*" "$CACHE/setup.log" | head 
 
 # ── 4. AudioSilo Meta site (data artifact + site build + metaserve) ─────────
 if [ "${SKIP_META:-0}" != "1" ]; then
-  echo "==> building the meta data artifact"
-  (cd "$META" && go run ./cmd/metabuild -o "$CACHE/meta.sqlite")
+  # The artifact is the COMPOSED one, as every data release is since the
+  # community split: the CC0 core from audiosilo-meta plus the CC BY-SA layer
+  # from audiosilo-meta-community. A core-only build has no characters, recaps
+  # or descriptions, so the home counters and contribute totals read 0 and the
+  # work page has no Characters tab. (Its presence is checked up front.)
+  echo "==> building the meta data artifact (core + community)"
+  (cd "$META" && go run ./cmd/metabuild -data data \
+    --community "$META_COMMUNITY/data" -o "$CACHE/meta.sqlite")
 
   if [ ! -f "$META/site/dist/index.html" ]; then
     echo "==> no meta site build found; building (yarn, Node 24)"

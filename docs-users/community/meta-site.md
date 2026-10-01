@@ -50,6 +50,8 @@ of them**. If you only want to see some, open **Languages** in the site header
 with how many; tick one or several (up to eight), and **All languages** clears
 the choice again. Each change applies straight away.
 
+![The Languages selector open in the site header, listing each language with its book count](/img/screenshots/meta/languages.png)
+
 Your choice is kept **in this browser only**, like the watchlist - there is no
 account, and the only thing sent to the database is the list of languages on the
 searches it narrows.
@@ -91,6 +93,10 @@ A few more things you'll notice:
   `https://meta.audiosilo.app/?q=harry+potter&lang=de`. Opening it shows that
   page in German and the selector says it was set by the link, but your own
   choice is left alone - it only changes if you change the selector yourself.
+
+![The one-line suggestion under the header in a German browser: Show only Deutsch audiobooks?](/img/screenshots/meta/language-prompt.png)
+
+![Search results with German chosen, showing the filter line and Search all languages](/img/screenshots/meta/language-search.png)
 
 The site's own [languages page](https://meta.audiosilo.app/docs/languages) says
 the same in more detail.
