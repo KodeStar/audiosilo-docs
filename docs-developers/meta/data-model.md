@@ -247,6 +247,27 @@ audit's `narration-contradicts` subclass proposes `set-work-language` for a work
 whose narrators contradict its stated language - but that op is always advisory:
 a language is only ever set by a reviewed decision, never inferred.
 
+**Reviewed decisions are recorded, not re-made.** When a maintainer reviews a
+proposal, the verdict goes into one checked-in list,
+`internal/audit/reviewed.json`, rather than into a one-off worklist. Each entry
+names the proposal by its own fields (op, target, series, field, from, to,
+others; retired slugs are read through the tombstone table) with a decision and
+a one-line reason:
+
+- `reject` turns a mechanical proposal advisory, so a fresh audit never offers
+  it to the repair pass again (a link whose "original" is itself a translation,
+  a split of a language-learning series);
+- `accept` turns an advisory proposal mechanical, which is the only way a
+  `set-work-language` correction or a held-back split is ever applied. An accept
+  that would make two mechanical proposals contradict each other is refused at
+  audit time, and an accept of a `review` proposal is refused outright, since
+  it has nothing to apply.
+
+The decisions are matched against the FRESH audit every run, so a decision
+whose proposal no longer appears is listed as stale in `SUMMARY.md` and never
+applied - a reviewed decision can never resurrect a change the data no longer
+supports.
+
 ## The expressive layer (CC BY-SA)
 
 Two **per-work sidecars** carry the community-authored, spoiler-tagged content:
