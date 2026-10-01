@@ -406,6 +406,14 @@ both `[{id, title, language}]` in work id order and both omitted when empty:
 reading order (see the workCard's `series` above); each variant's entry carries
 `ordering_of`, the primary's slug.
 
+The two AudioSilo consumers of this route choose by `ordering_of` rather than by
+that order, so neither depends on it: audiosilo-server collapses each ordering
+family into one series rail whose main view is the first membership with no
+`ordering_of` (see its [meta enrichment envelope](../server/api/reference.md#reading-order-families)),
+and audiosilo-sidecars reads a book in the first membership with no `ordering_of`
+when it cuts a series glossary. Both fall back to the first membership, so a work
+only a variant places keeps that variant.
+
 ## `/api/v1/works/{id}/recordings/{rid}/chapters`
 
 The chapter list for one recording of a work: `{"chapters": [{title, start_ms,

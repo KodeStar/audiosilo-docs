@@ -147,9 +147,41 @@ The meta-driven tabs are rendered from `src/components/library/book-meta.tsx`:
 toggle, production details - publisher, release date, first published, an
 "abridged" badge - and a quiet **View on AudioSilo Meta** link),
 `BookMetaRecapsTab`, `BookMetaCharactersTab`, and `BookMetaSeriesTab` (one
-horizontal rail per series). `matchedMeta(meta, enabled)` narrows the envelope
-once for the screen; `seriesRails(series, currentWorkId)` drops the current work
-and any rail left empty.
+horizontal rail per series family). `matchedMeta(meta, enabled)` narrows the
+envelope once for the screen; `seriesRails(series, currentWorkId, picks)` builds
+one rail per family showing the picked reading order, drops the current work from
+it, and drops a rail only when **every** one of its orders is empty once the
+current work is removed (so switching order can never make the tab vanish).
+
+#### Reading-order families
+
+The server collapses a primary series and its variant reading orders into one rail
+(see [Reading-order families](../server/api/reference.md#reading-order-families)):
+`BookMetaSeries` is the family's main view plus the additive `ordering`,
+`ordering_of` and `orderings[]` (`BookMetaSeriesOrdering`). An older server sends
+none of them, so every series is its own family with a single view - the old
+behaviour, unchanged. The pure rules live in `src/lib/series-orderings.ts`
+(unit-tested):
+
+- `familyKey(series)` is `ordering_of || id` - the family's primary id.
+- `seriesViews(series)` normalizes the main view and every alternate into one
+  `SeriesView` shape and sorts them into family order (primary first, then variants
+  by id), so the toggle reads the same on every book of a family even when the main
+  view is a variant.
+- `selectedView(series, picks)` returns the remembered pick for the family when it
+  names one of its views, else the main view - an unknown or stale pick falls back.
+- `viewHoldsWork(view, workId)` - whether the current book is part of that order.
+  A view without it still lists its order, with a short "This book isn't part of
+  this reading order." note.
+- `orderingLabelKey(ordering)` labels the toggle segments **Publication**,
+  **Chronological** or **Recommended** (`book.meta.ordering.*`), falling back to
+  the series' own name for an unset or unknown ordering; `familyName` keeps the rail
+  heading on the primary's name whichever order is shown.
+
+A family with more than one view gets a compact scrollable `SegmentedControl`
+(`role="radio"`, labelled *Reading order*) above its rail. The pick is held by the
+`useSeriesOrderings` store (below) and reported through `BookMetaSeriesTab`'s
+`onSelectView(family, viewId)`, so the screen - not the tab - owns it.
 
 Characters and recaps are the community expressive layer (`work.characters` /
 `work.recaps` / `work.recap_summary`, the `BookMetaCharacter` / `BookMetaRecap` /
@@ -192,10 +224,18 @@ only approximate a given recording's edition - hence the deliberate escape hatch
 
 Both the Recaps and Characters tabs end with a **Previous books** block: one closed
 accordion row per earlier book of the series, most recent first.
-`previousWorks(series, currentWorkId)` builds that list - every series rail entry
-whose position sorts before this work's, deduped by work id, sorted descending -
-on top of `seriesPositionValue` (a `parseFloat` of the position string, so "1-3.5"
-reads as 1 and an unparsable position is excluded).
+`previousWorks(rails)` builds that list from the very rails `seriesRails` built -
+every entry of each rail's **shown** order whose position sorts before this work's
+position in that order, deduped by work id, sorted descending - on top of
+`seriesPositionValue` (a `parseFloat` of the position string, so "1-3.5" reads as 1
+and an unparsable position is excluded). The screen computes both in one memo, so
+the rail and the catch-up can never follow different orders: each family
+contributes from the order the reader picked (else the main view), never the union
+of its orders, and an order the current book is not part of contributes nothing.
+That is the spoiler guard - in publication order The Lion, the Witch and the
+Wardrobe is book 1, and the chronological order must not offer The Magician's
+Nephew as a "previous book" to a reader going in publication order (pinned as a
+regression test). Different families still union.
 
 Opening a row **lazily** fetches that work: `client.metaWork(workId, signal)` calls
 `GET /meta/work?id=…` and unwraps `{ work }` to a `BookMetaWork`;
@@ -269,6 +309,25 @@ Playback tunables persisted as one JSON blob (`audiosilo.settings`):
 `skipForward` (30), `skipBackward` (15), `defaultRate` (1), `autoRewindMax`
 (5 s), `virtualChapterInterval` (30 min). The playback layer subscribes and
 re-`configure`s the engine whenever these change.
+
+### Series orderings (`src/stores/series-orderings.ts`)
+
+`useSeriesOrderings` holds `picks` - family key -> the id of the reading order the
+reader chose - persisted as one JSON document (`audiosilo.seriesOrderings`, validated
+by `parsePicks`) and hydrated once at boot from `_layout.tsx`. It is a **device**
+preference, not per-server state: family keys are community-metadata series ids, the
+same on every server, so it is deliberately not one of the session's scoped storage
+keys and neither storage-reset axis wipes it.
+
+### Persisted documents (`persistedDocument`)
+
+Settings and series orderings share one hydration rule, `persistedDocument(key,
+parse)` in `src/lib/storage.ts`: a change made before hydration finishes (a fast tap
+on a cold start) is remembered and laid over the stored values when they load, so it
+wins as the newer statement of what the user wants - and it never clobbers the stored
+values it did not touch, because nothing is written until hydration has merged them.
+`parse` validates whatever is stored, so a corrupt or foreign value never reaches the
+store.
 
 ### Search (`src/stores/search.ts`)
 

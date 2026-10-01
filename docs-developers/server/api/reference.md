@@ -683,9 +683,10 @@ returns 404, so a client that honours the flag never calls this.
 
 The server resolves the book's `asin`/`isbn` (the fields on the indexed book,
 backfilled by the manager into `book_enrichment`), looks the recording up
-upstream, and folds the matched recording plus up to three series rails into one
-envelope. Every series-rail entry carries its own `web_url`, so a client links to
-the metadata site without ever building a URL itself.
+upstream, and folds the matched recording plus up to three series rails (one per
+reading-order family - see [Reading-order families](#reading-order-families)) into
+one envelope. Every series-rail entry carries its own `web_url`, so a client links
+to the metadata site without ever building a URL itself.
 
 | Query param | Type | Required |
 |---|---|---|
@@ -763,6 +764,73 @@ the upstream has none, and every `omitempty` string/number field (`subtitle`,
 work's position in that series; `series[].works` is the full ordered rail,
 **including the current work** (the client filters it out before drawing a "more
 in this series" row). Positions are strings ("1", "2.5", "1-3.5").
+
+#### Reading-order families
+
+Some series come in more than one reading order: a **primary** series (usually
+publication order) plus **variant** series whose `ordering_of` names it - a
+chronological order, the author's recommended order (metaserve's artifact
+`schema_version` 7 fields; see the [metadata API](../../meta/api.md)). A primary
+and its variants are one **ordering family**. The server collapses each family the
+work belongs to into **one** rail rather than one rail per order (`seriesRails` /
+`familyMains` in `internal/meta/service.go`):
+
+- **Family key** is a membership's `ordering_of`, or its own `id` when that is
+  empty.
+- **Main view.** The rail's top-level `id`, `name`, `position` and `works` are the
+  family's main view: the primary whenever the work is in it, else the variant that
+  holds it (a book only a chronological order places keeps that order, the only one
+  that places it). The choice reads `ordering_of` rather than trusting the
+  upstream's membership order.
+- **Alternates.** The family's other orders ride along in `orderings[]`, in
+  metaserve's family order (primary first, then variants by id), the main view
+  excluded. Each is fetched from the upstream `series/{id}`, at most two per family
+  (`maxOrderingAlternates`), and every main view is fetched before any alternate, so
+  a slow upstream under the compose deadline costs alternates, never rails.
+- **The three-rail cap counts families** (`maxSeriesRails`), not series, so a work
+  in "Narnia" and "Narnia (Chronological)" spends one slot. One enrichment issues at
+  most 3 x (1 + 2) series requests.
+- **Failures are partial, not fatal.** A failed alternate ships the rail without
+  it; like a failed rail, it makes the envelope partial, which is cached for the
+  2-minute transport-error TTL rather than 24 h, so the missing order reappears soon.
+
+The extra fields are additive and `omitempty`:
+
+```json
+{
+  "id": "narnia",
+  "name": "The Chronicles of Narnia",
+  "position": "1",
+  "ordering": "publication",
+  "works": [ ... ],
+  "orderings": [
+    {
+      "id": "narnia-chronological",
+      "name": "The Chronicles of Narnia (Chronological)",
+      "ordering": "chronological",
+      "ordering_of": "narnia",
+      "position": "2",
+      "works": [ ... ]
+    }
+  ]
+}
+```
+
+| Field | Meaning |
+|---|---|
+| `ordering` | the main view's reading order (`publication`, `chronological`, `recommended`), omitted when unstated |
+| `ordering_of` | set only when the main view is itself a variant: the primary's id, so a client keys the family as `ordering_of \|\| id` |
+| `orderings[]` | the alternate views: `{id, name, ordering?, ordering_of?, position?, works}`; `works` entries have exactly the rail's `works` shape |
+| `orderings[].position` | this work's position in that order - **empty** when that order does not place the work at all |
+
+**Why server-side:** shipped native players lag the server. A player that predates
+reading orders reads only the top-level view, so it now sees one rail per family in
+the primary order - and its "previous books" catch-up can no longer offer a
+chronological order's earlier books (The Magician's Nephew, before The Lion, the
+Witch and the Wardrobe) as books to catch up on. Against a metaserve that sends no
+ordering fields every series is its own family and the rails are exactly what they
+were before, with one exception: a work listed at two positions of one series is
+now one rail, at its first position.
 
 `work.characters`, `work.recaps` and `work.recap_summary` are the community
 **expressive layer** (the CC BY-SA content, spoiler-tagged and position-keyed);
