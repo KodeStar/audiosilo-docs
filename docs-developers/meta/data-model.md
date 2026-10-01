@@ -238,6 +238,22 @@ states that it is a translation and the moving half does not, when the moving ha
 was catalogued first, or when the new series would carry an edition-decorated name
 onto works of another language.
 
+**Which half keeps the slug is never decided by a count alone.** A slug is public
+(URLs, watchlists, the server's metadata seam), and the larger half is often the
+translation: `zodiac-academy` once held 15 German books of a different franchise
+beside the 14 English originals. So a majority keeper is **contested** - every
+proposal for that series becomes advisory, the drops and moves included - when a
+keeper-language member states it is a translation (a `translation_of` link, an
+own-language edition decoration, a translator credit), when the halves share no
+author (two series of one name), or when the series' principal author writes
+mostly in a minority language across the catalogue (collective and classified
+credits are not evidence of either). And since no signal sees every case, every
+mixed series' split is also proposed in **every other orientation** (subclass
+`other-keeper`, keyed `<series>/<language>/keep-<keeper>`), even beside a same-name
+series in the moving language, so the reviewer can always accept the orientation
+that is right - rejecting an uncontested majority split in the same list; accepting two orientations of one series, or a drop the
+chosen orientation contradicts, is refused at audit time.
+
 **Narrators are evidence, never a statement.** The narration-language profile
 (`check.NarrationProfile`) asks what language a work's narrators record in across
 their recordings of **other** works (at least two, 80% in one language; group,
