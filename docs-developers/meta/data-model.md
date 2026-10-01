@@ -260,8 +260,9 @@ a one-line reason:
 - `accept` turns an advisory proposal mechanical, which is the only way a
   `set-work-language` correction or a held-back split is ever applied. An accept
   that would make two mechanical proposals contradict each other is refused at
-  audit time, and an accept of a `review` proposal is refused outright, since
-  it has nothing to apply.
+  audit time, and an accept of a proposal no repair carries out - a `review`, a
+  `rename-candidate` or a `repoint-sidecar` - is refused outright, since it has
+  nothing to apply.
 
 The decisions are matched against the FRESH audit every run, so a decision
 whose proposal no longer appears is listed as stale in `SUMMARY.md` and never
