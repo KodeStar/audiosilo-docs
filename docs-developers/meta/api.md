@@ -1,11 +1,11 @@
 ---
 title: Meta HTTP API
-description: "The metaserve read-only JSON API reference: every /api/v1 route, the Audiobookshelf provider at /abs/search, the production release webhook, CORS behavior, connection deadlines and security headers, and how the server refreshes its artifact from GitHub Releases."
+description: "The metaserve read-only JSON API reference: every /api/v1 route, the lang language filter, the Audiobookshelf provider at /abs/search and its per-language twin /abs/{lang}/search, the production release webhook, CORS behavior, connection deadlines and security headers, and how the server refreshes its artifact from GitHub Releases."
 ---
 
 `metaserve` (`cmd/metaserve` over `internal/serve`) is a **read-only** JSON API
 over the compiled SQLite artifact. All data is public, so there is **no auth**;
-every `/api/v1` route (and `/abs/search`) responds with permissive CORS
+every `/api/v1` route (and both Audiobookshelf provider routes) responds with permissive CORS
 (`Access-Control-Allow-Origin: *`, `Vary: Origin`), and responses are
 gzip-compressed. Cross-origin `GET`s work from any browser; there is no
 preflight handling, so requests must stay CORS-simple (no custom headers). It
@@ -98,7 +98,10 @@ distinguished by `kind`:
   (every workCard field below, with the same rules - `release_date` omitted when
   no recording states one - plus `kind` and `narrators`)
 - **person**: `{kind, id, name}`
-- **series**: `{kind, id, name, works}` (`works` = member count)
+- **series**: `{kind, id, name, works, language?}` (`works` = member count;
+  `language` is the series' derived language - see
+  [`series/{id}`](#apiv1seriesidlimitoffset) - omitted when its members tie and
+  on an artifact older than `schema_version` 7)
 
 FTS input is escaped defensively (every token quoted, the final token
 prefixed with `*`), so no user input can break the underlying `MATCH`. `q` is
@@ -146,12 +149,73 @@ to the combined `/api/v1/search` and to `works/search`, and to those only: the
 ids it resolves are always works, so prepending them to a people or series page
 would put a work on a page that promises neither.
 
+## The `lang` filter
+
+The list surfaces take an optional `lang` query parameter that narrows them to
+works in the named languages: `lang=de`, or `lang=de,en` for two. It applies to:
+
+| Route | What `lang` matches |
+|---|---|
+| `/api/v1/search` | a work's language; a series' derived language; **people always pass** |
+| `/api/v1/works/search` | a work's language |
+| `/api/v1/series/search` | the series' derived language; a series whose members **tie** passes every filter |
+| `/api/v1/works/latest` | a work's language (the two-per-series cap is then taken over what is left) |
+| `/api/v1/coverage/works` | a work's language |
+| `/api/v1/people/search` | **accepted and ignored** - a person has no language - but still validated |
+
+Everything that names a record outright is **never** filtered: `works/{id}`,
+`series/{id}`, `people/{id}`, `lookup`, the HTML entity pages, the sitemaps and
+the watch feeds. Hiding a record there would be a 404 for a book the catalogue
+holds.
+
+**Parsing** (`parseLangFilter` in `internal/serve/langfilter.go`, the one parser
+every surface reads):
+
+- A comma-separated list; a repeated parameter is the same list
+  (`lang=de&lang=en` reads as `lang=de,en`). Items are trimmed and lowercased,
+  and empty items are skipped, so an absent or empty `lang` is **no filter**.
+- Each item must match the schema's language tag pattern
+  (`^[a-z]{2,3}(-[a-z0-9]{2,8})*$`). An item that does not is a **400** naming it
+  (`lang: "x_y" is not a language tag ...`), because a typo that silently
+  filtered to nothing would read as "the catalogue holds no such books".
+- At most **8** distinct languages (`maxLangFilter`); more is a 400.
+- A valid code the catalogue holds no works in is **not** an error - it simply
+  matches nothing.
+
+**Matching is by primary subtag** (RFC 4647 basic filtering): `de` matches a work
+tagged `de` and one tagged `de-at`, and a regional item (`pt-br`) is reduced to
+its primary subtag before matching, since the catalogue does not state regions
+consistently enough for a narrower filter to mean anything but "fewer of the
+books you asked for". Every tag in today's catalogue is a bare primary subtag,
+but the schema allows regional ones. A record with **no** language - a person, or
+a series whose members tie between languages - is never judged, so it passes
+every filter: hiding a tied series from a German reader would hide the very
+series that holds German volumes.
+
+Both search boosts (the exact-title lead and the `jack reacher 2` volume) obey
+the filter too: they resolve works outside the full-text query, so their ids are
+checked against the filter before they are prepended, and a page never carries a
+work outside it.
+
+**Version gate.** The filter is a plain predicate on columns the
+`schema_version` 7 artifact already carries (`search_fts.language` and
+`works.language`), so it needed no artifact change. Against an artifact older
+than 7 the value is still parsed (garbage is still a 400) and then **ignored** -
+the reader gets the unfiltered page rather than an error. A request without
+`lang` runs exactly the SQL it always did.
+
+Two response fields arrived with the filter, both additive: a **series** search
+result carries the series' derived `language` (above), and a
+[coverage](#coverage-endpoints) row carries the work's `language`, so a client
+can badge an item whose language differs from the reader's.
+
 ## `/api/v1/works/latest?limit=`
 
 The newest works, for the site's landing grid. `limit` defaults to 12, clamped to
 `[1, 50]`. Returns `{"works": [workCard...]}` ordered by `added_at` descending
 (then title), with at most two works from any one series so a bulk import sharing
-one date can't fill the grid. Two reading orders of one franchise - a series and a
+one date can't fill the grid. It takes the [`lang` filter](#the-lang-filter).
+Two reading orders of one franchise - a series and a
 chronological or recommended variant of it - count as one series for that cap
 (`schema_version` 7). A **workCard** is the compact shape reused across
 lists and lookups: `{id, title, authors[], language, series, release_date?,
@@ -435,7 +499,10 @@ These back the site's contribute page and stay small at any catalogue size.
 - **`/api/v1/coverage/works?filter=&q=&limit=&offset=`** - the paginated,
   searchable per-work browser. `filter` selects the dimension - `missing` (missing
   any dimension) or `has_characters` / `has_recaps` / `has_recap_summary` - and an
-  unknown filter is 400 `unknown filter`. `q` is a **full-text** match over the
+  unknown filter is 400 `unknown filter`. It also takes the
+  [`lang` filter](#the-lang-filter), and each row carries the work's `language`
+  tag (always present) beside its `id`, `title`, `authors` and `missing` list.
+  `q` is a **full-text** match over the
   work's title and subtitle, its authors, its recordings' narrators, and its series
   names - it runs through the same escaped FTS path as `/api/v1/search`, so it
   matches **whole words with the final token as a prefix**, not arbitrary
@@ -469,9 +536,48 @@ with optional `&author=` and `&isbn=`, and **never** an ASIN.
   what ABS matches a local audiobook against), capped at 10. Each match carries
   `title` (the only required field) plus, when present, `subtitle`, `author`,
   `narrator`, `publisher`, `publishedYear` (a string), `description`, `cover`,
-  `isbn`, `asin`, `series[]` (`{series, sequence}`), `language`, and `duration`
-  **in minutes**. `genres` and `tags` are **deliberately never returned** - the
-  data model does not carry publisher genres/tags.
+  `isbn`, `asin`, `series[]` (`{series, sequence}`), `language`, `genres` and
+  `duration` **in minutes**. `genres` are human-facing labels from the project's
+  own controlled vocabulary, never a retailer's raw genre strings; `tags` is
+  **never** populated, since the data model has no tag concept.
+
+A library in one language can rank its own language first through the
+[per-language provider](#get-abslangsearch-per-language-provider) below.
+
+## `GET /abs/{lang}/search` (per-language provider)
+
+The same provider for a library in one language. The admin configures the base
+URL with a language segment - `https://meta.audiosilo.app/abs/de` - and
+Audiobookshelf calls `/abs/de/search`.
+
+**Why the language rides in the path:** Audiobookshelf builds the request URL by
+plain string concatenation, `${providerUrl}/search?...`, keeping whatever path
+the admin typed, and sends only its own four parameters (`mediaType`, `query`,
+`author`, `isbn`). There is nowhere else to put a preference. A base configured
+with a trailing slash (`/abs/de/`) arrives as `/abs/de//search`; the router's
+path cleaning answers it with a **307** to `/abs/de/search` with the query kept,
+and Audiobookshelf follows the redirect.
+
+- `{lang}` is parsed exactly like the [`lang` filter](#the-lang-filter): one code
+  or a comma list (`/abs/de,en`), matched by primary subtag. A segment that is
+  not a language list is a **404** (`unknown provider language`) rather than a
+  400 - it names no provider this server offers, and Audiobookshelf shows "no
+  results" either way.
+- The language **ranks, it never filters**: a German library may still hold an
+  English original, and "no results" would be the worse answer. The candidates
+  are the language-matched full-text window followed by the unfiltered one (each
+  `limit*3` long, deduplicated).
+- The author still dominates. Candidates are partitioned, stably, into
+  **author + language**, then **author** (any language), then **language**, then
+  **the rest**: the author is evidence about this one book, the language only a
+  library-wide default.
+- An exact ISBN hit is not re-ranked - it names one recording outright.
+  Everything else (the response shape, the 10-match cap, the attribution line on
+  a community description, the 400 on a missing `query`) is exactly
+  `/abs/search`'s, and below `schema_version` 7 the segment is ignored and the
+  answer is the unscoped one.
+
+`/abs/search` itself is unchanged byte for byte.
 
 ## Production release webhook (optional)
 
@@ -573,8 +679,8 @@ visibly instead, in one of three states:
   staleness is a **log-only** signal: no endpoint reports it, and `built_at` on
   `/healthz` or `/api/v1/stats` is the only hint a client gets.
 - **GitHub unreachable, nothing cached** - the process listens anyway. A static
-  `--site` still serves, but `/healthz`, every `/api/v1` route and `/abs/search`
-  answer **503** with an honest `Retry-After` and the envelope:
+  `--site` still serves, but `/healthz`, every `/api/v1` route and both
+  Audiobookshelf provider routes answer **503** with an honest `Retry-After` and the envelope:
 
   ```json
   { "error": "no data loaded yet: the server is fetching the latest release" }

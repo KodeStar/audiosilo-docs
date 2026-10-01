@@ -41,6 +41,60 @@ the community has catalogued so far.
 
 ![A series page in reading order](/img/screenshots/meta/series.png)
 
+## Choosing languages
+
+The catalogue holds audiobooks in many languages - mostly English, with German,
+Spanish, French, Italian and a dozen more - and by default the site shows **all
+of them**. If you only want to see some, open **Languages** in the site header
+(in the menu on a phone). It lists every language the catalogue has books in,
+with how many; tick one or several (up to eight), and **All languages** clears
+the choice again. Each change applies straight away.
+
+Your choice is kept **in this browser only**, like the watchlist - there is no
+account, and the only thing sent to the database is the list of languages on the
+searches it narrows.
+
+What the choice narrows:
+
+- **Search** - books and series in the search box. People are never hidden,
+  since an author or narrator has no single language. A series counts as the
+  language most of its books are in; a series split evenly between two languages
+  is always shown rather than guessed at.
+- **Latest additions** on the home page.
+- The **browse books by coverage** list on the contribute page (the totals above
+  it still count every language).
+
+What it never touches: a **book, series or person page** always shows the whole
+record, including its translations, and a lookup by **ASIN or ISBN** always finds
+its book. The import page, the Watching page's library import, the watch feeds
+and the calendar all ignore it too - a book you own is catalogued whatever
+language you prefer to browse in.
+
+Languages match by their main language, so choosing German includes books tagged
+as Austrian or Swiss German.
+
+A few more things you'll notice:
+
+- **The one-line suggestion.** If your browser prefers a language other than
+  English and the catalogue has books in it, the site asks once, in a line under
+  the header - for example "Show only Deutsch audiobooks?" with **Only Deutsch**,
+  **Deutsch and English** and **No thanks**. Nothing is filtered until you
+  answer, and **No thanks** means it won't ask again.
+- **Language chips.** A book or series in a language outside the ones you chose
+  (or, if you haven't chosen, outside your browser's languages) wears a small
+  chip with its language code, such as **DE**. A chip only marks a book; it never
+  hides one.
+- **Searching every language once.** While a choice is active, the search results
+  say which languages they show, with a **Search all languages** button that sets
+  the choice aside for that search box only, without changing what you picked.
+- **Shared links.** A link can carry a language, for example
+  `https://meta.audiosilo.app/?q=harry+potter&lang=de`. Opening it shows that
+  page in German and the selector says it was set by the link, but your own
+  choice is left alone - it only changes if you change the selector yourself.
+
+The site's own [languages page](https://meta.audiosilo.app/docs/languages) says
+the same in more detail.
+
 ## Characters and story-so-far recaps
 
 On a book page, two extra tabs appear once the community has written them - the
@@ -306,3 +360,17 @@ series order and cover art from the community database. The
 steps, and also shows how to send your Audiobookshelf library back to help fill
 in the catalogue. Titles match even when Audiobookshelf reads them from a file
 name that has lost its apostrophes.
+
+If your library is mostly in one language, add that language's code to the
+provider URL - for German:
+
+```
+https://meta.audiosilo.app/abs/de
+```
+
+Matches in that language then come first, but nothing is left out, so a book
+whose only catalogued edition is in another language is still found, and a book
+by the author Audiobookshelf asked about still comes before a same-language book
+by somebody else. Several languages can be listed with commas (`/abs/de,en`),
+and you can add one provider per language and pick the right one when you match.
+The plain `https://meta.audiosilo.app/abs` keeps working exactly as before.

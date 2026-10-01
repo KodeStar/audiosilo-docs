@@ -234,7 +234,8 @@ catalogue already holds complete and is the only automation allowed to merge its
 own pull requests.
 
 `metaserve` additionally doubles as an **Audiobookshelf custom metadata
-provider** (`GET /abs/search`) for that competitor's users - see
+provider** (`GET /abs/search`, plus `GET /abs/{lang}/search`, which ranks one
+language's matches first) for that competitor's users - see
 [the HTTP API](api.md#get-abssearch-audiobookshelf-provider).
 
 ## The site's watchlist is client-side only
