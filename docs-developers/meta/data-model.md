@@ -254,6 +254,29 @@ series in the moving language, so the reviewer can always accept the orientation
 that is right - rejecting an uncontested majority split in the same list; accepting two orientations of one series, or a drop the
 chosen orientation contradicts, is refused at audit time.
 
+**When one series is spelled twice.** The audit's `SER-DUP` class groups series
+whose names normalize to the same key ("Women's Murder Club" and "Women's Murder
+Club (abridged)") and proposes a `merge-series` onto one survivor, the retired
+slug tombstoned like any merge. A fold is withheld for a human whenever the
+members disagree - no shared author, two languages, two reading orders of one
+franchise, a collection beside the books it collects, or two lists that put
+different works at one position. A parenthetical decoration is withheld too, since
+it usually says something the plain name does not (an edition, an alternative
+order, an author). Two decorations are the exception, and only on a series that
+**moves nothing** - every membership already in the undecorated survivor at the
+same position, so the fold retires a spelling and changes no order:
+
+- an **ordering** qualifier ("(Published Order)") whose list IS the plain
+  series' list, as many memberships and none different;
+- an **abridged** format qualifier - "(abridged)" or "(gekürzt)" only - whose
+  memberships the plain series already holds; a part of the list is enough,
+  since abridgement is a recording's `abridged` fact and only some volumes are
+  ever abridged. "Unabridged", dramatized, Hörspiel, radio and full-cast series
+  are product lines of their own and are never folded this way.
+
+After the fold, an import naming the retired "Women's Murder Club (abridged)"
+resolves through the tombstone to the plain series, so it is not re-created.
+
 **Narrators are evidence, never a statement.** The narration-language profile
 (`check.NarrationProfile`) asks what language a work's narrators record in across
 their recordings of **other** works (at least two, 80% in one language; group,
