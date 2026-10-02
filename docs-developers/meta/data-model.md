@@ -255,8 +255,8 @@ that is right - rejecting an uncontested majority split in the same list; accept
 chosen orientation contradicts, is refused at audit time.
 
 **When one series is spelled twice.** The audit's `SER-DUP` class groups series
-whose names normalize to the same key ("Women's Murder Club" and "Women's Murder
-Club (abridged)") and proposes a `merge-series` onto one survivor, the retired
+whose names normalize to the same key ("Temeraire" and "Temeraire
+(abridged)") and proposes a `merge-series` onto one survivor, the retired
 slug tombstoned like any merge. A fold is withheld for a human whenever the
 members disagree - no shared author, two languages, two reading orders of one
 franchise, a collection beside the books it collects, or two lists that put
@@ -271,7 +271,9 @@ same position, so the fold retires a spelling and changes no order:
 - an **abridged** format qualifier - "(abridged)" or "(gekürzt)" only - whose
   memberships the plain series already holds; a part of the list is enough,
   since abridgement is a recording's `abridged` fact and only some volumes are
-  ever abridged. "Unabridged", dramatized, Hörspiel, radio and full-cast series
+  ever abridged. Every work the abridged series lists must also carry a
+  recording stating `abridged: true` - otherwise the series name is the only
+  record that an abridged production exists, and the fold would erase it. "Unabridged", dramatized, Hörspiel, radio and full-cast series
   are product lines of their own and are never folded this way.
 
 After the fold, an import naming the retired "Women's Murder Club (abridged)"
