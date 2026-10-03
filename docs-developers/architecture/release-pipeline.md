@@ -105,9 +105,8 @@ CGO-free (modernc SQLite), so everything cross-compiles with no C toolchain:
 
 ### Embedding the admin console
 
-The admin console's build output is never committed, so GoReleaser's `before`
-hooks also run `npm --prefix admin-ui ci` and `npm --prefix admin-ui run build`
-(`release.yml` sets up Node from `admin-ui/.nvmrc`). Every native binary embeds
+The admin console's build output is never committed, so a GoReleaser `before`
+hook also runs `scripts/build-admin.sh --build-only` (`release.yml` sets up Node from `admin-ui/.nvmrc`). Every native binary embeds
 it; skipping the hooks produces a binary whose `/admin` serves a "console not
 built" page.
 

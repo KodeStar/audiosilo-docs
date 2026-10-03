@@ -73,8 +73,8 @@ amd64/arm64 all cross-compile from one Linux runner.
   `scripts/fetch-web-player.sh` populates `internal/web/player/` from the pinned
   web image (the `WEB_IMAGE` env, defaulting to `:latest`, overridable via the
   dispatch input) - so `/web` works with no `web_dir`.
-- **Admin console embedded:** before-hooks run `npm --prefix admin-ui ci` and
-  `npm --prefix admin-ui run build` (the build output is never committed), so
+- **Admin console embedded:** a before-hook runs `scripts/build-admin.sh
+  --build-only` (the build output is never committed), so
   every binary carries the console under `internal/web/adminui`.
 - **ffmpeg/ffprobe are NOT bundled** (large, usually present). At runtime the
   server prefers a local copy (explicit flag → next to the binary → `$PATH`) and

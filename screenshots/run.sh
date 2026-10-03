@@ -61,7 +61,7 @@ fi
 echo "==> building the admin console + audiosilo-server"
 # The redesigned admin console (admin-ui) is embedded at build time and never
 # committed, so build it first or /admin serves a "console not built" page.
-(cd "$SERVER" && npm --prefix admin-ui ci --no-audit --no-fund && npm --prefix admin-ui run build)
+"$SERVER/scripts/build-admin.sh" --build-only
 (cd "$SERVER" && go build -o bin/audiosilo ./cmd/audiosilo)
 
 # ── Web export ──────────────────────────────────────────────────────────────

@@ -234,6 +234,6 @@ Every feature ships with a test (see
 Full gate, run from the repo root before calling any change done:
 
 ```sh
-npm --prefix admin-ui ci && npm --prefix admin-ui run check && npm --prefix admin-ui run build
+scripts/build-admin.sh   # admin console: npm ci + check + build (when admin-ui/ changed)
 go build ./... && go vet ./... && go test -race ./... && golangci-lint run
 ```

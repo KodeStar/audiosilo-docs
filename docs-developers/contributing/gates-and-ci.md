@@ -15,14 +15,14 @@ frontend change, and remember that green CI in one repo says nothing about the
 
 ```sh
 cd ~/dev/audiosilo/audiosilo-server
-npm --prefix admin-ui ci && npm --prefix admin-ui run check   # the admin console (Node 24)
-npm --prefix admin-ui run build                               # so the embed tests see a real build
+scripts/build-admin.sh   # the admin console (Node 24): npm ci + check + build
 go build ./... && go vet ./... && go test -race ./... && golangci-lint run
 ```
 
-`npm --prefix admin-ui run check` is the redesigned admin console's gate:
-`tsc -b`, ESLint (including the CSP guard rules), `prettier --check` and Vitest.
-Skip the two npm lines only when `admin-ui/` is untouched; without a build,
+`scripts/build-admin.sh` is the redesigned admin console's gate: `npm ci`, then
+`npm run check` (`tsc -b`, ESLint including the CSP guard rules,
+`prettier --check`, Vitest), then the build, which itself fails on any CSP
+violation. Skip it only when `admin-ui/` is untouched; without a build,
 `internal/web/adminui`'s `TestEmbeddedBuild` skips instead of checking the
 embedded console.
 
@@ -54,7 +54,7 @@ Every workflow across the three repos, verified against
 
 | Workflow | Name | Triggers | What it does |
 |---|---|---|---|
-| `ci.yml` | `ci` | every PR; push to `main` | Job **test**: Go from `go.mod`, Node from `admin-ui/.nvmrc` and the admin console's `npm ci` + `npm run check` + `npm run build` (before the Go steps, so the embed tests see a real build), installs ffmpeg (so the ffprobe-dependent scanner tests stay live), `go build ./...`, `go vet ./...`, `go test -race -coverprofile=coverage.out ./...`, uploads the coverage artifact. Job **lint**: `golangci-lint-action@v8` (golangci-lint v2, config `.golangci.yml`). |
+| `ci.yml` | `ci` | every PR; push to `main` | Job **test**: Go from `go.mod`, Node from `admin-ui/.nvmrc` and `scripts/build-admin.sh` (before the Go steps, so the embed tests see a real build), installs ffmpeg (so the ffprobe-dependent scanner tests stay live), `go build ./...`, `go vet ./...`, `go test -race -coverprofile=coverage.out ./...`, uploads the coverage artifact. Job **lint**: `golangci-lint-action@v8` (golangci-lint v2, config `.golangci.yml`). |
 | `image.yml` | `server image` | `v*` tags; manual dispatch (input `web_version`) | Builds the Docker image, baking the pinned web player in via the `WEB_IMAGE` build-arg, and pushes `ghcr.io/<owner>/audiosilo-server` (semver + sha + `latest` tags). See [releasing](releasing.md). |
 | `release.yml` | `release (native binaries)` | `v*` tags; manual dispatch (input `web_version`) | GoReleaser: cross-platform native binaries with the web player embedded (`-tags embedplayer`), published as a **draft** GitHub Release. |
 
@@ -69,7 +69,7 @@ Every workflow across the three repos, verified against
 
 | Workflow | Name | Triggers | What it does |
 |---|---|---|---|
-| `ci.yml` | `CI` | every PR; push to `main` | Job **go**: checks out `KodeStar/audiosilo-server@main` **as a sibling** (the `replace` directive needs it), builds the server's admin console (`npm --prefix audiosilo-server/admin-ui ci` + `run build`, so the embedded server ships it), then `go build ./...`, `go vet ./...`, `go test -race ./...`, plus `golangci-lint-action@v6`. Job **frontend**: `npm ci`, `npx tsc --noEmit`, `npm run lint`, `npm run format`, `npm test` in `frontend/`. |
+| `ci.yml` | `CI` | every PR; push to `main` | Job **go**: checks out `KodeStar/audiosilo-server@main` **as a sibling** (the `replace` directive needs it), then `go build ./...`, `go vet ./...`, `go test -race ./...`, plus `golangci-lint-action@v6`. Job **frontend**: `npm ci`, `npx tsc --noEmit`, `npm run lint`, `npm run format`, `npm test` in `frontend/`. |
 | `desktop.yml` | `Desktop build` | `v*` tags; manual dispatch | Native-runner matrix (macOS `darwin/universal`, Windows `windows/amd64`, Linux `linux/amd64` - a webview UI can't cross-compile): installs the Wails CLI, `wails build` with the version injected via ldflags, uploads `build/bin/*` as workflow artifacts. Signing/notarization steps are stubbed pending certificates. |
 
 ### audiosilo-meta

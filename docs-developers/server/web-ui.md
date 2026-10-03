@@ -116,14 +116,15 @@ Mono).
   `dist/.gitkeep` is committed (the rest is gitignored), so a plain
   `go build` without Node still compiles - and `/admin` then answers **503**
   with a short "console not built" page that says how to build it.
-- **CI** (`ci.yml`) installs Node 24 and runs `npm ci`, `npm run check` and
-  `npm run build` **before** the Go steps, so `TestEmbeddedBuild` checks the
+- `scripts/build-admin.sh` is the one recipe (`npm ci`, `npm run check`, `npm
+  run build`; `--build-only` skips the check). **CI** (`ci.yml`) runs it
+  **before** the Go steps, so `TestEmbeddedBuild` checks the
   real embedded `index.html` (it skips locally when nothing is built). The
   **Dockerfile** has a `node:24-alpine` stage that builds the console and
-  copies `dist` in before `go build`; **GoReleaser** runs the same two npm
-  commands as before-hooks. `scripts/build-admin.sh` does it locally.
-- The **desktop manager** embeds the server, so its `ci.yml` and `desktop.yml`
-  build `../audiosilo-server/admin-ui` first (see
+  copies `dist` in before `go build`; **GoReleaser** runs the script as a
+  before-hook. The build fails on any CSP violation (a Vite plugin).
+- The **desktop manager** embeds the server, so its `desktop.yml` runs the
+  script from the sibling checkout before `wails build` (see
   [Manager server integration](../manager/server-integration.md)).
 - `go.mod` carries `ignore ./admin-ui/node_modules`: some npm packages ship
   Go source, which `./...` would otherwise build, vet, test and lint.
@@ -151,7 +152,7 @@ The console runs under the same `script-src 'self'; style-src 'self'` policy
 
 - `index.html` loads only files: `/admin/theme-init.js` (applies the stored
   light/dark/system theme before first paint) and the Vite bundle.
-  `admin-ui/scripts/check-csp.mjs` fails `npm run build` on any inline
+  `admin-ui/scripts/check-csp.mjs` (a Vite plugin) fails the build on any inline
   `<script>`, `<style>`, `style=""` or `on*=""` attribute, and the Go test
   applies the same check to the embedded build.
 - Base UI renders under `<CSPProvider disableStyleElements>`; the one rule it
