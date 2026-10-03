@@ -113,8 +113,10 @@ The data layer over the store: libraries, books/files/chapters, FTS search,
 keyset-paginated listings, per-user listening state
 (progress/bookmarks/notes/history/favourites), filesystem-based shares and the
 `Scope` authorization model, folder-detection overrides, path-keyed enrichment,
-and `MoveDurableState` (move-tracking). Handlers call into this package; it is
-where catalog business logic belongs.
+admin metadata overrides layered onto the index as effective values
+(`overrides.go`, `refreshEffective`), custom covers, the admin catalog queries
+(`adminbooks.go`, `bookdetail.go`), and `MoveDurableState` (move-tracking).
+Handlers call into this package; it is where catalog business logic belongs.
 
 ### `internal/library`
 

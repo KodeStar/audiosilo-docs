@@ -4,7 +4,7 @@ description: "The SQLite schema behind audiosilo-server: the rebuildable index v
 ---
 
 The schema lives in `internal/store/migrations/` as numbered SQL files
-(`0001_init.sql` … `0012_book_enrichment.sql`), embedded into the binary and
+(`0001_init.sql` … `0016_book_overrides.sql`), embedded into the binary and
 applied by `store.Open` at startup. This page documents the **resulting current
 schema**, noting which migration added what.
 
@@ -18,9 +18,9 @@ thing to understand before touching it:
   from a rescan at any time. `books.id` is an internal artifact of this half:
   it must **never** appear in the API contract or in durable user state.
 - **Durable state** - `progress`, `bookmarks`, `notes`, `listening_history`,
-  `favourites` (per-user), plus `folder_overrides` and `book_enrichment`
-  (per-library config) - is keyed by **`(library_id, rel_path)`**, with **no
-  foreign key to `books`**.
+  `favourites` (per-user), plus `folder_overrides`, `book_enrichment`,
+  `book_overrides`, `chapter_overrides` and `book_covers` (per-library config) -
+  is keyed by **`(library_id, rel_path)`**, with **no foreign key to `books`**.
 
 Why no FK across the seam? Three reasons, all load-bearing:
 
@@ -29,15 +29,17 @@ Why no FK across the seam? Three reasons, all load-bearing:
    away every user's progress. Path keys survive because the scanner re-creates
    the same `rel_path`s.
 2. **Re-tagging survival.** Fixing a book's tags changes its indexed metadata
-   but not its path, so state keyed by path is untouched.
+   but not its path, so state keyed by path is untouched. The same holds for an
+   admin's metadata edits: they are path-keyed rows, not columns of the index.
 3. **Pre-index writes.** A client can start playing a book the background scan
    hasn't reached yet (the filesystem view needs no index); progress saved at
    that moment has no `books` row to reference.
 
 The remaining gap - a file that *moves* on disk - is covered by move-tracking:
 the scanner fingerprints files (`books.content_hash`) and calls
-`catalog.MoveDurableState` to carry all six path-keyed tables from the old path
-to the new one (see [Scanner](scanner.md#move-detection)).
+`catalog.MoveDurableState` to carry all nine path-keyed book tables (everything
+above except `folder_overrides`, which is keyed by folder, not book) from the
+old path to the new one (see [Scanner](scanner.md#move-detection)).
 
 ```mermaid
 erDiagram
@@ -58,6 +60,9 @@ erDiagram
     libraries ||--o{ favourites : ""
     libraries ||--o{ folder_overrides : "durable config"
     libraries ||--o{ book_enrichment : "durable config"
+    libraries ||--o{ book_overrides : "durable config"
+    libraries ||--o{ chapter_overrides : "durable config"
+    libraries ||--o{ book_covers : "durable config"
     users ||--o{ progress : ""
 ```
 
@@ -125,15 +130,20 @@ covered in [Auth & security](auth-and-security.md#authorization-shares--scope).
 
 ### The rebuildable index
 
-**`books`** *(0001; `added_at` in 0004; `codec` in 0008)* - one row per book,
+**`books`** *(0001; `added_at` in 0004; `codec` in 0008; `published`,
+`description`, `has_cover` and `scanned` in 0016)* - one row per book,
 `UNIQUE (library_id, rel_path)`. Columns: `is_folder` (folder book vs
 single-file book), identity metadata (`title`, `author`, `series`,
 `series_index`, `narrator`), `duration`, `asin`/`isbn` (optional external ids -
 present so enrichment/metadata services can attach data without reshaping the
-schema), `cover_path` (a library-relative sidecar image, `""` = fall back to
-embedded art), `format`, `codec` (ffprobe `codec_name`, `""` when unknown -
-drives the `direct_playable` API flag), `size`, `mtime`, `content_hash`,
-`indexed_at`, `added_at`.
+schema), `published` (`YYYY[-MM[-DD]]`) and `description` (only an admin edit or
+an accepted community match supplies these today; the scanner reads neither),
+`cover_path` (a library-relative sidecar image, `""` = fall back to embedded
+art), `has_cover` (whether the book has a sidecar image or embedded art; `NULL`
+until a scan has checked, and always true when `cover_path` is set -
+`UpsertBook` enforces that), `format`, `codec` (ffprobe `codec_name`, `""` when
+unknown - drives the `direct_playable` API flag), `size`, `mtime`,
+`content_hash`, `indexed_at`, `added_at`, and `scanned` (see below).
 
 Two columns deserve emphasis:
 
@@ -145,13 +155,25 @@ Two columns deserve emphasis:
   chronological key, and `UpsertBook` deliberately never updates it on
   re-index. Index `idx_books_added` supports the "recently added" sort.
 
-**`book_files`** *(0001)* - the ordered parts of a folder book: `book_id` (FK
-CASCADE), `rel_path`, `seq`, `duration`, `format`, `size`.
+The metadata columns (`title` … `isbn`, `published`, `description`) hold the
+**effective** values - what readers should show - not necessarily what the scan
+found. What the scan found is kept beside them in **`scanned`**, a flat JSON
+object of field → value (blank fields left out); it is the revert target, what
+the admin console shows next to an edited value, and - compared with the path -
+where a value came from. See
+[Metadata overrides and effective values](#metadata-overrides-and-effective-values).
+
+**`book_files`** *(0001; `codec` in 0016)* - the ordered parts of a folder
+book: `book_id` (FK CASCADE), `rel_path`, `seq`, `duration`, `format`, `codec`
+(each part's own codec, so a mixed-codec folder shows honestly; admin-only, the
+player reads the book-level codec), `size`.
 
 **`chapters`** *(0001; `file_index` + `book_offset` in 0002; `file_path` in
-0003)* - normalized playable units, identical in shape for a chaptered
-single-file m4b and a folder of mp3 parts: `book_id` (FK CASCADE), `idx`,
-`title`, `file_index` (ordinal of the containing file), **`file_path`** (the
+0003; `scanned_title` in 0016)* - normalized playable units, identical in shape
+for a chaptered single-file m4b and a folder of mp3 parts: `book_id` (FK
+CASCADE), `idx`, `title` (effective - an admin's rename when there is one),
+`scanned_title` (what the scan found), `file_index` (ordinal of the containing
+file), **`file_path`** (the
 library-relative audio file to stream - playback is purely path-based),
 `start`/`end` (offsets *within that file*), and **`book_offset`** (the
 chapter's start on the whole-book timeline). See
@@ -168,7 +190,10 @@ tables were rebuilt rather than migrated in place):
   `duration`, `finished`, `playback_speed`, `device_id`, `updated_at`, and
   `version` (monotonic, breaks `updated_at` ties). Reconciliation is
   last-write-wins in `catalog.SaveProgress`; any future realtime layer must
-  reuse that merge.
+  reuse that merge. Index `idx_progress_path` *(0016)* on
+  `(library_id, rel_path)` serves the per-path lookups the primary key (which
+  leads with `user_id`) can't: the admin book page's listeners and
+  `MoveDurableState`.
 - **`bookmarks`**, **`notes`** - id-PK rows keyed by
   `(user_id, library_id, rel_path)` plus `position` and text.
 - **`listening_history`** - listening spans (`from_pos`, `to_pos`,
@@ -185,10 +210,65 @@ tables were rebuilt rather than migrated in place):
   folder-is-one-book, `collection` forces one book per file.
 - **`book_enrichment`** *(0012)* - PK `(library_id, path)`, `asin`, `isbn`,
   `updated_at`. Attached by the manager when it matches an external source
-  (e.g. an Audible library) to an indexed book. The scanner re-applies it onto
-  freshly indexed rows (`catalog.ApplyEnrichments`) so it survives rebuilds;
-  blank fields never overwrite stored values (`NULLIF`/`COALESCE` merge in
-  `applyEnrichmentToPathSQL`).
+  (e.g. an Audible library) to an indexed book. Writing it never blanks a
+  stored field (a blank `asin` or `isbn` keeps the existing one). It survives
+  rebuilds because it is layered onto the book row on every re-index (see
+  below); an admin's own `asin`/`isbn` edit wins over it.
+- **`book_overrides`** *(0016)* - PK `(library_id, path, field)`, `value`,
+  `source` (`'edited'` = typed by an admin, `'community'` = accepted from a
+  community-metadata match), `updated_by` (FK to `users`, `ON DELETE SET NULL`,
+  so an edit outlives its author's account), `updated_at`. One row per edited
+  field; `field` is one of `catalog.OverrideFields` (`title`, `author`,
+  `narrator`, `series`, `series_index`, `published`, `description`, `asin`,
+  `isbn`). Values are validated and normalized by `catalog.normalizeOverride`.
+- **`chapter_overrides`** *(0016)* - PK `(library_id, path, idx)`, `title`,
+  `updated_by`, `updated_at`. A chapter-title edit by chapter index. An index
+  the book no longer has after a rescan is kept, and applies again if that
+  chapter comes back.
+- **`book_covers`** *(0016)* - PK `(library_id, path)`, `mime`, `data` (BLOB),
+  `updated_by`, `updated_at`. A custom cover uploaded in the admin console
+  (JPEG, PNG or WebP, at most 5 MiB - `catalog.MaxCoverBytes`). It lives in the
+  database rather than the library folder (files stay untouched) or a loose
+  data-dir file, so it is path-keyed durable state that moves with
+  `MoveDurableState` and is part of any database backup.
+
+All of these FK to `libraries` with `ON DELETE CASCADE` only, so deleting a
+library removes its config, and nothing else does - pruning a vanished book
+keeps its edits and cover for the day the path comes back.
+
+### Metadata overrides and effective values
+
+A `books` row always holds the **effective** metadata, built in layers:
+
+1. what the scan found (`books.scanned`, `chapters.scanned_title`);
+2. then any `book_enrichment` (`asin`/`isbn`, non-blank fields only);
+3. then any `book_overrides` / `chapter_overrides`.
+
+`bookLayers.resolve` (in `internal/catalog/overrides.go`) is the single
+statement of that precedence, and of each field's source. `refreshEffective`
+writes its values into the book's metadata columns and chapter titles and
+refreshes the book's `books_fts` row from the result; the admin book page shows
+the same resolution as provenance, so the two can't disagree. Every write path calls
+it inside its own transaction - `UpsertBook` (each scan or on-demand index),
+`SetEnrichment`, and `EditBook`/`EditBooks` (the admin edits, the bulk form
+all-or-nothing). Two consequences:
+
+- **No read-time join.** Players, search, the `/fs` annotations, `/meta`
+  lookups and the export read edited values straight off the row; the player
+  wire format did not change.
+- **An edit is a lock.** A rescan writes the newly scanned values and then
+  re-applies the overrides in the same transaction, so an edited field is never
+  visible with its scanned value, even for a moment. Reverting deletes the
+  override and re-layers from the stored `scanned` value - no rescan and no disk
+  access.
+
+Per field, `resolve` yields the effective value, its source, the scanned
+value, whether it is locked, and who last edited it. Sources are not stored: a
+scanned value is `path` when it equals what `metadata.DeriveFromPath` yields for
+the book's path, otherwise `tag`; an ASIN/ISBN from enrichment is `community`;
+an override carries its own (`edited` or `community`); `""` means no value. The
+rule is the same for every row, so the rows migration 0016 backfilled `scanned`
+for (from their current values) need no special case.
 
 ### `schema_migrations`
 
@@ -221,6 +301,8 @@ The migration history so far:
 | 0012 | `book_enrichment` | Path-keyed ASIN/ISBN enrichment |
 | 0013 | `book_list_indexes` | Composite indexes so `ListBooks` keyset pages serve `sort=title`/`sort=recent` from an index |
 | 0014 | `token_auth_code` | `tokens.auth_code_id` (FK CASCADE) - pairing tokens live and die with the code that minted them |
+| 0015 | `share_whole_library` | `shares.whole_library_id` - marks the shares a whole-library grant creates (backfilled for existing `Library: <name>` shares) |
+| 0016 | `book_overrides` | Metadata overrides: `book_overrides`, `chapter_overrides`, `book_covers`; `books.published`/`description`/`has_cover`/`scanned`, `chapters.scanned_title`, `book_files.codec`; index `idx_progress_path` on `progress(library_id, rel_path)` |
 
 ## SQLite choices
 
@@ -262,6 +344,17 @@ deep into a 50,000-book library the caller is, where `OFFSET n` degrades
 linearly with `n`. Default page size 50, cap 200; one extra row is fetched to
 detect whether a next page exists.
 
+The admin console's book list (`catalog.ListAdminBooks`) uses the same
+technique over multi-column orderings (`adminSorts`: e.g. author, then series,
+series position and title, then `id`; an unknown name is
+`catalog.ErrUnknownSort`). It sorts and pages on book ids alone in a subquery,
+then computes the per-row columns (several are subqueries: chapter and file
+counts, edited, custom cover) for that page only. Its cursor is base64 JSON
+carrying the ordering's name, its direction, one value per sort column and the
+last `id`, so a cursor replayed against a different ordering is refused rather
+than misread. The facet counts (`catalog.BookFacets`) take the total and every
+yes/no dimension that isn't itself filtered in one pass.
+
 :::note
 Don't switch any list endpoint over a potentially-large table to OFFSET
 pagination - it is design priority #2.
@@ -278,8 +371,10 @@ four small text columns.
 It is kept in sync **by the application**, not by triggers, keyed by
 `rowid = books.id`:
 
-- `catalog.UpsertBook` deletes then re-inserts the FTS row **inside the same
-  transaction** as the book upsert, so index and FTS can't diverge.
+- `catalog.refreshEffective` deletes then re-inserts the FTS row from the
+  book's **effective** values, inside the same transaction as the write that
+  called it (`UpsertBook`, `SetEnrichment`, a metadata edit), so index and FTS
+  can't diverge and search finds edited titles.
 - `catalog.DeleteBooksNotIn` (the scanner's prune step) deletes the FTS row
   alongside each stale book.
 
@@ -292,5 +387,5 @@ libraries (see [Data model → libraries](#libraries--shares) for the
 `sort_order` tiebreak).
 
 If you add a searchable column, update **both** sides of the sync
-(`UpsertBook`, `DeleteBooksNotIn`) and the FTS table definition via a new
+(`refreshEffective`, `DeleteBooksNotIn`) and the FTS table definition via a new
 migration.

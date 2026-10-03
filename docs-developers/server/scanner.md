@@ -68,7 +68,7 @@ pass over a network share doesn't look hung.
 
 ```mermaid
 flowchart TD
-    A["Signatures(lib)<br/>stored mtime/size/duration/codec per rel_path"] --> B{"os.Stat(root)<br/>exists & is dir?"}
+    A["Signatures(lib)<br/>stored mtime/size/duration/codec/cover per rel_path"] --> B{"os.Stat(root)<br/>exists & is dir?"}
     B -- no --> U1["ErrLibraryUnavailable<br/>(abort, no prune)"]
     B -- yes --> C["FolderOverrides(lib)"]
     C --> D["discoverAuto: WalkDir the tree<br/>collect dirs that directly contain audio<br/>(warn + skip unreadable entries)"]
@@ -77,13 +77,13 @@ flowchart TD
     F -- yes --> U2["ErrLibraryUnavailable<br/>(abort, no prune)"]
     F -- no --> G["detectMoves<br/>fingerprint-match vanished → new paths,<br/>MoveDurableState"]
     G --> H{"per book:<br/>mtime+size unchanged<br/>and probe data present?"}
-    H -- "yes (skip)" --> H
-    H -- no --> I["enrich: path heuristic + tags/ffprobe,<br/>chapters, cover, fingerprint"]
-    I --> J["catalog.UpsertBook<br/>(books + files + chapters + FTS, one tx)"]
+    H -- "yes (skip; note embedded art<br/>if has_cover unset)" --> H
+    H -- no --> I["enrich: path heuristic + tags/ffprobe,<br/>field sources, chapters, cover, fingerprint"]
+    I --> J["catalog.UpsertBook (one tx):<br/>scanned values + files + chapters,<br/>then enrichment + overrides layered on, FTS"]
     J --> H
-    H -- done --> K["DeleteBooksNotIn<br/>prune vanished paths (+ FTS rows)"]
-    K --> L["catalog.ApplyEnrichments<br/>re-apply path-keyed ASIN/ISBN"]
-    L --> M["log result: indexed / removed / elapsed"]
+    H -- done --> HC["SetHasCover<br/>noted cover flags, one tx"]
+    HC --> K["DeleteBooksNotIn<br/>prune vanished paths (+ FTS rows)"]
+    K --> M["log result: indexed / removed / elapsed"]
 ```
 
 The **unchanged-skip** condition is worth reading precisely: a book is skipped
@@ -91,6 +91,31 @@ when its stored mtime and size match **and** either ffprobe is disabled or a
 prior probe already stored both a duration and a codec. That last clause is a
 backfill mechanism - books indexed before the `codec` column existed (migration
 `0008`) get re-probed once even though their files haven't changed.
+
+A skipped book can still get one cheap backfill: when its `has_cover` is unset
+(a row indexed before migration `0016`), the scan checks its primary file for
+embedded art with a tag read (`media.EmbeddedCover`, no ffprobe) and notes the
+answer without re-indexing the book. Only books that are really skipped are
+checked - one re-indexed anyway gets its flag from the upsert - and a file that
+can't be opened right now (a flaky mount) is skipped, leaving the flag unset for
+the next scan rather than recording "no cover". The noted flags
+are written in **one transaction** after the loop
+(`catalog.SetHasCover(ctx, libID, map[path]bool)`, which also counts a sibling
+`cover_path` as art), so the first scan after the upgrade stays cheap on a large
+library.
+
+### Enrichment and admin edits survive every upsert
+
+There is no separate "re-apply" step after a scan. `catalog.UpsertBook` writes
+the values the scan found (and records them in `books.scanned`, field → value),
+replaces the
+files and chapters, then - in the **same transaction** - layers any path-keyed
+`book_enrichment` (ASIN/ISBN) and any admin metadata or chapter-title overrides
+on top and refreshes the FTS row (`catalog.refreshEffective`). So an attached
+ASIN survives a rebuild, and an edited field is a lock: the rescan re-reads the
+file, but the edit is re-applied before the transaction commits. Files on disk
+are never written. See
+[Data model](data-model.md#metadata-overrides-and-effective-values).
 
 ## Book detection (`booksInDir`)
 
@@ -144,6 +169,15 @@ embedded data winning where it is trustworthy:
    numbers and "Track 01"/"Disc 2"/"CD1"-style labels (token-based, so a real
    title like "Part of Your World" is not flagged).
 
+The scanner does not record where each value came from. The admin console's
+per-field provenance works it out when the book is read
+(`bookLayers.resolve`): a scanned value equal to what `DeriveFromPath` yields
+for the book's path is `path`, anything else `tag` - one rule for every row, old
+or new (see [Data model](data-model.md#metadata-overrides-and-effective-values)).
+The scanner does record each folder-book part's own codec (`book_files.codec`)
+and whether the primary file carries embedded art (`books.has_cover`; the upsert
+also sets it whenever a sibling cover was found).
+
 **ffprobe is optional** and every path degrades gracefully without it:
 path-derived metadata still works, durations fall back to chapter ends or
 remain 0, and `codec` stays empty - which the API treats as directly playable
@@ -183,10 +217,14 @@ Cover resolution has two stages - an indexed **sidecar** path, and an
   *parent* folder, where the art usually lives. For a **loose single-file
   book** only the conventional names in its directory count (a stray image
   there is probably not its cover). The result is stored in `books.cover_path`.
-- At request time, `handleCover` serves the sidecar via `media.ServeFile` when
-  `cover_path` is set; otherwise it extracts **embedded art** from the book's
-  primary audio file (`media.EmbeddedCover`, via `dhowden/tag`), and 404s if
-  neither exists.
+- At request time, `handleCover` first serves a **custom cover** an admin
+  uploaded (stored in the database, `book_covers`); otherwise the sidecar via
+  `media.ServeFile` when `cover_path` is set; otherwise it extracts **embedded
+  art** from the book's primary audio file (`media.EmbeddedCover`, via
+  `dhowden/tag`), and 404s if none exists.
+- The scanner records `books.has_cover` (sidecar found, or the tags carry a
+  picture) so the admin catalog can filter on it without opening files; the
+  catalog's "has a cover" is `has_cover` or a custom cover.
 
 ## Move detection
 
@@ -203,10 +241,18 @@ the fingerprint:
   it on the book so `enrich` doesn't re-read) and matches against the stored
   fingerprints of the vanished paths (`catalog.FingerprintsForPaths`).
 - A match calls `catalog.MoveDurableState(lib, oldPath, newPath)`, which
-  migrates **all six** path-keyed tables - `progress`, `bookmarks`, `notes`,
-  `listening_history`, `favourites`, and `book_enrichment` - in one
-  transaction, so a rename/move never orphans a user's position or a book's
-  attached ASIN.
+  migrates **all nine** path-keyed book tables - `progress`, `bookmarks`,
+  `notes`, `listening_history`, `favourites`, `book_enrichment`,
+  `book_overrides`, `chapter_overrides` and `book_covers` - in one
+  transaction, so a rename/move never orphans a user's position, a book's
+  attached ASIN, or an admin's edits and custom cover. Should the new path
+  already hold stale rows from an earlier book there, the moved book's win
+  rather than the conflict aborting the whole move: `book_enrichment` and
+  `book_covers` move with `UPDATE OR REPLACE`, and when the moved book has
+  overrides (book or chapter) the destination's override rows are deleted
+  first, so the moved book's set replaces them whole - a stale lock on a field
+  the moved book never edited can't merge in. The book is then indexed at its
+  new path, and that upsert layers the moved edits back on.
 
 ## On-demand indexing (`IndexPath`)
 
@@ -226,9 +272,9 @@ has reached it**.
    (`booksInDir`, including overrides and the root case), then `pickBook`
    selects the book the requested path resolves to - the book itself, or the
    folder book a clicked *part* belongs to (both resolve to the same book).
-3. Enriches, upserts, and re-applies enrichment **for that one path only**
-   (`catalog.ApplyEnrichment` - this is a hot per-request path, so no
-   whole-library sweep), then returns the full book with chapters.
+3. Enriches and upserts that one book - `UpsertBook` layers its enrichment and
+   any admin edits on in the same transaction, so a book indexed on demand
+   shows its edited values at once - then returns the full book with chapters.
 
 A path that is not a book - a directory with no direct audio, or one the
 detector treats as a collection - returns `ErrNotIndexable`, which handlers map

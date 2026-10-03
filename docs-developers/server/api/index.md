@@ -122,6 +122,11 @@ Failures a person can fix also carry a machine-readable **`code`** next to
 | `cannot_delete_self` | `400` | an admin deleting their own account |
 | `path_not_absolute` | `400` | `GET /admin/fs/dirs` with a relative `path` |
 | `folder_unreadable` | `404` | `GET /admin/fs/dirs` on a missing or unreadable folder |
+| `book_not_found` | `404` | an admin catalog call on a path that is not an indexed book (book page, edit, bulk edit, match, cover upload) |
+| `invalid_override` | `400` | a metadata edit the server refuses; the body also carries a `field` key naming the offending field (`PATCH /admin/libraries/{id}/book`, `POST /admin/books/bulk`) |
+| `metadata_off` | `404` | a community match search while community metadata is turned off |
+| `too_large` | `400` / `413` | a bulk edit over 1000 books (`400`); a custom cover over 5 MiB (`413`) |
+| `unsupported_image` | `415` | a custom cover that is not a JPEG, PNG or WebP image |
 
 **Branch on `code`, not on the English `error` text**, which is free to change.
 Errors without a `code` are ones a client can't help the person fix.
@@ -139,14 +144,20 @@ Status mapping is consistent across handlers:
 | `403` | authenticated but not allowed: no share grants the library or path, `admin only`, demo accounts on the self-service routes (password/recovery/API keys), an API key on a credential-minting route (create key/recovery/pair/password), bad setup token |
 | `404` | library/user/share/invite not found, `no book at that path`, feature not configured (demo mode off, well-known files unset) |
 | `409` | conflicts: `name already taken` (library/share), last-enabled-admin guard, setup already completed |
+| `413` | a request body over an endpoint's size cap (a custom cover over 5 MiB) |
+| `415` | an upload of a type the endpoint doesn't take (a custom cover that isn't JPEG/PNG/WebP) |
 | `429` | a rate limiter tripped (see below) |
 | `500` | unexpected internal failure - the message is generic; details go to the server log only |
+| `502` | an upstream service failed: the community metadata service (`/meta`, `/meta/work`, the admin match search) |
 | `503` | database unreachable (`/healthz`), transcoding requested without ffmpeg, demo at capacity, or the request timeout (below) |
 
 **Request timeout.** Non-streaming requests are bounded at **30 s** by
 `http.TimeoutHandler`; a request that exceeds it gets
-`503 {"error":"request timed out"}`. Streaming paths - `/stream`, `/cover`, and
-the `/web` static mount - are exempt, so audio playback can run indefinitely.
+`503 {"error":"request timed out"}`. Streaming reads - `GET`/`HEAD` on
+`/stream`, `/cover`, and the `/web` static mount - are exempt, so audio playback
+can run indefinitely. Only reads are exempt: an upload to a streaming-shaped
+path (the admin custom-cover `PUT /admin/libraries/{id}/cover`) stays bounded
+by the 30 s timeout, so a slow client can't hold it open.
 
 ## Path-addressed content: `?path=`
 
@@ -194,6 +205,11 @@ Pass it back verbatim as `?cursor=` for the next page; a page without
 paging cost does not grow with depth - never assume the cursor's format (it is
 base64 today, but opaque by contract). A malformed cursor is 400
 `invalid cursor`. Changing `sort`/filters invalidates a cursor.
+
+The admin console's book list ([`GET /admin/books`](reference.md#get-apiv1adminbooks))
+pages the same way, with its own defaults (60 per page; values ≤ 0 or > 200 fall
+back to 60). Its cursor names the ordering it was minted for, so replaying it
+under another `sort`/`order` is `400 invalid cursor`.
 
 **Filesystem listings are offset-paginated.** `GET /libraries/{id}/fs` takes
 `offset`/`limit` (default 200, max 500) and returns `total`, `offset`, and -
