@@ -262,13 +262,16 @@ a trailing `(Unabridged)`/`(Abridged)` marker is stripped before identity (and
 seeds the recording's tri-state `abridged` when the source didn't state it), and a
 same-work/same-narrator entry whose only new fact is another ASIN **merges that
 ASIN into the existing recording** (guarded by runtime and abridged checks) rather
-than minting a sibling. Before a row creates a work, its normalized identity
-(the title without retailer decoration, with its authors and language) is checked
-against the catalogue and the run so far; a match is skipped as
-`identity-duplicate`, not minted beside it. A marketplace edition or a trailing
-narrator credit is decoration, so "The Search: International Edition" or "The
-Search, Read by Dee Reader" from the author of a catalogued "The Search" is that
-book (see [the data model](./data-model.md#translations-and-reading-orders)). A series claim joins a same-named catalogued series only
+than minting a sibling. A marketplace edition or a trailing narrator credit is
+stripped before identity too, so "The Search: International Edition" or "The
+Search, Read by Dee Reader" from the author of a catalogued "The Search" resolves
+to that work and lands as a recording of it (or merges its ASIN into the same
+production). A work catalogued only under a qualified title stays reachable as a
+merge target, never created there; several such works decide nothing. Before a
+row creates a work, its normalized identity (see
+[the data model](./data-model.md#translations-and-reading-orders)) is also checked
+against the catalogue and the run so far, and a match is skipped as
+`identity-duplicate` rather than minted beside it. A series claim joins a same-named catalogued series only
 when its authors and its language fit that series (see
 [the import format](./import-format.md)); otherwise the row founds its own series
 of that name at the next slug. A row whose person, series, or work identity resolves to a
