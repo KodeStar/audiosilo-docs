@@ -987,8 +987,11 @@ kills it.
    `If-None-Match` gets a `304` without the image being read from the
    database. Custom covers carry no `Last-Modified`, so a client that
    revalidates after the custom cover was removed can't get a `304` from an
-   older sidecar file and keep showing the removed cover;
-2. an indexed sibling cover file;
+   older sidecar file and keep showing the removed cover. A custom cover is
+   served only while a book is indexed at its path, and a request for a part
+   path inside a folder book gets that book's custom cover;
+2. an indexed sibling cover file (served with
+   `Cache-Control: private, max-age=86400`);
 3. embedded art extracted from the book's primary audio file (served with
    `Cache-Control: private, max-age=86400`).
 
@@ -1772,7 +1775,7 @@ what the first does).
 | `has_cover` | `true`\|`false` | - | a sibling image, embedded art or a custom cover |
 | `has_chapters` | `true`\|`false` | - | **more than one** chapter (every single-part book has one) |
 | `matched` | `true`\|`false` | - | the book has an ASIN or an ISBN |
-| `edited` | `true`\|`false` | - | the book has a metadata or chapter-title edit |
+| `edited` | `true`\|`false` | - | the book has a metadata edit, or a chapter-title edit on a chapter it still has (one on an index a rescan dropped is dormant and doesn't count) |
 | `min_duration` · `max_duration` | number (seconds) | - | inclusive bounds; `0` means no bound |
 | `added_after` | date | - | inclusive lower bound on `added_at`: `YYYY-MM-DD` (used as is) or an RFC 3339 time (any offset; converted to UTC before comparing) |
 | `added_before` | date | - | exclusive upper bound, same formats |
@@ -1782,7 +1785,8 @@ what the first does).
 | `cursor` | string | - | `next_cursor` from the previous page |
 
 Text sorts are case-insensitive. The `author`, `series` and `narrator` sorts put
-books with that field blank **last** (in ascending order) and break ties
+books with that field blank **last** in either direction (`order=desc` reverses
+the named books, not where the blanks go) and break ties
 sensibly: `author` sorts by author, then series, series position and title;
 `series` by series, position, then title; `narrator` by narrator, then title.
 
@@ -1924,7 +1928,9 @@ The narrators route uses the key `narrators` instead of `authors`.
 - A merge suggestion groups names that compare equal once `Surname, Given` is
   turned round (only when the part before the comma is one word, so `Alexandre
   Dumas, pere` stays whole) and case, spacing and punctuation are ignored (so
-  `J.R.R. Tolkien` and `J. R. R. Tolkien` group). `suggested` is the spelling
+  `J.R.R. Tolkien` and `J. R. R. Tolkien` group). Letters of every script are
+  kept, so names in non-Latin scripts get suggestions too and two different
+  ones never group by accident. `suggested` is the spelling
   with the most books (ties: alphabetical); `books` is the group's total. The
   server never merges on its own - applying a suggestion is a
   [bulk edit](#post-apiv1adminbooksbulk).
@@ -2057,10 +2063,12 @@ console's match dialog. Requires the `metadata` [capability](#get-apiv1server).
 | Query param | Type | Notes |
 |---|---|---|
 | `q` | string | free-text search, at most 300 characters |
-| `asin` · `isbn` | string | look an identifier up directly, at most 20 characters each |
+| `asin` · `isbn` | string | look an identifier up directly, at most 20 characters each; normalized first (an ASIN uppercased, an ISBN without hyphens and spaces) |
 
 With none of the three, the server searches the book's own title and author and
-looks up its own ASIN/ISBN. The identifier lookup and the text search run
+looks up its own ASIN/ISBN. The title goes in cleaned of its series name and
+edition fluff (`(Unabridged)`, `, Book 1`), since the upstream search requires
+every word. The identifier lookup and the text search run
 concurrently; together they expand at most **6** hits into full works with their
 recordings. Results are not cached (an admin action, so the fan-out is bounded
 instead: work fetches share the same concurrency limit as `GET /meta/work`).
@@ -2100,7 +2108,13 @@ instead: work fetches share the same concurrency limit as `GET /meta/work`).
   the recording it resolved to in `recording_id`. Otherwise the score weighs
   title agreement (55), author (30) and runtime (15: within 3% of a recording's
   runtime counts fully, within 10% half); a fact the book or the work lacks is
-  left out rather than counted as a mismatch.
+  left out rather than counted as a mismatch. The title is compared both as
+  tagged and cleaned of series name and edition fluff, whichever fits better
+  (only the book's side is cleaned, so a work's own "(Dramatized Adaptation)"
+  still tells it apart). An author credit counts as a full match when it folds
+  equal to one of the work's authors or contains every word of a multi-word
+  name (so `Brandon Sanderson, Mary Robinette Kowal` matches both); otherwise
+  the word overlap counts. Comparisons keep letters of every script.
 - `series` lists each series once, at its main position (`{ "name", "position"
   }`); alternate reading orders are left out. `subtitle`, `language`,
   `first_published`, `description`, `cover_url`, `recording_id` and the
@@ -2117,7 +2131,7 @@ and `source: "community"`.
 |---|---|
 | `400` | `query too long`; `invalid library id`; `path is required` |
 | `404` | `code: "metadata_off"` - community metadata is turned off; `library not found`; `code: "book_not_found"` |
-| `502` | `metadata service unavailable` - the community service could not be reached and nothing was found. Partial failures still return what was found: if the identifier lookup or the text search fails but the other found hits, those candidates are returned, and a candidate whose work fails to load is left out |
+| `502` | `metadata service unavailable` - the community service failed and no candidate could be returned. Partial failures still return what was found: if the identifier lookup or the text search fails but the other leg yields candidates, those are returned, and a candidate whose work fails to load is left out. When nothing is returned, any failure along the way (either leg, or loading a hit's work) is a `502`, not an empty list - the failed leg may well have found the book |
 
 ### `PUT /api/v1/admin/libraries/{id}/cover` · `DELETE /api/v1/admin/libraries/{id}/cover`
 

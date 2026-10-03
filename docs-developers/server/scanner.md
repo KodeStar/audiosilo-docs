@@ -240,19 +240,32 @@ the fingerprint:
   path of normal scans. It fingerprints each new book's primary file (caching
   it on the book so `enrich` doesn't re-read) and matches against the stored
   fingerprints of the vanished paths (`catalog.FingerprintsForPaths`).
-- A match calls `catalog.MoveDurableState(lib, oldPath, newPath)`, which
+- A match is not a move when it is one folder seen two ways: turning a folder
+  book into a collection (or back) leaves a book at a path nested in the other,
+  fingerprinted by the folder's first part, but it is a different book.
+  `reclassified` skips such a pair (nested paths with different sizes; an equal
+  size, a single-part folder, is still the same book).
+- A real match calls `catalog.MoveDurableState(lib, oldPath, newPath)`, which
   migrates **all nine** path-keyed book tables - `progress`, `bookmarks`,
   `notes`, `listening_history`, `favourites`, `book_enrichment`,
-  `book_overrides`, `chapter_overrides` and `book_covers` - in one
-  transaction, so a rename/move never orphans a user's position, a book's
-  attached ASIN, or an admin's edits and custom cover. Should the new path
-  already hold stale rows from an earlier book there, the moved book's win
-  rather than the conflict aborting the whole move: `book_enrichment` and
-  `book_covers` move with `UPDATE OR REPLACE`, and when the moved book has
-  overrides (book or chapter) the destination's override rows are deleted
-  first, so the moved book's set replaces them whole - a stale lock on a field
-  the moved book never edited can't merge in. The book is then indexed at its
-  new path, and that upsert layers the moved edits back on.
+  `book_overrides`, `chapter_overrides` and `book_covers` - so a rename/move
+  never orphans a user's position, a book's attached ASIN, or an admin's edits
+  and custom cover. A same-path call is a no-op. It runs **two transactions**,
+  each all or nothing:
+  1. **The book's own state** (`moveBookState`): `book_enrichment` moves with
+     `UPDATE OR REPLACE`. Then, if the moved book has any metadata override,
+     chapter override or custom cover, the destination's rows in **all three**
+     of those tables are deleted first and the moved book's set takes their
+     place - edits and cover follow the book as one set, so a stale lock or
+     cover left at the new path by an earlier book can't merge in. A moved book
+     with none keeps the new path's own rows, as any book appearing there would.
+  2. **The per-user state** (`progress`, `bookmarks`, `notes`,
+     `listening_history`, `favourites`), by plain `UPDATE`.
+
+  They are separate so that a collision in a per-user table (the destination
+  already holds a row for the same user) can't also strand the admin's edits
+  and cover at a path the scan is about to prune. The book is then indexed at
+  its new path, and that upsert layers the moved edits back on.
 
 ## On-demand indexing (`IndexPath`)
 

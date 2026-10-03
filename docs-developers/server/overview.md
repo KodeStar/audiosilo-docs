@@ -76,11 +76,14 @@ next to the executable, `$PATH`, and only then a download via
 ### `pkg/match` (public)
 
 A fuzzy **same-book matcher** (`Best`, `CleanTitle`, `SeqFromTitle`,
-`Normalize`, `NormalizeSeries`) that identifies the same book across messy,
-inconsistently-tagged titles. Public because the manager uses it to match an
-Audible library against a server's index (which then feeds
-`book_enrichment` - see [Data model](data-model.md)); it is also usable for
-server-side enrichment/dedup.
+`Normalize`, `NormalizeSeries`, `Fold`) that identifies the same book across
+messy, inconsistently-tagged titles. Public because the manager uses it to match
+an Audible library against a server's index (which then feeds
+`book_enrichment` - see [Data model](data-model.md)); the server uses it too,
+for the admin catalog's author/narrator merge keys and the community match
+search's title cleaning and comparison. `Fold` is the Unicode-aware sibling of
+`Normalize` (lowercase, keep every script's letters and digits, drop spacing and
+punctuation); `Normalize` keeps ASCII only and is unchanged.
 
 ### `internal/config`
 

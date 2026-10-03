@@ -158,9 +158,18 @@ Two columns deserve emphasis:
 The metadata columns (`title` … `isbn`, `published`, `description`) hold the
 **effective** values - what readers should show - not necessarily what the scan
 found. What the scan found is kept beside them in **`scanned`**, a flat JSON
-object of field → value (blank fields left out); it is the revert target, what
-the admin console shows next to an edited value, and - compared with the path -
-where a value came from. See
+object of field → value (blank fields left out) plus an `@indexed_at` stamp
+(`catalog.scannedStampKey`) holding the `indexed_at` of the upsert that wrote
+it; it is the revert target, what the admin console shows next to an edited
+value, and - compared with the path - where a value came from.
+
+The stamp guards against a **rollback**: a server older than migration 0016,
+run against this database, re-indexes rows with their scanned values in the
+columns and leaves `scanned` blank or stale. When the snapshot is blank or its
+stamp isn't the row's `indexed_at`, `loadLayers` reads the scanned values off the
+row itself (as migration 0016 did) instead of blanking the fields, and
+`refreshEffective` records that snapshot, stamped, and backfills the chapters'
+`scanned_title` from their titles. See
 [Metadata overrides and effective values](#metadata-overrides-and-effective-values).
 
 **`book_files`** *(0001; `codec` in 0016)* - the ordered parts of a folder
@@ -234,7 +243,8 @@ tables were rebuilt rather than migrated in place):
 
 All of these FK to `libraries` with `ON DELETE CASCADE` only, so deleting a
 library removes its config, and nothing else does - pruning a vanished book
-keeps its edits and cover for the day the path comes back.
+keeps its edits and cover for the day the path comes back (a custom cover is
+only served while a book is indexed at its path).
 
 ### Metadata overrides and effective values
 
@@ -302,7 +312,7 @@ The migration history so far:
 | 0013 | `book_list_indexes` | Composite indexes so `ListBooks` keyset pages serve `sort=title`/`sort=recent` from an index |
 | 0014 | `token_auth_code` | `tokens.auth_code_id` (FK CASCADE) - pairing tokens live and die with the code that minted them |
 | 0015 | `share_whole_library` | `shares.whole_library_id` - marks the shares a whole-library grant creates (backfilled for existing `Library: <name>` shares) |
-| 0016 | `book_overrides` | Metadata overrides: `book_overrides`, `chapter_overrides`, `book_covers`; `books.published`/`description`/`has_cover`/`scanned`, `chapters.scanned_title`, `book_files.codec`; index `idx_progress_path` on `progress(library_id, rel_path)` |
+| 0016 | `book_overrides` | Metadata overrides: `book_overrides`, `chapter_overrides`, `book_covers`; `books.published`/`description`/`has_cover`/`scanned` (backfilled and stamped from each row's current values), `chapters.scanned_title`, `book_files.codec`; index `idx_progress_path` on `progress(library_id, rel_path)`. Also resets infinite `series_index` values (an `inf` tag) to 0, and reconciles `books.asin`/`isbn` from `book_enrichment` once (a non-blank enrichment field wins), since the scanner no longer re-applies enrichment at the end of every scan |
 
 ## SQLite choices
 

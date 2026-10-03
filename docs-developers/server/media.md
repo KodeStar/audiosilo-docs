@@ -111,7 +111,11 @@ The path is authorized against the caller's share scope first, for all three.
 
 1. **Custom** (`catalog.Cover`, the `book_covers` table): an image uploaded
    through `PUT /admin/libraries/{id}/cover` and stored in the database, never
-   in the library folder. Served with its stored MIME type through
+   in the library folder. It is served only while a book is indexed at the path
+   (`CoverInfo`/`Cover` join `books`), so a pruned book's cover row stays
+   dormant until the book returns. The requested path is tried first; when it
+   is a part inside a folder book, the book's own path is tried after
+   `bookForPath` resolves it. Served with its stored MIME type through
    `http.ServeContent`, with `Cache-Control: private, no-cache` and an `ETag`
    (`coverETag`: `"cover-<base-36 Unix nanoseconds of updated_at>"`) - it can
    be replaced at any moment, so clients revalidate rather than caching it for a
@@ -129,7 +133,10 @@ The path is authorized against the caller's share scope first, for all three.
    filename containing "cover", else the first image alphabetically. Multi-CD
    subfolders (`CD1`, `Disc 2`, …) look one level up for the parent book's
    art. A sidecar cover is served through `ServeFile` (so it gets Range and
-   correct headers).
+   correct headers) with `Cache-Control: private, max-age=86400`, set only when
+   the file is there so a 404 is never cached. Without an explicit lifetime a
+   browser keeps a sidecar image fresh by heuristic (a tenth of the file's age),
+   so a custom cover uploaded later could go unseen for weeks.
 3. **Embedded** (`media.EmbeddedCover`): the book's primary audio file (the
    first `files` entry for folder books, the file itself otherwise) is read
    with `dhowden/tag` and its embedded picture returned, defaulting to
