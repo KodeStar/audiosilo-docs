@@ -86,6 +86,8 @@ scripts/build-web.sh
 #      the AUDIOSILO_WEB_DIR to use.
 
 # 2) Run the server with the player mounted at /web, plain HTTP for local dev.
+#    (scripts/build-admin.sh first if you want the redesigned admin console
+#    embedded; add AUDIOSILO_ADMIN_NEXT=1 to serve it at /admin.)
 go build -o bin/audiosilo ./cmd/audiosilo
 AUDIOSILO_WEB_DIR=~/dev/audiosilo/audiosilo-frontend/dist \
   AUDIOSILO_TLS_MODE=off \
@@ -123,6 +125,8 @@ go build -o bin/audiosilo ./cmd/audiosilo   # build the binary
 ./bin/audiosilo --data ./data               # run (first run prints creds once)
 go test -race ./...                          # tests (in-memory SQLite + fixtures)
 scripts/build-web.sh                         # build the web export for AUDIOSILO_WEB_DIR
+scripts/build-admin.sh                       # build the admin console (admin-ui) to embed
+npm --prefix admin-ui run dev                # admin console dev server (proxies to :8080)
 ```
 
 Useful flags: `--data` (config/db/certs dir), `--ffprobe`/`--ffmpeg` (`""`

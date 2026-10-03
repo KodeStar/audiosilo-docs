@@ -58,7 +58,10 @@ if [ "${SKIP_META:-0}" != "1" ] && [ ! -d "$META_COMMUNITY/data/works-community"
 fi
 
 # ── 1. Server binary ────────────────────────────────────────────────────────
-echo "==> building audiosilo-server"
+echo "==> building the admin console + audiosilo-server"
+# The redesigned admin console (admin-ui) is embedded at build time and never
+# committed, so build it first or /admin serves a "console not built" page.
+"$SERVER/scripts/build-admin.sh" --build-only
 (cd "$SERVER" && go build -o bin/audiosilo ./cmd/audiosilo)
 
 # ── Web export ──────────────────────────────────────────────────────────────
@@ -107,7 +110,9 @@ demo:
   library: "Books"
   idle_ttl: "24h"
 EOF
-AUDIOSILO_WEB_DIR="$FRONTEND/dist" "$SERVER/bin/audiosilo" --data "$DATA" \
+# AUDIOSILO_ADMIN_NEXT=1: the redesigned console at /admin, the classic one at
+# /admin/classic, so capture-admin.mjs shoots both (until the cutover).
+AUDIOSILO_ADMIN_NEXT=1 AUDIOSILO_WEB_DIR="$FRONTEND/dist" "$SERVER/bin/audiosilo" --data "$DATA" \
   > "$CACHE/server.log" 2>&1 &
 MAIN_PID=$!
 

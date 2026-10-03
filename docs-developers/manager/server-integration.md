@@ -159,6 +159,11 @@ Consequences:
   manager workflow checks out `KodeStar/audiosilo-server@main` into a sibling
   `audiosilo-server/` path before building (see `.github/workflows/ci.yml` and
   [Gates and CI](../contributing/gates-and-ci.md)).
+- **Build the server's admin console first.** The embedded server embeds its
+  admin console from `internal/web/adminui/dist`, which is built, never
+  committed. Run `../audiosilo-server/scripts/build-admin.sh --build-only`
+  before `wails build`/`wails dev` (`desktop.yml` does); otherwise the manager's local server answers `/admin`
+  with a "console not built" page.
 - **Stale-checkout failure mode.** The build compiles against whatever the
   sibling checkout contains. If your local server checkout predates a symbol the
   manager uses (e.g. `pkg/launcher` `Options` fields or a `pkg/match` export), the

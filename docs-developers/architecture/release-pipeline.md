@@ -66,13 +66,18 @@ handles that here, so `web.yml` needs no explicit lowercase step (the server's
 Runs on `v*` tags (plus manual dispatch with a `web_version` input, default
 `latest`). The multi-stage `Dockerfile`:
 
+- builds the admin console in a `node:24-alpine` stage (`npm ci` + `npm run
+  build` in `admin-ui/`, on the build host's platform since the output is plain
+  JS/CSS) and copies `internal/web/adminui/dist` into the Go stage, where it is
+  embedded (see [Built-in web UI](../server/web-ui.md#the-redesigned-admin-console-admin-ui));
+
 - builds the CGO-free server binary (`CGO_ENABLED=0`, `-trimpath`), stamping the
   release version via
   `-ldflags "-X github.com/kodestar/audiosilo-server/internal/api.Version=${VERSION}"`
   (`image.yml` passes the tag as the `VERSION` build-arg; the default is `dev`);
 - pins the player: `FROM ${WEB_IMAGE} AS web` … `COPY --from=web /web /app/web`,
   with `ARG WEB_IMAGE=ghcr.io/kodestar/audiosilo-web:latest`;
-- final stage is `alpine:3.20` with **ffmpeg installed from apk** - the Docker
+- final stage is `alpine:3.24` with **ffmpeg installed from apk** - the Docker
   image, unlike the native binaries, does bundle ffmpeg - plus a `PUID`/`PGID`
   entrypoint and `AUDIOSILO_WEB_DIR=/app/web` preset.
 
@@ -97,6 +102,13 @@ CGO-free (modernc SQLite), so everything cross-compiles with no C toolchain:
   `-X …/internal/api.Version={{ .Version }}` overrides `var Version = "dev"` in
   `internal/api/api.go`, and `GET /server`, the admin console, and the web player
   all report it.
+
+### Embedding the admin console
+
+The admin console's build output is never committed, so a GoReleaser `before`
+hook also runs `scripts/build-admin.sh --build-only` (`release.yml` sets up Node from `admin-ui/.nvmrc`). Every native binary embeds
+it; skipping the hooks produces a binary whose `/admin` serves a "console not
+built" page.
 
 ### Embedding the player: `-tags embedplayer`
 

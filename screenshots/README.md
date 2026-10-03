@@ -22,13 +22,21 @@ shot), builds the `audiosilo-meta` data artifact (composed with
 `audiosilo-meta-community`) + site and starts a `metaserve` on `:8795` for the
 meta-site shots, then runs the Playwright captures and backfills placeholders.
 `SKIP_META=1` skips the meta stack (for a web/admin-only run).
+`SHOTS_ONLY=<prefix>` writes only the screenshots whose path starts with it
+(e.g. `SHOTS_ONLY=admin-next/`), so adding a few shots doesn't re-encode every
+other committed PNG.
+
+The demo server runs with `AUDIOSILO_ADMIN_NEXT=1` while the admin console is
+being redesigned: the new console (`admin-next/*` shots) is at `/admin` and the
+classic one (`admin/*` shots) at `/admin/classic`. `run.sh` builds the server's
+`admin-ui` first because its output is embedded, never committed.
 
 Every capture is optimized in place with **pngquant** (`brew install pngquant`)
 - a lossy-palette pass that shrinks the retina PNGs ~60% with no perceptible
 loss, so the committed image is the optimized one. It's optional: if pngquant
 isn't on `PATH` the shots are just left raw (with a one-time warning).
 
-Prereqs: Go 1.25+, Node 24, ffmpeg/ffprobe, pngquant (optional; for image
+Prereqs: Go 1.25+, Node 24 (also builds the server's admin console), ffmpeg/ffprobe, pngquant (optional; for image
 optimization), and a web export at `../../audiosilo-frontend/dist`
 (`audiosilo-server/scripts/build-web.sh` builds one; `run.sh` triggers it
 automatically when missing).

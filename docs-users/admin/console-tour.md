@@ -129,6 +129,39 @@ breaks if a non-admin somehow opens the page: the server refuses every
 privileged request.
 :::
 
+## Preview the new console
+
+A redesigned admin console is being built in stages. You can try it today
+without giving anything up: it runs alongside the current console and changes
+nothing on your server.
+
+To switch it on, set the environment variable `AUDIOSILO_ADMIN_NEXT=1` and
+restart the server. With Docker Compose, add it under `environment:`:
+
+```yaml
+environment:
+  - AUDIOSILO_ADMIN_NEXT=1
+```
+
+Then:
+
+- `/admin` opens the **new console**: an overview of who is listening right
+  now, your library totals and the server's status, plus search (press
+  **Ctrl K**, or **⌘K** on a Mac, or click the search box) to jump anywhere or
+  rescan a library.
+- `/admin/classic` opens the **current console**, which still does everything
+  the new one doesn't do yet. Pages that aren't finished say so and link
+  there.
+- You stay signed in when you move between them, and your language choice
+  carries over.
+
+![The new console's overview on a phone](/img/screenshots/admin-next/overview-phone.png)
+
+Remove the variable (or set it to `0`) and restart to go back to the current
+console at `/admin`. The release and Docker builds include the new console; if
+you build the server from source, run `scripts/build-admin.sh` first (see
+[Installing the binary](../getting-started/install-binary.md#building-from-source)).
+
 ## Where to next
 
 - [Libraries](libraries.md) - point the server at your audiobook folders.
