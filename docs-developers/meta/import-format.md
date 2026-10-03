@@ -146,7 +146,11 @@ so the same identity and dedup rules apply as any other import (full detail unde
   and language rules, so under `--existing-series-only` a reached series is a
   join, not a drop. The importer never writes `translation_of`, `ordering` or
   `ordering_of`, and a series it founds keeps the source's name exactly as given.
-  The intake bot and `libex-select` resolve series through this same rule.
+  Rows in one batch that spell the same series in different ways are judged
+  together, against one record of that series' authors, so a batch of another
+  author's books cannot take over a series by spreading across spellings. A
+  claim that joins a series stored under a different name is listed in the run's
+  notes. The intake bot and `libex-select` resolve series through this same rule.
 - **Edition markers.** A trailing `(Unabridged)`/`(Abridged)` in the title is
   stripped before identity and, if `abridged` was not set, seeds the recording's
   tri-state abridged flag.
