@@ -99,11 +99,32 @@ accepts it. Native clients should keep using the header even for media.
 
 ## Error envelope and status conventions
 
-Every error is a JSON object with a single field:
+Every error is a JSON object with an `error` message:
 
 ```json
 { "error": "no access to this path" }
 ```
+
+Failures a person can fix also carry a machine-readable **`code`** next to
+`error` (additive - a client that predates it reads only `error`):
+
+```json
+{ "error": "username already taken", "code": "username_taken" }
+```
+
+| `code` | Status | When |
+|---|---|---|
+| `username_taken` | `409` | creating an account with a username that exists (`POST /admin/users`) |
+| `name_taken` | `409` | a library or share name already in use (create, rename) |
+| `last_admin` | `409` | demoting or disabling the last enabled admin |
+| `admin_needs_password` | `400` | an admin without a password (creating one, promoting a password-less account, or clearing an admin's password) |
+| `password_too_short` | `400` | a password under the minimum length |
+| `cannot_delete_self` | `400` | an admin deleting their own account |
+| `path_not_absolute` | `400` | `GET /admin/fs/dirs` with a relative `path` |
+| `folder_unreadable` | `404` | `GET /admin/fs/dirs` on a missing or unreadable folder |
+
+**Branch on `code`, not on the English `error` text**, which is free to change.
+Errors without a `code` are ones a client can't help the person fix.
 
 The one exception is the media file-serving layer: `stream`/`transcode` 404s
 and transcode failures are plain-text `http.Error` responses, not this JSON

@@ -77,12 +77,12 @@ If you have Go 1.25 or newer and Node 24 installed, you can build the server you
 ```bash
 git clone https://github.com/KodeStar/audiosilo-server.git
 cd audiosilo-server
-scripts/build-admin.sh        # builds the new admin console so it's included
+scripts/build-admin.sh        # builds the admin console so it's included
 go build -o audiosilo ./cmd/audiosilo
 ```
 
 :::note
-A plain source build does not include the embedded web player - the admin console and the API work as normal, but `/web` stays off unless you point the server at a built player. The release downloads and the Docker image both include the player, so for everyday use prefer those. How the player gets bundled is covered in the [developer docs](/developers/server/web-ui).
+Skip `scripts/build-admin.sh` and `/admin` shows a short "admin console isn't built" page instead of the console. A plain source build also does not include the embedded web player - the admin console and the API work as normal, but `/web` stays off unless you point the server at a built player. The release downloads and the Docker image both include the player, so for everyday use prefer those. How the player gets bundled is covered in the [developer docs](/developers/server/web-ui).
 :::
 
 :::tip

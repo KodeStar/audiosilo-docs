@@ -48,7 +48,7 @@ export function optimize(file) {
 }
 
 // SHOTS_ONLY=<prefix> limits a run to the screenshots whose path starts with it
-// (e.g. SHOTS_ONLY=admin-next/), so adding a few shots doesn't re-encode every
+// (e.g. SHOTS_ONLY=admin/), so adding a few shots doesn't re-encode every
 // other committed PNG. Unset = capture everything.
 const ONLY = process.env.SHOTS_ONLY || '';
 

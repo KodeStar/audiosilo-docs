@@ -116,7 +116,7 @@ to the catalogue yourself - see
 There's no fixed user limit - create an account for everyone in the house.
 Each user gets their own listening progress, bookmarks, notes, and
 favourites, and joins by redeeming an invite code (no password needed for
-listeners - see [Users & invites](./admin/users-and-invites.md)).
+listeners - see [People and invites](./admin/users-and-invites.md)).
 
 Access is controlled with **shares**: named sets of folders (one author, one
 series, a single book, or a whole library) that you grant to users. A user

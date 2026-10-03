@@ -143,12 +143,14 @@ touch it:
 deletes the user's other *still-redeemable* invites
 (`supersedeActiveInvites` - not used up, not expired), so there is exactly one
 active invite per user; spent/expired invites remain as history. `POST
-/admin/authcodes/{id}/rotate` (`RotateAuthCode`, the admin "Resend")
+/admin/authcodes/{id}/rotate` (`RotateAuthCode`, the console's **Rotate**)
 regenerates an invite's secret **in place**: `max_uses` is preserved, the use
 counter and `redeemed_at` reset, and the expiry is renewed for the invite's
 *original* window - never silently downgraded to defaults. Only invite-kind
 codes rotate. (`CreateAuthCode`, without the supersede step, exists solely for
-the first-run bootstrap, which has nothing to supersede.)
+the first-run bootstrap, which has nothing to supersede.) `GET /admin/invites`
+(`auth.ListInvites`) lists every account's invites for the console - metadata
+only, since only the code's hash is stored, and never recovery codes.
 
 **Recovery** decouples re-authentication from invitation: a signed-out or
 password-less user who saved a recovery code can re-pair on any device via the
@@ -297,10 +299,11 @@ writer connection, not latency policing. Streaming paths (`/stream`, `/cover`,
 
 Two policies, both owned by `internal/web`:
 
-- The **admin/connect/setup pages** get the strict site-wide
+- The **admin console and the connect/setup pages** get the strict site-wide
   `contentSecurityPolicy`: same-origin everything, no `unsafe-inline` at all
   (all styling/behaviour lives in external files by construction), `data:`
-  images allowed for the QR PNG, `frame-ancestors 'none'`.
+  images allowed for the connect page's QR PNG and the console's covers,
+  `frame-ancestors 'none'`.
 - The **web player** at `/web` gets a per-document `htmlCSP`: `script-src
   'self'` plus a sha256 hash of each inline `<script>` in that HTML document,
   and `style-src 'unsafe-inline'` (react-native-web injects runtime styles that
@@ -322,7 +325,7 @@ is a query parameter by necessity (it must survive Universal/App Link routing).
 An invite-derived token lives as long as the invite it came from (same trust
 class as the invite link itself), which is acceptable because the server keeps
 no access log, sends `Referrer-Policy: no-referrer`, and the token dies with
-the invite (revoke, Resend/rotate, supersede, expiry, use cap) - the exposure
+the invite (revoke, rotate, supersede, expiry, use cap) - the exposure
 class matches the media `?token=` fallback. Recovery-derived and `/auth/pair`
 tokens stay 10-minute-bounded. Follow the fragment convention for any new
 durable secret.

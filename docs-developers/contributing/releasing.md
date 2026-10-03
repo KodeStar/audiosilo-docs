@@ -116,7 +116,8 @@ The end-to-end smoke test from `RELEASING.md`:
 1. `docker compose up -d`; grab the admin password from `docker compose logs`.
    (If this machine ran a previous release, `docker compose pull` first - `up`
    won't re-pull an already-cached `:latest`.)
-2. Open `/admin`, sign in, add a library, create a user, click **Copy invite**.
+2. Open `/admin`, sign in, add a library, then **Invite someone** and copy the
+   invite link.
 3. **Web:** open the invite link → connect screen → **Open web player** (or
    visit `/web`) → it exchanges the token and drops you into the player.
 4. **Native:** run the app from audiosilo-frontend (`expo start` / a dev build),

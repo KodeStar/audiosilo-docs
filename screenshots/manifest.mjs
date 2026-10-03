@@ -29,18 +29,20 @@ export const SHOTS = [
   {file: 'web-player/phone-book-detail.png', capture: 'web', title: 'Phone - Book detail', hint: 'phone-width book page'},
   {file: 'web-player/phone-player.png', capture: 'web', title: 'Phone - Now playing', hint: 'phone-width full-screen player'},
 
-  // ── Admin console + public server pages ────────────────────────────────
-  {file: 'admin/login.png', capture: 'admin', title: 'Admin - Login', hint: 'admin console login form'},
-  {file: 'admin/overview.png', capture: 'admin', title: 'Admin - Overview', hint: 'stats/overview section'},
-  {file: 'admin/libraries.png', capture: 'admin', title: 'Admin - Libraries', hint: 'libraries section with a library listed'},
-  {file: 'admin/detection.png', capture: 'admin', title: 'Admin - Detection browser', hint: 'per-library folder detection override browser'},
-  {file: 'admin/users.png', capture: 'admin', title: 'Admin - Users', hint: 'users section'},
-  {file: 'admin/user-detail.png', capture: 'admin', title: 'Admin - User detail', hint: 'per-user drawer (role, password, access, invite status)'},
-  {file: 'admin/shares.png', capture: 'admin', title: 'Admin - Shares', hint: 'shares section with path rules'},
-  // The redesigned console (admin-ui), served at /admin while AUDIOSILO_ADMIN_NEXT is on.
-  {file: 'admin-next/overview.png', capture: 'admin', title: 'New admin console - Overview', hint: 'Shelf overview: listening now, totals, server card'},
-  {file: 'admin-next/palette.png', capture: 'admin', title: 'New admin console - Command palette', hint: 'the ⌘K palette open over the overview'},
-  {file: 'admin-next/overview-phone.png', capture: 'admin', title: 'New admin console - Phone', hint: 'overview at phone width with the bottom tab bar (light)'},
+  // ── Admin console (admin-ui, desktop 1440x900 dark unless noted) + public server pages
+  {file: 'admin/login.png', capture: 'admin', title: 'Admin - Sign in', hint: 'the console sign-in page, signed out'},
+  {file: 'admin/overview.png', capture: 'admin', title: 'Admin - Overview', hint: 'home: listening now, totals, recent listening, books per library, server card'},
+  {file: 'admin/palette.png', capture: 'admin', title: 'Admin - Command palette', hint: 'the ⌘K palette open over the overview'},
+  {file: 'admin/overview-phone.png', capture: 'admin', title: 'Admin - Phone', hint: 'overview at phone width (400x860) with the bottom tab bar (light)'},
+  {file: 'admin/libraries.png', capture: 'admin', title: 'Admin - Libraries', hint: 'Library > Libraries: library cards with covers, status, folder, book count'},
+  {file: 'admin/library-add.png', capture: 'admin', title: 'Admin - Add library', hint: 'the Add library dialog with the server folder picker open (Browse)'},
+  {file: 'admin/detection.png', capture: 'admin', title: 'Admin - Folder detection', hint: 'a library\'s Folder detection dialog (Automatic / One book / Separate books)'},
+  {file: 'admin/people.png', capture: 'admin', title: 'Admin - People', hint: 'People > People: person cards'},
+  {file: 'admin/person.png', capture: 'admin', title: 'Admin - Person', hint: 'sam\'s page, Access tab'},
+  {file: 'admin/invite.png', capture: 'admin', title: 'Admin - Invite ready', hint: 'the invite card dialog after Invite someone: QR code, link, code'},
+  {file: 'admin/invites.png', capture: 'admin', title: 'Admin - Invites', hint: 'People > Invites: the invite table'},
+  {file: 'admin/shares.png', capture: 'admin', title: 'Admin - Shares', hint: 'People > Shares: list + the selected share\'s folders and people'},
+  {file: 'admin/settings.png', capture: 'admin', title: 'Admin - Settings', hint: 'Server > Settings: the community metadata card'},
   {file: 'server/connect-page.png', capture: 'admin', title: 'Connect page', hint: 'public connect page (auth-code box / QR)'},
   {file: 'server/setup-wizard.png', capture: 'admin', title: 'Setup wizard', hint: 'first-run --setup wizard page'},
 

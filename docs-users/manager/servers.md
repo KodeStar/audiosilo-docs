@@ -15,8 +15,9 @@ You'll be asked for:
   `https://my-server:8080`.
 - **Auth code** - an auth code minted on the server. For full management you want
   a code for an **admin** account: in the server's
-  [admin console](../admin/console-tour.md), use **Copy invite** on your admin user
-  ([Users and invites](../admin/users-and-invites.md)).
+  [admin console](../admin/console-tour.md), open your own page under **People**,
+  use **Pair a device** and copy the **Code**
+  ([People and invites](../admin/users-and-invites.md#a-persons-page)).
 - **Display name** *(optional)* - what to call this server in the sidebar; left
   blank, the server's own name is used.
 - **Device name** - how this session appears in the server's session list

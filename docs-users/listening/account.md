@@ -105,5 +105,5 @@ On the web and Android, a **Support AudioSilo** section links to GitHub Sponsors
 The footer shows the version you're running, e.g. *AudioSilo v1.1.1* - when connected, this reflects the server's version. Handy to mention if you ever report a problem (see [Troubleshooting](../troubleshooting.md)).
 
 :::note
-Things an admin manages - creating accounts, invites, what libraries you can see - aren't in your Settings; they live in the server's admin console. See [Users and invites](../admin/users-and-invites.md).
+Things an admin manages - creating accounts, invites, what libraries you can see - aren't in your Settings; they live in the server's admin console. See [People and invites](../admin/users-and-invites.md).
 :::

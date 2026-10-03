@@ -39,7 +39,7 @@ An optional desktop app for the "librarian" side of things: setting up and conne
 ## How this guide is organized
 
 - **[Getting started](./getting-started/quickstart-docker.md)** - install the server with [Docker](./getting-started/quickstart-docker.md) or a [native binary](./getting-started/install-binary.md), understand the [first run](./getting-started/first-run.md), lay out [your library folders](./getting-started/organizing-your-library.md), and set up [remote access](./getting-started/remote-access.md).
-- **[Server administration](./admin/console-tour.md)** - the admin console: [libraries](./admin/libraries.md), [users and invites](./admin/users-and-invites.md), and [sharing parts of a library](./admin/sharing.md).
+- **[Server administration](./admin/console-tour.md)** - the admin console: [libraries](./admin/libraries.md), [people and invites](./admin/users-and-invites.md), and [sharing parts of a library](./admin/sharing.md).
 - **[Listening](./listening/connecting.md)** - connecting a device, [browsing](./listening/browsing.md), [playback](./listening/playback.md), [offline downloads](./listening/offline-downloads.md), [your account](./listening/account.md) and the [mobile apps](./listening/mobile-apps.md).
 - **[Desktop manager](./manager/index.md)** - [managing servers](./manager/servers.md), [organizing and transferring books](./manager/organizing.md), and [backing up an Audible library](./manager/audible-backup.md).
 - **[Demo](./demo.md)** - try AudioSilo without installing anything.

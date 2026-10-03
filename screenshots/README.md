@@ -23,13 +23,16 @@ shot), builds the `audiosilo-meta` data artifact (composed with
 meta-site shots, then runs the Playwright captures and backfills placeholders.
 `SKIP_META=1` skips the meta stack (for a web/admin-only run).
 `SHOTS_ONLY=<prefix>` writes only the screenshots whose path starts with it
-(e.g. `SHOTS_ONLY=admin-next/`), so adding a few shots doesn't re-encode every
+(e.g. `SHOTS_ONLY=admin/`), so adding a few shots doesn't re-encode every
 other committed PNG.
 
-The demo server runs with `AUDIOSILO_ADMIN_NEXT=1` while the admin console is
-being redesigned: the new console (`admin-next/*` shots) is at `/admin` and the
-classic one (`admin/*` shots) at `/admin/classic`. `run.sh` builds the server's
-`admin-ui` first because its output is embedded, never committed.
+`run.sh` builds the server's admin console (`admin-ui`) first, because its
+output is embedded in the binary, never committed. `capture-admin.mjs` signs in
+through the console's own login form and drives it with role/label selectors
+that use the exact English labels from the server's
+`admin-ui/src/i18n/locales/en.json`, so a renamed button or field there needs
+the same rename in the script (a failed step is logged and its shot falls back
+to the previous image or a placeholder).
 
 Every capture is optimized in place with **pngquant** (`brew install pngquant`)
 - a lossy-palette pass that shrinks the retina PNGs ~60% with no perceptible

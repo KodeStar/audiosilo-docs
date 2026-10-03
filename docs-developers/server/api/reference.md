@@ -1196,9 +1196,10 @@ Create an account.
 | `password` | string | admins only | optional for non-admins (pairing-only accounts); required for `role: "admin"` |
 | `role` | string | yes | `"admin"` or `"user"` |
 
-Response `201`: the created user object. `409` `username already taken` on a
-duplicate username; `400` with a specific message on a validation failure (missing
-admin password, password too short, …).
+Response `201`: the created user object. `409` `username already taken`
+(`code: "username_taken"`) on a duplicate username; `400` with a specific message
+on a validation failure - `admin_needs_password`, `password_too_short` (see
+[error codes](index.md#error-envelope-and-status-conventions)).
 
 ### `GET /api/v1/admin/users/{id}`
 
@@ -1211,7 +1212,10 @@ One account plus everything the console needs to manage it:
   "accessible_libraries": [ { "id": 1, "name": "Audiobooks", "root": "/srv/audiobooks",
                               "default_view": "hybrid", "sort_order": 0 } ],
   "shares": [ { "id": 2, "name": "Fantasy shelf", "description": "", "read_only": true,
-                "paths": [ { "library_id": 1, "path": "Brandon Sanderson" } ] } ],
+                "paths": [ { "library_id": 1, "path": "Brandon Sanderson" } ] },
+              { "id": 5, "name": "Library: Audiobooks", "description": "Whole library",
+                "read_only": false, "whole_library_id": 1,
+                "paths": [ { "library_id": 1, "path": "" } ] } ],
   "auth_codes": [
     {
       "id": 9,
@@ -1226,7 +1230,8 @@ One account plus everything the console needs to manage it:
 }
 ```
 
-`auth_codes` is **invite metadata only** (never the code itself, and never
+`shares` marks whole-library grants with `whole_library_id` (see
+[`GET /admin/shares`](#get-apiv1adminshares)). `auth_codes` is **invite metadata only** (never the code itself, and never
 recovery codes - recovery presence surfaces as `user.has_recovery`).
 `expires_at` empty/omitted = no expiry; `max_uses: 0` = unlimited;
 `redeemed_at` omitted = never redeemed. `404` if the user doesn't exist.
@@ -1245,9 +1250,9 @@ Response `200`: the updated user object.
 
 | Status | Meaning |
 |---|---|
-| `400` | admin must keep a password / password too short |
+| `400` | admin must keep a password (`admin_needs_password`) / password too short (`password_too_short`) |
 | `404` | user not found |
-| `409` | would demote/disable the last enabled admin |
+| `409` | would demote/disable the last enabled admin (`last_admin`) |
 
 ### `DELETE /api/v1/admin/users/{id}`
 
@@ -1257,9 +1262,9 @@ disk are untouched. Response: `204 No Content`.
 
 | Status | Meaning |
 |---|---|
-| `400` | self-delete refused (disable your own account instead) |
+| `400` | self-delete refused (disable your own account instead) - `cannot_delete_self` |
 | `404` | user not found |
-| `409` | last enabled admin |
+| `409` | last enabled admin - `last_admin` |
 
 ### `POST /api/v1/admin/users/{id}/authcode`
 
@@ -1278,9 +1283,15 @@ Response `201` - shown once:
 ```json
 {
   "auth_code": "9M4K-P2TQ-WX7V-3RHD",
-  "invite_url": "https://books.example.com/connect#code=9M4K-P2TQ-WX7V-3RHD"
+  "invite_url": "https://books.example.com/connect#code=9M4K-P2TQ-WX7V-3RHD",
+  "max_uses": 5,
+  "expires_at": "2026-07-03T10:00:00Z"
 }
 ```
+
+`max_uses` is the device limit the invite was given (`0` = unlimited) and
+`expires_at` its expiry (RFC 3339, omitted when it never expires), so a client
+shows the server's numbers rather than re-deriving them.
 
 The code rides in the `invite_url` **fragment**, so it never reaches server
 logs; the connect page auto-redeems it client-side.
@@ -1293,15 +1304,48 @@ since recovery codes are not listable). No-op if none. `204 No Content`.
 
 ### `POST /api/v1/admin/authcodes/{id}/rotate`
 
-Regenerates an existing invite's secret in place (the admin "Resend"): the old
-code dies, no new row is created, and `max_uses` is preserved with the expiry
-renewed for the invite's original window. No body. Response `200`:
-`{ "auth_code": "…", "invite_url": "…" }` (same shape as creation). `404` if
-the invite doesn't exist.
+Regenerates an existing invite's secret in place (the console's **Rotate**): the old
+code dies, no new row is created, the use counter resets, and `max_uses` is
+preserved with the expiry renewed for the invite's original window. In the same
+transaction it retires the user's **other** still-redeemable invites, so the
+rotated invite is their one active invite - rotating an expired (or used-up)
+invite revives it as that one. No body. Response `200`: the same shape as
+creation (`auth_code`, `invite_url`, `max_uses`, `expires_at`). `404` if the
+invite doesn't exist.
 
 ### `DELETE /api/v1/admin/authcodes/{id}`
 
 Revokes (deletes) an issued invite immediately. `204 No Content`.
+
+### `GET /api/v1/admin/invites`
+
+Every account's invite codes in one list (the console's People > Invites page),
+newest first, wrapped as `{ "invites": [ … ] }`:
+
+```json
+{
+  "invites": [
+    {
+      "id": 9,
+      "label": "Invite for sam",
+      "max_uses": 5,
+      "uses": 1,
+      "expires_at": "2026-07-03T10:00:00Z",
+      "redeemed_at": "2026-07-02T11:20:31Z",
+      "created_at": "2026-07-02T10:00:00Z",
+      "user_id": 4,
+      "username": "sam"
+    }
+  ]
+}
+```
+
+Each entry is the same invite metadata as `auth_codes` in
+[`GET /admin/users/{id}`](#get-apiv1adminusersid) plus the account it pairs
+(`user_id`, `username`). It **never** includes the code itself (only its hash
+is stored) and never lists recovery codes. `expires_at` / `redeemed_at` are
+omitted when unset; `max_uses: 0` = unlimited. An empty server returns
+`{ "invites": [] }`. `401` anonymous, `403` non-admin.
 
 ## Admin: libraries & shares
 
@@ -1309,8 +1353,36 @@ All *Admin*.
 
 ### `GET /api/v1/admin/libraries`
 
-All libraries in display order, wrapped as `{ "libraries": [ … ] }` - the same
-library object shape as [`GET /api/v1/libraries`](#get-apiv1libraries).
+All libraries in display order, wrapped as `{ "libraries": [ … ] }` - the
+library object of [`GET /api/v1/libraries`](#get-apiv1libraries) plus two
+admin-only fields:
+
+```json
+{
+  "libraries": [
+    { "id": 1, "name": "Audiobooks", "root": "/srv/audiobooks",
+      "default_view": "hybrid", "sort_order": 0,
+      "book_count": 812, "available": true,
+      "scan": { "running": false, "total": 812, "done": 812, "indexed": 812 } }
+  ]
+}
+```
+
+- `book_count` (int) - books indexed in the library.
+- `available` (bool) - whether the root folder is reachable right now. It is
+  `false` when the root is missing, unreadable, or doesn't answer within
+  **2 seconds**; when it is an empty folder while books are still indexed
+  under it (what an unmounted network share looks like); or when the last scan
+  stopped at the [unavailable-root guard](../scanner.md#the-unavailable-root-guard)
+  (a successful rescan clears that). A hung network mount can't stall the list:
+  roots are probed in parallel, at most one probe per root runs at a time,
+  each answer is cached for 15 seconds, and a probe already stuck past the
+  timeout answers "not responding" at once for later requests.
+- `scan` - the library's scan progress, the same object as
+  [`GET /admin/libraries/{id}/scan`](#get-apiv1adminlibrariesidscan) (`running`,
+  `total`, `done`, `indexed`, `unavailable` when set). The console polls this
+  list - every second while any library is scanning - instead of each
+  library's scan endpoint, which remains available.
 
 ### `POST /api/v1/admin/libraries`
 
@@ -1323,7 +1395,8 @@ works immediately; the index fills in behind).
 | `root` | string | yes | **server-local** filesystem path (mount network shares first) |
 | `default_view` | string | no | defaults to `"hybrid"` |
 
-Response `201`: the created library. `409` `name already taken`.
+Response `201`: the created library. `409` `name already taken`
+(`code: "name_taken"`).
 
 ### `PUT /api/v1/admin/libraries/order`
 
@@ -1332,7 +1405,9 @@ keep their order. This order is also the final de-duplication tiebreaker between
 otherwise-equal copies of the same book (see [`GET /api/v1/search`](#get-apiv1search)).
 
 Body: `{ "ids": [2, 1, 3] }`. Response `200`: `{ "libraries": [ … ] }` in the
-new order.
+new order, in the same enriched shape as
+[`GET /admin/libraries`](#get-apiv1adminlibraries) (with `book_count`,
+`available` and `scan`).
 
 ### `PATCH /api/v1/admin/libraries/{id}`
 
@@ -1344,7 +1419,12 @@ triggers a background rescan. Response `200`: the updated library. `404` /
 ### `DELETE /api/v1/admin/libraries/{id}`
 
 Removes the library and everything indexed under it (books, files, chapters,
-FTS rows). Audio files on disk are untouched. `204 No Content`.
+FTS rows), and - by cascade - every user's state keyed to it: progress,
+bookmarks, notes, listening history and favourites, plus its folder overrides,
+enrichment and any share path rules pointing into it. Its whole-library grant
+shares (`whole_library_id` = this library) are deleted too, unless one also
+holds rules for another library, which it keeps granting. Audio files on disk are
+untouched. `204 No Content`.
 
 ### `PUT /api/v1/admin/libraries/{id}/folder-override`
 
@@ -1459,9 +1539,53 @@ Progress of the (possibly running) scan:
 { "running": true, "total": 812, "done": 394, "indexed": 388 }
 ```
 
+`unavailable` (bool, omitted when false) is `true` when the last finished scan
+stopped at the [unavailable-root guard](../scanner.md#the-unavailable-root-guard),
+so nothing was pruned.
+
+A scan an admin request queues - `POST …/scan`, creating or editing a library
+(`POST /admin/libraries`, `PATCH /admin/libraries/{id}`), setting or clearing a
+folder override, or the setup wizard - is marked running before that request
+returns, so a status poll made right after it reports `running: true` (with
+`total`/`done` at `0` until discovery finishes).
+
+### `GET /api/v1/admin/fs/dirs`
+
+The add-library folder picker: the subfolders of an absolute path on the
+**server's** filesystem. `?path=` is the folder to list; empty means the
+filesystem root (`/`, or the working directory's drive on Windows).
+
+```json
+{
+  "path": "/srv",
+  "parent": "/",
+  "dirs": [
+    { "name": "audiobooks", "path": "/srv/audiobooks" },
+    { "name": "Podcasts", "path": "/srv/Podcasts" }
+  ]
+}
+```
+
+- **Folders only**, never files - no sizes, owners or timestamps. Hidden
+  (dot) folders are skipped; symlinks that resolve to folders are included.
+- Sorted case-insensitively by name; `path` values are absolute, in the
+  server's own path syntax, and `path` itself is the cleaned request path.
+- `parent` is omitted at a filesystem root.
+- At most **1,000** entries; `truncated: true` (otherwise omitted) when there
+  were more.
+
+| Status | Meaning |
+|---|---|
+| `400` | `path must be absolute` (`code: "path_not_absolute"`) - a relative `path` |
+| `404` | `folder not found or not readable` (`code: "folder_unreadable"`) - missing, not a folder, or unreadable by the server (the OS error is not echoed) |
+| `401` / `403` | anonymous / non-admin |
+
+Bounds rationale: an admin can already point a library at any folder and then
+browse it, so listing folder names reveals nothing new to that role.
+
 ### `GET /api/v1/admin/shares`
 
-All shares (with their path rules):
+All shares (with their path rules and who has them):
 
 ```json
 {
@@ -1471,13 +1595,34 @@ All shares (with their path rules):
       "name": "Fantasy shelf",
       "description": "Sam's corner",
       "read_only": true,
-      "paths": [ { "library_id": 1, "path": "Brandon Sanderson" } ]
+      "paths": [ { "library_id": 1, "path": "Brandon Sanderson" } ],
+      "member_ids": [4, 7]
+    },
+    {
+      "id": 5,
+      "name": "Library: Audiobooks",
+      "description": "Whole library",
+      "read_only": false,
+      "paths": [ { "library_id": 1, "path": "" } ],
+      "whole_library_id": 1,
+      "member_ids": [4]
     }
   ]
 }
 ```
 
-A rule's `path: ""` means the whole library.
+A rule's `path: ""` means the whole library. `member_ids` lists the ids of the
+users the share is granted to (`[]`, never `null`, when none). The single-share
+`GET /admin/shares/{id}` does not carry it.
+
+`whole_library_id` (omitted for ordinary shares) marks the shares a
+whole-library grant ([`POST /admin/library-access`](#post-apiv1adminlibrary-access))
+creates: the id of the library it grants whole. Clients list those as library
+access rather than as named shares, by this field - not by the share's name or
+rules (a share an admin fills with a whole library stays an ordinary share).
+`GET /admin/shares/{id}` and the `shares` of
+[`GET /admin/users/{id}`](#get-apiv1adminusersid) carry it too. Migration 0015
+added the column and backfilled the existing `Library: <name>` grant shares.
 
 ### `POST /api/v1/admin/shares`
 
@@ -1491,7 +1636,8 @@ bad rule rolls the whole thing back).
 | `read_only` | bool | no | |
 | `paths` | array | no | `[ { "library_id": 1, "path": "Brandon Sanderson" } ]` |
 
-Response `201`: the full share (with `paths`). `409` `name already taken`.
+Response `201`: the full share (with `paths`). `409` `name already taken`
+(`code: "name_taken"`).
 
 ### `GET /api/v1/admin/shares/{id}`
 
@@ -1502,7 +1648,8 @@ One share with its `paths`. `404` if missing.
 Updates share metadata. An empty `name` keeps the current one, but
 `description` and `read_only` are **replaced with whatever the body says**
 (send the full desired values). Path rules are *not* editable here - use the
-`/paths` sub-routes. Response `200`: the updated share. `404` / `409`.
+`/paths` sub-routes. Response `200`: the updated share. `404` / `409`
+(`name_taken`).
 
 ### `DELETE /api/v1/admin/shares/{id}`
 
@@ -1529,6 +1676,16 @@ Grants / revokes a share to/from a user. Body:
 Convenience sugar: grants a user an entire library by creating/granting a
 whole-library share under the hood. Body:
 `{ "user_id": 4, "library_id": 1 }`. Response: `204 No Content`.
+
+The grant share is found by `whole_library_id` first, so it survives a library
+rename; only an **unmarked** older share named `Library: <name>` is reused as a
+fallback (and then marked). A share marked for a *different* library is never
+reused - adding this library's rule to it would hand this library to everyone
+who has that one. When such a share already holds the `Library: <name>` name (a
+library was renamed and a new one took its old name), the new grant share is
+named `Library: <name> (<library id>)` instead; the name is internal, since
+clients show the library's own name. Errors: `404` for an unknown library;
+`409` with `code: name_taken` only if even that name is taken.
 
 ## Admin: stats
 

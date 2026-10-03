@@ -5,16 +5,16 @@
 //   SETUP_URL       optional: a second --setup server's wizard URL (with #token)
 //
 // Before capturing it provisions a little demo state through the admin API
-// (a listener account, an invite, a share) so the console looks lived-in.
-//
-// run.sh starts the server with AUDIOSILO_ADMIN_NEXT=1, so the classic console is
-// captured at /admin/classic and the redesigned one (admin-next/*) at /admin.
-// Both share the session token in localStorage, so one sign-in covers both.
+// (a listener account, an invite, a share, some listening progress) so the
+// console looks lived-in. The console (admin-ui) is driven through its real UI
+// with role/label selectors that use the exact English labels from
+// audiosilo-server/admin-ui/src/i18n/locales/en.json - if a label changes there,
+// change it here too.
 import {chromium} from 'playwright';
 import {sleep, shoot, step, DESKTOP_CONTEXT} from './lib.mjs';
 
 const ORIGIN = (process.env.AS_ORIGIN || 'http://127.0.0.1:8790').replace(/\/$/, '');
-const CLASSIC = '/admin/classic'; // where the classic console lives while AUDIOSILO_ADMIN_NEXT is on
+const ADMIN = `${ORIGIN}/admin`;
 const PASSWORD = process.env.ADMIN_PASSWORD;
 const SETUP_URL = process.env.SETUP_URL || '';
 if (!PASSWORD) {
@@ -44,14 +44,16 @@ const api = async (token, method, p, body) => {
 };
 
 let inviteCode = '';
+let samId = null;
+let library = null; // the seeded library ({id, name, root, ...})
 const login = await api(null, 'POST', '/auth/login', {username: 'admin', password: PASSWORD});
 const token = login.token;
 console.log('  ✓ admin login');
 
 await step('provision listener + share', async () => {
   const libs = await api(token, 'GET', '/admin/libraries');
-  const lib = (libs.libraries || libs || [])[0];
-  const libId = lib?.id;
+  library = (libs.libraries || libs || [])[0] ?? null;
+  const libId = library?.id;
 
   let sam;
   try {
@@ -60,12 +62,13 @@ await step('provision listener + share', async () => {
     const users = await api(token, 'GET', '/admin/users');
     sam = (users.users || []).find((u) => u.username === 'sam');
   }
-  const samId = sam?.user?.id ?? sam?.id;
+  samId = sam?.user?.id ?? sam?.id ?? null;
   if (samId && libId) {
     await api(token, 'POST', '/admin/library-access', {user_id: samId, library_id: libId}).catch(() => {});
   }
   if (libId) {
-    // A little listening so the new console's "Listening now" has something to show.
+    // A little listening so the overview's "Listening now" and the person
+    // cards have something to show.
     const books = (await api(token, 'GET', `/libraries/${libId}/books?limit=3`))?.books ?? [];
     for (const [i, frac] of [[0, 0.42], [1, 0.77]]) {
       const b = books[i];
@@ -100,78 +103,120 @@ const browser = await chromium.launch();
 const ctx = await browser.newContext(DESKTOP_CONTEXT);
 const page = await ctx.newPage();
 
-const nav = async (section) => {
-  await page.locator(`[data-section="${section}"]`).first().click({timeout: 8000});
-  await sleep(1500);
+// Opens a console route and waits for its page heading (the h1.display every
+// screen's PageHead and the overview greeting render).
+const open = async (p, route) => {
+  await p.goto(`${ADMIN}${route}`, {waitUntil: 'networkidle', timeout: 45000});
+  await p.locator('h1.display').first().waitFor({timeout: 15000});
+  await sleep(1500); // covers are fetched one by one after the page renders
 };
 
-await step('admin login page', async () => {
-  await page.goto(`${ORIGIN}${CLASSIC}`, {waitUntil: 'networkidle', timeout: 45000});
-  await sleep(1200);
+await step('sign-in page', async () => {
+  await page.goto(`${ADMIN}/`, {waitUntil: 'networkidle', timeout: 45000});
+  await page.getByRole('heading', {name: 'Admin sign in'}).waitFor({timeout: 15000});
+  await sleep(800);
   await shoot(page, 'admin/login.png');
 });
 
 await step('sign in', async () => {
-  await page.locator('#login-form input[type="text"], #login-form input:not([type])').first().fill('admin');
-  await page.locator('#login-form input[type="password"]').first().fill(PASSWORD);
-  await page.locator('#login-form button[type="submit"], #login-form button').first().click();
-  await sleep(2500);
+  await page.getByLabel('Username', {exact: true}).fill('admin');
+  await page.getByLabel('Password', {exact: true}).fill(PASSWORD);
+  await page.getByRole('button', {name: 'Sign in', exact: true}).click();
+  await page.locator('h1.display').first().waitFor({timeout: 15000});
+  await sleep(1500);
 });
 
 await step('overview', async () => {
-  await nav('overview');
+  await open(page, '/');
   await shoot(page, 'admin/overview.png');
 });
 
+await step('command palette', async () => {
+  await page.keyboard.press('Control+k');
+  await page.getByPlaceholder('Search pages, settings, or type a command').waitFor({timeout: 8000});
+  await sleep(600);
+  await shoot(page, 'admin/palette.png');
+  await page.keyboard.press('Escape');
+  await sleep(400);
+});
+
 await step('libraries', async () => {
-  await nav('libraries');
+  await open(page, '/library/libraries');
   await shoot(page, 'admin/libraries.png');
 });
 
-await step('detection browser', async () => {
-  await page.getByRole('button', {name: /detection/i}).first().click({timeout: 8000});
-  await sleep(2000);
+await step('add library with the folder picker', async () => {
+  await page.getByRole('button', {name: 'Add library', exact: true}).click({timeout: 8000});
+  const dialog = page.getByRole('dialog', {name: 'Add a library'});
+  await dialog.waitFor({timeout: 8000});
+  // Start the picker in the seeded library's folder, so it lists its author
+  // folders rather than the capture machine's filesystem root.
+  if (library?.root) await dialog.getByLabel('Folder', {exact: true}).fill(library.root);
+  await dialog.getByRole('button', {name: 'Browse', exact: true}).click();
+  await dialog.getByRole('list', {name: 'Folders on the server'}).waitFor({timeout: 8000});
+  // Choosing a folder fills the empty Name field from the folder's name.
+  await dialog.getByRole('button', {name: 'Choose Lewis Carroll'}).click({timeout: 4000}).catch(() => {});
+  await sleep(800);
+  await shoot(page, 'admin/library-add.png');
+  await page.keyboard.press('Escape');
+  await sleep(600);
+});
+
+await step('folder detection', async () => {
+  const name = library?.name || 'Books';
+  await page.getByRole('button', {name: `Actions for ${name}`}).click({timeout: 8000});
+  await page.getByRole('menuitem', {name: 'Folder detection...'}).click({timeout: 8000});
+  const dialog = page.getByRole('dialog', {name: `Folder detection in ${name}`});
+  await dialog.getByRole('list', {name: 'Folders'}).waitFor({timeout: 8000});
+  // One level down, so the shot shows folders detected as books.
+  await dialog.getByText('Lewis Carroll', {exact: true}).first().click({timeout: 4000}).catch(() => {});
+  await sleep(1500);
   await shoot(page, 'admin/detection.png');
   await page.keyboard.press('Escape');
   await sleep(600);
 });
 
-await step('users', async () => {
-  await nav('users');
-  await shoot(page, 'admin/users.png');
+await step('people', async () => {
+  await open(page, '/people');
+  await shoot(page, 'admin/people.png');
 });
 
-await step('user detail drawer', async () => {
-  await page.getByText('sam', {exact: true}).first().click({timeout: 8000});
-  await sleep(1800);
-  await shoot(page, 'admin/user-detail.png');
-  await page.keyboard.press('Escape');
+await step('a person (Access tab)', async () => {
+  if (!samId) throw new Error('sam was not provisioned');
+  await open(page, `/people/user/${samId}`);
+  await page.getByRole('tab', {name: 'Access'}).waitFor({timeout: 8000});
+  await shoot(page, 'admin/person.png');
+});
+
+await step('invite someone', async () => {
+  await open(page, '/people');
+  await page.getByRole('button', {name: 'Invite someone', exact: true}).first().click({timeout: 8000});
+  await page.getByLabel('Their name', {exact: true}).fill('Uncle Ray');
+  await page.getByRole('button', {name: 'Create invite', exact: true}).click();
+  await page.getByRole('dialog', {name: 'Invite ready for Uncle Ray'}).waitFor({timeout: 15000});
+  await sleep(800);
+  await shoot(page, 'admin/invite.png');
+  await page.getByRole('button', {name: 'Done', exact: true}).click().catch(() => page.keyboard.press('Escape'));
   await sleep(600);
 });
 
+await step('invites', async () => {
+  await open(page, '/people/invites');
+  await shoot(page, 'admin/invites.png');
+});
+
 await step('shares', async () => {
-  await nav('shares');
+  await open(page, '/people/shares');
   await shoot(page, 'admin/shares.png');
 });
 
-// ── The redesigned console (admin-ui, behind AUDIOSILO_ADMIN_NEXT) ───────────
-// Same browser context, so the classic console's stored session signs it in.
-await step('new console overview', async () => {
-  await page.goto(`${ORIGIN}/admin/`, {waitUntil: 'networkidle', timeout: 45000});
-  await page.locator('h1.display').waitFor({timeout: 15000});
-  await sleep(1500);
-  await shoot(page, 'admin-next/overview.png');
+await step('server settings', async () => {
+  await open(page, '/server');
+  await page.getByRole('switch', {name: 'Look up community metadata'}).waitFor({timeout: 8000}).catch(() => {});
+  await shoot(page, 'admin/settings.png');
 });
 
-await step('new console palette', async () => {
-  await page.keyboard.press('Control+k');
-  await sleep(800);
-  await shoot(page, 'admin-next/palette.png');
-  await page.keyboard.press('Escape');
-  await sleep(400);
-});
-
-await step('new console on a phone', async () => {
+await step('overview on a phone', async () => {
   const phone = await browser.newContext({
     ...DESKTOP_CONTEXT,
     viewport: {width: 400, height: 860},
@@ -179,10 +224,8 @@ await step('new console on a phone', async () => {
     storageState: await ctx.storageState(), // carries the signed-in session
   });
   const p4 = await phone.newPage();
-  await p4.goto(`${ORIGIN}/admin/`, {waitUntil: 'networkidle', timeout: 45000});
-  await p4.locator('h1.display').waitFor({timeout: 15000});
-  await sleep(1500);
-  await shoot(p4, 'admin-next/overview-phone.png');
+  await open(p4, '/');
+  await shoot(p4, 'admin/overview-phone.png');
   await phone.close();
 });
 
