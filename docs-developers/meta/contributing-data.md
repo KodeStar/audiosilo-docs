@@ -80,7 +80,7 @@ bound keeps the head, an import's run-level summary lines come first, then the
 **conflict** lines (a row refused for contradicting a recorded runtime or release
 date), then every other per-row warning.
 
-Six behaviors are worth knowing:
+Seven behaviors are worth knowing:
 
 - **Mirror-seeded records are taken over by ASIN.** When an Add a work or Add a
   recording submission names, by ASIN, a recording that was seeded from the
@@ -120,6 +120,17 @@ Six behaviors are worth knowing:
   the incumbent's - the same surname, or one edit apart - may be a misspelling,
   so that submission is `needs-human` rather than composed, as is one whose
   author-suffixed slug is held by yet another author's book.
+- **Retailer decoration comes off a submitted title.** On Add a work, a title
+  carrying decoration that is not part of a book's identity - an `(Unabridged)`
+  marker, its series name at a title boundary, a marketplace edition such as
+  ": International Edition", or a trailing narrator credit such as
+  " - Read by Luke Daniels" - is composed under the cleaned title
+  (`titlerule.StripDecoration`) and the verdict notes it. The cleaned title then
+  meets the slug and identity gates, so "Hammered: International Edition" from
+  the author of the catalogued "Hammered" is a `duplicate`, not a second record.
+  The decoration is kept when the cleaned title is a work this submission is not
+  a second record of (a stated volume, a collection), and a title that cleans to
+  nothing that names a book, or to a fragment, is `needs-human`.
 - **Envelope sniffing.** For an import, `metaissue` sniffs a self-identifying
   `audiosilo-books` envelope and routes it to that importer regardless of the
   form's export-type dropdown - the file is trusted over the form. If you are
@@ -251,7 +262,16 @@ a trailing `(Unabridged)`/`(Abridged)` marker is stripped before identity (and
 seeds the recording's tri-state `abridged` when the source didn't state it), and a
 same-work/same-narrator entry whose only new fact is another ASIN **merges that
 ASIN into the existing recording** (guarded by runtime and abridged checks) rather
-than minting a sibling. A series claim joins a same-named catalogued series only
+than minting a sibling. A marketplace edition or a trailing narrator credit is
+stripped before identity too, so "The Search: International Edition" or "The
+Search, Read by Dee Reader" from the author of a catalogued "The Search" resolves
+to that work and lands as a recording of it (or merges its ASIN into the same
+production). A work catalogued only under a qualified title stays reachable as a
+merge target, never created there; several such works decide nothing. Before a
+row creates a work, its normalized identity (see
+[the data model](./data-model.md#translations-and-reading-orders)) is also checked
+against the catalogue and the run so far, and a match is skipped as
+`identity-duplicate` rather than minted beside it. A series claim joins a same-named catalogued series only
 when its authors and its language fit that series (see
 [the import format](./import-format.md)); otherwise the row founds its own series
 of that name at the next slug. A row whose person, series, or work identity resolves to a

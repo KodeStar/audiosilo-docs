@@ -254,6 +254,23 @@ series in the moving language, so the reviewer can always accept the orientation
 that is right - rejecting an uncontested majority split in the same list; accepting two orientations of one series, or a drop the
 chosen orientation contradicts, is refused at audit time.
 
+**When one book is catalogued twice.** Every duplicate check on works - the
+audit's `W-DUP` class, `metacheck`'s advisory census, and the importer's and
+intake bot's create guards - compares one normalized identity: the title with
+retailer decoration removed, read with the authors and language. Decoration is
+what a listing says about the product rather than the book: an `(Unabridged)`
+marker, the series name at a title boundary, a marketplace edition (": International
+Edition", "(International Edition)") and a narrator credit standing as a bracketed
+group or the last segment ("(Narrated by Stephen Fry)", " - Gesprochen von Rufus
+Beck", ", Read by Ray Ortlund"). The credit must look like a name, so "The Book
+Thief: Narrated by Death" keeps its title. A leading brand possessive compares as
+the plain name ("Tom Clancy's Oath of Office" meets "Tom Clancy Oath of Office")
+but is never written into a proposed retitle. A stated edition in **another
+language** is the opposite case: "The Gambler [Persian Edition]" is a translation,
+not a duplicate, so the audit never folds it onto the English original even when
+its language tag is wrong; the wrong tag is a `title-language` correction
+(below).
+
 **When one series is spelled twice.** The audit's `SER-DUP` class groups series
 whose names normalize to the same key ("Temeraire" and "Temeraire
 (abridged)") and proposes a `merge-series` onto one survivor, the retired
@@ -287,6 +304,25 @@ counted). It can withhold a change and put a question in front of a human - the
 audit's `narration-contradicts` subclass proposes `set-work-language` for a work
 whose narrators contradict its stated language - but that op is always advisory:
 a language is only ever set by a reviewed decision, never inferred.
+
+**A title is evidence too.** The audit's `title-language` subclass proposes the same
+always-advisory `set-work-language` from a work's own title, which reaches a
+mis-tag whose narrators have recorded nothing else. It reads two signals:
+
+- an own-language **edition statement** in the title or subtitle naming a language
+  other than the tag ("The Gambler [Persian Edition]" tagged `en`), over every work;
+- in a mixed-language series whose language is not English (the derived one, or on
+  a tie the one language every other member states), an **`en`-tagged member whose
+  title reads as that language**: a bracketed English gloss ("La Odisea [The
+  Odyssey]"), or two of that language's function words and no English one ("Il
+  Cuore Spezzato Di Arelium"). Other tags are not read this way, since a
+  translation usually keeps its original's English title.
+
+A title that names a language (a language course) proposes nothing. Narrator
+evidence is named in the reason but never vetoes, and a work
+`narration-contradicts` already proposes keeps that one finding, with the title
+evidence in its notes. Either way the correction is applied only through an
+`accept` in the reviewed-decision list below.
 
 **Reviewed decisions are recorded, not re-made.** When a maintainer reviews a
 proposal, the verdict goes into one checked-in list,
