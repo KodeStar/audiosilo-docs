@@ -161,7 +161,12 @@ The console runs under the same `script-src 'self'; style-src 'self'` policy
   shadcn's `ChartStyle`) are banned by ESLint, and a test asserts no `<style>`
   element appears while the palette, a menu and a toast are open.
 - Dynamic styling uses React's `style` prop, which writes through CSSOM and is
-  allowed. Assets are never inlined as `data:` URIs.
+  allowed. Build assets are never inlined as `data:` URIs.
+- **Covers never carry the session token in a URL.** The media routes accept
+  `?token=` for the player's `<img>`/`<audio>`, but the console's session is a
+  full-privilege admin credential and a URL can leak into proxy access logs and
+  history. The console fetches each cover with the `Authorization` header and
+  renders it as a `data:` URL (`img-src` allows `data:`, not `blob:`).
 
 ### The switch: `AUDIOSILO_ADMIN_NEXT`
 
