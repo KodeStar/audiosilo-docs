@@ -141,7 +141,9 @@ so the same identity and dedup rules apply as any other import (full detail unde
   `Throne of Glass [German Edition]`, and a German row naming the plain
   `Harry Potter` joins the German edition series instead of founding
   `harry-potter-2` beside it. A reading-order variant (a series with
-  `ordering_of`) is reached only by a claim that states that ordering. These
+  `ordering_of`), or any series held in chronological or recommended order, is
+  reached only by a claim that states that ordering; an unqualified claim reaches
+  only a series in publication order or one stating none. These
   series are tried after the same-named ones and are judged by the same author
   and language rules, so under `--existing-series-only` a reached series is a
   join, not a drop. The importer never writes `translation_of`, `ordering` or
@@ -149,7 +151,8 @@ so the same identity and dedup rules apply as any other import (full detail unde
   Rows in one batch that spell the same series in different ways are judged
   together, against one record of that series' authors, so a batch of another
   author's books cannot take over a series by spreading across spellings. A
-  claim that joins a series stored under a different name is listed in the run's
+  claim that adds a membership to a series stored under a genuinely different
+  name (not merely another case or bracket spelling) is listed in the run's
   notes. The intake bot and `libex-select` resolve series through this same rule.
 - **Edition markers.** A trailing `(Unabridged)`/`(Abridged)` in the title is
   stripped before identity and, if `abridged` was not set, seeds the recording's
