@@ -230,12 +230,20 @@ tables were rebuilt rather than migrated in place):
   field; `field` is one of `catalog.OverrideFields` (`title`, `author`,
   `narrator`, `series`, `series_index`, `published`, `description`, `asin`,
   `isbn`). Values are validated and normalized by `catalog.normalizeOverride`.
-- **`chapter_overrides`** *(0016)* - PK `(library_id, path, idx)`, `title`,
-  `updated_by`, `updated_at`. A chapter-title edit by chapter index. An index
-  the book no longer has after a rescan is kept, and applies again if that
-  chapter comes back.
-- **`book_covers`** *(0016)* - PK `(library_id, path)`, `mime`, `data` (BLOB),
-  `updated_by`, `updated_at`. A custom cover uploaded in the admin console
+- **`chapter_overrides`** *(0016)* - PK `(library_id, path, file, start_ms)`,
+  `title`, `updated_by`, `updated_at`. A chapter-title edit, keyed by the
+  chapter's identity rather than its position: `file` is the chapter's audio file
+  relative to the book (`""` for a single-file book, so a moved book keeps its
+  renames) and `start_ms` its start in that file in milliseconds. A rescan that
+  adds or drops chapters elsewhere (a missing intro part turning up) leaves each
+  rename on its own chapter. A rename whose chapter no longer exists (the file
+  re-encoded with new marks) stays dormant: it never lands on another chapter,
+  doesn't count as an edit, and applies again if the chapter comes back. The API
+  still addresses chapters by index; the server resolves the index to this
+  identity when the edit is made.
+- **`book_covers`** *(0016)* - PK `(library_id, path)`, `mime`, `updated_by`,
+  `updated_at`, `data` (BLOB, the last column, so a revalidation that reads only
+  `mime`/`updated_at` never reads past it). A custom cover uploaded in the admin console
   (JPEG, PNG or WebP, at most 5 MiB - `catalog.MaxCoverBytes`). It lives in the
   database rather than the library folder (files stay untouched) or a loose
   data-dir file, so it is path-keyed durable state that moves with
