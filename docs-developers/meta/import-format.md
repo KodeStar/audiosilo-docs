@@ -129,6 +129,31 @@ so the same identity and dedup rules apply as any other import (full detail unde
   `--existing-series-only`, the claim is dropped and reported. A series whose
   members tie between two languages, and a row whose language is unknown, are
   never judged by language.
+- **Series qualifiers.** A claim also reaches a catalogued series by what the
+  two names state, not only by their exact spelling. A trailing edition
+  decoration (`[German Edition]`, `(Deutsche Ausgabe)`) and a trailing
+  reading-order qualifier (`(Chronological Order)`, `(Published Order)`,
+  `(in chronologischer Reihenfolge)`) are read off the name, which leaves a base
+  name and a language. A claim reaches a held series with the same base in the
+  same language. The language is the decoration's when there is one; otherwise
+  it is the held series' derived language, or the row's own language for the
+  claim. So `Throne of Glass (Deutsche Ausgabe)` finds the held
+  `Throne of Glass [German Edition]`, and a German row naming the plain
+  `Harry Potter` joins the German edition series instead of founding
+  `harry-potter-2` beside it. A reading-order variant (a series with
+  `ordering_of`), or any series held in chronological or recommended order, is
+  reached only by a claim that states that ordering; an unqualified claim reaches
+  only a series in publication order or one stating none. These
+  series are tried after the same-named ones and are judged by the same author
+  and language rules, so under `--existing-series-only` a reached series is a
+  join, not a drop. The importer never writes `translation_of`, `ordering` or
+  `ordering_of`, and a series it founds keeps the source's name exactly as given.
+  Rows in one batch that spell the same series in different ways are judged
+  together, against one record of that series' authors, so a batch of another
+  author's books cannot take over a series by spreading across spellings. A
+  claim that adds a membership to a series stored under a genuinely different
+  name (not merely another case or bracket spelling) is listed in the run's
+  notes. The intake bot and `libex-select` resolve series through this same rule.
 - **Edition markers.** A trailing `(Unabridged)`/`(Abridged)` in the title is
   stripped before identity and, if `abridged` was not set, seeds the recording's
   tri-state abridged flag.
