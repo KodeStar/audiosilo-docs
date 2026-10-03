@@ -73,6 +73,9 @@ amd64/arm64 all cross-compile from one Linux runner.
   `scripts/fetch-web-player.sh` populates `internal/web/player/` from the pinned
   web image (the `WEB_IMAGE` env, defaulting to `:latest`, overridable via the
   dispatch input) - so `/web` works with no `web_dir`.
+- **Admin console embedded:** before-hooks run `npm --prefix admin-ui ci` and
+  `npm --prefix admin-ui run build` (the build output is never committed), so
+  every binary carries the console under `internal/web/adminui`.
 - **ffmpeg/ffprobe are NOT bundled** (large, usually present). At runtime the
   server prefers a local copy (explicit flag → next to the binary → `$PATH`) and
   otherwise downloads a cached static build into `<data>/tools` on first run -
@@ -89,8 +92,10 @@ goreleaser check
 goreleaser build --snapshot --clean --skip=before --single-target
 ```
 
-(`--skip=before` skips the web-player fetch, which needs Docker + network; the
-committed `internal/web/player/.gitkeep` keeps the embed compiling.)
+(`--skip=before` skips the web-player fetch, which needs Docker + network, and
+the admin console build; the committed `.gitkeep` files keep both embeds
+compiling. Run `scripts/build-admin.sh` first if the snapshot should carry the
+real console.)
 
 ## Versions and tags
 

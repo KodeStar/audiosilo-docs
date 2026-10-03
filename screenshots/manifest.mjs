@@ -37,6 +37,10 @@ export const SHOTS = [
   {file: 'admin/users.png', capture: 'admin', title: 'Admin - Users', hint: 'users section'},
   {file: 'admin/user-detail.png', capture: 'admin', title: 'Admin - User detail', hint: 'per-user drawer (role, password, access, invite status)'},
   {file: 'admin/shares.png', capture: 'admin', title: 'Admin - Shares', hint: 'shares section with path rules'},
+  // The redesigned console (admin-ui), served at /admin while AUDIOSILO_ADMIN_NEXT is on.
+  {file: 'admin-next/overview.png', capture: 'admin', title: 'New admin console - Overview', hint: 'Shelf overview: listening now, totals, server card'},
+  {file: 'admin-next/palette.png', capture: 'admin', title: 'New admin console - Command palette', hint: 'the ⌘K palette open over the overview'},
+  {file: 'admin-next/overview-phone.png', capture: 'admin', title: 'New admin console - Phone', hint: 'overview at phone width with the bottom tab bar (light)'},
   {file: 'server/connect-page.png', capture: 'admin', title: 'Connect page', hint: 'public connect page (auth-code box / QR)'},
   {file: 'server/setup-wizard.png', capture: 'admin', title: 'Setup wizard', hint: 'first-run --setup wizard page'},
 

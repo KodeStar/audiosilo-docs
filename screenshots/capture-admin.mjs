@@ -6,10 +6,15 @@
 //
 // Before capturing it provisions a little demo state through the admin API
 // (a listener account, an invite, a share) so the console looks lived-in.
+//
+// run.sh starts the server with AUDIOSILO_ADMIN_NEXT=1, so the classic console is
+// captured at /admin/classic and the redesigned one (admin-next/*) at /admin.
+// Both share the session token in localStorage, so one sign-in covers both.
 import {chromium} from 'playwright';
 import {sleep, shoot, step, DESKTOP_CONTEXT} from './lib.mjs';
 
 const ORIGIN = (process.env.AS_ORIGIN || 'http://127.0.0.1:8790').replace(/\/$/, '');
+const CLASSIC = process.env.ADMIN_CLASSIC_PATH || '/admin/classic';
 const PASSWORD = process.env.ADMIN_PASSWORD;
 const SETUP_URL = process.env.SETUP_URL || '';
 if (!PASSWORD) {
@@ -60,6 +65,20 @@ await step('provision listener + share', async () => {
     await api(token, 'POST', '/admin/library-access', {user_id: samId, library_id: libId}).catch(() => {});
   }
   if (samId) {
+    // A little listening so the new console's "Listening now" has something to show.
+    const sess = await api(null, 'POST', '/auth/login', {username: 'admin', password: PASSWORD});
+    const books = libId ? (await api(sess.token, 'GET', `/libraries/${libId}/books?limit=3`))?.books ?? [] : [];
+    for (const [i, frac] of [[0, 0.42], [1, 0.77]]) {
+      const b = books[i];
+      if (!b) continue;
+      const dur = b.duration || 3600;
+      await api(sess.token, 'PUT', `/libraries/${libId}/progress?path=${encodeURIComponent(b.rel_path)}`, {
+        position: dur * frac,
+        duration: dur,
+        updated_at: new Date(Date.now() - (i + 1) * 60000).toISOString(),
+        version: Date.now(),
+      }).catch(() => {});
+    }
     const inv = await api(token, 'POST', `/admin/users/${samId}/authcode`, {}).catch(() => null);
     // The mint response carries the code as a plain string field: {"auth_code": "XXXX-..."}.
     inviteCode = (typeof inv?.auth_code === 'string' && inv.auth_code) || inv?.code || '';
@@ -86,7 +105,7 @@ const nav = async (section) => {
 };
 
 await step('admin login page', async () => {
-  await page.goto(`${ORIGIN}/admin`, {waitUntil: 'networkidle', timeout: 45000});
+  await page.goto(`${ORIGIN}${CLASSIC}`, {waitUntil: 'networkidle', timeout: 45000});
   await sleep(1200);
   await shoot(page, 'admin/login.png');
 });
@@ -132,6 +151,36 @@ await step('user detail drawer', async () => {
 await step('shares', async () => {
   await nav('shares');
   await shoot(page, 'admin/shares.png');
+});
+
+// ── The redesigned console (admin-ui, behind AUDIOSILO_ADMIN_NEXT) ───────────
+// Same browser context, so the classic console's stored session signs it in.
+await step('new console overview', async () => {
+  await page.goto(`${ORIGIN}/admin/`, {waitUntil: 'networkidle', timeout: 45000});
+  await page.locator('h1.display').waitFor({timeout: 15000});
+  await sleep(1500);
+  await shoot(page, 'admin-next/overview.png');
+});
+
+await step('new console palette', async () => {
+  await page.keyboard.press('Control+k');
+  await sleep(800);
+  await shoot(page, 'admin-next/palette.png');
+  await page.keyboard.press('Escape');
+  await sleep(400);
+});
+
+await step('new console on a phone', async () => {
+  const phone = await browser.newContext({...DESKTOP_CONTEXT, viewport: {width: 400, height: 860}, colorScheme: 'light'});
+  const p4 = await phone.newPage();
+  const state = await ctx.storageState();
+  const token = state.origins.flatMap((o) => o.localStorage).find((e) => e.name === 'audiosilo_token')?.value;
+  await p4.addInitScript((t) => t && localStorage.setItem('audiosilo_token', t), token);
+  await p4.goto(`${ORIGIN}/admin/`, {waitUntil: 'networkidle', timeout: 45000});
+  await p4.locator('h1.display').waitFor({timeout: 15000});
+  await sleep(1500);
+  await shoot(p4, 'admin-next/overview-phone.png');
+  await phone.close();
 });
 
 // ── Public pages ────────────────────────────────────────────────────────────

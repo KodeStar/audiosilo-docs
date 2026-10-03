@@ -1,15 +1,18 @@
 ---
 title: Built-in web UI
-description: "internal/web: the baked-in admin/connect pages, the /web player mount with per-document CSP, the embedplayer build tag, the first-run setup wizard, and the well-known app-association files."
+description: "internal/web: the baked-in admin/connect pages, the redesigned admin console (admin-ui, embedded via internal/web/adminui) and its AUDIOSILO_ADMIN_NEXT switch, the /web player mount with per-document CSP, the embedplayer build tag, the first-run setup wizard, and the well-known app-association files."
 ---
 
-The server ships two very different web surfaces from one package
-(`internal/web`):
+The server ships three web surfaces from `internal/web`:
 
-- The **admin/connect UI** - small, dependency-free vanilla HTML/CSS/JS pages
-  **embedded in the binary** (`//go:embed assets`). No build step, no
-  framework, and a strict same-origin CSP that the assets are written to
-  satisfy.
+- The **classic admin/connect UI** - small, dependency-free vanilla
+  HTML/CSS/JS pages **embedded in the binary** (`//go:embed assets`). No build
+  step, no framework, and a strict same-origin CSP that the assets are written
+  to satisfy.
+- The **redesigned admin console** (`admin-ui/`, a React + Vite app embedded
+  by `internal/web/adminui`) - being built in phases and, until the cutover,
+  served only when `AUDIOSILO_ADMIN_NEXT` is set. See
+  [The redesigned admin console](#the-redesigned-admin-console-admin-ui).
 - The **web player** at `/web` - the audiosilo-frontend Expo export. It is
   **not vendored** in this repo: it is served at runtime from `web_dir`
   (env `AUDIOSILO_WEB_DIR`), or baked into the binary by the `embedplayer`
@@ -21,14 +24,16 @@ authorization always happens at the API (see
 
 ## Route map
 
-`web.Register(mux, webDir)` mounts everything; API routes registered on the
-same `http.ServeMux` win automatically because `ServeMux` prefers more
-specific patterns.
+`web.Register(mux, webDir, adminNext)` mounts everything; API routes
+registered on the same `http.ServeMux` win automatically because `ServeMux`
+prefers more specific patterns.
 
 | Route | Serves | CSP |
 |---|---|---|
 | `GET /` (exact), `GET /connect[/]` | `index.html` - the connect page | strict site-wide |
-| `GET /admin[/]` | `admin.html` - the admin console | strict site-wide |
+| `GET /admin[/…]` (switch off, the default) | `admin.html` - the classic admin console | strict site-wide |
+| `GET /admin[/…]` (switch on) | the redesigned console (`adminui.Handler`): `/admin/assets/…` immutable, other top-level files `no-cache`, everything else `index.html` for client routing | strict site-wide |
+| `GET /admin/classic` (switch on only) | `admin.html` - the classic console, so both stay usable side by side | strict site-wide |
 | `GET /assets/…` | embedded CSS/JS/fonts/icons (+ `nosniff`) | strict site-wide |
 | `GET /favicon.ico` | 301 → `/assets/favicon.svg` | - |
 | `GET /sw.js`, `GET /manifest.webmanifest` | admin-console PWA worker + manifest, served from the **site root** so the worker's scope covers `/admin` (`sw.js` is `Cache-Control: no-cache` so updates land promptly) | strict site-wide |
@@ -88,6 +93,116 @@ strings are `admin.libraries.export` / `admin.libraries.exporting` and the
 `admin.toast.libraryExport*` toasts, present in all six locales in
 `assets/i18n-dict.js` (a key-parity check in `internal/web/web_test.go` now
 enforces that every locale defines the same keys).
+
+## The redesigned admin console (`admin-ui`)
+
+![The redesigned admin console's overview](/img/screenshots/admin-next/overview.png)
+
+The admin console is being rebuilt as a single-page app in the **Shelf**
+design, phase by phase (the plan lives in the workspace's
+`ADMIN-CONSOLE-PLAN.md`; the design system in `admin-ui/STYLEGUIDE.md`, which
+is authoritative for the build). Like the classic console it is a static client
+over the JSON API; the API enforces the admin role.
+
+**Stack:** React 19, Vite, TypeScript (strict), shadcn/ui on **Base UI**,
+Tailwind v4, TanStack Query and Router, cmdk for the ⌘K palette, i18next,
+lucide-react, fontsource (self-hosted Bricolage Grotesque, Figtree, JetBrains
+Mono).
+
+### Build and embed
+
+- `npm --prefix admin-ui run build` writes into `internal/web/adminui/dist`,
+  which `internal/web/adminui` embeds with `//go:embed all:dist`. Only
+  `dist/.gitkeep` is committed (the rest is gitignored), so a plain
+  `go build` without Node still compiles - and `/admin` then answers **503**
+  with a short "console not built" page that says how to build it.
+- **CI** (`ci.yml`) installs Node 24 and runs `npm ci`, `npm run check` and
+  `npm run build` **before** the Go steps, so `TestEmbeddedBuild` checks the
+  real embedded `index.html` (it skips locally when nothing is built). The
+  **Dockerfile** has a `node:24-alpine` stage that builds the console and
+  copies `dist` in before `go build`; **GoReleaser** runs the same two npm
+  commands as before-hooks. `scripts/build-admin.sh` does it locally.
+- The **desktop manager** embeds the server, so its `ci.yml` and `desktop.yml`
+  build `../audiosilo-server/admin-ui` first (see
+  [Manager server integration](../manager/server-integration.md)).
+- `go.mod` carries `ignore ./admin-ui/node_modules`: some npm packages ship
+  Go source, which `./...` would otherwise build, vet, test and lint.
+
+### Serving
+
+`adminui.Handler(fsys, csp)` serves everything under `/admin`:
+
+| Request | Response |
+|---|---|
+| `/admin/assets/<file>` | the fingerprinted build file, `Cache-Control: public, max-age=31536000, immutable`; **404** if missing |
+| `/admin/<file.ext>` (top level, e.g. `theme-init.js`) | the file, `no-cache`; **404** if missing |
+| anything else (`/admin`, `/admin/library/authors`, …) | `index.html`, `no-cache`, so client routes deep-link and a new release is picked up at once |
+
+Every response carries the site-wide strict CSP and `nosniff`. Content types
+come from an explicit table (`adminui.ContentType`): Go's MIME lookup falls back
+to the OS registry, which on some Windows hosts maps `.js` to `text/plain`, and
+a module script served that way never runs. Paths that aren't valid `fs`
+paths (`..` segments) 404.
+
+### The CSP does not change
+
+The console runs under the same `script-src 'self'; style-src 'self'` policy
+(no nonce) as the classic pages, so it is built to need nothing inline:
+
+- `index.html` loads only files: `/admin/theme-init.js` (applies the stored
+  light/dark/system theme before first paint) and the Vite bundle.
+  `admin-ui/scripts/check-csp.mjs` fails `npm run build` on any inline
+  `<script>`, `<style>`, `style=""` or `on*=""` attribute, and the Go test
+  applies the same check to the embedded build.
+- Base UI renders under `<CSPProvider disableStyleElements>`; the one rule it
+  would inject lives in `globals.css`. Libraries that inject styles or scripts
+  (Radix, sonner, vaul, next-themes, ECharts, cmdk's `Command.Dialog`,
+  shadcn's `ChartStyle`) are banned by ESLint, and a test asserts no `<style>`
+  element appears while the palette, a menu and a toast are open.
+- Dynamic styling uses React's `style` prop, which writes through CSSOM and is
+  allowed. Assets are never inlined as `data:` URIs.
+
+### The switch: `AUDIOSILO_ADMIN_NEXT`
+
+Until the cutover the new console is opt-in. `AUDIOSILO_ADMIN_NEXT=1` (env
+only, `config.AdminNext`, never written to `config.yaml`) serves it at `/admin`
+and moves the classic console to `/admin/classic`; without it nothing changes.
+Both consoles keep the session token in the same `localStorage` key
+(`audiosilo_token`) and share the language choice, so moving between them never
+asks to sign in again. Screens that later phases build show a designed "coming
+in this redesign" page with a link to the classic console.
+
+The PWA service worker (`/sw.js`) caches whichever console `/admin` returns;
+the new console's hashed assets are cached on first use (stale-while-revalidate),
+so it works offline after one online visit.
+
+### Dev loop
+
+```sh
+# the server, plain HTTP, switch on
+AUDIOSILO_TLS_MODE=off AUDIOSILO_ADMIN_NEXT=1 go run ./cmd/audiosilo --data ./data
+# hot-reloading console on http://localhost:5173/admin/
+npm --prefix admin-ui run dev
+```
+
+The Vite dev server proxies `/api`, `/assets`, `/sw.js`, `/manifest.webmanifest`,
+`/web` and `/admin/classic` to the Go server (`AUDIOSILO_DEV_SERVER` overrides
+`http://127.0.0.1:8080`). It is **not** under the production CSP, so check
+CSP-sensitive work against a real build served by Go. The console's own gate is
+`npm --prefix admin-ui run check` (typecheck, ESLint, Prettier, Vitest); see
+[Gates & CI](../contributing/gates-and-ci.md).
+
+### What phase 1a ships
+
+Sign-in (admins only; a non-admin's fresh session is revoked at once), the
+shell (top bar with the five destinations, ⌘K search, theme and account menus,
+a notifications placeholder; per-destination section bar; a bottom tab bar on
+phones), the ⌘K palette with navigation, settings (theme, language) and
+actions (rescan a library, open the web player or the classic console, sign
+out), and an overview built on `GET /admin/stats`, `GET /admin/settings` and
+`GET /server`. Interface text is in all six languages.
+
+![The ⌘K command palette](/img/screenshots/admin-next/palette.png)
 
 ## The connect page flow
 
