@@ -282,6 +282,13 @@ naming the phase that builds it: Library Books/Authors/Series/Narrators/Folders
 (2b), People Devices and all of Activity (4c), Health Issues/Jobs (3) and System
 (5a), Server Logs/About (5a) and Audit log (5b).
 
+The server half of the Library screens is already in place: the
+[admin catalog API](api/reference.md#admin-catalog) (the filtered, keyset-paged
+book list and its facets, authors/narrators with merge suggestions, series, the
+book page with per-field provenance, metadata edits single and bulk, community
+match search, and custom covers). No console screen calls it yet. Edits are
+path-keyed overrides in the database; no file on disk is modified.
+
 ![The ⌘K command palette](/img/screenshots/admin/palette.png)
 
 ## The connect page flow

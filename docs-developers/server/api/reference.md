@@ -521,8 +521,16 @@ Keyset-paginated (see [conventions](index.md#pagination)).
 }
 ```
 
-Conditional book fields: `asin`/`isbn` appear only when known (tags or
-enrichment); `codec` is omitted when never probed; `added_at` when unknown.
+Conditional book fields: `asin`/`isbn` appear only when known (attached via
+[enrichment](#put-apiv1adminlibrariesidenrichment) or set by an
+[admin edit](#patch-apiv1adminlibrariesidbook)); `codec` is omitted when never
+probed; `added_at` when unknown.
+
+Metadata fields (`title`, `author`, `narrator`, `series`, `series_index`,
+`asin`, `isbn`) and chapter titles carry the **effective** values: what the scan
+found, with any admin metadata edits layered on top. The shape is unchanged; a
+player simply sees the edited value. The same holds for every book-shaped
+response, search, the `/fs` annotations and the export.
 List responses omit `files`, `chapters`, and `direct_playable` (single-book
 responses include them). `next_cursor` is omitted on the last page. Invalid
 cursor → `400`.
@@ -681,8 +689,9 @@ path is authorized against the caller's share scope exactly like `/item`. Gated
 by the `metadata` [capability](#get-apiv1server): when it is false the route
 returns 404, so a client that honours the flag never calls this.
 
-The server resolves the book's `asin`/`isbn` (the fields on the indexed book,
-backfilled by the manager into `book_enrichment`), looks the recording up
+The server resolves the book's `asin`/`isbn` (the effective fields on the
+indexed book: backfilled by the manager into `book_enrichment`, or set by an
+admin edit, which wins), looks the recording up
 upstream, and folds the matched recording plus up to three series rails (one per
 reading-order family - see [Reading-order families](#reading-order-families)) into
 one envelope. Every series-rail entry carries its own `web_url`, so a client links
@@ -968,9 +977,26 @@ kills it.
 
 ### `GET /api/v1/libraries/{id}/cover`
 
-*Session (media).* A book's cover for a path: an indexed sibling cover file if
-present, otherwise embedded art extracted from the book's primary audio file
-(served with `Cache-Control: private, max-age=86400`).
+*Session (media).* A book's cover for a path, first match wins:
+
+1. a **custom cover** an admin uploaded
+   ([`PUT /admin/libraries/{id}/cover`](#put-apiv1adminlibrariesidcover--delete-apiv1adminlibrariesidcover)),
+   served from the database with `Cache-Control: private, no-cache` and an
+   `ETag` (`"cover-<id>"`, derived from when the cover was stored), so a
+   replaced cover shows up at once: a client revalidates, and a matching
+   `If-None-Match` gets a `304` without the image being read from the
+   database. Custom covers carry no `Last-Modified`, so a client that
+   revalidates after the custom cover was removed can't get a `304` from an
+   older sidecar file and keep showing the removed cover. A custom cover is
+   served only while a book is indexed at its path, and a request for a part
+   path inside a folder book gets that book's custom cover;
+2. an indexed sibling cover file (served with
+   `Cache-Control: private, max-age=86400`);
+3. embedded art extracted from the book's primary audio file (served with
+   `Cache-Control: private, max-age=86400`).
+
+The path is authorized against the caller's share scope before any of the
+three is tried, custom covers included.
 
 | Query param | Type | Required |
 |---|---|---|
@@ -978,7 +1004,7 @@ present, otherwise embedded art extracted from the book's primary audio file
 | `token` | string | no (media-auth fallback) |
 
 Response `200`: image bytes with the appropriate `Content-Type`; `404`
-(`no cover`) when there is neither a cover file nor embedded art.
+(`no cover`) when there is no custom cover, no cover file and no embedded art.
 
 ## Listening state
 
@@ -1421,7 +1447,8 @@ triggers a background rescan. Response `200`: the updated library. `404` /
 Removes the library and everything indexed under it (books, files, chapters,
 FTS rows), and - by cascade - every user's state keyed to it: progress,
 bookmarks, notes, listening history and favourites, plus its folder overrides,
-enrichment and any share path rules pointing into it. Its whole-library grant
+enrichment, metadata edits, custom covers and any share path rules pointing into
+it. Its whole-library grant
 shares (`whole_library_id` = this library) are deleted too, unless one also
 holds rules for another library, which it keeps granting. Audio files on disk are
 untouched. `204 No Content`.
@@ -1446,7 +1473,10 @@ Response `200`: `{ "status": "override cleared", "path": "…" }`.
 
 Attaches durable, path-keyed external identifiers to a book (used by the
 desktop manager after matching a book against Audible/ISBN sources). Survives
-rescans; modifies no file on disk. `?path=` required.
+rescans (every re-index of the book layers it back on); modifies no file on
+disk. `?path=` required. An admin's own edit of `asin`/`isbn`
+([`PATCH …/book`](#patch-apiv1adminlibrariesidbook)) wins over the enrichment
+for that field; reverting the edit falls back to the enrichment.
 
 | Body field | Type | Required |
 |---|---|---|
@@ -1686,6 +1716,448 @@ library was renamed and a new one took its old name), the new grant share is
 named `Library: <name> (<library id>)` instead; the name is internal, since
 clients show the library's own name. Errors: `404` for an unknown library;
 `409` with `code: name_taken` only if even that name is taken.
+
+## Admin: catalog
+
+All *Admin*. The queries behind the admin console's Library and Book screens
+(the screens themselves arrive in a later release; the API is in place). They
+see **every** library (no share scoping) and address books by
+`(library_id, path)` like everything else - the internal book id only ever
+travels inside an opaque cursor.
+
+Metadata edits are **overrides stored in the database**, keyed by path: no file
+on disk is ever modified. Each edit is a lock - a rescan re-reads the file but
+re-applies the edit in the same transaction, so the edited value is what players,
+search and the export see until it is reverted. See
+[Data model](../data-model.md#metadata-overrides-and-effective-values) for how
+the layering works.
+
+The overridable fields, with the rules a value must pass. Setting a field to
+`""` is an edit too (the field is held blank, whatever the scan finds); to go
+back to the scanned value, **revert** it instead.
+
+| Field | Rule |
+|---|---|
+| `title` | required (cannot be emptied), at most 500 characters, no control characters |
+| `author`, `narrator`, `series` | at most 500 characters, no control characters |
+| `series_index` | a number from 0 to 100000 (`2`, `2.5`); stored in its shortest form, `""` for none |
+| `published` | `YYYY`, `YYYY-MM` or `YYYY-MM-DD`, and a real date |
+| `description` | at most 20000 characters; line breaks and tabs kept, other control characters refused |
+| `asin` | 10 letters or digits (uppercased) |
+| `isbn` | an ISBN-10 or ISBN-13; hyphens and spaces are stripped, `x` uppercased |
+
+Values are trimmed. `published` and `description` are admin-console fields only:
+they appear in these endpoints but not on the player's book JSON.
+
+Every field reports a **source**: `path` (a scanned value equal to what the
+folder and file names yield), `tag` (any other scanned value - it came from the
+file's embedded tags), `edited` (typed by an admin), `community` (accepted from
+a community-metadata match, or an ASIN/ISBN attached through
+[enrichment](#put-apiv1adminlibrariesidenrichment)), or `""` when the field has
+no value. The scan does not store sources; `path` vs `tag` is worked out when
+the book is read, by the same rule for every book, so a tag that happens to
+match the folder name reads as `path`.
+
+### `GET /api/v1/admin/books`
+
+A page of books across every library, filtered, searched and sorted,
+keyset-paginated over the chosen ordering (never OFFSET, so a deep page costs
+what the first does).
+
+| Query param | Type | Default | Notes |
+|---|---|---|---|
+| `library_id` | int | - | one library; a non-positive or non-integer id is `400` |
+| `q` | string | - | full-text search over title/author/series/narrator, the same prefix matching as [`/search`](#get-apiv1search); punctuation-only input filters nothing |
+| `author` · `series` · `narrator` | string | - | exact match on the effective value |
+| `format` | string, repeatable | - | `?format=m4b&format=mp3`; at most 50 values |
+| `codec` | string, repeatable | - | ffprobe codec name (`aac`, `mp3`, …); at most 50 values |
+| `direct_playable` | `true`\|`false` | - | the book's codec plays in browsers (an unknown codec counts as playable) |
+| `has_cover` | `true`\|`false` | - | a sibling image, embedded art or a custom cover |
+| `has_chapters` | `true`\|`false` | - | **more than one** chapter (every single-part book has one) |
+| `matched` | `true`\|`false` | - | the book has an ASIN or an ISBN |
+| `edited` | `true`\|`false` | - | the book has a metadata edit, or a chapter-title edit on a chapter it still has (one on an index a rescan dropped is dormant and doesn't count) |
+| `min_duration` · `max_duration` | number (seconds) | - | inclusive bounds; `0` means no bound |
+| `added_after` | date | - | inclusive lower bound on `added_at`: `YYYY-MM-DD` (used as is) or an RFC 3339 time (any offset; converted to UTC before comparing) |
+| `added_before` | date | - | exclusive upper bound, same formats |
+| `sort` | string | `title` | `title` \| `author` \| `series` \| `narrator` \| `added` \| `duration` \| `size` |
+| `order` | string | `asc` | `asc` \| `desc` |
+| `limit` | int | `60` | ≤ 0 or > 200 falls back to 60 |
+| `cursor` | string | - | `next_cursor` from the previous page |
+
+Text sorts are case-insensitive. The `author`, `series` and `narrator` sorts put
+books with that field blank **last** in either direction (`order=desc` reverses
+the named books, not where the blanks go) and break ties
+sensibly: `author` sorts by author, then series, series position and title;
+`series` by series, position, then title; `narrator` by narrator, then title.
+
+A filter that can't be parsed (`has_cover=yes`, `min_duration=-1`,
+`added_after=last week`, an unknown `sort` or `order`) is a `400` with a message
+naming the parameter - it is never silently dropped, which would show an
+unfiltered list as if it were filtered. More than 50 `format` or `codec` values
+is a `400` too (`too many format or codec values`).
+
+```json
+{
+  "books": [
+    {
+      "library_id": 1,
+      "library_name": "Audiobooks",
+      "path": "Andy Weir/The Martian",
+      "is_folder": true,
+      "title": "The Martian",
+      "author": "Andy Weir",
+      "narrator": "R. C. Bray",
+      "series": "",
+      "series_index": 0,
+      "published": "2011",
+      "duration": 38040.5,
+      "format": "m4b",
+      "codec": "aac",
+      "direct_playable": true,
+      "size": 304112640,
+      "added_at": "2026-05-14T09:12:44Z",
+      "has_cover": true,
+      "custom_cover": false,
+      "chapter_count": 27,
+      "file_count": 1,
+      "asin": "B00B5HZGUG",
+      "isbn": "",
+      "edited": true
+    }
+  ],
+  "next_cursor": "eyJzIjoidGl0bGUiLCJ2IjpbIlRoZSBNYXJ0aWFuIl0sImlkIjo0MTJ9"
+}
+```
+
+- Every field is always present (empty string / `0` / `false` when unknown).
+  `path` is the book path (the player's `rel_path`).
+- `custom_cover` - an admin uploaded a cover; `has_cover` includes it.
+- `file_count` is `1` for a single-file book.
+- The cursor names the ordering it was minted for: replaying it with another
+  `sort` or `order` (or a malformed one) is `400 invalid cursor`. Changing the
+  filters between pages is not detected, so restart from the first page when
+  they change. `next_cursor` is omitted on the last page.
+
+### `GET /api/v1/admin/books/facets`
+
+The facet panel for the same filter parameters as
+[`GET /admin/books`](#get-apiv1adminbooks) (`sort`, `order`, `limit` and
+`cursor` don't apply). Each dimension is counted **with every other filter
+applied but its own**, so a facet shows what each choice would give; `total` is
+the count with all filters applied.
+
+```json
+{
+  "total": 812,
+  "libraries": [ { "library_id": 1, "count": 744 }, { "library_id": 2, "count": 68 } ],
+  "formats": [ { "value": "m4b", "count": 701 }, { "value": "mp3", "count": 111 } ],
+  "codecs": [ { "value": "aac", "count": 690 }, { "value": "mp3", "count": 111 }, { "value": "", "count": 11 } ],
+  "direct_playable": { "yes": 806, "no": 6 },
+  "has_cover": { "yes": 790, "no": 22 },
+  "has_chapters": { "yes": 650, "no": 162 },
+  "matched": { "yes": 401, "no": 411 },
+  "edited": { "yes": 37, "no": 775 }
+}
+```
+
+`formats` and `codecs` are ordered by count, largest first (a `""` value is a
+book whose codec was never probed). The `q`, `author`, `series`, `narrator`,
+duration and added-date filters apply to every dimension. `400` for an
+unparseable filter, as for the list.
+
+### `POST /api/v1/admin/books/bulk`
+
+Applies the same field edit to many books in one transaction - **every book is
+edited or none is**. Merging two spellings of an author is a bulk `set` of
+`author` over their books.
+
+| Body field | Type | Required | Notes |
+|---|---|---|---|
+| `books` | array | yes | `[ { "library_id": 1, "path": "Andy Weir/Artemis" } ]`, at most 1000 |
+| `set` | object | one of `set` / `revert` | field → value, for the fields above |
+| `revert` | array | one of `set` / `revert` | field names to put back to what the scan found |
+| `source` | string | no | `"edited"` (default) or `"community"` |
+
+```json
+{
+  "books": [
+    { "library_id": 1, "path": "Sanderson, Brandon/Elantris" },
+    { "library_id": 1, "path": "Brandon Sanderson/Warbreaker" }
+  ],
+  "set": { "author": "Brandon Sanderson" }
+}
+```
+
+Response `200`: `{ "updated": 2 }` - the number of distinct books edited
+(entries naming the same library and path, after the path is cleaned, count
+once).
+
+| Status | Meaning |
+|---|---|
+| `400` | `books is required`; `nothing to change`; `invalid request` (malformed body or an unknown key); `code: "too_large"` for more than 1000 books; `code: "invalid_override"` with `field` for a value that fails its rule, or with `field: "chapters"` for any chapter edit (`chapter titles can only be edited one book at a time` - chapter indexes are per book) |
+| `404` | `code: "book_not_found"` - one of the paths is not an indexed book (nothing was changed) |
+
+A field cannot be both set and reverted in one request (`invalid_override`).
+Reverting a field that has no edit is a no-op.
+
+### `GET /api/v1/admin/authors` · `GET /api/v1/admin/narrators`
+
+The distinct authors (or narrators) with their book counts and total duration,
+plus spellings that look like the same person. `?library_id=` narrows to one
+library (all libraries when absent; a non-positive or non-integer id is `400`).
+
+```json
+{
+  "authors": [
+    { "name": "Brandon Sanderson", "books": 14, "duration": 1204112.6 },
+    { "name": "Sanderson, Brandon", "books": 2, "duration": 140221.0 }
+  ],
+  "merge_suggestions": [
+    { "names": ["Brandon Sanderson", "Sanderson, Brandon"], "suggested": "Brandon Sanderson", "books": 16 }
+  ],
+  "unknown": 3
+}
+```
+
+The narrators route uses the key `narrators` instead of `authors`.
+
+- A name is the **whole** effective field value: a `Michael Kramer & Kate
+  Reading` credit is one entry, matching the exact `narrator` filter and the bulk
+  edit that act on it. Names sort case-insensitively.
+- `unknown` counts books with the field blank (they are not listed).
+- A merge suggestion groups names that compare equal once `Surname, Given` is
+  turned round (only when the part before the comma is one word, so `Alexandre
+  Dumas, pere` stays whole) and case, spacing and punctuation are ignored (so
+  `J.R.R. Tolkien` and `J. R. R. Tolkien` group). Letters of every script are
+  kept, so names in non-Latin scripts get suggestions too and two different
+  ones never group by accident. `suggested` is the spelling
+  with the most books (ties: alphabetical); `books` is the group's total. The
+  server never merges on its own - applying a suggestion is a
+  [bulk edit](#post-apiv1adminbooksbulk).
+
+### `GET /api/v1/admin/series`
+
+Every series with the books the server holds in it. `?library_id=` as for
+authors.
+
+```json
+{
+  "series": [
+    { "name": "Mistborn", "author": "Brandon Sanderson", "books": 3,
+      "duration": 284110.2, "positions": [1, 2, 3] }
+  ]
+}
+```
+
+`author` is the most common author among the series' books; `positions` lists
+the distinct non-zero series positions held, ascending (so a client can mark the
+gaps). Sorted case-insensitively by name. Books with no series are not counted.
+
+### `GET /api/v1/admin/libraries/{id}/book`
+
+Everything the console's book page shows about one book. `?path=` required (the
+book path).
+
+```json
+{
+  "book": { "library_id": 1, "path": "Andy Weir/The Martian", "title": "The Martian: Classroom Edition", "…": "the same object as a GET /admin/books row" },
+  "description": "Six days ago, astronaut Mark Watney became one of the first people to walk on Mars.",
+  "fields": {
+    "title": { "value": "The Martian: Classroom Edition", "source": "edited", "scanned": "The Martian",
+               "locked": true, "edited_by": "admin", "edited_at": "2026-10-03T09:30:12.48Z" },
+    "author": { "value": "Andy Weir", "source": "tag", "scanned": "Andy Weir", "locked": false },
+    "series_index": { "value": "", "source": "", "scanned": "", "locked": false },
+    "asin": { "value": "B00B5HZGUG", "source": "community", "scanned": "", "locked": false }
+  },
+  "chapters": [
+    { "index": 0, "title": "Sol 6", "scanned_title": "Chapter 1", "edited": true,
+      "file_path": "Andy Weir/The Martian/The Martian.m4b", "start": 0, "end": 1843.2, "book_offset": 0 }
+  ],
+  "files": [
+    { "path": "Andy Weir/The Martian/The Martian.m4b", "seq": 0, "duration": 38040.5,
+      "format": "m4b", "codec": "aac", "size": 304112640, "bitrate": 63955 }
+  ],
+  "listeners": [
+    { "user_id": 4, "username": "sam", "position": 12043.6, "duration": 38040.5,
+      "finished": false, "updated_at": "2026-10-01T19:42:07Z" }
+  ],
+  "shares": [
+    { "share_id": 2, "name": "Sci-fi shelf", "path": "Andy Weir" },
+    { "share_id": 5, "name": "Library: Audiobooks", "path": "", "whole_library_id": 1 }
+  ],
+  "folder": { "path": "Andy Weir/The Martian", "override": "" },
+  "indexed_at": "2026-10-03T09:12:01.33Z"
+}
+```
+
+- `fields` carries **all nine** overridable fields (the example shows four).
+  Each has the effective `value`, its `source`, the `scanned` value (what the
+  scan found - the revert target), `locked` (an admin edit holds it), and for an
+  edit `edited_by` (the username; omitted once that account is deleted) and
+  `edited_at`. `series_index` is a string here (`"2.5"`, `""` for none).
+- `chapters` - every chapter with its effective `title`, the `scanned_title`
+  and whether an edit renames it.
+- `files` - each audio file (a single-file book lists itself), with its own
+  `codec` and a derived `bitrate` in bits per second (`0` when the duration is
+  unknown).
+- `listeners` - every user's progress on the path, most recent first.
+- `shares` - each share whose rules include the path, with the rule that does
+  (`path: ""` = the whole library).
+- `folder` - the folder whose detection decides the book's shape (the book's
+  own folder, or the folder a single-file book sits in; `""` = the library root)
+  and its folder-detection `override` (`"book"`, `"collection"` or `""`).
+
+| Status | Meaning |
+|---|---|
+| `400` | `invalid library id`; `path is required` (missing, or a path that cleans away to nothing) |
+| `404` | `library not found`; `code: "book_not_found"` - no book is indexed at that path |
+
+### `PATCH /api/v1/admin/libraries/{id}/book`
+
+Sets or reverts metadata edits (and chapter titles) on one book, then returns
+the updated book page - the same body as
+[`GET …/book`](#get-apiv1adminlibrariesidbook). `?path=` required. Everything in
+one request is applied in one transaction.
+
+| Body field | Type | Notes |
+|---|---|---|
+| `set` | object | field → value, for the fields in the table above |
+| `revert` | array | field names to put back to what the scan found |
+| `source` | string | `"edited"` (default) or `"community"` (accepted from a [match](#get-apiv1adminlibrariesidbookmatch)) - recorded on every field this request sets |
+| `chapters.set` | object | chapter index (as a string key) → new title; a title cannot be empty (revert it instead), at most 500 characters. The rename is stored against that chapter's file and start, not its index, so it stays on the same chapter if a rescan inserts or drops others |
+| `chapters.revert` | array | chapter indexes to put back to the scanned title |
+
+```json
+{
+  "set": { "title": "The Martian: Classroom Edition", "published": "2011" },
+  "revert": ["narrator"],
+  "chapters": { "set": { "0": "Sol 6" }, "revert": [3] }
+}
+```
+
+A revert restores the value from what the last scan stored - no rescan and no
+disk access. Reverting an ASIN/ISBN falls back to any enrichment for it.
+
+| Status | Meaning |
+|---|---|
+| `200` | the updated book page |
+| `400` | `nothing to change` (empty body); `invalid request` (malformed JSON or an unknown key); `code: "invalid_override"` with a `field` key for an edit the server refuses - see below |
+| `404` | `library not found`; `code: "book_not_found"` |
+
+```json
+{ "error": "asin: must be 10 letters or digits", "code": "invalid_override", "field": "asin" }
+```
+
+`invalid_override` covers an unknown field (`field` names it, e.g.
+`cover_path`), a value that fails its rule, a field both set and reverted, a
+`source` other than the two above (`field: "source"`), and chapter problems
+(`field: "chapters"`: a chapter the book doesn't have, an empty title, one index
+both renamed and reverted).
+
+### `GET /api/v1/admin/libraries/{id}/book/match`
+
+Community works a book might be, from the community metadata service, for the
+console's match dialog. Requires the `metadata` [capability](#get-apiv1server).
+`?path=` required.
+
+| Query param | Type | Notes |
+|---|---|---|
+| `q` | string | free-text search, at most 300 characters |
+| `asin` · `isbn` | string | look an identifier up directly, at most 20 characters each; normalized first (an ASIN uppercased, an ISBN without hyphens and spaces) |
+
+With none of the three, the server searches the book's own title and author and
+looks up its own ASIN/ISBN. The title goes in cleaned of its series name and
+edition fluff (`(Unabridged)`, `, Book 1`), since the upstream search requires
+every word. The identifier lookup and the text search run
+concurrently; together they expand at most **6** hits into full works with their
+recordings. Results are not cached (an admin action, so the fan-out is bounded
+instead: work fetches share the same concurrency limit as `GET /meta/work`).
+
+```json
+{
+  "candidates": [
+    {
+      "work_id": "the-martian",
+      "title": "The Martian",
+      "authors": [ { "id": "andy-weir", "name": "Andy Weir" } ],
+      "language": "en",
+      "first_published": "2011",
+      "description": "Stranded.",
+      "series": [],
+      "cover_url": "https://meta.audiosilo.app/covers/the-martian.jpg",
+      "web_url": "https://meta.audiosilo.app/work?id=the-martian",
+      "recordings": [
+        {
+          "id": "rec1",
+          "narrators": [ { "id": "r-c-bray", "name": "R. C. Bray" } ],
+          "runtime_min": 634,
+          "release_date": "2013-03-22",
+          "publisher": "Podium Audio",
+          "asins": ["B00B5HZGUG"],
+          "isbns": ["9780553418026"]
+        }
+      ],
+      "recording_id": "rec1",
+      "score": 100
+    }
+  ]
+}
+```
+
+- Sorted by `score` (0-100), best first. An identifier hit scores 100 and names
+  the recording it resolved to in `recording_id`. Otherwise the score weighs
+  title agreement (55), author (30) and runtime (15: within 3% of a recording's
+  runtime counts fully, within 10% half); a fact the book or the work lacks is
+  left out rather than counted as a mismatch. The title is compared both as
+  tagged and cleaned of series name and edition fluff, whichever fits better
+  (only the book's side is cleaned, so a work's own "(Dramatized Adaptation)"
+  still tells it apart). An author credit counts as a full match when it folds
+  equal to one of the work's authors or contains every word of a multi-word
+  name (so `Brandon Sanderson, Mary Robinette Kowal` matches both); otherwise
+  the word overlap counts. Comparisons keep letters of every script.
+- `series` lists each series once, at its main position (`{ "name", "position"
+  }`); alternate reading orders are left out. `subtitle`, `language`,
+  `first_published`, `description`, `cover_url`, `recording_id` and the
+  recordings' optional fields are omitted when empty; `asins`/`isbns` are always
+  arrays.
+- No hits is `200 { "candidates": [] }`.
+
+Accepting a candidate is two existing writes: attach its ASIN/ISBN with
+[`PUT …/enrichment`](#put-apiv1adminlibrariesidenrichment), and apply the
+fields you take from it with [`PATCH …/book`](#patch-apiv1adminlibrariesidbook)
+and `source: "community"`.
+
+| Status | Meaning |
+|---|---|
+| `400` | `query too long`; `invalid library id`; `path is required` |
+| `404` | `code: "metadata_off"` - community metadata is turned off; `library not found`; `code: "book_not_found"` |
+| `502` | `metadata service unavailable` - the community service failed and no candidate could be returned. Partial failures still return what was found: if the identifier lookup or the text search fails but the other leg yields candidates, those are returned, and a candidate whose work fails to load is left out. When nothing is returned, any failure along the way (either leg, or loading a hit's work) is a `502`, not an empty list - the failed leg may well have found the book |
+
+### `PUT /api/v1/admin/libraries/{id}/cover` · `DELETE /api/v1/admin/libraries/{id}/cover`
+
+Uploads (`PUT`) or removes (`DELETE`) a book's **custom cover**. `?path=`
+required. The `PUT` body is the raw image (any `Content-Type` header is
+ignored; the type is sniffed from the bytes). The cover is stored in the
+database - never in the library folder - so it is part of any database backup
+and follows the book on a move. The ordinary
+[cover endpoint](#get-apiv1librariesidcover) serves it ahead of the book's own
+art.
+
+```sh
+curl -X PUT -H "Authorization: Bearer $TOKEN" --data-binary @cover.jpg \
+  "https://books.example.com/api/v1/admin/libraries/1/cover?path=Andy%20Weir/The%20Martian"
+```
+
+Responses `200`: `{ "status": "cover set", "path": "…" }` /
+`{ "status": "cover removed", "path": "…" }`. Removing a cover that isn't there
+is not an error.
+
+| Status | Meaning |
+|---|---|
+| `400` | `could not read the image`; `invalid library id`; `path is required` |
+| `404` | `library not found`; `code: "book_not_found"` (`PUT` only - the path must be an indexed book) |
+| `413` | `code: "too_large"` - the image is larger than 5 MiB |
+| `415` | `code: "unsupported_image"` - not a JPEG, PNG or WebP image |
 
 ## Admin: stats
 

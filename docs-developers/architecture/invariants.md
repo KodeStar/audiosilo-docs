@@ -20,8 +20,9 @@ passed as a `?path=` query param (a query param, not a URL path segment, to dodg
 encoded-slash issues). `books.id` is an internal, rebuildable index artifact - it
 must **never** appear in the API contract or in durable user state. Durable user
 state (progress, bookmarks, notes, listening history, folder overrides, book
-enrichment) is keyed on `(user_id, library_id, rel_path)` with **no foreign key to
-the `books` index**. A cheap content fingerprint (sha256 of size + first/last
+enrichment, admin metadata edits and custom covers) is keyed on
+`(user_id, library_id, rel_path)` (or `(library_id, path)` for per-library
+config) with **no foreign key to the `books` index**. A cheap content fingerprint (sha256 of size + first/last
 64 KB, stored in `books.content_hash`) exists **only** to detect moves - it is not
 an identity.
 

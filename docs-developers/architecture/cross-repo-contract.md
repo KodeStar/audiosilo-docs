@@ -55,6 +55,15 @@ exposes React Query hooks.
 **A change requires:** the full [wire-change checklist](#the-wire-change-checklist)
 - a field rename is a two-repo edit (three, if the manager reads that shape).
 
+**Admin metadata edits don't move the player wire.** The book JSON's metadata
+fields carry the *effective* values (scan, then enrichment, then any admin
+override), so a player simply receives the edited title/author/etc. with no new
+field to mirror. The admin-only columns the edits introduced (`published`,
+`description`, `has_cover`, the scanned values, per-file codec) are kept off the
+player's book JSON on purpose (`json:"-"` on `catalog.Book`); they surface only
+through the admin-only catalog API (`/api/v1/admin/books` and friends), which
+the admin console in the server repo consumes.
+
 ## 3. Media auth rides in the URL - `?token=`
 
 **What couples:** browsers can't set an `Authorization` header on
@@ -248,8 +257,8 @@ happen client-side (SFTP or a local/mounted copy).
   makes) for stats sync;
 - `POST /admin/libraries/{id}/scan` - a non-destructive reindex after placement;
 - its **one enrichment write**: `PUT /admin/libraries/{id}/enrichment?path=`
-  (`{asin, isbn}`) - a durable, path-keyed `book_enrichment` row, re-applied by
-  the scanner via `catalog.ApplyEnrichments`; it modifies no file.
+  (`{asin, isbn}`) - a durable, path-keyed `book_enrichment` row, layered back
+  onto the book by every re-index (`catalog.UpsertBook`); it modifies no file.
 
 **Shared code, not just shared wire:** the fuzzy book matcher lives in the
 server's public `pkg/match` (`Best`, `CleanTitle`, `SeqFromTitle`) and the manager

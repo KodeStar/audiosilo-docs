@@ -19,7 +19,7 @@ for the request/response shapes see the [API reference](api/reference.md).
 | Route | Handler | Purpose |
 |---|---|---|
 | `GET /api/v1/libraries/{id}/stream?path=` | `handleStream` | Serve one audio **file** (Range streaming), force a download with `?download=1`, or transcode with `?transcode=1&t=` |
-| `GET /api/v1/libraries/{id}/cover?path=` | `handleCover` | Serve a book's cover (sidecar image, else embedded art) |
+| `GET /api/v1/libraries/{id}/cover?path=` | `handleCover` | Serve a book's cover (custom cover, else sidecar image, else embedded art) |
 | `GET /api/v1/libraries/{id}/chapters?path=` | `handleChapters` | The normalized playable-units envelope `{chapters, files, duration, …}` |
 | `GET /api/v1/libraries/{id}/item?path=` | `handleItem` | Book detail; carries `direct_playable` |
 
@@ -105,10 +105,26 @@ correct type is served even for files the scanner would not index.)
 
 ## Covers: `handleCover`
 
-Cover resolution is two-tier - a **sidecar image found by the scanner** wins,
-and **embedded art** is the fallback:
+Cover resolution is three-tier - an admin's **custom cover** wins, then a
+**sidecar image found by the scanner**, and **embedded art** is the fallback.
+The path is authorized against the caller's share scope first, for all three.
 
-1. **Sidecar** (`books.cover_path`, set at scan time by `findCover` in
+1. **Custom** (`catalog.Cover`, the `book_covers` table): an image uploaded
+   through `PUT /admin/libraries/{id}/cover` and stored in the database, never
+   in the library folder. It is served only while a book is indexed at the path
+   (`CoverInfo`/`Cover` join `books`), so a pruned book's cover row stays
+   dormant until the book returns. The requested path is tried first; when it
+   is a part inside a folder book, the book's own path is tried after
+   `bookForPath` resolves it. Served with its stored MIME type through
+   `http.ServeContent`, with `Cache-Control: private, no-cache` and an `ETag`
+   (`coverETag`: `"cover-<base-36 Unix nanoseconds of updated_at>"`) - it can
+   be replaced at any moment, so clients revalidate rather than caching it for a
+   day. A matching `If-None-Match` is answered `304` from the cover's row alone
+   (`catalog.CoverInfo`), without reading the image blob. The validator is
+   deliberately an ETag and **not** `Last-Modified`: with a date validator, a
+   client revalidating after the custom cover was deleted could get a `304`
+   from the older sidecar file and keep showing the removed cover.
+2. **Sidecar** (`books.cover_path`, set at scan time by `findCover` in
    `internal/library/scanner.go`): a conventionally named file - `cover.jpg`,
    `cover.jpeg`, `cover.png`, `folder.jpg`, `folder.png` - in the book's own
    folder (folder books) or next to the file (loose single-file books). Inside
@@ -117,14 +133,17 @@ and **embedded art** is the fallback:
    filename containing "cover", else the first image alphabetically. Multi-CD
    subfolders (`CD1`, `Disc 2`, …) look one level up for the parent book's
    art. A sidecar cover is served through `ServeFile` (so it gets Range and
-   correct headers).
-2. **Embedded** (`media.EmbeddedCover`): the book's primary audio file (the
+   correct headers) with `Cache-Control: private, max-age=86400`, set only when
+   the file is there so a 404 is never cached. Without an explicit lifetime a
+   browser keeps a sidecar image fresh by heuristic (a tenth of the file's age),
+   so a custom cover uploaded later could go unseen for weeks.
+3. **Embedded** (`media.EmbeddedCover`): the book's primary audio file (the
    first `files` entry for folder books, the file itself otherwise) is read
    with `dhowden/tag` and its embedded picture returned, defaulting to
    `image/jpeg` when the tag has no MIME type. Served with
    `Cache-Control: private, max-age=86400`.
 
-No cover from either tier → `404 {"error":"no cover"}`.
+No cover from any tier → `404 {"error":"no cover"}`.
 
 ## `DirectPlayable`: when a client should transcode
 

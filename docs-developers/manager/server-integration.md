@@ -65,9 +65,11 @@ Client behaviors worth knowing before you touch it:
 `Client.SetEnrichment` PUTs `{asin, isbn}` to
 `/api/v1/admin/libraries/{id}/enrichment?path=`. This is deliberately
 **non-destructive**: the server stores it as a durable, path-keyed
-`book_enrichment` row - not foreign-keyed to the rebuildable index, re-applied on
-every rescan - and **modifies no file on disk**, so the read-only-content model
-holds. A blank field leaves the existing value untouched.
+`book_enrichment` row - not foreign-keyed to the rebuildable index, layered back
+onto the book every time it is re-indexed (`catalog.UpsertBook`) - and
+**modifies no file on disk**, so the read-only-content model holds. A blank field
+leaves the existing value untouched. An admin's own `asin`/`isbn` edit in the
+server's admin catalog wins over the enrichment for that field.
 
 The manager writes it in one place: after an Audible pre-flight, when a fuzzy
 match finds a server book that lacks an ASIN the Audible record has,
