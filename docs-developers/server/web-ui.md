@@ -1,43 +1,45 @@
 ---
 title: Built-in web UI
-description: "internal/web: the baked-in admin/connect pages, the redesigned admin console (admin-ui, embedded via internal/web/adminui) and its AUDIOSILO_ADMIN_NEXT switch, the /web player mount with per-document CSP, the embedplayer build tag, the first-run setup wizard, and the well-known app-association files."
+description: "internal/web: the baked-in connect and setup pages, the admin console (admin-ui, embedded via internal/web/adminui), the shared SPA handler (internal/web/spa) that serves the console and the /web player, per-document CSP, the embedplayer build tag, the first-run setup wizard, and the well-known app-association files."
 ---
 
 The server ships three web surfaces from `internal/web`:
 
-- The **classic admin/connect UI** - small, dependency-free vanilla
-  HTML/CSS/JS pages **embedded in the binary** (`//go:embed assets`). No build
-  step, no framework, and a strict same-origin CSP that the assets are written
-  to satisfy.
-- The **redesigned admin console** (`admin-ui/`, a React + Vite app embedded
-  by `internal/web/adminui`) - being built in phases and, until the cutover,
-  served only when `AUDIOSILO_ADMIN_NEXT` is set. See
-  [The redesigned admin console](#the-redesigned-admin-console-admin-ui).
+- The **connect and setup pages** - small, dependency-free vanilla HTML/CSS/JS
+  pages **embedded in the binary** (`//go:embed assets`). No build step, no
+  framework, and a strict same-origin CSP that the assets are written to
+  satisfy.
+- The **admin console** at `/admin` (`admin-ui/`, a React + Vite app in the
+  **Shelf** design, embedded by `internal/web/adminui`). See
+  [The admin console](#the-admin-console-admin-ui).
 - The **web player** at `/web` - the audiosilo-frontend Expo export. It is
   **not vendored** in this repo: it is served at runtime from `web_dir`
   (env `AUDIOSILO_WEB_DIR`), or baked into the binary by the `embedplayer`
   build tag for native releases.
 
-Both are static clients over the JSON API - the HTML itself is unprivileged;
-authorization always happens at the API (see
+The console and the player are both single-page apps served by one handler,
+`internal/web/spa` (see [Serving the SPAs](#serving-the-spas-internalwebspa)).
+All three are static clients over the JSON API - the HTML itself is
+unprivileged; authorization always happens at the API (see
 [Auth & security](auth-and-security.md)).
 
 ## Route map
 
-`web.Register(mux, webDir, adminNext)` mounts everything; API routes
-registered on the same `http.ServeMux` win automatically because `ServeMux`
-prefers more specific patterns.
+`web.Register(mux, webDir)` mounts everything; API routes registered on the
+same `http.ServeMux` win automatically because `ServeMux` prefers more specific
+patterns.
 
 | Route | Serves | CSP |
 |---|---|---|
 | `GET /` (exact), `GET /connect[/]` | `index.html` - the connect page | strict site-wide |
-| `GET /admin[/…]` (switch off, the default) | `admin.html` - the classic admin console | strict site-wide |
-| `GET /admin[/…]` (switch on) | the redesigned console (`adminui.Handler`): `/admin/assets/…` immutable, other top-level files `no-cache`, everything else `index.html` for client routing | strict site-wide |
-| `GET /admin/classic` (switch on only) | `admin.html` - the classic console, so both stay usable side by side | strict site-wide |
-| `GET /assets/…` | embedded CSS/JS/fonts/icons (+ `nosniff`) | strict site-wide |
+| `GET /admin[/…]` | the admin console (`adminui.Handler` over `spa.Handler`), or a **503** "console not built" page when the binary was compiled without it | strict site-wide |
+| `GET /assets/…` | the connect and setup pages' embedded CSS/JS/fonts/icons (+ `nosniff`) | strict site-wide |
 | `GET /favicon.ico` | 301 → `/assets/favicon.svg` | - |
-| `GET /sw.js`, `GET /manifest.webmanifest` | admin-console PWA worker + manifest, served from the **site root** so the worker's scope covers `/admin` (`sw.js` is `Cache-Control: no-cache` so updates land promptly) | strict site-wide |
-| `GET /web/…` | the web player (only mounted when a build with an `index.html` is available) | per-document `htmlCSP` |
+| `GET /sw.js`, `GET /manifest.webmanifest` | the console's PWA worker + manifest, served from the **site root** so the worker's scope covers `/admin` (`sw.js` is `Cache-Control: no-cache` so updates land promptly) | strict site-wide |
+| `GET /web/…` | the web player (`spa.Handler`; only mounted when a build with an `index.html` is available) | per-document `htmlCSP` |
+
+There is no classic console any more: `/admin/classic` is just another client
+route, which the console answers with its "There's nothing here" page.
 
 Two related routes live in `internal/api`, not `internal/web`: the setup
 wizard (`GET`/`POST /setup`, below) and - in demo mode with a player present -
@@ -47,9 +49,9 @@ instant-demo flow.
 
 ## The strict same-origin CSP
 
-The admin/connect pages are served with one constant policy
-(`contentSecurityPolicy`, exported as `web.ContentSecurityPolicy` so the setup
-page in `internal/api` applies the identical one):
+The console, the connect page and the setup page are served with one constant
+policy (`contentSecurityPolicy`, exported as `web.ContentSecurityPolicy` so the
+setup page in `internal/api` applies the identical one):
 
 ```
 default-src 'self'; img-src 'self' data:; style-src 'self'; script-src 'self';
@@ -57,14 +59,16 @@ connect-src 'self'; manifest-src 'self'; worker-src 'self';
 base-uri 'none'; frame-ancestors 'none'
 ```
 
-- `img-src data:` exists solely so the QR pairing PNG (a data URI in the
-  redeem response) renders.
+- `img-src data:` lets the connect page's QR pairing PNG (a data URI in the
+  redeem response) and the console's covers (fetched with the `Authorization`
+  header and rendered as `data:` URLs) display.
 - `manifest-src`/`worker-src 'self'` let the admin console install as a PWA.
 - There is **no** `'unsafe-inline'` anywhere: the pages contain no inline
-  `<style>`, no `style=` attributes and no inline `<script>` - all styling
-  lives in `assets/style.css` and all behaviour in external JS files using
-  `addEventListener`. Keep it that way: an inline handler added to
-  `admin.html` will silently do nothing under this CSP.
+  `<style>`, no `style=` attributes and no inline `<script>`. The connect and
+  setup pages keep all styling in `assets/style.css` and all behaviour in
+  external JS files using `addEventListener` - an inline handler added to one
+  of them will silently do nothing under this CSP. The console's rules are
+  under [The CSP does not change](#the-csp-does-not-change).
 
 :::warning
 `web.htmlCSP` and this policy are on the security-critical list - changes
@@ -72,42 +76,67 @@ require both an allowed **and** a denied regression test (see
 `internal/web/web_test.go` and [Gates & CI](../contributing/gates-and-ci.md)).
 :::
 
-### Downloading a file from an authenticated endpoint
+## Serving the SPAs (`internal/web/spa`)
 
-The **Export** button on each row of the console's Libraries table (added by
-`exportBtn` in `assets/admin.js`) downloads the library's book list from
-[`GET /api/v1/admin/libraries/{id}/export`](api/reference.md#get-apiv1adminlibrariesidexport)
-- the file a user imports on meta.audiosilo.app's Watching page.
+`spa.Handler(spa.Config{…})` serves a static single-page app from an `fs.FS`
+under a URL prefix. Both apps use it, so caching, MIME types, deep links and
+missing files follow **one set of rules** instead of two that drift apart:
 
-The console authenticates with a bearer token held in `localStorage`, so this
-cannot be a plain `<a href>` download: the request has to carry the
-`Authorization` header. `downloadLibraryExport` therefore `fetch`es the
-endpoint, reads the file name out of the response's `Content-Disposition`
-header, wraps the body in a blob object URL and clicks a temporary
-`<a download>` (revoking the URL afterwards).
+| | Console | Player |
+|---|---|---|
+| `Prefix` | `/admin` | `/web` |
+| `FS` | the embedded build (`adminui.FS()`) | the embedded player (`-tags embedplayer`) or `os.DirFS(web_dir)` |
+| `AssetDirs` | `assets` | `_expo`, `assets` |
+| `DocumentCSP` (HTML) | the strict site-wide policy | `htmlCSP` - hashed per document (below) |
+| `FileCSP` (everything else) | the strict site-wide policy | none |
 
-This needs **no CSP change**. An object URL the page creates for itself is not
-a fetched resource, and a download triggered by `a.download` is not a resource
-load either, so nothing in the strict policy above applies to it. The i18n
-strings are `admin.libraries.export` / `admin.libraries.exporting` and the
-`admin.toast.libraryExport*` toasts, present in all six locales in
-`assets/i18n-dict.js` (a key-parity check in `internal/web/web_test.go` now
-enforces that every locale defines the same keys).
+Routing, for the request path relative to the prefix:
 
-## The redesigned admin console (`admin-ui`)
+| Request | Response |
+|---|---|
+| an existing file | the file; `<p>.html` and `<p>/index.html` are tried too (Expo exports one HTML file per route) |
+| missing, under one of `AssetDirs` | **404** - a fingerprinted bundle that isn't there must fail loudly, not return HTML |
+| missing, a **top-level** name with an extension other than `.html` (`/web/favicon.ico`) | **404** |
+| anything else (`/admin`, `/admin/people/user/4`, `/web/connect?token=…`) | `index.html`, so client-side routes deep-link (a deeper dotted segment such as `/library/v1.2` is a route, not a file) |
 
-![The redesigned admin console's overview](/img/screenshots/admin-next/overview.png)
+Caching: files under `AssetDirs` are fingerprinted and get
+`Cache-Control: public, max-age=31536000, immutable`; HTML and every other file
+(`/admin/theme-init.js`) are `no-cache`, so a new release is picked up at once.
+Every response carries `X-Content-Type-Options: nosniff`; HTML gets
+`DocumentCSP` (computed from the document's bytes) and other files `FileCSP`.
+Content types come from an explicit table pinned in `spa`'s `init` (Go's MIME
+lookup falls back to the OS registry, which on some Windows hosts maps `.js` to
+`text/plain`, and a module script served that way never runs). Paths that
+aren't valid `fs` paths (`..` segments) never resolve to a file. `HEAD`, `Range`
+and `If-Modified-Since` go through `http.ServeContent`.
 
-The admin console is being rebuilt as a single-page app in the **Shelf**
-design, phase by phase (the plan lives in the workspace's
-`ADMIN-CONSOLE-PLAN.md`; the design system in `admin-ui/STYLEGUIDE.md`, which
-is authoritative for the build). Like the classic console it is a static client
-over the JSON API; the API enforces the admin role.
+:::note Behaviour change for `/web`
+Before the shared handler, the player 404'd **any** missing path with a
+non-`.html` extension. Now only a missing **top-level** file with an extension,
+or a missing file under `_expo/` or `assets/`, 404s; a deeper missing path
+outside the asset dirs (`/web/library/v1.2`) boots the SPA like any other
+client route.
+:::
+
+## The admin console (`admin-ui`)
+
+![The admin console's overview](/img/screenshots/admin/overview.png)
+
+The admin console is a single-page app in the **Shelf** design, rebuilt phase
+by phase (the plan lives in the workspace's `ADMIN-CONSOLE-PLAN.md`; the design
+system in `admin-ui/STYLEGUIDE.md`, which is authoritative for the build). It
+is a static client over the JSON API; the API enforces the admin role. Phase 1b
+made it **the** console: the classic `admin.html`/`admin.js`, its i18n keys
+and CSS, and the `AUDIOSILO_ADMIN_NEXT` switch are gone.
 
 **Stack:** React 19, Vite, TypeScript (strict), shadcn/ui on **Base UI**,
-Tailwind v4, TanStack Query and Router, cmdk for the ⌘K palette, i18next,
-lucide-react, fontsource (self-hosted Bricolage Grotesque, Figtree, JetBrains
-Mono).
+Tailwind v4, TanStack Query and Router, cmdk for the ⌘K palette,
+react-hook-form + zod (forms and validation), dnd-kit (library reordering,
+keyboard accessible), uqr (invite QR codes, drawn as SVG in the browser),
+i18next, lucide-react, fontsource (self-hosted Bricolage Grotesque, Figtree,
+JetBrains Mono). Each screen is a lazy-loaded chunk (`React.lazy` in
+`features/section-page.tsx`, `lazyRouteComponent` for a person's page), so the
+first paint carries only the shell and the overview.
 
 ### Build and embed
 
@@ -131,24 +160,29 @@ Mono).
 
 ### Serving
 
-`adminui.Handler(fsys, csp)` serves everything under `/admin`:
+`adminui.Handler(fsys, csp)` mounts the build on `spa.Handler` with prefix
+`/admin`, asset dir `assets` and the strict site-wide CSP for every response
+(see [Serving the SPAs](#serving-the-spas-internalwebspa)): `/admin/assets/…`
+are immutable (404 when missing), other top-level files such as `theme-init.js`
+revalidate, and every other path is `index.html` so client routes deep-link.
+When the embedded FS holds no `index.html` the handler answers every request
+with the 503 "console not built" page instead.
 
-| Request | Response |
-|---|---|
-| `/admin/assets/<file>` | the fingerprinted build file, `Cache-Control: public, max-age=31536000, immutable`; **404** if missing |
-| `/admin/<file.ext>` (top level, e.g. `theme-init.js`) | the file, `no-cache`; **404** if missing |
-| anything else (`/admin`, `/admin/library/authors`, …) | `index.html`, `no-cache`, so client routes deep-link and a new release is picked up at once |
-
-Every response carries the site-wide strict CSP and `nosniff`. Content types
-come from an explicit table (`adminui.ContentType`): Go's MIME lookup falls back
-to the OS registry, which on some Windows hosts maps `.js` to `text/plain`, and
-a module script served that way never runs. Paths that aren't valid `fs`
-paths (`..` segments) 404.
+The PWA service worker (`/sw.js`) caches the console's shell: every online
+`/admin` navigation refreshes the cached `index.html` (network-first, offline
+fallback), and `theme-init.js`, the icons and the manifest are precached. The
+console's **unhashed** files under `/admin/` (`theme-init.js`) change in place
+with a release, so they are fetched **network-first** too (the cached copy only
+when offline) - running a stale copy once after an upgrade would pair old code
+with a new page. The hashed `/admin/assets/*` files, icons and manifest are
+stale-while-revalidate (cached on first use), so the console works offline after
+one online visit. It never intercepts `/api/` or `/web/`. The web manifest
+(`manifest.webmanifest`, scope `/admin`) uses the Shelf colours.
 
 ### The CSP does not change
 
 The console runs under the same `script-src 'self'; style-src 'self'` policy
-(no nonce) as the classic pages, so it is built to need nothing inline:
+(no nonce) as the connect page, so it is built to need nothing inline:
 
 - `index.html` loads only files: `/admin/theme-init.js` (applies the stored
   light/dark/system theme before first paint) and the Vite bundle.
@@ -167,53 +201,94 @@ The console runs under the same `script-src 'self'; style-src 'self'` policy
   full-privilege admin credential and a URL can leak into proxy access logs and
   history. The console fetches each cover with the `Authorization` header and
   renders it as a `data:` URL (`img-src` allows `data:`, not `blob:`).
+- **Invite QR codes are drawn in the browser** (uqr, rendered as inline SVG
+  elements), so a fresh invite code never travels back to the server inside an
+  image request.
 
-### The switch: `AUDIOSILO_ADMIN_NEXT`
+### Downloading a file from an authenticated endpoint
 
-Until the cutover the new console is opt-in. `AUDIOSILO_ADMIN_NEXT=1` (env
-only, `config.AdminNext`, never written to `config.yaml`) serves it at `/admin`
-and moves the classic console to `/admin/classic`; without it nothing changes.
-Both consoles keep the session token in the same `localStorage` key
-(`audiosilo_token`) and share the language choice, so moving between them never
-asks to sign in again. Screens that later phases build show a designed "coming
-in this redesign" page with a link to the classic console.
+**Export book list** in a library's menu downloads the library's book list from
+[`GET /api/v1/admin/libraries/{id}/export`](api/reference.md#get-apiv1adminlibrariesidexport)
+- the file a user imports on meta.audiosilo.app's Watching page.
 
-The PWA service worker (`/sw.js`) caches whichever console `/admin` returns;
-the new console's hashed assets are cached on first use (stale-while-revalidate),
-so it works offline after one online visit.
+The console authenticates with a bearer token held in `localStorage`, so this
+cannot be a plain `<a href>` download: the request has to carry the
+`Authorization` header. `downloadLibraryExport` (`admin-ui/src/api/client.ts`)
+therefore `fetch`es the endpoint, reads the file name out of the response's
+`Content-Disposition` header, wraps the body in a blob object URL and clicks a
+temporary `<a download>` (revoking the URL a few seconds later).
+
+This needs **no CSP change**. An object URL the page creates for itself is not
+a fetched resource, and a download triggered by `a.download` is not a resource
+load either, so nothing in the strict policy applies to it.
+
+### Session
+
+The session token lives in `localStorage` under `audiosilo_token` (the key the
+classic console used, so an admin signed in before the cutover stays signed
+in); the language choice shares the connect page's storage key. A 401 drops the
+session ("Your session ended"). A 403 from an admin endpoint re-checks
+`GET /me`, and if the account is no longer an admin (another admin demoted it
+mid-session) signs out with "This account is not an administrator."
 
 ### Dev loop
 
 ```sh
-# the server, plain HTTP, switch on
-AUDIOSILO_TLS_MODE=off AUDIOSILO_ADMIN_NEXT=1 go run ./cmd/audiosilo --data ./data
+# the server, plain HTTP
+AUDIOSILO_TLS_MODE=off go run ./cmd/audiosilo --data ./data
 # hot-reloading console on http://localhost:5173/admin/
 npm --prefix admin-ui run dev
 ```
 
-The Vite dev server proxies `/api`, `/assets`, `/sw.js`, `/manifest.webmanifest`,
-`/web` and `/admin/classic` to the Go server (`AUDIOSILO_DEV_SERVER` overrides
+The Vite dev server proxies `/api`, `/assets`, `/sw.js`, `/manifest.webmanifest`
+and `/web` to the Go server (`AUDIOSILO_DEV_SERVER` overrides
 `http://127.0.0.1:8080`). It is **not** under the production CSP, so check
 CSP-sensitive work against a real build served by Go. The console's own gate is
 `npm --prefix admin-ui run check` (typecheck, ESLint, Prettier, Vitest); see
 [Gates & CI](../contributing/gates-and-ci.md).
 
-### What phase 1a ships
+### What the console has today
 
-Sign-in (admins only; a non-admin's fresh session is revoked at once), the
-shell (top bar with the five destinations, ⌘K search, theme and account menus,
-a notifications placeholder; per-destination section bar; a bottom tab bar on
-phones), the ⌘K palette with navigation, settings (theme, language) and
-actions (rescan a library, open the web player or the classic console, sign
-out), and an overview built on `GET /admin/stats`, `GET /admin/settings` and
-`GET /server`. Interface text is in all six languages.
+- **Shell** - sign-in (admins only; a non-admin's fresh session is revoked at
+  once), a top bar with the five destinations (Library, People, Activity,
+  Health, Server), a health line (version, offline libraries, server
+  unreachable), ⌘K search, theme and account menus and a notifications
+  placeholder; a per-destination section bar; a bottom tab bar on phones.
+  Interface text is in all six languages.
+- **⌘K palette** - navigation, sections, settings (community metadata, theme,
+  language) and actions (invite someone, add a library, rescan a library, open
+  the web player, sign out).
+- **Overview** - built on `GET /admin/stats`, `GET /admin/settings`,
+  `GET /admin/libraries` (offline-library notices) and `GET /server`.
+- **Library > Libraries** - library cards (`GET /admin/libraries` with
+  `book_count`, `available` and `scan`, polled every second while any library
+  scans), add/edit with the server folder picker
+  (`GET /admin/fs/dirs`), drag-and-drop or keyboard reorder
+  (`PUT /admin/libraries/order`), rescan with live progress (the list's
+  `scan`, including `unavailable`), folder detection
+  (`/fs` browse + `…/folder-override`), export, delete.
+- **People > People / Invites / Shares** - person cards, the invite flow
+  (create a password-less member, grant access, mint an invite, show the QR,
+  link and code once), a person's page (`/admin/people/user/<id>`, tabs in
+  `?tab=`: access, invites, sign-in, account), the cross-account invite list
+  (`GET /admin/invites`) with rotate and revoke, and shares (list + detail,
+  with `member_ids`; `whole_library_id` sets whole-library grants apart).
+  Error messages that name a fix branch on the API's error `code`.
+- **Server > Settings** - the community metadata switch
+  (`GET`/`PATCH /admin/settings`).
 
-![The ⌘K command palette](/img/screenshots/admin-next/palette.png)
+Every other section renders a designed "coming in this redesign" placeholder
+naming the phase that builds it: Library Books/Authors/Series/Narrators/Folders
+(2b), People Devices and all of Activity (4c), Health Issues/Jobs (3) and System
+(5a), Server Logs/About (5a) and Audit log (5b).
+
+![The ⌘K command palette](/img/screenshots/admin/palette.png)
 
 ## The connect page flow
 
-The connect page is the target of the admin console's **Copy invite** button,
-which shares `<base>/connect#code=…`. The auth code rides in the URL
+The connect page is the target of the invite link the admin console shows
+when it creates or rotates an invite (and encodes in the invite's QR code):
+`<base>/connect#code=…`. The auth code rides in the URL
 **fragment**, so it never reaches the server or its access logs.
 
 ```mermaid
@@ -263,20 +338,20 @@ resolve under the subpath (see the
 
 ### Request resolution (SPA fallback vs. 404)
 
-`playerHandler` maps `/web/<rel>` to a file via `resolvePlayerFile`, trying
-in order: the exact path, `<path>.html`, `<path>/index.html` (Expo emits
-per-route HTML). When nothing matches:
+The player is mounted with `spa.Handler` (prefix `/web`, asset dirs `_expo`
+and `assets`), so it follows the shared rules in
+[Serving the SPAs](#serving-the-spas-internalwebspa): the exact path, then
+`<path>.html`, then `<path>/index.html` (Expo emits per-route HTML); a missing
+file under `_expo/` or `assets/`, or a missing top-level file with a
+non-`.html` extension, is a **404** (a missing fingerprinted bundle must fail
+loudly, not return HTML); anything else is treated as a **client-routed deep
+link** and falls back to `index.html` so the SPA boots - this is what makes
+`/web/connect?token=…` work.
 
-- Paths that look like **assets** 404: anything under `_expo/` or `assets/`,
-  or with a non-`.html` extension (`isAsset`). A missing fingerprinted bundle
-  must fail loudly, not return HTML.
-- Anything else is treated as a **client-routed deep link** and falls back to
-  `index.html` so the SPA boots - this is what makes
-  `/web/connect?token=…` work.
-
-Caching: HTML is `Cache-Control: no-cache`; `_expo/`/`assets/` files are
-`public, max-age=31536000, immutable` (they are content-fingerprinted).
-Everything gets `X-Content-Type-Options: nosniff`.
+Caching: HTML and other non-asset files are `Cache-Control: no-cache`;
+`_expo/`/`assets/` files are `public, max-age=31536000, immutable` (they are
+content-fingerprinted). Everything gets `X-Content-Type-Options: nosniff`. Only
+HTML carries a CSP (the per-document one below).
 
 ### Per-document CSP: `htmlCSP`
 

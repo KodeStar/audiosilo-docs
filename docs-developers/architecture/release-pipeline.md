@@ -69,7 +69,7 @@ Runs on `v*` tags (plus manual dispatch with a `web_version` input, default
 - builds the admin console in a `node:24-alpine` stage (`npm ci` + `npm run
   build` in `admin-ui/`, on the build host's platform since the output is plain
   JS/CSS) and copies `internal/web/adminui/dist` into the Go stage, where it is
-  embedded (see [Built-in web UI](../server/web-ui.md#the-redesigned-admin-console-admin-ui));
+  embedded (see [Built-in web UI](../server/web-ui.md#the-admin-console-admin-ui));
 
 - builds the CGO-free server binary (`CGO_ENABLED=0`, `-trimpath`), stamping the
   release version via

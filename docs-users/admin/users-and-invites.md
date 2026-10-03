@@ -1,154 +1,209 @@
 ---
-title: "Users and invites"
-description: "Creating AudioSilo accounts, getting people connected with invite links, and the safety rails around admin accounts."
+title: "People and invites"
+description: "Inviting people to an AudioSilo server with a link or QR code, managing each person's access, sign-in and account, rotating and revoking invites, and the safety rails around admin accounts."
 ---
 
-The **Users** section of the [admin console](console-tour.md) is where you
-create accounts, get people connected with invite codes, and manage each
-account's role, password and access.
+**People** in the [admin console](console-tour.md) is where you invite people,
+get their devices connected, and manage what each person can listen to and how
+they sign in. It has three working sections: **People**, **Invites** and
+**Shares** (see [Sharing](sharing.md)); **Devices** is still to come.
 
-![The Users section](/img/screenshots/admin/users.png)
+## The People page
 
-The list shows each account's name, role and **Last active** time. Click any
-row to open its detail drawer.
+![The People page](/img/screenshots/admin/people.png)
 
-## Creating a user
+**People > People** shows everyone with an account as a card, with a count of
+accounts and how many were active this month. Each card shows:
 
-Click **+ Create user**. The dialog asks for:
+- the person's name, with an **Admin** badge for administrators and a **Demo**
+  badge for visitors' accounts on a server running in
+  [demo mode](../demo.md);
+- what they're doing: **Listening now**, **Active** *some time ago*, **Never
+  signed in**, or **Disabled** ("their devices are paused");
+- how they sign in: **Password and paired devices**, or **Paired devices only**;
+- the book they're in the middle of, with its progress (the ring around their
+  avatar shows the same progress), or "Nothing in progress".
 
-- **Username** - how they appear in the console and the listening feed.
-- **Role** - `user` (a listener) or `admin` (full access, can use this
-  console).
-- **Password** - optional for listeners: "Optional - leave blank for a
-  player-only account that pairs via an invite code." Required for admins:
-  "Required - admins sign in to this console." Passwords must be at least 8
-  characters.
-- **Access** - what they can see: **No access**, **Whole library** (pick one or
-  more libraries), or **Specific shares** (pick from your existing
-  [shares](sharing.md)). You can always grant or change access later from the
-  drawer.
+Click a card to open [that person's page](#a-persons-page).
 
-:::note Listeners don't need passwords
-Most listener accounts never have a password at all. They join by redeeming an
-invite code (below), which signs their device in directly. A password only
-becomes useful if they want to sign in to the web player by username on a new
-device - and they can set one themselves later from the player's settings.
-Accounts without a password show an "invite-only" tag in the list.
+## Inviting someone
+
+Click **Invite someone** (on the People or Invites page, or in the
+[command palette](console-tour.md#search-and-commands)). One dialog creates the
+account, gives it access and makes the invite:
+
+- **Their name** - how they appear in the player and in this console.
+- **What can they listen to?** - **All libraries**; a single library (offered
+  when you have more than one); one of your [shares](sharing.md); or **Decide
+  later** ("They can pair now but won't see any books until you give them
+  some"). **All libraries** gives them each library you have now; a library you
+  add later has to be given separately, from their page.
+- **Devices it can pair** - 1, 3, **5** (the default) or 10 devices, or **Any
+  number of devices**. A device counts only when it actually finishes pairing -
+  opening the link or showing the QR costs nothing - so the default lets the
+  same person connect a phone, a tablet and a browser from one invite with
+  spares left over.
+- **Expires after** - **1 day** (the default), 7 days, 30 days, or **Never**.
+
+Click **Create invite**. The new account has **no password** - most listeners
+never need one, they pair their devices instead - and is a regular member, not
+an admin.
+
+![A freshly created invite](/img/screenshots/admin/invite.png)
+
+The invite opens on screen ready to send:
+
+- a **QR code** they can scan with their phone's camera,
+- the **Invite link**, with a **Copy** button,
+- the **Code** on its own, with a **Copy** button, for typing into an app's
+  connect screen or the connect page's code box,
+- how many devices it can pair, and when it expires, as a date and time (for
+  example "Expires Oct 10, 7:52 PM") or "Never expires".
+
+Send the link or show the QR, by whatever channel you like. When they open it,
+the connect page **redeems the code automatically** and shows them a QR code
+plus **Open in app** and **Open web player** buttons. The invite stays good for
+as long as it has devices left and hasn't expired, so each of their devices can
+use the same link - see [Connecting](../listening/connecting.md) for what that
+looks like on their end.
+
+:::note The code is shown once and never reaches the server's logs
+"This is the only time the code is shown." The server keeps only a fingerprint
+of it, so it can check codes but never display them again - to send a fresh one
+later, [rotate](#rotating-and-revoking) the invite. The link carries the code
+after a `#`, a part of a URL that is never sent over the network, so it can't
+end up in server or proxy access logs (and the connect page removes it from the
+address bar as soon as it has redeemed it). The QR code is drawn by your
+browser, so the code doesn't travel back to the server for that either.
 :::
 
-## Roles
+## A person's page
 
-- **admin** - full access to every library (shares don't restrict admins), and
-  the ability to sign in to this console. Admin accounts must keep a password.
-- **user** - a listener. They see only what you grant them via
-  [shares](sharing.md), and they cannot open the admin console.
+![A person's page](/img/screenshots/admin/person.png)
 
-You can change a user's role at any time from the drawer's **Role** dropdown.
-Promoting an account to admin requires it to have a password first.
+A person's page shows their name and role (**Admin** or **Member**), when they
+were last active, and whether they have a password ("Has a password" or "No
+password (player only)"). It has four tabs.
 
-## Inviting someone (the invite flow)
+**Pair a device** in the header makes a new invite for this person - for a new
+phone, or when they lost the old link. It asks for **Devices it can pair** and
+**Expires after**, then shows the same invite card. If they already have an
+active invite, the dialog warns that the new one replaces it, "so only the
+newest link works" (see [One active invite per user](#one-active-invite-per-user)).
+A disabled account can't be invited until you enable it again.
 
-Open a user's drawer and click **Create invite** (or **New invite**). Choose:
+### Access
 
-- **Uses** - how many devices the invite can sign in: 1 use, **5 uses**
-  (the default), Unlimited, or a custom number. A use is spent only when a
-  device actually finishes signing in - opening the link or showing the QR
-  costs nothing - so the default lets the same person connect a phone, a
-  tablet, a browser and still have spares, all from one link or one QR.
-- **Expires** - **1 day** (the default), 7 days, 30 days, Never, or a custom
-  number of days.
+What this person can listen to: each **whole library** and each
+[share](sharing.md) they have, with the folders the share covers.
 
-Click **Create invite** and you get two things, each with its own copy button:
+- **Give access** adds a whole library or one of your shares they don't have
+  yet.
+- **Remove** takes one away.
 
-- **Invite link** (**Copy link**) - a URL to the server's connect page with the
-  code already embedded.
-- **Auth code** (**Copy code**) - the raw code, for typing in by hand (in the
-  app's connect screen, or the connect page's code box).
+The person sees a change the next time their app refreshes. Someone with no
+access can still sign in, but won't see any books. Admins don't have this list:
+"Admins always see everything. Access rules don't apply to them."
 
-Send either one to the person, by whatever channel you like. When they open the
-link, the connect page **redeems the code automatically** and shows them a QR
-code plus **Open in app** and **Open web player** buttons. The QR stays good
-for as long as the invite has uses left, so each of their devices can scan the
-same one - see [Connecting](../listening/connecting.md) for what that looks
-like on their end.
+### Invites
 
-:::note The code never reaches the server's logs
-The invite link carries the code after a `#` in the URL. That part of a URL is
-never sent over the network as part of the request, so the code can't end up in
-server or proxy access logs - and the connect page removes it from the address
-bar immediately after redeeming it. The code itself is shown to you **once**
-when you create it; the server keeps only a fingerprint, so it can verify codes
-but never display them again.
-:::
+This person's invites, with the same status, devices paired and expiry columns,
+and the same **Rotate** and **Revoke** buttons, as the
+[Invites page](#the-invites-page).
 
-### One active invite per user
+### Sign-in
 
-Each user has at most one active invite. Creating a new one automatically
-retires any older invite that could still be redeemed. Spent and expired
-invites aren't deleted - they collapse into the drawer's **History** list, so
-you keep a record of what was issued and accepted.
+- **Password** - **Set a password** (or **Change password**) for them. It must
+  be at least 8 characters. A password lets them sign in to the web player by
+  username as well as on paired devices; their paired devices stay signed in.
+  The console can set or change a password but not remove one.
+- **Recovery code** - only shown when the person saved one from an older app
+  version. It can't be viewed, only revoked: **Revoke recovery code** stops it
+  working at once (their paired devices stay signed in).
 
-### Resending an invite
+### Account
 
-If an invite went astray or the person lost it, click **Resend** on the active
-invite. This regenerates the secret in place: the **old link and code stop
-working immediately** - including any QR code still on someone's screen from
-the old link - and you get a fresh link and code to share. The invite keeps
-its uses limit, and its expiry clock restarts for the same window it was
-originally given (a 7-day invite gets another 7 days - resending never quietly
-downgrades it to the defaults).
-
-To kill an invite outright, click **Revoke**.
-
-## The user detail drawer
-
-![The user detail drawer](/img/screenshots/admin/user-detail.png)
-
-Clicking a user opens a drawer with four blocks:
-
-- **Account** - the **Role** dropdown; **Status** with an **Enable/Disable**
-  button; **Password** with a **Set password**/**Change** control (for a
-  listener, saving an empty password clears it, returning the account to
-  invite-only pairing); and **Last active**.
-- **Access** - the shares granted to this user, each with a **Revoke** button,
-  plus a **Grant access** control: pick **Whole library** or **Share**, choose
-  the target, and click **Grant**. (For an admin this block just notes they
-  have full access to all libraries.)
-- **Invites** - the active invite (with its status, **Resend** and **Revoke**),
-  the **Create invite** button, and the **History** of past invites.
-- **Danger zone** - **Delete user**.
+- **Role** - **Member** (a listener) or **Admin** (full access to every
+  library, and can use this console). Making a password-less member an admin
+  asks you to choose a password for them in the same step ("Make *name* an
+  admin"), since admins sign in to the console with one. You can't change your
+  own role here; another admin can.
+- **Danger zone** - **Disable account** and **Delete account**, below.
 
 ### "Last active"
 
-**Last active** is the last time any of the user's signed-in devices talked to
-the server - browsing, playing, or syncing progress all count. It reads "never"
-for an account that has been created but has not connected yet. There is no
-separate "last login" - a player stays signed in for months, so the last
-request is the honest measure of activity.
+**Last active** is the last time any of the person's signed-in devices talked to
+the server - browsing, playing, or syncing progress all count. It reads "Never
+signed in" for an account that has been created but has not connected yet.
+There is no separate "last login" - a player stays signed in for months, so the
+last request is the honest measure of activity.
 
 ## Disabling vs deleting
 
 These are very different levers:
 
-- **Disable** (Account block) is the reversible one. A disabled account can't
-  sign in, and its invite codes stop redeeming (without burning a use). All of
-  its progress, bookmarks and settings are kept. **Enable** restores everything
-  exactly as it was.
-- **Delete user** (Danger zone) is permanent. As the confirmation warns, it
-  removes the account **and all of its listening state** - progress, bookmarks,
-  notes, history and access grants - and cannot be undone. Your audio files are
-  untouched; only the person's account and records go.
+- **Disable account** is the reversible one: "Their devices stop working until
+  you enable the account again. Nothing is lost." A disabled account can't sign
+  in, and its invites stop redeeming. All of its progress, bookmarks and
+  settings are kept. **Enable** restores everything exactly as it was.
+- **Delete account** is permanent. You type the person's name to confirm, and
+  it "removes the account and everything tied to it: devices, invites,
+  progress, bookmarks, notes and history. Audio files are not touched. This
+  can't be undone." The confirmation offers **Disable the account instead** if
+  you want something reversible.
 
 When in doubt, disable. Delete is for accounts you are certain you'll never
 want back.
+
+## The Invites page
+
+![The Invites page](/img/screenshots/admin/invites.png)
+
+**People > Invites** lists every invite on the server: who it's **For**, its
+**Status**, **Devices paired** (for example "2 of 5"), when it **Expires** and
+when it was **Created**. Switch between **Active** (the default) and **All**.
+An invite's status is one of:
+
+- **Active** - it can still pair devices.
+- **Used up** - it has paired as many devices as it allows.
+- **Expired** - its time ran out.
+
+### One active invite per user
+
+Each person has at most one active invite. Making a new one (with **Invite
+someone** or **Pair a device**), or rotating an old one, automatically removes
+any other invite of theirs that could still be used. Used-up and expired invites are kept, under
+**All**, so you have a record of what was issued.
+
+### Rotating and revoking
+
+- **Rotate** gives the invite a fresh code and shows the new invite card. The
+  **old link and code stop working immediately** - including any QR code
+  still on someone's screen. The invite keeps its device limit (its count of
+  paired devices starts again from zero), and its expiry restarts for the same
+  window it was originally given: a 7-day invite gets another 7 days, so
+  rotating never quietly shortens it. Rotating also keeps the
+  [one-active-invite rule](#one-active-invite-per-user): any *other* invite of
+  that person's that could still be used stops working, so rotating an expired
+  invite makes it usable again as their one active invite. Devices already
+  paired with it stay signed in. Used-up invites
+  have no **Rotate** button; make a new one with **Pair a device**.
+- **Revoke** removes the invite: "The link and its QR code stop working at
+  once. Devices already paired stay signed in."
+
+To stop a person's devices working, [disable the account](#disabling-vs-deleting)
+instead.
 
 ## Safety rails
 
 The server enforces a few guards so you can't lock yourself out:
 
 - The **last enabled admin can't be demoted, disabled or deleted** - there is
-  always at least one working admin account.
-- **Admins must keep a password.** You can't clear an admin's password, and you
-  can't promote a password-less account to admin until it has one.
-- **You can't delete your own account.** The drawer offers to disable it
-  instead - deletion of your own account, from your own session, is refused.
+  always at least one working admin account ("This server needs at least one
+  admin. Make someone else an admin first.").
+- **Admins must keep a password.** A password-less account can only become an
+  admin together with a new password.
+- **You can't delete or disable your own account, or change your own role,**
+  from the console. Ask another admin.
+- If another admin makes you a member while you're signed in, the console signs
+  you out.

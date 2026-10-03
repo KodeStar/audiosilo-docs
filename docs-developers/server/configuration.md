@@ -163,7 +163,6 @@ is the complete list (anything not here, e.g. `app_links`, `libraries`,
 | `AUDIOSILO_DEMO_IDLE_TTL` | `demo.idle_ttl` | Go duration, e.g. `24h` |
 | `AUDIOSILO_METADATA_ENABLED` | `metadata.enabled` | `strconv.ParseBool` (`true`/`1`/…) |
 | `AUDIOSILO_METADATA_BASE_URL` | `metadata.base_url` | URL |
-| `AUDIOSILO_ADMIN_NEXT` | *(no YAML key)* `config.AdminNext` | `strconv.ParseBool`. Serves the redesigned admin console at `/admin` and the classic one at `/admin/classic`. Env-only and never persisted: a temporary switch for the redesign that goes away at the cutover (see [Built-in web UI](web-ui.md#the-switch-audiosilo_admin_next)) |
 
 List values are split on commas with whitespace trimmed and empties dropped
 (`splitList`). Numeric/boolean variables that fail to parse are **silently

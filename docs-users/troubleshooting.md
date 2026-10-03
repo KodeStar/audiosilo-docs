@@ -62,7 +62,7 @@ again (only a secure hash is kept). In order of least to most drastic:
    container hasn't been recreated since first run.
 2. **Ask another admin.** Any other admin can set a new password for your
    account in the admin console - see
-   [Users & invites](./admin/users-and-invites.md).
+   [People and invites](./admin/users-and-invites.md).
 3. **Still signed in somewhere?** If you saved the first-run **auth code**, it
    still works (it has no expiry) - it can pair the player app as the admin
    user, so you can keep listening, though it won't open the admin console
@@ -89,8 +89,8 @@ can restore them if you change your mind.
 A few things can cause this:
 
 - **It expired or was used up.** Unless the admin chose otherwise, an invite is
-  valid for **1 day** and **5 uses**. Ask the admin to resend it - the resend
-  button issues a fresh code with a renewed expiry.
+  valid for **1 day** and **5 uses**. Ask the admin to rotate it - **Rotate**
+  issues a fresh code with a renewed expiry.
 - **A newer invite replaced it.** Each user has exactly one active invite:
   when an admin creates a new invite for you, any older still-usable invite
   link stops working. Make sure you're using the most recent one.
@@ -98,7 +98,7 @@ A few things can cause this:
   redemptions for a while ("too many attempts, try again later"). Wait a few
   minutes and try again with the code copied exactly.
 
-Invites are managed in [Users & invites](./admin/users-and-invites.md); the
+Invites are managed in [People and invites](./admin/users-and-invites.md); the
 connect flow itself is described in [Connecting](./listening/connecting.md).
 
 :::tip
@@ -188,8 +188,10 @@ Two usual causes:
   the server machine (SMB/NFS), and the mount drops, the folder looks empty.
   The server detects this and **deliberately refuses to update the index** -
   it logs "library root unavailable" and keeps every book, and everyone's
-  progress and bookmarks, exactly as they were. Remount the share, then
-  trigger a **Rescan** from the admin console and everything reappears.
+  progress and bookmarks, exactly as they were. The admin console marks the
+  library **Folder unavailable** with a "Safety stop: nothing was deleted"
+  notice. Remount the share, then click **Retry** on the library in the admin
+  console and everything reappears.
 
 Nothing is deleted from disk in either case - the server never modifies your
 audio files.
@@ -215,8 +217,9 @@ the very top of the library are each their own book. When a folder doesn't
 fit that model - say, a "Short Stories" folder holding twenty separate
 single-file books - the detection gets it wrong.
 
-The fix is a **per-folder override** in the admin console: mark the folder as
-a *collection* (one book per file) or force it to be a single *book*. See
+The fix is a **per-folder override** in the admin console: with **Folder
+detection...** on the library, set the folder to **Separate books** (one book
+per file) or force it to be **One book**. See
 [Libraries](./admin/libraries.md) for how, and
 [Organizing your library](./getting-started/organizing-your-library.md) for
 the folder conventions that avoid the problem entirely.

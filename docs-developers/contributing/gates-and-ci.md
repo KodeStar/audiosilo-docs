@@ -19,7 +19,7 @@ scripts/build-admin.sh   # the admin console (Node 24): npm ci + check + build
 go build ./... && go vet ./... && go test -race ./... && golangci-lint run
 ```
 
-`scripts/build-admin.sh` is the redesigned admin console's gate: `npm ci`, then
+`scripts/build-admin.sh` is the admin console's gate: `npm ci`, then
 `npm run check` (`tsc -b`, ESLint including the CSP guard rules,
 `prettier --check`, Vitest), then the build, which itself fails on any CSP
 violation. Skip it only when `admin-ui/` is untouched; without a build,

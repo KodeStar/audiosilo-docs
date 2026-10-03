@@ -86,8 +86,7 @@ scripts/build-web.sh
 #      the AUDIOSILO_WEB_DIR to use.
 
 # 2) Run the server with the player mounted at /web, plain HTTP for local dev.
-#    (scripts/build-admin.sh first if you want the redesigned admin console
-#    embedded; add AUDIOSILO_ADMIN_NEXT=1 to serve it at /admin.)
+#    (scripts/build-admin.sh first, or /admin serves a "console not built" page.)
 go build -o bin/audiosilo ./cmd/audiosilo
 AUDIOSILO_WEB_DIR=~/dev/audiosilo/audiosilo-frontend/dist \
   AUDIOSILO_TLS_MODE=off \

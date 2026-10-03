@@ -87,4 +87,4 @@ The **admin console** lives at `/admin`. Log in with the admin username and pass
 
 ![The admin console login](/img/screenshots/admin/login.png)
 
-From here you manage libraries, users, invites and sharing - take the [console tour](../admin/console-tour.md) next, then add a library if the wizard didn't already create one.
+From here you manage libraries, people, invites and sharing - take the [console tour](../admin/console-tour.md) next, then add a library if the wizard didn't already create one (a server with no libraries greets you with an **Add your first library** button).

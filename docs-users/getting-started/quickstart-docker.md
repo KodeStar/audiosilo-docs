@@ -82,7 +82,7 @@ Your browser will warn about the certificate the first time - that's expected wi
 
 ### 4. Add your first library
 
-In the admin console, add a library pointing at the path **inside the container** - `/library` with the compose file above. The library is browsable immediately; the scanner fills in metadata, covers and durations in the background. See [Libraries](../admin/libraries.md) for the details.
+In the admin console, click **Add your first library** and point it at the path **inside the container** - `/library` with the compose file above (the **Browse** button lists the container's folders). The library is browsable immediately; the scanner fills in metadata, covers and durations in the background. See [Libraries](../admin/libraries.md) for the details.
 
 Then connect a phone or browser and start listening - see [Connecting to a server](../listening/connecting.md).
 

@@ -53,7 +53,7 @@ mappings:
 |---|---|
 | An API route, envelope, or field | [server/api/reference.md](../server/api/reference.md) (+ [conventions](../server/api/index.md)), [cross-repo contract](../architecture/cross-repo-contract.md) - after updating the workspace `CROSS-REPO.md` itself |
 | Config keys, env vars, CLI flags | [server/configuration.md](../server/configuration.md) + the User Guide pages that mention them (`/users/getting-started/remote-access`, quickstarts) |
-| Admin console UI | `/users/admin/*` pages + the `admin/` screenshots (classic console) and `admin-next/` screenshots (the redesigned `admin-ui` console; capture with `SHOTS_ONLY=admin-next/ screenshots/run.sh`) + [server/web-ui.md](../server/web-ui.md) for build, serving or CSP changes |
+| Admin console UI (`admin-ui`) | `/users/admin/*` pages + the `admin/` screenshots (capture just those with `SHOTS_ONLY=admin/ screenshots/run.sh`) + [server/web-ui.md](../server/web-ui.md) for build, serving, CSP or new-section changes |
 | Player screens or strings | `/users/listening/*` pages + the `web-player/` screenshots |
 | Playback engines / native module | [frontend/playback.md](../frontend/playback.md) |
 | Downloads / PWA | [frontend/offline.md](../frontend/offline.md) + `/users/listening/offline-downloads` |

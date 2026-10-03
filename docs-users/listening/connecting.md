@@ -23,7 +23,7 @@ Opening it takes you to the server's **connect page**, which signs the invite in
 The secret code in an invite link is never sent anywhere by your browser - it stays in the link itself. Still, treat an invite link like a key: anyone who opens it can sign in as you, so don't post it publicly.
 :::
 
-If your invite has expired or been used up, the page will tell you - just ask your admin for a fresh one. See [Users and invites](../admin/users-and-invites.md) for the admin's side of this.
+If your invite has expired or been used up, the page will tell you - just ask your admin for a fresh one. See [People and invites](../admin/users-and-invites.md) for the admin's side of this.
 
 ## Scanning the QR code with your phone
 

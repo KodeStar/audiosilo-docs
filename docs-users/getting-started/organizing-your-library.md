@@ -44,14 +44,14 @@ Audiobooks/
     └── The Yellow Wallpaper.m4b
 ```
 
-By the folder-per-book rule, `Short Stories` would become one three-part "book". The fix is a **per-folder override**, set from the admin console. Each folder can be pinned to one of two modes:
+By the folder-per-book rule, `Short Stories` would become one three-part "book". The fix is a **per-folder override**, set from the admin console. Instead of **Automatic**, each folder can be pinned to one of two modes:
 
-- **Collection** - every audio file in this folder is its own book (what you want for `Short Stories` above).
-- **Book** - force this folder to be one book, if the detector ever splits something that belongs together.
+- **Separate books** - every audio file in this folder is its own book (what you want for `Short Stories` above).
+- **One book** - force this folder to be one book, if the detector ever splits something that belongs together.
 
-Overrides are set in the per-library **Detection** browser in the admin console, and they stick - they survive rescans and index rebuilds. See [Libraries](../admin/libraries.md) for a walkthrough.
+Overrides are set with **Folder detection...** in a library's menu (**Library > Libraries** in the admin console), and they stick - they survive rescans and index rebuilds. See [Libraries](../admin/libraries.md) for a walkthrough.
 
-![The folder-detection browser in the admin console](/img/screenshots/admin/detection.png)
+![The folder detection dialog in the admin console](/img/screenshots/admin/detection.png)
 
 ### Supported formats
 

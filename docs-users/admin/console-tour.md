@@ -1,11 +1,11 @@
 ---
 title: "Admin console tour"
-description: "Where to find the AudioSilo admin console, how to sign in, and what each section of the console does."
+description: "Where to find the AudioSilo admin console, how to sign in, how it is laid out, what the overview and the search palette show, and the server settings it holds."
 ---
 
-Every AudioSilo server ships with a built-in admin console. It is a plain web
-page served by the server itself - nothing extra to install - and it is where
-you manage libraries, users, invites and shares.
+Every AudioSilo server ships with a built-in admin console. It is a web page
+served by the server itself - nothing extra to install - and it is where you
+manage libraries, people, invites and shares.
 
 ## Opening the console
 
@@ -24,21 +24,27 @@ just want the console, go straight to `/admin`.
 
 ![The admin sign-in screen](/img/screenshots/admin/login.png)
 
-Sign in with an **administrator account** - the username and password created
-when you first set up the server (see [First run](../getting-started/first-run.md)
-if you haven't done that yet, or don't have the credentials to hand).
+Sign in on the **Admin sign in** card with an **administrator account** - the
+username and password created when you first set up the server (see
+[First run](../getting-started/first-run.md) if you haven't done that yet, or
+don't have the credentials to hand).
 
 A few things worth knowing:
 
 - Only admin accounts can use the console. Signing in with a regular listener
-  account shows "This account is not an administrator."
+  account shows "This account is not an administrator." and leaves no session
+  behind.
 - Admin accounts always have a password. Regular listeners often don't - they
-  join with [invite codes](users-and-invites.md) instead - which is why the
-  console sign-in is username + password only.
-- The **Language** selector at the bottom of the sign-in card (and in the
-  sidebar once signed in) switches the console's language.
-- If your session expires, the console returns you to the sign-in screen; just
-  sign in again.
+  pair their devices with [invites](users-and-invites.md) instead - which is
+  why the console sign-in is username and password only.
+- The **Language** selector under the sign-in card (and in the account menu
+  once signed in) switches the console's language: English, Español,
+  Français, Deutsch, Português or Italiano.
+- If your session ends, the console asks you to sign in again ("Your session
+  ended. Sign in again to continue.") and then opens the page you were on.
+- If another admin makes your account a regular member while you are signed
+  in, the console signs you out with "This account is not an administrator."
+- **Back to connect** returns to the connect page.
 
 :::tip
 The console is installable as an app. If you open it over HTTPS (or on
@@ -48,67 +54,111 @@ admin one tap away on a phone or in the dock.
 
 ## The layout
 
-Once signed in, the console is a single page with a sidebar on the left and the
-selected section on the right. The sidebar has four sections:
+![The console's overview](/img/screenshots/admin/overview.png)
 
-| Section | What it's for |
+Along the top of every page:
+
+- **The AudioSilo mark** takes you home, to the overview. Next to it, on a
+  wide screen, are the server's address and a one-line health readout:
+  "Online" with the version number, "*name* is offline" (or "*N* libraries
+  are offline") when a library's folder can't be read, or "Server not
+  responding".
+- **Five destinations**: **Library**, **People**, **Activity**, **Health** and
+  **Server**. Each one has a row of sections under the top bar (for example
+  People has **People**, **Invites**, **Shares** and **Devices**).
+- **Search** ("Search books, people, settings") opens the
+  [command palette](#search-and-commands).
+- A **Notifications** bell, a theme menu (**Light**, **Dark** or **Match
+  system**) and your account menu (**Open the web player**, **Language**,
+  **Sign out**).
+
+On a phone the destinations move to a tab bar at the bottom of the screen and
+the sections scroll sideways.
+
+![The console on a phone](/img/screenshots/admin/overview-phone.png)
+
+The console is being rebuilt in stages. These sections work today:
+
+| Where | What it's for |
 |---|---|
-| **Overview** | Totals and a snapshot of what people are listening to. |
-| **Libraries** | The folders scanned for audiobooks: add, reorder, rescan, correct folder detection, delete. See [Libraries](libraries.md). |
-| **Users** | Accounts: create users, manage roles and passwords, mint invite codes, grant access, disable or delete. See [Users and invites](users-and-invites.md). |
-| **Shares** | Named sets of folders you grant to users to control who sees what. See [Sharing](sharing.md). |
+| **Home** (the mark) | Who is listening, totals, recent listening, the server's status. See [The overview](#the-overview). |
+| **Library > Libraries** | The folders AudioSilo reads: add, edit, reorder, rescan, folder detection, export, delete. See [Libraries](libraries.md). |
+| **People > People** | Everyone with an account, inviting someone new, and each person's own page. See [People and invites](users-and-invites.md). |
+| **People > Invites** | Every invite link, with rotate and revoke. See [People and invites](users-and-invites.md#the-invites-page). |
+| **People > Shares** | Named sets of folders you give to people. See [Sharing](sharing.md). |
+| **Server > Settings** | The community metadata lookup. See [Server settings](#server-settings). |
 
-The bottom of the sidebar shows who you are signed in as, a **Sign out**
-button, the language selector, and the server's version number.
+The other sections - Library **Books**, **Authors**, **Series**,
+**Narrators** and **Folders**; People **Devices**; everything under
+**Activity** and **Health**; and Server **Logs**, **Audit log** and **About** -
+show a "Coming in this redesign" page that says what will live there.
+Notifications are a placeholder too.
 
-## Overview
+## The overview
 
-![The Overview section with stat cards, per-library counts and the listening feed](/img/screenshots/admin/overview.png)
+The overview is the console's home: a greeting and a line saying how many
+people are listening right now, then:
 
-**Overview** is the console's home screen ("Library size and what people are
-listening to"). It has four parts:
+- **Listening now** - a card per book someone is playing at the moment (a
+  player saved progress for it in the last ten minutes), with the listener's
+  name, the cover, a progress bar and how long ago it updated.
+- **Totals** - **Books** (every audiobook indexed, across all libraries),
+  **Libraries**, **People** (every account, admins included) and **Books in
+  progress** (started but not finished, across everyone).
+- **Recent listening** - the latest progress that isn't live any more: who,
+  which book, how far (or "finished") and when.
+- **Books per library** - each library's book count as a bar. A count that
+  looks wrong is the cue to check that library's
+  [folder detection](libraries.md#folder-detection).
+- **Server** - the version, the address you reached the console on, and
+  whether transcoding, the web player and community metadata are on.
+  **Server settings** opens [Server settings](#server-settings).
 
-### Stat cards
+If a library's folder can't be read - typically a network share that
+unmounted - a notice at the top says "*name* is offline. Nothing was deleted."
+with a **View libraries** button. (For a library that has no books yet the
+notice says "AudioSilo can't read this folder" instead, since there was nothing
+to keep.) See
+[When a library folder goes missing](libraries.md#when-a-library-folder-goes-missing).
 
-Four totals across the whole server:
+A brand-new server with no libraries shows a welcome card instead, with an
+**Add your first library** button.
 
-- **Books** - every audiobook indexed, across all libraries.
-- **Libraries** - how many library folders are configured.
-- **Users** - how many accounts exist (admins and listeners).
-- **Listening now** - how many books are currently in progress (started but not
-  finished) across all users. It counts the currently-listening feed below,
-  which lists only the most recent in-progress items, so on a very busy
-  instance it can undercount.
+## Search and commands
 
-### Books per library
+![The command palette](/img/screenshots/admin/palette.png)
 
-A simple per-library breakdown: each library's name with its book count. Useful
-for spotting a library whose scan hasn't picked up what you expected - if the
-count looks wrong, head to [Libraries](libraries.md) and check the folder
-detection.
+Press **Ctrl K** (**⌘K** on a Mac) or click the search box to open the command
+palette. Type to filter, use the arrow keys to move and Enter to open.
 
-### Currently listening
+- **Actions** - **Invite someone**, **Add a library**, **Rescan** any library,
+  **Open the web player** and **Sign out**.
+- **Go to** - every destination, and (once you type) every section.
+- **Settings** - **Community metadata**, the three themes and the console's
+  languages.
 
-A cross-user feed of listening activity. Each row shows:
+Searching for books and people from the palette comes later in the redesign.
 
-- the **username** of the listener,
-- the **book title and author** they're on,
-- **when they last listened** (as a relative time like "2h ago"),
-- a **progress bar** with a percentage - or "done" once the book is finished.
+## Server settings
 
-The feed shows saved listening progress as of when you opened the Overview -
-reopen the section to refresh (players report progress periodically while
-playing).
+**Server > Settings** holds the settings you can change while the server runs.
+Today that is one card; everything else still lives in the server's
+`config.yaml` (see the
+[configuration reference](/developers/server/configuration)), and moves into
+the console in a later update.
+
+![Server settings](/img/screenshots/admin/settings.png)
 
 ### Community metadata lookup
 
-A single switch that turns the **community metadata lookup** on or off for the
-whole server. When it is on, books that can be matched (they carry an ASIN or
-ISBN) gain an extra "About this book" block in the player - a description,
-production details, the series they belong to, and (where the community has
-written them) character cards and story-so-far recaps - drawn from the free,
-community-run catalogue at
-[meta.audiosilo.app](https://meta.audiosilo.app). See
+The **Community metadata** card turns the community metadata lookup on or off
+for the whole server with the **Look up community metadata** switch. When it is
+on, books that can be matched (they carry an ASIN or ISBN) gain an extra
+"About this book" block in the player - a description, production details, the
+series they belong to, and (where the community has written them) character
+cards and story-so-far recaps - drawn from the free, community-run catalogue at
+[meta.audiosilo.app](https://meta.audiosilo.app). Only a book's ASIN or ISBN is
+sent, never file paths or who is listening. See
 [About this book](../listening/browsing.md#about-this-book) for what listeners
 see.
 
@@ -117,10 +167,11 @@ see.
 - Turning it **off** is a one-tap privacy switch: your server stops contacting
   the metadata service at all, and the extra section disappears from every
   player.
-- The card also shows the **Source** - the metadata service address your server
-  uses. If no service is configured, the switch is greyed out and a note explains
-  that a service address must be set in the server configuration first (see the
-  metadata setting in the [configuration reference](/developers/server/configuration)).
+- **Service address** shows the metadata service your server uses. If none is
+  configured, the switch is greyed out and a notice ("No metadata service is
+  configured") explains that `metadata.base_url` must be set in `config.yaml`
+  and the server restarted (see the metadata setting in the
+  [configuration reference](/developers/server/configuration)).
 
 :::note
 The console holds no special powers of its own - every action it performs is
@@ -129,42 +180,9 @@ breaks if a non-admin somehow opens the page: the server refuses every
 privileged request.
 :::
 
-## Preview the new console
-
-A redesigned admin console is being built in stages. You can try it today
-without giving anything up: it runs alongside the current console and changes
-nothing on your server.
-
-To switch it on, set the environment variable `AUDIOSILO_ADMIN_NEXT=1` and
-restart the server. With Docker Compose, add it under `environment:`:
-
-```yaml
-environment:
-  - AUDIOSILO_ADMIN_NEXT=1
-```
-
-Then:
-
-- `/admin` opens the **new console**: an overview of who is listening right
-  now, your library totals and the server's status, plus search (press
-  **Ctrl K**, or **⌘K** on a Mac, or click the search box) to jump anywhere or
-  rescan a library.
-- `/admin/classic` opens the **current console**, which still does everything
-  the new one doesn't do yet. Pages that aren't finished say so and link
-  there.
-- You stay signed in when you move between them, and your language choice
-  carries over.
-
-![The new console's overview on a phone](/img/screenshots/admin-next/overview-phone.png)
-
-Remove the variable (or set it to `0`) and restart to go back to the current
-console at `/admin`. The release and Docker builds include the new console; if
-you build the server from source, run `scripts/build-admin.sh` first (see
-[Installing the binary](../getting-started/install-binary.md#building-from-source)).
-
 ## Where to next
 
 - [Libraries](libraries.md) - point the server at your audiobook folders.
-- [Users and invites](users-and-invites.md) - create accounts and get people
-  connected.
+- [People and invites](users-and-invites.md) - invite people and get their
+  devices connected.
 - [Sharing](sharing.md) - control which folders each person can see.

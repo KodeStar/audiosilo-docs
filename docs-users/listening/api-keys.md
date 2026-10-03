@@ -48,4 +48,4 @@ To switch a key off, tap the trash icon next to it and confirm. Anything using t
 
 A key can reach everything your account can (bar managing the account itself, as above), and nothing more. If you are an **admin**, a key made from your account can also reach admin-only information - server statistics, the list of users - not just your own books.
 
-If you only need a key for read-only widgets like "what am I listening to" or a library's contents, consider creating it from a **regular (non-admin) account** that has just the access it needs. That way a leaked key can't touch admin features. If you don't have such an account, ask your admin to set one up - see [Users and invites](../admin/users-and-invites.md).
+If you only need a key for read-only widgets like "what am I listening to" or a library's contents, consider creating it from a **regular (non-admin) account** that has just the access it needs. That way a leaked key can't touch admin features. If you don't have such an account, ask your admin to set one up - see [People and invites](../admin/users-and-invites.md).

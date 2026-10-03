@@ -41,7 +41,7 @@ The handler (`handleBrowseFS` → `annotateWithBooks`) then overlays the
 **hybrid view**: paths that match indexed books (via `catalog.BooksByPaths`)
 get `is_book: true` plus title/author/series/series-index/duration, and each
 entry carries its effective folder-detection `override` so the admin console's
-Detection browser can show and toggle it.
+folder detection dialog can show and change it.
 
 ## When scans run
 
@@ -110,7 +110,7 @@ There is no per-library layout setting. The model matches the dominant
   `'book'` forces folder-is-one-book (e.g. at the root). Overrides are durable,
   path-keyed config consulted before the heuristic - set via
   `PUT/DELETE /admin/libraries/{id}/folder-override?path=` (which rescans), and
-  driven by the admin console's Detection browser.
+  driven by the admin console's folder detection dialog.
 
 `folderBook` orders parts by name (`os.ReadDir`'s stable ordering), sums sizes,
 takes the max mtime, and takes the **earliest** file's `added_at`. `addedAt` is
@@ -249,6 +249,42 @@ Related but distinct: a *per-entry* read error during the walk (commonly a
 permission-denied subtree on a partially-readable mount) is warned and
 **skipped**, not fatal - aborting the whole scan would be worse, but silently
 dropping those books would let the prune step remove them.
+
+### Reporting it to the console
+
+The admin console shows a library whose root is unreachable as "Folder
+unavailable", from two signals:
+
+- **The last scan's outcome.** When a scan ends in `ErrLibraryUnavailable`,
+  `Scan` sets `ScanProgress.Unavailable`, which
+  [`GET /admin/libraries/{id}/scan`](api/reference.md#get-apiv1adminlibrariesidscan)
+  reports as `unavailable: true` until a later scan finishes without it.
+- **A live probe.** `Scanner.RootAvailable(lib, indexed)` backs the `available`
+  field of [`GET /admin/libraries`](api/reference.md#get-apiv1adminlibraries).
+  It is false when the last scan stopped at the guard, or when the root is
+  missing, unreadable, not answering, or empty while `indexed > 0` books are
+  still indexed under it. The probe (`rootProber`, `internal/library/roots.go`)
+  opens the root and reads at most one entry; a hard-mounted dead share can
+  block that for minutes, so a check never waits longer than
+  `rootProbeTimeout` (2 s - an unanswered probe counts as unavailable), at most
+  one probe per root runs at a time, and its answer is cached for
+  `rootProbeTTL` (15 s). A probe already stuck past the timeout answers "not
+  responding" immediately for every later check while it stays stuck, so a
+  dead mount costs one timeout, not one per request. Every finished scan drops
+  the cached answer so the next check looks again. `Scanner.RootsAvailable`
+  fans the probes out in parallel for the list handler, so a dead share costs
+  the whole list at most one timeout. The same list also carries each
+  library's `ScanProgress` as `scan`, which is what the console polls.
+
+`Scanner.ScanInBackground(ctx, lib)` is how every admin request that queues a
+scan starts it (`POST …/scan`, creating or editing a library, setting or
+clearing a folder override, the setup wizard - all through the API's
+`startScan`). It marks the library running before it returns, so the first
+status poll sees `running: true` even when a small library would otherwise
+finish between the two requests, then runs `Scan` detached from the request:
+bound to the server's lifetime (`ctx`, so shutdown cancels it), capped at an
+hour, and logged if it fails. A call that coalesces into a scan already running
+leaves that scan's progress alone.
 
 :::note
 Library roots must be **local paths** (mount remote shares first). The guard is
