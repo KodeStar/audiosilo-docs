@@ -195,7 +195,7 @@ Until then, fix names with the edits above.
 
 ## Matching with community metadata
 
-When [community metadata](console-tour.md#community-metadata-lookup) is on,
+When [community metadata](server.md#community-metadata) is on,
 you can match a book to its entry in the free community catalogue at
 [meta.audiosilo.app](https://meta.audiosilo.app). Matching gives listeners a
 description, series order and chapter recaps, and fills in fields you're

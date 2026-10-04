@@ -28,6 +28,7 @@ const sidebars: SidebarsConfig = {
         'admin/users-and-invites',
         'admin/sharing',
         'admin/activity',
+        'admin/server',
       ],
     },
     {

@@ -10,7 +10,10 @@
 // console looks lived-in. Three more listeners sign in with a password and keep
 // saving progress in the background while the shots are taken, which is what
 // makes real listening sessions (Activity, Live now, Sessions, Devices); those
-// screens are captured last, once each listener has a few minutes of listening. For the Health shots, after the other admin shots, it
+// screens are captured last, once each listener has a few minutes of listening.
+// It also names the server and adds a trusted proxy through PATCH
+// /admin/settings, so the top bar and Server > Settings show values. For the
+// Health shots, after the other admin shots, it
 // builds a small "Inbox" library under .cache/inbox (INBOX_DIR overrides) whose
 // files produce one of each issue - an empty file, a damaged m4b, two copies of
 // one book, a folder of two hour-long books, a long book without chapters, an
@@ -164,6 +167,17 @@ await step('provision scan settings', async () => {
   });
   await waitForScans(token);
   console.log('  ✓ provisioned (schedule + skip rules on the seeded library)');
+});
+
+await step('provision server settings', async () => {
+  // A name shows in the top bar of every shot and on Settings > General; a
+  // trusted proxy (a bare address, which the server stores as a /32 range)
+  // gives Settings > Network & HTTPS a value. Both apply at once, no restart.
+  await api(token, 'PATCH', '/admin/settings', {
+    general: {name: 'Hearthside'},
+    network: {trusted_proxies: ['10.0.0.2']},
+  });
+  console.log('  ✓ provisioned (server name, a trusted proxy)');
 });
 
 // ── Listening activity: real sessions from progress saves ───────────────────
@@ -472,8 +486,23 @@ await step('shares', async () => {
 
 await step('server settings', async () => {
   await open(page, '/server');
-  await page.getByRole('switch', {name: 'Look up community metadata'}).waitFor({timeout: 8000}).catch(() => {});
+  await page.getByLabel('Server name', {exact: true}).waitFor({timeout: 8000});
+  await page.getByRole('switch', {name: 'Check for new versions'}).waitFor({timeout: 8000}).catch(() => {});
+  await sleep(600);
   await shoot(page, 'admin/settings.png');
+});
+
+await step('server settings: network & https', async () => {
+  // Taller, so both cards (HTTPS and Network) fit.
+  await page.setViewportSize({width: 1440, height: 1100});
+  try {
+    await open(page, '/server?topic=network');
+    await page.getByLabel('Listen address', {exact: true}).waitFor({timeout: 8000});
+    await sleep(800); // the certificate row reads the system status
+    await shoot(page, 'admin/settings-network.png');
+  } finally {
+    await page.setViewportSize(DESKTOP_CONTEXT.viewport);
+  }
 });
 
 await step('overview on a phone', async () => {
@@ -606,6 +635,39 @@ await step('edit library (scan settings)', async () => {
   await shoot(page, 'admin/library-edit.png');
   await page.keyboard.press('Escape');
   await sleep(600);
+});
+
+// ── Server ops: System, About and Logs ─────────────────────────────────────
+// After the Inbox library, so System lists two library folders and the log has
+// its scans. The update card shows whatever GitHub answers (a local build reads
+// as a development build); a check is asked for first, so it isn't "Not checked
+// yet" on a run that reaches here within a minute of the server starting.
+await step('health: system', async () => {
+  await page.setViewportSize({width: 1440, height: 1100});
+  try {
+    await open(page, '/health/system');
+    await page.getByText('Database', {exact: true}).waitFor({timeout: 15000});
+    await sleep(1000);
+    await shoot(page, 'admin/system.png');
+  } finally {
+    await page.setViewportSize(DESKTOP_CONTEXT.viewport);
+  }
+});
+
+await step('server: about', async () => {
+  await api(token, 'POST', '/admin/update/check').catch((e) => console.log(`  ! update check: ${e.message}`));
+  await open(page, '/server/about');
+  await page.getByRole('button', {name: 'Check now', exact: true}).waitFor({timeout: 8000}).catch(() => {});
+  await sleep(800);
+  await shoot(page, 'admin/about.png');
+});
+
+await step('server: logs', async () => {
+  await open(page, '/server/logs');
+  const panel = page.getByRole('log', {name: 'Server log'});
+  await panel.locator('.lv').first().waitFor({timeout: 15000});
+  await sleep(1000);
+  await shoot(page, 'admin/logs.png');
 });
 
 // ── Activity: captured last, after a few minutes of listening ───────────────

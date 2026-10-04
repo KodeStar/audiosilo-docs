@@ -68,7 +68,7 @@ The [desktop manager](../manager/index.md) uses this same wizard when it sets up
 
 The `--data` directory (mounted at `/data` under Docker) is the server's home. After the first run it contains:
 
-- `config.yaml` - all server settings. Edit it and restart to change things like TLS mode; see [Remote access](./remote-access.md).
+- `config.yaml` - all server settings. Most of them can be changed in the admin console under [Server > Settings](../admin/server.md#settings), which writes this file for you; or edit it and restart. See [Remote access](./remote-access.md) for the TLS mode and other network settings.
 - `audiosilo.db` - the database: user accounts, listening progress, bookmarks, and a searchable index of your books. The index part is rebuildable from your files at any time; the accounts and progress are the part you'd back up.
 - `certs/` - the Let's Encrypt (autocert) certificate cache. In self-signed TLS mode the certificate and key are written at the data directory root instead, as `selfsigned-cert.pem` / `selfsigned-key.pem`.
 - `tools/` - ffmpeg/ffprobe, if the native binary had to download them (see [Install the native binary](./install-binary.md)).

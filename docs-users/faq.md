@@ -37,7 +37,8 @@ No - but you'll want it. The server uses two companion tools:
 In practice you rarely have to think about this: the **Docker image includes
 ffmpeg**, and the native binary looks for a copy on your system and - if none
 is found - downloads one automatically into its data directory on first
-start.
+start. The admin console's [Health > System](./admin/health.md#system) page
+shows whether each tool was found, and which version.
 
 ### Is there a web version, or do I need the apps?
 

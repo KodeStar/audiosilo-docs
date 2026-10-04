@@ -1,18 +1,21 @@
 ---
 title: "Library health and jobs"
-description: "The Health pages of the AudioSilo admin console: what each kind of issue means and how to fix or ignore it, comparing duplicates, offline libraries, the scan queue, stopping a scan, and the scan history with its logs."
+description: "The Health pages of the AudioSilo admin console: what each kind of issue means and how to fix or ignore it, comparing duplicates, offline libraries, the scan queue, stopping a scan, the scan history with its logs, and the System page with everything the server depends on."
 ---
 
-The **Health** destination in the [admin console](console-tour.md) has two
-pages that work today:
+The **Health** destination in the [admin console](console-tour.md) has three
+pages:
 
 - **Issues** ("Library health") lists the books that could be better - files
   that couldn't be read, missing covers, likely duplicates and so on - with a
   fix for each where the console has one.
 - **Jobs** shows the scan running now, the scans waiting their turn, the
   schedules, and a history of every scan with its log.
+- **System** shows everything the server depends on - ffmpeg, the community
+  metadata service, the HTTPS certificate, the database, each library's disk -
+  with a plain status for each.
 
-Nothing on either page changes your audio files. Fixes are saved in AudioSilo
+Nothing on these pages changes your audio files. Fixes are saved in AudioSilo
 (a cover you upload, a match you accept, a folder detection choice), and an
 issue you ignore is only hidden.
 
@@ -42,7 +45,7 @@ below.
 | **Folder may hold several books** | AudioSilo reads a folder with audio in it as one book. These folders look like they hold several: at least two parts, every part an hour or longer, with different titles. | **Choose detection** opens [Library > Folders](libraries.md#the-folders-page) on that folder: **Separate books** splits it, and **Always one book** tells AudioSilo it really is one book, which also clears it from this list. |
 | **Likely duplicates** | Copies of one book in the same library. See [Duplicates](#duplicates). | A side-by-side comparison. |
 | **Missing covers** | No cover image in the book's folder and none inside its files. | **Upload a cover** opens the book's page, where **Change cover** adds one (see [Covers](books.md#covers)). |
-| **Not matched to community metadata** | The book has no ASIN or ISBN, so community metadata can't find it. Only shown while [community metadata](console-tour.md#community-metadata-lookup) is on. | **Review match** opens the book's page with the match dialog open (see [Matching](books.md#matching-with-community-metadata)). |
+| **Not matched to community metadata** | The book has no ASIN or ISBN, so community metadata can't find it. Only shown while [community metadata](server.md#community-metadata) is on. | **Review match** opens the book's page with the match dialog open (see [Matching](books.md#matching-with-community-metadata)). |
 | **Long books without chapters** | Books over two hours long with no chapter marks (or a single chapter). Listeners can play them but can't jump between chapters. | None in the console: add chapters to the file with your tagging tool, or ignore it. |
 | **Converted to play in browsers** | The audio format doesn't play in web browsers, so the server converts it while someone listens in the web player. The apps play it as it is. | None needed: it works. Re-encode the file if you'd rather the server didn't convert it, or ignore it. |
 
@@ -175,7 +178,44 @@ path, so if the files come back to the same place, the next scan brings the
 book back with all of it. A book you **moved** is followed to its new place
 instead ("Moved *path* to *new path*; progress followed").
 
+## System
+
+**Health > System** lists everything the server depends on, one row each, with
+a status on the right: **Healthy**, **Needs attention**, **Missing**, **Off**,
+**Waiting** or **Update available**. The page refreshes itself every 30
+seconds.
+
+![Health > System](/img/screenshots/admin/system.png)
+
+| Row | What it tells you |
+|---|---|
+| **ffmpeg** | Found (with its version), so formats browsers can't play are converted while someone listens; "Downloaded into the data folder" when the server fetched its own copy. **Missing**: those formats won't play in the web player. |
+| **ffprobe** | Found, so lengths, chapters and codecs are read from the files. **Missing**: lengths and chapters come only from tags. |
+| **Community metadata** | **Healthy** with how fast the service answered, **Needs attention** when it isn't responding, or **Off** (switched off, or no service address set). The server only asks the service while the lookup is on, at most once a minute. |
+| **HTTPS certificate** | **Healthy** with the days left and who issued it, **Needs attention** when it expires within two weeks, has expired or its file can't be read, **Waiting** while Let's Encrypt hasn't issued it yet, or **Off** with plain HTTP (a reverse proxy in front handles HTTPS). |
+| **Database** | Its schema number. The book index can be rebuilt from your folders; accounts and progress can't, which is why the data folder belongs in your backups. |
+| ***Each library*** | The library's folder, and the space free on its disk. **Needs attention** when less than a tenth of the disk is free, or when the folder isn't reachable. |
+| **Web player** | Whether people can listen in a browser at `/web`: "Built into this server.", "Served from the player folder." or, marked **Off**, "Not available. The apps still work." |
+| **AudioSilo version** | The version you run: **Healthy** when it's the newest (or, for a build of your own, "A development build, so it isn't compared with releases."), **Update available** when a newer release exists, **Needs attention** when the last check failed, or **Off** when the update check is turned off. See [About and updates](server.md#about-and-updates). |
+
+Two notices can appear above the list:
+
+- "A library folder isn't reachable" (or how many aren't). Nothing was
+  deleted: the server keeps every book, and people's progress, until the folder
+  is back. Mount it again, then rescan (see
+  [When a library is offline](#when-a-library-is-offline)).
+- "The community metadata service isn't responding": players still show what
+  they already had, and new matches wait until it's back. **Metadata settings**
+  opens [its settings](server.md#community-metadata). Nothing to do unless it
+  lasts a day.
+
+To change any of this, see [Server settings](server.md#settings): the HTTPS
+mode and certificate names are under **Network & HTTPS**, the tools under
+**Transcoding**.
+
 ## Where to next
 
+- [Server settings, updates and logs](server.md) - the settings behind the
+  System page, updates and the server's log.
 - [Libraries](libraries.md) - schedules, skipped files and folder detection.
 - [Books and metadata](books.md) - covers, matching and a book's page.

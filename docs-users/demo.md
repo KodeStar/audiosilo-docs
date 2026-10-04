@@ -60,7 +60,11 @@ demo:
 (The same settings exist as environment variables - `AUDIOSILO_DEMO_ENABLED`,
 `AUDIOSILO_DEMO_LIBRARY`, `AUDIOSILO_DEMO_MAX_USERS`, `AUDIOSILO_DEMO_IDLE_TTL` -
 which is handy in Docker; see the
-[Docker quickstart](getting-started/quickstart-docker.md).)
+[Docker quickstart](getting-started/quickstart-docker.md). They are also in the
+admin console under
+[Server > Settings > Demo mode](admin/server.md#demo-mode); turning demo mode
+on or off and the idle time take effect at the next restart, the library and
+the cap at once.)
 
 With demo mode on, visiting the server's front page takes visitors straight to the
 demo landing screen, and each visit provisions a throwaway account granted that

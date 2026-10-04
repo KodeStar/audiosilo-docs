@@ -1,13 +1,13 @@
 ---
 title: "Admin console tour"
-description: "Where to find the AudioSilo admin console, how to sign in, how it is laid out, what the overview and the search palette show, where activity, library health and scans live, and the server settings it holds."
+description: "Where to find the AudioSilo admin console, how to sign in, how it is laid out, what the overview and the search palette show, and where activity, library health, scans, server settings, updates and logs live."
 ---
 
 Every AudioSilo server ships with a built-in admin console. It is a web page
 served by the server itself - nothing extra to install - and it is where you
 manage libraries, books and their details, people, invites, shares and
-devices, see what everyone is listening to, and keep an eye on library health
-and scans.
+devices, see what everyone is listening to, keep an eye on library health
+and scans, and look after the server itself: its settings, updates and logs.
 
 ## Opening the console
 
@@ -61,7 +61,8 @@ admin one tap away on a phone or in the dock.
 Along the top of every page:
 
 - **The AudioSilo mark** takes you home, to the overview. Next to it, on a
-  wide screen, are the server's address and a one-line health readout:
+  wide screen, are the server's name (its address until you
+  [give it a name](server.md#general)) and a one-line health readout:
   "Online" with the version number, "*name* is offline" (or "*N* libraries
   are offline") when a library's folder can't be read, or "Server not
   responding".
@@ -98,12 +99,13 @@ The console is being rebuilt in stages. These sections work today:
 | **Activity > Year in listening** | A calendar year of listening, told as a story. See [Year in listening](activity.md#year-in-listening). |
 | **Health > Issues** | Books that could be better (unreadable files, missing covers, likely duplicates and more), each with a fix or Ignore, and offline libraries. See [Library health](health.md#library-health). |
 | **Health > Jobs** | The scan running now, the scans waiting, the schedules, and every scan's history and log. See [Jobs](health.md#jobs). |
-| **Server > Settings** | The community metadata lookup. See [Server settings](#server-settings). |
+| **Health > System** | Everything the server depends on (ffmpeg, community metadata, the certificate, the database, each library's disk, the version), each with a status. See [System](health.md#system). |
+| **Server > Settings** | The server's settings by topic: name and address, network and HTTPS, players and app links, community metadata, transcoding and demo mode. See [Settings](server.md#settings). |
+| **Server > Logs** | What the server has been doing since it started, with a live tail. See [Logs](server.md#logs). |
+| **Server > About** | The version, whether a newer one exists and how to update, and facts about the server. See [About and updates](server.md#about-and-updates). |
 
-The other sections - Health **System**, and Server **Logs**, **Audit log** and
-**About** - show a "Coming in this redesign" page that says what will live
-there.
-Notifications are a placeholder too.
+**Server > Audit log** still shows a "Coming in this redesign" page that says
+what will live there. Notifications are a placeholder too.
 
 ## The overview
 
@@ -128,9 +130,11 @@ people are listening right now, then:
 - **Books per library** - each library's book count as a bar. A count that
   looks wrong is the cue to check that library's
   [folder detection](libraries.md#folder-detection).
-- **Server** - the version, the address you reached the console on, and
-  whether transcoding, the web player and community metadata are on.
-  **Server settings** opens [Server settings](#server-settings).
+- **Server** - the version (with a "*version* available" link to
+  [Server > About](server.md#about-and-updates) when a newer release exists),
+  the address you reached the console on, and whether transcoding, the web
+  player and community metadata are on. **Server settings** opens
+  [Server > Settings](server.md#settings).
 
 If a library's folder can't be read - typically a network share that
 unmounted - a notice at the top says "*name* is offline. Nothing was deleted."
@@ -154,8 +158,11 @@ use the arrow keys to move and Enter to open.
   **Rescan every library** (with more than one), **Open the web player** and
   **Sign out**.
 - **Go to** - every destination, and (once you type) every section.
-- **Settings** - **Community metadata**, **Scan schedules and skipped files**
-  (opens Library > Libraries, where each library's
+- **Settings** - each [Server > Settings](server.md#settings) topic
+  (**General**, **Network & HTTPS**, **Players & app links**, **Community
+  metadata**, **Transcoding** and **Demo mode**; typing "https", "proxy" or
+  "ffmpeg" finds the right one), **Scan schedules and skipped files** (opens
+  Library > Libraries, where each library's
   [schedule and skipped files](libraries.md#scanning-on-a-schedule) are
   edited), the three themes and the console's languages.
 
@@ -171,37 +178,12 @@ The last entry, "Search all books for ...", opens
 
 ## Server settings
 
-**Server > Settings** holds the settings you can change while the server runs.
-Today that is one card; everything else still lives in the server's
-`config.yaml` (see the
-[configuration reference](/developers/server/configuration)), and moves into
-the console in a later update.
-
-![Server settings](/img/screenshots/admin/settings.png)
-
-### Community metadata lookup
-
-The **Community metadata** card turns the community metadata lookup on or off
-for the whole server with the **Look up community metadata** switch. When it is
-on, books that can be matched (they carry an ASIN or ISBN) gain an extra
-"About this book" block in the player - a description, production details, the
-series they belong to, and (where the community has written them) character
-cards and story-so-far recaps - drawn from the free, community-run catalogue at
-[meta.audiosilo.app](https://meta.audiosilo.app). Only a book's ASIN or ISBN is
-sent, never file paths or who is listening. See
-[About this book](../listening/browsing.md#about-this-book) for what listeners
-see.
-
-- Flipping the switch takes effect immediately for **everyone connected**, and
-  the choice is remembered across restarts.
-- Turning it **off** is a one-tap privacy switch: your server stops contacting
-  the metadata service at all, and the extra section disappears from every
-  player.
-- **Service address** shows the metadata service your server uses. If none is
-  configured, the switch is greyed out and a notice ("No metadata service is
-  configured") explains that `metadata.base_url` must be set in `config.yaml`
-  and the server restarted (see the metadata setting in the
-  [configuration reference](/developers/server/configuration)).
+**Server > Settings** holds everything you can change while the server runs,
+one topic at a time: its name and public address, HTTPS, app links, community
+metadata, demo mode and the update check. Some settings apply at
+once and some at the next restart; each one says which. See
+[Server settings, updates and logs](server.md), which also covers
+**Server > About** (checking for new versions) and **Server > Logs**.
 
 :::note
 The console holds no special powers of its own - every action it performs is
@@ -220,5 +202,7 @@ privileged request.
 - [Sharing](sharing.md) - control which folders each person can see.
 - [Activity](activity.md) - see what everyone listens to, and what the server
   records to show it.
-- [Library health and jobs](health.md) - fix what could be better, and follow
-  your scans.
+- [Library health and jobs](health.md) - fix what could be better, follow
+  your scans, and check what the server depends on.
+- [Server settings, updates and logs](server.md) - change how the server
+  behaves, update it, and read its log.
