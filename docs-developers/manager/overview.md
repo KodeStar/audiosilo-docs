@@ -200,7 +200,7 @@ router, no state library, no CSS framework:
 
 ## Dev workflow
 
-Requires **Go 1.25**, **Node 24**, and the Wails CLI
+Requires **Go 1.26**, **Node 24**, and the Wails CLI
 (`go install github.com/wailsapp/wails/v2/cmd/wails@latest`), plus a **sibling
 checkout of `audiosilo-server`** - the manager compiles the server in via a
 `replace ../audiosilo-server` directive (see

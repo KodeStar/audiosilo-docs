@@ -72,7 +72,7 @@ journalctl -u audiosilo
 
 ### Building from source
 
-If you have Go 1.25 or newer and Node 24 installed, you can build the server yourself:
+If you have Go 1.26 or newer and Node 24 installed, you can build the server yourself:
 
 ```bash
 git clone https://github.com/KodeStar/audiosilo-server.git

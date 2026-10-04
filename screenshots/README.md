@@ -88,7 +88,7 @@ Every capture is optimized in place with **pngquant** (`brew install pngquant`)
 loss, so the committed image is the optimized one. It's optional: if pngquant
 isn't on `PATH` the shots are just left raw (with a one-time warning).
 
-Prereqs: Go 1.25+, Node 24 (also builds the server's admin console), ffmpeg/ffprobe, pngquant (optional; for image
+Prereqs: Go 1.26+, Node 24 (also builds the server's admin console), ffmpeg/ffprobe, pngquant (optional; for image
 optimization), and a web export at `../../audiosilo-frontend/dist`
 (`audiosilo-server/scripts/build-web.sh` builds one; `run.sh` triggers it
 automatically when missing).
@@ -144,7 +144,7 @@ Because the site build is reused while it exists, **delete
 `audiosilo-meta/site/dist` after changing the meta site's UI** so the next run
 rebuilds it - otherwise the shots silently show the old UI.
 
-Needs: Go 1.25+, the `audiosilo-meta-community` clone, and (only for the site
+Needs: Go 1.26+, the `audiosilo-meta-community` clone, and (only for the site
 build) yarn + Node 24. After the caches
 are warm (node_modules, Go modules, `site/dist`), a run only touches the network
 for remote cover images - and the capture waits on rendered content, not on

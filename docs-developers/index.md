@@ -11,9 +11,9 @@ write/management side. Everything else in these docs hangs off that split.
 
 | Repo | Role | Stack |
 |---|---|---|
-| `audiosilo-server` | The **server** - source of truth for content and the API. JSON API + baked-in admin/connect UI; serves the web player at `/web`. Safe to expose to the internet. | Go 1.25, SQLite (modernc, pure Go), FTS5 |
+| `audiosilo-server` | The **server** - source of truth for content and the API. JSON API + baked-in admin/connect UI; serves the web player at `/web`. Safe to expose to the internet. | Go 1.26, SQLite (modernc, pure Go), FTS5 |
 | `audiosilo-frontend` | The **player** - one codebase shipping to web PWA + iOS + Android. Read side of the product; its web export is served *by* the server at `/web`. | Expo SDK 56, React Native 0.85 (new architecture), React 19, Expo Router, NativeWind v4 |
-| `audiosilo-manager` | The desktop **manager** - the write/management side: set up or connect to servers, organize and transfer books (SFTP or local copy), back up an owned Audible library. Consumes the server API read-only. | Wails v2 (Go 1.25 + React/Vite/TypeScript) |
+| `audiosilo-manager` | The desktop **manager** - the write/management side: set up or connect to servers, organize and transfer books (SFTP or local copy), back up an owned Audible library. Consumes the server API read-only. | Wails v2 (Go 1.26 + React/Vite/TypeScript) |
 
 The three code repos (plus this docs site) live side by side in a single
 workspace folder (`~/dev/audiosilo`), whose root is itself the small
