@@ -11,9 +11,9 @@ updates:
     schedule:
       interval: weekly
     groups:
-      # The @docusaurus/* packages are pinned to one exact version and must move
-      # together, a major included - so they get a group of their own that takes
-      # every update type, rather than one pull request per package on a major.
+      # The @docusaurus/* packages share one version and must move together, a
+      # major included - so they get a group of their own that takes every
+      # update type, rather than one pull request per package on a major.
       docusaurus:
         patterns:
           - "@docusaurus/*"
@@ -33,8 +33,8 @@ updates:
           - minor
           - patch
 
-  # The workflows reference actions by major tag (actions/checkout@v4), so for
-  # most of them the only update is the next major, which arrives on its own.
+  # The workflows reference actions by major tag (actions/checkout@v4), so the
+  # only update for them is the next major, which arrives on its own.
   - package-ecosystem: github-actions
     directory: /
     schedule:
