@@ -1,0 +1,46 @@
+version: 2
+
+# Keep the dependency surfaces this repo actually has fresh, without turning the
+# pull request list into a dependency feed. Minor and patch updates are GROUPED
+# into one pull request per ecosystem per week - they are the bulk of the
+# traffic and are reviewed as one bump either way - while a major update still
+# arrives on its own, because that is the one that needs reading.
+updates:
+  - package-ecosystem: npm
+    directory: /
+    schedule:
+      interval: weekly
+    groups:
+      # The @docusaurus/* packages are pinned to one exact version and must move
+      # together, a major included - so they get a group of their own that takes
+      # every update type, rather than one pull request per package on a major.
+      docusaurus:
+        patterns:
+          - "@docusaurus/*"
+      site-minor-and-patch:
+        update-types:
+          - minor
+          - patch
+
+  # The screenshot generator (Playwright), run by hand through run.sh.
+  - package-ecosystem: npm
+    directory: /screenshots
+    schedule:
+      interval: weekly
+    groups:
+      screenshots-minor-and-patch:
+        update-types:
+          - minor
+          - patch
+
+  # The workflows reference actions by major tag (actions/checkout@v4), so for
+  # most of them the only update is the next major, which arrives on its own.
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly
+    groups:
+      actions-minor-and-patch:
+        update-types:
+          - minor
+          - patch
