@@ -68,7 +68,7 @@ the one part of AudioSilo that currently needs developer tools installed.
 
 You'll need:
 
-- **Go 1.25 or newer** - [go.dev/dl](https://go.dev/dl/)
+- **Go 1.26 or newer** - [go.dev/dl](https://go.dev/dl/)
 - **Node.js 24** - [nodejs.org](https://nodejs.org/)
 - **The Wails CLI** (the desktop app framework the manager uses), plus its platform
   prerequisites - on macOS the Xcode Command Line Tools, on Linux the WebKitGTK
