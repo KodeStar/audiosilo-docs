@@ -751,7 +751,7 @@ await step('server: logs', async () => {
   await shoot(page, 'admin/logs.png');
 });
 
-// ── Backups, notifications, the bell and the audit log ──────────────────────
+// ── Backups, notifications, the bell, events and the audit log ──────────────────────
 await step('settings: backups', async () => {
   await page.setViewportSize({width: 1440, height: 1240});
   try {
@@ -797,6 +797,14 @@ await step('the notifications bell', async () => {
   await shoot(page, 'admin/bell.png');
   await page.keyboard.press('Escape');
   await sleep(400);
+});
+
+await step('server: events', async () => {
+  // The whole feed the bell shows the start of (See all).
+  await open(page, '/server/events');
+  await page.getByRole('region', {name: 'Events'}).waitFor({timeout: 15000});
+  await sleep(800);
+  await shoot(page, 'admin/events.png');
 });
 
 await step('server: audit log', async () => {

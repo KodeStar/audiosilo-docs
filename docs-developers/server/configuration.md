@@ -53,12 +53,13 @@ is enabled but not found locally, the auto-download kicks in (below).
 
 ## YAML reference
 
-### Name and update check
+### Name, update check and listening history
 
 | Key | Type / default | Meaning |
 |---|---|---|
 | `name` | string, `""` | The server's display name (at most 64 characters, no control characters): `GET /server`'s `name`, the pairing payload's `server_name` (the player's sign-in screen shows it), and the admin console's top bar and System/About pages. Empty means `"AudioSilo"` (`Config.DisplayName`). No environment variable |
 | `update_check` | bool, `true` | Let the server ask GitHub Releases once a day whether a newer version exists (`internal/updates`; see [Update check](#update-check)). `false` means no request is ever made |
+| `activity.session_days` | int, `400` | How many days raw listening sessions (device, app, time of day, playback mode) are kept before the daily retention job (`pkg/launcher` `retention`, reading the live setting at each run) sums them into `listening_daily` and drops that detail. 30-3650. The default keeps a year of detail for Activity's longest range; Activity reads the daily totals for days past it |
 | `server_id` | string, minted | The stable per-install identity (see [`GET /server`](api/reference.md#get-apiv1server)). Minted on first start and never changed; not a setting |
 
 ### Server & network
@@ -203,6 +204,7 @@ by the settings table in `internal/config/settings.go` (`fields`: each entry's
 | `AUDIOSILO_METADATA_ENABLED` | `metadata.enabled` | `strconv.ParseBool` (`true`/`1`/…) |
 | `AUDIOSILO_METADATA_BASE_URL` | `metadata.base_url` | URL |
 | `AUDIOSILO_UPDATE_CHECK` | `update_check` | `strconv.ParseBool` (`false`/`0`/… turns it off) |
+| `AUDIOSILO_SESSION_DAYS` | `activity.session_days` | integer, 30-3650 |
 | `AUDIOSILO_BACKUP_SCHEDULE` | `backups.schedule` | `""`, `daily:HH:MM` or `weekly:DAY:HH:MM` |
 | `AUDIOSILO_BACKUP_KEEP` | `backups.keep` | integer, 1-365 |
 | `AUDIOSILO_BACKUP_DIR` | `backups.dir` | absolute path |
@@ -237,6 +239,7 @@ restart, and whether the console may change it at all:
 | `general.name` | `name` | - | at once |
 | `general.public_url` | `public_url` | `AUDIOSILO_PUBLIC_URL` | at once |
 | `general.update_check` | `update_check` | `AUDIOSILO_UPDATE_CHECK` | at once |
+| `general.session_days` | `activity.session_days` | `AUDIOSILO_SESSION_DAYS` | at the next daily retention run |
 | `network.bind` | `bind` | `AUDIOSILO_BIND` | restart |
 | `network.tls_mode` | `tls.mode` | `AUDIOSILO_TLS_MODE` | restart |
 | `network.tls_hosts` | `tls.hosts` | `AUDIOSILO_TLS_HOSTS` | restart |
@@ -293,6 +296,14 @@ value differs from `boot` is listed in the envelope's `restart_pending`
 refuses a setting that is unknown, read-only or locked, refuses JSON `null`
 for a setting that can't be unset (only a pointer field, `demo.max_users`,
 takes it: "enter a value" otherwise), decodes each value into its field, runs that field's normalizer, then `Validate`s the whole config.
+It also `Validate`s the config **as `config.yaml` will hold it** (`Config.asSaved`,
+what `Save` writes: the file's own values for keys an `AUDIOSILO_*` variable sets),
+and refuses a change that turns a valid file invalid, naming the variable. Without
+it, a change could save a file that only works while the variable stays set
+(`demo.enabled` on from the console, with the library only in
+`AUDIOSILO_DEMO_LIBRARY`), and the server would stop starting once the variable
+is removed. A file that already leans on the environment doesn't block unrelated
+changes.
 `config.Checks` carries what the config can't tell by itself: whether a
 metadata service exists (metadata can't be switched on without one) and
 whether a library has the `demo.library` name (the handler looks it up in the

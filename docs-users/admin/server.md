@@ -90,6 +90,16 @@ Some settings can't be changed here, and say why:
   empty to use whatever address the browser used. See
   [Tell the server its public address](../getting-started/remote-access.md#tell-the-server-its-public-address).
 
+The **Listening history** card sets **Days to keep sessions** (400 out of the
+box, anything from 30 to 3650). Each listening session records which device
+and app it was on and the time of day. After this many days that detail is
+dropped and the session is added into daily totals per person and book, which
+[Activity](activity.md) keeps for good, so totals and books listened to stay
+while "which phone, what time" goes. 400 days keeps a full year of detail for
+the Activity pages' longest range. A change applies at the server's next daily
+tidy-up. The `AUDIOSILO_SESSION_DAYS` variable sets it too, and then locks it
+here.
+
 The **Updates** card holds the **Check for new versions** switch, on out of
 the box. While it is on, the server asks GitHub once a day whether a newer
 AudioSilo exists, and [Server > About](#about-and-updates) shows the answer.

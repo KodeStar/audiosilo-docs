@@ -104,7 +104,9 @@ last activity is derived from `MAX(tokens.last_seen)`.
 `user_id` (FK CASCADE), `token_hash` (UNIQUE - only the SHA-256 hash is
 stored), `kind` (`'session'`/`'pairing'`/`'api'`, the last being a user-minted personal
 API key whose label rides in `device_name`), `device_name`, `created_at`,
-`last_seen` (bumped on every authenticated request), `expires_at` (NULL = no
+`last_seen` (bumped by authenticated requests, at most once a minute unless the
+request's address or `X-AudioSilo-Client` changed: `auth.touchInterval`, so a
+progress save isn't also a token write), `expires_at` (NULL = no
 expiry), `revoked`, and `auth_code_id` (FK CASCADE to `auth_codes`, NULL for
 sessions and unlinked pairing tokens) - a pairing token minted by redeeming a
 code is linked to it, inherits its uses/expiry at exchange, and dies with it.
@@ -273,16 +275,47 @@ tables were rebuilt rather than migrated in place):
   `last_at` (first and newest save; UTC, fixed-width RFC 3339 with milliseconds,
   `catalog.sessionTime`, so they compare as strings), `start_pos` / `end_pos`,
   `duration`, `speed`, `listened` (wall-clock seconds), `codec` (the book's at
-  the session's start), `transcoded`, `finished`. Indexes on `started_at`,
+  the session's start), `transcoded`, `finished`, `backfilled` *(0021: made from
+  `listening_history` spans at the upgrade)*. Indexes on `started_at`,
   `last_at`, `(user_id, id)` and `(library_id, rel_path)`.
 - **`listening_daily`** *(0018)* - raw sessions past the retention, summed per
   server-local `day` (`YYYY-MM-DD`), `user_id`, `library_id` and `rel_path`:
-  `listened` and `sessions`. Device, app, time of day and playback mode are
-  dropped. No primary key - a book moving onto a path that already has rows just
+  `listened` and `sessions`, and `estimated` *(0021)*. Device, app, time of day
+  and playback mode are dropped. No primary key - a book moving onto a path that already has rows just
   adds rows, and every reader sums.
 - **`favourites`** *(0009)* - PK `(user_id, library_id, rel_path)`. A
   favourite may address **any** path: a navigation folder (author/series), a
   book folder, or a single-file book.
+
+### Listening from before sessions
+
+Sessions start at migration 0018, but players have posted
+`listening_history` spans (one per stretch of playback, with real wall-clock
+times) since June 2026, and `progress` holds where each book was left. Migration
+0021 turns that into Activity history, once, at the upgrade:
+
+- **Spans to sessions.** Each person's spans that ended before their first
+  recorded session become `listening_sessions` rows with `backfilled = 1`,
+  joined into sittings like live sessions (a gap of more than 10 minutes,
+  `SessionGap`, starts a new one, using SQLite window functions). A span's
+  listening is its wall-clock length, at most twice the position it moved (a
+  player left "playing" without moving adds nothing). Device, app and playback
+  mode were never recorded: Activity counts these sessions in time, books, people,
+  days and hours, but not in `clients` or `playback`, and the console shows them
+  as "Listening history". The existing sessions are renumbered above them
+  (session ids page the lists newest first; nothing refers to one).
+- **The rest, estimated.** For each book a person first saved before 0018
+  (`progress.started_at` is only stamped on a row's first save, so it is `NULL`
+  for exactly those), the saved position at their speed, less every session
+  recorded for it, becomes one `listening_daily` row with `estimated = 1` when it
+  is 5 minutes or more. It is dated by the book's first session, or else its last
+  save (UTC). Only the position counts, never the whole book for one marked
+  finished, which may have been marked, not played. Demo accounts get none.
+  Estimates count in a period's totals and top lists, never in a day or an hour,
+  and `Activity.estimated` says how much of the period they are.
+
+Listening older than the spans and books played offline only exist as
+estimates; nothing can recover which day or device they were.
 
 ### Listening sessions: how they are derived
 
@@ -501,6 +534,8 @@ The migration history so far:
 | 0017 | `health_jobs` | Admin console Phase 3: `scan_runs` (scan history) and `issue_ignores`; `libraries.scan_schedule` and `ignore_patterns`; `books.scan_error`, `scan_error_file`, `scan_error_detail` and `suspect_parts`. Sets `suspect_parts = 0` on every existing row that can't hold several books (single-file books, folders with fewer than two parts or any part under an hour), leaving the rest `NULL` for the next scan to check |
 | 0018 | `sessions` | Admin console Phase 4a: `listening_sessions` and `listening_daily`; `tokens.client_app`, `client_version`, `client_platform` and `last_ip`; `progress.started_at` and `finished_at` (finished rows backfilled with their `updated_at`) |
 | 0019 | `audit_notifications` | Admin console Phase 5b: `audit_events`, `notification_targets` and `server_events` |
+| 0020 | `sign_in_keys` | `tokens.sign_in_key`: the SHA-256 of the browser id a password sign-in sent (`device_id`), so `new_device` is announced once per browser |
+| 0021 | `listening_backfill` | `listening_sessions.backfilled` and `listening_daily.estimated`, then fills them: see [Listening from before sessions](#listening-from-before-sessions) |
 
 ## SQLite choices
 

@@ -102,6 +102,16 @@ Routing, for the request path relative to the prefix:
 Caching: files under `AssetDirs` are fingerprinted and get
 `Cache-Control: public, max-age=31536000, immutable`; HTML and every other file
 (`/admin/theme-init.js`) are `no-cache`, so a new release is picked up at once.
+Every static response (console, web player, connect page, `/assets/`, `sw.js`,
+the manifest) is served by `spa.Files`: a strong `ETag` (the first 16 bytes of
+the file's SHA-256, `-gz` appended for the gzip form) answered with `304` on
+`If-None-Match`, so a `no-cache` document revalidates without its body; and gzip
+for text types (html, js, css, json, svg, webmanifest, map, txt, wasm) when the
+client accepts it, with `Vary: Accept-Encoding`, kept only when smaller.
+Embedded files are hashed and compressed once per process; files from
+`web_dir` are cached by path and redone when their size or modification time
+changes. A `Range` request always gets the plain bytes (`http.ServeContent`).
+Nothing under `/api/` (media, covers) goes through it.
 Every response carries `X-Content-Type-Options: nosniff`; HTML gets
 `DocumentCSP` (computed from the document's bytes) and other files `FileCSP`.
 Content types come from an explicit table pinned in `spa`'s `init` (Go's MIME
@@ -378,7 +388,9 @@ CSP-sensitive work against a real build served by Go. The console's own gate is
   answer's `utc_offset`; hours per month as a small bar chart),
   In progress and Finished from `GET /admin/users/{id}/progress`, and their
   first page of `GET /admin/sessions?user_id=` with a link to Activity >
-  Sessions. The Devices tab reuses the devices list for `?user_id=`.
+  Sessions. The Devices tab reuses the devices list for `?user_id=`: the
+  sessions first (the tab's count, as on the person card), then the person's
+  API keys under their own heading.
 - **Progress menu** (`features/people/progress-actions.tsx`) - on each row of
   the Listening tab and each listener on the book page: Mark as finished (with
   an Undo that sends `finished: false` and the old `position`), Mark as not
@@ -477,7 +489,8 @@ CSP-sensitive work against a real build served by Go. The console's own gate is
   to apply" from `restart_settings`, "Waiting for a restart" from
   `restart_pending`, which also drives the notice at the top of every topic.
   The Network & HTTPS cards pass `confirmRestart`, so saving a restart setting
-  there asks first. The two switches (update check, community metadata) are
+  there asks first. General has a Listening history card (`session_days`, a
+  number field). The two switches (update check, community metadata) are
   `InstantSwitch`es that save at once with an optimistic cache write.
   `useSaveSettings` puts the answer in the cache and refetches `GET /server`,
   the system status and the update status. Network's certificate row,
@@ -527,7 +540,9 @@ CSP-sensitive work against a real build served by Go. The console's own gate is
   field says to enter the secret again or remove it, which is what the server
   requires), offers the events the server knows (`knownEvents`), preselects the
   problem events (`DEFAULT_EVENTS`: scan failed, library offline, update,
-  backup failed), and puts an `invalid_target` refusal under its `field`. An
+  backup failed), and puts an `invalid_target` refusal under its `field`,
+  worded from its `reason` (`notify-model.ts` `refusalMessage`, the
+  `notify.refusal.*` strings, falling back to the server's English `error`). An
   edit puts the server's answer into the cache (`withTarget`).
 - **The bell** (`components/shell/notifications-bell.tsx`) - `GET /admin/events`
   (`useServerEvents`: the newest 20, every minute), eight listed in a popover,
@@ -536,6 +551,13 @@ CSP-sensitive work against a real build served by Go. The console's own gate is
   Server > About, Settings > Backups). The dot and the "N new" label count
   events newer than a per-browser cursor in `localStorage`
   (`audiosilo_events_seen`), moved to the newest event when the bell opens.
+  **See all** opens Server > Events. Each row is `components/server-event-item.tsx`
+  `ServerEventItem`, shared with that page.
+- **Server > Events** (`features/events/events-page.tsx`) - over
+  [`GET /admin/events`](api/reference.md#get-apiv1adminevents) as an infinite
+  query (`useServerEventList`: 50 a page, Show older, refreshed every minute),
+  filtered by kind (`?kind=`, the kinds in `EVENT_KINDS`), each event with its
+  date and time instead of the bell's "3 hours ago".
 - **Server > Audit log** (`features/audit/audit-page.tsx`) - over
   [`GET /admin/audit`](api/reference.md#get-apiv1adminaudit) as an infinite
   query (50 a page, Show older), filtered by area, person (the admins from

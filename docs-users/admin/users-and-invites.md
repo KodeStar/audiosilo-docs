@@ -130,9 +130,11 @@ access can still sign in, but won't see any books. Admins don't have this list:
 
 ### Devices
 
-The person's signed-in devices and personal API keys, the same list as the
-[Devices page](#the-devices-page), each with **Sign out** or **Revoke**. With
-no devices, **Pair a device** makes an invite for them.
+The person's signed-in devices, the same list as the
+[Devices page](#the-devices-page), each with **Sign out**, and under them their
+personal **API keys**, each with **Revoke**. The number on the tab counts the
+devices only, as their card does. With no devices, **Pair a device** makes an
+invite for them.
 
 ### Invites
 
@@ -214,6 +216,11 @@ working at once. The person's other devices stay signed in, and they can pair
 the device again with an invite; a revoked API key can't be restored, but the
 person can create a new one. The device you're using can't be signed out here:
 use **Sign out** in the account menu instead.
+
+Signing a browser out here also makes the server forget it: if it signs in
+again, it is announced as a [new sign-in](notifications.md#what-to-send) even
+if it had signed in before. That's on purpose. If someone else had the
+password, you hear about it when they come back.
 
 The server keeps only the newest address of each device, and forgets it within a
 day of the device signing out. See
