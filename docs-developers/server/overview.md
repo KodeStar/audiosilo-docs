@@ -47,6 +47,8 @@ internal/media/       streaming + covers
 internal/toolfetch/   ffmpeg/ffprobe download
 internal/api/         HTTP transport
 internal/server/      HTTP(S) server + TLS
+internal/updates/     the update check (GitHub Releases)
+internal/logring/     in-memory log ring for the console
 internal/web/         baked-in web UI
 testdata/library/     M4B test fixtures
 ```
@@ -168,7 +170,24 @@ HTTP transport **only**: routing (`api.go` is the full route table), middleware
 ### `internal/server`
 
 The HTTP(S) server itself: TLS modes (`off` for reverse proxies, `selfsigned`,
-`autocert`/Let's Encrypt) and graceful shutdown.
+`autocert`/Let's Encrypt) and graceful shutdown. `Certificates` reads the
+served certificates back from their files for Health > System.
+
+### `internal/updates`
+
+The update check behind the console's Server > About: `Checker` asks GitHub
+Releases for the latest release once a day while `update_check` is on (and on
+"Check now", at most once a minute), conditional on the last `ETag`, and
+compares versions. Started by `pkg/launcher`; see
+[Update check](configuration.md#update-check).
+
+### `internal/logring`
+
+A `slog.Handler` that `pkg/launcher` wraps around the server's logger: every
+record still goes where it went, and those at info and above are also copied
+as plain text into a `Ring` of the newest 2000 (attributes whose key names a
+secret are redacted, long values cut). `GET /admin/logs` queries it for the
+console's Server > Logs. Nothing is written to disk.
 
 ### `internal/web`
 

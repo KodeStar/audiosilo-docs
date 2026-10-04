@@ -41,6 +41,8 @@ Two mounts matter:
 - **`/data`** holds everything the server creates: its database, `config.yaml` and TLS certificates. Here it maps to a `./data` folder next to the compose file - keep it persisted and back it up.
 - **`/library`** is your audiobooks folder, mounted **read-only** (`:ro`). The server never writes to your books, so read-only costs nothing and protects them.
 
+A setting given as an `AUDIOSILO_*` variable here wins over `config.yaml`, and the admin console shows it as locked ("Set by AUDIOSILO_WEB_DIR") rather than offering to change it. Leave a setting out of the compose file if you'd rather change it in the console's [Server > Settings](../admin/server.md#settings).
+
 Set `PUID`/`PGID` to the user and group that should own the data directory - on generic Linux, the output of `id -u` and `id -g`; on Unraid, `99`/`100`. The container fixes up ownership of `/data` on start and runs as that user, so it works however the mounted volume is owned.
 
 Your books never live inside the container or the data volume - the web player and server are app code inside the image, and updating either is just pulling a new image.
@@ -94,7 +96,7 @@ The server and the bundled web player ship together in the image, so updating ei
 docker compose pull && docker compose up -d
 ```
 
-Your data directory and books are untouched by updates.
+Your data directory and books are untouched by updates. To hear about new versions, look at **Server > About** in the admin console: the server asks GitHub once a day whether a newer release exists (you can turn that off; see [What the update check sends](../admin/server.md#what-the-update-check-sends)).
 
 :::note
 If your books live on a network share (SMB/NFS), mount the share on the Docker host and bind-mount the mounted path into the container. The server is deliberately careful here: if the share goes away, it will not wipe its index or your listening progress - books simply reappear when the share is back.

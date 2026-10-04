@@ -45,6 +45,9 @@ else and gate features on the flags.
 }
 ```
 
+`name` is the server's display name: the `name` key in `config.yaml`, which an
+admin sets in the console's Settings > General (it can change while the server
+runs); `"AudioSilo"` when unset.
 `server_id` is a stable, per-install identity minted once and persisted in
 `config.yaml` (so it survives a database rebuild). It never changes for the life of
 the install; clients use it as the identity for a paired server and key their
@@ -129,6 +132,7 @@ app via Universal/App Links on claimed domains, else the embedded web player);
 `uri` is the custom-scheme equivalent for an explicit "Open in app" action.
 `links.ios`/`links.android` (store links) are omitted until the store apps ship.
 `base_url` honors the configured `public_url`, falling back to the request host.
+`server_name` is the server's display name, as `GET /server`'s `name`.
 
 | Status | Meaning |
 |---|---|
@@ -2964,53 +2968,279 @@ day of the period, oldest first, zero days included, in server time. With
 
 ## Admin: settings
 
-Runtime-toggleable server settings, surfaced in the console's **Overview**
-section. The envelope is a feature-keyed object so future settings can join it
-without reshaping the wire contract; today it carries only `metadata`.
+The server settings the admin console's **Server > Settings** edits. The
+envelope is keyed by section, and each setting's id is `<section>.<name>`; the
+settings table in `internal/config/settings.go` says which `config.yaml` key
+and `AUDIOSILO_*` variable each one is, and whether it needs a restart (see
+[Changing settings at runtime](../configuration.md#changing-settings-at-runtime)).
 
 ### `GET /api/v1/admin/settings`
 
-*Admin.* Returns the current runtime settings.
+*Admin.* Returns the current settings.
 
 ```json
 {
+  "general": {
+    "name": "Hearthside",
+    "public_url": "https://books.example.com",
+    "update_check": true
+  },
+  "network": {
+    "bind": "0.0.0.0:8080",
+    "tls_mode": "selfsigned",
+    "tls_hosts": [],
+    "trusted_proxies": ["10.0.0.2/32"],
+    "cors_origins": []
+  },
+  "players": {
+    "web_dir": "/app/web",
+    "web_player": "dir",
+    "apple_app_ids": [],
+    "android_package": "",
+    "android_sha256": []
+  },
   "metadata": {
     "enabled": true,
     "base_url": "https://meta.audiosilo.app",
     "available": true
-  }
+  },
+  "demo": {
+    "enabled": false,
+    "library": "",
+    "max_users": null,
+    "max_users_default": 200,
+    "idle_ttl": "24h"
+  },
+  "locked": { "players.web_dir": "AUDIOSILO_WEB_DIR" },
+  "restart_settings": [
+    "network.bind", "network.tls_mode", "network.tls_hosts", "players.web_dir",
+    "metadata.base_url", "demo.enabled", "demo.idle_ttl"
+  ],
+  "restart_pending": []
 }
 ```
 
-For `metadata`: `enabled` is the runtime on/off flag; `base_url` is the
-configured metadata service URL (empty when none is set); `available` reports
-whether the lookup **can** be enabled at all - true only when `base_url` is a
-valid absolute `http(s)` URL. When `available` is false the feature is
-permanently off until the server config gains a valid `base_url`, and any attempt
-to enable it is rejected. The live `metadata` [capability](#get-apiv1server) is
-`enabled && available`.
+Every value is the **saved** one (what `config.yaml` now holds, with the
+environment's values for keys a variable sets); a restart setting saved since
+the server started is listed in `restart_pending` until a restart puts it in
+effect. Lists are never `null`.
+
+| Field | Meaning |
+|---|---|
+| `general.name` | display name; `""` means `"AudioSilo"` (what `GET /server` then reports) |
+| `general.public_url` | `""` = derived from each request's host |
+| `players.web_dir` | read-only: changed only in `config.yaml` or `AUDIOSILO_WEB_DIR` |
+| `players.web_player` | read-only: where `/web` is served from - `"embedded"` (baked into the build), `"dir"` (from `web_dir`) or `""` (not mounted) |
+| `metadata.available` | read-only: a metadata service exists (`base_url` was a valid absolute `http(s)` URL when the server started), so `enabled` can be turned on. The live `metadata` [capability](#get-apiv1server) is `enabled && available` |
+| `demo.max_users` | `null` = the default cap (`max_users_default`); `0` = no limit |
+| `demo.idle_ttl` | `""` = 24h |
+| `locked` | setting id → why the console can't change it: the `AUDIOSILO_*` variable that set it, or `"launcher"` (a launcher override, the desktop manager's `bind`, `tls.mode` and `public_url`) |
+| `restart_settings` | the setting ids read only at start (fixed) |
+| `restart_pending` | restart settings whose saved value differs from the one the server started with |
 
 ### `PATCH /api/v1/admin/settings`
 
-*Admin.* Flips runtime settings and persists them to `config.yaml` (so the change
-survives a restart). Send only the fields you want to change - an **absent field
-is left unchanged**. Returns the same envelope as `GET` with the new state.
+*Admin.* Changes settings, writes them to `config.yaml` and applies them.
+The body has the `GET` envelope's shape with **only the settings to change**:
 
 ```json
-{ "metadata": { "enabled": false } }
+{ "general": { "name": "Hearthside" }, "network": { "trusted_proxies": ["10.0.0.2"] } }
 ```
 
-Setting `metadata.enabled` to `true` when the lookup is unavailable (no valid
-`metadata.base_url`) is a **`400`** - configure `metadata.base_url` first.
-Toggling the flag takes effect immediately across the server: it gates
-`GET /libraries/{id}/meta` and the `metadata` capability, so every connected
-player starts or stops showing the enriched-book section without a restart.
+A change is **all or nothing**: each value is normalized and checked (the
+rules are in
+[Changing settings at runtime](../configuration.md#changing-settings-at-runtime)),
+then the config as a whole is validated, and one refused setting leaves
+everything as it was. Settings that apply at once do so for the next request;
+a restart setting is saved and appears in `restart_pending`. The answer is the
+`GET` envelope with the new state, so `trusted_proxies` above comes back as
+`["10.0.0.2/32"]`.
+
+A refusal names the setting in `field` (its id), with the reason in `error`
+written so a form can show it under the field:
+
+```json
+{ "error": "must be host:port, like 0.0.0.0:8080 or :8080", "code": "invalid_setting", "field": "network.bind" }
+```
+
+| Status | `code` | Meaning |
+|---|---|---|
+| `200` | | saved; body is the settings envelope |
+| `400` | | not a JSON object of sections |
+| `400` | `invalid_setting` | a value of the wrong type, one its normalizer refuses, a config that doesn't validate (e.g. `tls_mode: "autocert"` without `tls_hosts`, demo on without a library), a `demo.library` that names no library (`field: "demo.library"`), or turning `metadata.enabled` on when no metadata service exists (`available` is false; `field: "metadata.enabled"` - set a valid `metadata.base_url` and restart first) |
+| `400` | `unknown_setting` | a section or name that isn't a setting (including the read-only extras such as `metadata.available`) |
+| `400` | `setting_read_only` | `players.web_dir` |
+| `409` | `setting_locked` | a setting an environment variable or the launcher sets (see `locked`) |
+| `500` | | `config.yaml` couldn't be written; nothing changed |
+
+Turning `metadata.enabled` on or off takes effect immediately across the
+server: it gates `GET /libraries/{id}/meta` and the `metadata` capability, so
+every connected player starts or stops showing the enriched-book section.
+Turning `general.update_check` off stops the [update check](#get-apiv1adminupdate)
+at once.
+
+## Admin: system, updates and logs
+
+What the console's Health > System, Server > About and Server > Logs show. All
+*Admin*; a member's token gets `403`.
+
+### `GET /api/v1/admin/system`
+
+*Admin.* Everything the server depends on, in one answer:
+
+```json
+{
+  "name": "Hearthside",
+  "server_id": "kx8Qz1c7m2Vw0aB3dEfGh",
+  "version": "1.16.0",
+  "go_version": "go1.25.1",
+  "os": "linux",
+  "arch": "amd64",
+  "install": "docker",
+  "started_at": "2026-10-04T08:12:31Z",
+  "data_dir": "/data",
+  "database": { "bytes": 18874368, "schema": "0018_sessions.sql" },
+  "tools": [
+    { "name": "ffmpeg", "path": "/usr/bin/ffmpeg", "version": "6.1.1", "source": "local" },
+    { "name": "ffprobe", "path": "/usr/bin/ffprobe", "version": "6.1.1", "source": "local" }
+  ],
+  "metadata": {
+    "enabled": true,
+    "available": true,
+    "base_url": "https://meta.audiosilo.app",
+    "health": { "reachable": true, "latency_ms": 84, "checked_at": "2026-10-04T09:40:02Z" }
+  },
+  "tls": {
+    "mode": "autocert",
+    "hosts": ["books.example.com"],
+    "certificates": [
+      { "host": "books.example.com", "issued": true, "subject": "books.example.com",
+        "issuer": "R11", "not_before": "2026-09-01T00:00:00Z", "not_after": "2026-11-30T00:00:00Z",
+        "self_signed": false, "dns_names": ["books.example.com"] }
+    ]
+  },
+  "libraries": [
+    { "id": 1, "name": "Books", "root": "/library", "available": true,
+      "disk": { "total": 4000787030016, "free": 1210012344320 } }
+  ],
+  "web_player": "embedded",
+  "update": { "enabled": true, "current": "1.16.0", "latest": null, "update_available": false,
+              "comparable": true, "checked_at": null, "error": "", "install": "docker" }
+}
+```
+
+| Field | Meaning |
+|---|---|
+| `name` | the display name (`"AudioSilo"` when unset) |
+| `version` | as in `GET /server`: stamped from the release tag (`"dev"` for a local build) |
+| `install` | `"docker"` (a container: `/.dockerenv` or `/run/.containerenv` exists), `"binary"` (a release build) or `"source"` (version `dev`); the console words its "how to update" on it |
+| `started_at` | when the server started |
+| `database` | `bytes`: pages in use × page size (the WAL isn't counted); `schema`: the newest applied migration |
+| `tools` | ffmpeg then ffprobe. `path` `""` when off or not found; `version` from `-version` (cached per path; `""` if it didn't say); `source` `"local"` (configured, next to the binary or on `PATH`), `"downloaded"` (in `<data>/tools`), or `""` |
+| `metadata` | `enabled` is the live switch; `available` and `base_url` are the service the server started with (a saved new `base_url` waits for a restart) |
+| `metadata.health` | the service's `/healthz`: `reachable`, `latency_ms`, `checked_at` and `error` when it didn't answer. Cached for a minute, and asked **only while the lookup is on**; `null` while it's off |
+| `tls` | the boot `tls.mode` and `tls.hosts`, and the certificates it serves, read from their files (never generated or requested here): the self-signed pair, or one per host from the autocert cache (`issued: false` until Let's Encrypt has issued it). Empty for mode `off`. `error` is set when a certificate file couldn't be read |
+| `libraries[]` | each library's root, whether it answers (the same bounded probe as the scanner's), and `disk` (`total`, `free` to the server, in bytes) or `null` when the root doesn't answer or the OS doesn't say |
+| `web_player` | as in the settings envelope |
+| `update` | the [update status](#get-apiv1adminupdate) |
+
+Nothing here reaches outside the server except the metadata health check. The
+slow parts (a tool's first `-version`, the health check, the root probes) run
+side by side, each with its own bound.
+
+### `GET /api/v1/admin/update`
+
+*Admin.* The update check's state (the console's Overview reads it for the
+"*version* available" link):
+
+```json
+{
+  "enabled": true,
+  "current": "1.15.0",
+  "latest": {
+    "version": "v1.16.0",
+    "name": "v1.16.0",
+    "url": "https://github.com/KodeStar/audiosilo-server/releases/tag/v1.16.0",
+    "published_at": "2026-10-01T12:00:00Z"
+  },
+  "update_available": true,
+  "comparable": true,
+  "checked_at": "2026-10-04T08:13:31Z",
+  "error": "",
+  "install": "docker"
+}
+```
+
+| Field | Meaning |
+|---|---|
+| `enabled` | the `update_check` setting |
+| `current` | the running version (release builds report it without the tag's `v`) |
+| `latest` | the newest release the last successful check found, or `null` before one |
+| `update_available` | `latest` is newer than `current`; always false when `comparable` is false |
+| `comparable` | `current` is a release version (`MAJOR.MINOR.PATCH`, with or without a `v`, optionally `-prerelease`); false for a local build (`dev`) or a development image (`dev-<commit>`) |
+| `checked_at` | the last request, successful or not; `null` before the first |
+| `error` | why the last request failed: `"rate_limited"`, `"unreachable"`, `"bad_response"`, or `""` |
+| `install` | as in `GET /admin/system` |
+
+The checker asks GitHub a minute after the server starts and then at most once
+a day, only while the check is on; see
+[Update check](../configuration.md#update-check) for exactly what it sends.
+
+### `POST /api/v1/admin/update/check`
+
+*Admin.* Checks now and answers with the new status (the shape above). Within a
+minute of the last request (or while one is in flight) it answers with that
+request's result instead of asking GitHub again. A failed request is not an
+error here: it is reported in `error`.
 
 | Status | Meaning |
 |---|---|
-| `200` | updated; body is the current settings envelope |
-| `400` | invalid body, or enabling metadata when no valid `metadata.base_url` is configured |
-| `500` | the settings could not be persisted (the in-memory change is rolled back) |
+| `200` | the update status |
+| `409` `update_check_off` | the update check is turned off |
+
+### `GET /api/v1/admin/logs`
+
+*Admin.* The newest log lines. The server keeps every record at **info** and
+above in memory (`internal/logring`, the newest 2000), from when it started;
+nothing is written to disk.
+
+| Query param | Type | Default | Notes |
+|---|---|---|---|
+| `level` | string | all | `info`, `warn` or `error`: lines at that level or above (`all`, `debug` and `""` mean every line) |
+| `q` | string | - | only lines whose message or a `key=value` attribute contains it, ignoring case (cut at 200 characters) |
+| `after` | int | - | only lines with `seq` greater than this: the live tail's cursor (`last_seq` of the previous answer) |
+| `limit` | int | `500` | at most this many, the **newest** matching ones (1-1000) |
+
+```json
+{
+  "entries": [
+    { "seq": 41, "time": "2026-10-04T09:40:12.511Z", "level": "info",
+      "message": "scan complete",
+      "attrs": [ { "key": "library", "value": "Books" }, { "key": "books", "value": "8" } ] }
+  ],
+  "last_seq": 41,
+  "truncated": false
+}
+```
+
+`entries` are oldest first, and each entry's `attrs` is always an array
+(empty when the line has none). `seq` increases by one per line logged, so the
+console polls with `after=<last_seq>` and appends what comes back. `last_seq`
+is the newest line in memory whether or not it matched. `truncated` is true
+when matching lines were left out: older ones past `limit`, or lines after
+`after` that were already dropped from memory. An `after` beyond the newest
+line (a cursor from before the server restarted, since `seq` starts over at 1)
+is answered as a fresh first page, marked `truncated`, so a live tail picks up
+the new process. Attributes in a group have dotted keys (`req.path`); an
+attribute whose dotted key names a secret (a word such as `token`, `password`,
+`code`, `key`, `secret`, `cookie` or `authorization`, so a group named `token`
+hides all its members) has the value `[redacted]`, and long messages and values
+are cut.
+
+| Status | Meaning |
+|---|---|
+| `200` | the lines |
+| `400` | `level` isn't one of the above, or `after` isn't a number |
 
 ## Well-known
 

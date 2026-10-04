@@ -21,7 +21,9 @@ Work through these in order:
 2. **Is the port right?** The default listen address is `0.0.0.0:8080`. With
    Docker, check that the port is actually published - the example
    `docker-compose.yml` maps `"8080:8080"`. You can change the address and port
-   with the `bind` setting in `config.yaml`.
+   with the `bind` setting in `config.yaml`, or as **Listen address** under
+   [Server > Settings > Network & HTTPS](./admin/server.md#network--https) in
+   the admin console (it takes effect at the next restart).
 3. **Is a firewall in the way?** If the server machine runs a firewall, allow
    incoming connections on the port you chose (8080 by default). This is the
    usual culprit when the server works on the machine itself
@@ -40,16 +42,33 @@ You have three options:
 - **Accept the warning** (usually under "Advanced" → "Proceed"). Fine on your
   own home network; the connection is still encrypted.
 - **Switch to automatic real certificates** (`tls.mode: autocert` in
-  `config.yaml`) - free Let's Encrypt certificates with no warnings. This needs
-  a public domain name pointing at your server, and Let's Encrypt must be able
-  to reach it on **port 443** (the server logs a warning if it isn't bound or
-  forwarded there).
+  `config.yaml`, or **Let's Encrypt** under
+  [Server > Settings > Network & HTTPS](./admin/server.md#network--https)) -
+  free Let's Encrypt certificates with no warnings. This needs a public domain
+  name pointing at your server, and Let's Encrypt must be able to reach it on
+  **port 443** (the server logs a warning if it isn't bound or forwarded there,
+  which you can read under [Server > Logs](./admin/server.md#logs)).
+  [Health > System](./admin/health.md#system) shows the certificate once it is
+  issued, and warns two weeks before it runs out.
 - **Put a reverse proxy in front** (Caddy, nginx, Traefik) and set
   `tls.mode: off` so the proxy handles HTTPS. Also set `trusted_proxies` so
   rate limiting sees real visitor addresses.
 
 Both public options are covered step by step in
 [Remote access](./getting-started/remote-access.md).
+
+### Where do I find the server's log?
+
+In the admin console, under [Server > Logs](./admin/server.md#logs): the
+newest lines since the server started, with filters for warnings and errors, a
+search box and a live tail. Secrets are never shown there.
+
+That page keeps only the newest 2,000 lines, in memory, so a restart empties
+it. The full log is wherever the server's output goes: `docker compose logs`
+under Docker, `journalctl -u audiosilo` for the
+[systemd service](./getting-started/install-binary.md), or the terminal you
+started it from. Use those for anything from before the last restart, and for
+the first-run banner (which the console never shows).
 
 ### I lost the first-run admin password
 
@@ -187,8 +206,11 @@ Two usual causes:
 - **A network share is unmounted.** If your books live on a NAS mounted into
   the server machine (SMB/NFS), and the mount drops, the folder looks empty.
   The server detects this and **deliberately refuses to update the index** -
-  it logs "library root unavailable" and keeps every book, and everyone's
-  progress and bookmarks, exactly as they were. The admin console marks the
+  it logs "library root unavailable" (visible under
+  [Server > Logs](./admin/server.md#logs)) and keeps every book, and everyone's
+  progress and bookmarks, exactly as they were.
+  [Health > System](./admin/health.md#system) shows the folder as not
+  reachable. The admin console marks the
   library **Folder unavailable** with a "Safety stop: nothing was deleted"
   notice. Remount the share, then click **Retry** on the library in the admin
   console and everything reappears.

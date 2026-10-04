@@ -1,6 +1,6 @@
 ---
 title: Configuration reference
-description: "Every config.yaml key, AUDIOSILO_* environment variable and CLI flag; validation and secure defaults; launcher Options for embedders; and the ffmpeg/ffprobe auto-download."
+description: "Every config.yaml key, AUDIOSILO_* environment variable and CLI flag; which settings the admin console can change, which apply live and which need a restart; validation and secure defaults; launcher Options for embedders; and the ffmpeg/ffprobe auto-download."
 ---
 
 Configuration is loaded by `internal/config` and layered in a fixed order.
@@ -13,6 +13,12 @@ flowchart LR
     C --> D["launcher Options overrides<br/>(embedders only)"]
     D --> E["Validate()"]
 ```
+
+Most keys can also be changed while the server runs, from the admin console's
+**Server > Settings** (`PATCH /admin/settings`), which writes them back to
+`config.yaml`. A key set by an environment variable or a launcher override is
+**locked** there instead. See
+[Changing settings at runtime](#changing-settings-at-runtime).
 
 ## The config file
 
@@ -47,6 +53,14 @@ is enabled but not found locally, the auto-download kicks in (below).
 
 ## YAML reference
 
+### Name and update check
+
+| Key | Type / default | Meaning |
+|---|---|---|
+| `name` | string, `""` | The server's display name (at most 64 characters, no control characters): `GET /server`'s `name`, the pairing payload's `server_name` (the player's sign-in screen shows it), and the admin console's top bar and System/About pages. Empty means `"AudioSilo"` (`Config.DisplayName`). No environment variable |
+| `update_check` | bool, `true` | Let the server ask GitHub Releases once a day whether a newer version exists (`internal/updates`; see [Update check](#update-check)). `false` means no request is ever made |
+| `server_id` | string, minted | The stable per-install identity (see [`GET /server`](api/reference.md#get-apiv1server)). Minted on first start and never changed; not a setting |
+
 ### Server & network
 
 | Key | Type / default | Meaning |
@@ -54,7 +68,7 @@ is enabled but not found locally, the auto-download kicks in (below).
 | `bind` | string, `"0.0.0.0:8080"` | `host:port` to listen on. Must parse with `net.SplitHostPort` |
 | `public_url` | string, `""` | Externally reachable base URL, used in QR pairing payloads, invite links and the launcher's "open this URL" output. Empty → derived per-request from scheme + `Host` header |
 | `trusted_proxies` | []string (CIDRs), `[]` | Networks whose `X-Forwarded-For` is trusted when deriving the client IP (which feeds the per-IP rate limiters). Set when running behind a reverse proxy. Each entry must be a valid CIDR |
-| `cors_origins` | []string, `[]` | Browser origins granted CORS. Empty = no cross-origin headers at all (native apps and same-origin web still work); `"*"` disables the check entirely. Needed for a hot-reload frontend dev server, e.g. `http://localhost:8081` |
+| `cors_origins` | []string, `[]` | Browser origins granted CORS (methods `GET, POST, PUT, PATCH, DELETE, OPTIONS`). Empty = no cross-origin headers at all (native apps and same-origin web still work); `"*"` disables the check entirely. Needed for a hot-reload frontend dev server, e.g. `http://localhost:8081` |
 | `max_upload_bytes` | int64, `2147483648` (2 GiB) | Reserved for the planned `POST /uploads` (Phase B) - **not yet enforced**; JSON request bodies use a fixed 1 MiB cap regardless |
 
 ### TLS (`tls.*`)
@@ -132,15 +146,17 @@ outbound calls.
 | `metadata.enabled` | bool, `true` | Turn the metadata lookup on. When `false`, the server makes **no outbound metadata calls**, `GET /libraries/{id}/meta` and `GET /meta/work` both return 404, and the `metadata` capability reports false so players hide the enriched-book material entirely. Seeds the initial state only - an admin can flip this at runtime (see below) |
 | `metadata.base_url` | string, `"https://meta.audiosilo.app"` | Base URL of the metadata service (the site is served at `/` and the API at `/api/v1`). **Must be an absolute `http`/`https` URL when metadata is enabled** |
 
-`metadata.enabled` is **runtime-toggleable**: an admin can switch the lookup on
-or off from the console's **Overview** section (or via
+`metadata.enabled` applies **live**: an admin can switch the lookup on or off
+from the console's **Server > Settings > Community metadata** (or via
 [`PATCH /admin/settings`](api/reference.md#patch-apiv1adminsettings)) with no
-restart, and the change is **persisted back to `config.yaml`**. The YAML value
-and `AUDIOSILO_METADATA_ENABLED` only **seed** the initial state at startup; the
-admin toggle is the durable source of truth thereafter. `metadata.base_url`
-stays config-only - it defines whether the feature is *available* at all (a valid
-absolute `http(s)` URL), and the toggle can only enable the lookup when a valid
-base URL is set.
+restart, and the change is written back to `config.yaml`. When
+`AUDIOSILO_METADATA_ENABLED` is set it wins at every start and the console
+shows the switch as locked. `metadata.base_url` is also editable there but is a
+**restart** setting: the metadata service (`meta.Service`) is built once at
+start from the boot value, and whether one was built (a valid absolute
+`http(s)` URL) decides whether the feature is *available* at all. The switch can
+only turn the lookup on when a service exists (else `400 invalid_setting`
+with `field: "metadata.enabled"`).
 
 Turning it off is the one-key privacy switch: with the lookup disabled the server
 never contacts the metadata service, and every player connected to it stops
@@ -150,9 +166,10 @@ section, never a broken page.
 
 ## Environment variables
 
-`applyEnv` overrides a fixed set of keys from `AUDIOSILO_*` variables - this
-is the complete list (anything not here, e.g. `app_links`, `libraries`,
-`tls.cert_file`, has no env override):
+`applyEnv` overrides a fixed set of keys from `AUDIOSILO_*` variables, driven
+by the settings table in `internal/config/settings.go` (`fields`: each entry's
+`env`). This is the complete list (anything not here, e.g. `name`,
+`app_links`, `libraries`, `tls.cert_file`, has no env override):
 
 | Variable | Overrides | Format |
 |---|---|---|
@@ -170,11 +187,144 @@ is the complete list (anything not here, e.g. `app_links`, `libraries`,
 | `AUDIOSILO_DEMO_IDLE_TTL` | `demo.idle_ttl` | Go duration, e.g. `24h` |
 | `AUDIOSILO_METADATA_ENABLED` | `metadata.enabled` | `strconv.ParseBool` (`true`/`1`/…) |
 | `AUDIOSILO_METADATA_BASE_URL` | `metadata.base_url` | URL |
+| `AUDIOSILO_UPDATE_CHECK` | `update_check` | `strconv.ParseBool` (`false`/`0`/… turns it off) |
 
 List values are split on commas with whitespace trimmed and empties dropped
 (`splitList`). Numeric/boolean variables that fail to parse are **silently
 ignored** (the underlying key keeps its previous value) - only `Validate`
 catches downstream inconsistencies.
+
+**The environment wins, and stays out of the file.** `Load` remembers which
+keys a variable set (`Config.fromEnv`) and the file's own values before the
+environment was applied (`Config.file`). Two things follow:
+
+- The admin console shows such a setting as locked ("Set by
+  `AUDIOSILO_TLS_MODE`"), and `PATCH /admin/settings` refuses to change it
+  (`409 setting_locked`).
+- `Config.Save` writes `config.yaml`'s own value for those keys, never the
+  environment's. A value supplied by a variable therefore never ends up in the
+  file, and removing the variable later brings the file's value back.
+
+## Changing settings at runtime
+
+The admin console's **Server > Settings** (over
+[`GET`/`PATCH /admin/settings`](api/reference.md#admin-settings)) edits most of
+the keys above. The settings table in `internal/config/settings.go` is the one
+place that says, for each key, its console id (`<section>.<name>`, which is
+also where it sits in the envelope), its variable, whether a change waits for a
+restart, and whether the console may change it at all:
+
+| Setting id | Key | Variable | Takes effect |
+|---|---|---|---|
+| `general.name` | `name` | - | at once |
+| `general.public_url` | `public_url` | `AUDIOSILO_PUBLIC_URL` | at once |
+| `general.update_check` | `update_check` | `AUDIOSILO_UPDATE_CHECK` | at once |
+| `network.bind` | `bind` | `AUDIOSILO_BIND` | restart |
+| `network.tls_mode` | `tls.mode` | `AUDIOSILO_TLS_MODE` | restart |
+| `network.tls_hosts` | `tls.hosts` | `AUDIOSILO_TLS_HOSTS` | restart |
+| `network.trusted_proxies` | `trusted_proxies` | `AUDIOSILO_TRUSTED_PROXIES` | at once |
+| `network.cors_origins` | `cors_origins` | `AUDIOSILO_CORS_ORIGINS` | at once |
+| `players.web_dir` | `web_dir` | `AUDIOSILO_WEB_DIR` | restart; **read-only** in the console |
+| `players.apple_app_ids` | `app_links.apple_app_ids` | - | at once |
+| `players.android_package` | `app_links.android_package` | - | at once |
+| `players.android_sha256` | `app_links.android_sha256` | - | at once |
+| `metadata.enabled` | `metadata.enabled` | `AUDIOSILO_METADATA_ENABLED` | at once |
+| `metadata.base_url` | `metadata.base_url` | `AUDIOSILO_METADATA_BASE_URL` | restart |
+| `demo.enabled` | `demo.enabled` | `AUDIOSILO_DEMO_ENABLED` | restart |
+| `demo.library` | `demo.library` | `AUDIOSILO_DEMO_LIBRARY` | at once |
+| `demo.max_users` | `demo.max_users` | `AUDIOSILO_DEMO_MAX_USERS` | at once |
+| `demo.idle_ttl` | `demo.idle_ttl` | `AUDIOSILO_DEMO_IDLE_TTL` | restart |
+
+Not in the console: `max_upload_bytes` (it has a variable but no setting),
+`tls.cache_dir`, `tls.cert_file`/`tls.key_file`, `server_id`, and `libraries`
+(libraries are managed on the console's Libraries page and live in the
+database). The ffmpeg/ffprobe paths are CLI flags; the console's Transcoding
+topic only shows what was found.
+
+**Locked settings.** A setting is locked when an `AUDIOSILO_*` variable set it
+(see [Environment variables](#environment-variables)) or a launcher override
+pinned it (`Config.Pin`, called by `applyOverrides` for `bind`, `tls.mode` and
+`public_url` - the desktop manager's). `Config.Locked` maps each locked setting
+id to the variable's name or `"launcher"`; the console says "Set by
+`AUDIOSILO_…`" or "Managed by the desktop app" and disables the field.
+
+**Live versus restart.** `api.API` keeps `boot`, the config the server
+started with (never changed), and `live`, an `atomic.Pointer[liveConfig]` that
+a settings save replaces whole. A `liveConfig` holds two configs: `saved`, what
+`config.yaml` now holds (the envelope shows it), and the embedded working
+config, `saved.Effective(boot)`: the saved settings with **every restart
+setting copied back from `boot`**. Handlers read the working config through
+`a.config()`, so a saved restart setting has no effect until the next start,
+while everything else applies to the next request: CORS and the trusted-proxy
+check (`liveConfig` parses both once per save, not per request), `public_url`
+in pairing and invite links, the display name, the well-known app-link files,
+the metadata switch (`metadataOn`), the demo library and cap. Things set up
+once at start (the listener and TLS in `internal/server`, the `/web` mount and
+the site-root demo redirect in `Handler()`, the metadata service built in
+`api.New`, the demo reaper's TTL) are only built then, from the config the
+server started with. Turning `update_check` on or
+off also calls `updates.Checker.SetEnabled`. A saved restart setting whose
+value differs from `boot` is listed in the envelope's `restart_pending`
+(`Config.RestartPending`) until the server starts with it.
+
+**A save.** `Config.WithSettings(patch, checks)` clones the saved config,
+refuses a setting that is unknown, read-only or locked, decodes each value into
+its field, runs that field's normalizer, then `Validate`s the whole config.
+`config.Checks` carries what the config can't tell by itself: whether a
+metadata service exists (metadata can't be switched on without one) and
+whether a library has the `demo.library` name (the handler looks it up in the
+catalog). A refusal is a `*config.SettingError` naming the setting and the
+reason, and nothing is applied (all or nothing). The handler then writes
+`config.yaml` with `Config.Save` and swaps `live`, all under `settingsMu`. The normalizers, per setting:
+
+| Setting | Accepted, and how it is stored |
+|---|---|
+| `name` | trimmed; at most 64 characters, no control characters |
+| `public_url`, `metadata.base_url` | an absolute `http`/`https` address with no query, fragment or user info; trailing `/` dropped; `""` allowed (but `Validate` refuses an empty `base_url` while metadata is on) |
+| `bind` | `host:port`, port 1-65535 |
+| `tls.hosts` | lowercased host names, no scheme, port or path; `Validate` requires at least one for `autocert` |
+| `trusted_proxies` | CIDR ranges; a bare address becomes its one-address range (`10.0.0.2` → `10.0.0.2/32`, IPv6 `/128`) |
+| `cors_origins` | `*`, or `scheme://host[:port]` with nothing after it, lowercased |
+| `app_links.apple_app_ids` | `TEAMID.bundle.id` (a 10-character uppercase team ID) |
+| `app_links.android_package` | a Java-style package name (`com.example.app`) or `""` |
+| `app_links.android_sha256` | 32 colon-joined hex pairs, uppercased |
+| `demo.library` | trimmed; must be the name of an existing library |
+| `demo.max_users` | `null` (the default, 200) or 0 (no limit) to 100000 |
+| `demo.idle_ttl` | `""` (24h) or a positive Go duration |
+
+Every list is trimmed, with empty entries and repeats dropped, and holds at
+most 50 entries.
+
+`Config.Save` writes the saved config, but keeps `config.yaml`'s own value for
+every key the environment set (as above) and every key a launcher pinned
+(`bind`, `tls.mode`, `public_url` and the launcher's library list). The one
+exception is the save that creates `config.yaml` (first run), which records the
+pinned values; later saves leave them as the file has them. So a console save
+never writes an environment variable's or the desktop app's override into the
+file.
+
+## Update check
+
+`internal/updates` asks GitHub Releases whether a newer server exists, for the
+console's Server > About and Health > System. `pkg/launcher` starts one
+`updates.Checker` (`Run`) with the configured `update_check`:
+
+- While on, it checks a minute after the server starts, then whenever the last
+  request is a day old (it wakes hourly to see). Turning the setting on wakes
+  it, so it checks at once if the last request is more than a day old.
+- Each request is a plain `GET` of
+  `https://api.github.com/repos/KodeStar/audiosilo-server/releases/latest` with
+  `Accept: application/vnd.github+json` and `User-Agent: AudioSilo/<version>`,
+  conditional on the last answer's `ETag` (`If-None-Match`; a `304` doesn't
+  count against GitHub's unauthenticated limit of 60 an hour per IP). Nothing
+  else is sent: no server id, no library or user data.
+- A manual check (`POST /admin/update/check`) within a minute of the last
+  request answers with that request's result instead of asking again.
+- Drafts, prereleases and a release whose page isn't on `github.com` are
+  ignored (`bad_response`). A local build (`version` `"dev"`) isn't comparable,
+  so it never reports an update.
+- While off, no request is made at all, and a manual check is refused
+  (`409 update_check_off`).
 
 ## Validation & secure defaults
 
@@ -220,9 +370,13 @@ Override semantics (`applyOverrides`): empty/zero fields are ignored, so the
 headless command - which sets none - gets the file's configuration verbatim.
 Overrides are layered on top of the loaded `config.yaml`, then the config is
 **re-validated** (a malformed override fails startup rather than baking an
-unbootable file). On first run, the config **including overrides** is what
-gets persisted to `config.yaml`; on later runs overrides apply in-memory
-only.
+unbootable file). Each override is also pinned (`Config.Pin`, `libraries`
+included), so the console shows `bind`, `tls.mode` and `public_url` as "Managed
+by the desktop app" rather than offering a change the next start would undo.
+On first run, the config **including overrides** is what gets persisted to
+`config.yaml`; on later runs overrides apply in memory only, and a settings save
+from the admin console keeps the file's own values for the pinned keys (see
+[Changing settings at runtime](#changing-settings-at-runtime)).
 
 The base URL that `OnURL` (and the startup banners) use is `public_url` when
 set; otherwise it is derived from `tls.mode` (scheme) and `bind` - a wildcard

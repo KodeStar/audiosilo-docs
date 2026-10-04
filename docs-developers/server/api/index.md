@@ -170,6 +170,11 @@ Failures a person can fix also carry a machine-readable **`code`** next to
 | `current_device` | `409` | `DELETE /admin/devices/{id}` on the token making the request (sign out instead) |
 | `no_access` | `409` | `PATCH /admin/libraries/{id}/progress` that would start progress on a book the person can't see (their own access, not the admin's) |
 | `invalid_range` | `400` | `GET /admin/stats?range=` or `GET /admin/listening?range=` with a range that isn't `7d`, `30d`, `90d`, `1y` or a year |
+| `invalid_setting` | `400` | `PATCH /admin/settings` with a value the server refuses (including a `demo.library` that names no library, and turning `metadata.enabled` on when no metadata service is configured); the body also carries `field`, the setting's id (`network.bind`) |
+| `unknown_setting` | `400` | `PATCH /admin/settings` naming something that isn't a setting (`field` names it) |
+| `setting_read_only` | `400` | `PATCH /admin/settings` changing a setting shown but not changeable there (`players.web_dir`; `field` names it) |
+| `setting_locked` | `409` | `PATCH /admin/settings` changing a setting an `AUDIOSILO_*` variable or the launcher sets (`field` names it) |
+| `update_check_off` | `409` | `POST /admin/update/check` while the update check is turned off |
 
 **Branch on `code`, not on the English `error` text**, which is free to change.
 Errors without a `code` are ones a client can't help the person fix.
@@ -268,7 +273,7 @@ a `limit` and no pagination.
 
 ```json
 {
-  "name": "AudioSilo",
+  "name": "Hearthside",
   "version": "1.4.2",
   "api": "v1",
   "capabilities": {
@@ -285,6 +290,7 @@ a `limit` and no pagination.
 }
 ```
 
+`name` is the server's display name (`"AudioSilo"` until an admin names it).
 Clients **must** feature-gate on these flags rather than probing endpoints:
 `transcode` reflects whether ffmpeg is configured (without it, `?transcode=1`
 is 503), `web_player` whether `/web` is mounted, `api_keys` whether the server
@@ -323,7 +329,7 @@ CORS is a strict allow-list driven by `cors_origins` in the server config:
   the player served at `/web`) are unaffected.
 - **Listed origins:** an exact-match `Origin` gets
   `Access-Control-Allow-Origin: <that origin>` (plus `Vary: Origin`), methods
-  `GET, POST, PUT, DELETE, OPTIONS`, headers
+  `GET, POST, PUT, PATCH, DELETE, OPTIONS`, headers
   `Authorization, Content-Type, X-AudioSilo-Client`, and
   a 600 s preflight cache. `OPTIONS` requests short-circuit with 204.
 - **`"*"`:** allows any origin (the request's own `Origin` is echoed back).

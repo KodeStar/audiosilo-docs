@@ -7,7 +7,7 @@ description: "Listening away from home: TLS modes (self-signed, Let's Encrypt, r
 
 AudioSilo is designed from the ground up to be reachable from outside your house - that's the point of self-hosting audiobooks. This page covers the three ways to serve HTTPS, the networking basics, and what the server does to keep an internet-facing setup safe.
 
-All of these are settings in `config.yaml` in the server's data directory (edit and restart), and most can also be set with an environment variable - handy under Docker.
+All of these are settings in `config.yaml` in the server's data directory (edit and restart), and most can also be set with an environment variable - handy under Docker. Once the server runs, you can also change them in the admin console under [Server > Settings](../admin/server.md#settings): the HTTPS mode, certificate names and listen address on **Network & HTTPS** (they take effect at the next restart), the public address on **General** (at once). An environment variable wins over both, so a setting one sets shows as locked in the console.
 
 ### The default: self-signed HTTPS
 
@@ -51,7 +51,7 @@ trusted_proxies: ["127.0.0.1/32"]
 
 Point the proxy at `http://<server>:8080` as an ordinary HTTP upstream - AudioSilo needs no special proxy rules beyond passing requests through (including the standard `X-Forwarded-For` header, which most proxies send by default).
 
-`trusted_proxies` matters: list the address(es) your proxy connects from (as CIDR ranges, e.g. `["127.0.0.1/32", "10.0.0.0/8"]`). It tells AudioSilo to believe the proxy's `X-Forwarded-For` header, so rate limiting and lockouts apply to the real visitor's address instead of seeing every request as coming from the proxy.
+`trusted_proxies` matters: list the address(es) your proxy connects from (as CIDR ranges, e.g. `["127.0.0.1/32", "10.0.0.0/8"]`; the console's **Trusted proxies** field also takes a plain address and saves it as a `/32` range). It tells AudioSilo to believe the proxy's `X-Forwarded-For` header, so rate limiting and lockouts apply to the real visitor's address instead of seeing every request as coming from the proxy.
 
 :::warning
 Only use `tls.mode: "off"` behind a proxy that terminates HTTPS. Plain HTTP exposed directly to the internet sends passwords and audio unencrypted.
@@ -59,13 +59,13 @@ Only use `tls.mode: "off"` behind a proxy that terminates HTTPS. Plain HTTP expo
 
 ### Ports and firewalls
 
-- The server listens on **port 8080** by default; change it with the `bind` setting (`AUDIOSILO_BIND`), e.g. `bind: "0.0.0.0:8443"`.
+- The server listens on **port 8080** by default; change it with the `bind` setting (`AUDIOSILO_BIND`, or **Listen address** in the console), e.g. `bind: "0.0.0.0:8443"`.
 - To reach it from outside, forward one TCP port on your router to the server (external 443 → internal 8080 is a common choice with autocert), and allow it through the machine's firewall.
 - Everything travels over that single port - API, admin console, web player and audio streaming. There is nothing else to open.
 
 ### Tell the server its public address
 
-Set `public_url` (`AUDIOSILO_PUBLIC_URL`) to the address your users reach the server at:
+Set `public_url` (`AUDIOSILO_PUBLIC_URL`, or **Public address** under the console's Server > Settings > General) to the address your users reach the server at:
 
 ```yaml
 public_url: "https://books.example.com"

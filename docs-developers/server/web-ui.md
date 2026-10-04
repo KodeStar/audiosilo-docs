@@ -293,13 +293,16 @@ CSP-sensitive work against a real build served by Go. The console's own gate is
 ### What the console has today
 
 - **Shell** - sign-in (admins only; a non-admin's fresh session is revoked at
-  once), a top bar with the five destinations (Library, People, Activity,
-  Health, Server), a health line (version, offline libraries, server
-  unreachable), ⌘K search, theme and account menus and a notifications
-  placeholder; a per-destination section bar; a bottom tab bar on phones.
+  once), a top bar with the server's name (`GET /server`'s `name`; the page's
+  host while it is the default "AudioSilo"), the five destinations (Library,
+  People, Activity, Health, Server), a health line (version, offline
+  libraries, server unreachable), ⌘K search, theme and account menus and a
+  notifications placeholder; a per-destination section bar; a bottom tab bar
+  on phones.
   Interface text is in all six languages.
-- **⌘K palette** - navigation, sections, settings (community metadata, scan
-  schedules and skipped files, theme, language) and actions (invite someone,
+- **⌘K palette** - navigation, sections, settings (one entry per Settings
+  topic, each with search keywords such as "https", "proxy" or "ffmpeg"; scan
+  schedules and skipped files; theme; language) and actions (invite someone,
   add a library, rescan a library, rescan every library when there is more
   than one, open the web player, sign out). From two typed characters it also searches content
   (`components/shell/palette-search.tsx`): books through the server's full-text
@@ -310,7 +313,9 @@ CSP-sensitive work against a real build served by Go. The console's own gate is
 - **Overview** - built on `GET /admin/stats`, `GET /admin/sessions/live`
   ("Listening now": one card per live session, playing first, each linking to
   Activity > Live now; a failed live list reads as nobody live rather than
-  holding the page back), `GET /admin/settings`, `GET /admin/libraries`
+  holding the page back), `GET /admin/settings`, `GET /admin/update` (the
+  Server card's "*version* available" link to About, cached ten minutes),
+  `GET /admin/libraries`
   (offline-library notices), `GET /server` and `GET /admin/issues` (the "Needs
   attention" card: up to six categories with something to fix, each linking to
   its Health queue). "Recent listening" is the stats' progress feed minus the
@@ -443,12 +448,55 @@ CSP-sensitive work against a real build served by Go. The console's own gate is
   whose answer names it (the browser's clock can be on the other side of New
   Year). The picker offers that year and the four before. Told as a story (headline, book of the year, facts, the
   year's calendar, most played covers, who listened).
-- **Server > Settings** - the community metadata switch
-  (`GET`/`PATCH /admin/settings`).
+- **Health > System** (`features/health/system-page.tsx`) - over
+  [`GET /admin/system`](api/reference.md#get-apiv1adminsystem), polled every
+  30 seconds while this page is open (`useSystem({poll: true})`; Settings and
+  About read the same query without polling, fresh for a minute): one list of rows (ffmpeg, ffprobe, community metadata, HTTPS
+  certificate, database, each library's folder with its disk space, web
+  player, AudioSilo version), each with a status (Healthy, Needs attention,
+  Missing, Off, Waiting, Update available). The rules live in the pure
+  `system-model.ts` (`systemRows`; a disk under 10% free and a certificate
+  under 14 days are warnings; `certificateLook` is shared with Settings).
+  Notices above the list for unreachable library folders and a metadata
+  service that doesn't answer (with a link to its settings).
+- **Server > Settings** (`features/settings/`) - over
+  [`GET`/`PATCH /admin/settings`](api/reference.md#admin-settings): an in-page
+  topic list in `?topic=` (`general` is the default and has no param;
+  `network`, `players`, `metadata`, `transcoding`, `demo`;
+  `settings-model.ts` `SETTINGS_PAGES`). Each card is a `SettingsForm`
+  (`settings-form.tsx`): a draft of its fields, Reset and Save changes, only
+  the changed fields sent (`sectionPatch`); list settings are edited as one
+  entry per line. A refusal's `field` puts the server's message under that
+  field. `SettingBadges` reads the envelope: "Set by `AUDIOSILO_…`" or
+  "Managed by the desktop app" from `locked` (the field is disabled), "Restart
+  to apply" from `restart_settings`, "Waiting for a restart" from
+  `restart_pending`, which also drives the notice at the top of every topic.
+  The Network & HTTPS cards pass `confirmRestart`, so saving a restart setting
+  there asks first. The two switches (update check, community metadata) are
+  `InstantSwitch`es that save at once with an optimistic cache write.
+  `useSaveSettings` puts the answer in the cache and refetches `GET /server`,
+  the system status and the update status. Network's certificate row,
+  Metadata's status row and the read-only Transcoding topic read
+  `GET /admin/system`.
+- **Server > Logs** (`features/logs/logs-page.tsx`) - over
+  [`GET /admin/logs`](api/reference.md#get-apiv1adminlogs): a level filter
+  (All / Warnings / Errors), a search box (debounced 300 ms) and a Live tail
+  switch. The tail polls every 2 s with `after=<last_seq>` and appends
+  (`logs-model.ts` `appendPage`: 500 lines on the first page, at most 1000
+  held, a gap marker when the answer says `truncated`); a filter change starts
+  a fresh tail. The panel is a `role="log"` deep-ink block (`.log` in
+  `globals.css`, the same in both themes) that follows new lines while
+  scrolled to the bottom.
+- **Server > About** (`features/about/about-page.tsx`) - from
+  `GET /admin/system`: the update card (off, update available with the release
+  notes link and an `install`-specific how-to, check failed, development
+  build, up to date, not checked yet; "Check now" calls
+  [`POST /admin/update/check`](api/reference.md#post-apiv1adminupdatecheck)
+  and writes the answer into the system and update caches) and an
+  "About *name*" facts card with links to the docs, source and issues.
 
-Every other section renders a designed "coming in this redesign" placeholder
-naming the phase that builds it: Health System (5a), Server Logs/About (5a) and
-Audit log (5b).
+Server > Audit log still renders the designed "coming in this redesign"
+placeholder naming the phase that builds it (5b).
 
 ### Charts
 
