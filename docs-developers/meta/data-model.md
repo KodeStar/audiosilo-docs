@@ -271,6 +271,37 @@ not a duplicate, so the audit never folds it onto the English original even when
 its language tag is wrong; the wrong tag is a `title-language` correction
 (below).
 
+Finding a series name in a title folds typography first, for every one of those
+checks: a curly or other apostrophe glyph reads as the straight one, and a colon
+in the series name also matches a spaced dash in the title (one way only - a dash
+in the name never matches a title's colon). So "The Tournament at Gorlan:
+Ranger’s Apprentice - The Early Years, Book 1" is read against the series
+"Ranger's Apprentice: The Early Years" exactly as its straight twin would be.
+`W-DUP` alone then groups works on two **extra keys** beside the identity, so the
+census and the create guards are untouched by them:
+
+- a **US/UK spelling** key over a closed word table (armour/armor, colour/color,
+  grey/gray, travelling/traveling, whole words only), which meets the UK and US
+  editions of one book;
+- a **sub-series tail** key: a title "The Royal Ranger: The Missing Prince" whose
+  head is the part after the colon of a series name the work's author holds
+  ("Ranger's Apprentice: The Royal Ranger"), read against that tail.
+
+Two works sitting in entirely different series are never merged, but two
+spellings of one series holding both works at the same position count as one
+series: the same name with the same decoration, or a decoration on one side only
+that is a catalogue note from a closed list (an ordering, an own-language
+edition, a dramatization, an abridgement either way, a full cast, a narration
+credit). Two different decorations stay apart, so "Pimsleur Chinese (Cantonese)"
+and "Pimsleur Chinese (Mandarin)" are two courses. A proposed retitle is also
+refused when stripping the series name off the front leaves only a part of
+something - a collection statement or a bare volume ("Charassi's Fae Queen: Six
+Book World Boxset" would become "Six Book World Boxset") - or when it would keep
+one end of a stated range ("Books 13 - 16" cut to "Books 13"); the intake bot then
+keeps the title as submitted. The audit also withholds a retitle against a series
+that is only this one book's own edition ("Let's Split Up (German Edition)",
+holding just this work), which would otherwise leave the tagline as the title.
+
 **When one series is spelled twice.** The audit's `SER-DUP` class groups series
 whose names normalize to the same key ("Temeraire" and "Temeraire
 (abridged)") and proposes a `merge-series` onto one survivor, the retired
@@ -295,6 +326,37 @@ same position, so the fold retires a spelling and changes no order:
 
 After the fold, an import naming the retired "Women's Murder Club (abridged)"
 resolves through the tombstone to the plain series, so it is not re-created.
+
+A group holding two reading orders of one franchise, or a series and its
+translation, is withheld as a whole - but the **plain** spellings inside it (no
+reading-order or translation link of their own, no other ordering, no other
+language) are still judged one by one against each member of the reading-order
+family, one proposal per spelling. A fold here may only retire a spelling, never
+add to a reading order:
+
+- **family-spelling**: the plain series holds the very list one family member
+  holds, slot for slot ("Chronicles of Narnia" beside "The Chronicles of Narnia
+  (Author's Preferred Order)"). It folds onto that member - applied when the
+  member is the primary, advisory (applied only through a reviewed `accept`) when
+  it is a variant, since an import naming the plain name would then reach a
+  variant through the tombstone alone.
+  When the lists still differ because the works themselves are not yet merged, it
+  is a review naming the closest member and the duplicate-work clusters holding
+  each conflicting slot.
+- **family-renumbered**: the plain series states the target's ordering and lists
+  the same works in the same relative order under different numbers. "Ranger's
+  Apprentice (published order)" follows Audible's numbering, while the primary
+  follows the publisher's, where The Lost Stories is Book 11. Always advisory: a
+  `merge-series` with field `position`, which keeps the target's numbering and
+  names every dropped number in the repair's notes. The repair pass honours it only
+  when the field is set explicitly, and still refuses a loser membership the
+  target does not list.
+- **ordering-twin**: an orphan reading order (one stating an ordering with no
+  primary of its own) folded onto its one same-ordering twin of the same
+  franchise, sharing an author and every membership at the same slot ("The Jack
+  Ryan Universe (publication order)" onto "A Jack Ryan Novel (publication
+  order)"). Always advisory; a sub-series ("Rincewind" beside "Discworld") and a
+  series a translation link touches are never either side.
 
 **Narrators are evidence, never a statement.** The narration-language profile
 (`check.NarrationProfile`) asks what language a work's narrators record in across
@@ -339,12 +401,36 @@ a one-line reason:
   that would make two mechanical proposals contradict each other is refused at
   audit time, and an accept of a proposal no repair carries out - a `review`, a
   `rename-candidate` or a `repoint-sidecar` - is refused outright, since it has
-  nothing to apply.
+  nothing to apply;
+- `assert` **sources** a proposal no detector makes - an alternate title, a
+  reissue, a work stating no series. The entry's fields ARE the proposal, and only
+  three ops may be asserted: `merge-works` and `merge-series` (a target and the
+  others folding onto it, nothing else) and `add-series-member` (the work as
+  target, the series, and a canonical position as `to`; `field` may be omitted).
+  It appears in the class whose detector makes that op (`W-DUP`, `SER-DUP` or
+  `W-NOSERIES`) under the subclass `asserted`, and the repair pass applies it like
+  any other proposal.
 
-The decisions are matched against the FRESH audit every run, so a decision
-whose proposal no longer appears is listed as stale in `SUMMARY.md` and never
-applied - a reviewed decision can never resurrect a change the data no longer
-supports.
+An assertion is a human's decision, so no detector veto is asked of it - only
+that its records still exist. Its outcome in `SUMMARY.md` is one of:
+
+- **asserted**: sourced and made mechanical;
+- **redundant**: a detector already makes the same proposal, so the assertion
+  acts as an accept - promoting it even where the detector held it back - and
+  should be rewritten as one;
+- **stale**: a record it names is gone, or it has been applied (every loser now
+  resolves to the target, or the series already lists the work at that position),
+  so a re-run proposes nothing;
+- **refused**, with the reason named: it would contradict another mechanical
+  proposal, a `reject` of the same proposal withholds it, another work holds the
+  position, the work is already listed in that series at another position, or a
+  loser was already retired onto a different survivor (an assertion never widens
+  a merge to fold that survivor too).
+
+The decisions are matched against the FRESH audit every run, so an accept or
+reject whose proposal no longer appears is listed as stale in `SUMMARY.md` and
+never applied - a reviewed decision can never resurrect a change the data no
+longer supports.
 
 ## The expressive layer (CC BY-SA)
 
