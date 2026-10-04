@@ -541,8 +541,9 @@ CSP-sensitive work against a real build served by Go. The console's own gate is
   requires), offers the events the server knows (`knownEvents`), preselects the
   problem events (`DEFAULT_EVENTS`: scan failed, library offline, update,
   backup failed), and puts an `invalid_target` refusal under its `field`,
-  worded from its `reason` (`notify-model.ts` `refusalMessage`, the
-  `notify.refusal.*` strings, falling back to the server's English `error`). An
+  worded from its `reason` (`lib/errors.ts` `errorMessage` words any coded error
+  with a `reason` as `errors.<code>.<reason>`, here `errors.invalid_target.*`,
+  falling back to the server's English `error`). An
   edit puts the server's answer into the cache (`withTarget`).
 - **The bell** (`components/shell/notifications-bell.tsx`) - `GET /admin/events`
   (`useServerEvents`: the newest 20, every minute), eight listed in a popover,
