@@ -280,7 +280,7 @@ Two mechanisms in `internal/api/ratelimit.go`, five buckets wired in `api.New`:
 
 | Bucket | Mechanism | Limit | Applied to |
 |---|---|---|---|
-| `ipLimiter` | Token bucket per IP (`ipRateLimiter`) | ~20 req/s, burst 40 | Every request (global `rateLimit` middleware) |
+| `ipLimiter` | Token bucket per IP (`ipRateLimiter`) | ~20 req/s, burst 40 | Every request (global `rateLimit` middleware) except those the mux hands to a static-file handler the web package registered (`web.IsStatic`: the console, the web player, the connect page and its assets, served from memory). One cold console page loads forty-odd chunks, more than the burst; the health check and the setup page are still counted |
 | `loginLimiter` | Failure lockout per IP (`limiter`) | 10 failures / 15 min | `POST /auth/login` |
 | `redeemLimiter` | Failure lockout per IP | 10 failures / 15 min | `POST /auth/redeem` |
 | `demoLimiter` | **Attempt** cap per IP (`Acquire`) | 5 / 15 min | `POST /demo/session` |

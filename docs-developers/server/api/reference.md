@@ -196,6 +196,17 @@ attempts per IP per 15 minutes.
 | `username` | string | yes |
 | `password` | string | yes |
 | `device_name` | string | no |
+| `device_id` | string | no |
+
+`device_id` is a random id the client keeps for itself across sign-ins (16 to
+64 of `A-Z a-z 0-9 _ -`; anything else is ignored, as if absent). The server
+stores only its SHA-256, on the session. A sign-in whose `device_id` an earlier
+session of the same person already carried, signed out or not, is not
+announced as a `new_device` [event](#get-apiv1adminevents); one without it
+always is. The admin console sends one; players may adopt it. An admin signing
+a session out (`DELETE /admin/devices/{id}`) forgets its `device_id` on every
+session of that person, and a new password or a disabled account forgets all of
+that person's, so the browser's next sign-in is announced again.
 
 Response `200`: `{ "token": "…", "user": { … } }` - same shape as
 `/auth/exchange`.
@@ -2607,6 +2618,7 @@ The session object, shared by both session routes:
   "codec": "aac",
   "transcoded": false,
   "finished": false,
+  "backfilled": false,
   "state": "playing",
   "chapter": "Chapter 12",
   "ip": "192.168.1.24"
@@ -2628,6 +2640,9 @@ The session object, shared by both session routes:
 - `codec` is the book's indexed codec when the session started (`""` unknown);
   `transcoded` is true when the same device streamed a file of this book with
   `?transcode=1` during the session.
+- `backfilled` is true for a session made at the upgrade to migration 0021 from
+  the players' own listening spans, from before the server recorded sessions:
+  `device_id` is `0`, `device_name` `""`, `client` `null` and `codec` `""`.
 - `finished` - a save in the session marked the book finished.
 - `state` - `playing` (a save within the last 60 seconds), `paused` (within 10
   minutes) or `ended`. A session can come back from `ended`: a late save whose
@@ -2845,6 +2860,7 @@ fields above; without it the response is exactly the one above. An unknown range
     "timezone": "BST",
     "utc_offset": 60,
     "totals":   { "listened": 412380.5, "sessions": 214, "listeners": 4, "books": 23, "finished": 3 },
+    "estimated": 0,
     "previous": { "listened": 388012.0, "sessions": 199, "listeners": 4, "books": 19, "finished": 2 },
     "days": [
       { "date": "2026-09-04", "listened": 9021.3,
@@ -2896,6 +2912,12 @@ and only the part inside the period counts.
   in the period), `listeners` (people who listened), `books` (books listened
   to), `finished` (books whose finish date falls in the period). `previous` is
   the same for the period of equal length just before `from`, for deltas.
+- `estimated` - how many of `totals.listened`'s seconds are estimates: listening
+  from before the server recorded sessions that the players' spans didn't cover
+  (see [Listening from before sessions](../data-model.md#listening-from-before-sessions)).
+  Estimates count in `totals` and the `top_*` lists, never in `days` or
+  `hour_weekday`. Sessions backfilled from spans count everywhere but `clients`
+  and `playback`.
 - `days` - one entry per day of the period, oldest first, zero days included;
   `by_user` lists each listener's seconds that day (`[]` on a quiet day).
 - `hour_weekday` - listened seconds as 7 rows (weekday, **0 = Monday**) of 24
@@ -2983,7 +3005,8 @@ and `AUDIOSILO_*` variable each one is, and whether it needs a restart (see
   "general": {
     "name": "Hearthside",
     "public_url": "https://books.example.com",
-    "update_check": true
+    "update_check": true,
+    "session_days": 400
   },
   "network": {
     "bind": "0.0.0.0:8080",
@@ -3075,7 +3098,7 @@ written so a form can show it under the field:
 |---|---|---|
 | `200` | | saved; body is the settings envelope |
 | `400` | | not a JSON object of sections |
-| `400` | `invalid_setting` | a value of the wrong type, one its normalizer refuses, a config that doesn't validate (e.g. `tls_mode: "autocert"` without `tls_hosts`, demo on without a library), a `demo.library` that names no library (`field: "demo.library"`), or turning `metadata.enabled` on when no metadata service exists (`available` is false; `field: "metadata.enabled"` - set a valid `metadata.base_url` and restart first). Also JSON `null` for a setting that can't be unset (anything but `demo.max_users`, whose `null` means the default), refused with "enter a value" |
+| `400` | `invalid_setting` | a value of the wrong type, one its normalizer refuses, a config that doesn't validate (e.g. `tls_mode: "autocert"` without `tls_hosts`, demo on without a library), a `demo.library` that names no library (`field: "demo.library"`), a change that would leave `config.yaml` invalid on its own because a value it needs comes only from an `AUDIOSILO_*` variable (the file keeps its own values for those; e.g. `demo.enabled: true` while the library is only in `AUDIOSILO_DEMO_LIBRARY`; the `error` names the variable), a `general.session_days` outside 30-3650, or turning `metadata.enabled` on when no metadata service exists (`available` is false; `field: "metadata.enabled"` - set a valid `metadata.base_url` and restart first). Also JSON `null` for a setting that can't be unset (anything but `demo.max_users`, whose `null` means the default), refused with "enter a value" |
 | `400` | `unknown_setting` | a section or name that isn't a setting (including the read-only extras such as `metadata.available`) |
 | `400` | `setting_read_only` | `players.web_dir` or `backups.dir` |
 | `409` | `setting_locked` | a setting an environment variable or the launcher sets (see `locked`) |
@@ -3424,7 +3447,7 @@ are checked by `notify.Clean` (see
 |---|---|
 | `201` | added; body is the destination |
 | `400` | not a JSON object |
-| `400` `invalid_target` | a field the server refuses; `field` names it (`kind`, `name`, `url`, `secret` or `events`) and `error` says why, in words a form can show |
+| `400` `invalid_target` | a field the server refuses; `field` names it (`kind`, `name`, `url`, `secret` or `events`), `error` says why in English words a form can show, and `reason` says why as a code a client words itself (`kind_unknown`, `kind_fixed`, `name_required`, `name_too_long`, `name_control`, `url_required`, `url_too_long`, `url_invalid`, `url_discord`, `url_ntfy`, `secret_too_long`, `secret_control`, `secret_discord`, `secret_again`, `event_unknown`; new ones may be added, so fall back to `error`). A `*_too_long` reason also carries `max`, the limit in characters. |
 | `409` `too_many_targets` | the server has 20 destinations already |
 
 ### `PATCH /api/v1/admin/notifications/{id}`
@@ -3434,10 +3457,10 @@ are checked by `notify.Clean` (see
 an edit that doesn't send them. `"secret": ""` clears the secret. A saved
 secret doesn't follow the address to another server: a new `url` with a
 different scheme, host or port and no `secret` in the body is
-`400 invalid_target` with `field: "secret"` (send the secret again, or `""`);
+`400 invalid_target` with `field: "secret"` and `reason: "secret_again"` (send the secret again, or `""`);
 a new path on the same server keeps it. Answers `200`
 with the destination. Sending a different `kind` is `400 invalid_target` with
-`field: "kind"`; other refusals as for `POST`; `404` (no `code`) when there is
+`field: "kind"` and `reason: "kind_fixed"`; other refusals as for `POST`; `404` (no `code`) when there is
 no such destination. Audited (`notify.update`, recording `address_changed` /
 `secret_changed` rather than either value).
 
@@ -3469,6 +3492,7 @@ A failed delivery is not an HTTP error here: the answer is `200` either way,
 |---|---|---|---|
 | `before` | int | - | only events with a smaller `id`: the previous page's `next_before` |
 | `limit` | int | `20` | at most 100 (a larger one is cut to 100; zero or less means 20) |
+| `kind` | string | - | only events of this kind (one of the [event kinds](../backups-and-notifications.md#events)) |
 
 ```json
 {
@@ -3486,7 +3510,7 @@ A failed delivery is not an HTTP error here: the answer is `200` either way,
 `data` per kind is in [Events](../backups-and-notifications.md#events) (a
 failed scan's `detail` is here, for the bell, but never sent to a destination);
 `next_before` is `0` on the last page. A `before` that isn't a non-negative
-number is `400`.
+number, or a `kind` that isn't an event kind, is `400`.
 
 ## Admin: audit log
 

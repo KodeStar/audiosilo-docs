@@ -123,7 +123,8 @@ or a book to open their page.
   book; its **×** (**Show every book**) clears it.
 - **Show older sessions** loads the next page.
 
-Sessions are kept for 400 days. After that they are summarised by day, so they
+Sessions are kept for 400 days unless you
+[change it](server.md#general). After that they are summarised by day, so they
 still count in the totals and charts but no longer appear in this list.
 
 ## Year in listening
@@ -140,7 +141,8 @@ current year reads "so far".
   long with it, and the most heard narrator.
 - Books finished, books listened to, the longest run of days in a row with some
   listening, and the busiest hour. (The busiest hour needs the detailed
-  sessions, so a year more than 400 days back has none.)
+  sessions, so a year past the sessions' keeping time, 400 days unless
+  changed, has none.)
 - The year day by day, as a calendar.
 - **Most played**: the covers of the books listened to most.
 - **Who listened**: each person's hours and books finished.
@@ -174,8 +176,19 @@ server.
   before this was added have their last listen as the finish date, and no start
   date. An admin can [correct the dates](users-and-invites.md#editing-someones-progress).
 
+**Listening from before an upgrade.** The server started recording sessions in
+version 1.16. On the upgrade to 1.17 it fills in the time before that from what
+it already had. The apps have kept their own history of each stretch of
+listening since June 2026, and those become sessions, shown as **Listening
+history** in the Sessions list because the device and app weren't recorded.
+Anything older, or played offline, is estimated from where each book was left.
+Estimates count in the totals and top lists, not the day-by-day charts, and the
+Overview and Year in listening say how much of a period is estimated.
+
 **How long it's kept.** Detailed sessions are kept for 400 days (about 13
-months). After that they are reduced to daily totals: how long each person
+months) unless you set another time in
+[Server > Settings > General](server.md#general), from 30 days to 10 years.
+After that they are reduced to daily totals: how long each person
 listened to which book on which day. The device, app and time of day are
 dropped.
 

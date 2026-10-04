@@ -194,7 +194,7 @@ kind. A nil `*Service` does nothing, so callers don't check.
 | `book_added` | `Scanner.OnRunFinished`: a scan job ending `ok` or `partial` that added books (once per scan) | `library`, `library_id`, `count`, `titles` (the first five) |
 | `scan_failed` | a scan job ending `failed` | `library`, `library_id`, `run_id`, `detail` (the error, as the scan's log has it: **bell only**, see below) |
 | `library_unavailable` | a scan job ending `unavailable`, only when the library's previous scan that reached an answer wasn't (`catalog.PreviousRunStatus` passes over cancelled, interrupted and running scans, so a restart in between doesn't announce it again) | `library`, `library_id` |
-| `new_device` | every password sign-in (`POST /auth/login`) and every pairing exchange (`POST /auth/exchange`), not for demo accounts | `user`, `device` (the name the client sent, one plain line of at most 100 characters), `app` (from `X-AudioSilo-Client`, may be empty) |
+| `new_device` | every pairing exchange (`POST /auth/exchange`), and a password sign-in (`POST /auth/login`) unless its `device_id` was already carried by an earlier session of the same person (`auth.IssueSession`; a sign-in without one always counts); not for demo accounts | `user`, `device` (the name the client sent, one plain line of at most 100 characters), `app` (from `X-AudioSilo-Client`, may be empty) |
 | `invite_redeemed` | a pairing exchange whose token came from an invite code | `user` (whose invite), `device` |
 | `update_available` | `updates.Checker.OnAvailable` after a check that finds a newer release; announced **once per version** (`dedup_key` is the version) | `version`, `name`, `url` (the release page) |
 | `backup_failed` | `backup.Service.OnFailure` (scheduled or manual) | `trigger`, `error` (`disk_full`, `permission_denied`, `failed`) |
@@ -244,7 +244,10 @@ console never sees a response body.
 ### Destinations
 
 `notify.Clean` checks a destination before it is saved; a refusal is a
-`*notify.FieldError` naming the field (`400 invalid_target` with `field`):
+`*notify.FieldError` naming the field and a `Reason` code (`400 invalid_target`
+with `field`, `reason` and, for a length, `max`; the console words the reason in
+its own language and falls back to the English `error` for one it doesn't know).
+The reasons (`notify.Reason*`) are part of the wire: add new ones, never rename:
 
 - `kind`: `webhook`, `ntfy` or `discord` (fixed once created).
 - `name`: 1-64 characters, no control characters.
@@ -369,6 +372,24 @@ title or a device name containing `@everyone` pings nobody.
 `server_events` keeps every recorded event for 90 days
 (`catalog.ServerEventRetention`, pruned with the audit log) whether or not any
 destination exists. [`GET /admin/events`](api/reference.md#get-apiv1adminevents)
-pages it newest first. The bell asks for the newest 20 every minute and lists
-eight; which ones are new is a per-browser cursor (the newest id seen, in
-`localStorage` as `audiosilo_events_seen`), not server state.
+pages it newest first, optionally one `kind`. The bell asks for the newest 20
+every minute and lists eight, with **See all** leading to **Server > Events**,
+which pages through the whole feed (50 at a time) and filters by kind. Which
+ones are new is a per-browser cursor (the newest id seen, in `localStorage` as
+`audiosilo_events_seen`), not server state.
+
+**Who is a new device.** The admin console signs in again after every sign-out,
+so announcing each password sign-in would announce the admin every time. The
+console keeps a random id per browser (`lib/browser-id.ts`, in `localStorage` as
+`audiosilo_browser_id`, made with `crypto.getRandomValues` so it works on plain
+http) and sends it as `device_id` with `POST /auth/login`. `auth.IssueSession`
+stores its SHA-256 on the new session (`tokens.sign_in_key`, migration 0020) and
+reports whether an earlier session of the same person, signed out or not,
+carried it; `handleLogin` then skips `new_device`. It is not a credential: it
+can only keep a notice quiet. Because of that, `auth.RevokeDevice` (an admin's
+"Sign out" in People > Devices) blanks the key on every session of that person
+that carries it, so a browser cut off for being someone else's is announced
+again when it comes back, even with the password. A new password
+(`auth.SetPassword`, the person's own change included) and disabling the account
+forget every browser of that person (`forgetBrowsers`): both are what follows a
+stolen password.

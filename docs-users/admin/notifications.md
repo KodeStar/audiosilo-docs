@@ -24,13 +24,23 @@ books open the library, a failed scan opens
 [People > Devices](users-and-invites.md#the-devices-page), an update opens
 [Server > About](server.md#about-and-updates), a failed backup opens
 [Backups](backups.md). **Settings** at the top opens the Notifications
-settings.
+settings, and **See all** at the bottom opens the full list.
 
 A dot on the bell means there are events you haven't seen yet; they are marked
 **New** in the list. Opening the bell marks them as seen. This is remembered
 by the browser, so another browser (or another admin) has its own dot. The
 bell checks for new events once a minute, and the server keeps events for 90
 days.
+
+## Every event: Server > Events
+
+![Server > Events, every event of the last 90 days](/img/screenshots/admin/events.png)
+
+**Server > Events** (or **See all** in the bell) lists every event the server
+has kept, newest first, with its date and time. Pick a kind of event at the top
+to see only those (every sign-in, say, or every failed backup), and **Show
+older** at the bottom to go further back. Each one opens the same place the
+bell would.
 
 ## Adding a destination
 
@@ -99,7 +109,7 @@ Tick a box to send that event there; it saves as you tick.
 | **New books added** | A scan found new books: one message per scan, with a few of the titles. |
 | **A scan failed** | A library couldn't be scanned to the end. The bell shows the error the scan stopped with; the message sent out only names the library and points to the scan's log in [Health > Jobs](health.md#jobs), because that error can name a folder on the server. |
 | **A library went offline** | A library's folder can't be read (an unmounted drive or network share), so the scan stopped and nothing was removed. Sent once, not at every scan, until the folder is back. |
-| **Someone signed in** | A password sign-in, or a phone or browser set up from an invite or a QR code, with the person's name, the device's name and the app. Your own sign-ins to this console count too. Demo guests don't. |
+| **Someone signed in** | A sign-in from somewhere new: a phone or browser set up from an invite or a QR code, or a password sign-in from a browser that person hasn't signed in from before, with the person's name, the device's name and the app. Signing in to this console again from the same browser isn't announced again; a sign-in from any other browser is, yours included. If you sign a browser out from [People > Devices](users-and-invites.md#the-devices-page), its next sign-in is announced again, and after a new password or a disabled account every browser of that person is. Demo guests don't count. |
 | **An invite was used** | A device was set up from someone's invite. |
 | **An update is available** | A new AudioSilo version is out. Once per version, and only while **Check for new versions** is on ([General](server.md#general)). |
 | **A backup failed** | A scheduled or manual [backup](backups.md) failed, with the reason. |
