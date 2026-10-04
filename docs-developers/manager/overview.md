@@ -178,7 +178,7 @@ device key PEM plus tokens), hence the `BlobStore` envelope scheme: the bulk is 
 
 ## Frontend stack
 
-`frontend/` is a deliberately plain **React 18 + Vite 5 + TypeScript** app - no
+`frontend/` is a deliberately plain **React 19 + Vite 8 + TypeScript** app - no
 router, no state library, no CSS framework:
 
 - **Bindings**: `frontend/wailsjs/` is **generated** by Wails from the bound Go
