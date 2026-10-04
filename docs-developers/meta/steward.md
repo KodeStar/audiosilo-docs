@@ -47,7 +47,7 @@ Every open pull request on audiosilo-meta is classified each tick
 | Draft | Nothing (but its branch is never pushed to or deleted). |
 | Code - any file outside `data/`, or a symlink or submodule in the tree | Never merged, never pushed to. One agent-written review is posted per head, and a maintainer decides. |
 | Fork, or a base other than `main` | Listed on the report. `ai-verify` cannot run on a fork, so it can never pass the gate. |
-| Oversize - a data change larger than the merge review bound | Listed on the report for the maintainer: a batch import is approved tranche by tranche. |
+| Oversize - a data change larger than the merge review bound | Split into parts within the bound (see below), each merged through the gate; the original is closed once every part has landed. |
 | Data | Merged through the gate below, or fixed. |
 
 ### The gate
@@ -84,7 +84,41 @@ Nothing is left red or flagged, and nothing is closed unmerged:
    re-applies the change onto `main`.
 4. A flag, or a check still red after its re-run, goes to a **FIX** task: the
    agent amends the data with the flag or the failed job's log as evidence, and
-   the source issue's text when the pull request came from intake.
+   the source issue's text when the pull request came from intake. Where the
+   pull request changed a value `main` already recorded and the change makes it
+   worse - less precise, implausible, at odds with the record - the agent
+   checks the libex listing and the publisher's or retailer's page and sets
+   the value they support, which is often the recorded one.
+
+### Splitting an oversize pull request
+
+A data pull request larger than `SYNC_STEWARD_MERGE_MAX_ENTRIES` is not merged
+whole and not left for a person. The steward carries it to `main` in **parts**:
+
+- Each part holds at most that many entries, and every entry travels with the
+  entries it references - a work with the people it credits that the pull
+  request adds, a series with the works it places, a recording's ASIN wherever
+  it moved. Only real references join entries (the schema's author, narrator,
+  work and translation fields), never a shared genre or region.
+- A part is built mechanically, never by an agent: the original's own values
+  for those entries, written onto its merge base and replayed onto `main` with
+  the pack merge driver, then `metafmt` and `metacheck`. It opens as
+  `[steward] <title> (part K of #N)` and goes through the gate like any other
+  data pull request - fixed there if it is flagged. A part `main` will not take
+  mechanically opens from the original's merge base instead, and is rebased or
+  re-applied like any pull request `main` moved out from under.
+- At most two parts are open at a time, so each merge does not re-run
+  `ai-verify` on a crowd of open parts. The original loses `bot-intake`, so the
+  intake sweep stops rebasing it.
+- A part closed without merging gives its entries back: they are carried
+  again in a new part. An entry the contributor changes on the original after
+  its part was built is carried again too, so a correction is never lost.
+- Once every part has landed and each merged part's content is verified on
+  `main`, the original is closed with a link, and so is the issue it came from.
+
+A pull request whose entries all reference each other cannot be made smaller:
+it goes through the gate whole. So does one whose first part could not be
+written three times.
 
 The steward pushes only to `intake/issue-*` branches and its own `steward/*`
 branches. A data pull request on anyone else's branch is fixed on a superseding
@@ -170,7 +204,7 @@ loopback.
 | `SYNC_STEWARD_MAX_TURNS` | `200` | Tool-loop budget for one agent task. |
 | `SYNC_STEWARD_TIMEOUT` | `60m` | Wall-clock budget for one agent task. |
 | `SYNC_STEWARD_MAX_ENTRIES` | `25` | The most entries one steward-authored change may touch. |
-| `SYNC_STEWARD_MERGE_MAX_ENTRIES` | `100` | The largest data pull request the steward will merge. |
+| `SYNC_STEWARD_MERGE_MAX_ENTRIES` | `100` | The largest data pull request the steward merges whole; a larger one is split into parts of at most this many entries. |
 | `SYNC_STEWARD_REPORT_ISSUE` | - | Optional `owner/repo#n` whose body carries the report. |
 | `SYNC_STEWARD_MIN_AVAILABLE_MB` | `3072` | An agent task starts only when at least this much memory is available (the host's, or the container limit's headroom). |
 | `SYNC_STEWARD_DAILY_AGENT_RUNS` | `24` | The most agent runs the steward starts per UTC day (`0` = no cap). |
