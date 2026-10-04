@@ -24,6 +24,8 @@
 # Env knobs: MAX_FILES (chapter files per seeded book, default 3),
 #            SKIP_SEED=1 (reuse the cached library as-is),
 #            SKIP_META=1 (skip the meta site stack + its captures),
+#            LISTEN_MINUTES (how long the provisioned listeners play before
+#              the Activity shots, default 8 - see README.md),
 #            META=<dir> (the audiosilo-meta checkout, default the sibling
 #              clone - point it at a worktree to capture an unmerged branch),
 #            META_COMMUNITY=<dir> (the audiosilo-meta-community checkout,

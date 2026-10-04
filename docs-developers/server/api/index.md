@@ -168,7 +168,8 @@ Failures a person can fix also carry a machine-readable **`code`** next to
 | `invalid_pattern` | `400` | a library `ignore_patterns` list the server refuses: more than 100 patterns, one over 200 bytes, one that matches nothing, or a malformed wildcard; the message names the line (`POST`/`PATCH /admin/libraries`) |
 | `not_indexable` | `404` | `POST /admin/libraries/{id}/book/rescan` on a path with no book any more (gone, not a book, or skipped by the library's ignore rules) |
 | `current_device` | `409` | `DELETE /admin/devices/{id}` on the token making the request (sign out instead) |
-| `invalid_range` | `400` | `GET /admin/stats?range=` with a range that isn't `7d`, `30d`, `90d`, `1y` or a year |
+| `no_access` | `409` | `PATCH /admin/libraries/{id}/progress` that would start progress on a book the person can't see (their own access, not the admin's) |
+| `invalid_range` | `400` | `GET /admin/stats?range=` or `GET /admin/listening?range=` with a range that isn't `7d`, `30d`, `90d`, `1y` or a year |
 
 **Branch on `code`, not on the English `error` text**, which is free to change.
 Errors without a `code` are ones a client can't help the person fix.
@@ -185,7 +186,7 @@ Status mapping is consistent across handlers:
 | `401` | missing/invalid/expired token, bad credentials, invalid auth code, wrong `current_password` |
 | `403` | authenticated but not allowed: no share grants the library or path, `admin only`, demo accounts on the self-service routes (password/recovery/API keys), an API key on a credential-minting route (create key/recovery/pair/password), bad setup token |
 | `404` | library/user/share/invite not found, `no book at that path`, feature not configured (demo mode off, well-known files unset) |
-| `409` | conflicts: `name already taken` (library/share), last-enabled-admin guard, signing out the device making the request, setup already completed |
+| `409` | conflicts: `name already taken` (library/share), last-enabled-admin guard, signing out the device making the request, starting someone's progress on a book they can't see, setup already completed |
 | `413` | a request body over an endpoint's size cap (a custom cover over 5 MiB) |
 | `415` | an upload of a type the endpoint doesn't take (a custom cover that isn't JPEG/PNG/WebP) |
 | `429` | a rate limiter tripped (see below) |

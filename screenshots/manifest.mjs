@@ -31,7 +31,7 @@ export const SHOTS = [
 
   // ── Admin console (admin-ui, desktop 1440x900 dark unless noted) + public server pages
   {file: 'admin/login.png', capture: 'admin', title: 'Admin - Sign in', hint: 'the console sign-in page, signed out'},
-  {file: 'admin/overview.png', capture: 'admin', title: 'Admin - Overview', hint: 'home: listening now, totals, recent listening, books per library, server card'},
+  {file: 'admin/overview.png', capture: 'admin', title: 'Admin - Overview', hint: 'home: listening now (live sessions), totals, recent listening, books per library, server card'},
   {file: 'admin/palette.png', capture: 'admin', title: 'Admin - Command palette', hint: 'the ⌘K palette open over the overview'},
   {file: 'admin/overview-phone.png', capture: 'admin', title: 'Admin - Phone', hint: 'overview at phone width (400x860) with the bottom tab bar (light)'},
   {file: 'admin/libraries.png', capture: 'admin', title: 'Admin - Libraries', hint: 'Library > Libraries: library cards with covers, status, folder, book count'},
@@ -45,8 +45,10 @@ export const SHOTS = [
   {file: 'admin/series.png', capture: 'admin', title: 'Admin - Series', hint: 'Library > Series: one card per series with its spines'},
   {file: 'admin/folders.png', capture: 'admin', title: 'Admin - Folders', hint: 'Library > Folders: the folder tree and the selected folder\'s detection choice'},
   {file: 'admin/palette-search.png', capture: 'admin', title: 'Admin - Palette search', hint: 'the ⌘K palette searching books, authors and series for "alice"'},
-  {file: 'admin/people.png', capture: 'admin', title: 'Admin - People', hint: 'People > People: person cards'},
-  {file: 'admin/person.png', capture: 'admin', title: 'Admin - Person', hint: 'sam\'s page, Access tab'},
+  {file: 'admin/people.png', capture: 'admin', title: 'Admin - People', hint: 'People > People: person cards with what each is listening to and their devices'},
+  {file: 'admin/person.png', capture: 'admin', title: 'Admin - Person', hint: 'sam\'s page, Access tab (?tab=access)'},
+  {file: 'admin/person-listening.png', capture: 'admin', title: 'Admin - Person listening', hint: 'maya\'s page, Listening tab: her listening year, In progress, Finished, Recent sessions (1440x1100)'},
+  {file: 'admin/devices.png', capture: 'admin', title: 'Admin - Devices', hint: 'People > Devices: every signed-in device with its app, last seen and address, and Sign out'},
   {file: 'admin/invite.png', capture: 'admin', title: 'Admin - Invite ready', hint: 'the invite card dialog after Invite someone: QR code, link, code'},
   {file: 'admin/invites.png', capture: 'admin', title: 'Admin - Invites', hint: 'People > Invites: the invite table'},
   {file: 'admin/shares.png', capture: 'admin', title: 'Admin - Shares', hint: 'People > Shares: list + the selected share\'s folders and people'},
@@ -55,6 +57,10 @@ export const SHOTS = [
   {file: 'admin/health-duplicates.png', capture: 'admin', title: 'Admin - Likely duplicates', hint: 'Health > Issues ?issue=duplicate: a group\'s two copies side by side'},
   {file: 'admin/health-jobs.png', capture: 'admin', title: 'Admin - Jobs', hint: 'Health > Jobs: running now, schedules, and the history with the newest scan\'s log open (1440x980)'},
   {file: 'admin/library-edit.png', capture: 'admin', title: 'Admin - Edit library', hint: 'the Edit library dialog: folder, Scan automatically (daily) + Time, Skip these files and folders'},
+  {file: 'admin/activity.png', capture: 'admin', title: 'Admin - Activity', hint: 'Activity > Overview (30 days): stat tiles, listening hours per day, the year and hour x weekday heatmaps (1440x1240)'},
+  {file: 'admin/activity-live.png', capture: 'admin', title: 'Admin - Live now', hint: 'Activity > Live now: two devices playing (one transcoding) and one paused'},
+  {file: 'admin/activity-sessions.png', capture: 'admin', title: 'Admin - Sessions', hint: 'Activity > Sessions: the session table, newest first'},
+  {file: 'admin/activity-year.png', capture: 'admin', title: 'Admin - Year in listening', hint: 'Activity > Year in listening: this year\'s story and calendar (1440x1100)'},
   {file: 'server/connect-page.png', capture: 'admin', title: 'Connect page', hint: 'public connect page (auth-code box / QR)'},
   {file: 'server/setup-wizard.png', capture: 'admin', title: 'Setup wizard', hint: 'first-run --setup wizard page'},
 

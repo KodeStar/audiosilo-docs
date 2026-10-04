@@ -131,7 +131,8 @@ and CSS, and the `AUDIOSILO_ADMIN_NEXT` switch are gone.
 
 **Stack:** React 19, Vite, TypeScript (strict), shadcn/ui on **Base UI**,
 Tailwind v4, TanStack Query, Router, Table and Virtual (the books table and
-the virtualized cover grid), cmdk for the ⌘K palette,
+the virtualized cover grid), cmdk for the ⌘K palette, Recharts (the Activity
+charts, through shadcn's chart component; see [Charts](#charts)),
 react-hook-form + zod (forms and validation), dnd-kit (library reordering,
 keyboard accessible), uqr (invite QR codes, drawn as SVG in the browser),
 i18next, lucide-react, fontsource (self-hosted Bricolage Grotesque, Figtree,
@@ -306,10 +307,15 @@ CSP-sensitive work against a real build served by Go. The console's own gate is
   authors, series, narrators and shares matched in the browser from their
   lists; a final "Search all books for ..." entry opens Library > Books with
   the query.
-- **Overview** - built on `GET /admin/stats`, `GET /admin/settings`,
-  `GET /admin/libraries` (offline-library notices), `GET /server` and
-  `GET /admin/issues` (the "Needs attention" card: up to six categories with
-  something to fix, each linking to its Health queue).
+- **Overview** - built on `GET /admin/stats`, `GET /admin/sessions/live`
+  ("Listening now": one card per live session, playing first, each linking to
+  Activity > Live now; a failed live list reads as nobody live rather than
+  holding the page back), `GET /admin/settings`, `GET /admin/libraries`
+  (offline-library notices), `GET /server` and `GET /admin/issues` (the "Needs
+  attention" card: up to six categories with something to fix, each linking to
+  its Health queue). "Recent listening" is the stats' progress feed minus the
+  user/book pairs that are live (`splitListening` in
+  `features/overview/overview-model.ts`).
 - **Library > Books** - the cover grid (virtualized) or table over
   `GET /admin/books` (keyset pages loaded as you scroll), the "Recently added"
   and "Continue curating" shelves, the library filter, search, sort and a
@@ -343,13 +349,42 @@ CSP-sensitive work against a real build served by Go. The console's own gate is
   live progress (the list's `scan`, including `queued`, shown as a "Waiting"
   badge, and `unavailable`), the next scheduled scan from `next_scan_at`, folder
   detection (`/fs` browse + `…/folder-override`), export, delete.
-- **People > People / Invites / Shares** - person cards, the invite flow
-  (create a password-less member, grant access, mint an invite, show the QR,
-  link and code once), a person's page (`/admin/people/user/<id>`, tabs in
-  `?tab=`: access, invites, sign-in, account), the cross-account invite list
-  (`GET /admin/invites`) with rotate and revoke, and shares (list + detail,
-  with `member_ids`; `whole_library_id` sets whole-library grants apart).
-  Error messages that name a fix branch on the API's error `code`.
+- **People > People / Invites / Shares / Devices** - person cards (the book a
+  person is playing comes from `GET /admin/sessions/live`, else their newest
+  unfinished progress from `GET /admin/stats`; the devices line from
+  `GET /admin/devices`, sessions only), the invite flow (create a password-less
+  member, grant access, mint an invite, show the QR, link and code once), a
+  person's page (`/admin/people/user/<id>`, tabs in `?tab=`: listening (the
+  default, no param), access, devices, invites, sign-in, account), the
+  cross-account invite list (`GET /admin/invites`) with rotate and revoke,
+  shares (list + detail, with `member_ids`; `whole_library_id` sets
+  whole-library grants apart) and the devices list
+  (`features/people/devices-page.tsx`: `GET /admin/devices`, Sign out / Revoke
+  through `DELETE /admin/devices/{id}` after a confirm; the row marked
+  `current` is disabled, and a `409 current_device` would read as "That's the
+  device you're using"). Error messages that name a fix branch on the API's
+  error `code`.
+- **A person's Listening tab** (`features/people/user-listening.tsx`) - their
+  listening year (hours and best streak from their days of the server's
+  current year, `GET /admin/listening?range=year&user_id=`; books finished
+  from their progress' `finished_at`, counted in the server's year with the
+  answer's `utc_offset`; hours per month as a small bar chart),
+  In progress and Finished from `GET /admin/users/{id}/progress`, and their
+  first page of `GET /admin/sessions?user_id=` with a link to Activity >
+  Sessions. The Devices tab reuses the devices list for `?user_id=`.
+- **Progress menu** (`features/people/progress-actions.tsx`) - on each row of
+  the Listening tab and each listener on the book page: Mark as finished (with
+  an Undo that sends `finished: false` and the old `position`), Mark as not
+  finished, Edit dates (`progress-dates-dialog.tsx`: date inputs sent as
+  `YYYY-MM-DD`, only the changed ones, `null` to clear; the server reads a
+  day-only finish as the end of that day, so a same-day start and finish fit;
+  the dialog refuses future dates and a finish before the start before the
+  server does), and See
+  listening sessions. All go through
+  [`PATCH /admin/libraries/{id}/progress`](api/reference.md#patch-apiv1adminlibrariesidprogress),
+  then refetch the person's progress, the book page, the stats and the
+  Activity data (`invalidateProgress`). The codes `no_access` and
+  `book_not_found` map to their own messages.
 - **Health > Issues** (`features/health/issues-page.tsx`) - over
   `GET /admin/issues`: notices for offline libraries (what was kept, with
   Retry), one card per category with its count and up to three fanned covers,
@@ -380,12 +415,65 @@ CSP-sensitive work against a real build served by Go. The console's own gate is
   (paged with `before`, filtered by library) whose rows expand to their log
   (`GET /admin/scan-runs/{id}`, fetched when opened). `jobs-model.ts` words
   statuses, counts and log events.
+- **Activity > Overview** (`features/activity/activity-page.tsx`) - over
+  [`GET /admin/stats?range=`](api/reference.md#range-listening-activity), the
+  period in `?range=` (absent = `30d`), each period cached for a minute and the
+  previous one kept on screen while the next loads: stat tiles with a hand-drawn
+  SVG sparkline and the change against `previous`, the hours chart (a bar a day,
+  a bar a week past 92 days; the four biggest listeners stacked, the rest as
+  "Everyone else"), the year calendar (always the last year, whatever the
+  period; unless the page already shows 1 year, its days come from
+  [`GET /admin/listening?range=1y`](api/reference.md#get-apiv1adminlistening)
+  rather than a second full Activity computation), the hour x weekday grid, top books/people/authors/narrators, the
+  inactive-people notice, the funnel with drop-offs (linking to Health's read
+  problems when `scan_error`), the playback donut, apps in use (a build older
+  than another of the same app and platform is flagged; `compareVersions` in
+  `activity-model.ts`), library growth, and storage with coverage rings. The
+  pure logic (bucketing, ticks, streaks, the calendar grid) lives in
+  `activity-model.ts`, which is unit-tested.
+- **Activity > Live now** (`live-page.tsx`) - `GET /admin/sessions/live`,
+  polled every 10 seconds (`useLiveSessions`, also used by the overview and
+  the people cards), playing first.
+- **Activity > Sessions** (`sessions-page.tsx`) - `GET /admin/sessions` as an
+  infinite query (50 a page, "Show older sessions" passes `next_before`),
+  filtered by `?person=`, `?library=` and `?path=` (a book needs its library).
+  Its `SessionTable` is reused on the person page.
+- **Activity > Year in listening** (`year-page.tsx`) - `GET /admin/stats?range=<year>`
+  for the year in `?year=`; absent, `range=year`, the server's current year,
+  whose answer names it (the browser's clock can be on the other side of New
+  Year). The picker offers that year and the four before. Told as a story (headline, book of the year, facts, the
+  year's calendar, most played covers, who listened).
 - **Server > Settings** - the community metadata switch
   (`GET`/`PATCH /admin/settings`).
 
 Every other section renders a designed "coming in this redesign" placeholder
-naming the phase that builds it: People Devices and all of Activity (4c),
-Health System (5a), Server Logs/About (5a) and Audit log (5b).
+naming the phase that builds it: Health System (5a), Server Logs/About (5a) and
+Audit log (5b).
+
+### Charts
+
+The Activity charts use **Recharts** through `src/components/ui/chart.tsx`,
+which is shadcn's chart component **minus `ChartStyle`**: shadcn injects each
+chart's colours as a `<style>` element, which the strict CSP blocks (and
+ESLint bans). Instead series colours are CSS variables handed straight to
+Recharts (`fill="var(--chart-1)"`), and the chart look (dashed recessive grid,
+muted tabular axis text, the hover cursor, the tooltip pill `.chart-tip`)
+lives in `globals.css` under `.chart`. Recharts itself writes styles only
+through the CSSOM (the `style` prop), which the CSP allows. `ChartContainer`
+wraps `ResponsiveContainer` with a fixed height and an `initialDimension`, so
+it renders before its first measure and in tests; it carries `role="img"` and
+an `aria-label`, and every chart also says its numbers in text nearby (a
+tooltip, a legend or a total). Recharts (with its `react-is` peer) is not in
+the entry bundle: it loads in a shared lazy chunk with the screens that draw a
+chart (Activity and a person's page).
+
+The heatmaps (the year calendar and the hour x weekday grid,
+`features/activity/heatmaps.tsx`) are **hand-built** CSS grids, not Recharts:
+each cell is an element with one of six shades of a one-hue scale
+(`bg-seq-0..5`), the calendar names the hovered day in a live text readout and
+the week grid names its busiest hour. The sparkline and the coverage rings
+are small hand-written SVGs. Colours follow `admin-ui/STYLEGUIDE.md`
+("Charts").
 
 The Library screens and the book page run on the
 [admin catalog API](api/reference.md#admin-catalog). Edits are path-keyed

@@ -2086,7 +2086,8 @@ book path).
   ],
   "listeners": [
     { "user_id": 4, "username": "sam", "position": 12043.6, "duration": 38040.5,
-      "finished": false, "updated_at": "2026-10-01T19:42:07Z" }
+      "finished": false, "updated_at": "2026-10-01T19:42:07Z",
+      "started_at": "2026-09-12T20:03:10Z", "finished_at": null }
   ],
   "shares": [
     { "share_id": 2, "name": "Sci-fi shelf", "path": "Andy Weir" },
@@ -2107,7 +2108,10 @@ book path).
 - `files` - each audio file (a single-file book lists itself), with its own
   `codec` and a derived `bitrate` in bits per second (`0` when the duration is
   unknown).
-- `listeners` - every user's progress on the path, most recent first.
+- `listeners` - every user's progress on the path, most recent first, with
+  the start and finish dates of
+  [`GET /admin/users/{id}/progress`](#get-apiv1adminusersidprogress)
+  (`started_at` / `finished_at`, `null` when not known).
 - `shares` - each share whose rules include the path, with the rule that does
   (`path: ""` = the whole library).
 - `folder` - the folder whose detection decides the book's shape (the book's
@@ -2561,8 +2565,9 @@ line here - see [Prune](../scanner.md#prune-what-a-removed-book-leaves-behind).
 ## Admin: activity
 
 All *Admin* (a non-admin gets `403`). Listening sessions, signed-in devices and
-an admin's edits of someone's progress (admin console Phase 4a; the console
-screens over them come later). Sessions are derived on the server from the
+an admin's edits of someone's progress: the API behind the admin console's
+Activity screens, People > Devices and the progress menus on a person's page
+and a book's page. Sessions are derived on the server from the
 progress saves players already make - see
 [Listening sessions](../data-model.md#listening-sessions-how-they-are-derived)
 for the rules (session gap and continuation, listened time, what isn't
@@ -2749,10 +2754,19 @@ required). Any subset of:
 | `finished` | bool | `true` moves the position to the end and stamps the finish now (unless `finished_at` is given); `false` clears the finish date and keeps the position (unless `position` is given) |
 | `position` | float | seconds; between `0` and the book's duration |
 | `started_at` | string \| null | RFC 3339 or `YYYY-MM-DD` (the start of that day, server time); `null` clears it |
-| `finished_at` | string \| null | as `started_at`; needs the book to be (or become) finished |
+| `finished_at` | string \| null | RFC 3339 or `YYYY-MM-DD` (the **end** of that day, server time, or now if that is sooner); `null` clears it; needs the book to be (or become) finished |
+
+A day-only finish date counts from the end of its day so that a book started
+and finished on the same day fits: a start at 15:00 and a finish "today" is a
+finish after the start, not at the midnight before it.
 
 A field left out stays as it is. When the person has no progress on the book
-yet but it is indexed, the row is created (its start stamped now). The write is
+yet but it is indexed, the row is created (its start stamped now), but only if
+**the person** can see the book: their own access (whole libraries and shares;
+an admin target sees everything), not the access of the admin making the call.
+Otherwise the edit is refused with `409` `no_access` and nothing is written.
+Progress the person already has stays editable after their access is taken
+away, so an admin can still tidy it. The write is
 stamped with the server's time and a higher `version`, so it beats what a
 device saved before it under last-write-wins, while a device still playing the
 book overrides it on its next save.
@@ -2764,6 +2778,12 @@ Response `200`: `{ "progress": { … } }` - the object of
 |---|---|
 | `400` | `invalid user_id`; `path is required`; `invalid request` (malformed body, an unknown key or an unparseable date); `those dates or that position don't fit this book` - a finish date on an unfinished book, a finish before the start, a date more than a day in the future, or a position outside the book |
 | `404` | `user not found`; `library not found`; `code: "book_not_found"` - no progress at that path and no indexed book there |
+| `409` | `code: "no_access"` - no progress at that path, and the person can't see the book; give them access first |
+
+`409` rather than `403`, because the admin is allowed to make the call (a `403`
+from an `/admin` route tells the console its own session lost the admin role).
+A path with neither progress nor an indexed book is `404 book_not_found` whatever
+the person's access.
 
 ## Admin: stats
 
@@ -2804,17 +2824,16 @@ a cross-user "currently listening" feed (up to 200 rows, newest first; `title`/
 
 | Query param | Type | Default | Notes |
 |---|---|---|---|
-| `range` | string | - | `7d`, `30d`, `90d`, `1y` (365 days) ending now, or a calendar year such as `2025` (from 2000 to this year; the current year ends now). An empty value means `30d` |
+| `range` | string | - | `7d`, `30d`, `90d`, `1y` (365 days) ending now; a calendar year such as `2025` (from 2000 to this year; the current year ends now); or `year`, the current calendar year in **server** time. An empty value means `30d` |
 
-With `range` present the response gains an **`activity`** object; without it the
-response is exactly the one above. An unknown range is
+With `range` present the response is **only** an **`activity`** object
+(`{"activity": {…}}`), the Activity page for the period, without the overview
+fields above; without it the response is exactly the one above. An unknown range is
 `400` `code: "invalid_range"`. Days, hours and weekdays are counted in the
 **server's** time zone.
 
 ```json
 {
-  "total_books": 1284,
-  "…": "…",
   "activity": {
     "range": "30d",
     "from": "2026-09-04T19:42:08Z",
@@ -2864,7 +2883,9 @@ raw retention from the daily totals they were rolled up into. A session's
 listened time is spread evenly over the hours between its first and last save,
 and only the part inside the period counts.
 
-- `range` echoes the period; `from` / `to` are its bounds (RFC 3339, UTC; `to`
+- `range` echoes the period (`year` answers with the year it resolved to, such
+  as `"2026"`, so a client whose clock is on the other side of New Year from
+  the server learns the server's year); `from` / `to` are its bounds (RFC 3339, UTC; `to`
   is rounded up to the next whole second). `timezone` is the server zone's
   abbreviation at `to` and `utc_offset` its offset from UTC in minutes.
 - `totals` - `listened` (wall-clock seconds), `sessions` (sessions that started
@@ -2907,6 +2928,39 @@ and only the part inside the period counts.
   `last_seen_at` is then `null`), longest idle first. Independent of the period.
 
 Every list in `activity` is `[]`, never `null`, when empty.
+
+### `GET /api/v1/admin/listening`
+
+*Admin.* Listening per day over a period, of everyone or of one person: the
+same `days` the [Activity page](#range-listening-activity) reports, without
+computing the rest of it. The console's Overview reads it for the year
+calendar, and a person's page for their listening year (`range=year`, with
+`utc_offset` to place their finish dates in the server's year).
+
+| Query param | Type | Default | Notes |
+|---|---|---|---|
+| `range` | string | `30d` | as [`/admin/stats?range=`](#range-listening-activity): `7d`, `30d`, `90d`, `1y`, a calendar year, or `year` (the server's current year) |
+| `user_id` | int | - | one person's listening; everyone's without it |
+
+```json
+{
+  "range": "2026",
+  "from": "2025-12-31T23:00:00Z",
+  "to": "2026-10-04T19:42:08Z",
+  "timezone": "BST",
+  "utc_offset": 60,
+  "days": [
+    { "date": "2026-01-01", "listened": 3120.4,
+      "by_user": [ { "user_id": 4, "listened": 3120.4 } ] }
+  ]
+}
+```
+
+`range`, `from`, `to`, `timezone` and `utc_offset` as in `activity` (`year`
+answers with the year itself); `days` is one entry per
+day of the period, oldest first, zero days included, in server time. With
+`user_id`, `listened` and `by_user` hold only that person's listening.
+`400` `code: "invalid_range"`; `400 invalid user_id`; `404 user not found`.
 
 ## Admin: settings
 

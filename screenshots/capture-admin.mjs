@@ -7,7 +7,10 @@
 // Before capturing it provisions a little demo state through the admin API
 // (a listener account, an invite, a share, some listening progress, one
 // metadata edit, a scan schedule and skip rules on the seeded library) so the
-// console looks lived-in. For the Health shots, after the other admin shots, it
+// console looks lived-in. Three more listeners sign in with a password and keep
+// saving progress in the background while the shots are taken, which is what
+// makes real listening sessions (Activity, Live now, Sessions, Devices); those
+// screens are captured last, once each listener has a few minutes of listening. For the Health shots, after the other admin shots, it
 // builds a small "Inbox" library under .cache/inbox (INBOX_DIR overrides) whose
 // files produce one of each issue - an empty file, a damaged m4b, two copies of
 // one book, a folder of two hour-long books, a long book without chapters, an
@@ -35,12 +38,13 @@ if (!PASSWORD) {
 }
 
 // ── Provision demo state via the API ────────────────────────────────────────
-const api = async (token, method, p, body) => {
+const api = async (token, method, p, body, headers = {}) => {
   const res = await fetch(`${ORIGIN}/api/v1${p}`, {
     method,
     headers: {
       'content-type': 'application/json',
       ...(token ? {authorization: `Bearer ${token}`} : {}),
+      ...headers,
     },
     body: body === undefined ? undefined : JSON.stringify(body),
   });
@@ -71,7 +75,9 @@ let inviteCode = '';
 let samId = null;
 let library = null; // the seeded library ({id, name, root, ...})
 let firstBook = null; // the first book of GET /admin/books ({library_id, path, is_folder, ...})
-const login = await api(null, 'POST', '/auth/login', {username: 'admin', password: PASSWORD});
+// Named, so People > Devices lists it as the admin's tablet (it sends no app
+// header, so it also shows how an app from before the header reads).
+const login = await api(null, 'POST', '/auth/login', {username: 'admin', password: PASSWORD, device_name: 'Kitchen tablet'});
 const token = login.token;
 console.log('  ✓ admin login');
 
@@ -158,6 +164,114 @@ await step('provision scan settings', async () => {
   });
   await waitForScans(token);
   console.log('  ✓ provisioned (schedule + skip rules on the seeded library)');
+});
+
+// ── Listening activity: real sessions from progress saves ───────────────────
+// The server derives listening sessions from the progress saves players make: a
+// device's second save on a book a few seconds after its first adds listened
+// time (the position advance, capped by the server time between the saves),
+// so listening can't be faked faster than real time. Each listener signs in like
+// a player, names its app in X-AudioSilo-Client, saves twice 15 s apart now (so
+// Live now and the overview have sessions), then keeps saving every 15 s. The
+// Activity shots wait until LISTEN_MINUTES (default 8) have passed, so the
+// charts and totals have twenty-odd minutes of listening to show. Nora
+// stops 90 s before then, so Live now shows her as paused; Theo's device fetches
+// a transcoded stream first, so his session counts as transcoded, and he has a
+// personal API key that was never used.
+const HEARTBEAT_MS = 15000;
+const LISTEN_MS = Number(process.env.LISTEN_MINUTES || 8) * 60000;
+let listenUntil = 0;
+const LISTENERS = [
+  {username: 'maya', device: "Maya's iPhone", client: 'AudioSilo/1.4.2 (ios)', speed: 1.25, at: 0.31},
+  {username: 'theo', device: 'Pixel 8', client: 'AudioSilo/1.4.2 (android)', speed: 1, at: 0.58, transcode: true},
+  {username: 'nora', device: "Nora's iPad", client: 'AudioSilo/1.3.0 (ios)', speed: 1, at: 0.12, pauseEarly: true},
+];
+let mayaId = null;
+let heartbeats = null;
+
+const saveProgress = async (l) => {
+  const now = Date.now();
+  if (l.last) l.pos = Math.min(l.book.duration, l.pos + ((now - l.last) / 1000) * l.speed);
+  l.last = now;
+  l.saved = (l.saved ?? 0) + 1;
+  await api(
+    l.token,
+    'PUT',
+    `/libraries/${library.id}/progress?path=${encodeURIComponent(l.book.rel_path)}`,
+    {
+      position: l.pos,
+      duration: l.book.duration,
+      playback_speed: l.speed,
+      updated_at: new Date(now).toISOString(),
+      version: now,
+      device_id: `${l.username}-device`,
+    },
+    {'x-audiosilo-client': l.client},
+  );
+};
+
+await step('provision listening sessions', async () => {
+  if (!library) throw new Error('no library');
+  listenUntil = Date.now() + LISTEN_MS;
+  // Books 0 and 1 carry the admin's own progress (above); the listeners take the next ones.
+  const books = ((await api(token, 'GET', `/libraries/${library.id}/books?limit=12`))?.books ?? [])
+    .filter((b) => b.duration > 0);
+  if (books.length < 6) throw new Error(`only ${books.length} books to listen to`);
+  for (const [i, l] of LISTENERS.entries()) {
+    let user;
+    try {
+      user = await api(token, 'POST', '/admin/users', {username: l.username, password: 'listening-demo', role: 'user'});
+    } catch {
+      user = (await api(token, 'GET', '/admin/users')).users.find((u) => u.username === l.username);
+    }
+    l.id = user?.user?.id ?? user?.id;
+    await api(token, 'POST', '/admin/library-access', {user_id: l.id, library_id: library.id}).catch(() => {});
+    const session = await api(null, 'POST', '/auth/login', {
+      username: l.username,
+      password: 'listening-demo',
+      device_name: l.device,
+    });
+    l.token = session.token;
+    l.book = books[2 + i];
+    l.pos = l.book.duration * l.at;
+  }
+  mayaId = LISTENERS[0].id;
+
+  // A transcoded stream from Theo's device: the mark lasts 10 minutes, so his
+  // session on the book is recorded as transcoded.
+  const theo = LISTENERS.find((l) => l.transcode);
+  const chapters = await api(theo.token, 'GET', `/libraries/${library.id}/chapters?path=${encodeURIComponent(theo.book.rel_path)}`);
+  const file = (chapters?.chapters ?? chapters ?? [])[0]?.file_path || theo.book.rel_path;
+  const abort = new AbortController();
+  const stream = await fetch(
+    `${ORIGIN}/api/v1/libraries/${library.id}/stream?path=${encodeURIComponent(file)}&transcode=1`,
+    {headers: {authorization: `Bearer ${theo.token}`, 'x-audiosilo-client': theo.client}, signal: abort.signal},
+  ).catch(() => null);
+  if (stream?.body) await stream.body.getReader().read().catch(() => {});
+  abort.abort();
+  if (!stream?.ok) console.log(`  ! transcoded stream not available (${stream?.status ?? 'no response'})`);
+  await api(theo.token, 'POST', '/auth/tokens', {label: 'Home Assistant'}).catch(() => {});
+
+  for (const l of LISTENERS) await saveProgress(l);
+  await sleep(HEARTBEAT_MS);
+  for (const l of LISTENERS) await saveProgress(l);
+
+  // Maya finished another book: an admin's edit, as People's progress menu makes it.
+  const done = books[5];
+  await api(
+    token,
+    'PATCH',
+    `/admin/libraries/${library.id}/progress?path=${encodeURIComponent(done.rel_path)}&user_id=${mayaId}`,
+    {finished: true, started_at: new Date(Date.now() - 9 * 86400000).toISOString().slice(0, 10)},
+  );
+
+  heartbeats = setInterval(() => {
+    for (const l of LISTENERS) {
+      if (l.pauseEarly && Date.now() > listenUntil - 90000) continue;
+      saveProgress(l).catch((e) => console.log(`  ! heartbeat for ${l.username}: ${e.message}`));
+    }
+  }, HEARTBEAT_MS);
+  console.log('  ✓ provisioned (maya, theo and nora listening)');
 });
 
 // ── Capture ────────────────────────────────────────────────────────────────
@@ -328,7 +442,8 @@ await step('people', async () => {
 
 await step('a person (Access tab)', async () => {
   if (!samId) throw new Error('sam was not provisioned');
-  await open(page, `/people/user/${samId}`);
+  // Listening is the default tab; the Access tab is ?tab=access.
+  await open(page, `/people/user/${samId}?tab=access`);
   await page.getByRole('tab', {name: 'Access'}).waitFor({timeout: 8000});
   await shoot(page, 'admin/person.png');
 });
@@ -492,6 +607,71 @@ await step('edit library (scan settings)', async () => {
   await page.keyboard.press('Escape');
   await sleep(600);
 });
+
+// ── Activity: captured last, after a few minutes of listening ───────────────
+if (heartbeats && Date.now() < listenUntil) {
+  console.log(`  … listening for ${Math.ceil((listenUntil - Date.now()) / 1000)} s more before the Activity shots`);
+  await sleep(listenUntil - Date.now());
+}
+
+await step('activity overview', async () => {
+  // Taller, so the stat tiles, the hours chart and both heatmaps fit.
+  await page.setViewportSize({width: 1440, height: 1240});
+  try {
+    await open(page, '/activity');
+    await page.getByRole('heading', {name: 'Listening hours per day'}).waitFor({timeout: 15000});
+    await sleep(1000);
+    await shoot(page, 'admin/activity.png');
+  } finally {
+    await page.setViewportSize(DESKTOP_CONTEXT.viewport);
+  }
+});
+
+await step('activity: live now', async () => {
+  await open(page, '/activity/live');
+  await page.getByText('Playing', {exact: true}).first().waitFor({timeout: 15000});
+  await sleep(800);
+  await shoot(page, 'admin/activity-live.png');
+});
+
+await step('activity: sessions', async () => {
+  await open(page, '/activity/sessions');
+  await page.getByRole('table').waitFor({timeout: 15000});
+  await shoot(page, 'admin/activity-sessions.png');
+});
+
+await step('activity: year in listening', async () => {
+  await page.setViewportSize({width: 1440, height: 1100});
+  try {
+    await open(page, '/activity/year');
+    await page.getByText('Book of the year', {exact: true}).waitFor({timeout: 15000});
+    await sleep(1000);
+    await shoot(page, 'admin/activity-year.png');
+  } finally {
+    await page.setViewportSize(DESKTOP_CONTEXT.viewport);
+  }
+});
+
+await step('people: devices', async () => {
+  await open(page, '/people/devices');
+  await page.getByText('This device', {exact: true}).waitFor({timeout: 15000});
+  await shoot(page, 'admin/devices.png');
+});
+
+await step("a person's Listening tab", async () => {
+  if (!mayaId) throw new Error('maya was not provisioned');
+  await page.setViewportSize({width: 1440, height: 1100});
+  try {
+    await open(page, `/people/user/${mayaId}`);
+    await page.getByRole('heading', {name: 'Recent sessions'}).waitFor({timeout: 15000});
+    await sleep(1000);
+    await shoot(page, 'admin/person-listening.png');
+  } finally {
+    await page.setViewportSize(DESKTOP_CONTEXT.viewport);
+  }
+});
+
+if (heartbeats) clearInterval(heartbeats);
 
 // ── Public pages ────────────────────────────────────────────────────────────
 await step('connect page', async () => {
