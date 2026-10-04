@@ -1,6 +1,6 @@
 ---
 title: "Server settings, updates and logs"
-description: "The Server pages of the AudioSilo admin console: every setting you can change while the server runs (name, address, HTTPS, app links, community metadata, transcoding, demo mode), which ones wait for a restart, checking for new versions and what that sends, and reading the server's log."
+description: "The Server pages of the AudioSilo admin console: every setting you can change while the server runs (name, address, HTTPS, app links, community metadata, transcoding, demo mode, backups, notifications), which ones wait for a restart, checking for new versions and what that sends, reading the server's log, and the audit log of what admins changed."
 ---
 
 The **Server** destination in the [admin console](console-tour.md) is where
@@ -8,12 +8,12 @@ you look after the server itself:
 
 - **Settings** - the server's settings, one topic at a time.
 - **Logs** - what the server has been doing since it started.
+- **Audit log** - what admins changed, and when.
 - **About** - which version you run, whether a newer one exists, and how to
   update.
 
-(**Audit log** is still a "Coming in this redesign" page.) The health of what
-the server depends on - ffmpeg, the certificate, disk space - is on
-[Health > System](health.md#system).
+The health of what the server depends on - ffmpeg, the certificate, disk
+space, backups - is on [Health > System](health.md#system).
 
 ## Settings
 
@@ -21,8 +21,11 @@ the server depends on - ffmpeg, the certificate, disk space - is on
 
 **Server > Settings** lists its topics down the left (across the top on a
 phone): **General**, **Network & HTTPS**, **Players & app links**,
-**Community metadata**, **Transcoding** and **Demo mode**. Each setting lives
-in exactly one of them. The settings are the same ones the server keeps in
+**Community metadata**, **Transcoding**, **Demo mode**, **Backups** and
+**Notifications**. Each setting lives in exactly one of them. Backups and
+Notifications have pages of their own:
+[Backups and restoring](backups.md) and
+[Notifications and the bell](notifications.md). The settings are the same ones the server keeps in
 `config.yaml` in its data folder: a change you save here is written there, so
 it lasts across restarts.
 
@@ -42,7 +45,7 @@ them, and a toast says "Applied now. No restart needed."
 A few are only read when the server starts, and carry a **Restart to apply**
 badge: the listen address, the HTTPS mode and certificate names, the web
 player folder, the community metadata service address, turning demo mode on or
-off, and how long idle demo guests are kept. When you save one of them:
+off, how long idle demo guests are kept, and the backups folder. When you save one of them:
 
 - On **Network & HTTPS**, the console asks first ("Save and apply at the next
   restart?"), because a wrong value there can stop the server from starting.
@@ -283,8 +286,49 @@ A few things to know:
   named after one (a token, password, code, key, cookie or secret) is replaced
   with `[redacted]` before the line reaches this page.
 
+## Audit log
+
+![Server > Audit log](/img/screenshots/admin/audit.png)
+
+**Server > Audit log** lists what admins changed, newest first: when, who,
+what they did and to what, with the details underneath. For example
+"Changed settings" with each setting's old and new value, "Edited a book" with
+the fields that changed, "Gave access" with the person and the share, or
+"Downloaded a backup" with the backup's name. A key symbol next to a name
+means the change was made with a personal API key rather than in a signed-in
+app. Things the server did by itself on an admin's behalf, like applying a
+restore at start, are listed under **AudioSilo**.
+
+What is recorded: changes to accounts, invites, devices signed out, shares and
+access, people's progress, libraries, books and covers, ignored health issues,
+settings, backups (including every download, restore and cancelled restore)
+and notification destinations.
+
+What isn't:
+
+- **Sign-ins and listening.** They are in [Activity](activity.md) and on
+  [People > Devices](users-and-invites.md#the-devices-page) (and you can be
+  [notified](notifications.md) of sign-ins).
+- **Scans** (and rescans of one book, and stopped scans): their history is in
+  [Health > Jobs](health.md#jobs).
+- Anything a member does in a player.
+
+The log never holds a secret: a password change reads only "set" or "removed",
+an invite never shows its code, and a notification destination's address or
+secret only as "New address" or "New secret". It doesn't record IP addresses.
+Entries are kept for a year.
+
+To narrow the list, choose an **Area** (Accounts, Invites, Devices, Shares and
+access, Progress, Libraries, Books, Health, Settings, Backups, Notifications),
+a person under **Who** (the current admins), or type in **Search names and
+paths** (it matches what a change was made to, or who made it). **Show older**
+at the foot loads the next 50.
+
 ## Where to next
 
+- [Backups and restoring](backups.md) and
+  [Notifications and the bell](notifications.md) - the two topics with pages
+  of their own.
 - [Library health and jobs](health.md) - the System page, issues and scans.
 - [Remote access](../getting-started/remote-access.md) - HTTPS, ports and
   proxies in more depth.

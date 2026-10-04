@@ -29,6 +29,8 @@ const sidebars: SidebarsConfig = {
         'admin/sharing',
         'admin/activity',
         'admin/server',
+        'admin/backups',
+        'admin/notifications',
       ],
     },
     {

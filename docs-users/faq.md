@@ -101,6 +101,13 @@ your files at any time - but the database also holds the things that
 favourites, shares, and folder overrides. That's why the data directory
 belongs in your backups.
 
+The server also backs its database up by itself, every night out of the box,
+and can restore one of those backups for you: see
+[Backups and restoring](./admin/backups.md). Those backups sit in the data
+folder unless you point them at another disk, and they don't include
+`config.yaml`, so keep copying the data folder (or at least `config.yaml` and
+the backups) somewhere else.
+
 ### Where does the extra "About this book" information come from?
 
 The description, characters, story-so-far recaps and series links that some

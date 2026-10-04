@@ -49,6 +49,8 @@ internal/api/         HTTP transport
 internal/server/      HTTP(S) server + TLS
 internal/updates/     the update check (GitHub Releases)
 internal/logring/     in-memory log ring for the console
+internal/backup/      database backups + restore at start
+internal/notify/      event feed + webhook/ntfy/Discord
 internal/web/         baked-in web UI
 testdata/library/     M4B test fixtures
 ```
@@ -71,6 +73,10 @@ audiosilo-manager desktop app can run the server in-process** via
 [Manager server integration](../manager/server-integration.md). `Options` carries
 embedding-friendly overrides (`Bind`, `TLSMode`, `PublicURL`, `Libraries`,
 `OnURL`) that are re-validated after being layered onto the loaded config.
+Before the database opens, `Run` applies a restore an admin asked for
+(`backup.ApplyPendingRestore`); it then starts the backup schedule, the
+notification workers and the daily retention (sessions, audit log, event
+feed).
 `resolveTools` here picks the ffmpeg/ffprobe binaries: an explicit path, a copy
 next to the executable, `$PATH`, and only then a download via
 `internal/toolfetch`.
@@ -122,7 +128,8 @@ admin metadata overrides layered onto the index as effective values
 (`overrides.go`, `refreshEffective`), custom covers, the admin catalog queries
 (`adminbooks.go`, `bookdetail.go`), listening sessions derived from progress
 saves and their retention (`sessions.go`), the admin Activity stats
-(`activity.go`) and progress edits (`progress_admin.go`), and
+(`activity.go`) and progress edits (`progress_admin.go`), the admin audit log
+(`audit.go`), notification destinations and the event feed (`notify.go`), and
 `MoveDurableState` (move-tracking).
 Handlers call into this package; it is where catalog business logic belongs.
 
@@ -189,6 +196,22 @@ as plain text into a `Ring` of the newest 2000 (attributes whose key names a
 secret are redacted, long values cut). `GET /admin/logs` queries it for the
 console's Server > Logs. Nothing is written to disk.
 
+### `internal/backup`
+
+Database backups for Settings > Backups: `VACUUM INTO` copies into the backups
+folder on a daily or weekly schedule and on request, retention of scheduled
+backups, and a restore that is checked, left as a marker and applied by
+`ApplyPendingRestore` at the next start after a safety copy. See
+[Backups, audit log and notifications](backups-and-notifications.md).
+
+### `internal/notify`
+
+Records server events (new books, a failed scan, an offline library, a
+sign-in, a used invite, an update, a failed backup) in the feed the console's
+bell reads, and delivers them to webhook, ntfy and Discord destinations in the
+background (signed webhooks, retries, no redirects, nothing secret in a
+message). See [Notifications](backups-and-notifications.md#notifications-internalnotify).
+
 ### `internal/web`
 
 The baked-in admin/connect UI - vanilla HTML/CSS/JS with no build step, embedded
@@ -202,9 +225,12 @@ strict site-wide one and the per-document `htmlCSP` for the player). See
 ```mermaid
 graph TD
   cmd["cmd/audiosilo"] --> launcher["pkg/launcher"]
-  launcher --> api & server & toolfetch
-  api["internal/api<br/>(transport only)"] --> auth & catalog & library & media & config & web
+  launcher --> api & server & toolfetch & backup & notify
+  api["internal/api<br/>(transport only)"] --> auth & catalog & library & media & config & web & backup & notify
   server --> config
+  config --> backup
+  backup --> store
+  notify --> catalog & library
   library --> catalog & metadata
   auth --> store
   catalog --> store
