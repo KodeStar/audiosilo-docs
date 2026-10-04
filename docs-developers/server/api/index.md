@@ -208,8 +208,8 @@ Status mapping is consistent across handlers:
 **Request timeout.** Non-streaming requests are bounded at **30 s** by
 `http.TimeoutHandler`; a request that exceeds it gets
 `503 {"error":"request timed out"}`. Streaming reads - `GET`/`HEAD` on
-`/stream`, `/cover`, a backup's download (`/admin/backups/{name}`) and the
-`/web` static mount - are exempt, so audio playback can run indefinitely and a
+`/stream`, `/cover`, a backup's download (`GET /admin/backups/{name}`, not the
+`…/restore` beside it) and the `/web` static mount - are exempt, so audio playback can run indefinitely and a
 large backup can finish downloading. Only reads are exempt: an upload to a streaming-shaped
 path (the admin custom-cover `PUT /admin/libraries/{id}/cover`) stays bounded
 by the 30 s timeout, so a slow client can't hold it open.

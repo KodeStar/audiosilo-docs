@@ -40,12 +40,14 @@ The **Schedule** card:
 
 - **Back up** - **Off**, **Every day** or **Every week**, then (for a weekly
   backup) the day and the time. The time is the server's own time zone. Out of
-  the box the server backs up every day at 03:00.
+  the box the server backs up every day at 03:00. If the server was off when a
+  backup was due, it makes one as soon as it is back (one, however many it
+  missed).
 - **Scheduled backups to keep** - how many scheduled backups stay in the
   folder, 7 out of the box (anything from 1 to 365). Once there are more, the
-  oldest scheduled backup is deleted each time a new one is made. Backups you
-  make with **Back up now** are never deleted for you: they stay until you
-  delete them.
+  oldest scheduled backup is deleted each time a new one is made (except one
+  that is waiting to be restored). Backups you make with **Back up now** are
+  never deleted for you: they stay until you delete them.
 - **Folder** - where backups are kept: a `backups` folder inside the server's
   data folder unless you choose another one. It can't be changed here, only in
   `config.yaml` (`backups.dir`) or with the `AUDIOSILO_BACKUP_DIR` environment
@@ -99,10 +101,11 @@ starts.
 
    ![Restore this backup?](/img/screenshots/admin/backup-restore.png)
 
-   Before accepting it, the server checks the file: a damaged file, or one
-   that isn't an AudioSilo backup, is refused, and so is a backup made by a
-   newer version of AudioSilo (update this server first). A backup from an
-   older version is fine: it is brought up to date when the server starts.
+   Before accepting it, the server takes a quick look at the file: one that
+   isn't an AudioSilo backup is refused, and so is a backup made by a newer
+   version of AudioSilo (update this server first). A backup from an older
+   version is fine: it is brought up to date when the server starts. The full
+   check for damage happens when the server starts (see below).
 3. A notice, "A restore is waiting for a restart", now sits at the top of the
    page, with **Cancel restore** if you change your mind. Nothing has changed
    yet.
@@ -116,8 +119,8 @@ from *backup* (*time*)" and names the copy it kept. To undo the restore,
 restore that copy the same way.
 
 If the backup can't be used when the server starts (it was deleted in the
-meantime, or it turned out to be damaged), the server starts with its database
-as it was, and the page says "The restore from *backup* wasn't applied" and
+meantime, it turned out to be damaged, or the note of which backup to restore
+couldn't be read), the server starts with its database as it was, and the page says "The restore from *backup* wasn't applied" and
 why. It doesn't try again at the next start.
 
 What to expect after a restore:
@@ -125,8 +128,9 @@ What to expect after a restore:
 - Accounts, passwords, progress, bookmarks, edits, shares, invites and devices
   are as they were when the backup was made.
 - Phones and browsers set up after the backup must sign in again. Devices you
-  signed out after it was made are signed in again, so sign them out again on
-  [People > Devices](users-and-invites.md#the-devices-page) if that matters.
+  signed out, and API keys revoked, after it was made work again, so sign them
+  out again on [People > Devices](users-and-invites.md#the-devices-page)
+  afterwards. The restore dialog says this too.
 - Settings in `config.yaml` stay as they are, and the server's identity does
   too, so the apps still recognise it.
 - Your books are read again from your folders when the server starts, so books

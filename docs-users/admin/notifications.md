@@ -58,9 +58,14 @@ offline library, an update, a failed backup); add the rest if you want them.
 Press **Add destination**, then **Send test** to check it works.
 
 The address and the secret are kept on the server and never shown in full
-again: the list shows only the start of the address. To change one, use
+again: the list shows only the start of the address (for a short ntfy topic,
+not even that). To change one, use
 **Edit** in the destination's **...** menu and type the new value; leaving the
-field empty keeps what is saved, and **Remove the saved secret** removes it. A
+field empty keeps what is saved, and **Remove the saved secret** removes it.
+A saved secret stays with the server it was given for: if you change the
+address to another server, the dialog asks you to enter the secret again (or
+remove it), and the server won't save the new address until you do. A new
+address on the same server keeps the secret. A
 server can have up to 20 destinations.
 
 ## The destination list
@@ -69,8 +74,8 @@ Each destination shows its name, kind, the start of its address, and how the
 last message went:
 
 - **Nothing sent yet**.
-- **Last sent** *time* - it arrived.
-- **Last attempt failed** *time*, with why: "it took too long to answer" (no
+- **Last sent** (*when*) - it arrived.
+- **Last attempt failed** (*when*), with why: "it took too long to answer" (no
   answer within 10 seconds), "the server couldn't connect" (wrong address, or
   the receiver is down), "it answered HTTP *number*" (the receiver refused it,
   for example 404 for a wrong address or 401 for a wrong token), or "something
@@ -92,7 +97,7 @@ Tick a box to send that event there; it saves as you tick.
 | Event | When it happens |
 |---|---|
 | **New books added** | A scan found new books: one message per scan, with a few of the titles. |
-| **A scan failed** | A library couldn't be scanned to the end. The message carries the error the scan stopped with, as [Health > Jobs](health.md#jobs) shows it, which can name a file or folder on the server. |
+| **A scan failed** | A library couldn't be scanned to the end. The bell shows the error the scan stopped with; the message sent out only names the library and points to the scan's log in [Health > Jobs](health.md#jobs), because that error can name a folder on the server. |
 | **A library went offline** | A library's folder can't be read (an unmounted drive or network share), so the scan stopped and nothing was removed. Sent once, not at every scan, until the folder is back. |
 | **Someone signed in** | A password sign-in, or a phone or browser set up from an invite or a QR code, with the person's name, the device's name and the app. Your own sign-ins to this console count too. Demo guests don't. |
 | **An invite was used** | A device was set up from someone's invite. |
@@ -108,7 +113,8 @@ libraries), book titles, counts, a version number, the server's name, and a
 link into this console when the server has a
 [public address](server.md#general) (an update links to its release notes
 instead). They never carry a password, an invite
-code, a token, anyone's IP address, or the destination's own address. On
+code, a token, anyone's IP address, the destination's own address, or a
+folder on the server (a failed scan's error stays in the bell). On
 Discord, mentions are switched off, so a book title or device name with
 `@everyone` in it can't ping anyone. Messages are written in English,
 whatever language the console is in.

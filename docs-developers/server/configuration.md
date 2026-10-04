@@ -290,8 +290,9 @@ value differs from `boot` is listed in the envelope's `restart_pending`
 (`Config.RestartPending`) until the server starts with it.
 
 **A save.** `Config.WithSettings(patch, checks)` clones the saved config,
-refuses a setting that is unknown, read-only or locked, decodes each value into
-its field, runs that field's normalizer, then `Validate`s the whole config.
+refuses a setting that is unknown, read-only or locked, refuses JSON `null`
+for a setting that can't be unset (only a pointer field, `demo.max_users`,
+takes it: "enter a value" otherwise), decodes each value into its field, runs that field's normalizer, then `Validate`s the whole config.
 `config.Checks` carries what the config can't tell by itself: whether a
 metadata service exists (metadata can't be switched on without one) and
 whether a library has the `demo.library` name (the handler looks it up in the

@@ -44,7 +44,7 @@ folder is created `0700`. A server that stops mid-backup leaves the temporary
 file, which `Service.Run` removes at the next start. Two backups of one kind in
 the same second fail (the name exists).
 
-Only names matching `backup.ValidName` (`audiosilo-` + up to 101 plain
+Only names matching `backup.validName` (`audiosilo-` + up to 101 plain
 characters + `.db`, no `..`) are listed, served, deleted or restored, and only
 regular files (`os.Lstat`: a symlink is never followed). A name from a request
 therefore can't leave the folder. A file copied into the folder under such a
@@ -55,14 +55,19 @@ name from elsewhere is listed as `manual`, dated by its modification time.
 the default is `daily:03:00`. `backup.ParseSchedule` checks it (two-digit hour
 and minute), and the settings normalizer stores the canonical form.
 `Service.Run` (started by `pkg/launcher`) wakes every minute, and at once when
-the settings change (`SetSettings`). The next slot is counted from the latest
-of: when `Run` started, the newest scheduled backup made since then, and the
-newest scheduled attempt (`tried`), so a failed attempt waits for its next slot
-instead of retrying every minute.
+the settings change (`SetSettings`). The next slot is counted from the newest
+scheduled backup in the folder, whenever it was made (from when `Run` started
+when there is none), or from the newest scheduled attempt (`tried`) when that
+is later. Counting from the newest backup is what makes a server that was off
+at its time **catch up**: its next slot has already passed, so one backup (however
+many slots were missed) is made within a minute of the start. Counting from the attempt means a failed
+backup waits for its next slot instead of retrying every minute.
 
 **Retention.** After each successful *scheduled* backup, `prune` deletes the
 scheduled backups past the newest `backups.keep` (1-365, default 7). Manual and
 before-restore backups are never pruned: they stay until an admin deletes them.
+Nor is the scheduled backup a waiting restore names (the next start would find
+it gone); if the restore marker can't be read, nothing is pruned that time.
 Lowering `keep` takes effect at the next scheduled backup.
 
 **Status.** `Service.Status` is what the console shows (and
@@ -72,38 +77,45 @@ since the server started, with a short `error`: `disk_full`,
 `permission_denied` or `failed`; the cause is in the log), `latest` (the newest
 backup in the folder that isn't a before-restore copy, whenever it was made)
 and `next` (`null` when the schedule is off). A failed backup calls
-`OnFailure`, which the launcher wires to the `backup_failed` notification.
+`OnFailure`, which the launcher wires to the `backup_failed` notification; a
+backup cut short because the server is stopping is not announced.
 
-`Start` (what `POST /admin/backups` calls) makes a manual backup in the
-background, detached from the request; `Create` refuses a second backup while
-one runs (`ErrBusy`, answered `409 backup_running`).
+`Start` (what `POST /admin/backups` calls) marks the service as running before
+it returns, so the request's own answer already reads `running: true`, then
+makes a manual backup in the background, bound to the server's lifetime rather
+than the request's (so it stops with the server, unannounced). A second
+backup while one runs is refused (`ErrBusy`, answered `409 backup_running`).
 
 ## Restore at the next start
 
 A restore never swaps the database under a running server. It is two steps:
 
-1. **`RequestRestore`** (`POST /admin/backups/{name}/restore`) checks the file
-   with `store.Inspect`: opened read-only (`mode=ro`), `PRAGMA quick_check`
-   must say `ok`, it must have a `schema_migrations` table whose every name is a
-   migration this server ships (a backup from a newer server fails with
-   `store.ErrNewerDatabase`, answered `400 backup_too_new`) and a `users`
-   table. Anything else is `store.ErrNotADatabase` (`400 invalid_backup`).
+1. **`RequestRestore`** (`POST /admin/backups/{name}/restore`) takes a quick
+   look with `store.Inspect(…, false)`: opened read-only (`mode=ro`), it must
+   have a `schema_migrations` table whose every name is a migration this server
+   ships (a backup from a newer server fails with `store.ErrNewerDatabase`,
+   answered `400 backup_too_new`) and a `users` table. Anything else is
+   `store.ErrNotADatabase` (`400 invalid_backup`). The full integrity check
+   (`PRAGMA quick_check`, which reads every page) is left for the start, so a
+   request stays quick.
    Then it writes the marker `<data>/restore.json`
    (`{"name", "requested_at", "requested_by", "schema"}`), replacing any restore
    already waiting. `DELETE /admin/restore` removes it; deleting the backup it
    names removes it too.
 2. **`ApplyPendingRestore`** runs in `pkg/launcher.Run` before `store.Open`.
-   With no marker it does nothing. Otherwise it checks the backup again
-   (`missing` when the file is gone, `unusable` when it no longer passes
-   `Inspect`, `newer` for a newer server's), copies it beside the database as
-   `audiosilo.db.restoring`, and keeps the current database:
+   With no marker it does nothing. Otherwise it checks the backup again, in
+   full this time (`store.Inspect(…, true)`, with `quick_check`): `missing` when
+   the file is gone, `unusable` when it is damaged or not an AudioSilo database,
+   `newer` for a newer server's. Then it copies it beside the database as
+   `audiosilo.db.restoring` and keeps the current database:
    - normally as a backup of kind `before-restore` in the backups folder,
      written with `store.VacuumFile` (a `VACUUM INTO` of the file and its WAL,
      without opening it as the server's database);
    - if that copy fails (the database may be why it is being restored), by
      renaming `audiosilo.db` and its `-wal`/`-shm` to
      `audiosilo.db.before-restore-<time>` beside it in the data folder,
-     untouched.
+     untouched (if one of those renames fails, the files already moved are put
+     back, so the database is never left without its WAL).
 
    It then removes the old `-wal` and `-shm` and renames the staged file to
    `audiosilo.db`. `store.Open` migrates it as usual, so an older backup is
@@ -114,7 +126,10 @@ Whatever happened, the outcome goes to `<data>/restore-result.json`
 `error` is `missing`, `unusable`, `newer` or `failed` and `safety_copy` is the
 before-restore backup's name or the kept-aside file's), and the marker is
 **always removed**: a refused restore is reported once, in the console, rather
-than retried at every start, and the database is left as it was. The launcher
+than retried at every start, and the database is left as it was. A marker that
+can't be read (damaged JSON) is handled the same way: the outcome is `failed`
+with no `name`, the marker is removed, and the server starts on its database as
+it was. The launcher
 then records it in the (now current) database's audit log as the server's own
 act (`via: "system"`, `backup.restore_applied` or `backup.restore_failed`, with
 `requested_by` and `safety_copy` or `error`). `GET /admin/backups` returns both
@@ -158,8 +173,9 @@ are listed as a count and the first ten, and a notification destination's
 change says `address_changed` / `secret_changed` without either value.
 Deliberately **not** audited: sign-ins and listening (Activity and People >
 Devices have them), scans, rescans and job cancels (Health > Jobs keeps their
-history), and anything a non-admin does. Backup **downloads** are audited,
-since a backup holds every account's hashes.
+history), and anything a non-admin does. Backup **downloads** are audited
+(a `GET`; a `HEAD` sends nothing and isn't), since a backup holds every
+account's hashes.
 
 `catalog.PruneAudit` runs at start and then daily (`launcher.retention`, with
 the session roll-up): it deletes events older than 365 days
@@ -176,14 +192,20 @@ kind. A nil `*Service` does nothing, so callers don't check.
 | Kind | Fired by | `data` |
 |---|---|---|
 | `book_added` | `Scanner.OnRunFinished`: a scan job ending `ok` or `partial` that added books (once per scan) | `library`, `library_id`, `count`, `titles` (the first five) |
-| `scan_failed` | a scan job ending `failed` | `library`, `library_id`, `run_id`, `detail` (the error, as the scan's log has it) |
-| `library_unavailable` | a scan job ending `unavailable`, only when the library's previous finished scan wasn't (`catalog.PreviousRunStatus`) | `library`, `library_id` |
+| `scan_failed` | a scan job ending `failed` | `library`, `library_id`, `run_id`, `detail` (the error, as the scan's log has it: **bell only**, see below) |
+| `library_unavailable` | a scan job ending `unavailable`, only when the library's previous scan that reached an answer wasn't (`catalog.PreviousRunStatus` passes over cancelled, interrupted and running scans, so a restart in between doesn't announce it again) | `library`, `library_id` |
 | `new_device` | every password sign-in (`POST /auth/login`) and every pairing exchange (`POST /auth/exchange`), not for demo accounts | `user`, `device` (the name the client sent, one plain line of at most 100 characters), `app` (from `X-AudioSilo-Client`, may be empty) |
 | `invite_redeemed` | a pairing exchange whose token came from an invite code | `user` (whose invite), `device` |
 | `update_available` | `updates.Checker.OnAvailable` after a check that finds a newer release; announced **once per version** (`dedup_key` is the version) | `version`, `name`, `url` (the release page) |
 | `backup_failed` | `backup.Service.OnFailure` (scheduled or manual) | `trigger`, `error` (`disk_full`, `permission_denied`, `failed`) |
 
 `notify.Kinds` lists them in this order, which is the order the console shows.
+
+A failed scan's `detail` is the tool's or the operating system's own message,
+which can name a folder on the server, so it stays inside: the bell shows it,
+but no destination is sent it (`internalData`, stripped by `outbound` from a
+webhook's `data`), and the message text of every `scan_failed` delivery is the
+generic "See the scan's log in Health > Jobs."
 
 ### Delivery
 
@@ -192,7 +214,13 @@ whose `events` include its kind. It never blocks: four workers drain a queue of
 256, and a delivery that finds the queue full is dropped (and logged). Each
 delivery is one `POST` with a 10 second timeout, retried **twice** (after 10
 seconds, then a minute) when it timed out, couldn't connect, or got a `429` or
-a `5xx`; any other status fails at once. The HTTP client **never follows a
+a `5xx`; any other status fails at once. A retry is queued again after its
+delay (`time.AfterFunc`) rather than waited out on a worker, so a destination
+that doesn't answer holds a worker for one attempt at a time and never delays
+the other destinations' deliveries; a retry that finds the queue full is
+dropped (and logged). A retry goes to the destination as it is set when it
+runs: nowhere if it was deleted, switched off or unsubscribed from the event
+meanwhile, and to its new address and secret if those changed. The HTTP client **never follows a
 redirect** (a `3xx` is a failure, `http_3xx`): a redirect would send the message,
 and a webhook's signature, somewhere the admin didn't type.
 
@@ -233,8 +261,15 @@ console never sees a response body.
 A server has at most 20 destinations (`409 too_many_targets`). The address and
 secret are write-only: the API returns `notify.Redact`'s address instead (the
 scheme, host and path, with the last path segment cut to its first four
-characters plus `…`, the query shown as `?…` and any user info dropped) and
+characters plus `…`, or to just `…` when it is four characters or fewer (an
+ntfy topic is its own password), the query shown as `?…` and any user info dropped) and
 `has_secret`.
+
+A saved secret belongs to the server it was given for. A `PATCH` that moves the
+address to another server (a different scheme, host or port, `notify.SameOrigin`)
+without sending `secret` is refused with `field: "secret"`, so a signing key or
+an ntfy token is never sent somewhere it wasn't meant for: send the secret again,
+or `"secret": ""` to clear it. A new path on the same server keeps the secret.
 
 ### Webhook
 
@@ -259,7 +294,7 @@ A JSON `POST` to the address, with `Content-Type: application/json`,
 
 `id` and `at` are the feed's (`0` and the send time for a `test`, whose `data`
 is `{}`); `server.url` and `link` are `""` without a public address; `data` is
-the event's facts from the table above. For `book_added` with more than the
+the event's facts from the table above, **without** a failed scan's `detail`. For `book_added` with more than the
 five titles listed, `message` ends with "and N more".
 
 With a secret set, two more headers sign the request:

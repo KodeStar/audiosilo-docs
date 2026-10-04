@@ -509,9 +509,11 @@ CSP-sensitive work against a real build served by Go. The console's own gate is
   `backups.schedule` as Off / Every day / Every week, a day and a time, and
   `backups-model.ts` converts both ways; `keep` is a number field; the folder
   is read-only), and the list: Back up now (`POST /admin/backups`; the page
-  toasts the outcome when `running` turns false), each backup's Download
+  toasts the outcome when `running` turns false; the 202 answer already reads
+  `running: true`, so polling starts at once), each backup's Download
   (`downloadBackup`, see above), Restore... (a type-to-confirm dialog with the
-  word "restore", then `POST …/restore`) and Delete.
+  word "restore" listing what a restore means, signed-out devices and revoked
+  API keys working again included, then `POST …/restore`) and Delete.
 - **Settings > Notifications** (`notifications-topic.tsx`, `target-dialog.tsx`)
   - over [`GET /admin/notifications`](api/reference.md#get-apiv1adminnotifications):
   one row per destination (redacted address, last delivery from
@@ -520,9 +522,13 @@ CSP-sensitive work against a real build served by Go. The console's own gate is
   saved as it is ticked with an optimistic cache write and a rollback on
   failure) and the privacy notice. The add/edit dialog picks the kind (webhook,
   ntfy, Discord) on add only, never shows the saved address or secret (an
-  empty field keeps it; "Remove the saved secret" sends `""`), preselects the
+  empty field keeps it; "Remove the saved secret" sends `""`; when the typed
+  address is on another server than the saved one, `movesServer`, the secret
+  field says to enter the secret again or remove it, which is what the server
+  requires), offers the events the server knows (`knownEvents`), preselects the
   problem events (`DEFAULT_EVENTS`: scan failed, library offline, update,
-  backup failed), and puts an `invalid_target` refusal under its `field`.
+  backup failed), and puts an `invalid_target` refusal under its `field`. An
+  edit puts the server's answer into the cache (`withTarget`).
 - **The bell** (`components/shell/notifications-bell.tsx`) - `GET /admin/events`
   (`useServerEvents`: the newest 20, every minute), eight listed in a popover,
   each worded by `lib/server-events.ts` `describeEvent` and linking to where it
@@ -536,7 +542,8 @@ CSP-sensitive work against a real build served by Go. The console's own gate is
   `GET /admin/users`) and a debounced search. `audit-model.ts` words each
   action (`audit.action.<code>`, or "Other change (code)" for one it doesn't
   know) and its details (a settings save as one "from → to" line per setting,
-  a book edit per field, a share's paths as the first few and a count).
+  a backup schedule in words, an ignored issue's kind by its Health name, a
+  book edit per field, a share's paths as the first few and a count).
 
 ### Charts
 

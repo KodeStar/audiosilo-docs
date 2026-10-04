@@ -3075,7 +3075,7 @@ written so a form can show it under the field:
 |---|---|---|
 | `200` | | saved; body is the settings envelope |
 | `400` | | not a JSON object of sections |
-| `400` | `invalid_setting` | a value of the wrong type, one its normalizer refuses, a config that doesn't validate (e.g. `tls_mode: "autocert"` without `tls_hosts`, demo on without a library), a `demo.library` that names no library (`field: "demo.library"`), or turning `metadata.enabled` on when no metadata service exists (`available` is false; `field: "metadata.enabled"` - set a valid `metadata.base_url` and restart first) |
+| `400` | `invalid_setting` | a value of the wrong type, one its normalizer refuses, a config that doesn't validate (e.g. `tls_mode: "autocert"` without `tls_hosts`, demo on without a library), a `demo.library` that names no library (`field: "demo.library"`), or turning `metadata.enabled` on when no metadata service exists (`available` is false; `field: "metadata.enabled"` - set a valid `metadata.base_url` and restart first). Also JSON `null` for a setting that can't be unset (anything but `demo.max_users`, whose `null` means the default), refused with "enter a value" |
 | `400` | `unknown_setting` | a section or name that isn't a setting (including the read-only extras such as `metadata.available`) |
 | `400` | `setting_read_only` | `players.web_dir` or `backups.dir` |
 | `409` | `setting_locked` | a setting an environment variable or the launcher sets (see `locked`) |
@@ -3266,7 +3266,7 @@ applied at the next start. All *Admin*. How backups are made, kept and
 restored is in
 [Backups, audit log and notifications](../backups-and-notifications.md#backups-internalbackup).
 A backup is identified by its **file name** (`audiosilo-<UTC time>-<kind>.db`);
-a name that isn't a backup's (`backup.ValidName`) or isn't in the folder is
+a name that isn't a backup's (`backup.validName`) or isn't in the folder is
 `404 backup_not_found`.
 
 ### `GET /api/v1/admin/backups`
@@ -3304,13 +3304,13 @@ restore waiting for, or applied at, a start:
 | `status.latest` | the newest backup in the folder that isn't a before-restore copy, whenever it was made (`null` when there is none) |
 | `status.next` | the next scheduled backup, in the server's time zone; `null` when the schedule is off |
 | `restore.pending` | the restore waiting for the next start: `{name, requested_at, requested_by, schema}` (`schema` is the backup's newest migration), or `null` |
-| `restore.last` | how the last restore went, written at start: `{name, applied_at, requested_by, ok, error, safety_copy}`. `error` (when `ok` is false) is `missing`, `unusable`, `newer` or `failed`, and the database was left as it was; `safety_copy` names the before-restore backup (or, if the database couldn't be copied, the file it was renamed to in the data folder). `null` when no restore ever ran |
+| `restore.last` | how the last restore went, written at start: `{name, applied_at, requested_by, ok, error, safety_copy}`. `error` (when `ok` is false) is `missing`, `unusable`, `newer` or `failed`, and the database was left as it was; `safety_copy` names the before-restore backup (or, if the database couldn't be copied, the file it was renamed to in the data folder). A restore marker that couldn't be read is reported as `error: "failed"` with an empty `name`. `null` when no restore ever ran |
 
 ### `POST /api/v1/admin/backups`
 
 *Admin.* Starts a manual backup in the background and answers `202` with the
-`GET` envelope. Poll `GET` while `status.running` is true; the outcome is
-`status.last`. Audited (`backup.create`).
+`GET` envelope, whose `status.running` is already `true`. Poll `GET` while it
+stays true; the outcome is then `status.last`. Audited (`backup.create`).
 
 | Status | Meaning |
 |---|---|
@@ -3322,7 +3322,8 @@ restore waiting for, or applied at, a start:
 *Admin.* Downloads a backup: `Content-Type: application/vnd.sqlite3`,
 `Content-Disposition: attachment; filename="<name>"`, `Cache-Control: no-store`,
 served with `http.ServeContent` (ranges supported). The path is outside the
-API's 30-second request timeout, like streaming. Every download is audited
+API's 30-second request timeout, like streaming (a restore or a delete stays
+bounded by it). Every download (`GET`; a `HEAD` isn't) is audited
 (`backup.download`): the file holds every account's password and token hashes.
 
 | Status | Meaning |
@@ -3346,11 +3347,15 @@ cancelled first. Audited (`backup.delete`).
 (`<data>/restore.json`), replacing any restore already waiting. Nothing
 changes until the server restarts. The answer is the `GET` envelope with
 `restore.pending` set. Audited (`backup.restore`, with the backup's `schema`).
+The check here is quick (readable, an AudioSilo schema this server knows); the
+full integrity check (`PRAGMA quick_check`) runs at the next start, which
+reports a damaged backup as a refused restore (`restore.last.error`
+`"unusable"`) and leaves the database as it was.
 
 | Status | Meaning |
 |---|---|
 | `200` | scheduled; body is the envelope |
-| `400` `invalid_backup` | the file is damaged (`PRAGMA quick_check` fails) or isn't an AudioSilo database |
+| `400` `invalid_backup` | the file can't be read as an AudioSilo database (no schema record or accounts table) |
 | `400` `backup_too_new` | it was made by a newer server (it has a migration this one doesn't ship) |
 | `404` `backup_not_found` | no such backup |
 
@@ -3391,7 +3396,7 @@ A destination reads:
 | `kind` | `webhook`, `ntfy` or `discord`; can't change after creation |
 | `events` | the event kinds sent there, in `notify.Kinds` order |
 | `last_at`, `last_ok`, `last_error` | the newest delivery or test: `null` before the first; `last_error` is `timeout`, `unreachable`, `http_<status>` or `failed` (never the address or the answer) |
-| `address` | the redacted address (`notify.Redact`): scheme, host and path with the last segment cut to four characters and `…`, a query as `?…`, user info dropped |
+| `address` | the redacted address (`notify.Redact`): scheme, host and path with the last segment cut to four characters and `…` (just `…` when it has four or fewer), a query as `?…`, user info dropped |
 | `has_secret` | a signing secret (webhook) or access token (ntfy) is saved |
 
 ### `GET /api/v1/admin/notifications`
@@ -3426,7 +3431,11 @@ are checked by `notify.Clean` (see
 
 *Admin.* Changes the fields sent (`name`, `url`, `secret`, `enabled`,
 `events`); an absent field keeps its value, so the address and secret survive
-an edit that doesn't send them. `"secret": ""` clears the secret. Answers `200`
+an edit that doesn't send them. `"secret": ""` clears the secret. A saved
+secret doesn't follow the address to another server: a new `url` with a
+different scheme, host or port and no `secret` in the body is
+`400 invalid_target` with `field: "secret"` (send the secret again, or `""`);
+a new path on the same server keeps it. Answers `200`
 with the destination. Sending a different `kind` is `400 invalid_target` with
 `field: "kind"`; other refusals as for `POST`; `404` (no `code`) when there is
 no such destination. Audited (`notify.update`, recording `address_changed` /
@@ -3446,7 +3455,9 @@ records the outcome on the destination, and answers:
 { "ok": false, "error": "unreachable", "target": { "id": 2, "last_ok": false, "last_error": "unreachable" } }
 ```
 
-(`target` is the whole destination as above.) `error` is `""` when it arrived.
+(`target` is the whole destination as above.) `error` is `""` when it arrived,
+and `"failed"` from a server built without the notification service (an
+embedder's; never one the launcher starts).
 A failed delivery is not an HTTP error here: the answer is `200` either way,
 `404` when there is no such destination.
 
@@ -3457,7 +3468,7 @@ A failed delivery is not an HTTP error here: the answer is `200` either way,
 | Query param | Type | Default | Notes |
 |---|---|---|---|
 | `before` | int | - | only events with a smaller `id`: the previous page's `next_before` |
-| `limit` | int | `20` | 1-100 (anything else means 20) |
+| `limit` | int | `20` | at most 100 (a larger one is cut to 100; zero or less means 20) |
 
 ```json
 {
@@ -3472,7 +3483,8 @@ A failed delivery is not an HTTP error here: the answer is `200` either way,
 }
 ```
 
-`data` per kind is in [Events](../backups-and-notifications.md#events);
+`data` per kind is in [Events](../backups-and-notifications.md#events) (a
+failed scan's `detail` is here, for the bell, but never sent to a destination);
 `next_before` is `0` on the last page. A `before` that isn't a non-negative
 number is `400`.
 
@@ -3490,7 +3502,7 @@ is in [Audit log](../backups-and-notifications.md#audit-log).
 | `area` | string | - | an action's first part (`user`, `invite`, `library`, `book`, `share`, `device`, `progress`, `issue`, `settings`, `backup`, `notify`); `[a-z_]{1,32}` |
 | `q` | string | - | the target or the actor's name contains it, ignoring case; at most 200 characters |
 | `before` | int | - | the previous page's `next_before` |
-| `limit` | int | `50` | 1-200 (anything else means 50) |
+| `limit` | int | `50` | at most 200 (a larger one is cut to 200; zero or less means 50) |
 
 ```json
 {
