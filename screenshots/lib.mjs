@@ -47,13 +47,14 @@ export function optimize(file) {
   }
 }
 
-// SHOTS_ONLY=<prefix> limits a run to the screenshots whose path starts with it
-// (e.g. SHOTS_ONLY=admin/), so adding a few shots doesn't re-encode every
-// other committed PNG. Unset = capture everything.
-const ONLY = process.env.SHOTS_ONLY || '';
+// SHOTS_ONLY=<prefix>[,<prefix>...] limits a run to the screenshots whose path
+// starts with one of them (e.g. SHOTS_ONLY=admin/, or
+// SHOTS_ONLY=admin/activity,admin/people.png), so adding a few shots doesn't
+// re-encode every other committed PNG. Unset = capture everything.
+const ONLY = (process.env.SHOTS_ONLY || '').split(',').map((s) => s.trim()).filter(Boolean);
 
 export async function shoot(page, relFile) {
-  if (ONLY && !relFile.startsWith(ONLY)) return;
+  if (ONLY.length && !ONLY.some((prefix) => relFile.startsWith(prefix))) return;
   const file = path.join(OUT_ROOT, relFile);
   await mkdir(path.dirname(file), {recursive: true});
   await page.screenshot({path: file});

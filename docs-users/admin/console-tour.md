@@ -1,12 +1,13 @@
 ---
 title: "Admin console tour"
-description: "Where to find the AudioSilo admin console, how to sign in, how it is laid out, what the overview and the search palette show, where library health and scans live, and the server settings it holds."
+description: "Where to find the AudioSilo admin console, how to sign in, how it is laid out, what the overview and the search palette show, where activity, library health and scans live, and the server settings it holds."
 ---
 
 Every AudioSilo server ships with a built-in admin console. It is a web page
 served by the server itself - nothing extra to install - and it is where you
-manage libraries, books and their details, people, invites and shares, and
-keep an eye on library health and scans.
+manage libraries, books and their details, people, invites, shares and
+devices, see what everyone is listening to, and keep an eye on library health
+and scans.
 
 ## Opening the console
 
@@ -90,13 +91,18 @@ The console is being rebuilt in stages. These sections work today:
 | **People > People** | Everyone with an account, inviting someone new, and each person's own page. See [People and invites](users-and-invites.md). |
 | **People > Invites** | Every invite link, with rotate and revoke. See [People and invites](users-and-invites.md#the-invites-page). |
 | **People > Shares** | Named sets of folders you give to people. See [Sharing](sharing.md). |
+| **People > Devices** | Every signed-in phone, browser and API key, and signing one out. See [The Devices page](users-and-invites.md#the-devices-page). |
+| **Activity > Overview** | Listening over 7 days to a year: hours, sessions, top books and people, completion, playback, apps, and your collection's growth and storage. See [Activity](activity.md). |
+| **Activity > Live now** | Every device playing right now, with its app and how it plays. See [Live now](activity.md#live-now). |
+| **Activity > Sessions** | Every listening session, for everyone, one person or one book. See [Sessions](activity.md#sessions). |
+| **Activity > Year in listening** | A calendar year of listening, told as a story. See [Year in listening](activity.md#year-in-listening). |
 | **Health > Issues** | Books that could be better (unreadable files, missing covers, likely duplicates and more), each with a fix or Ignore, and offline libraries. See [Library health](health.md#library-health). |
 | **Health > Jobs** | The scan running now, the scans waiting, the schedules, and every scan's history and log. See [Jobs](health.md#jobs). |
 | **Server > Settings** | The community metadata lookup. See [Server settings](#server-settings). |
 
-The other sections - People **Devices**; everything under **Activity**;
-Health **System**; and Server **Logs**, **Audit log** and **About** - show a
-"Coming in this redesign" page that says what will live there.
+The other sections - Health **System**, and Server **Logs**, **Audit log** and
+**About** - show a "Coming in this redesign" page that says what will live
+there.
 Notifications are a placeholder too.
 
 ## The overview
@@ -104,14 +110,16 @@ Notifications are a placeholder too.
 The overview is the console's home: a greeting and a line saying how many
 people are listening right now, then:
 
-- **Listening now** - a card per book someone is playing at the moment (a
-  player saved progress for it in the last ten minutes), with the listener's
-  name, the cover, a progress bar and how long ago it updated.
+- **Listening now** - a card per device playing or paused in the last ten
+  minutes, with the listener's name, the cover, the book and its chapter, a
+  progress bar and **Playing** or **Paused**. Click a card to open
+  [Activity > Live now](activity.md#live-now) for the device, app and playback
+  details.
 - **Totals** - **Books** (every audiobook indexed, across all libraries),
   **Libraries**, **People** (every account, admins included) and **Books in
   progress** (started but not finished, across everyone).
-- **Recent listening** - the latest progress that isn't live any more: who,
-  which book, how far (or "finished") and when.
+- **Recent listening** - the latest progress, leaving out the books being
+  listened to right now: who, which book, how far (or "finished") and when.
 - **Needs attention** - the kinds of library issue that have something in
   them (for example "Missing covers" or "Files that couldn't be read"), each
   with its count. Click one to open its list, or **Triage** to open
@@ -210,5 +218,7 @@ privileged request.
 - [People and invites](users-and-invites.md) - invite people and get their
   devices connected.
 - [Sharing](sharing.md) - control which folders each person can see.
+- [Activity](activity.md) - see what everyone listens to, and what the server
+  records to show it.
 - [Library health and jobs](health.md) - fix what could be better, and follow
   your scans.

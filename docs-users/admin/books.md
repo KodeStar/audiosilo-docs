@@ -172,7 +172,10 @@ in the book folder, and players show them in place of the book's own art.
 ### Listeners and who can see the book
 
 - **Listeners** - everyone who has started the book, with their progress or
-  "Finished", most recent first.
+  "Finished", most recent first. Each has a menu (**...**) to mark the book
+  finished or not finished for them, edit their start and finish dates, or see
+  their listening sessions on it (see
+  [Editing someone's progress](users-and-invites.md#editing-someones-progress)).
 - **Who can see this** - each [share](sharing.md) that includes the book, and
   through which folder, or "Whole-library access". If no share includes it,
   only admins can listen to it. **Add to a share** adds the book to a share

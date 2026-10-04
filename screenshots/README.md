@@ -24,7 +24,8 @@ meta-site shots, then runs the Playwright captures and backfills placeholders.
 `SKIP_META=1` skips the meta stack (for a web/admin-only run).
 `SHOTS_ONLY=<prefix>` writes only the screenshots whose path starts with it
 (e.g. `SHOTS_ONLY=admin/`), so adding a few shots doesn't re-encode every
-other committed PNG.
+other committed PNG. It takes a comma-separated list too
+(`SHOTS_ONLY=admin/activity,admin/people.png`).
 
 `run.sh` builds the server's admin console (`admin-ui`) first, because its
 output is embedded in the binary, never committed. `capture-admin.mjs` signs in
@@ -50,6 +51,24 @@ file (the generated audio is silence, made with **ffmpeg**) - and adds it
 through the API with a daily schedule and skip rules, which
 `admin/library-edit.png` then shows. It runs last so the Books screens keep
 showing only the seeded library; the seeded files are only read.
+
+The Activity shots (`admin/activity*.png`, `admin/devices.png`,
+`admin/person-listening.png`) need real listening sessions, and the server
+only derives those from progress saves as they happen: a device's listened time
+is its position advance, capped by the server's clock between two saves, so it
+can't be faked faster than real time. `capture-admin.mjs` therefore signs three
+listeners in with a password (maya, theo and nora, each naming a different app
+build in `X-AudioSilo-Client`), saves each one's progress twice 15 s apart
+before the first shot (so the overview and the people cards show them live),
+and keeps saving every 15 s in the background. Theo's device fetches a
+`?transcode=1` stream first (so his session counts as transcoded) and has an
+unused personal API key; nora stops 90 s before the Activity shots, so Live now
+shows her as paused. The Activity screens are captured last, once
+`LISTEN_MINUTES` (default 8) have passed since the listeners started, so the
+charts and totals have twenty-odd minutes of listening to show rather than a
+sliver. That
+wait is most of an admin run's length; a smaller value is fine for checking the
+script.
 
 Every capture is optimized in place with **pngquant** (`brew install pngquant`)
 - a lossy-palette pass that shrinks the retina PNGs ~60% with no perceptible

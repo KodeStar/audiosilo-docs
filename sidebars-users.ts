@@ -27,6 +27,7 @@ const sidebars: SidebarsConfig = {
         'admin/health',
         'admin/users-and-invites',
         'admin/sharing',
+        'admin/activity',
       ],
     },
     {
