@@ -34,6 +34,11 @@ the last day of that period; unknown release dates remain pending. Existing
 eligible content is silently baselined on first startup, while newer books
 remain queued until day 30. A given work/content type announces only once.
 
+When a catalogue repair merges duplicate works, the retired slug answers `301`
+with its survivor, where the community content reappears. The survivor inherits
+the retired row's announced or baselined state, so a merged book does not
+announce again. A failed redirect lookup keeps the previous baseline.
+
 Discovery uses paginated coverage results, including whole-book recap summaries,
 and checks catalogue identity around each complete scan. Failed scans preserve
 the previous baseline. Announcements contain no recap text or character details;
