@@ -205,7 +205,8 @@ session of the same person already carried, signed out or not, is not
 announced as a `new_device` [event](#get-apiv1adminevents); one without it
 always is. The admin console sends one; players may adopt it. An admin signing
 a session out (`DELETE /admin/devices/{id}`) forgets its `device_id` on every
-session of that person, so the browser's next sign-in is announced again.
+session of that person, and a new password or a disabled account forgets all of
+that person's, so the browser's next sign-in is announced again.
 
 Response `200`: `{ "token": "…", "user": { … } }` - same shape as
 `/auth/exchange`.

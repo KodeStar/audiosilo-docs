@@ -389,4 +389,7 @@ carried it; `handleLogin` then skips `new_device`. It is not a credential: it
 can only keep a notice quiet. Because of that, `auth.RevokeDevice` (an admin's
 "Sign out" in People > Devices) blanks the key on every session of that person
 that carries it, so a browser cut off for being someone else's is announced
-again when it comes back, even with the password.
+again when it comes back, even with the password. A new password
+(`auth.SetPassword`, the person's own change included) and disabling the account
+forget every browser of that person (`forgetBrowsers`): both are what follows a
+stolen password.
