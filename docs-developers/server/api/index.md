@@ -52,8 +52,12 @@ Authorization: Bearer <session token>
 Admin routes (`/api/v1/admin/*`) additionally require the `admin` role (403
 otherwise). Tokens are opaque secrets, stored server-side only as SHA-256 hashes;
 sessions have **no expiry** and are revoked explicitly (`POST /auth/logout`, or
-by an admin disabling/deleting the account). Every authenticated request bumps
-the token's `last_seen`, which is what surfaces as a user's "last activity".
+by an admin disabling/deleting the account, or signing that one device out
+with `DELETE /admin/devices/{id}`). Every authenticated request bumps the
+token's `last_seen`, which is what surfaces as a user's "last activity", and
+records the request's address (`last_ip`) and, when it names one, its app (see
+[Client identification](#client-identification-x-audiosilo-client)) on the
+token.
 
 There are three ways to obtain a session token:
 
@@ -97,6 +101,39 @@ routes (`requireMediaAuth` in `internal/api/middleware.go`): a token in a query
 string can leak into access logs and `Referer` headers, so no other route
 accepts it. Native clients should keep using the header even for media.
 
+### Client identification: `X-AudioSilo-Client`
+
+A client names itself on each request with an optional header:
+
+```
+X-AudioSilo-Client: AudioSilo/1.4.2 (ios)
+```
+
+The form is `<app>/<version> (<platform>)`; the version and the platform are
+optional (the admin console sends `AudioSilo Admin (web)`, since it ships inside
+the server). `auth.ParseClient` parses it strictly - an app name of up to 40
+plain characters, a version of up to 32, a platform of up to 24 (lower-cased) -
+and a malformed or empty value is ignored, as if absent. It is never an error.
+
+The server keeps the newest value **per token**, for the admin console's
+[devices and sessions](reference.md#admin-activity): app, version and platform,
+plus the address of the token's newest request. Both are overwritten, never
+kept as a history, and a signed-out token's address is blanked by the daily
+retention job. A request **without** the header keeps the stored app, so
+media fetches by a browser's `<img>` / `<audio>` (which can't set headers) don't
+erase it. A token whose client never sent the header (players released before
+it) reads as an unknown app (`client: null`).
+
+Who sends it:
+
+- **The player** - always on native. On web only when the API is
+  **same-origin** with the page: a custom header makes a cross-origin request
+  non-simple, so the browser sends a CORS preflight, and servers released before
+  the header don't allow it (see [CORS](#cors)). The embedded `/web` player is
+  same-origin, so it identifies itself.
+- **The admin console** - always (it is same-origin).
+- Anything else may send it; nothing requires it.
+
 ## Error envelope and status conventions
 
 Every error is a JSON object with an `error` message:
@@ -122,7 +159,7 @@ Failures a person can fix also carry a machine-readable **`code`** next to
 | `cannot_delete_self` | `400` | an admin deleting their own account |
 | `path_not_absolute` | `400` | `GET /admin/fs/dirs` with a relative `path` |
 | `folder_unreadable` | `404` | `GET /admin/fs/dirs` on a missing or unreadable folder |
-| `book_not_found` | `404` | an admin catalog call on a path that is not an indexed book (book page, edit, bulk edit, match, cover upload) |
+| `book_not_found` | `404` | an admin catalog call on a path that is not an indexed book (book page, edit, bulk edit, match, cover upload); an admin progress edit on a path with no progress and no indexed book |
 | `invalid_override` | `400` | a metadata edit the server refuses; the body also carries a `field` key naming the offending field (`PATCH /admin/libraries/{id}/book`, `POST /admin/books/bulk`) |
 | `metadata_off` | `404` | a community match search while community metadata is turned off |
 | `too_large` | `400` / `413` | a bulk edit or an issue ignore over 1000 books, or a cover batch over 60 (`400`); a custom cover over 5 MiB (`413`) |
@@ -130,6 +167,8 @@ Failures a person can fix also carry a machine-readable **`code`** next to
 | `invalid_schedule` | `400` | a library `scan_schedule` that isn't `""`, `every:<N>h` (1, 3, 6, 12, 24) or `daily:HH:MM` (`POST`/`PATCH /admin/libraries`) |
 | `invalid_pattern` | `400` | a library `ignore_patterns` list the server refuses: more than 100 patterns, one over 200 bytes, one that matches nothing, or a malformed wildcard; the message names the line (`POST`/`PATCH /admin/libraries`) |
 | `not_indexable` | `404` | `POST /admin/libraries/{id}/book/rescan` on a path with no book any more (gone, not a book, or skipped by the library's ignore rules) |
+| `current_device` | `409` | `DELETE /admin/devices/{id}` on the token making the request (sign out instead) |
+| `invalid_range` | `400` | `GET /admin/stats?range=` with a range that isn't `7d`, `30d`, `90d`, `1y` or a year |
 
 **Branch on `code`, not on the English `error` text**, which is free to change.
 Errors without a `code` are ones a client can't help the person fix.
@@ -146,7 +185,7 @@ Status mapping is consistent across handlers:
 | `401` | missing/invalid/expired token, bad credentials, invalid auth code, wrong `current_password` |
 | `403` | authenticated but not allowed: no share grants the library or path, `admin only`, demo accounts on the self-service routes (password/recovery/API keys), an API key on a credential-minting route (create key/recovery/pair/password), bad setup token |
 | `404` | library/user/share/invite not found, `no book at that path`, feature not configured (demo mode off, well-known files unset) |
-| `409` | conflicts: `name already taken` (library/share), last-enabled-admin guard, setup already completed |
+| `409` | conflicts: `name already taken` (library/share), last-enabled-admin guard, signing out the device making the request, setup already completed |
 | `413` | a request body over an endpoint's size cap (a custom cover over 5 MiB) |
 | `415` | an upload of a type the endpoint doesn't take (a custom cover that isn't JPEG/PNG/WebP) |
 | `429` | a rate limiter tripped (see below) |
@@ -283,7 +322,8 @@ CORS is a strict allow-list driven by `cors_origins` in the server config:
   the player served at `/web`) are unaffected.
 - **Listed origins:** an exact-match `Origin` gets
   `Access-Control-Allow-Origin: <that origin>` (plus `Vary: Origin`), methods
-  `GET, POST, PUT, DELETE, OPTIONS`, headers `Authorization, Content-Type`, and
+  `GET, POST, PUT, DELETE, OPTIONS`, headers
+  `Authorization, Content-Type, X-AudioSilo-Client`, and
   a 600 s preflight cache. `OPTIONS` requests short-circuit with 204.
 - **`"*"`:** allows any origin (the request's own `Origin` is echoed back).
 

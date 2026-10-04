@@ -118,7 +118,10 @@ keyset-paginated listings, per-user listening state
 `Scope` authorization model, folder-detection overrides, path-keyed enrichment,
 admin metadata overrides layered onto the index as effective values
 (`overrides.go`, `refreshEffective`), custom covers, the admin catalog queries
-(`adminbooks.go`, `bookdetail.go`), and `MoveDurableState` (move-tracking).
+(`adminbooks.go`, `bookdetail.go`), listening sessions derived from progress
+saves and their retention (`sessions.go`), the admin Activity stats
+(`activity.go`) and progress edits (`progress_admin.go`), and
+`MoveDurableState` (move-tracking).
 Handlers call into this package; it is where catalog business logic belongs.
 
 ### `internal/library`

@@ -169,7 +169,7 @@ audiobooks" into "remote file read on your NAS".
   `--setup`, enables a one-time-token setup wizard at `/setup`
   (`internal/api/handlers_setup.go`) that self-closes the moment an admin exists.
 - **Hashed secrets**: tokens and auth codes are stored only as SHA-256 hashes;
-  passwords use argon2id (`internal/auth/hash.go`). `auth.ResolveToken` resolves
+  passwords use argon2id (`internal/auth/hash.go`). `auth.ResolveRequest` resolves
   opaque bearer tokens against the hashes.
 - **Fragment-carried codes**: invite links are `<base>/connect#code=…` and the
   setup wizard is `/setup#token=…` - fragments never reach the server or its
@@ -187,7 +187,7 @@ audiobooks" into "remote file read on your NAS".
   `internal/api/middleware.go`); every other route is header-only, so session
   tokens can't leak into logs or Referer headers elsewhere.
 - **Tested both ways**: security-critical code (`SafeJoin`, scope checks, rate
-  limiters, `ResolveToken`, `htmlCSP`) requires both an *allowed* and a *denied*
+  limiters, `ResolveRequest`/`lookupToken`, `htmlCSP`) requires both an *allowed* and a *denied*
   regression test - see [gates and CI](../contributing/gates-and-ci.md).
 
 ## Quick self-check before you ship

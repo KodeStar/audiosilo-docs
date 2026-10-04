@@ -4,7 +4,7 @@ description: "The SQLite schema behind audiosilo-server: the rebuildable index v
 ---
 
 The schema lives in `internal/store/migrations/` as numbered SQL files
-(`0001_init.sql` … `0017_health_jobs.sql`), embedded into the binary and
+(`0001_init.sql` … `0018_sessions.sql`), embedded into the binary and
 applied by `store.Open` at startup. This page documents the **resulting current
 schema**, noting which migration added what.
 
@@ -18,7 +18,7 @@ thing to understand before touching it:
   from a rescan at any time. `books.id` is an internal artifact of this half:
   it must **never** appear in the API contract or in durable user state.
 - **Durable state** - `progress`, `bookmarks`, `notes`, `listening_history`,
-  `favourites` (per-user), plus `folder_overrides`, `book_enrichment`,
+  `listening_sessions`, `listening_daily`, `favourites` (per-user), plus `folder_overrides`, `book_enrichment`,
   `issue_ignores`, `book_overrides`, `chapter_overrides` and `book_covers`
   (per-library config) - is keyed by **`(library_id, rel_path)`**, with **no
   foreign key to `books`**.
@@ -42,7 +42,7 @@ Why no FK across the seam? Three reasons, all load-bearing:
 
 The remaining gap - a file that *moves* on disk - is covered by move-tracking:
 the scanner fingerprints files (`books.content_hash`) and calls
-`catalog.MoveDurableState` to carry all ten path-keyed book tables (everything
+`catalog.MoveDurableState` to carry all twelve path-keyed book tables (everything
 above except `folder_overrides`, which is keyed by folder, not book) from the
 old path to the new one (see [Scanner](scanner.md#move-detection)).
 
@@ -62,6 +62,8 @@ erDiagram
     libraries ||--o{ bookmarks : ""
     libraries ||--o{ notes : ""
     libraries ||--o{ listening_history : ""
+    libraries ||--o{ listening_sessions : ""
+    libraries ||--o{ listening_daily : ""
     libraries ||--o{ favourites : ""
     libraries ||--o{ folder_overrides : "durable config"
     libraries ||--o{ book_enrichment : "durable config"
@@ -92,7 +94,8 @@ background reaper deletes by flag, not by username prefix (which could catch a
 real account named `demo_*`). There is deliberately **no `last_login` column** -
 last activity is derived from `MAX(tokens.last_seen)`.
 
-**`tokens`** *(0001; `auth_code_id` added in 0014)* - opaque bearer tokens:
+**`tokens`** *(0001; `auth_code_id` added in 0014; `client_app`,
+`client_version`, `client_platform` and `last_ip` in 0018)* - opaque bearer tokens:
 `user_id` (FK CASCADE), `token_hash` (UNIQUE - only the SHA-256 hash is
 stored), `kind` (`'session'`/`'pairing'`/`'api'`, the last being a user-minted personal
 API key whose label rides in `device_name`), `device_name`, `created_at`,
@@ -100,6 +103,17 @@ API key whose label rides in `device_name`), `device_name`, `created_at`,
 expiry), `revoked`, and `auth_code_id` (FK CASCADE to `auth_codes`, NULL for
 sessions and unlinked pairing tokens) - a pairing token minted by redeeming a
 code is linked to it, inherits its uses/expiry at exchange, and dies with it.
+`client_app` / `client_version` / `client_platform` are the newest valid
+[`X-AudioSilo-Client`](api/index.md#client-identification-x-audiosilo-client)
+header the token sent (`''` until one does - how a client released before the
+header reads as an unknown app; a request without the header leaves them
+alone), and `last_ip` the address of its newest request. Both are overwritten by
+`auth.ResolveRequest` on every authenticated request, never kept as a history,
+and the daily retention job blanks `last_ip` on revoked tokens
+(`auth.ForgetRevokedAddresses`), so an address is kept only while the device is
+signed in.
+The admin console lists live session and API-key tokens as **devices**
+(`auth.ListDevices`) and can revoke one (`auth.RevokeDevice`).
 
 **`auth_codes`** *(0001; `kind` + `redeemed_at` added in 0010)* - redeemable
 codes: `code_hash` (UNIQUE, SHA-256 of the normalized code), `user_id` (FK
@@ -224,7 +238,17 @@ tables were rebuilt rather than migrated in place):
 
 - **`progress`** - PK `(user_id, library_id, rel_path)`; `position`,
   `duration`, `finished`, `playback_speed`, `device_id`, `updated_at`, and
-  `version` (monotonic, breaks `updated_at` ties). Reconciliation is
+  `version` (monotonic, breaks `updated_at` ties), and *(0018)* `started_at`
+  (stamped by the first save, then kept) and `finished_at` (stamped when
+  `finished` turns on, cleared when it turns off - a restart). Both take the
+  save's own `updated_at` (after the plausibility check that substitutes server
+  time for a missing, unparseable or future one), so a finish replayed from an
+  offline queue is dated when it happened; an admin edit
+  (`catalog.EditProgress`) uses server time. Both are normalized to RFC 3339 UTC
+  to the second; migration 0018 backfilled `finished_at`
+  on finished rows with their `updated_at`, and older rows have no
+  `started_at`. They are admin-only (`catalog.ListUserProgress`,
+  `catalog.EditProgress`), not on the player's progress JSON. Reconciliation is
   last-write-wins in `catalog.SaveProgress`; any future realtime layer must
   reuse that merge. Index `idx_progress_path` *(0016)* on
   `(library_id, rel_path)` serves the per-path lookups the primary key (which
@@ -233,10 +257,83 @@ tables were rebuilt rather than migrated in place):
 - **`bookmarks`**, **`notes`** - id-PK rows keyed by
   `(user_id, library_id, rel_path)` plus `position` and text.
 - **`listening_history`** - listening spans (`from_pos`, `to_pos`,
-  `started_at`, `ended_at`).
+  `started_at`, `ended_at`) that players post when playback stops; the player's
+  own History list.
+- **`listening_sessions`** *(0018)* - one row per listening session, derived
+  on the server from progress saves (see
+  [Listening sessions](#listening-sessions-how-they-are-derived)): `user_id`
+  and `library_id` (FK CASCADE), `rel_path`, `token_id` (the device - **no FK**,
+  a session outlives its token's sign-out, so `device_name` and `client_app` /
+  `client_version` / `client_platform` are copied onto the row), `started_at` /
+  `last_at` (first and newest save; UTC, fixed-width RFC 3339 with milliseconds,
+  `catalog.sessionTime`, so they compare as strings), `start_pos` / `end_pos`,
+  `duration`, `speed`, `listened` (wall-clock seconds), `codec` (the book's at
+  the session's start), `transcoded`, `finished`. Indexes on `started_at`,
+  `last_at`, `(user_id, id)` and `(library_id, rel_path)`.
+- **`listening_daily`** *(0018)* - raw sessions past the retention, summed per
+  server-local `day` (`YYYY-MM-DD`), `user_id`, `library_id` and `rel_path`:
+  `listened` and `sessions`. Device, app, time of day and playback mode are
+  dropped. No primary key - a book moving onto a path that already has rows just
+  adds rows, and every reader sums.
 - **`favourites`** *(0009)* - PK `(user_id, library_id, rel_path)`. A
   favourite may address **any** path: a navigation folder (author/series), a
   book folder, or a single-file book.
+
+### Listening sessions: how they are derived
+
+Players already save progress every 15 s while playing, plus on pause, seek
+and stop (`PUT /libraries/{id}/progress`). `handlePutProgress` passes each save
+to `catalog.RecordHeartbeat` with the token that made it, so a session knows its
+device and app and works for every client already shipped. The client-posted
+`listening_history` spans can't serve: they arrive only when playback stops,
+are dropped while the player is offline, and carry no device.
+
+- **Server time only.** Every time here is when the server received the save;
+  the save's own `updated_at` is not used (a device clock can be wrong).
+- **Grouping.** A save extends the session the same token last saved on the
+  same book when it comes within 10 minutes (`catalog.SessionGap`). After a
+  longer gap it still continues the session if the position advanced by about
+  the time that passed, at the playback speed (at least 90% of it and at most
+  110% plus a minute, so a jump such as "mark finished" hours later is not read
+  as listening; `continuousPlayback`), as long as the last save is within 12 hours
+  (`resumeWindow`): Android pauses the player's JS timers while the screen is
+  off, so the player keeps playing without saving and its next save arrives
+  late. Otherwise the save starts a new session.
+- **Listened time.** Between two saves, the position advance divided by the
+  playback speed, capped by the server time that passed (`listenedBetween`). A
+  seek forward is not listening, and a seek back adds nothing. The same cap
+  applies to any save, a replay from an offline queue included.
+- **Only sessions with listening count.** The first save of a session only
+  opens it, so the time before it (about 15 s) isn't counted, and a session with
+  no listening recorded (`listened = 0`: a single save, such as a "mark
+  finished" or the manager's Audible sync) is left out of the live list, the
+  history and every total (`listenedSQL`). A session therefore appears from its
+  second save.
+- **State.** `playing` with a save in the last 60 s, `paused` until 10 minutes,
+  then `ended` (and off the live list). A session continued after a long gap
+  reads as `ended` during the gap and comes back with the late save.
+- **Transcoded.** `catalog.StreamMarks` remembers in memory which files each
+  token streamed with `?transcode=1` in the last 10 minutes; a save on a book
+  whose file (or a file inside its folder) is marked flags the session. It
+  starts empty after a restart.
+- **Best effort.** Recording runs beside the progress write, whether or not
+  the save won last-write-wins; a failure is logged and the save still
+  succeeds.
+
+**Retention.** Raw sessions are kept for 400 days (`catalog.SessionRetention`,
+just over a year so the Activity stats' longest range always reads raw rows).
+`launcher.sessionRetention` runs `catalog.PruneSessions` at startup and every
+24 hours: sessions whose last save is older are summed into `listening_daily`
+(each session counts on the day it started; its listened time is shared
+evenly over the hours it spans) and deleted, in batches of 2000, one transaction each.
+Sessions with no listening are simply deleted once their last save is older
+than `resumeWindow` (they can no longer be continued). The same job blanks the
+address of signed-out tokens (`auth.ForgetRevokedAddresses`).
+
+Both tables are path-keyed durable state: they move with the book
+(`MoveDurableState`) and are deleted with their user or library by the FK
+cascade. The admin API over them is in the
+[reference](api/reference.md#admin-activity).
 
 ### Scan history
 
@@ -371,6 +468,7 @@ The migration history so far:
 | 0015 | `share_whole_library` | `shares.whole_library_id` - marks the shares a whole-library grant creates (backfilled for existing `Library: <name>` shares) |
 | 0016 | `book_overrides` | Metadata overrides: `book_overrides`, `chapter_overrides`, `book_covers`; `books.published`/`description`/`has_cover`/`scanned` (backfilled and stamped from each row's current values), `chapters.scanned_title`, `book_files.codec`; index `idx_progress_path` on `progress(library_id, rel_path)`. Also resets infinite `series_index` values (an `inf` tag) to 0, and reconciles `books.asin`/`isbn` from `book_enrichment` once (a non-blank enrichment field wins), since the scanner no longer re-applies enrichment at the end of every scan |
 | 0017 | `health_jobs` | Admin console Phase 3: `scan_runs` (scan history) and `issue_ignores`; `libraries.scan_schedule` and `ignore_patterns`; `books.scan_error`, `scan_error_file`, `scan_error_detail` and `suspect_parts`. Sets `suspect_parts = 0` on every existing row that can't hold several books (single-file books, folders with fewer than two parts or any part under an hour), leaving the rest `NULL` for the next scan to check |
+| 0018 | `sessions` | Admin console Phase 4a: `listening_sessions` and `listening_daily`; `tokens.client_app`, `client_version`, `client_platform` and `last_ip`; `progress.started_at` and `finished_at` (finished rows backfilled with their `updated_at`) |
 
 ## SQLite choices
 
@@ -383,7 +481,7 @@ requirement of the native-distribution pipeline (see
 and `foreign_keys(ON)` appended to its DSN (`store.dsnPragmas`).
 `foreign_keys` defaults **off** per SQLite connection, and the schema relies on
 `ON DELETE CASCADE` rules throughout (deleting a user removes their sessions,
-codes, progress, bookmarks, notes, history, and grants) - so the pragmas are appended
+codes, progress, bookmarks, notes, history, listening sessions, and grants) - so the pragmas are appended
 unconditionally, with the correct `?`/`&` separator, rather than skipped when a
 DSN already carries query params.
 

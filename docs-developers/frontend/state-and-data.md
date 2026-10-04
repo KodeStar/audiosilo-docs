@@ -26,6 +26,19 @@ themselves.
   `TimeoutError` - deliberately distinct from the `AbortError` a
   caller-supplied signal raises, so the reachability layer can classify a
   timeout as "server unreachable" while ignoring deliberate cancels.
+- **Client identification.** `request()` sends
+  `X-AudioSilo-Client: AudioSilo/<APP_VERSION, or dev> (<Platform.OS>)` on every
+  API call (`clientIdentity` in `src/lib/client-id.ts`), so the server records
+  which app and build owns each session token for the admin console. Native
+  always sends it. On web, `shouldIdentify` sends it **only when the API base URL
+  is same-origin with the page**: a custom header makes a cross-origin request
+  non-simple (a CORS preflight), and servers released before the header don't
+  list it in `Access-Control-Allow-Headers`, so a newer web build would fail
+  every cross-origin call to an older server. The embedded `/web` player is
+  same-origin and always identifies itself; a dev build on `:8081` against a
+  server on `:8080` doesn't. `authHeaders()` (used by the media layers) doesn't
+  carry it - the server keeps the stored app when a request has no header. See
+  [Client identification](../server/api/index.md#client-identification-x-audiosilo-client).
 - **Path-addressed everything.** Content calls are
   `GET /libraries/{id}/{item,chapters,cover,stream}?path=…` etc.; the path
   rides as a query param (never a URL segment - encoded slashes are a trap).

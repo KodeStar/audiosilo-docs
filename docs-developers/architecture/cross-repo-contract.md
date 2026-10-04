@@ -236,6 +236,14 @@ runbook is [Releasing](../contributing/releasing.md).
 headers (native and same-origin still work).
 **Frontend:** `npm run web` serves on `:8081` by default.
 
+The player's `X-AudioSilo-Client` identity header is a custom header, so it
+would force a preflight on every cross-origin call. The server's
+`Access-Control-Allow-Headers` lists it, but servers released before it don't,
+so the web player sends it **only same-origin** (`shouldIdentify` in
+`src/lib/client-id.ts`; native always sends it). Keep that rule when adding any
+custom request header (see
+[Client identification](../server/api/index.md#client-identification-x-audiosilo-client)).
+
 **A change requires:** nothing structural - just remember self-signed TLS (the
 server default) needs trusting in the browser, or use `AUDIOSILO_TLS_MODE=off`
 for plain-HTTP local dev.

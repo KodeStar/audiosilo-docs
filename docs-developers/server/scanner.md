@@ -558,8 +558,9 @@ the fingerprint:
   `reclassified` skips such a pair (nested paths with different sizes; an equal
   size, a single-part folder, is still the same book).
 - A real match calls `catalog.MoveDurableState(lib, oldPath, newPath)`, which
-  migrates **all ten** path-keyed book tables - `progress`, `bookmarks`,
-  `notes`, `listening_history`, `favourites`, `book_enrichment`,
+  migrates **all twelve** path-keyed book tables - `progress`, `bookmarks`,
+  `notes`, `listening_history`, `listening_sessions`, `listening_daily`,
+  `favourites`, `book_enrichment`,
   `issue_ignores`, `book_overrides`, `chapter_overrides` and `book_covers` - so
   a rename/move never orphans a user's position, a book's attached ASIN, an
   issue an admin ignored, or an admin's edits and custom cover. A same-path call is a no-op. It runs **two transactions**,
@@ -572,7 +573,8 @@ the fingerprint:
      cover left at the new path by an earlier book can't merge in. A moved book
      with none keeps the new path's own rows, as any book appearing there would.
   2. **The per-user state** (`progress`, `bookmarks`, `notes`,
-     `listening_history`, `favourites`), by plain `UPDATE`.
+     `listening_history`, `listening_sessions`, `listening_daily`,
+     `favourites`), by plain `UPDATE`.
 
   They are separate so that a collision in a per-user table (the destination
   already holds a row for the same user) can't also strand the admin's edits
