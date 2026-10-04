@@ -1,11 +1,12 @@
 ---
 title: "Admin console tour"
-description: "Where to find the AudioSilo admin console, how to sign in, how it is laid out, what the overview and the search palette show, and the server settings it holds."
+description: "Where to find the AudioSilo admin console, how to sign in, how it is laid out, what the overview and the search palette show, where library health and scans live, and the server settings it holds."
 ---
 
 Every AudioSilo server ships with a built-in admin console. It is a web page
 served by the server itself - nothing extra to install - and it is where you
-manage libraries, books and their details, people, invites and shares.
+manage libraries, books and their details, people, invites and shares, and
+keep an eye on library health and scans.
 
 ## Opening the console
 
@@ -89,11 +90,13 @@ The console is being rebuilt in stages. These sections work today:
 | **People > People** | Everyone with an account, inviting someone new, and each person's own page. See [People and invites](users-and-invites.md). |
 | **People > Invites** | Every invite link, with rotate and revoke. See [People and invites](users-and-invites.md#the-invites-page). |
 | **People > Shares** | Named sets of folders you give to people. See [Sharing](sharing.md). |
+| **Health > Issues** | Books that could be better (unreadable files, missing covers, likely duplicates and more), each with a fix or Ignore, and offline libraries. See [Library health](health.md#library-health). |
+| **Health > Jobs** | The scan running now, the scans waiting, the schedules, and every scan's history and log. See [Jobs](health.md#jobs). |
 | **Server > Settings** | The community metadata lookup. See [Server settings](#server-settings). |
 
-The other sections - People **Devices**; everything under **Activity** and
-**Health**; and Server **Logs**, **Audit log** and **About** - show a "Coming
-in this redesign" page that says what will live there.
+The other sections - People **Devices**; everything under **Activity**;
+Health **System**; and Server **Logs**, **Audit log** and **About** - show a
+"Coming in this redesign" page that says what will live there.
 Notifications are a placeholder too.
 
 ## The overview
@@ -109,6 +112,11 @@ people are listening right now, then:
   progress** (started but not finished, across everyone).
 - **Recent listening** - the latest progress that isn't live any more: who,
   which book, how far (or "finished") and when.
+- **Needs attention** - the kinds of library issue that have something in
+  them (for example "Missing covers" or "Files that couldn't be read"), each
+  with its count. Click one to open its list, or **Triage** to open
+  [Library health](health.md). It says "Nothing needs attention." when
+  everything is fine.
 - **Books per library** - each library's book count as a bar. A count that
   looks wrong is the cue to check that library's
   [folder detection](libraries.md#folder-detection).
@@ -135,10 +143,13 @@ palette ("Search books, people, settings, or type a command"). Type to filter,
 use the arrow keys to move and Enter to open.
 
 - **Actions** - **Invite someone**, **Add a library**, **Rescan** any library,
-  **Open the web player** and **Sign out**.
+  **Rescan every library** (with more than one), **Open the web player** and
+  **Sign out**.
 - **Go to** - every destination, and (once you type) every section.
-- **Settings** - **Community metadata**, the three themes and the console's
-  languages.
+- **Settings** - **Community metadata**, **Scan schedules and skipped files**
+  (opens Library > Libraries, where each library's
+  [schedule and skipped files](libraries.md#scanning-on-a-schedule) are
+  edited), the three themes and the console's languages.
 
 Type two letters or more and the palette also searches your content:
 **Books** (by title, author, narrator or series), **People**, **Authors**,
@@ -199,3 +210,5 @@ privileged request.
 - [People and invites](users-and-invites.md) - invite people and get their
   devices connected.
 - [Sharing](sharing.md) - control which folders each person can see.
+- [Library health and jobs](health.md) - fix what could be better, and follow
+  your scans.

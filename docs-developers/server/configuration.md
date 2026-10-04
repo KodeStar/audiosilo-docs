@@ -99,6 +99,13 @@ case they live only in the database. There is deliberately **no layout key**
 - folder shape is auto-detected per folder by the
 [scanner](scanner.md), with per-folder admin overrides for corrections.
 
+A library's **scan schedule** and **ignore rules** have no config key either:
+they are per-library settings stored in the database and edited in the admin
+console (or `PATCH /admin/libraries/{id}`). The startup sync only updates a
+config-declared library's `root` and default view, so those settings survive
+restarts. See [Scheduled scans](scanner.md#scheduled-scans) and
+[Ignore rules](scanner.md#ignore-rules).
+
 ### Demo mode (`demo.*`)
 
 | Key | Type / default | Meaning |

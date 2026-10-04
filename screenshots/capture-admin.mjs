@@ -6,17 +6,29 @@
 //
 // Before capturing it provisions a little demo state through the admin API
 // (a listener account, an invite, a share, some listening progress, one
-// metadata edit) so the console looks lived-in. The console (admin-ui) is driven through its real UI
+// metadata edit, a scan schedule and skip rules on the seeded library) so the
+// console looks lived-in. For the Health shots, after the other admin shots, it
+// builds a small "Inbox" library under .cache/inbox (INBOX_DIR overrides) whose
+// files produce one of each issue - an empty file, a damaged m4b, two copies of
+// one book, a folder of two hour-long books, a long book without chapters, an
+// ALAC file - and adds it through the API; that needs ffmpeg on PATH for the
+// generated audio (without it those few issues are just missing). The console
+// (admin-ui) is driven through its real UI
 // with role/label selectors that use the exact English labels from
 // audiosilo-server/admin-ui/src/i18n/locales/en.json - if a label changes there,
 // change it here too.
+import {spawnSync} from 'node:child_process';
+import {constants as fsc} from 'node:fs';
+import {cp, mkdir, rm, writeFile} from 'node:fs/promises';
+import path from 'node:path';
 import {chromium} from 'playwright';
-import {sleep, shoot, step, DESKTOP_CONTEXT} from './lib.mjs';
+import {CACHE, sleep, shoot, step, DESKTOP_CONTEXT} from './lib.mjs';
 
 const ORIGIN = (process.env.AS_ORIGIN || 'http://127.0.0.1:8790').replace(/\/$/, '');
 const ADMIN = `${ORIGIN}/admin`;
 const PASSWORD = process.env.ADMIN_PASSWORD;
 const SETUP_URL = process.env.SETUP_URL || '';
+const INBOX_DIR = path.resolve(process.env.INBOX_DIR || path.join(CACHE, 'inbox'));
 if (!PASSWORD) {
   console.error('capture-admin: ADMIN_PASSWORD is required');
   process.exit(1);
@@ -41,6 +53,18 @@ const api = async (token, method, p, body) => {
   }
   if (!res.ok) throw new Error(`${method} ${p} -> ${res.status} ${text.slice(0, 120)}`);
   return json;
+};
+
+// Waits until no library scans or waits in the job queue (scans run one at a time).
+const waitForScans = async (token, timeoutMs = 90000) => {
+  const until = Date.now() + timeoutMs;
+  await sleep(500);
+  while (Date.now() < until) {
+    const libs = (await api(token, 'GET', '/admin/libraries'))?.libraries ?? [];
+    if (!libs.some((l) => l.scan?.running || l.scan?.queued)) return;
+    await sleep(500);
+  }
+  throw new Error('scans still running after the timeout');
 };
 
 let inviteCode = '';
@@ -122,6 +146,18 @@ await step('provision a metadata edit', async () => {
     );
   }
   console.log('  ✓ provisioned (narrator edit on the first book, a reversed author)');
+});
+
+await step('provision scan settings', async () => {
+  if (!library) throw new Error('no library');
+  // A schedule shows on the library card ("Every 6 hours · next in ..."); new
+  // skip rules queue a rescan (trigger "change"), which lands in the history.
+  await api(token, 'PATCH', `/admin/libraries/${library.id}`, {
+    scan_schedule: 'every:6h',
+    ignore_patterns: ['# Publisher samples and bonus material', '*.sample.mp3', 'Extras/'],
+  });
+  await waitForScans(token);
+  console.log('  ✓ provisioned (schedule + skip rules on the seeded library)');
 });
 
 // ── Capture ────────────────────────────────────────────────────────────────
@@ -336,6 +372,125 @@ await step('overview on a phone', async () => {
   await open(p4, '/');
   await shoot(p4, 'admin/overview-phone.png');
   await phone.close();
+});
+
+// ── Health: an Inbox library whose files produce one of each issue ─────────
+// Built after the shots above so the Books screens keep showing only the seeded
+// library. Everything lands under INBOX_DIR (gitignored .cache); the seeded
+// library is only read (copy-on-write clones where the filesystem supports it).
+let inbox = null;
+const ffmpeg = (args) =>
+  spawnSync('ffmpeg', ['-hide_banner', '-loglevel', 'error', '-y', ...args], {stdio: 'ignore'}).status === 0;
+// Silent mono audio: cheap to encode even when it is hours long.
+const silence = (file, seconds, meta = {}, codec = ['-c:a', 'libmp3lame', '-b:a', '8k']) =>
+  ffmpeg([
+    '-f', 'lavfi', '-i', 'anullsrc=r=8000:cl=mono', '-t', String(seconds),
+    ...Object.entries(meta).flatMap(([k, v]) => ['-metadata', `${k}=${v}`]),
+    ...codec, file,
+  ]);
+
+await step('provision an Inbox library with issues', async () => {
+  await rm(INBOX_DIR, {recursive: true, force: true});
+  const dir = (...p) => path.join(INBOX_DIR, ...p);
+  const put = async (rel, data) => {
+    await mkdir(path.dirname(dir(rel)), {recursive: true});
+    await writeFile(dir(rel), data);
+  };
+  // Likely duplicates: one seeded book twice (identical audio), one copy without its cover.
+  if (library?.root) {
+    const src = path.join(library.root, 'Sun Tzu', 'The Art of War');
+    const opts = {recursive: true, mode: fsc.COPYFILE_FICLONE};
+    await cp(src, dir('Sun Tzu', 'The Art of War'), opts);
+    await cp(src, dir('Sun Tzu', 'The Art of War (second copy)'), {
+      ...opts,
+      filter: (f) => !f.endsWith('cover.jpg'),
+    });
+  }
+  // Files that couldn't be read: an empty file, and an m4b that stops after its
+  // header (ffprobe: "moov atom not found").
+  await put('Unknown Author/The Lost Chapter/The Lost Chapter.mp3', Buffer.alloc(0));
+  const ftyp = Buffer.from('00000018667479704d344220000000004d34422069736f6d', 'hex');
+  await put('Unknown Author/The Damaged Book/The Damaged Book.m4b', Buffer.concat([ftyp, Buffer.alloc(4096)]));
+  // Skipped by the skip rules below (never indexed).
+  await put('Extras/Interview.mp3', Buffer.alloc(0));
+  let generated = true;
+  await mkdir(dir('Anthologies', 'Collected Stories'), {recursive: true});
+  await mkdir(dir('Lectures', 'A Long Lecture'), {recursive: true});
+  await mkdir(dir('Folk Tales'), {recursive: true});
+  // Folder may hold several books: two parts, each over an hour, different titles.
+  generated = silence(dir('Anthologies', 'Collected Stories', '01 - The Clockmaker.mp3'), 3700,
+    {album: 'The Clockmaker', artist: 'Ada Wren'}) && generated;
+  generated = silence(dir('Anthologies', 'Collected Stories', '02 - The Lighthouse Keeper.mp3'), 3700,
+    {album: 'The Lighthouse Keeper', artist: 'Ada Wren'}) && generated;
+  // Long books without chapters: two and a half hours, no chapter marks.
+  generated = silence(dir('Lectures', 'A Long Lecture', 'A Long Lecture.mp3'), 9000,
+    {album: 'A Long Lecture', artist: 'Prof. Hal Morrow'}) && generated;
+  // Converted to play in browsers: Apple Lossless.
+  generated = silence(dir('Folk Tales', 'Folk Tales.m4a'), 30, {album: 'Folk Tales'}, ['-c:a', 'alac']) && generated;
+  if (!generated) console.log('  ! ffmpeg missing or failed - some Health issues will be absent');
+
+  const created = await api(token, 'POST', '/admin/libraries', {
+    name: 'Inbox',
+    root: INBOX_DIR,
+    scan_schedule: 'daily:03:00',
+    ignore_patterns: ['# Bonus material', 'Extras/', '*.sample.mp3'],
+  });
+  inbox = created?.library ?? created;
+  await waitForScans(token);
+  // One ignored book, so the cards and the list show "Show ignored".
+  const folk = (await api(token, 'GET', `/admin/books?library_id=${inbox.id}&issue=no_cover&limit=50`))
+    ?.books?.find((b) => b.path.startsWith('Folk Tales'));
+  if (folk) {
+    await api(token, 'POST', '/admin/issues/ignore', {
+      kind: 'no_cover',
+      books: [{library_id: folk.library_id, path: folk.path}],
+    });
+  }
+  console.log('  ✓ provisioned (Inbox library with one of each issue)');
+});
+
+await step('health issues', async () => {
+  await open(page, '/health/issues?issue=scan_error');
+  await page.getByRole('list', {name: "Files that couldn't be read"}).waitFor({timeout: 8000}).catch(() => {});
+  await sleep(800);
+  await shoot(page, 'admin/health-issues.png');
+});
+
+await step('health duplicates', async () => {
+  await open(page, '/health/issues?issue=duplicate');
+  await page.getByRole('button', {name: "They're different books"}).first().waitFor({timeout: 8000});
+  // The compare sits under the category cards: bring its heading to the top.
+  await page.locator('#issue-heading').evaluate((el) => el.scrollIntoView({block: 'start'}));
+  await page.mouse.wheel(0, -24);
+  await sleep(1200);
+  await shoot(page, 'admin/health-duplicates.png');
+});
+
+await step('health jobs', async () => {
+  // Taller than the other shots, so the newest scan's log fits under the cards.
+  await page.setViewportSize({width: 1440, height: 980});
+  try {
+    await open(page, '/health/jobs');
+    await page.getByRole('button', {name: 'Log', exact: true}).first().click({timeout: 8000});
+    await page.getByRole('button', {name: 'Hide log', exact: true}).waitFor({timeout: 8000});
+    await sleep(1000);
+    await shoot(page, 'admin/health-jobs.png');
+  } finally {
+    await page.setViewportSize(DESKTOP_CONTEXT.viewport);
+  }
+});
+
+await step('edit library (scan settings)', async () => {
+  const name = inbox?.name || library?.name || 'Books';
+  await open(page, '/library/libraries');
+  await page.getByRole('button', {name: `Actions for ${name}`}).click({timeout: 8000});
+  await page.getByRole('menuitem', {name: 'Edit library...'}).click({timeout: 8000});
+  const dialog = page.getByRole('dialog', {name: `Edit ${name}`});
+  await dialog.getByLabel('Skip these files and folders', {exact: true}).waitFor({timeout: 8000});
+  await sleep(800);
+  await shoot(page, 'admin/library-edit.png');
+  await page.keyboard.press('Escape');
+  await sleep(600);
 });
 
 // ── Public pages ────────────────────────────────────────────────────────────

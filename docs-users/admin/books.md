@@ -97,8 +97,11 @@ format") and when it was added. The buttons there are:
   the book has an ASIN or ISBN) - see
   [Matching with community metadata](#matching-with-community-metadata).
 - **Change cover** - see [Covers](#covers).
-- The **⋯** menu (**More book actions**) - **Copy path** and **Add to a
-  share...**.
+- The **⋯** menu (**More book actions**) - **Copy path**, **Add to a
+  share...** and **Read the files again**, which re-reads this book's files
+  straight away (tags, chapters, cover) without rescanning the whole library -
+  handy after you fix a file's tags, or for a file
+  [Library health](health.md#the-kinds-of-issue) says couldn't be read.
 
 ### Editing details
 

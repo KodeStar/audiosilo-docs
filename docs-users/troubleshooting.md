@@ -204,10 +204,14 @@ Two different views are involved:
   immediately, and opening one indexes it on the spot.
 - **Search and the metadata-driven lists** come from the index, which is
   built by a scan. The server scans every library at startup and after
-  library changes, but it does **not** rescan on a schedule.
+  library changes, and on a schedule only if you set one (**Scan
+  automatically** when you [edit the library](admin/libraries.md#scanning-on-a-schedule)).
 
 So after copying new books in, either click **Rescan** on the library in the
 admin console, or just browse to the new book in the folder view and open it.
+If a scan seems slow to start, look at **Health > Jobs**: scans run one at a
+time, so it may be waiting behind another library's (see
+[Library health and jobs](admin/health.md#jobs)).
 
 ### One folder shows as a single giant book - or as lots of one-chapter books
 

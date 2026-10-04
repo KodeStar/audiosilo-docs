@@ -289,16 +289,19 @@ CSP-sensitive work against a real build served by Go. The console's own gate is
   unreachable), ⌘K search, theme and account menus and a notifications
   placeholder; a per-destination section bar; a bottom tab bar on phones.
   Interface text is in all six languages.
-- **⌘K palette** - navigation, sections, settings (community metadata, theme,
-  language) and actions (invite someone, add a library, rescan a library, open
-  the web player, sign out). From two typed characters it also searches content
+- **⌘K palette** - navigation, sections, settings (community metadata, scan
+  schedules and skipped files, theme, language) and actions (invite someone,
+  add a library, rescan a library, rescan every library when there is more
+  than one, open the web player, sign out). From two typed characters it also searches content
   (`components/shell/palette-search.tsx`): books through the server's full-text
   search (`GET /admin/books?q=`, after a 200 ms pause in typing), and people,
   authors, series, narrators and shares matched in the browser from their
   lists; a final "Search all books for ..." entry opens Library > Books with
   the query.
 - **Overview** - built on `GET /admin/stats`, `GET /admin/settings`,
-  `GET /admin/libraries` (offline-library notices) and `GET /server`.
+  `GET /admin/libraries` (offline-library notices), `GET /server` and
+  `GET /admin/issues` (the "Needs attention" card: up to six categories with
+  something to fix, each linking to its Health queue).
 - **Library > Books** - the cover grid (virtualized) or table over
   `GET /admin/books` (keyset pages loaded as you scroll), the "Recently added"
   and "Continue curating" shelves, the library filter, search, sort and a
@@ -317,14 +320,21 @@ CSP-sensitive work against a real build served by Go. The console's own gate is
   …/cover`), the match dialog (`GET …/book/match`; the ticked fields, ASIN and ISBN
   included, are accepted as one `PATCH …/book` with `source: "community"`),
   listeners, shares
-  and the "Files on disk" section with the disabled on-disk rename.
+  and the "Files on disk" section with the disabled on-disk rename. The more
+  menu's "Read the files again" calls `POST …/book/rescan`. `?match=1` opens the
+  match dialog on arrival (Health's "Review match"); closing it drops the param.
 - **Library > Libraries** - library cards (`GET /admin/libraries` with
-  `book_count`, `available` and `scan`, polled every second while any library
-  scans), add/edit with the server folder picker
-  (`GET /admin/fs/dirs`), drag-and-drop or keyboard reorder
-  (`PUT /admin/libraries/order`), rescan with live progress (the list's
-  `scan`, including `unavailable`), folder detection
-  (`/fs` browse + `…/folder-override`), export, delete.
+  `book_count`, `available`, `scan` and the scan settings, polled every second
+  while any library scans or waits in the job queue, every minute otherwise),
+  add/edit with the server folder picker (`GET /admin/fs/dirs`) and the scan
+  settings ("Scan automatically" + a time for a daily schedule, "Skip these
+  files and folders" as a textarea; `features/libraries/scan-settings.ts`
+  converts between the form and `scan_schedule` / `ignore_patterns`, and an
+  `invalid_schedule` / `invalid_pattern` error lands on its field),
+  drag-and-drop or keyboard reorder (`PUT /admin/libraries/order`), rescan with
+  live progress (the list's `scan`, including `queued`, shown as a "Waiting"
+  badge, and `unavailable`), the next scheduled scan from `next_scan_at`, folder
+  detection (`/fs` browse + `…/folder-override`), export, delete.
 - **People > People / Invites / Shares** - person cards, the invite flow
   (create a password-less member, grant access, mint an invite, show the QR,
   link and code once), a person's page (`/admin/people/user/<id>`, tabs in
@@ -332,19 +342,55 @@ CSP-sensitive work against a real build served by Go. The console's own gate is
   (`GET /admin/invites`) with rotate and revoke, and shares (list + detail,
   with `member_ids`; `whole_library_id` sets whole-library grants apart).
   Error messages that name a fix branch on the API's error `code`.
+- **Health > Issues** (`features/health/issues-page.tsx`) - over
+  `GET /admin/issues`: notices for offline libraries (what was kept, with
+  Retry), one card per category with its count and up to three fanned covers,
+  and the open category's triage list (`issue-books.tsx`, a
+  `GET /admin/books?issue=` list with keyset paging). Each row has Ignore (with
+  Undo in the toast, `POST`/`DELETE /admin/issues/ignore`) and its category's
+  fix (`issues-model.ts` `FIXES`): "Upload a cover" opens the book page, "Review
+  match" opens it with `?match=1`, "Choose detection" opens Library > Folders on
+  the book's folder, "Read again" calls `POST …/book/rescan` and toasts whether
+  the problem is gone. Rows select into a floating bulk bar, which acts only on
+  the selected books still listed (one fixed or ignored on its own row has
+  left); its bulk "Read again" (`useIssueActions().rescanMany`) re-reads two
+  books at a time, since each is a synchronous re-read and firing them all at
+  once would trip the server's per-client rate limit. "Show ignored" lists the
+  ignored books (`?issue_ignored=true`). Duplicates
+  (`duplicates.tsx`) render each group side by side from
+  `GET /admin/issues/duplicates`, the copy worth keeping first, with "They're
+  different books" (ignore every copy). The category and the ignored view live
+  in the URL (`?issue=<kind>&ignored=1`). Without `?issue=` the page opens the
+  first category needing attention and keeps it open, so clearing it shows "All
+  clear" instead of jumping to the next. "Check again" queues a scan of every
+  library (`POST /admin/scan`).
+- **Health > Jobs** (`features/health/jobs-page.tsx`) - over `GET /admin/jobs`
+  (polled every second while a job runs or waits, every 15 seconds otherwise):
+  the running scan with its progress and counters and Stop, the queue with
+  Cancel (both `DELETE /admin/jobs/{id}`), a Schedules card, a "Run a job"
+  menu (rescan one library or all), and the history from `GET /admin/scan-runs`
+  (paged with `before`, filtered by library) whose rows expand to their log
+  (`GET /admin/scan-runs/{id}`, fetched when opened). `jobs-model.ts` words
+  statuses, counts and log events.
 - **Server > Settings** - the community metadata switch
   (`GET`/`PATCH /admin/settings`).
 
 Every other section renders a designed "coming in this redesign" placeholder
 naming the phase that builds it: People Devices and all of Activity (4c),
-Health Issues/Jobs (3) and System (5a), Server Logs/About (5a) and Audit log
-(5b).
+Health System (5a), Server Logs/About (5a) and Audit log (5b).
 
 The Library screens and the book page run on the
 [admin catalog API](api/reference.md#admin-catalog). Edits are path-keyed
 overrides in the database; no file on disk is modified.
 
 ![The ⌘K command palette](/img/screenshots/admin/palette.png)
+
+When a scan finishes (a library that was running or queued is neither any
+more), the console refetches what a scan changes: the library list and book
+pages, every admin book list and aggregate, the Health issues and the scan
+history.
+
+![Health > Issues](/img/screenshots/admin/health-issues.png)
 
 ## The connect page flow
 

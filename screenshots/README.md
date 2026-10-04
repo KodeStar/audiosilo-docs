@@ -41,6 +41,16 @@ the network): `admin/book-match.png` shows the match dialog's candidates, and
 matches. Offline, the match shot captures the dialog's "isn't answering"
 message instead and the series cards show no gaps.
 
+The Health shots (`admin/health-*.png`) need issues to show, and the seeded
+library has almost none. After the other admin shots, `capture-admin.mjs`
+builds a small **Inbox** library under `.cache/inbox` (`INBOX_DIR` overrides)
+with one of each issue - two copies of a seeded book, an empty file, a damaged
+m4b, a folder of two hour-long books, a long book without chapters and an ALAC
+file (the generated audio is silence, made with **ffmpeg**) - and adds it
+through the API with a daily schedule and skip rules, which
+`admin/library-edit.png` then shows. It runs last so the Books screens keep
+showing only the seeded library; the seeded files are only read.
+
 Every capture is optimized in place with **pngquant** (`brew install pngquant`)
 - a lossy-palette pass that shrinks the retina PNGs ~60% with no perceptible
 loss, so the committed image is the optimized one. It's optional: if pngquant

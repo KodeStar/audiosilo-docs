@@ -4,7 +4,7 @@ description: "The SQLite schema behind audiosilo-server: the rebuildable index v
 ---
 
 The schema lives in `internal/store/migrations/` as numbered SQL files
-(`0001_init.sql` … `0016_book_overrides.sql`), embedded into the binary and
+(`0001_init.sql` … `0017_health_jobs.sql`), embedded into the binary and
 applied by `store.Open` at startup. This page documents the **resulting current
 schema**, noting which migration added what.
 
@@ -19,8 +19,13 @@ thing to understand before touching it:
   it must **never** appear in the API contract or in durable user state.
 - **Durable state** - `progress`, `bookmarks`, `notes`, `listening_history`,
   `favourites` (per-user), plus `folder_overrides`, `book_enrichment`,
-  `book_overrides`, `chapter_overrides` and `book_covers` (per-library config) -
-  is keyed by **`(library_id, rel_path)`**, with **no foreign key to `books`**.
+  `issue_ignores`, `book_overrides`, `chapter_overrides` and `book_covers`
+  (per-library config) - is keyed by **`(library_id, rel_path)`**, with **no
+  foreign key to `books`**.
+
+A third, small group sits beside the index: **`scan_runs`**, the history of
+the scans that built it. It is a record of the index, not durable user state,
+so it goes with its library and is trimmed to the newest runs.
 
 Why no FK across the seam? Three reasons, all load-bearing:
 
@@ -37,7 +42,7 @@ Why no FK across the seam? Three reasons, all load-bearing:
 
 The remaining gap - a file that *moves* on disk - is covered by move-tracking:
 the scanner fingerprints files (`books.content_hash`) and calls
-`catalog.MoveDurableState` to carry all nine path-keyed book tables (everything
+`catalog.MoveDurableState` to carry all ten path-keyed book tables (everything
 above except `folder_overrides`, which is keyed by folder, not book) from the
 old path to the new one (see [Scanner](scanner.md#move-detection)).
 
@@ -63,6 +68,8 @@ erDiagram
     libraries ||--o{ book_overrides : "durable config"
     libraries ||--o{ chapter_overrides : "durable config"
     libraries ||--o{ book_covers : "durable config"
+    libraries ||--o{ issue_ignores : "durable config"
+    libraries ||--o{ scan_runs : "scan history"
     users ||--o{ progress : ""
 ```
 
@@ -111,8 +118,16 @@ lifecycle (supersede-on-mint, rotate, atomic claim).
 ### Libraries & shares
 
 **`libraries`** *(0001; `layout` **dropped** in 0007; `sort_order` added in
-0011)* - `id`, `name` (UNIQUE), `root` (an absolute local path),
-`default_view`, `sort_order`, `created_at`. There is no layout column: library
+0011; `scan_schedule` and `ignore_patterns` in 0017)* - `id`, `name` (UNIQUE),
+`root` (an absolute local path), `default_view`, `sort_order`,
+`scan_schedule`, `ignore_patterns`, `created_at`. `scan_schedule` is `""` (no
+scheduled scans), `every:<N>h` or `daily:HH:MM` (see
+[Scheduled scans](scanner.md#scheduled-scans)); `ignore_patterns` holds the
+library's [ignore rules](scanner.md#ignore-rules), one pattern per line (`""` =
+none). Both are admin settings: they are on `GET /admin/libraries` but not on
+the player's library JSON (`catalog.Library` tags them `json:"-"`). They live
+in the database rather than in the library folder, which the server never
+writes to. There is no layout column: library
 shape is auto-detected per folder by the scanner, with `folder_overrides` as
 the correction mechanism. `sort_order` drives library listing order **and** is
 the tiebreaker when de-duplicating copies of the same book that appear in more
@@ -131,7 +146,8 @@ covered in [Auth & security](auth-and-security.md#authorization-shares--scope).
 ### The rebuildable index
 
 **`books`** *(0001; `added_at` in 0004; `codec` in 0008; `published`,
-`description`, `has_cover` and `scanned` in 0016)* - one row per book,
+`description`, `has_cover` and `scanned` in 0016; `scan_error`,
+`scan_error_file`, `scan_error_detail` and `suspect_parts` in 0017)* - one row per book,
 `UNIQUE (library_id, rel_path)`. Columns: `is_folder` (folder book vs
 single-file book), identity metadata (`title`, `author`, `series`,
 `series_index`, `narrator`), `duration`, `asin`/`isbn` (optional external ids -
@@ -143,7 +159,18 @@ art), `has_cover` (whether the book has a sidecar image or embedded art; `NULL`
 until a scan has checked, and always true when `cover_path` is set -
 `UpsertBook` enforces that), `format`, `codec` (ffprobe `codec_name`, `""` when
 unknown - drives the `direct_playable` API flag), `size`, `mtime`,
-`content_hash`, `indexed_at`, `added_at`, and `scanned` (see below).
+`content_hash`, `indexed_at`, `added_at`, `scanned` (see below), and what the
+console's Health page reads:
+
+- `scan_error` - the first problem reading the book's files on its last
+  indexing: `unreadable`, `empty_file`, `probe_failed`, or `""` for none;
+  `scan_error_file` is the library-relative file and `scan_error_detail` the
+  OS's or ffprobe's message (see [Read problems](scanner.md#read-problems)).
+- `suspect_parts` - how many separate books a folder book's parts look like:
+  `0` = one book, `>= 2` = the folder may hold several, `NULL` = not checked
+  yet (see [Folders that may hold several books](scanner.md#folders-that-may-hold-several-books)).
+
+Like the rest of the row they are rewritten by every re-index.
 
 Two columns deserve emphasis:
 
@@ -211,6 +238,20 @@ tables were rebuilt rather than migrated in place):
   favourite may address **any** path: a navigation folder (author/series), a
   book folder, or a single-file book.
 
+### Scan history
+
+**`scan_runs`** *(0017)* - one row per library scan the job queue ran:
+`id`, `library_id` (FK CASCADE), `trigger` (`manual` | `schedule` | `startup` |
+`change`), `started_by` (FK to `users`, `ON DELETE SET NULL`; `NULL` for a
+schedule or startup scan), `started_at`, `finished_at` (`NULL` while the scan
+runs), `status` (`running` | `ok` | `partial` | `unavailable` | `failed` |
+`cancelled` | `interrupted`), the counts `books`, `added`, `updated`, `moved`,
+`removed`, `errors`, and `log` (a JSON array of events, at most 300). Index
+`idx_scan_runs_library` on `(library_id, id)`. `catalog.FinishScanRun` keeps
+only the newest **100** runs of each library, and a row still open when the
+server starts is marked `interrupted`. What each field means is in
+[Scan history](scanner.md#scan-history-scan_runs).
+
 ### Durable per-library config (path-keyed, no FK to books)
 
 - **`folder_overrides`** *(0006)* - PK `(library_id, path)`, `mode ∈ {'book',
@@ -248,6 +289,14 @@ tables were rebuilt rather than migrated in place):
   database rather than the library folder (files stay untouched) or a loose
   data-dir file, so it is path-keyed durable state that moves with
   `MoveDurableState` and is part of any database backup.
+
+- **`issue_ignores`** *(0017)* - PK `(library_id, path, kind)`, `created_by`
+  (FK to `users`, `ON DELETE SET NULL`), `created_at`. An admin's "ignore this"
+  on a Health issue; `kind` is one of `catalog.IssueKinds` (`scan_error`,
+  `suspect`, `duplicate`, `no_cover`, `unmatched`, `no_chapters`,
+  `transcode`). Path-keyed like the rest of this group, so an ignore survives a
+  rebuild, moves with the book (`MoveDurableState`) and needn't point at an
+  indexed book.
 
 All of these FK to `libraries` with `ON DELETE CASCADE` only, so deleting a
 library removes its config, and nothing else does - pruning a vanished book
@@ -321,6 +370,7 @@ The migration history so far:
 | 0014 | `token_auth_code` | `tokens.auth_code_id` (FK CASCADE) - pairing tokens live and die with the code that minted them |
 | 0015 | `share_whole_library` | `shares.whole_library_id` - marks the shares a whole-library grant creates (backfilled for existing `Library: <name>` shares) |
 | 0016 | `book_overrides` | Metadata overrides: `book_overrides`, `chapter_overrides`, `book_covers`; `books.published`/`description`/`has_cover`/`scanned` (backfilled and stamped from each row's current values), `chapters.scanned_title`, `book_files.codec`; index `idx_progress_path` on `progress(library_id, rel_path)`. Also resets infinite `series_index` values (an `inf` tag) to 0, and reconciles `books.asin`/`isbn` from `book_enrichment` once (a non-blank enrichment field wins), since the scanner no longer re-applies enrichment at the end of every scan |
+| 0017 | `health_jobs` | Admin console Phase 3: `scan_runs` (scan history) and `issue_ignores`; `libraries.scan_schedule` and `ignore_patterns`; `books.scan_error`, `scan_error_file`, `scan_error_detail` and `suspect_parts`. Sets `suspect_parts = 0` on every existing row that can't hold several books (single-file books, folders with fewer than two parts or any part under an hour), leaving the rest `NULL` for the next scan to check |
 
 ## SQLite choices
 

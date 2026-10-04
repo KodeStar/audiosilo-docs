@@ -1,6 +1,6 @@
 ---
 title: "Filesystem view & scanner"
-description: "How audiosilo-server turns a folder of audio files into a browsable, indexed catalog: the no-index filesystem view, the background scanner, book detection, metadata and chapter extraction, covers, move detection, and the unavailable-root guard."
+description: "How audiosilo-server turns a folder of audio files into a browsable, indexed catalog: the no-index filesystem view, the scan job queue, schedules and history, ignore rules, book detection, metadata and chapter extraction, covers, move detection, read problems and suspect folders, and the unavailable-root guard."
 ---
 
 `internal/library` contains two complementary subsystems:
@@ -10,7 +10,9 @@ description: "How audiosilo-server turns a folder of audio files into a browsabl
   connection wait-free (design priority #3).
 - **`scanner.go`** - the background `Scanner` that builds and maintains the
   index (`books`/`book_files`/`chapters`/`books_fts`) the computed views,
-  search, and rich metadata come from.
+  search, and rich metadata come from. Around it: the scan job queue and the
+  scheduler (`jobs.go`, `schedule.go`), per-library ignore rules (`ignore.go`)
+  and what a scan notices for the console's Health page (`problems.go`).
 
 The two meet in the API layer: browsing works immediately from the raw tree,
 and entries get index metadata overlaid as the scan (or on-demand indexing)
@@ -18,7 +20,7 @@ catches up.
 
 ## The filesystem view (`BrowseFS`)
 
-`library.BrowseFS(root, relPath, offset, limit, allow)` lists one directory:
+`library.BrowseFS(root, relPath, offset, limit, allow, ignore)` lists one directory:
 
 - The path goes through `SafeJoin` first (the traversal/symlink gate - see
   [Auth & security](auth-and-security.md#path-traversal-librarysafejoin)).
@@ -29,6 +31,9 @@ catches up.
 - The optional `allow` callback filters entries **before pagination** (so pages
   stay full); the API passes `Scope.VisibleInBrowse` here for non-admin
   callers, scoping the tree to their shares.
+- Entries the library's [ignore rules](#ignore-rules) cover are left out too
+  (`Ignore.Covers`, also before pagination), so the browse view never shows
+  what the scanner skips.
 - Directories sort before files, both case-insensitively by name; pagination is
   simple offset-based (default 200, cap 500) - fine here because a single
   directory is small, unlike the catalog-wide listings which must use keyset
@@ -45,45 +50,173 @@ folder detection dialog can show and change it.
 
 ## When scans run
 
-There is **no periodic rescan**. A scan of a library runs when:
+Every full scan goes through **one job queue** (`internal/library/jobs.go`).
+A scan of a library runs when:
 
-| Trigger | Where |
+| Trigger | `trigger` value | Where |
+|---|---|---|
+| Server startup (every library, once) | `startup` | `Scanner.EnqueueAll` from `launcher.Run`, after `Scanner.Start` |
+| The library's scan schedule says it's due | `schedule` | the scheduler goroutine (see [Scheduled scans](#scheduled-scans)) |
+| Admin "Rescan" (and the setup wizard's first scan, and a newly created library) | `manual` | `POST /admin/libraries/{id}/scan`, `POST /admin/libraries`, `POST /setup` |
+| Admin "rescan every library" | `manual` | `POST /admin/scan` (`Scanner.EnqueueAll`) |
+| A library's root or ignore rules changed | `change` | `handleUpdateLibrary` |
+| A folder override set or cleared | `change` | `handleSetFolderOverride` / `handleDeleteFolderOverride` |
+| A single path, on demand | - (not queued) | `Scanner.IndexPath` from any content handler, and `POST /admin/libraries/{id}/book/rescan` (see below) |
+
+Only a change to the **root** or the **ignore rules** queues a scan on a
+library edit. A rename, a new default view or a new schedule doesn't touch the
+index, so `PATCH /admin/libraries/{id}` no longer rescans for those (before
+Phase 3 every edit did).
+
+### The job queue
+
+`Scanner.Enqueue(lib, trigger, startedBy)` adds a job and returns it; one
+worker goroutine (`Scanner.work`, started by `Scanner.Start`) runs queued jobs
+**one at a time, first in first out**, so scans never compete for the disk or
+for SQLite's single writer connection. Different libraries no longer scan in
+parallel.
+
+- **Coalescing.** Asking for a library that already waits returns the waiting
+  job. Asking for a library that is **running** queues it to run once more
+  after the current scan (a setting changed mid-scan, so the running scan may
+  have read the old one) - unless the ask is a `schedule` or `startup` scan,
+  which has nothing new for a second pass to see; those return the running job.
+- **Queued state.** A library's `ScanProgress.Queued` is read from the queue
+  itself, so it is true as soon as `Enqueue` returns: a status poll made right
+  after the request sees the scan even if it has to wait. When the worker starts
+  the job, the library reads as `running` (and still `queued` when another pass
+  is lined up), and it stays `running` until the run's `scan_runs` row is
+  written, so a poll that sees the scan finished finds its history finished
+  too.
+- **Each job runs the library as it is now**: the worker re-reads the library
+  row, so a rename or new root since the job was queued is honoured, and a
+  library deleted meanwhile is skipped.
+- **Cap.** A scan someone or something asked for runs under a one-hour timeout
+  (`scanTimeout`); a scan that hits it is recorded as `failed`. The **startup**
+  scan has no time limit (`jobContext`): it is a library's full index after a
+  restart, and it runs to the end as it always has. Every scan ends with the
+  server.
+- **Cancel.** `Scanner.Cancel(id)` drops a queued job, or cancels the running
+  one's context. A cancelled scan stops during the folder walk or at its next
+  book, and **never inside the prune**: it checks for a cancel just before
+  pruning, and once begun the prune runs to the end as one transaction (on a
+  context that ignores the cancel). So a stopped scan has removed nothing, and
+  one that pruned records what it removed. It is recorded as `cancelled`.
+  Dropping a queued **scheduled** scan skips that slot (see
+  [Scheduled scans](#scheduled-scans)).
+- **Deleting a library** cancels its scans (`Scanner.CancelLibrary`): its queued
+  jobs are dropped and a running one is stopped, so they don't hold the queue.
+- **Hung roots don't block the queue.** Before discovery, the scan asks the
+  bounded root probe (the 2-second check behind `available`, see
+  [Reporting it to the console](#reporting-it-to-the-console)). A root that
+  doesn't answer (a hard-mounted NFS share whose server is gone, where a plain
+  `stat` can block for minutes) stops the scan at the
+  [unavailable-root guard](#the-unavailable-root-guard), recorded as
+  `unavailable`, and the next job runs.
+- **One at a time, by construction.** `Scan` itself no longer coalesces
+  concurrent calls for the same library; the queue is what guarantees a library
+  is never scanned twice at once.
+- **Memory only.** The queue is not persisted. A job still waiting when the
+  server stops is lost; the startup scans and schedules cover that.
+
+`GET /admin/jobs` returns the running job (with its library's progress), the
+queue and every scheduled library's next scan; `DELETE /admin/jobs/{id}`
+cancels (see the [API reference](api/reference.md#get-apiv1adminjobs)).
+
+### Scan history (`scan_runs`)
+
+The worker records every job it runs in `scan_runs` (`catalog/scanruns.go`):
+`StartScanRun` before the scan, `FinishScanRun` after, using a context that
+outlives the server's so a run is closed even during shutdown. A row holds the
+trigger, who started it (`started_by`, `NULL` for a schedule or startup), start
+and finish times, a status, counts and a log.
+
+| Status | Meaning |
 |---|---|
-| Server startup (every library, once) | `launcher.initialScan`, in a background goroutine |
-| Admin "Rescan" | `POST /admin/libraries/{id}/scan` → `backgroundScan` (returns 202 immediately) |
-| Library created or edited | `handleCreateLibrary` / `handleUpdateLibrary` (a changed root invalidates the index) |
-| Folder override set or cleared | `handleSetFolderOverride` / `handleDeleteFolderOverride` |
-| A single path, on demand | `Scanner.IndexPath` from any content handler (see below) |
+| `running` | the scan has not finished |
+| `ok` | finished, including the prune step |
+| `partial` | finished, but part of the tree couldn't be read, so pruning was skipped |
+| `unavailable` | stopped at the [unavailable-root guard](#the-unavailable-root-guard); nothing pruned |
+| `failed` | an error (including the one-hour cap); nothing pruned |
+| `cancelled` | an admin stopped it; nothing pruned |
+| `interrupted` | the server stopped mid-scan. `Scanner.Start` marks every run still open at startup this way (`InterruptScanRuns`) |
 
-`backgroundScan` detaches the scan from the request but binds it to the server
-lifecycle (`a.baseCtx`, with a 1-hour timeout), so shutdown cancels an
-in-flight scan rather than leaving it orphaned. Concurrent `Scan` calls for the
-**same** library coalesce (the second returns immediately); different libraries
-scan concurrently. Progress is observable: the scanner tracks a per-library
-`ScanProgress{Running, Total, Done, Indexed}` served by
-`GET /admin/libraries/{id}/scan`, and logs a heartbeat every 15 s so a long
-pass over a network share doesn't look hung.
+The counts are `books` (books discovered on disk), `added`, `updated`, `moved`,
+`removed` and `errors` (books whose files had a [read problem](#read-problems),
+plus index writes that failed). A moved or renamed book counts **once**, as
+`moved`: not also as added at its new path or removed at its old one. The same counters, live, are on
+`ScanProgress` (`added`, `updated`, `moved`, `removed`; `indexed` is now
+`added + updated`).
+
+The **log** is a JSON array of `catalog.RunEvent` (`at`, `level` =
+`info`/`warn`/`error`, `kind`, and `path`/`to`/`code`/`detail`/`count` as the
+kind needs). Kinds: `started`, `discovered`, `unreadable` (a path discovery
+couldn't read), `moved` (from `path` to `to`), `problem` (a read problem, with
+its `code`), `error`, `removed` (each pruned path), `partial` and `truncated`,
+then one closing event the job adds from the run's status (`closingEvent`):
+`finished`, `unavailable`, `failed`, `cancelled` or `interrupted`. The console
+words each kind itself; `detail` is the tool's or the OS's own message, shown
+as is.
+
+Two bounds keep the table small: a log holds at most **300 events**
+(`maxRunEvents`; past that, events are counted and one `truncated` line before
+the closing event says how many were dropped). Problems (`unreadable`,
+`problem`, `error`) may take at most half of it (`maxProblemEvents`), so a
+library full of unreadable files can't crowd out the moves and removed paths
+logged after them: the problems are on the books too, the removed paths
+nowhere else, and only the newest
+**100 runs per library** are kept (`maxScanRunsPerLibrary`, trimmed by
+`FinishScanRun`). Runs belong to their library and cascade with it.
+
+### Scheduled scans
+
+A library's `scan_schedule` (`library/schedule.go`, `ParseSchedule`) is one of:
+
+| Value | Meaning |
+|---|---|
+| `""` | no scheduled scans (the default) |
+| `every:<N>h` | N hours after the library's last scan **started**; N is one of 1, 3, 6, 12, 24 |
+| `daily:HH:MM` | every day at that time, in the **server's** time zone |
+
+"The last scan" is the library's newest `scan_runs` row, whatever started it
+(`LastScanStarts`), so a manual rescan pushes an interval schedule back, and a
+server that was off when a daily scan was due runs it as soon as it is back. A
+library never scanned counts from when the scheduler started. A scheduled scan
+that is dropped without a run of its own - cancelled while it waited, or folded
+into a scan of the library already running - counts as a scan start too
+(`jobQueue.skipped`), so the scheduler skips that slot instead of queuing it
+again a minute later.
+`Scanner.NextScans` computes every scheduled library's next due time (it
+backs `next_scan_at` on `GET /admin/libraries` and the `schedules` list of
+`GET /admin/jobs`); the scheduler checks once a minute (`scheduleTick`) and
+enqueues the due ones with trigger `schedule`. Anything else is refused with
+`400` `code: "invalid_schedule"` when a library is saved. A valid schedule is
+stored in canonical form (`Schedule.String`): `every:06h` is saved as
+`every:6h`, which is what the console reads.
 
 ## Anatomy of a scan pass
 
 ```mermaid
 flowchart TD
-    A["Signatures(lib)<br/>stored mtime/size/duration/codec/cover per rel_path"] --> B{"os.Stat(root)<br/>exists & is dir?"}
+    A["Signatures(lib)<br/>stored mtime/size/duration/codec/cover per rel_path"] --> B{"root probe answers (2 s)<br/>and os.Stat: exists & is dir?"}
     B -- no --> U1["ErrLibraryUnavailable<br/>(abort, no prune)"]
     B -- yes --> C["FolderOverrides(lib)"]
-    C --> D["discoverAuto: WalkDir the tree<br/>collect dirs that directly contain audio<br/>(warn + skip unreadable entries)"]
+    C --> D["discoverAuto: WalkDir the tree<br/>collect dirs that directly contain audio<br/>(skip ignored paths; log + skip unreadable entries)"]
     D --> E["booksInDir per dir<br/>(detection model + overrides)"]
-    E --> F{"0 books found<br/>but index non-empty?"}
+    E --> F{"0 books found, index non-empty,<br/>and not all ignored?"}
     F -- yes --> U2["ErrLibraryUnavailable<br/>(abort, no prune)"]
-    F -- no --> G["detectMoves<br/>fingerprint-match vanished → new paths,<br/>MoveDurableState"]
+    F -- no --> G["detectMoves<br/>fingerprint-match vanished → new paths,<br/>MoveDurableState (logged)"]
     G --> H{"per book:<br/>mtime+size unchanged<br/>and probe data present?"}
-    H -- "yes (skip; note embedded art<br/>if has_cover unset)" --> H
-    H -- no --> I["enrich: path heuristic + tags/ffprobe,<br/>field sources, chapters, cover, fingerprint"]
+    H -- "yes (skip; backfill has_cover /<br/>suspect_parts if unset)" --> H
+    H -- no --> I["enrich: path heuristic + tags/ffprobe,<br/>chapters, cover, fingerprint,<br/>read problems, suspect parts"]
     I --> J["catalog.UpsertBook (one tx):<br/>scanned values + files + chapters,<br/>then enrichment + overrides layered on, FTS"]
     J --> H
-    H -- done --> HC["SetHasCover<br/>noted cover flags, one tx"]
-    HC --> K["DeleteBooksNotIn<br/>prune vanished paths (+ FTS rows)"]
-    K --> M["log result: indexed / removed / elapsed"]
+    H -- done --> HC["SetHasCover + SetSuspectParts<br/>noted backfills, one tx each"]
+    HC --> P{"discovery saw<br/>the whole tree?"}
+    P -- no --> PP["skip prune (status partial)"]
+    P -- yes --> K["DeleteBooksNotIn (one tx, not cancellable)<br/>prune vanished paths (+ FTS rows),<br/>each path logged"]
+    K --> M["result: counts + log<br/>(the job records them in scan_runs)"]
+    PP --> M
 ```
 
 The **unchanged-skip** condition is worth reading precisely: a book is skipped
@@ -102,7 +235,34 @@ the next scan rather than recording "no cover". The noted flags
 are written in **one transaction** after the loop
 (`catalog.SetHasCover(ctx, libID, map[path]bool)`, which also counts a sibling
 `cover_path` as art), so the first scan after the upgrade stays cheap on a large
-library.
+library. A skipped folder book indexed before migration `0017` gets the same
+kind of tag-only check for [several books in one folder](#folders-that-may-hold-several-books)
+(`suspectFromTags`, written by `catalog.SetSuspectParts`).
+
+### Prune: what a removed book leaves behind
+
+When discovery saw the whole tree, `catalog.DeleteBooksNotIn` drops every book
+row whose path wasn't found (with its files, chapters and FTS row) in **one
+transaction** and returns the paths (minus the ones a detected move carried
+away, which are logged as moves), which the scan writes to its log as `removed` events. That log line
+is **all** that remains in the index: there is no "missing" flag and no ghost
+row kept for the book. The reasons:
+
+- The index is a rebuildable cache of the disk (see
+  [Data model](data-model.md#the-two-halves-rebuildable-index-vs-durable-state)),
+  so a book that isn't on disk isn't in it.
+- Nothing worth keeping is lost. Everyone's progress, bookmarks and notes, and
+  the admin's edits, cover, enrichment and ignored issues are path-keyed rows
+  with no foreign key to `books`; pruning a book doesn't touch them. If the
+  files come back at the same path, the next scan indexes the book and all of
+  it reappears. A book that moved is carried to its new path before the prune
+  (`detectMoves`, above).
+- The log answers "where did that book go?" for the 100 newest scans of each
+  library, without the player APIs ever showing a book that can't be played.
+
+Pruning is skipped entirely when the scan can't trust what it saw: an
+unreadable subtree (`partial`), the unavailable-root guard, an error, or a
+cancel (see [Scan history](#scan-history-scan_runs)).
 
 ### Enrichment and admin edits survive every upsert
 
@@ -142,6 +302,54 @@ takes the max mtime, and takes the **earliest** file's `added_at`. `addedAt` is
 the file's birth (creation) time where the OS records it
 (`birthtime_darwin.go`/`birthtime_linux.go`), otherwise mtime - a stable
 chronological key for "recently added" that survives re-indexing.
+
+## Ignore rules
+
+Each library can list files and folders the scanner skips - sample clips, an
+`Extras` folder, a podcast feed someone dropped in (`library/ignore.go`). The
+rules live in the database (`libraries.ignore_patterns`, one pattern per line),
+**not** in a file inside the library: the server never writes to the library
+folder, which may be mounted read-only.
+
+The syntax is a small subset of `.gitignore`:
+
+- One pattern per line; blank lines are dropped and lines starting with `#`
+  are comments (kept, so an admin's notes survive a save).
+- A pattern **without** a `/` matches a file or folder **name at any depth**
+  (`*.sample.mp3`, `Extras`).
+- A pattern with a `/` **anywhere but at the end** is matched against the whole
+  path from the library root (`Podcasts/*`). A leading `/` counts, so `/Extras`
+  is only the root's `Extras`.
+- A **trailing** `/` limits the pattern to folders (`Extras/`). It doesn't
+  anchor it: `Extras/` matches a folder named `Extras` anywhere.
+- Wildcards are `path.Match`'s (`*`, `?`, `[...]`), and matching **ignores
+  case**. An ignored folder is skipped with everything under it.
+- At most **100** patterns of at most **200** bytes each.
+
+`NormalizeIgnore` validates a list when a library is saved. Entries are split
+on line breaks first (the column stores one pattern per line), so an entry
+holding several lines is several patterns, each validated. It refuses too many
+patterns,
+one too long, one that matches nothing such as `/`, or a malformed wildcard is
+`400` with `code: "invalid_pattern"`, naming the line); `ParseIgnore` builds the
+matcher and silently skips any stored line it couldn't use, so a bad row can
+never stop a scan. The same rules apply in three places:
+
+1. **The scan**: `discoverAuto` doesn't descend into an ignored folder and
+   skips ignored files, and `audioEntries` leaves ignored files out of a
+   folder book's parts.
+2. **The browse view**: `BrowseFS` hides covered entries (see
+   [above](#the-filesystem-view-browsefs)).
+3. **On-demand indexing**: `IndexPath` refuses a covered path with
+   `ErrNotIndexable` (`Ignore.Covers` checks the path and every folder above
+   it).
+
+Changing a library's ignore rules queues a rescan (trigger `change`), which
+prunes the books the new rules now skip and indexes the ones they no longer do.
+If the rules now cover **every** indexed book, the scan discovers nothing; the
+[unavailable-root guard](#the-unavailable-root-guard) would read that as an
+unmounted share, so it makes an exception (`ignoresAll`) and the scan prunes
+them as the admin asked.
 
 ## Metadata extraction
 
@@ -226,6 +434,110 @@ Cover resolution has two stages - an indexed **sidecar** path, and an
   picture) so the admin catalog can filter on it without opening files; the
   catalog's "has a cover" is `has_cover` or a custom cover.
 
+## What a scan notices for the Health page
+
+The console's Health page reads two things the scanner records on each book,
+besides what it already stores (cover, chapters, codec).
+
+### Read problems
+
+`noteProblem` (`library/problems.go`) records the **first** problem met while
+reading a book's files, in three columns:
+
+| `books.scan_error` | When |
+|---|---|
+| `unreadable` | a file couldn't be opened (`metadata.Metadata.OpenErr`) |
+| `empty_file` | a file is 0 bytes |
+| `probe_failed` | ffprobe is configured and couldn't read a file (`ProbeErr`) |
+
+`scan_error_file` is the library-relative file and `scan_error_detail` the OS's
+or ffprobe's own message, without the absolute path (the console shows the file
+beside it). To keep that message, ffprobe now runs with `-v error` instead of
+`-v quiet`: on failure, every distinct line it wrote to stderr, each without the
+input path, is joined with `"; "` and trimmed to 300 bytes (for example
+`[mov,mp4,m4a,3gp,3g2,mj2 @ 0x…] moov atom not found; Invalid data found when
+processing input` - the specific cause usually comes before the generic last
+line). Every re-index clears and re-checks the columns. A fixed permission or a
+share that came back changes neither the file's mtime nor its size, so the
+unchanged-skip would keep the stale problem; instead each scan re-reads just the
+recorded file of an `unreadable` or `probe_failed` book (`problemCleared`) and
+re-indexes the book when it now reads. `POST /admin/libraries/{id}/book/rescan`
+re-checks at once. Extraction stays
+best-effort: a problem never stops a scan, and the book is still indexed with
+what could be read. Each book with a problem adds a `problem` line to the
+scan's log and counts in its `errors`.
+
+### Folders that may hold several books
+
+A folder with audio is one book, which is right for almost every library. The
+exception worth flagging is a folder that collects whole books
+(`Series/Book 1.m4b`, `Series/Book 2.m4b`). `suspectParts` decides it while
+`buildMultiFileChapters` reads the parts, and stores the answer in
+`books.suspect_parts`. A folder is suspect when:
+
+- it has **at least two** parts,
+- **every** part is at least **one hour** long (`minSuspectPart`; a part of
+  unknown length, without ffprobe, can't pass), and
+- the parts claim **at least two different titles**. A part's title is its
+  album/title tag, unless that is missing or generic, else its file name
+  without a leading track number. Titles are compared lower-cased, letters and
+  digits only, with numbers and part words (`part`, `pt`, `of`, `cd`, `disc`,
+  `disk`, `track`, also with a number attached: `Part1`, `CD2`) removed, so
+  `Part 1` and `Part 2` of one book never differ.
+
+`suspect_parts` is the number of distinct titles (0 = one book; single-file
+books are always 0). Migration `0017` set it to 0 for every existing row that
+can't be suspect and left `NULL` only for folder books whose parts are all an
+hour or longer; the next scan checks those with a tag read
+(`suspectFromTags`, taking the lengths as passing) without re-indexing them.
+The fix is a [folder override](#book-detection-booksindir), which the
+console's "Choose detection" opens: `collection` splits the folder, and `book`
+(the admin saying "it is one book") settles it - the `suspect` issue leaves out
+folders with a `book` override.
+
+### Issues
+
+`catalog/issues.go` turns the index into the Health page's categories on
+request; nothing but an admin's "ignore" is stored. Each book kind is one SQL
+predicate over `books b`, shared by the counts (`IssueCounts`) and the lists
+(`GET /admin/books?issue=`), so the two can't disagree:
+
+| Kind | A book is listed when |
+|---|---|
+| `scan_error` | `scan_error` is set |
+| `suspect` | `suspect_parts >= 2`, and the folder has no `book` override |
+| `no_cover` | a scan has checked it (`has_cover` not `NULL`) and it has no sidecar image, no embedded art and no custom cover |
+| `unmatched` | it has no ASIN and no ISBN. Only offered while community metadata is on |
+| `no_chapters` | it is longer than **2 hours** and has at most one chapter |
+| `transcode` | its codec doesn't play in browsers (`media.DirectPlayable`) |
+| `duplicate` | it is one of a group of copies (below) |
+
+**Duplicates** are groups, found in Go (`DuplicateGroups`, a union-find over
+every book) and only **within one library** - a copy in another library is
+deliberate (a kids' library holding a book that is also in the main one), and
+players already show such copies once. Two books join a group when they have:
+
+- the same audio fingerprint (`content_hash`) and the same total size
+  (reason `same_files`), or
+- the same ASIN or the same ISBN, or
+- the same author, title and narrator (normalized) **and** lengths within a
+  minute or 2%, whichever is more, so an abridged edition isn't called a copy
+  (reason `same_book`). An unknown length (0, no ffprobe) only matches another
+  unknown one, so a failed probe can't join an abridged edition to an
+  unabridged one through itself.
+
+Within a group the copy worth keeping comes first: the better format tier,
+then a single file, then the higher bitrate, then the one with more
+listeners. A request asks for the open groups or (`?ignored=true`) only the
+ignored ones, filtered before the cap of 500 groups.
+
+An admin can **ignore** a book under a kind (`issue_ignores`, path-keyed
+durable state that moves with the book and survives rebuilds). A duplicate
+group is hidden once every member is ignored, and comes back when a new copy
+joins it. Libraries whose root is offline are reported beside the categories
+(`GET /admin/issues` `offline`), from the same availability probe as the
+library list.
+
 ## Move detection
 
 Re-tagging keeps durable state via the path key; **moving** a file keeps it via
@@ -246,14 +558,14 @@ the fingerprint:
   `reclassified` skips such a pair (nested paths with different sizes; an equal
   size, a single-part folder, is still the same book).
 - A real match calls `catalog.MoveDurableState(lib, oldPath, newPath)`, which
-  migrates **all nine** path-keyed book tables - `progress`, `bookmarks`,
+  migrates **all ten** path-keyed book tables - `progress`, `bookmarks`,
   `notes`, `listening_history`, `favourites`, `book_enrichment`,
-  `book_overrides`, `chapter_overrides` and `book_covers` - so a rename/move
-  never orphans a user's position, a book's attached ASIN, or an admin's edits
-  and custom cover. A same-path call is a no-op. It runs **two transactions**,
+  `issue_ignores`, `book_overrides`, `chapter_overrides` and `book_covers` - so
+  a rename/move never orphans a user's position, a book's attached ASIN, an
+  issue an admin ignored, or an admin's edits and custom cover. A same-path call is a no-op. It runs **two transactions**,
   each all or nothing:
-  1. **The book's own state** (`moveBookState`): `book_enrichment` moves with
-     `UPDATE OR REPLACE`. Then, if the moved book has any metadata override,
+  1. **The book's own state** (`moveBookState`): `book_enrichment` and
+     `issue_ignores` move with `UPDATE OR REPLACE`. Then, if the moved book has any metadata override,
      chapter override or custom cover, the destination's rows in **all three**
      of those tables are deleted first and the moved book's set takes their
      place - edits and cover follow the book as one set, so a stale lock or
@@ -289,20 +601,36 @@ has reached it**.
    any admin edits on in the same transaction, so a book indexed on demand
    shows its edited values at once - then returns the full book with chapters.
 
-A path that is not a book - a directory with no direct audio, or one the
-detector treats as a collection - returns `ErrNotIndexable`, which handlers map
-to 404.
+A path that is not a book - a directory with no direct audio, one the
+detector treats as a collection, or one the library's
+[ignore rules](#ignore-rules) cover - returns `ErrNotIndexable`, which handlers
+map to 404.
+
+`POST /admin/libraries/{id}/book/rescan?path=` (the console's "Read the files
+again" and Health's "Read again") calls `IndexPath` for an already-indexed book
+too: it re-reads that one book's files now (tags, ffprobe, cover, read
+problems) **outside** the job queue, since one book shouldn't wait behind a
+library scan, and answers with the book page. The re-read runs on a context
+detached from the request (the server's lifetime, capped at 10 minutes,
+`rescanBookTimeout`): probing every part on a slow share can outlast the
+request timeout, and the result is still saved then. A path with no book any
+more is `404` with `code: "not_indexable"`.
 
 ## The unavailable-root guard
 
 `ErrLibraryUnavailable` protects the index when a network share (SMB/NFS)
-drops. The scanner **aborts without pruning** when either:
+drops. The scanner **aborts without pruning** when:
 
-1. the library root is missing or not a readable directory (`os.Stat` before
+1. the root doesn't answer the bounded root probe within 2 seconds (a hung
+   hard mount, which would otherwise hold the one scan worker and every scan
+   queued behind it),
+2. the library root is missing or not a readable directory (`os.Stat` before
    discovery), or
-2. discovery returns **zero** audio files while the index still has books - an
+3. discovery returns **zero** audio files while the index still has books - an
    existing-but-empty mount point looks exactly like this, and letting the
-   prune step run would wipe every indexed book.
+   prune step run would wipe every indexed book. The one exception: when the
+   library's [ignore rules](#ignore-rules) cover every indexed book, an empty
+   discovery is what the rules asked for, and the scan prunes.
 
 Related but distinct: a *per-entry* read error during the walk (commonly a
 permission-denied subtree on a partially-readable mount) is warned and
@@ -335,15 +663,14 @@ unavailable", from two signals:
   the whole list at most one timeout. The same list also carries each
   library's `ScanProgress` as `scan`, which is what the console polls.
 
-`Scanner.ScanInBackground(ctx, lib)` is how every admin request that queues a
-scan starts it (`POST …/scan`, creating or editing a library, setting or
-clearing a folder override, the setup wizard - all through the API's
-`startScan`). It marks the library running before it returns, so the first
-status poll sees `running: true` even when a small library would otherwise
-finish between the two requests, then runs `Scan` detached from the request:
-bound to the server's lifetime (`ctx`, so shutdown cancels it), capped at an
-hour, and logged if it fails. A call that coalesces into a scan already running
-leaves that scan's progress alone.
+Every admin request that starts a scan (`POST …/scan`, `POST /admin/scan`, creating a library,
+an edit that changes the root or the ignore rules, setting or clearing a folder
+override, the setup wizard) goes through the API's `startScan`, which calls
+`Scanner.Enqueue` with the requesting admin as `started_by`. The library reads
+as queued (or running) before the request returns, so the first status poll
+sees the scan even when a small library would otherwise finish between the two
+requests. The old `ScanInBackground` (one detached goroutine per request, with
+different libraries scanning in parallel) is gone.
 
 :::note
 Library roots must be **local paths** (mount remote shares first). The guard is
