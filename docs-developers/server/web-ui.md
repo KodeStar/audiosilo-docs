@@ -265,6 +265,14 @@ session ("Your session ended"). A 403 from an admin endpoint re-checks
 `GET /me`, and if the account is no longer an admin (another admin demoted it
 mid-session) signs out with "This account is not an administrator."
 
+Every API call also names the console to the server with
+`X-AudioSilo-Client: AudioSilo Admin (web)` (`CLIENT_IDENTITY` in
+`admin-ui/src/api/client.ts`), so the server's devices and sessions can tell a
+console session from a player. It carries no version (the console ships inside
+the server), and the console is always same-origin, so the header never costs a
+CORS preflight. See
+[Client identification](api/index.md#client-identification-x-audiosilo-client).
+
 ### Dev loop
 
 ```sh

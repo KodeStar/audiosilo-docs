@@ -74,16 +74,35 @@ codes/tokens in the response body and store only the hash.
   cannot create tokens"). It can still list/revoke keys and clear a recovery code,
   which only reduce access.
 
-`auth.ResolveToken` validates a presented secret for a specific kind: it hashes
+`auth.ResolveRequest` (which `ResolveToken` wraps for a single kind) validates a presented secret for the accepted kinds: it hashes
 the secret, looks up the row, and rejects revoked tokens, expired tokens, and
 tokens whose user is disabled. On success it bumps `tokens.last_seen` - which
 is how a user's "last activity" is derived (`MAX(tokens.last_seen)`); there is
 deliberately no `last_login` column.
 
+In the same write, `ResolveRequest` records what the request says about the
+device (`auth.Presence`): its address (`clientIP`, so `X-Forwarded-For` only
+from a trusted proxy) into `tokens.last_ip`, and its app from the
+[`X-AudioSilo-Client`](api/index.md#client-identification-x-audiosilo-client)
+header (`auth.ParseClient`; strict, a malformed value is ignored) into
+`tokens.client_app` / `client_version` / `client_platform`. The app columns
+change only when the request names an app, and that is decided in the SQL
+rather than from the row read just before, so a header-less request (covers
+loading beside an API call) racing one with the header can't write back a stale
+app. It returns the matched token as an `auth.Credential` (id, kind, device
+name, app), which the middleware puts in the request context (`credentialFrom`)
+for `denyAPIKey` (it reads the credential's kind), the listening-session
+recorder and the admin devices routes. An admin can sign one device out
+(`DELETE /admin/devices/{id}`, `auth.RevokeDevice`): it revokes one live
+session or API-key token by id, whoever owns it, and refuses the token making
+the request (`409 current_device`). A revoked token keeps its row, but the
+daily retention job (`auth.ForgetRevokedAddresses`) blanks its `last_ip`, so a
+device's address is kept only while it is signed in.
+
 The middleware wrappers in `internal/api/middleware.go`:
 
 - `requireAuth` - a **session token or an API key** from the `Authorization`
-  header only (`ResolveTokenKinds(secret, KindSession, KindAPI)`); a pairing
+  header only (`ResolveRequest(secret, presence, KindSession, KindAPI)`); a pairing
   token is never accepted here, so a QR/pairing secret can't be used as a durable
   credential.
 - `requireMediaAuth` - additionally accepts `?token=` as a query parameter,
@@ -208,7 +227,7 @@ caller gets them:
 - **No self-delete** - enforced additionally in the delete *handler*: an admin
   may disable their own account (reversible) but never delete it
   (irreversible). `DeleteUser` cascades sessions, auth codes, progress,
-  bookmarks, notes, history and share grants via `ON DELETE CASCADE`; files on
+  bookmarks, notes, history, listening sessions and share grants via `ON DELETE CASCADE`; files on
   disk are untouched.
 - **Passwords are optional for non-admins** - stored as an empty hash, and
   `Authenticate` rejects empty-hash accounts outright, so a password-less user
@@ -339,7 +358,7 @@ The enumerated critical list:
 - `library.SafeJoin`
 - `Scope.Allows` / `Scope.VisibleInBrowse` / `pathFilterSQL`
 - the rate limiters (`limiter`, `ipRateLimiter`)
-- `auth.ResolveToken`
+- `auth.ResolveRequest` / `lookupToken`
 - `web.htmlCSP`
 
 Anything touching these must land with a test showing the permitted case *and*

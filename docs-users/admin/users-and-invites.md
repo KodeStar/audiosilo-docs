@@ -138,6 +138,34 @@ signed in" for an account that has been created but has not connected yet.
 There is no separate "last login" - a player stays signed in for months, so the
 last request is the honest measure of activity.
 
+## What the server records about listening and devices
+
+So that admins can see who is listening and on what, the server keeps a few
+records about each person. Only admins can see them, and they never leave your
+server.
+
+- **Devices.** For each signed-in device (a phone, a browser, a personal API
+  key): which app it is and its version, when it last connected, and the
+  network address it last connected from. Only the latest address is kept, not
+  a history, and only while the device is signed in: once it signs out, the
+  address is cleared within a day. Apps released before this was added show as
+  an unknown app until they are updated.
+- **Listening sessions.** Who listened to which book, when, for how long, and
+  on which device. These are worked out from the progress the apps already save
+  while playing, so there is nothing for listeners to turn on. Listening is
+  measured from the saves the server actually receives.
+- **Start and finish dates** for each book a person reads. Books finished
+  before this was added have their last listen as the finish date, and no start
+  date.
+
+**How long it's kept.** Detailed sessions are kept for about 13 months. After
+that they are reduced to daily totals: how long each person listened to which
+book on which day. The device, app and time of day are dropped.
+
+Deleting an account removes all of its records; deleting a library removes the
+listening records for its books. The server can also sign out a single device,
+leaving the person's other devices signed in.
+
 ## Disabling vs deleting
 
 These are very different levers:

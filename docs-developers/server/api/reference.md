@@ -1065,6 +1065,15 @@ converge.
 
 Response `200`: `{ "progress": { … } }` (the winning row).
 
+Each save is also the heartbeat of the caller's **listening session** on the
+book, which the server derives for the admin console (see
+[Admin: activity](#admin-activity)). That happens whether or not the save wins
+last-write-wins, never changes the response, and a failure to record it is only
+logged. The server also stamps the row's start and finish dates (`started_at`
+on the first save, `finished_at` when `finished` turns on, cleared when it turns
+off), taken from the save's own `updated_at` (server time when it is missing or
+implausible); they are admin-only and not part of this envelope.
+
 ### `GET /api/v1/libraries/{id}/bookmarks` · `POST /api/v1/libraries/{id}/bookmarks`
 
 *Session.* List / add bookmarks for a book (`?path=` on both).
@@ -1286,7 +1295,8 @@ Response `200`: the updated user object.
 ### `DELETE /api/v1/admin/users/{id}`
 
 Permanently deletes an account and **all** its durable state (sessions, auth
-codes, progress, bookmarks, notes, history, share grants) via cascade; files on
+codes, progress, bookmarks, notes, history, listening sessions and daily
+listening totals, share grants) via cascade; files on
 disk are untouched. Response: `204 No Content`.
 
 | Status | Meaning |
@@ -2548,6 +2558,213 @@ ended: `finished`, `unavailable`, `failed`, `cancelled` or `interrupted`. A remo
 line here - see [Prune](../scanner.md#prune-what-a-removed-book-leaves-behind).
 `404 no such scan`; `400 invalid run id`.
 
+## Admin: activity
+
+All *Admin* (a non-admin gets `403`). Listening sessions, signed-in devices and
+an admin's edits of someone's progress (admin console Phase 4a; the console
+screens over them come later). Sessions are derived on the server from the
+progress saves players already make - see
+[Listening sessions](../data-model.md#listening-sessions-how-they-are-derived)
+for the rules (session gap and continuation, listened time, what isn't
+counted). A session with no listening recorded yet (a single save, such as a
+"mark finished") is left out of both session routes and of the stats, so a
+session appears from its second save. A **device** is
+a signed-in token: a session (a paired phone, a browser) or a personal API key,
+never a pairing token. Its app comes from the
+[`X-AudioSilo-Client`](index.md#client-identification-x-audiosilo-client)
+header.
+
+The session object, shared by both session routes:
+
+```json
+{
+  "id": 412,
+  "user_id": 4,
+  "username": "sam",
+  "library_id": 1,
+  "path": "Brandon Sanderson/Mistborn/The Final Empire",
+  "title": "The Final Empire",
+  "author": "Brandon Sanderson",
+  "device_id": 57,
+  "device_name": "Pixel 9",
+  "client": { "app": "AudioSilo", "version": "1.4.2", "platform": "android" },
+  "started_at": "2026-10-04T19:02:11.000Z",
+  "last_at": "2026-10-04T19:41:56.000Z",
+  "start_position": 10620.4,
+  "position": 12043.6,
+  "duration": 88347.4,
+  "speed": 1.25,
+  "listened": 1138.9,
+  "codec": "aac",
+  "transcoded": false,
+  "finished": false,
+  "state": "playing",
+  "chapter": "Chapter 12",
+  "ip": "192.168.1.24"
+}
+```
+
+- `title` / `author` come from the index; `""` when the book isn't indexed
+  (any more), in which case `path` names it.
+- `device_id` is the token's id - the `id` that
+  [`GET /admin/devices`](#get-apiv1admindevices) lists. `device_name` and
+  `client` are copied onto the session when it is recorded, so they survive the
+  device's sign-out. `client` is `null` for an app that never named itself
+  (players released before the header).
+- Times are UTC with milliseconds. `started_at` is the first save of the
+  session, `last_at` the newest.
+- `start_position` / `position` are the book positions (seconds) at the first
+  and newest save; `duration` and `speed` are the newest save's.
+- `listened` is **wall-clock seconds** of playback in the session, not book time.
+- `codec` is the book's indexed codec when the session started (`""` unknown);
+  `transcoded` is true when the same device streamed a file of this book with
+  `?transcode=1` during the session.
+- `finished` - a save in the session marked the book finished.
+- `state` - `playing` (a save within the last 60 seconds), `paused` (within 10
+  minutes) or `ended`. A session can come back from `ended`: a late save whose
+  position advanced by about the time that passed (a phone that kept playing
+  without saving) continues it, up to 12 hours after its last save.
+- `chapter` (the chapter title at `position`) and `ip` (the device's newest
+  address) are present on **live** sessions only.
+
+### `GET /api/v1/admin/sessions/live`
+
+Who is listening now: the open sessions (a save within the last 10 minutes),
+newest first, **one per device** - a device that moved on to another book shows
+only the book it is on now. Each carries `chapter` and `ip`.
+
+```json
+{ "sessions": [ { "id": 412, "username": "sam", "state": "playing", "…": "…" } ] }
+```
+
+`sessions` is `[]` when nobody is listening.
+
+### `GET /api/v1/admin/sessions`
+
+Sessions newest first (open ones included), a page at a time.
+
+| Query param | Type | Default | Notes |
+|---|---|---|---|
+| `user_id` | int | - | one listener |
+| `library_id` | int | - | one library |
+| `path` | string | - | one book; needs `library_id` |
+| `before` | int | - | a session id: only older sessions (the next page) |
+| `limit` | int | `50` | ≤ 0 or > 200 falls back to 50 |
+
+```json
+{ "sessions": [ { "id": 412, "…": "…" } ], "next_before": 363 }
+```
+
+`next_before` is the id to pass as `before` for the next page, `null` on the
+last page. `400` `invalid user_id` / `invalid library_id` / `invalid before`
+(not a positive integer); `400` `path needs library_id`.
+
+### `GET /api/v1/admin/devices`
+
+Signed-in devices - live (not revoked, not expired) session tokens and API keys
+- of one person (`?user_id=`) or of everyone, most recently seen first.
+
+```json
+{
+  "devices": [
+    {
+      "id": 57,
+      "user_id": 4,
+      "username": "sam",
+      "kind": "session",
+      "name": "Pixel 9",
+      "client": { "app": "AudioSilo", "version": "1.4.2", "platform": "android" },
+      "created_at": "2026-07-02T11:20:31Z",
+      "last_seen": "2026-10-04T19:41:56Z",
+      "last_ip": "192.168.1.24",
+      "current": false
+    }
+  ]
+}
+```
+
+- `kind` - `session` or `api`. `name` is the device name the player sent at
+  sign-in (an API key's label).
+- `client` - the app the token last reported, `null` until a request names one
+  (players released before the header stay `null`).
+- `last_seen` - the newest authenticated request, `null` before any.
+  `last_ip` - that request's address (`""` before any). Both are overwritten
+  each time; no history of addresses is kept.
+- `current` - the token making this request.
+
+`devices` is `[]` when there are none. `400 invalid user_id` for a non-positive
+or non-integer id.
+
+### `DELETE /api/v1/admin/devices/{id}`
+
+Signs one device out by revoking its token, whoever owns it. The person's
+other devices stay signed in. `204 No Content`.
+
+| Status | Meaning |
+|---|---|
+| `400` | `invalid device id` |
+| `404` | `device not found` - no live session or API key with that id (already signed out, a pairing token, or unknown) |
+| `409` | `code: "current_device"` - the token making this request; sign out of the console instead |
+
+### `GET /api/v1/admin/users/{id}/progress`
+
+One person's progress on every book, most recently saved first. Not filtered
+by shares (admin view).
+
+```json
+{
+  "progress": [
+    {
+      "library_id": 1,
+      "path": "Brandon Sanderson/Mistborn/The Final Empire",
+      "position": 12043.6,
+      "duration": 88347.4,
+      "finished": false,
+      "playback_speed": 1.25,
+      "version": 7,
+      "device_id": "pixel-9-sam",
+      "updated_at": "2026-10-04T19:41:56Z",
+      "title": "The Final Empire",
+      "author": "Brandon Sanderson",
+      "started_at": "2026-09-12T20:03:10Z",
+      "finished_at": null
+    }
+  ]
+}
+```
+
+The [progress fields](#get-apiv1meprogress) plus `title` / `author` (`""` when
+not indexed) and the dates: `started_at` is the time of the first save (`null`
+for rows saved before the server recorded it), `finished_at` the time of the
+save that last marked it finished, or of the admin edit that did (`null` while unfinished; finished rows from before were given
+their last save time). `400 invalid user id`; `404 user not found`.
+
+### `PATCH /api/v1/admin/libraries/{id}/progress`
+
+An admin's edit of someone's progress on a book (`?path=` and `?user_id=`
+required). Any subset of:
+
+| Body field | Type | Notes |
+|---|---|---|
+| `finished` | bool | `true` moves the position to the end and stamps the finish now (unless `finished_at` is given); `false` clears the finish date and keeps the position (unless `position` is given) |
+| `position` | float | seconds; between `0` and the book's duration |
+| `started_at` | string \| null | RFC 3339 or `YYYY-MM-DD` (the start of that day, server time); `null` clears it |
+| `finished_at` | string \| null | as `started_at`; needs the book to be (or become) finished |
+
+A field left out stays as it is. When the person has no progress on the book
+yet but it is indexed, the row is created (its start stamped now). The write is
+stamped with the server's time and a higher `version`, so it beats what a
+device saved before it under last-write-wins, while a device still playing the
+book overrides it on its next save.
+
+Response `200`: `{ "progress": { … } }` - the object of
+[`GET /admin/users/{id}/progress`](#get-apiv1adminusersidprogress).
+
+| Status | Meaning |
+|---|---|
+| `400` | `invalid user_id`; `path is required`; `invalid request` (malformed body, an unknown key or an unparseable date); `those dates or that position don't fit this book` - a finish date on an unfinished book, a finish before the start, a date more than a day in the future, or a position outside the book |
+| `404` | `user not found`; `library not found`; `code: "book_not_found"` - no progress at that path and no indexed book there |
+
 ## Admin: stats
 
 ### `GET /api/v1/admin/stats`
@@ -2582,6 +2799,114 @@ a cross-user "currently listening" feed (up to 200 rows, newest first; `title`/
   ]
 }
 ```
+
+#### `?range=`: listening activity
+
+| Query param | Type | Default | Notes |
+|---|---|---|---|
+| `range` | string | - | `7d`, `30d`, `90d`, `1y` (365 days) ending now, or a calendar year such as `2025` (from 2000 to this year; the current year ends now). An empty value means `30d` |
+
+With `range` present the response gains an **`activity`** object; without it the
+response is exactly the one above. An unknown range is
+`400` `code: "invalid_range"`. Days, hours and weekdays are counted in the
+**server's** time zone.
+
+```json
+{
+  "total_books": 1284,
+  "…": "…",
+  "activity": {
+    "range": "30d",
+    "from": "2026-09-04T19:42:08Z",
+    "to": "2026-10-04T19:42:08Z",
+    "timezone": "BST",
+    "utc_offset": 60,
+    "totals":   { "listened": 412380.5, "sessions": 214, "listeners": 4, "books": 23, "finished": 3 },
+    "previous": { "listened": 388012.0, "sessions": 199, "listeners": 4, "books": 19, "finished": 2 },
+    "days": [
+      { "date": "2026-09-04", "listened": 9021.3,
+        "by_user": [ { "user_id": 4, "listened": 7200.0 }, { "user_id": 6, "listened": 1821.3 } ] }
+    ],
+    "hour_weekday": [ [0, 0, "… 24 values …"], "… 7 rows, Monday first …" ],
+    "top_books": [ { "library_id": 1, "path": "Brandon Sanderson/Mistborn/The Final Empire",
+                     "title": "The Final Empire", "author": "Brandon Sanderson",
+                     "listened": 38211.0, "listeners": 2 } ],
+    "top_authors":   [ { "name": "Brandon Sanderson", "listened": 61022.4, "books": 3 } ],
+    "top_narrators": [ { "name": "Michael Kramer", "listened": 61022.4, "books": 3 } ],
+    "top_users": [ { "user_id": 4, "username": "sam", "listened": 201330.2,
+                     "sessions": 96, "books": 9, "finished": 2 } ],
+    "funnel": { "started": 31, "reached_25": 22, "reached_50": 15, "reached_75": 9, "finished": 6 },
+    "drop_offs": [ { "library_id": 1, "path": "Old Books/The Long One", "title": "The Long One",
+                     "chapter_index": 3, "chapter": "Chapter 4", "listeners": 2, "scan_error": false } ],
+    "playback": [ { "transcoded": false, "codec": "aac", "listened": 380112.5, "sessions": 190 },
+                  { "transcoded": true, "codec": "opus", "listened": 32268.0, "sessions": 24 } ],
+    "peak_concurrent": { "streams": 3, "at": "2026-09-21T20:14:03Z" },
+    "clients": [ { "app": "AudioSilo", "version": "1.4.2", "platform": "ios", "devices": 3 },
+                 { "app": "", "version": "", "platform": "", "devices": 1 } ],
+    "growth": [ { "date": "2026-09-04T19:42:08Z", "books": 1270 },
+                { "date": "2026-10-04T19:42:08Z", "books": 1284 } ],
+    "storage": {
+      "bytes": 912345678901,
+      "by_library": [ { "library_id": 1, "name": "Audiobooks", "bytes": 880000000000, "books": 1201 } ],
+      "by_format":  [ { "key": "m4b", "bytes": 700000000000, "books": 811 } ],
+      "by_codec":   [ { "key": "aac", "bytes": 760000000000, "books": 990 } ]
+    },
+    "coverage": { "books": 1284, "identified": 802, "with_chapters": 1100, "with_cover": 1250 },
+    "inactive_users": [ { "user_id": 9, "username": "old-tablet", "last_seen_at": "2026-06-01T10:00:00Z" } ]
+  }
+}
+```
+
+Listening (`totals`, `days`, `hour_weekday`, the `top_*` lists, `playback`,
+`peak_concurrent`, `clients`) comes from listening sessions that recorded some
+listening, and for days older than the
+raw retention from the daily totals they were rolled up into. A session's
+listened time is spread evenly over the hours between its first and last save,
+and only the part inside the period counts.
+
+- `range` echoes the period; `from` / `to` are its bounds (RFC 3339, UTC; `to`
+  is rounded up to the next whole second). `timezone` is the server zone's
+  abbreviation at `to` and `utc_offset` its offset from UTC in minutes.
+- `totals` - `listened` (wall-clock seconds), `sessions` (sessions that started
+  in the period), `listeners` (people who listened), `books` (books listened
+  to), `finished` (books whose finish date falls in the period). `previous` is
+  the same for the period of equal length just before `from`, for deltas.
+- `days` - one entry per day of the period, oldest first, zero days included;
+  `by_user` lists each listener's seconds that day (`[]` on a quiet day).
+- `hour_weekday` - listened seconds as 7 rows (weekday, **0 = Monday**) of 24
+  hours. Raw sessions only: a rolled-up day has no hours.
+- `top_books`, `top_authors`, `top_narrators`, `top_users` - up to 10 each, by
+  listened time. Authors and narrators are the whole field value (as the
+  Library aggregates count them); `books` counts distinct books.
+  `top_users[].finished` counts that person's books finished in the period.
+- `funnel` - people x books with a progress save in the period, by how far each
+  got (the current position, so a restarted book counts where it is now; a
+  finished book counts as 100%).
+- `drop_offs` - up to 5 chapters where at least two people stopped the same
+  book: unfinished progress with no save for 30 days. `chapter_index` is
+  0-based; `scan_error` says the book has a read problem the Health page lists.
+  Independent of the period.
+- `playback` - listening by how it played: direct or `transcoded`, per `codec`
+  (`""` unknown), with `listened` in the period and `sessions` started in it.
+- `peak_concurrent` - the most sessions open at once in the period
+  (`streams`), and when (`at`, `null` with none).
+- `clients` - the devices that listened in the period (raw sessions only),
+  counted once per app build, using the app each session recorded at the time
+  (a later upgrade doesn't rewrite the past). `app: ""` is a client that never
+  named itself (released before the header).
+- `growth` - the number of books indexed now that had appeared on disk by each
+  sample `date` (RFC 3339): daily for a period up to a month, weekly up to a
+  quarter, monthly beyond, ending at `to`. Books removed since aren't counted
+  back.
+- `storage` - the collection now: total `bytes`, `by_library` (in library
+  order), `by_format` and `by_codec` (`key: ""` = unknown).
+- `coverage` - books now, and how many have an ASIN or ISBN (`identified`),
+  more than one chapter (`with_chapters`) and a cover (`with_cover`).
+- `inactive_users` - enabled, non-demo accounts with no authenticated request
+  for 60 days (an account that never made one counts once it is that old;
+  `last_seen_at` is then `null`), longest idle first. Independent of the period.
+
+Every list in `activity` is `[]`, never `null`, when empty.
 
 ## Admin: settings
 
