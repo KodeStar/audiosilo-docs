@@ -5,8 +5,8 @@
 //   SETUP_URL       optional: a second --setup server's wizard URL (with #token)
 //
 // Before capturing it provisions a little demo state through the admin API
-// (a listener account, an invite, a share, some listening progress) so the
-// console looks lived-in. The console (admin-ui) is driven through its real UI
+// (a listener account, an invite, a share, some listening progress, one
+// metadata edit) so the console looks lived-in. The console (admin-ui) is driven through its real UI
 // with role/label selectors that use the exact English labels from
 // audiosilo-server/admin-ui/src/i18n/locales/en.json - if a label changes there,
 // change it here too.
@@ -46,6 +46,7 @@ const api = async (token, method, p, body) => {
 let inviteCode = '';
 let samId = null;
 let library = null; // the seeded library ({id, name, root, ...})
+let firstBook = null; // the first book of GET /admin/books ({library_id, path, is_folder, ...})
 const login = await api(null, 'POST', '/auth/login', {username: 'admin', password: PASSWORD});
 const token = login.token;
 console.log('  ✓ admin login');
@@ -98,18 +99,47 @@ await step('provision listener + share', async () => {
   console.log('  ✓ provisioned (sam, invite, share)');
 });
 
+await step('provision a metadata edit', async () => {
+  // The first book by title: its page, its folder and the match dialog are
+  // captured below. One edit gives its Details card an "Edited" marker.
+  firstBook = (await api(token, 'GET', '/admin/books?limit=1'))?.books?.[0] ?? null;
+  if (!firstBook) throw new Error('no indexed books');
+  await api(
+    token,
+    'PATCH',
+    `/admin/libraries/${firstBook.library_id}/book?path=${encodeURIComponent(firstBook.path)}`,
+    {set: {narrator: 'LibriVox volunteers'}},
+  );
+  // One Lewis Carroll book with the author written "Surname, Given", so Library >
+  // Authors shows a merge suggestion.
+  const carroll = (await api(token, 'GET', `/admin/books?author=${encodeURIComponent('Lewis Carroll')}&limit=1`))?.books?.[0];
+  if (carroll) {
+    await api(
+      token,
+      'PATCH',
+      `/admin/libraries/${carroll.library_id}/book?path=${encodeURIComponent(carroll.path)}`,
+      {set: {author: 'Carroll, Lewis'}},
+    );
+  }
+  console.log('  ✓ provisioned (narrator edit on the first book, a reversed author)');
+});
+
 // ── Capture ────────────────────────────────────────────────────────────────
 const browser = await chromium.launch();
 const ctx = await browser.newContext(DESKTOP_CONTEXT);
 const page = await ctx.newPage();
 
-// Opens a console route and waits for its page heading (the h1.display every
-// screen's PageHead and the overview greeting render).
-const open = async (p, route) => {
+// Opens a console route and waits for it to render: by default its page
+// heading (the h1.display every screen's PageHead and the overview greeting
+// render); `ready` names something else for the screens without one (Library >
+// Books, a book's page).
+const open = async (p, route, ready = (pg) => pg.locator('h1.display').first()) => {
   await p.goto(`${ADMIN}${route}`, {waitUntil: 'networkidle', timeout: 45000});
-  await p.locator('h1.display').first().waitFor({timeout: 15000});
-  await sleep(1500); // covers are fetched one by one after the page renders
+  await ready(p).waitFor({timeout: 15000});
+  // Covers arrive after the page renders, in batches (POST /admin/covers).
+  await sleep(1500);
 };
+const bookRoute = (b) => `/library/book?library=${b.library_id}&path=${encodeURIComponent(b.path)}`;
 
 await step('sign-in page', async () => {
   await page.goto(`${ADMIN}/`, {waitUntil: 'networkidle', timeout: 45000});
@@ -133,11 +163,90 @@ await step('overview', async () => {
 
 await step('command palette', async () => {
   await page.keyboard.press('Control+k');
-  await page.getByPlaceholder('Search pages, settings, or type a command').waitFor({timeout: 8000});
+  await page.getByPlaceholder('Search books, people, settings, or type a command').waitFor({timeout: 8000});
   await sleep(600);
   await shoot(page, 'admin/palette.png');
   await page.keyboard.press('Escape');
   await sleep(400);
+});
+
+await step('command palette search', async () => {
+  await page.keyboard.press('Control+k');
+  const input = page.getByPlaceholder('Search books, people, settings, or type a command');
+  await input.waitFor({timeout: 8000});
+  await input.fill('alice');
+  // A real hit (capitalised title or name), not just the lowercase
+  // "Search all books for “alice”" fallback that shows at once.
+  await page.getByRole('option').filter({hasText: /Alice/}).first().waitFor({timeout: 8000}).catch(() => {});
+  await sleep(1200); // book thumbnails
+  await shoot(page, 'admin/palette-search.png');
+  await page.keyboard.press('Escape');
+  await sleep(400);
+});
+
+await step('books', async () => {
+  await open(page, '/library', (p) => p.getByRole('heading', {name: 'Recently added'}));
+  await shoot(page, 'admin/books.png');
+});
+
+await step('books table', async () => {
+  await open(page, '/library?view=table', (p) => p.getByRole('table', {name: 'All books'}));
+  await shoot(page, 'admin/books-table.png');
+});
+
+await step('a book page', async () => {
+  if (!firstBook) throw new Error('no book was provisioned');
+  // The book page's h1 is the hero title, not h1.display: wait for its Details card.
+  await open(page, bookRoute(firstBook), (p) => p.getByRole('heading', {name: 'Details', exact: true}));
+  await sleep(1000); // the hero's full-size cover and its tint
+  await shoot(page, 'admin/book.png');
+});
+
+await step('match with community metadata', async () => {
+  if (!firstBook) throw new Error('no book was provisioned');
+  await open(page, bookRoute(firstBook), (p) => p.getByRole('heading', {name: 'Details', exact: true}));
+  // "Compare with community" once the book has an ASIN or ISBN.
+  await page
+    .getByRole('button', {name: /^(Match with community metadata|Compare with community)$/})
+    .click({timeout: 8000});
+  const dialog = page.getByRole('dialog');
+  await dialog.waitFor({timeout: 8000});
+  // Candidates from meta.audiosilo.app, or (offline) the dialog's own message.
+  await dialog
+    .getByRole('radiogroup', {name: 'Possible matches'})
+    .or(dialog.getByText(/isn't answering|Nothing in the community database matches|is off on this server/))
+    .first()
+    .waitFor({timeout: 20000})
+    .catch(() => {});
+  await sleep(800);
+  await shoot(page, 'admin/book-match.png');
+  await page.keyboard.press('Escape');
+  await sleep(600);
+});
+
+await step('authors', async () => {
+  await open(page, '/library/authors');
+  await shoot(page, 'admin/authors.png');
+});
+
+await step('series', async () => {
+  await open(page, '/library/series');
+  await sleep(2000); // community series gaps load as each card scrolls into view
+  await shoot(page, 'admin/series.png');
+});
+
+await step('folders', async () => {
+  const libId = firstBook?.library_id ?? library?.id;
+  if (!libId) throw new Error('no library');
+  // The first book's own folder (its author folder opens above it), so the
+  // detail shows the detection choice; an author folder holds no audio of its
+  // own and has nothing to choose.
+  const folder = firstBook?.is_folder ? firstBook.path : (firstBook?.path ?? '').split('/').slice(0, -1).join('/');
+  const q = folder ? `&folder=${encodeURIComponent(folder)}` : '';
+  await open(page, `/library/folders?library=${libId}${q}`);
+  await page.getByText('How should AudioSilo read this folder?').waitFor({timeout: 8000}).catch(() => {});
+  await sleep(800);
+  await shoot(page, 'admin/folders.png');
 });
 
 await step('libraries', async () => {

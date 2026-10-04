@@ -34,6 +34,13 @@ that use the exact English labels from the server's
 the same rename in the script (a failed step is logged and its shot falls back
 to the previous image or a placeholder).
 
+Two admin shots depend on the server's community metadata lookup, which the
+demo server leaves at its default (`https://meta.audiosilo.app`, so it needs
+the network): `admin/book-match.png` shows the match dialog's candidates, and
+`admin/series.png` shows series gaps only for books the live catalogue
+matches. Offline, the match shot captures the dialog's "isn't answering"
+message instead and the series cards show no gaps.
+
 Every capture is optimized in place with **pngquant** (`brew install pngquant`)
 - a lossy-palette pass that shrinks the retina PNGs ~60% with no perceptible
 loss, so the committed image is the optimized one. It's optional: if pngquant

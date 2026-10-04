@@ -5,7 +5,7 @@ description: "Where to find the AudioSilo admin console, how to sign in, how it 
 
 Every AudioSilo server ships with a built-in admin console. It is a web page
 served by the server itself - nothing extra to install - and it is where you
-manage libraries, people, invites and shares.
+manage libraries, books and their details, people, invites and shares.
 
 ## Opening the console
 
@@ -82,16 +82,18 @@ The console is being rebuilt in stages. These sections work today:
 | Where | What it's for |
 |---|---|
 | **Home** (the mark) | Who is listening, totals, recent listening, the server's status. See [The overview](#the-overview). |
+| **Library > Books** | Every book as a cover grid or table, with shelves, filters, bulk edits and each book's own page. See [Books and metadata](books.md). |
+| **Library > Authors**, **Series**, **Narrators** | Everyone and every series in your libraries, merging two spellings of a name, and the books missing from a series. See [Books and metadata](books.md#authors-and-narrators). |
+| **Library > Folders** | Each library's folders as a tree, and how AudioSilo reads each one. See [The Folders page](libraries.md#the-folders-page). |
 | **Library > Libraries** | The folders AudioSilo reads: add, edit, reorder, rescan, folder detection, export, delete. See [Libraries](libraries.md). |
 | **People > People** | Everyone with an account, inviting someone new, and each person's own page. See [People and invites](users-and-invites.md). |
 | **People > Invites** | Every invite link, with rotate and revoke. See [People and invites](users-and-invites.md#the-invites-page). |
 | **People > Shares** | Named sets of folders you give to people. See [Sharing](sharing.md). |
 | **Server > Settings** | The community metadata lookup. See [Server settings](#server-settings). |
 
-The other sections - Library **Books**, **Authors**, **Series**,
-**Narrators** and **Folders**; People **Devices**; everything under
-**Activity** and **Health**; and Server **Logs**, **Audit log** and **About** -
-show a "Coming in this redesign" page that says what will live there.
+The other sections - People **Devices**; everything under **Activity** and
+**Health**; and Server **Logs**, **Audit log** and **About** - show a "Coming
+in this redesign" page that says what will live there.
 Notifications are a placeholder too.
 
 ## The overview
@@ -129,7 +131,8 @@ A brand-new server with no libraries shows a welcome card instead, with an
 ![The command palette](/img/screenshots/admin/palette.png)
 
 Press **Ctrl K** (**⌘K** on a Mac) or click the search box to open the command
-palette. Type to filter, use the arrow keys to move and Enter to open.
+palette ("Search books, people, settings, or type a command"). Type to filter,
+use the arrow keys to move and Enter to open.
 
 - **Actions** - **Invite someone**, **Add a library**, **Rescan** any library,
   **Open the web player** and **Sign out**.
@@ -137,7 +140,15 @@ palette. Type to filter, use the arrow keys to move and Enter to open.
 - **Settings** - **Community metadata**, the three themes and the console's
   languages.
 
-Searching for books and people from the palette comes later in the redesign.
+Type two letters or more and the palette also searches your content:
+**Books** (by title, author, narrator or series), **People**, **Authors**,
+**Series**, **Narrators** and **Shares**. Pick a book to open its page, a
+person to open theirs, a share to open it, or an author, series or narrator
+to see their books.
+The last entry, "Search all books for ...", opens
+[Library > Books](books.md#browsing-books) with what you typed.
+
+![Searching from the command palette](/img/screenshots/admin/palette-search.png)
 
 ## Server settings
 
@@ -183,6 +194,8 @@ privileged request.
 ## Where to next
 
 - [Libraries](libraries.md) - point the server at your audiobook folders.
+- [Books and metadata](books.md) - browse your books and fix how they're
+  listed.
 - [People and invites](users-and-invites.md) - invite people and get their
   devices connected.
 - [Sharing](sharing.md) - control which folders each person can see.

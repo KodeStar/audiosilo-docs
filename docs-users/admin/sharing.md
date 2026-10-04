@@ -94,6 +94,11 @@ Each folder is shown as `Library › folder/path` (or the library's name with
 
 You never type paths by hand, so there's nothing to mistype.
 
+You can also add books from the other side: select books in **Library >
+Books** and choose **Add to share**, or use **Add to a share** on a book's
+page (see [Books and metadata](books.md#changing-many-books-at-once)). Each
+book becomes one of the share's folders.
+
 ### People with this share
 
 Everyone who has the share, each with a **✕** to take it away, and **Add
