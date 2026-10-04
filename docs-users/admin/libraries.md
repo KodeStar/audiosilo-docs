@@ -151,8 +151,8 @@ Click a folder's name to open it. Folders AudioSilo already treats as a book
 say "Detected as one book" (with the book's title). Each folder has a choice of:
 
 - **Automatic** - the default; let AudioSilo decide.
-- **One book** - force the folder to be a single book (all its audio files are
-  its parts).
+- **Always one book** - force the folder to be a single book (all its audio
+  files are its parts).
 - **Separate books** - treat each audio file in the folder as its own book.
   This is the fix for the "folder of standalone single-file books" case.
 
@@ -163,6 +163,26 @@ A change is saved the moment you make it, and the library rescans to apply it
 These settings are durable, not scan results - they survive rescans and even a
 full index rebuild. Set one once and forget it.
 :::
+
+### The Folders page
+
+**Library > Folders** makes the same choice with more room. Pick a library
+(when you have more than one), then a folder in the tree. Folders
+that are books are marked **Book**, and folders you have pinned say **Always
+one book** or **Separate books**.
+
+![Library > Folders](/img/screenshots/admin/folders.png)
+
+For the selected folder the page asks "How should AudioSilo read this
+folder?" and shows the three choices as cards, each with what it would mean
+for this folder (for example "Here: one book with 3 files." or "Here: 12
+books."), then the folder's audio files. If the folder is a book, **Open book**
+opens its [book page](books.md#a-books-page). A folder with no audio files of
+its own has nothing to choose; the folders inside it are read on their own.
+
+As in the dialog, a choice is saved the moment you make it and the library
+rescans ("Rescanning *name*. Listening progress moves with each file."). The
+**Change detection** button on a book's page opens its folder here.
 
 ## Exporting a library
 

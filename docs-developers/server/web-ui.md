@@ -60,8 +60,8 @@ base-uri 'none'; frame-ancestors 'none'
 ```
 
 - `img-src data:` lets the connect page's QR pairing PNG (a data URI in the
-  redeem response) and the console's covers (fetched with the `Authorization`
-  header and rendered as `data:` URLs) display.
+  redeem response) and the console's covers (`data:` URLs, see
+  [Covers](#covers)) display.
 - `manifest-src`/`worker-src 'self'` let the admin console install as a PWA.
 - There is **no** `'unsafe-inline'` anywhere: the pages contain no inline
   `<style>`, no `style=` attributes and no inline `<script>`. The connect and
@@ -130,13 +130,17 @@ made it **the** console: the classic `admin.html`/`admin.js`, its i18n keys
 and CSS, and the `AUDIOSILO_ADMIN_NEXT` switch are gone.
 
 **Stack:** React 19, Vite, TypeScript (strict), shadcn/ui on **Base UI**,
-Tailwind v4, TanStack Query and Router, cmdk for the ⌘K palette,
+Tailwind v4, TanStack Query, Router, Table and Virtual (the books table and
+the virtualized cover grid), cmdk for the ⌘K palette,
 react-hook-form + zod (forms and validation), dnd-kit (library reordering,
 keyboard accessible), uqr (invite QR codes, drawn as SVG in the browser),
 i18next, lucide-react, fontsource (self-hosted Bricolage Grotesque, Figtree,
 JetBrains Mono). Each screen is a lazy-loaded chunk (`React.lazy` in
-`features/section-page.tsx`, `lazyRouteComponent` for a person's page), so the
-first paint carries only the shell and the overview.
+`features/section-page.tsx`, `lazyRouteComponent` for a person's page and the
+book page), so the first paint carries only the shell and the overview.
+Interface strings work the same way: English is bundled in the entry (it is
+also the fallback for any missing key), and each other language is its own
+chunk (`import.meta.glob` in `src/i18n/index.ts`), loaded when it is chosen.
 
 ### Build and embed
 
@@ -199,11 +203,41 @@ The console runs under the same `script-src 'self'; style-src 'self'` policy
 - **Covers never carry the session token in a URL.** The media routes accept
   `?token=` for the player's `<img>`/`<audio>`, but the console's session is a
   full-privilege admin credential and a URL can leak into proxy access logs and
-  history. The console fetches each cover with the `Authorization` header and
-  renders it as a `data:` URL (`img-src` allows `data:`, not `blob:`).
+  history. The console fetches covers itself, with the `Authorization` header,
+  and renders them as `data:` URLs (`img-src` allows `data:`, not `blob:`).
+  See [Covers](#covers).
+- **zod is imported from `@/lib/zod`, never from `zod`.** zod probes once for
+  `new Function` to compile its object schemas; under a CSP without
+  `'unsafe-eval'` the probe throws (zod catches it) but the browser still
+  reports a `script-src` violation. `@/lib/zod` sets `z.config({ jitless: true
+  })`, which skips the probe and the compiler; an ESLint rule bans importing
+  `zod` anywhere else.
 - **Invite QR codes are drawn in the browser** (uqr, rendered as inline SVG
   elements), so a fresh invite code never travels back to the server inside an
   image request.
+
+### Covers
+
+Grids and shelves show hundreds of covers, so the console asks for them in
+batches. `useCover(libraryId, path, size)` (`admin-ui/src/api/hooks.ts`) queues
+each cover it needs, and `src/api/cover-batch.ts` sends everything asked for in
+the same moment as one
+[`POST /api/v1/admin/covers`](api/reference.md#post-apiv1admincovers) request
+of up to 60 books. The server answers with small JPEG thumbnails, already
+`data:` URLs, so a grid costs a handful of requests and about 20 KB a cover
+(server side: [Thumbnails for the admin console](media.md#thumbnails-for-the-admin-console-post-admincovers)).
+Covers are cached for an hour and refetched everywhere after an upload or
+removal.
+
+Only the book page's hero loads the full art (`size="full"`: `GET
+/libraries/{id}/cover` with the `Authorization` header, converted to a `data:`
+URL); its background tint is computed from that image in the browser
+(`use-hero-tint.ts`, a same-origin canvas). A book with no art gets a generated
+cover (`src/components/generated-cover.tsx`, a React SVG component, colours
+from `src/lib/cover-model.ts`), never an `innerHTML` string.
+
+Book pages are addressed by identity, `/admin/library/book?library=<id>&path=<path>`
+(`src/lib/book-route.ts`), never by an internal book id.
 
 ### Downloading a file from an authenticated endpoint
 
@@ -257,9 +291,33 @@ CSP-sensitive work against a real build served by Go. The console's own gate is
   Interface text is in all six languages.
 - **⌘K palette** - navigation, sections, settings (community metadata, theme,
   language) and actions (invite someone, add a library, rescan a library, open
-  the web player, sign out).
+  the web player, sign out). From two typed characters it also searches content
+  (`components/shell/palette-search.tsx`): books through the server's full-text
+  search (`GET /admin/books?q=`, after a 200 ms pause in typing), and people,
+  authors, series, narrators and shares matched in the browser from their
+  lists; a final "Search all books for ..." entry opens Library > Books with
+  the query.
 - **Overview** - built on `GET /admin/stats`, `GET /admin/settings`,
   `GET /admin/libraries` (offline-library notices) and `GET /server`.
+- **Library > Books** - the cover grid (virtualized) or table over
+  `GET /admin/books` (keyset pages loaded as you scroll), the "Recently added"
+  and "Continue curating" shelves, the library filter, search, sort and a
+  Filters sheet over `GET /admin/books/facets`, with every filter in the URL so
+  each view deep-links; selection with a floating bulk bar (bulk field edits
+  through `POST /admin/books/bulk`, adding books to a share).
+- **Library > Authors / Narrators / Series** - `GET /admin/authors`,
+  `/admin/narrators` (merge suggestions applied as a bulk edit, with Undo) and
+  `/admin/series` (community series gaps from each series' matched book's
+  `GET /libraries/{id}/meta`, hidden when metadata is off).
+- **Library > Folders** - a folder tree per library (`/fs`) and the selected
+  folder's detection choice (`…/folder-override`).
+- **Book page** (`/admin/library/book?library=&path=`) - `GET`/`PATCH
+  /admin/libraries/{id}/book` (click-to-edit fields with provenance, revert,
+  a save bar with a diff, chapter renames), custom covers (`PUT`/`DELETE
+  …/cover`), the match dialog (`GET …/book/match`; the ticked fields, ASIN and ISBN
+  included, are accepted as one `PATCH …/book` with `source: "community"`),
+  listeners, shares
+  and the "Files on disk" section with the disabled on-disk rename.
 - **Library > Libraries** - library cards (`GET /admin/libraries` with
   `book_count`, `available` and `scan`, polled every second while any library
   scans), add/edit with the server folder picker
@@ -278,16 +336,13 @@ CSP-sensitive work against a real build served by Go. The console's own gate is
   (`GET`/`PATCH /admin/settings`).
 
 Every other section renders a designed "coming in this redesign" placeholder
-naming the phase that builds it: Library Books/Authors/Series/Narrators/Folders
-(2b), People Devices and all of Activity (4c), Health Issues/Jobs (3) and System
-(5a), Server Logs/About (5a) and Audit log (5b).
+naming the phase that builds it: People Devices and all of Activity (4c),
+Health Issues/Jobs (3) and System (5a), Server Logs/About (5a) and Audit log
+(5b).
 
-The server half of the Library screens is already in place: the
-[admin catalog API](api/reference.md#admin-catalog) (the filtered, keyset-paged
-book list and its facets, authors/narrators with merge suggestions, series, the
-book page with per-field provenance, metadata edits single and bulk, community
-match search, and custom covers). No console screen calls it yet. Edits are
-path-keyed overrides in the database; no file on disk is modified.
+The Library screens and the book page run on the
+[admin catalog API](api/reference.md#admin-catalog). Edits are path-keyed
+overrides in the database; no file on disk is modified.
 
 ![The ⌘K command palette](/img/screenshots/admin/palette.png)
 

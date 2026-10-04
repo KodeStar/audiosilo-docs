@@ -20,6 +20,7 @@ for the request/response shapes see the [API reference](api/reference.md).
 |---|---|---|
 | `GET /api/v1/libraries/{id}/stream?path=` | `handleStream` | Serve one audio **file** (Range streaming), force a download with `?download=1`, or transcode with `?transcode=1&t=` |
 | `GET /api/v1/libraries/{id}/cover?path=` | `handleCover` | Serve a book's cover (custom cover, else sidecar image, else embedded art) |
+| `POST /api/v1/admin/covers` | `handleAdminCovers` | Admin only: JPEG thumbnails of many books' covers as `data:` URLs, for the admin console |
 | `GET /api/v1/libraries/{id}/chapters?path=` | `handleChapters` | The normalized playable-units envelope `{chapters, files, duration, …}` |
 | `GET /api/v1/libraries/{id}/item?path=` | `handleItem` | Book detail; carries `direct_playable` |
 
@@ -139,11 +140,40 @@ The path is authorized against the caller's share scope first, for all three.
    so a custom cover uploaded later could go unseen for weeks.
 3. **Embedded** (`media.EmbeddedCover`): the book's primary audio file (the
    first `files` entry for folder books, the file itself otherwise) is read
-   with `dhowden/tag` and its embedded picture returned, defaulting to
-   `image/jpeg` when the tag has no MIME type. Served with
+   with `dhowden/tag` and its embedded picture returned. The `Content-Type`
+   comes from the picture's **bytes** (`coverMIME`, `http.DetectContentType`
+   against an allow-list: JPEG, PNG, GIF, WebP, BMP), never from the MIME type
+   the tag declares; data that sniffs as anything else is treated as no art.
+   The response comes from this origin, so trusting the tag would let a crafted
+   audio file declare `text/html` and have the server serve a page. Served with
    `Cache-Control: private, max-age=86400`.
 
 No cover from any tier → `404 {"error":"no cover"}`.
+
+### Thumbnails for the admin console: `POST /admin/covers`
+
+The admin console can't show covers as plain `<img src>` URLs: its session is
+a full-privilege admin token that must never ride in a URL, and its CSP allows
+images only from `'self'` and `data:`. So it asks for covers in batches through
+[`POST /api/v1/admin/covers`](api/reference.md#post-apiv1admincovers)
+(`handleAdminCovers`, `internal/api/handlers_covers.go`): up to 60 books per
+request, each answered with a small JPEG thumbnail as a `data:` URL. A grid of
+hundreds of covers is then a handful of requests (the per-IP limiter allows a
+burst of 40) and about 20 KB a cover instead of full-size art.
+
+- `coverArt` resolves the art in the same order as `handleCover` (custom cover
+  by the requested path, then by the book the path resolves to, then the
+  sidecar through `SafeJoin`, then embedded art). It never indexes on demand.
+- `media.Thumbnail` scales to fit within 160, 320 or 640 pixels and encodes a
+  JPEG (quality 80); it never scales up, and a JPEG already that small is
+  returned as is. It reads the image header first and refuses anything over
+  `MaxThumbnailSourcePixels` (40 megapixels) before decoding, so a small file
+  claiming huge dimensions can't exhaust memory.
+- `media.ThumbCache` is a byte-bounded LRU (48 MiB) keyed by library, path,
+  size and the art's version (a custom cover's `updated_at`, a file's size and
+  modification time), so a changed cover misses the cache. A read failure
+  (an unreachable mount) is not cached; an undecodable image is cached as no
+  art. `thumbSem` caps concurrent decodes at four across all requests.
 
 ## `DirectPlayable`: when a client should transcode
 

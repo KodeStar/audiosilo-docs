@@ -47,7 +47,7 @@ Audiobooks/
 By the folder-per-book rule, `Short Stories` would become one three-part "book". The fix is a **per-folder override**, set from the admin console. Instead of **Automatic**, each folder can be pinned to one of two modes:
 
 - **Separate books** - every audio file in this folder is its own book (what you want for `Short Stories` above).
-- **One book** - force this folder to be one book, if the detector ever splits something that belongs together.
+- **Always one book** - force this folder to be one book, if the detector ever splits something that belongs together.
 
 Overrides are set with **Folder detection...** in a library's menu (**Library > Libraries** in the admin console), and they stick - they survive rescans and index rebuilds. See [Libraries](../admin/libraries.md) for a walkthrough.
 
@@ -76,7 +76,7 @@ For each book, AudioSilo starts with the names on disk, then lets the audio file
 - **From embedded tags**: a title (audiobooks usually carry it in the *album* tag; when the album holds the series name and the *title* tag carries the full "Series: Book" title, the more specific title tag wins), the author (album artist or artist tag), the narrator (composer or narrator tag), and the series where a tag exists. Junk tag titles like "Track 01" are ignored in favour of the folder name.
 - **From ffmpeg's ffprobe**, when available: durations and any chapter list embedded in the file, so a chaptered M4B shows its real chapters in the player.
 
-Audiobook tags are famously messy, which is why the folder names always provide a sane baseline - a well-named folder beats a badly-tagged file.
+Audiobook tags are famously messy, which is why the folder names always provide a sane baseline - a well-named folder beats a badly-tagged file. Anything still wrong can be corrected in the admin console without touching the files: see [Books and metadata](../admin/books.md).
 
 ### Covers
 
@@ -86,7 +86,7 @@ Cover art is found in this order:
 2. Inside a book's own folder, any image file will do as a fallback (one with "cover" in its name is preferred over, say, a stray thumbnail). For loose single-file books, only the conventionally named files count - a random image next to twenty loose books would be ambiguous.
 3. Failing both, artwork embedded in the audio file itself is used.
 
-So in practice: embedded art just works, and dropping a `cover.jpg` into a book's folder overrides it.
+So in practice: embedded art just works, and dropping a `cover.jpg` into a book's folder overrides it. A custom cover uploaded in the admin console wins over all three and is stored in AudioSilo's database, not in the folder (see [Covers](../admin/books.md#covers)).
 
 ### Renaming and moving are safe
 

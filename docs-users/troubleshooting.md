@@ -219,7 +219,7 @@ single-file books - the detection gets it wrong.
 
 The fix is a **per-folder override** in the admin console: with **Folder
 detection...** on the library, set the folder to **Separate books** (one book
-per file) or force it to be **One book**. See
+per file) or force it to be **Always one book**. See
 [Libraries](./admin/libraries.md) for how, and
 [Organizing your library](./getting-started/organizing-your-library.md) for
 the folder conventions that avoid the problem entirely.
@@ -238,7 +238,9 @@ The server looks for cover art in this order:
 If a book has no cover, the quick fix for a folder book is to drop a
 `cover.jpg` into that book's folder; for a single loose file, embed the
 artwork in the file's tags with your tagging tool. Then run a **Rescan** so
-the server picks it up.
+the server picks it up. Or upload a custom cover on the book's page in the
+admin console: it is used ahead of all three, needs no rescan, and leaves the
+book's folder untouched (see [Covers](./admin/books.md#covers)).
 
 ## Downloads
 

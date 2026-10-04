@@ -993,7 +993,10 @@ kills it.
 2. an indexed sibling cover file (served with
    `Cache-Control: private, max-age=86400`);
 3. embedded art extracted from the book's primary audio file (served with
-   `Cache-Control: private, max-age=86400`).
+   `Cache-Control: private, max-age=86400`). Its `Content-Type` is sniffed from
+   the image bytes (JPEG, PNG, GIF, WebP or BMP), never taken from the tag;
+   embedded data that isn't one of those images counts as no art, whatever the
+   tag claims.
 
 The path is authorized against the caller's share scope before any of the
 three is tried, custom covers included.
@@ -1694,7 +1697,12 @@ Adds / removes one path rule. Body for both:
 | `library_id` | int | yes | |
 | `path` | string | no | `""` = whole library |
 
-Response: `204 No Content`. `400` when `library_id` is missing/zero.
+`POST` also takes several rules at once, `{ "rules": [{ "library_id": 1, "path": "…" }, …] }`
+(1 to 1000), added in one transaction: all or none. The console uses it to add a
+selection of books to a share.
+
+Response: `204 No Content`. `400` when a `library_id` is missing/zero (nothing is
+added), or with code `too_large` for more than 1000 rules.
 
 ### `POST /api/v1/admin/share-access` · `DELETE /api/v1/admin/share-access`
 
@@ -1720,7 +1728,7 @@ clients show the library's own name. Errors: `404` for an unknown library;
 ## Admin: catalog
 
 All *Admin*. The queries behind the admin console's Library and Book screens
-(the screens themselves arrive in a later release; the API is in place). They
+(see [Built-in web UI](../web-ui.md#what-the-console-has-today)). They
 see **every** library (no share scoping) and address books by
 `(library_id, path)` like everything else - the internal book id only ever
 travels inside an opaque cursor.
@@ -1822,7 +1830,9 @@ is a `400` too (`too many format or codec values`).
       "file_count": 1,
       "asin": "B00B5HZGUG",
       "isbn": "",
-      "edited": true
+      "matched": true,
+      "edited": true,
+      "edited_fields": ["narrator"]
     }
   ],
   "next_cursor": "eyJzIjoidGl0bGUiLCJ2IjpbIlRoZSBNYXJ0aWFuIl0sImlkIjo0MTJ9"
@@ -1832,6 +1842,9 @@ is a `400` too (`too many format or codec values`).
 - Every field is always present (empty string / `0` / `false` when unknown).
   `path` is the book path (the player's `rel_path`).
 - `custom_cover` - an admin uploaded a cover; `has_cover` includes it.
+- `matched` - the book has an ASIN or ISBN: the same rule as the `matched` filter.
+- `edited_fields` - the fields with an override (an edit or an accepted community
+  value), `[]` when none; `edited` is also true for a chapter-title edit alone.
 - `file_count` is `1` for a single-file book.
 - The cursor names the ordering it was minted for: replaying it with another
   `sort` or `order` (or a malformed one) is `400 invalid cursor`. Changing the
@@ -1931,7 +1944,8 @@ The narrators route uses the key `narrators` instead of `authors`.
   `J.R.R. Tolkien` and `J. R. R. Tolkien` group). Letters of every script are
   kept, so names in non-Latin scripts get suggestions too and two different
   ones never group by accident. `suggested` is the spelling
-  with the most books (ties: alphabetical); `books` is the group's total. The
+  with the most books (ties: the `Given Surname` form over `Surname, Given`, then
+  alphabetical); `books` is the group's total. The
   server never merges on its own - applying a suggestion is a
   [bulk edit](#post-apiv1adminbooksbulk).
 
@@ -2159,13 +2173,63 @@ is not an error.
 | `413` | `code: "too_large"` - the image is larger than 5 MiB |
 | `415` | `code: "unsupported_image"` - not a JPEG, PNG or WebP image |
 
+### `POST /api/v1/admin/covers`
+
+Cover thumbnails for many books in one request - how the admin console shows
+covers in its grids, without a session token in any image URL. Each cover is
+resolved like [`GET /libraries/{id}/cover`](#get-apiv1librariesidcover): a
+custom cover, then the sidecar image, then embedded art. It never indexes a
+path on demand.
+
+| Body field | Type | Required | Notes |
+|---|---|---|---|
+| `books` | array | yes | `[ { "library_id": 1, "path": "Andy Weir/The Martian" } ]`, 1 to 60 entries |
+| `size` | int | no | the longest side of the thumbnail in pixels: `160`, `320` (default) or `640` |
+
+```json
+{
+  "books": [
+    { "library_id": 1, "path": "Andy Weir/The Martian" },
+    { "library_id": 1, "path": "Andy Weir/Artemis" }
+  ],
+  "size": 320
+}
+```
+
+Response `200`, one entry per requested book, in request order:
+
+```json
+{
+  "covers": [
+    { "library_id": 1, "path": "Andy Weir/The Martian", "data": "data:image/jpeg;base64,/9j/4AAQSkZJRg…" },
+    { "library_id": 1, "path": "Andy Weir/Artemis", "data": "" }
+  ]
+}
+```
+
+- `data` is a JPEG thumbnail as a `data:` URL, scaled to fit within `size` x
+  `size` (never scaled up; transparency is flattened onto white). It is `""`
+  when the book has no art, the art can't be read or decoded, or no book is
+  indexed at the path (an unknown `library_id` too).
+- Thumbnails are cached in server memory, keyed by the art's version (a custom
+  cover's upload time, a file's size and modification time), so a replaced
+  cover is picked up on the next request. A source image larger than 40
+  megapixels is refused from its header (it reads as no art).
+
+| Status | Meaning |
+|---|---|
+| `400` | `books is required` (an empty list); `size must be 160, 320 or 640`; `invalid request` (malformed body or an unknown key); `code: "too_large"` for more than 60 books |
+| `401` / `403` | anonymous / non-admin |
+| `500` | `could not load covers` - a database failure (an unreadable image is never an error, it is `""`) |
+
 ## Admin: stats
 
 ### `GET /api/v1/admin/stats`
 
 *Admin.* Powers the console dashboard: catalog totals, per-library counts, and
 a cross-user "currently listening" feed (up to 200 rows, newest first; `title`/
-`author` may be empty if the scan hasn't reached a path yet).
+`author` may be empty if the scan hasn't reached a path yet; an empty list, never
+`null`, when nobody has listened yet).
 
 ```json
 {
