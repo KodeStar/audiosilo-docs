@@ -52,6 +52,19 @@ through the API with a daily schedule and skip rules, which
 `admin/library-edit.png` then shows. It runs last so the Books screens keep
 showing only the seeded library; the seeded files are only read.
 
+The Backups and Notifications shots (`admin/settings-backups.png`,
+`admin/backup-restore.png`, `admin/settings-notifications.png`,
+`admin/bell.png`) need state too. `capture-admin.mjs` makes a manual backup and
+sets the schedule to two minutes ahead, so a scheduled backup is made while the
+other shots run, then puts the schedule back to `daily:03:00` before the System
+and Backups shots. The restore dialog is captured with the word typed but never
+confirmed. It adds two notification destinations: a webhook to a small receiver
+the script runs on `127.0.0.1` (it checks the `X-AudioSilo-Signature` of every
+request and fails the "webhook deliveries" step if one doesn't verify), and an
+ntfy topic at a TEST-NET address (`192.0.2.20`, never assigned), whose
+deliveries time out so the list shows a failure. No message reaches anything
+outside this machine.
+
 The Activity shots (`admin/activity*.png`, `admin/devices.png`,
 `admin/person-listening.png`) need real listening sessions, and the server
 only derives those from progress saves as they happen: a device's listened time

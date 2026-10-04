@@ -172,9 +172,15 @@ Failures a person can fix also carry a machine-readable **`code`** next to
 | `invalid_range` | `400` | `GET /admin/stats?range=` or `GET /admin/listening?range=` with a range that isn't `7d`, `30d`, `90d`, `1y` or a year |
 | `invalid_setting` | `400` | `PATCH /admin/settings` with a value the server refuses (including a `demo.library` that names no library, and turning `metadata.enabled` on when no metadata service is configured); the body also carries `field`, the setting's id (`network.bind`) |
 | `unknown_setting` | `400` | `PATCH /admin/settings` naming something that isn't a setting (`field` names it) |
-| `setting_read_only` | `400` | `PATCH /admin/settings` changing a setting shown but not changeable there (`players.web_dir`; `field` names it) |
+| `setting_read_only` | `400` | `PATCH /admin/settings` changing a setting shown but not changeable there (`players.web_dir`, `backups.dir`; `field` names it) |
 | `setting_locked` | `409` | `PATCH /admin/settings` changing a setting an `AUDIOSILO_*` variable or the launcher sets (`field` names it) |
 | `update_check_off` | `409` | `POST /admin/update/check` while the update check is turned off |
+| `backup_running` | `409` | `POST /admin/backups` while a backup is being made |
+| `backup_not_found` | `404` | a backup name that isn't in the backups folder (download, delete, restore) |
+| `invalid_backup` | `400` | `POST /admin/backups/{name}/restore` on a file that is damaged or isn't an AudioSilo database |
+| `backup_too_new` | `400` | `POST /admin/backups/{name}/restore` on a backup made by a newer server |
+| `invalid_target` | `400` | a notification destination the server refuses (`POST`/`PATCH /admin/notifications`); `field` names the field (`kind`, `name`, `url`, `secret`, `events`) |
+| `too_many_targets` | `409` | `POST /admin/notifications` when the server has 20 destinations |
 
 **Branch on `code`, not on the English `error` text**, which is free to change.
 Errors without a `code` are ones a client can't help the person fix.
@@ -202,8 +208,9 @@ Status mapping is consistent across handlers:
 **Request timeout.** Non-streaming requests are bounded at **30 s** by
 `http.TimeoutHandler`; a request that exceeds it gets
 `503 {"error":"request timed out"}`. Streaming reads - `GET`/`HEAD` on
-`/stream`, `/cover`, and the `/web` static mount - are exempt, so audio playback
-can run indefinitely. Only reads are exempt: an upload to a streaming-shaped
+`/stream`, `/cover`, a backup's download (`GET /admin/backups/{name}`, not the
+`…/restore` beside it) and the `/web` static mount - are exempt, so audio playback can run indefinitely and a
+large backup can finish downloading. Only reads are exempt: an upload to a streaming-shaped
 path (the admin custom-cover `PUT /admin/libraries/{id}/cover`) stays bounded
 by the 30 s timeout, so a slow client can't hold it open.
 

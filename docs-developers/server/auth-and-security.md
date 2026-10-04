@@ -311,8 +311,9 @@ configured origins, cross-origin browser requests simply get no CORS headers
 
 Non-streaming requests are bounded by a 30 s timeout (`requestTimeout`) that
 cancels the request context and returns 503 - resilience against a stuck
-writer connection, not latency policing. Streaming paths (`/stream`, `/cover`,
-`/web/...`) are exempt because audio must run long.
+writer connection, not latency policing. Streaming reads (`/stream`, `/cover`,
+a backup's download, `GET /admin/backups/{name}`, `/web/...`) are exempt because
+audio and large downloads must run long.
 
 ### Content Security Policy (summary)
 

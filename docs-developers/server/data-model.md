@@ -4,7 +4,7 @@ description: "The SQLite schema behind audiosilo-server: the rebuildable index v
 ---
 
 The schema lives in `internal/store/migrations/` as numbered SQL files
-(`0001_init.sql` … `0018_sessions.sql`), embedded into the binary and
+(`0001_init.sql` … `0019_audit_notifications.sql`), embedded into the binary and
 applied by `store.Open` at startup. This page documents the **resulting current
 schema**, noting which migration added what.
 
@@ -26,6 +26,11 @@ thing to understand before touching it:
 A third, small group sits beside the index: **`scan_runs`**, the history of
 the scans that built it. It is a record of the index, not durable user state,
 so it goes with its library and is trimmed to the newest runs.
+
+The server's own records - the admin audit log, the notification destinations
+and the event feed (`0019`) - belong to neither half: they hang off no library
+or book, and are trimmed by age (see
+[Audit and notifications](#audit-and-notifications)).
 
 Why no FK across the seam? Three reasons, all load-bearing:
 
@@ -349,6 +354,32 @@ only the newest **100** runs of each library, and a row still open when the
 server starts is marked `interrupted`. What each field means is in
 [Scan history](scanner.md#scan-history-scan_runs).
 
+### Audit and notifications
+
+Added by `0019` for admin console Phase 5b (what writes and reads them is in
+[Backups, audit log and notifications](backups-and-notifications.md)). None has
+a foreign key, so deleting an account or a library leaves them as they were.
+
+- **`audit_events`** - one row per admin change: `id`, `at`, `actor_id` (no
+  FK; `NULL` for the server itself), `actor_name` (the username when it
+  happened), `via` (`session` | `api` | `system`), `action`
+  (`<area>.<verb>`), `target` (a short human label) and `details` (a JSON
+  object; never a secret). No IP address. Indexes `idx_audit_at` on `at` and
+  `idx_audit_actor` on `(actor_id, id)`. Kept 365 days and at most the newest
+  100,000 (`catalog.PruneAudit`, daily).
+- **`notification_targets`** - where notifications go: `id`, `kind`
+  (`webhook` | `ntfy` | `discord`), `name`, `url` and `secret` (credentials:
+  never returned by the API), `enabled`, `events` (a JSON array of event kinds),
+  `created_at`, `updated_at`, and the newest delivery's `last_at`, `last_ok`,
+  `last_error` (a short reason). At most 20 rows.
+- **`server_events`** - the event feed behind the console's bell and the
+  record deliveries are sent from: `id`, `at`, `kind`, `data` (JSON facts; never
+  a secret or an IP) and `dedup_key` (an update is announced once per version).
+  Indexes `idx_server_events_at` and `idx_server_events_dedup` on
+  `(kind, dedup_key)`. Kept 90 days.
+
+Backups need no table: they are files in the backups folder.
+
 ### Durable per-library config (path-keyed, no FK to books)
 
 - **`folder_overrides`** *(0006)* - PK `(library_id, path)`, `mode ∈ {'book',
@@ -469,6 +500,7 @@ The migration history so far:
 | 0016 | `book_overrides` | Metadata overrides: `book_overrides`, `chapter_overrides`, `book_covers`; `books.published`/`description`/`has_cover`/`scanned` (backfilled and stamped from each row's current values), `chapters.scanned_title`, `book_files.codec`; index `idx_progress_path` on `progress(library_id, rel_path)`. Also resets infinite `series_index` values (an `inf` tag) to 0, and reconciles `books.asin`/`isbn` from `book_enrichment` once (a non-blank enrichment field wins), since the scanner no longer re-applies enrichment at the end of every scan |
 | 0017 | `health_jobs` | Admin console Phase 3: `scan_runs` (scan history) and `issue_ignores`; `libraries.scan_schedule` and `ignore_patterns`; `books.scan_error`, `scan_error_file`, `scan_error_detail` and `suspect_parts`. Sets `suspect_parts = 0` on every existing row that can't hold several books (single-file books, folders with fewer than two parts or any part under an hour), leaving the rest `NULL` for the next scan to check |
 | 0018 | `sessions` | Admin console Phase 4a: `listening_sessions` and `listening_daily`; `tokens.client_app`, `client_version`, `client_platform` and `last_ip`; `progress.started_at` and `finished_at` (finished rows backfilled with their `updated_at`) |
+| 0019 | `audit_notifications` | Admin console Phase 5b: `audit_events`, `notification_targets` and `server_events` |
 
 ## SQLite choices
 

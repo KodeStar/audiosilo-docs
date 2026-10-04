@@ -3011,10 +3011,15 @@ and `AUDIOSILO_*` variable each one is, and whether it needs a restart (see
     "max_users_default": 200,
     "idle_ttl": "24h"
   },
+  "backups": {
+    "schedule": "daily:03:00",
+    "keep": 7,
+    "dir": ""
+  },
   "locked": { "players.web_dir": "AUDIOSILO_WEB_DIR" },
   "restart_settings": [
     "network.bind", "network.tls_mode", "network.tls_hosts", "players.web_dir",
-    "metadata.base_url", "demo.enabled", "demo.idle_ttl"
+    "metadata.base_url", "demo.enabled", "demo.idle_ttl", "backups.dir"
   ],
   "restart_pending": []
 }
@@ -3034,6 +3039,9 @@ effect. Lists are never `null`.
 | `metadata.available` | read-only: a metadata service exists (`base_url` was a valid absolute `http(s)` URL when the server started), so `enabled` can be turned on. The live `metadata` [capability](#get-apiv1server) is `enabled && available` |
 | `demo.max_users` | `null` = the default cap (`max_users_default`); `0` = no limit |
 | `demo.idle_ttl` | `""` = 24h |
+| `backups.schedule` | `""` (off), `daily:HH:MM` or `weekly:DAY:HH:MM` in the server's time zone; stored in canonical form (see [Backups](#admin-backups)) |
+| `backups.keep` | how many scheduled backups are kept, 1-365 (manual and before-restore backups stay until deleted) |
+| `backups.dir` | read-only: changed only in `config.yaml` or `AUDIOSILO_BACKUP_DIR`; `""` = `<data>/backups` (`GET /admin/backups`' `status.dir` has the folder in use) |
 | `locked` | setting id → why the console can't change it: the `AUDIOSILO_*` variable that set it, or `"launcher"` (a launcher override, the desktop manager's `bind`, `tls.mode` and `public_url`) |
 | `restart_settings` | the setting ids read only at start (fixed) |
 | `restart_pending` | restart settings whose saved value differs from the one the server started with |
@@ -3067,9 +3075,9 @@ written so a form can show it under the field:
 |---|---|---|
 | `200` | | saved; body is the settings envelope |
 | `400` | | not a JSON object of sections |
-| `400` | `invalid_setting` | a value of the wrong type, one its normalizer refuses, a config that doesn't validate (e.g. `tls_mode: "autocert"` without `tls_hosts`, demo on without a library), a `demo.library` that names no library (`field: "demo.library"`), or turning `metadata.enabled` on when no metadata service exists (`available` is false; `field: "metadata.enabled"` - set a valid `metadata.base_url` and restart first) |
+| `400` | `invalid_setting` | a value of the wrong type, one its normalizer refuses, a config that doesn't validate (e.g. `tls_mode: "autocert"` without `tls_hosts`, demo on without a library), a `demo.library` that names no library (`field: "demo.library"`), or turning `metadata.enabled` on when no metadata service exists (`available` is false; `field: "metadata.enabled"` - set a valid `metadata.base_url` and restart first). Also JSON `null` for a setting that can't be unset (anything but `demo.max_users`, whose `null` means the default), refused with "enter a value" |
 | `400` | `unknown_setting` | a section or name that isn't a setting (including the read-only extras such as `metadata.available`) |
-| `400` | `setting_read_only` | `players.web_dir` |
+| `400` | `setting_read_only` | `players.web_dir` or `backups.dir` |
 | `409` | `setting_locked` | a setting an environment variable or the launcher sets (see `locked`) |
 | `500` | | `config.yaml` couldn't be written; nothing changed |
 
@@ -3077,7 +3085,10 @@ Turning `metadata.enabled` on or off takes effect immediately across the
 server: it gates `GET /libraries/{id}/meta` and the `metadata` capability, so
 every connected player starts or stops showing the enriched-book section.
 Turning `general.update_check` off stops the [update check](#get-apiv1adminupdate)
-at once.
+at once, and a new `backups.schedule` or `backups.keep` is handed to the backup
+service at once (the next scheduled backup is counted again). Every save is
+recorded in the [audit log](#admin-audit-log) as `settings.update`, each
+changed setting with its old and new value.
 
 ## Admin: system, updates and logs
 
@@ -3099,7 +3110,7 @@ What the console's Health > System, Server > About and Server > Logs show. All
   "install": "docker",
   "started_at": "2026-10-04T08:12:31Z",
   "data_dir": "/data",
-  "database": { "bytes": 18874368, "schema": "0018_sessions.sql" },
+  "database": { "bytes": 18874368, "schema": "0019_audit_notifications.sql" },
   "tools": [
     { "name": "ffmpeg", "path": "/usr/bin/ffmpeg", "version": "6.1.1", "source": "local" },
     { "name": "ffprobe", "path": "/usr/bin/ffprobe", "version": "6.1.1", "source": "local" }
@@ -3125,7 +3136,11 @@ What the console's Health > System, Server > About and Server > Logs show. All
   ],
   "web_player": "embedded",
   "update": { "enabled": true, "current": "1.16.0", "latest": null, "update_available": false,
-              "comparable": true, "checked_at": null, "error": "", "install": "docker" }
+              "comparable": true, "checked_at": null, "error": "", "install": "docker" },
+  "backups": { "dir": "/data/backups", "running": false, "last": null,
+               "latest": { "name": "audiosilo-20261004-020000Z-scheduled.db", "size": 1339392,
+                           "created_at": "2026-10-04T02:00:00Z", "kind": "scheduled" },
+               "next": "2026-10-05T03:00:00+01:00" }
 }
 ```
 
@@ -3143,6 +3158,7 @@ What the console's Health > System, Server > About and Server > Logs show. All
 | `libraries[]` | each library's root, whether it answers (the same bounded probe as the scanner's), and `disk` (`total`, `free` to the server, in bytes) or `null` when the root doesn't answer or the OS doesn't say |
 | `web_player` | as in the settings envelope |
 | `update` | the [update status](#get-apiv1adminupdate) |
+| `backups` | the backups' `status` as in [`GET /admin/backups`](#get-apiv1adminbackups) (folder, running, last attempt, latest backup, next scheduled one); `null` only for a server built without the backup service (tests), never one the launcher starts |
 
 Nothing here reaches outside the server except the metadata health check. The
 slow parts (a tool's first `-version`, the health check, the root probes) run
@@ -3241,6 +3257,280 @@ are cut.
 |---|---|
 | `200` | the lines |
 | `400` | `level` isn't one of the above, or `after` isn't a number |
+
+## Admin: backups
+
+The console's **Server > Settings > Backups**: copies of the database in the
+backups folder, made on the `backups.schedule` or on request, and a restore
+applied at the next start. All *Admin*. How backups are made, kept and
+restored is in
+[Backups, audit log and notifications](../backups-and-notifications.md#backups-internalbackup).
+A backup is identified by its **file name** (`audiosilo-<UTC time>-<kind>.db`);
+a name that isn't a backup's (`backup.validName`) or isn't in the folder is
+`404 backup_not_found`.
+
+### `GET /api/v1/admin/backups`
+
+*Admin.* The backups in the folder (newest first), the service's state, and any
+restore waiting for, or applied at, a start:
+
+```json
+{
+  "backups": [
+    { "name": "audiosilo-20261004-174512Z-manual.db", "size": 1347584,
+      "created_at": "2026-10-04T17:45:12Z", "kind": "manual" },
+    { "name": "audiosilo-20261004-020000Z-scheduled.db", "size": 1339392,
+      "created_at": "2026-10-04T02:00:00Z", "kind": "scheduled" }
+  ],
+  "status": {
+    "dir": "/data/backups",
+    "running": false,
+    "last": { "at": "2026-10-04T18:45:12.402+01:00", "ok": true, "trigger": "manual",
+              "name": "audiosilo-20261004-174512Z-manual.db" },
+    "latest": { "name": "audiosilo-20261004-174512Z-manual.db", "size": 1347584,
+                "created_at": "2026-10-04T17:45:12Z", "kind": "manual" },
+    "next": "2026-10-05T03:00:00+01:00"
+  },
+  "restore": { "pending": null, "last": null }
+}
+```
+
+| Field | Meaning |
+|---|---|
+| `backups[].kind` | `scheduled`, `manual` or `before-restore` (the copy of the database a restore replaced). A file put in the folder under another valid name reads as `manual`, dated by its modification time |
+| `backups[].created_at` | from the name (UTC, to the second) |
+| `status.running` | a backup is being made now |
+| `status.last` | the newest attempt **since the server started** (`null` before one): `trigger` `scheduled` or `manual`, and on failure `ok: false` with `error` `disk_full`, `permission_denied` or `failed` (the cause is in the log) |
+| `status.latest` | the newest backup in the folder that isn't a before-restore copy, whenever it was made (`null` when there is none) |
+| `status.next` | the next scheduled backup, in the server's time zone; `null` when the schedule is off |
+| `restore.pending` | the restore waiting for the next start: `{name, requested_at, requested_by, schema}` (`schema` is the backup's newest migration), or `null` |
+| `restore.last` | how the last restore went, written at start: `{name, applied_at, requested_by, ok, error, safety_copy}`. `error` (when `ok` is false) is `missing`, `unusable`, `newer` or `failed`, and the database was left as it was; `safety_copy` names the before-restore backup (or, if the database couldn't be copied, the file it was renamed to in the data folder). A restore marker that couldn't be read is reported as `error: "failed"` with an empty `name`. `null` when no restore ever ran |
+
+### `POST /api/v1/admin/backups`
+
+*Admin.* Starts a manual backup in the background and answers `202` with the
+`GET` envelope, whose `status.running` is already `true`. Poll `GET` while it
+stays true; the outcome is then `status.last`. Audited (`backup.create`).
+
+| Status | Meaning |
+|---|---|
+| `202` | started; body is the envelope |
+| `409` `backup_running` | a backup is already being made |
+
+### `GET /api/v1/admin/backups/{name}`
+
+*Admin.* Downloads a backup: `Content-Type: application/vnd.sqlite3`,
+`Content-Disposition: attachment; filename="<name>"`, `Cache-Control: no-store`,
+served with `http.ServeContent` (ranges supported). The path is outside the
+API's 30-second request timeout, like streaming (a restore or a delete stays
+bounded by it). Every download (`GET`; a `HEAD` isn't) is audited
+(`backup.download`): the file holds every account's password and token hashes.
+
+| Status | Meaning |
+|---|---|
+| `200` | the file |
+| `404` `backup_not_found` | no such backup |
+
+### `DELETE /api/v1/admin/backups/{name}`
+
+*Admin.* Deletes a backup from the folder. A restore waiting for this backup is
+cancelled first. Audited (`backup.delete`).
+
+| Status | Meaning |
+|---|---|
+| `204` | deleted |
+| `404` `backup_not_found` | no such backup |
+
+### `POST /api/v1/admin/backups/{name}/restore`
+
+*Admin.* Checks the backup and marks it to be restored **at the next start**
+(`<data>/restore.json`), replacing any restore already waiting. Nothing
+changes until the server restarts. The answer is the `GET` envelope with
+`restore.pending` set. Audited (`backup.restore`, with the backup's `schema`).
+The check here is quick (readable, an AudioSilo schema this server knows); the
+full integrity check (`PRAGMA quick_check`) runs at the next start, which
+reports a damaged backup as a refused restore (`restore.last.error`
+`"unusable"`) and leaves the database as it was.
+
+| Status | Meaning |
+|---|---|
+| `200` | scheduled; body is the envelope |
+| `400` `invalid_backup` | the file can't be read as an AudioSilo database (no schema record or accounts table) |
+| `400` `backup_too_new` | it was made by a newer server (it has a migration this one doesn't ship) |
+| `404` `backup_not_found` | no such backup |
+
+### `DELETE /api/v1/admin/restore`
+
+*Admin.* Cancels the restore waiting for the next start. `204` whether or not
+one was waiting; audited (`backup.restore_cancel`) when one was.
+
+## Admin: notifications and events
+
+The console's **Server > Settings > Notifications** (where the server sends
+what happens) and the top bar's bell (the event feed). All *Admin*. Event
+kinds, payloads, the webhook signature and the delivery rules are in
+[Notifications](../backups-and-notifications.md#notifications-internalnotify).
+
+A destination's `url` and `secret` are **write-only**: they are never returned.
+A destination reads:
+
+```json
+{
+  "id": 1,
+  "kind": "webhook",
+  "name": "Home Assistant",
+  "enabled": true,
+  "events": ["book_added", "scan_failed", "library_unavailable", "update_available", "backup_failed"],
+  "created_at": "2026-10-04T17:45:20.117Z",
+  "updated_at": "2026-10-04T17:45:20.117Z",
+  "last_at": "2026-10-04T17:45:20.204Z",
+  "last_ok": true,
+  "last_error": "",
+  "address": "http://192.168.1.5:8123/api/webhook/audi…",
+  "has_secret": true
+}
+```
+
+| Field | Meaning |
+|---|---|
+| `kind` | `webhook`, `ntfy` or `discord`; can't change after creation |
+| `events` | the event kinds sent there, in `notify.Kinds` order |
+| `last_at`, `last_ok`, `last_error` | the newest delivery or test: `null` before the first; `last_error` is `timeout`, `unreachable`, `http_<status>` or `failed` (never the address or the answer) |
+| `address` | the redacted address (`notify.Redact`): scheme, host and path with the last segment cut to four characters and `…` (just `…` when it has four or fewer), a query as `?…`, user info dropped |
+| `has_secret` | a signing secret (webhook) or access token (ntfy) is saved |
+
+### `GET /api/v1/admin/notifications`
+
+*Admin.* `{"targets": [...], "events": [...], "kinds": [...]}`: the
+destinations (oldest first), the event kinds the server knows (`book_added`,
+`scan_failed`, `library_unavailable`, `new_device`, `invite_redeemed`,
+`update_available`, `backup_failed`) and the destination kinds.
+
+### `POST /api/v1/admin/notifications`
+
+*Admin.* Adds a destination and answers `201` with it:
+
+```json
+{ "kind": "ntfy", "name": "My phone", "url": "https://ntfy.sh/hearthside-alerts",
+  "secret": "", "enabled": true, "events": ["scan_failed", "backup_failed"] }
+```
+
+`enabled` defaults to `true`; `secret` and `events` may be left out. The fields
+are checked by `notify.Clean` (see
+[Destinations](../backups-and-notifications.md#destinations)). Audited
+(`notify.create`, with its kind and events, never its address).
+
+| Status | Meaning |
+|---|---|
+| `201` | added; body is the destination |
+| `400` | not a JSON object |
+| `400` `invalid_target` | a field the server refuses; `field` names it (`kind`, `name`, `url`, `secret` or `events`) and `error` says why, in words a form can show |
+| `409` `too_many_targets` | the server has 20 destinations already |
+
+### `PATCH /api/v1/admin/notifications/{id}`
+
+*Admin.* Changes the fields sent (`name`, `url`, `secret`, `enabled`,
+`events`); an absent field keeps its value, so the address and secret survive
+an edit that doesn't send them. `"secret": ""` clears the secret. A saved
+secret doesn't follow the address to another server: a new `url` with a
+different scheme, host or port and no `secret` in the body is
+`400 invalid_target` with `field: "secret"` (send the secret again, or `""`);
+a new path on the same server keeps it. Answers `200`
+with the destination. Sending a different `kind` is `400 invalid_target` with
+`field: "kind"`; other refusals as for `POST`; `404` (no `code`) when there is
+no such destination. Audited (`notify.update`, recording `address_changed` /
+`secret_changed` rather than either value).
+
+### `DELETE /api/v1/admin/notifications/{id}`
+
+*Admin.* Removes a destination: `204`, or `404` when there is none. Audited
+(`notify.delete`).
+
+### `POST /api/v1/admin/notifications/{id}/test`
+
+*Admin.* Sends one `test` message now (no retries, not added to the feed),
+records the outcome on the destination, and answers:
+
+```json
+{ "ok": false, "error": "unreachable", "target": { "id": 2, "last_ok": false, "last_error": "unreachable" } }
+```
+
+(`target` is the whole destination as above.) `error` is `""` when it arrived,
+and `"failed"` from a server built without the notification service (an
+embedder's; never one the launcher starts).
+A failed delivery is not an HTTP error here: the answer is `200` either way,
+`404` when there is no such destination.
+
+### `GET /api/v1/admin/events`
+
+*Admin.* The event feed (the bell), newest first. Events are kept for 90 days.
+
+| Query param | Type | Default | Notes |
+|---|---|---|---|
+| `before` | int | - | only events with a smaller `id`: the previous page's `next_before` |
+| `limit` | int | `20` | at most 100 (a larger one is cut to 100; zero or less means 20) |
+
+```json
+{
+  "events": [
+    { "id": 12, "at": "2026-10-04T17:48:03.220Z", "kind": "new_device",
+      "data": { "user": "maya", "device": "Maya's iPhone", "app": "AudioSilo 1.4.2" } },
+    { "id": 11, "at": "2026-10-04T17:44:58.901Z", "kind": "book_added",
+      "data": { "library": "Books", "library_id": 1, "count": 8,
+                "titles": ["Alice's Adventures in Wonderland", "Through the Looking-Glass", "The Adventures of Sherlock Holmes", "The Hound of the Baskervilles", "The Call of the Wild"] } }
+  ],
+  "next_before": 0
+}
+```
+
+`data` per kind is in [Events](../backups-and-notifications.md#events) (a
+failed scan's `detail` is here, for the bell, but never sent to a destination);
+`next_before` is `0` on the last page. A `before` that isn't a non-negative
+number is `400`.
+
+## Admin: audit log
+
+### `GET /api/v1/admin/audit`
+
+*Admin.* What admins changed, newest first (the console's **Server > Audit
+log**). Kept for 365 days, at most 100,000 events. Which actions are recorded
+is in [Audit log](../backups-and-notifications.md#audit-log).
+
+| Query param | Type | Default | Notes |
+|---|---|---|---|
+| `actor_id` | int | - | one account's actions |
+| `area` | string | - | an action's first part (`user`, `invite`, `library`, `book`, `share`, `device`, `progress`, `issue`, `settings`, `backup`, `notify`); `[a-z_]{1,32}` |
+| `q` | string | - | the target or the actor's name contains it, ignoring case; at most 200 characters |
+| `before` | int | - | the previous page's `next_before` |
+| `limit` | int | `50` | at most 200 (a larger one is cut to 200; zero or less means 50) |
+
+```json
+{
+  "events": [
+    { "id": 31, "at": "2026-10-04T17:45:20.117Z", "actor_id": 1, "actor_name": "admin",
+      "via": "session", "action": "settings.update", "target": "",
+      "details": { "changes": [ { "setting": "backups.schedule", "from": "daily:03:00", "to": "weekly:sun:03:00" } ] } },
+    { "id": 30, "at": "2026-10-04T17:41:02.550Z", "actor_id": null, "actor_name": "",
+      "via": "system", "action": "backup.restore_applied",
+      "target": "audiosilo-20261004-020000Z-scheduled.db",
+      "details": { "requested_by": "admin", "safety_copy": "audiosilo-20261004-174100Z-before-restore.db" } }
+  ],
+  "next_before": 0
+}
+```
+
+| Field | Meaning |
+|---|---|
+| `actor_id`, `actor_name` | the admin, copied when it happened (kept when the account is renamed or deleted); `null` and `""` for the server itself |
+| `via` | `session` (the console or another signed-in app), `api` (a personal API key) or `system` |
+| `action` | `<area>.<verb>`, like `user.update`; a console words the ones it knows and shows the code for the rest |
+| `target` | what it was done to, as a person reads it: a username, a library's name, `<library>: <path>` for a book, a backup's file name, a destination's name; `""` when the action has none |
+| `details` | the change's facts (which fields, from what to what, counts). Never a secret, never an IP address |
+
+| Status | Meaning |
+|---|---|
+| `200` | the page |
+| `400` | `actor_id` or `before` isn't a number, `area` doesn't match, or `q` is over 200 characters |
 
 ## Well-known
 

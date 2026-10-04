@@ -182,7 +182,7 @@ instead ("Moved *path* to *new path*; progress followed").
 
 **Health > System** lists everything the server depends on, one row each, with
 a status on the right: **Healthy**, **Needs attention**, **Missing**, **Off**,
-**Waiting** or **Update available**. The page refreshes itself every 30
+**Waiting**, **Update available** or **Failed**. The page refreshes itself every 30
 seconds.
 
 ![Health > System](/img/screenshots/admin/system.png)
@@ -193,7 +193,8 @@ seconds.
 | **ffprobe** | Found, so lengths, chapters and codecs are read from the files. **Missing**: lengths and chapters come only from tags. |
 | **Community metadata** | **Healthy** with how fast the service answered, **Needs attention** when it isn't responding, or **Off** (switched off, or no service address set). The server only asks the service while the lookup is on, at most once a minute. |
 | **HTTPS certificate** | **Healthy** with the days left and who issued it, **Needs attention** when it expires within two weeks, has expired or its file can't be read, **Waiting** while Let's Encrypt hasn't issued it yet, or **Off** with plain HTTP (a reverse proxy in front handles HTTPS). |
-| **Database** | Its schema number. The book index can be rebuilt from your folders; accounts and progress can't, which is why the data folder belongs in your backups. |
+| **Database** | Its schema number. The book index can be rebuilt from your folders; accounts and progress can't, which is why the server makes [backups](backups.md) of it. |
+| **Backups** | The backups folder, when the last backup was made and when the next one runs. **Failed** (with the reason) when the last backup failed; **Off** when no backups are scheduled, marked as a problem if there isn't a single backup either. See [Backups and restoring](backups.md). |
 | ***Each library*** | The library's folder, and the space free on its disk. **Needs attention** when less than a tenth of the disk is free, or when the folder isn't reachable. |
 | **Web player** | Whether people can listen in a browser at `/web`: "Built into this server.", "Served from the player folder." or, marked **Off**, "Not available. The apps still work." |
 | **AudioSilo version** | The version you run: **Healthy** when it's the newest (or, for a build of your own, "A development build, so it isn't compared with releases."), **Update available** when a newer release exists, **Needs attention** when the last check failed, or **Off** when the update check is turned off. See [About and updates](server.md#about-and-updates). |
@@ -211,7 +212,7 @@ Two notices can appear above the list:
 
 To change any of this, see [Server settings](server.md#settings): the HTTPS
 mode and certificate names are under **Network & HTTPS**, the tools under
-**Transcoding**.
+**Transcoding**, the backup schedule under **Backups**.
 
 ## Where to next
 

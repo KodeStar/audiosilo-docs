@@ -12,8 +12,11 @@
 // makes real listening sessions (Activity, Live now, Sessions, Devices); those
 // screens are captured last, once each listener has a few minutes of listening.
 // It also names the server and adds a trusted proxy through PATCH
-// /admin/settings, so the top bar and Server > Settings show values. For the
-// Health shots, after the other admin shots, it
+// /admin/settings, so the top bar and Server > Settings show values, makes a
+// manual and a scheduled backup, and adds two notification destinations (a
+// webhook to a receiver this script runs on 127.0.0.1, which checks every
+// request's signature, and an ntfy topic at an address that never answers). For
+// the Health shots, after the other admin shots, it
 // builds a small "Inbox" library under .cache/inbox (INBOX_DIR overrides) whose
 // files produce one of each issue - an empty file, a damaged m4b, two copies of
 // one book, a folder of two hour-long books, a long book without chapters, an
@@ -24,7 +27,9 @@
 // audiosilo-server/admin-ui/src/i18n/locales/en.json - if a label changes there,
 // change it here too.
 import {spawnSync} from 'node:child_process';
+import {createHmac, timingSafeEqual} from 'node:crypto';
 import {constants as fsc} from 'node:fs';
+import http from 'node:http';
 import {cp, mkdir, rm, writeFile} from 'node:fs/promises';
 import path from 'node:path';
 import {chromium} from 'playwright';
@@ -178,6 +183,73 @@ await step('provision server settings', async () => {
     network: {trusted_proxies: ['10.0.0.2']},
   });
   console.log('  ✓ provisioned (server name, a trusted proxy)');
+});
+
+// ── Backups and notifications ───────────────────────────────────────────────
+// A manual backup now, and a scheduled one a couple of minutes from now (the
+// schedule is put back to daily:03:00 before the Backups shot), so the list
+// shows both kinds. Two notification destinations: a webhook to a receiver this
+// script runs on 127.0.0.1 (it checks each request's signature, so "Send test"
+// arrives and the row reads "Last sent"), and an ntfy topic at a TEST-NET address
+// (192.0.2.0/24 is never assigned), so its deliveries time out and the row shows
+// how a failure reads. Nothing is sent outside this machine.
+const HOOK_SECRET = 'hearthside-docs-secret';
+const hookBodies = [];
+const hook = http.createServer((req, res) => {
+  const chunks = [];
+  req.on('data', (c) => chunks.push(c));
+  req.on('end', () => {
+    const body = Buffer.concat(chunks);
+    const ts = req.headers['x-audiosilo-timestamp'] ?? '';
+    const want = 'sha256=' + createHmac('sha256', HOOK_SECRET).update(`${ts}.`).update(body).digest('hex');
+    const got = String(req.headers['x-audiosilo-signature'] ?? '');
+    const ok = got.length === want.length && timingSafeEqual(Buffer.from(got), Buffer.from(want));
+    hookBodies.push({event: req.headers['x-audiosilo-event'], ok, body: body.toString()});
+    console.log(`  · webhook ${req.headers['x-audiosilo-event']}: signature ${ok ? 'verified' : 'WRONG'}`);
+    res.writeHead(ok ? 204 : 401).end();
+  });
+});
+await new Promise((resolve) => hook.listen(0, '127.0.0.1', resolve));
+const HOOK_URL = `http://127.0.0.1:${hook.address().port}/api/webhook/audiosilo-hearthside`;
+
+// "HH:MM" of the server's (this machine's) local time `minutes` from now.
+const clockIn = (minutes) => {
+  const d = new Date(Date.now() + minutes * 60000);
+  return `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
+};
+const backupsDone = async (want) => {
+  for (let i = 0; i < 120; i++) {
+    const env = await api(token, 'GET', '/admin/backups');
+    if (!env.status.running && want(env)) return env;
+    await sleep(1000);
+  }
+  throw new Error('backups never settled');
+};
+
+await step('provision backups', async () => {
+  await api(token, 'POST', '/admin/backups');
+  await backupsDone((env) => env.backups.some((b) => b.kind === 'manual'));
+  await api(token, 'PATCH', '/admin/settings', {backups: {schedule: `daily:${clockIn(2)}`}});
+  console.log('  ✓ provisioned (a manual backup; a scheduled one is due in two minutes)');
+});
+
+await step('provision notification destinations', async () => {
+  const webhook = await api(token, 'POST', '/admin/notifications', {
+    kind: 'webhook',
+    name: 'Home Assistant',
+    url: HOOK_URL,
+    secret: HOOK_SECRET,
+    events: ['book_added', 'scan_failed', 'library_unavailable', 'update_available', 'backup_failed'],
+  });
+  await api(token, 'POST', '/admin/notifications', {
+    kind: 'ntfy',
+    name: 'My phone',
+    url: 'http://192.0.2.20/hearthside-alerts',
+    events: ['scan_failed', 'library_unavailable', 'new_device', 'backup_failed'],
+  });
+  const test = await api(token, 'POST', `/admin/notifications/${webhook.id}/test`);
+  if (!test.ok) throw new Error(`the test to the local webhook failed: ${test.error}`);
+  console.log('  ✓ provisioned (a webhook that answers, an ntfy topic that never does)');
 });
 
 // ── Listening activity: real sessions from progress saves ───────────────────
@@ -642,6 +714,15 @@ await step('edit library (scan settings)', async () => {
 // its scans. The update card shows whatever GitHub answers (a local build reads
 // as a development build); a check is asked for first, so it isn't "Not checked
 // yet" on a run that reaches here within a minute of the server starting.
+await step('scheduled backup', async () => {
+  // The scheduled backup provisioned above, then the schedule back to 03:00, so
+  // System and Backups show the usual next run.
+  await backupsDone((env) => env.backups.some((b) => b.kind === 'scheduled')).catch((e) =>
+    console.log(`  ! no scheduled backup: ${e.message}`),
+  );
+  await api(token, 'PATCH', '/admin/settings', {backups: {schedule: 'daily:03:00'}});
+});
+
 await step('health: system', async () => {
   await page.setViewportSize({width: 1440, height: 1100});
   try {
@@ -668,6 +749,70 @@ await step('server: logs', async () => {
   await panel.locator('.lv').first().waitFor({timeout: 15000});
   await sleep(1000);
   await shoot(page, 'admin/logs.png');
+});
+
+// ── Backups, notifications, the bell and the audit log ──────────────────────
+await step('settings: backups', async () => {
+  await page.setViewportSize({width: 1440, height: 1240});
+  try {
+    await open(page, '/server?topic=backups');
+    await page.getByRole('list', {name: 'Backups'}).waitFor({timeout: 15000});
+    await sleep(800);
+    await shoot(page, 'admin/settings-backups.png');
+
+    // The restore confirmation, with the word typed but never confirmed.
+    await page.getByRole('button', {name: 'Restore...', exact: true}).first().click({timeout: 8000});
+    const dialog = page.getByRole('dialog', {name: 'Restore this backup?'});
+    await dialog.waitFor({timeout: 8000});
+    await dialog.getByRole('textbox').fill('restore');
+    await sleep(600);
+    await shoot(page, 'admin/backup-restore.png');
+    await page.keyboard.press('Escape');
+    await sleep(600);
+  } finally {
+    await page.setViewportSize(DESKTOP_CONTEXT.viewport);
+  }
+});
+
+await step('settings: notifications', async () => {
+  await page.setViewportSize({width: 1440, height: 1240});
+  try {
+    await open(page, '/server?topic=notifications');
+    await page.getByRole('list', {name: 'Where to send alerts'}).waitFor({timeout: 15000});
+    await page.getByRole('heading', {name: 'What to send'}).waitFor({timeout: 8000});
+    await sleep(800);
+    await shoot(page, 'admin/settings-notifications.png');
+  } finally {
+    await page.setViewportSize(DESKTOP_CONTEXT.viewport);
+  }
+});
+
+await step('the notifications bell', async () => {
+  // New books (both libraries' first scans) and the listeners' sign-ins are in
+  // the feed by now.
+  await open(page, '/');
+  await page.getByRole('button', {name: /^Notifications/}).click({timeout: 8000});
+  await page.getByRole('dialog', {name: 'Notifications'}).getByRole('list').waitFor({timeout: 8000});
+  await sleep(800);
+  await shoot(page, 'admin/bell.png');
+  await page.keyboard.press('Escape');
+  await sleep(400);
+});
+
+await step('server: audit log', async () => {
+  await open(page, '/server/audit');
+  await page.getByRole('region', {name: 'Audit log'}).waitFor({timeout: 15000});
+  await sleep(800);
+  await shoot(page, 'admin/audit.png');
+});
+
+await step('webhook deliveries', async () => {
+  // What the local receiver got: every signature must check out.
+  if (!hookBodies.length) throw new Error('the webhook received nothing');
+  const bad = hookBodies.filter((h) => !h.ok);
+  if (bad.length) throw new Error(`${bad.length} webhook signature(s) didn't verify`);
+  const sample = hookBodies.find((h) => h.event === 'book_added') ?? hookBodies[0];
+  console.log(`  ✓ ${hookBodies.length} webhook deliveries verified; a ${sample.event} body: ${sample.body}`);
 });
 
 // ── Activity: captured last, after a few minutes of listening ───────────────
@@ -756,4 +901,6 @@ await step('setup wizard', async () => {
 
 await ctx.close();
 await browser.close();
+hook.closeAllConnections();
+hook.close();
 console.log('capture-admin: done.');

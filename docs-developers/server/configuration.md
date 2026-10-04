@@ -164,6 +164,21 @@ showing the section (they gate on the `metadata` capability). Enrichment is
 strictly additive and cached - a slow or unreachable service degrades to no
 section, never a broken page.
 
+### Backups (`backups.*`)
+
+Copies of the database (`internal/backup`; see
+[Backups, audit log and notifications](backups-and-notifications.md#backups-internalbackup)).
+
+| Key | Type / default | Meaning |
+|---|---|---|
+| `backups.schedule` | string, `"daily:03:00"` | When scheduled backups run, in the server's local time zone: `""` (none), `daily:HH:MM` or `weekly:DAY:HH:MM` (`DAY` is `mon`, `tue`, `wed`, `thu`, `fri`, `sat` or `sun`; hour and minute two digits each) |
+| `backups.keep` | int, `7` | How many **scheduled** backups to keep, 1-365; the oldest past it is deleted after each scheduled backup. Manual and before-restore backups are never deleted by it |
+| `backups.dir` | path, `""` | The backups folder; empty means `<data>/backups`. Must be an absolute path. Read at start, and never set from the console: a backup holds every account's password hash, and retention deletes files in it |
+
+Point `backups.dir` at another disk (a NAS mount, a second drive) so a backup
+outlives the disk the server runs from. The folder is created `0700` and each
+backup is written `0600`.
+
 ## Environment variables
 
 `applyEnv` overrides a fixed set of keys from `AUDIOSILO_*` variables, driven
@@ -188,6 +203,9 @@ by the settings table in `internal/config/settings.go` (`fields`: each entry's
 | `AUDIOSILO_METADATA_ENABLED` | `metadata.enabled` | `strconv.ParseBool` (`true`/`1`/…) |
 | `AUDIOSILO_METADATA_BASE_URL` | `metadata.base_url` | URL |
 | `AUDIOSILO_UPDATE_CHECK` | `update_check` | `strconv.ParseBool` (`false`/`0`/… turns it off) |
+| `AUDIOSILO_BACKUP_SCHEDULE` | `backups.schedule` | `""`, `daily:HH:MM` or `weekly:DAY:HH:MM` |
+| `AUDIOSILO_BACKUP_KEEP` | `backups.keep` | integer, 1-365 |
+| `AUDIOSILO_BACKUP_DIR` | `backups.dir` | absolute path |
 
 List values are split on commas with whitespace trimmed and empties dropped
 (`splitList`). Numeric/boolean variables that fail to parse are **silently
@@ -234,6 +252,9 @@ restart, and whether the console may change it at all:
 | `demo.library` | `demo.library` | `AUDIOSILO_DEMO_LIBRARY` | at once |
 | `demo.max_users` | `demo.max_users` | `AUDIOSILO_DEMO_MAX_USERS` | at once |
 | `demo.idle_ttl` | `demo.idle_ttl` | `AUDIOSILO_DEMO_IDLE_TTL` | restart |
+| `backups.schedule` | `backups.schedule` | `AUDIOSILO_BACKUP_SCHEDULE` | at once |
+| `backups.keep` | `backups.keep` | `AUDIOSILO_BACKUP_KEEP` | at once (pruning at the next scheduled backup) |
+| `backups.dir` | `backups.dir` | `AUDIOSILO_BACKUP_DIR` | restart; **read-only** in the console |
 
 Not in the console: `max_upload_bytes` (it has a variable but no setting),
 `tls.cache_dir`, `tls.cert_file`/`tls.key_file`, `server_id`, and `libraries`
@@ -258,7 +279,8 @@ setting copied back from `boot`**. Handlers read the working config through
 while everything else applies to the next request: CORS and the trusted-proxy
 check (`liveConfig` parses both once per save, not per request), `public_url`
 in pairing and invite links, the display name, the well-known app-link files,
-the metadata switch (`metadataOn`), the demo library and cap. Things set up
+the metadata switch (`metadataOn`), the demo library and cap, the backup
+schedule and retention (the handler calls `backup.Service.SetSettings`). Things set up
 once at start (the listener and TLS in `internal/server`, the `/web` mount and
 the site-root demo redirect in `Handler()`, the metadata service built in
 `api.New`, the demo reaper's TTL) are only built then, from the config the
@@ -268,8 +290,9 @@ value differs from `boot` is listed in the envelope's `restart_pending`
 (`Config.RestartPending`) until the server starts with it.
 
 **A save.** `Config.WithSettings(patch, checks)` clones the saved config,
-refuses a setting that is unknown, read-only or locked, decodes each value into
-its field, runs that field's normalizer, then `Validate`s the whole config.
+refuses a setting that is unknown, read-only or locked, refuses JSON `null`
+for a setting that can't be unset (only a pointer field, `demo.max_users`,
+takes it: "enter a value" otherwise), decodes each value into its field, runs that field's normalizer, then `Validate`s the whole config.
 `config.Checks` carries what the config can't tell by itself: whether a
 metadata service exists (metadata can't be switched on without one) and
 whether a library has the `demo.library` name (the handler looks it up in the
@@ -291,6 +314,8 @@ reason, and nothing is applied (all or nothing). The handler then writes
 | `demo.library` | trimmed; must be the name of an existing library |
 | `demo.max_users` | `null` (the default, 200) or 0 (no limit) to 100000 |
 | `demo.idle_ttl` | `""` (24h) or a positive Go duration |
+| `backups.schedule` | `""`, `daily:HH:MM` or `weekly:DAY:HH:MM` (`backup.ParseSchedule`), stored in canonical form |
+| `backups.keep` | an integer from 1 to 365 (checked by `Validate`) |
 
 Every list is trimmed, with empty entries and repeats dropped, and holds at
 most 50 entries.
@@ -337,7 +362,9 @@ overrides). It rejects:
 - a library with an empty name or root, or a duplicate library name;
 - demo mode without `demo.library`; a `demo.idle_ttl` that doesn't parse or
   isn't positive (rejected loudly rather than silently replaced by 24h);
-- metadata enabled with an empty or non-absolute-`http(s)` `metadata.base_url`.
+- metadata enabled with an empty or non-absolute-`http(s)` `metadata.base_url`;
+- a `backups.schedule` that isn't one of the forms above, a `backups.keep`
+  outside 1-365, or a `backups.dir` that isn't an absolute path.
 
 Secure-by-default choices baked into `Default()` and first-run: TLS on
 (`selfsigned`) out of the box, no default passwords (credentials are minted
@@ -423,3 +450,7 @@ tools):
 | `<data>/certs/` | autocert certificate cache |
 | `<data>/selfsigned-cert.pem`, `<data>/selfsigned-key.pem` | Persisted self-signed certificate (mode `selfsigned`, default paths) |
 | `<data>/tools/` | Auto-downloaded ffmpeg/ffprobe, when no local copy was found |
+| `<data>/backups/` | Database backups (`audiosilo-<UTC time>-<kind>.db`), unless `backups.dir` puts them elsewhere |
+| `<data>/restore.json` | A restore waiting for the next start (removed when it is applied or refused) |
+| `<data>/restore-result.json` | How the last restore went |
+| `<data>/audiosilo.db.before-restore-<time>` | Only when a restore couldn't copy the database it replaced: that database's files, renamed aside |

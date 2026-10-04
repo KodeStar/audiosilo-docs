@@ -249,7 +249,8 @@ Book pages are addressed by identity, `/admin/library/book?library=<id>&path=<pa
 The console authenticates with a bearer token held in `localStorage`, so this
 cannot be a plain `<a href>` download: the request has to carry the
 `Authorization` header. `downloadLibraryExport` (`admin-ui/src/api/client.ts`)
-therefore `fetch`es the endpoint, reads the file name out of the response's
+therefore `fetch`es the endpoint (`downloadBackup` does the same for a backup
+from [`GET /admin/backups/{name}`](api/reference.md#get-apiv1adminbackupsname)), reads the file name out of the response's
 `Content-Disposition` header, wraps the body in a blob object URL and clicks a
 temporary `<a download>` (revoking the URL a few seconds later).
 
@@ -296,9 +297,10 @@ CSP-sensitive work against a real build served by Go. The console's own gate is
   once), a top bar with the server's name (`GET /server`'s `name`; the page's
   host while it is the default "AudioSilo"), the five destinations (Library,
   People, Activity, Health, Server), a health line (version, offline
-  libraries, server unreachable), ⌘K search, theme and account menus and a
-  notifications placeholder; a per-destination section bar; a bottom tab bar
-  on phones.
+  libraries, server unreachable), ⌘K search, the notifications bell (see
+  below), theme and account menus; a per-destination section bar; a bottom
+  tab bar on phones. Every section has a screen (`PAGES` in
+  `features/section-page.tsx`); an unknown section is a 404.
   Interface text is in all six languages.
 - **⌘K palette** - navigation, sections, settings (one entry per Settings
   topic, each with search keywords such as "https", "proxy" or "ffmpeg"; scan
@@ -452,9 +454,12 @@ CSP-sensitive work against a real build served by Go. The console's own gate is
   [`GET /admin/system`](api/reference.md#get-apiv1adminsystem), polled every
   30 seconds while this page is open (`useSystem({poll: true})`; Settings and
   About read the same query without polling, fresh for a minute): one list of rows (ffmpeg, ffprobe, community metadata, HTTPS
-  certificate, database, each library's folder with its disk space, web
-  player, AudioSilo version), each with a status (Healthy, Needs attention,
-  Missing, Off, Waiting, Update available). The rules live in the pure
+  certificate, database, backups, each library's folder with its disk space,
+  web player, AudioSilo version), each with a status (Healthy, Needs
+  attention, Missing, Off, Waiting, Update available, Failed). The Backups row
+  reads the answer's `backups` block: Failed (with the reason) when the last
+  attempt failed, Off when nothing is scheduled (a warning when there is no
+  backup at all), else Healthy with the latest backup and the next one. The rules live in the pure
   `system-model.ts` (`systemRows`; a disk under 10% free and a certificate
   under 14 days are warnings; `certificateLook` is shared with Settings).
   Notices above the list for unreachable library folders and a metadata
@@ -462,8 +467,8 @@ CSP-sensitive work against a real build served by Go. The console's own gate is
 - **Server > Settings** (`features/settings/`) - over
   [`GET`/`PATCH /admin/settings`](api/reference.md#admin-settings): an in-page
   topic list in `?topic=` (`general` is the default and has no param;
-  `network`, `players`, `metadata`, `transcoding`, `demo`;
-  `settings-model.ts` `SETTINGS_PAGES`). Each card is a `SettingsForm`
+  `network`, `players`, `metadata`, `transcoding`, `demo`, `backups`,
+  `notifications`; `settings-model.ts` `SETTINGS_PAGES`). Each card is a `SettingsForm`
   (`settings-form.tsx`): a draft of its fields, Reset and Save changes, only
   the changed fields sent (`sectionPatch`); list settings are edited as one
   entry per line. A refusal's `field` puts the server's message under that
@@ -495,8 +500,50 @@ CSP-sensitive work against a real build served by Go. The console's own gate is
   and writes the answer into the system and update caches) and an
   "About *name*" facts card with links to the docs, source and issues.
 
-Server > Audit log still renders the designed "coming in this redesign"
-placeholder naming the phase that builds it (5b).
+- **Settings > Backups** (`features/settings/backups-topic.tsx`) - over
+  [`GET /admin/backups`](api/reference.md#get-apiv1adminbackups) (`useBackups`,
+  polled every second while `status.running`): a notice saying what a backup
+  holds, the restore notices (a restore waiting for a restart, with Cancel
+  restore; the last restore's outcome for 14 days), the Schedule card (a
+  `SettingsForm` over the `backups` section: `schedule-input.tsx` edits
+  `backups.schedule` as Off / Every day / Every week, a day and a time, and
+  `backups-model.ts` converts both ways; `keep` is a number field; the folder
+  is read-only), and the list: Back up now (`POST /admin/backups`; the page
+  toasts the outcome when `running` turns false; the 202 answer already reads
+  `running: true`, so polling starts at once), each backup's Download
+  (`downloadBackup`, see above), Restore... (a type-to-confirm dialog with the
+  word "restore" listing what a restore means, signed-out devices and revoked
+  API keys working again included, then `POST …/restore`) and Delete.
+- **Settings > Notifications** (`notifications-topic.tsx`, `target-dialog.tsx`)
+  - over [`GET /admin/notifications`](api/reference.md#get-apiv1adminnotifications):
+  one row per destination (redacted address, last delivery from
+  `notify-model.ts` `deliveryLook`, Send test, an on/off switch, Edit and
+  Delete), the "What to send" matrix (a checkbox per event and destination,
+  saved as it is ticked with an optimistic cache write and a rollback on
+  failure) and the privacy notice. The add/edit dialog picks the kind (webhook,
+  ntfy, Discord) on add only, never shows the saved address or secret (an
+  empty field keeps it; "Remove the saved secret" sends `""`; when the typed
+  address is on another server than the saved one, `movesServer`, the secret
+  field says to enter the secret again or remove it, which is what the server
+  requires), offers the events the server knows (`knownEvents`), preselects the
+  problem events (`DEFAULT_EVENTS`: scan failed, library offline, update,
+  backup failed), and puts an `invalid_target` refusal under its `field`. An
+  edit puts the server's answer into the cache (`withTarget`).
+- **The bell** (`components/shell/notifications-bell.tsx`) - `GET /admin/events`
+  (`useServerEvents`: the newest 20, every minute), eight listed in a popover,
+  each worded by `lib/server-events.ts` `describeEvent` and linking to where it
+  can be dealt with (Library, Health > Jobs, People > Devices or Invites,
+  Server > About, Settings > Backups). The dot and the "N new" label count
+  events newer than a per-browser cursor in `localStorage`
+  (`audiosilo_events_seen`), moved to the newest event when the bell opens.
+- **Server > Audit log** (`features/audit/audit-page.tsx`) - over
+  [`GET /admin/audit`](api/reference.md#get-apiv1adminaudit) as an infinite
+  query (50 a page, Show older), filtered by area, person (the admins from
+  `GET /admin/users`) and a debounced search. `audit-model.ts` words each
+  action (`audit.action.<code>`, or "Other change (code)" for one it doesn't
+  know) and its details (a settings save as one "from → to" line per setting,
+  a backup schedule in words, an ignored issue's kind by its Health name, a
+  book edit per field, a share's paths as the first few and a count).
 
 ### Charts
 
