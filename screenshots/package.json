@@ -9,6 +9,6 @@
     "admin": "node capture-admin.mjs"
   },
   "dependencies": {
-    "playwright": "^1.61.1"
+    "playwright": "^1.63.0"
   }
 }
