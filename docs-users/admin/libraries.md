@@ -1,6 +1,6 @@
 ---
 title: "Libraries"
-description: "Adding, editing, ordering, rescanning, exporting and deleting libraries in the AudioSilo admin console, correcting folder detection, and what happens when a library's folder goes missing."
+description: "Adding, editing, ordering, rescanning, exporting and deleting libraries in the AudioSilo admin console, scan schedules and skipped files, correcting folder detection, and what happens when a library's folder goes missing."
 ---
 
 A **library** is a folder on the server that AudioSilo reads for audiobooks.
@@ -11,7 +11,9 @@ per person which ones (or which parts of them) are visible via
 Libraries live under **Library > Libraries** in the
 [admin console](console-tour.md) ("Folders AudioSilo reads. Your files stay
 where they are."). Each library is a card with a few of its newest covers, its
-name, its status, its folder and its book count.
+name, its status, its folder and its book count - and, when it is scanned on a
+schedule, the schedule and when the next scan is due ("Every 6 hours · next in
+5 hr").
 
 ![The Libraries page](/img/screenshots/admin/libraries.png)
 
@@ -22,22 +24,30 @@ The status next to the name is one of:
   "*X* of *Y* books checked" (or "Looking for books..." while it is still
   finding them). A running scan wins over the other states: a **Retry** on an
   unavailable library shows **Scanning** while it runs.
+- **Waiting** - a scan is queued behind another library's. Scans run one at a
+  time; the **Rescan** button reads **Queued** until this one starts. See
+  [Jobs](health.md#jobs).
 - **Folder unavailable** - AudioSilo can't read the folder right now. See
   [When a library folder goes missing](#when-a-library-folder-goes-missing).
 
 Everything else you do to a library is on its card: **Rescan**, and the **⋯**
-menu with **Edit name and folder...**, **Folder detection...**, **Export book
-list** and **Delete library...**.
+menu with **Edit library...**, **Folder detection...**, **Export book list**
+and **Delete library...**.
 
 ## Adding a library
 
 Click **Add library** (or choose **Add a library** in the
 [command palette](console-tour.md#search-and-commands)). The **Add a library**
-dialog asks for just two things:
+dialog asks for two things:
 
 - **Name** - a display name, e.g. `Fiction`.
 - **Folder** - the folder on the server's own disk, e.g. `/srv/audiobooks`.
   Type it, or click **Browse** to pick it.
+
+Under them are two optional scan settings, **Scan automatically** and **Skip
+these files and folders** - see [Scanning on a schedule](#scanning-on-a-schedule)
+and [Skipping files and folders](#skipping-files-and-folders). You can leave
+both as they are and set them later.
 
 ![Adding a library with the folder picker open](/img/screenshots/admin/library-add.png)
 
@@ -76,11 +86,22 @@ container and use the in-container path (see
 
 ## Editing a library
 
-**⋯ > Edit name and folder...** renames the library or points it at another
-folder (with the same **Browse** picker). Saving rescans the library
-("AudioSilo is rescanning it now."). When you change the folder, listening
-progress follows the books the scan finds again at the same place inside the
-new folder.
+**⋯ > Edit library...** opens the **Edit *name*** dialog: "Rename the library,
+point it at another folder, or change how it's scanned."
+
+![Editing a library: the folder and the scan settings](/img/screenshots/admin/library-edit.png)
+
+- **Name** and **Folder** (with the same **Browse** picker).
+- **Scan automatically** and **Time** - see
+  [Scanning on a schedule](#scanning-on-a-schedule).
+- **Skip these files and folders** - see
+  [Skipping files and folders](#skipping-files-and-folders).
+
+Click **Save changes**. Changing the **folder** or the **skipped files**
+rescans the library ("AudioSilo is rescanning it now."); renaming it or
+changing its schedule doesn't, since the books haven't changed. When you
+change the folder, listening progress follows the books the scan finds again
+at the same place inside the new folder.
 
 If you're reorganising, prefer moving files *within* the existing folder:
 progress follows moved files automatically (see
@@ -91,20 +112,75 @@ progress follows moved files automatically (see
 Click **Rescan** on a library to re-index it - after you've added, removed,
 renamed or re-tagged files. The button reads **Scanning...** while the scan
 runs, the progress bar fills, and a toast says "Finished scanning *name*" when
-it is done - even for a scan so short the progress bar barely shows. You can keep working in the console meanwhile. The
-[command palette](console-tour.md#search-and-commands) can rescan a library
-too.
+it is done - even for a scan so short the progress bar barely shows. You can
+keep working in the console meanwhile. The
+[command palette](console-tour.md#search-and-commands) can rescan a library,
+or every library at once, too.
+
+Scans run **one at a time**. If another library is being scanned, yours waits
+its turn: the card says **Waiting** and the button **Queued** until it starts.
+**Health > Jobs** shows what is running and waiting, lets you stop a scan or
+cancel a waiting one, and keeps a history of every scan with its log (see
+[Jobs](health.md#jobs)).
 
 Scans also run automatically:
 
 - for every library **when the server starts**,
-- when a library is **added** or **edited**,
-- when you change a **folder detection** setting (below).
+- when a library is **added**, or its **folder** or **skipped files** change,
+- when you change a **folder detection** setting (below),
+- on the library's **schedule**, if you set one (below).
 
 A rescan never touches your files - it only rebuilds AudioSilo's index of them.
 Listening progress and bookmarks are keyed to file paths, so they survive
 rescans, and even survive moving or renaming a book's folder (the scanner
 recognises moved files and carries progress across).
+
+## Scanning on a schedule
+
+AudioSilo notices new books when you rescan, when someone opens one in the
+folder view, and when the server starts. If you add books to the folder
+regularly (from another computer, or a download tool), let the library rescan
+itself: **⋯ > Edit library...**, then **Scan automatically**:
+
+- **Off** - the default; scan only when you ask (and at startup).
+- **Every hour**, **Every 3 hours**, **Every 6 hours**, **Every 12 hours**,
+  **Every 24 hours** - counted from when the library's last scan started,
+  whatever started it, so a rescan you run by hand pushes the next one back.
+- **Daily at a set time** - pick the **Time**. It is in the **server's** time
+  zone, which may not be yours. If the server was off at that time, the scan
+  runs as soon as it is back.
+
+The library's card then shows the schedule and the next scan ("Daily at 03:00
+· next in 7 hr"), and **Health > Jobs** lists every schedule. A scheduled scan
+waits its turn like any other.
+
+## Skipping files and folders
+
+Some folders hold audio that isn't an audiobook: publisher sample clips, an
+`Extras` folder of interviews, a podcast someone dropped in. **Skip these
+files and folders** (in **⋯ > Edit library...**) lists what AudioSilo should
+leave out. One pattern per line:
+
+| Pattern | Skips |
+|---|---|
+| `*.sample.mp3` | every file ending in `.sample.mp3`, in any folder |
+| `Extras/` | every folder named `Extras`, wherever it is, with everything in it (the trailing `/` means folders only) |
+| `Podcasts/*` | everything inside the `Podcasts` folder at the top of the library (a `/` in the middle means "starting at the library folder") |
+| `/Extras` | only the `Extras` folder at the top of the library (a `/` at the start also means "starting at the library folder") |
+| `# publisher samples` | nothing: a line starting with `#` is a note to yourself |
+
+A pattern without a `/` (or with one only at the end) matches a file or
+folder name anywhere in the library; `*` stands for any run of characters and `?` for one character.
+Upper and lower case don't matter. You can have up to 100 patterns. A pattern
+the server can't use is refused when you save, with the line named under the
+box.
+
+Saving new patterns rescans the library: books the patterns now cover are
+removed from the library (your files stay where they are) and books they no
+longer cover come back. This works even if the patterns cover every book in
+the library - AudioSilo doesn't mistake that for a missing folder. Skipped files are hidden from the folder view too,
+and can't be opened from it. The patterns are stored by AudioSilo, not in a
+file in your library folder - AudioSilo never writes there.
 
 ## Library order
 
@@ -219,8 +295,8 @@ Deleting a library removes what AudioSilo knows *about* it for every person:
 their listening progress, bookmarks, notes and listening history for books in
 that library, its folder detection settings, and any of its folders you had
 added to shares. Your audio files are never touched. Don't delete and re-add a
-library to "refresh" it - use **Rescan** for that, or **Edit name and
-folder...** to point it somewhere new.
+library to "refresh" it - use **Rescan** for that, or **Edit library...** to
+point it somewhere new.
 :::
 
 ## When a library folder goes missing
@@ -243,8 +319,9 @@ then retry." (A library that has no books yet says "AudioSilo can't read this
 folder" instead.) A scan that stops this way ends with a "Scan of *name*
 stopped" toast. The [overview](console-tour.md#the-overview) shows the same
 notice, and the health line at the top of every page names the offline
-library. Once the folder is back, **Retry** shows **Scanning** while it runs,
-then the status returns to **Online**.
+library, as does [Health > Issues](health.md#when-a-library-is-offline). Once
+the folder is back, **Retry** shows **Scanning** while it runs, then the
+status returns to **Online**.
 
 The console counts a folder as unavailable when it is missing, can't be read,
 doesn't answer within a couple of seconds (a hung network mount can't freeze

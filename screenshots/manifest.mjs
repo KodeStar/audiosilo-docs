@@ -51,6 +51,10 @@ export const SHOTS = [
   {file: 'admin/invites.png', capture: 'admin', title: 'Admin - Invites', hint: 'People > Invites: the invite table'},
   {file: 'admin/shares.png', capture: 'admin', title: 'Admin - Shares', hint: 'People > Shares: list + the selected share\'s folders and people'},
   {file: 'admin/settings.png', capture: 'admin', title: 'Admin - Settings', hint: 'Server > Settings: the community metadata card'},
+  {file: 'admin/health-issues.png', capture: 'admin', title: 'Admin - Library health', hint: 'Health > Issues: category cards over the "Files that couldn\'t be read" list (a provisioned Inbox library supplies the issues)'},
+  {file: 'admin/health-duplicates.png', capture: 'admin', title: 'Admin - Likely duplicates', hint: 'Health > Issues ?issue=duplicate: a group\'s two copies side by side'},
+  {file: 'admin/health-jobs.png', capture: 'admin', title: 'Admin - Jobs', hint: 'Health > Jobs: running now, schedules, and the history with the newest scan\'s log open (1440x980)'},
+  {file: 'admin/library-edit.png', capture: 'admin', title: 'Admin - Edit library', hint: 'the Edit library dialog: folder, Scan automatically (daily) + Time, Skip these files and folders'},
   {file: 'server/connect-page.png', capture: 'admin', title: 'Connect page', hint: 'public connect page (auth-code box / QR)'},
   {file: 'server/setup-wizard.png', capture: 'admin', title: 'Setup wizard', hint: 'first-run --setup wizard page'},
 

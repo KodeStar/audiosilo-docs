@@ -125,8 +125,11 @@ Failures a person can fix also carry a machine-readable **`code`** next to
 | `book_not_found` | `404` | an admin catalog call on a path that is not an indexed book (book page, edit, bulk edit, match, cover upload) |
 | `invalid_override` | `400` | a metadata edit the server refuses; the body also carries a `field` key naming the offending field (`PATCH /admin/libraries/{id}/book`, `POST /admin/books/bulk`) |
 | `metadata_off` | `404` | a community match search while community metadata is turned off |
-| `too_large` | `400` / `413` | a bulk edit over 1000 books (`400`); a custom cover over 5 MiB (`413`) |
+| `too_large` | `400` / `413` | a bulk edit or an issue ignore over 1000 books, or a cover batch over 60 (`400`); a custom cover over 5 MiB (`413`) |
 | `unsupported_image` | `415` | a custom cover that is not a JPEG, PNG or WebP image |
+| `invalid_schedule` | `400` | a library `scan_schedule` that isn't `""`, `every:<N>h` (1, 3, 6, 12, 24) or `daily:HH:MM` (`POST`/`PATCH /admin/libraries`) |
+| `invalid_pattern` | `400` | a library `ignore_patterns` list the server refuses: more than 100 patterns, one over 200 bytes, one that matches nothing, or a malformed wildcard; the message names the line (`POST`/`PATCH /admin/libraries`) |
+| `not_indexable` | `404` | `POST /admin/libraries/{id}/book/rescan` on a path with no book any more (gone, not a book, or skipped by the library's ignore rules) |
 
 **Branch on `code`, not on the English `error` text**, which is free to change.
 Errors without a `code` are ones a client can't help the person fix.

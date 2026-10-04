@@ -1383,7 +1383,7 @@ All *Admin*.
 ### `GET /api/v1/admin/libraries`
 
 All libraries in display order, wrapped as `{ "libraries": [ … ] }` - the
-library object of [`GET /api/v1/libraries`](#get-apiv1libraries) plus two
+library object of [`GET /api/v1/libraries`](#get-apiv1libraries) plus
 admin-only fields:
 
 ```json
@@ -1392,7 +1392,11 @@ admin-only fields:
     { "id": 1, "name": "Audiobooks", "root": "/srv/audiobooks",
       "default_view": "hybrid", "sort_order": 0,
       "book_count": 812, "available": true,
-      "scan": { "running": false, "total": 812, "done": 812, "indexed": 812 } }
+      "scan": { "running": false, "total": 812, "done": 812, "indexed": 3,
+                "added": 1, "updated": 2, "moved": 0, "removed": 1 },
+      "scan_schedule": "every:6h",
+      "ignore_patterns": ["# publisher samples", "*.sample.mp3", "Extras/"],
+      "next_scan_at": "2026-10-04T15:00:00Z" }
   ]
 }
 ```
@@ -1408,14 +1412,24 @@ admin-only fields:
   each answer is cached for 15 seconds, and a probe already stuck past the
   timeout answers "not responding" at once for later requests.
 - `scan` - the library's scan progress, the same object as
-  [`GET /admin/libraries/{id}/scan`](#get-apiv1adminlibrariesidscan) (`running`,
-  `total`, `done`, `indexed`, `unavailable` when set). The console polls this
-  list - every second while any library is scanning - instead of each
-  library's scan endpoint, which remains available.
+  [`GET /admin/libraries/{id}/scan`](#get-apiv1adminlibrariesidscan). The
+  console polls this list - every second while any library is scanning or
+  waiting in the queue - instead of each library's scan endpoint, which
+  remains available.
+- `scan_schedule` (string) - the library's scan schedule: `""` (none),
+  `every:<N>h` (N = 1, 3, 6, 12 or 24 hours after the last scan started) or
+  `daily:HH:MM` (server time zone). See
+  [Scheduled scans](../scanner.md#scheduled-scans).
+- `ignore_patterns` (string array, `[]` when none) - the library's
+  [ignore rules](../scanner.md#ignore-rules), one pattern per entry, comments
+  (`#` lines) included.
+- `next_scan_at` (RFC 3339, UTC) - when the next scheduled scan is due; omitted
+  without a schedule.
 
 ### `POST /api/v1/admin/libraries`
 
-Creates a library and kicks off an initial background scan (browsing via `/fs`
+Creates a library and queues its first scan in the
+[job queue](../scanner.md#the-job-queue) (trigger `manual`; browsing via `/fs`
 works immediately; the index fills in behind).
 
 | Body field | Type | Required | Notes |
@@ -1423,9 +1437,17 @@ works immediately; the index fills in behind).
 | `name` | string | yes | unique |
 | `root` | string | yes | **server-local** filesystem path (mount network shares first) |
 | `default_view` | string | no | defaults to `"hybrid"` |
+| `scan_schedule` | string | no | `""` (default), `every:<N>h` or `daily:HH:MM` - see `GET /admin/libraries`. Stored in canonical form (`every:06h` is saved as `every:6h`) |
+| `ignore_patterns` | string array | no | ignore rules, one pattern per entry (an entry with line breaks is split into one pattern per line); lines are trimmed and blank ones dropped. At most 100 patterns of 200 bytes |
 
-Response `201`: the created library. `409` `name already taken`
-(`code: "name_taken"`).
+Response `201`: the created library (the player's library object; the scan
+settings are not echoed - read them from
+[`GET /admin/libraries`](#get-apiv1adminlibraries)).
+
+| Status | Meaning |
+|---|---|
+| `400` | `name and root are required`; `invalid request`; `code: "invalid_schedule"` (a schedule that isn't one of the forms above); `code: "invalid_pattern"` (too many patterns, one too long, one that matches nothing, or a malformed wildcard - the message names the line) |
+| `409` | `name already taken` (`code: "name_taken"`) |
 
 ### `PUT /api/v1/admin/libraries/order`
 
@@ -1436,14 +1458,30 @@ otherwise-equal copies of the same book (see [`GET /api/v1/search`](#get-apiv1se
 Body: `{ "ids": [2, 1, 3] }`. Response `200`: `{ "libraries": [ … ] }` in the
 new order, in the same enriched shape as
 [`GET /admin/libraries`](#get-apiv1adminlibraries) (with `book_count`,
-`available` and `scan`).
+`available`, `scan` and the scan settings).
 
 ### `PATCH /api/v1/admin/libraries/{id}`
 
-Edits `name`, `root`, and/or `default_view` - empty/omitted fields keep their
-current values (`sort_order` is managed via `/order`). Changing anything
-triggers a background rescan. Response `200`: the updated library. `404` /
-`409` as for create.
+Edits `name`, `root`, `default_view`, `scan_schedule` and/or `ignore_patterns`
+(the body fields of create). An empty or omitted `name`, `root` or
+`default_view` keeps its current value; an omitted `scan_schedule` or
+`ignore_patterns` keeps it too, while `""` / `[]` clears it (`sort_order` is
+managed via `/order`).
+
+A rescan is queued (trigger `change`) **only** when the root or the ignore rules
+change, since those make the index stale. A rename, a new default view or a new
+schedule doesn't rescan.
+
+:::note Behaviour change
+Before admin console Phase 3, every `PATCH` rescanned the library, a rename
+included.
+:::
+
+Response `200`: the updated library (without the scan settings, as for
+create), plus `job` - the queued scan, as for
+[`POST …/scan`](#post-apiv1adminlibrariesidscan) - when the edit queued one
+(omitted otherwise). `400` (including `invalid_schedule` / `invalid_pattern`) /
+`404` / `409` as for create.
 
 ### `DELETE /api/v1/admin/libraries/{id}`
 
@@ -1561,26 +1599,53 @@ curl -OJ -H "Authorization: Bearer $TOKEN" \
 
 ### `POST /api/v1/admin/libraries/{id}/scan`
 
-Starts a background rescan. Returns immediately: `202 Accepted`,
-`{ "status": "scan started" }`. `404` library not found.
+Queues a rescan in the [job queue](../scanner.md#the-job-queue) (trigger
+`manual`, started by the caller). Returns immediately: `202 Accepted` with the
+job that will scan the library - the waiting one if the library already waits,
+or a new one queued behind a running scan of it:
+
+```json
+{ "status": "scan started",
+  "job": { "id": 7, "kind": "scan", "library_id": 1, "library_name": "Audiobooks",
+           "trigger": "manual", "started_by": 1, "queued_at": "2026-10-04T09:12:44Z" } }
+```
+
+The job object is described under [`GET /admin/jobs`](#get-apiv1adminjobs).
+`404` library not found. (The `job` key is new; the `status` text is unchanged.)
+
+### `POST /api/v1/admin/scan`
+
+Queues a scan of **every** library, in display order (trigger `manual`, started
+by the caller); the queue runs them one at a time, with the same coalescing as
+a single rescan. The console's "Check again" and "Rescan every library" are
+this. No body. `202 Accepted`: `{ "jobs": [ … ] }`, one job per library (the
+objects of [`GET /admin/jobs`](#get-apiv1adminjobs)).
 
 ### `GET /api/v1/admin/libraries/{id}/scan`
 
-Progress of the (possibly running) scan:
+Progress of the library's (possibly running) scan:
 
 ```json
-{ "running": true, "total": 812, "done": 394, "indexed": 388 }
+{ "running": true, "queued": true, "total": 812, "done": 394, "indexed": 6,
+  "added": 2, "updated": 4, "moved": 1, "removed": 0 }
 ```
 
-`unavailable` (bool, omitted when false) is `true` when the last finished scan
-stopped at the [unavailable-root guard](../scanner.md#the-unavailable-root-guard),
-so nothing was pruned.
+- `running` - a scan of the library is running now.
+- `queued` (omitted when false) - a scan of the library waits in the job queue:
+  behind another library's scan, or to run again after the current one.
+- `total` / `done` - books discovered / books checked so far (`0` until
+  discovery finishes).
+- `added` / `updated` / `moved` / `removed` - what the scan has changed so far;
+  `indexed` is `added + updated` (books written to the index, unchanged books
+  are skipped).
+- `unavailable` (omitted when false) - the last finished scan stopped at the
+  [unavailable-root guard](../scanner.md#the-unavailable-root-guard), so
+  nothing was pruned.
 
-A scan an admin request queues - `POST …/scan`, creating or editing a library
-(`POST /admin/libraries`, `PATCH /admin/libraries/{id}`), setting or clearing a
-folder override, or the setup wizard - is marked running before that request
-returns, so a status poll made right after it reports `running: true` (with
-`total`/`done` at `0` until discovery finishes).
+A scan an admin request queues - `POST …/scan`, creating a library, an edit
+that changes the root or ignore rules, setting or clearing a folder override,
+or the setup wizard - reads as `queued` (or `running`) before that request
+returns, so a status poll made right after it sees the scan.
 
 ### `GET /api/v1/admin/fs/dirs`
 
@@ -1787,6 +1852,8 @@ what the first does).
 | `min_duration` · `max_duration` | number (seconds) | - | inclusive bounds; `0` means no bound |
 | `added_after` | date | - | inclusive lower bound on `added_at`: `YYYY-MM-DD` (used as is) or an RFC 3339 time (any offset; converted to UTC before comparing) |
 | `added_before` | date | - | exclusive upper bound, same formats |
+| `issue` | string | - | one [Health issue](#get-apiv1adminissues) kind's books: `scan_error`, `suspect`, `no_cover`, `unmatched`, `no_chapters` or `transcode` (not `duplicate`, which comes as groups from [`/admin/issues/duplicates`](#get-apiv1adminissuesduplicates)). Books an admin ignored for that kind are left out. Any other value is `400 unknown issue` |
+| `issue_ignored` | `true`\|`false` | - | with `issue`, list **only** the books an admin ignored for it; without `issue` it is `400 issue_ignored needs an issue` |
 | `sort` | string | `title` | `title` \| `author` \| `series` \| `narrator` \| `added` \| `duration` \| `size` |
 | `order` | string | `asc` | `asc` \| `desc` |
 | `limit` | int | `60` | ≤ 0 or > 200 falls back to 60 |
@@ -1832,20 +1899,36 @@ is a `400` too (`too many format or codec values`).
       "isbn": "",
       "matched": true,
       "edited": true,
-      "edited_fields": ["narrator"]
+      "edited_fields": ["narrator"],
+      "scan_error": "probe_failed",
+      "scan_error_file": "Andy Weir/The Martian/The Martian.m4b",
+      "scan_error_detail": "[mov,mp4,m4a,3gp,3g2,mj2 @ 0x7f8c] moov atom not found; Invalid data found when processing input"
     }
   ],
   "next_cursor": "eyJzIjoidGl0bGUiLCJ2IjpbIlRoZSBNYXJ0aWFuIl0sImlkIjo0MTJ9"
 }
 ```
 
-- Every field is always present (empty string / `0` / `false` when unknown).
+- Every field is always present (empty string / `0` / `false` when unknown),
+  except the four Health fields below, which are omitted when empty or `0`.
   `path` is the book path (the player's `rel_path`).
 - `custom_cover` - an admin uploaded a cover; `has_cover` includes it.
 - `matched` - the book has an ASIN or ISBN: the same rule as the `matched` filter.
 - `edited_fields` - the fields with an override (an edit or an accepted community
   value), `[]` when none; `edited` is also true for a chapter-title edit alone.
 - `file_count` is `1` for a single-file book.
+- `scan_error` - the first problem reading the book's files on its last
+  indexing: `unreadable` (a file couldn't be opened), `empty_file` (0 bytes)
+  or `probe_failed` (ffprobe couldn't read it). `scan_error_file` is the
+  library-relative file, `scan_error_detail` the OS's or ffprobe's own message
+  (shown as is; may be empty for `empty_file`). An ffprobe message keeps every
+  distinct line ffprobe printed, joined with `"; "`, at most 300 bytes. A
+  recorded problem is re-checked on every scan, so it clears once the file
+  reads (fixed permissions, a share back online). See
+  [Read problems](../scanner.md#read-problems).
+- `suspect_parts` - set (to 2 or more) when a folder book's parts look like
+  that many separate books (see
+  [Folders that may hold several books](../scanner.md#folders-that-may-hold-several-books)).
 - The cursor names the ordering it was minted for: replaying it with another
   `sort` or `order` (or a malformed one) is `400 invalid cursor`. Changing the
   filters between pages is not detected, so restart from the first page when
@@ -2221,6 +2304,249 @@ Response `200`, one entry per requested book, in request order:
 | `400` | `books is required` (an empty list); `size must be 160, 320 or 640`; `invalid request` (malformed body or an unknown key); `code: "too_large"` for more than 60 books |
 | `401` / `403` | anonymous / non-admin |
 | `500` | `could not load covers` - a database failure (an unreadable image is never an error, it is `""`) |
+
+## Admin: health & jobs
+
+All *Admin*. The queries behind the console's Health > Issues and Health > Jobs
+screens (admin console Phase 3). Issues are computed from the index on request;
+the only thing stored is an admin's "ignore this", path-keyed. Scans run through
+one [job queue](../scanner.md#the-job-queue) and each is recorded in
+[`scan_runs`](../scanner.md#scan-history-scan_runs).
+
+### `GET /api/v1/admin/issues`
+
+Every issue category's numbers, the libraries whose folder is offline, and when
+a scan last finished.
+
+```json
+{
+  "categories": [
+    { "kind": "scan_error", "count": 2, "ignored": 0,
+      "samples": [ { "library_id": 1, "path": "Damaged/The Damaged Book.m4b", "title": "The Damaged Book" } ] },
+    { "kind": "duplicate", "count": 1, "ignored": 0, "samples": [ … ] },
+    { "kind": "no_cover", "count": 14, "ignored": 3, "samples": [ … ] }
+  ],
+  "offline": [
+    { "library_id": 2, "name": "NAS", "root": "/mnt/nas/books", "books": 812, "listeners": 4 }
+  ],
+  "checked_at": "2026-10-04T09:12:44Z"
+}
+```
+
+- `categories` - one entry per kind, always in this order: `scan_error`,
+  `suspect`, `duplicate`, `no_cover`, `unmatched`, `no_chapters`, `transcode`.
+  `unmatched` is **left out while community metadata is off** (there is
+  nothing to match against). What puts a book in each kind is in
+  [Issues](../scanner.md#issues).
+- `count` - books that need attention, not counting the ones an admin ignored
+  (for `duplicate`, the number of **groups**); `ignored` - how many an admin
+  ignored (groups for `duplicate`).
+- `samples` - up to three books to show (the newest, or each group's first
+  copy), `[]` when none.
+- `offline` - libraries whose root can't be read right now (the same probe as
+  `available` on [`GET /admin/libraries`](#get-apiv1adminlibraries)), with
+  their indexed `books` and how many people have `listeners` progress in them:
+  what the scanner kept, since nothing is pruned while a root is offline.
+  `[]` when none.
+- `checked_at` - when the newest finished scan of any library ended (`""` when
+  none has; interrupted runs don't count).
+
+### `GET /api/v1/admin/issues/duplicates`
+
+Groups of books that look like the same book **within one library** (copies in
+different libraries are deliberate and never grouped).
+
+| Query param | Type | Notes |
+|---|---|---|
+| `library_id` | int | one library; a non-positive or non-integer id is `400 invalid library_id` |
+| `ignored` | `true` | return **only** the groups an admin said are different books (instead of the open ones) |
+
+```json
+{
+  "groups": [
+    {
+      "reason": "same_files",
+      "ignored": false,
+      "books": [
+        { "library_id": 1, "path": "Lewis Carroll/Alice's Adventures in Wonderland", "title": "Alice's Adventures in Wonderland",
+          "…": "the rest of a GET /admin/books row", "listeners": 2 },
+        { "library_id": 1, "path": "Inbox/Alice (copy)", "…": "…", "listeners": 0 }
+      ]
+    }
+  ]
+}
+```
+
+- `reason` - `same_files` when the copies' audio is identical (same
+  fingerprint and size), otherwise `same_book` (the same ASIN or ISBN, or the
+  same author, title and narrator with lengths within a minute or 2%).
+- `books` - each copy as a [`GET /admin/books`](#get-apiv1adminbooks) row plus
+  `listeners` (people with progress on it), the copy worth keeping **first**
+  (better format, then a single file, then the higher bitrate, then more
+  listeners).
+- `ignored` - every copy in the group is ignored for `duplicate`. Without
+  `?ignored=true` only groups with `ignored: false` are returned; with it, only
+  the ignored ones. An ignored group becomes open again by itself when a new
+  copy joins it.
+- At most 500 groups (counted after that filter, so every ignored group can be
+  reached), ordered by library and the kept copy's path.
+
+### `POST /api/v1/admin/issues/ignore` · `DELETE /api/v1/admin/issues/ignore`
+
+`POST` stops listing books under one issue kind; `DELETE` lists them again (the
+console's Undo and "Show again"). For duplicates, ignore every copy of a group
+("They're different books").
+
+```json
+{ "kind": "no_cover", "books": [ { "library_id": 1, "path": "Sun Tzu/The Art of War" } ] }
+```
+
+- `kind` - one of the seven kinds above.
+- `books` - 1 to 1000 `{library_id, path}` refs. The books needn't be indexed:
+  the rows are path-keyed durable state (`issue_ignores`), so an ignore
+  survives rescans and rebuilds and moves with the book. A ref in a library
+  that doesn't exist is skipped.
+- Idempotent both ways. Response `204 No Content`.
+
+| Status | Meaning |
+|---|---|
+| `400` | `invalid request`; `books is required`; `every book needs a library_id and a path`; `unknown issue`; `code: "too_large"` for more than 1000 books |
+
+### `POST /api/v1/admin/libraries/{id}/book/rescan`
+
+Reads one book's files again **now** (tags, ffprobe, cover, read problems) and
+returns its book page - the same body as
+[`GET /admin/libraries/{id}/book`](#get-apiv1adminlibrariesidbook). `?path=`
+required. It runs outside the job queue (one book is quick), so it never waits
+behind a library scan. The re-read runs detached from the request, for up to 10
+minutes (and never past server shutdown), so on a slow share it is still saved
+even if the response times out; the book's next look shows it. The console uses
+it for "Read the files again" on a book's page and "Read again" on Health's
+unreadable files.
+
+| Status | Meaning |
+|---|---|
+| `200` | the book page, re-read; check `book.scan_error` to see whether the problem is gone |
+| `400` | `invalid library id`; `path is required` |
+| `404` | `library not found`; `code: "not_indexable"` - there is no book at that path any more (gone from disk, not a book, or skipped by the library's ignore rules) |
+
+### `GET /api/v1/admin/jobs`
+
+The scan running now (with live progress), the scans waiting behind it, and
+every scheduled library's next scan.
+
+```json
+{
+  "running": {
+    "id": 7, "kind": "scan", "library_id": 1, "library_name": "Audiobooks",
+    "trigger": "manual", "started_by": 1,
+    "queued_at": "2026-10-04T09:12:40Z", "started_at": "2026-10-04T09:12:41Z",
+    "run_id": 31,
+    "progress": { "running": true, "total": 812, "done": 394, "indexed": 6,
+                  "added": 2, "updated": 4, "moved": 1, "removed": 0 }
+  },
+  "queued": [
+    { "id": 8, "kind": "scan", "library_id": 2, "library_name": "Kids",
+      "trigger": "schedule", "started_by": null, "queued_at": "2026-10-04T09:13:00Z" }
+  ],
+  "schedules": [
+    { "library_id": 2, "library_name": "Kids", "schedule": "every:6h", "next_at": "2026-10-04T15:13:00Z" }
+  ]
+}
+```
+
+- `running` - the running job, or `null` when the queue is idle. `progress` is
+  the library's scan progress (the object of
+  [`GET …/scan`](#get-apiv1adminlibrariesidscan)); `run_id` is its
+  [scan run](#get-apiv1adminscan-runsid) once the run is recorded.
+- `queued` - waiting jobs in the order they will run (`[]` when none). Jobs
+  live in memory: their ids restart from 1 with the server, and a waiting job
+  doesn't survive a restart.
+- A job's `kind` is always `"scan"`; `trigger` is `manual` (an admin asked),
+  `schedule`, `startup` or `change` (a library or folder setting changed);
+  `started_by` is the admin's user id, `null` for a schedule or startup.
+- `schedules` - every library with a schedule, with its `schedule` string and
+  `next_at` (RFC 3339, UTC); `[]` when none.
+
+The console polls this every second while a job runs or waits, every 15
+seconds otherwise.
+
+### `DELETE /api/v1/admin/jobs/{id}`
+
+Drops a queued job, or stops the running one. A stopped scan ends during its
+folder walk or at its next book, **before** the prune step, so nothing is
+removed from the index; its run is recorded as `cancelled`. A prune already
+under way is never interrupted (it is one transaction) and finishes first.
+Dropping a queued scheduled scan skips that slot of the schedule. `204 No Content`. `400 invalid job id`; `404 no such
+job (it may have finished)`.
+
+### `GET /api/v1/admin/scan-runs`
+
+Recorded scans, newest first, without their logs.
+
+| Query param | Type | Default | Notes |
+|---|---|---|---|
+| `library_id` | int | - | one library; `400 invalid library_id` for a non-positive or non-integer id |
+| `before` | int | - | a run id: only older runs (the next page) |
+| `limit` | int | `50` | ≤ 0 or > 200 falls back to 50 |
+
+```json
+{
+  "runs": [
+    { "id": 31, "library_id": 1, "library_name": "Audiobooks", "trigger": "manual",
+      "started_by": 1, "started_by_name": "admin",
+      "started_at": "2026-10-04T09:12:41Z", "finished_at": "2026-10-04T09:13:03Z",
+      "status": "ok", "books": 812, "added": 2, "updated": 4, "moved": 1, "removed": 1, "errors": 1 }
+  ],
+  "next_before": 31
+}
+```
+
+- `status` - `running`, `ok`, `partial` (part of the folder couldn't be read,
+  so nothing was removed), `unavailable` (the root was unreachable; nothing
+  removed; also a root that didn't answer within 2 seconds), `failed` (nothing
+  removed), `cancelled` (stopped by an admin; nothing removed) or `interrupted` (the server stopped mid-scan).
+- `books` - books discovered on disk; `added` / `updated` / `moved` /
+  `removed` - what the scan changed (a moved or renamed book counts once, as
+  `moved`); `errors` - books whose files had a read
+  problem, plus index writes that failed.
+- `started_by_name` is omitted for a schedule or startup scan, or once the
+  account is deleted (`started_by` is then `null`). `finished_at` is `null`
+  while the scan runs.
+- `next_before` is present when the page is full: pass it as `before` for the
+  next page.
+- Only the newest **100** runs of each library are kept.
+
+### `GET /api/v1/admin/scan-runs/{id}`
+
+One recorded scan, the same object with its `log`:
+
+```json
+{
+  "id": 31, "library_id": 1, "library_name": "Audiobooks", "trigger": "manual", "…": "…",
+  "log": [
+    { "at": "2026-10-04T09:12:41Z", "level": "info", "kind": "started", "path": "/srv/audiobooks" },
+    { "at": "2026-10-04T09:12:41Z", "level": "info", "kind": "discovered", "count": 812 },
+    { "at": "2026-10-04T09:12:42Z", "level": "info", "kind": "moved",
+      "path": "Old Folder/Book", "to": "New Folder/Book" },
+    { "at": "2026-10-04T09:12:55Z", "level": "warn", "kind": "problem",
+      "path": "Damaged/The Damaged Book.m4b", "code": "probe_failed",
+      "detail": "[mov,mp4,m4a,3gp,3g2,mj2 @ 0x7f8c] moov atom not found; Invalid data found when processing input" },
+    { "at": "2026-10-04T09:13:03Z", "level": "info", "kind": "removed", "path": "Gone/Book" },
+    { "at": "2026-10-04T09:13:03Z", "level": "info", "kind": "finished", "count": 812 }
+  ]
+}
+```
+
+Each event has `at`, `level` (`info`, `warn` or `error`) and `kind`, plus the
+facts the kind needs: `path`, `to` (a move's destination), `code` (a read
+problem's code, as `scan_error`), `detail` (a tool's or the OS's own message)
+and `count`. Kinds: `started`, `discovered`, `unreadable`, `moved`, `problem`,
+`error`, `removed`, `partial` and `truncated` (a log keeps at most 300 events,
+at most half of them problems; this line counts the ones dropped), then one closing event saying how the scan
+ended: `finished`, `unavailable`, `failed`, `cancelled` or `interrupted`. A removed book leaves nothing in the index but its `removed`
+line here - see [Prune](../scanner.md#prune-what-a-removed-book-leaves-behind).
+`404 no such scan`; `400 invalid run id`.
 
 ## Admin: stats
 

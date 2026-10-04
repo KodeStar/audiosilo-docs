@@ -209,8 +209,16 @@ manager uses each entry point:
 After a transfer run, `importjob.Run` fires **one** rescan - not one per file:
 if anything was actually placed, it calls `Client.Scan` (`POST
 /admin/libraries/{id}/scan`, an async 202) and then `Client.WaitForScan`, which
-polls the scan status. Because the server may not have flipped `running: true`
-yet when polling starts, `WaitForScan` allows a short grace window before
-treating "never seen running" as "already finished". The rescan is purely a
+polls the scan status. The server runs scans through one job queue, one at a
+time, so the manager's scan may **wait** behind another library's: the status
+then reads `queued: true`, and `WaitForScan` treats running **or** queued as in
+progress (`ScanProgress.active`; `ScanProgress` mirrors the server's
+`queued`, `added`, `updated`, `moved`, `removed` and `unavailable` too). An
+older server without the queue never sends `queued` and may not have flipped
+`running: true` yet when polling starts, so `WaitForScan` still allows a short
+grace window before treating "neither running nor queued" as "already
+finished". The wait is capped at 30 minutes (`maxScanWait`), queue time
+included; past it the manager stops waiting and reports the last status, while
+the scan carries on server-side. The rescan is purely a
 reindex of what is on disk - the non-destructive final step that makes the newly
 placed books appear in every connected player.
