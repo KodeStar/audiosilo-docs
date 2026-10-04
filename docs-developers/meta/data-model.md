@@ -298,7 +298,9 @@ refused when stripping the series name off the front leaves only a part of
 something - a collection statement or a bare volume ("Charassi's Fae Queen: Six
 Book World Boxset" would become "Six Book World Boxset") - or when it would keep
 one end of a stated range ("Books 13 - 16" cut to "Books 13"); the intake bot then
-keeps the title as submitted.
+keeps the title as submitted. The audit also withholds a retitle against a series
+that is only this one book's own edition ("Let's Split Up (German Edition)",
+holding just this work), which would otherwise leave the tagline as the title.
 
 **When one series is spelled twice.** The audit's `SER-DUP` class groups series
 whose names normalize to the same key ("Temeraire" and "Temeraire
@@ -335,8 +337,9 @@ add to a reading order:
 - **family-spelling**: the plain series holds the very list one family member
   holds, slot for slot ("Chronicles of Narnia" beside "The Chronicles of Narnia
   (Author's Preferred Order)"). It folds onto that member - applied when the
-  member is the primary, left for review when it is a variant, since an import
-  naming the plain name would then reach a variant through the tombstone alone.
+  member is the primary, advisory (applied only through a reviewed `accept`) when
+  it is a variant, since an import naming the plain name would then reach a
+  variant through the tombstone alone.
   When the lists still differ because the works themselves are not yet merged, it
   is a review naming the closest member and the duplicate-work clusters holding
   each conflicting slot.
