@@ -116,7 +116,7 @@ It's deliberately unobtrusive: never more than one timer at a time, and never on
 
 - **Bookmarks** - tap the bookmark icon, then **Add bookmark at 1:23:45** to pin the current moment. Bookmarks are listed there and on the book's detail page; tap one to jump back.
 - **Notes** - free-form notes on the book (markdown supported), for quotes or thoughts.
-- **History** - your past listening sessions on this book, labelled by chapter.
+- **History** - your past listening sessions on this book, labelled by chapter (with the same tidied chapter names as the player).
 
 All three are saved to your account, not the device.
 

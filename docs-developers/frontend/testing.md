@@ -33,10 +33,12 @@ three fast Node checks before jest:
    from `src/theme/tokens.json`.
 2. `node --test scripts/gen-tokens.test.mjs` unit-tests the generator itself
    (Node's built-in test runner, not jest): colour parsing and normalising, the
-   camelCase names, palette flattening, that both themes carry the same keys with
-   valid colours and no clash with the palette, and the CSS and TS it emits.
+   camelCase names, the fixed palette (`parsePalette`: plain colours only, no
+   shade families or aliases), that both themes carry the same keys with valid
+   colours and no clash with the palette, and the CSS and TS it emits.
 3. `node scripts/check-styles.cjs` compiles `src/global.css` through Uniwind's
-   real compiler and asserts styling guarantees no unit test can see: a `dark:`
+   real compiler, with the same options Metro uses (both read the root
+   `uniwind.config.js`), and asserts styling guarantees no unit test can see: a `dark:`
    utility still has a rule outside every `@scope` (dark mode in browsers without
    CSS `@scope`); native keeps the px letter-spacing scale (`tracking-wider` is
    0.5 on iOS); and the themed Stacks tokens resolve per theme on iOS (also
@@ -175,8 +177,9 @@ Prefer awaiting `render` directly; where a mount helper wraps it in `act`, the
 
 The portal-based primitives (Dialog, AlertDialog, Select, Popover, DropdownMenu,
 Tooltip) render nothing on native without the root `<PortalHost />`. Mount them
-with `mountWithPortal(ui)`, which renders `ui` inside a `SafeAreaProvider` with a
-`PortalHost` after it, the way the app's root layout does. The positioned
+with `mountWithPortal(ui)`, which renders `ui` inside a `SafeAreaProvider` and the
+`RootInsetsProvider` the overlays read their insets from, with a `PortalHost`
+after it, the way the app's root layout does. The positioned
 overlays also only appear once they have measured their trigger, and React
 Native's jest preset stubs `measure` with a no-op, so the helper answers it with
 a fixed box. Await it, and every `fireEvent` after it (see above).
@@ -199,7 +202,8 @@ returning there); folder drilling inside the Library stack; `JUMP_TO` keeping ea
 tab's stack; the account screen opening in the tab that pushed it; the player as
 a root modal over the tabs; a cold book link owned by Home with Home underneath
 and no link params left on `/` after back; and onboarding leaving exactly one
-`(app)` under the stack (`dismissTo`, not `replace`).
+`(app)` under the stack, both through `leaveOnboarding()` (`dismissTo`, not
+`replace`) and through `<LeaveOnboarding />` at render time.
 
 Two harness notes, both forced by RNTL 14:
 
@@ -291,12 +295,12 @@ Co-located suites exist for:
 | Stores | `src/stores/session.test.ts`, `settings.test.ts`, `series-orderings.test.ts` |
 | Theme | `src/theme/scheme-pref.test.ts` (the default-theme rule), `theme-provider.test.tsx`, `use-theme-colors.test.tsx` |
 | i18n | `src/i18n/language.test.ts`, `language-provider.test.tsx` |
-| Shell | `src/components/shell/destinations.test.ts`, `shell-chrome.test.tsx`, `command-palette.test.tsx`, `palette-model.test.ts`, `palette-store.test.ts`, `profile-menu.test.tsx`, `toast-offset.test.ts`, and the three route-tree suites (above) |
+| Shell | `src/components/shell/destinations.test.ts`, `shell-chrome.test.tsx`, `command-palette.test.tsx`, `palette-model.test.ts`, `palette-store.test.ts`, `profile-menu.test.tsx`, `shell-metrics.test.ts`, `toast-offset.test.ts`, and the three route-tree suites (above); `src/components/layout/offline-banner.test.tsx` |
 | Account flows | `src/components/account/use-api-keys-manager.test.tsx`, `use-sign-out.test.tsx` |
-| Player UI | `src/components/player/sleep-timer-button.test.tsx`, `end-credits-logic.test.ts`, `transport.test.ts` (the shared previous/next and chapter-segment math of the full player and the docked bar) |
+| Player UI | `src/components/player/sleep-timer-button.test.tsx`, `end-credits-logic.test.ts`, `book-progress.test.tsx`, `transport.test.ts` (the shared previous/next and chapter-segment math of the full player and the docked bar) |
 | Library UI | `src/components/library/book-meta.test.ts`, `book-meta.render.test.tsx`, `book-tabs.test.ts`, `cover-frame.test.tsx`, `meta-gating.test.ts`, `entry-row.test.tsx`, `progress-card.test.tsx`, `skeletons.test.tsx`; `src/components/layout/content-scope.test.tsx` |
-| UI primitives | `src/components/ui/` - `animated-pressable`, `badge`, `button`, `confirm-dialog`, `dialog`, `empty-state`, `icon-data` (validates every vendored SVG glyph), `input`, `overlay-host`, `popover`, `row-surface`, `section-header`, `select`, `sheet`, `skeleton`, `slider`, `switch`, `tabs`, `text`, `time-stepper`, `toast`, `toggle-group` |
-| `src/lib` helpers | `account`, `alpha-sections`, `app-resume`, `auth-failure`, `base-url`, `client-id`, `clipboard`, `content-key`, `dedup`, `format`, `hhmm`, `known-servers`, `layout`, `network`, `pairing`, `paths`, `progress-view`, `rnw-button-fix`, `scroll-memory`, `secure-store`, `series-orderings`, `share`, `support`, `ticker`, `utils` |
+| UI primitives | `src/components/ui/` - `animated-pressable`, `badge`, `button`, `confirm-dialog`, `dialog`, `empty-state`, `icon-data` (validates every vendored SVG glyph), `input`, `overlay` (root insets, `withFlatStyle`), `overlay-host`, `popover`, `row-surface`, `section-header`, `select`, `sheet`, `skeleton`, `slider`, `switch`, `tabs`, `text`, `time-stepper`, `toast`, `toggle-group` |
+| `src/lib` helpers | `account`, `alpha-sections`, `app-resume`, `auth-failure`, `base-url`, `chapter-label`, `client-id`, `clipboard`, `content-key`, `dedup`, `format`, `hhmm`, `known-servers`, `layout`, `network`, `pairing`, `paths`, `progress-view`, `rnw-button-fix`, `scroll-memory`, `secure-store`, `series-orderings`, `share`, `storage-migration`, `support`, `ticker`, `use-debounced-value`, `use-dom-id`, `utils` |
 | Generators (Node, not jest) | `scripts/gen-tokens.test.mjs` |
 
 The shared test helpers live outside that list, in `src/testing/`: the

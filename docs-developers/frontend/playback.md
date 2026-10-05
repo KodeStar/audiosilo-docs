@@ -886,4 +886,7 @@ Two smaller UI concerns round out the player:
   **display-only**: it never changes the streamed path, the saved position, or the
   chapter model, and is applied wherever a chapter/track label surfaces - the full
   player title, the mini-player caption, the iOS accessory player and the docked
-  player bar, the chapter list, and the sleep-timer chapter picker.
+  player bar, the command palette, the book's History tab, the chapter list, and
+  the sleep-timer chapter picker. Those surfaces name the current chapter through
+  one helper, `chapterLabel()` (`src/lib/chapter-label.ts`), which falls back to
+  "Chapter N" for an untitled chapter before prettifying.

@@ -25,7 +25,7 @@ Each tab remembers where you were. Open a book from Search, switch to Library fo
 
 From left to right:
 
-- The **AudioSilo** logo (tap it to go Home), with the server you're using underneath - or a note that you're **offline** if it can't be reached. If you've connected more than one server, it says how many more.
+- The **AudioSilo** logo (tap it to go Home), with the server you're using underneath - or a note that you're **offline** if it can't be reached, or that it **needs signing in again**. If you've connected more than one server, it says how many more.
 - **Home**, **Library** and **Downloads**. On narrower screens such as a tablet held upright, these show as icons only.
 - A **search field**. In the web player it opens [quick search](#quick-search-in-the-web-player); in the tablet app it takes you to the Search page.
 - A **gear** button for [Settings](account.md).
@@ -34,6 +34,8 @@ From left to right:
 ![The profile menu open from the top bar](/img/screenshots/web-player/profile-menu.png)
 
 Under the top bar, a slim row shows the title of the page you're on, or a **Back** button once you've opened something, such as a book. While a book is playing, the [player bar](playback.md#the-mini-player-and-the-player-bar) runs along the bottom of the window.
+
+If you get around the web player with a keyboard, **Tab** moves between controls and **Space** presses the one you're on - buttons, tabs, option choices and switches alike.
 
 :::note
 The **Downloads** tab only appears where downloading is possible. In the web player that means a secure (`https://`) address - see [Offline downloads](offline-downloads.md).
@@ -157,7 +159,7 @@ Start typing and the results are grouped:
 - **Books** - matching titles, authors and series from every server you're connected to, the same search as the Search page. Before you type anything, this group is **Continue listening** instead: the books you're partway through, with how much you've listened to.
 - **Go to** - Home, Library and Downloads.
 
-Use the **arrow keys** to move through the results, **Enter** to open one, and **Esc** to close. Your last few searches that led somewhere appear as **Recent** shortcuts the next time you open it; they're kept in this browser only.
+Use the **arrow keys** to move through the results, **Enter** to open one, and **Esc** to close. Book results say which server and library each one comes from, as on the Search page. Your last few searches that led somewhere appear as **Recent** shortcuts the next time you open it; they're kept in this browser only.
 
 :::note
 Search looks at book metadata (title, author, series). To hunt by folder name inside one folder, use the browse view's filter box instead.
