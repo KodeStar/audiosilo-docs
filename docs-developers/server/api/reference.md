@@ -875,11 +875,13 @@ the client maps onto its recording's chapters.
   `chapter: 0` + `series` recap is the "previously, in earlier books" summary),
   and own-words `text`.
 - **`recap_summary`** is the whole-book refresher, not keyed to a position:
-  `{ "in_short": …, "ending": … }`, both fields `omitempty`. `in_short` is a
-  spoiler-light "what this book is" summary a client can show up front; `ending`
-  is **by construction a full spoiler** and must only be revealed deliberately
-  (the player shows it once the book is finished, or behind an explicit tap on a
-  previous book). The whole object is omitted when the work has neither, and an
+  `{ "in_short": …, "ending": … }`, both fields `omitempty`. Both are
+  spoilers: `in_short` is the whole book in one own-words paragraph, **ending
+  included**, and `ending` is **by construction a full spoiler**. A client must
+  only reveal either deliberately (the player shows the current book's
+  `in_short` once it is finished or behind an explicit tap on a "Whole-book
+  summary" row, and its `ending` once finished; a previous book's row, opened
+  deliberately, shows `in_short` and puts `ending` behind its own tap). The whole object is omitted when the work has neither, and an
   all-blank upstream object is never emitted.
 
 These fields are additive: they are passed straight through from the upstream

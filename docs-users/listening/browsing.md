@@ -70,7 +70,7 @@ Some books show an extra **About this book** block above the tabs, plus the comm
 
 - An **About** description of the story, and production details such as the **publisher**, **release date** and when the work was **first published**, with a **View on AudioSilo Meta** link to the book's full entry.
 - The **Characters** tab - a card for each person in the book. Each card shows the name, role and any aliases, plus which chapter the character first appears in; tap a card to reveal its short description. Cards stay closed until you tap them, so you decide when to read on.
-- The **Recaps** tab - short "what's happened up to here" recaps, each labelled with the chapter it's safe to read after. They stay closed by default, so you only open the one for as far as you've listened. Some books also open with an **In short** summary of the whole book, and a separate **How it ends** recap that only appears once you've finished. A recap marked for the very start reads "Previously, in earlier books" - a catch-up from earlier in the series.
+- The **Recaps** tab - short "what's happened up to here" recaps, each labelled with the chapter it's safe to read after. They stay closed by default, so you only open the one for as far as you've listened. Some books also have an **In short** summary of the whole book. Because it covers the ending too, it stays behind a **Whole-book summary** row (marked **Spoiler**) until you've finished the book; after that it opens the tab, followed by a separate **How it ends** recap. A recap marked for the very start reads "Previously, in earlier books" - a catch-up from earlier in the series.
 
 #### Nothing gets spoiled before you reach it
 
@@ -78,7 +78,7 @@ The Characters and Recaps tabs follow **where you are in the book**, using your 
 
 - A character you haven't met yet is hidden, and so is any recap that covers chapters you haven't finished.
 - A line at the bottom of the tab says how many entries are hidden - "**3 hidden to avoid spoilers**" - with a **Show anyway** toggle if you want to see them regardless. Anything you reveal that way is marked with a small **Spoiler** chip so you know you're reading ahead. Revealing applies to both tabs at once, so switching between Characters and Recaps doesn't hide it all again.
-- Once you've **finished** a book, everything is shown - including "How it ends", which is a full spoiler by design.
+- Once you've **finished** a book, everything is shown - including the **In short** summary and "How it ends", which are full spoilers by design.
 
 :::note
 Chapter numbers here are the *book's* chapters as the community catalogued them, which can differ slightly from your particular edition's file or chapter numbering. So treat the gating as a close guide rather than an exact line - and if it hides something you've already heard, **Show anyway** (or marking the book finished) is the escape hatch.
