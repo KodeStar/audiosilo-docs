@@ -128,9 +128,11 @@ and `metacheck`/`metafmt` validate the real tree anyway. Those real-data tests
 still run in CI: the `real-data.yml` workflow runs the whole suite without
 `-race` every day, on demand, and on every push to `main` that touches anything
 the Go gate would run on (a `paths:` filter skipping `data/**` other than
-`data/go.mod` and `*.md`, so the bots' data-only commits never trigger it). It
-is never run on pull requests. A newer run cancels an older one, so the newest
-commit on `main` is what reports, and a cancelled run reports nothing. A failure
+`data/go.mod` and `*.md`, so the bots' data-only commits never trigger it). The
+one deliberate difference from the Go gate is `site/**`, which no real-data test
+reads, so site-only pushes do not trigger it either. It is never run on pull
+requests. A newer run cancels an older one, so the newest commit on `main` is
+what reports, and a cancelled run reports nothing. A failure
 opens or updates a single issue labelled `ci-real-data`, which the next green
 run closes. Run them locally with `go test -count=1 ./...`. The linter set is pinned
 by the committed `.golangci.yml` (errcheck, govet, ineffassign, staticcheck,
