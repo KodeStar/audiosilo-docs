@@ -412,9 +412,10 @@ a one-line reason:
   it is listed at as `from`; `field` may be omitted and is read as `position`;
   no `to` and no `others`). It appears in the class whose detector makes that op
   (`W-DUP`, `SER-DUP`, `W-NOSERIES` or `S-INTEGRITY`) under the subclass
-  `asserted`, and the repair pass applies it like any other proposal - an
-  asserted drop needs no "home" series and judges no language, it only checks
-  that the series still lists the work at that position and keeps a member.
+  `asserted`, and the repair pass applies it like any other proposal. The
+  repair reads a drop by its shape: one naming no home series (only an
+  assertion does) judges no language and checks only that the series still
+  lists the work at that position and keeps a member.
 
 An assertion is a human's decision, so no detector veto is asked of it - only
 that its records still exist. Its outcome in `SUMMARY.md` is one of:
