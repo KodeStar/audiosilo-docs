@@ -1,15 +1,15 @@
 ---
 title: Your account and settings
-description: "The Settings screen: appearance, language, playback preferences, setting a password, pairing extra devices, and signing out safely."
+description: "The Settings screen (the Me tab on a phone): appearance and the default theme, language, playback preferences, and each server's account page for setting a password, pairing extra devices, and signing out safely."
 ---
 
-The **Settings** tab is where you tune the player and look after your account:
+The **Settings** screen is where you tune the player and look after your account. On a phone it's the **Me** tab at the bottom of the screen; on a tablet or computer, it's the gear button at the right-hand end of the top bar.
 
 ![The Settings screen](/img/screenshots/web-player/settings.png)
 
 ## Servers
 
-The servers this app is connected to. You can **Add a server** to connect a second (or third) one - your home screen, search, and favourites then combine everything - and remove one you no longer use. See [Connecting and signing in](connecting.md).
+The servers this app is connected to. Tap one to open its [account page](#a-servers-account-page) (your password, other devices, signing out). You can **Add a server** to connect a second (or third) one - your home screen, search, and favourites then combine everything - and remove one you no longer use. See [Connecting and signing in](connecting.md).
 
 :::warning
 Removing a server also **deletes that server's downloaded books from this device**, plus any listening progress that hasn't synced back yet. The app warns you first if the server has downloads on the device. Your other servers are unaffected, and nothing on the server itself is touched. See [Offline downloads](offline-downloads.md).
@@ -17,7 +17,20 @@ Removing a server also **deletes that server's downloaded books from this device
 
 ## Appearance
 
-**Light**, **Dark**, or **System** (follow your device's setting). AudioSilo is designed dark-first, but the light theme is fully supported.
+**Light**, **Dark**, or **System** (follow your device's setting, switching when it does).
+
+- **Light** is a cool, porcelain-white look with dark ink-blue text.
+- **Dark** is a deep ink-blue look that lets book covers stand out.
+
+Both keep AudioSilo's pink for the few things that matter most on a screen - your progress, what's selected - rather than splashing it everywhere.
+
+Which one you start on:
+
+- A **new install** starts on **System**, so AudioSilo matches your phone or computer until you choose otherwise.
+- If you were **already using AudioSilo** before System became the starting point and had never picked a theme, you stay on **Dark**, so nothing changes under you after an update.
+- Once you pick one yourself, that choice is kept.
+
+The theme is remembered per device, so your phone and your computer can differ.
 
 ## Language
 
@@ -65,11 +78,23 @@ Controls for what happens as one book ends and the next begins (see [When a book
 **Wi-Fi only** skips the automatic download on a known mobile-data connection, so it won't eat your data allowance. In the web player, and when the connection type can't be determined, it goes ahead. You can always download a book by hand on the book's page - see [Offline downloads](offline-downloads.md).
 :::
 
-## Account
+## Support
+
+On the web and Android, a **Support AudioSilo** section links to GitHub Sponsors - AudioSilo is free and self-hosted, and contributions fund its development. (The section doesn't appear in the iOS app.)
+
+## Version
+
+The footer of Settings shows the version of the app you're running, e.g. *AudioSilo v1.1.1*. Handy to mention if you ever report a problem (see [Troubleshooting](../troubleshooting.md)).
+
+## A server's account page
+
+Each server you're connected to has its own account page: tap the server in the **Servers** list at the top of Settings. It covers your account on that one server.
+
+### Account
 
 Shows who you're signed in as, your role, and the server address - plus the two credentials worth setting up:
 
-### Set a password
+#### Set a password
 
 Accounts created by invite often start **without** a password - you signed in with a code, and that's fine day to day. Setting a password is your **reliable way back in** on any device:
 
@@ -78,11 +103,11 @@ Accounts created by invite often start **without** a password - you signed in wi
 
 Why it's worth doing, especially if you were invited by pairing and never set one: if you ever sign out or get a new phone, a username and password sign you straight back in with no help from anyone. Without one, getting back in means asking your admin for a fresh invite - so setting a password once is the safety net that keeps your account in your own hands.
 
-### API keys
+#### API keys
 
 If your server supports them, an **API keys** section here lets you create keys for dashboards, scripts, and other tools that reach your server on your behalf. See [API keys for integrations](api-keys.md).
 
-### Signing out
+#### Signing out
 
 **Sign out** disconnects this device. If you're about to sign out **without a password set**, the app stops you with a warning - *"Without one you'll need a new invite from your admin to sign back in on this server"* - and offers to **Set a password** right there. Take the offer; it's the whole reason the button exists.
 
@@ -92,17 +117,13 @@ Signing out also **removes this server from the app**, so it deletes that server
 Signing out isn't a big deal. Next time you open the connect screen, any server you've connected to before shows a one-tap **"Reconnect to &lt;your server&gt;"** shortcut with the address already filled in - so you only re-enter your code or password, never the server address. See [Connecting and signing in](connecting.md#getting-back-in-after-signing-out).
 :::
 
-## Devices
+### Devices
 
 Pair another phone, tablet, or browser to your account without a new invite: tap **Add a device** and a QR code appears. Scan it with the other device (or share the link to it) and it signs straight in. The details are in [Connecting and signing in](connecting.md).
 
-## Support
+### Server version
 
-On the web and Android, a **Support AudioSilo** section links to GitHub Sponsors - AudioSilo is free and self-hosted, and contributions fund its development. (The section doesn't appear in the iOS app.)
-
-## Version
-
-The footer shows the version you're running, e.g. *AudioSilo v1.1.1* - when connected, this reflects the server's version. Handy to mention if you ever report a problem (see [Troubleshooting](../troubleshooting.md)).
+The footer of a server's account page shows the version of AudioSilo that server is running.
 
 :::note
 Things an admin manages - creating accounts, invites, what libraries you can see - aren't in your Settings; they live in the server's admin console. See [People and invites](../admin/users-and-invites.md).

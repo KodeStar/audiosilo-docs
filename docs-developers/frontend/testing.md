@@ -1,6 +1,6 @@
 ---
 title: Testing the player
-description: "The jest-expo harness, the global mocks in jest.setup.ts, the conventions that keep logic testable, and the patterns for mocking fetch, reachability, and Platform.OS."
+description: "The jest-expo harness, the checks npm test runs before jest, the global mocks in jest.setup.ts, the conventions that keep logic testable, the overlay and route-tree harnesses, and the patterns for mocking fetch, reachability, and Platform.OS."
 ---
 
 Every piece of new logic in the frontend ships with a unit test. The harness is
@@ -14,7 +14,8 @@ the code *testable* in the first place.
   - `moduleNameMapper` maps the `@/` alias to `src/` (and `@/assets/` to
     `assets/`);
   - `transformIgnorePatterns` re-includes the ESM packages the app imports
-    (expo, react-native-\*, uniwind, `@tanstack/*`, zustand, …) so they are
+    (expo, react-native-\*, uniwind, `@rn-primitives/*`, `@tanstack/*`,
+    zustand, …) so they are
     transpiled instead of failing on `import`;
   - `testMatch` picks up `**/*.test.ts` and `**/*.test.tsx`;
   - `collectCoverageFrom` covers `src/**/*.{ts,tsx}` but **excludes
@@ -25,16 +26,27 @@ the code *testable* in the first place.
   dependency; don't add one.
 
 Run with `npm test`; coverage with `npm test -- --coverage`. `npm test` first runs
-two fast checks before jest: `node scripts/gen-tokens.mjs --check` fails if the
-generated colour tokens (`src/global.css`, `src/theme/tokens.ts`) drifted from
-`src/theme/tokens.json`, and `node scripts/check-styles.cjs` compiles
-`src/global.css` through Uniwind and asserts styling guarantees no unit test can
-see (dark mode still works in browsers without CSS `@scope`; native keeps the
-px letter-spacing scale).
+three fast Node checks before jest:
+
+1. `node scripts/gen-tokens.mjs --check` fails if the generated colour tokens
+   (the generated region of `src/global.css`, and `src/theme/tokens.ts`) drifted
+   from `src/theme/tokens.json`.
+2. `node --test scripts/gen-tokens.test.mjs` unit-tests the generator itself
+   (Node's built-in test runner, not jest): colour parsing and normalising, the
+   camelCase names, palette flattening, that both themes carry the same keys with
+   valid colours and no clash with the palette, and the CSS and TS it emits.
+3. `node scripts/check-styles.cjs` compiles `src/global.css` through Uniwind's
+   real compiler and asserts styling guarantees no unit test can see: a `dark:`
+   utility still has a rule outside every `@scope` (dark mode in browsers without
+   CSS `@scope`); native keeps the px letter-spacing scale (`tracking-wider` is
+   0.5 on iOS); and the themed Stacks tokens resolve per theme on iOS (also
+   through an opacity modifier such as `bg-brand/10`) and switch under `.dark` on
+   web. If a Uniwind upgrade renames the compiler internals it reads, it fails
+   loudly - update the hook, don't delete the guard.
 
 ## Global setup (`jest.setup.ts`)
 
-Loaded via `setupFilesAfterEnv`, it does four things:
+Loaded via `setupFilesAfterEnv`, it does five things:
 
 1. **Imports `@/i18n`** so i18next is initialised with the English catalog -
    components using `useTranslation` and the locale-aware formatters resolve
@@ -46,6 +58,13 @@ Loaded via `setupFilesAfterEnv`, it does four things:
    `Map` (`getItem`/`setItem`/`removeItem`/`clear` as jest fns).
 4. Mocks **`expo-secure-store`** the same way
    (`getItemAsync`/`setItemAsync`/`deleteItemAsync`).
+5. Mocks **`react-native-reanimated`** with a small self-contained stand-in (the
+   real module initialises its native Worklets module and throws under Node):
+   animations resolve synchronously (timing callbacks fire with
+   `finished: true`), `Animated.*` map to plain RN components, the
+   layout-animation builders (`FadeIn`, `SlideInDown`, …) are chainable no-op
+   stubs, and `useReducedMotion` is a `jest.fn` returning `false` that a test can
+   flip.
 
 Together these let the storage, session, sync, settings and downloads layers
 run unchanged without a device or browser. Nothing else is mocked globally -
@@ -151,6 +170,51 @@ await `render` - the `act` callback returns before the render promise settles.
 Prefer awaiting `render` directly; where a mount helper wraps it in `act`, the
 `render` inside still needs its own `await`.
 
+### Rendering overlays (`src/testing/render-overlay.tsx`)
+
+The portal-based primitives (Dialog, AlertDialog, Select, Popover, DropdownMenu,
+Tooltip) render nothing on native without the root `<PortalHost />`. Mount them
+with `mountWithPortal(ui)`, which renders `ui` inside a `SafeAreaProvider` with a
+`PortalHost` after it, the way the app's root layout does. The positioned
+overlays also only appear once they have measured their trigger, and React
+Native's jest preset stubs `measure` with a no-op, so the helper answers it with
+a fixed box. Await it, and every `fireEvent` after it (see above).
+
+### Route-tree tests
+
+`src/components/shell/route-tree.test.tsx`, `route-tree-cold.test.tsx` and
+`route-tree-connect.test.tsx` are the regression net for the
+[shell's routing rules](overview.md#the-shell-tabs-and-navigation). They drive
+expo-router's `renderRouter` over **the real `src/app` file list**:
+`realRouteTree()` (`src/testing/route-tree.tsx`) walks `src/app`, stubs every
+screen with its route key as text, and swaps each layout for a plain JS navigator
+of the same shape (`Stack` for the root and the tab stacks, `Tabs` for the
+`(app)` NativeTabs / headless web Tabs). The pieces that decide behaviour are kept
+real: the root's `anchor`, the tab stacks' `TAB_STACK_SETTINGS` and their
+`tabStackListeners`. Moving or renaming a route file therefore changes the tree
+under test rather than a hand-copied list. Between them they cover: each tab root
+at its unchanged URL; a book pushed from a tab staying in that tab (and back
+returning there); folder drilling inside the Library stack; `JUMP_TO` keeping each
+tab's stack; the account screen opening in the tab that pushed it; the player as
+a root modal over the tabs; a cold book link owned by Home with Home underneath
+and no link params left on `/` after back; and onboarding leaving exactly one
+`(app)` under the stack (`dismissTo`, not `replace`).
+
+Two harness notes, both forced by RNTL 14:
+
+- **Read the router store, not `renderRouter`'s helpers.** RNTL 14 broke the
+  helpers `renderRouter` returns, so the suites read where the router is through
+  `routeInfo()` (expo-router's router store) and drive the global `router` inside
+  `nav(fn)`, an awaited `act` so each navigation commits before the assertion.
+  `renderRouter` itself returns the async render's promise; await it.
+- **A cold start gets its own file.** The router store's previous segments leak
+  between renders in one file, which would make a cold deep link look warm - so
+  the cold-link case and the cold-on-`/connect` case each live in a file of their
+  own.
+
+The chrome itself (the web tab bar, the top bar, the docked and accessory
+players) is covered by `src/components/shell/shell-chrome.test.tsx`.
+
 ### Mocking `fetch`
 
 `src/api/client.test.ts` installs a fake global fetch driven by a per-test
@@ -219,19 +283,24 @@ Co-located suites exist for:
 
 | Area | Tested modules |
 |---|---|
-| API layer | `src/api/client.test.ts`, `connection-clients.test.ts`, `reachability.test.ts` |
+| API layer | `src/api/client.test.ts`, `connection-clients.test.ts`, `hooks.test.ts`, `reachability.test.ts` |
 | Playback | `src/playback/book-queue.test.ts`, `progress-sync.test.ts`, `store.test.ts`, `service.web.test.ts`, `sleep-timer.test.ts`, `auto-sleep.test.ts`, `auto-sleep-controller.test.ts`, `rate.test.ts`, `next-book.test.ts`, `prettify-title.test.ts`, `types.test.ts` |
 | Downloads | `src/downloads/store.test.ts` |
-| Stores | `src/stores/session.test.ts`, `settings.test.ts` |
+| Stores | `src/stores/session.test.ts`, `settings.test.ts`, `series-orderings.test.ts` |
+| Theme | `src/theme/scheme-pref.test.ts` (the default-theme rule), `theme-provider.test.tsx`, `use-theme-colors.test.tsx` |
 | i18n | `src/i18n/language.test.ts`, `language-provider.test.tsx` |
+| Shell | `src/components/shell/destinations.test.ts`, `shell-chrome.test.tsx`, and the three route-tree suites (above) |
 | Account flows | `src/components/account/use-api-keys-manager.test.tsx`, `use-sign-out.test.tsx` |
-| Player UI | `src/components/player/sleep-timer-button.test.tsx`, `end-credits-logic.test.ts` |
-| Library UI | `src/components/library/book-meta.test.ts`, `book-meta.render.test.tsx`, `book-tabs.test.ts`, `meta-gating.test.ts`, `entry-row.test.tsx`, `progress-card.test.tsx`, `skeletons.test.tsx`; `src/components/layout/content-scope.test.tsx` |
-| UI primitives | `src/components/ui/` - `animated-pressable`, `empty-state`, `icon-data` (validates every vendored SVG glyph), `overlay-host`, `section-header`, `segmented-control`, `select-row`, `sheet`, `skeleton`, `tab-bar`, `time-stepper` |
-| `src/lib` helpers | `account`, `alpha-sections`, `app-resume`, `auth-failure`, `base-url`, `clipboard`, `content-key`, `dedup`, `format`, `hhmm`, `known-servers`, `nav`, `network`, `pairing`, `paths`, `progress-view`, `rnw-button-fix`, `scroll-memory`, `secure-store`, `share`, `support`, `ticker` |
+| Player UI | `src/components/player/sleep-timer-button.test.tsx`, `end-credits-logic.test.ts`, `transport.test.ts` (the shared previous/next and chapter-segment math of the full player and the docked bar) |
+| Library UI | `src/components/library/book-meta.test.ts`, `book-meta.render.test.tsx`, `book-tabs.test.ts`, `cover-frame.test.tsx`, `meta-gating.test.ts`, `entry-row.test.tsx`, `progress-card.test.tsx`, `skeletons.test.tsx`; `src/components/layout/content-scope.test.tsx` |
+| UI primitives | `src/components/ui/` - `animated-pressable`, `badge`, `button`, `confirm-dialog`, `dialog`, `empty-state`, `icon-data` (validates every vendored SVG glyph), `input`, `overlay-host`, `popover`, `row-surface`, `section-header`, `select`, `sheet`, `skeleton`, `slider`, `switch`, `tabs`, `text`, `time-stepper`, `toast`, `toggle-group` |
+| `src/lib` helpers | `account`, `alpha-sections`, `app-resume`, `auth-failure`, `base-url`, `client-id`, `clipboard`, `content-key`, `dedup`, `format`, `hhmm`, `known-servers`, `layout`, `network`, `pairing`, `paths`, `progress-view`, `rnw-button-fix`, `scroll-memory`, `secure-store`, `series-orderings`, `share`, `support`, `ticker`, `utils` |
+| Generators (Node, not jest) | `scripts/gen-tokens.test.mjs` |
 
-The shared test double for the player store lives outside that list, in
-`src/testing/player-store-mock.ts` - see
+The shared test helpers live outside that list, in `src/testing/`: the
+player-store double (`player-store-mock.ts`), `mountWithPortal`
+(`render-overlay.tsx`) and the route-tree harness (`route-tree.tsx`). For the
+player-store double see
 [the section above](#the-shared-player-store-double-srctestingplayer-store-mockts).
 
 Not covered by unit tests, by design or necessity: `src/app/**` screens (kept

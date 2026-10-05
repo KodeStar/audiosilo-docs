@@ -8,7 +8,7 @@ layers, each with a sharply-drawn contract:
 
 ```mermaid
 flowchart TD
-    ui["Player UI<br/>(player modal, mini-player, seek bar)"]
+    ui["Player UI<br/>(player modal, mini-player, docked bar, seek bar)"]
     store["usePlayer store - src/playback/store.ts<br/>whole-book timeline, watchdog, resume guard, autosave"]
     svc["PlaybackService - src/playback/types.ts<br/>per-track transport interface"]
     web["service.web.ts<br/>HTML5 Audio + Media Session"]
@@ -861,7 +861,10 @@ Two smaller UI concerns round out the player:
   are only the footer readouts; the controls themselves (`SpeedSheet`,
   `SleepSheet`) are mounted at the player's *root* and use the shared `Sheet`
   primitive from `src/components/ui/` - a footer-nested sheet would be clipped to
-  the footer's bounds. Speed drives a `Stepper` (0.5-2x, 0.05 steps); the sleep
+  the footer's bounds. The tablet/desktop docked player bar
+  (`src/components/shell/docked-player.tsx`) reuses the same two buttons and
+  sheets, rendering the sheets as its own siblings in the shell's root column so
+  they cover the whole app. Speed drives a `Stepper` (0.5-2x, 0.05 steps); the sleep
   sheet offers duration presets, an end-of-chapter list (from `chapterCountdowns`
   at the live rate), and an end-of-book fallback. `SleepSheetBody` is a child of
   `Sheet` so the per-tick countdown scan mounts only while the sheet is open, and
@@ -882,5 +885,5 @@ Two smaller UI concerns round out the player:
   leaving genuine titles ("Chapter 1", "The Shadow of the Past") untouched. It is
   **display-only**: it never changes the streamed path, the saved position, or the
   chapter model, and is applied wherever a chapter/track label surfaces - the full
-  player title, the mini-player caption, the chapter list, and the sleep-timer
-  chapter picker.
+  player title, the mini-player caption, the iOS accessory player and the docked
+  player bar, the chapter list, and the sleep-timer chapter picker.
