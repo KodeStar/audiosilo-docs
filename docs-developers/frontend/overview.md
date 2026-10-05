@@ -118,8 +118,8 @@ handful of standalone screens.
   gen:tokens` writes both the generated colour region of `src/global.css` (the
   classes) and `src/theme/tokens.ts` - the **raw color values** for places that
   need a string instead of a class (status bar, `ActivityIndicator`, SVG fills,
-  navigation theme). Never hand-edit either output: a unit test
-  (`src/theme/tokens.test.ts`) regenerates them in memory and fails on drift.
+  navigation theme). Never hand-edit either output: `npm test` starts with
+  `node scripts/gen-tokens.mjs --check`, which fails when either is out of date.
 - **Theme switching** goes through `ThemeProvider`, which calls
   `Uniwind.setTheme('light' | 'dark' | 'system')`; on web Uniwind puts the theme
   class on `<html>`, so it also reaches content portaled to `<body>`.

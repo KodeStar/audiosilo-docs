@@ -24,7 +24,9 @@ the code *testable* in the first place.
   matchers are **built in** - there is no `@testing-library/jest-native`
   dependency; don't add one.
 
-Run with `npm test`; coverage with `npm test -- --coverage`.
+Run with `npm test`; coverage with `npm test -- --coverage`. `npm test` first runs
+`node scripts/gen-tokens.mjs --check`, which fails if the generated colour tokens
+(`src/global.css`, `src/theme/tokens.ts`) drifted from `src/theme/tokens.json`.
 
 ## Global setup (`jest.setup.ts`)
 
