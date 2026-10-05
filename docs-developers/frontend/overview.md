@@ -88,7 +88,7 @@ URLs, so every URL below is the same as before the groups existed.
 |---|---|---|
 | - (root layout) | `src/app/_layout.tsx` | Mounts the provider tree (`GestureHandlerRootView` → `SafeAreaProvider` → `RootInsetsProvider` → `LanguageProvider` → `ThemeProvider` → `ApiProvider`), awaits the memoised launch migration `migrateStorage()` (`src/lib/storage-migration.ts`: the theme default, then `resetStaleStorage`) before it hydrates the session/settings/downloads/series-orderings stores, imports `@/lib/register-sw` for its side effect, mounts the headless `BookEndedListener` (drives the end-of-book flow, see [Playback](playback.md#ending-a-book-end-credits-and-up-next)) and `ShakeToExtendListener`, starts the framework-free `startAutoSleep()` controller (arms the nightly sleep timer, see [Playback](playback.md#auto-sleep-timer-auto-sleepts--auto-sleep-controllerts)), and runs `useAppResume` (foreground refresh + the Android swipe-from-recents reset). Declares the `(app)` stack (the root stack's `anchor`, so it always sits at the bottom) and the `player`/`finished` screens as `fullScreenModal`s. Mounts `<PortalHost />` and `<ShellToastHost />` **last**, inside the providers, so portaled overlays and toasts stack above every screen (see [toasts](#toasts)). |
 | - (web HTML shell) | `src/app/+html.tsx` | The static HTML wrapper for every exported web route: PWA manifest/favicon links (base-prefixed), the CSS cascade-layer order, and a backdrop in the OS colour scheme's background (light, or dark under `prefers-color-scheme: dark`) painted before React mounts so there is no flash. |
-| `(app)` layout, native | `src/app/(app)/_layout.tsx` | `AuthGate` (`src/components/shell/auth-gate.tsx`: `loading` → spinner, `unauthenticated` → `<Redirect href="/connect" />`; also backfills `has_password`/`has_recovery` on sessions persisted before those flags existed), then **`NativeTabs`** with one trigger per destination (SF Symbols on iOS, Material Symbols on Android) and, on iOS 26, the mini player as the tab bar's `BottomAccessory`. On tablet/desktop the native tab bar is `hidden` and the shell's own top bar, sub-nav and docked player take over; `ShellFrame` (`shell-frame.tsx`) draws that chrome around the navigator in both `(app)` layouts. |
+| `(app)` layout, native | `src/app/(app)/_layout.tsx` | `AuthGate` (`src/components/shell/auth-gate.tsx`: `loading` → spinner, `unauthenticated` → `<Redirect href="/connect" />`; also backfills `has_password`/`has_recovery` on sessions persisted before those flags existed), then **`NativeTabs`** with one trigger per destination (SF Symbols on iOS, Material Symbols on Android) and, on iOS 26, the mini player as the tab bar's `BottomAccessory`. On tablet/desktop the native tab bar is `hidden` and the shell's own top bar, sub-nav and docked player take over; `ShellFrame` (`shell-frame.tsx`) draws that chrome around the navigator in both `(app)` layouts. On a phone without the iOS 26 accessory it also renders the one `FloatingMiniPlayer` as the frame's `phoneBottom`, over NativeTabs. |
 | `(app)` layout, web | `src/app/(app)/_layout.web.tsx` | `AuthGate`, then **headless `expo-router/ui` `Tabs`** over the same route groups: a hidden `TabList` registers the five tab routes, one `<TabSlot />` renders the page, and `ShellFrame` surrounds it with our chrome (phone: `MiniPlayer`, sitting on the tab bar through a `100%` bottom offset, + `PhoneTabBar`; tablet/desktop: top bar, sub-nav, banners, `DockedPlayer`). Also mounts the web-only `CommandPalette` and its keyboard shortcut (`usePaletteShortcut`). |
 | tab stacks | `(app)/(home,library,search,offline,me)/_layout.tsx` | ONE layout file that becomes each tab's `Stack`. Its group-keyed `unstable_settings` (`TAB_STACK_SETTINGS`) give each stack its root route; `screenListeners` is `tabStackListeners`. On a phone each page's Stack `header` is `PhoneHeader`; tablet/desktop hide it. |
 | `/` | `(app)/(home)/index.tsx` | Home: continue-listening cards, recently-added shelf, favourites - aggregated **across every connected server** via the `use*All` hooks. |
@@ -146,7 +146,14 @@ like a sheet.
   mounts both placements behind the hidden bar).
 - **Android, iOS before 26, and phone web:** `MiniPlayer`
   (`src/components/player/mini-player.tsx`), a card floating just above the tab
-  bar (on web it rides on the web tab bar). Content scrolls behind it, so scroll screens reserve room with
+  bar. On native it is **one** `FloatingMiniPlayer` (same file), rendered once by
+  `src/app/(app)/_layout.tsx` as the shell frame's `phoneBottom` over NativeTabs -
+  never one per tab stack, since NativeTabs keeps visited tabs alive and a card
+  per stack ticked up to five times. It is absolutely positioned on the native
+  bar's measured `bar` edge (see [Toasts](#toasts)) and renders nothing until that
+  edge has been measured, so it never flashes over the bar; it stays on the bar on
+  every tab and over pushed pages, and a tab switch never remounts it. On web the
+  card rides on the web tab bar instead. Content scrolls behind it, so scroll screens reserve room with
   `useMiniPlayerInset()`.
 - **Tablet and desktop (web and native):** `DockedPlayer`, a bar along the
   bottom with a whole-book progress line, the cover and chapter (tap for the full
@@ -216,7 +223,14 @@ tab bar plus the mini player (or the iOS 26 accessory); on tablet/desktop, the
 docked player bar. Each piece of bottom chrome (`bar`, `mini`, `accessory`,
 `dock`) publishes its **measured top edge** - its distance from the window's
 bottom - into `useShellMetrics` (`shell-metrics.ts`) with `useChromeEdge`
-(`setChromeEdge` underneath). `bottomChromeTop()` takes the highest piece, and
+(`setChromeEdge` underneath). The native tab bar can't be measured directly, so
+each tab stack derives the `bar` edge with `nativeBarEdge()`: the gap between the
+page's bottom and the shell frame's own measured bottom (`setFrameBottom`), both
+read with `measureInWindow`, but never less than the page's bottom safe-area
+inset (iOS lays the page out under its bar, so there the inset is the bar). Comparing against the window height instead made the Android
+bar a status bar too tall, because under edge-to-edge Android's `measureInWindow`
+is offset by the status bar. Each stack publishes only once it has measured.
+`bottomChromeTop()` takes the highest piece, and
 the pure `toastBottomOffset()` (`toast-offset.ts`) turns it (`chromeTop`) into
 the toast's offset, with one fallback before the first layout. With no bottom
 chrome (tablet/desktop with nothing loaded) or over a root modal such as the full
