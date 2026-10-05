@@ -694,7 +694,7 @@ base-uri 'none'; frame-ancestors 'none'
 - **`script-src` stays strict** - only the exact inline scripts present in
   that document run; no `'unsafe-inline'`.
 - **`style-src` allows `'unsafe-inline'`** deliberately: react-native-web and
-  NativeWind inject style rules at runtime, which cannot be hashed ahead of
+  Uniwind inject style rules at runtime, which cannot be hashed ahead of
   time. This is the single relaxation, confined to the player.
 - Because the hashes are computed from the bytes being served, the policy
   stays correct after the player build is swapped (a new Docker image, a

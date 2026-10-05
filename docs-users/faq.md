@@ -45,7 +45,9 @@ shows whether each tool was found, and which version.
 Both exist, and they're the same player. The server ships with the **web
 player** built in at `https://your-server/web` - nothing to install, works in
 any modern browser, and can be added to your phone's home screen as an app
-(PWA). The **iOS and Android apps** add the deepest device integration:
+(PWA). "Modern" means Safari 16.4, Chrome 111, Firefox 128 or newer (Edge and
+other Chromium browsers follow Chrome); an older browser may show the player
+unstyled or not at all, so update it or use the apps. The **iOS and Android apps** add the deepest device integration:
 better background audio, wider codec support, and lock-screen playback
 controls (chapter-aware on Android). See
 [Mobile apps](./listening/mobile-apps.md).

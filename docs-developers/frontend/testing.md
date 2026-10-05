@@ -14,7 +14,7 @@ the code *testable* in the first place.
   - `moduleNameMapper` maps the `@/` alias to `src/` (and `@/assets/` to
     `assets/`);
   - `transformIgnorePatterns` re-includes the ESM packages the app imports
-    (expo, react-native-\*, nativewind, `@tanstack/*`, zustand, …) so they are
+    (expo, react-native-\*, uniwind, `@tanstack/*`, zustand, …) so they are
     transpiled instead of failing on `import`;
   - `testMatch` picks up `**/*.test.ts` and `**/*.test.tsx`;
   - `collectCoverageFrom` covers `src/**/*.{ts,tsx}` but **excludes
@@ -24,7 +24,13 @@ the code *testable* in the first place.
   matchers are **built in** - there is no `@testing-library/jest-native`
   dependency; don't add one.
 
-Run with `npm test`; coverage with `npm test -- --coverage`.
+Run with `npm test`; coverage with `npm test -- --coverage`. `npm test` first runs
+two fast checks before jest: `node scripts/gen-tokens.mjs --check` fails if the
+generated colour tokens (`src/global.css`, `src/theme/tokens.ts`) drifted from
+`src/theme/tokens.json`, and `node scripts/check-styles.cjs` compiles
+`src/global.css` through Uniwind and asserts styling guarantees no unit test can
+see (dark mode still works in browsers without CSS `@scope`; native keeps the
+px letter-spacing scale).
 
 ## Global setup (`jest.setup.ts`)
 

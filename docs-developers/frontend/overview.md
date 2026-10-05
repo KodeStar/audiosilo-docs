@@ -16,7 +16,7 @@ content by `(library_id, rel_path)`, and owns exactly one hard problem:
 |---|---|
 | Framework | **Expo SDK 56**, **React Native 0.85** (new architecture), **React 19** |
 | Routing | **Expo Router** (file-based, routes live in `src/app/`) |
-| Styling | **NativeWind v4** (Tailwind v3.4 engine) - `className` on core RN components |
+| Styling | **Uniwind** (Tailwind v4) - `className` on core RN components, on every platform. Web player floor: Safari 16.4, Chrome 111, Firefox 128 (Tailwind v4's CSS) |
 | Server state | **TanStack Query** (`src/api/hooks.ts`, provider in `src/api/provider.tsx`) |
 | Client state | **Zustand** (`src/stores/`, plus the playback and downloads stores) |
 | Audio | A **custom native Expo module**, `modules/audiosilo-player`: `AVQueuePlayer` on iOS, `Media3/ExoPlayer` on Android; **HTML5 Audio + Media Session** on web. There is no react-native-track-player dependency - older docs that mention it are stale. |
@@ -97,16 +97,32 @@ handful of standalone screens.
 
 ## Styling conventions
 
-- **`className` everywhere.** NativeWind v4 styles core RN components directly;
-  design tokens live in `tailwind.config.js` and the directives in
-  `src/global.css`.
+- **`className` everywhere.** Uniwind styles React Native's own components
+  directly (Metro wires it in via `withUniwindConfig` in `metro.config.js`; there
+  is no babel preset and no `tailwind.config.js`). The theme is CSS in `@theme`
+  blocks in `src/global.css`. A third-party component needs a one-time
+  `withUniwind` wrapper before it accepts `className` - for example `SafeAreaView`
+  from `@/components/ui/safe-area-view`; without it the classes are silently
+  dropped on native.
+- **Merge caller classes with `cn()`** (`@/lib/utils`, clsx + tailwind-merge).
+  Uniwind doesn't de-duplicate conflicting classes: web resolves by stylesheet
+  order, native by className order, so a component that accepts a `className`
+  override must merge with `cn()` for the caller to win everywhere.
+- **rem is 14px on native** (Uniwind's rem polyfill, NativeWind's old value) and
+  the browser's 16px on web, so layouts keep their size.
 - **Tokens**: primary pink `#db2777`; custom dark grays `gray-750` (`#2c3340`),
   `gray-840` (`#1a2331`), `gray-860` (`#161f2c`); Roboto weights as
   `font-roboto-{light,medium,semibold,bold}` (plain `font-sans` is Roboto
   regular). The app is dark-mode-first.
-- **Raw color values** for places that need a string instead of a class (status
-  bar, `ActivityIndicator`, SVG fills, navigation theme) come from
-  `src/theme/tokens.ts`, which mirrors the Tailwind theme.
+- **Colour tokens have one source, `src/theme/tokens.json`.** `npm run
+  gen:tokens` writes both the generated colour region of `src/global.css` (the
+  classes) and `src/theme/tokens.ts` - the **raw color values** for places that
+  need a string instead of a class (status bar, `ActivityIndicator`, SVG fills,
+  navigation theme). Never hand-edit either output: `npm test` starts with
+  `node scripts/gen-tokens.mjs --check`, which fails when either is out of date.
+- **Theme switching** goes through `ThemeProvider`, which calls
+  `Uniwind.setTheme('light' | 'dark' | 'system')`; on web Uniwind puts the theme
+  class on `<html>`, so it also reaches content portaled to `<body>`.
 - **Never import an icon library.** Use `<Icon name=… />` from
   `src/components/ui/icon.tsx`; the glyphs are vendored SVG paths in
   `icon-data.ts`. To add or change an icon, edit `scripts/glyphs/manifest.mjs`
@@ -122,7 +138,10 @@ handful of standalone screens.
   placeholders), `EmptyState` (the "nothing here yet" screens), `SectionHeader`,
   and `AnimatedPressable` - a `className`-aware `Pressable` that adds a press-in
   scale/opacity via reanimated (and honours reduce-motion), used for tappable
-  rows and buttons. `OverlayHost` mounts sheets and dialogs above the app tree.
+  rows and buttons. `OverlayHost` mounts today's sheets and dialogs in place, at
+  screen level. Portals work in this stack (proven by the player redesign's
+  Phase 0a spike), so new overlays that must escape a clipped container use
+  portal-based primitives instead.
 - **One layout breakpoint.** `src/lib/layout.ts` `WIDE_BREAKPOINT` (1024px) is the
   single phone->desktop switch every screen flips at (bottom nav + full-screen
   modal player below it; sidebar rail + docked player at or above) - never
