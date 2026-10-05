@@ -491,7 +491,12 @@ with indexed-book metadata attached where available. Offset-paginated.
 (`is_book`, `title`, `author`, `series`, `series_index`, `duration`) are
 omitted for plain directories/files; `override` (`"book"` or `"collection"`)
 appears when an explicit folder-detection override is set (admin concern - see
-[Scanner](../scanner.md)). Dotfiles are hidden; directories sort before files.
+[Scanner](../scanner.md)). `split_discs: true` marks a folder whose audio is
+only in disc folders directly in it (`CD1`, `CD2`, ...), each indexed as its
+own book, which a `book` override would join into one (see
+[Joined books](../scanner.md#joined-books-disc-sets)); it is sent to **admin**
+callers only and omitted otherwise, so the player's listing is unchanged.
+Dotfiles are hidden; directories sort before files.
 
 | Status | Meaning |
 |---|---|
@@ -645,10 +650,19 @@ Response `200` - a Book including files, chapters, and playability:
 codec ⇒ `true`; the client falls back to `?transcode=1` if direct playback
 fails). Durations/positions are seconds (float).
 
+`path` may be the book's own path or a path inside it: a part of a folder book,
+or a disc folder (or a file in one) of a book
+[joined from its disc folders](../scanner.md#joined-books-disc-sets). Either
+resolves to the whole book, its `rel_path` the book's. The book must be in the
+caller's scope too: a share granting only part of a book (one disc folder, one
+file) gets the same `403` as a path outside the share, and nothing is read or
+indexed on its behalf. The same holds for `/chapters`, `/cover` and `/meta`;
+`/stream` is scoped on the file path alone, so granted files still stream.
+
 | Status | Meaning |
 |---|---|
 | `400` | missing `path` / invalid library id |
-| `403` | path outside the caller's share scope |
+| `403` | `no access to this path`: the path, or the book it resolves to, is outside the caller's share scope |
 | `404` | `no book at that path` (not indexable) |
 
 ### `GET /api/v1/libraries/{id}/chapters`
@@ -1527,7 +1541,12 @@ Forces how the auto-detector classifies a folder, then rescans. `?path=`
 required (must resolve inside the root).
 
 Body: `{ "mode": "collection" }` - `"book"` = the folder is one multi-file
-book; `"collection"` = one book per file inside it.
+book; `"collection"` = one book per file inside it. On a folder with no audio
+of its own whose audio is only in two or more disc folders directly in it,
+`"book"` joins the discs into one book and the rescan carries their listening
+state onto it (see [Joined books](../scanner.md#joined-books-disc-sets)); on
+any other folder without audio it changes nothing. Clearing it splits the discs
+out again.
 
 Response `200`: `{ "status": "override set", "path": "…", "mode": "collection" }`.
 `400` for any other mode; `404` library not found.
@@ -1879,7 +1898,7 @@ what the first does).
 | `min_duration` · `max_duration` | number (seconds) | - | inclusive bounds; `0` means no bound |
 | `added_after` | date | - | inclusive lower bound on `added_at`: `YYYY-MM-DD` (used as is) or an RFC 3339 time (any offset; converted to UTC before comparing) |
 | `added_before` | date | - | exclusive upper bound, same formats |
-| `issue` | string | - | one [Health issue](#get-apiv1adminissues) kind's books: `scan_error`, `suspect`, `no_cover`, `unmatched`, `no_chapters` or `transcode` (not `duplicate`, which comes as groups from [`/admin/issues/duplicates`](#get-apiv1adminissuesduplicates)). Books an admin ignored for that kind are left out. Any other value is `400 unknown issue` |
+| `issue` | string | - | one [Health issue](#get-apiv1adminissues) kind's books: `scan_error`, `suspect`, `split_discs` (one row per split book: its first disc), `no_cover`, `unmatched`, `no_chapters` or `transcode` (not `duplicate`, which comes as groups from [`/admin/issues/duplicates`](#get-apiv1adminissuesduplicates)). Books an admin ignored for that kind are left out. Any other value is `400 unknown issue` |
 | `issue_ignored` | `true`\|`false` | - | with `issue`, list **only** the books an admin ignored for it; without `issue` it is `400 issue_ignored needs an issue` |
 | `sort` | string | `title` | `title` \| `author` \| `series` \| `narrator` \| `added` \| `duration` \| `size` |
 | `order` | string | `asc` | `asc` \| `desc` |
@@ -2249,16 +2268,43 @@ console's match dialog. Requires the `metadata` [capability](#get-apiv1server).
 
 | Query param | Type | Notes |
 |---|---|---|
-| `q` | string | free-text search, at most 300 characters |
+| `q` | string | free text, matched alongside the book's own facts; at most 300 characters |
 | `asin` · `isbn` | string | look an identifier up directly, at most 20 characters each; normalized first (an ASIN uppercased, an ISBN without hyphens and spaces) |
 
-With none of the three, the server searches the book's own title and author and
-looks up its own ASIN/ISBN. The title goes in cleaned of its series name and
-edition fluff (`(Unabridged)`, `, Book 1`), since the upstream search requires
-every word. The identifier lookup and the text search run
-concurrently; together they expand at most **6** hits into full works with their
+The server asks the community service's **structured match**,
+[`GET /api/v1/works/match`](../../meta/api.md#apiv1worksmatch), with the
+book's facts as separate guesses, since tags and folder names are each often
+wrong:
+
+- what the book's **library path** says (`derivePathFacts`, layout only): the
+  top folder as an `author` guess, the folder holding the book as a `series`
+  guess, and the book's folder or file name as a `title` guess, sent as named
+  (metaserve reads numbering such as `Sharpe - 08 - ` and takes the position
+  from it). Disc and track folders (`CD1`, `Track 01`) are dropped first, and a
+  plain-number leaf (`Stormlight Archive/03`) is the series' volume rather than
+  a title;
+- the book's tagged title, author and series (the tagged series only when it
+  names another series than the folder), the tagged position (only when no
+  different series folder goes up with it, since one position applies to every
+  series guess), and its runtime;
+- `q`, and the ASIN/ISBN: the typed ones, or the book's own when nothing was
+  typed, which metaserve looks up itself.
+
+Each value is cut to 256 bytes, as metaserve reads it. A typed `asin`/`isbn`
+with no `q` only looks that identifier up. A book with nothing to match on
+(no title, author, series or usable identifier) gets an empty answer without a
+request. At most **6** results are expanded into full works with their
 recordings. Results are not cached (an admin action, so the fan-out is bounded
 instead: work fetches share the same concurrency limit as `GET /meta/work`).
+
+**Older community service.** A metaserve that predates `works/match` answers it
+as a missing route (a `404`, since it reads `match` as a work id; a `405`; or a
+`200` without `results`). The server then runs the previous lookup and
+`works/search` (the typed text, else the tagged title cleaned of its series name
+and edition fluff plus the author), concurrently, scored as described below, and
+remembers the missing route for **15 minutes** before trying `works/match`
+again. A `503` (over metaserve's match budget) or any other `5xx` from
+`works/match` is an outage, answered `502`, never a fallback.
 
 ```json
 {
@@ -2285,14 +2331,24 @@ instead: work fetches share the same concurrency limit as `GET /meta/work`).
         }
       ],
       "recording_id": "rec1",
-      "score": 100
+      "score": 100,
+      "reasons": { "identifier": "asin" }
     }
   ]
 }
 ```
 
-- Sorted by `score` (0-100), best first. An identifier hit scores 100 and names
-  the recording it resolved to in `recording_id`. Otherwise the score weighs
+- Sorted by `score` (0-100), best first. From `works/match` it is metaserve's
+  score: 100 for an identifier hit, otherwise the better of its structured-facts
+  score and its typed-text score. `reasons` (optional) passes metaserve's
+  account through unchanged, each field present only when the request let it be
+  judged: `title` and `text` (similarity, 0-1), `author` (`full`, `surname` or
+  `none`), `series` (`position`, `name`, `conflict` or `none`), `runtime` (the
+  relative difference of the closest recording, `0.02` = 2%) and `identifier`
+  (`asin` or `isbn`). `recording_id` is the recording an identifier named.
+- On the fallback search an identifier hit scores 100 (with
+  `reasons.identifier`) and names the recording it resolved to in
+  `recording_id`; a search hit has no `reasons`, and its score weighs
   title agreement (55), author (30) and runtime (15: within 3% of a recording's
   runtime counts fully, within 10% half); a fact the book or the work lacks is
   left out rather than counted as a mismatch. The title is compared both as
@@ -2318,7 +2374,7 @@ and `source: "community"`.
 |---|---|
 | `400` | `query too long`; `invalid library id`; `path is required` |
 | `404` | `code: "metadata_off"` - community metadata is turned off; `library not found`; `code: "book_not_found"` |
-| `502` | `metadata service unavailable` - the community service failed and no candidate could be returned. Partial failures still return what was found: if the identifier lookup or the text search fails but the other leg yields candidates, those are returned, and a candidate whose work fails to load is left out. When nothing is returned, any failure along the way (either leg, or loading a hit's work) is a `502`, not an empty list - the failed leg may well have found the book |
+| `502` | `metadata service unavailable` - the community service failed (including a `503` or `5xx` from `works/match`) and no candidate could be returned. Partial failures still return what was found: on the fallback, if the identifier lookup or the text search fails but the other leg yields candidates, those are returned, and a candidate whose work fails to load is left out. When nothing is returned, any failure along the way (either leg, or loading a hit's work) is a `502`, not an empty list - the failed leg may well have found the book |
 
 ### `PUT /api/v1/admin/libraries/{id}/cover` · `DELETE /api/v1/admin/libraries/{id}/cover`
 
@@ -2424,7 +2480,13 @@ a scan last finished.
 ```
 
 - `categories` - one entry per kind, always in this order: `scan_error`,
-  `suspect`, `duplicate`, `no_cover`, `unmatched`, `no_chapters`, `transcode`.
+  `suspect`, `split_discs`, `duplicate`, `no_cover`, `unmatched`,
+  `no_chapters`, `transcode`. `split_discs` is a book split across disc
+  folders (a CD rip read as one book per disc), counted once and listed by its
+  first disc; the console's fix sets a `book`
+  [folder override](#put-apiv1adminlibrariesidfolder-override) on the folder
+  holding the discs, which joins them. Its discs are never also grouped as
+  `duplicate`.
   `unmatched` is **left out while community metadata is off** (there is
   nothing to match against). What puts a book in each kind is in
   [Issues](../scanner.md#issues).
@@ -2491,7 +2553,7 @@ console's Undo and "Show again"). For duplicates, ignore every copy of a group
 { "kind": "no_cover", "books": [ { "library_id": 1, "path": "Sun Tzu/The Art of War" } ] }
 ```
 
-- `kind` - one of the seven kinds above.
+- `kind` - one of the eight kinds above.
 - `books` - 1 to 1000 `{library_id, path}` refs. The books needn't be indexed:
   the rows are path-keyed durable state (`issue_ignores`), so an ignore
   survives rescans and rebuilds and moves with the book. A ref in a library
@@ -2598,7 +2660,8 @@ Recorded scans, newest first, without their logs.
   removed), `cancelled` (stopped by an admin; nothing removed) or `interrupted` (the server stopped mid-scan).
 - `books` - books discovered on disk; `added` / `updated` / `moved` /
   `removed` - what the scan changed (a moved or renamed book counts once, as
-  `moved`); `errors` - books whose files had a read
+  `moved`; a book joined from its disc folders, or split back into them, is a
+  reshape counted in neither `added` nor `removed`); `errors` - books whose files had a read
   problem, plus index writes that failed.
 - `started_by_name` is omitted for a schedule or startup scan, or once the
   account is deleted (`started_by` is then `null`). `finished_at` is `null`
@@ -2631,8 +2694,11 @@ One recorded scan, the same object with its `log`:
 Each event has `at`, `level` (`info`, `warn` or `error`) and `kind`, plus the
 facts the kind needs: `path`, `to` (a move's destination), `code` (a read
 problem's code, as `scan_error`), `detail` (a tool's or the OS's own message)
-and `count`. Kinds: `started`, `discovered`, `unreadable`, `moved`, `problem`,
-`error`, `removed`, `partial` and `truncated` (a log keeps at most 300 events,
+and `count`. Kinds: `started`, `discovered`, `unreadable`, `moved`, `joined`
+(a disc book at `path` joined into the book at `to`; `code` `length_unknown`
+when its listening state stayed with the disc because an earlier disc's length
+is unknown), `split` (the joined book at `path` read as its discs again),
+`problem`, `error`, `removed`, `partial` and `truncated` (a log keeps at most 300 events,
 at most half of them problems; this line counts the ones dropped), then one closing event saying how the scan
 ended: `finished`, `unavailable`, `failed`, `cancelled` or `interrupted`. A removed book leaves nothing in the index but its `removed`
 line here - see [Prune](../scanner.md#prune-what-a-removed-book-leaves-behind).

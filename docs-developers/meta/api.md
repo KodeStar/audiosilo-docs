@@ -1,6 +1,6 @@
 ---
 title: Meta HTTP API
-description: "The metaserve read-only JSON API reference: every /api/v1 route, the lang language filter, the Audiobookshelf provider at /abs/search and its per-language twin /abs/{lang}/search, the production release webhook, CORS behavior, connection deadlines and security headers, and how the server refreshes its artifact from GitHub Releases."
+description: "The metaserve read-only JSON API reference: every /api/v1 route, the structured works/match for identifying a file, the lang language filter, the Audiobookshelf provider at /abs/search and its per-language twin /abs/{lang}/search, the production release webhook, CORS behavior, connection deadlines and security headers, and how the server refreshes its artifact from GitHub Releases."
 ---
 
 `metaserve` (`cmd/metaserve` over `internal/serve`) is a **read-only** JSON API
@@ -148,6 +148,89 @@ volume and returns it **first**, ahead of the ranked FTS hits. That boost applie
 to the combined `/api/v1/search` and to `works/search`, and to those only: the
 ids it resolves are always works, so prepending them to a people or series page
 would put a work on a page that promises neither.
+
+## `/api/v1/works/match`
+
+Identifies the work an audiobook **file** is, from the facts its tags and folder
+path state, each of which may be wrong. `works/search` needs every word of one
+query, so it can't find a file whose title tag holds the author's name while
+its folders are named well (`Bernard Cornwell/Richard Sharpe/Sharpe - 08 -
+Sharpe's Eagle`). This route takes the facts **separately**, gathers candidates
+along each of them, and ranks every candidate by how well its own facts agree.
+audiosilo-server's "Match with community metadata" dialog is its client (see
+the server's [match endpoint](../server/api/reference.md#get-apiv1adminlibrariesidbookmatch)).
+
+| Query param | Notes |
+|---|---|
+| `q` | Free text as a person typed it, title, author and series words in any order. |
+| `title` | A title guess (a tag, a folder or file name), **repeatable**; the first 4 are read. Send it as named: numbering and edition fluff are taken off here (`02 - `, `SW06 - `, `Sharpe - 08 - `, `(Unabridged)`, `: Series, Book 5`), and the number the numbering carried is the position when `position` is absent. |
+| `author` | An author guess, **repeatable**; the first 4 are read. `A & B`, `A, B` and `A; B` are read as each person, `Cornwell, Bernard` as Bernard Cornwell. Matched by surname, then first name or initial. |
+| `series` | A series name guess (the folder a book sits in, a series tag), **repeatable**; the first 2 are read. Each is judged and the better counts, so a wrong guess beside a right one costs nothing. Numbering is taken off (`03 - Tawny Man` is `Tawny Man`). |
+| `position` | The book's position in `series` (`8`, `08`, `7.5`), one value, compared numerically and applied to whichever series guess agrees best. A value that isn't a position is ignored. |
+| `runtime` | The book's length in seconds. Within 3% of a recording agrees fully, within 10% partly. Non-numeric, non-positive or above 1,000,000 is ignored. |
+| `asin` · `isbn` | Looked up exactly as on [`/api/v1/lookup`](#apiv1lookupasinisbn); a hit scores 100. An ASIN longer than 20 characters, or an ISBN longer than 20 once hyphens and spaces are taken out, is ignored. |
+| `limit` | Default 10, capped at 20; a non-numeric or non-positive value falls back to the default. |
+
+At least one of `q`, `title`, `author`, `series`, `asin` or `isbn` must carry a
+value (400 `one of q, title, author, series, asin or isbn is required`). A
+`position` or `runtime` that doesn't parse is ignored rather than refused: these
+come from file tags, and a garbage tag mustn't cost the rest of the request.
+
+**Candidates** come from the identifier, the typed text (exactly as
+`works/search` reads it, plus exact-title probes of its leading and trailing word
+runs), every title guess, the members of the named series, and **every work by
+the named authors** (people resolved through the FTS person rows by full name,
+then by surname with first-name agreement): that last probe finds a book whose
+title is misspelt in the folder name or garbage in the tags.
+
+**Scoring.** The structured facts score as a weighted average of title (60),
+author (20), series (10) and runtime (10) agreement over the facts the request
+states; a fact left out counts neither for nor against, and each field is judged
+by its best guess. Titles that identify nothing (absent, or only `CD1`/`12`
+shaped) keep their weight unless the series and its position agree. The typed
+text is scored separately, read per candidate as the facts it states about that
+work (its author words as the author, its series words plus a volume number as
+that volume, the rest as a title), and the better of the two scores counts. A
+named title that clearly disagrees outranks a numbering match, and named
+authors none of whom wrote a work scale its score down. metaserve is the one
+place a title's numbering is read, so clients send folder names raw.
+
+```json
+{ "results": [
+  { "kind": "work", "id": "sharpes-eagle", "title": "Sharpe's Eagle", "…": "every works/search field",
+    "score": 94, "recording_id": "sharpes-eagle-1",
+    "reasons": { "title": 1, "author": "full", "series": "position", "runtime": 0.01 } }
+] }
+```
+
+- `results` - best first, never null; empty when nothing scored at all. Each is
+  a `works/search` work result plus:
+- `score` - 0-100: 100 for an identifier hit, otherwise the better of the
+  structured-facts score and the typed-text score.
+- `recording_id` - the recording the identifier named, else the one whose
+  runtime is closest to `runtime`; omitted when neither applies.
+- `reasons` - which facts agreed, each field omitted when the request didn't let
+  it be judged: `title` (the best title similarity, 0-1), `text` (the typed
+  text's similarity, 0-1; 1 when it named the work's series and volume, as in
+  `sharpe 8`), `author` (`full`, `surname` or `none`), `series` (`position`,
+  `name`, `conflict` or `none`), `runtime` (the relative difference of the
+  closest recording, `0.02` = 2%) and `identifier` (`asin` or `isbn`).
+
+**Bounds.** Like every route here it is unauthenticated and CORS-open, so a
+request can't price itself: each text value is cut to 256 bytes, an author
+resolves through a bounded window of people, the author and series probes add
+at most **2,500** works, and comparisons run in Go over batched, indexed reads.
+At most **8** matches run at once, each within a **2-second** budget that every
+read it makes honours; a match that can't start or finish within it is a
+**503** `the match did not finish in time; retry shortly` with `Retry-After: 1`
+(the usual 503 also applies while no artifact is loaded). Nothing is cached
+server-side and responses carry no `Cache-Control`, as for the searches. It
+takes no [`lang` filter](#the-lang-filter). It reads only tables that have
+existed since `schema_version` 1, so it answers against every published
+artifact.
+
+`match` is a [reserved slug](data-model.md) in all three families, like `search`
+and `latest`, since it is a literal segment of this route.
 
 ## The `lang` filter
 

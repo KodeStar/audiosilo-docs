@@ -228,9 +228,17 @@ say "Detected as one book" (with the book's title). Each folder has a choice of:
 
 - **Automatic** - the default; let AudioSilo decide.
 - **Always one book** - force the folder to be a single book (all its audio
-  files are its parts).
+  files are its parts). On a folder whose audio is only in disc folders
+  (`CD1`, `CD2`, ...), it joins the discs into one book: see
+  [Books split into disc folders](#books-split-into-disc-folders).
 - **Separate books** - treat each audio file in the folder as its own book.
   This is the fix for the "folder of standalone single-file books" case.
+
+The dialog offers **Always one book** only where it changes something: on a
+folder that is a book, on one holding disc folders to join, or on one that is
+already set. A folder of books (an author's or a series' folder) can't be made
+one book. **Separate books** isn't offered on a folder of disc folders, which
+has no files of its own to split.
 
 A change is saved the moment you make it, and the library rescans to apply it
 ("Rescanning *name* to apply it.").
@@ -255,10 +263,70 @@ for this folder (for example "Here: one book with 3 files." or "Here: 12
 books."), then the folder's audio files. If the folder is a book, **Open book**
 opens its [book page](books.md#a-books-page). A folder with no audio files of
 its own has nothing to choose; the folders inside it are read on their own.
+The exception is a folder of disc folders, which can be joined into one book
+(below).
 
 As in the dialog, a choice is saved the moment you make it and the library
 rescans ("Rescanning *name*. Listening progress moves with each file."). The
 **Change detection** button on a book's page opens its folder here.
+
+### Books split into disc folders
+
+A book ripped from CDs often sits in one folder per disc, with no audio in the
+book's own folder:
+
+```text
+Audiobooks/
+└── Terry Pratchett/
+    └── Mort/
+        ├── CD1/
+        │   ├── 01.mp3
+        │   └── 02.mp3
+        ├── CD2/
+        └── CD3/
+```
+
+By the folder-per-book rule each disc reads as its own book, and Library >
+Folders tells you so: open `Mort` and it says the folder "holds no audio files
+of its own, only disc folders (CD1, CD2...)". Choose **Always one book** there
+("Here: 3 disc folders become one book, in disc order.") and AudioSilo reads
+the discs as one book:
+
+- The discs play **in disc order**, counting numbers the way people do, so
+  `CD2` comes before `CD10`. Within each disc the files keep the order they had
+  as a book of their own. A chapter taken from a file name is led by its disc
+  ("CD2 - 01"), since disc rips number their tracks from 1 again on every disc.
+- Folder names AudioSilo recognises as discs are `CD`, `Disc` or `Disk`
+  followed by a number, with or without a space (`CD1`, `Disc 2`, `Disk 03`).
+  The join needs at least two of them, directly in the folder, and nothing else
+  with audio beneath it. A single disc folder already reads as one book.
+- **Listening progress carries over**: everyone's position moves onto the
+  joined book's timeline (a listener who got furthest on any disc keeps that
+  furthest point), and so do bookmarks, notes, listening history and sessions.
+  A favourite on any disc becomes a favourite of the joined book.
+- Your **edits, custom cover and ASIN/ISBN** on the discs are copied to the
+  joined book, field by field, the first disc winning where two discs differ.
+  The cover is the image in the book's own folder, else the first disc's.
+- Without ffprobe (see [Transcoding](server.md#transcoding)) a disc's length can
+  be unknown. Then AudioSilo can't tell where the later discs start, so their
+  listening progress stays with the disc rather than landing in the wrong place.
+  The scan's log says so (see [Jobs](health.md#history)).
+
+The joined book isn't a new book: it doesn't count as new in the scan, and no
+"books added" notification goes out for it. The
+[Health page](health.md#the-kinds-of-issue) lists folders like this under
+**One book split into disc folders**, with a button that does the same thing.
+
+AudioSilo never joins discs on its own: you choose it. And **Always one book**
+joins only a folder of disc folders. Set on any other folder without audio of
+its own (an author's or a series' folder, say), it still does nothing, so an
+older setting like that never merges a series into one book.
+
+To undo it, set the folder back to **Automatic**. Each disc becomes its own
+book again: your edits and covers on the discs are still there, and
+progress made on the joined book stays with the joined book ("progress on the
+one book is kept for it, not split back"). Join the folder again later and it
+comes back.
 
 ## Exporting a library
 

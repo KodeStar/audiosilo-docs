@@ -43,6 +43,7 @@ below.
 |---|---|---|
 | **Files that couldn't be read** | A scan couldn't read one of the book's files: it couldn't be opened (for example a permissions problem), it is empty (0 bytes), or ffprobe couldn't read it (a damaged or incomplete file). The row names the file and the reason. Every scan checks the file again, so once you fix the permissions or the share is back, the book leaves the list by itself. | **Read again** reads the book's files again straight away. A toast says "*title* reads fine now", or "*title* still can't be read" with the reason. |
 | **Folder may hold several books** | AudioSilo reads a folder with audio in it as one book. These folders look like they hold several: at least two parts, every part an hour or longer, with different titles. | **Choose detection** opens [Library > Folders](libraries.md#the-folders-page) on that folder: **Separate books** splits it, and **Always one book** tells AudioSilo it really is one book, which also clears it from this list. |
+| **One book split into disc folders** | A book ripped from CDs sits in one folder per disc (`CD1`, `CD2`, ...), so each disc reads as its own book. The row is the first disc, and says "*folder* reads as one book per disc folder". | **Join into one book** sets the folder holding the discs to **Always one book** ("Joining the discs of *folder*"). The library rescans, then they play as one book, with listening progress carried over. See [Books split into disc folders](libraries.md#books-split-into-disc-folders). |
 | **Likely duplicates** | Copies of one book in the same library. See [Duplicates](#duplicates). | A side-by-side comparison. |
 | **Missing covers** | No cover image in the book's folder and none inside its files. | **Upload a cover** opens the book's page, where **Change cover** adds one (see [Covers](books.md#covers)). |
 | **Not matched to community metadata** | The book has no ASIN or ISBN, so community metadata can't find it. Only shown while [community metadata](server.md#community-metadata) is on. | **Review match** opens the book's page with the match dialog open (see [Matching](books.md#matching-with-community-metadata)). |
@@ -88,6 +89,9 @@ when it was **Added**. **Open book** opens a copy's page.
 - Only copies **in the same library** are compared. The same book in two
   libraries is deliberate (a kids' library, say), and players already show it
   once.
+- The discs of a book split into disc folders look alike but aren't copies, so
+  they are listed under **One book split into disc folders** instead, never
+  here.
 - Keeping both copies is fine. If they really are different books (two
   narrations, an abridged edition), click **They're different books** and the
   group stops being suggested - until another copy turns up. The ignored view
@@ -167,6 +171,15 @@ followed"), every file it couldn't read and why, every book removed from the
 index, and how it finished. **Older scans** loads more. AudioSilo keeps the
 last 100 scans of each library.
 
+When you join a folder's disc folders into one book (see
+[Books split into disc folders](libraries.md#books-split-into-disc-folders)),
+the log has a line for each disc: "Joined *disc* into *folder*; progress
+followed", or "Joined *disc* into *folder*; progress stayed with the disc:
+length unknown" when the length of a disc before it couldn't be read (no
+ffprobe). Setting the folder back to Automatic logs "Split *folder* back into
+its discs; its progress stays with the folder". Neither counts as new or
+removed books.
+
 ### What a removed book leaves behind
 
 When a scan finds a book's files are gone, it removes the book from the
@@ -176,7 +189,9 @@ cluttering the library. Nothing personal is lost, though: everyone's progress,
 bookmarks and notes, and your edits and cover, are remembered by the book's
 path, so if the files come back to the same place, the next scan brings the
 book back with all of it. A book you **moved** is followed to its new place
-instead ("Moved *path* to *new path*; progress followed").
+instead ("Moved *path* to *new path*; progress followed"). If a listener
+already had progress saved at the new place (from an earlier book that sat
+there), the more recently saved of the two is kept.
 
 ## System
 

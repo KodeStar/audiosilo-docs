@@ -167,10 +167,19 @@ carry an ASIN or ISBN) gain an extra "About this book" block in the player - a
 description, production details, the series they belong to, and (where the
 community has written them) character cards and story-so-far recaps - drawn
 from the free, community-run catalogue at
-[meta.audiosilo.app](https://meta.audiosilo.app). Only a book's ASIN or ISBN is
-sent, never file paths or who is listening. See
+[meta.audiosilo.app](https://meta.audiosilo.app). For that lookup only a
+book's ASIN or ISBN is sent, never file paths or who is listening. See
 [About this book](../listening/browsing.md#about-this-book) for what listeners
 see.
+
+Matching a book in the admin console sends more, since its job is to find a
+book that has no ASIN or ISBN yet: when you open **Match with community
+metadata** on a book, the book's tagged title, author and series, its length,
+any ASIN or ISBN, what you type, and the names of up to three of its folders
+(the top folder, the folder holding the book, and the book's own folder or
+file name) go to the metadata service. Nothing is sent until you open the
+dialog, and never anything about who listens. See
+[Matching with community metadata](books.md#matching-with-community-metadata).
 
 - Flipping the switch takes effect immediately for **everyone connected**, and
   the choice is remembered across restarts.

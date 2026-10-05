@@ -99,6 +99,15 @@ Books** and choose **Add to share**, or use **Add to a share** on a book's
 page (see [Books and metadata](books.md#changing-many-books-at-once)). Each
 book becomes one of the share's folders.
 
+Share a book by its own folder (or file), not by a folder or file inside it. A
+share that holds only part of a book, such as one disc folder of a book joined
+from its discs (see
+[Books split into disc folders](libraries.md#books-split-into-disc-folders)) or
+one file of a book made of several, doesn't give access to the book itself:
+its title, chapters and cover stay hidden, as for anything outside the share.
+The share still grants its own files, but a player can't open them as a book,
+so add the book's folder instead.
+
 ### People with this share
 
 Everyone who has the share, each with a **✕** to take it away, and **Add

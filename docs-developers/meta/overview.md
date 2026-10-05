@@ -226,7 +226,7 @@ flowchart LR
     meta["audiosilo-meta<br/>metaserve (this repo)"]
     srv["audiosilo-server<br/>internal/meta"]
     player["audiosilo-frontend<br/>book screen"]
-    meta -->|"GET /lookup, /works/{id}, /series/{id}"| srv
+    meta -->|"GET /lookup, /works/{id}, /series/{id};<br/>admin match: /works/match"| srv
     srv -->|"GET /libraries/{id}/meta (composed envelope)<br/>GET /meta/work?id= (one work, passed through)"| player
 ```
 

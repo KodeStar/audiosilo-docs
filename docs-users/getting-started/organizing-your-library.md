@@ -29,7 +29,7 @@ It doesn't matter whether a book folder holds a single `.m4b` or fifty numbered 
 The one exception is the **library root** itself: loose audio files sitting directly in the root are each treated as an individual single-file book, so a simple "flat folder of m4b files" library works with no folders at all.
 
 :::tip
-If a book is split across `CD1`/`CD2`-style subfolders, each disc folder counts as its own book. For the best result, move all the files into a single folder for the book (rename them so the discs stay in order).
+If a book is split across `CD1`/`CD2`-style subfolders, each disc folder counts as its own book at first. Set the book's folder to **Always one book** in the admin console and AudioSilo joins the discs into one book, in disc order, carrying over everyone's progress (see [Books split into disc folders](../admin/libraries.md#books-split-into-disc-folders)). The Health page points such folders out for you.
 :::
 
 ### When a folder holds many standalone books
@@ -47,7 +47,7 @@ Audiobooks/
 By the folder-per-book rule, `Short Stories` would become one three-part "book". The fix is a **per-folder override**, set from the admin console. Instead of **Automatic**, each folder can be pinned to one of two modes:
 
 - **Separate books** - every audio file in this folder is its own book (what you want for `Short Stories` above).
-- **Always one book** - force this folder to be one book, if the detector ever splits something that belongs together.
+- **Always one book** - force this folder to be one book, if the detector ever splits something that belongs together. On a folder of disc folders (`CD1`, `CD2`, ...) it joins the discs into one book.
 
 Overrides are set with **Folder detection...** in a library's menu (**Library > Libraries** in the admin console), and they stick - they survive rescans and index rebuilds. See [Libraries](../admin/libraries.md) for a walkthrough.
 

@@ -202,13 +202,22 @@ description, series order and chapter recaps, and fills in fields you're
 missing.
 
 1. Click **Match with community metadata** on the book's page (or **Find a
-   match** in its **Community metadata** card). The dialog searches the
-   catalogue for the book's title and author straight away.
+   match** in its **Community metadata** card). The dialog looks for the book
+   straight away, using what its tags say (title, author, series), its length,
+   its ASIN or ISBN, and what its **folders** say: the top folder as the
+   author, the folder holding the book as the series, and the book's own folder
+   or file name as the title. So a book whose tags are wrong or swapped (a
+   title tag that holds the author's name, say) is still found when its
+   folders are named well, and the other way round.
 2. To search for something else, type in **Search the community database**,
-   or paste an ASIN or ISBN, and click **Search**.
+   or paste an ASIN or ISBN, and click **Search**. Typed words are matched
+   alongside the book's own tags and folders, in any order ("sharpe 8" finds
+   the eighth Sharpe book); an ASIN or ISBN on its own looks up just that.
 3. **Possible matches** lists what was found, each with how closely it
    matches ("92% match"), its narrators and whether its length matches your
-   files. Pick one and click **Compare fields**.
+   files. The score counts whichever fits the book best: its tags, its
+   folders or what you typed. An ASIN or ISBN that matches scores 100%. Pick
+   one and click **Compare fields**.
 4. If the book was recorded more than once, pick the right **Edition**.
 5. The comparison shows each field **On your server** and from the
    **Community**. Tick the ones to **Take**. Fields you've edited yourself
@@ -221,8 +230,17 @@ Accepted values are marked **Community** and are locked like your own edits;
 you can revert them the same way. If you have unsaved edits on the page, save
 or discard them before matching.
 
-If the catalogue can't be reached, the dialog says "meta.audiosilo.app isn't
-answering" - try again in a minute.
+If the catalogue can't be reached, or is too busy to answer in time, the
+dialog says "meta.audiosilo.app isn't answering" - try again in a minute.
+
+:::note What matching sends
+Opening the match dialog sends the book's tagged title, author and series, its
+length, its ASIN or ISBN, anything you type, and up to three of its folder
+names (the top folder, the folder holding the book, and the book's own folder
+or file name) to the metadata service. It sends nothing about your server or
+who listens. Players looking up "About this book" send only the ASIN or ISBN
+(see [Community metadata](server.md#community-metadata)).
+:::
 
 ## Authors and narrators
 
