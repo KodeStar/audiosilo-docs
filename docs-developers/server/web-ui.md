@@ -231,8 +231,8 @@ The console runs under the same `script-src 'self'; style-src 'self'` policy
 
 Grids and shelves show hundreds of covers, so the console asks for them in
 batches. `useCover(libraryId, path, size)` (`admin-ui/src/api/hooks.ts`) queues
-each cover it needs, and `src/api/cover-batch.ts` sends everything asked for in
-the same moment as one
+each cover it needs, and `src/api/cover-batch.ts` (on the shared batcher,
+`src/api/batcher.ts`) sends everything asked for in the same moment as one
 [`POST /api/v1/admin/covers`](api/reference.md#post-apiv1admincovers) request
 of up to 60 books. The server answers with small JPEG thumbnails, already
 `data:` URLs, so a grid costs a handful of requests and about 20 KB a cover
@@ -342,7 +342,17 @@ CSP-sensitive work against a real build served by Go. The console's own gate is
 - **Library > Authors / Narrators / Series** - `GET /admin/authors`,
   `/admin/narrators` (merge suggestions applied as a bulk edit, with Undo) and
   `/admin/series` (community series gaps from each series' matched book's
-  `GET /libraries/{id}/meta`, hidden when metadata is off).
+  `GET /libraries/{id}/meta`, hidden when metadata is off). Each card then
+  resolves its matched books to community work ids through
+  `POST /admin/books/works` (`useBookWorks`; `src/api/work-batch.ts` batches every
+  card's books asked for in the same moment, up to 100, on the same
+  `createBatcher` as the covers) and places each book on the rail entry of its
+  work, falling back to `series_index` for a book that doesn't resolve; a book
+  known to be another work is drawn after the rail and fills no gap
+  (`placeBooks` in `features/library/series/series-model.ts`). Gaps wait for the
+  works to answer (the card shows its plain "N books" line until then); a resolved
+  or cleanly unmatched answer is kept for the session, a failed one is asked
+  again no sooner than two minutes later.
 - **Library > Folders** - a folder tree per library (`/fs`) and the selected
   folder's detection choice (`…/folder-override`).
 - **Book page** (`/admin/library/book?library=&path=`) - `GET`/`PATCH

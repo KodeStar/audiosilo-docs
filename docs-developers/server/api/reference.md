@@ -2077,6 +2077,65 @@ authors.
 the distinct non-zero series positions held, ascending (so a client can mark the
 gaps). Sorted case-insensitively by name. Books with no series are not counted.
 
+### `POST /api/v1/admin/books/works`
+
+Which community work each of many books is - how the console's Series cards
+place an owned book on a community series rail by identity, whatever its
+`series_index` says. Each book's ASIN (preferred) or ISBN is resolved to the id
+of the work it belongs to, the same ids as a rail's `series[].works[].id` from
+[`GET /libraries/{id}/meta`](#get-apiv1librariesidmeta). Requires the `metadata`
+[capability](#get-apiv1server). Display only: no book is changed.
+
+| Body field | Type | Required | Notes |
+|---|---|---|---|
+| `books` | array | yes | `[ { "library_id": 1, "path": "Andy Weir/The Martian" } ]`, 1 to 100 entries |
+
+```json
+{
+  "books": [
+    { "library_id": 1, "path": "Andy Weir/The Martian" },
+    { "library_id": 1, "path": "Andy Weir/Artemis" }
+  ]
+}
+```
+
+Response `200`, one entry per requested book, in request order (`library_id`
+and `path` echo the request):
+
+```json
+{
+  "works": [
+    { "library_id": 1, "path": "Andy Weir/The Martian", "work_id": "the-martian", "failed": false },
+    { "library_id": 1, "path": "Andy Weir/Artemis", "work_id": "", "failed": false }
+  ]
+}
+```
+
+- `work_id` is `""` when the book has no ASIN or ISBN, the upstream has no
+  match for it, its lookup failed, or no book is indexed at the path (an unknown
+  `library_id` too).
+- `failed` is `true` only when that book's own lookup failed or ran out of
+  time, so asking again later may resolve it. A clean "no match" is never
+  `failed`, so a client asks again only about the failed books.
+- Each distinct identifier is answered from the first of: the book's cached
+  enrichment (a book a player has opened carries its work id there, a cached
+  "no match" too), the server's own cache of these lookups (the `l:` key space,
+  with the enrichment TTLs), then one upstream lookup. Concurrent requests for
+  the same identifier share one lookup, upstream lookups from console requests
+  are bounded, and the whole batch runs under the enrichment compose deadline,
+  so lookups still queued when it fires come back `failed`. A failure is never
+  cached here.
+- These lookups never slow down or age a player's
+  [`/meta`](#get-apiv1librariesidmeta): enrichment never reads the `l:` key space
+  nor waits for a console lookup.
+
+| Status | Meaning |
+|---|---|
+| `400` | `books is required` (an empty list); `invalid request` (malformed body or an unknown key); `code: "too_large"` for more than 100 books |
+| `401` / `403` | anonymous / non-admin |
+| `404` | `code: "metadata_off"` - community metadata is turned off |
+| `500` | `could not load books` - a database failure (an upstream failure is never an error, it is `failed: true`) |
+
 ### `GET /api/v1/admin/libraries/{id}/book`
 
 Everything the console's book page shows about one book. `?path=` required (the

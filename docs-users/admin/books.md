@@ -258,6 +258,27 @@ of 5; missing 3, 5". A series none of whose books is matched yet says "Match a
 book of this series to see what's missing". With community metadata off, the
 page offers to turn it on.
 
+Each [matched](#matching-with-community-metadata) book (one with an ASIN or
+ISBN the community catalogue knows) is placed by which book it actually is,
+not by its series number. So a matched book with no series number, or with a
+different number on your server (one you numbered 3 that the community lists
+as 2.5, say), still fills its own place in the series: it counts towards "You
+have ..." and the badge, and its spine sits in that place, showing the
+community's number. Books that aren't matched, or can't be looked up, are
+placed by their own series number. A matched book the catalogue says is a
+different book from any in the series (a companion story filed under the
+series name, for example) sits at the end of the shelf and doesn't fill a gap.
+
+While a card is still looking its books up, it shows just the number of books
+("5 books") with no gaps, so it never flashes a gap that then disappears. A
+book the community catalogue couldn't answer for is placed by its series number
+for now, and asked about again when you come back to the page a couple of
+minutes later.
+
+Nothing is changed by any of this: the Series page only arranges what it
+shows. To fix a book's series number for listeners too, edit its **Series
+number** on [the book's page](#editing-details).
+
 ## Folders
 
 **Library > Folders** shows each library's folders as a tree, and lets you

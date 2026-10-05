@@ -161,8 +161,8 @@ Failures a person can fix also carry a machine-readable **`code`** next to
 | `folder_unreadable` | `404` | `GET /admin/fs/dirs` on a missing or unreadable folder |
 | `book_not_found` | `404` | an admin catalog call on a path that is not an indexed book (book page, edit, bulk edit, match, cover upload); an admin progress edit on a path with no progress and no indexed book |
 | `invalid_override` | `400` | a metadata edit the server refuses; the body also carries a `field` key naming the offending field (`PATCH /admin/libraries/{id}/book`, `POST /admin/books/bulk`) |
-| `metadata_off` | `404` | a community match search while community metadata is turned off |
-| `too_large` | `400` / `413` | a bulk edit or an issue ignore over 1000 books, or a cover batch over 60 (`400`); a custom cover over 5 MiB (`413`) |
+| `metadata_off` | `404` | a community match search, or a `POST /admin/books/works` work-id batch, while community metadata is turned off |
+| `too_large` | `400` / `413` | a bulk edit or an issue ignore over 1000 books, a cover batch over 60, or a work-id batch over 100 (`400`); a custom cover over 5 MiB (`413`) |
 | `unsupported_image` | `415` | a custom cover that is not a JPEG, PNG or WebP image |
 | `invalid_schedule` | `400` | a library `scan_schedule` that isn't `""`, `every:<N>h` (1, 3, 6, 12, 24) or `daily:HH:MM` (`POST`/`PATCH /admin/libraries`) |
 | `invalid_pattern` | `400` | a library `ignore_patterns` list the server refuses: more than 100 patterns, one over 200 bytes, one that matches nothing, or a malformed wildcard; the message names the line (`POST`/`PATCH /admin/libraries`) |
