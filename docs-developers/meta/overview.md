@@ -125,10 +125,14 @@ snippet pass `--profile core` explicitly rather than relying on that default.
 The `-race` suite takes under a minute: every test that walks the real data tree
 skips under the race detector, since the fixture suites cover the concurrent code
 and `metacheck`/`metafmt` validate the real tree anyway. Those real-data tests
-still run in CI: the scheduled `real-data.yml` workflow runs the whole suite
-without `-race` every day (or on demand), and a failure opens or updates a single
-issue labelled `ci-real-data`, which the next green run closes. Run them locally
-with `go test -count=1 ./...`. The linter set is pinned
+still run in CI: the `real-data.yml` workflow runs the whole suite without
+`-race` every day, on demand, and on every push to `main` that touches anything
+the Go gate would run on (a `paths:` filter skipping `data/**` other than
+`data/go.mod` and `*.md`, so the bots' data-only commits never trigger it). It
+is never run on pull requests. A newer run cancels an older one, so the newest
+commit on `main` is what reports, and a cancelled run reports nothing. A failure
+opens or updates a single issue labelled `ci-real-data`, which the next green
+run closes. Run them locally with `go test -count=1 ./...`. The linter set is pinned
 by the committed `.golangci.yml` (errcheck, govet, ineffassign, staticcheck,
 unused), so a new golangci-lint release cannot change which linters run; adding
 one is an edit there, with its findings fixed in the same change.
