@@ -403,13 +403,18 @@ a one-line reason:
   `rename-candidate` or a `repoint-sidecar` - is refused outright, since it has
   nothing to apply;
 - `assert` **sources** a proposal no detector makes - an alternate title, a
-  reissue, a work stating no series. The entry's fields ARE the proposal, and only
-  three ops may be asserted: `merge-works` and `merge-series` (a target and the
-  others folding onto it, nothing else) and `add-series-member` (the work as
-  target, the series, and a canonical position as `to`; `field` may be omitted).
-  It appears in the class whose detector makes that op (`W-DUP`, `SER-DUP` or
-  `W-NOSERIES`) under the subclass `asserted`, and the repair pass applies it like
-  any other proposal.
+  reissue, a work stating no series, an omnibus or a dramatisation sitting in a
+  series' slots. The entry's fields ARE the proposal, and only four ops may be
+  asserted: `merge-works` and `merge-series` (a target and the others folding
+  onto it, nothing else), `add-series-member` (the work as target, the series,
+  and a canonical position as `to`; `field` may be omitted) and
+  `drop-membership` (the work as target, the series, and the canonical position
+  it is listed at as `from`; `field` may be omitted and is read as `position`;
+  no `to` and no `others`). It appears in the class whose detector makes that op
+  (`W-DUP`, `SER-DUP`, `W-NOSERIES` or `S-INTEGRITY`) under the subclass
+  `asserted`, and the repair pass applies it like any other proposal - an
+  asserted drop needs no "home" series and judges no language, it only checks
+  that the series still lists the work at that position and keeps a member.
 
 An assertion is a human's decision, so no detector veto is asked of it - only
 that its records still exist. Its outcome in `SUMMARY.md` is one of:
@@ -419,13 +424,16 @@ that its records still exist. Its outcome in `SUMMARY.md` is one of:
   acts as an accept - promoting it even where the detector held it back - and
   should be rewritten as one;
 - **stale**: a record it names is gone, or it has been applied (every loser now
-  resolves to the target, or the series already lists the work at that position),
-  so a re-run proposes nothing;
+  resolves to the target, the series already lists an added work at that
+  position, or no longer lists a dropped one), so a re-run proposes nothing;
 - **refused**, with the reason named: it would contradict another mechanical
-  proposal, a `reject` of the same proposal withholds it, another work holds the
-  position, the work is already listed in that series at another position, or a
-  loser was already retired onto a different survivor (an assertion never widens
-  a merge to fold that survivor too).
+  proposal (a drop also contradicts any other mechanical change to the same
+  membership, or a merge folding its work or its series), a `reject` of the same
+  proposal withholds it, another work holds the position, the work is listed in
+  that series at another position, a drop would leave the series with no members
+  (retiring a series is a `merge-series`), or a loser was already retired onto a
+  different survivor (an assertion never widens a merge to fold that survivor
+  too).
 
 The decisions are matched against the FRESH audit every run, so an accept or
 reject whose proposal no longer appears is listed as stale in `SUMMARY.md` and
