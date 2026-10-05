@@ -276,11 +276,12 @@ unresolved join so `rel_path` keys stay consistent - see
 
 ## Rate limiting
 
-Two mechanisms in `internal/api/ratelimit.go`, five buckets wired in `api.New`:
+Two mechanisms in `internal/api/ratelimit.go`, six buckets wired in `api.New`:
 
 | Bucket | Mechanism | Limit | Applied to |
 |---|---|---|---|
-| `ipLimiter` | Token bucket per IP (`ipRateLimiter`) | ~20 req/s, burst 40 | Every request (global `rateLimit` middleware) except those the mux hands to a static-file handler the web package registered (`web.IsStatic`: the console, the web player, the connect page and its assets, served from memory). One cold console page loads forty-odd chunks, more than the burst; the health check and the setup page are still counted |
+| `ipLimiter` | Token bucket per IP (`rateLimiter`) | ~50 req/s, burst 200 | The general API: every request (global `rateLimit` middleware) except static files and authenticated media. Static files are those the mux hands to a handler the web package registered (`web.IsStatic`: the console, the web player, the connect page and its assets, served from memory); one cold console page loads forty-odd chunks, so they are not counted. The health check and the setup page are counted |
+| `mediaLimiter` | Token bucket per credential (`rateLimiter`) | ~200 req/s, burst 2000 | Media GETs (`/cover`, `/stream`: the routes `requireMediaAuth` wraps) once they authenticate. See below |
 | `loginLimiter` | Failure lockout per IP (`limiter`) | 10 failures / 15 min | `POST /auth/login` |
 | `redeemLimiter` | Failure lockout per IP | 10 failures / 15 min | `POST /auth/redeem` |
 | `demoLimiter` | **Attempt** cap per IP (`Acquire`) | 5 / 15 min | `POST /demo/session` |
@@ -293,9 +294,27 @@ used for account-creating/mutating endpoints where even successful requests
 must be metered and a check-then-count pair could race. Both structures sweep
 stale entries so a flood of distinct IPs can't grow memory without bound.
 
+**Media is classed by route.** A cover grid loads every cover as its own
+`?token=` request, so sharing the per-IP budget turned a fast server's covers
+into 429s. `requireMediaAuth` returns a `mediaHandler`, which `rateLimit` skips
+(read off the handler the mux picks, like `web.IsStatic`), and owns the media
+policy itself: it refuses the request while the address's `ipLimiter` bucket is
+empty (`Ready`, which checks without spending), charges that bucket one token
+when authentication fails (no token, or a bad one), so unauthenticated media is
+bounded exactly like the general API, and otherwise spends from `mediaLimiter`,
+keyed by the credential (token row id) rather than the address: several people
+behind one address would otherwise share a budget. A request its credential's
+bucket refuses has still cost a token lookup, so it is charged to the address
+too. Charges use `Charge`, which always lands, even past empty (down to minus
+the burst): requests that passed `Ready` together each pay, so concurrency can't
+buy lookups the bucket never paid for. The general bucket stays per IP because
+it runs before authentication.
+
 Client IPs come from `realIP` middleware: `X-Forwarded-For` is honored **only**
-when the direct peer is inside a configured `trusted_proxies` CIDR, so clients
-can't spoof their way out of a lockout.
+when the direct peer is inside a configured `trusted_proxies` CIDR (the last
+entry, the address the proxy itself saw), so clients can't spoof their way out
+of a lockout. Behind a reverse proxy that isn't listed there, every visitor
+appears as the proxy's address and shares its general bucket and its lockouts.
 
 ## Transport hardening
 
@@ -358,7 +377,7 @@ The enumerated critical list:
 
 - `library.SafeJoin`
 - `Scope.Allows` / `Scope.VisibleInBrowse` / `pathFilterSQL`
-- the rate limiters (`limiter`, `ipRateLimiter`)
+- the rate limiters (`limiter`, `rateLimiter`) and the route classes in `rateLimit`
 - `auth.ResolveRequest` / `lookupToken`
 - `web.htmlCSP`
 

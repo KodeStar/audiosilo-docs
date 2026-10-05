@@ -79,7 +79,7 @@ Being internet-facing for non-experts is the server's first design priority, and
 
 - **No default passwords.** The admin credential is randomly generated on first run (or chosen by you in the setup wizard); there is no factory password to forget to change.
 - **Invite-only accounts.** Nobody can sign themselves up. Accounts are created by the admin, and devices join via short-lived invite codes (by default good for 5 uses and one day). See [People and invites](../admin/users-and-invites.md).
-- **Rate limiting and lockout.** Requests are rate-limited per visitor address, and repeated failed logins or invite-code guesses trigger a brute-force lockout.
+- **Rate limiting and lockout.** Requests are rate-limited per visitor address (covers and audio per signed-in device instead, so browsing a large library is never throttled), and repeated failed logins or invite-code guesses trigger a brute-force lockout.
 - **Secrets are stored scrambled.** Passwords use modern, deliberately slow hashing (argon2id); sign-in tokens and invite codes are stored only as hashes, and every token can be revoked.
 - **Contained file access.** Streaming requests are strictly confined to your library folders - path-traversal tricks to read other files are rejected - and request sizes are capped.
 

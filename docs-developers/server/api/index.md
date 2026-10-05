@@ -311,12 +311,14 @@ material is drawn only when it is true),
 
 ## Rate limiting
 
-Two limiter mechanisms guard the API (`internal/api/ratelimit.go`), all keyed by
-client IP. Tripping any of them returns **429** with an error envelope.
+Two limiter mechanisms guard the API (`internal/api/ratelimit.go`), keyed by
+client IP except for authenticated media. Tripping any of them returns **429**
+with an error envelope.
 
 | Limiter | Scope | Policy |
 |---|---|---|
-| Global token bucket | every request | ~20 requests/second, burst 40, per IP (`rate limit exceeded`) |
+| General token bucket | every request except static files and media | ~50 requests/second, burst 200, per IP (`rate limit exceeded`) |
+| Media token bucket | `GET /libraries/{id}/cover`, `GET /libraries/{id}/stream` | ~200 requests/second, burst 2000, per credential; a failed authentication counts against the general bucket ([details](../auth-and-security.md#rate-limiting)) |
 | Login lockout | `POST /auth/login` | 10 *failed* attempts per 15 min per IP; a success resets the counter |
 | Redeem lockout | `POST /auth/redeem` | 10 *failed* attempts per 15 min per IP; a success resets |
 | Demo cap | `POST /demo/session` | at most 5 demo sessions per IP per 15 min, metered at admission (failures count too) |

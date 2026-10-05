@@ -158,8 +158,8 @@ images only from `'self'` and `data:`. So it asks for covers in batches through
 [`POST /api/v1/admin/covers`](api/reference.md#post-apiv1admincovers)
 (`handleAdminCovers`, `internal/api/handlers_covers.go`): up to 60 books per
 request, each answered with a small JPEG thumbnail as a `data:` URL. A grid of
-hundreds of covers is then a handful of requests (the per-IP limiter allows a
-burst of 40) and about 20 KB a cover instead of full-size art.
+hundreds of covers is then a handful of requests and about 20 KB a cover
+instead of full-size art.
 
 - `coverArt` resolves the art in the same order as `handleCover` (custom cover
   by the requested path, then by the book the path resolves to, then the
