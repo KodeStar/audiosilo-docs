@@ -25,8 +25,12 @@ the code *testable* in the first place.
   dependency; don't add one.
 
 Run with `npm test`; coverage with `npm test -- --coverage`. `npm test` first runs
-`node scripts/gen-tokens.mjs --check`, which fails if the generated colour tokens
-(`src/global.css`, `src/theme/tokens.ts`) drifted from `src/theme/tokens.json`.
+two fast checks before jest: `node scripts/gen-tokens.mjs --check` fails if the
+generated colour tokens (`src/global.css`, `src/theme/tokens.ts`) drifted from
+`src/theme/tokens.json`, and `node scripts/check-styles.cjs` compiles
+`src/global.css` through Uniwind and asserts styling guarantees no unit test can
+see (dark mode still works in browsers without CSS `@scope`; native keeps the
+px letter-spacing scale).
 
 ## Global setup (`jest.setup.ts`)
 
