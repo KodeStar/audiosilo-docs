@@ -14,7 +14,7 @@ the code *testable* in the first place.
   - `moduleNameMapper` maps the `@/` alias to `src/` (and `@/assets/` to
     `assets/`);
   - `transformIgnorePatterns` re-includes the ESM packages the app imports
-    (expo, react-native-\*, nativewind, `@tanstack/*`, zustand, …) so they are
+    (expo, react-native-\*, uniwind, `@tanstack/*`, zustand, …) so they are
     transpiled instead of failing on `import`;
   - `testMatch` picks up `**/*.test.ts` and `**/*.test.tsx`;
   - `collectCoverageFrom` covers `src/**/*.{ts,tsx}` but **excludes
