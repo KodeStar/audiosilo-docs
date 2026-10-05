@@ -88,7 +88,7 @@ The footer of Settings shows the version of the app you're running, e.g. *AudioS
 
 ## A server's account page
 
-Each server you're connected to has its own account page: tap the server in the **Servers** list at the top of Settings. It covers your account on that one server.
+Each server you're connected to has its own account page: tap the server in the **Servers** list at the top of Settings. On a tablet or computer you can also reach it from the profile button at the top right of the screen. It covers your account on that one server.
 
 ### Account
 

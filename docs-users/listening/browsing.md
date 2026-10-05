@@ -17,14 +17,21 @@ AudioSilo arranges itself to fit the screen it's on.
 - **Downloads** - books saved on this device for [offline listening](offline-downloads.md).
 - **Me** - your [Settings](account.md), for now.
 
-Each tab remembers where you were. Open a book from Search, switch to Library for a moment, come back to Search, and the book is still open there; going back takes you to your search results.
+Each tab remembers where you were. Open a book from Search, switch to Library for a moment, come back to Search, and the book is still open there; going back takes you to your search results. Tap the tab you're already on to jump back to its first page.
 
-**On a tablet or computer** - or any window wide enough - the tabs move to a **top bar** across the top of the screen. From left to right:
+**On a tablet or computer** - or any window wide enough - the tabs move to a **top bar** across the top of the screen:
+
+![The web player on a tablet: the top bar with icon-only destinations, and the player bar along the bottom](/img/screenshots/web-player/tablet-home.png)
+
+From left to right:
 
 - The **AudioSilo** logo (tap it to go Home), with the server you're using underneath - or a note that you're **offline** if it can't be reached. If you've connected more than one server, it says how many more.
 - **Home**, **Library** and **Downloads**. On narrower screens such as a tablet held upright, these show as icons only.
-- A **search field**.
-- A **gear** button for [Settings](account.md), and a round button with your initial.
+- A **search field**. In the web player it opens [quick search](#quick-search-in-the-web-player); in the tablet app it takes you to the Search page.
+- A **gear** button for [Settings](account.md).
+- Your **profile button** - your initial, plus your name on wider screens. It opens a menu listing your **servers**, each with a line saying who you're signed in as, or that it's **offline** or **needs signing in again** (pick one to open its [account page](account.md#a-servers-account-page)); **Add a server**; **Account on** your main server; and a switch between **light and dark** appearance.
+
+![The profile menu open from the top bar](/img/screenshots/web-player/profile-menu.png)
 
 Under the top bar, a slim row shows the title of the page you're on, or a **Back** button once you've opened something, such as a book. While a book is playing, the [player bar](playback.md#the-mini-player-and-the-player-bar) runs along the bottom of the window.
 
@@ -137,6 +144,20 @@ The **Search** tab (on a tablet or computer, the search field in the top bar) se
 ![Search results for a query](/img/screenshots/web-player/search.png)
 
 Results appear as you type. Tap a result to open the book's detail page; going back returns you to the same results. Switch to another tab and your search is cleared, so the next one starts fresh.
+
+### Quick search in the web player
+
+In the web player on a tablet or computer, clicking the search field in the top bar opens **quick search**: one box for finding a book *or* doing something, without leaving the page you're on. You can also open it from the keyboard, anywhere in the app: **⌘K** on a Mac (**Ctrl+K** elsewhere), or just **/** when you aren't typing in a box.
+
+![Quick search open over the home screen, with a search typed and a matching book highlighted](/img/screenshots/web-player/palette.png)
+
+Start typing and the results are grouped:
+
+- **Actions** - things you can do right now. While a book is loaded: **Pause** (or **Resume** the current chapter), **Sleep in 30 minutes**, **Sleep at end of chapter** (for books with chapters) and **Open the full player**. Always: **Go to settings** and a switch to **light or dark** appearance. Setting a sleep timer this way shows a short confirmation at the bottom of the screen.
+- **Books** - matching titles, authors and series from every server you're connected to, the same search as the Search page. Before you type anything, this group is **Continue listening** instead: the books you're partway through, with how much you've listened to.
+- **Go to** - Home, Library and Downloads.
+
+Use the **arrow keys** to move through the results, **Enter** to open one, and **Esc** to close. Your last few searches that led somewhere appear as **Recent** shortcuts the next time you open it; they're kept in this browser only.
 
 :::note
 Search looks at book metadata (title, author, series). To hunt by folder name inside one folder, use the browse view's filter box instead.

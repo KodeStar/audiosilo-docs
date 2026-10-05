@@ -61,7 +61,8 @@ Loaded via `setupFilesAfterEnv`, it does five things:
 5. Mocks **`react-native-reanimated`** with a small self-contained stand-in (the
    real module initialises its native Worklets module and throws under Node):
    animations resolve synchronously (timing callbacks fire with
-   `finished: true`), `Animated.*` map to plain RN components, the
+   `finished: true`), `Animated.*` map to plain RN components, shared values
+   carry the `get`/`set` accessors as well as `.value`, the
    layout-animation builders (`FadeIn`, `SlideInDown`, …) are chainable no-op
    stubs, and `useReducedMotion` is a `jest.fn` returning `false` that a test can
    flip.
@@ -213,7 +214,8 @@ Two harness notes, both forced by RNTL 14:
   own.
 
 The chrome itself (the web tab bar, the top bar, the docked and accessory
-players) is covered by `src/components/shell/shell-chrome.test.tsx`.
+players) is covered by `src/components/shell/shell-chrome.test.tsx`, the web
+command palette and the profile menu by their own suites.
 
 ### Mocking `fetch`
 
@@ -289,7 +291,7 @@ Co-located suites exist for:
 | Stores | `src/stores/session.test.ts`, `settings.test.ts`, `series-orderings.test.ts` |
 | Theme | `src/theme/scheme-pref.test.ts` (the default-theme rule), `theme-provider.test.tsx`, `use-theme-colors.test.tsx` |
 | i18n | `src/i18n/language.test.ts`, `language-provider.test.tsx` |
-| Shell | `src/components/shell/destinations.test.ts`, `shell-chrome.test.tsx`, and the three route-tree suites (above) |
+| Shell | `src/components/shell/destinations.test.ts`, `shell-chrome.test.tsx`, `command-palette.test.tsx`, `palette-model.test.ts`, `palette-store.test.ts`, `profile-menu.test.tsx`, `toast-offset.test.ts`, and the three route-tree suites (above) |
 | Account flows | `src/components/account/use-api-keys-manager.test.tsx`, `use-sign-out.test.tsx` |
 | Player UI | `src/components/player/sleep-timer-button.test.tsx`, `end-credits-logic.test.ts`, `transport.test.ts` (the shared previous/next and chapter-segment math of the full player and the docked bar) |
 | Library UI | `src/components/library/book-meta.test.ts`, `book-meta.render.test.tsx`, `book-tabs.test.ts`, `cover-frame.test.tsx`, `meta-gating.test.ts`, `entry-row.test.tsx`, `progress-card.test.tsx`, `skeletons.test.tsx`; `src/components/layout/content-scope.test.tsx` |
