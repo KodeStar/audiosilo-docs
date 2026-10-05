@@ -145,9 +145,10 @@ come from `TAB_LABEL_KEY` in the same module, which reuses the existing section
 strings (`library.{bookmarks,history,notes}.title`, `book.meta.characters`); only
 `book.tabs.recaps` and `book.tabs.series` are tab-only keys.
 
-A summary counts as *visible* only when it will actually render: an `in_short`, or
-an `ending` on a finished book (the ending is a full spoiler and is withheld until
-then). The screen computes that once and passes it to both `bookTabs` and
+A summary counts as *visible* only when it will actually render: an `in_short`
+(inline on a finished book, otherwise as a collapsed, spoiler-chipped
+"Whole-book summary" row), or an `ending` on a finished book (the ending is a
+full spoiler and is withheld until then). The screen computes that once and passes it to both `bookTabs` and
 `BookMetaRecapsTab`, so the tab and its panel can never disagree.
 
 The point of the restructure: a long chapter list used to bury bookmarks, notes,
@@ -201,12 +202,15 @@ Characters and recaps are the community expressive layer (`work.characters` /
 `BookMetaRecapSummary` types). Each character card shows name/role/aliases and
 "from chapter N" up front with a per-card accordion for the own-words description
 (no blur - a tap reveals it); each recap likewise opens only when tapped. The
-current book's `recap_summary.in_short` renders as an **In short** intro above the
-story-so-far recaps, and its `ending` ("How it ends") only once the book is
-finished. All of these are absent from the envelope when the upstream has none,
-so a work without them simply shows no such tab. Pure label helpers
+current book's `recap_summary` is a spoiler in both fields: `in_short` is the whole
+book in one paragraph, ending included. Once the book is finished it renders as an
+**In short** intro above the story-so-far recaps, followed by the `ending` ("How it
+ends") accordion. Before that, `in_short` sits behind a collapsed, spoiler-chipped
+"Whole-book summary" row and the `ending` is not offered at all. All of
+these are absent from the envelope when the upstream has none, so a work without
+them simply shows no such tab. Pure label helpers
 (`roleLabelKey`, `revealDescriptor`, `recapDescriptor`, `sortRecaps`,
-`hasRecapSummary`) are unit-tested, and the strings live under `book.meta.*` in
+`summaryIsVisible`) are unit-tested, and the strings live under `book.meta.*` in
 all locale catalogs.
 
 #### Spoiler gating (`src/components/library/meta-gating.ts`)
