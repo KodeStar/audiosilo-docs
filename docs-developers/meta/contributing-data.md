@@ -376,7 +376,13 @@ reaches it computes the vote, then:
 
 It touches no field but `genres`, creates nothing and appends no source (the
 genres are derived from rows the work already cites), so a second run over the
-same rows is a no-op. `--genre-changes <path>` writes one NDJSON line per
+same rows is a no-op. A row that contradicts its recording's recorded runtime or
+release date casts no vote (enrichment refuses such a row through the same
+test), and a recording whose rows were all contradicted does not count as
+covered. Flags that would do nothing in this mode (`--date`, `--conflicts`,
+`--existing-series-only`, the series lookup) are refused. The rows must be at
+least as fresh as the catalogue: a work imported from newer rows than the
+export holds would be trimmed of genres those newer rows stated. `--genre-changes <path>` writes one NDJSON line per
 changed work, `{"work","removed","added","mode"}` with `mode` `trim` or
 `add-only`, for review before the data pull request:
 
