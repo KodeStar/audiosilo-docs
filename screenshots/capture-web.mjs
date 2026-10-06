@@ -244,10 +244,10 @@ async function captureWide(name, viewport, shots) {
 
   if (shots.player) {
     await step('player', async () => {
-      await page.getByRole('button', {name: 'Expand player'}).first().click({timeout: 8000});
+      await firstVisible(page.getByRole('button', {name: 'Expand player'})).click({timeout: 8000});
       await sleep(3500);
       await shoot(page, shots.player);
-      await page.getByRole('button', {name: 'Close'}).first().click({timeout: 8000});
+      await firstVisible(page.getByRole('button', {name: 'Close'})).click({timeout: 8000});
       await sleep(1500);
     });
   }
@@ -373,7 +373,7 @@ async function capturePhone(name, viewport, shots) {
     await openFirstBook(page, shots.book);
     await listen(page);
     await shoot(page, shots.player);
-    await page.getByRole('button', {name: 'Close'}).first().click({timeout: 8000});
+    await firstVisible(page.getByRole('button', {name: 'Close'})).click({timeout: 8000});
     await sleep(1500);
   });
 

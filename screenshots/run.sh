@@ -31,7 +31,8 @@
 #            META_COMMUNITY=<dir> (the audiosilo-meta-community checkout,
 #              default the sibling clone; its data/ is composed in),
 #            SHOTS_PORT / SHOTS_SETUP_PORT / SHOTS_META_PORT (default 8790 /
-#              8791 / 8795 - move them when another run holds those ports).
+#              8791 / 8795 - move them when a run in another checkout holds
+#              those ports; two runs in one checkout share .cache/ and clash).
 set -euo pipefail
 
 HERE="$(cd "$(dirname "$0")" && pwd)"

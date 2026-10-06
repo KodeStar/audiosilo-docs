@@ -99,7 +99,10 @@ short book first. The series, Up next and collection shots need a server with
 the `browse_people`, `queue` and `collections` capabilities.
 
 `SHOTS_PORT`, `SHOTS_SETUP_PORT` and `SHOTS_META_PORT` move the three servers
-off 8790 / 8791 / 8795 when another run already holds them.
+off 8790 / 8791 / 8795 when a run in another checkout (a worktree, say) already
+holds them. Two runs in the same checkout can't overlap whatever the ports: they
+share `.cache/` (the server data dir is wiped at start, and the admin password is
+read from `.cache/server.log`).
 
 Every capture is optimized in place with **pngquant** (`brew install pngquant`)
 - a lossy-palette pass that shrinks the retina PNGs ~60% with no perceptible

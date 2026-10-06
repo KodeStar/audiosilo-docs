@@ -374,7 +374,7 @@ web, a secure context with the Cache API).
 - **Route-driven side effects** (clearing the search query when leaving the
   Search tab, forgetting browse scroll positions when leaving the browse
   section - the Library root and folders plus the book, series, author,
-  narrator and collection pages, `BROWSE_ROOTS`) live in `useShellEffects`,
+  narrator and collection pages, `BROWSE_PATHS` in `src/lib/paths.ts`) live in `useShellEffects`,
   run by both `(app)` layouts.
 
 The regression net for all of this is the route-tree suite, which drives
@@ -415,16 +415,19 @@ root. Its sections are the modes of `library-modes.ts`: `books`, `authors`,
   flow and its Favourites row, unchanged).
 
 **Books mode** is the one place that loads a whole library:
-`useWholeLibrary(cid, lib, sort)` pages `GET /libraries/{id}/books` 200 at a
-time until `next_cursor` runs out (its own key under the `libraryBooks` prefix, so
-its pages never mix with `useLibraryBooks`' 100-book ones); pages so far are usable
-at once, and a failed page keeps what loaded, with Retry carrying on. The view is
+`useWholeLibrary(connectionId, libraryId)` (over `useAllLibraryBooks`) pages
+`GET /libraries/{id}/books` 200 at a time, always newest first, until
+`next_cursor` runs out (its own key under the `libraryBooks` prefix, so its pages
+never mix with `useLibraryBooks`' 100-book ones). There is one cache entry per
+library whatever the screen's sort, because every sort happens on the device; pages
+so far are usable at once, and a failed page keeps what loaded, with Retry carrying
+on. The view is
 `books-view.ts`, pure: `parseBooksView` / `booksViewParams` (the URL contract:
 `sort`, `status`, `dl=1`, `len`; defaults are omitted), on-device `filterBooks`,
 `statusCounts` (each chip's count among the books the *other* filters keep),
 `sortBooks` (title order folds accents and skips a leading article), `letterGrid`
-for the title sort's letter heads and A-Z rail, and `serverSort` (Length has no
-server order, so it loads newest first and shares Recently added's cache). The
+for the title sort's letter heads and A-Z rail, and `lengthBucket` (the `len`
+chips, which Home's Short listens shelf reuses). The
 grid/list choice is `useBooksLayout` (`audiosilo.booksLayout`, also used by a
 collection and Favourites). The **book menu** is `useBookActions` presented by
 `BookActionsMenu` (`books/book-actions.tsx`): the list view's `BookActionsButton`
@@ -447,7 +450,7 @@ in `src/components/library/`:
 | `GhostCover` | A book the listener doesn't have: hatched, dashed, with the real title and position from the community data and "Not in your library" (or `info`-tinted "On &lt;server&gt;" when another connected server has it). Never fake art, and no book menu. |
 | `ShelfRow` | A horizontal, snap-scrolling row of tiles on a FlashList, standing on a decorative `Ledge`; bleeds to the window edge past the page gutter. |
 | `CoverGrid`, `CoverGridSkeleton`, `CoverListRow` | The page's grid on FlashList (it *is* the scroller; full-width rows such as letter heads span every column through `overrideItemLayout`), its same-size skeleton, and the list variant of a book. |
-| `cover-layout.ts` | `pageGutter`, `shelfMetrics` (164 tiles, 132 on a phone), `coverGridMetrics` (columns of at least 158, two on a phone). |
+| `cover-layout.ts` | `pageGutter`, `shelfMetrics` (164 tiles, 132 on a phone), `gridMetrics` (columns of at least 158, two on a phone; `cardGrid` for card grids). |
 | `CoverWash` (`cover-wash{,.web}.tsx`) + `src/lib/cover-tint.ts` | The cover-colour wash behind the Now card and the series hero: `coverTint(book.cover_color)` (null - no wash at all - when the server sent none), at `WASH_STRENGTH` (the `--wash` token), drawn as SVG radial gradients on native and CSS on web. |
 | `FilterChip` / `ChipRow` (`src/components/ui/filter-chip.tsx`) | The filter chips. |
 | `useQueueActions` / `QueueButton` | "Queue it" for one connection's server: `isQueued`, `queue(lib, path, position?)` and `unqueue` with Undo toasts; hidden until `queue` is known to be on; a `CapabilityError` is swallowed, a `409` says the queue is full. `QueueButton` ("Queue it" / "Queued") is the series page's action for an unread owned book. |
@@ -462,9 +465,10 @@ plays on. It rejects when the book couldn't be fetched, so the caller can say so
 (entries, gaps, reading orders, progress track, the one action per entry),
 `spine-fit.ts` (spine titles always fit: tighten, shrink, wrap, then ellipsize),
 `bookcase.tsx` / `spine.tsx`, `person-page.tsx`, and `use-series-data.ts`
-(feature-local hooks over the shared API ones: `useAllLibraryBooks` drains a
-filtered `useLibraryBooks`, `useProgressLookup`, and one search per other server
-for copies of the series elsewhere). The series page reads community rails only on
+(the page's reads beyond the shared `src/api` hooks `useAllLibraryBooks` and
+`useProgressLookup`: `useElsewhereBooks`, one search per other server for copies of
+the series elsewhere, and `usePlacedBooks`, an `/item` for each book a rail places
+in another library). The series page reads community rails only on
 a `metadata` server, and shares reading-order picks with the book page
 (`useSeriesOrderings`). Under its list, `KeepAheadCard` (`keep-ahead-card.tsx`)
 binds the device-wide `keepAhead` setting through the Downloads page's exports,

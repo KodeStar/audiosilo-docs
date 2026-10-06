@@ -502,9 +502,10 @@ pure:
   on the candidate's own server), `nextInSeriesItems` (an owned next book, else the
   community rail's next work as a ghost; books already on Home are skipped and a
   book two candidates lead to shows once), `smartShelves` (Finish what you started,
-  Short listens = recently added under `SHORT_LISTEN_SECONDS`, the top narrator's
-  shelf, Added this week; fewer than two gives none) and the deep links into the
-  Library's Books mode (`libraryBooksHref`).
+  Short listens = recently added books in the Library's `len=short` bucket
+  (`lengthBucket`, under five hours), the top narrator's shelf, Added this week;
+  fewer than two gives none). Its links into the Library's Books mode are
+  `libraryBooksHref` from `books-view.ts`.
 - `listening.ts`: the streak, the seven day bars and the pace behind the finish
   date, all in **server time** (a stats response's days are dates in the server's
   zone; "today" is its `to` moved by `utc_offset`, never the device clock). No pace

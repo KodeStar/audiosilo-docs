@@ -97,7 +97,7 @@ The pale "ghost" covers of books you don't have have no menu. The menu holds:
 - **Add to Up next** or **Remove from Up next** (see [Up next](up-next.md)).
 - **Add to collection...** (see [Collections](#collections)).
 - **Download for offline**, **Cancel download** or **Remove download** (which asks first).
-- **Mark as finished**, or **Mark as not finished** for a book you've finished. Both show a short note with **Undo**.
+- **Mark as finished**, or **Mark as not finished** for a book you've finished. Both show a short note with **Undo** (on an older server, Mark as finished shows the note without Undo).
 - **More in this series**, for a book in a series.
 
 ### Authors and narrators
