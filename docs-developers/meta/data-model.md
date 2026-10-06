@@ -433,13 +433,14 @@ that its records still exist. Its outcome in `SUMMARY.md` is one of:
   resolves to the target, the series already lists an added work at that
   position, or no longer lists a dropped one - including a dropped work since
   merged into a survivor the series lists only at other positions, or the work
-  already carries a retitle's new title), so a re-run proposes nothing;
+  already carries a retitle's new title, or a retitled work was since merged into
+  a survivor carrying neither title), so a re-run proposes nothing;
 - **refused**, with the reason named: it would contradict another mechanical
   proposal (a drop also contradicts any other mechanical change to the same
   membership, or a merge folding its work or its series; a retitle, a merge
   folding its work away or a second retitle of it), a `reject` of the same
-  proposal withholds it, a retitle's work now carries a title other than its
-  `from`, another work holds the position, the work is listed in
+  proposal withholds it, a retitle's work (one that still exists) now carries a
+  title other than its `from`, another work holds the position, the work is listed in
   that series at another position (for a drop, a work that still exists), a
   drop would leave the series with no members (retiring a series is a
   `merge-series`), or a loser was already retired onto a different survivor (an
