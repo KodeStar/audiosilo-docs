@@ -687,6 +687,23 @@ the fingerprint:
   strand the admin's edits and cover at a path the scan is about to prune. The
   book is then indexed at its new path, and that upsert layers the moved edits
   back on.
+- **Folder favourites follow a folder rename.** A favourite can sit on a
+  navigation folder (an author or a series), which has no book of its own to
+  move. After the book moves, `renamedFolders` works out which folders they say
+  were renamed: the folders holding each moved book's old and new path, then on
+  up while the folder names match (`Author/Series A/Book` ->
+  `Author/Series B/Book` pairs `Author/Series A` with `Author/Series B`).
+  `catalog.MoveFolderFavourites` re-keys each pair's favourites (landing once,
+  like a book's). A pair counts only when:
+  - every move out of the folder agrees on where it went, and
+  - the old folder is gone from disk **by exact name**. `dirPresent` checks each
+    name along the path against its parent's listing, because a
+    case-insensitive filesystem (macOS, most SMB shares) still answers to a
+    folder renamed only in case (`WIth` -> `With`). A folder it can't read
+    counts as present, so its favourites stay.
+
+  A book moved out of a folder that is still there says nothing about that
+  folder. Folder overrides and share paths are not carried.
 
 ## On-demand indexing (`IndexPath`)
 
