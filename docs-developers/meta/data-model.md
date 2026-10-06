@@ -428,15 +428,17 @@ that its records still exist. Its outcome in `SUMMARY.md` is one of:
   should be rewritten as one;
 - **stale**: a record it names is gone, or it has been applied (every loser now
   resolves to the target, the series already lists an added work at that
-  position, or no longer lists a dropped one), so a re-run proposes nothing;
+  position, or no longer lists a dropped one - including a dropped work since
+  merged into a survivor the series lists only at other positions), so a re-run
+  proposes nothing;
 - **refused**, with the reason named: it would contradict another mechanical
   proposal (a drop also contradicts any other mechanical change to the same
   membership, or a merge folding its work or its series), a `reject` of the same
   proposal withholds it, another work holds the position, the work is listed in
-  that series at another position, a drop would leave the series with no members
-  (retiring a series is a `merge-series`), or a loser was already retired onto a
-  different survivor (an assertion never widens a merge to fold that survivor
-  too).
+  that series at another position (for a drop, a work that still exists), a
+  drop would leave the series with no members (retiring a series is a
+  `merge-series`), or a loser was already retired onto a different survivor (an
+  assertion never widens a merge to fold that survivor too).
 
 The decisions are matched against the FRESH audit every run, so an accept or
 reject whose proposal no longer appears is listed as stale in `SUMMARY.md` and
