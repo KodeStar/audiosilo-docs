@@ -358,12 +358,13 @@ importer maps each one onto the project's genre vocabulary
   recordings (`importer.VoteGenres`): each recording is one vote (its regional
   ASINs together), a recording whose rows map nothing does not vote, and with
   three or more voters a genre is kept when at least two state it - with fewer,
-  every voter's genres are kept. A work a libex create run makes gets this set;
-  user-library imports keep adding their genres and never remove one.
+  every voter's genres are kept. A work a libex create run makes gets this set,
+  and so does a genre-less work `--enrich` fills (over the recordings its rows
+  matched); user-library imports keep adding their genres and never remove one.
 
 `--regenerate-genres` applies both rules to works already in the catalogue,
-which no other mode does: every other writer only adds genres, and `--enrich`
-fills only a work with none. Feed it the rows of **every** catalogued ASIN (the
+which no other mode does: every other writer only adds to a recorded set, and
+`--enrich` fills only a work with none. Feed it the rows of **every** catalogued ASIN (the
 metadata repository's `scripts/README.md` shows the export). For each work a row
 reaches it computes the vote, then:
 
