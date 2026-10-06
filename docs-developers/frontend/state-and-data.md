@@ -214,13 +214,11 @@ Cross-server screens ask per connection (`useCapabilitiesAll` /
 | `progress_edit` | the book menu's Mark as not finished, and Mark as finished with Undo (without it: `useMarkFinished`, no Undo) |
 | `user_stats` | Home's This week card, the Now card's finish date and the "&lt;narrator&gt; reads" shelf's top narrator (`useMyStats('30d')`, `useMyListening`, `useListeningGoal`) |
 
-Writes from screens follow the 1b rules below: **positioned adds** to reorder (Up
-next's drag/keys and a collection's Move up / Move down send `position` = the
-visible index; `moveIndex` in `collections-model.ts`, `moveItem` in
-`up-next-model.ts`), **exact-path removes** of the entry's own stored path, and an
-Undo that re-adds at the old index. No screen sends a whole-list `PUT`
-(`useSetQueue` / `useSetCollectionItems` have no caller), because it would drop the
-listener's hidden entries.
+Writes from screens follow the [1b write rules](#the-listeners-own-state-player-redesign-phase-1b)
+(positioned adds, exact-path removes): Up next's drag/keys and a collection's Move
+up / Move down send `position` = the visible index (`moveIndex` in
+`collections-model.ts`, `moveItem` in `up-next-model.ts`), and an Undo re-adds at
+the old index. `useSetQueue` / `useSetCollectionItems` have no caller.
 
 ### The listener's own state (player redesign Phase 1b)
 
@@ -580,7 +578,9 @@ Playback tunables persisted as one JSON blob (`audiosilo.settings`):
 re-`configure`s the engine whenever these change. The same document holds the
 end-of-book and download behaviour - `autoPlayNext` (off), `autoDownloadNext`
 (`never | wifi | always`, default `wifi`), `keepAhead` (`0 | 1 | 2 | 3`, default
-`0` = off; a stored value that isn't one reads as off) and `autoDeleteFinished`
+`0` = off; `toKeepAhead` reads a stored value that isn't one as off; see
+[Offline](offline.md#keep-the-next-books-ready-keep-aheadts--keep-ahead-controllerts))
+and `autoDeleteFinished`
 (on) - and the auto sleep timer's settings.
 
 ### Series orderings (`src/stores/series-orderings.ts`)
@@ -641,8 +641,8 @@ the pick never jumps from a later server to an earlier one.
 `persistedDocument` stores that are deliberately not per server: `useBooksLayout`
 (`audiosilo.booksLayout`, grid or list for book lists, hydrated on first use) and
 `useUpNext` (`audiosilo.upNext`, the desktop drawer's open state and width). The
-keep-ahead count is a setting (`keepAhead` in `audiosilo.settings`, `0 | 1 | 2 | 3`,
-validated by `toKeepAhead`); see [Offline](offline.md#keep-the-next-books-ready-keep-aheadts--keep-ahead-controllerts).
+keep-ahead count is not one of these: it is `keepAhead` in the
+[settings](#settings-srcstoressettingsts).
 
 ### Player and downloads stores
 

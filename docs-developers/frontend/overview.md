@@ -192,10 +192,9 @@ still jumps to the Search tab instead.
 
 - **State** is `usePalette` (`palette-store.ts`): open and the query (cleared on
   every open). The **recent searches** are the Search screen's list,
-  `useRecentSearches` in `src/stores/search.ts` (up to five, persisted per
-  device under the older `audiosilo.paletteRecent` key), hydrated on the first
-  open. A search is remembered when it leads somewhere (an item is run with a
-  non-empty query).
+  `useRecentSearches` (see [State & data](state-and-data.md#search-srcstoressearchts)),
+  hydrated on the first open. A search is remembered when it leads somewhere (an
+  item is run with a non-empty query).
 - **What shows** is the pure, tested `palette-model.ts`: `buildPaletteGroups`
   returns, in order, **Actions** (filtered by title, or by subtitle once there is
   a query), then **Books** (up to 8 results from the Search screen's `useSearch`,
@@ -276,12 +275,12 @@ the player modal - the palette shortcut's guards).
 
 It shows **one connection's queue**: `queueConnectionId` picks the loaded book's
 server, else the default, else the first (a removed connection falls through).
-`useUpNextData(cid)` holds everything the panel shows and does. **Every write keeps
-the rows the listener can't see** (books under a share since taken away): a reorder
-is a positioned add at the visible index (`useAddToQueue` with `position`), a
-removal is an exact-path delete of the entry's own stored path, and **Clear** is one
-exact-path delete per visible entry followed by one Undo toast that adds them back
-in order - never a whole-list `PUT`. Reordering: a gesture-handler drag on the grip
+`useUpNextData(cid)` holds everything the panel shows and does. Its writes keep the
+rows the listener can't see, by the
+[1b write rules](state-and-data.md#the-listeners-own-state-player-redesign-phase-1b)
+(a reorder is `useAddToQueue` with `position`, a removal an exact-path delete), so
+**Clear** is one exact-path delete per visible entry followed by one Undo toast that
+adds them back in order. Reordering: a gesture-handler drag on the grip
 (`dragTarget` / `dragShift` are worklets), ArrowUp/ArrowDown on the focused grip or
 Alt+arrows anywhere in the row (`keyMove`), and screen-reader Move up / Move down
 actions.
@@ -434,9 +433,7 @@ collection (`collections`), download, Mark as finished (on a server without
 `progress_edit`, through the offline-aware `useMarkFinished`, without Undo) or not
 finished (`progress_edit` only), More in this series. A capability still unknown
 hides its item. Remove download asks first through the shared
-`RemoveDownloadConfirm` (`src/components/downloads/remove-download-confirm.tsx`,
-which says how much room it frees; the book page and the Downloads page use it
-too).
+`RemoveDownloadConfirm` (see [Offline](offline.md#lifecycle)).
 
 ## Browse building blocks
 

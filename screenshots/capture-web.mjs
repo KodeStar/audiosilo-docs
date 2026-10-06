@@ -1,5 +1,5 @@
 // Captures the web-player documentation screenshots against a locally-running
-// AudioSilo server in demo mode (run.sh starts it). Three steps:
+// AudioSilo server in demo mode (run.sh starts it). Three passes:
 //   0. tag two seeded series through the admin API (the LibriVox files carry no
 //      series tags, so the Library's Series section and a series page would be
 //      empty) - needs ADMIN_PASSWORD, which run.sh passes,
@@ -10,10 +10,10 @@
 import {chromium} from 'playwright';
 import path from 'node:path';
 import {mkdir} from 'node:fs/promises';
-import {CACHE, sleep, shoot, step} from './lib.mjs';
+import {CACHE, apiClient, sleep, shoot, step} from './lib.mjs';
 
 const BASE = process.env.AS_BASE || 'http://127.0.0.1:8790/web/';
-const ORIGIN = new URL(BASE).origin;
+const api = apiClient(new URL(BASE).origin);
 const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || '';
 const AUTH = path.join(CACHE, 'auth.json');
 
@@ -39,21 +39,10 @@ const COLLECTION = {
 // that aren't about it keep the page's full width; the Up next shot opens it.
 const drawerClosed = () => {
   try {
-    localStorage.setItem('audiosilo.upNext', JSON.stringify({drawerOpen: false, drawerWidth: 360}));
+    localStorage.setItem('audiosilo.upNext', JSON.stringify({drawerOpen: false}));
   } catch {
     /* storage blocked: the drawer opens, the shots are just narrower */
   }
-};
-
-const api = async (token, method, p, body) => {
-  const res = await fetch(`${ORIGIN}/api/v1${p}`, {
-    method,
-    headers: {'content-type': 'application/json', ...(token ? {authorization: `Bearer ${token}`} : {})},
-    body: body === undefined ? undefined : JSON.stringify(body),
-  });
-  const text = await res.text();
-  if (!res.ok) throw new Error(`${method} ${p} -> ${res.status} ${text.slice(0, 120)}`);
-  return text ? JSON.parse(text) : null;
 };
 
 // Book-title substrings (must exist in the seeded library) + the fraction of
@@ -88,7 +77,7 @@ const audioHook = () => {
 const browser = await chromium.launch();
 await mkdir(CACHE, {recursive: true});
 
-// ── Step 0: series tags ─────────────────────────────────────────────────────
+// ── Pass 0: series tags ─────────────────────────────────────────────────────
 console.log('== provision series ==');
 await step('series tags', async () => {
   if (!ADMIN_PASSWORD) throw new Error('ADMIN_PASSWORD not set: the series shots will show no series');
@@ -106,7 +95,7 @@ await step('series tags', async () => {
     // Sign this session out again, so it never shows in the admin Devices shot.
     await api(token, 'POST', '/auth/logout').catch(() => {});
   }
-  console.log('  ✓ series: Sherlock Holmes (3, 5), Alice (1, 2)');
+  console.log(`  ✓ series: ${SERIES.map((s) => `${s.series} ${s.index}`).join(', ')}`);
 });
 
 // ── Pass 1: warm a demo session ─────────────────────────────────────────────
@@ -151,35 +140,22 @@ console.log('== warm demo session ==');
   // Up next and a collection for the demo user, through the API with its own token
   // (the web player keeps it in localStorage under audiosilo.token.<connection id>).
   await step('queue + collection', async () => {
-    const r = await page.evaluate(
-      async ({queue, collection}) => {
-        const key = Object.keys(localStorage).find((k) => k.startsWith('audiosilo.token.'));
-        const token = key ? localStorage.getItem(key) : null;
-        if (!token) throw new Error('no demo token in localStorage');
-        const call = async (method, p, body) => {
-          const res = await fetch(`${location.origin}/api/v1${p}`, {
-            method,
-            headers: {'content-type': 'application/json', authorization: `Bearer ${token}`},
-            body: body === undefined ? undefined : JSON.stringify(body),
-          });
-          if (!res.ok) throw new Error(`${method} ${p} -> ${res.status}`);
-          return res.status === 204 ? null : res.json();
-        };
-        const libs = await call('GET', '/libraries');
-        const lib = (libs.libraries ?? libs)[0];
-        const {books} = await call('GET', `/libraries/${lib.id}/books?limit=200`);
-        const find = (t) => books.find((b) => `${b.title} ${b.rel_path}`.includes(t));
-        const ref = (b) => ({library_id: lib.id, path: b.rel_path});
-        const queued = queue.map(find).filter(Boolean);
-        for (const b of queued) await call('POST', '/me/queue', ref(b));
-        const made = await call('POST', '/me/collections', {name: collection.name, description: collection.description});
-        const items = collection.books.map(find).filter(Boolean).map(ref);
-        await call('PUT', `/me/collections/${made.collection.id}/items`, {items});
-        return {queued: queued.length, items: items.length};
-      },
-      {queue: QUEUE, collection: COLLECTION},
-    );
-    console.log(`  ✓ queued ${r.queued}, collection of ${r.items}`);
+    const token = await page.evaluate(() => {
+      const key = Object.keys(localStorage).find((k) => k.startsWith('audiosilo.token.'));
+      return key ? localStorage.getItem(key) : null;
+    });
+    if (!token) throw new Error('no demo token in localStorage');
+    const [lib] = (await api(token, 'GET', '/libraries')).libraries;
+    const {books} = await api(token, 'GET', `/libraries/${lib.id}/books?limit=200`);
+    const find = (t) => books.find((b) => `${b.title} ${b.rel_path}`.includes(t));
+    const ref = (b) => ({library_id: lib.id, path: b.rel_path});
+    const queued = QUEUE.map(find).filter(Boolean);
+    for (const b of queued) await api(token, 'POST', '/me/queue', ref(b)); // in order
+    const {name, description} = COLLECTION;
+    const made = await api(token, 'POST', '/me/collections', {name, description});
+    const items = COLLECTION.books.map(find).filter(Boolean).map(ref);
+    await api(token, 'PUT', `/me/collections/${made.collection.id}/items`, {items});
+    console.log(`  ✓ queued ${queued.length}, collection of ${items.length}`);
   });
 
   await ctx.storageState({path: AUTH});
@@ -194,7 +170,13 @@ console.log('== warm demo session ==');
 // player bar along the bottom (its expand button opens the full player). Moving
 // around with the chrome (not page.goto) keeps the book loaded, so the shots
 // after Listen show the mini player / docked bar.
-const tid = (page, id) => page.locator(`[data-testid="${id}"]`).first();
+//
+// Every visited tab page (and every page further down a stack) stays mounted but
+// hidden, so a test id or a button name can match several elements: always act on
+// the visible one.
+const firstVisible = (locator) => locator.filter({visible: true}).first();
+const tid = (page, id) => firstVisible(page.getByTestId(id));
+const escapeRe = (s) => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 
 async function newProfile(name, viewport, dsf) {
   console.log(`== ${name} (${viewport.width}x${viewport.height}) ==`);
@@ -222,10 +204,7 @@ async function librarySection(page, label) {
 
 // A card or tile whose accessible name starts with `name`.
 async function openNamed(page, name) {
-  await page
-    .getByRole('button', {name: new RegExp(`^${name.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}`)})
-    .first()
-    .click({timeout: 8000});
+  await firstVisible(page.getByRole('button', {name: new RegExp(`^${escapeRe(name)}`)})).click({timeout: 8000});
   await page.waitForLoadState('networkidle').catch(() => {});
   await sleep(3000);
 }
@@ -244,8 +223,7 @@ async function openFirstBook(page, shot) {
 }
 
 async function listen(page) {
-  const btn = page.getByRole('button', {name: /^listen$/i}).first();
-  await btn.click({timeout: 8000});
+  await firstVisible(page.getByRole('button', {name: /^listen$/i})).click({timeout: 8000});
   await sleep(4500);
 }
 
@@ -350,14 +328,9 @@ async function captureWide(name, viewport, shots) {
     await step('download a book', async () => {
       await librarySection(page, 'Books');
       await openNamed(page, 'The Art of War');
-      await page.getByRole('button', {name: /^download$/i}).first().click({timeout: 8000});
-      // Done once the book page offers Remove download (a hidden page further down the
-      // stack can hold another "Downloaded" text, so wait on the visible button).
-      await page
-        .getByRole('button', {name: /^remove download$/i})
-        .filter({visible: true})
-        .first()
-        .waitFor({state: 'visible', timeout: 120000});
+      await firstVisible(page.getByRole('button', {name: /^download$/i})).click({timeout: 8000});
+      // Done once the book page offers Remove download.
+      await firstVisible(page.getByRole('button', {name: /^remove download$/i})).waitFor({timeout: 120000});
       await sleep(1500);
     });
   }
@@ -413,8 +386,7 @@ async function capturePhone(name, viewport, shots) {
   if (shots.upNext) {
     // The sheet, from the Up next button beside Home's large title.
     await step('up next sheet', async () => {
-      // Every visited tab page keeps its own header mounted: take the visible one.
-      await page.locator('[data-testid="upnext-button-header"]:visible').first().click({timeout: 8000});
+      await tid(page, 'upnext-button-header').click({timeout: 8000});
       await sleep(2500);
       await shoot(page, shots.upNext);
     });

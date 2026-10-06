@@ -33,7 +33,7 @@ import http from 'node:http';
 import {cp, mkdir, rm, writeFile} from 'node:fs/promises';
 import path from 'node:path';
 import {chromium} from 'playwright';
-import {CACHE, sleep, shoot, step, DESKTOP_CONTEXT} from './lib.mjs';
+import {CACHE, apiClient, sleep, shoot, step, DESKTOP_CONTEXT} from './lib.mjs';
 
 const ORIGIN = (process.env.AS_ORIGIN || 'http://127.0.0.1:8790').replace(/\/$/, '');
 const ADMIN = `${ORIGIN}/admin`;
@@ -46,26 +46,7 @@ if (!PASSWORD) {
 }
 
 // ── Provision demo state via the API ────────────────────────────────────────
-const api = async (token, method, p, body, headers = {}) => {
-  const res = await fetch(`${ORIGIN}/api/v1${p}`, {
-    method,
-    headers: {
-      'content-type': 'application/json',
-      ...(token ? {authorization: `Bearer ${token}`} : {}),
-      ...headers,
-    },
-    body: body === undefined ? undefined : JSON.stringify(body),
-  });
-  const text = await res.text();
-  let json = null;
-  try {
-    json = text ? JSON.parse(text) : null;
-  } catch {
-    /* non-JSON */
-  }
-  if (!res.ok) throw new Error(`${method} ${p} -> ${res.status} ${text.slice(0, 120)}`);
-  return json;
-};
+const api = apiClient(ORIGIN);
 
 // Waits until no library scans or waits in the job queue (scans run one at a time).
 const waitForScans = async (token, timeoutMs = 90000) => {

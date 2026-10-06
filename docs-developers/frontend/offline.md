@@ -180,7 +180,8 @@ with no network.
   for the book screen / badges; the book menu (`book-actions.tsx`) calls the store
   directly; the `/downloads` page is below. Every user-facing removal (the book
   page, the book menu, the Downloads page) asks first through the shared
-  `RemoveDownloadConfirm`, which says how much room it frees.
+  `RemoveDownloadConfirm` (`src/components/downloads/remove-download-confirm.tsx`),
+  which says how much room it frees.
 
 ### Hydrate and the iOS container-move problem
 
