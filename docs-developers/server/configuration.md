@@ -165,6 +165,48 @@ showing the section (they gate on the `metadata` capability). Enrichment is
 strictly additive and cached - a slow or unreachable service degrades to no
 section, never a broken page.
 
+#### The persistent cache
+
+Answers are cached twice: in memory (24 h for a match, 1 h for "no match", 2 min
+for a service error; about 2,048 entries) and, behind that, in the server's own
+database, in the `meta_cache` table (migration `0024`; see
+[Data model](data-model.md#community-metadata-cache)). The second level is what
+makes the cache survive a restart and an outage:
+
+- **What it holds:** a book's enrichment (a match, a "no match", or an envelope
+  missing a series rail, the last for 2 minutes only and never over a stored
+  answer, which stays the outage fallback) keyed by its ASIN or ISBN, and works
+  fetched by id (`/meta/work`, and the previous books `/meta` adds), matches only.
+  Never a service error, and never a row for an unknown work id (an id is the
+  caller's choice, so storing misses would let any user grow the table); a `404`
+  for a work already stored replaces its row, so a dropped work isn't served again
+  in a later outage.
+- **How it is read:** after a memory miss. A row still within its TTL is served
+  and warms memory for the rest of that TTL. A match past its TTL is not served
+  while the service answers, but when the service fails it is served anyway
+  (however old) and held in memory for 2 minutes, so the service is asked again
+  soon.
+- **Rows from elsewhere are ignored:** each row records the payload format and
+  the `metadata.base_url` it came from, so pointing the server at another
+  metadata service never serves the old service's answers.
+- **Writes are bounded:** a row write waits at most 250 ms for the database's
+  single writer (a scan can hold it); one cut short costs only the row, never the
+  response.
+- **Placement reads it too:** placing a caller's books on the rails reads each
+  book's known work id from memory, else from its stored row, fresh or stale, so
+  which entry a book lands on doesn't change with a restart.
+- **Retention:** the daily retention job keeps the newest 20,000 rows (a few KiB
+  of JSON each), of which works fetched by id keep at most their newest 2,000, so
+  browsing many works never pushes the books' enrichments out.
+- **No config key:** the cache is read and written only by the metadata service,
+  so it follows `metadata.enabled`: with the lookup off, nothing is read from it
+  or written to it. Rows already there are kept (retention only trims the table
+  to its newest rows) and unused until the lookup is switched back on.
+- **Privacy:** it holds community data only - the metadata service's public
+  answers keyed by ASIN, ISBN or work id. No user, progress, path or library
+  information is stored in it; which books a user owns is worked out per
+  request and never cached. Like every table, it is part of a database backup.
+
 ### Backups (`backups.*`)
 
 Copies of the database (`internal/backup`; see

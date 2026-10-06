@@ -38,7 +38,11 @@ else and gate features on the flags.
     "websocket": false,
     "api_keys": true,
     "metadata": true,
-    "export": true
+    "export": true,
+    "meta_bundle": true,
+    "browse_people": true,
+    "cover_sizes": true,
+    "next_book": true
   },
   "auth": { "methods": ["auth_code", "password"] },
   "demo": { "enabled": false }
@@ -66,6 +70,17 @@ flag can change during a server's lifetime; clients gate the enriched-book
 section on it and should re-read it after reconnecting. `export` is true on
 servers that support the admin
 [library export](#get-apiv1adminlibrariesidexport).
+
+The player-redesign data API (Phase 1a) adds four flags. An older server omits
+them, so a client treats a missing flag as false and never sends the request it
+gates:
+
+| Flag | Value | Gates |
+|---|---|---|
+| `meta_bundle` | the same as `metadata` | the [`/meta`](#get-apiv1librariesidmeta) query params `include=previous` and `spoilers=hide` (an older server ignores both and sends the full envelope) |
+| `browse_people` | always `true` | the browse lists [`/authors`, `/narrators`](#get-apiv1librariesidauthors--get-apiv1librariesidnarrators) and [`/series`](#get-apiv1librariesidseries), and the `narrator` filter on [`/books`](#get-apiv1librariesidbooks) |
+| `cover_sizes` | always `true` | cover thumbnails, [`/cover?size=`](#get-apiv1librariesidcover) |
+| `next_book` | always `true` | [`/next`](#get-apiv1librariesidnext), what to play after a book |
 
 ### `GET /healthz` · `GET /api/v1/healthz`
 
@@ -513,6 +528,7 @@ Keyset-paginated (see [conventions](index.md#pagination)).
 |---|---|---|---|
 | `author` | string | - | exact-match filter |
 | `series` | string | - | exact-match filter |
+| `narrator` | string | - | exact-match filter on the whole narrator credit (`browse_people` capability; an older server ignores it and returns the unfiltered list) |
 | `sort` | string | `author` | `author` \| `title` \| `recent` (`recent` = newest `added_at` first) |
 | `limit` | int | `50` | ≤ 0 or > 200 falls back to 50 |
 | `cursor` | string | - | opaque cursor from a previous page's `next_cursor` |
@@ -534,7 +550,10 @@ Keyset-paginated (see [conventions](index.md#pagination)).
       "format": "m4b",
       "codec": "aac",
       "size": 512847361,
-      "added_at": "2026-05-14T09:12:44Z"
+      "added_at": "2026-05-14T09:12:44Z",
+      "published": "2006-07-17",
+      "cover_color": { "bg": "#1d2a3a", "accent": "#e8a33c", "on_accent": "#000000" },
+      "cover_version": "3f9a1c07be"
     }
   ],
   "next_cursor": "QnJhbmRvbiBTYW5kZXJzb24ANDEy"
@@ -544,7 +563,34 @@ Keyset-paginated (see [conventions](index.md#pagination)).
 Conditional book fields: `asin`/`isbn` appear only when known (attached via
 [enrichment](#put-apiv1adminlibrariesidenrichment) or set by an
 [admin edit](#patch-apiv1adminlibrariesidbook)); `codec` is omitted when never
-probed; `added_at` when unknown.
+probed; `added_at` when unknown. Every book response (lists, search, recent,
+`/item`, `/next`) also carries, each omitted when empty:
+
+| Field | Type | Notes |
+|---|---|---|
+| `published` | string | the publication date, `YYYY`, `YYYY-MM` or `YYYY-MM-DD`: the effective value from an [admin edit](#patch-apiv1adminlibrariesidbook) or an accepted community match |
+| `cover_color` | object | the cover's palette, lowercase `#rrggbb`: `bg` is its dominant colour; `accent` a vibrant colour of the cover adjusted to a WCAG contrast of at least 4.5:1 against `bg`, and `on_accent` (`#ffffff` or `#000000`) the text colour on it. `accent` and `on_accent` are omitted together when the cover has no usable vibrant colour |
+| `cover_version` | string | an opaque token (10 characters) for the cover art. Append it to a cover URL as `v=` so a client cache refetches a replaced cover |
+
+`cover_version` is on every indexed book: a short hash of the book's cover art
+identity (`books.cover_art`). That identity starts from index data alone (a custom
+cover's upload time, else the book's mtime, size and sidecar path), so it moves
+when a custom cover is uploaded or removed, when a re-index rewrites the book, and
+when a move or a disc join carries a custom cover. It also moves **once** at the
+book's first thumbnail of file art, to the version of the image itself (the
+sidecar's or audio file's size and modification time), so from then on it follows
+a sidecar overwritten in place, which leaves the index unchanged. A client may
+therefore fetch a cover once more after its first thumbnail; it is a cache buster,
+not a content hash.
+
+`cover_color` is read from a thumbnail of the art (any
+[`/cover?size=`](#get-apiv1librariesidcover) request or the console's
+[`POST /admin/covers`](#post-apiv1admincovers)) and stored tagged with the
+`cover_version` it was read for. It is sent only while that tag is the book's
+current `cover_version`, so it appears after the first thumbnail of the current
+art and disappears, without anything being cleared, when the art identity moves,
+until the next thumbnail. The long `description` is not on list responses: only
+[`/item`](#get-apiv1librariesiditem) reads and sends it.
 
 Metadata fields (`title`, `author`, `narrator`, `series`, `series_index`,
 `asin`, `isbn`) and chapter titles carry the **effective** values: what the scan
@@ -554,6 +600,59 @@ response, search, the `/fs` annotations and the export.
 List responses omit `files`, `chapters`, and `direct_playable` (single-book
 responses include them). `next_cursor` is omitted on the last page. Invalid
 cursor → `400`.
+
+### `GET /api/v1/libraries/{id}/authors` · `GET /api/v1/libraries/{id}/narrators`
+
+*Session.* The distinct authors (or narrators) of one library, with their book
+counts and total duration - the player's browse lists (`browse_people`
+capability). The same aggregate as the admin console's
+[`/admin/authors`](#get-apiv1adminauthors--get-apiv1adminnarrators), but limited
+to the caller's share scope and without `merge_suggestions`.
+
+```json
+{
+  "authors": [
+    { "name": "Brandon Sanderson", "books": 14, "duration": 1204112.6 }
+  ],
+  "unknown": 3
+}
+```
+
+The narrators route uses the key `narrators` instead of `authors`.
+
+- A name is the **whole** effective field value: a `Michael Kramer & Kate
+  Reading` credit is one entry, matching the exact `author` / `narrator` filter on
+  [`/books`](#get-apiv1librariesidbooks). Names sort case-insensitively.
+- `unknown` counts books with the field blank (they are not listed).
+- Only books the caller's shares grant are counted, so a share-scoped user never
+  sees a count for a book outside their grant.
+
+| Status | Meaning |
+|---|---|
+| `400` | invalid library id |
+| `403` | `no access to this library` - no share grants it |
+| `404` | `library not found` |
+
+### `GET /api/v1/libraries/{id}/series`
+
+*Session.* Every series of one library with the books the caller can reach in it
+(`browse_people` capability): the admin console's
+[`/admin/series`](#get-apiv1adminseries) aggregate, within the caller's share
+scope.
+
+```json
+{
+  "series": [
+    { "name": "Mistborn", "author": "Brandon Sanderson", "books": 3,
+      "duration": 284110.2, "positions": [1, 2, 3] }
+  ]
+}
+```
+
+`author` is the most common author among the series' books; `positions` lists the
+distinct non-zero series positions held, ascending (so a client can mark the
+gaps). Sorted case-insensitively by name; books with no series are not counted.
+Same status codes as `/authors`.
 
 ### `GET /api/v1/search`
 
@@ -604,7 +703,8 @@ added book is playable immediately.
 |---|---|---|
 | `path` | string | yes |
 
-Response `200` - a Book including files, chapters, and playability:
+Response `200` - a Book including files, chapters, playability and, when there
+is one, its `description`:
 
 ```json
 {
@@ -642,9 +742,18 @@ Response `200` - a Book including files, chapters, and playability:
       "book_offset": 0
     }
   ],
-  "direct_playable": true
+  "direct_playable": true,
+  "description": "For a thousand years the ash fell and no flowers bloomed…"
 }
 ```
+
+`description` is the book's effective description (an admin edit or an accepted
+community match), omitted when empty. It can be long, so only this single-book
+response carries it; list, search, recent and `/next` books leave it out. It is
+not the community-written `community_description` on
+[`/meta`](#get-apiv1librariesidmeta). The other fields every book carries
+(`published`, `cover_color`, `cover_version`) are described under
+[`/books`](#get-apiv1librariesidbooks).
 
 `direct_playable` reports whether the codec plays natively in browsers (unknown
 codec ⇒ `true`; the client falls back to `?transcode=1` if direct playback
@@ -656,7 +765,7 @@ or a disc folder (or a file in one) of a book
 resolves to the whole book, its `rel_path` the book's. The book must be in the
 caller's scope too: a share granting only part of a book (one disc folder, one
 file) gets the same `403` as a path outside the share, and nothing is read or
-indexed on its behalf. The same holds for `/chapters`, `/cover` and `/meta`;
+indexed on its behalf. The same holds for `/chapters`, `/cover`, `/meta` and `/next`;
 `/stream` is scoped on the file path alone, so granted files still stream.
 
 | Status | Meaning |
@@ -709,6 +818,90 @@ multi-file mp3 parts render identically.
 
 Same status codes as `/item`.
 
+### `GET /api/v1/libraries/{id}/next`
+
+*Session.* What to play after a book, decided by the server so every player
+follows a series the same way (`next_book` capability). The path is resolved and
+authorized exactly like [`/item`](#get-apiv1librariesiditem), and everything the
+answer names is inside the caller's share scope.
+
+| Query param | Type | Required |
+|---|---|---|
+| `path` | string | yes - the book just finished (or any path `/item` accepts) |
+
+```json
+{
+  "source": "community",
+  "next": { "library_id": 1, "path": "Brandon Sanderson/Mistborn/The Well of Ascension" },
+  "book": {
+    "id": 413,
+    "library_id": 1,
+    "rel_path": "Brandon Sanderson/Mistborn/The Well of Ascension",
+    "title": "The Well of Ascension",
+    "author": "Brandon Sanderson",
+    "series": "Mistborn",
+    "series_index": 2,
+    "duration": 105934.1
+  },
+  "work": {
+    "id": "the-well-of-ascension",
+    "title": "The Well of Ascension",
+    "position": "2",
+    "authors": [{ "id": "brandon-sanderson", "name": "Brandon Sanderson" }],
+    "web_url": "https://meta.audiosilo.app/work?id=the-well-of-ascension",
+    "local": { "library_id": 1, "path": "Brandon Sanderson/Mistborn/The Well of Ascension" }
+  }
+}
+```
+
+| Field | Notes |
+|---|---|
+| `source` | the step that produced `next`, or that decided nothing follows: `community`, `series`, `folder` or `none` |
+| `next` | `{library_id, path}`, the book to play next, always one the caller can open. Open it by its own `library_id`: a `community` answer can name a book in **another** of the caller's libraries. Absent when nothing follows |
+| `book` | the next book's indexed metadata in the list shape (no `files`, `chapters` or `description`); absent when `next` is a folder not indexed yet |
+| `work` | the community series rail's next entry, shaped like a [`/meta` rail entry](#get-apiv1librariesidmeta). With `local` beside a `community` answer; **without** `local` beside a `series`, `folder` or `none` answer when the rail names a next work the server could not place on one of the caller's books (a client can show it as "next in the series, not on this server"). Absent when the rail names nothing |
+
+The community rail answers first, but only when it can **place** its next entry on
+one of the caller's books. Otherwise the local steps decide, in order, and the
+first one with an answer wins:
+
+1. **`community`** - community metadata is on and the book matches a work with at
+   least one series rail. The server reads the entry after the current work on the
+   **first rail's main view** (the smallest numeric position above the current
+   one; unnumbered entries such as an omnibus `1-3` are skipped) and places it for
+   the caller exactly as `/meta` places [`local`](#owned-entries-local). When it is
+   placed, the answer is `next` + `book` + `work`. When it is not (the caller's copy
+   is untagged, or filed under a series named unlike the rail, or they don't have
+   it), failing to place proves nothing, so the steps below answer and the entry
+   rides along as `work` without `local`. Nothing comes from this step (no `work`)
+   when the book has no ASIN/ISBN, has no match or no rails, the metadata service
+   fails, the current position is not a number, or the current work is last on the
+   rail (a rail can lag the library). A failure reading the caller's books leaves
+   the entry unplaced, as `/meta` degrades.
+2. **`series`** - the book has a `series` and a `series_index` above 0: the book of
+   exactly that series in the same library with the smallest higher
+   `series_index` (ties by path), within the caller's scope. When other books of
+   the series are numbered but none comes later the answer is
+   `{"source": "series"}`, the end of the series; when nothing else is numbered the
+   step falls through.
+3. **`folder`** - the book's parent folder, listed whole as the caller may open it
+   (their share scope and the library's ignore rules): the first book or folder
+   whose name sorts after the current one, preferring an indexed book. Names are
+   compared the way the player's `localeCompare` (numeric, base sensitivity) does:
+   case and accents folded, numbers by value, so `Book 2` comes before `Book 10`;
+   ties by path. A folder that is not indexed is offered only when nothing in the
+   folder, the current book included, is indexed (a folder mid-scan); loose files
+   that are not books are never offered. Ordering is by name, not `series_index`.
+   An unreadable folder falls through.
+4. **`none`** - `{"source": "none"}`.
+
+| Status | Meaning |
+|---|---|
+| `400` | missing `path` / invalid library id |
+| `403` | the path, or the book it resolves to, is outside the caller's share scope |
+| `404` | `library not found`, or `no book at that path` |
+| `500` | `could not find the next book` - a database failure |
+
 ### `GET /api/v1/libraries/{id}/meta`
 
 *Session.* Community metadata enrichment for a book - a description, production
@@ -724,11 +917,17 @@ admin edit, which wins), looks the recording up
 upstream, and folds the matched recording plus up to three series rails (one per
 reading-order family - see [Reading-order families](#reading-order-families)) into
 one envelope. Every series-rail entry carries its own `web_url`, so a client links
-to the metadata site without ever building a URL itself.
+to the metadata site without ever building a URL itself. Answers are cached in
+memory and in the server's database (see
+[Configuration](../configuration.md#community-metadata-metadata)), so a restart
+serves them warm and a known book keeps its enrichment through a metadata-service
+outage.
 
-| Query param | Type | Required |
-|---|---|---|
-| `path` | string | yes |
+| Query param | Type | Required | Notes |
+|---|---|---|---|
+| `path` | string | yes | |
+| `include` | string | no | `previous` adds [`previous[]`](#previous-books-and-spoiler-gating). May repeat or be comma-separated; unknown values are ignored. `meta_bundle` capability |
+| `spoilers` | string | no | `hide` gates the envelope by the caller's saved progress ([below](#previous-books-and-spoiler-gating)); any other value is ignored. `meta_bundle` capability |
 
 Response `200` on a match:
 
@@ -763,6 +962,16 @@ Response `200` on a match:
     "recap_summary": {
       "in_short": "A botanist is left behind on Mars and has to keep himself alive…",
       "ending": "The Ares 3 crew slingshots back and catches him mid-intercept…"
+    },
+    "community_description": {
+      "text": "Mark Watney is the first person stranded on Mars…",
+      "license": "CC-BY-SA-4.0"
+    },
+    "attribution": {
+      "credit": "AudioSilo Meta community contributors",
+      "license": "CC BY-SA 4.0",
+      "license_url": "https://creativecommons.org/licenses/by-sa/4.0/",
+      "source_url": "https://meta.audiosilo.app/work?id=the-martian"
     }
   },
   "recording": {
@@ -772,7 +981,8 @@ Response `200` on a match:
     "runtime_min": 634,
     "release_date": "2013-03-22",
     "publisher": "Podium Audio",
-    "cover_url": "https://…"
+    "cover_url": "https://…",
+    "chapter_count": 26
   },
   "series": [
     {
@@ -786,7 +996,8 @@ Response `200` on a match:
           "position": "1",
           "authors": [{ "id": "andy-weir", "name": "Andy Weir" }],
           "cover_url": "https://…",
-          "web_url": "https://meta.audiosilo.app/work?id=the-martian"
+          "web_url": "https://meta.audiosilo.app/work?id=the-martian",
+          "local": { "library_id": 1, "path": "Andy Weir/The Martian" }
         }
       ]
     }
@@ -798,7 +1009,9 @@ Response `200` on a match:
 `work` is always present on a match; `recording` and `series` are omitted when
 the upstream has none, and every `omitempty` string/number field (`subtitle`,
 `first_published`, `description`, `abridged`, `runtime_min`, `release_date`,
-`publisher`, `cover_url`) is dropped when empty. `series[].position` is this
+`publisher`, `cover_url`, `chapter_count`) is dropped when empty.
+`recording.chapter_count` is the matched recording's chapter count, omitted when
+the metadata service does not know it. `series[].position` is this
 work's position in that series; `series[].works` is the full ordered rail,
 **including the current work** (the client filters it out before drawing a "more
 in this series" row). Positions are strings ("1", "2.5", "1-3.5").
@@ -904,6 +1117,90 @@ not composed or reshaped like `recording`/`series`. The one field the server
 drops is the character cross-reference (`xref`) - it is not exposed to clients. A
 client that ignores these fields is unaffected.
 
+`work.community_description` (`{ "text": …, "license": … }`, `license` omitted
+when unstated) is the community-written, spoiler-free description: part of the CC
+BY-SA layer, kept apart from `description` (the CC0 core's blurb) because the two
+carry different licences. It is absent for most works.
+
+#### Attribution
+
+`work.attribution` is the credit the CC BY-SA layer requires wherever it is shown:
+
+| Field | Value |
+|---|---|
+| `credit` | `AudioSilo Meta community contributors` |
+| `license` | `CC BY-SA 4.0` |
+| `license_url` | `https://creativecommons.org/licenses/by-sa/4.0/` |
+| `source_url` | the work's page on the metadata site (the envelope's `web_url`) |
+
+It is present **if and only if** the work carries CC BY-SA content
+(`characters`, `recaps`, `recap_summary` or `community_description`), so a client
+shows the credit exactly when it shows content that needs it. The server writes
+the legal text: a client renders these fields beside that content and never
+composes its own. It is on every work the server returns: the envelope's `work`,
+each `previous[]` work and [`/meta/work`](#get-apiv1metawork). With
+`spoilers=hide`, a work left with no CC BY-SA content after gating loses its
+`attribution` too.
+
+#### Owned entries (`local`)
+
+Every rail entry the **caller** owns carries `local`, `{ "library_id": …, "path":
+… }`: the book to open for that entry. It appears in the main view
+(`series[].works[]`) and in each alternate order (`series[].orderings[].works[]`),
+and is absent where the caller has no copy. It is worked out for each request,
+after the cache and on a copy of the rails, and is never stored: the cached
+envelope is shared by every caller.
+
+The candidates are the caller's books, in every library they can reach and only
+the paths their shares grant, whose `series` matches a rail or ordering name with
+case, accents, punctuation and spacing ignored (`The Expanse` matches `the
+Expanse!`). Each entry gets at most one book, the first that applies:
+
+1. the current work's entry: the book the request is for;
+2. a book the server already knows to be that work (from the community answers it
+   has cached, in memory or else in its database, fresh or stale; never a new
+   upstream call, so placement doesn't change with a restart);
+3. in an alternate order, the book the main view placed for the same work;
+4. a book of a series named like this view (the rail's or ordering's own name)
+   whose `series_index` equals the entry's numeric position.
+
+A book known to be a particular work is placed by that identity only, never by
+its number, so a novella numbered like the next volume holds no slot. When two
+books qualify, one in the requested book's library wins, then library order, then
+path.
+
+`local` is an extra: when the caller's books can't be read, the envelope is sent
+without it (the failure is logged) rather than failing the lookup.
+
+#### Previous books and spoiler gating
+
+`include=previous` adds `previous`: the works **before** this one in its series,
+nearest first, at most five, each the same shape as `work`. They come from each
+rail's **main view** only (an alternate order's earlier books are exactly the
+reading-order spoiler the main view avoids): every entry whose numeric position is
+below the current work's. A rail whose own position is not a number contributes
+nothing, nor does an unnumbered entry; a work on two rails counts once. Each is
+fetched and cached like [`/meta/work`](#get-apiv1metawork), and one that fails is
+left out rather than failing the envelope. `previous` is omitted when there are
+none.
+
+`spoilers=hide` gates the envelope by the **caller's own saved progress** on this
+book (the server's progress record, mapped onto the book's chapters by
+`book_offset`; no saved progress counts as not started):
+
+| Content | Kept when |
+|---|---|
+| the current work, whole | the book is finished |
+| a character | its `reveal.chapter` is at most the current chapter (at least chapter 1, so a book not yet started still shows its opening cast) |
+| a recap | its `through.chapter` is `0`, or below the current chapter (the chapter being heard is not over) |
+| `recap_summary` | the book is finished (`in_short` and `ending` both summarize the whole book) |
+| a `previous[]` work | always, except its `recap_summary.ending` |
+
+These are the player's own rules (`meta-gating.ts`), but the player does not use
+this param: it gates on the device against its live position, which can be ahead
+of the last saved one. `spoilers=hide` is for clients that cannot gate
+themselves.
+
 When the book has neither an `asin` nor an `isbn`, or the upstream reports no
 match, the response is `200 { "matched": false }` - a normal, non-error result
 that the client treats as "nothing to show":
@@ -918,7 +1215,8 @@ that the client treats as "nothing to show":
 | `400` | missing `path` / invalid library id |
 | `403` | path outside the caller's share scope |
 | `404` | `no book at that path`, **or** metadata lookup is disabled on this server (`metadata` capability false) |
-| `502` | `metadata service unavailable` - the upstream was unreachable or errored |
+| `500` | with `spoilers=hide`, `could not load progress` - the caller's progress could not be read; the ungated envelope is never sent instead |
+| `502` | `metadata service unavailable` - the upstream was unreachable or errored and the server holds no earlier answer for the book |
 
 ### `GET /api/v1/meta/work`
 
@@ -939,7 +1237,11 @@ Unlike `/libraries/{id}/meta` this route is **plain authed, not scope-checked**:
 a work id says nothing about what is on this server, so a scoped user may read
 any work. It is gated by the same `metadata` [capability](#get-apiv1server) and
 served from the same bounded cache as the enrichment lookups (its own `w:` key
-space; 24 h positive / 1 h not-found / 2 min transport-error TTLs).
+space; 24 h positive / 1 h not-found / 2 min transport-error TTLs). A found work is
+also kept in the database cache, so it survives a restart and is served through an
+upstream outage. An unknown id is remembered in memory only, except that a `404`
+for a work the database already holds replaces that row, so a work upstream has
+dropped is not served again in a later outage.
 
 Response `200`:
 
@@ -960,8 +1262,9 @@ Response `200`:
 ```
 
 `work` is exactly the same shape as `work` inside the `/libraries/{id}/meta`
-envelope (documented above, same `omitempty` rules) - there is deliberately no
-second work type. The enrichment fields that only make sense for a matched local
+envelope (documented above, same `omitempty` rules, including
+`community_description` and [`attribution`](#attribution)) - there is deliberately
+no second work type. The enrichment fields that only make sense for a matched local
 book (`matched`, `recording`, `series`, `web_url`) are **not** returned here.
 
 | Status | Meaning |
@@ -1032,13 +1335,56 @@ kills it.
 The path is authorized against the caller's share scope before any of the
 three is tried, custom covers included.
 
-| Query param | Type | Required |
-|---|---|---|
-| `path` | string | yes |
-| `token` | string | no (media-auth fallback) |
+| Query param | Type | Required | Notes |
+|---|---|---|---|
+| `path` | string | yes | |
+| `size` | int | no | `160`, `320` or `640`: a JPEG thumbnail instead of the full art (`cover_sizes` capability; below) |
+| `v` | string | no | ignored by the server; clients append the book's `cover_version` as a cache buster |
+| `token` | string | no | media-auth fallback |
 
 Response `200`: image bytes with the appropriate `Content-Type`; `404`
 (`no cover`) when there is no custom cover, no cover file and no embedded art.
+
+**Thumbnails (`?size=`).** With `size`, the response is a JPEG of the same art
+(custom cover, sidecar image or embedded art, in the same order) scaled to fit
+within `size` x `size` pixels, never scaled up, from the server's in-memory
+thumbnail cache - the one the admin console's
+[`POST /admin/covers`](#post-apiv1admincovers) uses. Its longer side is at most
+`size` pixels (a 2:3 portrait cover at `320` is 213 x 320). A source larger than 40
+megapixels, or one that can't be decoded, is a `404` here although the full-art URL
+still serves it, so a client falls back to the URL without `size` on a thumbnail
+`404`.
+
+- `ETag` is `"thumb-<size>-<hash>"`, the hash of the art's own version: the value
+  the book's [`cover_version`](#get-apiv1librariesidbooks) takes from its first
+  thumbnail on. `If-None-Match` is matched like the server's other validators (a
+  list, weak tags).
+- A matching request gets a `304` without the image being read once the book's
+  `cover_color` is recorded for this art. Until then the server still reads the art
+  (usually from the thumbnail cache) to record it, and then answers the `304`, so a
+  client that only ever revalidates still gets the colour onto the book.
+- `Cache-Control` is `private, no-cache` for a custom cover (it can be replaced at
+  any moment, so a client revalidates every time) and `private, max-age=86400` for
+  a sidecar or embedded cover, as for full art.
+- Neither header is sent on a `404`, so "no cover" is never cached.
+- Each thumbnail (a cached one too) records on the book what it lacks for this
+  art: its [`cover_color`](#get-apiv1librariesidbooks) and, at the first one, its
+  art identity, which moves `cover_version`. The write is bounded (250 ms, not tied
+  to the request), so a busy database costs only the colour until the next
+  thumbnail, never the response.
+- Art reads are bounded across all requests (8 at a time, with decodes bounded
+  separately), shared with `POST /admin/covers`.
+
+A client appends `v=<cover_version>` to every cover URL (with or without `size`)
+so a cover replaced since the last fetch is a new URL to its image cache.
+
+| Status | Meaning |
+|---|---|
+| `400` | `size must be one of [160 320 640]` - any other value, including an empty `size=` (an older server ignores `size`, so only send it when `cover_sizes` is true); missing `path` / invalid library id |
+| `304` | `If-None-Match` matched (thumbnails, and custom covers) |
+| `403` | the path, or the book it resolves to, is outside the caller's share scope |
+| `404` | `no cover`: no art at all, no book at the path, or (with `size`) art that cannot be decoded or is over 40 megapixels |
+| `500` | `could not load cover` - the art could not be read (an unreadable network mount) or a database failure; not cached, so the next request tries again |
 
 ## Listening state
 
@@ -1865,8 +2211,8 @@ back to the scanned value, **revert** it instead.
 | `asin` | 10 letters or digits (uppercased) |
 | `isbn` | an ISBN-10 or ISBN-13; hyphens and spaces are stripped, `x` uppercased |
 
-Values are trimmed. `published` and `description` are admin-console fields only:
-they appear in these endpoints but not on the player's book JSON.
+Values are trimmed. The player's book JSON carries the effective `published` on
+every book and `description` on [`/item`](#get-apiv1librariesiditem) only.
 
 Every field reports a **source**: `path` (a scanned value equal to what the
 folder and file names yield), `tag` (any other scanned value - it came from the
@@ -2393,7 +2739,9 @@ curl -X PUT -H "Authorization: Bearer $TOKEN" --data-binary @cover.jpg \
 
 Responses `200`: `{ "status": "cover set", "path": "…" }` /
 `{ "status": "cover removed", "path": "…" }`. Removing a cover that isn't there
-is not an error.
+is not an error. Setting or removing a cover moves the book's
+[`cover_version`](#get-apiv1librariesidbooks) at once, so its `cover_color` stops
+being sent until the next thumbnail of the new art records one.
 
 | Status | Meaning |
 |---|---|
@@ -2444,10 +2792,14 @@ Response `200`, one entry per requested book, in request order:
   cover's upload time, a file's size and modification time), so a replaced
   cover is picked up on the next request. A source image larger than 40
   megapixels is refused from its header (it reads as no art).
+- Each thumbnail also records the book's
+  [`cover_color`](#get-apiv1librariesidbooks) (and, at its first thumbnail, the art
+  identity behind `cover_version`) when the book lacks them for this art, exactly
+  as [`GET /libraries/{id}/cover?size=`](#get-apiv1librariesidcover) does.
 
 | Status | Meaning |
 |---|---|
-| `400` | `books is required` (an empty list); `size must be 160, 320 or 640`; `invalid request` (malformed body or an unknown key); `code: "too_large"` for more than 60 books |
+| `400` | `books is required` (an empty list); `size must be one of [160 320 640]`; `invalid request` (malformed body or an unknown key); `code: "too_large"` for more than 60 books |
 | `401` / `403` | anonymous / non-admin |
 | `500` | `could not load covers` - a database failure (an unreadable image is never an error, it is `""`) |
 

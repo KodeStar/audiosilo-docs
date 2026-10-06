@@ -58,11 +58,25 @@ exposes React Query hooks.
 **Admin metadata edits don't move the player wire.** The book JSON's metadata
 fields carry the *effective* values (scan, then enrichment, then any admin
 override), so a player simply receives the edited title/author/etc. with no new
-field to mirror. The admin-only columns the edits introduced (`published`,
-`description`, `has_cover`, the scanned values, per-file codec) are kept off the
-player's book JSON on purpose (`json:"-"` on `catalog.Book`); they surface only
-through the admin-only catalog API (`/api/v1/admin/books` and friends), which
-the admin console in the server repo consumes.
+field to mirror. Of the columns the edits introduced, `published` rides on every
+player book and `description` on `GET /libraries/{id}/item` only (it can be long,
+so list pages leave it out); `has_cover`, the scanned values and per-file codec stay
+off the player's book JSON (`json:"-"` on `catalog.Book`) and surface only through
+the admin-only catalog API (`/api/v1/admin/books` and friends), which the admin
+console in the server repo consumes.
+
+**Player-redesign data API (Phase 1a).** Additive shapes the frontend mirrors in
+`types.ts`/`client.ts`/`hooks.ts`, each behind a capability flag (seam 8), with no
+screen consuming them yet: every `Book` gains `published`, `cover_color` (`{bg,
+accent?, on_accent?}`, sent only while it matches the current art) and
+`cover_version` (a hash of the book's cover art identity, a cache buster rather than
+a content hash); `GET /libraries/{id}/authors`,
+`/narrators` (`{ authors|narrators, unknown }`, normalised by the client to
+`PeopleList { people, unknown }`) and `/series` (`{ series }`) are scope-filtered
+browse lists, and `/books` takes `narrator=` (`useLibraryBooks`); `GET
+/libraries/{id}/next` answers `{ source, next?, book?, work? }` (`NextBook`, seam
+14). The share-scope SQL behind all of these (`pathFilterSQL`) is a case-sensitive
+byte-range prefix, matching `Scope.Allows` exactly.
 
 ## 3. Media auth rides in the URL - `?token=`
 
@@ -76,6 +90,14 @@ header-only (`bearerToken(r, false)`), so tokens never ride the query string whe
 they could leak into access logs or Referer headers.
 **Frontend:** `client.ts` `mediaTokenQuery()` → `coverUrl()`/`streamUrl()`. Native
 also sends the header (belt-and-braces); web relies solely on the query param.
+
+**Cover thumbnails** ride the same path: `GET /libraries/{id}/cover?size=160|320|640`
+(capability `cover_sizes`) is a JPEG of the same art with an `ETag` of size + art
+version and `Cache-Control: private, no-cache` (custom cover) or
+`private, max-age=86400` (file art); any other `size` is a `400`, and a thumbnail
+that can't be made is a `404` the client answers by falling back to the full-art
+URL. Clients add the book's `cover_version` as `v=` purely as a cache buster:
+`coverUrl(lib, path, { size, version })`.
 
 **A change requires:** do **not** "tighten" the server to reject query-param
 tokens on media routes without first removing the web player's dependency on
@@ -165,14 +187,22 @@ and `app.json` together, or pairing breaks.
 version.
 
 **Server:** `handleServerInfo` advertises `admin_ui`, `web_player`, `upload`,
-`transcode`, `websocket`, `api_keys`, plus the server version (`api.Version`,
-stamped from the release tag via ldflags). `transcode` reflects ffmpeg
-availability; `web_player` reflects whether `/web` is populated; `api_keys`
-reflects that the server accepts user-minted API keys. (`upload` and `websocket`
-are reserved for **planned** phases - `POST /uploads` and WebSocket sync are not
-shipped.)
+`transcode`, `websocket`, `api_keys`, `export`, `metadata`, `meta_bundle`,
+`browse_people`, `cover_sizes` and `next_book`, plus the server version
+(`api.Version`, stamped from the release tag via ldflags). `transcode` reflects
+ffmpeg availability; `web_player` reflects whether `/web` is populated; `api_keys`
+reflects that the server accepts user-minted API keys; `metadata` and
+`meta_bundle` follow the runtime metadata switch; `browse_people`, `cover_sizes`
+and `next_book` are always true on a server that has them (the full table is in
+[API conventions](../server/api/index.md#capability-flags---gate-your-features)).
+(`upload` and `websocket` are reserved for **planned** phases - `POST /uploads`
+and WebSocket sync are not shipped.)
 **Frontend:** the `ServerInfo` type; feature gating and the "connected server
-version" display key off it.
+version" display key off it. The Phase 1a flags are optional on `Capabilities`
+and read through the exported, tri-state `useCapability(flag, connectionId?)` in
+`hooks.ts` (`undefined` until `/server` answers, then `true`/`false`); the gated
+hooks give a server without the flag no query function (`skipToken`), so it is
+never asked.
 
 **A change requires:** adding a capability is a two-repo change - flip the flag as
 the feature lands server-side, and gate the new UI on it client-side. Never assume
@@ -313,6 +343,29 @@ additive alternates, so a shipped player that ignores them still sees one rail i
 the primary order; the current player adds a per-family order toggle that its
 "previous books" list follows (see
 [Reading-order families](../server/api/reference.md#reading-order-families)).
+
+The player-redesign bundle (Phase 1a) adds, all additive: `work.community_description`
+(the CC BY-SA description, apart from the CC0 `description`), `work.attribution`
+(present iff the work carries CC BY-SA content; **the server writes the legal
+text** and a client must render it beside that content, never compose it),
+`recording.chapter_count`, and `local` `{library_id, path}` on each rail entry the
+caller owns (main view and orderings). `local` is resolved **per request, after
+the shared cache, on a copy**, and never stored in it. `?include=previous` adds
+`previous[]` (the main view's earlier works, nearest first, at most 5) and
+`?spoilers=hide` gates the envelope by the caller's saved server progress, both
+behind the `meta_bundle` capability; spoiler gating still **stays on the device
+by default** (the player gates against its live position and does not send the
+param). A failure placing the caller's books sends the envelope without `local`
+rather than failing it. `GET /libraries/{id}/next` answers from the community rail
+only when it places the next work on one of the caller's books (possibly in
+another library); otherwise the local series, then the folder, then none answer,
+with an unplaced community next work riding along as `work` without `local`.
+Answers are also kept in a persistent `meta_cache` table (no config key, follows
+`metadata.enabled`, community data only; the newest 20,000 rows, works fetched by
+id at most 2,000 of them) so a restart is warm and an outage serves the last known
+answer. See
+[`/meta`](../server/api/reference.md#get-apiv1librariesidmeta) and
+[Configuration](../server/configuration.md#the-persistent-cache).
 
 **A change requires:** because the server consumes `metaserve`'s response shapes,
 a change to those shapes ripples audiosilo-meta -> the server's `internal/meta` ->

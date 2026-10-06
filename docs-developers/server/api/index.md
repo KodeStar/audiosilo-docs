@@ -290,7 +290,12 @@ a `limit` and no pagination.
     "upload": false,
     "websocket": false,
     "api_keys": true,
-    "metadata": true
+    "metadata": true,
+    "export": true,
+    "meta_bundle": true,
+    "browse_people": true,
+    "cover_sizes": true,
+    "next_book": true
   },
   "auth": { "methods": ["auth_code", "password"] },
   "demo": { "enabled": false }
@@ -305,9 +310,24 @@ supports user-minted [API keys](reference.md#personal-api-keys), `metadata`
 whether [community metadata lookup](reference.md#get-apiv1librariesidmeta) is
 configured (it gates the standalone
 [work lookup](reference.md#get-apiv1metawork) too, and the enriched-book
-material is drawn only when it is true),
+material is drawn only when it is true), `export` whether the admin
+[library export](reference.md#get-apiv1adminlibrariesidexport) exists,
 `upload`/`websocket` are roadmap phases that will flip on when they land.
 `demo.enabled` drives the "Try the demo" affordance.
+
+The player-redesign data API added four more. A server that predates a flag omits
+it, so treat a missing flag as `false`:
+
+| Flag | Gates |
+|---|---|
+| `meta_bundle` | `include=previous` and `spoilers=hide` on [`/meta`](reference.md#get-apiv1librariesidmeta); always equal to `metadata` |
+| `browse_people` | the browse lists [`/authors`, `/narrators`](reference.md#get-apiv1librariesidauthors--get-apiv1librariesidnarrators) and [`/series`](reference.md#get-apiv1librariesidseries), and `narrator=` on [`/books`](reference.md#get-apiv1librariesidbooks) |
+| `cover_sizes` | `?size=160\|320\|640` thumbnails on [`/cover`](reference.md#get-apiv1librariesidcover) |
+| `next_book` | [`/next`](reference.md#get-apiv1librariesidnext), the server's answer to what plays after a book |
+
+Gate on the flag rather than on the server version: an older server answers
+`size=` and `narrator=` by ignoring them (full art, the unfiltered list) and the
+new routes with a `404`.
 
 ## Rate limiting
 

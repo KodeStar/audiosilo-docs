@@ -55,6 +55,17 @@ themselves.
   an on-the-fly MP3 transcode (`transcode=1`, `t=<seconds>` for a mid-file
   start). Note: nothing *automatically* requests the transcode yet - the
   `direct_playable` negotiation on web is a known open follow-up.
+- **`coverUrl(libraryId, path, opts?)`** takes `{ size, version }`: `size`
+  (`CoverSize`, `160 | 320 | 640`) asks for a JPEG thumbnail whose **longer side**
+  is at most that many pixels, and only when the server advertises `cover_sizes`
+  (any other value is a `400`; an older server ignores it and sends the full art).
+  A thumbnail is a `404` when none can be made (art the server can't decode, or
+  over 40 megapixels) while the full-art URL may still serve it, so fall back to
+  the URL without `size`. `version` is the book's `cover_version`, appended as
+  `v=` purely as a cache buster (the server ignores it); it is not a content hash
+  (see `Book.cover_version` in `types.ts` for when it moves). An empty version
+  adds nothing. With no options the URL is exactly what it was before
+  (`?path=&token=`).
 
 ## `types.ts` - the mirroring rule
 
@@ -83,7 +94,8 @@ servers at once, and two of them can each have a "library 1"): `qk.item(cid, lib
 path)`, `qk.chapters(cid, lib, path)`, `qk.progress(cid, lib, path)`,
 `qk.allProgress(cid)`, `qk.bookmarks/notes/history(cid, lib, path)`,
 `qk.favourites(cid)`, `qk.libraries(cid)`, `qk.browse(cid, lib, path)`,
-`qk.bookMeta(cid, lib, path)`, `qk.metaWork(cid, workId)`, `qk.server(cid)` - so mutations can invalidate
+`qk.bookMeta(cid, lib, path, opts?)`, `qk.metaWork(cid, workId)`, `qk.authors/narrators/seriesList(cid, lib)`,
+`qk.libraryBooks(cid, lib, query)`, `qk.nextBook(cid, lib, path)`, `qk.server(cid)` - so mutations can invalidate
 precisely and one server's cache never shadows another's. Content keys are `(connectionId, libraryId, path)` tuples,
 extending the path-is-identity rule across connections.
 
@@ -117,6 +129,66 @@ where a result lives ("server · library") for de-duplicated rows.
 `provider.tsx` also registers an `onReconnect` handler that invalidates **all**
 queries when the server becomes reachable again - screens that errored or
 emptied while offline repopulate without a remount.
+
+### Capability-gated reads (player redesign Phase 1a)
+
+The player redesign's data layer landed ahead of its screens: these methods and
+hooks exist, are tested (`client.test.ts`, `hooks-capability.test.tsx`), and are
+**not consumed by any screen yet** (Phase 2 onwards uses them).
+
+**`useCapability(flag, connectionId?)`** (exported from `hooks.ts`) is tri-state:
+`undefined` while the connection's `/server` info is unknown (still loading, or
+unreachable), then `true` or `false` (a server that predates the flag reads
+`false`). A screen picks its fallback, or hides the feature, on `false`, and on
+`undefined` waits or decides for itself. `useServerInfo(connectionId?)` takes the
+same optional connection id and keeps its answer (`gcTime: Infinity`), so a gated
+hook mounted later starts from the known flags.
+
+Each gated hook asks only a server whose flag is `true`. Until then its query has
+**no function at all** (`skipToken`), so not even a manual `refetch` reaches an
+older server (React Query rejects it instead) and the query stays pending.
+
+| Client method | Hook | Capability | Endpoint |
+|---|---|---|---|
+| `listBooks(lib, { author, series, narrator, sort, limit, cursor })` | `useLibraryBooks(lib, query?, connectionId?)` | `browse_people`, only when `query.narrator` is set | `GET /libraries/{id}/books` (keyset pages of 100, `BookPage`; key `qk.libraryBooks`) |
+| `authors(lib)` / `narrators(lib)` | `useAuthors` / `useNarrators(lib, connectionId?)` | `browse_people` | `GET /libraries/{id}/authors`, `/narrators` |
+| `seriesList(lib)` | `useSeriesList(lib, connectionId?)` | `browse_people` | `GET /libraries/{id}/series` (`SeriesCount[]`) |
+| `nextBook(lib, path)` | `useNextBook(lib, path, enabled?, connectionId?)` | `next_book` | `GET /libraries/{id}/next` (`NextBook`) |
+| `bookMeta(lib, path, signal, { includePrevious, hideSpoilers })` | `useBookMeta(lib, path, enabled, opts?)` | `meta_bundle` (the caller checks it; the hook gates only on `enabled`) | `GET /libraries/{id}/meta?include=previous&spoilers=hide` |
+| `coverUrl(lib, path, { size, version })` | - | `cover_sizes` for `size` | `GET /libraries/{id}/cover?size=&v=` |
+
+- **People lists are normalised.** The server answers `{ authors, unknown }` and
+  `{ narrators, unknown }`; the client returns both as one shape,
+  `PeopleList { people: PersonCount[], unknown: number }`, defaulting a `null`
+  array to `[]` and a missing count to `0`. `seriesList` unwraps `{ series }` to
+  `SeriesCount[]` and `listBooks` defaults `books` to `[]`. The three browse
+  lists are whole-library aggregates, so they keep a **5-minute** `staleTime`.
+- **`useLibraryBooks`** pages on the server's cursor (`BookListQuery`: exact
+  `author`/`series`/`narrator`, `sort`). `author` and `series` work on every
+  server; a `narrator` filter needs `browse_people`, because an older server
+  ignores it and would answer with the whole library.
+- **`bookMeta` options are part of the key.** `qk.bookMeta(cid, lib, path, opts)`
+  adds a variant segment only when an option is set, under the plain key as a
+  prefix (invalidating the plain key reaches every variant). A `hideSpoilers`
+  envelope is cut at the caller's saved progress when it is fetched, so it keeps
+  the default 30 s `staleTime` instead of an hour.
+- **Longer timeouts for upstream waits.** `nextBook` and `bookMeta` with
+  `includePrevious` use a 30 s request timeout (the server's own request budget)
+  instead of the client's 15 s, because the server can spend its whole
+  community-metadata budget before answering.
+- **`useNextBook`** takes an optional `connectionId` like `useBook`, so the player
+  (outside any route scope) can ask the playing book's own server, and an
+  `enabled` flag so it fetches only when the answer is needed. A community `next`
+  can be in another of the caller's libraries: open it by its own `library_id`.
+  The shipped end-of-book flow still resolves the folder sibling on the device
+  ([Playback](playback.md)) until a later phase switches to it.
+- **New wire fields, typed but unused so far:** `Book.published`, `description`
+  (`/item` only), `cover_color` (`CoverColor { bg, accent?, on_accent? }`) and
+  `cover_version`; `BookMetaWork.community_description` and `attribution`
+  (`BookMetaAttribution`: the server writes the CC BY-SA credit, and a screen that
+  shows community content must render it beside that content, never compose it);
+  `BookMetaRecording.chapter_count`; `local` (`BookRef`) on rail entries; and
+  `previous` on a matched `BookMeta`. All optional, absent on older servers.
 
 ### The book screen's tabs
 
@@ -293,7 +365,10 @@ Three details make all of this safe to add to a screen everyone sees:
   so a 502 from a down metadata service resolves once and stops - it must not
   spin or block the rest of the screen.
 
-`client.bookMeta(libraryId, path, signal)` calls `GET /libraries/{id}/meta`; the
+`client.bookMeta(libraryId, path, signal, opts?)` calls `GET /libraries/{id}/meta`
+(the optional `{ includePrevious, hideSpoilers }` add the `meta_bundle` params,
+which `useBookMeta(..., opts)` passes through; the book screen sends neither, so it
+still gates spoilers on the device); the
 `BookMeta` discriminated union (`{ matched: false } | { matched: true; work;
 recording?; series?; web_url }`) in `types.ts` is hand-mirrored from the server's
 envelope, and `client.metaWork` reuses the very same `BookMetaWork` type rather

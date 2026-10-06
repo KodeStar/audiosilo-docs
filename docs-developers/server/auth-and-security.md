@@ -250,7 +250,7 @@ query shape**:
 |---|---|---|
 | `Scope.Allows(p)` | `p` is equal to or under a granted rule (segment-boundary prefix match) | `authorizedPath` in `handlers_library.go` - **every** path-addressed endpoint (`item`, `chapters`, `cover`, `stream`, progress/bookmarks/notes/history/favourites writes) |
 | `Scope.VisibleInBrowse(p)` | `Allows(p)` **or** `p` is an *ancestor* of a rule - so the user can navigate toward granted content | `handleBrowseFS` → passed as the `allow` filter to `library.BrowseFS` (applied before pagination so pages stay full) |
-| `pathFilterSQL(col, scope)` | The same grant logic as a SQL `WHERE` fragment (`col = ?` OR `col LIKE ? ESCAPE '\'`), with LIKE metacharacters escaped so `Sci_Fi` can't over-match `SciXFi` | `ListBooks`, `Search`, `RecentBooks`; `scopesFilterSQL` extends it across libraries for the cross-library listings (`/me/progress`, `/me/history`, `/me/favourites`) |
+| `pathFilterSQL(col, scope)` | The same grant logic as a SQL `WHERE` fragment: `col = ?` OR the byte range `col >= 'rule/' AND col < 'rule0'` (`0` is the byte after `/`), so it is a literal, **case-sensitive** prefix with no wildcards to escape. It used `LIKE` until the player-redesign data API; `LIKE` ignores ASCII case, so a grant on `Saga` also reached a sibling `saga/...` on a case-sensitive filesystem | `ListBooks`, `Search`, `RecentBooks`, the player's browse lists (`/authors`, `/narrators`, `/series`), `/next`'s series step and the owned-book placement on `/meta` rails; `scopesFilterSQL` extends it across libraries for the cross-library listings (`/me/progress`, `/me/history`, `/me/favourites`) |
 
 The Go predicate (`pathAllowedBy`) is authoritative; `pathFilterSQL` must stay
 behaviorally identical to it.
@@ -258,7 +258,7 @@ behaviorally identical to it.
 A requested path can resolve to a book **above** it: a part of a folder book, or
 a disc folder of a book joined from its disc folders (`bookForPath`; see
 [On-demand indexing](scanner.md#on-demand-indexing-indexpath)). Allowing the
-requested path isn't enough then: `item`, `chapters`, `cover` and `meta` also
+requested path isn't enough then: `item`, `chapters`, `cover`, `meta` and `next` also
 require `Scope.Allows(book.RelPath)`, and `Scanner.IndexPathWithin` checks it
 before reading anything (`library.ErrNotAllowed`). A share granting only one
 disc folder or one file of a book gets the same `403 no access to this path`

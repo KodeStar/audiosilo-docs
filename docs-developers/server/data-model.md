@@ -4,7 +4,7 @@ description: "The SQLite schema behind audiosilo-server: the rebuildable index v
 ---
 
 The schema lives in `internal/store/migrations/` as numbered SQL files
-(`0001_init.sql` … `0019_audit_notifications.sql`), embedded into the binary and
+(`0001_init.sql` … `0024_meta_cache.sql`), embedded into the binary and
 applied by `store.Open` at startup. This page documents the **resulting current
 schema**, noting which migration added what.
 
@@ -30,7 +30,10 @@ so it goes with its library and is trimmed to the newest runs.
 The server's own records - the admin audit log, the notification destinations
 and the event feed (`0019`) - belong to neither half: they hang off no library
 or book, and are trimmed by age (see
-[Audit and notifications](#audit-and-notifications)).
+[Audit and notifications](#audit-and-notifications)). Nor does the community
+metadata cache (`meta_cache`, `0024`): answers from the metadata service, keyed
+by identifier and rebuildable by asking again (see
+[Community metadata cache](#community-metadata-cache)).
 
 Why no FK across the seam? Three reasons, all load-bearing:
 
@@ -175,7 +178,7 @@ covered in [Auth & security](auth-and-security.md#authorization-shares--scope).
 **`books`** *(0001; `added_at` in 0004; `codec` in 0008; `published`,
 `description`, `has_cover` and `scanned` in 0016; `scan_error`,
 `scan_error_file`, `scan_error_detail` and `suspect_parts` in 0017; `split_parent` in
-0022)* - one row per book,
+0022; `cover_art` and `cover_color` in 0023)* - one row per book,
 `UNIQUE (library_id, rel_path)`. Columns: `is_folder` (folder book vs
 single-file book), identity metadata (`title`, `author`, `series`,
 `series_index`, `narrator`), `duration`, `asin`/`isbn` (optional external ids -
@@ -207,6 +210,28 @@ console's Health page reads:
   [Joined books](scanner.md#joined-books-disc-sets)).
 
 Like the rest of the row they are rewritten by every re-index.
+
+Two more columns describe the cover art for the player, both derived and never
+user state:
+
+- `cover_art` - the cover's art identity, from index data alone: `c` plus the
+  custom cover's `updated_at`, else `f` plus the book's `mtime`, `size` and
+  `cover_path` (`catalog.coverArtSQL`; the migration backfills every row with the
+  same expression). Every writer of those inputs recomputes it (`UpsertBook`,
+  `SetCover`, `DeleteCover`, a move or join carrying a custom cover), and a book's
+  first thumbnail of file art replaces it with the image's own version (its
+  file's size and mtime), so it follows a sidecar overwritten in place. Never sent;
+  the API sends its 10-character hash as the book's `cover_version`
+  (`catalog.CoverVersion`).
+- `cover_color` - the palette read from a thumbnail, tagged with the
+  `cover_version` it was read for: `version bg` or `version bg accent on_accent`
+  (lowercase `#rrggbb`, space-separated), `''` for none. It is decoded onto the
+  book only while the tag is the current `cover_version`, so new art needs nothing
+  cleared. It is written compare-and-set on `cover_art` by
+  `catalog.RecordCoverColors` (`GET /libraries/{id}/cover?size=` or the console's
+  `POST /admin/covers`).
+
+A rebuilt index starts with `cover_art` from index data and no colours.
 
 Two columns deserve emphasis:
 
@@ -428,6 +453,28 @@ a foreign key, so deleting an account or a library leaves them as they were.
 
 Backups need no table: they are files in the backups folder.
 
+### Community metadata cache
+
+**`meta_cache`** *(0024)* - the persistent second level of the community
+metadata cache (`internal/meta.Store`, `catalog/metacache.go`): the answers the
+in-memory cache holds, so a restart serves them warm and a known book keeps its
+enrichment through a metadata-service outage. Columns: `key` (primary key: a
+book's enrichment as `a:<asin>` or `i:<isbn>`, a work fetched by id as
+`w:<id>`), `version` (the payload's format; a row of another version is
+ignored), `source` (the metadata service's base URL the answer came from; a row
+from another URL is ignored), `payload` (the answer's JSON, `''` for a cached
+"no match"), `expires_at` and `stored_at` (unix milliseconds). Index
+`idx_meta_cache_stored` on `stored_at`.
+
+It holds community data only, keyed by identifier, never by a book or a user,
+so nothing moves it with a book or purges it with an account, and dropping it
+costs one upstream lookup per book. The launcher's daily retention keeps the
+newest **20,000** rows by `stored_at` (`catalog.MetaCacheRows`), of which works
+fetched by id (`w:` keys, a caller-chosen id) are first trimmed to their own newest
+**2,000** (`catalog.MetaCacheWorkRows`), so a walk through the metadata site's
+works can't push the books' enrichments out (`catalog.PruneMetaCache`). What is written and when a row is served is in
+[Configuration](configuration.md#community-metadata-metadata).
+
 ### Durable per-library config (path-keyed, no FK to books)
 
 - **`folder_overrides`** *(0006)* - PK `(library_id, path)`, `mode ∈ {'book',
@@ -552,6 +599,8 @@ The migration history so far:
 | 0020 | `sign_in_keys` | `tokens.sign_in_key`: the SHA-256 of the browser id a password sign-in sent (`device_id`), so `new_device` is announced once per browser |
 | 0021 | `listening_backfill` | `listening_sessions.backfilled` and `listening_daily.estimated`, then fills them: see [Listening from before sessions](#listening-from-before-sessions) |
 | 0022 | `split_discs` | `books.split_parent` (`''` on every existing row; the next scan records the real value without re-indexing) and the partial index `idx_books_split_parent` |
+| 0023 | `cover_color` | `books.cover_art` (backfilled from each row's custom cover, else its mtime, size and sidecar path) and `books.cover_color` (`''`; the next thumbnail of each cover fills it) |
+| 0024 | `meta_cache` | `meta_cache`, the community metadata cache's persistent level, and its index `idx_meta_cache_stored` |
 
 ## SQLite choices
 
