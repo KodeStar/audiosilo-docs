@@ -687,7 +687,8 @@ the fingerprint:
      the moved book. The result takes a version above both rows. A favourite
      lands once; a queue or collection entry already at the new path keeps its
      own position and the moved one is dropped; of two ratings the newer
-     `updated_at` wins. So a collision no longer fails the move.
+     `updated_at` wins the whole row (a tie keeps the one already there). So a
+     collision no longer fails the move.
 
   They are separate so that a failure carrying the per-user state can't also
   strand the admin's edits and cover at a path the scan is about to prune. The

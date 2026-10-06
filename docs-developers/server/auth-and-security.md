@@ -306,10 +306,12 @@ a few rules on top of share scope:
 - **The share picker shows usernames, so demo accounts are kept out.**
   `GET /me/share-targets` lists every enabled, non-demo account other than the
   caller (id and username): the one way a non-admin learns other accounts'
-  usernames. A demo account is refused it (`403`), so a public demo can't
-  enumerate the server's users, and a demo owner can't share a collection
-  (`403 not available for demo accounts`). Disabled and demo accounts are never
-  share targets.
+  usernames. A demo account is refused it (`403 not available for demo
+  accounts`), so a public demo can't enumerate the server's users, and can't
+  share a collection either (the same `403`, checked before the collection id, so
+  a demo caller learns nothing about whose collection an id is). Disabled and
+  demo accounts are never share targets. These two are the only `/me/*` routes
+  with a demo refusal; none has its own rate-limit class.
 - **Stats never cross users.** `/me/stats` and `/me/listening` are computed for
   the caller alone (the admin Activity code with its accumulator limited to the
   caller): no other listener, username, `by_user`, `top_users`, funnel,
@@ -317,17 +319,27 @@ a few rules on top of share scope:
   figure is computed or sent. The top books, authors, narrators, series and
   finished books pass through the caller's **current** access, so a revoked
   share's path, title or author never echoes back; totals and per-day time are
-  the caller's own listening and count everything.
+  the caller's own listening and count everything. So do `totals.finished` and
+  the goal's `finished`: they count every finish of the caller's, including books
+  they can no longer open, but as a number only, with no path or title.
 - **Progress edits use the caller's scope.** `PATCH /libraries/{id}/progress`
   is `catalog.EditProgress` with the caller's own scope, behind
   `authorizedPath`, so a listener edits only their own progress on books they
-  can open now.
+  can open now: a path outside it is `403` even when a progress row is already
+  there (the admin edit, by contrast, can still tidy such a row).
+- **Validate before resolving.** A rating `PUT` checks its body, and a
+  collection item `POST` checks ownership, before resolving the book, so a bad
+  request or a viewer never triggers on-demand indexing.
 - **Revoking your own device, including this one.** `DELETE /me/devices/{id}`
-  revokes one of the caller's live session or API-key tokens (another user's,
-  unknown or already revoked is `404`). Unlike the admin route, revoking the
+  revokes one of the caller's session or API-key tokens (another user's, a
+  pairing token's, unknown or already revoked is `404`; an expired one not yet
+  revoked can still be revoked). Unlike the admin route, revoking the
   **current** token is allowed: the answer says `current: true` and the token
   fails every later request. An API-key caller may revoke, since revoking only
-  reduces access (the same reasoning as listing and revoking keys).
+  reduces access (the same reasoning as listing and revoking keys). The revoke
+  also clears the token's sign-in key (`tokens.sign_in_key`), so a later sign-in
+  from that browser is announced as a new device. Self-revokes are not written to
+  the admin audit log.
 
 Each of these routes has a denied test (another user's data refused or
 invisible) beside its allowed one.

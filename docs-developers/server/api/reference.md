@@ -464,12 +464,17 @@ caller's other devices stay signed in.
 Revoking the **current** device is allowed (unlike the admin route's
 `409 current_device`): the response says `"current": true`, and the token is
 dead for every later request, so the client signs out locally. An API-key caller
-may revoke too, since revoking only reduces access.
+may revoke too, since revoking only reduces access. A token of the caller's that
+has expired but isn't revoked yet can still be revoked (`200`), though the list
+already hides it. Revoking also clears that browser's sign-in key, so a later
+password sign-in from it is announced as a new device. A self-revoke is not
+written to the admin audit log.
 
 | Status | Meaning |
 |---|---|
 | `200` | revoked; `current` says whether it was the token making this request |
-| `404` | `device not found` - not one of the caller's live session or API-key tokens: another user's, unknown, a pairing token or already revoked (never `403`, so the answer doesn't confirm that another user's token exists) |
+| `400` | `invalid device id` - not a number |
+| `404` | `device not found` - not one of the caller's session or API-key tokens: another user's, unknown, a pairing token or already revoked (never `403`, so the answer doesn't confirm that another user's token exists) |
 
 ## Demo
 
@@ -1564,9 +1569,9 @@ its dates.
 
 | Status | Meaning |
 |---|---|
-| `400` | `path is required`; `invalid request` (a malformed body, an unknown key or an unparseable date); `those dates or that position don't fit this book` - a negative position or one past the book's end, a date more than a day in the future, a finish before the start, or a finish date on a book that isn't (and isn't becoming) finished |
-| `403` | `no access to this path` - outside the caller's current access |
-| `404` | no progress at that path and no indexed book there |
+| `400` | `path is required`; `invalid request` (a malformed body, an unknown key or an unparseable date); `those dates or that position don't fit this book` (no code) - a negative position or one past the book's end, a date more than 24 hours ahead of server time, a finish before the start, or a finish date on a book that isn't (and isn't becoming) finished |
+| `403` | `no access to this path` - outside the caller's current access, **even when a progress row already exists there** (unlike the admin edit, a listener can't tidy progress on a book they can no longer open) |
+| `404` | `code: "book_not_found"` (`no progress or book at this path`) - no progress at that path and no indexed book there |
 
 ### `GET /api/v1/libraries/{id}/bookmarks` · `POST /api/v1/libraries/{id}/bookmarks`
 
@@ -1713,21 +1718,32 @@ picker, `ratings` for ratings. Rules shared by every route in this section:
   accept any path inside a book, like [`/item`](#get-apiv1librariesiditem): a
   part of a folder book or a disc folder resolves to the whole book, a book not
   yet indexed is indexed on demand, and the book's own path is what is stored.
-  A path outside the caller's access is `403 no access to this path`; a path
-  that isn't a book is `404`.
+  The body is checked first (and, for a collection, ownership), so a bad request
+  never triggers indexing. A `library_id` of 0 or less is `400 invalid library
+  id`; a library or path outside the caller's access is `403 no access to this
+  path` (an admin naming a library that doesn't exist gets `404`); a path that
+  isn't a book is `404`.
 - **Replacing a whole list doesn't.** A `PUT` of a whole list indexes nothing:
   each entry must be a book already indexed at exactly that path and inside the
   caller's current access. Any other entry is **skipped**, not an error, and the
   response is the stored result, so a client reconciles with what it gets back.
-  Duplicates collapse (the first wins).
+  Duplicates collapse (the first wins). It is a whole replace: every stored row
+  not in the list is deleted, **including** rows the caller can't currently see.
+  A whole-list body may be up to 4 MiB (other bodies keep the default limit).
 - **Removing one entry is never scoped.** `DELETE …?library_id=&path=` removes
   only the caller's own row, so it needs no access check and a revoked path can
-  still be cleaned up. It is idempotent (`204` whether or not the entry existed).
+  still be cleaned up. It is idempotent (`204` whether or not the entry existed);
+  `400` `invalid library id` or `path is required` when either is missing.
 - **Another user's id is a `404`.** Every route addressed by an id answers `404`
   for an id that isn't the caller's, never `403`, so the answer doesn't confirm
   that another user's collection exists.
-- **Positions** are 0-based indexes in the stored order. Absent or past the end
-  means the end; a negative one is a `400`.
+- **Positions** are 0-based indexes in the **stored** order, which includes the
+  caller's hidden rows. Absent or past the end means the end; a negative one is
+  `400 invalid position`.
+- **Timestamps** on these rows (`added_at`, `created_at`, `updated_at`) are
+  fixed-width UTC with milliseconds, such as `2026-10-01T09:01:00.000Z`.
+- **No demo or rate-limit special cases**, except the two sharing routes below,
+  which refuse demo accounts.
 
 ### `GET /api/v1/me/queue`
 
@@ -1739,7 +1755,7 @@ picker, `ratings` for ratings. Rules shared by every route in this section:
     {
       "library_id": 1,
       "path": "Brandon Sanderson/Mistborn/The Well of Ascension",
-      "added_at": "2026-10-04T19:45:02Z",
+      "added_at": "2026-10-04T19:45:02.000Z",
       "book": { "id": 413, "library_id": 1, "rel_path": "Brandon Sanderson/Mistborn/The Well of Ascension", "title": "The Well of Ascension", "…": "…" }
     }
   ]
@@ -1761,7 +1777,7 @@ caller can't currently see. Response `200`: the queue, as `GET`.
 
 | Status | Meaning |
 |---|---|
-| `400` | a malformed body; `too many items` - more than 500 |
+| `400` | `invalid request` (a malformed body); `too many items` - more than 500 entries in the body, counted **before** duplicates collapse |
 
 ### `POST /api/v1/me/queue`
 
@@ -1779,7 +1795,7 @@ queue, as `GET`.
 
 | Status | Meaning |
 |---|---|
-| `400` | a malformed body, a missing path, or a negative `position` |
+| `400` | `invalid request` (a malformed body or a missing path); `invalid library id`; `invalid position` (negative) |
 | `403` | `no access to this path` |
 | `404` | no book at that path |
 | `409` | `code: "queue_full"` - the queue already holds 500 books |
@@ -1806,8 +1822,8 @@ ones shared with them, each group most recently updated first.
       "shared_with": [ { "id": 6, "username": "alex" } ],
       "item_count": 12,
       "preview": [ { "id": 412, "library_id": 1, "rel_path": "Brandon Sanderson/Mistborn/The Final Empire", "title": "The Final Empire", "…": "…" } ],
-      "created_at": "2026-09-30T18:02:11Z",
-      "updated_at": "2026-10-04T20:15:40Z"
+      "created_at": "2026-09-30T18:02:11.000Z",
+      "updated_at": "2026-10-04T20:15:40.000Z"
     }
   ]
 }
@@ -1823,6 +1839,8 @@ ones shared with them, each group most recently updated first.
   books, for a cover mosaic.
 - `updated_at` moves on a rename, a new description, and any change to the
   items. Sharing doesn't move it.
+- `shared_with` is read only for the owner: a viewer's response never reads the
+  share list at all.
 
 Collections are **shared read-only**: only the owner renames, describes, edits
 the items or the shares; a viewer can read the collection and leave it. A viewer
@@ -1834,14 +1852,14 @@ sees only the items their **own** current access allows, never the owner's.
 
 | Body field | Type | Required | Notes |
 |---|---|---|---|
-| `name` | string | yes | trimmed; 1 to 100 characters, no control characters |
-| `description` | string | no | up to 1,000 characters |
+| `name` | string | yes | trimmed; 1 to 100 characters (Unicode characters, not bytes); invalid UTF-8 or any control character is refused |
+| `description` | string | no | trimmed; up to 1,000 characters; invalid UTF-8 or a control character other than a line break (`\n`, `\r`) or tab is refused |
 
 Response `201`: `{ "collection": { … } }`.
 
 | Status | Meaning |
 |---|---|
-| `400` | a malformed body, or a name or description outside the rules |
+| `400` | `invalid request` (a malformed body); `the name must be 1 to 100 characters, with no control characters`; `the description must be at most 1000 characters, with no control characters but line breaks and tabs` |
 | `409` | `code: "collections_full"` - the caller already owns 100 collections |
 
 ### `GET /api/v1/me/collections/{id}`
@@ -1856,14 +1874,15 @@ current access.
     {
       "library_id": 1,
       "path": "Brandon Sanderson/Mistborn/The Final Empire",
-      "added_at": "2026-09-30T18:03:00Z",
+      "added_at": "2026-09-30T18:03:00.000Z",
       "book": { "id": 412, "title": "The Final Empire", "…": "…" }
     }
   ]
 }
 ```
 
-`404` when the caller neither owns it nor has it shared with them.
+`404` `collection not found` when the caller neither owns it nor has it shared
+with them; `400 invalid collection id` for an id that isn't a number.
 
 ### `PATCH /api/v1/me/collections/{id}`
 
@@ -1873,8 +1892,8 @@ current access.
 
 | Status | Meaning |
 |---|---|
-| `400` | a malformed body, or a name or description outside the rules |
-| `403` | `code: "not_owner"` - the collection is shared with the caller, who can't change it |
+| `400` | a malformed body, or a name or description outside the rules of `POST` |
+| `403` | `code: "not_owner"` (`only the collection's owner can change it`) - the collection is shared with the caller, who can't change it |
 | `404` | not the caller's collection and not shared with them |
 
 ### `DELETE /api/v1/me/collections/{id}`
@@ -1887,12 +1906,14 @@ collection is untouched. `204 No Content`; `404` for anyone else.
 
 *Session.* Replaces the collection's items with this order (owner only), body
 `{ "items": [ { "library_id": 1, "path": "…" } ] }`, by the
-[replace rules](#up-next-collections-and-ratings) of up next. Response `200`:
-the collection and its items, as `GET /me/collections/{id}`.
+[replace rules](#up-next-collections-and-ratings) of up next (a whole replace:
+rows the owner can't currently see are deleted too). Response `200`: the
+collection and its items, as `GET /me/collections/{id}`. Ownership is checked
+before the size, so a stranger always gets `404`, never `400`.
 
 | Status | Meaning |
 |---|---|
-| `400` | a malformed body; more than 1,000 items |
+| `400` | a malformed body; `too many items` - more than 1,000 |
 | `403` | `code: "not_owner"` |
 | `404` | not the caller's collection and not shared with them |
 
@@ -1902,10 +1923,12 @@ the collection and its items, as `GET /me/collections/{id}`.
 [`POST /me/queue`](#post-apiv1mequeue): `library_id`, `path` and an optional
 `position`; a book already in it moves to `position` when one is given.
 Response `200`: the collection and its items, as `GET /me/collections/{id}`.
+`not_owner` is checked before the book is resolved, so a viewer's request
+never indexes anything.
 
 | Status | Meaning |
 |---|---|
-| `400` | a malformed body, a missing path, or a negative `position` |
+| `400` | `invalid request` (a malformed body or a missing path); `invalid library id`; `invalid position` |
 | `403` | `code: "not_owner"`; or `no access to this path` |
 | `404` | not the caller's collection and not shared with them; or no book at that path |
 | `409` | `code: "collection_full"` - the collection already holds 1,000 books |
@@ -1922,12 +1945,12 @@ Content`, idempotent, with no access check on the path. `403`
 `{ "user_ids": [6, 9] }` (`[]` stops sharing it). Each id must be an existing,
 enabled, non-demo account other than the owner; one that isn't rejects the
 whole request. Response `200`: `{ "collection": { … } }`, its `shared_with`
-updated.
+updated (`updated_at` doesn't move).
 
 | Status | Meaning |
 |---|---|
-| `400` | a malformed body; `unknown user`; more than 50 users |
-| `403` | `not available for demo accounts` - the owner is a demo account; or `code: "not_owner"` |
+| `400` | a malformed body; `unknown user`; `a collection can be shared with at most 50 users` (distinct ids) |
+| `403` | `not available for demo accounts` - the caller is a demo account (checked first, so even for a collection that isn't theirs); or `code: "not_owner"` |
 | `404` | not the caller's collection and not shared with them |
 
 A viewer sees the owner's username and the items **they** can open; nothing of
@@ -1943,7 +1966,8 @@ with: every enabled, non-demo account other than the caller, by username.
 ```
 
 This is the one place a non-admin sees other accounts' usernames. A demo
-account gets `403`, so a public demo can't list the server's usernames.
+account gets `403` `not available for demo accounts`, so a public demo can't
+list the server's usernames.
 
 ### `GET /api/v1/libraries/{id}/rating`
 
@@ -1957,8 +1981,8 @@ exact path, scoped like progress: use the book's own `rel_path`).
     "path": "Brandon Sanderson/Mistborn/The Final Empire",
     "rating": 5,
     "note": "The heist that becomes a revolution.",
-    "created_at": "2026-10-02T21:14:00Z",
-    "updated_at": "2026-10-03T08:01:37Z"
+    "created_at": "2026-10-02T21:14:00.000Z",
+    "updated_at": "2026-10-03T08:01:37.000Z"
   }
 }
 ```
@@ -1974,15 +1998,17 @@ is stored on the book's own path, by the
 
 | Body field | Type | Required | Notes |
 |---|---|---|---|
-| `rating` | int | yes | `1` to `5` |
-| `note` | string | no | a short private note; trimmed; up to 500 characters |
+| `rating` | int | yes | a JSON integer from `1` to `5` (`4.5` and `"4"` are refused) |
+| `note` | string | no | a short private note; trimmed; up to 500 characters after trimming |
 
-Response `200`: `{ "rating": { … } }`, `note` `""` when there is none. One
-rating per book per user: rating again updates it and moves `updated_at`.
+The `PUT` **replaces the whole rating**: leaving `note` out clears a note saved
+before. One rating per book per user; rating again moves `updated_at`. The body
+is checked before the book is resolved, so a bad body never triggers indexing.
+Response `200`: `{ "rating": { … } }`, `note` `""` when there is none.
 
 | Status | Meaning |
 |---|---|
-| `400` | missing path; a malformed body; `rating` not a whole number from 1 to 5; a note over 500 characters |
+| `400` | missing path; `invalid request` (a malformed body); `rating must be a whole number from 1 to 5` (also when absent or `null`); `the note is longer than 500 characters` |
 | `403` | `no access to this path` |
 | `404` | no book at that path |
 
@@ -2004,8 +2030,8 @@ still open, most recently updated first, each with its `book` when indexed.
       "path": "Brandon Sanderson/Mistborn/The Final Empire",
       "rating": 5,
       "note": "The heist that becomes a revolution.",
-      "created_at": "2026-10-02T21:14:00Z",
-      "updated_at": "2026-10-03T08:01:37Z",
+      "created_at": "2026-10-02T21:14:00.000Z",
+      "updated_at": "2026-10-03T08:01:37.000Z",
       "book": { "id": 412, "title": "The Final Empire", "…": "…" }
     }
   ]
@@ -2060,12 +2086,14 @@ The fields mean what they mean in the admin's
 
 - `totals` - the caller's `listened` (wall-clock seconds), `sessions`, `books`
   listened to and books `finished` in the period (by the caller's own finish
-  dates); `previous` the same for the period of equal length just before;
+  dates, **all** of them, including books they can no longer open: a count, no
+  paths, so `totals.finished` can exceed `finished_books`' length); `previous`
+  the same for the period of equal length just before;
   `estimated` how many of `totals.listened`'s seconds are estimates.
 - `days` - every day of the period, oldest first, zero days included;
   `hour_weekday` - 7 rows (0 = Monday) of 24 hours, raw sessions only.
 - `top_books`, `top_authors`, `top_narrators`, `top_series` - up to 10 each, by
-  listened time. `finished_books` - the books the caller finished in the period,
+  listened time. `top_series` is only here; the admin `activity` has none. `finished_books` - the books the caller finished in the period,
   newest first, up to 100.
 - `playback` and `clients` - the caller's listening by codec and transcoding,
   and the caller's devices that listened, by app build.
@@ -2078,7 +2106,9 @@ username. The top lists and `finished_books` pass through the caller's
 and `finished_books`, and authors, narrators and series are ranked from the
 books they can still open, so a path, title or author from a share since taken
 away never comes back. `totals`, `days` and `hour_weekday` are the caller's own
-time and count everything.
+time and counts, and include everything.
+
+`400` `code: "invalid_range"` (`range must be 7d, 30d, 90d, 1y or a year`).
 
 ### `GET /api/v1/me/listening`
 
@@ -2118,11 +2148,13 @@ same goal.
 
 `goal` is `null` when none is set. `year` is the server's current calendar year
 and `finished` the books the caller has finished in it (server time, counted
-like `totals.finished`), there whether or not a goal is set.
+like `totals.finished`: every finish, including books they can no longer
+open), there whether or not a goal is set.
 
-`PUT` sets the goal, body `{ "books_per_year": 24 }` (a whole number from 1 to
-1,000, else `400`), and answers `200` as `GET`. `DELETE` clears it: `204 No
-Content`, idempotent.
+`PUT` sets the goal, body `{ "books_per_year": 24 }`, and answers `200` as
+`GET`: `400` `books_per_year must be a whole number from 1 to 1000`, or
+`invalid request` for a malformed body or an unknown field. `DELETE` clears it:
+`204 No Content`, idempotent.
 
 ## Admin: users & auth codes
 

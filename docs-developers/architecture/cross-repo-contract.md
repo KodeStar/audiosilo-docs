@@ -220,7 +220,9 @@ version" display key off it. The Phase 1a and 1b flags are optional on `Capabili
 and read through the exported, tri-state `useCapability(flag, connectionId?)` in
 `hooks.ts` (`undefined` until `/server` answers, then `true`/`false`); the gated
 hooks give a server without the flag no query function (`skipToken`), so it is
-never asked.
+never asked, and the Phase 1b mutations reject with `CapabilityError` (not an
+`ApiError`, so no reconnect banner) without sending anything while the flag is
+false or `/server` hasn't answered.
 
 **A change requires:** adding a capability is a two-repo change - flip the flag as
 the feature lands server-side, and gate the new UI on it client-side. Never assume

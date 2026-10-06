@@ -367,6 +367,10 @@ current access is kept and only left out of the responses, as with favourites.
 - **`ratings`** *(0027)* - PK `(user_id, library_id, rel_path)`; `rating`
   (`INTEGER CHECK (rating BETWEEN 1 AND 5)`), `note` (`''` default, up to 500
   characters), `created_at`, `updated_at`.
+
+The timestamps of `up_next`, `collections`, `collection_items` and `ratings`
+(`added_at`, `created_at`, `updated_at`) are fixed-width UTC with milliseconds
+(`2026-10-01T09:01:00.000Z`), so they compare as strings.
 - **`listening_goals`** *(0028)* - `user_id` (`INTEGER PRIMARY KEY`, one goal per
   account), `books_per_year` and `updated_at`.
 
@@ -374,7 +378,8 @@ Moves and joins carry the three path-keyed tables through `carryListeningState`
 (the one list). Where the destination path is already there (a book moving
 onto a path a removed book left rows on, or several discs joining into one
 book), `up_next` and `collection_items` keep the destination's row and its
-position and drop the moved one, and `ratings` keep the newer `updated_at`.
+position and drop the moved one, and of two `ratings` the newer `updated_at`
+wins the whole row (a tie keeps the destination's).
 `collections`, `collection_shares` and `listening_goals` hold no path, so
 nothing moves them. All six are part of a database backup (`VACUUM INTO`), like
 every table.
