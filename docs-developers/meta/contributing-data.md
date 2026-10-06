@@ -376,23 +376,32 @@ reaches it computes the vote, then:
 
 It touches no field but `genres`, creates nothing and appends no source (the
 genres are derived from rows the work already cites), so a second run over the
-same rows is a no-op. A row that contradicts its recording's recorded runtime or
-release date casts no vote (enrichment refuses such a row through the same
-test), and a recording whose rows were all contradicted does not count as
-covered. Flags that would do nothing in this mode (`--date`, `--conflicts`,
-`--existing-series-only`, the series lookup) are refused. The rows must be at
-least as fresh as the catalogue: a work imported from newer rows than the
-export holds would be trimmed of genres those newer rows stated. `--genre-changes <path>` writes one NDJSON line per
+same rows is a no-op. A row that contradicts its recording's recorded runtime
+casts no vote - the runtime is what catches an ASIN attached to the wrong
+recording, the same test enrichment and the ASIN merge use, while a release date
+may legitimately differ for a regional re-release - and a recording whose rows
+were all contradicted does not count as covered. Flags that would do nothing in
+this mode (`--date`, `--conflicts`, `--existing-series-only`, the series lookup)
+are refused.
+
+The regeneration never judges a record with evidence older than the record.
+`--rows-as-of YYYY-MM-DD` is required: set it to the dump's snapshot date. A
+work whose newest provenance - its `added_at`, every recording's, and every
+`sources[].imported_at` on it and its recordings - falls on a later day is left
+as it is, counted and named in a note. Those dates record when something was
+imported, not how old its evidence was, so a later day is safe only if every
+import up to it used rows no newer than the export. `--genre-changes <path>` writes one NDJSON line per
 changed work, `{"work","removed","added","mode"}` with `mode` `trim` or
 `add-only`, for review before the data pull request:
 
 ```sh
 go run ./cmd/metaimport libex /tmp/all-rows.ndjson --regenerate-genres \
-  --dry-run --genre-changes /tmp/genre-changes.ndjson
+  --rows-as-of 2026-07-29 --dry-run --genre-changes /tmp/genre-changes.ndjson
 ```
 
 The summary line counts the works set to the vote, added to, unchanged and
-reached by no row, and the genre instances added and removed.
+reached by no row, and the genre instances added and removed; notes count the
+contradicted rows and the works held back as newer than the rows.
 
 ## Scanning local files: metascan
 
