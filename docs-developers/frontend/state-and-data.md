@@ -212,29 +212,60 @@ connection-scoped like the rest (`qk.queue`, `qk.collections`, `qk.collection`,
 
 - **Queries** are gated like the Phase 1a reads: `useCapability` plus
   `skipToken`, so a server without the flag is never asked.
-- **Mutations check the flag when called.** When the flag is false, or `/server`
-  hasn't answered yet, the mutation rejects with the exported
-  **`CapabilityError`** (its `.capability` names the flag) and sends nothing, so
-  an older server never answers a write with a bare `404`. It is not an
-  `ApiError`, so it never raises the reconnect banner.
-- **Reconcile with the answer.** Every list write answers with the stored list,
-  and a whole-list `PUT` silently skips entries that aren't an indexed book the
-  caller can open; the hooks store the server's answer (or refetch, after a
-  delete), never what was sent, and nothing is optimistic. A list entry carries `book` only while its path is indexed; render it by
-  its path leaf otherwise.
+- **Mutations go through `useCapabilityMutation`**, which checks the flag when
+  the mutation runs. When the flag is false, or `/server` hasn't answered yet,
+  it rejects with the exported **`CapabilityError`** and sends nothing, so an
+  older server never answers a write with a bare `404`. `.capability` names the
+  flag, and `.unknown` is true (with its own message) when `/server` simply
+  hasn't answered yet. It is not an `ApiError`, so it never raises the reconnect
+  banner.
+- **One connection, one write at a time.** Writes of one capability on one
+  connection run one after another, in the order they were made (a React Query
+  `scope`), so the server applies them and the cache takes their answers in that
+  order. Each mutation's `mutationKey` names its connection, so a hook switched to
+  another connection never sends a queued write there.
+- **The cache write is part of the mutation.** It runs inside the mutation
+  function, against the connection the request went to, before the mutation
+  resolves. Answers land through `storeAnswer`: it cancels an in-flight read of
+  the same key (which may have been answered before the write), keeps a pending
+  refresh, and refetches when it can't place the answer. Every list write
+  answers with the stored list, and a whole-list `PUT` silently skips entries
+  that aren't an indexed book the caller can open, so the cache holds the
+  server's answer, never what was sent; nothing is optimistic. A list entry
+  carries `book` only while its path is indexed; render it by its path leaf
+  otherwise.
+- **Bodies carry only the contract's fields**, because the server decodes
+  strictly (an unknown key is a `400`). `setQueue` / `setCollectionItems` send
+  only `{ library_id, path }` per item, so cached entries (with `added_at` and
+  `book`) can be passed straight back; `createCollection`, `updateCollection` and
+  `editProgress` send only their own fields.
+- **Reorder with positioned adds, not a whole-list replace.** A replace deletes
+  the caller's hidden entries (books under a share since taken away), so moving
+  one book is `useAddToQueue` / `useAddCollectionItem` with a `position`, an
+  index in the list as the caller sees it. Removes and deletes (queue,
+  collection items, rating) are exact-path: pass the stored `path`. Adds and
+  rating `PUT`s resolve a part path to its book.
 - **Viewers can't edit.** A collection with `owned: false` is shared with the
   caller read-only: writes answer `403` with `code: "not_owner"`, and
-  `useDeleteCollection` on it means leave it.
+  `useDeleteCollection` on it means leave it. A deleted collection's detail is
+  marked stale rather than removed.
 - **`useSetRating` replaces the whole rating**: leaving the note out clears a
   saved one.
-- **`useEditProgress` is server-side only.** It updates the progress, stats and
-  goal caches but does **not** touch the player's local progress mirror or the
-  offline queue, so a device with the book loaded overrides the edit on its next
-  save, as last-write-wins intends.
-- **Revoking the current device.** `useRevokeMyDevice` resolves to
-  `{ current }`. With `current: true` it refetches nothing (a refetch would only
-  401 and raise the reconnect banner); the caller must sign out of that
-  connection locally.
+- **Progress changes refresh what depends on them.** `useEditProgress` and the
+  existing `useMarkFinished` refresh the listening stats, the goal and the
+  book's `spoilers=hide` metadata variant. `useEditProgress` is server-side
+  only: it does **not** touch the player's local progress mirror or the offline
+  queue, so a device with the book loaded overrides the edit on its next save,
+  as last-write-wins intends. Creating or revoking an API key refreshes My
+  devices.
+- **Never revoke the current device.** The row with `current: true` is the
+  device the app is on: sign out of that connection the normal way
+  (`useSignOut`), which stops playback, saves the final position and flushes the
+  queued progress before the token goes. Revoking it with `useRevokeMyDevice`
+  would kill the token first, so those saves would be refused and lost. If it is
+  revoked anyway, the answer is `{ current: true }`, the hook refetches nothing
+  (a refetch would only 401 and raise the reconnect banner), and the app must
+  sign out locally.
 - **Streaks are computed on the device** from `useMyListening`'s `days` (server
   time).
 

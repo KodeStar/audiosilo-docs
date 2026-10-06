@@ -301,14 +301,16 @@ tables were rebuilt rather than migrated in place):
   `finished` turns on, cleared when it turns off - a restart). Both take the
   save's own `updated_at` (after the plausibility check that substitutes server
   time for a missing, unparseable or future one), so a finish replayed from an
-  offline queue is dated when it happened; an admin edit
-  (`catalog.EditProgress`) uses server time. Both are normalized to RFC 3339 UTC
+  offline queue is dated when it happened; an edit (`catalog.EditProgress`,
+  an admin's or the listener's own) uses server time. Both are normalized to RFC 3339 UTC
   to the second; migration 0018 backfilled `finished_at`
   on finished rows with their `updated_at`, and older rows have no
-  `started_at`. They are admin-only (`catalog.ListUserProgress`,
-  `catalog.EditProgress`), not on the player's progress JSON. Reconciliation is
-  last-write-wins in `catalog.SaveProgress`; any future realtime layer must
-  reuse that merge. Index `idx_progress_path` *(0016)* on
+  `started_at`. The admin reads them (`catalog.ListUserProgress`), the player's
+  progress JSON carries them on a server with `progress_edit`, and both edit
+  them through `catalog.EditProgress`. Reconciliation is last-write-wins in
+  `catalog.SaveProgress`, whose comparison and write are one writer
+  transaction (an older save can't overwrite a newer one that landed in
+  between); any future realtime layer must reuse that merge. Index `idx_progress_path` *(0016)* on
   `(library_id, rel_path)` serves the per-path lookups the primary key (which
   leads with `user_id`) can't: the admin book page's listeners and
   `MoveDurableState`.
@@ -351,14 +353,16 @@ current access is kept and only left out of the responses, as with favourites.
 
 - **`up_next`** *(0025)* - the listener's queue: PK `(user_id, library_id,
   rel_path)`, `position` (its order) and `added_at`. At most 500 rows per user
-  (enforced by the API).
+  (enforced by the API: an add counts the rows its user can see, and evicts the
+  oldest hidden rows when only they would overflow it).
 - **`collections`** *(0026)* - `id` (`INTEGER PRIMARY KEY AUTOINCREMENT`, so an
   id is never reused), `user_id` (the owner), `name`, `description` (`''`
   default), `created_at`, `updated_at` (moved by a rename, a new description or
   any change to the items). At most 100 per owner.
 - **`collection_items`** *(0026)* - PK `(collection_id, library_id, rel_path)`,
   `position` and `added_at`; FK to `collections` (and `libraries`) with
-  `ON DELETE CASCADE`. At most 1,000 per collection. Indexed on
+  `ON DELETE CASCADE`. At most 1,000 per collection (counted, and made room for,
+  as `up_next`). Indexed on
   `(collection_id, position)` for reading a collection in order.
 - **`collection_shares`** *(0026)* - PK `(collection_id, user_id)` and
   `created_at`: who the owner shares a collection with, read-only. FKs to
@@ -368,6 +372,8 @@ current access is kept and only left out of the responses, as with favourites.
 - **`ratings`** *(0027)* - PK `(user_id, library_id, rel_path)`; `rating`
   (`INTEGER CHECK (rating BETWEEN 1 AND 5)`), `note` (`''` default, up to 500
   characters), `created_at`, `updated_at`.
+- **`listening_goals`** *(0028)* - `user_id` (`INTEGER PRIMARY KEY`, one goal per
+  account), `books_per_year` and `updated_at`.
 
 The timestamps of `up_next`, `collections`, `collection_items`, `ratings` and
 `listening_goals` (`added_at`, `created_at`, `updated_at`) are fixed-width UTC with
@@ -375,8 +381,6 @@ milliseconds (`2026-10-01T09:01:00.000Z`), so they compare as strings. The
 `position` column of `up_next` and `collection_items` orders the rows but need not be
 dense: a remove leaves a gap, and an add shifts only the rows from its place on, so a
 one-book change never rewrites the whole list.
-- **`listening_goals`** *(0028)* - `user_id` (`INTEGER PRIMARY KEY`, one goal per
-  account), `books_per_year` and `updated_at`.
 
 Moves and joins carry the three path-keyed tables through `carryListeningState`
 (the one list). Where the destination path is already there (a book moving

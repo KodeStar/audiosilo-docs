@@ -463,7 +463,10 @@ caller's other devices stay signed in.
 
 Revoking the **current** device is allowed (unlike the admin route's
 `409 current_device`): the response says `"current": true`, and the token is
-dead for every later request, so the client signs out locally. An API-key caller
+dead for every later request. A player shouldn't offer it for that row, though:
+signing out the normal way (`POST /auth/logout` after the app's own teardown)
+lets it save the final position and flush queued progress first, which a revoke
+would refuse. An API-key caller
 may revoke too, since revoking only reduces access. A token of the caller's that
 has expired but isn't revoked yet can still be revoked (`200`), though the list
 already hides it. Revoking also clears that browser's sign-in key, so a later
@@ -1513,9 +1516,10 @@ under [`PUT`](#put-apiv1librariesidprogress); a listener corrects them with
 ### `PUT /api/v1/libraries/{id}/progress`
 
 *Session.* Upserts progress with **last-write-wins** reconciliation: the newer
-`updated_at` wins; `version` breaks exact-timestamp ties. A stale write is not
-an error - the response returns the *effective stored* progress, so clients
-converge.
+`updated_at` wins; `version` breaks exact-timestamp ties. The comparison and the
+write are one database transaction, so an older save can never overwrite a newer
+one that landed in between. A stale write is not an error - the response
+returns the *effective stored* progress, so clients converge.
 
 | Body field | Type | Notes |
 |---|---|---|
@@ -1558,8 +1562,14 @@ admin's [edit of someone's progress](#patch-apiv1adminlibrariesidprogress)
 | `finished_at` | string \| null | RFC 3339 or `YYYY-MM-DD` (the **end** of that day, server time, or now if that is sooner); `null` clears it; needs the book to be (or become) finished |
 
 A field left out stays as it is. With no progress on the book yet, an indexed
-book in the caller's scope gets a new row (its start stamped now). The write is
-stamped with the server's time and a higher `version`, so under last-write-wins
+book in the caller's scope gets a new row (its start stamped now). An edit that
+sets nothing (`{}`) writes nothing: it answers the current row, or `404
+book_not_found` when there is none (it never starts the book). An exact
+(RFC 3339) date may be at most 5 minutes ahead of the server's clock, for a
+client clock running a little fast; a day-only date keeps a day of slack, since
+the client's today can be the server's tomorrow. The write is
+stamped with the server's time (to the sub-second, so a device save made just
+before the edit can't outrank it) and a higher `version`, so under last-write-wins
 it beats what a device saved before it, while a device that has the book loaded
 overrides it on its next save. It is not playback, so it records no
 [listening session](#admin-activity).
@@ -1569,9 +1579,9 @@ its dates.
 
 | Status | Meaning |
 |---|---|
-| `400` | `path is required`; `invalid request` (a malformed body, an unknown key or an unparseable date); `those dates or that position don't fit this book` (no code) - a negative position or one past the book's end, a date more than 24 hours ahead of server time, a finish before the start, or a finish date on a book that isn't (and isn't becoming) finished |
+| `400` | `path is required`; `invalid request` (a malformed body, an unknown key or an unparseable date); `those dates or that position don't fit this book` (no code) - a negative position or one past the book's end, an exact date more than 5 minutes ahead of server time (a day-only date more than 24 hours ahead), a finish before the start, or a finish date on a book that isn't (and isn't becoming) finished |
 | `403` | `no access to this path` - outside the caller's current access, **even when a progress row already exists there** (unlike the admin edit, a listener can't tidy progress on a book they can no longer open) |
-| `404` | `code: "book_not_found"` (`no progress or book at this path`) - no progress at that path and no indexed book there |
+| `404` | `code: "book_not_found"` (`no progress or book at this path`) - no progress at that path and no indexed book there, or an empty edit on a book with no progress |
 
 ### `GET /api/v1/libraries/{id}/bookmarks` · `POST /api/v1/libraries/{id}/bookmarks`
 
@@ -1718,12 +1728,16 @@ picker, `ratings` for ratings. Rules shared by every route in this section:
   accept any path inside a book, like [`/item`](#get-apiv1librariesiditem): a
   part of a folder book or a disc folder resolves to the whole book, a book not
   yet indexed is indexed on demand, and the book's own path is what is stored.
-  The body is checked first (and, for a collection, ownership), so a bad request
-  never triggers indexing. A `library_id` of 0 or less is `400 invalid library
-  id`; a library or path outside the caller's access is `403 no access to this
-  path` (an admin naming a library that doesn't exist gets `404`); a path that
-  isn't a book is `404`.
-- **Replacing a whole list doesn't.** A `PUT` of a whole list indexes nothing:
+  Ownership (for a collection) and the body are checked first, so a stranger, a
+  viewer or a bad request never triggers indexing. A `library_id` of 0 or less
+  is `400 invalid library id`; a library or path outside the caller's access is
+  `403 no access to this path` (an admin naming a library that doesn't exist
+  gets `404`); a path that isn't a book is `404` (`book not found` on a list
+  add, `no book at this path` on a rating).
+- **Replacing a whole list doesn't.** A `PUT` of a whole list must name its
+  list: `items` (or `user_ids` for shares). A missing or `null` key is `400`
+  (`items is required`, `user_ids is required`), because a whole replace deletes
+  every row not listed; only an explicit `[]` clears the list. It indexes nothing:
   each entry must be a book already indexed at exactly that path and inside the
   caller's current access. Any other entry is **skipped**, not an error, and the
   response is the stored result, so a client reconciles with what it gets back.
@@ -1732,14 +1746,29 @@ picker, `ratings` for ratings. Rules shared by every route in this section:
   A whole-list body may be up to 4 MiB (other bodies keep the default limit).
 - **Removing one entry is never scoped.** `DELETE …?library_id=&path=` removes
   only the caller's own row, so it needs no access check and a revoked path can
-  still be cleaned up. It is idempotent (`204` whether or not the entry existed);
+  still be cleaned up. It matches the path exactly (a part path is not resolved
+  to its book, so pass the entry's stored `path`), as does a rating `DELETE`. It
+  is idempotent (`204` whether or not the entry existed);
   `400` `invalid library id` or `path is required` when either is missing.
 - **Another user's id is a `404`.** Every route addressed by an id answers `404`
   for an id that isn't the caller's, never `403`, so the answer doesn't confirm
   that another user's collection exists.
-- **Positions** are 0-based indexes in the **stored** order, which includes the
-  caller's hidden rows. Absent or past the end means the end; a negative one is
-  `400 invalid position`.
+- **Positions are the list as the caller sees it.** A single add's `position` is
+  a 0-based index in the visible, scope-filtered order the `GET` returns: the
+  book lands just before the visible entry now at that index, and hidden rows in
+  front of that entry stay in front. Absent, or at least the number of other
+  visible entries, puts it just after the last visible entry. Negative is
+  `400 invalid position`. Hidden rows never move. For a book already listed,
+  `position` is where it ends up (visible `[A, B]` plus `{A, "position": 1}` gives
+  `[B, A]`); without `position` it stays put.
+- **Caps count visible entries.** A new book on a list whose visible entries
+  already number its cap (500 for up next, 1,000 for a collection) is `409`
+  (`queue_full`, `collection_full`). When only hidden rows push the stored total
+  over the cap, the oldest hidden rows (by `added_at`) are deleted to make room,
+  for good: if access comes back, only the survivors reappear. A move never
+  evicts. A whole-list `PUT` is different: it replaces everything, hidden rows
+  included, and more entries than the cap in its body (before duplicates
+  collapse) is `400 too many items`.
 - **Timestamps** on these rows (`added_at`, `created_at`, `updated_at`), and the
   goal's `updated_at`, are fixed-width UTC with milliseconds, such as
   `2026-10-01T09:01:00.000Z`.
@@ -1778,7 +1807,7 @@ caller can't currently see. Response `200`: the queue, as `GET`.
 
 | Status | Meaning |
 |---|---|
-| `400` | `invalid request` (a malformed body); `too many items` - more than 500 entries in the body, counted **before** duplicates collapse |
+| `400` | `invalid request` (a malformed body); `items is required` (missing or `null`); `too many items` - more than 500 entries in the body, counted **before** duplicates collapse |
 
 ### `POST /api/v1/me/queue`
 
@@ -1788,18 +1817,19 @@ caller can't currently see. Response `200`: the queue, as `GET`.
 |---|---|---|---|
 | `library_id` | int | yes | |
 | `path` | string | yes | any path in the book; the book's own path is stored |
-| `position` | int | no | 0-based; absent or past the end = the end |
+| `position` | int | no | 0-based, in the queue **as the caller sees it**; absent or past the end = after the last visible entry |
 
 A book already queued **moves** to `position` when one is given, and otherwise
-stays where it is (so adding twice is harmless). Response `200`: the whole
-queue, as `GET`.
+stays where it is (so adding twice is harmless). See
+[positions and caps](#up-next-collections-and-ratings) for hidden rows. Response
+`200`: the whole queue, as `GET`.
 
 | Status | Meaning |
 |---|---|
 | `400` | `invalid request` (a malformed body or a missing path); `invalid library id`; `invalid position` (negative) |
 | `403` | `no access to this path` |
-| `404` | no book at that path |
-| `409` | `code: "queue_full"` - the queue already holds 500 books |
+| `404` | `book not found` - no book at that path |
+| `409` | `code: "queue_full"` (`the queue holds at most 500 books`) - the caller already sees 500 books in it |
 
 ### `DELETE /api/v1/me/queue`
 
@@ -1888,8 +1918,10 @@ with them; `400 invalid collection id` for an id that isn't a number.
 ### `PATCH /api/v1/me/collections/{id}`
 
 *Session.* Renames or re-describes a collection (owner only): any subset of
-`name` and `description`, with the rules of `POST`. Response `200`:
-`{ "collection": { … } }`.
+`name` and `description`, with the rules of `POST` (a body with neither changes
+nothing). Who may change it is settled before the fields are checked: a stranger
+gets `404` and a viewer `403 not_owner` whatever the name or description. Response
+`200`: `{ "collection": { … } }`.
 
 | Status | Meaning |
 |---|---|
@@ -1910,11 +1942,13 @@ collection is untouched. `204 No Content`; `404` for anyone else.
 [replace rules](#up-next-collections-and-ratings) of up next (a whole replace:
 rows the owner can't currently see are deleted too). Response `200`: the
 collection and its items, as `GET /me/collections/{id}`. Ownership is checked
-before the size, so a stranger always gets `404`, never `400`.
+before the size and the entries, so a stranger gets `404` (and a viewer `403`)
+rather than `too many items`; only a malformed body or a missing `items` is
+refused before it.
 
 | Status | Meaning |
 |---|---|
-| `400` | a malformed body; `too many items` - more than 1,000 |
+| `400` | `invalid request` (a malformed body); `items is required`; `too many items` - more than 1,000 |
 | `403` | `code: "not_owner"` |
 | `404` | not the caller's collection and not shared with them |
 
@@ -1924,15 +1958,17 @@ before the size, so a stranger always gets `404`, never `400`.
 [`POST /me/queue`](#post-apiv1mequeue): `library_id`, `path` and an optional
 `position`; a book already in it moves to `position` when one is given.
 Response `200`: the collection and its items, as `GET /me/collections/{id}`.
-`not_owner` is checked before the book is resolved, so a viewer's request
-never indexes anything.
+Ownership is checked first, before the body: a stranger gets `404` and a viewer
+`403 not_owner` before any `400`, and neither triggers indexing. `position` is in
+the collection as the owner sees it, with the queue's
+[position and cap rules](#up-next-collections-and-ratings).
 
 | Status | Meaning |
 |---|---|
 | `400` | `invalid request` (a malformed body or a missing path); `invalid library id`; `invalid position` |
 | `403` | `code: "not_owner"`; or `no access to this path` |
-| `404` | not the caller's collection and not shared with them; or no book at that path |
-| `409` | `code: "collection_full"` - the collection already holds 1,000 books |
+| `404` | `collection not found` - not the caller's collection and not shared with them; or `book not found` |
+| `409` | `code: "collection_full"` (`a collection holds at most 1000 books`) - the owner already sees 1,000 books in it |
 
 ### `DELETE /api/v1/me/collections/{id}/items`
 
@@ -1943,14 +1979,17 @@ Content`, idempotent, with no access check on the path. `403`
 ### `PUT /api/v1/me/collections/{id}/shares`
 
 *Session.* Replaces who the collection is shared with (owner only), body
-`{ "user_ids": [6, 9] }` (`[]` stops sharing it). Each id must be an existing,
-enabled, non-demo account other than the owner; one that isn't rejects the
-whole request. Response `200`: `{ "collection": { … } }`, its `shared_with`
+`{ "user_ids": [6, 9] }` (`[]` stops sharing it; a missing or `null` key is
+`400 user_ids is required`). Each id must be an existing, enabled, non-demo
+account other than the owner, or someone it is already shared with (a viewer
+disabled since stays valid, so the `shared_with` the owner was shown can be sent
+back); a new disabled, demo or unknown id rejects the whole request. After the
+demo check and the body, ownership is settled before the ids are checked. Response `200`: `{ "collection": { … } }`, its `shared_with`
 updated (`updated_at` doesn't move).
 
 | Status | Meaning |
 |---|---|
-| `400` | a malformed body; `unknown user`; `a collection can be shared with at most 50 users` (distinct ids) |
+| `400` | `invalid request` (a malformed body); `user_ids is required`; `unknown user`; `a collection can be shared with at most 50 users` (distinct ids) |
 | `403` | `not available for demo accounts` - the caller is a demo account (checked first, so even for a collection that isn't theirs); or `code: "not_owner"` |
 | `404` | not the caller's collection and not shared with them |
 
@@ -2011,7 +2050,7 @@ Response `200`: `{ "rating": { … } }`, `note` `""` when there is none.
 |---|---|
 | `400` | missing path; `invalid request` (a malformed body); `rating must be a whole number from 1 to 5` (also when absent or `null`); `the note is longer than 500 characters` |
 | `403` | `no access to this path` |
-| `404` | no book at that path |
+| `404` | `no book at this path` |
 
 ### `DELETE /api/v1/libraries/{id}/rating`
 
@@ -3840,14 +3879,17 @@ A day-only finish date counts from the end of its day so that a book started
 and finished on the same day fits: a start at 15:00 and a finish "today" is a
 finish after the start, not at the midnight before it.
 
-A field left out stays as it is. When the person has no progress on the book
+A field left out stays as it is, and an edit that sets nothing (`{}`) writes
+nothing: it answers the current row, or `404 book_not_found` when there is none.
+An exact (RFC 3339) date may be at most 5 minutes ahead of the server's clock; a
+day-only date has a day of slack. When the person has no progress on the book
 yet but it is indexed, the row is created (its start stamped now), but only if
 **the person** can see the book: their own access (whole libraries and shares;
 an admin target sees everything), not the access of the admin making the call.
 Otherwise the edit is refused with `409` `no_access` and nothing is written.
 Progress the person already has stays editable after their access is taken
 away, so an admin can still tidy it. The write is
-stamped with the server's time and a higher `version`, so it beats what a
+stamped with the server's time (to the sub-second) and a higher `version`, so it beats what a
 device saved before it under last-write-wins, while a device still playing the
 book overrides it on its next save.
 
@@ -3856,7 +3898,7 @@ Response `200`: `{ "progress": { … } }` - the object of
 
 | Status | Meaning |
 |---|---|
-| `400` | `invalid user_id`; `path is required`; `invalid request` (malformed body, an unknown key or an unparseable date); `those dates or that position don't fit this book` - a finish date on an unfinished book, a finish before the start, a date more than a day in the future, or a position outside the book |
+| `400` | `invalid user_id`; `path is required`; `invalid request` (malformed body, an unknown key or an unparseable date); `those dates or that position don't fit this book` - a finish date on an unfinished book, a finish before the start, an exact date more than 5 minutes ahead of server time (a day-only date more than a day ahead), or a position outside the book |
 | `404` | `user not found`; `library not found`; `code: "book_not_found"` - no progress at that path and no indexed book there |
 | `409` | `code: "no_access"` - no progress at that path, and the person can't see the book; give them access first |
 

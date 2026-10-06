@@ -328,8 +328,9 @@ a few rules on top of share scope:
   can open now: a path outside it is `403` even when a progress row is already
   there (the admin edit, by contrast, can still tidy such a row).
 - **Validate before resolving.** A rating `PUT` checks its body, and a
-  collection item `POST` checks ownership, before resolving the book, so a bad
-  request or a viewer never triggers on-demand indexing.
+  collection item `POST` checks ownership and then its body, before resolving
+  the book, so a bad request, a stranger or a viewer never triggers on-demand
+  indexing.
 - **Revoking your own device, including this one.** `DELETE /me/devices/{id}`
   revokes one of the caller's session or API-key tokens (another user's, a
   pairing token's, unknown or already revoked is `404`; an expired one not yet
@@ -339,7 +340,16 @@ a few rules on top of share scope:
   reduces access (the same reasoning as listing and revoking keys). The revoke
   also clears the token's sign-in key (`tokens.sign_in_key`), so a later sign-in
   from that browser is announced as a new device. Self-revokes are not written to
-  the admin audit log.
+  the admin audit log. A player should still not offer it for its own row: its
+  normal sign-out saves the final position and flushes queued progress before
+  the token goes, which a revoke would refuse.
+- **Who may write is settled first.** On collections, ownership is checked
+  before a field is (a name, the items, the share ids, the cap), so a stranger
+  gets `404` and a viewer `403 not_owner` before any field `400` (only a
+  malformed body, or a whole-list body without its list key, is refused
+  earlier). A list's positions and cap count only the entries the caller can
+  see; hidden entries are evicted (oldest first, for good) only when they alone
+  would overflow the cap.
 
 Each of these routes has a denied test (another user's data refused or
 invisible) beside its allowed one.
