@@ -507,6 +507,16 @@ The sort is **client-side and numeric-aware** so `Book 2` precedes `Book 10`
 (the server's `/fs` listing is a plain string order). It never throws - any
 failure resolves to `null`, which the screen renders as "end of folder".
 
+The server can now answer the same question itself:
+[`GET /libraries/{id}/next`](../server/api/reference.md#get-apiv1librariesidnext)
+(capability `next_book`) uses the community series rail when it can place the next
+work on one of the caller's books, else the local series numbering, then this same
+folder rule (`library.NextSibling`, a port of `findNextSibling` that compares names
+as this `localeCompare` does). `client.nextBook` / `useNextBook` mirror it, but nothing calls
+them yet: the end credits keep resolving the sibling on the device until a later
+player-redesign phase switches to the server's answer (keeping this resolver as
+the fallback for a server without `next_book`).
+
 ### Auto-download on play
 
 `maybeAutoDownloadCurrent(connectionId, libraryId, book, chapterData?)` in

@@ -19,7 +19,7 @@ for the request/response shapes see the [API reference](api/reference.md).
 | Route | Handler | Purpose |
 |---|---|---|
 | `GET /api/v1/libraries/{id}/stream?path=` | `handleStream` | Serve one audio **file** (Range streaming), force a download with `?download=1`, or transcode with `?transcode=1&t=` |
-| `GET /api/v1/libraries/{id}/cover?path=` | `handleCover` | Serve a book's cover (custom cover, else sidecar image, else embedded art) |
+| `GET /api/v1/libraries/{id}/cover?path=` | `handleCover` | Serve a book's cover (custom cover, else sidecar image, else embedded art); with `?size=160\|320\|640` a JPEG thumbnail of it (`handleCoverThumbnail`) |
 | `POST /api/v1/admin/covers` | `handleAdminCovers` | Admin only: JPEG thumbnails of many books' covers as `data:` URLs, for the admin console |
 | `GET /api/v1/libraries/{id}/chapters?path=` | `handleChapters` | The normalized playable-units envelope `{chapters, files, duration, …}` |
 | `GET /api/v1/libraries/{id}/item?path=` | `handleItem` | Book detail; carries `direct_playable` |
@@ -171,9 +171,79 @@ instead of full-size art.
   claiming huge dimensions can't exhaust memory.
 - `media.ThumbCache` is a byte-bounded LRU (48 MiB) keyed by library, path,
   size and the art's version (a custom cover's `updated_at`, a file's size and
-  modification time), so a changed cover misses the cache. A read failure
-  (an unreachable mount) is not cached; an undecodable image is cached as no
-  art. `thumbSem` caps concurrent decodes at four across all requests.
+  modification time), so a changed cover misses the cache. It holds the raw JPEG;
+  the batch base64-encodes it into its `data:` URL. A read failure (an unreachable
+  mount) is not cached; an undecodable image is cached as no art.
+- Two semaphores bound the work across all requests, the batch and the player's
+  `?size=` alike: `coverReads` (8) the art being read or waiting to be decoded, so
+  a slow mount never has a grid's 60 reads in flight, and `thumbSem` (4) the
+  decodes themselves.
+
+### Thumbnails for the player: `?size=`
+
+The player asks for the same thumbnails one cover at a time, as an image URL:
+`GET /libraries/{id}/cover?path=&size=160|320|640` (`handleCoverThumbnail`,
+capability `cover_sizes`). It shares everything with the batch - `coverArt`,
+`coverThumbnail`, the cache and both semaphores. A path with no book indexed at it
+(a part, a disc folder, a book the scan hasn't reached) is resolved like `/item`
+(`bookForPath`, which may index on demand, unlike the batch). Any `size` outside
+the three, including an empty one, is a `400`.
+
+- The `ETag` is `"thumb-<size>-<hash of the art's own version>"`, matched with the
+  same `If-None-Match` list matcher as the server's other validators. A match is
+  answered `304` before any art is read only once the book's colour is recorded
+  for this art (`src.Colored` and its identity equal to the art's version);
+  until then the thumbnail is made or taken from the cache, the colour recorded,
+  and the `304` still sent, so clients that only revalidate don't leave a book
+  without its colour.
+- `Cache-Control` is `private, no-cache` for a custom cover and
+  `private, max-age=86400` for sidecar or embedded art, mirroring the full-art
+  tiers above. Both headers are set only once there is art to answer with, so a
+  `404` is never cached.
+- A read failure (an unreachable mount) is a `500 could not load cover`, not
+  cached; art that can't be decoded, or is over 40 megapixels, is a
+  `404 no cover` (the full-art URL may still serve it; clients fall back to it).
+- The body is served through `http.ServeContent` as `image/jpeg`.
+
+### Cover identity, colours and version
+
+Two derived columns on `books` (migration `0023`) carry what the player's `Book`
+JSON says about the cover:
+
+- **`cover_art`**, the cover's art identity, never sent itself. From index data
+  alone it is `c` plus the custom cover's `updated_at`, else `f` plus the book's
+  mtime, size and sidecar path (`catalog.coverArtSQL`, also the migration's
+  backfill). Every writer of those inputs recomputes it (`refreshCoverArt`:
+  `UpsertBook`, `SetCover`, `DeleteCover`, a move or a disc join carrying a custom
+  cover). The wire's `cover_version` is its hash (`catalog.CoverVersion`: the
+  first 10 hex characters of its SHA-256, so the wire carries no stamp, size or
+  path), present on every indexed book.
+- **`cover_color`**, the palette read from a thumbnail, stored as `version bg` or
+  `version bg accent on_accent`: tagged with the `cover_version` it was read for,
+  and decoded onto the book only while that tag is current. New art needs nothing
+  cleared; the old colour simply stops counting.
+
+The palette (`media.CoverPalette`, `internal/media/covercolor.go`) is read from
+the thumbnail JPEG when a book lacks a colour for the art. It samples at most
+64 x 64 pixels (transparent areas count as white), quantizes each to 16 levels per
+channel and takes the most common bucket's average as `bg`. `accent` is the most
+common vibrant bucket (HSL saturation at least 0.3, lightness 0.2-0.8, at least
+1/200 of the samples), its lightness nudged until it reaches a WCAG contrast of
+4.5:1 against `bg`; `on_accent` is white or black, whichever contrasts more. A
+near-greyscale cover, or one whose vibrant colour cannot be made to read against
+`bg`, has `bg` only.
+
+`catalog.RecordCoverColors` stores the colour together with the art's **own**
+version as the new `cover_art` (for file art, the sidecar's or audio file's size
+and modification time; a custom cover's stamp is unchanged), compare-and-set on
+the identity the source was read under, so a slow thumbnail of old art never
+overwrites what a cover upload just set. The identity therefore moves once, at a
+book's first thumbnail of file art, and from then on follows a sidecar overwritten
+in place (which leaves the index as it was) and equals the thumbnail ETag's hash.
+The write is detached from the request and bounded to 250 ms
+(`coverColorWriteTimeout`): a busy writer costs only the colour until the next
+thumbnail. A re-index of a changed book recomputes the identity from index data,
+and the next thumbnail moves it again.
 
 ## `DirectPlayable`: when a client should transcode
 
