@@ -405,14 +405,17 @@ a one-line reason:
   nothing to apply;
 - `assert` **sources** a proposal no detector makes - an alternate title, a
   reissue, a work stating no series, an omnibus or a dramatisation sitting in a
-  series' slots. The entry's fields ARE the proposal, and only four ops may be
-  asserted: `merge-works` and `merge-series` (a target and the others folding
-  onto it, nothing else), `add-series-member` (the work as target, the series,
-  and a canonical position as `to`; `field` may be omitted) and
-  `drop-membership` (the work as target, the series, and the canonical position
-  it is listed at as `from`; `field` may be omitted and is read as `position`;
-  no `to` and no `others`). It appears in the class whose detector makes that op
-  (`W-DUP`, `SER-DUP`, `W-NOSERIES` or `S-INTEGRITY`) under the subclass
+  series' slots, a correct retitle the title rules refuse. The entry's fields ARE
+  the proposal, and only five ops may be asserted: `merge-works` and
+  `merge-series` (a target and the others folding onto it, nothing else),
+  `add-series-member` (the work as target, the series, and a canonical position
+  as `to`; `field` may be omitted), `drop-membership` (the work as target, the
+  series, and the canonical position it is listed at as `from`; `field` may be
+  omitted and is read as `position`; no `to` and no `others`) and `retitle-work`
+  (the work as target, its title as recorded as `from` and the new title as
+  `to`; `field` may be omitted and is read as `title`). It appears in the class
+  whose detector makes that op (`W-DUP`, `SER-DUP`, `W-NOSERIES`,
+  `S-INTEGRITY` or `W-TITLE`) under the subclass
   `asserted`, and the repair pass applies it like any other proposal. A drop
   naming no home applies only as a reviewed assertion (any other is refused as
   malformed): it judges no language and checks only that the series still
@@ -429,12 +432,15 @@ that its records still exist. Its outcome in `SUMMARY.md` is one of:
 - **stale**: a record it names is gone, or it has been applied (every loser now
   resolves to the target, the series already lists an added work at that
   position, or no longer lists a dropped one - including a dropped work since
-  merged into a survivor the series lists only at other positions), so a re-run
-  proposes nothing;
+  merged into a survivor the series lists only at other positions, or the work
+  already carries a retitle's new title, or a retitled work was since merged into
+  a survivor carrying neither title), so a re-run proposes nothing;
 - **refused**, with the reason named: it would contradict another mechanical
   proposal (a drop also contradicts any other mechanical change to the same
-  membership, or a merge folding its work or its series), a `reject` of the same
-  proposal withholds it, another work holds the position, the work is listed in
+  membership, or a merge folding its work or its series; a retitle, a merge
+  folding its work away or a second retitle of it), a `reject` of the same
+  proposal withholds it, a retitle's work (one that still exists) now carries a
+  title other than its `from`, another work holds the position, the work is listed in
   that series at another position (for a drop, a work that still exists), a
   drop would leave the series with no members (retiring a series is a
   `merge-series`), or a loser was already retired onto a different survivor (an
