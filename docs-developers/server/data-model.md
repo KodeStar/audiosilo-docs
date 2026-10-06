@@ -4,7 +4,7 @@ description: "The SQLite schema behind audiosilo-server: the rebuildable index v
 ---
 
 The schema lives in `internal/store/migrations/` as numbered SQL files
-(`0001_init.sql` … `0028_listening_goals.sql`), embedded into the binary and
+(`0001_init.sql` … `0029_user_listening_index.sql`), embedded into the binary and
 applied by `store.Open` at startup. This page documents the **resulting current
 schema**, noting which migration added what.
 
@@ -358,7 +358,8 @@ current access is kept and only left out of the responses, as with favourites.
   any change to the items). At most 100 per owner.
 - **`collection_items`** *(0026)* - PK `(collection_id, library_id, rel_path)`,
   `position` and `added_at`; FK to `collections` (and `libraries`) with
-  `ON DELETE CASCADE`. At most 1,000 per collection.
+  `ON DELETE CASCADE`. At most 1,000 per collection. Indexed on
+  `(collection_id, position)` for reading a collection in order.
 - **`collection_shares`** *(0026)* - PK `(collection_id, user_id)` and
   `created_at`: who the owner shares a collection with, read-only. FKs to
   `collections` and `users`, both `ON DELETE CASCADE`, so deleting the viewer's
@@ -368,9 +369,12 @@ current access is kept and only left out of the responses, as with favourites.
   (`INTEGER CHECK (rating BETWEEN 1 AND 5)`), `note` (`''` default, up to 500
   characters), `created_at`, `updated_at`.
 
-The timestamps of `up_next`, `collections`, `collection_items` and `ratings`
-(`added_at`, `created_at`, `updated_at`) are fixed-width UTC with milliseconds
-(`2026-10-01T09:01:00.000Z`), so they compare as strings.
+The timestamps of `up_next`, `collections`, `collection_items`, `ratings` and
+`listening_goals` (`added_at`, `created_at`, `updated_at`) are fixed-width UTC with
+milliseconds (`2026-10-01T09:01:00.000Z`), so they compare as strings. The
+`position` column of `up_next` and `collection_items` orders the rows but need not be
+dense: a remove leaves a gap, and an add shifts only the rows from its place on, so a
+one-book change never rewrites the whole list.
 - **`listening_goals`** *(0028)* - `user_id` (`INTEGER PRIMARY KEY`, one goal per
   account), `books_per_year` and `updated_at`.
 
@@ -662,6 +666,7 @@ The migration history so far:
 | 0026 | `collections` | `collections`, `collection_items` and `collection_shares` |
 | 0027 | `ratings` | `ratings`, a listener's 1 to 5 rating and note per book |
 | 0028 | `listening_goals` | `listening_goals`, a listener's books-per-year goal |
+| 0029 | `user_listening_index` | `idx_sessions_user_last` on `listening_sessions(user_id, last_at)`, so one listener's stats read only their own sessions |
 
 ## SQLite choices
 

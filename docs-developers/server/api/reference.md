@@ -1740,8 +1740,9 @@ picker, `ratings` for ratings. Rules shared by every route in this section:
 - **Positions** are 0-based indexes in the **stored** order, which includes the
   caller's hidden rows. Absent or past the end means the end; a negative one is
   `400 invalid position`.
-- **Timestamps** on these rows (`added_at`, `created_at`, `updated_at`) are
-  fixed-width UTC with milliseconds, such as `2026-10-01T09:01:00.000Z`.
+- **Timestamps** on these rows (`added_at`, `created_at`, `updated_at`), and the
+  goal's `updated_at`, are fixed-width UTC with milliseconds, such as
+  `2026-10-01T09:01:00.000Z`.
 - **No demo or rate-limit special cases**, except the two sharing routes below,
   which refuse demo accounts.
 
@@ -2140,7 +2141,7 @@ same goal.
 
 ```json
 {
-  "goal": { "books_per_year": 24, "updated_at": "2026-01-02T09:00:00Z" },
+  "goal": { "books_per_year": 24, "updated_at": "2026-01-02T09:00:00.000Z" },
   "year": "2026",
   "finished": 17
 }
