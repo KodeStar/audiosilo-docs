@@ -286,11 +286,12 @@ It depends on what "reinstalling" meant:
 - **Deleting the app and installing it again** removes everything the app
   stored, downloads included - that's how phones work, and there's no way
   around it. You'll need to download the books again.
-- **Interrupted downloads don't survive a restart** - if the app is killed
-  mid-download, the partial download is discarded on next launch and has to
-  be started over. (While the app stays open, a stopped download keeps the
-  files it finished, and **Retry** fetches only the rest.) Only fully
-  finished downloads are kept across a restart.
+- **Interrupted downloads keep what they finished** - if the app is killed
+  mid-download, the download comes back on next launch as stopped ("The app
+  closed before it finished"), keeping the files that had finished, and
+  **Retry** fetches only the rest. The file that was half-written starts
+  again, and if any finished file has gone missing the whole download starts
+  over.
 
 Your listening progress is safe throughout - it lives on the server, not in
 the downloaded files. See [Offline downloads](./listening/offline-downloads.md).

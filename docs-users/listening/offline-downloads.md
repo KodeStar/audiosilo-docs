@@ -12,9 +12,9 @@ The download button lives on the **book's detail page**:
 - On a phone, it's the square button next to **Listen**.
 - On a tablet or computer, it's the **Download** button near the top of the page, above the book's tabs.
 
-You can also use **Download for offline** in a book's **...** menu in the Library's book list.
+You can also use **Download for offline** in any book's [menu](browsing.md#the-book-menu).
 
-While a download runs you'll see the progress ("Downloading 42% · 210 MB / 500 MB") with a cancel button. When it's done, the button shows **Downloaded** with the size, the cover is saved too, and the chapter/file list shows **green dots** to say the book is on the device.
+While a download runs you'll see the progress ("Downloading 42% · 210 MB / 500 MB") with a cancel button. When it's done, the button shows **Downloaded** with the size, the cover is saved too, and the chapter/file list shows **green dots** to say the book is on the device. Beside it, **Remove download** asks first, and says how much space removing it frees.
 
 If a download stops (the connection dropped, the phone slept at the wrong moment), the button becomes **Retry download** - see [When a download stops](#when-a-download-stops).
 
@@ -42,7 +42,7 @@ The **Automatic downloads** card on the Downloads page holds three settings. The
 
 - **Download automatically**: **Never**, **On Wi-Fi** or **Always**. With On Wi-Fi or Always, the book you start listening to is downloaded as you play it, and playback quietly switches to the downloaded copy once it's on the device. On Wi-Fi skips mobile data on a phone or tablet. A browser can't tell Wi-Fi from mobile data, so in the web player On Wi-Fi downloads on any connection, and the card says so.
 - **Keep the next books ready**: **Off**, **1**, **2** or **3** (below).
-- **Remove a download when you finish the book**, to free up space as you go. On out of the box.
+- **Remove a download when you finish the book**, to free up space as you go. Your place in the book is kept. On out of the box.
 
 ### Keep the next books ready
 
@@ -62,9 +62,7 @@ A stopped download stays in **In progress**, saying where it stopped and why, in
 
 Many audiobooks are made of several files. If some of them had finished before the download stopped, they're **kept**: the row says so ("Stopped at 50% · Your 50% is kept"), and **Retry** fetches only the files that are still missing. For a book that's one big file, or if nothing had finished yet, the row says Retry starts it again.
 
-:::note
-Kept files last until you close the app (or the browser tab). A download that hasn't finished when the app starts again is cleared away, and starts from the beginning next time.
-:::
+Kept files survive closing the app, too. A download the app closed part-way through comes back as stopped, saying "The app closed before it finished", with the files it had already finished kept for **Retry**. If any of those files has gone missing in the meantime, the download is cleared away instead, and starts from the beginning next time.
 
 ## Downloads belong to their server
 

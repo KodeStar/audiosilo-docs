@@ -141,7 +141,7 @@ window crosses a threshold, not on every resize. The page column width is
 | Layout | Width | Chrome |
 |---|---|---|
 | `phone` | < 640 (`TABLET_MIN_WIDTH`) | A bottom tab bar (native on iOS/Android, `PhoneTabBar` on web) and the mini player; each page's Stack header is `PhoneHeader` (a large display title on a tab root; on a pushed page an inline back button, named after the page it returns to on iOS, a bare arrow on Android and web); the reconnect and offline banners sit under the header. |
-| `tablet` | 640-1023 | `TopBar` (64 high: the mark with a server line, the Home / Library / Downloads destinations as icons, the omnisearch field, the `UpNextButton`, settings, and the `ProfileMenu`), `SubNav` (50 high: the page title on a tab root followed by whatever the root publishes - see [Sub-nav sections and actions](#sub-nav-sections-and-actions) - and a Back button on a pushed page; Home has none), the banners, the page capped at 1480 wide (`CONTENT_WIDTH`), and `DockedPlayer` (84 high) whenever a book is loaded. Up next opens as a bottom sheet. |
+| `tablet` | 640-1023 | `TopBar` (64 high: the mark with a server line, the Home / Library / Downloads destinations as icons, the omnisearch field - a search icon button doing the same when the bar's middle measures under `OMNISEARCH_MIN` (180), as at 640-760 - the `UpNextButton`, settings, and the `ProfileMenu`), `SubNav` (50 high: the page title on a tab root followed by whatever the root publishes - see [Sub-nav sections and actions](#sub-nav-sections-and-actions) - and a Back button on a pushed page; Home has none), the banners, the page capped at 1480 wide (`CONTENT_WIDTH`), and `DockedPlayer` (84 high) whenever a book is loaded. Up next opens as a bottom sheet. |
 | `desktop` | >= 1024 (`DESKTOP_MIN_WIDTH`) | The tablet chrome with labelled destinations, the user's name on the profile button and (web) a ⌘K / Ctrl K hint in the omnisearch, plus the `DrawerSlot` beside the page, which holds the [Up next](#up-next-drawer-and-sheet) drawer. |
 
 Every screen reads this one value - never compare a width against a local
@@ -212,11 +212,13 @@ still jumps to the Search tab instead.
   local name, a person their page, a character the book it is from. The module also owns the arrow-key clamp (`moveSelection`, no
   wrap), the recent list (`addRecent`), the shortcut test (`isPaletteShortcut`)
   and the key hint (`shortcutHint`: ⌘K on Apple platforms, Ctrl K elsewhere).
-- **Actions are only what exists today**: with a book loaded, pause or "Resume
+- **Actions are only what exists today** (the pure `buildActionItems` in
+  `palette-model.ts` decides which show): with a book loaded, pause or "Resume
   &lt;chapter&gt;", *Sleep in 30 minutes*, *Sleep at end of chapter* (only when the
   book has real chapters - without them the end-of-chapter timer falls back to a
-  duration, which the label would misdescribe) and *Open the full player*; always,
-  *Go to settings* and the light/dark switch. The two sleep actions confirm with a
+  duration, which the label would misdescribe) and *Open the full player*; *Open
+  Up next* with the queued count when the queue's server has `queue`
+  (`openUpNext()`); always, *Go to settings* and the light/dark switch. The two sleep actions confirm with a
   `toast`.
 - **Shortcut guards** are shared with Up next's Q in `src/lib/keyboard.ts`
   (`isEditable`, `isModalOpen`): no global shortcut fires while typing or over a
@@ -267,7 +269,8 @@ unknown, so nothing flashes). One `UpNextPanel` in two containers:
 `openUpNext()` / `closeUpNext()` / `toggleUpNext()` pick the drawer or the sheet
 by the window's form factor at call time. Entry points: `UpNextButton` (the queue
 glyph with a count badge) in the top bar (`variant="bar"`), the phone header on tab
-roots (`"header"`) and the docked player (`"dock"`, no count); and **Q** on the web
+roots (`"header"`) and the docked player (`"dock"`, no count); the palette's *Open Up
+next*; and **Q** on the web
 (`useUpNextShortcut`: never while typing, with a modifier, over a modal, or over
 the player modal - the palette shortcut's guards).
 
@@ -424,12 +427,16 @@ at once, and a failed page keeps what loaded, with Retry carrying on. The view i
 for the title sort's letter heads and A-Z rail, and `serverSort` (Length has no
 server order, so it loads newest first and shares Recently added's cache). The
 grid/list choice is `useBooksLayout` (`audiosilo.booksLayout`, also used by a
-collection and Favourites). The list view's `BookActionsButton`
-(`books/book-actions.tsx`) is the book menu: Play/Resume, Up next (`queue`), Add to
+collection and Favourites). The **book menu** is `useBookActions` presented by
+`BookActionsMenu` (`books/book-actions.tsx`): the list view's `BookActionsButton`
+opens it, and so does every `CoverTile` (below). Its items: Play/Resume, Up next (`queue`), Add to
 collection (`collections`), download, Mark as finished (on a server without
 `progress_edit`, through the offline-aware `useMarkFinished`, without Undo) or not
 finished (`progress_edit` only), More in this series. A capability still unknown
-hides its item.
+hides its item. Remove download asks first through the shared
+`RemoveDownloadConfirm` (`src/components/downloads/remove-download-confirm.tsx`,
+which says how much room it frees; the book page and the Downloads page use it
+too).
 
 ## Browse building blocks
 
@@ -439,14 +446,14 @@ in `src/components/library/`:
 | Piece | What it is |
 |---|---|
 | `BookCover` | A book's art. Sources, best first (`coverCandidates`): the downloaded copy, the smallest server thumbnail that covers the drawn pixels (`coverSizeFor`: 160/320/640, only when the server advertises `cover_sizes`), then the full art, which is also the fallback for a thumbnail that fails. `cover_version` rides along as the cache buster. While the server's flags are unknown it shows an empty frame rather than fetching the full art first. |
-| `CoverTile` | A cover as one button: progress bar while in progress, flags for a friend's (non-default) server, downloaded and finished, title and one caption line. On the web desktop it is also the Up next drag source. |
-| `GhostCover` | A book the listener doesn't have: hatched, dashed, with the real title and position from the community data and "Not in your library" (or `info`-tinted "On &lt;server&gt;" when another connected server has it). Never fake art. |
+| `CoverTile` | A cover as one button: progress bar while in progress, flags for a friend's (non-default) server, downloaded and finished, title and one caption line. It owns the book menu (`TileActions`, `tile-actions.tsx`): a long-press, a right-click, the Menu key or Shift+F10 (`useContextMenuRequest` in `src/lib/context-menu{,.web}.ts`; on macOS/Linux a right-click opens it on the button's release, so the release can't pick an item) or the screen reader's *More actions* opens `BookActionsMenu` - a sheet on a phone, a dropdown anchored to the tile's corner on tablet/desktop - using the screen's `book` row when it passes one, else one item fetch on first use. On the web desktop it is also the Up next drag source. A small cover with no art shows a two-letter monogram (`src/lib/monogram.ts`). |
+| `GhostCover` | A book the listener doesn't have: hatched, dashed, with the real title and position from the community data and "Not in your library" (or `info`-tinted "On &lt;server&gt;" when another connected server has it). Never fake art, and no book menu. |
 | `ShelfRow` | A horizontal, snap-scrolling row of tiles on a FlashList, standing on a decorative `Ledge`; bleeds to the window edge past the page gutter. |
 | `CoverGrid`, `CoverGridSkeleton`, `CoverListRow` | The page's grid on FlashList (it *is* the scroller; full-width rows such as letter heads span every column through `overrideItemLayout`), its same-size skeleton, and the list variant of a book. |
 | `cover-layout.ts` | `pageGutter`, `shelfMetrics` (164 tiles, 132 on a phone), `coverGridMetrics` (columns of at least 158, two on a phone). |
 | `CoverWash` (`cover-wash{,.web}.tsx`) + `src/lib/cover-tint.ts` | The cover-colour wash behind the Now card and the series hero: `coverTint(book.cover_color)` (null - no wash at all - when the server sent none), at `WASH_STRENGTH` (the `--wash` token), drawn as SVG radial gradients on native and CSS on web. |
 | `FilterChip` / `ChipRow` (`src/components/ui/filter-chip.tsx`) | The filter chips. |
-| `useQueueActions` / `QueueButton` | "Queue it" for one connection's server: `isQueued`, `queue(lib, path, position?)` and `unqueue` with Undo toasts; hidden until `queue` is known to be on; a `CapabilityError` is swallowed, a `409` says the queue is full. (`QueueButton` is ready but no screen mounts it yet; the series page has its own entry actions.) |
+| `useQueueActions` / `QueueButton` | "Queue it" for one connection's server: `isQueued`, `queue(lib, path, position?)` and `unqueue` with Undo toasts; hidden until `queue` is known to be on; a `CapabilityError` is swallowed, a `409` says the queue is full. `QueueButton` ("Queue it" / "Queued") is the series page's action for an unread owned book. |
 
 Every browse surface (Home, the Library, the series page, Up next) starts a book
 through **`usePlayBook`** (`src/components/player/use-play-book.ts`): a phone opens
@@ -462,7 +469,11 @@ plays on. It rejects when the book couldn't be fetched, so the caller can say so
 filtered `useLibraryBooks`, `useProgressLookup`, and one search per other server
 for copies of the series elsewhere). The series page reads community rails only on
 a `metadata` server, and shares reading-order picks with the book page
-(`useSeriesOrderings`).
+(`useSeriesOrderings`). Under its list, `KeepAheadCard` (`keep-ahead-card.tsx`)
+binds the device-wide `keepAhead` setting through the Downloads page's exports,
+only once the downloads store knows the device can download. Search's series
+results reuse the Library's `SeriesCard`, each asking for its series' books only
+once it shows.
 
 ## Styling conventions
 

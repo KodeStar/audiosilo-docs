@@ -29,7 +29,7 @@ From left to right:
 
 - The **AudioSilo** logo (tap it to go Home), with the server you're using underneath - or a note that you're **offline** if it can't be reached, or that it **needs signing in again**. If you've connected more than one server, it says how many more.
 - **Home**, **Library** and **Downloads**. On narrower screens such as a tablet held upright, these show as icons only.
-- A **search field**. In the web player it opens [quick search](#quick-search-in-the-web-player); in the tablet app it takes you to the Search page.
+- A **search field**. In the web player it opens [quick search](#quick-search-in-the-web-player); in the tablet app it takes you to the Search page. Where the bar is too narrow for the field (a tablet held upright, say), it shrinks to a search button that does the same.
 - The **Up next** button, with the number of books queued. It opens [Up next](up-next.md).
 - A **gear** button for [Settings](account.md).
 - Your **profile button** - your initial, plus your name on wider screens. It opens a menu listing your **servers**, each with a line saying who you're signed in as, or that it's **offline** or **needs signing in again** (pick one to open its [account page](account.md#a-servers-account-page)); **Add a server**; **Account on** your main server; and a switch between **light and dark** appearance.
@@ -53,7 +53,7 @@ The home screen is built around what *you* are doing, not just what's on the ser
 - **A greeting** with today's date and a small line that tells you, honestly, whether your place is safe: **Progress synced 7 minutes ago** once your servers have it, or **Saved on this device, will sync** while a server can't be reached. If you've connected more than one server, it also says how many Home is gathering from.
 - **The book you're on**, in a card tinted with its cover's colours: the series and book number, the title, **Chapter 6 of 24** with the chapter's name, and a scale of the whole book with a tick for each chapter (and a small pin for each bookmark). Under it: how far through you are, how much is left at the speed you listen to that book, and, once there's enough listening to go on, the day you'll **finish at your pace**. **Resume chapter 6** carries on where you stopped. For books the community database knows, **Who's who** (with the number of characters you've met so far) and **Story so far** open the book's Characters and Recaps tabs, which [never show more than you've heard](#nothing-gets-spoiled-before-you-reach-it).
 - **This week** - a ring for the books you've finished this year against your yearly goal (or just how many you've finished, if you haven't set one), the hours you've listened in the last seven days, your listening streak, and a small bar for each of the last seven days.
-- **Continue listening** - the other books you've started, most recent first, each showing how much is left. Tap one to pick up exactly where you stopped; press and hold for its menu (**Mark as Finished**, or **More in series**). **All in progress** opens the Library with just those books.
+- **Continue listening** - the other books you've started, most recent first, each showing how much is left. Tap one to open it, or open its [book menu](#the-book-menu) to resume, mark it finished, and more. **All in progress** opens the Library with just those books.
 - **Next in your series** - what comes after the books you're on, or just finished, with a line saying why ("After The Way of Kings, which you're 40% into"). It includes the next book even when you don't have it yet: those show as a pale "ghost" cover marked **Not in your library**, and tapping one opens the series page.
 - **Smart shelves** - saved filters that keep themselves up to date: **Finish what you started**, **Short listens** (under 5 hours), **"Name" reads** for the narrator you've listened to most lately, and **Added this week**. Tap one to open the Library with that filter on (the narrator's shelf opens their page). They appear once there are at least two worth showing.
 - **Recently added**, **Favourites** (once you have some) and **Recently finished**, each with a **See all** link.
@@ -80,12 +80,23 @@ Every book in the library, as a cover grid or a list:
 
 A big library loads in the background, page by page, while you browse; the filters and sorting work on the whole of it once it's in.
 
-In the **list**, each book has a **...** button with its menu (a drop-down on a tablet or computer, a sheet from the bottom on a phone):
+A cover with no art shows the book's initials instead.
+
+#### The book menu
+
+Every book has a menu of things you can do with it: a drop-down on a tablet or computer, a sheet from the bottom on a phone. In the **list**, it's the book's **...** button. On a **cover** anywhere in the app (Home's shelves, the Library grid, author and series pages, search results, Favourites), open it by:
+
+- pressing and holding the cover;
+- right-clicking it, in the web player;
+- moving to it with the keyboard and pressing the **Menu** key (or **Shift+F10**);
+- with a screen reader, choosing the cover's **More actions**.
+
+The pale "ghost" covers of books you don't have have no menu. The menu holds:
 
 - **Play** or **Resume**.
 - **Add to Up next** or **Remove from Up next** (see [Up next](up-next.md)).
 - **Add to collection...** (see [Collections](#collections)).
-- **Download for offline**, **Cancel download** or **Remove download**.
+- **Download for offline**, **Cancel download** or **Remove download** (which asks first).
 - **Mark as finished**, or **Mark as not finished** for a book you've finished. Both show a short note with **Undo**.
 - **More in this series**, for a book in a series.
 
@@ -120,7 +131,7 @@ Collections are lists of books you put together yourself: "Road trip", "For the 
 
 Collections belong to a server rather than to one library, so in this section the picker chooses a **server**.
 
-To add a book, open its menu in the Books list (or anywhere a book has the **...** button) and choose **Add to collection...**. The dialog lists your collections, so you can add the book to several at once, take it out of one, or **Create and add** a new one there and then.
+To add a book, open its [book menu](#the-book-menu) and choose **Add to collection...**. The dialog lists your collections, so you can add the book to several at once, take it out of one, or **Create and add** a new one there and then.
 
 ![A collection's page: its name, description and total length, the owner's buttons, and its books](/img/screenshots/web-player/collection.png)
 
@@ -164,6 +175,7 @@ A series page is the series laid out like a bookcase:
 - **The bookcase**: a spine for each book in reading order, wider for longer books. The book you've chosen is turned face-out, and the one you're listening to wears a pink ribbon. Books you don't have stand as pale "ghost" spines with their real titles, and a book that's on another of your servers is tinted to say so.
 - **Under the shelf**, for the chosen book: its number, year and length, where you are with it, and **one** thing to do: **Resume chapter 3** for the book you're on, **Queue it** for one you haven't started (it goes on [Up next](up-next.md); on a server without Up next this is **Play**), **Open** for one you've finished, **Listen on** (or **Open on**) another of your servers for a copy that lives there, or **View on AudioSilo Meta** for a book you don't have. A small legend explains the colours.
 - **Every book in the series** listed below, each with the same action, and a credit line for the community series data.
+- **Keep ahead offline**, on devices that can download: a shortcut to the [Keep the next books ready](offline-downloads.md#keep-the-next-books-ready) setting (Off, 1, 2 or 3). It's the same setting as on the Downloads page, so it applies to every series, with your Up next queue first.
 
 The full bookcase, with ghost spines and reading orders, comes from the [community metadata database](../community/meta-site.md) and needs your server to have the lookup switched on. Without it, the page shows the books you have in that series, with a dashed **Book 3** placeholder wherever your copies skip a number.
 
@@ -246,7 +258,7 @@ Before you type, the page shows your **Recent searches** (with **Clear**) and **
 Results appear as you type, in groups:
 
 - **Books** - matching titles, authors and series from every server. A book you have on more than one server shows once, with "Also on" naming the others, and a book that lives on another of your servers carries a small flag with that server's name.
-- **Series** - matching series, each opening its [series page](#series-pages).
+- **Series** - matching series, each shown as its card with a small shelf of the books you have, opening its [series page](#series-pages).
 - **People** - matching authors and narrators, each tagged with their role, opening their page.
 - **Characters** - characters from books you've started whose names (or other names they go by) match, opening the book they're from.
 
@@ -268,7 +280,7 @@ In the web player on a tablet or computer, clicking the search field in the top 
 
 Start typing and the results are grouped:
 
-- **Actions** - things you can do right now. While a book is loaded: **Pause** (or **Resume** the current chapter), **Sleep in 30 minutes**, **Sleep at end of chapter** (for books with chapters) and **Open the full player**. Always: **Go to settings** and a switch to **light or dark** appearance. Setting a sleep timer this way shows a short confirmation at the bottom of the screen.
+- **Actions** - things you can do right now. While a book is loaded: **Pause** (or **Resume** the current chapter), **Sleep in 30 minutes**, **Sleep at end of chapter** (for books with chapters) and **Open the full player**. On a server with [Up next](up-next.md): **Open Up next**, with how many books are queued. Always: **Go to settings** and a switch to **light or dark** appearance. Setting a sleep timer this way shows a short confirmation at the bottom of the screen.
 - **Books** - matching titles, authors and series from every server you're connected to, the same search as the Search page. Before you type anything, this group is **Continue listening** instead: the books you're partway through, with how much you've listened to.
 - **Series**, **Authors**, **Narrators** and **Characters** - up to three of each, from the same search as the Search page. Characters follow the same rule: only ones you've met, with a quiet note counting any you haven't.
 - **Go to** - Home, Library and Downloads.

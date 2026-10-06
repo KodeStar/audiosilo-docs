@@ -157,14 +157,16 @@ with no network.
   `kept` is the share of the book's files that finished (0..1), so a single-file
   book keeps nothing. A retry walks the specs in order and **skips** a file whose
   manifest slot has the same `relPath` and still exists on disk (the on-disk name is
-  the file's index, so a file only counts where it was saved). This lasts for the
-  session only: hydrate still drops every entry that isn't `downloaded` (below).
+  the file's index, so a file only counts where it was saved). `runOne` lists each
+  finished file in the persisted entry as it lands, so this survives a restart
+  too (hydrate's `reviveEntry`, below).
 - **Failure classification** (`src/downloads/failure.ts`): `classifyDownloadError`
   maps whatever the platform threw (a fetch `TypeError`, expo-file-system's native
   messages, a `QuotaExceededError`, the web engine's `Download failed (404)`) to
   `network`, `server` (with the HTTP `status`), `storage`, or `unknown`; the store
-  itself sets `unservable` (saved, but the web worker can't serve it yet) and
-  `removed` (the entry's connection is gone). The Downloads page words each one for
+  itself sets `unservable` (saved, but the web worker can't serve it yet),
+  `removed` (the entry's connection is gone) and, on hydrate, `interrupted` (the
+  app closed mid-download). The Downloads page words each one for
   the listener; entries saved before classification read as `unknown`.
 - **Cancel and remove**: a **cancel** (`cancel()` aborts the in-flight
   controller) removes the files *and* the entry; `remove()` is the user-facing
@@ -176,7 +178,9 @@ with no network.
   `origin: 'listener'` lifts the mark.
 - **UI**: `useDownloadControls` (`use-download-controls.ts`) wraps all of this
   for the book screen / badges; the book menu (`book-actions.tsx`) calls the store
-  directly; the `/downloads` page is below.
+  directly; the `/downloads` page is below. Every user-facing removal (the book
+  page, the book menu, the Downloads page) asks first through the shared
+  `RemoveDownloadConfirm`, which says how much room it frees.
 
 ### Hydrate and the iOS container-move problem
 
@@ -207,11 +211,16 @@ with no network.
    there is no drift to correct, but a legacy download adopted into a connection
    on hydrate has been re-put under the new scoped prefix - relocation recomputes
    its URL there as well so the existence check finds it.
-3. **Only fully-downloaded books survive a relaunch.** The engines can't resume
-   a download interrupted by an app kill, so partial entries are dropped and
-   cleaned up. A surviving entry requires `status === 'downloaded'` and every
-   file passing `engine.fileExists`.
-4. Surviving manifests **seed the React Query cache** (`qk.item(connectionId, …)`
+3. **`reviveEntry(entry, allPresent)` decides what survives** (pure, tested). An
+   entry with no listed files, or with any listed file failing `engine.fileExists`,
+   is dropped and its folder removed. A `downloaded` entry stays as it is. Anything
+   else comes back as `error` keeping its files: a failure keeps its classified
+   `failure`, a download the app closed mid-way becomes `{ kind: 'interrupted' }`
+   ("The app closed before it finished"), and `kept`, `progress` and `bytes` are
+   recomputed from the files really on disk. The engines can't resume a
+   half-written file, so Retry starts that one again and skips the rest. No engine
+   or storage format change came with this.
+4. Surviving `downloaded` manifests **seed the React Query cache** (`qk.item(connectionId, …)`
    and `qk.chapters(connectionId, …)`), so the book screen renders instantly
    offline.
 5. On web, `probe()` then runs and may downgrade `supported` - the UI hides
@@ -277,8 +286,9 @@ re-exports it) renders what the pure `src/downloads/downloads-view.ts` returns:
 - `splitDownloads` - **In progress** (running, then waiting in the order asked, then
   failed) and **Ready offline** (newest first); `groupByServer` groups the ready ones
   in connection order (unknown connections last).
-- `storageBar` - one segment per server in `chart-1..5` (a sixth and on fold into
-  "N more servers"), an **Other apps** segment on a device (`capacity - free -
+- `storageBar` - one segment per server, taking the chart colours in
+  `CHART_ORDER` (`chart-2..5`, then `chart-1`: the brand pink comes last, so the
+  page keeps one pink thing; a sixth server and on fold into "N more servers"), an **Other apps** segment on a device (`capacity - free -
   ours`; a browser can't see other apps), and `used` preferring the engine's
   `totalBytesUsed` over the registry's sum. `useStorage` re-reads both only when a
   book lands or leaves.

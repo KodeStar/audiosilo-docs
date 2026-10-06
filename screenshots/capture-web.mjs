@@ -351,7 +351,13 @@ async function captureWide(name, viewport, shots) {
       await librarySection(page, 'Books');
       await openNamed(page, 'The Art of War');
       await page.getByRole('button', {name: /^download$/i}).first().click({timeout: 8000});
-      await page.getByText(/^Downloaded/).first().waitFor({state: 'visible', timeout: 120000});
+      // Done once the book page offers Remove download (a hidden page further down the
+      // stack can hold another "Downloaded" text, so wait on the visible button).
+      await page
+        .getByRole('button', {name: /^remove download$/i})
+        .filter({visible: true})
+        .first()
+        .waitFor({state: 'visible', timeout: 120000});
       await sleep(1500);
     });
   }
@@ -407,7 +413,8 @@ async function capturePhone(name, viewport, shots) {
   if (shots.upNext) {
     // The sheet, from the Up next button beside Home's large title.
     await step('up next sheet', async () => {
-      await tid(page, 'upnext-button-header').click({timeout: 8000});
+      // Every visited tab page keeps its own header mounted: take the visible one.
+      await page.locator('[data-testid="upnext-button-header"]:visible').first().click({timeout: 8000});
       await sleep(2500);
       await shoot(page, shots.upNext);
     });

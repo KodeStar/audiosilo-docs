@@ -23,7 +23,8 @@ You can open it from:
 
 - the **Up next** button in the top bar (tablet and computer), with the number of books queued;
 - the Up next button on the [player bar](playback.md#the-mini-player-and-the-player-bar) along the bottom of the window;
-- on a phone, the round Up next button beside the big title at the top of each tab.
+- on a phone, the round Up next button beside the big title at the top of each tab;
+- in the web player's [quick search](browsing.md#quick-search-in-the-web-player), the **Open Up next** action.
 
 Up next shows **one server's queue**: the server of the book you're playing, or your main server when nothing is playing. If you're connected to more than one server, the line under the title names it, along with how much listening is queued ("7h 2m queued").
 
@@ -36,7 +37,7 @@ Up next shows **one server's queue**: the server of the book you're playing, or 
 
 ## Adding books
 
-- In the Library's book list, open a book's **...** menu and choose **Add to Up next** (or **Remove from Up next** if it's already there).
+- Open any book's [menu](browsing.md#the-book-menu) (its **...** button in a list, or press and hold its cover) and choose **Add to Up next** (or **Remove from Up next** if it's already there).
 - On a [series page](browsing.md#series-pages), the action under the shelf (and beside each book in the list) reads **Queue it** for a book you haven't started, and **Queued** once it's in.
 - In Up next itself, tap **+** beside a suggestion.
 - **In the web player on a computer**, drag any book cover from the page and drop it on the drawer. A dashed area at the end of the queue lights up as you drag. Only books from the queue's own server can go in; for any other, the drawer says which server it's showing.

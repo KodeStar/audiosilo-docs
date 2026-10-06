@@ -146,7 +146,7 @@ Turn on **Automatically play next book** in [Settings](account.md#up-next) and t
 On iPhone and iPad, if the screen is **locked** when a book ends, the next book starts **straight away** with no countdown. Once audio stops the system can suspend the app, so there's no reliable way to show a countdown in the background.
 :::
 
-Two related settings keep the flow smooth and your device tidy - **Automatically download books** (it downloads whatever you start listening to, so the next book downloads the moment **Play next** starts it) and **Automatically delete finished books**. Both are covered under [Up next in Settings](account.md#up-next).
+Two related settings keep the flow smooth and your device tidy - **Automatically download books** (it downloads whatever you start listening to, so the next book downloads the moment **Play next** starts it) and **Remove a download when you finish the book**. Both are covered under [Up next in Settings](account.md#up-next).
 
 ## Play to another speaker (AirPlay / Cast)
 
