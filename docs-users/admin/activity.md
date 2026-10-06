@@ -196,3 +196,38 @@ Deleting an account removes all of its records; deleting a library removes the
 listening records for its books. You can also
 [sign out a single device](users-and-invites.md#the-devices-page), leaving the
 person's other devices signed in.
+
+### Listeners' own lists and goals
+
+The server can also keep a few things each listener sets up for themselves, so
+they follow them from device to device. The apps will offer them as they gain
+the features:
+
+- **Up next** - the books they have queued to play next.
+- **Collections** - lists of books they have made, with a name and a
+  description, and who they have shared each one with.
+- **Ratings** - a 1 to 5 rating of a book and an optional short note.
+- **A listening goal** - how many books they want to finish each year.
+
+They are kept in the server's database like everything else, but nothing in
+the admin console shows them. Two things are visible to other listeners:
+
+- **Sharing a collection shows usernames.** To pick who to share a collection
+  with, any signed-in listener can see the usernames of the server's other
+  enabled accounts (demo accounts can't, and are never listed). Only usernames
+  are shown, nothing else about the accounts.
+- **A shared collection shows its owner.** Someone a collection is shared with
+  sees its name, its description, the owner's username, and only the books in
+  it that **they** already have access to. Sharing a collection never gives
+  anyone access to a book, and they can't change it, only remove it from their
+  own list.
+
+The server also works out each listener's own listening figures for their app:
+time listened, their most-listened books, authors and series, and the books
+they finished. A listener gets only their own, never anyone else's, and the
+book lists name only books they can still open.
+
+Deleting an account removes these too: its queue, its collections (and its
+place in other people's shared ones), its ratings and its goal. Deleting a
+library removes its books from everyone's queues, collections and ratings. All
+of it is part of every [backup](backups.md).

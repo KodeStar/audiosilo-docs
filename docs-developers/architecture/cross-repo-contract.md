@@ -78,6 +78,23 @@ browse lists, and `/books` takes `narrator=` (`useLibraryBooks`); `GET
 14). The share-scope SQL behind all of these (`pathFilterSQL`) is a case-sensitive
 byte-range prefix, matching `Scope.Allows` exactly.
 
+**Player-redesign user state (Phase 1b).** The listener's own state, mirrored the
+same way and gated per feature (seam 8), still with no screen: up next
+(`/me/queue`, `{ queue }`), collections shared read-only with named users
+(`/me/collections/**`, `{ collections }` / `{ collection, items }`, and
+`/me/share-targets`, `{ users }`), ratings (`/libraries/{id}/rating`,
+`{ rating }`, and `/me/ratings`), the caller's own progress edit
+(`PATCH /libraries/{id}/progress`, mark finished or unfinished, edit the dates)
+with `started_at` / `finished_at` on every progress response, personal stats
+(`/me/stats`, `{ stats }`; `/me/listening`; `/me/goal`, a books-per-year goal)
+and the caller's devices (`/me/devices`). List entries are `{ library_id, path }`
+book references (seam 1) carrying an optional list-shape `book`; every list is
+filtered by the caller's current access, and an id that isn't the caller's is a
+`404`. Shapes and status codes are in the
+[reference](../server/api/reference.md#up-next-collections-and-ratings); the
+security rules in
+[Auth & security](../server/auth-and-security.md#the-listeners-own-state-me).
+
 ## 3. Media auth rides in the URL - `?token=`
 
 **What couples:** browsers can't set an `Authorization` header on
@@ -188,17 +205,18 @@ version.
 
 **Server:** `handleServerInfo` advertises `admin_ui`, `web_player`, `upload`,
 `transcode`, `websocket`, `api_keys`, `export`, `metadata`, `meta_bundle`,
-`browse_people`, `cover_sizes` and `next_book`, plus the server version
+`browse_people`, `cover_sizes`, `next_book`, `queue`, `collections`, `ratings`,
+`progress_edit`, `user_stats` and `my_devices`, plus the server version
 (`api.Version`, stamped from the release tag via ldflags). `transcode` reflects
 ffmpeg availability; `web_player` reflects whether `/web` is populated; `api_keys`
 reflects that the server accepts user-minted API keys; `metadata` and
-`meta_bundle` follow the runtime metadata switch; `browse_people`, `cover_sizes`
-and `next_book` are always true on a server that has them (the full table is in
+`meta_bundle` follow the runtime metadata switch; `browse_people`, `cover_sizes`,
+`next_book` and the six Phase 1b flags are always true on a server that has them (the full table is in
 [API conventions](../server/api/index.md#capability-flags---gate-your-features)).
 (`upload` and `websocket` are reserved for **planned** phases - `POST /uploads`
 and WebSocket sync are not shipped.)
 **Frontend:** the `ServerInfo` type; feature gating and the "connected server
-version" display key off it. The Phase 1a flags are optional on `Capabilities`
+version" display key off it. The Phase 1a and 1b flags are optional on `Capabilities`
 and read through the exported, tri-state `useCapability(flag, connectionId?)` in
 `hooks.ts` (`undefined` until `/server` answers, then `true`/`false`); the gated
 hooks give a server without the flag no query function (`skipToken`), so it is

@@ -42,7 +42,13 @@ else and gate features on the flags.
     "meta_bundle": true,
     "browse_people": true,
     "cover_sizes": true,
-    "next_book": true
+    "next_book": true,
+    "queue": true,
+    "collections": true,
+    "ratings": true,
+    "progress_edit": true,
+    "user_stats": true,
+    "my_devices": true
   },
   "auth": { "methods": ["auth_code", "password"] },
   "demo": { "enabled": false }
@@ -81,6 +87,18 @@ gates:
 | `browse_people` | always `true` | the browse lists [`/authors`, `/narrators`](#get-apiv1librariesidauthors--get-apiv1librariesidnarrators) and [`/series`](#get-apiv1librariesidseries), and the `narrator` filter on [`/books`](#get-apiv1librariesidbooks) |
 | `cover_sizes` | always `true` | cover thumbnails, [`/cover?size=`](#get-apiv1librariesidcover) |
 | `next_book` | always `true` | [`/next`](#get-apiv1librariesidnext), what to play after a book |
+
+Phase 1b (the listener's own state and stats) adds six more, all always `true` on
+a server that has them and absent on an older one:
+
+| Flag | Value | Gates |
+|---|---|---|
+| `queue` | always `true` | [Up next](#up-next-collections-and-ratings): `/me/queue`, every method |
+| `collections` | always `true` | [Collections](#get-apiv1mecollections): `/me/collections/**` and `/me/share-targets` |
+| `ratings` | always `true` | [`/libraries/{id}/rating`](#get-apiv1librariesidrating) and [`/me/ratings`](#get-apiv1meratings) |
+| `progress_edit` | always `true` | [`PATCH /libraries/{id}/progress`](#patch-apiv1librariesidprogress), and `started_at` / `finished_at` on the [progress](#get-apiv1meprogress) responses |
+| `user_stats` | always `true` | [Your listening](#your-listening): `/me/stats`, `/me/listening` and `/me/goal` |
+| `my_devices` | always `true` | [Your devices](#your-devices): `/me/devices` |
 
 ### `GET /healthz` · `GET /api/v1/healthz`
 
@@ -396,6 +414,62 @@ immediately. Response: `204 No Content`.
 | `403` | demo account |
 | `404` | no such API key for this caller (missing, already revoked, another user's, or not an API-key token id) |
 | `429` | account-mutation limit tripped |
+
+## Your devices
+
+*Session.* Capability `my_devices`. The caller's own signed-in devices, the
+player-side counterpart of the admin's
+[`GET /admin/devices`](#get-apiv1admindevices): a device is a live session token
+(a paired phone, a browser) or a personal API key, never a pairing token. These
+routes only ever touch the caller's own tokens.
+
+### `GET /api/v1/me/devices`
+
+*Session.* The caller's live session and API-key tokens, most recently seen
+first (`auth.ListDevices` for the caller).
+
+```json
+{
+  "devices": [
+    {
+      "id": 57,
+      "kind": "session",
+      "name": "Pixel 9",
+      "client": { "app": "AudioSilo", "version": "1.4.2", "platform": "android" },
+      "created_at": "2026-07-02T11:20:31Z",
+      "last_seen": "2026-10-04T19:41:56Z",
+      "last_ip": "192.168.1.24",
+      "current": true
+    }
+  ]
+}
+```
+
+The fields are those of the [admin's device list](#get-apiv1admindevices)
+without `user_id` and `username`: `kind` is `session` or `api`, `name` the device
+name sent at sign-in (an API key's label), `client` the app the token last
+reported (`null` until a request names one), `last_seen` the newest
+authenticated request (`null` before any), `last_ip` that request's address, and
+`current` marks the token making this request.
+
+### `DELETE /api/v1/me/devices/{id}`
+
+*Session.* Signs one of the caller's devices out by revoking its token. The
+caller's other devices stay signed in.
+
+```json
+{ "current": false }
+```
+
+Revoking the **current** device is allowed (unlike the admin route's
+`409 current_device`): the response says `"current": true`, and the token is
+dead for every later request, so the client signs out locally. An API-key caller
+may revoke too, since revoking only reduces access.
+
+| Status | Meaning |
+|---|---|
+| `200` | revoked; `current` says whether it was the token making this request |
+| `404` | `device not found` - not one of the caller's live session or API-key tokens: another user's, unknown, a pairing token or already revoked (never `403`, so the answer doesn't confirm that another user's token exists) |
 
 ## Demo
 
@@ -1411,11 +1485,20 @@ revoked share isn't returned.
       "playback_speed": 1.25,
       "version": 7,
       "device_id": "pixel-9-sam",
-      "updated_at": "2026-07-01T19:42:07Z"
+      "updated_at": "2026-07-01T19:42:07Z",
+      "started_at": "2026-06-20T21:05:12Z"
     }
   ]
 }
 ```
+
+`started_at` and `finished_at` (RFC 3339, UTC) are the book's start and finish
+dates, on every progress response of a server with the `progress_edit`
+capability (this list, the single-book read and the `PUT` echo). Each is
+omitted when unknown or none: `started_at` on rows saved before the server
+recorded it, `finished_at` while the book is unfinished. How they are stamped is
+under [`PUT`](#put-apiv1librariesidprogress); a listener corrects them with
+[`PATCH`](#patch-apiv1librariesidprogress).
 
 ### `GET /api/v1/libraries/{id}/progress`
 
@@ -1449,7 +1532,41 @@ last-write-wins, never changes the response, and a failure to record it is only
 logged. The server also stamps the row's start and finish dates (`started_at`
 on the first save, `finished_at` when `finished` turns on, cleared when it turns
 off), taken from the save's own `updated_at` (server time when it is missing or
-implausible); they are admin-only and not part of this envelope.
+implausible). With `progress_edit` they ride on the response; any
+`started_at` / `finished_at` in the `PUT` body is **ignored** (the save stamps
+them), so a client changes them only through
+[`PATCH`](#patch-apiv1librariesidprogress).
+
+### `PATCH /api/v1/libraries/{id}/progress`
+
+*Session.* Capability `progress_edit`. The caller's own edit of their progress
+on a book (`?path=` required): mark it finished or **unfinished**, move the
+position, or set or clear the start and finish dates. The same rules as an
+admin's [edit of someone's progress](#patch-apiv1adminlibrariesidprogress)
+(`catalog.EditProgress`), applied with the caller's own access. Any subset of:
+
+| Body field | Type | Notes |
+|---|---|---|
+| `finished` | bool | `true` moves the position to the end and stamps the finish now (unless `finished_at` is given); `false` (mark unfinished) clears the finish date and keeps the position (unless `position` is given) |
+| `position` | float | seconds; between `0` and the book's duration |
+| `started_at` | string \| null | RFC 3339 or `YYYY-MM-DD` (the start of that day, server time); `null` clears it |
+| `finished_at` | string \| null | RFC 3339 or `YYYY-MM-DD` (the **end** of that day, server time, or now if that is sooner); `null` clears it; needs the book to be (or become) finished |
+
+A field left out stays as it is. With no progress on the book yet, an indexed
+book in the caller's scope gets a new row (its start stamped now). The write is
+stamped with the server's time and a higher `version`, so under last-write-wins
+it beats what a device saved before it, while a device that has the book loaded
+overrides it on its next save. It is not playback, so it records no
+[listening session](#admin-activity).
+
+Response `200`: `{ "progress": { … } }` - the player's progress object, with
+its dates.
+
+| Status | Meaning |
+|---|---|
+| `400` | `path is required`; `invalid request` (a malformed body, an unknown key or an unparseable date); `those dates or that position don't fit this book` - a negative position or one past the book's end, a date more than a day in the future, a finish before the start, or a finish date on a book that isn't (and isn't becoming) finished |
+| `403` | `no access to this path` - outside the caller's current access |
+| `404` | no progress at that path and no indexed book there |
 
 ### `GET /api/v1/libraries/{id}/bookmarks` · `POST /api/v1/libraries/{id}/bookmarks`
 
@@ -1574,6 +1691,438 @@ and the book fields are empty (render it by its path leaf).
 *Session.* Heart / un-heart a path (`?path=` required on both; one favourite
 per user+library+path). Both are idempotent. POST → `201 Created` (empty body);
 DELETE → `204 No Content`.
+
+## Up next, collections and ratings
+
+*Session* (a session token or an API key). The listener's own lists, gated by
+capability: `queue` for up next, `collections` for collections and the share
+picker, `ratings` for ratings. Rules shared by every route in this section:
+
+- **A reference is a book path.** List entries are addressed as
+  `{ "library_id": 1, "path": "…" }`: the book's own `rel_path` (cleaned like
+  every path). Entries are stored by path with no link to the index, like
+  progress and favourites, so they survive a rescan and follow a moved book.
+- **`book`** on an entry is the book in the [list shape](#get-apiv1librariesidbooks)
+  (no `description`), present while the path is indexed. A client renders an
+  entry without it by its path leaf.
+- **Lists show only what the caller can open now.** An entry whose path is
+  outside the caller's **current** access (a share since taken away) is kept in
+  the database but left out of every response and every count, as favourites
+  are. It reappears if access comes back.
+- **Adding one book resolves it.** A single add (`POST`) and a rating `PUT`
+  accept any path inside a book, like [`/item`](#get-apiv1librariesiditem): a
+  part of a folder book or a disc folder resolves to the whole book, a book not
+  yet indexed is indexed on demand, and the book's own path is what is stored.
+  A path outside the caller's access is `403 no access to this path`; a path
+  that isn't a book is `404`.
+- **Replacing a whole list doesn't.** A `PUT` of a whole list indexes nothing:
+  each entry must be a book already indexed at exactly that path and inside the
+  caller's current access. Any other entry is **skipped**, not an error, and the
+  response is the stored result, so a client reconciles with what it gets back.
+  Duplicates collapse (the first wins).
+- **Removing one entry is never scoped.** `DELETE …?library_id=&path=` removes
+  only the caller's own row, so it needs no access check and a revoked path can
+  still be cleaned up. It is idempotent (`204` whether or not the entry existed).
+- **Another user's id is a `404`.** Every route addressed by an id answers `404`
+  for an id that isn't the caller's, never `403`, so the answer doesn't confirm
+  that another user's collection exists.
+- **Positions** are 0-based indexes in the stored order. Absent or past the end
+  means the end; a negative one is a `400`.
+
+### `GET /api/v1/me/queue`
+
+*Session.* Capability `queue`. The caller's up next, in order.
+
+```json
+{
+  "queue": [
+    {
+      "library_id": 1,
+      "path": "Brandon Sanderson/Mistborn/The Well of Ascension",
+      "added_at": "2026-10-04T19:45:02Z",
+      "book": { "id": 413, "library_id": 1, "rel_path": "Brandon Sanderson/Mistborn/The Well of Ascension", "title": "The Well of Ascension", "…": "…" }
+    }
+  ]
+}
+```
+
+### `PUT /api/v1/me/queue`
+
+*Session.* Replaces the caller's whole up next with this order.
+
+```json
+{ "items": [ { "library_id": 1, "path": "Brandon Sanderson/Mistborn/The Well of Ascension" } ] }
+```
+
+Entries follow the [replace rules](#up-next-collections-and-ratings): duplicates
+collapse, entries that aren't an indexed book in the caller's access are
+skipped. Every stored row not in the list is deleted, **including** rows the
+caller can't currently see. Response `200`: the queue, as `GET`.
+
+| Status | Meaning |
+|---|---|
+| `400` | a malformed body; `too many items` - more than 500 |
+
+### `POST /api/v1/me/queue`
+
+*Session.* Adds one book.
+
+| Body field | Type | Required | Notes |
+|---|---|---|---|
+| `library_id` | int | yes | |
+| `path` | string | yes | any path in the book; the book's own path is stored |
+| `position` | int | no | 0-based; absent or past the end = the end |
+
+A book already queued **moves** to `position` when one is given, and otherwise
+stays where it is (so adding twice is harmless). Response `200`: the whole
+queue, as `GET`.
+
+| Status | Meaning |
+|---|---|
+| `400` | a malformed body, a missing path, or a negative `position` |
+| `403` | `no access to this path` |
+| `404` | no book at that path |
+| `409` | `code: "queue_full"` - the queue already holds 500 books |
+
+### `DELETE /api/v1/me/queue`
+
+*Session.* Removes one book (`?library_id=&path=`). `204 No Content`,
+idempotent, with no access check.
+
+### `GET /api/v1/me/collections`
+
+*Session.* Capability `collections`. The collections the caller owns, then the
+ones shared with them, each group most recently updated first.
+
+```json
+{
+  "collections": [
+    {
+      "id": 7,
+      "name": "Long drives",
+      "description": "Big books for the summer trip",
+      "owner": { "id": 4, "username": "sam" },
+      "owned": true,
+      "shared_with": [ { "id": 6, "username": "alex" } ],
+      "item_count": 12,
+      "preview": [ { "id": 412, "library_id": 1, "rel_path": "Brandon Sanderson/Mistborn/The Final Empire", "title": "The Final Empire", "…": "…" } ],
+      "created_at": "2026-09-30T18:02:11Z",
+      "updated_at": "2026-10-04T20:15:40Z"
+    }
+  ]
+}
+```
+
+- `owned` - the caller owns it. Otherwise it was **shared with** the caller,
+  read-only, and `owner` names who did.
+- `shared_with` - who the owner shares it with (`[]` when nobody). Sent to the
+  owner only, never to a viewer.
+- `item_count` - the items **the caller** can open now; a viewer never learns
+  how many of the owner's items are out of their reach.
+- `preview` - the first (up to) four of those items that are indexed, as list
+  books, for a cover mosaic.
+- `updated_at` moves on a rename, a new description, and any change to the
+  items. Sharing doesn't move it.
+
+Collections are **shared read-only**: only the owner renames, describes, edits
+the items or the shares; a viewer can read the collection and leave it. A viewer
+sees only the items their **own** current access allows, never the owner's.
+
+### `POST /api/v1/me/collections`
+
+*Session.* Creates a collection owned by the caller.
+
+| Body field | Type | Required | Notes |
+|---|---|---|---|
+| `name` | string | yes | trimmed; 1 to 100 characters, no control characters |
+| `description` | string | no | up to 1,000 characters |
+
+Response `201`: `{ "collection": { … } }`.
+
+| Status | Meaning |
+|---|---|
+| `400` | a malformed body, or a name or description outside the rules |
+| `409` | `code: "collections_full"` - the caller already owns 100 collections |
+
+### `GET /api/v1/me/collections/{id}`
+
+*Session.* One collection and its items, in order, filtered by the **caller's**
+current access.
+
+```json
+{
+  "collection": { "id": 7, "name": "Long drives", "owned": true, "…": "…" },
+  "items": [
+    {
+      "library_id": 1,
+      "path": "Brandon Sanderson/Mistborn/The Final Empire",
+      "added_at": "2026-09-30T18:03:00Z",
+      "book": { "id": 412, "title": "The Final Empire", "…": "…" }
+    }
+  ]
+}
+```
+
+`404` when the caller neither owns it nor has it shared with them.
+
+### `PATCH /api/v1/me/collections/{id}`
+
+*Session.* Renames or re-describes a collection (owner only): any subset of
+`name` and `description`, with the rules of `POST`. Response `200`:
+`{ "collection": { … } }`.
+
+| Status | Meaning |
+|---|---|
+| `400` | a malformed body, or a name or description outside the rules |
+| `403` | `code: "not_owner"` - the collection is shared with the caller, who can't change it |
+| `404` | not the caller's collection and not shared with them |
+
+### `DELETE /api/v1/me/collections/{id}`
+
+*Session.* For the owner, deletes the collection with its items and shares. For
+a viewer, **leaves** it: only their own share is removed, and the owner's
+collection is untouched. `204 No Content`; `404` for anyone else.
+
+### `PUT /api/v1/me/collections/{id}/items`
+
+*Session.* Replaces the collection's items with this order (owner only), body
+`{ "items": [ { "library_id": 1, "path": "…" } ] }`, by the
+[replace rules](#up-next-collections-and-ratings) of up next. Response `200`:
+the collection and its items, as `GET /me/collections/{id}`.
+
+| Status | Meaning |
+|---|---|
+| `400` | a malformed body; more than 1,000 items |
+| `403` | `code: "not_owner"` |
+| `404` | not the caller's collection and not shared with them |
+
+### `POST /api/v1/me/collections/{id}/items`
+
+*Session.* Adds one book (owner only), with the body and semantics of
+[`POST /me/queue`](#post-apiv1mequeue): `library_id`, `path` and an optional
+`position`; a book already in it moves to `position` when one is given.
+Response `200`: the collection and its items, as `GET /me/collections/{id}`.
+
+| Status | Meaning |
+|---|---|
+| `400` | a malformed body, a missing path, or a negative `position` |
+| `403` | `code: "not_owner"`; or `no access to this path` |
+| `404` | not the caller's collection and not shared with them; or no book at that path |
+| `409` | `code: "collection_full"` - the collection already holds 1,000 books |
+
+### `DELETE /api/v1/me/collections/{id}/items`
+
+*Session.* Removes one book (`?library_id=&path=`, owner only). `204 No
+Content`, idempotent, with no access check on the path. `403`
+`code: "not_owner"` for a viewer, `404` for anyone else.
+
+### `PUT /api/v1/me/collections/{id}/shares`
+
+*Session.* Replaces who the collection is shared with (owner only), body
+`{ "user_ids": [6, 9] }` (`[]` stops sharing it). Each id must be an existing,
+enabled, non-demo account other than the owner; one that isn't rejects the
+whole request. Response `200`: `{ "collection": { … } }`, its `shared_with`
+updated.
+
+| Status | Meaning |
+|---|---|
+| `400` | a malformed body; `unknown user`; more than 50 users |
+| `403` | `not available for demo accounts` - the owner is a demo account; or `code: "not_owner"` |
+| `404` | not the caller's collection and not shared with them |
+
+A viewer sees the owner's username and the items **they** can open; nothing of
+the owner's access is shared with them.
+
+### `GET /api/v1/me/share-targets`
+
+*Session.* Capability `collections`. Who the caller can share a collection
+with: every enabled, non-demo account other than the caller, by username.
+
+```json
+{ "users": [ { "id": 6, "username": "alex" }, { "id": 9, "username": "robin" } ] }
+```
+
+This is the one place a non-admin sees other accounts' usernames. A demo
+account gets `403`, so a public demo can't list the server's usernames.
+
+### `GET /api/v1/libraries/{id}/rating`
+
+*Session.* Capability `ratings`. The caller's rating of a book (`?path=`, the
+exact path, scoped like progress: use the book's own `rel_path`).
+
+```json
+{
+  "rating": {
+    "library_id": 1,
+    "path": "Brandon Sanderson/Mistborn/The Final Empire",
+    "rating": 5,
+    "note": "The heist that becomes a revolution.",
+    "created_at": "2026-10-02T21:14:00Z",
+    "updated_at": "2026-10-03T08:01:37Z"
+  }
+}
+```
+
+`{ "rating": null }` when the caller hasn't rated it. `400` missing path; `403`
+out of scope.
+
+### `PUT /api/v1/libraries/{id}/rating`
+
+*Session.* Rates a book (`?path=`, any path in it: it resolves to the book and
+is stored on the book's own path, by the
+[add rules](#up-next-collections-and-ratings)).
+
+| Body field | Type | Required | Notes |
+|---|---|---|---|
+| `rating` | int | yes | `1` to `5` |
+| `note` | string | no | a short private note; trimmed; up to 500 characters |
+
+Response `200`: `{ "rating": { … } }`, `note` `""` when there is none. One
+rating per book per user: rating again updates it and moves `updated_at`.
+
+| Status | Meaning |
+|---|---|
+| `400` | missing path; a malformed body; `rating` not a whole number from 1 to 5; a note over 500 characters |
+| `403` | `no access to this path` |
+| `404` | no book at that path |
+
+### `DELETE /api/v1/libraries/{id}/rating`
+
+*Session.* Removes the caller's rating of a book (`?path=`, exact, scoped like
+`GET`). `204 No Content`, idempotent.
+
+### `GET /api/v1/me/ratings`
+
+*Session.* Capability `ratings`. Every rating the caller has made that they can
+still open, most recently updated first, each with its `book` when indexed.
+
+```json
+{
+  "ratings": [
+    {
+      "library_id": 1,
+      "path": "Brandon Sanderson/Mistborn/The Final Empire",
+      "rating": 5,
+      "note": "The heist that becomes a revolution.",
+      "created_at": "2026-10-02T21:14:00Z",
+      "updated_at": "2026-10-03T08:01:37Z",
+      "book": { "id": 412, "title": "The Final Empire", "…": "…" }
+    }
+  ]
+}
+```
+
+## Your listening
+
+*Session.* Capability `user_stats`. The caller's own listening, the player-side
+counterpart of the admin's [Activity](#range-listening-activity), computed from
+the same listening sessions and daily roll-ups but only ever **the caller's**.
+
+`range` is as on the admin routes: `7d`, `30d`, `90d`, `1y` (365 days) ending
+now, a calendar year such as `2025`, or `year` (the current calendar year in
+server time); empty means `30d`, and anything else is `400`
+`code: "invalid_range"`. Days, hours and weekdays are in the **server's** time
+zone, as on the admin Activity page.
+
+### `GET /api/v1/me/stats`
+
+*Session.* The caller's listening over a period.
+
+```json
+{
+  "stats": {
+    "range": "30d",
+    "from": "2026-09-04T19:42:08Z",
+    "to": "2026-10-04T19:42:08Z",
+    "timezone": "BST",
+    "utc_offset": 60,
+    "totals":   { "listened": 102380.5, "sessions": 61, "books": 5, "finished": 2 },
+    "previous": { "listened": 88012.0, "sessions": 54, "books": 4, "finished": 1 },
+    "estimated": 0,
+    "days": [ { "date": "2026-09-04", "listened": 3021.3 } ],
+    "hour_weekday": [ [0, 0, "… 24 values …"], "… 7 rows, Monday first …" ],
+    "top_books": [ { "library_id": 1, "path": "Brandon Sanderson/Mistborn/The Final Empire",
+                     "title": "The Final Empire", "author": "Brandon Sanderson", "listened": 38211.0 } ],
+    "top_authors":   [ { "name": "Brandon Sanderson", "listened": 61022.4, "books": 3 } ],
+    "top_narrators": [ { "name": "Michael Kramer", "listened": 61022.4, "books": 3 } ],
+    "top_series":    [ { "name": "Mistborn", "listened": 52011.9, "books": 2 } ],
+    "finished_books": [ { "library_id": 1, "path": "Brandon Sanderson/Mistborn/The Final Empire",
+                          "title": "The Final Empire", "author": "Brandon Sanderson",
+                          "finished_at": "2026-09-28T22:40:12Z" } ],
+    "playback": [ { "transcoded": false, "codec": "aac", "listened": 102380.5, "sessions": 61 } ],
+    "clients":  [ { "app": "AudioSilo", "version": "1.4.2", "platform": "ios", "devices": 2 } ]
+  }
+}
+```
+
+The fields mean what they mean in the admin's
+[`activity`](#range-listening-activity), for the caller alone:
+
+- `totals` - the caller's `listened` (wall-clock seconds), `sessions`, `books`
+  listened to and books `finished` in the period (by the caller's own finish
+  dates); `previous` the same for the period of equal length just before;
+  `estimated` how many of `totals.listened`'s seconds are estimates.
+- `days` - every day of the period, oldest first, zero days included;
+  `hour_weekday` - 7 rows (0 = Monday) of 24 hours, raw sessions only.
+- `top_books`, `top_authors`, `top_narrators`, `top_series` - up to 10 each, by
+  listened time. `finished_books` - the books the caller finished in the period,
+  newest first, up to 100.
+- `playback` and `clients` - the caller's listening by codec and transcoding,
+  and the caller's devices that listened, by app build.
+
+**Only the caller, and only what they can open now.** Nothing about other
+people is computed or sent: no `listeners`, `by_user`, `top_users`, funnel,
+drop-offs, storage, coverage, growth, peak concurrency, inactive users or any
+username. The top lists and `finished_books` pass through the caller's
+**current** access: a book they can no longer open is dropped from `top_books`
+and `finished_books`, and authors, narrators and series are ranked from the
+books they can still open, so a path, title or author from a share since taken
+away never comes back. `totals`, `days` and `hour_weekday` are the caller's own
+time and count everything.
+
+### `GET /api/v1/me/listening`
+
+*Session.* The caller's listening per day over a period, without the rest of
+the stats: the same `days` as `/me/stats`, for a year calendar or streaks
+(which the client works out from `days`).
+
+```json
+{
+  "range": "2026",
+  "from": "2025-12-31T23:00:00Z",
+  "to": "2026-10-04T19:42:08Z",
+  "timezone": "BST",
+  "utc_offset": 60,
+  "days": [ { "date": "2026-01-01", "listened": 3120.4 } ]
+}
+```
+
+As [`GET /admin/listening`](#get-apiv1adminlistening) with `user_id` set to the
+caller, without `by_user`. `400` `code: "invalid_range"`.
+
+### `GET /api/v1/me/goal` · `PUT /api/v1/me/goal` · `DELETE /api/v1/me/goal`
+
+*Session.* The caller's listening goal: a number of books to finish each
+calendar year, one per account, kept on the server so every device shows the
+same goal.
+
+`GET` answers:
+
+```json
+{
+  "goal": { "books_per_year": 24, "updated_at": "2026-01-02T09:00:00Z" },
+  "year": "2026",
+  "finished": 17
+}
+```
+
+`goal` is `null` when none is set. `year` is the server's current calendar year
+and `finished` the books the caller has finished in it (server time, counted
+like `totals.finished`), there whether or not a goal is set.
+
+`PUT` sets the goal, body `{ "books_per_year": 24 }` (a whole number from 1 to
+1,000, else `400`), and answers `200` as `GET`. `DELETE` clears it: `204 No
+Content`, idempotent.
 
 ## Admin: users & auth codes
 

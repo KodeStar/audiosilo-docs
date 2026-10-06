@@ -4,7 +4,7 @@ description: "The SQLite schema behind audiosilo-server: the rebuildable index v
 ---
 
 The schema lives in `internal/store/migrations/` as numbered SQL files
-(`0001_init.sql` … `0024_meta_cache.sql`), embedded into the binary and
+(`0001_init.sql` … `0028_listening_goals.sql`), embedded into the binary and
 applied by `store.Open` at startup. This page documents the **resulting current
 schema**, noting which migration added what.
 
@@ -18,10 +18,13 @@ thing to understand before touching it:
   from a rescan at any time. `books.id` is an internal artifact of this half:
   it must **never** appear in the API contract or in durable user state.
 - **Durable state** - `progress`, `bookmarks`, `notes`, `listening_history`,
-  `listening_sessions`, `listening_daily`, `favourites` (per-user), plus `folder_overrides`, `book_enrichment`,
+  `listening_sessions`, `listening_daily`, `favourites`, `up_next`,
+  `collection_items` and `ratings` (per-user), plus `folder_overrides`, `book_enrichment`,
   `issue_ignores`, `book_overrides`, `chapter_overrides` and `book_covers`
   (per-library config) - is keyed by **`(library_id, rel_path)`**, with **no
-  foreign key to `books`**.
+  foreign key to `books`**. The rest of a listener's own state hangs off the
+  account rather than a path: `collections`, `collection_shares` and
+  `listening_goals` (see [Lists, ratings and goals](#lists-ratings-and-goals)).
 
 A third, small group sits beside the index: **`scan_runs`**, the history of
 the scans that built it. It is a record of the index, not durable user state,
@@ -50,7 +53,7 @@ Why no FK across the seam? Three reasons, all load-bearing:
 
 The remaining gap - a file that *moves* on disk - is covered by move-tracking:
 the scanner fingerprints files (`books.content_hash`) and calls
-`catalog.MoveDurableState` to carry all twelve path-keyed book tables (everything
+`catalog.MoveDurableState` to carry all fifteen path-keyed book tables (everything
 above except `folder_overrides`, which is keyed by folder, not book) from the
 old path to the new one (see [Scanner](scanner.md#move-detection)). A folder
 whose disc folders an admin joins into one book hands the disc books' state to
@@ -76,6 +79,14 @@ erDiagram
     libraries ||--o{ listening_sessions : ""
     libraries ||--o{ listening_daily : ""
     libraries ||--o{ favourites : ""
+    libraries ||--o{ up_next : ""
+    libraries ||--o{ collection_items : ""
+    libraries ||--o{ ratings : ""
+    users ||--o{ collections : "ON DELETE CASCADE"
+    collections ||--o{ collection_items : "ON DELETE CASCADE"
+    collections ||--o{ collection_shares : "ON DELETE CASCADE"
+    users ||--o{ collection_shares : "ON DELETE CASCADE"
+    users ||--o| listening_goals : "ON DELETE CASCADE"
     libraries ||--o{ folder_overrides : "durable config"
     libraries ||--o{ book_enrichment : "durable config"
     libraries ||--o{ book_overrides : "durable config"
@@ -326,6 +337,47 @@ tables were rebuilt rather than migrated in place):
 - **`favourites`** *(0009)* - PK `(user_id, library_id, rel_path)`. A
   favourite may address **any** path: a navigation folder (author/series), a
   book folder, or a single-file book.
+
+### Lists, ratings and goals
+
+The listener's own state behind the player redesign's Phase 1b API (see
+[the reference](api/reference.md#up-next-collections-and-ratings)). Each path
+column holds a **book's** own `rel_path` (an add resolves a part or disc path
+to its book first), with no FK to `books`. Every table hangs off `users`
+(directly, or through `collections`) and, where it holds a path, off
+`libraries`, all `ON DELETE CASCADE`, so deleting an account or a library purges
+its rows. A row whose path is outside its user's
+current access is kept and only left out of the responses, as with favourites.
+
+- **`up_next`** *(0025)* - the listener's queue: PK `(user_id, library_id,
+  rel_path)`, `position` (its order) and `added_at`. At most 500 rows per user
+  (enforced by the API).
+- **`collections`** *(0026)* - `id` (`INTEGER PRIMARY KEY AUTOINCREMENT`, so an
+  id is never reused), `user_id` (the owner), `name`, `description` (`''`
+  default), `created_at`, `updated_at` (moved by a rename, a new description or
+  any change to the items). At most 100 per owner.
+- **`collection_items`** *(0026)* - PK `(collection_id, library_id, rel_path)`,
+  `position` and `added_at`; FK to `collections` (and `libraries`) with
+  `ON DELETE CASCADE`. At most 1,000 per collection.
+- **`collection_shares`** *(0026)* - PK `(collection_id, user_id)` and
+  `created_at`: who the owner shares a collection with, read-only. FKs to
+  `collections` and `users`, both `ON DELETE CASCADE`, so deleting the viewer's
+  account removes the share and deleting the owner's removes the collection with
+  its items and shares. At most 50 per collection.
+- **`ratings`** *(0027)* - PK `(user_id, library_id, rel_path)`; `rating`
+  (`INTEGER CHECK (rating BETWEEN 1 AND 5)`), `note` (`''` default, up to 500
+  characters), `created_at`, `updated_at`.
+- **`listening_goals`** *(0028)* - `user_id` (`INTEGER PRIMARY KEY`, one goal per
+  account), `books_per_year` and `updated_at`.
+
+Moves and joins carry the three path-keyed tables through `carryListeningState`
+(the one list). Where the destination path is already there (a book moving
+onto a path a removed book left rows on, or several discs joining into one
+book), `up_next` and `collection_items` keep the destination's row and its
+position and drop the moved one, and `ratings` keep the newer `updated_at`.
+`collections`, `collection_shares` and `listening_goals` hold no path, so
+nothing moves them. All six are part of a database backup (`VACUUM INTO`), like
+every table.
 
 ### Listening from before sessions
 
@@ -601,6 +653,10 @@ The migration history so far:
 | 0022 | `split_discs` | `books.split_parent` (`''` on every existing row; the next scan records the real value without re-indexing) and the partial index `idx_books_split_parent` |
 | 0023 | `cover_color` | `books.cover_art` (backfilled from each row's custom cover, else its mtime, size and sidecar path) and `books.cover_color` (`''`; the next thumbnail of each cover fills it) |
 | 0024 | `meta_cache` | `meta_cache`, the community metadata cache's persistent level, and its index `idx_meta_cache_stored` |
+| 0025 | `up_next` | `up_next`, each listener's queue |
+| 0026 | `collections` | `collections`, `collection_items` and `collection_shares` |
+| 0027 | `ratings` | `ratings`, a listener's 1 to 5 rating and note per book |
+| 0028 | `listening_goals` | `listening_goals`, a listener's books-per-year goal |
 
 ## SQLite choices
 

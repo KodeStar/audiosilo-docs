@@ -20,7 +20,9 @@ A backup is one file holding the whole database at the moment it was made:
 
 - accounts (with their password hashes, never the passwords themselves),
   signed-in devices and API keys, and invites;
-- listening progress, bookmarks, notes, history and favourites;
+- listening progress, bookmarks, notes, history and favourites, and each
+  listener's up next, collections (and who they're shared with), ratings and
+  listening goal;
 - shares and who can see what;
 - your metadata edits, custom covers and folder detection choices;
 - the [audit log](server.md#audit-log), your

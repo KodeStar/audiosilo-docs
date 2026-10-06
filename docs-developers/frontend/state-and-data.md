@@ -190,6 +190,39 @@ older server (React Query rejects it instead) and the query stays pending.
   `BookMetaRecording.chapter_count`; `local` (`BookRef`) on rail entries; and
   `previous` on a matched `BookMeta`. All optional, absent on older servers.
 
+### The listener's own state (player redesign Phase 1b)
+
+Phase 1b adds the listener's own state to the data layer the same way: typed
+mirrors in `types.ts`, methods in `client.ts` and hooks in `hooks.ts`, each gated
+on its capability like the Phase 1a reads, and none consumed by a screen yet.
+
+| Capability | Endpoints | Shapes |
+|---|---|---|
+| `queue` | `GET/PUT/POST/DELETE /me/queue` | `QueueEntry { library_id, path, added_at, book? }` |
+| `collections` | `/me/collections`, `/me/collections/{id}` and its `items` and `shares`, `GET /me/share-targets` | `Collection` (`owner`, `owned`, owner-only `shared_with`, `item_count`, `preview`), `CollectionItem` |
+| `ratings` | `GET/PUT/DELETE /libraries/{id}/rating`, `GET /me/ratings` | `Rating { library_id, path, rating, note, created_at, updated_at }` |
+| `progress_edit` | `PATCH /libraries/{id}/progress` | `started_at?` / `finished_at?` on `Progress` |
+| `user_stats` | `GET /me/stats`, `/me/listening`, `GET/PUT/DELETE /me/goal` | `UserStats`, the per-day listening, the goal |
+| `my_devices` | `GET /me/devices`, `DELETE /me/devices/{id}` | `MyDevice` |
+
+Things a screen must handle (the full rules are in the
+[API reference](../server/api/reference.md#up-next-collections-and-ratings)):
+
+- **Reconcile with the answer.** Every list write answers with the stored list,
+  and a whole-list `PUT` silently skips entries that aren't an indexed book the
+  caller can open. Replace the cache with the response rather than with what
+  was sent.
+- **Entries without `book`.** A list entry carries `book` only while its path is
+  indexed; render it by its path leaf otherwise.
+- **Viewers can't edit.** A collection with `owned: false` is shared with the
+  caller read-only: writes answer `403` with `code: "not_owner"`, and `DELETE`
+  means leave it.
+- **Revoking the current device.** `DELETE /me/devices/{id}` answers
+  `{ current: true }` when it revoked the token the app is using; the app then
+  signs out locally, since every later request fails.
+- **Streaks are computed on the device** from `/me/listening`'s `days` (server
+  time).
+
 ### The book screen's tabs
 
 The book screen (`src/app/(app)/(home,library,search,offline,me)/book/[libraryId].tsx`)

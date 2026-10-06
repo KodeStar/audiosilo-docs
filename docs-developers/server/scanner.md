@@ -359,8 +359,10 @@ reads files from its subfolders (`isJoined`), the disc books that vanished go to
   per-user tables, shared with moves): progress with the furthest position per
   listener winning (`mergeFurthest`; a finished disc counts as its end, and the
   joined book is finished only when the last disc is), bookmarks, notes,
-  history and sessions offset by the disc's start, daily roll-ups re-keyed and a
-  favourite landing once.
+  history and sessions offset by the disc's start, daily roll-ups re-keyed, a
+  favourite landing once, and queue entries, collection entries and ratings
+  moved to the joined book (where it already has one, the queue and collection
+  keep that entry and its position, and the newer rating wins).
 - The disc books' own config is **copied**, not moved: `book_overrides`,
   `book_covers` and `book_enrichment` (ASIN and ISBN each filled only where the
   joined book has none) field by field with the earliest disc winning, chapter
@@ -657,11 +659,12 @@ the fingerprint:
   `reclassified` skips such a pair (nested paths with different sizes; an equal
   size, a single-part folder, is still the same book).
 - A real match calls `catalog.MoveDurableState(lib, oldPath, newPath)`, which
-  migrates **all twelve** path-keyed book tables - `progress`, `bookmarks`,
+  migrates **all fifteen** path-keyed book tables - `progress`, `bookmarks`,
   `notes`, `listening_history`, `listening_sessions`, `listening_daily`,
-  `favourites`, `book_enrichment`,
+  `favourites`, `up_next`, `collection_items`, `ratings`, `book_enrichment`,
   `issue_ignores`, `book_overrides`, `chapter_overrides` and `book_covers` - so
-  a rename/move never orphans a user's position, a book's attached ASIN, an
+  a rename/move never orphans a user's position, queue entry, collection entry
+  or rating, a book's attached ASIN, an
   issue an admin ignored, or an admin's edits and custom cover. A same-path call is a no-op. It runs **two transactions**,
   each all or nothing:
   1. **The book's own state** (`moveBookState`): `book_enrichment` and
@@ -673,7 +676,8 @@ the fingerprint:
      with none keeps the new path's own rows, as any book appearing there would.
   2. **The per-user state** (`progress`, `bookmarks`, `notes`,
      `listening_history`, `listening_sessions`, `listening_daily`,
-     `favourites`), through `carryListeningState` (`catalog/listening.go`),
+     `favourites`, `up_next`, `collection_items`, `ratings`), through
+     `carryListeningState` (`catalog/listening.go`),
      the one list of per-user path-keyed tables, which a
      [join](#joined-books-disc-sets) uses too. A move is a join of one part at
      offset 0 that ends the book, except for a collision: where a listener
@@ -681,7 +685,9 @@ the fingerprint:
      the **newer save wins whole** (`mergeNewest`: `updated_at`, then
      `version`), never the further position, since that row says nothing about
      the moved book. The result takes a version above both rows. A favourite
-     lands once. So a collision no longer fails the move.
+     lands once; a queue or collection entry already at the new path keeps its
+     own position and the moved one is dropped; of two ratings the newer
+     `updated_at` wins. So a collision no longer fails the move.
 
   They are separate so that a failure carrying the per-user state can't also
   strand the admin's edits and cover at a path the scan is about to prune. The
