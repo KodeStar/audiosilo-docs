@@ -120,14 +120,18 @@ emptied while offline repopulate without a remount.
 
 ### The book screen's tabs
 
-The book screen (`src/app/(app)/book/[libraryId].tsx`) is an **overview plus a
-tab row**, not one long scroll. The overview keeps everything that identifies and
-starts the book - breadcrumbs, the version picker, the cover hero, the stats
-strip, the Listen/download actions, and the community-metadata **About** block
-(`BookMetaAbout`). Everything else lives behind a horizontally scrollable pill
-tab row (`TabBar`, `src/components/ui/tab-bar.tsx` - a thin wrapper over
-`SegmentedControl`'s `scrollable` + `role="tab"` mode; its equal-width,
-non-scrolling default cannot hold seven tabs):
+The book screen (`src/app/(app)/(home,library,search,offline,me)/book/[libraryId].tsx`)
+is an **overview plus a tab row**, not one long scroll. The overview keeps
+everything that identifies and starts the book - breadcrumbs, the version picker,
+the cover hero, the stats strip, the Listen/download actions, and the
+community-metadata **About** block (`BookMetaAbout`). Everything else lives behind
+the Stacks underline tabs (`Tabs` / `TabsList scrollable` / `TabsContent`,
+`src/components/ui/tabs.tsx`): `scrollable` puts the triggers in a horizontal
+scroller so up to seven tabs (and labels that grow in translation) stay
+reachable, and the parts carry the tablist / tab / tabpanel accessibility roles.
+The active panel renders inside the page's existing ScrollView, never in a nested
+vertical scroller. Phone and tablet/desktop share the same tab section (the wider
+layouts only add the right-hand cover panel). The tabs:
 
 | Tab | Shown when |
 |---|---|
@@ -193,7 +197,8 @@ behaviour, unchanged. The pure rules live in `src/lib/series-orderings.ts`
   heading on the primary's name whichever order is shown.
 
 A family with more than one view gets a compact scrollable `SegmentedControl`
-(`role="radio"`, labelled *Reading order*) above its rail. The pick is held by the
+(`src/components/ui/toggle-group.tsx`, a single-choice toggle group labelled
+*Reading order*) above its rail. The pick is held by the
 `useSeriesOrderings` store (below) and reported through `BookMetaSeriesTab`'s
 `onSelectView(family, viewId)`, so the screen - not the tab - owns it.
 
@@ -348,8 +353,16 @@ store.
 
 ### Search (`src/stores/search.ts`)
 
-A single shared `query` string, so the desktop top bar and the search screen
-are one input rather than two competing search bars. Not persisted.
+The search screen's `query` string, held in a store so it survives the screen
+remounting, plus a `focusRequest` counter: on a native tablet the top bar's search
+field calls `requestFocus()` and jumps to the Search tab, and the screen keys its
+input on the counter so a fresh mount with `autoFocus` takes the focus even when
+the tab was already open. (On web that field opens the command palette, whose
+own state - including the recent searches it keeps per device - is `usePalette`
+in `src/components/shell/palette-store.ts`; see
+[the shell](overview.md#command-palette-web).) The shell (`useShellEffects`) clears the query when you
+leave the Search tab; within the tab it is kept, so opening a result and coming
+back shows the same results. Not persisted.
 
 ### Player and downloads stores
 

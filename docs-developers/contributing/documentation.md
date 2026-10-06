@@ -55,6 +55,8 @@ mappings:
 | Config keys, env vars, CLI flags | [server/configuration.md](../server/configuration.md) + the User Guide pages that mention them (`/users/getting-started/remote-access`, quickstarts) |
 | Admin console UI (`admin-ui`) | `/users/admin/*` pages + the `admin/` screenshots (capture just those with `SHOTS_ONLY=admin/ screenshots/run.sh`) + [server/web-ui.md](../server/web-ui.md) for build, serving, CSP or new-section changes |
 | Player screens or strings | `/users/listening/*` pages + the `web-player/` screenshots |
+| The player's design system (`STYLEGUIDE.md`, tokens, fonts, `src/components/ui/` primitives) | [frontend/overview.md](../frontend/overview.md#styling-conventions) (+ [testing.md](../frontend/testing.md) when the token generator or style guards change); the frontend's own `STYLEGUIDE.md` stays authoritative, so these pages summarise it rather than copy it |
+| The player's shell: tabs, route groups, breakpoints, top bar, mini / docked player | [frontend/overview.md](../frontend/overview.md#the-shell-tabs-and-navigation) + the route map, `/users/listening/browsing` (getting around), `/users/listening/playback`, `/users/listening/mobile-apps` |
 | Playback engines / native module | [frontend/playback.md](../frontend/playback.md) |
 | Downloads / PWA | [frontend/offline.md](../frontend/offline.md) + `/users/listening/offline-downloads` |
 | Scanner, detection, metadata | [server/scanner.md](../server/scanner.md) + `/users/getting-started/organizing-your-library` |

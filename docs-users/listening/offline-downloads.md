@@ -10,7 +10,7 @@ Streaming needs your server; downloads don't. Download a book before a flight, a
 The download button lives on the **book's detail page**:
 
 - On a phone, it's the square button next to **Listen**.
-- On a desktop-sized window, it's the **Download** button above the chapter list.
+- On a tablet or computer, it's the **Download** button near the top of the page, above the book's tabs.
 
 While a download runs you'll see the progress ("Downloading 42% · 210 MB / 500 MB") with a cancel button. When it's done, the button shows **Downloaded** with the size, the cover is saved too, and the chapter/file list shows **green dots** to say the book is on the device.
 
@@ -28,7 +28,7 @@ The **Downloads** tab lists everything stored on the current device:
 
 - Each row shows the cover, title, and size (or a progress bar / failure notice for in-flight ones). Tap a row to start playing.
 - The **trash button** removes that book's audio from the device. The book itself, and all your progress and bookmarks, are untouched on the server - you can stream it again or re-download any time.
-- The header shows the **total storage used** by downloads.
+- The top of the screen shows the **total storage used** by downloads.
 
 Downloads are per-device: what you downloaded on your phone isn't automatically on your tablet.
 

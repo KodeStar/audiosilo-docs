@@ -1,6 +1,6 @@
 ---
 title: The mobile apps
-description: "The native iOS and Android apps: current availability, connecting, background playback, lock-screen controls, and gapless listening."
+description: "The native iOS and Android apps: current availability, connecting, getting around with the tab bar, background playback, lock-screen controls, and gapless listening."
 ---
 
 AudioSilo has native apps for **iOS** and **Android**. They're the same player you know from the web - same screens, same shelves, same account - plus the things only a real app can do well: rock-solid background playback, lock-screen controls, and downloads that live comfortably on your phone.
@@ -9,24 +9,31 @@ AudioSilo has native apps for **iOS** and **Android**. They're the same player y
 
 ## Availability
 
-The apps are finished and in active use, but **not yet generally available on the App Store or Google Play** - the store releases are working their way through the stores' testing and review pipelines:
+- **iOS**: the app is on the **[App Store](https://apps.apple.com/us/app/audiosilo/id6783431375)** - search for AudioSilo, or follow the link.
+- **Android**: the app is finished and in active use, but **not yet on Google Play** - it's going through Google Play's testing tracks, which require a testing period before an app can go public. If you'd like early access, ask whoever runs your server whether a tester invite is available, or check the AudioSilo project on GitHub for current status.
 
-- **iOS** builds are currently distributed to testers through **TestFlight**.
-- **Android** builds are going through **Google Play's testing tracks**, which require a testing period before an app can go public.
-
-If you'd like early access, ask whoever runs your server whether a tester invite is available, or check the AudioSilo project on GitHub for current status. And you don't have to wait to listen on your phone: the **web player works great on mobile** and can be [installed to your home screen](offline-downloads.md) today, downloads included.
+And you don't need the app to listen on your phone: the **web player works great on mobile** and can be [installed to your home screen](offline-downloads.md), downloads included.
 
 :::note
-This page describes availability at the time of writing; once the apps reach the public stores, installing them will be a normal store search away.
+This page describes availability at the time of writing; once the Android app reaches Google Play, installing it will be a normal store search away too.
 :::
 
 ## Connecting the app
 
 Signing the app in is usually a scan, not typing - all the routes are covered in [Connecting and signing in](connecting.md):
 
-- **Scan a QR code** - tap **Scan QR code** on the app's connect screen and point it at the pairing QR on your server's connect page (or at the **Settings → Devices** QR on a device that's already signed in).
+- **Scan a QR code** - tap **Scan QR code** on the app's connect screen and point it at the pairing QR on your server's connect page (or at the **Add a device** QR on a device that's already signed in - see [Adding more devices later](connecting.md#adding-more-devices-later)).
 - **Tap a link** - an invite link, or an `audiosilo://` link, opens the app and signs it in automatically.
 - **Type it in** - server address plus an invite code or username and password, if you prefer.
+
+## Getting around the app
+
+On a phone, the app uses your phone's own tab bar along the bottom of the screen, with five tabs: **Home**, **Library**, **Search**, **Downloads** and **Me** (your Settings). Each tab keeps its place while you visit the others. See [Getting around](browsing.md#getting-around) for what each one holds.
+
+- **iPhone**: the standard iOS tab bar. On **iOS 26 or later** it's the translucent "Liquid Glass" bar, with **Search** set apart as its own round button; the bar shrinks as you scroll down, and the [mini player](playback.md#the-mini-player-and-the-player-bar) sits inside it, just above the tabs. On older iOS versions the mini player floats just above the bar instead.
+- **Android**: the standard Material navigation bar, with every tab labelled and the current one highlighted by a soft pink pill. The mini player floats just above it.
+
+On an **iPad or Android tablet**, the app uses the same layout as the web player in a wide window: a top bar with Home, Library and Downloads, a search field and your settings, and a player bar along the bottom while a book plays. If the app's window changes size - in split view on an iPad, for example - it switches between the two layouts without losing your place in any tab.
 
 ## Background playback
 
@@ -45,7 +52,7 @@ Many audiobooks arrive as dozens of MP3 files. The apps play multi-file books **
 
 ## The same app as the web player
 
-If you've used the web player, you already know the app - they are literally the same application, shipped to different places. Home shelves, library browsing, search, favourites, bookmarks, notes, [downloads](offline-downloads.md), and [settings](account.md) all look and work the same, just arranged for a phone with a navigation bar along the bottom:
+If you've used the web player, you already know the app - they are literally the same application, shipped to different places. Home shelves, library browsing, search, favourites, bookmarks, notes, [downloads](offline-downloads.md), and [settings](account.md) all look and work the same, just arranged for a phone with a tab bar along the bottom:
 
 ![A book's detail page on a phone](/img/screenshots/web-player/phone-book-detail.png)
 

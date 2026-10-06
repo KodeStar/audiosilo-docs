@@ -3,9 +3,26 @@ title: Playing a book
 description: "The player screen: chapters, skips, playback speed, the sleep timer, lock-screen controls, and how your position syncs across devices."
 ---
 
-Tap **Listen** on any book and the player opens. On a phone it's a full-screen view; on a desktop-sized window it lives in a panel beside the book's details. A **mini-player** also docks along the bottom of every screen while something is playing: the cover, the title and current chapter, the **time left in the book** at your current speed, and a skip-back and play/pause button, with a thin progress line underneath. Tap it to bring the full player back.
+Tap **Listen** on any book to start it. On a phone, the full player opens straight away, filling the screen. On a tablet or computer, the book starts playing where you are and the **player bar** along the bottom of the window takes over; open the full player from it whenever you want the big view.
 
 ![The full player screen with cover, seek bar, and transport controls](/img/screenshots/web-player/player.png)
+
+## The mini player and the player bar
+
+While a book is playing, a small player stays with you on every screen, so you can pause or skip without opening the full player.
+
+**On a phone**, a **mini player** sits just above the tab bar: the cover, the title and current chapter, the **time left in the book** at your current speed, and a skip-back and play/pause button, with a thin progress line underneath. Tap it to open the full player.
+
+On an **iPhone running iOS 26 or later**, the mini player lives inside the tab bar itself, as a glass strip just above the tabs showing the current chapter, the book with its time left, and skip-back and play/pause buttons. Scroll down and the tab bar shrinks; the mini player then tucks in beside it, showing just the chapter and play/pause. Tap it to open the full player.
+
+**On a tablet or computer**, a **player bar** runs along the bottom of the window:
+
+- a thin line along its top edge showing your progress through the whole book;
+- on the left, the cover with the current chapter and the book - tap it to open the full player;
+- in the middle, **previous chapter**, **skip back**, **play/pause**, **skip forward** and **next chapter**, above a scrubber for the current chapter with the time left in the book at your current speed;
+- on the right, the **speed** and **sleep timer** buttons, and an arrow that opens the full player.
+
+If the server can't be reached while you listen, the bar notes that your place is **saved on this device** and will sync once the server is back.
 
 ## The controls
 
@@ -99,13 +116,13 @@ It's deliberately unobtrusive: never more than one timer at a time, and never on
 
 - **Bookmarks** - tap the bookmark icon, then **Add bookmark at 1:23:45** to pin the current moment. Bookmarks are listed there and on the book's detail page; tap one to jump back.
 - **Notes** - free-form notes on the book (markdown supported), for quotes or thoughts.
-- **History** - your past listening sessions on this book, labelled by chapter.
+- **History** - your past listening sessions on this book, labelled by chapter (with the same tidied chapter names as the player).
 
 All three are saved to your account, not the device.
 
 ## When a book finishes
 
-When a book reaches its end, AudioSilo marks it **finished** (so it drops off your *Continue listening* shelf), hides the mini-player, and shows an **end credits** screen:
+When a book reaches its end, AudioSilo marks it **finished** (so it drops off your *Continue listening* shelf), hides the mini player (or the player bar), and shows an **end credits** screen:
 
 - The finished book's **cover, title, and author**, plus its **folder name**. The folder name is shown on purpose - audiobook file metadata is often wrong or missing, and the folder is usually the most reliable label.
 - An **Up next** card suggesting the next book in the same folder - the sibling that comes next in natural order (so *Book 2* comes before *Book 10*). It shows the next book's folder name, with its title and author underneath if they're known. Tap **Play next** to mark the current book finished and start it.

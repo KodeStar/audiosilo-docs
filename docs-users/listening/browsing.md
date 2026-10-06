@@ -1,9 +1,45 @@
 ---
 title: Browsing your library
-description: "Finding your next listen: the home screen shelves, library folder browsing, book details, search, and favourites."
+description: "Finding your next listen: getting around on a phone, tablet or computer, the home screen shelves, library folder browsing, book details, search, and favourites."
 ---
 
 Once you're [connected](connecting.md), AudioSilo gives you a few ways to find something to listen to: the home screen's shelves, browsing a library folder by folder, searching, and your own favourites.
+
+## Getting around
+
+AudioSilo arranges itself to fit the screen it's on.
+
+**On a phone** - the iOS and Android apps, or the web player in a narrow window - a tab bar along the bottom has five tabs:
+
+- **Home** - your shelves (below).
+- **Library** - your libraries, folder by folder.
+- **Search** - find a book by title, author or series.
+- **Downloads** - books saved on this device for [offline listening](offline-downloads.md).
+- **Me** - your [Settings](account.md), for now.
+
+Each tab remembers where you were. Open a book from Search, switch to Library for a moment, come back to Search, and the book is still open there; going back takes you to your search results. Tap the tab you're already on to jump back to its first page.
+
+**On a tablet or computer** - or any window wide enough - the tabs move to a **top bar** across the top of the screen:
+
+![The web player on a tablet: the top bar with icon-only destinations, and the player bar along the bottom](/img/screenshots/web-player/tablet-home.png)
+
+From left to right:
+
+- The **AudioSilo** logo (tap it to go Home), with the server you're using underneath - or a note that you're **offline** if it can't be reached, or that it **needs signing in again**. If you've connected more than one server, it says how many more.
+- **Home**, **Library** and **Downloads**. On narrower screens such as a tablet held upright, these show as icons only.
+- A **search field**. In the web player it opens [quick search](#quick-search-in-the-web-player); in the tablet app it takes you to the Search page.
+- A **gear** button for [Settings](account.md).
+- Your **profile button** - your initial, plus your name on wider screens. It opens a menu listing your **servers**, each with a line saying who you're signed in as, or that it's **offline** or **needs signing in again** (pick one to open its [account page](account.md#a-servers-account-page)); **Add a server**; **Account on** your main server; and a switch between **light and dark** appearance.
+
+![The profile menu open from the top bar](/img/screenshots/web-player/profile-menu.png)
+
+Under the top bar, a slim row shows the title of the page you're on, or a **Back** button once you've opened something, such as a book. While a book is playing, the [player bar](playback.md#the-mini-player-and-the-player-bar) runs along the bottom of the window.
+
+If you get around the web player with a keyboard, **Tab** moves between controls and **Space** presses the one you're on - buttons, tabs, option choices and switches alike.
+
+:::note
+The **Downloads** tab only appears where downloading is possible. In the web player that means a secure (`https://`) address - see [Offline downloads](offline-downloads.md).
+:::
 
 ## The home screen
 
@@ -47,7 +83,7 @@ The top of the page is the same for every book:
 
 - **Cover, title, and author**, plus the **series and number** (e.g. *"Stormlight Archive #2"*) and the **narrator** when known.
 - A **stats strip**: a heart to favourite the book, its download size and audio format, and its total length.
-- A **Listen** button to start (or resume) playing, and a **download button** for [offline listening](offline-downloads.md).
+- A **Listen** button to start (or resume) playing, and a **download button** for [offline listening](offline-downloads.md). On a tablet or computer, the cover, title and Listen button sit in a panel on the right-hand side of the page, and Listen starts the book without leaving the page; while that book is playing, the button reads **Open the player** instead.
 - An **About this book** block, when the book is matched in the community database (see below).
 
 If the same book exists in more than one place (say, an M4B copy and an MP3 copy), the detail page offers **Choose a version** so you can pick which copy to play.
@@ -105,11 +141,25 @@ This information comes from the **AudioSilo community metadata database** at [me
 
 ## Search
 
-The **Search** tab (or the search box in the desktop header) searches **titles, authors, and series** across every library you have access to - and across every server you've added:
+The **Search** tab (on a tablet or computer, the search field in the top bar) searches **titles, authors, and series** across every library you have access to - and across every server you've added:
 
 ![Search results for a query](/img/screenshots/web-player/search.png)
 
-Results appear as you type. Tap a result to open the book's detail page.
+Results appear as you type. Tap a result to open the book's detail page; going back returns you to the same results. Switch to another tab and your search is cleared, so the next one starts fresh.
+
+### Quick search in the web player
+
+In the web player on a tablet or computer, clicking the search field in the top bar opens **quick search**: one box for finding a book *or* doing something, without leaving the page you're on. You can also open it from the keyboard, anywhere in the app: **⌘K** on a Mac (**Ctrl+K** elsewhere), or just **/** when you aren't typing in a box.
+
+![Quick search open over the home screen, with a search typed and a matching book highlighted](/img/screenshots/web-player/palette.png)
+
+Start typing and the results are grouped:
+
+- **Actions** - things you can do right now. While a book is loaded: **Pause** (or **Resume** the current chapter), **Sleep in 30 minutes**, **Sleep at end of chapter** (for books with chapters) and **Open the full player**. Always: **Go to settings** and a switch to **light or dark** appearance. Setting a sleep timer this way shows a short confirmation at the bottom of the screen.
+- **Books** - matching titles, authors and series from every server you're connected to, the same search as the Search page. Before you type anything, this group is **Continue listening** instead: the books you're partway through, with how much you've listened to.
+- **Go to** - Home, Library and Downloads.
+
+Use the **arrow keys** to move through the results, **Enter** to open one, and **Esc** to close. Book results say which server and library each one comes from, as on the Search page. Your last few searches that led somewhere appear as **Recent** shortcuts the next time you open it; they're kept in this browser only.
 
 :::note
 Search looks at book metadata (title, author, series). To hunt by folder name inside one folder, use the browse view's filter box instead.

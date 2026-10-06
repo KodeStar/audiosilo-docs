@@ -67,7 +67,7 @@ Signing out is not a big deal - the app remembers every server you've connected 
 
 If your session is ever rejected while you're using the app - for example your admin revoked this device, or the server was rebuilt - a **Reconnect to &lt;server name&gt;** bar appears at the top of the screen instead of failing silently. Tapping it takes you to the sign-in screen with the address pre-filled, ready for a fresh code or password.
 
-The most dependable key of all is a [password](account.md#set-a-password) you set in Settings: with one, reconnecting is just your username and password on any device, with no code or invite needed.
+The most dependable key of all is a [password](account.md#set-a-password) you set on your server's account page in Settings: with one, reconnecting is just your username and password on any device, with no code or invite needed.
 
 ## What the `audiosilo://` link does
 
@@ -79,7 +79,7 @@ If nothing happens when you tap one, the app simply isn't installed on that devi
 
 Already signed in on one device and want another? You don't need a new invite:
 
-- In the app, go to **Settings → Devices → Add a device**. It shows a QR code (and a shareable link) that signs your other phone, tablet, or browser into the same account.
+- In the app, open **Settings** (the **Me** tab on a phone), tap your server in the **Servers** list, and under **Devices** tap **Add a device**. It shows a QR code (and a shareable link) that signs your other phone, tablet, or browser into the same account.
 - Or, if you've [set a password](account.md#set-a-password), just sign in with your username and password on the new device.
 
 You can even connect the app to **more than one server** - go to **Settings → Servers → Add a server**. Your home screen and search then span all of them.

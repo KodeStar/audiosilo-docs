@@ -14,18 +14,23 @@
 
 export const SHOTS = [
   // ── Web player (desktop 1440x900, dark) ────────────────────────────────
-  {file: 'web-player/home.png', capture: 'web', title: 'Web player - Home', hint: 'home screen with Continue Listening + Recently Added shelves'},
+  {file: 'web-player/home.png', capture: 'web', title: 'Web player - Home', hint: 'home screen with Continue Listening + Recently Added shelves, the top bar and the docked player bar'},
   {file: 'web-player/library.png', capture: 'web', title: 'Web player - Library', hint: 'library browse grid'},
-  {file: 'web-player/book-detail.png', capture: 'web', title: 'Web player - Book detail', hint: 'book page with chapters + Listen button'},
-  {file: 'web-player/player.png', capture: 'web', title: 'Web player - Now playing', hint: 'player with chapter list, speed, seek bar'},
+  {file: 'web-player/book-detail.png', capture: 'web', title: 'Web player - Book detail', hint: 'book page with the tab row and the right-hand cover panel with Listen'},
+  {file: 'web-player/player.png', capture: 'web', title: 'Web player - Now playing', hint: 'the full player, opened from the docked bar'},
+  {file: 'web-player/palette.png', capture: 'web', title: 'Web player - Quick search', hint: 'the command palette (top bar search / ⌘K) with "holmes" typed'},
+  {file: 'web-player/profile-menu.png', capture: 'web', title: 'Web player - Profile menu', hint: "the top bar's profile menu: servers, Add a server, account, appearance"},
   {file: 'web-player/search.png', capture: 'web', title: 'Web player - Search', hint: 'search results for a query'},
-  {file: 'web-player/settings.png', capture: 'web', title: 'Web player - Settings', hint: 'settings screen (account, password, language)'},
+  {file: 'web-player/settings.png', capture: 'web', title: 'Web player - Settings', hint: 'settings screen (servers, appearance, language, playback)'},
   {file: 'web-player/downloads.png', capture: 'web', title: 'Web player - Downloads', hint: 'offline downloads screen'},
   {file: 'web-player/connect.png', capture: 'web', title: 'Web player - Connect', hint: 'connect/pairing screen with code field'},
   {file: 'web-player/demo.png', capture: 'web', title: 'Web player - Demo mode', hint: 'the /web/demo landing screen'},
 
+  // ── Web player (tablet 834x1112 portrait, dark)
+  {file: 'web-player/tablet-home.png', capture: 'web', title: 'Tablet - Home', hint: 'tablet-width home: top bar with icon destinations, docked player bar'},
+
   // ── Web player (phone 430x932 portrait, dark) - stands in for the mobile app UI
-  {file: 'web-player/phone-home.png', capture: 'web', title: 'Phone - Home', hint: 'phone-width home screen'},
+  {file: 'web-player/phone-home.png', capture: 'web', title: 'Phone - Home', hint: 'phone-width home screen with the tab bar and mini player'},
   {file: 'web-player/phone-book-detail.png', capture: 'web', title: 'Phone - Book detail', hint: 'phone-width book page'},
   {file: 'web-player/phone-player.png', capture: 'web', title: 'Phone - Now playing', hint: 'phone-width full-screen player'},
 
