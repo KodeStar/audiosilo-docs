@@ -402,7 +402,13 @@ a one-line reason:
   that would make two mechanical proposals contradict each other is refused at
   audit time, and an accept of a proposal no repair carries out - a `review`, a
   `rename-candidate` or a `repoint-sidecar` - is refused outright, since it has
-  nothing to apply;
+  nothing to apply. An accepted `retitle-work` is a reviewer's title for that
+  record, exactly as an asserted one is: it is refused beside a mechanical merge
+  folding its work away (even when the detector already proposed the retitle and
+  the accept would change nothing, in which case the detector's retitle stays as
+  it was), and once accepted it refuses a later merge that would fold its work.
+  A detector's retitle nobody reviewed may sit beside such a merge, since either
+  order leaves one catalogue;
 - `assert` **sources** a proposal no detector makes - an alternate title, a
   reissue, a work stating no series, an omnibus or a dramatisation sitting in a
   series' slots, a correct retitle the title rules refuse. The entry's fields ARE
@@ -437,9 +443,9 @@ that its records still exist. Its outcome in `SUMMARY.md` is one of:
   a survivor carrying neither title), so a re-run proposes nothing;
 - **refused**, with the reason named: it would contradict another mechanical
   proposal (a drop also contradicts any other mechanical change to the same
-  membership, or a merge folding its work or its series; a retitle, a merge
-  folding its work away or a second retitle of it), a `reject` of the same
-  proposal withholds it, a retitle's work (one that still exists) now carries a
+  membership, or a merge folding its work or its series; a retitle, as for an
+  accepted one, a merge folding its work away or a second retitle of it), a
+  `reject` of the same proposal withholds it, a retitle's work (one that still exists) now carries a
   title other than its `from`, another work holds the position, the work is listed in
   that series at another position (for a drop, a work that still exists), a
   drop would leave the series with no members (retiring a series is a
