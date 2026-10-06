@@ -43,7 +43,8 @@ codes/tokens in the response body and store only the hash.
 
 - **Session tokens** are the durable bearer credential (`Authorization: Bearer
   …`). Issued by `POST /auth/login` and `POST /auth/exchange` with **no
-  expiry**; revoked by `POST /auth/logout` or admin action.
+  expiry**; revoked by `POST /auth/logout`, by the owner signing a device out
+  (`DELETE /me/devices/{id}`), or by admin action.
 - **Pairing tokens** are intermediaries minted by `POST /auth/redeem` (auth
   code → pairing) or `POST /auth/pair` (add another device from an existing
   session). `POST /auth/exchange` turns one into a device-named session token.
@@ -195,6 +196,10 @@ Three fences keep a demo session from becoming a durable login:
   the handlers / `gateSelfService`).
 - These endpoints, plus demo-session creation itself, are rate-limited (see
   [the limiter table](#rate-limiting)).
+- A demo account can't list the server's usernames or share a collection
+  (`GET /me/share-targets` and `PUT /me/collections/{id}/shares` are `403`; see
+  [the listener's own state](#the-listeners-own-state-me)), and demo accounts are
+  never offered as share targets.
 - A background reaper (`launcher.demoReaper`, every 15 minutes) deletes demo
   accounts idle past `demo.idle_ttl` - by the `is_demo` flag, never by username
   prefix. Deletion cascades all their state.
@@ -227,8 +232,10 @@ caller gets them:
 - **No self-delete** - enforced additionally in the delete *handler*: an admin
   may disable their own account (reversible) but never delete it
   (irreversible). `DeleteUser` cascades sessions, auth codes, progress,
-  bookmarks, notes, history, listening sessions and share grants via `ON DELETE CASCADE`; files on
-  disk are untouched.
+  bookmarks, notes, history, listening sessions, share grants, up next, the
+  account's collections (with their items and shares), its shares of other
+  people's collections, ratings and the listening goal via `ON DELETE CASCADE`;
+  files on disk are untouched.
 - **Passwords are optional for non-admins** - stored as an empty hash, and
   `Authenticate` rejects empty-hash accounts outright, so a password-less user
   can only ever authenticate via code pairing.
@@ -265,6 +272,87 @@ disc folder or one file of a book gets the same `403 no access to this path`
 as a path outside the share, so the answer reveals nothing about the book; the
 files it does grant still stream (`stream` is scoped on the file path). A non-admin whose scope is empty gets 403 from
 `libraryScope` before any content is touched.
+
+## The listener's own state (`/me/*`)
+
+The player redesign's Phase 1b routes (up next, collections, ratings, progress
+edits, personal stats, the listening goal and the caller's own devices; see
+[the reference](api/reference.md#up-next-collections-and-ratings)) are all
+`requireAuth`: a session token or an API key, acting as its owner. They follow
+a few rules on top of share scope:
+
+- **Owner only.** Every `/me/*` route reads and writes the caller's own rows,
+  keyed on the authenticated user, never on an id or user id from the request.
+  The one deliberate exception is a collection shared with the caller, below.
+- **`404`, never `403`, for someone else's id.** A collection id or device id
+  that isn't the caller's answers `404` (`device not found` for a device), the
+  same as an id that doesn't exist, so the answer never confirms that another
+  user's row exists. A collection shared with the caller is the only case where
+  the caller is told it exists but may not change it (`403 not_owner`).
+- **Current access filters every list.** A stored entry whose path the caller
+  can no longer open (a share taken away) is kept, but left out of each list
+  and count (`UserScopes` with `scopesFilterSQL` or `Scope.Allows`), like
+  favourites. Adding a book or rating one checks scope on the path and on the
+  book it resolves to (`bookForPath`, as `item` does); removing one entry
+  doesn't, since it only deletes the caller's own row.
+- **Collections are shared read-only, through the viewer's own access.** An
+  owner can share a collection with named accounts on the same server. A viewer
+  sees the collection's name, description and the owner's username, and only
+  the items **their own** current access allows: the owner's other items, and
+  how many there are, are never revealed (`item_count` and `preview` are the
+  viewer's), and sharing grants no access to any book. Only the owner changes
+  the collection, its items or its shares; a viewer can only leave it. The
+  owner's `shared_with` list is never sent to a viewer.
+- **The share picker shows usernames, so demo accounts are kept out.**
+  `GET /me/share-targets` lists every enabled, non-demo account other than the
+  caller (id and username): the one way a non-admin learns other accounts'
+  usernames. A demo account is refused it (`403 not available for demo
+  accounts`), so a public demo can't enumerate the server's users, and can't
+  share a collection either (the same `403`, checked before the collection id, so
+  a demo caller learns nothing about whose collection an id is). Disabled and
+  demo accounts are never share targets. These two are the only `/me/*` routes
+  with a demo refusal; none has its own rate-limit class.
+- **Stats never cross users.** `/me/stats` and `/me/listening` are computed for
+  the caller alone (the admin Activity code with its accumulator limited to the
+  caller): no other listener, username, `by_user`, `top_users`, funnel,
+  drop-offs, storage, coverage, growth, peak concurrency or inactive-user
+  figure is computed or sent. The top books, authors, narrators, series and
+  finished books pass through the caller's **current** access, so a revoked
+  share's path, title or author never echoes back; totals and per-day time are
+  the caller's own listening and count everything. So do `totals.finished` and
+  the goal's `finished`: they count every finish of the caller's, including books
+  they can no longer open, but as a number only, with no path or title.
+- **Progress edits use the caller's scope.** `PATCH /libraries/{id}/progress`
+  is `catalog.EditProgress` with the caller's own scope, behind
+  `authorizedPath`, so a listener edits only their own progress on books they
+  can open now: a path outside it is `403` even when a progress row is already
+  there (the admin edit, by contrast, can still tidy such a row).
+- **Validate before resolving.** A rating `PUT` checks its body, and a
+  collection item `POST` checks ownership and then its body, before resolving
+  the book, so a bad request, a stranger or a viewer never triggers on-demand
+  indexing.
+- **Revoking your own device, including this one.** `DELETE /me/devices/{id}`
+  revokes one of the caller's session or API-key tokens (another user's, a
+  pairing token's, unknown or already revoked is `404`; an expired one not yet
+  revoked can still be revoked). Unlike the admin route, revoking the
+  **current** token is allowed: the answer says `current: true` and the token
+  fails every later request. An API-key caller may revoke, since revoking only
+  reduces access (the same reasoning as listing and revoking keys). The revoke
+  also clears the token's sign-in key (`tokens.sign_in_key`), so a later sign-in
+  from that browser is announced as a new device. Self-revokes are not written to
+  the admin audit log. A player should still not offer it for its own row: its
+  normal sign-out saves the final position and flushes queued progress before
+  the token goes, which a revoke would refuse.
+- **Who may write is settled first.** On collections, ownership is checked
+  before a field is (a name, the items, the share ids, the cap), so a stranger
+  gets `404` and a viewer `403 not_owner` before any field `400` (only a
+  malformed body, or a whole-list body without its list key, is refused
+  earlier). A list's positions and cap count only the entries the caller can
+  see; hidden entries are evicted (oldest first, for good) only when they alone
+  would overflow the cap.
+
+Each of these routes has a denied test (another user's data refused or
+invisible) beside its allowed one.
 
 ## Path traversal: `library.SafeJoin`
 

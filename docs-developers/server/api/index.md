@@ -295,7 +295,13 @@ a `limit` and no pagination.
     "meta_bundle": true,
     "browse_people": true,
     "cover_sizes": true,
-    "next_book": true
+    "next_book": true,
+    "queue": true,
+    "collections": true,
+    "ratings": true,
+    "progress_edit": true,
+    "user_stats": true,
+    "my_devices": true
   },
   "auth": { "methods": ["auth_code", "password"] },
   "demo": { "enabled": false }
@@ -325,9 +331,23 @@ it, so treat a missing flag as `false`:
 | `cover_sizes` | `?size=160\|320\|640` thumbnails on [`/cover`](reference.md#get-apiv1librariesidcover) |
 | `next_book` | [`/next`](reference.md#get-apiv1librariesidnext), the server's answer to what plays after a book |
 
+Phase 1b (the listener's own state and stats) added six, each always `true` on a
+server that has it:
+
+| Flag | Gates |
+|---|---|
+| `queue` | up next, [`/me/queue`](reference.md#get-apiv1mequeue) |
+| `collections` | [`/me/collections`](reference.md#get-apiv1mecollections) and everything under it, and [`/me/share-targets`](reference.md#get-apiv1meshare-targets) |
+| `ratings` | [`/libraries/{id}/rating`](reference.md#get-apiv1librariesidrating) and [`/me/ratings`](reference.md#get-apiv1meratings) |
+| `progress_edit` | [`PATCH /libraries/{id}/progress`](reference.md#patch-apiv1librariesidprogress) (mark finished or unfinished, edit the dates) and `started_at` / `finished_at` on progress responses |
+| `user_stats` | [`/me/stats`](reference.md#get-apiv1mestats), [`/me/listening`](reference.md#get-apiv1melistening) and [`/me/goal`](reference.md#get-apiv1megoal--put-apiv1megoal--delete-apiv1megoal) |
+| `my_devices` | [`/me/devices`](reference.md#get-apiv1medevices), the caller's own signed-in devices |
+
 Gate on the flag rather than on the server version: an older server answers
 `size=` and `narrator=` by ignoring them (full art, the unfiltered list) and the
-new routes with a `404`.
+new routes with a `404`. Progress dates are the same: without `progress_edit` a
+progress response never has `started_at` / `finished_at`, so their absence says
+nothing; with it, an absent date is unknown or not set.
 
 ## Rate limiting
 
