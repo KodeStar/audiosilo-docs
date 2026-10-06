@@ -49,7 +49,10 @@ The remaining gap - a file that *moves* on disk - is covered by move-tracking:
 the scanner fingerprints files (`books.content_hash`) and calls
 `catalog.MoveDurableState` to carry all twelve path-keyed book tables (everything
 above except `folder_overrides`, which is keyed by folder, not book) from the
-old path to the new one (see [Scanner](scanner.md#move-detection)).
+old path to the new one (see [Scanner](scanner.md#move-detection)). A folder
+whose disc folders an admin joins into one book hands the disc books' state to
+the joined book the same way (`catalog.JoinDurableState`; see
+[Joined books](scanner.md#joined-books-disc-sets)).
 
 ```mermaid
 erDiagram
@@ -84,7 +87,10 @@ erDiagram
 When adding a new per-user or per-library-config table, follow the pattern: key
 it on `(user_id, library_id, rel_path)` or `(library_id, path)`, FK only to
 `users`/`libraries` (with `ON DELETE CASCADE`), never to `books` - and add a
-line to `catalog.MoveDurableState` so moves carry it along.
+line where moves carry it along: a per-user table to `carryListeningState`
+(`catalog/listening.go`, the one list, shared by moves and joins), a book's own
+config to `moveBookState` (and to `joinBookState` in `catalog/join.go` if a
+joined book should inherit it from its discs).
 :::
 
 ## Tables
@@ -168,7 +174,8 @@ covered in [Auth & security](auth-and-security.md#authorization-shares--scope).
 
 **`books`** *(0001; `added_at` in 0004; `codec` in 0008; `published`,
 `description`, `has_cover` and `scanned` in 0016; `scan_error`,
-`scan_error_file`, `scan_error_detail` and `suspect_parts` in 0017)* - one row per book,
+`scan_error_file`, `scan_error_detail` and `suspect_parts` in 0017; `split_parent` in
+0022)* - one row per book,
 `UNIQUE (library_id, rel_path)`. Columns: `is_folder` (folder book vs
 single-file book), identity metadata (`title`, `author`, `series`,
 `series_index`, `narrator`), `duration`, `asin`/`isbn` (optional external ids -
@@ -190,6 +197,14 @@ console's Health page reads:
 - `suspect_parts` - how many separate books a folder book's parts look like:
   `0` = one book, `>= 2` = the folder may hold several, `NULL` = not checked
   yet (see [Folders that may hold several books](scanner.md#folders-that-may-hold-several-books)).
+- `split_parent` - for one disc of a book split across disc folders (a CD rip
+  read as one book per disc), the folder holding the discs; `''` otherwise. The
+  `split_discs` Health issue, the duplicate groups (which leave such discs out)
+  and the admin's `split_discs` mark on `GET /fs` read it. Index
+  `idx_books_split_parent` on `(library_id, split_parent, rel_path)` (partial,
+  `WHERE split_parent <> ''`) finds a folder's discs in order. An unchanged
+  book whose value is out of date gets it without a re-index (see
+  [Joined books](scanner.md#joined-books-disc-sets)).
 
 Like the rest of the row they are rewritten by every re-index.
 
@@ -454,8 +469,8 @@ Backups need no table: they are files in the backups folder.
 - **`issue_ignores`** *(0017)* - PK `(library_id, path, kind)`, `created_by`
   (FK to `users`, `ON DELETE SET NULL`), `created_at`. An admin's "ignore this"
   on a Health issue; `kind` is one of `catalog.IssueKinds` (`scan_error`,
-  `suspect`, `duplicate`, `no_cover`, `unmatched`, `no_chapters`,
-  `transcode`). Path-keyed like the rest of this group, so an ignore survives a
+  `suspect`, `split_discs`, `duplicate`, `no_cover`, `unmatched`,
+  `no_chapters`, `transcode`). Path-keyed like the rest of this group, so an ignore survives a
   rebuild, moves with the book (`MoveDurableState`) and needn't point at an
   indexed book.
 
@@ -536,6 +551,7 @@ The migration history so far:
 | 0019 | `audit_notifications` | Admin console Phase 5b: `audit_events`, `notification_targets` and `server_events` |
 | 0020 | `sign_in_keys` | `tokens.sign_in_key`: the SHA-256 of the browser id a password sign-in sent (`device_id`), so `new_device` is announced once per browser |
 | 0021 | `listening_backfill` | `listening_sessions.backfilled` and `listening_daily.estimated`, then fills them: see [Listening from before sessions](#listening-from-before-sessions) |
+| 0022 | `split_discs` | `books.split_parent` (`''` on every existing row; the next scan records the real value without re-indexing) and the partial index `idx_books_split_parent` |
 
 ## SQLite choices
 

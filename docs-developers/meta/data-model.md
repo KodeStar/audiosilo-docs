@@ -22,10 +22,11 @@ mechanically. (The pre-migration layout was one file per record,
 `works/<shard>/<slug>/work.json`; those paths survive only as a reference
 syntax the issue forms still accept.)
 
-Two slugs are **reserved** in the works, people, and series namespaces: `search`
-and `latest`. Both are literal route segments of the HTTP API (`/api/v1/works/search`,
-`/api/v1/works/latest`, ...), so a record at either id would be unreachable
-through its family's `{id}` route. Validation rejects them, and the importers and
+Three slugs are **reserved** in the works, people, and series namespaces:
+`search`, `latest` and `match`. Each is a literal route segment of the HTTP API
+(`/api/v1/works/search`, `/api/v1/works/latest`, `/api/v1/works/match`, ...), so
+a record at any of those ids would be unreachable through its family's `{id}`
+route. (`match` joined with its route in 2026-10, when no record held it.) Validation rejects them, and the importers and
 intake bot mint a disambiguated slug instead (a book titled "Search" gets the
 author-suffixed form automatically).
 

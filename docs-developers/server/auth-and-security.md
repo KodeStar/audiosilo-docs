@@ -253,7 +253,17 @@ query shape**:
 | `pathFilterSQL(col, scope)` | The same grant logic as a SQL `WHERE` fragment (`col = ?` OR `col LIKE ? ESCAPE '\'`), with LIKE metacharacters escaped so `Sci_Fi` can't over-match `SciXFi` | `ListBooks`, `Search`, `RecentBooks`; `scopesFilterSQL` extends it across libraries for the cross-library listings (`/me/progress`, `/me/history`, `/me/favourites`) |
 
 The Go predicate (`pathAllowedBy`) is authoritative; `pathFilterSQL` must stay
-behaviorally identical to it. A non-admin whose scope is empty gets 403 from
+behaviorally identical to it.
+
+A requested path can resolve to a book **above** it: a part of a folder book, or
+a disc folder of a book joined from its disc folders (`bookForPath`; see
+[On-demand indexing](scanner.md#on-demand-indexing-indexpath)). Allowing the
+requested path isn't enough then: `item`, `chapters`, `cover` and `meta` also
+require `Scope.Allows(book.RelPath)`, and `Scanner.IndexPathWithin` checks it
+before reading anything (`library.ErrNotAllowed`). A share granting only one
+disc folder or one file of a book gets the same `403 no access to this path`
+as a path outside the share, so the answer reveals nothing about the book; the
+files it does grant still stream (`stream` is scoped on the file path). A non-admin whose scope is empty gets 403 from
 `libraryScope` before any content is touched.
 
 ## Path traversal: `library.SafeJoin`

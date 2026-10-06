@@ -297,7 +297,12 @@ admin off-switch and a bounded cache; `GET /meta/work?id=…` serves one work
 document straight through (authed but **not** library-scoped, since a work id
 names nothing on this server) from the same cache, for the earlier books of a
 series the caller does not own. The `metadata` capability on `GET /server`
-reflects whether either lookup is live.
+reflects whether either lookup is live. The admin console's match dialog
+(`GET /admin/libraries/{id}/book/match`) asks `metaserve`'s structured
+`GET /works/match` with the book's tag and path facts, falling back to
+`lookup` + `works/search` against a `metaserve` that predates the route; its
+candidates pass `metaserve`'s `score` and `reasons` through to the console's
+hand-mirrored types (`admin-ui/src/api/types.ts`), not to the player.
 **Frontend:** the `BookMeta` envelope (hand-mirrored in `src/api/types.ts`) is
 fetched by `client.bookMeta` and rendered capability-gated on the book screen's
 Recaps/Characters/Series tabs; `client.metaWork` / `useMetaWork` lazily fetch a

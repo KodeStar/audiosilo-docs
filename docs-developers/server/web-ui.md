@@ -231,8 +231,8 @@ The console runs under the same `script-src 'self'; style-src 'self'` policy
 
 Grids and shelves show hundreds of covers, so the console asks for them in
 batches. `useCover(libraryId, path, size)` (`admin-ui/src/api/hooks.ts`) queues
-each cover it needs, and `src/api/cover-batch.ts` sends everything asked for in
-the same moment as one
+each cover it needs, and `src/api/cover-batch.ts` (on the shared batcher,
+`src/api/batcher.ts`) sends everything asked for in the same moment as one
 [`POST /api/v1/admin/covers`](api/reference.md#post-apiv1admincovers) request
 of up to 60 books. The server answers with small JPEG thumbnails, already
 `data:` URLs, so a grid costs a handful of requests and about 20 KB a cover
@@ -342,13 +342,32 @@ CSP-sensitive work against a real build served by Go. The console's own gate is
 - **Library > Authors / Narrators / Series** - `GET /admin/authors`,
   `/admin/narrators` (merge suggestions applied as a bulk edit, with Undo) and
   `/admin/series` (community series gaps from each series' matched book's
-  `GET /libraries/{id}/meta`, hidden when metadata is off).
+  `GET /libraries/{id}/meta`, hidden when metadata is off). Each card then
+  resolves its matched books to community work ids through
+  `POST /admin/books/works` (`useBookWorks`; `src/api/work-batch.ts` batches every
+  card's books asked for in the same moment, up to 100, on the same
+  `createBatcher` as the covers) and places each book on the rail entry of its
+  work, falling back to `series_index` for a book that doesn't resolve; a book
+  known to be another work is drawn after the rail and fills no gap
+  (`placeBooks` in `features/library/series/series-model.ts`). Gaps wait for the
+  works to answer (the card shows its plain "N books" line until then); a resolved
+  or cleanly unmatched answer is kept for the session, a failed one is asked
+  again no sooner than two minutes later.
 - **Library > Folders** - a folder tree per library (`/fs`) and the selected
-  folder's detection choice (`…/folder-override`).
+  folder's detection choice (`…/folder-override`, saved through `setFolderMode`
+  in `src/api/hooks.ts`, which notes the rescan and refetches the listings).
+  `joinChoices` (`features/library/folders/folders-model.ts`) decides which
+  choices a folder offers: all three with audio of its own; Automatic and
+  Always one book for a folder whose audio is only in disc folders (the admin
+  `split_discs` mark on `/fs`) or one already joined, worded as a join ("Here: 3
+  disc folders become one book, in disc order."); only clearing an override on
+  any other folder without audio. The detection dialog applies the same rule
+  from the entry alone (`offersBook`, `offersCollection`).
 - **Book page** (`/admin/library/book?library=&path=`) - `GET`/`PATCH
   /admin/libraries/{id}/book` (click-to-edit fields with provenance, revert,
   a save bar with a diff, chapter renames), custom covers (`PUT`/`DELETE
-  …/cover`), the match dialog (`GET …/book/match`; the ticked fields, ASIN and ISBN
+  …/cover`), the match dialog (`GET …/book/match`, which matches the book's tag
+  and path facts through metaserve's `works/match`; the ticked fields, ASIN and ISBN
   included, are accepted as one `PATCH …/book` with `source: "community"`),
   listeners, shares
   and the "Files on disk" section with the disabled on-disk rename. The more
@@ -413,7 +432,10 @@ CSP-sensitive work against a real build served by Go. The console's own gate is
   fix (`issues-model.ts` `FIXES`): "Upload a cover" opens the book page, "Review
   match" opens it with `?match=1`, "Choose detection" opens Library > Folders on
   the book's folder, "Read again" calls `POST …/book/rescan` and toasts whether
-  the problem is gone. Rows select into a floating bulk bar, which acts only on
+  the problem is gone, and "Join into one book" (`split_discs`, listed by its
+  first disc) sets `book` on the folder holding the discs (`setFolderMode`). A
+  row's re-read or join runs once at a time: its fix button is disabled while
+  it is in flight (`useIssueActions().fixing`). Rows select into a floating bulk bar, which acts only on
   the selected books still listed (one fixed or ignored on its own row has
   left); its bulk "Read again" (`useIssueActions().rescanMany`) re-reads two
   books at a time, since each is a synchronous re-read and firing them all at
@@ -433,7 +455,8 @@ CSP-sensitive work against a real build served by Go. The console's own gate is
   menu (rescan one library or all), and the history from `GET /admin/scan-runs`
   (paged with `before`, filtered by library) whose rows expand to their log
   (`GET /admin/scan-runs/{id}`, fetched when opened). `jobs-model.ts` words
-  statuses, counts and log events.
+  statuses, counts and log events (a `joined` event with code `length_unknown`
+  says the disc's progress stayed with it).
 - **Activity > Overview** (`features/activity/activity-page.tsx`) - over
   [`GET /admin/stats?range=`](api/reference.md#range-listening-activity), the
   period in `?range=` (absent = `30d`), each period cached for a minute and the

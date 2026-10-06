@@ -250,6 +250,11 @@ per file) or force it to be **Always one book**. See
 [Organizing your library](./getting-started/organizing-your-library.md) for
 the folder conventions that avoid the problem entirely.
 
+A book ripped from CDs into `CD1`, `CD2`, ... folders shows as one book per
+disc. Set the folder holding the discs to **Always one book** and they become
+one book, with everyone's progress carried over (see
+[Books split into disc folders](./admin/libraries.md#books-split-into-disc-folders)).
+
 ### Covers are missing
 
 The server looks for cover art in this order:
@@ -258,7 +263,8 @@ The server looks for cover art in this order:
    `cover.png`, `folder.jpg`, or `folder.png`.
 2. For folder-based books: any image inside the book's folder (an image with
    "cover" in its name wins over other images). Multi-disc books
-   (`.../Book/CD1/...`) also check the book's parent folder.
+   (`.../Book/CD1/...`) also check the book's parent folder, and a book
+   joined from its disc folders checks its own folder, then its first disc's.
 3. Artwork **embedded in the audio file's tags**.
 
 If a book has no cover, the quick fix for a folder book is to drop a

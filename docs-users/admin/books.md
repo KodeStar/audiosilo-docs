@@ -202,13 +202,22 @@ description, series order and chapter recaps, and fills in fields you're
 missing.
 
 1. Click **Match with community metadata** on the book's page (or **Find a
-   match** in its **Community metadata** card). The dialog searches the
-   catalogue for the book's title and author straight away.
+   match** in its **Community metadata** card). The dialog looks for the book
+   straight away, using what its tags say (title, author, series), its length,
+   its ASIN or ISBN, and what its **folders** say: the top folder as the
+   author, the folder holding the book as the series, and the book's own folder
+   or file name as the title. So a book whose tags are wrong or swapped (a
+   title tag that holds the author's name, say) is still found when its
+   folders are named well, and the other way round.
 2. To search for something else, type in **Search the community database**,
-   or paste an ASIN or ISBN, and click **Search**.
+   or paste an ASIN or ISBN, and click **Search**. Typed words are matched
+   alongside the book's own tags and folders, in any order ("sharpe 8" finds
+   the eighth Sharpe book); an ASIN or ISBN on its own looks up just that.
 3. **Possible matches** lists what was found, each with how closely it
    matches ("92% match"), its narrators and whether its length matches your
-   files. Pick one and click **Compare fields**.
+   files. The score counts whichever fits the book best: its tags, its
+   folders or what you typed. An ASIN or ISBN that matches scores 100%. Pick
+   one and click **Compare fields**.
 4. If the book was recorded more than once, pick the right **Edition**.
 5. The comparison shows each field **On your server** and from the
    **Community**. Tick the ones to **Take**. Fields you've edited yourself
@@ -221,8 +230,17 @@ Accepted values are marked **Community** and are locked like your own edits;
 you can revert them the same way. If you have unsaved edits on the page, save
 or discard them before matching.
 
-If the catalogue can't be reached, the dialog says "meta.audiosilo.app isn't
-answering" - try again in a minute.
+If the catalogue can't be reached, or is too busy to answer in time, the
+dialog says "meta.audiosilo.app isn't answering" - try again in a minute.
+
+:::note What matching sends
+Opening the match dialog sends the book's tagged title, author and series, its
+length, its ASIN or ISBN, anything you type, and up to three of its folder
+names (the top folder, the folder holding the book, and the book's own folder
+or file name) to the metadata service. It sends nothing about your server or
+who listens. Players looking up "About this book" send only the ASIN or ISBN
+(see [Community metadata](server.md#community-metadata)).
+:::
 
 ## Authors and narrators
 
@@ -257,6 +275,27 @@ shows the books you don't have, as dashed gaps, and says so: "You have 1, 2, 4
 of 5; missing 3, 5". A series none of whose books is matched yet says "Match a
 book of this series to see what's missing". With community metadata off, the
 page offers to turn it on.
+
+Each [matched](#matching-with-community-metadata) book (one with an ASIN or
+ISBN the community catalogue knows) is placed by which book it actually is,
+not by its series number. So a matched book with no series number, or with a
+different number on your server (one you numbered 3 that the community lists
+as 2.5, say), still fills its own place in the series: it counts towards "You
+have ..." and the badge, and its spine sits in that place, showing the
+community's number. Books that aren't matched, or can't be looked up, are
+placed by their own series number. A matched book the catalogue says is a
+different book from any in the series (a companion story filed under the
+series name, for example) sits at the end of the shelf and doesn't fill a gap.
+
+While a card is still looking its books up, it shows just the number of books
+("5 books") with no gaps, so it never flashes a gap that then disappears. A
+book the community catalogue couldn't answer for is placed by its series number
+for now, and asked about again when you come back to the page a couple of
+minutes later.
+
+Nothing is changed by any of this: the Series page only arranges what it
+shows. To fix a book's series number for listeners too, edit its **Series
+number** on [the book's page](#editing-details).
 
 ## Folders
 
