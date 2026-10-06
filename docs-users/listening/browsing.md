@@ -75,7 +75,7 @@ Every section except Folders shows **one library at a time**. If you have more t
 Every book in the library, as a cover grid or a list:
 
 - **Filters** along the top: **Not started**, **In progress** and **Finished** (each with a count of how many books it would show), **Downloaded** (on this device), and a length: **Under 5 h**, **5 to 15 h** or **Over 15 h**. **Clear** takes them all off.
-- **Sort** by **Recently added**, **Title**, **Author** or **Length**. Sorted by title, the books are grouped under letter headings, with an **A to Z** rail for jumping straight to a letter.
+- **Sort** by **Recently added**, **Title**, **Author** or **Length**. Sorted by title, the books are grouped under letter headings, with an **A to Z** rail for jumping straight to a letter. A leading "The", "A" or "An" is skipped and accented letters file under their plain letter (*Émile* under E), and a book with no title is shown, and sorted, by its folder's name.
 - **Grid or list**. Your choice is remembered on that device, and the same choice applies to collections and Favourites. On a tablet or computer the list has columns for the narrator, the length and your progress.
 
 A big library loads in the background, page by page, while you browse; the filters and sorting work on the whole of it once it's in.
@@ -189,7 +189,7 @@ The top of the page is the same for every book:
 
 - **Cover, title, and author**, plus the **series and number** (e.g. *"Stormlight Archive #2"*) and the **narrator** when known.
 - A **stats strip**: a heart to favourite the book, its download size and audio format, and its total length.
-- A **Listen** button to start (or resume) playing, and a **download button** for [offline listening](offline-downloads.md). On a tablet or computer, the cover, title and Listen button sit in a panel on the right-hand side of the page, and Listen starts the book without leaving the page; while that book is playing, the button reads **Open the player** instead.
+- A **Listen** button to start (or resume) playing, and a **download button** for [offline listening](offline-downloads.md). On a tablet or computer, the cover, title and Listen button sit in a panel on the right-hand side of the page (when the page is too narrow for that, for instance with the Up next drawer open, everything stacks in one column as on a phone). There, Listen starts the book without leaving the page; while that book is playing, the button reads **Open the player** instead.
 - An **About this book** block, when the book is matched in the community database (see below).
 
 If the same book exists in more than one place (say, an M4B copy and an MP3 copy), the detail page offers **Choose a version** so you can pick which copy to play.

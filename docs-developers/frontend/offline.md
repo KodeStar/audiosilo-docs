@@ -300,8 +300,8 @@ Keep-ahead's held-back books (`waiting`, `no-space`, `later` slots not in the
 registry yet) render as `PlannedRow`s in In progress; entries with `origin:
 'keep-ahead'` are labelled "Kept ahead". The **Automatic downloads** card
 (`rules-card.tsx`) edits `autoDownloadNext`, `keepAhead` and `autoDeleteFinished`;
-Settings shows the same keep-ahead control and status line
-(`KeepAheadStatusLine`). The summary line is published into the sub-nav with
+Settings and the series page's `KeepAheadCard` show the same control and status
+line (`KeepAheadControl`, `KeepAheadStatusLine`). The summary line is published into the sub-nav with
 `SubNavActions`.
 
 ## Playing downloaded content
