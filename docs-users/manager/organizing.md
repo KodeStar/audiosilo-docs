@@ -77,7 +77,15 @@ what's **already in the library**:
 - If the series already has books on the server, the new book copies their exact
   folder names, series shortcode, and number padding (e.g. an existing
   `C08 - Wintersteel` means book 9 becomes `C09 - …`). Fractional entries like
-  novellas are kept (`02.5`).
+  novellas are kept (`02.5`). A book counts as part of the series when the
+  series name matches (ignoring case and a leading "The") and it shares an
+  author - so an Audible book credited to "Shirtaloon" still joins books tagged
+  "Shirtaloon, Travis Deverell".
+- If a book's title is nothing but its number (Audible's "He Who Fights with
+  Monsters 13: A LitRPG Adventure" reduces to "13"), the folder follows its
+  siblings' naming instead - `FWM12 - He Who Fights With Monsters - Book 12` makes
+  book 13 `FWM13 - He Who Fights With Monsters - Book 13` - or, failing that,
+  uses the series name and number.
 - If the series is new to the library, a shortcode is guessed from the series
   name's initials and flagged for you to review.
 - A book with no series goes directly under `Author/Title`.

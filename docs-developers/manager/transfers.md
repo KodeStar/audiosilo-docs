@@ -146,10 +146,16 @@ in the library**:
 
 - *Series with existing siblings*: `importjob.SiblingsFromBooks`/`FindSiblings`
   finds same-author, tolerantly-normalized same-series books
-  (`match.NormalizeSeries`, so "The Primal Hunter" matches "Primal Hunter"); the
+  (`match.NormalizeSeries`, so "The Primal Hunter" matches "Primal Hunter";
+  `sameAuthor` splits multi-author credits, so an Audible record's single
+  "Shirtaloon" matches a tagged "Shirtaloon, Travis Deverell"); the
   highest-indexed sibling whose folder code parses becomes the template, giving
   the exact shortcode prefix, zero-padding width, and author/series folder names
   (`parseCode`/`leafCode`). Fractional novella positions render as `02.5`.
+- *Bare titles*: when `match.CleanTitle` leaves no letters (a title that is just
+  series + number), `titleFromSibling` renumbers the template sibling's title
+  (`… - Book 12` → `… - Book 13`); otherwise, and for new series and template
+  mode's `{Title}`, the title becomes `<Series> <n>`.
 - *New series*: shortcode guessed from the series-name initials
   (`guessShortcode`), flagged for review in the suggestion's `Note`.
 - *Standalone*: `Author/Title`.
