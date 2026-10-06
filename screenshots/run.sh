@@ -29,7 +29,9 @@
 #            META=<dir> (the audiosilo-meta checkout, default the sibling
 #              clone - point it at a worktree to capture an unmerged branch),
 #            META_COMMUNITY=<dir> (the audiosilo-meta-community checkout,
-#              default the sibling clone; its data/ is composed in).
+#              default the sibling clone; its data/ is composed in),
+#            SHOTS_PORT / SHOTS_SETUP_PORT / SHOTS_META_PORT (default 8790 /
+#              8791 / 8795 - move them when another run holds those ports).
 set -euo pipefail
 
 HERE="$(cd "$(dirname "$0")" && pwd)"
@@ -42,9 +44,9 @@ CACHE="$HERE/.cache"
 LIBRARY="$CACHE/library"
 DATA="$CACHE/data"
 SETUP_DATA="$CACHE/setup-data"
-PORT=8790
-SETUP_PORT=8791
-META_PORT=8795
+PORT="${SHOTS_PORT:-8790}"
+SETUP_PORT="${SHOTS_SETUP_PORT:-8791}"
+META_PORT="${SHOTS_META_PORT:-8795}"
 
 mkdir -p "$CACHE"
 
@@ -163,7 +165,7 @@ fi
 # ── 5. Captures ─────────────────────────────────────────────────────────────
 cd "$HERE"
 echo "==> capturing web player"
-AS_BASE="http://127.0.0.1:$PORT/web/" node capture-web.mjs
+AS_BASE="http://127.0.0.1:$PORT/web/" ADMIN_PASSWORD="$ADMIN_PASSWORD" node capture-web.mjs
 
 echo "==> capturing admin console + public pages"
 AS_ORIGIN="http://127.0.0.1:$PORT" ADMIN_PASSWORD="$ADMIN_PASSWORD" \

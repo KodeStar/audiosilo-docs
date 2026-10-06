@@ -286,9 +286,11 @@ It depends on what "reinstalling" meant:
 - **Deleting the app and installing it again** removes everything the app
   stored, downloads included - that's how phones work, and there's no way
   around it. You'll need to download the books again.
-- **Interrupted downloads don't survive** - if the app is killed mid-download,
-  the partial download is discarded on next launch and has to be started
-  over. Only fully finished downloads are kept.
+- **Interrupted downloads don't survive a restart** - if the app is killed
+  mid-download, the partial download is discarded on next launch and has to
+  be started over. (While the app stays open, a stopped download keeps the
+  files it finished, and **Retry** fetches only the rest.) Only fully
+  finished downloads are kept across a restart.
 
 Your listening progress is safe throughout - it lives on the server, not in
 the downloaded files. See [Offline downloads](./listening/offline-downloads.md).
@@ -302,6 +304,14 @@ it hides the Downloads tab from the navigation, and a book's download button
 appears as a disabled "Downloads unavailable" button rather than offering
 downloads that wouldn't play. Access the server over HTTPS (see
 [Remote access](./getting-started/remote-access.md)) and downloads appear.
+
+If the Downloads page says **Downloads aren't available here**, it also says
+why: no secure connection, a browser that can't keep audio offline, or
+offline playback that isn't ready yet. For the last one, reload the page once
+(the browser installs the offline helper on the first visit); if it still
+says so, the browser is blocking it, and the iOS or Android app is the way to
+listen offline. A download that stopped with "Saved, but offline playback
+isn't ready yet" just needs **Retry** after the reload.
 
 ## Demo
 

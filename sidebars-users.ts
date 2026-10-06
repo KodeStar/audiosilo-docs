@@ -40,6 +40,7 @@ const sidebars: SidebarsConfig = {
         'listening/connecting',
         'listening/browsing',
         'listening/playback',
+        'listening/up-next',
         'listening/offline-downloads',
         'listening/account',
         'listening/api-keys',

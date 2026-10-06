@@ -83,6 +83,24 @@ sliver. That
 wait is most of an admin run's length; a smaller value is fine for checking the
 script.
 
+The web player's browse shots need state the seeded library doesn't carry.
+Before warming the demo session, `capture-web.mjs` signs in as the admin
+(`run.sh` passes `ADMIN_PASSWORD`), sets **series overrides** on four seeded
+books - Sherlock Holmes 3 and 5 (so the series page shows the missing numbers
+as gaps) and Alice 1 and 2 - and signs that session out again so it never shows
+in the admin Devices shot. These are ordinary admin metadata edits, so they
+also appear in the admin Books, Series and Audit log shots of the same run.
+After warming, it gives the demo user an **Up next** queue of three books and a
+**"Victorian evenings"** collection through the API, using the token the web
+player keeps in `localStorage`. Every desktop capture context starts with the Up
+next drawer closed (an init script writes `audiosilo.upNext`), so only
+`web-player/up-next.png` shows it; `web-player/downloads.png` downloads one
+short book first. The series, Up next and collection shots need a server with
+the `browse_people`, `queue` and `collections` capabilities.
+
+`SHOTS_PORT`, `SHOTS_SETUP_PORT` and `SHOTS_META_PORT` move the three servers
+off 8790 / 8791 / 8795 when another run already holds them.
+
 Every capture is optimized in place with **pngquant** (`brew install pngquant`)
 - a lossy-palette pass that shrinks the retina PNGs ~60% with no perceptible
 loss, so the committed image is the optimized one. It's optional: if pngquant

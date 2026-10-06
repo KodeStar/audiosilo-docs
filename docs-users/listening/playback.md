@@ -20,7 +20,7 @@ On an **iPhone running iOS 26 or later**, the mini player lives inside the tab b
 - a thin line along its top edge showing your progress through the whole book;
 - on the left, the cover with the current chapter and the book - tap it to open the full player;
 - in the middle, **previous chapter**, **skip back**, **play/pause**, **skip forward** and **next chapter**, above a scrubber for the current chapter with the time left in the book at your current speed;
-- on the right, the **speed** and **sleep timer** buttons, and an arrow that opens the full player.
+- on the right, the **speed** and **sleep timer** buttons, the [Up next](up-next.md) button (on a server that has it), and an arrow that opens the full player.
 
 If the server can't be reached while you listen, the bar notes that your place is **saved on this device** and will sync once the server is back.
 
@@ -130,6 +130,10 @@ When a book reaches its end, AudioSilo marks it **finished** (so it drops off yo
 
 You can also reach this screen at any time from the player's [three-dot menu](#the-three-dot-menu), via **View end credits** or **Mark as Finished**.
 
+:::note
+The books you line up in [Up next](up-next.md) don't change this yet: the suggestion here is still the next book in the folder. Playing on into your queue is coming in a later version.
+:::
+
 ### Playing the next book automatically
 
 Turn on **Automatically play next book** in [Settings](account.md#up-next) and the end credits screen starts the next book for you:
@@ -156,7 +160,7 @@ Your position keeps syncing as normal while playing to another device.
 
 ## Your position follows you
 
-AudioSilo saves your position to the server **every 15 seconds while playing**, and immediately whenever you pause, seek, change speed, or stop. Start a book on your phone in the car, open the web player at your desk, and it's sitting on the home screen's **Continue listening** shelf at the right spot.
+AudioSilo saves your position to the server **every 15 seconds while playing**, and immediately whenever you pause, seek, change speed, or stop. Start a book on your phone in the car, open the web player at your desk, and it's waiting on the home screen at the right spot.
 
 A few protections work behind the scenes so you never lose your place:
 
