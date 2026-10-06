@@ -196,8 +196,9 @@ manager uses each entry point:
   renders exactly what an import would write.
 - **`match.Normalize` / `match.NormalizeSeries`** - tolerant normalization
   (spacing/punctuation, leading articles). Used by `importjob.FindSiblings` /
-  `SiblingsFromBooks` (series-sibling detection: the server's series filter is
-  exact, so the manager fetches the author and matches the series tolerantly) and
+  `SiblingsFromBooks` (series-sibling detection: the server's author and series
+  filters are exact, so the manager fetches the library once and matches both
+  client-side - series tolerantly, authors per name of a multi-author credit) and
   by `importjob.AuthorFolders` (reuse the existing author-folder spelling instead
   of creating "L. A. McBride" beside "L.A. McBride").
 - **`match.SeqFromTitle`** - extracts a sequence from titles like "… 3" or
