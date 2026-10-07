@@ -1,6 +1,6 @@
 ---
 title: Playback
-description: "The player's hardest subsystem: the PlaybackService engines (HTML5, AVQueuePlayer, Media3), the whole-book timeline math, the stall→error watchdog, resume protection, web transcode negotiation, what plays next, the sleep timer and drift-offs, jump undo, and the time-left rule."
+description: "The player's hardest subsystem: the PlaybackService engines (HTML5, AVQueuePlayer, Media3), the whole-book timeline math, the stall→error watchdog, resume protection, web transcode negotiation, what plays next, the sleep timer and drift-offs, jump undo, the time-left rule, and the companion."
 ---
 
 Playback is where this codebase earns its keep. The design splits into four
@@ -1000,8 +1000,10 @@ shake.
 
 ### The grace card (`grace-card.tsx`)
 
-`GraceCard` floats over the full player (and above the docked bar, mounted by
-`docked-player.tsx`) while the phase is `ending` or `grace`: a ring that empties
+`GraceCard` floats over the full player's controls, just above the docked bar
+(mounted by `docked-player.tsx`), and on a phone outside the full player above the
+tab bar and mini player (`PhoneGraceCard` in `ShellPlayerOverlays`, lifted to the
+measured `bottomChromeTop`) while the phase is `ending` or `grace`: a ring that empties
 over the window, "Fading out in N s" (a duration timer), "Stopping in N s" (a
 chapter timer, which doesn't fade) or "Paused by the sleep timer", how to keep
 going (mentioning the shake only where it is on and the platform has a sensor), and
@@ -1120,7 +1122,8 @@ controller, so all the policy is unit-tested and none of it lives in a component
 After **any** jump of more than a minute of book position, the app remembers where
 the listener was for 10 seconds (`UNDO_WINDOW_MS`) so the `UndoChip`
 (`src/components/player/undo-chip.tsx`, "Back to 17:26:50" with a ring that empties)
-can take them back; `undoJumpWithToast` seeks back and toasts "Back where you
+can take them back - the chip replaces the full player's `PlayerStatusLine` and
+leads the docked bar's actions; `undoJumpWithToast` seeks back and toasts "Back where you
 were", for the chip and anything else that offers it.
 
 "Any jump" includes the ones that never pass through our UI - a lock-screen or
@@ -1186,20 +1189,83 @@ Each selector returns the text itself, so a caller re-renders when the words
 change (about once a minute), not on every engine tick. The speed sheet's per-preset
 times use `timeLeftAt` (`speed-model.ts`) on the same `wallClockSeconds`.
 
+## The companion (`companion/`)
+
+`src/components/player/companion/` is the full player's companion: Who's who, Story
+so far, Chapters, Bookmarks, Notes and History, in one `Companion` with three
+variants (`column` on desktop, `inline` on a tablet, `sheet` on a phone - the first
+and last scroll on their own, `inline` lets the page scroll).
+
+- **`companion-model.ts`** (pure): `companionTabs(metadata)` (the two community
+  tabs only where the server has `metadata`; the listener's own four always),
+  `activeCompanionTab`, `whoOrder` (latest first appearance first), `newlyMet`,
+  `storySoFar` (recaps in story order, split by the book page's `splitRecaps`, with
+  the chapter the last visible one reaches), `chapterRows` (past, the current one's
+  time left, "in 2h 4m" until each later one - through `timeLeft`, the app's one
+  speed rule) and the reveal rules below.
+- **`use-companion-data.ts`**: the playing book's community data and the listener's
+  place, gated **exactly** as the book page gates it (`meta-gating.ts`: the same
+  corrected chapter starts from `chapterStartsOf`, `listeningProgressFor`, and
+  `useListeningPosition` sampled in `LIVE_POSITION_BUCKET_S` buckets, never below
+  the saved position) - never a fork of those rules. Its `status` (`off`,
+  `loading`, `none`, `ready`) keeps the panels from flashing everyone hidden while
+  the chapters load. It runs inside a `ConnectionScope` for the book's own server.
+- **`companion-store.ts`** (`useCompanion`, memory only): the tab (kept across opens
+  of the player), **one shared reveal** per book (`revealedKey`: Show anyway in
+  Who's who also reveals Story so far, as on the book page, and another book starts
+  hidden), and the "Just met" ids of the last crossing. It sits outside any view so
+  the desktop column, the tablet's inline companion, the phone's sheet and the
+  toast's Show agree.
+- **Panels:** `WhoPanel` (met people newest first, a `HiddenStrip` that counts the
+  rest without naming them, a character's description behind a per-card tap since
+  it is written for the whole book, "Just met" springing in), `StoryPanel` (the
+  recaps up to "Up to chapter N", the whole-book summary behind the shared spoiler
+  accordion, `RecapSummaryBlock`, while unfinished), `ChaptersPanel` (a virtualised
+  list opened on the current chapter; it replaced `chapter-list.tsx`), and the book
+  page's `BookmarksSection` / `NotesSection` / `HistorySection` with an `onJump`
+  that seeks the playing book in place (so the undo chip follows) instead of
+  opening the player. `Attribution` (`companion-pieces.tsx`) puts the server's
+  `attribution` (credit, and the licence as a link) under every community block;
+  the credit is the server's, never composed here.
+
+**The reveal toast** is `CompanionRevealListener` (`reveal-listener.tsx`), mounted
+once in the root layout so it fires wherever the listener is. For the loaded book it
+reads the cast and the chapter starts (the book page's gate inputs) and subscribes to
+`usePlayer`, comparing each sample (`RevealSample`: position, playing, gate chapter)
+with the previous one. `revealOnCrossing` announces only on a **natural crossing**
+(`isNaturalCrossing`: both samples playing, time moving forward by at most
+`NATURAL_STEP_S` = 10 s, the chapter going up) - never a load, a resume, a seek, a
+skip or a jump back - and only the people the new chapter reveals beyond the
+furthest chapter reached this session, so replaying a chapter never re-announces
+anyone; a finished book announces nothing. A hit marks them `justMet` and toasts
+"New in Who's who: …" with **Show** (`showWhoIsWho`: the Who's who tab, the
+companion sheet on a phone, and the player pushed when it isn't on top).
+
+**Previously on** (Home, `src/components/home/previously-on.tsx`, rules in
+`previously-on-model.ts`) reuses the same gate: above the Now card for an unfinished
+book last saved `PREVIOUSLY_ON_GAP_DAYS` (12) or more days ago, not loaded, on a
+server with `metadata`, showing the furthest recap the saved place is past (one
+short paragraph, clamped); "Resume, with 30 seconds of overlap" is
+`playBook(..., overlapStart(saved))` at the saved speed (which lowers the resume
+floor to where it starts, so the overlap's saves aren't refused as a slip).
+Dismissed for the session in memory.
+
 ## The player controls and title display
 
 The player's building blocks, shared by the full player and the docked bar:
 
-- **Speed and sleep timer open sheets.** `SpeedButton` / `SleepTimerButton` are
-  only the readouts; the controls (`SpeedSheet`, `SleepSheet`) are mounted at the
-  player's *root* (and as the docked bar's own siblings in the shell's root
-  column), so they're never clipped. Both present through `PlayerSheet`
+- **Speed and sleep timer open sheets.** The readouts (the full player's speed and
+  sleep pills, the dock's `SpeedPill` and `SleepTimerButton`) only call
+  `usePlayerSheets.openSheet`; the sheets (`SpeedSheet`, `SleepSheet`) are rendered
+  by `PlayerSheetHost`, mounted in the full player and once at the shell's root, one
+  active at a time
+  ([overview](overview.md#player-sheets-and-overlays)), so they're never clipped.
+  Both present through `PlayerSheet`
   (`player-sheet.tsx`): a bottom `Sheet` on a phone, a floating one on a tablet,
   a centred `Dialog` on desktop; children mount only while open, so a body that
   subscribes to the position costs nothing behind a closed sheet. `usePlayerSheets`
   (`player-sheets.ts`) is a tiny store anyone can drive (`openSheet('sleep')` from
-  the Z key, `'shortcuts'` from ?); the surface that owns a sheet renders it from
-  `open`.
+  the Z key, `'shortcuts'` from ?); the active host renders it from `open`.
   - **Speed** (`speed-model.ts`): the readout with "… left in the book at 1.25× ·
     remembered for this book", a `Slider` in hundredths (so its aria values are
     exact) between labelled -/+ `Button`s (`SPEED_STEP` 0.05, `snapSpeed` removes
@@ -1213,9 +1279,9 @@ The player's building blocks, shared by the full player and the docked bar:
     "Or stop after" rows (`stopAfterRows`, at most `STOP_AFTER_ROWS` = 4, with each
     row's end on the local clock), the auto sleep and shake settings in place, and
     the Fell asleep hint. Picking anything records a touch (`noteInteraction`) and
-    closes the sheet. `SleepTimerButton` and the badge over the cover in
-    `player-view.tsx` read only the phase - a countdown while `running`, a short
-    "Keep going" once the timer has paused.
+    closes the sheet. The sleep readouts read only the phase - a countdown on
+    `brand-soft` while `running`/`ending` (`useSleepCountdown`, also first in the
+    mini players' subtitle), a short "Keep going" once the timer has paused.
 - **The seek bar** (`seek-bar.tsx`) is chapter-relative: `SeekBar` draws stylised
   bars - **deliberately decorative**: `seek-texture.ts` seeds a speech-like envelope
   from the book and chapter (`seekTextureKey`), so a chapter always looks the same
