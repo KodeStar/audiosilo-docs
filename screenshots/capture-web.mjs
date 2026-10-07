@@ -5,17 +5,21 @@
 //      empty) - needs ADMIN_PASSWORD, which run.sh passes,
 //   1. warm a demo session (seek several books to varied positions so Home looks
 //      lived-in - same technique as store/tools/login.mjs in the workspace), then
-//      give the demo user an Up next queue and a collection through the API,
+//      give the demo user an Up next queue, a collection, a finished and rated
+//      book, labelled bookmarks, pinned notes, a few days of listening history
+//      and a sleep-timer drift-off through the API,
 //   2. capture desktop, tablet and phone profiles into static/img/screenshots/web-player/.
 import {chromium} from 'playwright';
 import path from 'node:path';
-import {mkdir} from 'node:fs/promises';
+import {mkdir, readFile, writeFile} from 'node:fs/promises';
 import {CACHE, apiClient, sleep, shoot, step, wanted} from './lib.mjs';
 
 const BASE = process.env.AS_BASE || 'http://127.0.0.1:8790/web/';
 const api = apiClient(new URL(BASE).origin);
 const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || '';
 const AUTH = path.join(CACHE, 'auth.json');
+// What pass 1 provisioned that pass 2 looks for (the finished book's title).
+const FIXTURES = path.join(CACHE, 'web-fixtures.json');
 
 // Series overrides for the seeded books (admin metadata edits: path-keyed, no file
 // is touched). Sherlock Holmes takes its canon numbers, so the series page shows the
@@ -54,6 +58,14 @@ const WARM = [
   {q: 'Baskervilles', frac: 0.4},
   {q: 'Alice', frac: 0.07},
 ];
+
+// The book page's primary button while the book isn't playing: Start listening (a
+// new book), Resume / Resume chapter N (in progress), Listen again (finished); plain
+// Listen while the saved progress is still unknown.
+const PRIMARY_PLAY = /^(start listening|resume( chapter \d+)?|listen again|listen)$/i;
+
+// The sleep timer's automatic bookmark note (en.json player.sleepTimer.fellAsleepNote).
+const FELL_ASLEEP_NOTE = 'Fell asleep';
 
 // The player creates a detached `new Audio()` (not in the DOM); hook the
 // constructor so warm-up can find and seek the element.
@@ -120,7 +132,7 @@ console.log('== warm demo session ==');
       await card.click({timeout: 8000});
       await page.waitForLoadState('networkidle').catch(() => {});
       await sleep(2500);
-      const listen = page.getByRole('button', {name: /listen/i}).first();
+      const listen = page.getByRole('button', {name: PRIMARY_PLAY}).filter({visible: true}).first();
       if (await listen.count()) await listen.click({timeout: 8000}).catch(() => {});
       await sleep(3500);
       await page.evaluate((f) => {
@@ -158,6 +170,85 @@ console.log('== warm demo session ==');
     console.log(`  ✓ queued ${queued.length}, collection of ${items.length}`);
   });
 
+  // The listener's records for the book page, the Journal and the bookmark editor
+  // (capability `annotations`): the most recently played book (the one the shots
+  // open first) moved on to 62% with three labelled bookmarks and a pinned note;
+  // the warmed book furthest in finished two days ago and rated; a few days of
+  // listening history; and a sleep-timer drift-off that ended two minutes ago, so
+  // the Diary shows its strip (`matchDrifts`: a fell_asleep bookmark made within 15
+  // minutes of a span's end, near its end position).
+  await step('annotations + history', async () => {
+    const token = await page.evaluate(() => {
+      const key = Object.keys(localStorage).find((k) => k.startsWith('audiosilo.token.'));
+      return key ? localStorage.getItem(key) : null;
+    });
+    if (!token) throw new Error('no demo token in localStorage');
+    const info = await api(token, 'GET', '/server');
+    if (!info?.capabilities?.annotations) throw new Error('the server has no annotations capability');
+    const {progress} = await api(token, 'GET', '/me/progress');
+    const started = (progress ?? [])
+      .filter((p) => p.duration > 0 && !p.finished)
+      .sort((a, b) => String(b.updated_at).localeCompare(String(a.updated_at)));
+    if (started.length < 3) throw new Error(`only ${started.length} books in progress`);
+    const pathOf = (p) => p.path ?? p.rel_path;
+    const q = (p) => `/libraries/${p.library_id}`;
+    const at = (p) => `?path=${encodeURIComponent(pathOf(p))}`;
+    const iso = (msAgo) => new Date(Date.now() - msAgo).toISOString();
+    const MIN = 60_000;
+    const DAY = 24 * 60 * MIN;
+    const span = (p, from, to, endedAgo) =>
+      api(token, 'POST', `${q(p)}/history${at(p)}`, {
+        from_pos: from,
+        to_pos: to,
+        started_at: iso(endedAgo + (to - from) * 1000),
+        ended_at: iso(endedAgo),
+      });
+    const bookmark = (p, position, note, label) =>
+      api(token, 'POST', `${q(p)}/bookmarks${at(p)}`, {position: Math.round(position), note, label});
+    const note = (p, position, body) =>
+      api(token, 'POST', `${q(p)}/notes${at(p)}`, {body, position: Math.round(position)});
+
+    const [first, drift] = started;
+    const finished = started.slice(1).sort((a, b) => b.position / b.duration - a.position / a.duration)[0];
+    const d = first.duration;
+    // Yesterday evening and this book's last listen, then its place at half way
+    // (not in its last chapter: the docked bar's next-chapter jump needs one after).
+    await span(first, d * 0.2, d * 0.35, DAY + 2 * 60 * MIN);
+    await span(first, d * 0.35, d * 0.5, 50 * MIN);
+    await api(token, 'PATCH', `${q(first)}/progress${at(first)}`, {
+      position: Math.round(d * 0.5),
+      started_at: iso(DAY + 3 * 60 * MIN),
+    });
+    await bookmark(first, d * 0.1, 'Curiouser and curiouser!', 'quote');
+    await bookmark(first, d * 0.22, '', 'relisten');
+    await bookmark(first, d * 0.41, 'Who is telling this part?', 'question');
+    await note(first, d * 0.3, '**Theory:** none of this is really happening.\n\n- check the last chapter');
+
+    // Finished two days ago, its last stretch in the history, and rated.
+    const fd = finished.duration;
+    if (finished.position < fd * 0.7) await span(finished, finished.position, fd * 0.7, 2 * DAY + 3 * 60 * MIN);
+    await span(finished, fd * 0.7, fd, 2 * DAY + 2 * 60 * MIN);
+    // The start goes back too: the server stamped it at the warm-up, and a finish
+    // can't come before it.
+    await api(token, 'PATCH', `${q(finished)}/progress${at(finished)}`, {
+      finished: true,
+      started_at: iso(9 * DAY),
+      finished_at: iso(2 * DAY + 2 * 60 * MIN),
+    });
+    await api(token, 'PUT', `${q(finished)}/rating${at(finished)}`, {rating: 4});
+    await bookmark(finished, fd * 0.6, 'The best chapter in the book.', 'favourite');
+    await note(finished, fd * 0.95, 'Loved the ending.');
+
+    // The drift-off: twenty minutes of listening that ended two minutes ago, where
+    // the sleep timer left its Fell asleep bookmark.
+    const end = Math.round(drift.position);
+    await span(drift, Math.max(0, end - 20 * 60), end, 2 * MIN);
+    await bookmark(drift, end, FELL_ASLEEP_NOTE, 'fell_asleep');
+    const item = await api(token, 'GET', `${q(finished)}/item${at(finished)}`);
+    await writeFile(FIXTURES, JSON.stringify({finishedTitle: item?.title ?? item?.book?.title ?? ''}));
+    console.log('  ✓ 5 bookmarks, 2 notes, history, a finished book and a drift-off');
+  });
+
   await ctx.storageState({path: AUTH});
   await ctx.close();
   console.log('  ✓ demo session warmed');
@@ -165,11 +256,11 @@ console.log('== warm demo session ==');
 
 // ── Pass 2: captures ────────────────────────────────────────────────────────
 // The player shell (redesign 0b): a phone (< 640) has a bottom tab bar, a mini
-// player above it and Listen opens the full-screen player; a tablet (640-1023)
-// or desktop (>= 1024) has a top bar and Listen plays in place, with the docked
+// player above it and the book page's primary button opens the full-screen player; a tablet (640-1023)
+// or desktop (>= 1024) has a top bar and it plays in place, with the docked
 // player bar along the bottom (its expand button opens the full player). Moving
 // around with the chrome (not page.goto) keeps the book loaded, so the shots
-// after Listen show the mini player / docked bar.
+// after it show the mini player / docked bar.
 //
 // Every visited tab page (and every page further down a stack) stays mounted but
 // hidden, so a test id or a button name can match several elements: always act on
@@ -222,12 +313,20 @@ async function openFirstBook(page, shot) {
   if (shot) await shoot(page, shot);
 }
 
-// Press Listen and give the book a moment to start; returns when Listen was pressed.
+// Press the book page's primary button (Resume, Start listening...) and give the book a
+// moment to start; returns when it was pressed.
 async function listen(page) {
-  await firstVisible(page.getByRole('button', {name: /^listen$/i})).click({timeout: 8000});
+  await firstVisible(page.getByRole('button', {name: PRIMARY_PLAY})).click({timeout: 8000});
   const at = Date.now();
   await sleep(4500);
   return at;
+}
+
+// Scroll the page so `locator` (a book page's tab, say) sits near the top of the
+// window, with the panel under it in view.
+async function scrollToTop(locator) {
+  await locator.evaluate((el) => el.scrollIntoView({block: 'start'}));
+  await sleep(400);
 }
 
 // A short pause for an entrance animation to finish after the state it waits on.
@@ -306,6 +405,75 @@ async function captureWide(name, viewport, shots) {
     await shoot(page, shots.home);
   });
   await step('pause', () => pausePlayback(page));
+
+  if (wanted(shots.bookBookmarks, shots.bookmarkEditor, shots.bookDetails)) {
+    // The playing book's page again (the docked bar's View book details, so the book
+    // stays loaded and paused): its Bookmarks tab, the bookmark editor on the Quote
+    // (Edit opens it as a dialog on a desktop; Cancel leaves it unchanged), Details.
+    await step('book tabs', async () => {
+      await expandPlayer(page);
+      await tid(page, 'player-menu').click({timeout: 8000});
+      await firstVisible(page.getByRole('menuitem', {name: 'View book details'})).click({timeout: 8000});
+      await tid(page, 'player-menu').waitFor({state: 'hidden', timeout: 8000});
+      await tid(page, 'book-page').waitFor({timeout: 8000});
+      await sleep(2000);
+      await tid(page, 'book-tab-bookmarks').click({timeout: 8000});
+      await firstVisible(page.getByTestId('bookmark-quote')).waitFor({timeout: 8000});
+      await sleep(SETTLE_MS);
+      await scrollToTop(tid(page, 'book-tab-bookmarks'));
+      await page.mouse.move(0, 0);
+      await shoot(page, shots.bookBookmarks);
+      if (wanted(shots.bookmarkEditor)) {
+        const quote = firstVisible(page.locator('[data-testid^="bookmark-row-"]').filter({has: page.getByTestId('bookmark-quote')}));
+        await quote.getByTestId('bookmark-edit').click({timeout: 8000});
+        const dialog = firstVisible(page.getByRole('dialog'));
+        await dialog.waitFor({timeout: 8000});
+        await sleep(SETTLE_MS);
+        await shoot(page, shots.bookmarkEditor);
+        await firstVisible(dialog.getByRole('button', {name: 'Cancel', exact: true})).click({timeout: 8000});
+        await dialog.waitFor({state: 'hidden', timeout: 8000});
+      }
+      if (wanted(shots.bookDetails)) {
+        await tid(page, 'book-tab-details').click({timeout: 8000});
+        await sleep(1500);
+        await scrollToTop(tid(page, 'book-tab-details'));
+        await shoot(page, shots.bookDetails);
+      }
+    });
+  }
+
+  if (wanted(shots.bookFinished)) {
+    // The finished, rated book's page (Library > Books, by its title).
+    await step('finished book', async () => {
+      const {finishedTitle} = JSON.parse(await readFile(FIXTURES, 'utf8'));
+      if (!finishedTitle) throw new Error('no finished book provisioned');
+      await librarySection(page, 'Books');
+      await openNamed(page, finishedTitle);
+      await firstVisible(page.getByText(/^Finished /)).waitFor({timeout: 8000});
+      await sleep(1500);
+      await page.mouse.move(0, 0);
+      await shoot(page, shots.bookFinished);
+    });
+  }
+
+  if (wanted(shots.journal, shots.journalBookmarks)) {
+    // The Journal from the profile menu: the Diary (today's drift-off strip), then
+    // the Bookmarks tab with its label filter.
+    await step('journal', async () => {
+      await tid(page, 'top-bar-profile').click({timeout: 8000});
+      await firstVisible(page.getByRole('menuitem', {name: 'Journal'})).click({timeout: 8000});
+      await firstVisible(page.getByTestId('journal-list')).waitFor({timeout: 8000});
+      await firstVisible(page.getByText(/^The sleep timer stopped this at /)).waitFor({timeout: 15000});
+      await sleep(1500);
+      await shoot(page, shots.journal);
+      if (wanted(shots.journalBookmarks)) {
+        await firstVisible(page.getByRole('radio', {name: /^Bookmarks/})).click({timeout: 8000});
+        await firstVisible(page.getByTestId('bookmark-quote')).waitFor({timeout: 15000});
+        await sleep(1500);
+        await shoot(page, shots.journalBookmarks);
+      }
+    });
+  }
 
   if (wanted(shots.player)) {
     await step('player', async () => {
@@ -443,9 +611,9 @@ async function captureWide(name, viewport, shots) {
     await step('download a book', async () => {
       await librarySection(page, 'Books');
       await openNamed(page, 'The Art of War');
-      await firstVisible(page.getByRole('button', {name: /^download$/i})).click({timeout: 8000});
-      // Done once the book page offers Remove download.
-      await firstVisible(page.getByRole('button', {name: /^remove download$/i})).waitFor({timeout: 120000});
+      await firstVisible(page.getByRole('button', {name: /^download( for offline)?$/i})).click({timeout: 8000});
+      // Done once the book page's control says Downloaded (its menu holds Remove).
+      await firstVisible(page.getByRole('button', {name: /^downloaded$/i})).waitFor({timeout: 120000});
       await sleep(1500);
     });
   }
@@ -479,7 +647,7 @@ async function captureWide(name, viewport, shots) {
   await ctx.close();
 }
 
-// Phone: Listen opens the full player; closing it leaves the mini player above
+// Phone: the primary button opens the full player; closing it leaves the mini player above
 // the tab bar, which the Home shot shows.
 async function capturePhone(name, viewport, shots) {
   const {ctx, page} = await newProfile(name, viewport, 2);
@@ -518,6 +686,12 @@ async function capturePhone(name, viewport, shots) {
 await captureWide('desktop', {width: 1440, height: 900}, {
   home: 'web-player/home.png',
   book: 'web-player/book-detail.png',
+  bookBookmarks: 'web-player/book-bookmarks.png',
+  bookmarkEditor: 'web-player/bookmark-editor.png',
+  bookDetails: 'web-player/book-details.png',
+  bookFinished: 'web-player/book-finished.png',
+  journal: 'web-player/journal.png',
+  journalBookmarks: 'web-player/journal-bookmarks.png',
   player: 'web-player/player.png',
   dockUndo: 'web-player/dock-undo.png',
   credits: 'web-player/end-credits.png',

@@ -100,6 +100,43 @@ next drawer closed (an init script writes `audiosilo.upNext`), so only
 short book first. The series, Up next and collection shots need a server with
 the `browse_people`, `queue` and `collections` capabilities.
 
+The book page and Journal shots need the listener's own records, so after the
+queue and collection the same pass provisions them through the API (a server
+with the `annotations` capability; the step fails loudly without it):
+
+- the most recently played book (the one the shots open first) moves to half
+  way (`PATCH` progress with an earlier `started_at`), with a listening span
+  yesterday and one that ended under an hour ago, three labelled bookmarks (Quote, Re-listen,
+  Question) and a note pinned at a position;
+- the warmed book furthest in is marked finished two days ago (its start moved
+  back first, since a finish can't come before it), rated four stars, and given a
+  Favourite bookmark, a note and its last spans of history;
+- another book in progress gets twenty minutes of history ending two minutes
+  ago and a `fell_asleep` bookmark at its end, so the Diary matches them and draws
+  a drift-off strip (`matchDrifts`: made within 15 minutes of a span's end, near
+  its end position). History spans are posted with their own times
+  (`POST /libraries/{id}/history`); bookmarks can't be backdated, so the
+  drift-off span has to end just before the run.
+
+The finished book's title is handed to the capture pass in
+`.cache/web-fixtures.json`. `web-player/book-bookmarks.png`,
+`bookmark-editor.png` and `book-details.png` are taken on the playing book's page
+(reached through the full player's View book details, so the book stays loaded);
+the editor is closed with Cancel, so nothing changes. The playing book was
+downloaded automatically as it played (the default On Wi-Fi downloads on any
+connection in a browser), so its Details tab says Plays from this device.
+
+`SERVER_BIN=<file>` runs a server binary built elsewhere instead of building one
+into the `SERVER` checkout (pair it with `SKIP_ADMIN=1` unless that binary
+embeds a built admin console), which is how a docs worktree captures an unmerged
+server branch without writing into it:
+
+```sh
+(cd ../../audiosilo-server-wt && go build -o /tmp/shots/audiosilo ./cmd/audiosilo)
+SERVER_BIN=/tmp/shots/audiosilo FRONTEND=../../audiosilo-frontend-wt \
+  SKIP_ADMIN=1 SKIP_META=1 SHOTS_ONLY=web-player/ ./run.sh
+```
+
 `SHOTS_PORT`, `SHOTS_SETUP_PORT` and `SHOTS_META_PORT` move the three servers
 off 8790 / 8791 / 8795 when a run in another checkout (a worktree, say) already
 holds them. Two runs in the same checkout can't overlap whatever the ports: they
