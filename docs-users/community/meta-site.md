@@ -7,7 +7,7 @@ description: Browse, check and contribute to AudioSilo Meta - the free, communit
 open, community-built database of audiobooks: the books themselves, each
 narration (recording), the narrators and authors behind them, and the series
 they belong to. It is the catalogue that powers the
-[About this book](../listening/browsing.md#about-this-book) extras in the
+[book page](../listening/book-page.md#about-this-book) extras in the
 player - and it is free for anyone to browse, with no account and no sign-up.
 
 The database treats the details other catalogues skip as first-class
@@ -104,7 +104,7 @@ the same in more detail.
 ## Characters and story-so-far recaps
 
 On a book page, two extra tabs appear once the community has written them - the
-same material the player shows under [About this book](../listening/browsing.md#about-this-book):
+same material the player shows on a [book's page](../listening/book-page.md#recaps-and-characters):
 
 - **Characters** - a card for each person in the book, written by readers in
   their own words. A card's name, role and aliases are always visible, along with

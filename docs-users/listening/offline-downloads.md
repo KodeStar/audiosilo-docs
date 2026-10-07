@@ -1,20 +1,15 @@
 ---
 title: Offline downloads
-description: "Downloading books to your device, the Downloads page, automatic downloads and keeping the next books ready, what happens when a download stops, offline listening in the browser, and installing the web player as an app."
+description: "Downloading books to your device, the Downloads page, community notes that come along offline, automatic downloads and keeping the next books ready, what happens when a download stops, offline listening in the browser, and installing the web player as an app."
 ---
 
 Streaming needs your server; downloads don't. Download a book before a flight, a commute through tunnels, or a weekend off-grid, and it plays entirely from your device - no connection to the server required.
 
 ## Downloading a book
 
-The download button lives on the **book's detail page**:
+The download button lives on the [book's page](book-page.md#listening-and-the-buttons), beside **Resume**: **Download for offline** (just **Download** on a phone). You can also use **Download for offline** in any book's [menu](browsing.md#the-book-menu).
 
-- On a phone, it's the square button next to **Listen**.
-- On a tablet or computer, it's the **Download** button near the top of the page, above the book's tabs.
-
-You can also use **Download for offline** in any book's [menu](browsing.md#the-book-menu).
-
-While a download runs you'll see the progress ("Downloading 42% · 210 MB / 500 MB") with a cancel button. When it's done, the button shows **Downloaded** with the size, the cover is saved too, and the chapter/file list shows **green dots** to say the book is on the device. Beside it, **Remove download** asks first, and says how much space removing it frees.
+While a download runs, the button shows how far it has got (*"52% · Cancel"*; tap it to cancel), with the progress underneath (*"Downloading 42% · 210 MB / 500 MB"*). When it's done, the button reads **Downloaded** and the cover is saved too. Tap **Downloaded** to see how much room the book takes on this device and to **Remove download**, which asks first and says how much space it frees.
 
 If a download stops (the connection dropped, the phone slept at the wrong moment), the button becomes **Retry download** - see [When a download stops](#when-a-download-stops).
 
@@ -85,7 +80,18 @@ Honestly? Barely at all - that's the point:
 - A downloaded book **plays from local files**, so it starts instantly and never buffers, whether or not the server is reachable.
 - Chapters, the sleep timer, speed, bookmarks, and notes all work the same.
 - Your listening progress is saved on the device while you're offline and **synced to the server automatically** the next time the app can reach it - so even offline listening ends up on your other devices' *Continue listening* shelf.
-- The book's detail page still opens offline for downloaded books.
+- The book's page still opens offline for downloaded books, community notes and all ([below](#community-notes-offline)), and its **Details** tab says the book **Plays from this device**.
+
+## Community notes offline
+
+When your server has [community metadata](book-page.md#about-this-book) switched on, a downloaded book keeps its community material on the device with it: the description on its page, the **Recaps**, **Characters** and **Series** tabs, and the player's [companion](companion.md) (Who's who and Story so far). So a book you downloaded before a flight still tells you who's who in the air, and still [hides what you haven't reached](book-page.md#nothing-gets-spoiled-before-you-reach-it), because that check happens on your device.
+
+It also keeps the book that comes **before it** in the series (in the reading order you picked), so the **Previous books** catch-up has at least that one to show offline.
+
+- It's saved straight after the download finishes, and it goes when you remove the download.
+- Books you downloaded before AudioSilo kept this get it the next time you open the app with the server reachable.
+- A kept copy older than a week is refreshed when the app opens and can reach your server, so new recaps and character notes reach your downloads too.
+- A book the community database doesn't know (or a server with the lookup switched off) simply has nothing extra to keep.
 
 ## Downloads in a web browser
 

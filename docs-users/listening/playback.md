@@ -3,7 +3,7 @@ title: Playing a book
 description: "Starting a book, the mini player and the player bar, playing to another speaker, how your position syncs across devices, listening offline, books a browser can't play directly, lock-screen controls, and books without chapters."
 ---
 
-Tap **Listen** on any book to start it. On a phone the [full player](full-player.md) opens straight away. On a tablet or computer the book plays where you are, under the **player bar** along the bottom of the window; open the full player from it whenever you want the big view.
+Tap **Start listening** (or **Resume**) on any [book's page](book-page.md) to start it. On a phone the [full player](full-player.md) opens straight away. On a tablet or computer the book plays where you are, under the **player bar** along the bottom of the window; open the full player from it whenever you want the big view.
 
 ## The mini player and the player bar
 
@@ -47,7 +47,7 @@ A few protections work behind the scenes so you never lose your place:
 
 ## Bookmarks, notes and history
 
-The bookmark button in the full player or on the player bar adds a bookmark where you are. Your bookmarks, notes and listening history for the book are in the [companion](companion.md#bookmarks-notes-and-history) and on the book's page, saved to your account.
+The bookmark button in the full player or on the player bar adds a bookmark where you are, in one tap; **Add note** on the note that confirms it lets you say why (see [Bookmarks and notes](bookmarks-and-notes.md)). Your bookmarks, notes and listening history for the book are in the [companion](companion.md#bookmarks-notes-and-history) and on the [book's page](book-page.md#the-tabs), and every book's are in the [Journal](journal.md), all saved to your account.
 
 ## Listening while offline
 

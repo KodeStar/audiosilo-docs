@@ -39,9 +39,12 @@ const sidebars: SidebarsConfig = {
       items: [
         'listening/connecting',
         'listening/browsing',
+        'listening/book-page',
         'listening/playback',
         'listening/full-player',
         'listening/companion',
+        'listening/bookmarks-and-notes',
+        'listening/journal',
         'listening/sleep-timer',
         'listening/up-next',
         'listening/end-of-book',

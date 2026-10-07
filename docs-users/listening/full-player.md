@@ -14,7 +14,7 @@ The full player is about the book you're listening to. Its background takes on t
 - **The status line**: whether your [place is saved](playback.md#your-position-follows-you), how much of the book you've heard, and the [time left](#time-left): *"Synced just now · 38% of the book · 22h 27m left at 1.25×"*. After a big jump it turns into the [undo button](#undo-a-jump), and in a sleep timer's last seconds the [sleep timer's card](sleep-timer.md#the-last-30-seconds) takes its place.
 - **The [seek bar](#the-seek-bar-and-the-timeline)** for the current chapter, and a slim **timeline of the whole book** below it.
 - **The transport**: previous chapter, skip back, play/pause, skip forward, next chapter. The skip buttons show how far they jump (15 seconds back and 30 forward out of the box; change them in [Settings](account.md#playback)). If playback fails, the play button becomes **Retry**.
-- **The actions**: [speed](#playback-speed), the [sleep timer](sleep-timer.md), **bookmark** (one tap adds one where you are), **output** for [AirPlay or Cast](playback.md#play-to-another-speaker-airplay--cast) where your device has one, and [Up next](up-next.md) with how many books are queued.
+- **The actions**: [speed](#playback-speed), the [sleep timer](sleep-timer.md), **bookmark** (one tap adds one where you are; see [Bookmarks and notes](bookmarks-and-notes.md)), **output** for [AirPlay or Cast](playback.md#play-to-another-speaker-airplay--cast) where your device has one, and [Up next](up-next.md) with how many books are queued.
 
 Beside or below it sits the [companion](companion.md): Who's who, Story so far, the chapters, and your bookmarks, notes and history for the book.
 
@@ -41,7 +41,7 @@ The seek bar spans the **current chapter**, so even in a 30-hour book a small mo
 
 Under the bar: the time into the chapter, how long the rest of it takes and when it ends by the clock (*"21m left in the chapter · ends 22:01"*, at your speed), and its remaining time. A short book that's a single file without chapter marks is one stretch, so there the bar spans the **whole book** (*"32m left in the book · ends 22:41"*); a longer single file is split into [virtual chapters](playback.md#books-without-chapters), and a book of several files without chapter marks treats each file as a chapter. A book whose file lengths aren't known yet gets the current **file** instead.
 
-Below it, the **whole-book timeline** shows each chapter as a segment sized by its length, the chapters you've finished shaded and the one you're in in pink. Pins above it mark your **bookmarks**: tap a pin to jump to it, or tap or drag anywhere else to jump anywhere in the book.
+Below it, the **whole-book timeline** shows each chapter as a segment sized by its length, the chapters you've finished shaded and the one you're in in pink. Pins above it mark your **bookmarks** and **notes**: tap a pin to jump to it, or tap or drag anywhere else to jump anywhere in the book.
 
 Neither scrubber takes you all the way to the end: a tap or drag there lands **30 seconds short**, so a slip can't finish the book by accident. To finish one on purpose, use **Mark as Finished**. (Until a book's file lengths are known, its seek bar covers just the current file and has no such stop.)
 

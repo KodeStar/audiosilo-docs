@@ -39,6 +39,7 @@ Up next shows **one server's queue**: the server of the book you're playing, or 
 ## Adding books
 
 - Open any book's [menu](browsing.md#the-book-menu) (its **...** button in a list, or press and hold its cover) and choose **Add to Up next** (or **Remove from Up next** if it's already there).
+- On a [book's page](book-page.md#listening-and-the-buttons), the **Up next** button offers **Play next** (to the top of the queue) and **Add to the end of Up next**.
 - On a [series page](browsing.md#series-pages), the action under the shelf (and beside each book in the list) reads **Queue it** for a book you haven't started, and **Queued** once it's in.
 - In Up next itself, tap **+** beside a suggestion.
 - **In the web player on a computer**, drag any book cover from the page and drop it on the drawer. A dashed area at the end of the queue lights up as you drag. Only books from the queue's own server can go in; for any other, the drawer says which server it's showing.

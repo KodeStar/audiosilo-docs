@@ -20,7 +20,7 @@ Who's who and Story so far come from the community database, [AudioSilo Meta](..
 
 ## Nothing ahead of where you are
 
-Who's who and Story so far follow the book page's [spoiler rule](browsing.md#nothing-gets-spoiled-before-you-reach-it): they follow **where you are as you listen**, moving on with you chapter by chapter, and **Show anyway** reveals what's held back in both tabs at once. Here it stays revealed for that book when you close and reopen the player, until you reveal another book (which starts hidden) or restart the app.
+Who's who and Story so far follow the book page's [spoiler rule](book-page.md#nothing-gets-spoiled-before-you-reach-it): they follow **where you are as you listen**, moving on with you chapter by chapter, and **Show anyway** reveals what's held back in both tabs at once. Here it stays revealed for that book when you close and reopen the player, until you reveal another book (which starts hidden) or restart the app.
 
 ## Who's who
 
@@ -42,9 +42,11 @@ Every chapter, with how much of the one you're in is left; earlier ones ticked, 
 
 The same lists as on the book's page, for the book that's playing, all saved to your account:
 
-- **Bookmarks** - **Add bookmark at 1:16:19** pins where you are (so does the bookmark button among the player's actions); tap one to jump to it.
-- **Notes** - your notes on the book (markdown supported).
-- **History** - your listening sessions, by chapter; tap one to go back to where it ended.
+- **Bookmarks** - **Bookmark 1:16:19** marks where you are (so does the bookmark button among the player's actions); tap a bookmark's time to jump to it.
+- **Notes** - **Note at 1:16:19** pins a note to where you are; tap a note's time to jump to it.
+- **History** - your listening sessions, newest first; **Jump** goes back to where one ended.
+
+Editing, labels and deleting with Undo work as on the book's page: see [Bookmarks and notes](bookmarks-and-notes.md). **See all in your journal** opens the [Journal](journal.md).
 
 A jump from these lists can be [undone](full-player.md#undo-a-jump). They need the book's server: if it isn't connected any more (a downloaded copy playing on), they say *"This book's server isn't connected"* until it is.
 
