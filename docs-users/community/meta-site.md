@@ -104,7 +104,7 @@ the same in more detail.
 ## Characters and story-so-far recaps
 
 On a book page, two extra tabs appear once the community has written them - the
-same material the player shows on a [book's page](../listening/book-page.md#recaps-and-characters):
+same material the player shows on a book's page (see [Recaps and characters](../listening/recaps-and-characters.md)):
 
 - **Characters** - a card for each person in the book, written by readers in
   their own words. A card's name, role and aliases are always visible, along with

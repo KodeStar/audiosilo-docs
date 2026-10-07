@@ -84,14 +84,7 @@ Honestly? Barely at all - that's the point:
 
 ## Community notes offline
 
-When your server has [community metadata](book-page.md#about-this-book) switched on, a downloaded book keeps its community material on the device with it: the description on its page, the **Recaps**, **Characters** and **Series** tabs, and the player's [companion](companion.md) (Who's who and Story so far). So a book you downloaded before a flight still tells you who's who in the air, and still [hides what you haven't reached](book-page.md#nothing-gets-spoiled-before-you-reach-it), because that check happens on your device.
-
-It also keeps the book that comes **before it** in the series (in the reading order you picked), so the **Previous books** catch-up has at least that one to show offline.
-
-- It's saved straight after the download finishes, and it goes when you remove the download.
-- Books you downloaded before AudioSilo kept this get it the next time you open the app with the server reachable.
-- A kept copy older than a week is refreshed when the app opens and can reach your server, so new recaps and character notes reach your downloads too.
-- A book the community database doesn't know (or a server with the lookup switched off) simply has nothing extra to keep.
+When your server has [community metadata](book-page.md#about-this-book) switched on, a downloaded book keeps its community material with it (the description, the [recaps and characters](recaps-and-characters.md), the Series tab, the player's [companion](companion.md), and at least the book before it in the series for the catch-up), so it all works in the air and still [hides what you haven't reached](recaps-and-characters.md#nothing-gets-spoiled-before-you-reach-it). It's refreshed when the app can reach your server and the copy is more than a week old, and it goes when you remove the download.
 
 ## Downloads in a web browser
 

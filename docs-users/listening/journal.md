@@ -12,7 +12,7 @@ The **Journal** is your listening, looked back on: a **Diary** of every day you 
 - In the web player's [quick search](browsing.md#quick-search-in-the-web-player): **Journal**, under Go to.
 - On a book's **Bookmarks** or **Notes** tab: **See all in your journal**, which opens straight on that list.
 
-Across the top: three tabs, **Diary**, **Bookmarks** and **Notes**, and the [export](#exporting-your-bookmarks-and-notes) buttons. Bookmarks and Notes show how many you have once the whole list is in (Notes, the first time you open it).
+Across the top: three tabs, **Diary**, **Bookmarks** and **Notes**, and the [export](#exporting-your-bookmarks-and-notes) buttons. Bookmarks and Notes show how many you have.
 
 ## The Diary
 
@@ -21,7 +21,7 @@ Across the top: three tabs, **Diary**, **Bookmarks** and **Notes**, and the [exp
 One card for each day you listened, newest first: **Today**, **Yesterday**, the weekday for the rest of the week, then the date. Each card says how long you listened that day and has:
 
 - **A 24 hour bar** - each stretch of listening drawn where it happened in the day, in its book's cover colour, with faint marks at 6:00, 12:00 and 18:00. You can see at a glance whether that was your commute or a late night.
-- **The sessions**, newest first: the book's cover and title, when you started and how long you listened (*"21:12, 21 min"*), and where you went in the book (*"Bridge Four to The Shattered Plains"*, or the times when its chapters aren't known yet). A short pause doesn't split a session; switching to another book does. A session that reached the end of the book says **Finished the book**.
+- **The sessions**, newest first: the book's cover and title, when you started and how long you listened (*"21:12, 21 min"*), and where you went in the book (*"Bridge Four to The Shattered Plains"*, or the times when its chapters aren't known yet). A pause of under ten minutes doesn't split a session; listening to another book in between, or jumping more than a couple of minutes away in the book, does. A session that reached the end of the book says **Finished the book**.
 
 Tap a cover to open that book's page on its [History tab](book-page.md#history). When you're connected to more than one server, each session also names its server.
 

@@ -20,7 +20,7 @@ Who's who and Story so far come from the community database, [AudioSilo Meta](..
 
 ## Nothing ahead of where you are
 
-Who's who and Story so far follow the book page's [spoiler rule](book-page.md#nothing-gets-spoiled-before-you-reach-it): they follow **where you are as you listen**, moving on with you chapter by chapter, and **Show anyway** reveals what's held back in both tabs at once. Here it stays revealed for that book when you close and reopen the player, until you reveal another book (which starts hidden) or restart the app.
+Who's who and Story so far follow the book page's [spoiler rule](recaps-and-characters.md#nothing-gets-spoiled-before-you-reach-it): they follow **where you are as you listen**, moving on with you chapter by chapter, and **Show anyway** reveals what's held back in both tabs at once. Here it stays revealed for that book when you close and reopen the player, until you reveal another book (which starts hidden) or restart the app.
 
 ## Who's who
 

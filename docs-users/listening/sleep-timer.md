@@ -49,7 +49,7 @@ When the timer stopped a book you were playing and nobody kept it going in those
 
 - **A "Fell asleep" bookmark** goes on the book where the timer stopped it, with a small moon and the **Fell asleep** label (see [Bookmarks and notes](bookmarks-and-notes.md#fell-asleep)).
 - **The next time you play the book** on that device, soon after and near where it stopped, a note offers once to take you back: *"You drifted off around 23:41. Jump back 4 minutes?"* **Jump back** returns to the last moment you touched the player.
-- **The next morning, in the [Journal](journal.md#drift-offs)**, the Diary shows the same offer under the session the timer ended (on another device, or once the offer is used up, it offers to play from where the timer stopped instead). The Journal's Bookmarks tab can show just these, with its **Fell asleep** filter.
+- **The next morning**, the [Journal's Diary](journal.md#drift-offs) shows it under the listening the timer ended.
 
 ## Starting a timer automatically at night
 

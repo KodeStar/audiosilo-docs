@@ -40,6 +40,7 @@ const sidebars: SidebarsConfig = {
         'listening/connecting',
         'listening/browsing',
         'listening/book-page',
+        'listening/recaps-and-characters',
         'listening/playback',
         'listening/full-player',
         'listening/companion',
