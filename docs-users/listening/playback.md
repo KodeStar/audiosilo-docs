@@ -1,48 +1,44 @@
 ---
 title: Playing a book
-description: "The player screen: chapters, the seek bar, time left, undoing a jump, playback speed, what happens when a book ends, books a browser can't play directly, lock-screen controls, and how your position syncs across devices."
+description: "The full player on a phone, tablet and computer, the mini player and the player bar, the seek bar and timeline, time left, undoing a jump, playback speed, what happens when a book ends, books a browser can't play directly, lock-screen controls, and how your position syncs across devices."
 ---
 
 Tap **Listen** on any book to start it. On a phone, the full player opens straight away, filling the screen. On a tablet or computer, the book starts playing where you are and the **player bar** along the bottom of the window takes over; open the full player from it whenever you want the big view.
 
 ![The full player screen with cover, seek bar, and transport controls](/img/screenshots/web-player/player.png)
 
-## The mini player and the player bar
+## The full player
 
-While a book is playing, a small player stays with you on every screen, so you can pause or skip without opening the full player.
+The full player is about the book you're listening to. Its background takes on the colours of the book's cover, and the cover itself settles back a little while the book is paused.
 
-**On a phone**, a **mini player** sits just above the tab bar: the cover, the title and current chapter, the [time left in the book](#time-left), and a skip-back and play/pause button, with a thin progress line underneath. Tap it to open the full player.
+From top to bottom:
 
-On an **iPhone running iOS 26 or later**, the mini player lives inside the tab bar itself, as a glass strip just above the tabs showing the current chapter, the book with its time left, and skip-back and play/pause buttons. Scroll down and the tab bar shrinks; the mini player then tucks in beside it, showing just the chapter and play/pause. Tap it to open the full player.
+- **The top row** - a **down arrow** to minimise the player (playback carries on), *Playing from* and your server's name, the book's place in its series (*"The Stormlight Archive, book 2"*, or its library), and the [three-dot menu](#the-three-dot-menu).
+- **The cover**, then **the chapter title** with the book and author under it. Tap the chapter title to open the chapter list.
+- **The status line**: whether your place is saved (*Synced*, or *Saved on this device, will sync* while the server can't be reached), how much of the book you've heard, and the [time left](#time-left): *"Synced · 38% of the book · 22h 27m left at 1.25×"*. Right after a big jump, this line turns into the [undo button](#undo-a-jump) for a few seconds.
+- **The [seek bar](#the-seek-bar-and-the-timeline)** for the current chapter, with its times underneath, and a slim **timeline of the whole book** below it.
+- **The transport**: previous chapter, skip back, play/pause, skip forward, next chapter. The skip buttons show how many seconds they jump (15 back and 30 forward out of the box; change them in [Settings](account.md#playback)). If playback fails, the play button becomes **Retry** and a line says your place is saved.
+- **The actions**: [speed](#playback-speed), the [sleep timer](sleep-timer.md), **bookmark** (one tap adds a bookmark where you are, and a note confirms it), **output** for [AirPlay or Cast](#play-to-another-speaker-airplay--cast) where your device can use one, and [Up next](up-next.md) with how many books are queued.
 
-**On a tablet or computer**, a **player bar** runs along the bottom of the window:
+Underneath sits the **companion**: Who's who, Story so far, the chapters, your bookmarks, notes and listening history for the book. See [The companion](companion.md).
 
-- a thin line along its top edge showing your progress through the whole book;
-- on the left, the cover with the current chapter and the book - tap it to open the full player;
-- in the middle, **previous chapter**, **skip back**, **play/pause**, **skip forward** and **next chapter**, above a scrubber for the current chapter with the time left in the book;
-- on the right, the **speed** and **sleep timer** buttons, the [Up next](up-next.md) button (on a server that has it), and an arrow that opens the full player.
+### On a phone, a tablet, and a computer
 
-If the server can't be reached while you listen, the bar notes that your place is **saved on this device** and will sync once the server is back.
+The full player arranges itself for the space it has:
 
-## The controls
-
-- **Play / pause** - the big pink button.
-- **Skip back / skip forward** - the two round buttons beside it, labelled with the number of seconds they jump (15s back and 30s forward out of the box). You can change both, from 5 to 120 seconds, in [Settings](account.md).
-- **Previous / next chapter** - the small arrows either side of the chapter title.
-- **Chapter list** - tap the chapter title itself to open the full list of chapters (or files) and jump anywhere. On the book's detail page, tapping a chapter row does the same.
-- **Seek bar** - see [The seek bar](#the-seek-bar) below.
-
-:::tip
-If a book's chapters are just named after their audio files, AudioSilo tidies those names for display - dropping the file extension and turning underscores into spaces - so the title line stays readable. Real chapter titles are left exactly as they are.
-:::
-
-Along the bottom of the player: **playback speed**, **history**, an **AirPlay / cast** button, and the **sleep timer**. The **notes** and **bookmark** buttons, and a **three-dot menu**, sit at the top right.
+- **On a phone** it fills the screen. Under the actions, chips for **Who's who**, **Story so far** (for books the community database knows) and **Chapters** open the companion as a sheet. Tapping the chapter title opens the chapter list as a sheet.
+- **On a tablet** the actions get words beside their icons, and the companion sits under the controls: scroll down to reach it.
+- **On a computer** (or any window wide enough) the companion is a column down the right-hand side, always open. Tapping the chapter title switches it to **Chapters**. Up next isn't among the actions here, because the [Up next drawer](up-next.md#opening-up-next) is already beside the page.
 
 ![The player on a phone](/img/screenshots/web-player/phone-player.png)
 
 In the web player you can also drive all of this from the keyboard - see [Keyboard shortcuts](keyboard-shortcuts.md).
 
-## The seek bar
+:::tip
+If a book's chapters are just named after their audio files, AudioSilo tidies those names for display - dropping the file extension and turning underscores into spaces - so the title line stays readable. Real chapter titles are left exactly as they are.
+:::
+
+## The seek bar and the timeline
 
 The seek bar spans the **current chapter**, not the whole book, so even in a 30-hour book a small movement is a small jump. It's drawn as a row of bars: the part you've heard is dark, the rest is pale, and a pink line marks where you are. A small bookmark icon sits above each of your bookmarks in the chapter.
 
@@ -52,9 +48,9 @@ The bars are a pattern, not a picture of the sound: each chapter has its own loo
 - **Drag** to scrub. While you drag, a label shows where you'd land, in the chapter and in the whole book (*"41:12 · 17:26:50 in the book"*). Let go to jump.
 - In the web player, pointing at the bar highlights up to that spot and shows the time, with *Click to jump*.
 
-Under the bar, the chapter's elapsed time is on the left and its remaining time on the right; in the middle is the [time left](#time-left) in the whole book.
+Under the bar: the time into the chapter on the left, how long the rest of the chapter takes and when it ends by the clock in the middle (*"21m left in the chapter · ends 22:01"*, at your current speed), and the chapter's remaining time on the right. For a book whose file lengths aren't known yet, the bar spans the current **file** instead, and the middle line talks about the file.
 
-For a book whose file lengths aren't known yet, the bar spans the current **file** instead, and the middle reads *File 3 of 12*.
+Below that, the **whole-book timeline** shows every chapter as a segment, sized by its length: the chapters you've finished in dark, the one you're in in pink. Tap or drag on it to jump anywhere in the book. In the web player, pointing at it names the chapter and the time.
 
 ## Time left
 
@@ -67,17 +63,43 @@ Each book uses **its own** speed. The book you're playing uses the speed it's pl
 
 ## Undo a jump
 
-Tapped the wrong chapter, or brushed the scrubber with your thumb? After **any jump of more than a minute** - a tap on the seek bar, a chapter skip, a bookmark, even a scrub on the lock screen, your headphones or a car screen - a small dark **Back to 17:26:50** button appears for **10 seconds**, with a ring that empties as the time runs out. Tap it and you're back where you were; a note confirms *"Back where you were"*.
+Tapped the wrong chapter, or brushed the scrubber with your thumb? After **any jump of more than a minute** - a tap on the seek bar or the timeline, a chapter skip, a bookmark, even a scrub on the lock screen, your headphones or a car screen - a small dark **Back to 17:26:50** button appears for **10 seconds**, with a ring that empties as the time runs out:
 
-Ordinary listening, short skips, and starting or resuming a book never bring it up.
+- in the **full player**, in place of the status line under the chapter title;
+- on the **player bar** on a tablet or computer, at the start of the buttons on the right.
+
+Tap it and you're back where you were; a note confirms *"Back where you were"*. Ordinary listening, short skips, and starting or resuming a book never bring it up.
 
 ## The three-dot menu
 
-The **three-dot (More) menu** at the top right of the player has three actions:
+The **three-dot (More) menu** at the top right of the full player has:
 
 - **View book details** - jumps to the book's detail page. Playback carries on.
+- **Chapters** - opens the chapter list (on a computer, the companion's Chapters tab).
 - **View end credits** - opens the [end credits screen](#when-a-book-finishes) early. Handy for a book with a long spoken credits or acknowledgements section you'd rather skip past to see what's next - playback carries on while the screen is open.
 - **Mark as Finished** - marks the book finished right now, stops it, and takes you to its end credits screen. Use it when you've heard enough and want the book off your *Continue listening* shelf.
+- **Keyboard shortcuts** - in the web player, the list of [keyboard shortcuts](keyboard-shortcuts.md).
+
+## The mini player and the player bar
+
+While a book is playing, a small player stays with you on every screen, so you can pause or skip without opening the full player.
+
+### On a phone
+
+A **mini player** card floats just above the tab bar - in the web player, on Android, and on iPhones before iOS 26. It shows the cover, the current chapter, and the book with its [time left](#time-left) (with a sleep timer running, its countdown comes first, after a small moon), then a **skip back** button and **play/pause**. The play button shows a spinner while the book loads and turns into **Retry** if playback fails. A thin line along the card's bottom edge shows how far you are through the chapter. Tap the cover or the words to open the full player.
+
+On an **iPhone running iOS 26 or later**, the mini player lives inside the tab bar itself, as a glass strip just above the tabs with the same things: a round cover, the chapter, the book with its time left, skip back and play/pause. Scroll down and the tab bar shrinks; the mini player then tucks in beside it, showing just the cover, the chapter and play/pause. Tap it to open the full player.
+
+### On a tablet or computer
+
+A **player bar** runs along the bottom of the window:
+
+- a thin line along its top edge showing your progress through the whole book;
+- on the left, the cover, the current chapter, the book and author, and whether your place is saved (*Synced*, *Synced just now* while playing, *Saved on this device, will sync* while the server can't be reached, or *Saved on this device, sign in again to sync*). Tap it to open the full player;
+- in the middle, **previous chapter**, **skip back**, **play/pause**, **skip forward** and **next chapter**, above a scrubber for the current chapter (with a tick for each bookmark) and the time left in the book;
+- on the right, the [undo button](#undo-a-jump) after a jump, then **speed**, the **sleep timer** (showing its countdown while one runs), **bookmark**, **output** (AirPlay or Cast, where available), the [Up next](up-next.md) button (on a server that has it), and an arrow that opens the full player.
+
+In a narrower window, the bar keeps what fits: below about 1,024 points wide, speed, bookmark and output step back (sleep, Up next and the expand arrow stay), and below about 800 the chapter scrubber goes too, leaving the transport buttons. Everything that steps back is in the full player.
 
 ## Playback speed
 
@@ -93,15 +115,15 @@ The speed you choose is **remembered per book** - switch back to a slow narrator
 
 ## Sleep timer
 
-Tap the moon icon to stop the book after a number of minutes, at the end of the chapter, or after a few chapters. While a timer runs, its countdown shows on the moon icon and on the cover. In its last 30 seconds a card lets you **Keep listening** (or, in the mobile apps, shake your phone), and if you fall asleep anyway, AudioSilo leaves a **Fell asleep** bookmark and offers to take you back next time.
+Tap the moon to stop the book after a number of minutes, at the end of the chapter, or after a few chapters. While a timer runs, the sleep button shows its countdown. In its last 30 seconds a card lets you **Keep listening** (or, in the mobile apps, shake your phone), and if you fall asleep anyway, AudioSilo leaves a **Fell asleep** bookmark and offers to take you back next time.
 
 All of it, including the automatic timer at night, is on its own page: [The sleep timer](sleep-timer.md).
 
 ## Bookmarks, notes, and history
 
-- **Bookmarks** - tap the bookmark icon, then **Add bookmark at 1:23:45** to pin the current moment. Bookmarks are listed there and on the book's detail page; tap one to jump back. In the web player, the **B** key adds one where you are.
-- **Notes** - free-form notes on the book (markdown supported), for quotes or thoughts.
-- **History** - your past listening sessions on this book, labelled by chapter (with the same tidied chapter names as the player).
+- **Bookmarks** - the bookmark button in the full player or on the player bar adds one where you are, straight away (in the web player, so does the **B** key). They're listed in the companion's **Bookmarks** tab, which also has **Add bookmark at 1:23:45**, and on the book's detail page. Tap one to jump there.
+- **Notes** - free-form notes on the book (markdown supported), for quotes or thoughts, in the companion's **Notes** tab and on the book's page.
+- **History** - your past listening sessions on this book, labelled by chapter (with the same tidied chapter names as the player), in the companion's **History** tab and on the book's page.
 
 All three are saved to your account, not the device.
 
@@ -148,7 +170,7 @@ Two related settings keep the flow smooth and your device tidy - **Download auto
 
 ## Play to another speaker (AirPlay / Cast)
 
-The **AirPlay / cast** button along the bottom of the player hands audio off to another output:
+The **output** button in the full player (and on the player bar on a computer) hands audio off to another output:
 
 - **iPhone / iPad** - opens the AirPlay picker, so you can send playback to a HomePod, an Apple TV, or AirPlay speakers.
 - **Android** - opens the system output switcher, for a Bluetooth speaker (an Echo paired as a speaker, for example) or a Cast device.

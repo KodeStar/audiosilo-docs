@@ -17,7 +17,7 @@ Tap one and the timer starts and the sheet closes. All the times are real time a
 
 ## While a timer runs
 
-The countdown shows on the moon icon and on the cover. Open the sleep timer again and the top of it says what's set - *"Sleep timer on"*, *"Stopping at the end of this chapter"*, *"Stopping after 3 chapters"* (which counts down as chapters go by) or *"Stopping at the end of the book"* - with the time left and a **Turn off** button. Pick a different option to replace the timer.
+The countdown shows on the sleep button (in the full player and on the player bar), and at the start of the mini player's second line on a phone. Open the sleep timer again and the top of it says what's set - *"Sleep timer on"*, *"Stopping at the end of this chapter"*, *"Stopping after 3 chapters"* (which counts down as chapters go by) or *"Stopping at the end of the book"* - with the time left and a **Turn off** button. Pick a different option to replace the timer.
 
 When the timer fires, playback simply pauses - nothing is lost.
 
@@ -33,7 +33,7 @@ A **chapter** timer needs none of this: it stops at a place in the book, not aft
 
 ## The last 30 seconds, and how to keep listening
 
-Every timer has a **final 30 seconds** that are your cue it's about to stop - and your chance to carry on if you're still awake. A card appears over the player with a ring that empties as the seconds run out:
+Every timer has a **final 30 seconds** that are your cue it's about to stop - and your chance to carry on if you're still awake. A card appears with a ring that empties as the seconds run out: over the controls in the full player, just above the player bar on a tablet or computer, and just above the mini player on a phone. It doesn't block anything else on the screen.
 
 - A **minutes** timer stops at an arbitrary point mid-chapter, so it doesn't cut the book off mid-word: the audio **fades out gently** over those 30 seconds. The card says *"Fading out in 24 s"*.
 - A **chapter** timer plays those 30 seconds at **full volume** and stops at the boundary. Those closing words are the ones you stayed awake for, and the chapter ending is its own signal that the book is about to stop. The card says *"Stopping in 24 s"*.

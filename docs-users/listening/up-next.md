@@ -23,6 +23,7 @@ You can open it from:
 
 - the **Up next** button in the top bar (tablet and computer), with the number of books queued;
 - the Up next button on the [player bar](playback.md#the-mini-player-and-the-player-bar) along the bottom of the window;
+- the Up next button among the [full player](playback.md#the-full-player)'s actions, on a phone or tablet;
 - on a phone, the round Up next button beside the big title at the top of each tab;
 - in the web player's [quick search](browsing.md#quick-search-in-the-web-player), the **Open Up next** action.
 
