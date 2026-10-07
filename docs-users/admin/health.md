@@ -98,11 +98,16 @@ what it found and apply it.
    Under each book the dialog says what your choice writes, for example "Sets
    Narrator, Published, and ASIN". Fields you edited yourself are never
    replaced, and a series number is only set beside the series it belongs to.
-4. **Confident** matches are ticked; untick any you don't want. **To review**
+4. Each book shows its path in the library (hover it for the whole path on
+   disk) and, under an arrow, the community match: its title, authors,
+   narrators and length, the series it belongs to with its position ("Series:
+   Alice in Wonderland #2"), and the ASIN with its store. A match to the wrong
+   book of a series, or to another series altogether, shows at a glance.
+5. **Confident** matches are ticked; untick any you don't want. **To review**
    lists matches that scored lower, or only just ahead of another work: tick
    the ones that are right, or click **Match by hand** to open that book's
    match dialog. **Not found** and **Not checked** list the rest.
-5. Click **Apply to *N* books**. The server applies them in the background
+6. Click **Apply to *N* books**. The server applies them in the background
    ("Applying *N* of *M* matches"). **Stop** finishes the books in hand and
    leaves the rest to apply later from the same review.
 
