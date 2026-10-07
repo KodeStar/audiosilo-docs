@@ -528,6 +528,14 @@ async function captureWide(name, viewport, shots) {
     // menu are shot over Home on every run.
     await step('back home', async () => {
       await tid(page, 'top-bar-(home)').click({timeout: 8000});
+      // The Home tab still has the playing book's page pushed (View book details):
+      // back out of it to Home's root.
+      for (let i = 0; i < 3; i++) {
+        const back = firstVisible(page.getByRole('button', {name: /^back$/i}));
+        if (!(await back.count())) break;
+        await back.click({timeout: 8000});
+        await sleep(SETTLE_MS);
+      }
       await sleep(3000);
     });
   }
