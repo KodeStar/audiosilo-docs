@@ -33,7 +33,7 @@ import http from 'node:http';
 import {cp, mkdir, rm, writeFile} from 'node:fs/promises';
 import path from 'node:path';
 import {chromium} from 'playwright';
-import {CACHE, apiClient, sleep, shoot, step, DESKTOP_CONTEXT} from './lib.mjs';
+import {CACHE, DAY, MIN, apiClient, isoAgo, pathQuery, sleep, shoot, step, DESKTOP_CONTEXT} from './lib.mjs';
 
 const ORIGIN = (process.env.AS_ORIGIN || 'http://127.0.0.1:8790').replace(/\/$/, '');
 const ADMIN = `${ORIGIN}/admin`;
@@ -94,10 +94,10 @@ await step('provision listener + share', async () => {
       const b = books[i];
       if (!b) continue;
       const dur = b.duration || 3600;
-      await api(token, 'PUT', `/libraries/${libId}/progress?path=${encodeURIComponent(b.rel_path)}`, {
+      await api(token, 'PUT', `/libraries/${libId}/progress${pathQuery(b.rel_path)}`, {
         position: dur * frac,
         duration: dur,
-        updated_at: new Date(Date.now() - (i + 1) * 60000).toISOString(),
+        updated_at: isoAgo((i + 1) * MIN),
         version: Date.now(),
       }).catch(() => {});
     }
@@ -126,7 +126,7 @@ await step('provision a metadata edit', async () => {
   await api(
     token,
     'PATCH',
-    `/admin/libraries/${firstBook.library_id}/book?path=${encodeURIComponent(firstBook.path)}`,
+    `/admin/libraries/${firstBook.library_id}/book${pathQuery(firstBook.path)}`,
     {set: {narrator: 'LibriVox volunteers'}},
   );
   // One Lewis Carroll book with the author written "Surname, Given", so Library >
@@ -136,7 +136,7 @@ await step('provision a metadata edit', async () => {
     await api(
       token,
       'PATCH',
-      `/admin/libraries/${carroll.library_id}/book?path=${encodeURIComponent(carroll.path)}`,
+      `/admin/libraries/${carroll.library_id}/book${pathQuery(carroll.path)}`,
       {set: {author: 'Carroll, Lewis'}},
     );
   }
@@ -264,7 +264,7 @@ const saveProgress = async (l) => {
   await api(
     l.token,
     'PUT',
-    `/libraries/${library.id}/progress?path=${encodeURIComponent(l.book.rel_path)}`,
+    `/libraries/${library.id}/progress${pathQuery(l.book.rel_path)}`,
     {
       position: l.pos,
       duration: l.book.duration,
@@ -307,7 +307,7 @@ await step('provision listening sessions', async () => {
   // A transcoded stream from Theo's device: the mark lasts 10 minutes, so his
   // session on the book is recorded as transcoded.
   const theo = LISTENERS.find((l) => l.transcode);
-  const chapters = await api(theo.token, 'GET', `/libraries/${library.id}/chapters?path=${encodeURIComponent(theo.book.rel_path)}`);
+  const chapters = await api(theo.token, 'GET', `/libraries/${library.id}/chapters${pathQuery(theo.book.rel_path)}`);
   const file = (chapters?.chapters ?? chapters ?? [])[0]?.file_path || theo.book.rel_path;
   const abort = new AbortController();
   const stream = await fetch(
@@ -328,8 +328,8 @@ await step('provision listening sessions', async () => {
   await api(
     token,
     'PATCH',
-    `/admin/libraries/${library.id}/progress?path=${encodeURIComponent(done.rel_path)}&user_id=${mayaId}`,
-    {finished: true, started_at: new Date(Date.now() - 9 * 86400000).toISOString().slice(0, 10)},
+    `/admin/libraries/${library.id}/progress${pathQuery(done.rel_path)}&user_id=${mayaId}`,
+    {finished: true, started_at: isoAgo(9 * DAY).slice(0, 10)},
   );
 
   heartbeats = setInterval(() => {

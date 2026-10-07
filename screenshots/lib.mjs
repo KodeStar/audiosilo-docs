@@ -12,6 +12,21 @@ export const CACHE = path.resolve(here, '.cache');
 
 export const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
+// Time for the fixtures: an ISO timestamp `ms` before now, and the units to build `ms` from.
+export const MIN = 60_000;
+export const HOUR = 60 * MIN;
+export const DAY = 24 * HOUR;
+export const isoAgo = (ms) => new Date(Date.now() - ms).toISOString();
+
+// A content path as the API's `?path=` query.
+export const pathQuery = (relPath) => `?path=${encodeURIComponent(relPath)}`;
+
+// Every visited tab page (and every page further down a stack) stays mounted but
+// hidden, so a test id or a button name can match several elements: always act on
+// the visible one.
+export const firstVisible = (locator) => locator.filter({visible: true}).first();
+export const tid = (page, id) => firstVisible(page.getByTestId(id));
+
 // The standard desktop capture context (retina, dark, motion-reduced) shared by
 // the capture scripts. capture-web builds its own parameterized contexts (phone
 // profile, connect/demo variants) on purpose.
