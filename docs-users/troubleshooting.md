@@ -272,8 +272,9 @@ If a book has no cover, the quick fix for a folder book is to drop a
 `cover.jpg` into that book's folder; for a single loose file, embed the
 artwork in the file's tags with your tagging tool. Then run a **Rescan** so
 the server picks it up. Or upload a custom cover on the book's page in the
-admin console: it is used ahead of all three, needs no rescan, and leaves the
-book's folder untouched (see [Covers](./admin/books.md#covers)).
+admin console, or take the community's cover when you match the book: it is
+used ahead of all three, needs no rescan, and leaves the book's folder
+untouched (see [Covers](./admin/books.md#covers)).
 
 ## Downloads
 

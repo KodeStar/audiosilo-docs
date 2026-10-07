@@ -159,13 +159,18 @@ lifecycle (supersede-on-mint, rotate, atomic claim).
 ### Libraries & shares
 
 **`libraries`** *(0001; `layout` **dropped** in 0007; `sort_order` added in
-0011; `scan_schedule` and `ignore_patterns` in 0017)* - `id`, `name` (UNIQUE),
-`root` (an absolute local path), `default_view`, `sort_order`,
-`scan_schedule`, `ignore_patterns`, `created_at`. `scan_schedule` is `""` (no
+0011; `scan_schedule` and `ignore_patterns` in 0017; `metadata_source` in
+0032)* - `id`, `name` (UNIQUE), `root` (an absolute local path),
+`default_view`, `sort_order`, `scan_schedule`, `ignore_patterns`,
+`metadata_source`, `created_at`. `scan_schedule` is `""` (no
 scheduled scans), `every:<N>h` or `daily:HH:MM` (see
 [Scheduled scans](scanner.md#scheduled-scans)); `ignore_patterns` holds the
 library's [ignore rules](scanner.md#ignore-rules), one pattern per line (`""` =
-none). Both are admin settings: they are on `GET /admin/libraries` but not on
+none); `metadata_source` is `'tags'` (the default, `catalog.MetadataFromTags`)
+or `'path'` (`catalog.MetadataFromPath`), how the library's books resolve
+their scanned values (see
+[Metadata overrides and effective values](#metadata-overrides-and-effective-values)).
+All three are admin settings: they are on `GET /admin/libraries` but not on
 the player's library JSON (`catalog.Library` tags them `json:"-"`). They live
 in the database rather than in the library folder, which the server never
 writes to. There is no layout column: library
@@ -620,10 +625,31 @@ all-or-nothing). Two consequences:
 Per field, `resolve` yields the effective value, its source, the scanned
 value, whether it is locked, and who last edited it. Sources are not stored: a
 scanned value is `path` when it equals what `metadata.DeriveFromPath` yields for
-the book's path, otherwise `tag`; an ASIN/ISBN from enrichment is `community`;
+the book's path (or, in a path-first library, what `metadata.FromPathLayout`
+yields), otherwise `tag`; an ASIN/ISBN from enrichment is `community`;
 an override carries its own (`edited` or `community`); `""` means no value. The
 rule is the same for every row, so the rows migration 0016 backfilled `scanned`
 for (from their current values) need no special case.
+
+**A library's metadata source** (`libraries.metadata_source`) changes only the
+first layer. In a `'path'` library, `bookLayers.scannedFields` reads the
+book's path with `metadata.FromPathLayout` (the folder LAYOUT from
+`metadata.ReadPathLayout`: the top folder is the author, the folder holding the
+book the series when there is an author folder above it, the leaf the title
+with its leading number split off as the position; disc and track folders are
+parts) and puts its title, author and series over the scanned ones wherever it
+says anything. Where it says nothing it still replaces a scanned value that is
+only the scan's own path reading (`DeriveFromPath` takes the one folder above a
+book for its series, so `George Orwell/Animal Farm` would get series "George
+Orwell"); a real tag value stays. The title always keeps a value. The position
+goes with the series: the layout's own, else the scanned one only while the
+series it numbers stays (the same series, by any case). A tag title that IS the
+leaf's name, number and all (`13 Reasons Why`), is kept whole with no position
+read from it. It is a resolve rule, not a scan rule: `books.scanned` is the
+same in either mode, so `UpdateLibrary` re-resolves every book of the library
+(`refreshLibrary`, `refreshEffective` per book) in the edit's own transaction
+when the stored source changes - no rescan, no disk access (about 1 s per
+5,000 books).
 
 ### `schema_migrations`
 
@@ -671,6 +697,7 @@ The migration history so far:
 | 0027 | `ratings` | `ratings`, a listener's 1 to 5 rating and note per book |
 | 0028 | `listening_goals` | `listening_goals`, a listener's books-per-year goal |
 | 0029 | `user_listening_index` | `idx_sessions_user_last` on `listening_sessions(user_id, last_at)`, so one listener's stats read only their own sessions |
+| 0032 | `library_metadata_source` | `libraries.metadata_source` (`TEXT NOT NULL DEFAULT 'tags'`, so every existing library reads as before) |
 
 ## SQLite choices
 

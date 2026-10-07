@@ -453,7 +453,9 @@ embedded data winning where it is trustworthy:
 1. **Structural path parsing** (`metadata.DeriveFromPath`) is the baseline. The
    book's own name (filename minus extension, or folder name) yields the title
    and a leading series index (`splitSeriesIndex` parses `01 - Unsouled`,
-   `Book 3 - …`, `C02 …`); the nearest ancestor directory is the series and the
+   `Book 3 - …`, `C02 …`, but not a number running straight into a letter, a
+   comma or an apostrophe: `3rd Rock`, `20,000 Leagues Under the Sea` and
+   `1's and 0's` keep their whole name as the title); the nearest ancestor directory is the series and the
    one above it the author (`Author/Series/01 - Title.m4b`). A book at the
    library root simply has no ancestors - the old "flat" layout falls out for
    free.
@@ -476,6 +478,12 @@ per-field provenance works it out when the book is read
 (`bookLayers.resolve`): a scanned value equal to what `DeriveFromPath` yields
 for the book's path is `path`, anything else `tag` - one rule for every row, old
 or new (see [Data model](data-model.md#metadata-overrides-and-effective-values)).
+A library whose `metadata_source` is `path` takes the folder layout over the
+tags (`metadata.FromPathLayout`: the top folder is the author and the folder
+holding the book the series, so a book one folder deep gets an author and no
+series, where `DeriveFromPath` reads that folder as its series); that too is applied when the book is resolved,
+not by the scanner, so the stored snapshot is the same in either mode and
+switching re-resolves the books without a rescan.
 The scanner does record each folder-book part's own codec (`book_files.codec`)
 and whether the primary file carries embedded art (`books.has_cover`; the upsert
 also sets it whenever a sibling cover was found).
