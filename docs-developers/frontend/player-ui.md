@@ -60,14 +60,15 @@ itself out by its **measured** width (`playerLayout`), since the player is a roo
 modal but a desktop browser can be any size.
 
 - **Everywhere:** `CoverWash` from the item's `cover_color` (`playerWash`: else a
-  neutral, never a made-up cover colour); the cover breathing smaller while paused
-  (still under reduced motion); `PlayerHeader` (minimise, "Playing from" and the
+  neutral, never a made-up cover colour); the cover settling to 94% while paused
+  (full size and motionless under reduced motion); `PlayerHeader` (minimise, "Playing from" and the
   server name, the series line, the overflow `DropdownMenu`); the chapter title,
   whose tap asks for `chapters` (the sheet host decides the form, below);
   `PlayerStatusLine`, which **becomes the `UndoChip`** while a jump can be undone,
   gives its slot to `GraceCard inline` (in the flow, never over the controls), and
-  fades while a scrubber's tip floats into it; `PlayerSeekBar times` over
-  `PlayerBookTimeline variant="compact"` with its pins; `TransportControls`;
+  fades while a scrubber's tip floats into it; `PlayerSeekBar` (its `SeekTimes` row
+  hidden through `timesHidden` while the timeline's tip floats into it) over
+  `PlayerBookTimeline` with its pins; `TransportControls`;
   `PlayerErrorLine`; `PlayerActions`.
 - **Phone:** a flex column whose cover slot takes what the rest leaves, so the
   player fits without scrolling; `CompanionChips` open the companion sheet on a
@@ -178,7 +179,8 @@ the pure pieces.
 The React side is `src/components/player/use-time-left.ts`: `usePlayingTimeLeft()`
 for the playing book, `useBookSpeed` and `useBookTimeLeft` for any book (Home, the
 Library's Books list) - the live place and speed while it's the loaded one, else
-the saved ones. Each selector returns the text itself, so a caller re-renders when
+the saved ones. The player is read as numbers (`displaySeconds` and the speed,
+through `useShallow`) and the words are made in render, so a caller re-renders when
 the words change, not on every engine tick. The speed sheet's per-preset times use
 the same `timeLeft`.
 
@@ -194,7 +196,7 @@ variants: `column` on desktop, `inline` on a tablet, `sheet` on a phone.
   below.
 - **`use-companion-data.ts`**: the playing book's community data and the listener's
   place, gated **exactly** as the book page gates it (`meta-gating.ts`, through
-  `useListeningPosition`; see
+  `useListeningChapter`, the same rule as the book page's `useListeningPosition`; see
   [State & data](state-and-data.md#spoiler-gating-srccomponentslibrarymeta-gatingts)) -
   never a fork of those rules. The chain itself (the `metadata` flag, the book, `/meta`,
   the chapters, the corrected starts) is `useBookCommunity`
@@ -207,12 +209,13 @@ variants: `column` on desktop, `inline` on a tablet, `sheet` on a phone.
   reveal** per book (Show anyway in Who's who also reveals Story so far, as on the
   book page), and the "Just met" ids of the last crossing. It sits outside any view
   so the column, the inline companion, the phone's sheet and the toast's Show agree.
-- **Panels:** `WhoPanel` (the book page's own `CharacterCard`, `HiddenStrip` and
-  empty state; a description stays behind a per-card tap since it is written for the
-  whole book), `StoryPanel`, `ChaptersPanel` (virtualised, opened on the current
-  chapter), and the book page's `BookmarksSection` / `NotesSection` /
-  `HistorySection` with an `onJump` that seeks the playing book in place (so the undo
-  chip follows); those three say "This book's server isn't connected" without a
+- **Panels:** `WhoPanel` (the book page's own `CharacterCard`, Search's
+  `HiddenStrip` and its own empty state; a description stays behind a per-card tap
+  since it is written for the whole book), `StoryPanel`, `ChaptersPanel`
+  (virtualised and opened on the current chapter in the column and the sheet; a
+  plain list inline), and the book page's `BookmarksSection`, `NotesSection` and
+  `HistorySection` (Bookmarks and History with an `onJump` that seeks the playing
+  book in place, so the undo chip follows); those three say "This book's server isn't connected" without a
   client rather than throw. `Attribution` (`companion-pieces.tsx`) puts the server's
   `attribution` under every community block; the credit is the server's, never
   composed here.
@@ -250,18 +253,22 @@ The building blocks shared by the full player and the docked bar:
 - **One chrome for the controls** (`control-pill.tsx`): `pillClass(look)` /
   `ControlPill` give every player control the same press, hover and focus states.
   **Touch targets:** a rem is 14 pt on native but 16 px on the web, so a rem-sized
-  control takes `hitSlop={slopTo44(rem)}` (zero on the web); tests assert it with
+  control takes `hitSlop={slopTo44(rem)}` (only what it lacks of 44: zero for
+  `h-11` on the web, 4 px a side for the dock's `h-9` pills); tests assert it with
   `expectNativeTarget` (`src/testing/touch-target.ts`).
 - **Speed and sleep sheets.** The readouts only call `usePlayerSheets.openSheet`;
   the sheets are rendered by the active `PlayerSheetHost`
   ([above](#player-sheets-and-overlays)) through `PlayerSheet` (`player-sheet.tsx`:
   `body="scroll"` for plain content, `body="fill"` for content with its own
   scroller; children mount only while open). Speed is `speed-model.ts` (the grid,
-  presets and stepping; `clampRate` in `rate.ts` holds the range); sleep is
-  `sleep-sheet-model.ts` (the presets, the End of chapter tile through
-  `chapterTimerTarget`, the "Or stop after" rows, the notice). Picking a timer
-  records a touch (`noteInteraction`) and closes the sheet; the sleep readouts read
-  only the phase (`useSleepPill`, `useSleepCountdown`).
+  presets, stepping and the sheet's own range, `SPEED_MIN`/`SPEED_MAX`, the same
+  0.5-2 that `clampRate` in `rate.ts` enforces in the store); sleep is
+  `sleep-sheet-model.ts` (the presets, the "Or stop after" rows, the notice), with
+  the End of chapter tile's target from `chapterTimerTarget`
+  (`src/playback/sleep-timer.ts`, the rule the timer itself arms). Picking a timer
+  records a touch (`noteInteraction`) and closes the sheet; the sleep readouts
+  (`useSleepPill`, `useSleepCountdown`) read the phase plus the countdown and the
+  timer's label.
 - **The scrubbers share their parts** (`scrub-parts.tsx`: the web hover, the
   `Playhead`, the `ScrubTip`, which reports itself through `onTip` so the caller
   clears what sits above) and **one segment hook** (`use-playing-segment.ts`):
@@ -270,7 +277,8 @@ The building blocks shared by the full player and the docked bar:
   live seconds into it, the commit and the bookmarks inside it; with `hold` it keeps
   the segment a drag started in. The commit goes through `scrubTarget`
   (`transport.ts`), which holds any scrub **30 s short of the book's end**: landing
-  on the end would finish the book and take the undo chip with it. Both scrubbers
+  on the end would finish the book and take the undo chip with it. (A `file`
+  segment, with no whole-book length, seeks within the file unguarded.) Both scrubbers
   ignore gesture-handler's keyboard pointer (the press it invents for Space and
   Enter on the web), scrub only on a sideways drag, and never commit a cancelled
   drag.
@@ -285,8 +293,9 @@ The building blocks shared by the full player and the docked bar:
   `book-timeline-model.ts`): chapters merged into runs like the Now card's
   `scaleRuns`, each placed by time (`runBox`, the one mapping the playhead, taps and
   pins use); bookmark and note pins (`usePlayingPins`, through the playing book's
-  connection, never throwing when it's gone) on the compact timeline too, where a
-  tap on a pin lands on it; a tap or drag seeks through `scrubTarget`.
+  connection, never throwing when it's gone; a note gets one only with a position,
+  which the app's own notes, saved at 0, don't have), where a tap on a pin lands on
+  it; a tap or drag seeks through `scrubTarget`.
   `timelinePosition` never places the playhead before the start of the chapter the
   place is in, so a jump to a chapter's start names that chapter.
 - **Rings** (`src/components/ui/progress-ring.tsx`): `ProgressRing` (a fraction the
@@ -300,8 +309,10 @@ The building blocks shared by the full player and the docked bar:
   `prettifyChapterTitle` strips a recognised extension, turns underscores into
   spaces and drops a trailing bitrate tag - but only for labels that already look
   like filenames. It is **display-only** and applied wherever a chapter or track
-  label surfaces, through one helper, `chapterLabel()` (`src/lib/chapter-label.ts`),
-  which falls back to "Chapter N" for an untitled chapter.
+  label surfaces: a chapter through one helper, `chapterLabel()`
+  (`src/lib/chapter-label.ts`), which falls back to "Chapter N" for an untitled
+  chapter; a file or track label, and the sleep timer's label, call
+  `prettifyChapterTitle` directly.
 
 ## Keyboard shortcuts (web)
 

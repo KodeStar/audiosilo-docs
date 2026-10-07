@@ -139,7 +139,8 @@ with no network.
   [Playback](playback.md#web-transcode-negotiation-transcodets)): its raw files
   would not play offline in that browser, and refusing here covers the book page,
   the automatic download and keep-ahead alike. Repeat requests for a
-  non-errored entry are ignored. It is also the **one choke point for the
+  non-errored entry are ignored; an `error` entry is retried, keeping its
+  manifest's finished `files` (and chapters). It is also the **one choke point for the
   automatic rules**: for the `auto` (the book you start) and `keep-ahead` origins it
   refuses a book the listener declined this session and one that would eat into the
   reserve (`roomLeft`; an unknowable room lets it start, one at a time); the
@@ -147,8 +148,7 @@ with no network.
   keep-ahead's books still **queued**: when only they stand in its way, they step
   aside (unmarked, so keep-ahead plans them again around it) and it goes next. It
   resolves a `DownloadOutcome` - `queued`, or why not: `exists`, `unsupported`,
-  `transcoded`, `declined`, `no-space` - so a caller can act on a refusal; an `error` entry is retried, keeping its
-  manifest's finished `files` (and chapters). No `ApiClient` is passed in - `runOne` resolves
+  `transcoded`, `declined`, `no-space` - so a caller can act on a refusal. No `ApiClient` is passed in - `runOne` resolves
   the entry's **own** server client via `resolveClient(entry.connectionId)`
   (`src/api/connection-clients.ts`), so two servers' queued downloads never race a
   shared client; a queued download whose connection was removed errors the entry
@@ -191,11 +191,11 @@ with no network.
   `origin: 'listener'` lifts the mark; `auto` and `keep-ahead` never do, which is
   why the playback store's automatic download asks as `auto`.
 - **UI**: `useDownloadControls` (`use-download-controls.ts`) wraps all of this
-  for the book screen / badges. Its `needsTranscode` (web, a book that streams
-  transcoded, with no entry or an errored one - a download already on disk stays
-  removable) turns `supported` off so `DownloadControl` reads "Can't download in
-  this browser" rather than the generic "Downloads unavailable"; the book menu (`book-actions.tsx`) calls the store
-  directly; the `/downloads` page is below. Every user-facing removal (the book
+  for the book screen, the badges and the book menu (`book-actions.tsx` reads the
+  same hook); the `/downloads` page is below. Its `needsTranscode` (web, a book that
+  streams transcoded, with no entry or an errored one - a download already on disk
+  stays removable) turns `supported` off so `DownloadControl` reads "Can't download
+  in this browser" rather than the generic "Downloads unavailable". Every user-facing removal (the book
   page, the book menu, the Downloads page) asks first through the shared
   `RemoveDownloadConfirm` (`src/components/downloads/remove-download-confirm.tsx`),
   which says how much room it frees.
@@ -261,9 +261,12 @@ books **after** the loaded one. It sits beside the existing automatic download
 [Auto-download on play](end-of-book.md#auto-download-on-play)): both obey the same
 network rule, and both ask the downloads store's `download()`, which applies the
 same declined mark and reserve to both and runs one book at a time. The current book
-always wins: the store enqueues it the moment playback starts while keep-ahead waits
-`SETTLE_MS` (4 s) after any change before it plans, and if keep-ahead's queued books
-are in its way they step aside for it.
+goes first among the waiting downloads: the store queues it the moment playback
+starts (behind any download already running) while keep-ahead waits `SETTLE_MS`
+(4 s) after any change before it plans, and keep-ahead's books still queued step
+aside if they are in its way. A keep-ahead download already running finishes first;
+if its remaining bytes leave no room, the store answers `no-space`, which the
+playback store does not retry.
 
 **The planner** (`src/downloads/keep-ahead.ts`) is pure and tested:
 
@@ -292,14 +295,19 @@ for the **loaded book's** connection: its capabilities, the queue (when `queue`;
 entries without `book` can't be downloaded and are skipped), the finished set from
 `allProgress`, and, only when the queue leaves room, the series - the server's
 `/next` answer step by step when it has `next_book`, else the folder's next sibling
-(`resolveNextBook`) - the same order `resolveUpNext` plays books in at the end of a
-book, so the book kept ready is the book that plays. It reads the network gate from
+(`resolveNextBook`) - nearly the order `resolveUpNext` plays books in at the end of
+a book, so the book kept ready is usually the book that plays (keep-ahead also skips
+finished series books, follows the loaded book's series after a short queue, and
+plans nothing when `/next` fails, where the resolver falls back to the folder). It
+reads the network gate from
 `autoDownloadNext` (`never` → status `never`; `wifi` on a metered connection →
 `waiting`), the storage estimate and the registry, publishes `{ status, slots }` to
 the `useKeepAhead` store, then for each `start` fetches the full item and chapters
-and calls `download(..., 'keep-ahead')`; a `transcoded` outcome marks the book
-`unavailable` and a `no-space` one `tooBig` (until the registry changes), and the
-controller plans again at once around a refusal. It re-plans (one `SETTLE_MS` timer, and once more if something changed
+and calls `download(..., 'keep-ahead')` unless the book was registered meanwhile
+(an errored entry too: keep-ahead never retries a failure); a `transcoded` outcome
+marks the book `unavailable` and a `no-space` one `tooBig` (until the registry
+changes), and the same run plans again at once without it. Between runs it re-plans
+(one `SETTLE_MS` timer, and once more if something changed
 during a run) on the loaded book, the two settings, the registry's statuses (not
 byte counts), any successful `queue` query, and on native a network change. It
 never throws and reports nothing to reachability: a server that can't be reached

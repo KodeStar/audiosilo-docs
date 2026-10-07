@@ -3,21 +3,21 @@ title: The sleep timer
 description: "Stopping a book after some minutes, at the end of the chapter, or after a few chapters; keeping it going in the last 30 seconds (Keep listening, or a shake of the phone); the Fell asleep bookmark and jumping back to where you drifted off; and the automatic timer at night."
 ---
 
-The sleep timer stops the book for you, so you can listen yourself to sleep without losing your place. Tap the **moon** in the full player or on the player bar to open it (in the web player, the [Z key](keyboard-shortcuts.md) does too).
+The sleep timer stops the book for you, so you can listen yourself to sleep without losing your place. Tap the sleep button (an alarm clock, labelled **Sleep** where there's room) in the full player or on the player bar to open it (in the web player, the [Z key](keyboard-shortcuts.md) does too).
 
 ## Setting a timer
 
 ![The sleep timer sheet on a phone: minute tiles, End of chapter, the Or stop after list and the sleep settings](/img/screenshots/web-player/phone-sleep-sheet.png)
 
 - **Minutes** - 5, 10, 15, 30, 45 or 60.
-- **End of chapter** - when the current chapter ends ("in 12m"); **End of book** for a book without chapters.
-- **Or stop after** - for a book with real chapters, this chapter and the next three, each with the clock time it ends: *"3 chapters · The Shattered Plains · ends 23:41 · 1h 4m"*.
+- **End of chapter** - when the current chapter ends ("in 12m"; in its last 30 seconds, when the next one ends). A book without chapter marks has a chapter for each of its files, or [virtual chapters](playback.md#books-without-chapters) if it's one long file; a short single file may offer **End of book** instead.
+- **Or stop after** - for a book with chapters (not virtual ones), this chapter and up to three more (as many as the book has left), each with the clock time it ends: *"3 chapters · The Shattered Plains · ends 23:41 · 1h 4m"*.
 
 Tap one to start it. The times are real time at your current speed.
 
 ## While a timer runs
 
-The countdown shows on the sleep button, and first in the mini player's second line on a phone. Open the sleep timer again to see what's set (*"Stopping after 3 chapters"* counts down as chapters go by), **Turn off** the timer, or pick another option to replace it. When it fires, playback simply pauses. A timer belongs to its book: start another book and it goes away. A timer that runs out at the very end of a book also keeps the next book from [starting by itself](end-of-book.md#playing-on-automatically).
+The countdown shows on the sleep button, and first in the mini player's second line on a phone. Open the sleep timer again to see what's set (*"Stopping after 3 chapters"* counts down as chapters go by), **Turn off** the timer, or pick another option to replace it. When it fires, playback simply pauses. A timer belongs to its book: start another book and it goes away. And if a book ends while a timer is still running for it, whatever it was set to, the next book doesn't [start by itself](end-of-book.md#playing-on-automatically).
 
 **Pausing:** a minutes timer pauses with the book, so thirty minutes means thirty minutes of listening. Come back after more than **20 minutes** and it starts again at its full length; after more than **two hours** it's over. A chapter timer waits where you left it, however long you're away.
 
@@ -28,7 +28,7 @@ In a timer's last 30 seconds a card appears with a ring that empties: in the ful
 - A **minutes** timer **fades out** over those 30 seconds (*"Fading out in 24 s"*).
 - A **chapter** timer plays them at **full volume** and stops at the chapter's end (*"Stopping in 24 s"*).
 
-The card stays for **30 seconds after playback has paused** too (*"Paused by the sleep timer"*). Until it goes, **Keep listening** (on the card or in the sleep timer) or a [shake of the phone](#shake-to-extend) starts the timer again - a fresh 30 minutes, or one more chapter - and starts playback again if it had stopped.
+When the timer pauses the book, the card stays for **30 seconds** more (*"Paused by the sleep timer"*). Until it goes, **Keep listening** (on the card or in the sleep timer) or a [shake of the phone](#shake-to-extend) starts the timer again - the same number of minutes afresh, or one more chapter - and starts playback again if it had stopped. (If you pause a minutes timer yourself during its fade, the volume comes straight back and the card goes away; the fade picks up again when you press play.)
 
 :::note
 Safari on iPhone and iPad doesn't let a web page change its volume, so in the web player there a minutes timer's last 30 seconds don't audibly fade. Everything else works the same.

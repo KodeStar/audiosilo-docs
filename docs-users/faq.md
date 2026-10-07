@@ -33,7 +33,8 @@ No - but you'll want it. The server uses two companion tools:
   and folder names), but durations and chapter lists are unavailable.
 - **ffmpeg** enables on-the-fly conversion of browser-unfriendly codecs to
   MP3, which the web player uses automatically for such books. Without it,
-  that feature is simply off, and those books play only in the mobile apps.
+  that feature is simply off, and those books play only in the mobile apps
+  (where the device can decode them - an Android phone may not).
 
 In practice you rarely have to think about this: the **Docker image includes
 ffmpeg**, and the native binary looks for a copy on your system and - if none

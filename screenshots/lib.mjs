@@ -76,8 +76,6 @@ export function optimize(file) {
 // re-encode every other committed PNG. Unset = capture everything.
 const ONLY = (process.env.SHOTS_ONLY || '').split(',').map((s) => s.trim()).filter(Boolean);
 
-// `opts.clip` ({x, y, width, height} in CSS pixels) captures just that region (a
-// bar along the bottom, say) instead of the whole viewport.
 // Whether a run captures any of `relFiles` (SHOTS_ONLY, above): a capture script
 // skips the steps whose shots it wouldn't keep. An undefined file is never wanted.
 export function wanted(...relFiles) {
@@ -86,6 +84,8 @@ export function wanted(...relFiles) {
   );
 }
 
+// `opts.clip` ({x, y, width, height} in CSS pixels) captures just that region (a
+// bar along the bottom, say) instead of the whole viewport.
 export async function shoot(page, relFile, opts = {}) {
   if (!wanted(relFile)) return;
   const file = path.join(OUT_ROOT, relFile);

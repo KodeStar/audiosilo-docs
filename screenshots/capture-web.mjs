@@ -222,18 +222,27 @@ async function openFirstBook(page, shot) {
   if (shot) await shoot(page, shot);
 }
 
+// Press Listen and give the book a moment to start; returns when Listen was pressed.
 async function listen(page) {
   await firstVisible(page.getByRole('button', {name: /^listen$/i})).click({timeout: 8000});
+  const at = Date.now();
   await sleep(4500);
+  return at;
 }
 
 // A short pause for an entrance animation to finish after the state it waits on.
 const SETTLE_MS = 600;
 
+// The frontend's jump-undo ignores every jump for its SETTLE_MS (3 s) after a book
+// first plays (src/playback/jump-undo.ts); this leaves the load a few seconds on top.
+const JUMP_UNDO_READY_MS = 8000;
+
 // Stage a paused, healthy player for the shots: a still frame (no moving playhead,
 // no buffering spinner) that reads the same on every run. The play button is named
-// Pause while playing and Play once paused.
+// Pause while playing, Play once paused (and while still loading, with a spinner,
+// before it starts by itself) and Retry after a failure: wait for a settled button.
 async function pausePlayback(page) {
+  await firstVisible(page.getByRole('button', {name: /^(pause|retry)$/i})).waitFor({timeout: 20000});
   const pause = firstVisible(page.getByRole('button', {name: /^pause$/i}));
   if (await pause.count()) await pause.click({timeout: 8000});
   await firstVisible(page.getByRole('button', {name: /^play$/i})).waitFor({timeout: 8000});
@@ -253,6 +262,19 @@ async function minimisePlayer(page) {
   await sleep(SETTLE_MS);
 }
 
+// Back to the shell from whatever a step left on top: a sheet or the end credits
+// (their Close), then the full player (Minimise). Steps that open one run this in a
+// `finally`, so a step that fails half-way can't leave a root modal over (and the
+// shell hidden under it for) every later step.
+async function backToShell(page) {
+  const close = firstVisible(page.getByRole('button', {name: 'Close', exact: true}));
+  if (await close.count()) {
+    await close.click({timeout: 8000});
+    await close.waitFor({state: 'hidden', timeout: 8000});
+  }
+  if (await tid(page, 'player-menu').count()) await minimisePlayer(page);
+}
+
 // A player sheet from one of the full player's action pills (`player-speed`,
 // `player-sleep`), shot and closed again with Escape.
 async function sheetShot(page, testId, shot) {
@@ -269,33 +291,34 @@ async function sheetShot(page, testId, shot) {
 async function captureWide(name, viewport, shots) {
   const {ctx, page} = await newProfile(name, viewport, 2);
 
+  let listenedAt = 0;
   await step('book', async () => {
     await openFirstBook(page, shots.book);
-    await listen(page);
+    listenedAt = await listen(page);
   });
 
-  if (wanted(shots.home)) {
-    await step('home', async () => {
-      await tid(page, 'top-bar-(home)').click({timeout: 8000});
-      await sleep(3000);
-      await shoot(page, shots.home);
-    });
-  }
-
-  // The player shots below are staged paused (a still frame).
-  if (wanted(shots.player, shots.dockUndo, shots.credits)) {
-    await step('pause', () => pausePlayback(page));
-  }
+  // Home and the pause run whatever SHOTS_ONLY selects, so a partial run stages every
+  // later shot as a full run does: the palette and profile menu over Home, the docked
+  // bar paused (a still frame). home.png itself is taken while the book plays.
+  await step('home', async () => {
+    await tid(page, 'top-bar-(home)').click({timeout: 8000});
+    await sleep(3000);
+    await shoot(page, shots.home);
+  });
+  await step('pause', () => pausePlayback(page));
 
   if (wanted(shots.player)) {
     await step('player', async () => {
       await expandPlayer(page);
-      // The seeded books have no community notes, so the companion column shows its
-      // Chapters tab (Who's who would only say there are none).
-      await tid(page, 'companion-tab-chapters').click({timeout: 8000});
-      await sleep(SETTLE_MS);
-      await shoot(page, shots.player);
-      await minimisePlayer(page);
+      try {
+        // The seeded books have no community notes, so the companion column shows its
+        // Chapters tab (Who's who would only say there are none).
+        await tid(page, 'companion-tab-chapters').click({timeout: 8000});
+        await sleep(SETTLE_MS);
+        await shoot(page, shots.player);
+      } finally {
+        await backToShell(page);
+      }
     });
   }
 
@@ -303,9 +326,17 @@ async function captureWide(name, viewport, shots) {
     // A jump of more than a minute (the next chapter, from the docked bar) brings up
     // the Undo chip for ten seconds; the shot is the bar itself.
     await step('dock undo chip', async () => {
+      // Only once jump-undo is watching (a partial run gets here sooner than a full one).
+      const wait = listenedAt + JUMP_UNDO_READY_MS - Date.now();
+      if (wait > 0) await sleep(wait);
       const undo = tid(page, 'dock-actions').getByRole('button', {name: /^Back to /});
-      await firstVisible(page.getByRole('button', {name: 'Next chapter'})).click({timeout: 8000});
+      await tid(page, 'shell-docked-player')
+        .getByRole('button', {name: 'Next chapter', exact: true})
+        .click({timeout: 8000});
       await undo.waitFor({timeout: 8000});
+      // The chip moves the transport under the pointer: park it off the bar, or the shot
+      // shows whichever button slid beneath it hovered.
+      await page.mouse.move(0, 0);
       await sleep(SETTLE_MS);
       const box = await tid(page, 'shell-docked-player').boundingBox();
       if (!box) throw new Error('no docked bar');
@@ -323,13 +354,16 @@ async function captureWide(name, viewport, shots) {
     // so nothing counts down): the year shelf or cover, the stats, Up next.
     await step('end credits', async () => {
       await expandPlayer(page);
-      await tid(page, 'player-menu').click({timeout: 8000});
-      await firstVisible(page.getByRole('menuitem', {name: 'View end credits'})).click({timeout: 8000});
-      await firstVisible(page.getByRole('button', {name: /^Play .* now$/})).waitFor({timeout: 15000});
-      await sleep(SETTLE_MS);
-      await shoot(page, shots.credits);
-      await firstVisible(page.getByRole('button', {name: 'Close'})).click({timeout: 8000});
-      await firstVisible(page.getByRole('button', {name: /^Play .* now$/})).waitFor({state: 'hidden', timeout: 8000});
+      try {
+        await tid(page, 'player-menu').click({timeout: 8000});
+        await firstVisible(page.getByRole('menuitem', {name: 'View end credits'})).click({timeout: 8000});
+        await firstVisible(page.getByRole('button', {name: /^Play .* now$/})).waitFor({timeout: 15000});
+        await sleep(SETTLE_MS);
+        await shoot(page, shots.credits);
+      } finally {
+        // Close the credits (or the player, if they never opened) whatever happened.
+        await backToShell(page);
+      }
     });
   }
 
@@ -380,8 +414,8 @@ async function captureWide(name, viewport, shots) {
   if (wanted(shots.librarySeries, shots.series)) {
     await step('series', async () => {
       await librarySection(page, 'Series');
-      if (shots.librarySeries) await shoot(page, shots.librarySeries);
-      if (shots.series) {
+      await shoot(page, shots.librarySeries);
+      if (wanted(shots.series)) {
         await openNamed(page, 'Sherlock Holmes');
         await shoot(page, shots.series);
       }
@@ -453,11 +487,14 @@ async function capturePhone(name, viewport, shots) {
   await step('book + player', async () => {
     await openFirstBook(page, shots.book);
     await listen(page);
-    await pausePlayback(page);
-    await shoot(page, shots.player);
-    if (wanted(shots.speedSheet)) await sheetShot(page, 'player-speed', shots.speedSheet);
-    if (wanted(shots.sleepSheet)) await sheetShot(page, 'player-sleep', shots.sleepSheet);
-    await minimisePlayer(page);
+    try {
+      await pausePlayback(page);
+      await shoot(page, shots.player);
+      if (wanted(shots.speedSheet)) await sheetShot(page, 'player-speed', shots.speedSheet);
+      if (wanted(shots.sleepSheet)) await sheetShot(page, 'player-sleep', shots.sleepSheet);
+    } finally {
+      await backToShell(page);
+    }
   });
 
   await step('home', async () => {

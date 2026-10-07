@@ -20,7 +20,7 @@ Who's who and Story so far come from the community database, [AudioSilo Meta](..
 
 ## Nothing ahead of where you are
 
-Who's who and Story so far follow the book page's [spoiler rule](browsing.md#nothing-gets-spoiled-before-you-reach-it), with two additions: they follow **where you are as you listen**, moving on with you chapter by chapter, and **Show anyway** reveals what's held back in both tabs of that book at once (another book starts hidden again).
+Who's who and Story so far follow the book page's [spoiler rule](browsing.md#nothing-gets-spoiled-before-you-reach-it): they follow **where you are as you listen**, moving on with you chapter by chapter, and **Show anyway** reveals what's held back in both tabs at once. Here it stays revealed for that book when you close and reopen the player, until you reveal another book (which starts hidden) or restart the app.
 
 ## Who's who
 
@@ -36,7 +36,7 @@ The community recaps written to stop where you are, in story order, under a head
 
 ## Chapters
 
-Every chapter (or file, for a book without chapters), opened on the one you're in with how much of it is left; earlier ones ticked, later ones with how long until they start (*"in 2h 4m"*, at your speed). Tap one to jump to it.
+Every chapter, with how much of the one you're in is left; earlier ones ticked, later ones with how long until they start (*"in 2h 4m"*, at your speed). In the column on a computer and the sheet on a phone, the list opens on the chapter you're in. A book without chapter marks lists its files as chapters, or the virtual chapters of one long file; while a book's file lengths aren't known yet, it lists the files without times. Tap one to jump to it.
 
 ## Bookmarks, notes and history
 

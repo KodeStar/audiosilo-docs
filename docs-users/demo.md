@@ -39,7 +39,8 @@ into a permanent login. Sign out (or go idle long enough) and it's gone.
 Everything else is the real player: browsing and search, full playback with
 chapters and speed control, bookmarks, favourites, and progress that follows you
 between the browser and the app - for as long as the account lives. See
-[Playback](listening/playback.md) for what you're looking at.
+[Playing a book](listening/playback.md) and [The full player](listening/full-player.md)
+for what you're looking at.
 
 ## Running your own demo instance
 

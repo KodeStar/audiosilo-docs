@@ -40,9 +40,11 @@ identically.
   refused; see [Offline](offline.md)).
 - `setVolume(volume)` - **required** linear output gain (0-1) applied to the
   engine's own volume, **not** the device volume. It exists for the sleep
-  timer's fade-out on **duration** timers (below). It is deliberately not
+  timer's fade-out on **duration** timers ([The sleep timer](sleep-timer.md#the-timer-sleep-timerts)).
+  It is deliberately not
   optional: both engines implement it, and the one real "no volume here" case is
-  each engine's own private business, which it degrades internally (below).
+  each engine's own private business, which it degrades internally
+  ([Writing the gain](sleep-timer.md#writing-the-gain-setvolume-is-required-degraded-per-engine)).
   Callers pass an already-clamped value - `usePlayer.setOutputVolume` is the only
   route in and clamps once.
 - `configure(config)` - runtime tunables from the settings store: auto-rewind
@@ -499,12 +501,13 @@ local files (`switchCurrentBookToLocal`, preferring the engine's gapless
 
 ## Web transcode negotiation (`transcode.ts`)
 
-Browsers can't decode some codecs a book may use (AC-3, ALAC, WMA...). The
+Browsers can't decode some codecs a book may use (AC-3, E-AC-3, ALAC...). The
 server marks those books `direct_playable: false` and, when it has ffmpeg
 (capability `transcode`), streams them re-encoded to MP3 with
-`?transcode=1&t=<seconds>` ([cross-repo contract §5](../architecture/cross-repo-contract.md#5-transcode-negotiation---direct_playable--transcode1)).
-The web player negotiates that by itself; native engines decode these codecs and
-never transcode, and a downloaded (local) file is never transcoded either.
+`?transcode=1&t=<seconds>` ([cross-repo contract §5](../architecture/cross-repo-contract.md#5-transcode-negotiation-direct_playable-and-transcode1)).
+The web player negotiates that by itself; native engines never transcode (they rely
+on the platform's own decoders: no FFmpeg extension on Android), and a downloaded
+(local) file is never transcoded either.
 
 **The rule** is pure and lives in `src/playback/transcode.ts`:
 
@@ -512,8 +515,9 @@ never transcode, and a downloaded (local) file is never transcoded either.
   `direct_playable === false` counts (the chapters response is preferred, being
   fetched fresh for playback). An older server omits the field and an unprobed
   codec reads as playable; both stream exactly as before.
-- `needsWebTranscode(os, book, chapterData, canTranscode)` - `os === 'web'`, the
-  capability is `true`, and the book is undecodable. An **unknown** capability
+- `needsWebTranscode(book, chapterData, canTranscode)` - on web (`Platform.OS`, read
+  inside through `mayNeedWebTranscode`), the capability is `true`, and the book is
+  undecodable. An **unknown** capability
   (`/server` not loaded) reads as no: stream directly, and the error/retry path
   speaks if the browser can't play it.
 
@@ -586,7 +590,9 @@ files would not play offline in that browser). `useDownloads.download()` refuses
 (`webTranscodeFromCache`), which covers every path - the book page, the automatic
 download and keep-ahead - and `useDownloadControls` exposes `needsTranscode` so the
 control says "Can't download in this browser" instead of the generic "Downloads
-unavailable". A download already on disk (or errored) stays manageable.
+unavailable". A download already on disk stays removable; a failed one is blocked
+like a new one (only the Downloads page can clear it, with no Retry - see
+[Offline](offline.md#lifecycle)).
 
 **The book page** shows `TranscodeNote` (`src/components/library/transcode-note.tsx`)
 under the stats ("AC-3 audio is converted to MP3 for this browser"), under exactly

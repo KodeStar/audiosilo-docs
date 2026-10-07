@@ -56,8 +56,9 @@ themselves.
   start); when the web player uses it is
   [web transcode negotiation](playback.md#web-transcode-negotiation-transcodets).
 - **`history(libraryId, path, limit?)`** returns a book's listening spans, newest
-  first: the server's default 100, or up to `limit` (the server caps it at 500; the
-  end credits ask for 500 to sum the time listened).
+  first: the server's default 100, or up to `limit` from 1 to 500 (a `limit` of 0
+  or less, or above 500, falls back to 100; the end credits ask for 500, the most
+  it returns, to sum the time listened).
 - **`coverUrl(libraryId, path, opts?)`** takes `{ size, version }`: `size`
   (`CoverSize`, `160 | 320 | 640`) asks for a JPEG thumbnail whose **longer side**
   is at most that many pixels, and only when the server advertises `cover_sizes`
@@ -108,8 +109,9 @@ Patterns to copy when adding an endpoint:
 - Paged reads: `useBrowseInfinite` uses `useInfiniteQuery` against the server's
   `next_offset` cursor (500-entry pages); the browse screen drains all pages so
   the A–Z rail and filter operate on the complete folder.
-- Mutations invalidate their exact key on success (`useAddBookmark`,
-  `useAddNote`, …). `useToggleFavourite` shows the full optimistic pattern:
+- Mutations invalidate their exact key on success (`useAddNote`,
+  `useDeleteBookmark`, …; `addBookmark()` is the framework-free twin for callers
+  outside React and invalidates `qk.bookmarks` after the write). `useToggleFavourite` shows the full optimistic pattern:
   `onMutate` cancels + snapshots + patches the cached list, `onError` rolls
   back, `onSettled` invalidates to reconcile server-derived fields.
 - `useMarkFinished` deliberately routes through the offline-aware
@@ -151,7 +153,7 @@ retry, after cancelling a paused fetch a mounted hook holds for the same key, so
 framework-free reader (the play path, the end of a book, keep-ahead) always settles
 instead of waiting for the browser's online flag or a hidden tab's focus - falling
 back to the cached flags when the server can't be read. `useServerInfo(connectionId?)` takes the
-same optional connection id and keeps its answer (`gcTime: Infinity`), so a gated
+same optional connection id as `useCapability` and keeps its answer (`gcTime: Infinity`), so a gated
 hook mounted later starts from the known flags.
 
 Each gated hook asks only a server whose flag is `true`. Until then its query has
@@ -235,7 +237,8 @@ the old index. `useSetQueue` / `useSetCollectionItems` have no caller.
 Phase 1b adds the listener's own state to the data layer the same way: typed
 mirrors in `types.ts`, methods in `client.ts` and hooks in `hooks.ts`, each gated
 on its capability. Phase 2 consumes `queue`, `collections`, `progress_edit` and
-`user_stats`; `ratings` and `my_devices` still wait for their screens.
+`user_stats`; Phase 3's end credits read `ratings` (`useRating` + `useMyRatings`,
+`useSetRating`) and the year's stats; `my_devices` still waits for its screen.
 
 | Capability | Query hooks | Mutation hooks | Types |
 |---|---|---|---|
@@ -434,10 +437,13 @@ second progress cache. Chapter numbers are the *work's* logical chapters, which
 only approximate a given recording's edition - hence the deliberate escape hatches
 (the toggle, and a finished book showing everything).
 
-The **live** side is `useListeningPosition` (`src/components/player/use-listening-position.ts`,
-shared by the book page, Search, the series page and the player's companion): the
-player's position while the book is loaded, never below the saved one, read in
-`LIVE_POSITION_BUCKET_S` (15 s) buckets rounded down - and only once the book is
+The **live** side is `src/components/player/use-listening-position.ts`:
+`useListeningPosition` (the book page, at `LIVE_POSITION_BUCKET_S`, 15 s; the
+series page's Resume chapter, per minute), `useListeningChapter` (the player's
+companion: the same rule at 15 s, selected as a chapter number) and
+`useLivePosition` (Search's characters, floored by the saved place in Search's own
+model). Each reads the player's position while the book is loaded, never below the
+saved one, in buckets rounded down - and only once the book is
 **placed** (`selectPlacedBookKey`): right after `playBook` swaps a book in, the
 snapshot still holds the previous book's place until the engine load lands (the
 store's `loadingBook`), and reading it as the new book's would reveal its cast by a

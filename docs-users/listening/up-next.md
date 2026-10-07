@@ -57,4 +57,4 @@ A short note confirms each change with **Undo**, in case you tapped the wrong bo
 
 ## When a book ends
 
-The first book in your queue is what plays next, and books leave the queue as they're finished or start playing; see [What plays next](end-of-book.md#what-plays-next). With **Keep the next books ready** on, AudioSilo also [downloads the top of your queue](offline-downloads.md#keep-the-next-books-ready) ahead of time.
+The first book in your queue is what plays next; see [What plays next](end-of-book.md#what-plays-next). A book leaves the queue when you play it from Up next, when it starts as the next book at the end of another, and when it finishes or you use **Mark as Finished** in the full player. Started some other way, or marked finished from its book menu, it stays in the queue until you remove it. With **Keep the next books ready** on, AudioSilo also [downloads the top of your queue](offline-downloads.md#keep-the-next-books-ready) ahead of time.

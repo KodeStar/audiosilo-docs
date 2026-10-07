@@ -29,7 +29,7 @@ The shortcuts stay out of the way of everything else you do with the keyboard:
 - **Not while you're typing** in a box (search, a note, a password).
 - **Not over another window** in the app, such as a sheet, a dialog, a menu or quick search. That window's own keys win, and **Esc** closes it. (The Up next sheet that **Q** opened is the exception: **Q** closes it again.)
 - **Space and the arrow keys are left to the control you're on** when it uses them itself: Space presses a focused button or tab, and the arrows move a focused slider (on the seek bar, they skip back and forward). Space on a focused seek bar still plays and pauses.
-- **Only with a book loaded**, except **?**, which always works.
+- **The playback keys need a book loaded**; **?**, **Esc**, **Q** and quick search work without one.
 - Never with **Ctrl**, **Alt** or **⌘** held (apart from ⌘K / Ctrl+K), so your browser's own shortcuts keep working. The exception is **[** and **]** on keyboards where you type them with **AltGr** or **Option** (many European layouts): they still change the speed.
 
 The mobile apps don't use these; there, use the on-screen controls, your headphone buttons, or the lock screen.

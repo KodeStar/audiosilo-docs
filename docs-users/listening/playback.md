@@ -20,7 +20,7 @@ On an **iPhone running iOS 26 or later**, the mini player is a glass strip insid
 - in the middle, previous chapter, skip back, play/pause, skip forward and next chapter, over a scrubber for the current chapter (with a tick for each bookmark) and the time left in the book;
 - on the right, the [undo button](full-player.md#undo-a-jump) after a jump, then speed, the [sleep timer](sleep-timer.md) (with its countdown while one runs), bookmark, output, [Up next](up-next.md), and an arrow that opens the full player.
 
-In a narrower window, and while the undo button shows, the bar drops its less-used buttons; everything it drops is in the full player.
+When the bar is short of room (a narrower window, or the undo button taking its space), it drops speed, bookmark and output first, then the chapter scrubber and the time left; everything it drops is in the full player.
 
 ## Play to another speaker (AirPlay / Cast)
 
@@ -59,11 +59,11 @@ If the connection drops mid-listen:
 
 ## Books a browser can't play directly
 
-Most audiobooks use audio that every browser plays (AAC, the usual audio in `.m4b` files, and MP3, among others). A few use something browsers can't decode, such as AC-3, Apple Lossless (ALAC) or WMA. The mobile apps play those as they are. In the **web player**, AudioSilo has your server **convert them to MP3 as you listen**, automatically:
+Most audiobooks use audio that every browser plays (AAC, the usual audio in `.m4b` files, and MP3, among others). A few use something browsers can't decode, such as AC-3 or Apple Lossless (ALAC). The mobile apps play those as they are, where the device can decode them (an Android phone may not). In the **web player**, AudioSilo has your server **convert them to MP3 as you listen**, automatically:
 
 - The book's page says so under its details: *"AC-3 audio is converted to MP3 for this browser"*.
 - Everything works as usual - chapters, the seek bar, speed, the sleep timer. A jump takes a moment longer than usual, because the server starts converting again from the new place.
-- **You can't download such a book in the browser**: its files wouldn't play offline there, so the download button reads **Can't download in this browser**. Download it in the [mobile app](mobile-apps.md) instead. (A copy downloaded earlier can still be removed.)
+- **You can't download such a book in the browser**: its files wouldn't play offline there, so the download button is turned off (on a wide enough page it says **Can't download in this browser**). Download it in the [mobile app](mobile-apps.md) instead. (A copy downloaded earlier can still be removed.)
 
 The conversion needs **ffmpeg** on your server, which the Docker image includes and the server downloads for itself otherwise (your admin can check under [Server > Transcoding](../admin/server.md#transcoding)). Without it, the web player tries to play the book directly, and if the browser can't, you get the usual playback error - see [Troubleshooting](../troubleshooting.md#a-book-plays-in-the-app-but-wont-play-in-the-browser).
 

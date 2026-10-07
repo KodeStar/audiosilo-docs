@@ -6,16 +6,21 @@ description: "The sleep timer's state machine, the freeze while paused, the fade
 ## The timer (`sleep-timer.ts`)
 
 `useSleepTimer` is a second Zustand store, deliberately framework-free. It reads
-`usePlayer` through `getState()` and subscribes to it for exactly one thing -
-"is the transport running?", which freezes a duration countdown while playback is
-paused (see below). It arms three ways - `startDuration(minutes)`,
+`usePlayer` through `getState()` and, while a timer is armed, subscribes to it
+(`playbackWatch`): every player write re-runs `syncPlaybackFreeze` (freeze or thaw a
+duration countdown while playback is paused, see below) and `syncGrace` (close a
+grace whose deadline has passed, note a listener stirring), and both end a timer
+whose book changed. It arms three ways - `startDuration(minutes)`,
 `startUntilPosition(position, label)` and `startChapterTimer(opts?)` - which all
 funnel through one private `arm()` that restores the volume, clears the
-ending/grace flags and restarts the 1 s tick. The tick counts down, fires, and
-expires the grace window; nothing else drives the machine. The sleep sheet's
+ending/grace flags and restarts the 1 s tick. The tick counts down and fires;
+between the listener's own actions, the tick, that subscription and the 250 ms fade
+ticker are what move the machine. The sleep sheet's
 "Or stop after N chapters" rows (`sleep-sheet-model.ts` `stopAfterRows`, real
-chapters only, never the synthetic 30-minute ones) arm through
-`startUntilPosition(endPosition, label)` with the `afterChapters` label, and its
+chapters only, never the synthetic `virtualChapterInterval` ones) arm through
+`startUntilPosition(endPosition, stopAfterLabel(row))` - the first row ("This
+chapter") with the chapter's own label (`chapterSleepLabel`), the others with
+`afterChapters` - and its
 "End of chapter" tile shows the countdown of `chapterTimerTarget` - exported so
 the tile and the timer it starts compute one target.
 
@@ -25,12 +30,19 @@ stateDiagram-v2
     running --> ending: remaining <= FADE_SECONDS (30 s) - duration timers ramp the gain down at 4 Hz
     ending --> running: backward seek pushes the target back out of the window, or the countdown freezes
     ending --> grace: fire() - pause first, then restore the gain
+    running --> grace: fire() - the target crossed without passing ending (a forward seek)
     grace --> idle: closeGrace() - GRACE_SECONDS (30 s) elapsed, no shake - records 'expired' (+ fellAsleep unless stirred)
     ending --> running: keepListening() re-arms from origin
     grace --> running: keepListening() re-arms from origin AND resumes playback
     running --> idle: cancel() - records 'cancelled'
+    ending --> idle: cancel() - records 'cancelled'
+    grace --> idle: cancel() - records 'cancelled'
+    running --> idle: fire() against a book that is not playing (also from ending) - records 'expired'
     running --> idle: a freeze longer than ABANDON_AFTER_PAUSE_SECONDS - records 'expired'
 ```
+
+`cancelIfBookChanged` also ends a timer in any armed phase, as `expired`, once its
+book is no longer the loaded one.
 
 Every edge back to `idle` goes through `endTimer(reason)`, which notifies the
 `onSleepTimerEnded(fn)` registry synchronously - once per ending, with the store
@@ -43,7 +55,8 @@ playing book and the listener **didn't stir** in the window, the outcome carries
 
 The pieces worth knowing before touching it:
 
-- **Two selectors are the whole public surface for UI.** The phase
+- **Two selectors answer the phase for UI** (the readouts also read `origin`,
+  `label` and `remaining` for their words). The phase
   (`idle | running | ending | grace`) is **stored**, not derived - three booleans
   could spell out twice as many combinations as are legal, and the UI kept
   re-deriving the phase from them by hand - so `selectSleepPhase` simply reads it
@@ -84,10 +97,14 @@ The pieces worth knowing before touching it:
   volume, when the remaining time climbs back out* - which a backward seek on an
   end-of-chapter timer does; without the second half the rest of the chapter
   would be stranded at a fraction of its volume (back when that timer still
-  faded). A **frozen** countdown is never in the phase either, by the same rule
-  rather than a second one: `ending` means "about to stop", and a countdown that
-  is not counting is not about to stop. Otherwise the phase change is
-  unconditional; only the ramp is gated on `fadesAudio`.
+  faded). A **frozen** (paused duration) countdown is never in the phase either,
+  by the same rule rather than a second one: `ending` means "about to stop", and a
+  countdown that is not counting is not about to stop. Otherwise the phase change
+  is unconditional; only the ramp is gated on `fadesAudio`. A chapter timer never
+  sets `frozenAt`, so one paused by hand inside its last 30 seconds **stays in
+  `ending`**: extendable, the accelerometer on, the grace card saying "Stopping in
+  N s" over the paused book, and a shake there retargets the next chapter without
+  resuming.
 - **`fire()` pauses first, then restores the gain**, chained in a `finally` so a
   rejected pause can't leave a manual resume silently muted. It does not go to
   `idle`: it opens the `GRACE_SECONDS` (30 s) window and keeps ticking. Before
@@ -102,8 +119,9 @@ The pieces worth knowing before touching it:
   `stirred` when the transport goes live again after `PAUSE_SETTLE_MS` (2 s; the
   engine reports `playing` for a moment after the pause is asked for) or the
   position moves more than `SCRUB_SECONDS` (5 s) from where the timer stopped it.
-  `closeGrace` is the one place that ends a fired timer, as `expired`, with
-  `fellAsleep` unless it was stirred.
+  `closeGrace` is the one way a fired timer runs its course: it ends it as
+  `expired`, with `fellAsleep` unless it was stirred. (A `cancel()` in the grace
+  ends it `cancelled`, and a book change `expired`; neither carries `fellAsleep`.)
 - **`keepListening()` is a no-op outside the `ending` phase and the grace.**
   Inside them it re-arms from the recorded `origin` (`{kind:'duration', minutes}`
   or `{kind:'chapter'}`), so a duration timer restarts its full length and a
@@ -163,7 +181,7 @@ Voice; AntennaPod switched off wall clock in 2025). The subtleties are all in
   throttled to one a minute can't make the timer run long either.
 - **The play state is a level, read from a subscription - not a transition.**
   `playbackWatch` subscribes to `usePlayer` while a countdown is running and
-  **ignores the `(state, prev)` payload**, re-reading `isTransportLive()`
+  **ignores the `(state, prev)` payload**, re-reading `selectIsTransportLive`
   (`playing || loading`) instead. The engine's resume stream is a jumble of
   `ready` / `loading` / spurious `paused` (see [the stall watchdog](playback.md#the-stall--error-watchdog)),
   and matching individual transitions is the approach that has failed repeatedly
@@ -197,7 +215,8 @@ Voice; AntennaPod switched off wall clock in 2025). The subtleties are all in
   `endsAt` *earlier* and fire the timer early once the clock came back.
 - **Chapter timers and the grace window are exempt** (both have `endsAt ===
   null`). A position target does not advance while paused and stays valid however
-  long the pause was, so it is frozen by construction and must not be re-armed.
+  long the pause was, so it waits by construction (it never sets `frozenAt`) and
+  must not be re-armed.
   The post-pause grace is genuinely wall-clock - it exists to expire *while* the
   audio is stopped.
 - **A pause mid-fade hands the volume back, and leaves the `ending` phase.**
@@ -206,7 +225,8 @@ Voice; AntennaPod switched off wall clock in 2025). The subtleties are all in
   worst outcome this feature has. With the ramp suspended and the volume back,
   the phase is no longer true either, so the freeze drops to `running` (see
   `syncEndingPhase` above) - which is what takes the accelerometer back off, the
-  badge back to a countdown, and a stray shake out of the picture (outside the
+  grace card off the screen (and the sleep pill's spoken label back from *Keep
+  listening* to the running timer), and a stray shake out of the picture (outside the
   `ending`/grace windows `keepListening()` is a no-op, and there it would have
   silently reset the timer without resuming). The ramp is not lost: the thaw
   re-enters the phase if the remaining time still warrants it and `syncFade()`

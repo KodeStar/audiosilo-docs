@@ -100,7 +100,7 @@ URLs, so every URL below is the same as before the groups existed.
 
 | Route | File | Purpose |
 |---|---|---|
-| - (root layout) | `src/app/_layout.tsx` | Mounts the provider tree (`GestureHandlerRootView` → `SafeAreaProvider` → `RootInsetsProvider` → `LanguageProvider` → `ThemeProvider` → `ApiProvider`), awaits the memoised launch migration `migrateStorage()` (`src/lib/storage-migration.ts`: the theme default, then `resetStaleStorage`) before it hydrates the session/settings/downloads/series-orderings/library-selection stores, imports `@/lib/register-sw` for its side effect, mounts the headless `BookEndedListener` (drives the end-of-book flow, see [Playback](end-of-book.md#ending-a-book)) and `ShakeToExtendListener`, starts the framework-free `startAutoSleep()` controller (arms the nightly sleep timer, see [Playback](sleep-timer.md#auto-sleep-timer-auto-sleepts--auto-sleep-controllerts)) and `startKeepAhead()` (downloads the next books when the listener opted in, see [Offline](offline.md#keep-the-next-books-ready-keep-aheadts--keep-ahead-controllerts)), and runs `useAppResume` (foreground refresh + the Android swipe-from-recents reset). Declares the `(app)` stack (the root stack's `anchor`, so it always sits at the bottom) and the `player`/`finished` screens as `fullScreenModal`s. Mounts `<PortalHost />` and `<ShellToastHost />` **last**, inside the providers, so portaled overlays and toasts stack above every screen (see [toasts](#toasts)). |
+| - (root layout) | `src/app/_layout.tsx` | Mounts the provider tree (`GestureHandlerRootView` → `SafeAreaProvider` → `RootInsetsProvider` → `LanguageProvider` → `ThemeProvider` → `ApiProvider`), awaits the memoised launch migration `migrateStorage()` (`src/lib/storage-migration.ts`: the theme default, then `resetStaleStorage`) before it hydrates the session/settings/downloads/series-orderings/library-selection stores, imports `@/lib/register-sw` for its side effect, mounts the headless `BookEndedListener` (drives the end-of-book flow, see [The end of a book](end-of-book.md#ending-a-book)), `CompanionRevealListener` (the "New in Who's who" toast, see [Player UI](player-ui.md#the-companion-companion)) and `ShakeToExtendListener`, starts the framework-free `startAutoSleep()` controller (arms the nightly sleep timer, see [The sleep timer](sleep-timer.md#auto-sleep-timer-auto-sleepts--auto-sleep-controllerts)), `startDriftWatch()` (the Fell asleep bookmark and the jump back, see [The sleep timer](sleep-timer.md#fell-asleep-drift-controllerts)), `startJumpUndo()` (see [Player UI](player-ui.md#undo-a-jump-jump-undots)) and `startKeepAhead()` (downloads the next books when the listener opted in, see [Offline](offline.md#keep-the-next-books-ready-keep-aheadts--keep-ahead-controllerts)), and runs `useAppResume` (foreground refresh + the Android swipe-from-recents reset). Declares the `(app)` stack (the root stack's `anchor`, so it always sits at the bottom) and the `player`/`finished` screens as `fullScreenModal`s. Mounts `<PortalHost />` and `<ShellToastHost />` **last**, inside the providers, so portaled overlays and toasts stack above every screen (see [toasts](#toasts)). |
 | - (web HTML shell) | `src/app/+html.tsx` | The static HTML wrapper for every exported web route: PWA manifest/favicon links (base-prefixed), the CSS cascade-layer order, and a backdrop in the OS colour scheme's background (light, or dark under `prefers-color-scheme: dark`) painted before React mounts so there is no flash. |
 | `(app)` layout, native | `src/app/(app)/_layout.tsx` | `AuthGate` (`src/components/shell/auth-gate.tsx`: `loading` → spinner, `unauthenticated` → `<Redirect href="/connect" />`; also backfills `has_password`/`has_recovery` on sessions persisted before those flags existed), then **`NativeTabs`** with one trigger per destination (SF Symbols on iOS, Material Symbols on Android) and, on iOS 26, the mini player as the tab bar's `BottomAccessory`. On tablet/desktop the native tab bar is `hidden` and the shell's own top bar, sub-nav and docked player take over; `ShellFrame` (`shell-frame.tsx`) draws that chrome around the navigator in both `(app)` layouts. On a phone without the iOS 26 accessory it also renders the one `FloatingMiniPlayer` as the frame's `phoneBottom`, over NativeTabs. |
 | `(app)` layout, web | `src/app/(app)/_layout.web.tsx` | `AuthGate`, then **headless `expo-router/ui` `Tabs`** over the same route groups: a hidden `TabList` registers the five tab routes, one `<TabSlot />` renders the page, and `ShellFrame` surrounds it with our chrome (phone: `MiniPlayer`, sitting on the tab bar through a `100%` bottom offset, + `PhoneTabBar`; tablet/desktop: top bar, sub-nav, banners, `DockedPlayer`). Also mounts the web-only `CommandPalette` and its keyboard shortcut (`usePaletteShortcut`). |
@@ -118,8 +118,8 @@ URLs, so every URL below is the same as before the groups existed.
 | `/downloads` | `(app)/(offline)/downloads.tsx` → `src/components/downloads/downloads-screen.tsx` | The Downloads page: storage per server, the automatic-download rules (including keep-ahead), in-progress and failed downloads, and the books ready offline by server ([Offline](offline.md#the-downloads-page)). The group is `(offline)`, not `(downloads)`, on purpose - see [cold deep links](#the-shell-tabs-and-navigation). |
 | `/settings` | `(app)/(me)/settings.tsx` | The root of the **Me** tab (a fuller Me hub is a later redesign phase). App-level preferences only: playback tunables, the auto sleep timer's window and type, shake to extend and its sensitivity (native; the row says so on web), up-next/download behaviour, language, theme, plus the Servers list that opens each connection's account screen. |
 | `/account?connection=…` | `(app)/(home,library,search,offline,me)/account.tsx` | Per-connection account screen, reached from the Settings screen's Servers list: set/change the self-service password (the sign-out guard nudges a password-less user here via `sign-out-confirm.tsx`), pairing another device, personal API keys (capability-gated, demo-hidden), and sign-out. |
-| `/player` | `src/app/player.tsx` | The full player ([below](player-ui.md#the-full-player)), presented as a full-screen modal above the tabs on every form factor (opened from the mini player, the iOS accessory player, the docked player bar, or a phone's Listen button). Accepts `libraryId`/`path` (+ optional `position`/`track`) params and gates playback start on the chapters query settling. |
-| `/finished` | `src/app/finished.tsx` | The end-credits screen shown when a book finishes (or from the player's menu). A root modal sibling of the player; `connection`/`libraryId`/`path` params, plus `auto=1` when the book ended (or was marked finished) rather than being opened early. Renders `EndCredits`: the year shelf, listening stats, a rating, and the book `resolveUpNext` says plays next. See [Playback](end-of-book.md#ending-a-book). |
+| `/player` | `src/app/player.tsx` | The full player ([Player UI](player-ui.md#the-full-player)), presented as a full-screen modal above the tabs on every form factor (opened from the mini player, the iOS accessory player, the docked player bar, or a phone's Listen button). Accepts `libraryId`/`path` (+ optional `position`/`track`) params and gates playback start on the chapters query settling. |
+| `/finished` | `src/app/finished.tsx` | The end-credits screen shown when a book finishes (or from the player's menu). A root modal sibling of the player; `connection`/`libraryId`/`path` params, plus `auto=1` when the book ended (or was marked finished) rather than being opened early. Renders `EndCredits`: the year shelf, listening stats, a rating, and the book `resolveUpNext` says plays next. See [The end of a book](end-of-book.md#ending-a-book). |
 | `/connect` layout | `src/app/connect/_layout.tsx` | Onboarding stack (a spinner while the session hydrates). It deliberately does not decide redirects: on a link arriving while the app runs, the child's params only reach the layout after the child mounts. |
 | `/connect` | `connect/index.tsx` | Enter a server URL (or auto-redeem a pairing token arriving via deep link / QR `web_url`). An **authenticated** user is bounced home from here, from this route's own params, unless they are adding another server (`?add=1`, a pairing `?token=`, or a sign-in mid-flow via `pendingServerUrl`) - the app supports multiple simultaneous server connections. When signed out of everything, also lists previously-connected servers as one-tap **Reconnect** shortcuts (`src/lib/known-servers.ts`), each pre-filling the address so the user only re-enters a code or password. Onboarding returns to the app through `leaveOnboarding()` (`src/components/shell/leave-onboarding.tsx`, which calls `router.dismissTo('/')`; `<LeaveOnboarding />` when the decision is made at render time), never `replace` or `<Redirect href="/">` (also a replace): `(app)` already sits under `/connect` as the root stack's anchor, so a replace stacked a second `(app)`. |
 | `/connect/scan` | `connect/scan.tsx` | Camera QR scanner (`expo-camera`) for the pairing QR. |
@@ -296,17 +296,18 @@ wins over "offline", else "Signed in as &lt;user&gt;" - each opening that server
 appearance switch (`useTheme().toggleScheme()`, which the palette's action uses
 too). A phone keeps all of this in the Me tab. The same `serverStatus()` drives
 the top bar's server line (the default server's name, or "Offline" / "Needs
-signing in again") and the docked bar's "saved on this device" note, which shows
-only while the playing book's server is offline.
+signing in again"); the docked bar's sync line is `usePlaceSync` (sign in again >
+saved on this device > synced / synced just now, see
+[Player UI](player-ui.md#mini-player-accessory-player-docked-player)).
 
 ### Toasts
 
 The root layout mounts `ShellToastHost` (`shell-toast-host.tsx`), the app's one
 `<ToastHost>`, lifted clear of whatever chrome is at the bottom: on a phone, the
 tab bar plus the mini player (or the iOS 26 accessory); on tablet/desktop, the
-docked player bar, and the sleep timer's floating grace card while it shows (the
-`grace` piece, which sits above the rest so toasts lift over it). Each piece of bottom chrome (`bar`, `mini`, `accessory`,
-`dock`) publishes its **measured top edge** - its distance from the window's
+docked player bar; and, at any width, the sleep timer's floating grace card while
+it shows (the `grace` piece, which sits above the rest so toasts lift over it).
+Each piece of bottom chrome (`bar`, `mini`, `accessory`, `dock`, `grace`) publishes its **measured top edge** - its distance from the window's
 bottom - into `useShellMetrics` (`shell-metrics.ts`) with `useChromeEdge`
 (`setChromeEdge` underneath). The native tab bar can't be measured directly, so
 each tab stack derives the `bar` edge with `nativeBarEdge()`: the gap between the
@@ -546,7 +547,8 @@ ones a contributor trips over first.
   `Tooltip`, `Skeleton` (on web a CSS keyframe shimmer, the `skeleton-shimmer`
   utility; on native one shared animation clock for every skeleton) and `Kbd` (a
   key hint). Hand-built on primitives: `Slider`
-  (the seek bar), `Toast` (an imperative `toast({ title, description, action })`
+  (the dock's chapter scrubber and the speed sheet; the full player's seek bar
+  shares its `useSliderControl`), `Toast` (an imperative `toast({ title, description, action })`
   rendered by the root `ShellToastHost`) and `RowSurface` / `PressableRow` (the
   quiet hairline list row; the book page's chapter rows use it too). A primitive
   that renders its own text node reuses `EYEBROW_CLASS` for the eyebrow style.
@@ -568,9 +570,11 @@ ones a contributor trips over first.
   `insets.bottom`, which made phone sheets about 100pt too tall and pushed menus
   up on iOS.) The bottom **sheets** are still hand-rolled (`sheet.tsx` on
   `OverlayHost`), which renders in place and so must be mounted at screen level,
-  never inside a clipped container. The player's speed and sleep sheets present
-  through `PlayerSheet` (a `Sheet` on phone and tablet, a centred `Dialog` on
-  desktop). On web, rn-primitives hands
+  never inside a clipped container. Every sheet the app shows today is a player
+  sheet (speed, sleep, chapters, the companion and Up next): requested through
+  `usePlayerSheets` and rendered by the active `PlayerSheetHost` through
+  `PlayerSheet` (a `Sheet` on phone and tablet, a centred `Dialog` on desktop; see
+  [Player UI](player-ui.md#player-sheets-and-overlays)). On web, rn-primitives hands
   Content's props to Radix DOM nodes through a Slot that merges `style` by object
   spread, and a style array crashed react-native-web's style setter; every Content
   part is wrapped once in `withFlatStyle` (`overlay.tsx`), so a style array is

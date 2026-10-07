@@ -26,7 +26,10 @@ transition records `finished: true`.
   modal and the desktop docked player alike. It watches `selectIsEnded` with
   **transition-edge detection** (a `wasEnded` ref, fires once per ended book) and
   on the false→true edge records whether a sleep timer was running for the book
-  (`useAutoPlayHold`, below), calls `finishBook()` and, in the foreground, navigates
+  (`useAutoPlayHold`, below) and calls `finishBook()`. When the credits are already
+  open (`/finished`, opened early from the menu) it only drops the finished book from
+  Up next: the credits' own countdown and Play now take over, in the background too.
+  Otherwise, in the foreground, it navigates
   to `finishedHref(…, true)` (`/finished?…&auto=1`): `router.replace` when currently
   on `/player` (credits take the player's place), else `router.push`. In the
   **background it never navigates**: `/player` and `/finished` are root
@@ -35,8 +38,7 @@ transition records `finished: true`.
   at once and, with `autoPlayNext` on and no sleep-timer hold, resolves the next
   book (`resolveUpNext`) and starts it **in place** (`advanceTo`), so the mini player
   or dock shows it on return; otherwise the credits open once the app is active
-  (`whenActive`, `src/lib/when-active.ts`), unless something else is playing by
-  then.
+  (`whenActive`, `src/lib/when-active.ts`), unless another book is loaded by then.
 - **`end-of-book.ts`** holds the moving-on, framework-free (the end of a book can
   run with no screen mounted): `advanceTo(next)` starts the next book through
   `startBookInPlace` (`start-book.ts`: item and chapters through the query cache,
@@ -67,7 +69,7 @@ transition records `finished: true`.
   `autoPlayNext` on and a next book resolved, count down `GRACE_SECONDS` (15) after
   a real end, or the remaining audio while the book still plays, and only report
   `fireNext` after a genuine end; `listeningSummary` (wall-clock time listened and
-  local days, from `client.history(…, HISTORY_LIMIT)`, 500, the server's cap, with
+  local days, from `client.history(…, HISTORY_LIMIT)`, 500, the most the server returns, with
   `partial` when that many came back); `yearShelf` (this year's other finished books
   from `/me/stats?range=year`, and which book of the year this one is - the stats
   may not count it yet); `nextAvailability` (downloaded / downloading / stream);
@@ -102,11 +104,15 @@ without a server. In order:
 3. **Else the folder's next sibling** (`resolveNextBook`, below) - on a server
    without `next_book`, or when asking it failed.
 
-It never rejects: a source that fails is skipped. The result is an `UpNextBook`
+It never rejects: a source that fails is skipped. It resolves an `UpNextAnswer`,
+`{ next, unplaced? }`: `next` is an `UpNextBook` (or `null` when nothing follows)
 with its `source` (`queue | series | folder`), its own `libraryId` (a community
 answer can be in another library), and, for a queue head, the `queueEntry` by its
-stored path. **Keep-ahead plans in the same order** (queue, then the `next_book`
-chain, else the folder), so the book kept ready is the book that plays.
+stored path; `unplaced` is the community work the server could not place.
+**Keep-ahead plans in nearly the same order** (queue, then the `next_book` chain,
+else the folder), so the book kept ready is usually the book that plays; it differs
+in skipping finished series books too and in planning nothing when `/next` fails
+([Offline](offline.md#keep-the-next-books-ready-keep-aheadts--keep-ahead-controllerts)).
 
 **Leaving the queue** is `dropFromQueue(connectionId, books)` (`end-of-book.ts`,
 framework-free): on a server the cache knows has `queue`, it looks the books up in
@@ -119,10 +125,12 @@ or not the next one starts (the credits opened with `ended`, an early Play now,
 `BookEndedListener` in the background or with the credits already open); the queue
 entry that plays leaves it inside `advanceTo`, only once it has started.
 
-The framework-free reads this flow waits on (`up-next-sources.ts`, the capability
-read, the queue) go through `fetchFailFast` (`api/hooks.ts`): TanStack holds a
+The resolver's reads (`up-next-sources.ts`: the capability read, the queue, the
+finished set, `/next`) go through `fetchFailFast` (`api/hooks.ts`): TanStack holds a
 default fetch while the browser says it's offline and waits to retry until a hidden
-tab is focused, so a background tab's end-of-book chain waited silently.
+tab is focused, so a background tab's end-of-book chain waited silently. (The start
+itself, `startBookInPlace`'s item and chapters, and `dropFromQueue`'s queue read are
+still ordinary `fetchQuery` reads.)
 `fetchFailFast` asks with `networkMode: 'always'`, never retries, and first cancels
 a paused fetch a mounted hook holds for the same key; `fetchCapabilities` reads the
 `/server` flags that way with the cached flags as the fallback.
@@ -130,14 +138,15 @@ a paused fetch a mounted hook holds for the same key; `fetchCapabilities` reads 
 ### Sibling resolution (`next-book.ts`)
 
 The folder fallback. `resolveNextBook` browses the parent folder via
-`client.browse` (paging to exhaustion, `PAGE_LIMIT` 200); `findNextSibling` keeps
-entries that are `is_book || is_dir` (an unindexed sibling book folder comes back
-`is_dir: true, is_book: false` and must still count, while loose non-audio files
-are ignored), sorts them with `naturalCompare`, and returns the first whose name
-sorts strictly after the current leaf:
+`client.browse` (paging to exhaustion, `PAGE_LIMIT` 200); `findNextSibling` takes
+the books and folders whose names sort strictly after the current leaf (with
+`naturalCompare`) and returns the first **indexed book** (`is_book`) among them. A
+bare folder (`is_dir: true, is_book: false`, a book not scanned yet) is offered only
+when nothing in the folder, the current book included, is indexed; otherwise the
+answer is `null`. Loose files that are not books are never offered:
 
 ```ts
-export function naturalCompare(a: string, b: string) {
+export function naturalCompare(a: string, b: string): number {
   return a.localeCompare(b, undefined, { numeric: true, sensitivity: 'base' });
 }
 ```
@@ -147,8 +156,9 @@ The sort is **client-side and numeric-aware** so `Book 2` precedes `Book 10`
 failure resolves to `null`. The server's
 [`GET /libraries/{id}/next`](../server/api/reference.md#get-apiv1librariesidnext)
 ends in the same rule (`library.NextSibling`, a port of `findNextSibling` that
-compares names as this `localeCompare` does), so the answer doesn't change when a
-server gains `next_book`.
+compares names as this `localeCompare` does), so a book that neither the community
+order nor its series numbering places gets the same folder answer with or without
+`next_book`.
 
 ### Auto-download on play
 

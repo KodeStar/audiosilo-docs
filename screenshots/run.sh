@@ -13,8 +13,9 @@
 #      manager on a headless run - see README.md for manager captures).
 #
 # Prereqs: Go 1.26+, Node 24, ffmpeg/ffprobe, `npm install` +
-# `npx playwright install chromium` in this directory, and a web export at
-# ../audiosilo-frontend/dist (run audiosilo-server/scripts/build-web.sh once).
+# `npx playwright install chromium` in this directory. The web export at
+# FRONTEND/dist (below) is built with audiosilo-server/scripts/build-web.sh when
+# it is missing; an existing one is used as it is.
 # The meta section also needs yarn (for the sibling audiosilo-meta site build)
 # and the sibling audiosilo-meta-community clone, whose CC BY-SA layer
 # (characters, recaps, descriptions) is composed into the data artifact exactly
@@ -35,7 +36,9 @@
 #            SERVER=<dir> / FRONTEND=<dir> (the audiosilo-server and
 #              audiosilo-frontend checkouts, default the sibling clones - point
 #              them at worktrees to capture unmerged branches; FRONTEND/dist
-#              must be a web export built with baseUrl /web),
+#              is built when missing, else used as it is, so rebuild it after a
+#              frontend change; relative paths are taken from where run.sh
+#              starts),
 #            SHOTS_PORT / SHOTS_SETUP_PORT / SHOTS_META_PORT (default 8790 /
 #              8791 / 8795 - move them when a run in another checkout holds
 #              those ports; two runs in one checkout share .cache/ and clash).
@@ -43,10 +46,13 @@ set -euo pipefail
 
 HERE="$(cd "$(dirname "$0")" && pwd)"
 WORKSPACE="$(cd "$HERE/../.." && pwd)"
-SERVER="${SERVER:-$WORKSPACE/audiosilo-server}"
-FRONTEND="${FRONTEND:-$WORKSPACE/audiosilo-frontend}"
-META="${META:-$WORKSPACE/audiosilo-meta}"
-META_COMMUNITY="${META_COMMUNITY:-$WORKSPACE/audiosilo-meta-community}"
+# Checkouts given as relative paths are taken from where run.sh starts: make them
+# absolute before any step runs from another directory (`cd "$SERVER"`, `cd "$META"`).
+abspath() { case "$1" in /*) printf '%s\n' "$1" ;; *) printf '%s\n' "$PWD/$1" ;; esac; }
+SERVER="$(abspath "${SERVER:-$WORKSPACE/audiosilo-server}")"
+FRONTEND="$(abspath "${FRONTEND:-$WORKSPACE/audiosilo-frontend}")"
+META="$(abspath "${META:-$WORKSPACE/audiosilo-meta}")"
+META_COMMUNITY="$(abspath "${META_COMMUNITY:-$WORKSPACE/audiosilo-meta-community}")"
 CACHE="$HERE/.cache"
 LIBRARY="$CACHE/library"
 DATA="$CACHE/data"
@@ -80,7 +86,7 @@ fi
 # ── Web export ──────────────────────────────────────────────────────────────
 if [ ! -f "$FRONTEND/dist/index.html" ]; then
   echo "==> no web export found; building via scripts/build-web.sh"
-  (cd "$SERVER" && FRONTEND_DIR="$FRONTEND" scripts/build-web.sh)
+  (cd "$SERVER" && FRONTEND_DIR="$FRONTEND" DEST="$FRONTEND/dist" scripts/build-web.sh)
 fi
 
 # ── 2. Seed library (idempotent; ~8 short-capped books) ────────────────────
@@ -127,12 +133,15 @@ AUDIOSILO_WEB_DIR="$FRONTEND/dist" "$SERVER/bin/audiosilo" --data "$DATA" \
   > "$CACHE/server.log" 2>&1 &
 MAIN_PID=$!
 
-echo "==> starting --setup server on :$SETUP_PORT"
-rm -rf "$SETUP_DATA" && mkdir -p "$SETUP_DATA"
-AUDIOSILO_BIND="127.0.0.1:$SETUP_PORT" AUDIOSILO_TLS_MODE=off \
-  "$SERVER/bin/audiosilo" --setup --data "$SETUP_DATA" \
-  > "$CACHE/setup.log" 2>&1 &
-SETUP_PID=$!
+# The --setup instance only serves the admin captures' wizard shot.
+if [ "${SKIP_ADMIN:-0}" != "1" ]; then
+  echo "==> starting --setup server on :$SETUP_PORT"
+  rm -rf "$SETUP_DATA" && mkdir -p "$SETUP_DATA"
+  AUDIOSILO_BIND="127.0.0.1:$SETUP_PORT" AUDIOSILO_TLS_MODE=off \
+    "$SERVER/bin/audiosilo" --setup --data "$SETUP_DATA" \
+    > "$CACHE/setup.log" 2>&1 &
+  SETUP_PID=$!
+fi
 
 echo "==> waiting for the demo server"
 wait_healthy "http://127.0.0.1:$PORT/healthz" "$CACHE/server.log" "server"
@@ -142,7 +151,10 @@ ADMIN_PASSWORD="$(grep 'Admin password' "$CACHE/server.log" | awk -F': ' '{print
 if [ -z "$ADMIN_PASSWORD" ]; then
   echo "could not parse admin password from $CACHE/server.log"; exit 1
 fi
-SETUP_URL="$(grep -o "http://[^ ]*/setup#token=[^ ]*" "$CACHE/setup.log" | head -1 || true)"
+SETUP_URL=""
+if [ "${SKIP_ADMIN:-0}" != "1" ]; then
+  SETUP_URL="$(grep -o "http://[^ ]*/setup#token=[^ ]*" "$CACHE/setup.log" | head -1 || true)"
+fi
 
 # ── 4. AudioSilo Meta site (data artifact + site build + metaserve) ─────────
 if [ "${SKIP_META:-0}" != "1" ]; then

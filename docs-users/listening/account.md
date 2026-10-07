@@ -72,7 +72,7 @@ Controls for what happens as one book ends and the next begins (see [The end of 
 |---|---|---|
 | **Automatically play next book** | When a book finishes, start [what plays next](end-of-book.md#what-plays-next) after a short countdown on the end credits | On / Off (default **Off**) |
 | **Download automatically** | Download the book you start listening to, so it's ready to hear offline. Streaming begins straight away, and playback switches to the downloaded copy quietly once it's on the device. It leaves the same free space as Keep the next books ready, and skips a book you cancelled or removed earlier in the session | Never / On Wi-Fi / Always (default **On Wi-Fi**) |
-| **Keep the next books ready** | While you listen, download this many of the next books - from your Up next queue first, then the series - so they're ready offline. Follows the automatic download setting above, and always leaves at least 1 GB free. See [Keep the next books ready](offline-downloads.md#keep-the-next-books-ready) | Off / 1 / 2 / 3 (default **Off**) |
+| **Keep the next books ready** | While you listen, download this many of the next books - from your Up next queue first, then the series - so they're ready offline. Follows the automatic download setting above, and always leaves at least 1 GB free (or a tenth of your storage, if that's more). See [Keep the next books ready](offline-downloads.md#keep-the-next-books-ready) | Off / 1 / 2 / 3 (default **Off**) |
 | **Remove a download when you finish the book** | Remove a book's downloaded files from the device when it's marked finished, to free up space. Your place in it is kept | On / Off (default **On**) |
 
 :::note

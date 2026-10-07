@@ -145,7 +145,7 @@ your admin.
 
 ### A book plays in the app but won't play in the browser
 
-Some audio formats (Apple Lossless, AC-3, WMA...) don't play in browsers, so the
+Some audio formats (Apple Lossless, AC-3...) don't play in browsers, so the
 web player has the server [convert them as you listen](./listening/playback.md#books-a-browser-cant-play-directly).
 If such a book still won't play in the browser:
 
@@ -157,7 +157,8 @@ If such a book still won't play in the browser:
   ffprobe while scanning (the book's page in the admin console then says
   "Transcodes to MP3 for browsers").
 - **Listen in the [mobile app](./listening/mobile-apps.md)**, which plays these
-  formats as they are, or **convert the file** to `.m4b` (AAC) or `.mp3` once
+  formats as they are where the device can decode them (an Android phone may
+  not), or **convert the file** to `.m4b` (AAC) or `.mp3` once
   and let the server rescan (your progress survives as long as the path stays
   the same).
 

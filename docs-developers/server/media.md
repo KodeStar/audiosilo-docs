@@ -260,7 +260,7 @@ Note these are **codec** names, not containers: AAC-in-MP4 probes as `aac`
 the book not yet probed) is treated as **playable** - the client streams it
 directly (there is no automatic retry through the transcoder on a playback
 failure). The flag is surfaced as `direct_playable` on the `item` and `chapters`
-responses, so a web client knows up front that e.g. an AC-3 or WMA book needs the
+responses, so a web client knows up front that e.g. an AC-3 or ALAC book needs the
 transcoder.
 
 How the web player acts on it is
