@@ -7,6 +7,8 @@ The sleep timer stops the book for you, so you can listen yourself to sleep with
 
 ## Setting a timer
 
+![The sleep timer sheet on a phone: minute tiles, End of chapter, the Or stop after list and the sleep settings](/img/screenshots/web-player/phone-sleep-sheet.png)
+
 The sleep timer offers:
 
 - **Minutes** - 5, 10, 15, 30, 45 or 60.

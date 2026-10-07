@@ -72,6 +72,8 @@ Tapped the wrong chapter, or brushed the scrubber with your thumb? After **any j
 - in the **full player**, in place of the status line under the chapter title;
 - on the **player bar** on a tablet or computer, at the start of the buttons on the right.
 
+![The player bar on a computer just after a chapter skip, with the Back to button leading the buttons on the right](/img/screenshots/web-player/dock-undo.png)
+
 Tap it and you're back where you were; a note confirms *"Back where you were"*. Ordinary listening, short skips, and starting or resuming a book never bring it up.
 
 ## The three-dot menu
@@ -110,6 +112,9 @@ In a narrower window, the bar keeps what fits: below about 1,024 points wide, sp
 
 Tap the speed readout (e.g. `1×`) to open the speed control:
 
+![The speed sheet over the player on a phone: the current speed, the slider between minus and plus, and the presets with the time left at each](/img/screenshots/web-player/phone-speed-sheet.png)
+
+
 - **The current speed**, large, with how long the rest of the book takes at it: *"5h 12m left in the book at 1.25× · remembered for this book"*.
 - **A slider** from **0.5× to 2×** in **0.05 steps**, between a **minus** and a **plus** button that each move one step (0.05×) at a time.
 - **Presets** - 0.8×, 1×, 1.1×, 1.2×, 1.25×, 1.3×, 1.5× and 2× - each showing how much of the book is left at that speed, so you can see what a faster speed would save you before you choose it.
@@ -144,6 +149,8 @@ When a book reaches its end, AudioSilo marks it **finished** (so it drops off yo
 - **View details** opens the finished book's page.
 
 The **Credits** button at the top right lists who made the book: written by, read by, the publisher and release date when known, the community credit when the book is matched in [AudioSilo Meta](../community/meta-site.md), and where the book lives on your server. The **X** at the top left closes the screen.
+
+![The end credits on a computer: the book, how it was listened to, and the Up next card](/img/screenshots/web-player/end-credits.png)
 
 You can also reach the end credits at any time from the player's [three-dot menu](#the-three-dot-menu), via **View end credits** or **Mark as Finished**.
 
