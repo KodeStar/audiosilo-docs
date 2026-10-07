@@ -68,12 +68,14 @@ Callers open one with `usePlayerSheets.getState().openEditor(request)` (see
 `PlayerSheetHost` renders `AnnotationEditorSheet`, a bottom sheet on a phone, a
 floating sheet on a tablet and a dialog on a desktop. The form is keyed per request
 (`requestKey`), so a new request starts a fresh draft. Without a client for the
-target's connection it shows the companion's "server isn't connected" state. On iOS the
-sheet (and a phone dialog) lifts itself above the software keyboard
-(`useKeyboardAvoidance`, `src/lib/keyboard-lift.ts`: iOS lays the keyboard over the
-window, and a `KeyboardAvoidingView` inside an overlay in a portal measures nothing
-useful), capping its height so the title stays on screen and the body scrolls; Android
-resizes the window itself, so it gets no lift.
+target's connection it shows the companion's "server isn't connected" state. The sheet (and a
+phone dialog) lifts itself above the software keyboard (`useKeyboardAvoidance`,
+`src/lib/keyboard-lift.ts`), capping its height so the title stays on screen and the
+body scrolls. The lift is the keyboard's overlap measured from its top edge in screen
+coordinates against the window, on both platforms: iOS lays the keyboard over the
+window, and so does Android under edge-to-edge (the window no longer resizes), while a
+window that does resize reads an overlap of 0, so nothing lifts twice. (A
+`KeyboardAvoidingView` inside an overlay in a portal measures nothing useful.)
 
 **What Save sends** is decided by the pure planners, given the connection's
 `annotations` flag:

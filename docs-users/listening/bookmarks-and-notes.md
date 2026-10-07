@@ -22,7 +22,7 @@ The editor shows where the bookmark is (the time, and the chapter it's in), then
 - **Note** - what happened here, in your own words (up to 2,000 characters).
 - **Label** - one of **Quote**, **Favourite**, **Re-listen**, **Funny** or **Question**, so you can find that kind of moment again later. Tap a label to choose it, and tap it again to clear it.
 
-**Bookmark 17:26:50** makes a new one; **Save bookmark** saves your changes to one you already have. On a phone the editor slides up from the bottom, and on an iPhone or iPad it rises with the keyboard so what you type stays in view; on a computer it opens as a small window.
+**Bookmark 17:26:50** makes a new one; **Save bookmark** saves your changes to one you already have. On a phone the editor slides up from the bottom and rises with the keyboard, so what you type stays in view; on a computer it opens as a small window.
 
 ## Notes
 
