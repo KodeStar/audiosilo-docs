@@ -10,7 +10,7 @@ The **companion** sits beside the [full player](playback.md#the-full-player) and
 - **Chapters** - every chapter, and how long until each one.
 - **Bookmarks**, **Notes** and **History** - your own bookmarks, notes and listening sessions for the book.
 
-Where it is depends on the screen: a column down the right of the full player on a **computer**, under the player's controls on a **tablet** (scroll down), and a sheet on a **phone**, opened from the **Who's who**, **Story so far** and **Chapters** chips under the controls. It reopens on the tab you used last.
+Where it is depends on the screen: a column down the right of the full player on a **computer**, under the player's controls on a **tablet** (scroll down), and a sheet on a **phone**, opened from the **Who's who**, **Story so far** and **Chapters** chips under the controls (or from the chapter title, which opens it on **Chapters**). It reopens on the tab you used last.
 
 Who's who and Story so far come from the community database, [AudioSilo Meta](../community/meta-site.md), so they appear only when your server has community metadata switched on (otherwise the companion starts at Chapters). For a book the database doesn't know, or one nobody has written character notes or recaps for yet, the tab says so.
 
@@ -24,13 +24,13 @@ Who's who and Story so far follow **where you are right now** - your place as yo
 
 ## Who's who
 
-The people you've met, the most recently met first, with how many there are (*"12 people you've met"*). Each card shows a coloured initial, the name and role, any other names they go by, and when they first appear (*"First appears in chapter 7"*, or *"There from the start"*).
+The people you've met, the most recently met first, with how many there are (*"12 people you've met"*). Each card shows an initial, the name, any other names they go by, when they first appear (*"From chapter 7"*, or *"From the start"*) and their role. These are the same cards as on the book's page.
 
 A character's description is written for the whole book, so it can give away later events. It stays closed until you **tap the card** to read it, one card at a time.
 
 ### Meeting someone new
 
-When you play on into a new chapter and it brings in people you hadn't met, they appear at the top of Who's who with a pink outline and **Just met**, and a note says so wherever you are in the app: *"New in Who's who: Teft, Rock"*, *"You just met them in chapter 12. Nothing past this point is shown."* Tap **Show** to open the player on Who's who.
+When you play on into a new chapter and it brings in people you hadn't met, they appear at the top of Who's who marked **Just met** (the one pink card in the list), and a note says so wherever you are in the app: *"New in Who's who: Teft, Rock"*, *"You just met them in chapter 12. Nothing past this point is shown."* Tap **Show** to open the player on Who's who.
 
 The note only comes when the book itself carries you into the chapter while it plays. Jumping ahead, skipping, or picking the book up again never brings it up, and nobody is announced twice in one session, even if you go back and play through a chapter again.
 
@@ -53,6 +53,8 @@ The same lists as on the book's page, for the book that's playing:
 - **History** - your listening sessions, by chapter; tap one to go back to where it ended.
 
 A jump from these lists is an ordinary jump in the player, so the [undo button](playback.md#undo-a-jump) offers the way back.
+
+These three tabs need the book's server. If it isn't connected any more (you removed it, and a downloaded copy is playing on), they say *"This book's server isn't connected"*: your bookmarks, notes and history come back once it is.
 
 ## Who wrote it
 

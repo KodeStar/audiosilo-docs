@@ -15,7 +15,7 @@ Up next needs a recent AudioSilo server. On an older server the Up next buttons 
 
 **On a computer** (or any window 1024 points wide or more, such as a large tablet held sideways), Up next is a **drawer** down the right-hand side of the window, next to the page you're browsing. It's open to start with. Drag its left edge to make it wider or narrower, or use **Hide Up next** to tuck it away; AudioSilo remembers both on that device. In the web player, the **Q** key shows or hides it (as long as you aren't typing in a box).
 
-**On a tablet or phone**, Up next rises from the bottom of the screen as a **sheet**, over whatever you're looking at.
+**On a tablet or phone**, Up next rises from the bottom of the screen as a **sheet**, over whatever you're looking at - the full player included. In the web player, **Q** (or **Esc**) closes it again.
 
 ![Up next as a sheet on a phone](/img/screenshots/web-player/phone-up-next.png)
 

@@ -19,7 +19,7 @@ Tap one and the timer starts and the sheet closes. All the times are real time a
 
 The countdown shows on the sleep button (in the full player and on the player bar), and at the start of the mini player's second line on a phone. Open the sleep timer again and the top of it says what's set - *"Sleep timer on"*, *"Stopping at the end of this chapter"*, *"Stopping after 3 chapters"* (which counts down as chapters go by) or *"Stopping at the end of the book"* - with the time left and a **Turn off** button. Pick a different option to replace the timer.
 
-When the timer fires, playback simply pauses - nothing is lost.
+When the timer fires, playback simply pauses - nothing is lost. If the timer runs out right at the end of the book, the next book doesn't start by itself: the end credits wait for you (see [Playing the next book automatically](playback.md#playing-the-next-book-automatically)).
 
 A timer belongs to the book you set it on. Start a different book, or finish the one you're on, and the timer goes with it instead of following you to the next book. And if a timer reaches its point when you'd already paused by hand, it just ends quietly: there was nothing left to stop.
 
@@ -33,7 +33,7 @@ A **chapter** timer needs none of this: it stops at a place in the book, not aft
 
 ## The last 30 seconds, and how to keep listening
 
-Every timer has a **final 30 seconds** that are your cue it's about to stop - and your chance to carry on if you're still awake. A card appears with a ring that empties as the seconds run out: over the controls in the full player, just above the player bar on a tablet or computer, and just above the mini player on a phone. It doesn't block anything else on the screen.
+Every timer has a **final 30 seconds** that are your cue it's about to stop - and your chance to carry on if you're still awake. A card appears with a ring that empties as the seconds run out: in the full player it takes the place of the status line under the chapter title, and elsewhere it floats just above the player bar (tablet or computer) or the mini player (phone), with any notes lifted above it. It doesn't block anything else on the screen.
 
 - A **minutes** timer stops at an arbitrary point mid-chapter, so it doesn't cut the book off mid-word: the audio **fades out gently** over those 30 seconds. The card says *"Fading out in 24 s"*.
 - A **chapter** timer plays those 30 seconds at **full volume** and stops at the boundary. Those closing words are the ones you stayed awake for, and the chapter ending is its own signal that the book is about to stop. The card says *"Stopping in 24 s"*.
