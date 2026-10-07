@@ -483,7 +483,8 @@ also sets it whenever a sibling cover was found).
 **ffprobe is optional** and every path degrades gracefully without it:
 path-derived metadata still works, durations fall back to chapter ends or
 remain 0, and `codec` stays empty - which the API treats as directly playable
-(the client falls back to `?transcode=1` if playback fails). See
+(`direct_playable: true`, so the web player streams the file as it is rather than
+through the transcoder). See
 [Media & streaming](media.md).
 
 ## Chapter normalization

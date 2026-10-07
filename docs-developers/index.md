@@ -75,10 +75,10 @@ Three structural facts to internalize before reading anything else:
 (`GET /libraries/{id}/chapters?path=` → `{chapters, files, duration}`), then
 streams individual **audio files** - never a folder/book path - with HTTP Range
 requests (`GET /libraries/{id}/stream?path=`). Media auth rides as a `?token=`
-query param because browsers can't set headers on `<img>`/`<audio>`. A transcode
-fallback exists (`?transcode=1`, ffmpeg → MP3, gated by the `transcode`
-capability); automatic transcode negotiation in the web player is **planned**, not
-yet wired.
+query param because browsers can't set headers on `<img>`/`<audio>`. For a codec
+browsers can't decode (`direct_playable: false`) the web player streams the
+server's on-the-fly MP3 instead (`?transcode=1&t=`, ffmpeg, gated by the
+`transcode` capability), re-requesting it on every seek.
 
 **Progress sync.** The player saves position every 15 seconds while playing (and
 on pause/seek/rate/stop), path-keyed, via `PUT /libraries/{id}/progress?path=`.

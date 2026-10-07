@@ -148,17 +148,21 @@ output isn't byte-seekable). All gated by the `--ffmpeg` flag and reflected in t
 `transcode` capability (seam 8).
 **Frontend:** `Book.direct_playable`/`codec` and
 `ChaptersResponse.direct_playable`/`codec` are mirrored in `types.ts`, and
-`client.ts` `streamUrl(…, { transcode, t })` can request a transcoded stream.
-
-:::caution Planned, not shipped
-**Automatic web transcode negotiation is not yet wired**: the playback engines in
-`src/playback/` do not read `direct_playable` to switch to the transcoded URL, and
-seeking a non-byte-seekable stream needs more work. This is a tracked follow-up.
-:::
+`client.ts` `streamUrl(…, { transcode, t })` builds a transcoded stream URL. The
+**web player negotiates it** (`src/playback/transcode.ts`): on web, a book whose
+`direct_playable` is explicitly `false` streams with `?transcode=1` when its
+server's `transcode` capability is `true`; the web engine re-requests with a new
+`&t=` on every seek and keeps positions track-absolute, the book page says the
+audio is converted for this browser, and downloading such a book is off in the
+browser. Native engines decode these codecs and never transcode; a downloaded
+file is never transcoded. Details in
+[frontend playback](../frontend/playback.md#web-transcode-negotiation-transcodets).
 
 **A change requires:** changing `direct_playable`'s meaning or the transcode query
-params changes both sides - and auto-negotiation, when wired, must degrade
-gracefully against a server with ffmpeg disabled (`transcode: false`).
+params changes both sides. The negotiation degrades by design: an absent
+`direct_playable` (an older server, or a codec never probed) reads as playable, and
+an unknown or `false` `transcode` capability streams the file directly, exactly as
+before negotiation existed.
 
 ## 6. The chapter / whole-book timeline model
 

@@ -257,17 +257,18 @@ aac  mp3  mp2  flac  opus  vorbis  pcm_s16le
 
 Note these are **codec** names, not containers: AAC-in-MP4 probes as `aac`
 (not `mp4a`), WAV as `pcm_s16le`. An **empty codec** (ffprobe unavailable, or
-the book not yet probed) is treated as **playable** - the client streams
-directly and can fall back to `?transcode=1` if that fails. The flag is
-surfaced as `direct_playable` on the `item` and `chapters` responses, so a
-web client knows up front that e.g. an AC-3 or WMA book needs the transcoder.
+the book not yet probed) is treated as **playable** - the client streams it
+directly (there is no automatic retry through the transcoder on a playback
+failure). The flag is surfaced as `direct_playable` on the `item` and `chapters`
+responses, so a web client knows up front that e.g. an AC-3 or WMA book needs the
+transcoder.
 
-:::note Planned
-The server side is fully shipped; **automatic** transcode negotiation in the
-web player (reading `direct_playable` and switching the stream URL by itself)
-is a known follow-up in the frontend - see the
-[cross-repo contract](../architecture/cross-repo-contract.md).
-:::
+The web player acts on it: for a book with `direct_playable: false`, on a server
+whose `transcode` capability is true, it streams `?transcode=1` and seeks by
+re-requesting with `&t=` - see the
+[cross-repo contract](../architecture/cross-repo-contract.md#5-transcode-negotiation---direct_playable--transcode1)
+and [frontend playback](../frontend/playback.md#web-transcode-negotiation-transcodets).
+The native apps decode these codecs themselves and always stream directly.
 
 ## Transcoding: `media.Transcode`
 

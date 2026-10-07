@@ -68,8 +68,8 @@ mappings:
 | A capability flag | [server/api/index.md](../server/api/index.md) + the feature's user page |
 
 :::tip
-When you flip something from "planned" to "shipped" (transcode negotiation,
-WebSocket sync, uploads, manager installers…), search the whole docs tree for
+When you flip something from "planned" to "shipped" (WebSocket sync,
+uploads, manager installers…), search the whole docs tree for
 the feature name - several pages deliberately mark these as not-yet-shipped.
 :::
 
