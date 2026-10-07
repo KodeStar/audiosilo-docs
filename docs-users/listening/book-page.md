@@ -17,7 +17,7 @@ The top of the page takes on the colours of the book's cover. Above it, a slim l
 
 For a book you're partway through, a line and a bar show **where you are**: *"38% · Chapter 23 of 81"*, with the [time left](full-player.md#time-left) at the speed you listen to that book.
 
-On a phone the cover sits above the title. On a tablet or computer it sits beside it, and on a wide enough page the About card and Your listening move to a column on the right (on a narrower one, for instance with the [Up next drawer](up-next.md#opening-up-next) open, they come between the top and the tabs).
+On a phone the cover sits above the title. On a tablet or computer it sits beside it, and on a wide enough page (a tablet held upright already is) the About card and Your listening move to a column beside the tabs (on a narrower one, for instance with the [Up next drawer](up-next.md#opening-up-next) open, they come between the top and the tabs).
 
 ## Listening and the buttons
 
@@ -32,7 +32,7 @@ On a phone it opens the [full player](full-player.md). On a tablet or computer t
 
 Beside it:
 
-- **Download for offline** (just **Download** on a phone). While it runs the button shows how far it has got (*"52% · Cancel"*; tap it to cancel), with the progress underneath. Once the book is on your device it reads **Downloaded**: tap it to see how much room it takes and to **Remove download**. See [Offline downloads](offline-downloads.md).
+- **Download for offline** (just **Download** on a phone). While it runs the button shows how far it has got (*"52% · Cancel"*, or just **Cancel** on a phone; tap it to cancel), with the progress underneath. Once the book is on your device it reads **Downloaded**: tap it to see how much room it takes and to **Remove download**. See [Offline downloads](offline-downloads.md).
 - **Up next**: **Play next** puts the book at the top of your [Up next](up-next.md) queue, and **Add to the end of Up next** queues it last (or **Remove from Up next**, if it's already there). A note confirms it, with **Undo**.
 - **The heart**, to make it a [favourite](browsing.md#favourites).
 - **Add to collection**, which opens the same dialog as the [book menu](browsing.md#the-book-menu).
@@ -85,7 +85,7 @@ A book with no chapter marks lists its files instead. If it's one long file, it 
 
 ### History
 
-Your listening sessions for the book, newest first: the day and the time you started, where you went (*"17:00:00 to 17:25:42 · Bridge Four"*), and how many minutes you listened. **Jump** takes you back to where a session ended. A pause of under ten minutes doesn't split a session; listening to another book in between, or jumping more than a couple of minutes away, does. Every book's sessions, day by day, are in the [Journal](journal.md).
+Your listening sessions for the book, newest first: the day and the time you started, where you went (*"17:00:00 to 17:25:42 · Bridge Four"*), and how many minutes you listened. **Jump** takes you back to where a session ended (on a phone, in the full player). A pause of under ten minutes doesn't split a session; listening to another book in between, or jumping more than a couple of minutes away, does. Every book's sessions, day by day, are in the [Journal](journal.md).
 
 ### Details
 
@@ -151,4 +151,4 @@ This material comes from the **AudioSilo community metadata database** at [meta.
 
 ![A book's page on a phone: the cover over the title, the place, Resume across the page and the buttons under it](/img/screenshots/web-player/phone-book-detail.png)
 
-On a phone everything stacks: the cover, then the title and the facts, the big button across the page with the others in a row under it, then About and the tabs. **More** opens as a sheet from the bottom.
+On a phone everything stacks: the cover, then the title and the facts, the big button across the page with the others in one row under it, then About and the tabs. **More** opens as a sheet from the bottom.

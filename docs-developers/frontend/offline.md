@@ -255,10 +255,10 @@ with no network.
    offline. Seeds go through `seedQuery` (`offline-meta.ts`): never over an answer
    the cache already holds (the server's, at least as full: the manifest's book can
    be the list shape), dated with the manifest's `savedAt` so an online screen still
-   refetches once stale, and kept with `gcTime: Infinity`, so a book downloaded an
-   hour before a flight still opens offline long after launch. Then, in the
-   background, the kept community metadata is restored
-   ([the offline companion](#the-offline-companion-offline-metats)).
+   refetches once stale, and kept for good (`setQueryDefaults(key, { gcTime:
+   Infinity })`), so a book downloaded an hour before a flight still opens offline
+   long after launch. Then, once the launch's first screens are up, the kept community
+   metadata is restored ([the offline companion](#the-offline-companion-offline-metats)).
 5. On web, `probe()` then runs and may downgrade `supported` - the UI hides
    downloads rather than offering ones that won't play offline.
 
@@ -281,13 +281,21 @@ unchanged: it still runs on the device against the listener's place
 **What is kept** (`OfflineMeta`, version 1): the `/meta` envelope as the server sent
 it (an unmatched answer too, so the book reads as unmatched offline instead of
 waiting), `savedAt`, whether it was asked with `include=previous` (`meta_bundle`),
-`works` (the nearest earlier work in the reading order the listener picked, read on
-its own through `/meta/work` when the envelope's `previous` doesn't hold it:
-`previousWorks(seriesRails(...))`, the same rule as the book page's rows), and the
-connection's `/server` answer, because every reader of community metadata first
-waits on the `metadata` flag, which a cold start with no network never answers.
+and `works` (the nearest earlier work in the reading order the listener picked, read
+on its own through `/meta/work` when the envelope's `previous` doesn't hold it:
+`previousWorks(seriesRails(...))`, the same rule as the book page's rows).
 `parseOfflineMeta` reads it back defensively; anything it can't read is simply
 ignored and fetched again when possible.
+
+**The server's flags are kept apart.** Every reader of community metadata first waits
+on the `metadata` flag, which a cold start with no network never answers, so each
+connection's last `/server` answer is kept once, in one small document by connection
+id (`OFFLINE_SERVERS_KEY`, `audiosilo.offlineServers`): `saveServerSnapshot` after a
+book keeps its metadata (never over a newer one), `forgetServerSnapshot` when the
+connection's downloads are purged, and a storage reset wipes it with the rest of the
+scoped cache (`SCOPED_STORAGE_KEYS` in `stores/session.ts`). A payload written before
+the answer had its own key still carries one in its `server` field, which the launch
+restore moves over.
 
 **Where it lives:** in its own `meta.json` beside the book's audio (`writeText`),
 never in the registry. The registry is one JSON document saved every couple of
@@ -307,12 +315,16 @@ with them, and survives a relaunch. The manifest carries only a marker
   cached full item first, since the manifest's book can be the list shape) or a
   server without `metadata`, reuses a fresh answer the screens already hold
   (`fetchFailFast` with the screens' hour-long `staleTime`), never throws and never
-  retries. If the download was removed or replaced while the file was written, the
+  retries. The reads are the screens' own option factories (`bookMetaQuery`,
+  `metaWorkQuery`), kept for good from then on. Many books saved in a row write the
+  registry once (`persistSoon`). If the download was removed or replaced while the file was written, the
   marker isn't set; a removed book's file is deleted again (a new download of it
   writes its own over it).
-- `restoreOfflineMeta` runs from hydrate, in the background: it seeds every kept
-  payload, then each connection's newest `/server` answer (`newestSnapshots`;
-  after the books, so a gate it opens finds their data), then, one book at a time
+- `restoreOfflineMeta` runs from hydrate once the launch's first screens are up (the
+  next idle moment, `requestIdleCallback`, else a moment later), reading the kept
+  files three at a time: it seeds every kept payload, then each such connection's
+  kept `/server` answer where the cache has none (after the books, so a gate it opens
+  finds their data), then, one book at a time
   and only for servers with `metadata` (each server's flags read once), fills in
   downloads that kept nothing (made before this existed, or a file gone or
   unreadable) and refreshes copies older than a week (`KEPT_META_REFRESH_MS`), so
@@ -326,7 +338,7 @@ page's anchor and Search's character sources), the `include=previous` variant wh
 the payload was fetched that way, and `qk.metaWork(cid, id)` for every kept work (the
 previous-books rows and the work series page). The `spoilers=hide` variant is never
 stored: it is cut at the saved place when fetched. `seedServerSnapshot` seeds
-`qk.server(cid)` only where the cache has none, so the app holds the flags it held
+`qk.server(cid)` (from `OFFLINE_SERVERS_KEY`) only where the cache has none, so the app holds the flags it held
 when it was last online until the server answers. A previous-book row with an answer
 in hand shows it even when its refetch fails (`book-meta.tsx`), which is what a kept
 work looks like offline.

@@ -12,7 +12,7 @@ The **Journal** is your listening, looked back on: a **Diary** of every day you 
 - In the web player's [quick search](browsing.md#quick-search-in-the-web-player): **Journal**, under Go to.
 - On a book's **Bookmarks** or **Notes** tab: **See all in your journal**, which opens straight on that list.
 
-Across the top: three tabs, **Diary**, **Bookmarks** and **Notes** (the last two count what's in them), and the [export](#exporting-your-bookmarks-and-notes) buttons.
+Across the top: three tabs, **Diary**, **Bookmarks** and **Notes**, and the [export](#exporting-your-bookmarks-and-notes) buttons. Bookmarks and Notes show how many you have once the whole list is in (Notes, the first time you open it).
 
 ## The Diary
 
@@ -31,7 +31,7 @@ The Diary works with any AudioSilo server. An older server sends only your most 
 
 When the [sleep timer](sleep-timer.md#if-you-fell-asleep) stopped a book you'd fallen asleep to, a strip under that session says so:
 
-- **On the device you were listening on**, for a day and a half or until you play the book again: *"You drifted off around 23:41. Jump back 4 minutes?"* **Jump back** takes you to the last moment you touched the player, when you were surely still awake.
+- **On the device you were listening on**, for a day and a half or until you play the book again: *"You drifted off around 23:41. Jump back 4 minutes?"* **Jump back** takes you to the last moment you touched the player, when you were surely still awake. Once you've used it, the strip offers the bookmark instead, so a second tap can't take you back again.
 - **Otherwise**: *"The sleep timer stopped this at 23:45."* **Play from where you drifted off** starts the book where the timer stopped it.
 
 ## Bookmarks and notes
@@ -40,7 +40,7 @@ When the [sleep timer](sleep-timer.md#if-you-fell-asleep) stopped a book you'd f
 
 The **Bookmarks** and **Notes** tabs gather every one you've made, from every book, newest first. Each row leads with the book's cover (tap it to open the book's page on that tab), then the time (tap it to jump there), the label and note, and the book, chapter and how long ago. **Edit** and **Delete** work just as they do on a book's page (see [Bookmarks and notes](bookmarks-and-notes.md)).
 
-- **Search** (*"Search your bookmarks and notes"*) looks through the book titles, the authors and your words.
+- **Search** (*"Search your bookmarks and notes"*) looks through the book titles, the authors and your words, ignoring capitals and accents (*emile* finds *Émile*).
 - On **Bookmarks**, the **label chips** narrow the list to one kind: **Quote**, **Favourite**, **Re-listen**, **Funny**, **Question**, or **Fell asleep** for the sleep timer's marks. **All labels** shows everything again.
 
 These two lists need a recent AudioSilo server. If one of your servers is older, a line above the list says its bookmarks are only on each book's page; if none of them can list them, the tab says so and offers **Go to the Library** instead. A server that can't be reached right now gets a line of its own, and the rest still show.

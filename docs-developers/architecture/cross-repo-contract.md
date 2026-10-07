@@ -110,10 +110,13 @@ The owner edits a row with `PATCH /bookmarks/{id}` (`{ note?, label? }`) and
 user's, an unknown or an out-of-access id is a `404`. `GET /me/bookmarks`
 (`{ bookmarks, next_cursor? }`) and `/me/notes` (`{ notes, next_cursor? }`) list
 the caller's rows across books newest first, current access only, with a
-list-shape `book?` per row (`MyBookmark`, `MyNote`, `Page` / `useMyBookmarks`,
-`useMyNotes`), and `/me/history` gains the same `cursor` paging and `book?` per row
-(`HistoryEntry` / `useAllHistory`; an older server ignores `cursor` and returns one
-page). Shapes, bounds (a bookmark note 2,000 characters, a note body 10,000) and
+list-shape `book?` per row (`MyBookmark`, `MyNote`, `Page` / the infinite query
+options `myBookmarksQuery`, `myNotesQuery`), and `/me/history` gains the same `cursor`
+paging and `book?` per row (`HistoryEntry` / `myHistoryQuery`; an older server ignores
+`cursor` and returns one page). Bookmark and note timestamps, and a span's
+`started_at` / `ended_at`, are fixed-width UTC milliseconds
+(`2026-10-07T09:00:00.000Z`), the form the lists order by as text; a per-book list
+with nothing in it is `[]`. Shapes, bounds (a bookmark note 2,000 characters, a note body 10,000) and
 status codes are in the
 [reference](../server/api/reference.md#patch-apiv1bookmarksid).
 

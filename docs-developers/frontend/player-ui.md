@@ -85,18 +85,18 @@ companion is [below](#the-companion-companion).
 
 `usePlayerSheets` (`player-sheets.ts`) is the one "which player sheet is open"
 store. A request says **what**, never where (the `PlayerSheet` union lists them;
-`bookmark` without an editor request and `output` are actions, `shortcuts` is the
-web shell's `ShortcutsDialog`). A book's request is dropped when the book unloads, so
+`bookmark` and `output` are actions, `shortcuts` is the web shell's
+`ShortcutsDialog`). A book's request is dropped when the book unloads, so
 the next book never opens it by itself (`dropsWithBook`).
 
-**The annotation editors** are requests too: `openEditor(request)` sets `open` to
-`bookmark` or `note` together with an `EditorRequest` (`editor`), and the host renders
-`AnnotationEditorSheet` for it (see [Bookmarks and notes](annotations.md#the-editors)).
-An editor carries its own book, so `shownSheet` shows it whether or not a book is
-loaded, and it survives the playing book unloading (closing it would throw away what
-the listener is typing). `openSheet` clears `editor`; `editorFor(open, editor)` reads
-it only while its kind is open, so the sheet slides away with its content after
-`close()`. The one-tap bookmark (`addBookmarkHere` in `player-shortcuts.ts`, behind the
+**The annotation editor** is one sheet value too: `openEditor(request)` sets `open` to
+`'editor'` together with its `EditorRequest` (`editor`, typed in
+`src/lib/annotation-request.ts`), and the host renders `AnnotationEditorSheet` for it
+(see [Bookmarks and notes](annotations.md#the-editors)). The editor carries its own
+book, so `shownSheet` shows it whether or not a book is loaded, and `dropsWithBook`
+keeps it when the playing book unloads (closing it would throw away what the listener
+is typing). `openSheet` clears `editor`; the store keeps it after `close()`, so the
+sheet slides away with its content. The one-tap bookmark (`addBookmarkHere` in `player-shortcuts.ts`, behind the
 action pills, the docked bar and the **B** key) toasts *"Bookmark added"* with an
 **Add note** action that opens the editor on the new bookmark, only when the server
 has `annotations` (`cachedCapability`).
@@ -267,8 +267,11 @@ The building blocks shared by the full player and the docked bar:
   `ControlPill` give every player control the same press, hover and focus states.
   **Touch targets:** a rem is 14 pt on native but 16 px on the web, so a rem-sized
   control takes `hitSlop={slopTo44(rem)}` (only what it lacks of 44: zero for
-  `h-11` on the web, 4 px a side for the dock's `h-9` pills); tests assert it with
-  `expectNativeTarget` (`src/testing/touch-target.ts`).
+  `h-11` on the web, 4 px a side for the dock's `h-9` pills); a small control that
+  must report 44 pt itself on native (a row's action, a label chip) takes
+  `touchTarget(height, width?)`, a 44 pt frame there and the slop on the web. Both are
+  `src/components/ui/touch-target.ts`; tests assert them with `expectNativeTarget`
+  (`src/testing/touch-target.ts`).
 - **Speed and sleep sheets.** The readouts only call `usePlayerSheets.openSheet`;
   the sheets are rendered by the active `PlayerSheetHost`
   ([above](#player-sheets-and-overlays)) through `PlayerSheet` (`player-sheet.tsx`:
@@ -306,11 +309,11 @@ The building blocks shared by the full player and the docked bar:
   `book-timeline-model.ts`): chapters merged into runs like the Now card's
   `scaleRuns`, each placed by time (`runBox`, the one mapping the playhead, taps and
   pins use); bookmark and note pins (`usePlayingPins`, the playing book's case of
-  `useBookPins` / `useBookAnnotations`, which read ANY book's bookmarks and notes
-  through its own connection and never throw when it's gone, with a 10 minute
+  `useBookAnnotations`, which reads ANY book's bookmarks and notes, and their `pins`,
+  through its own connection and never throws when it's gone, with a 10 minute
   `staleTime` unless the caller passes its own; `pinsOf` gives a note a pin only
-  when its position is past 0, so notes written before notes had places don't stack
-  on the start), where a tap on a pin lands on it; a tap or drag seeks through
+  when its position is past 0, so legacy notes, all stored at 0, don't stack on the
+  start), where a tap on a pin lands on it; a tap or drag seeks through
   `scrubTarget`. The book page draws the same `BookTimeline` for any book
   ([The book page](book-page.md#the-chapters-tab)).
   `timelinePosition` never places the playhead before the start of the chapter the

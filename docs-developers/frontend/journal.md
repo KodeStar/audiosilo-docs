@@ -3,52 +3,69 @@ title: The Journal
 description: "The Journal (src/components/journal/): one paged list per server merged newest first, history spans joined into sessions and days, the 24 hour bar, matching drift-offs to sessions, the Bookmarks and Notes tabs, and the Markdown and CSV export."
 ---
 
-The Journal is `/journal?tab=diary|bookmarks|notes` (`journalHref`, `parseJournalTab`
-in `journal-model.ts`; anything unknown is the Diary). The route file under
+The Journal is `/journal?tab=diary|bookmarks|notes` (`journalHref` beside the other
+hrefs in `src/lib/paths.ts`, `openJournal` on `useOpen`; `parseJournalTab` in
+`journal-model.ts`: anything unknown is the Diary). The route file under
 `(home,library,search,offline,me)` only exports `JournalScreen`. It covers **every
 signed-in server**: each list is read per server, through that server's own connection
 and capability, and merged. The user-facing page is [The Journal](/users/listening/journal).
 
 **Entry points:** `JournalEntryRow` (`journal-entry.tsx`) at the top of the Settings
 screen (the phone's Me tab), a **Journal** item in the top bar's profile menu, a
-**Journal** item in the palette's Go to group (`buildGoToItems`, `palette-model.ts`),
-`JournalLink` on a book's Bookmarks and Notes tabs, and a Diary row's cover opening a
-book on its History tab.
+**Journal** item at the end of the palette's Go to group (`command-palette.tsx`),
+`JournalLink` on a book's Bookmarks and Notes tabs (through `pushInShell`, so from over
+the full player it lands in the shell), and a Diary row's cover opening a book on its
+History tab.
 
 ## Module map
 
 | File | What it is |
 |---|---|
 | `journal-screen.tsx` | `JournalScreen`: header (title, export, the segmented tabs, the search box), `DiaryTab` |
-| `journal-model.ts` | Pure: `JournalTab`, `parseJournalTab`, `journalHref`, `matchesQuery` |
-| `use-journal-sources.tsx` | `useJournalSources`: the per-server feeders and their `Source` snapshots |
+| `journal-model.ts` | Pure: `parseJournalTab`, the search (`searchWords`, `matchesWords`, `annotationHaystack`) |
+| `use-journal-sources.ts` | `useJournalSources`: every server's three lists as `Source` snapshots |
 | `merge-model.ts` | Pure: `mergeNewestFirst`, `overallStatus`, `Sourced<T>` |
-| `diary-model.ts` | Pure: spans, sessions, days, the day bar, chapter ranges, `matchDrifts`, `driftStrip` |
+| `diary-model.ts` | Pure: days, the day bar and its colours, chapter ranges, `matchDrifts`, `driftStrip` |
 | `diary.tsx` | `DiaryDayCard`, the session rows, the day bar, the drift strip, `DiarySkeleton` |
-| `annotations-tab.tsx` | `AnnotationsTab` (Bookmarks or Notes), `filterBookmarks`, `filterNotes`, `LABEL_FILTERS` |
+| `annotations-tab.tsx` | `AnnotationsTab`: the Bookmarks or Notes list, its label chips and search |
 | `server-notes.tsx` | The quiet per-server lines above a list (unreachable, or can't list) |
 | `use-drift-records.ts` | `useDriftRecords`: this device's drift records, read once |
 | `export-*.ts(x)`, `use-journal-export.ts` | The export (below) |
-| `journal-format.ts`, `journal-list.tsx` | Date formatting; the shared `FlatList` props and paging spinner |
+| `journal-list.tsx` | The shared `FlatList` props, `fetchMoreOf` and the paging spinner |
+
+Shared with the book page, outside the folder: `src/lib/listening-sessions.ts` (spans,
+sessions, local days, `dayName`), `src/lib/use-day-label.ts` (`useToday`, which moves on
+once a day and when the app comes back to the foreground, and `useDayLabel`),
+`src/lib/use-infinite-queries.ts` and the date formatters in `src/lib/format.ts`.
 
 ## Sources: one infinite query per server
 
-The three lists are infinite queries in `hooks.ts` (`useAllHistory`, `useMyBookmarks`,
-`useMyNotes`, keys `qk.myHistory(cid)`, `qk.myBookmarks(cid)`, `qk.myNotes(cid)`; pages
-of 100 on the server's opaque `next_cursor`, normalised by the client to
-`Page<T> = { items, next_cursor? }`). TanStack has no "many infinite queries" hook, so
-`useJournalSources` renders one tiny **feeder** component per (list, server) that runs
-the hook and reports a `Source` up (status, rows, `hasNextPage`, `fetchNextPage`,
-`refetch`); the screen renders `sources.feeders` once. A server's query never waits on
-another's, and a removed server's feeder unmounts and takes its rows with it.
+The three lists are infinite query options in `hooks.ts` (`myHistoryQuery`,
+`myBookmarksQuery`, `myNotesQuery`, keys `qk.myHistory(cid)`, `qk.myBookmarks(cid)`,
+`qk.myNotes(cid)`; pages of 100 on the server's opaque `next_cursor`, normalised by the
+client to `Page<T> = { items, next_cursor? }`, fresh for five minutes since this
+device's own writes refresh them). TanStack has `useQueries` but nothing for many
+infinite queries, so `useInfiniteQueries` (`src/lib/use-infinite-queries.ts`) gives each
+entry its own `InfiniteQueryObserver`, kept by query hash while the list of servers
+changes, read through `useSyncExternalStore`. `useJournalSources` runs it once per list
+over every signed-in server and turns each result into a `Source` (status, rows,
+`supported`, `hasNextPage`, `fetchNextPage`, `refetch`). A server's query never waits on
+another's, and a removed server's queries go with it. When nothing reads a list any
+more, `keepFirstPage` trims its cache to the first page, so the next visit doesn't
+refetch twenty pages one after another.
 
 - **History** has no gate: every server has `GET /me/history`. One without
   `annotations` ignores the cursor, sends no `next_cursor` (so its answer is one page,
   the newest `limit`) and no `book` per row; a session row then reads the item itself
   (`useBook`, cached per book).
-- **Bookmarks and notes** need `annotations`. A server reading `false` is
-  `unsupported` (its list never runs); one whose `/server` failed is an `error`, never
-  an endless load, and its Retry asks `/server` again too.
+- **Bookmarks and notes** need `annotations`, read from each server's `/server`
+  (`serverInfoQuery`): until it is known to be on, the query has no function at all
+  (`skipToken`). A server reading `false` is `unsupported`; one whose `/server` failed
+  is an `error`, never an endless load, and its Retry asks `/server` again too.
+- **Notes wait for their tab.** The Diary shows none, so `useJournalSources({ notes })`
+  holds them back (`enabled: false`: the cache is read, nothing is fetched) until the
+  Notes tab is first opened; until then its count shows only what an earlier visit
+  left in the cache. The export asks for them on its own.
 
 ### Merging (`mergeNewestFirst`)
 
@@ -66,29 +83,33 @@ The tab counts (`completeCount`) show only once every able server's list is comp
 
 ## The Diary
 
-`diary-model.ts` is pure, and also feeds the book page's History tab, so the two agree.
-A history row never carries a speed or a device, so neither is ever shown.
+The sessions are `src/lib/listening-sessions.ts`, pure and shared with the book page's
+History tab, so the two agree. A history row never carries a speed or a device, so
+neither is ever shown.
 
 1. **Spans** (`toSpan`): a row with its server, parsed wall-clock `start`/`end` and the
    whole-book `from`/`to`; a row whose times don't parse is dropped.
 2. **Sessions** (`groupSessions`): the server writes a span per pause, so spans are
    walked in time order across every book and server, and a span joins the session
-   before it when it `continues` the very span before it: same book and server, a
-   pause under `SESSION_GAP_MS` (10 min), picking up within
-   `SESSION_POSITION_SLACK_S` (120 s) of where it stopped. Another book in between
-   ends the session. A session carries the whole stretch's fields, `listened` (the
-   spans' sum, without the pauses) and its parts.
-3. **Days** (`groupByDay`): by the device's local day the session started on (a
-   session past midnight stays on its start day), newest first, with the day's total;
-   `dayName` gives Today, Yesterday, a weekday within the last week, else the date.
+   before it when it continues the very span before it: same book and server, a pause
+   under `SESSION_GAP_MS` (10 min), picking up within 120 s (content) of where it
+   stopped. Another book in between ends the session. A session carries the whole
+   stretch's fields, `listened` (the spans' sum, without the pauses) and its parts.
+3. **Days** (`groupByDay`, `diary-model.ts`): by the device's local day the session
+   started on (a session past midnight stays on its start day), newest first, with the
+   day's total; `useDayLabel` names them Today, Yesterday, a weekday within the last
+   week, else the date, as of `useToday`.
 4. **The day bar** (`dayBars`): every span of the day placed by wall clock as a
-   fraction of the day (cut at midnight, at least `MIN_BAR_WIDTH` wide), in the book's
-   `cover_color` accent; hairlines at 06, 12 and 18. It is one image to a screen
-   reader, with a summary of the sessions' times.
-5. **Rows**: "title · 21:12, 21 min", the chapter range (`spanRange` through
-   `useChapterNamer`, else positions), the server flag when there's more than one
-   server, the drift strip, and "Finished the book" when a span ended within
-   `FINISH_SLACK_S` (30 s) of the book's end (only knowable with the book's length).
+   fraction of the day (cut at midnight, at least `MIN_BAR_WIDTH` wide), coloured by
+   `barColor`: the book's cover accent or dominant colour, whichever stands off the
+   theme's track best, and a theme token when neither reaches 3:1 (or the book has no
+   cover colours); hairlines at 06, 12 and 18. It is one image to a screen reader, with
+   a summary of the sessions' times.
+5. **Rows**: the book's `RowCover` (opening its History tab), "title · 21:12, 21 min",
+   the chapter range (`spanRange` through `useChapterNamer`, else positions),
+   `ServerFlag` when there's more than one server, the drift strip, and "Finished the
+   book" when a span ended within 30 s (content) of the book's end (only knowable with
+   the book's length).
 
 ### Drift-offs (`matchDrifts` and `driftStrip`)
 
@@ -103,34 +124,38 @@ still holds the drift record for that book (`useDriftRecords`, the sleep timer's
 `audiosilo.driftOffs`, kept 36 h and spent the next time the book plays) and it is
 the same stop (within 60 s), `driftOffer` gives **Jump back N minutes** to the last
 touch; the press spends the record with `takeDrift` first, so the player doesn't ask
-again. Otherwise the strip offers **Play from where you drifted off**, at the
-bookmark. Both jump through `useJumpTo`. See
+again; the strip then forgets the records it was handed, so a second press offers the
+bookmark instead of rewinding the listener again. Otherwise the strip offers **Play
+from where you drifted off**, at the bookmark. Both jump through `useJumpTo`. See
 [Fell asleep](sleep-timer.md#fell-asleep-drift-controllerts) for how the record is
 made.
 
 ## Bookmarks and Notes
 
-`AnnotationsTab` merges the servers' lists by `created_at`, then filters:
-`filterBookmarks(rows, label, query)` keeps one label (`fell_asleep` by
-`isDriftBookmark`, so an older server's markers match too) and the search;
-`filterNotes` the search alone. `matchesQuery` wants every word of the query somewhere
-in the book's title, its author and the note or body, case-insensitively. Rows are the
-shared [`BookmarkRow` / `NoteRow`](annotations.md#rows) with `book` (the cover leads)
-and the server flag. The empty states tell apart unsupported (pointing to the
-Library), loading, error, "No bookmarks match" and truly empty.
+`AnnotationsTab` reads only the active list, merges the servers' lists by `created_at`
+(`mergeNewestFirst`), then filters: on Bookmarks the label chips (`labelKeeps`: one
+label, `fell_asleep` by `isDriftBookmark` so an older server's markers match too), and
+the search on both. The search follows the typing deferred (`useDeferredValue`) and
+wants every word of the query somewhere in the book's title, its author and the note or
+body, ignoring case and accents (`searchWords`, `annotationHaystack`: folded once per
+row). Rows are the shared [`BookmarkRow` / `NoteRow`](annotations.md#rows) with `book`
+(the cover leads) and the server flag, in one card whose foot is the list's footer. The
+empty states tell apart unsupported (pointing to the Library), loading, error, "No
+bookmarks match" and truly empty.
 
 ## Export
 
 `useJournalExport(sources)` writes every bookmark and note (not the Diary) of every
-server whose list works (`ready` or `error`, never an unsupported one):
+server known to list them (`supported === true`; an older server is never asked for a
+route it lacks), every server and both lists at once:
 
 1. **Collect** (`collectPages`, pure apart from the injected fetch): the pages the
    Journal already loaded, then the rest a page of 500 at a time, until the list ends
    or `MAX_EXPORT_ROWS` (10,000 per list per server). A repeated cursor or a page with
    nothing new stops it. `preparing` counts the rows gathered for the header's caption.
 2. **Rows** (`exportRows`): newest first, each with its server, book, author, position,
-   the chapter from chapters **already cached** (`cachedChapterAt`: an export never
-   fetches chapters) and the label's name.
+   the chapter from chapters **already cached** (`cachedChapterAt`, one namer per book
+   for the run: an export never fetches chapters) and the label's name.
 3. **Format** (`export-format.ts`, pure; every word comes in translated as
    `ExportWords`): `toMarkdown` groups by book (books in order of their newest row,
    entries by position), each entry `**12:41:07** · Bookmark · Quote · chapter ·
@@ -144,7 +169,9 @@ server whose list works (`ready` or `error`, never an unsupported one):
    cache directory and opens the share sheet (`expo-sharing`, with the MIME type and
    UTI), falling back to sharing the text where files can't be shared;
    `export-save.web.ts` downloads a Blob through a temporary link. On the web, **Copy
-   as Markdown** goes through `copyText` and toasts only on a real copy.
+   as Markdown** goes through `copyText` and toasts only on a real copy. The "Gathering"
+caption ends once the rows are in, before the share sheet comes up; a second export
+waits until the first is over.
 
 `ExportActions` / `exportChoices`: the web gets Copy as Markdown plus a Download menu
 (Markdown, CSV); native gets one Export menu (Share as Markdown, Share as CSV); a

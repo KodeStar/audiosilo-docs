@@ -9,7 +9,7 @@ Streaming needs your server; downloads don't. Download a book before a flight, a
 
 The download button lives on the [book's page](book-page.md#listening-and-the-buttons), beside **Resume**: **Download for offline** (just **Download** on a phone). You can also use **Download for offline** in any book's [menu](browsing.md#the-book-menu).
 
-While a download runs, the button shows how far it has got (*"52% · Cancel"*; tap it to cancel), with the progress underneath (*"Downloading 42% · 210 MB / 500 MB"*). When it's done, the button reads **Downloaded** and the cover is saved too. Tap **Downloaded** to see how much room the book takes on this device and to **Remove download**, which asks first and says how much space it frees.
+While a download runs, the button shows how far it has got (*"52% · Cancel"*, or just **Cancel** on a phone; tap it to cancel), with the progress underneath (*"Downloading 42% · 210 MB / 500 MB"*). When it's done, the button reads **Downloaded** and the cover is saved too. Tap **Downloaded** to see how much room the book takes on this device and to **Remove download**, which asks first and says how much space it frees.
 
 If a download stops (the connection dropped, the phone slept at the wrong moment), the button becomes **Retry download** - see [When a download stops](#when-a-download-stops).
 

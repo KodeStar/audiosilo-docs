@@ -5,25 +5,35 @@ description: "The shared annotation modules (src/components/annotations/): the r
 
 `src/components/annotations/` holds everything a bookmark or a note looks like and
 does, shared by the book page's tabs, the player's companion and the
-[Journal](journal.md). The pure modules (`labels`, `drift-marker`, `editor-model`,
-`order`) have no React; the rest are components and hooks. `index.ts` is the public
-surface. The user-facing page is [Bookmarks and notes](/users/listening/bookmarks-and-notes).
+[Journal](journal.md). The pure modules (`labels`, `drift-marker`, `editor-model`)
+have no React; the rest are components and hooks. `index.ts` exports only what outside
+callers use (`AnnotationSection`, `BookmarkRow`, `NoteRow`, `RowCover`, `ServerFlag`,
+`isDriftBookmark`, `labelText`, `useJumpTo`, `chapterNamer`, `useChapterNamer`). The user-facing page is [Bookmarks and notes](/users/listening/bookmarks-and-notes).
 
 ## Module map
 
 | File | What it is |
 |---|---|
-| `editor-model.ts` | Pure: `AnnotationTarget`, `EditorRequest` (+ `editBookmarkRequest`, `editNoteRequest`), `initialBookmarkDraft`, `bookmarkSave`, `noteSave`, `BOOKMARK_NOTE_MAX` (2000), `NOTE_BODY_MAX` (10000) |
-| `annotation-editor.tsx` | `AnnotationEditorSheet` (the `PlayerSheet` the host renders) and `AnnotationEditor` (the bookmark or note form) |
+| `editor-model.ts` | Pure: `initialBookmarkDraft`, `bookmarkSave`, `noteSave`, `BOOKMARK_NOTE_MAX` (2000), `NOTE_BODY_MAX` (10000) |
+| `annotation-editor.tsx` | `AnnotationEditorSheet` (the `PlayerSheet` the host renders) and `AnnotationEditor`: the bookmark and note forms in one `EditorFrame`, saved through one `runPlan` |
 | `labels.ts` | Pure: `labelText` (a key's name through `t()`), `toggleLabel` |
 | `drift-marker.ts` | Pure: `isDriftBookmark`, `isFellAsleepNote`, `shownNote` |
-| `order.ts` | Pure: `byPosition` (book order, ties by id) |
 | `chips.tsx` | `TimeChip` (the jump), `LabelChip` (the kicker, a moon for a drift marker), `LabelPicker` (single-select chips) |
-| `row-parts.tsx` | `AnnotationRowFrame`, `RowAction` (44 pt touch on native), `RowCover`, `RowMeta` |
-| `bookmark-row.tsx`, `note-row.tsx` | `BookmarkRow`, `NoteRow` (+ `NoteMarkdown`) |
+| `annotation-row.tsx` | `AnnotationRow`: the one row of a bookmark or a note (`kind`), its chip or cover, meta line, Edit and Delete |
+| `bookmark-row.tsx`, `note-row.tsx` | `BookmarkRow`, `NoteRow`: `AnnotationRow` with the label kicker and the note, or the markdown body |
+| `row-parts.tsx` | `AnnotationRowFrame`, `RowAction`, `RowCover`, `ServerFlag`, `RowMeta` |
+| `annotation-section.tsx` | `AnnotationSection`: one book's bookmarks or notes (`kind`), the add action, the journal link and the states |
 | `section-actions.tsx` | `AddBookmarkAction`, `AddNoteAction`, `JournalLink` |
-| `use-annotation-actions.ts` | `useJumpTo`, `restoreBookmark`, `restoreNote`, `useDeleteBookmarkWithUndo`, `useDeleteNoteWithUndo` |
+| `use-annotation-actions.ts` | `useJumpTo`, `useDeleteWithUndo` |
 | `use-book-place.ts` | `chapterNamer` / `useChapterNamer`, `usePlaceIn` |
+
+Outside the folder: the editor's request types (`AnnotationTarget`, `EditorRequest`,
+`editBookmarkRequest`, `editNoteRequest`, `AnnotationKind`) live in
+`src/lib/annotation-request.ts`, so the player's sheet store and these components can
+both use them without importing each other; `byPosition` (book order, ties by id) is
+`src/lib/by-position.ts`; the touch targets are `src/components/ui/touch-target.ts`
+(`touchTarget`, `slopTo44`); `BookmarksSection` and `NotesSection`
+(`src/components/library/`) are `AnnotationSection` with its `kind`.
 
 The label keys themselves live in `src/api/bookmark-labels.ts`
 (`PICKABLE_BOOKMARK_LABELS`, `FELL_ASLEEP_LABEL`, `isBookmarkLabel`), so the sleep
@@ -58,14 +68,19 @@ Callers open one with `usePlayerSheets.getState().openEditor(request)` (see
 `PlayerSheetHost` renders `AnnotationEditorSheet`, a bottom sheet on a phone, a
 floating sheet on a tablet and a dialog on a desktop. The form is keyed per request
 (`requestKey`), so a new request starts a fresh draft. Without a client for the
-target's connection it shows the companion's "server isn't connected" state.
+target's connection it shows the companion's "server isn't connected" state. On iOS the
+sheet (and a phone dialog) lifts itself above the software keyboard
+(`useKeyboardAvoidance`, `src/lib/keyboard-lift.ts`: iOS lays the keyboard over the
+window, and a `KeyboardAvoidingView` inside an overlay in a portal measures nothing
+useful), capping its height so the title stays on screen and the body scrolls; Android
+resizes the window itself, so it gets no lift.
 
 **What Save sends** is decided by the pure planners, given the connection's
 `annotations` flag:
 
 | Planner | Result | When |
 |---|---|---|
-| `bookmarkSave` | `add` (`useAddBookmark`) | a new bookmark, on every server: `{ position, note }`, plus `label` only when `annotations === true` and it's a known label |
+| `bookmarkSave` | `add` (`useAddBookmark`) | a new bookmark, on every server: `{ position, note }` and the label picked (only a known one); `useAddBookmark` alone decides whether the label reaches the server (only one with `annotations`) |
 | | `update` (`useUpdateBookmark`) | an edit on an `annotations` server, sending only what changed: the trimmed `note`, and `label` (`''` clears it) |
 | | `unchanged` / `unsupported` | an edit that changes nothing (just close) / an edit without `annotations` (toast `annotations.editUnsupported`) |
 | `noteSave` | `add` (`useAddNote`) | a new note at the request's position, on every server (the API always took one) |
@@ -75,7 +90,10 @@ target's connection it shows the companion's "server isn't connected" state.
 The inputs enforce the server's bounds with `maxLength`: a bookmark's note at most
 `BOOKMARK_NOTE_MAX` (2000) characters, a note's body at most `NOTE_BODY_MAX` (10000).
 Without `annotations` the label picker is hidden, an edit's fields are read-only and
-its Save is disabled. Edits go through `useCapabilityMutation`, so a server whose flag
+its Save is disabled (`EditorFrame`, with the "needs a newer server" caption). `runPlan`
+carries a plan out for both editors: add or update (close, then toast), close on
+`unchanged`, nothing on `empty`, and the unsupported message for an edit the server
+can't take (also when the update rejects with `CapabilityError`). Edits go through `useCapabilityMutation`, so a server whose flag
 is false (or not yet known) gets nothing and the hook rejects with `CapabilityError`
 (see [Capability-gated writes](state-and-data.md#the-listeners-own-state-player-redesign-phase-1b)).
 An edit writes its answer into the book's list (`storeAnswer`) and patches the
@@ -88,8 +106,10 @@ across-books pages in place before refreshing them.
   and toasts with an **Add note** action (only with `annotations`, read with
   `cachedCapability`) that opens the editor on the new bookmark.
 - **`AddBookmarkAction`** ("Bookmark 17:26:50", the top of a Bookmarks tab): one tap
-  through `addBookmarkHere` while its book is the loaded one; for any other book it
-  opens the editor at `usePlaceIn(target)` so the listener sees where it lands first.
+  through `addBookmarkHere` once its book is the loaded one and the engine has placed
+  it (`selectPlacedBookKey`, as its label reads it); otherwise (another book, or the
+  loaded one still being placed) it opens the editor at `usePlaceIn(target)`, so the
+  listener sees where it lands first.
 - **`AddNoteAction`** ("Note at 17:26:50"): always opens the note editor at
   `usePlaceIn(target)`: the live place once the engine has placed the loaded book
   (`selectPlacedBookKey`), else the saved place, else 0. It re-renders every second
@@ -97,38 +117,43 @@ across-books pages in place before refreshing them.
 
 ## Rows
 
-`BookmarkRow` and `NoteRow` are self-contained: each acts on its own book through
-its `connectionId`, so the same row works on a book's page, in the companion and in
-the Journal's list across servers. Both use `AnnotationRowFrame` (a hairline above
-every row but the first):
+`AnnotationRow` is the one row, for a bookmark or a note (`kind`; `BookmarkRow` and
+`NoteRow` fill in the body). It is self-contained: it acts on its own book through its
+`connectionId`, so the same row works on a book's page, in the companion and in the
+Journal's list across servers. It uses `AnnotationRowFrame` (a hairline above every row
+but the first):
 
-- **Lead:** the `TimeChip` (a note's in the `community` tone), or, when `book` is
-  passed (a list across books), the book's cover opening its page on that tab, with
-  the chip moved into the body.
-- **Body:** the label kicker, the note (a Quote in quotation marks and italics; a
-  drift marker per `shownNote`) or the note's markdown (`NoteMarkdown`, one
+- **Lead:** the `TimeChip` (a note's in the `note` tone), or, when `book` is passed (a
+  list across books), the book's cover (`RowCover`) opening its page on that tab, with
+  the chip moved into the body beside the kicker.
+- **Body:** the kicker (a bookmark's `LabelChip`), the note (a Quote in quotation marks
+  and italics; a drift marker per `shownNote`) or the note's markdown (one
   `useMarkdown` per note), then `RowMeta`: the title (across books), the chapter
-  (`useChapterNamer`) and the age, and the server's name when a list spans servers.
+  (`useChapterNamer`) and the age, and the server's name (`ServerFlag`) when a list
+  spans servers.
 - **Actions:** Edit (`pen`, only with `annotations`) and Delete (`trash`), both quiet
-  muted glyphs: delete offers Undo rather than a confirmation, so a list never turns
-  into a column of red.
+  muted glyphs reaching 44 pt (`touchTarget`: a 44 pt frame on native, a hit slop on
+  the web): delete offers Undo rather than
+  a confirmation, so a list never turns into a column of red.
 
-**Jumping** (`useJumpTo`) goes through the player's own paths: the loaded book
-`seekBook`s (a deliberate seek, so the undo chip follows); another book on a phone
-pushes `/player` at the position, unless the player is already on top (read at the
-press with `topRootRoute`); otherwise `startBookInPlace`. The companion passes its
-own `onJump`, which seeks the playing book in place.
+**Jumping** (`useJumpTo`) goes through the app's one play path, `usePlayBook` with
+`{ at: { position } }` (see [The book page](book-page.md#the-primary-action-and-the-action-row)):
+a phone opens the full player there unless it is already on top, **also for the book
+that is playing**; a tablet or desktop jumps the loaded book there (`seekBook`, so the
+undo chip offers the way back) and plays on, or starts another book in place. The
+companion passes its own `onJump`, which seeks the playing book in place.
 
-**Deleting** is immediate (`useDeleteBookmarkWithUndo` / `useDeleteNoteWithUndo`),
-so other devices and the pins agree at once and nothing waits on a timer an app
-suspend could stop. The toast's Undo re-creates the row (`restoreBookmark`,
-`restoreNote`): the same place, note or body and label, on the same book through its
-own connection; the server gives it a new id and date.
+**Deleting** is immediate (`useDeleteWithUndo(kind, ...)`), so other devices and the
+pins agree at once and nothing waits on a timer an app suspend could stop. The toast's
+Undo re-creates the row (the same place, note or body and label, on the same book
+through its own connection, through `addBookmark` / `addNote`); the server gives it a
+new id and date.
 
 **Chapters** (`chapterNamer`): the book's chapters at offsets recomputed from the file
 durations (`chapterStartsOf`, as the book page does), named as the player names them;
-a book without chapters names nothing. `useChapterNamer` reads the cached
-`useChapters` on the target's own connection.
+a book without chapters names nothing. The placed chapter list is computed once per
+chapter list (a `WeakMap`), so every row of one book shares it. `useChapterNamer` reads
+the cached `useChapters` on the target's own connection.
 
 ## The Fell asleep marker
 

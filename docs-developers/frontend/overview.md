@@ -191,7 +191,7 @@ still jumps to the Search tab instead.
   the same `useSearch` call with `refetchProgress: false`; the characters not
   met yet are a `GroupNote` row that is not an option, so the arrow keys skip
   it), then **Go to** (`TOP_BAR_TABS`, already filtered to what this browser
-  can do, then the Journal: `buildGoToItems`). Empty groups are dropped. A series opens `openSeries` with its
+  can do, then the Journal, `openJournal`). Empty groups are dropped. A series opens `openSeries` with its
   local name, a person their page, a character the book it is from. The module also owns the arrow-key clamp (`moveSelection`, no
   wrap), the recent list (`addRecent`), the shortcut test (`isPaletteShortcut`)
   and the key hint (`shortcutHint`: ⌘K on Apple platforms, Ctrl K elsewhere).
@@ -297,7 +297,7 @@ button (the user's initial, plus the name on desktop) and a `DropdownMenu`: ever
 connected server with its state - the pure `serverStatus()`
 (`src/api/reachability.ts`), where "needs signing in again" (the reconnect flag)
 wins over "offline", else "Signed in as &lt;user&gt;" - each opening that server's account screen; **Add a server**
-(`/connect?add=1`); **Journal** (`journalHref()`, until the You destination of a
+(`/connect?add=1`); **Journal** (`journalHref()` in `src/lib/paths.ts`, until the You destination of a
 later phase); **Account on &lt;default server&gt;**; and a light/dark
 appearance switch (`useTheme().toggleScheme()`, which the palette's action uses
 too). A phone keeps all of this in the Me tab. The same `serverStatus()` drives
@@ -447,11 +447,15 @@ in `src/components/library/`:
 | `FilterChip` / `ChipRow` (`src/components/ui/filter-chip.tsx`) | The filter chips. |
 | `useQueueActions` / `QueueButton` | "Queue it" for one connection's server: `isQueued`, `queue(lib, path, position?)` and `unqueue` with Undo toasts; hidden until `queue` is known to be on; a `CapabilityError` is swallowed, a `409` says the queue is full. `QueueButton` ("Queue it" / "Queued") is the series page's action for an unread owned book. |
 
-Every browse surface (Home, the Library, the series page, Up next) starts a book
-through **`usePlayBook`** (`src/components/player/use-play-book.ts`): a phone opens
-the full player, a tablet or desktop plays in place under the docked bar once the
-chapters are in, through the book's own connection; a book already loaded just
-plays on. It rejects when the book couldn't be fetched, so the caller can say so.
+Every surface outside the player (Home, the Library, the series page, Up next, the
+book page, the bookmark, note and history rows, the Journal) starts a book, or jumps
+into one, through **`usePlayBook`** (`src/components/player/use-play-book.ts`), routed
+by the pure `playRoute` (`play-route.ts`): a phone opens the full player (at the
+place, `at`, when there is one, also for the loaded book), unless it is already on
+top; a tablet or desktop plays in place under the docked bar once the chapters are
+in, through the book's own connection; a book already loaded plays on (from `at`), or
+pauses and plays with `toggle`. It rejects when the book couldn't be fetched, so the
+caller can say so.
 
 `src/components/series/` holds the series and person pages: `series-model.ts`
 (entries, gaps, reading orders, progress track, the one action per entry),

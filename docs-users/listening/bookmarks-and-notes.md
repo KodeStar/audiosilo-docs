@@ -22,7 +22,7 @@ The editor shows where the bookmark is (the time, and the chapter it's in), then
 - **Note** - what happened here, in your own words (up to 2,000 characters).
 - **Label** - one of **Quote**, **Favourite**, **Re-listen**, **Funny** or **Question**, so you can find that kind of moment again later. Tap a label to choose it, and tap it again to clear it.
 
-**Bookmark 17:26:50** makes a new one; **Save bookmark** saves your changes to one you already have. On a phone the editor slides up from the bottom; on a computer it opens as a small window.
+**Bookmark 17:26:50** makes a new one; **Save bookmark** saves your changes to one you already have. On a phone the editor slides up from the bottom, and on an iPhone or iPad it rises with the keyboard so what you type stays in view; on a computer it opens as a small window.
 
 ## Notes
 
@@ -39,7 +39,7 @@ Each book's **Bookmarks** and **Notes** tabs list them in book order. Each one s
 - **Edit** (the pencil) opens the editor again. A note keeps its place when you edit it.
 - **Delete** (the bin) removes it straight away, with **Undo** in the note that follows. Undo puts it back where it was, with the same note and label (it counts as made just now).
 
-A jump to a bookmark or note in the book you're playing can be [undone](full-player.md#undo-a-jump) like any other. For another book, a phone opens the player at that point; a tablet or computer starts it there under the player bar.
+On a phone, tapping a time opens the full player at that point, whether or not it's the book you're playing. On a tablet or computer the book you're playing jumps there and keeps playing, and another book starts there under the player bar. In the player's own [companion](companion.md), the book you're playing jumps there in place. A jump in the book you're playing can be [undone](full-player.md#undo-a-jump) like any other.
 
 **See all in your journal** opens the [Journal](journal.md), which gathers every bookmark and note from every book (and every server), with a filter by label and a search.
 
