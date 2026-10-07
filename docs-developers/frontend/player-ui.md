@@ -96,10 +96,8 @@ the next book never opens it by itself (`dropsWithBook`).
 book, so `shownSheet` shows it whether or not a book is loaded, and `dropsWithBook`
 keeps it when the playing book unloads (closing it would throw away what the listener
 is typing). `openSheet` clears `editor`; the store keeps it after `close()`, so the
-sheet slides away with its content. The one-tap bookmark (`addBookmarkHere` in `player-shortcuts.ts`, behind the
-action pills, the docked bar and the **B** key) toasts *"Bookmark added"* with an
-**Add note** action that opens the editor on the new bookmark, only when the server
-has `annotations` (`cachedCapability`).
+sheet slides away with its content. The `bookmark` action is the one-tap bookmark
+([Adding](annotations.md#adding)).
 
 `PlayerSheetHost` (`player-sheet-host.tsx`) renders it and decides the **form** from
 its layout - the full player's measured one, the window's in the shell: chapters

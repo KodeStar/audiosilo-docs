@@ -1,20 +1,19 @@
 ---
 title: Bookmarks and notes
-description: "The shared annotation modules (src/components/annotations/): the rows, the label chips, the editor requests and what Save sends, the server bounds, the Fell asleep marker, jumping, delete with Undo, and the annotations capability gates."
+description: "The shared annotation modules (src/components/annotations/): the rows, the label chips, the editor requests and what Save sends, the Fell asleep marker, jumping, delete with Undo, and the annotations capability gates."
 ---
 
 `src/components/annotations/` holds everything a bookmark or a note looks like and
 does, shared by the book page's tabs, the player's companion and the
 [Journal](journal.md). The pure modules (`labels`, `drift-marker`, `editor-model`)
 have no React; the rest are components and hooks. `index.ts` exports only what outside
-callers use (`AnnotationSection`, `BookmarkRow`, `NoteRow`, `RowCover`, `ServerFlag`,
-`isDriftBookmark`, `labelText`, `useJumpTo`, `chapterNamer`, `useChapterNamer`). The user-facing page is [Bookmarks and notes](/users/listening/bookmarks-and-notes).
+callers use. The user-facing page is [Bookmarks and notes](/users/listening/bookmarks-and-notes).
 
 ## Module map
 
 | File | What it is |
 |---|---|
-| `editor-model.ts` | Pure: `initialBookmarkDraft`, `bookmarkSave`, `noteSave`, `BOOKMARK_NOTE_MAX` (2000), `NOTE_BODY_MAX` (10000) |
+| `editor-model.ts` | Pure: `initialBookmarkDraft`, `bookmarkSave`, `noteSave`, `BOOKMARK_NOTE_MAX`, `NOTE_BODY_MAX` (the [server's bounds](../server/api/reference.md#get-apiv1librariesidbookmarks--post-apiv1librariesidbookmarks), which the inputs enforce with `maxLength`) |
 | `annotation-editor.tsx` | `AnnotationEditorSheet` (the `PlayerSheet` the host renders) and `AnnotationEditor`: the bookmark and note forms in one `EditorFrame`, saved through one `runPlan` |
 | `labels.ts` | Pure: `labelText` (a key's name through `t()`), `toggleLabel` |
 | `drift-marker.ts` | Pure: `isDriftBookmark`, `isFellAsleepNote`, `shownNote` |
@@ -43,8 +42,9 @@ timer can import them without the UI.
 
 A label is a **machine key** on the wire, never display text: `quote`, `favourite`,
 `relisten`, `funny`, `question` (the five a listener picks, in picker order) and
-`fell_asleep` (the sleep timer's, never offered). The server checks only the shape
-(`^[a-z][a-z0-9_]{0,31}$` or `''`), so a newer client may store a key this player
+`fell_asleep` (the sleep timer's, never offered). The server checks only the
+[shape](../server/api/reference.md#get-apiv1librariesidbookmarks--post-apiv1librariesidbookmarks),
+so a newer client may store a key this player
 doesn't know: `isBookmarkLabel` guards every read, `labelText` names a known key and
 returns null for anything else (no chip), and an unknown key in an edit draft is kept
 as it is so an untouched label is never sent back. `toggleLabel(current, picked)`
@@ -87,24 +87,18 @@ resizes the window itself, so it gets no lift.
 | | `update` (`useUpdateNote`) | an edit on an `annotations` server: the body only, so the note keeps its place |
 | | `empty` / `unchanged` / `unsupported` | nothing written (Save is disabled; Delete removes a note) / same body / no `annotations` |
 
-The inputs enforce the server's bounds with `maxLength`: a bookmark's note at most
-`BOOKMARK_NOTE_MAX` (2000) characters, a note's body at most `NOTE_BODY_MAX` (10000).
-Without `annotations` the label picker is hidden, an edit's fields are read-only and
-its Save is disabled (`EditorFrame`, with the "needs a newer server" caption). `runPlan`
-carries a plan out for both editors: add or update (close, then toast), close on
-`unchanged`, nothing on `empty`, and the unsupported message for an edit the server
-can't take (also when the update rejects with `CapabilityError`). Edits go through `useCapabilityMutation`, so a server whose flag
-is false (or not yet known) gets nothing and the hook rejects with `CapabilityError`
-(see [Capability-gated writes](state-and-data.md#the-listeners-own-state-player-redesign-phase-1b)).
-An edit writes its answer into the book's list (`storeAnswer`) and patches the
-across-books pages in place before refreshing them.
+Without `annotations` the label picker is hidden and an edit is read-only, its Save
+disabled (`EditorFrame`). `runPlan` carries out the table for both editors, and an
+update rejected with `CapabilityError`
+([gated writes](state-and-data.md#the-listeners-own-state-player-redesign-phase-1b))
+counts as unsupported.
 
 ## Adding
 
 - **One tap** (`addBookmarkHere`, `src/components/player/player-shortcuts.ts`): the
   player's bookmark pill, the docked bar and the **B** key. It adds at the live place
-  and toasts with an **Add note** action (only with `annotations`, read with
-  `cachedCapability`) that opens the editor on the new bookmark.
+  and toasts *"Bookmark added"* with an **Add note** action (only with `annotations`,
+  read with `cachedCapability`) that opens the editor on the new bookmark.
 - **`AddBookmarkAction`** ("Bookmark 17:26:50", the top of a Bookmarks tab): one tap
   through `addBookmarkHere` once its book is the loaded one and the engine has placed
   it (`selectPlacedBookKey`, as its label reads it); otherwise (another book, or the
@@ -136,12 +130,10 @@ but the first):
   the web): delete offers Undo rather than
   a confirmation, so a list never turns into a column of red.
 
-**Jumping** (`useJumpTo`) goes through the app's one play path, `usePlayBook` with
-`{ at: { position } }` (see [The book page](book-page.md#the-primary-action-and-the-action-row)):
-a phone opens the full player there unless it is already on top, **also for the book
-that is playing**; a tablet or desktop jumps the loaded book there (`seekBook`, so the
-undo chip offers the way back) and plays on, or starts another book in place. The
-companion passes its own `onJump`, which seeks the playing book in place.
+**Jumping** (`useJumpTo`) passes `{ at: { position } }` to the app's one play path,
+`usePlayBook` ([where it goes](book-page.md#the-primary-action-and-the-action-row));
+on a phone that opens the full player even for the playing book. The companion passes
+its own `onJump`, which seeks the playing book in place.
 
 **Deleting** is immediate (`useDeleteWithUndo(kind, ...)`), so other devices and the
 pins agree at once and nothing waits on a timer an app suspend could stop. The toast's
@@ -162,8 +154,8 @@ The sleep timer's bookmark (`drift-controller.ts`; see
 on an `annotations` server; on an older one it can only be told by its note, which
 was translated when it was made and stored as text. `isDriftBookmark` therefore
 accepts the label, or no label at all with the automatic note in **any** of the six
-languages (`isFellAsleepNote`, built from every locale's
-`player.sleepTimer.fellAsleepNote`). A bookmark with another label is the listener's
+languages (`isFellAsleepNote`, every supported locale's
+`player.sleepTimer.fellAsleepNote` from the i18n resources). A bookmark with another label is the listener's
 own, whatever its note says. `shownNote` hides the automatic note, so the row says
 "You drifted off around here" in today's language; a note the listener wrote on it
 shows instead. The Journal's Fell asleep filter and its Diary strips use the same
@@ -173,10 +165,10 @@ predicate.
 
 | Without `annotations` | With it |
 |---|---|
-| bookmarks and notes add (no label sent: an older server rejects the unknown field with a `400`) | labels sent and shown |
+| bookmarks and notes add, without a label ([why](state-and-data.md#bookmarks-notes-and-the-journal)) | labels sent and shown |
 | no Edit action; an edit's form is read-only | `PATCH /bookmarks/{id}`, `PATCH /notes/{id}` |
 | no Add note on the one-tap toast | Add note opens the editor |
 | no "See all in your journal" link; the Journal's lists say the server can't list them | `GET /me/bookmarks`, `GET /me/notes` |
 
-The wire side is in the [API reference](../server/api/reference.md) and
-[State & data](state-and-data.md#bookmarks-notes-and-the-journal-phase-4).
+The wire side is in the [API reference](../server/api/reference.md#patch-apiv1bookmarksid)
+and [State & data](state-and-data.md#bookmarks-notes-and-the-journal).

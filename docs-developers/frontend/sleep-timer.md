@@ -336,9 +336,8 @@ What happens after a sleep timer stopped a book nobody was awake for.
    position, through `resolveClient`, labelled `fell_asleep` (`FELL_ASLEEP_LABEL`)
    where the server has `annotations` (`addBookmark` drops the label elsewhere). Best
    effort: offline, signed out or refused, it simply isn't made, and it never throws
-   into the timer's ending path. Every surface recognises it by `isDriftBookmark`
-   (the label, or with no label the automatic note in any of the six languages; see
-   [Bookmarks and notes](annotations.md#the-fell-asleep-marker)).
+   into the timer's ending path. How the app tells it apart:
+   [The Fell asleep marker](annotations.md#the-fell-asleep-marker).
 2. **The record.** The last touch before the fire and the stop position are kept
    on the device (`drift.ts`, AsyncStorage key `audiosilo.driftOffs`, keyed by
    `contentKey(connectionId, libraryId, path)`, `DRIFT_TTL_MS` 36 h, at most 20

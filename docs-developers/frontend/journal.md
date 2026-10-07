@@ -40,23 +40,20 @@ once a day and when the app comes back to the foreground, and `useDayLabel`),
 
 ## Sources: one infinite query per server
 
-The three lists are infinite query options in `hooks.ts` (`myHistoryQuery`,
-`myBookmarksQuery`, `myNotesQuery`, keys `qk.myHistory(cid)`, `qk.myBookmarks(cid)`,
-`qk.myNotes(cid)`; pages of 100 on the server's opaque `next_cursor`, normalised by the
-client to `Page<T> = { items, next_cursor? }`, fresh for five minutes since this
-device's own writes refresh them). TanStack has `useQueries` but nothing for many
+The three lists are the infinite query options of
+[State & data](state-and-data.md#bookmarks-notes-and-the-journal) (`myHistoryQuery`,
+`myBookmarksQuery`, `myNotesQuery`). TanStack has `useQueries` but nothing for many
 infinite queries, so `useInfiniteQueries` (`src/lib/use-infinite-queries.ts`) gives each
 entry its own `InfiniteQueryObserver`, kept by query hash while the list of servers
 changes, read through `useSyncExternalStore`. `useJournalSources` runs it once per list
 over every signed-in server and turns each result into a `Source` (status, rows,
 `supported`, `hasNextPage`, `fetchNextPage`, `refetch`). A server's query never waits on
-another's, and a removed server's queries go with it. When nothing reads a list any
-more, `keepFirstPage` trims its cache to the first page, so the next visit doesn't
-refetch twenty pages one after another.
+another's, and a removed server's queries go with it; a released list is trimmed by
+`keepFirstPage`.
 
-- **History** has no gate: every server has `GET /me/history`. One without
-  `annotations` ignores the cursor, sends no `next_cursor` (so its answer is one page,
-  the newest `limit`) and no `book` per row; a session row then reads the item itself
+- **History** has no gate: every server has
+  [`GET /me/history`](../server/api/reference.md#get-apiv1mehistory). Without
+  `annotations` its rows carry no `book`, so a session row reads the item itself
   (`useBook`, cached per book).
 - **Bookmarks and notes** need `annotations`, read from each server's `/server`
   (`serverInfoQuery`): until it is known to be on, the query has no function at all
@@ -120,15 +117,13 @@ within 5 minutes (content) of its end position. The closest in time wins; each s
 gets at most one.
 
 `driftStrip(bookmark, records, now)` decides what the strip offers. When this device
-still holds the drift record for that book (`useDriftRecords`, the sleep timer's
-`audiosilo.driftOffs`, kept 36 h and spent the next time the book plays) and it is
-the same stop (within 60 s), `driftOffer` gives **Jump back N minutes** to the last
+still holds the sleep timer's [drift record](sleep-timer.md#fell-asleep-drift-controllerts)
+for that book (`useDriftRecords`, read once) and it is the same stop (within 60 s),
+`driftOffer` gives **Jump back N minutes** to the last
 touch; the press spends the record with `takeDrift` first, so the player doesn't ask
 again; the strip then forgets the records it was handed, so a second press offers the
 bookmark instead of rewinding the listener again. Otherwise the strip offers **Play
-from where you drifted off**, at the bookmark. Both jump through `useJumpTo`. See
-[Fell asleep](sleep-timer.md#fell-asleep-drift-controllerts) for how the record is
-made.
+from where you drifted off**, at the bookmark. Both jump through `useJumpTo`.
 
 ## Bookmarks and Notes
 
@@ -169,12 +164,13 @@ route it lacks), every server and both lists at once:
    cache directory and opens the share sheet (`expo-sharing`, with the MIME type and
    UTI), falling back to sharing the text where files can't be shared;
    `export-save.web.ts` downloads a Blob through a temporary link. On the web, **Copy
-   as Markdown** goes through `copyText` and toasts only on a real copy. The "Gathering"
-caption ends once the rows are in, before the share sheet comes up; a second export
-waits until the first is over.
+   as Markdown** goes through `copyText` and toasts only on a real copy.
 
 `ExportActions` / `exportChoices`: the web gets Copy as Markdown plus a Download menu
 (Markdown, CSV); native gets one Export menu (Share as Markdown, Share as CSV); a
-narrow header (under 520 px measured) folds everything into the one menu. The actions
+narrow header (under 520 px measured) folds everything into the one menu. While an
+export gathers, the trigger spins and a caption counts the rows; it ends once the rows
+are in, before the share sheet comes up, and a second export waits until the first is
+over. The actions
 are hidden when no server can list annotations and disabled until the lists are ready.
 A failed server is named in a toast and left out; a truncated list says so.

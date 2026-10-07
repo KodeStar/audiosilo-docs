@@ -118,10 +118,10 @@ URLs, so every URL below is the same as before the groups existed.
 | `/collection?connection=…&id=…` | `collection.tsx` (same group) → `src/components/library/collection-screen.tsx` | A collection (per server, not per library: its items can span libraries). Owner: Edit, Share, Delete, Move up / Move down / Remove in the list view; viewer (`owned: false`): Leave. A `404` reads as deleted or no longer shared. |
 | `/library/favourites` | `(app)/(home,library,search,offline,me)/library/favourites.tsx` → `src/components/library/collections/favourites-screen.tsx` | The hearted books (cover grid) and folders of every server. |
 | `/library/[libraryId]?connection=…&path=…` | `(app)/(home,library,search,offline,me)/library/[libraryId].tsx` | Library browse, root and nested folders alike - a two-line re-export of `src/components/library/browse-screen.tsx`. Content routes are **flat**: the connection id and the library-relative folder `path` ride as query params, never as nested route segments (an in-app `router.push` cannot resolve a route nested under a dynamic layout segment - it lands on the group's first child; rationale and helpers in `src/lib/paths.ts`). Each content screen scopes itself to its own `?connection=` with `<ContentScope>`, and the content hooks read that scope via `useScopedCid()`. |
-| `/book/[libraryId]?connection=…&path=…&tab=…` | `(app)/(home,library,search,offline,me)/book/[libraryId].tsx` → `src/components/book/book-page.tsx` | The book page: a cover-tinted hero (crumbs, eyebrow, title, byline, facts, the listener's place or the finished badge and stars), the action row (Resume chapter N / Start listening / Listen again / Pause, the download control, Up next, favourite, collection, the book menu), the tabs (Chapters/Parts/Files, Recaps, Characters, Bookmarks, History, Notes, Series, Details) and the aside (About, Other versions, Your listening), laid out by the page's **measured** width. An optional `tab` (`parseBookTab`) opens it on that tab when the tab exists (Home's Who's who and Story so far use `characters` / `recaps`, the Journal's rows `bookmarks` / `notes` / `history`). See [The book page](book-page.md). Same flat query-param addressing as the library routes. |
+| `/book/[libraryId]?connection=…&path=…&tab=…` | `(app)/(home,library,search,offline,me)/book/[libraryId].tsx` → `src/components/book/book-page.tsx` | The book page, opened on `tab` when that tab exists (`parseBookTab`): see [The book page](book-page.md). |
 | `/downloads` | `(app)/(offline)/downloads.tsx` → `src/components/downloads/downloads-screen.tsx` | The Downloads page: storage per server, the automatic-download rules (including keep-ahead), in-progress and failed downloads, and the books ready offline by server ([Offline](offline.md#the-downloads-page)). The group is `(offline)`, not `(downloads)`, on purpose - see [cold deep links](#the-shell-tabs-and-navigation). |
 | `/settings` | `(app)/(me)/settings.tsx` | The root of the **Me** tab (a fuller Me hub is a later redesign phase). A Journal row (`JournalEntryRow`) on top, then app-level preferences: playback tunables, the auto sleep timer's window and type, shake to extend and its sensitivity (native; the row says so on web), up-next/download behaviour, language, theme, plus the Servers list that opens each connection's account screen. |
-| `/journal?tab=diary\|bookmarks\|notes` | `(app)/(home,library,search,offline,me)/journal.tsx` → `src/components/journal/journal-screen.tsx` | The Journal: the Diary of listening sessions by day, and the listener's bookmarks and notes, on every signed-in server (`journalHref`, `parseJournalTab`; an unknown tab is the Diary). Reached from the Settings screen's Journal row, the profile menu, the palette's Go to and a book's Bookmarks / Notes tabs. See [The Journal](journal.md). |
+| `/journal?tab=diary\|bookmarks\|notes` | `(app)/(home,library,search,offline,me)/journal.tsx` → `src/components/journal/journal-screen.tsx` | The Journal, on every signed-in server: see [The Journal](journal.md). |
 | `/account?connection=…` | `(app)/(home,library,search,offline,me)/account.tsx` | Per-connection account screen, reached from the Settings screen's Servers list: set/change the self-service password (the sign-out guard nudges a password-less user here via `sign-out-confirm.tsx`), pairing another device, personal API keys (capability-gated, demo-hidden), and sign-out. |
 | `/player` | `src/app/player.tsx` | The full player ([Player UI](player-ui.md#the-full-player)), presented as a full-screen modal above the tabs on every form factor (opened from the mini player, the iOS accessory player, the docked player bar, or a phone's Listen button). Accepts `libraryId`/`path` (+ optional `position`/`track`) params and gates playback start on the chapters query settling. |
 | `/finished` | `src/app/finished.tsx` | The end-credits screen shown when a book finishes (or from the player's menu). A root modal sibling of the player; `connection`/`libraryId`/`path` params, plus `auto=1` when the book ended (or was marked finished) rather than being opened early. Renders `EndCredits`: the year shelf, listening stats, a rating, and the book `resolveUpNext` says plays next. See [The end of a book](end-of-book.md#ending-a-book). |
@@ -297,8 +297,7 @@ button (the user's initial, plus the name on desktop) and a `DropdownMenu`: ever
 connected server with its state - the pure `serverStatus()`
 (`src/api/reachability.ts`), where "needs signing in again" (the reconnect flag)
 wins over "offline", else "Signed in as &lt;user&gt;" - each opening that server's account screen; **Add a server**
-(`/connect?add=1`); **Journal** (`journalHref()` in `src/lib/paths.ts`, until the You destination of a
-later phase); **Account on &lt;default server&gt;**; and a light/dark
+(`/connect?add=1`); **Journal** (`journalHref()`); **Account on &lt;default server&gt;**; and a light/dark
 appearance switch (`useTheme().toggleScheme()`, which the palette's action uses
 too). A phone keeps all of this in the Me tab. The same `serverStatus()` drives
 the top bar's server line (the default server's name, or "Offline" / "Needs
@@ -449,13 +448,10 @@ in `src/components/library/`:
 
 Every surface outside the player (Home, the Library, the series page, Up next, the
 book page, the bookmark, note and history rows, the Journal) starts a book, or jumps
-into one, through **`usePlayBook`** (`src/components/player/use-play-book.ts`), routed
-by the pure `playRoute` (`play-route.ts`): a phone opens the full player (at the
-place, `at`, when there is one, also for the loaded book), unless it is already on
-top; a tablet or desktop plays in place under the docked bar once the chapters are
-in, through the book's own connection; a book already loaded plays on (from `at`), or
-pauses and plays with `toggle`. It rejects when the book couldn't be fetched, so the
-caller can say so.
+into one, through **`usePlayBook`** (`src/components/player/use-play-book.ts`): a
+browse surface passes the book (with `viaBookPage` from a list or Home), a play/pause
+button `toggle`, a jump `at`; where each goes is
+[the one play path](book-page.md#the-primary-action-and-the-action-row).
 
 `src/components/series/` holds the series and person pages: `series-model.ts`
 (entries, gaps, reading orders, progress track, the one action per entry),

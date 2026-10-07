@@ -30,8 +30,8 @@ title and body notice with an `info` / `success` / `warning` tone, also the Down
 page's), `useBookRating` (`src/components/player/use-book-rating.ts`, the hero's stars
 and the end credits'), and `usePlayBook` (the one play path, below).
 
-The tabs' list stays in `src/components/library/book-tabs.ts`, and the per-tab
-sections it hosts stay where they were: `BookmarksSection`, `NotesSection` and
+The tabs' list is `src/components/library/book-tabs.ts`, and the per-tab sections
+are `BookmarksSection`, `NotesSection` and
 `HistorySection` in `src/components/library/` (built from the shared rows in
 [`src/components/annotations/`](annotations.md)), and the community blocks in
 `book-meta.tsx`.
@@ -100,18 +100,20 @@ Both ways to play go through the app's one play path, `usePlayBook`
 It rejects when the book can't start, and the page toasts
 `library.bookActions.playFailed`.
 
-`HeroActions` lays the row out: the primary, then `DownloadControl` (an outline button
-per state: "Download for offline", "N% · Cancel" with a `ProgressRing`, **Downloaded**
-as a menu with the size and Remove download, Retry download), the Up next menu
-(capability `queue`: Play next adds at position 0 with an Undo that puts it back where
-it was; Add to the end / Remove from Up next through `useQueueActions`), favourite
-(ink, never pink), Add to collection (`collections`), and `BookActionsMenu` with
-`omit={['play', 'queue', 'collect', 'download']}` (left: Mark as finished / not
-finished, More in this series), which renders nothing when that leaves no item. When
-the hero is stacked (under 600 measured), the primary takes its own row, the rest stay
-on **one** row (the download control gets `short`: "Download", and just "Cancel" while
-it runs, its words ending in "..." rather than wrapping the row), and the menu opens as
-a sheet. The footer holds `DownloadProgress` and `TranscodeNote`.
+`HeroActions` lays the row out after the primary:
+
+| Control | Gate | Notes |
+|---|---|---|
+| `DownloadControl` | - | an outline button per state: Download for offline, "N% · Cancel" with a `ProgressRing`, **Downloaded** (a menu with the size and Remove download), Retry download; disabled where this device can't keep the book |
+| Up next menu | `queue` | Play next (at position 0, with an Undo that puts it back where it was); Add to the end / Remove from Up next (`useQueueActions`) |
+| Favourite | - | ink, never pink |
+| Add to collection | `collections` | the book menu's dialog |
+| `BookActionsMenu` | its items' own | `omit={['play', 'queue', 'collect', 'download']}` leaves Mark as finished / not finished and More in this series; renders nothing when that leaves no item |
+
+When the hero is stacked (under 600 measured), the primary takes its own row and the
+rest stay on **one** row: the download control gets `short` ("Download", just "Cancel"
+while it runs, its words ending in "..." rather than wrapping), and the menu opens as a
+sheet. The footer holds `DownloadProgress` and `TranscodeNote`.
 
 ## The tabs
 
@@ -188,7 +190,8 @@ few values (its state, and the bookmark glyph: a bookmark inside the book marks 
 
 ## The aside
 
-`BookAside` stacks three cards (a right-hand column from 900 px, else between the hero
+`BookAside` stacks three cards (a right-hand column from `BODY_COLUMNS_MIN`, see
+[Layout](#layout-by-the-measured-width), else between the hero
 and the tabs):
 
 - **About** - `BookAbout` (`book-about.tsx`), drawing the pure `aboutContent(book,

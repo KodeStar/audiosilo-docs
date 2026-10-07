@@ -56,10 +56,8 @@ themselves.
   start); when the web player uses it is
   [web transcode negotiation](playback.md#web-transcode-negotiation-transcodets).
 - **`history(libraryId, path, limit?)`** returns a book's listening spans, newest
-  first: the server's default 100, or up to `limit` from 1 to 500 (a `limit` of 0
-  or less is 100, and above 500 is 500 on a server with `annotations`, 100 on an
-  older one; the end credits ask for 500, the most it returns, to sum the time
-  listened).
+  first ([`limit`](../server/api/reference.md#get-apiv1librariesidhistory) as the
+  server takes it); the end credits ask for 500 to sum the time listened.
 - **`coverUrl(libraryId, path, opts?)`** takes `{ size, version }`: `size`
   (`CoverSize`, `160 | 320 | 640`) asks for a JPEG thumbnail whose **longer side**
   is at most that many pixels, and only when the server advertises `cover_sizes`
@@ -111,14 +109,9 @@ Patterns to copy when adding an endpoint:
 - Paged reads: `useBrowseInfinite` uses `useInfiniteQuery` against the server's
   `next_offset` cursor (500-entry pages); the browse screen drains all pages so
   the A–Z rail and filter operate on the complete folder. The across-books lists
-  are infinite query **options** rather than hooks (`myHistoryQuery`,
-  `myBookmarksQuery`, `myNotesQuery`), because the Journal reads every server's at
-  once (`useInfiniteQueries`, see [The Journal](journal.md#sources-one-infinite-query-per-server)):
-  pages of 100 on the server's opaque `next_cursor`, which the client normalises to
-  `Page<T> = { items, next_cursor? }` (`flattenPages` joins them), and
-  `keepFirstPage` trims a list nothing reads any more to its first page. The
-  community metadata reads are options too (`bookMetaQuery`, `metaWorkQuery`), shared
-  by `useBookMeta` / `useMetaWork`, the offline companion and Search.
+  are infinite query options, [below](#bookmarks-notes-and-the-journal). The
+  community metadata reads are query options too (`bookMetaQuery`, `metaWorkQuery`),
+  shared by `useBookMeta` / `useMetaWork`, the offline companion and Search.
 - Mutations invalidate their exact key on success (`useAddNote`,
   `useDeleteBookmark`, …; `addBookmark()` is the framework-free twin for callers
   outside React and invalidates `qk.bookmarks` and `qk.myBookmarks` after the
@@ -239,7 +232,7 @@ Cross-server screens ask per connection (`useCapabilitiesAll` /
 | `progress_edit` | the book menu's Mark as not finished, and Mark as finished with Undo (without it: `useMarkFinished`, no Undo) |
 | `user_stats` | Home's This week card, the Now card's finish date and the "&lt;narrator&gt; reads" shelf's top narrator (`useMyStats('30d')`, `useMyListening`, `useListeningGoal`) |
 | `ratings` | the end credits' and the book page's stars (`useBookRating`) |
-| `annotations` | bookmark labels in the editor and on the one-tap toast's Add note, Edit on bookmark and note rows, "See all in your journal", the Journal's Bookmarks and Notes lists and their export (see [below](#bookmarks-notes-and-the-journal-phase-4)) |
+| `annotations` | bookmark labels in the editor and on the one-tap toast's Add note, Edit on bookmark and note rows, "See all in your journal", the Journal's Bookmarks and Notes lists and their export (the full list: [Where the capability matters](annotations.md#where-the-capability-matters)) |
 
 Writes from screens follow the [1b write rules](#the-listeners-own-state-player-redesign-phase-1b)
 (positioned adds, exact-path removes): Up next's drag/keys and a collection's Move
@@ -328,33 +321,38 @@ connection-scoped like the rest (`qk.queue`, `qk.collections`, `qk.collection`,
 - **Streaks are computed on the device** from `useMyListening`'s `days` (server
   time).
 
-### Bookmarks, notes and the Journal (Phase 4)
+### Bookmarks, notes and the Journal
 
-Phase 4 mirrors the server's `annotations` capability. Like the 1b state, every
-hook takes an optional trailing `connectionId` and gates on the flag.
+The server's `annotations` capability, mirrored like the 1b state: every hook takes an
+optional trailing `connectionId` and gates on the flag.
 
-| Capability | Query hooks | Mutation hooks | Types |
+| Capability | Queries | Mutation hooks | Types |
 |---|---|---|---|
-| `annotations` | `myBookmarksQuery`, `myNotesQuery` (infinite query options; `skipToken` until the flag is known to be `true`) | `useUpdateBookmark`, `useUpdateNote` (`useCapabilityMutation`); `useAddBookmark` / `addBookmark` send a `label` only with the flag | `BookmarkLabel`, `BookmarkPatch`, `NotePatch`, `MyBookmark`, `MyNote`, `HistoryEntry`, `Page<T>`, `PageQuery`; `label?` on `Bookmark` |
+| `annotations` | `myBookmarksQuery`, `myNotesQuery` | `useUpdateBookmark`, `useUpdateNote` (`useCapabilityMutation`); `useAddBookmark` / `addBookmark` send a `label` only with the flag | `BookmarkLabel`, `BookmarkPatch`, `NotePatch`, `MyBookmark`, `MyNote`, `Page<T>`, `PageQuery`; `label?` on `Bookmark` |
 | none | `myHistoryQuery` (every server has `GET /me/history`) | - | `HistoryEntry` |
 
-- **Never send a label to an older server.** The server decodes strictly, so an
-  unknown `label` field is a `400`. `ApiClient.addBookmark` sends it only when given;
-  `useAddBookmark` and the framework-free `addBookmark` give it only when the flag is
-  `true` (`useCapability` / `cachedCapability`). `updateBookmark` and `updateNote`
-  send only the patch's own fields, so a spread `Bookmark` never reaches the wire.
-- **Bounds:** a bookmark's note is at most 2000 characters and a note's body at most
-  10000; the editors enforce both (`BOOKMARK_NOTE_MAX`, `NOTE_BODY_MAX`).
-- **Paging:** `limit` 1-500 (the server's default 100), `cursor` a previous page's
-  opaque `next_cursor`. A server without `annotations` answers `/me/history` with one
-  page (the newest `limit`), no `next_cursor` and no `book` per row.
+- **The lists across books are infinite query options**, not hooks, because the
+  Journal reads every server's at once
+  ([`useInfiniteQueries`](journal.md#sources-one-infinite-query-per-server)). Each is
+  `pagedList`: pages of 100 on the server's opaque `next_cursor`, which the client
+  normalises to `Page<T> = { items, next_cursor? }` (`flattenPages` joins them), fresh
+  for five minutes since this device's own writes refresh them; a gated one has no
+  query function (`skipToken`) until the flag is known to be `true`. `keepFirstPage`
+  trims a list nothing reads any more to its first page, so a later visit doesn't
+  refetch twenty pages one after another.
+- **A label goes only to a server with the flag.** Bodies are decoded strictly
+  ([Capability flags](../server/api/index.md#capability-flags---gate-your-features)):
+  `ApiClient.addBookmark` sends `label` only when given, and `useAddBookmark` and the
+  framework-free `addBookmark` give it only when the flag is `true` (`useCapability` /
+  `cachedCapability`). `updateBookmark` and `updateNote` send only the patch's own
+  fields, so a spread `Bookmark` never reaches the wire.
 - **Cache writes:** an edit stores its answer in the book's own list
   (`storeAnswer`) and patches the across-books pages in place (`replaceInPages`)
   before invalidating them; a delete removes the row from the pages
   (`removeFromPages`); an add invalidates the across-books key.
 
 The screens are [Bookmarks and notes](annotations.md) and [The Journal](journal.md);
-the wire format is in the [API reference](../server/api/reference.md).
+the wire format is in the [API reference](../server/api/reference.md#patch-apiv1bookmarksid).
 
 ### Enriched book metadata
 

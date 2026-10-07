@@ -252,13 +252,9 @@ with no network.
    or storage format change came with this.
 4. Surviving `downloaded` manifests **seed the React Query cache** (`qk.item(connectionId, …)`
    and `qk.chapters(connectionId, …)`), so the book screen renders instantly
-   offline. Seeds go through `seedQuery` (`offline-meta.ts`): never over an answer
-   the cache already holds (the server's, at least as full: the manifest's book can
-   be the list shape), dated with the manifest's `savedAt` so an online screen still
-   refetches once stale, and kept for good (`setQueryDefaults(key, { gcTime:
-   Infinity })`), so a book downloaded an hour before a flight still opens offline
-   long after launch. Then, once the launch's first screens are up, the kept community
-   metadata is restored ([the offline companion](#the-offline-companion-offline-metats)).
+   offline, through `seedQuery` ([its rules](#seeding)), dated with the manifest's
+   `savedAt`. Then the kept community metadata is restored
+   ([the offline companion](#the-offline-companion-offline-metats)).
 5. On web, `probe()` then runs and may downgrade `supported` - the UI hides
    downloads rather than offering ones that won't play offline.
 
@@ -293,9 +289,7 @@ connection's last `/server` answer is kept once, in one small document by connec
 id (`OFFLINE_SERVERS_KEY`, `audiosilo.offlineServers`): `saveServerSnapshot` after a
 book keeps its metadata (never over a newer one), `forgetServerSnapshot` when the
 connection's downloads are purged, and a storage reset wipes it with the rest of the
-scoped cache (`SCOPED_STORAGE_KEYS` in `stores/session.ts`). A payload written before
-the answer had its own key still carries one in its `server` field, which the launch
-restore moves over.
+scoped cache (`SCOPED_STORAGE_KEYS` in `stores/session.ts`).
 
 **Where it lives:** in its own `meta.json` beside the book's audio (`writeText`),
 never in the registry. The registry is one JSON document saved every couple of
@@ -305,43 +299,50 @@ store at a few MB. Beside the audio it is connection-scoped like the files, dele
 with them, and survives a relaunch. The manifest carries only a marker
 (`DownloadManifest.meta = { savedAt }`).
 
-**When:**
+**Keeping it** (`keepOfflineMeta(key)`):
 
-- `keepOfflineMeta(key)` runs after a download completes, apart from it (a failure
-  never fails or holds up the book), **once per download per launch** (`metaTried`,
-  keyed by the entry's `savedAt`, so a book removed and downloaded again tries
-  afresh; no retry storm against an unreachable server). `captureOfflineMeta` asks
-  nothing of a book that can't match (no ASIN or ISBN: `canMatch`, reading the
-  cached full item first, since the manifest's book can be the list shape) or a
-  server without `metadata`, reuses a fresh answer the screens already hold
-  (`fetchFailFast` with the screens' hour-long `staleTime`), never throws and never
-  retries. The reads are the screens' own option factories (`bookMetaQuery`,
-  `metaWorkQuery`), kept for good from then on. Many books saved in a row write the
-  registry once (`persistSoon`). If the download was removed or replaced while the file was written, the
-  marker isn't set; a removed book's file is deleted again (a new download of it
-  writes its own over it).
-- `restoreOfflineMeta` runs from hydrate once the launch's first screens are up (the
-  next idle moment, `requestIdleCallback`, else a moment later), reading the kept
-  files three at a time: it seeds every kept payload, then each such connection's
-  kept `/server` answer where the cache has none (after the books, so a gate it opens
-  finds their data), then, one book at a time
-  and only for servers with `metadata` (each server's flags read once), fills in
-  downloads that kept nothing (made before this existed, or a file gone or
-  unreadable) and refreshes copies older than a week (`KEPT_META_REFRESH_MS`), so
-  what a book carries offline follows the community's edits.
+- *When it runs:* after a download completes, apart from it (a failure never fails or
+  holds up the book), **once per download per launch** (`metaTried`, keyed by the
+  entry's `savedAt`, so a book removed and downloaded again tries afresh; no retry
+  storm against an unreachable server). Many books in a row write the registry once
+  (`persistSoon`). If the download was removed or replaced while the file was written,
+  the marker isn't set, and a removed book's file is deleted again.
+- *What `captureOfflineMeta` skips:* a book that can't match (no ASIN or ISBN:
+  `canMatch`, reading the cached full item first, since the manifest's book can be the
+  list shape) and a server without `metadata`. It reads through the screens' own
+  option factories (`bookMetaQuery`, `metaWorkQuery`), so a fresh answer they hold is
+  reused, never throws and never retries.
 
-**Seeding** (`seedOfflineMeta`, through `seedQuery`, so a fresh server answer always
-wins and the seeds outlive `gcTime`): `qk.bookMeta(cid, lib, path)` (the plain
-request every reader uses: the book page, `useBookCommunity` behind the companion,
-the reveal listener and Previously on, Home's Now card, the end credits, the series
-page's anchor and Search's character sources), the `include=previous` variant when
-the payload was fetched that way, and `qk.metaWork(cid, id)` for every kept work (the
-previous-books rows and the work series page). The `spoilers=hide` variant is never
-stored: it is cut at the saved place when fetched. `seedServerSnapshot` seeds
-`qk.server(cid)` (from `OFFLINE_SERVERS_KEY`) only where the cache has none, so the app holds the flags it held
-when it was last online until the server answers. A previous-book row with an answer
-in hand shows it even when its refetch fails (`book-meta.tsx`), which is what a kept
-work looks like offline.
+**Restoring it** (`restoreOfflineMeta`, from hydrate):
+
+1. Waits until the launch's first screens are up (the next idle moment,
+   `requestIdleCallback`, else a moment later).
+2. Reads the kept files, three at a time, and seeds every payload.
+3. Seeds each such connection's kept `/server` answer where the cache has none (after
+   the books, so a gate it opens finds their data).
+4. One book at a time, only for servers with `metadata` (each server's flags read
+   once): fills in downloads that kept nothing or whose file can't be read, and
+   refreshes copies older than a week (`KEPT_META_REFRESH_MS`), so what a book carries
+   offline follows the community's edits.
+
+### Seeding
+
+Every seed of a downloaded book goes through `seedQuery`: never over an answer the
+cache already holds (the server's, so a fresh one always wins, and at least as full:
+the manifest's book can be the list shape), dated so an online screen still refetches
+once stale, and kept for good (`setQueryDefaults(key, { gcTime: Infinity })`), so a
+book downloaded an hour before a flight still opens offline long after launch.
+
+`seedOfflineMeta` seeds `qk.bookMeta(cid, lib, path)` (the plain request every reader
+uses: the book page, `useBookCommunity` behind the companion, the reveal listener and
+Previously on, Home's Now card, the end credits, the series page's anchor and
+Search's character sources), the `include=previous` variant when the payload was
+fetched that way, and `qk.metaWork(cid, id)` for every kept work (the previous-books
+rows and the work series page). The `spoilers=hide` variant is never stored: it is cut
+at the saved place when fetched. `seedServerSnapshot` seeds `qk.server(cid)` only where
+the cache has none, so the app holds the flags it held when it was last online until
+the server answers. A previous-book row with an answer in hand shows it even when its
+refetch fails (`book-meta.tsx`), which is what a kept work looks like offline.
 
 ## Keep the next books ready (`keep-ahead.ts` + `keep-ahead-controller.ts`)
 
