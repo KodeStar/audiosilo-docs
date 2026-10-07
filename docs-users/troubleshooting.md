@@ -145,21 +145,22 @@ your admin.
 
 ### A book plays in the app but won't play in the browser
 
-Web browsers can only decode certain audio codecs: AAC (the usual codec in
-`.m4b`/`.m4a`), MP3, FLAC, Opus, and Vorbis all work. Files encoded with
-something a browser can't decode - Apple Lossless (ALAC) is the common
-example - stream fine to the iOS and Android apps but fail in the web
-player.
+Some audio formats (Apple Lossless, AC-3...) don't play in browsers, so the
+web player has the server [convert them as you listen](./listening/playback.md#books-a-browser-cant-play-directly).
+If such a book still won't play in the browser:
 
-The server can convert such files to MP3 on the fly (it needs ffmpeg for
-this), but the web player **doesn't yet request that automatically** - it's a
-planned improvement. Until then, your options are:
-
-- **Listen in the mobile app** ([Mobile apps](./listening/mobile-apps.md)) -
-  the native players handle more formats than browsers do.
-- **Convert the file** to `.m4b` (AAC) or `.mp3` once, and let the server
-  rescan. Your listening progress survives the swap as long as the file keeps
-  its path.
+- **Ask your admin to check transcoding.** The admin console's
+  [Server > Transcoding](./admin/server.md#transcoding) shows whether ffmpeg
+  was found; the conversion needs it.
+- **Ask your admin to rescan the book** once ffprobe is available. The server
+  only converts books it knows a browser can't play, which it learns with
+  ffprobe while scanning (the book's page in the admin console then says
+  "Transcodes to MP3 for browsers").
+- **Listen in the [mobile app](./listening/mobile-apps.md)**, which plays these
+  formats as they are where the device can decode them (an Android phone may
+  not), or **convert the file** to `.m4b` (AAC) or `.mp3` once
+  and let the server rescan (your progress survives as long as the path stays
+  the same).
 
 ### Playback stops with an error mid-book
 

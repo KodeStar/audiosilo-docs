@@ -40,6 +40,9 @@ const sidebars: SidebarsConfig = {
       items: [
         'frontend/overview',
         'frontend/playback',
+        'frontend/end-of-book',
+        'frontend/sleep-timer',
+        'frontend/player-ui',
         'frontend/offline',
         'frontend/state-and-data',
         'frontend/i18n',

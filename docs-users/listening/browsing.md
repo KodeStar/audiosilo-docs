@@ -38,7 +38,7 @@ From left to right:
 
 Under the top bar, a slim row shows the title of the page you're on, or a **Back** button once you've opened something, such as a book. On the Library page that row also carries the Library's sections and its controls (see [The Library](#the-library)). While a book is playing, the [player bar](playback.md#the-mini-player-and-the-player-bar) runs along the bottom of the window.
 
-If you get around the web player with a keyboard, **Tab** moves between controls and **Space** presses the one you're on - buttons, tabs, option choices and switches alike.
+If you get around the web player with a keyboard, **Tab** moves between controls and **Space** presses the one you're on - buttons, tabs, option choices and switches alike. The player itself has [keyboard shortcuts](keyboard-shortcuts.md) too (press **?** to list them).
 
 :::note
 The **Downloads** tab only appears where downloading is possible. In the web player that means a secure (`https://`) address - see [Offline downloads](offline-downloads.md).
@@ -51,6 +51,7 @@ The home screen is built around what *you* are doing, not just what's on the ser
 ![The web player home screen: the greeting, the book you're on with its chapter scale, This week, and the shelves below](/img/screenshots/web-player/home.png)
 
 - **A greeting** with today's date and a small line that tells you, honestly, whether your place is safe: **Progress synced 7 minutes ago** once your servers have it, or **Saved on this device, will sync** while a server can't be reached. If you've connected more than one server, it also says how many Home is gathering from.
+- **Previously on** - when you come back to the book you're on after **12 days or more**, a dark card above the book you're on reminds you where you were: *"Previously on The Way of Kings · 14 days ago"*, the chapter you left it in, and the latest community recap you're already past (so it never gives away what you haven't heard - *"Spoiler-safe: written up to chapter 22."*). **Resume, with 30 seconds of overlap** starts the book half a minute before where you stopped (your latest place, whether this device or another one saved it), at your speed; **Read the full recap** opens the book's Recaps. It appears only for books the community database has recaps for, and not while the book is already loaded in the player. Close it with its **X** and it stays away until you next open the app.
 - **The book you're on**, in a card tinted with its cover's colours: the series and book number, the title, **Chapter 6 of 24** with the chapter's name, and a scale of the whole book with a tick for each chapter (and a small pin for each bookmark). Under it: how far through you are, how much is left at the speed you listen to that book, and, once there's enough listening to go on, the day you'll **finish at your pace**. **Resume chapter 6** carries on where you stopped. For books the community database knows, **Who's who** (with the number of characters you've met so far) and **Story so far** open the book's Characters and Recaps tabs, which [never show more than you've heard](#nothing-gets-spoiled-before-you-reach-it).
 - **This week** - a ring for the books you've finished this year against your yearly goal (or just how many you've finished, if you haven't set one), the hours you've listened in the last seven days, your listening streak, and a small bar for each of the last seven days.
 - **Continue listening** - the other books you've started, most recent first, each showing how much is left. Tap one to open it, or open its [book menu](#the-book-menu) to resume, mark it finished, and more. **All in progress** opens the Library with just those books.
@@ -189,6 +190,7 @@ The top of the page is the same for every book:
 
 - **Cover, title, and author**, plus the **series and number** (e.g. *"Stormlight Archive #2"*) and the **narrator** when known.
 - A **stats strip**: a heart to favourite the book, its download size and audio format, and its total length.
+- In the web player, for a book the browser can't play as it is, a line saying it's [converted for this browser](playback.md#books-a-browser-cant-play-directly).
 - A **Listen** button to start (or resume) playing, and a **download button** for [offline listening](offline-downloads.md). On a tablet or computer, the cover, title and Listen button sit in a panel on the right-hand side of the page (when the page is too narrow for that, for instance with the Up next drawer open, everything stacks in one column as on a phone). There, Listen starts the book without leaving the page; while that book is playing, the button reads **Open the player** instead.
 - An **About this book** block, when the book is matched in the community database (see below).
 

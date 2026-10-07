@@ -1,6 +1,6 @@
 ---
 title: Playback
-description: "The player's hardest subsystem: the PlaybackService engines (HTML5, AVQueuePlayer, Media3), the whole-book timeline math, the stall→error watchdog, and the resume-protection machinery."
+description: "The player's hardest subsystem: the PlaybackService engines (HTML5, AVQueuePlayer, Media3), the whole-book timeline math, the player store with its stall→error watchdog and resume protection, and web transcode negotiation."
 ---
 
 Playback is where this codebase earns its keep. The design splits into four
@@ -40,9 +40,11 @@ identically.
   refused; see [Offline](offline.md)).
 - `setVolume(volume)` - **required** linear output gain (0-1) applied to the
   engine's own volume, **not** the device volume. It exists for the sleep
-  timer's fade-out on **duration** timers (below). It is deliberately not
+  timer's fade-out on **duration** timers ([The sleep timer](sleep-timer.md#the-timer-sleep-timerts)).
+  It is deliberately not
   optional: both engines implement it, and the one real "no volume here" case is
-  each engine's own private business, which it degrades internally (below).
+  each engine's own private business, which it degrades internally
+  ([Writing the gain](sleep-timer.md#writing-the-gain-setvolume-is-required-degraded-per-engine)).
   Callers pass an already-clamped value - `usePlayer.setOutputVolume` is the only
   route in and clamps once.
 - `configure(config)` - runtime tunables from the settings store: auto-rewind
@@ -66,7 +68,19 @@ points:
   (seek/scrub) authenticate without headers.
 - The **Media Session API** wires lock-screen/notification transport: metadata
   per track plus `play`, `pause`, `seekbackward`, `seekforward` handlers using
-  the configured jump intervals.
+  the configured jump intervals. Those seeks go back **through the store**
+  (`onRemoteSeek`, which the store registers to `seekInTrack`), so a lock-screen
+  seek lowers the resume floor and saves like any deliberate seek.
+- **A browser autoplay refusal is a pause, not an error.** `play()` without a user
+  gesture (a cold `/player` deep link) rejects with `NotAllowedError`; the engine
+  settles its snapshot on `paused` and rethrows it as `AutoplayBlockedError`
+  (`types.ts`), which the store's `startEngine` catches.
+- **A file advance is not a pause.** The element fires `pause` just before `ended`
+  at a file's natural end; when another file follows, the engine ignores it (the
+  store keeps its intent through the next file's load), so a chapter sleep timer
+  aimed at that boundary finds the book live and pauses it. A load plays on
+  `loadedmetadata` only while `pendingAutoplay` is still set: a `pause()` inside the
+  load clears it and settles the snapshot on `paused`.
 - Auto-rewind on resume: `play()` rewinds by up to `autoRewindMax` seconds
   scaled by how long the pause lasted.
 - Every element listener is guarded by an `active()` check so a second element
@@ -78,6 +92,9 @@ points:
   target is a synthetic `…/_offline/…` URL and no service worker controls the
   page (the URL would 404 and kill playback), and treats an 8 s buffering
   timeout as a failed swap.
+- A **transcoded** track (`track.transcoded`, web only) is re-requested on every
+  seek instead of seeking the element, and its position is reported
+  track-absolute - see [Web transcode negotiation](#web-transcode-negotiation-transcodets).
 
 ### Native bridge (`service.native.ts`)
 
@@ -220,7 +237,7 @@ natively.
 
 ## Building the queue: `book-queue.ts`
 
-`buildBookQueue(api, libraryId, book, chapterData?, local?, virtualChapterInterval?)`
+`buildBookQueue(api, libraryId, book, chapterData?, local?, virtualChapterInterval?, transcode?)`
 turns a book + its `/chapters` response into a `BookQueue { tracks, offsets,
 total, chapters, chapterClips, syntheticChapters }`.
 
@@ -244,7 +261,12 @@ produced the iOS MediaToolbox `-12864` failures. This is invariant
 When `local` is supplied (the book is downloaded), each file's track points at
 its local URI instead of `api.streamUrl(...)`, and auth headers are dropped for
 local tracks. On web, tracks carry no headers at all (the token is in the URL);
-on native they carry `api.authHeaders()`.
+on native they carry `api.authHeaders()`. With `transcode` (decided by
+`playBook`, web only - [below](#web-transcode-negotiation-transcodets)) every
+non-local track's URL is `streamUrl(…, { transcode: true })` and the track is
+flagged `transcoded: true`; the flag is only present when set, so a direct
+stream's track is exactly what it always was, and a local file is never
+transcoded.
 
 Other queue math that lives here:
 
@@ -270,7 +292,7 @@ Other queue math that lives here:
 - **`locate(offsets, bookPosition)`** and **`toBookPosition(offsets, index,
   positionInTrack)`** convert between the whole-book timeline and per-track
   coordinates; **`chapterAt`** finds the active chapter by `book_offset`;
-  **`chapterCountdowns`** feeds the sleep timer's end-of-chapter picker
+  **`chapterCountdowns`** feeds the sleep sheet's "Or stop after" rows
   (wall-clock times scaled by the playback rate via `rate.ts`
   `wallClockSeconds`), and **`nextChapterEnd`** answers the sleep timer's "where
   does the next worthwhile chapter end?" from the same `chapterEndPosition`, so
@@ -299,6 +321,39 @@ Actions: `playBook`, `toggle`, `pause`, `retry`, `seekBook`, `seekInTrack`,
 `goToTrack`, `skipSeconds`, `setRate`, `stop`. `seekInTrack`/`goToTrack` exist
 for books whose file durations are unknown (no reliable whole-book timeline).
 Speed is clamped to 0.5–2×.
+
+**Store behaviours the redesign added.** The player redesign keeps the store
+(decision 7 in the workspace's `PLAYER-REDESIGN-PLAN.md`), so these are the only
+behaviours it gained, each with its own regression tests:
+
+- `playBook` decides the [web transcode flag](#web-transcode-negotiation-transcodets);
+- `playBook` takes a **`startSpeed`**; without one a book plays at its saved speed
+  (else the default) - **also when it starts at an explicit place** (a chapter
+  tap, a bookmark, Previously on), where the resume lookup that normally supplies
+  the speed is skipped, so `knownSpeed` reads the cached progress and the local
+  mirror instead of letting the default be saved over the book's own speed;
+- **`loadingBook`**: the `contentKey` of a book `playBook` just swapped in whose
+  engine load hasn't landed. Until it lands the snapshot still holds the
+  **previous** book's place, so mapping it through the new queue would place the
+  listener somewhere they have never been. The spoiler gates wait it out through
+  `selectPlacedBookKey` (`use-listening-position.ts`); without it, switching books
+  could reveal the new book's characters by the old book's position;
+- **`startEngine`** (the play step of `playBook`/`toggle`/`retry`) catches only
+  `AutoplayBlockedError` - a browser refusing `play()` without a user gesture (a
+  cold `/player` deep link) - clears the play intent so the watchdog can't turn
+  it into `error`, and settles on `paused`;
+- the store registers **`onRemoteSeek`** on the engine, so the OS media controls'
+  seeks go through `seekInTrack` and lower the resume floor and save like any other
+  seek;
+- `clampRate` lives in `rate.ts` (shared with the time-left helpers);
+- `maybeAutoDownloadCurrent` asks `download()` with the `'auto'` origin
+  ([The end of a book](end-of-book.md#auto-download-on-play)).
+
+Everything else around playback - [what plays next](end-of-book.md#what-plays-next-up-next-resolverts),
+[jump undo](player-ui.md#undo-a-jump-jump-undots),
+[drift-offs](sleep-timer.md#fell-asleep-drift-controllerts),
+[time left](player-ui.md#time-left-time-leftts) - sits **outside** the store and
+reads it through selectors and `usePlayer.subscribe`.
 
 One important gate lives in the *screens*, not the store: **playback starts
 only after the chapters/files query has settled** (the player screen waits for
@@ -444,459 +499,110 @@ for the book that is currently streaming, the store hot-swaps playback onto the
 local files (`switchCurrentBookToLocal`, preferring the engine's gapless
 `swapTo`) - covered in [Offline](offline.md).
 
-:::note Not yet wired
-`client.streamUrl` *can* request an on-the-fly MP3 transcode
-(`?transcode=1&t=`), and the server advertises a `transcode` capability - but
-the engines do **not** yet auto-negotiate it for non-`direct_playable` codecs on
-web. That negotiation is a known open follow-up, not a shipped behavior.
+## Web transcode negotiation (`transcode.ts`)
+
+Browsers can't decode some codecs a book may use (AC-3, E-AC-3, ALAC...). The
+server marks those books `direct_playable: false` and, when it has ffmpeg
+(capability `transcode`), streams them re-encoded to MP3 with
+`?transcode=1&t=<seconds>` ([cross-repo contract §5](../architecture/cross-repo-contract.md#5-transcode-negotiation-direct_playable-and-transcode1)).
+The web player negotiates that by itself; native engines never transcode (they rely
+on the platform's own decoders: no FFmpeg extension on Android), and a downloaded
+(local) file is never transcoded either.
+
+**The rule** is pure and lives in `src/playback/transcode.ts`:
+
+- `isBrowserUndecodable(book, chapterData?)` - only an **explicit**
+  `direct_playable === false` counts (the chapters response is preferred, being
+  fetched fresh for playback). An older server omits the field and an unprobed
+  codec reads as playable; both stream exactly as before.
+- `needsWebTranscode(book, chapterData, canTranscode)` - on web (`Platform.OS`, read
+  inside through `mayNeedWebTranscode`), the capability is `true`, and the book is
+  undecodable. An **unknown** capability
+  (`/server` not loaded) reads as no: stream directly, and the error/retry path
+  speaks if the browser can't play it.
+
+**Reading the capability** is `src/playback/transcode-capability.ts`, kept apart so
+the rule stays framework-free. `mayNeedWebTranscode` (in `transcode.ts`) is the cheap
+synchronous pre-check (false off web and for every ordinary book, so they skip the
+lookup and its await); `resolveWebTranscode` reads `capabilities.transcode` through
+`fetchCapabilities` (`api/hooks.ts`: the shared `/server` entry via `fetchFailFast`,
+normally a cache hit; a failed read falls back to the cached flags, else "no");
+`webTranscodeFromCache` is the synchronous form for the download path and
+`useNeedsWebTranscode` the UI's (the book page's note, the download controls, the
+Downloads page's failed row).
+
+**Where it's decided:** once, in `playBook`, before `buildBookQueue` - and only for
+a streaming book (`!local && mayNeedWebTranscode(…) && await resolveWebTranscode(…)`).
+The queue then carries `transcoded` tracks, so every later reload (`retry`, seeks)
+reuses them without asking again.
+
+**The web engine** (`service.web.ts`) is where the work is. Transcoded output has no
+byte ranges and no length the `<audio>` element can know (`duration` reads
+`Infinity`/`NaN`), so:
+
+- `sourceFor(track, positionInTrack)` (pure, exported) returns the element's source
+  and the **offset** its `currentTime` 0 stands for: a direct stream is its own URL
+  at offset 0; a transcoded one is requested *at* the position
+  (`transcodeUrlAt(url, t)` replaces any `t` and keeps every other param, the media
+  token included) with that `t` as the offset.
+- A transcoded stream is never requested inside its last second
+  (`transcodeStartAt`): there is nothing left to encode there, and the element
+  errors instead of ending.
+- Every seek, auto-rewind, and resume after a pause longer than
+  `TRANSCODE_STALE_PAUSE_MS` (30 s, a paused back-pressured transcode may have been
+  dropped by the server or a proxy) goes through `reloadTranscodedAt`, which
+  re-runs `loadTrack` at the target. `loadSeq` lets a stale `loadedmetadata` handler
+  (a second seek before the first source loaded) no-op, and `pendingAutoplay` keeps
+  play intent across the `loading` window that now recurs on every seek.
+- The snapshot's `position` stays **track-absolute**: `transcodedTrackPosition`
+  returns `currentTime + offset`, clamped to the queue's known file duration (the
+  encoder can run a frame past it, which would read as the next file's first
+  instant). The duration always comes from the queue (`track.duration`), never the
+  element.
+- The rate is applied as `defaultPlaybackRate` *and* `playbackRate`
+  (`applyRate`): the media element load algorithm resets `playbackRate` on every
+  `src` change, which a transcoded seek is.
+- An `ended` well before the known end (`isEarlyTranscodeEnd`, more than
+  `EARLY_END_SLACK_S` = 10 s short) is the connection dying, which an unsized
+  stream reports as a normal end: the engine reloads at the position instead of
+  skipping the rest of the file, and accepts a second early end without
+  `EARLY_END_MIN_PROGRESS_S` (5 s) of progress as the real end (a file whose audio
+  is shorter than its probed duration).
+- The Media Session gets a `seekto` handler (only for transcoded tracks; direct
+  streams keep the browser default) that goes through the store's seek, so the OS
+  scrubber re-requests too, and an
+  explicit `setPositionState` with the track-absolute position and known duration,
+  cleared again once a direct track plays.
+
+:::info Why the offset keeps positions track-absolute
+Everything above the engine assumes `snapshot.position` is the position **in the
+file**: `selectBookPosition` (`toBookPosition(offsets, trackIndex, position)`),
+chapter detection, the `resumeFloor` save guard, progress saves, the sleep timer's
+chapter targets and jump-undo's detector. If a transcoded seek let `currentTime`
+restart at 0, every one of them would see the book jump backwards on each seek -
+the save guard would refuse the saves, the chapter would read as the first, and a
+jump chip would appear. Folding the offset in at the engine keeps the transcoder
+invisible to the store.
 :::
 
-## Ending a book: end credits and up next
+**Downloads:** a book that streams transcoded on web must not be downloaded raw (its
+files would not play offline in that browser). `useDownloads.download()` refuses it
+(`webTranscodeFromCache`), which covers every path - the book page, the automatic
+download and keep-ahead - and `useDownloadControls` exposes `needsTranscode` so the
+control says "Can't download in this browser" instead of the generic "Downloads
+unavailable". A download already on disk stays removable; a failed one is blocked
+like a new one (only the Downloads page can clear it, with no Retry - see
+[Offline](offline.md#lifecycle)).
 
-When the last track finishes the engine reports `ended`, and the store
-**deliberately keeps `nowPlaying` populated** rather than tearing down - the
-`ended` snapshot is a signal a UI-layer listener acts on. `selectIsEnded`
-(`snapshot.state === 'ended'`) exposes it; the final `haltAndPersist` on that
-transition records `finished: true`.
+**The book page** shows `TranscodeNote` (`src/components/library/transcode-note.tsx`)
+under the stats ("AC-3 audio is converted to MP3 for this browser"), under exactly
+`needsWebTranscode` and never for a downloaded book; `codecLabel` maps ffprobe names
+(`ac3` → AC-3, `wmav2` → WMA...) and falls back to upper case.
 
-- **`finishBook()` (`store.ts`)** is the single "this book is done" action, used
-  both by the natural end and the player's *Mark as Finished* menu item. It
-  captures a `FinishedBook` identity (connection/library/path/title/author/cover),
-  clears playback intent, stops the save loop, does one forced
-  `persist({ forceFinished: true })` (the last write; the server is
-  last-write-wins), invalidates the connection's `allProgress` query, then
-  **nulls `nowPlaying`** (which hides the mini-player) and resets the snapshot.
-  Best-effort and async, it tears the engine down and - **only if
-  `autoDeleteFinished` is on and the book's download `status === 'downloaded'`** -
-  removes the local files via the downloads store.
-- **`BookEndedListener` (`src/components/player/book-ended-listener.tsx`)** is a
-  headless component mounted once in `src/app/_layout.tsx`, so it covers the phone
-  modal and the desktop docked player alike. It watches `selectIsEnded` with
-  **transition-edge detection** (a `wasEnded` ref, fires once per ended book) and
-  on the false→true edge calls `finishBook()` then navigates: `router.replace` to
-  `/finished` when currently on `/player` (credits take the player's place), else
-  `router.push`. If the app is backgrounded and `autoPlayNext` is on it skips the
-  countdown UI and jumps straight to the player (on iOS the OS may suspend JS once
-  audio stops, so a visible countdown can't be relied on).
-- **`/finished` (`src/app/finished.tsx`)** is a root modal, a sibling of the
-  player modal, that carries `connection`/`libraryId`/`path` params (it sits
-  outside any route scope) and renders `EndCredits`. The screen derives its
-  "still playing early vs. genuinely ended" state from the live player store, not
-  a URL flag. `end-credits-logic.ts` is the pure decision function: with
-  `autoPlayNext` on and a next book resolved, it counts down `GRACE_SECONDS` (15)
-  after a real end, or the remaining audio time when opened early while the book
-  still plays, and only reports `fireNext` after a genuine end.
+## Elsewhere
 
-### Sibling resolution (`next-book.ts`)
-
-"Up next" is the next sibling of the current book's **folder**, resolved
-client-side. `resolveNextBook` browses the parent folder via `client.browse`
-(paging to exhaustion, `PAGE_LIMIT` 200); `findNextSibling` keeps entries that
-are `is_book || is_dir` (an unindexed sibling book folder comes back
-`is_dir: true, is_book: false` and must still count, while loose non-audio files
-are ignored), sorts them with `naturalCompare`, and returns the first whose name
-sorts strictly after the current leaf:
-
-```ts
-export function naturalCompare(a: string, b: string) {
-  return a.localeCompare(b, undefined, { numeric: true, sensitivity: 'base' });
-}
-```
-
-The sort is **client-side and numeric-aware** so `Book 2` precedes `Book 10`
-(the server's `/fs` listing is a plain string order). It never throws - any
-failure resolves to `null`, which the screen renders as "end of folder".
-
-The server can now answer the same question itself:
-[`GET /libraries/{id}/next`](../server/api/reference.md#get-apiv1librariesidnext)
-(capability `next_book`) uses the community series rail when it can place the next
-work on one of the caller's books, else the local series numbering, then this same
-folder rule (`library.NextSibling`, a port of `findNextSibling` that compares names
-as this `localeCompare` does). `client.nextBook` / `useNextBook` mirror it, but nothing calls
-them yet: the end credits keep resolving the sibling on the device until a later
-player-redesign phase switches to the server's answer (keeping this resolver as
-the fallback for a server without `next_book`).
-
-### Auto-download on play
-
-`maybeAutoDownloadCurrent(connectionId, libraryId, book, chapterData?)` in
-`store.ts` downloads **the book the user just started listening to**. It is
-fired fire-and-forget at the end of `playBook`'s start path, after `svc.play()` -
-never awaited, so it can neither delay nor break starting the book. Because the
-store hot-swaps playback onto the local files the moment a download completes
-(`switchCurrentBookToLocal` - see [Offline](offline.md)), downloading on start
-also covers a series: the next book downloads as soon as *Play next* starts it.
-(An earlier design prefetched the next sibling at 90% of the current book; that
-is gone.)
-
-Guards, in order: `autoDownloadNext === 'never'` skips; an existing download
-entry whose `status` isn't `error` skips (already downloaded, queued, or
-downloading - only an errored entry is retried, matching the downloads store's
-own guard); then the network policy `canAutoDownload(mode)`; then it enqueues
-via the downloads store's `download()`, which itself no-ops when the engine
-can't store offline (e.g. web without a controlling service worker), so no
-extra support guard is needed. `next-book.ts` now does sibling resolution only.
-
-The policy gate is `canAutoDownload(mode)` in `src/lib/network.ts`, backed by
-**`expo-network`**: `never` → false, `always` → true, and `wifi` allows web (the
-browser can't report the connection type) plus native `WIFI`/`ETHERNET`, and
-**fails open** on an `UNKNOWN`/undefined type or a probe error, so only a
-positively-known metered connection is skipped. The three settings
-(`autoPlayNext`, `autoDownloadNext`, `autoDeleteFinished`) live in
-`src/stores/settings.ts` with defaults `false` / `'wifi'` / `true` - the
-persisted `autoDownloadNext` key name predates the download-on-start behavior
-and is kept for hydration compatibility.
-
-## The sleep timer (`sleep-timer.ts`)
-
-`useSleepTimer` is a second Zustand store, deliberately framework-free. It reads
-`usePlayer` through `getState()` and subscribes to it for exactly one thing -
-"is the transport running?", which freezes a duration countdown while playback is
-paused (see below). It arms three ways - `startDuration(minutes)`,
-`startUntilPosition(position, label)` and `startChapterTimer(opts?)` - which all
-funnel through one private `arm()` that restores the volume, clears the
-ending/grace flags and restarts the 1 s tick. The tick counts down, fires, and
-expires the grace window; nothing else drives the machine.
-
-```mermaid
-stateDiagram-v2
-    idle --> running: startDuration / startUntilPosition / startChapterTimer
-    running --> ending: remaining <= FADE_SECONDS (30 s) - duration timers ramp the gain down at 4 Hz
-    ending --> running: backward seek pushes the target back out of the window, or the countdown freezes
-    ending --> grace: fire() - pause first, then restore the gain
-    grace --> idle: tick() - GRACE_SECONDS (30 s) elapsed, no shake - records 'expired'
-    ending --> running: keepListening() re-arms from origin
-    grace --> running: keepListening() re-arms from origin AND resumes playback
-    running --> idle: cancel() - records 'cancelled'
-    running --> idle: a freeze longer than ABANDON_AFTER_PAUSE_SECONDS - records 'expired'
-```
-
-Every edge back to `idle` goes through `endTimer(reason)`, which notifies the
-`onSleepTimerEnded(fn)` registry synchronously - once per ending, with the store
-already back at `idle` - so the auto sleep controller below can tell a dismissal
-from a timer that simply ran out. That is the only event this store emits; a
-timer armed with nothing loaded (`bookKey === null`) notifies nothing.
-
-The pieces worth knowing before touching it:
-
-- **Two selectors are the whole public surface for UI.** The phase
-  (`idle | running | ending | grace`) is **stored**, not derived - three booleans
-  could spell out twice as many combinations as are legal, and the UI kept
-  re-deriving the phase from them by hand - so `selectSleepPhase` simply reads it
-  and `selectSleepExtendable` is `phase === 'ending' || phase === 'grace'`
-  (nothing branches on `graceUntil`; it is only ever the answer to "until
-  when?"). The second one answers "can a shake or a *Keep listening* tap do
-  anything right now?" and also **gates the accelerometer listener**, so the
-  sensor runs only in those two short windows rather than for the whole timer.
-  That gate is why the phase must be *true*: a frozen countdown leaves `ending`
-  (below), or a book paused with 20 seconds left would keep the sensor
-  subscribed - and the badge solid pink, and the sheet saying "Fading out" about
-  a paused book at full volume - indefinitely.
-- **Only a duration timer fades.** The phase is called `ending`, not `fading`,
-  because it means "about to stop, a shake still saves it" for **both** kinds of
-  timer while only one of them touches the gain. `fadesAudio(origin)` is the
-  single gate: `{kind:'duration'}` fades, because its stopping point is arbitrary
-  and an abrupt cut mid-sentence is jarring; `{kind:'chapter'}` (which includes
-  the end-of-book target and every `startUntilPosition` timer) plays its last 30
-  seconds at **full volume**, because those are the words the listener stayed
-  awake for and the chapter ending is its own signal. On the chapter path the
-  fade ticker never starts, so there are **no gain writes at all** - a unit test
-  asserts the gain is never below 1 for a whole chapter-timer run, including
-  through its pause and grace.
-- **The fade has its own faster ticker.** The 1 s countdown tick is far too
-  coarse to ramp against, so `FADE_TICK_MS` (250 ms) drives `syncFade` - the one
-  reconciler that owns both the fade ticker and the engine gain, holding the rule
-  *the ramp runs iff `phase === 'ending'` and the origin fades and it is not
-  frozen*, so every site that writes `phase` or `frozenAt` just calls it
-  afterwards. It ramps only while a **duration** timer is `ending`.
-  `fadeGain(remaining)` is the
-  exported, unit-tested curve: `(remaining / FADE_SECONDS)²`, squared because
-  perceived loudness is roughly the square root of linear gain, so a linear ramp
-  stays loud and then drops off a cliff. The gain is **never written into the
-  store** - it changes four times a second and nothing renders it, so storing it
-  would re-render every subscriber at 4 Hz.
-- **`syncEndingPhase` works in both directions.** It enters the `ending` phase
-  when the remaining time drops into the window *and leaves it, restoring full
-  volume, when the remaining time climbs back out* - which a backward seek on an
-  end-of-chapter timer does; without the second half the rest of the chapter
-  would be stranded at a fraction of its volume (back when that timer still
-  faded). A **frozen** countdown is never in the phase either, by the same rule
-  rather than a second one: `ending` means "about to stop", and a countdown that
-  is not counting is not about to stop. Otherwise the phase change is
-  unconditional; only the ramp is gated on `fadesAudio`.
-- **`fire()` pauses first, then restores the gain**, chained in a `finally` so a
-  rejected pause can't leave a manual resume silently muted. It does not go to
-  `idle`: it opens the `GRACE_SECONDS` (30 s) window and keeps ticking.
-- **`keepListening()` is a no-op outside the `ending` phase and the grace.**
-  Inside them it re-arms from the recorded `origin` (`{kind:'duration', minutes}`
-  or `{kind:'chapter'}`), so a duration timer restarts its full length and a
-  chapter timer retargets. From the grace it additionally calls
-  `resumePlayback()`, which checks the live snapshot before calling `toggle()` -
-  `toggle` from a *playing* state would pause a book the listener had already
-  resumed by hand.
-- **One constant makes "one more chapter" work.**
-  `nextChapterTarget(allowEndOfBook)` picks the **nearest** upcoming chapter end
-  more than `MIN_CHAPTER_SECONDS` (30 s) away (`nextChapterEnd` in
-  `book-queue.ts`, which scans for the nearest qualifying end rather than the
-  first qualifying array element - chapter offsets are not guaranteed to ascend).
-  In the `ending` phase the current chapter's end *is* the boundary being stopped
-  at, so it fails that test and the re-arm naturally lands on the **next**
-  chapter; for a timer armed at the start of playback the current chapter usually
-  qualifies. It is deliberately its **own** constant and not an alias of
-  `FADE_SECONDS`: they share a value but are unrelated, and while they were tied
-  together retuning the fade silently changed what "one more chapter" retargets.
-- **Who asked decides the fallback**, which is what `startChapterTimer`'s
-  `{ allowEndOfBook }` option carries. The **listener's** reset (`keepListening`
-  passes `{ allowEndOfBook: true }`) means "one more chapter", and where there is
-  no next chapter the end of the book is the honest answer. The **automatic**
-  nightly arm passes nothing (the default is `false`) and refuses both the
-  end-of-book fallback *and* a chapter that ends exactly where the book does,
-  degrading to a 15-minute duration timer instead. A folder of MP3s with no
-  chapter metadata has `queue.chapters === []` (`buildBookQueue` synthesizes
-  virtual chapters only for a single-file book), so the shared fallback armed a
-  target ten hours out: it never fired, so the timer never returned to `idle`, so
-  the controller's "a timer already stands" guard blocked every later arm and
-  stopped its poll - no working sleep timer at all, all night. Whichever
-  fallback applies, a chapter arm always ends up with a timer that fires.
-
-### Freezing the countdown while paused (`syncPlaybackFreeze`)
-
-A duration timer counts **listening** time, not wall-clock time: it must not
-expire while the book is paused, which it used to do silently - pause with a
-headphone button, never look at the screen, and come back to no timer armed.
-Every open-source *audiobook* player does the same (Audiobookshelf, Absorb,
-Voice; AntennaPod switched off wall clock in 2025). The subtleties are all in
-*how* it freezes:
-
-- **The freeze must survive the JS runtime being suspended.** iOS suspends the
-  app once it stops producing audio and a hidden web tab is throttled, so **no
-  ticks arrive at all** while paused - any scheme that decrements a balance per
-  tick silently loses an untick'd hour. So the representation is a **stopped
-  clock**, not a running total: a duration timer stays a `Date.now()` deadline
-  (`endsAt`), pausing records **`frozenAt`** (the moment the clock stopped), and
-  `preciseRemaining` reads the deadline against `frozenAt` instead of the live
-  clock. That answer needs no ticks to stay correct. Resuming slides `endsAt`
-  forward by `Date.now() - frozenAt` - two timestamps, so any length of gap
-  reconciles exactly.
-- **The same shape fixes the other direction.** Because the countdown is a
-  deadline rather than a per-tick decrement, a *playing* context whose ticks are
-  throttled to one a minute can't make the timer run long either.
-- **The play state is a level, read from a subscription - not a transition.**
-  `playbackWatch` subscribes to `usePlayer` while a countdown is running and
-  **ignores the `(state, prev)` payload**, re-reading `isTransportLive()`
-  (`playing || loading`) instead. The engine's resume stream is a jumble of
-  `ready` / `loading` / spurious `paused` (see [the stall watchdog](#the-stall--error-watchdog)),
-  and matching individual transitions is the approach that has failed repeatedly
-  here. Subscribing (rather than waiting for the tick) is what makes the
-  suspension case airtight: the store write happens while the app is still awake
-  handling the pause, so `frozenAt` is always recorded. The 1 s tick and every
-  `arm()` call the same reconcile as a backstop, so a missed notification costs
-  at most one second.
-- **A thaw has three outcomes, by how long the freeze lasted.** Freezing
-  introduces the inverse failure - a timer frozen with 3 minutes left, forgotten,
-  firing 3 minutes into tomorrow's session - and nothing ever cancels a frozen
-  timer, so the length of the freeze is the only evidence there is. On the
-  transition back to playing:
-  - **under `RESET_AFTER_PAUSE_SECONDS` (20 min)**: the frozen countdown
-    continues untouched. 20 minutes clears the longest ordinary in-session
-    interruption while being far short of "later that day"; Audiobookshelf
-    re-arms unconditionally above 3 seconds, which throws away a 25-minute
-    countdown because someone answered the door.
-  - **between that and `ABANDON_AFTER_PAUSE_SECONDS` (2 h)**: a new sitting, so
-    the timer is re-armed at its **full original** `origin.minutes`.
-  - **beyond 2 h**: the timer is **ended** (`endTimer('expired')`), not
-    resurrected. Re-arming at any length there was the "armed at 22:30, paused at
-    22:40, resumed at 08:00, book fades out at 08:30" bug - no user action, hours
-    outside the auto sleep window, and no re-check of why the timer existed.
-    `expired` rather than `cancelled`, so auto sleep is free to arm a fresh one on
-    tonight's terms.
-
-  There is deliberately **no setting** for any of it. The frozen span is also
-  **clamped at zero**: it is two readings of a clock the device owns, so a
-  backward jump (an NTP correction, a manual change) would otherwise slide
-  `endsAt` *earlier* and fire the timer early once the clock came back.
-- **Chapter timers and the grace window are exempt** (both have `endsAt ===
-  null`). A position target does not advance while paused and stays valid however
-  long the pause was, so it is frozen by construction and must not be re-armed.
-  The post-pause grace is genuinely wall-clock - it exists to expire *while* the
-  audio is stopped.
-- **A pause mid-fade hands the volume back, and leaves the `ending` phase.**
-  Freezing stops the fade ticker and writes gain 1 immediately: the listener may
-  hit play on the next breath, and near-silent audio with no visible cause is the
-  worst outcome this feature has. With the ramp suspended and the volume back,
-  the phase is no longer true either, so the freeze drops to `running` (see
-  `syncEndingPhase` above) - which is what takes the accelerometer back off, the
-  badge back to a countdown, and a stray shake out of the picture (outside the
-  `ending`/grace windows `keepListening()` is a no-op, and there it would have
-  silently reset the timer without resuming). The ramp is not lost: the thaw
-  re-enters the phase if the remaining time still warrants it and `syncFade()`
-  picks up at the gain the frozen countdown implies, so it neither restarts nor
-  jumps. A frozen timer also never `fire()`s (it would be pausing an
-  already-paused book) and never writes a gain at all.
-
-### Writing the gain: `setVolume` is required, degraded per engine
-
-The fade reaches the engine through `usePlayer.setOutputVolume(gain)`, which
-clamps once and calls `service.setVolume(…)`. The interface method is
-**required** (`types.ts` says so, with the reasoning): an optional marker would
-push a `?.` onto every caller to model something no caller can act on. Instead
-each engine handles its own "no volume here" case internally and still resolves:
-
-- **`service.native.ts` feature-detects the native function**
-  (`typeof AudiosiloPlayer.setVolume !== 'function'`) and also wraps the call in
-  a `try`. The JS bundle can be **newer than the native binary it runs on** - an
-  installed dev build, or a shipped App Store / Play build from before
-  `setVolume` existed - and calling a function the native module doesn't define
-  *throws*, which would turn every sleep-timer fade into a playback-breaking
-  rejection on those installs. Older binaries degrade to "no fade" and resolve.
-- **`service.web.ts`** sets the element's `volume` and swallows the failure on
-  **iOS Safari**, which refuses per-element volume outright (system volume is the
-  only control there). The fade is inaudible on iPhone/iPad web; it must never
-  become a thrown error.
-- **`playBook` resets the gain to 1** (`svc.setVolume(1)`, with the store's
-  cached `outputVolume` written alongside it) when starting a book. The timer
-  restores the volume on every path it owns; this is the backstop for the one it
-  doesn't, because near-silent audio with no visible cause is the worst outcome
-  this feature can produce. It runs **immediately after `nowPlaying` is swapped**
-  to the new book, at every site that swaps it - the fade ticker stands down by
-  comparing the *playing* book against the timer's own, so a restore written
-  while `nowPlaying` still held the old book was one the 4 Hz ticker could
-  overwrite during the resume lookup's network round trip, and the new book could
-  start attenuated.
-
-### Shake to extend (`use-shake-to-extend.ts`)
-
-A shake **extends** the timer; it does not cancel it. (The hook replaces an
-earlier `use-shake-to-cancel.ts`, which is gone.) `useShakeToExtend` subscribes
-the accelerometer only while `selectSleepExtendable` holds, so the sensor is off
-for the other 29 minutes of a 30-minute timer.
-
-It is mounted **exactly once, at the app root**: the headless
-`ShakeToExtendListener` (`src/components/player/shake-to-extend-listener.tsx`)
-rendered by `src/app/_layout.tsx`, alongside `startAutoSleep()`. Deliberately
-**not** from `player-view.tsx` - the feature's main case is a nightly timer on a
-locked phone with no player screen open, where a hook mounted in the player modal
-would never be listening; mounting it in both places would double-fire a single
-shake.
-
-- It imports **`expo-sensors/build/Accelerometer` directly**, never the
-  `expo-sensors` barrel: the barrel does `import * as Pedometer`, and
-  `Pedometer.ts` resolves its native module at load time, throwing
-  "Cannot find native module 'ExponentPedometer'" on builds that don't link it -
-  crashing the player for a sensor we never use.
-- Detection requires a **burst**, not a single sample: 100 ms sampling, total
-  acceleration above **1.4 g**, **two** qualifying samples inside a 1 s window,
-  then a 2 s debounce. A single-sample threshold both false-fires on a pocket
-  bump and misses a genuine shake landing between samples. The bar is
-  deliberately low: a false positive only grants more listening time, while a
-  false negative stops the book on someone who was awake.
-- Native only, and the whole subscription is wrapped in a `try` so a build
-  without the sensor degrades to a no-op. The sheet's **Keep listening** button
-  is the equivalent, mandatory on web (no accelerometer) and offered on native
-  too.
-
-### Auto sleep timer (`auto-sleep.ts` + `auto-sleep-controller.ts`)
-
-The nightly auto-arm is split into a pure decision function and a framework-free
-controller, so all the policy is unit-tested and none of it lives in a component.
-
-- **`decideAutoSleep(input)`** takes the four `autoSleep*` settings, `now`, the
-  `bookKey` and the per-book memory, and returns
-  `{arm:'none'} | {arm:'chapter'} | {arm:'duration', minutes}`. It bails when the
-  feature is off, when the memory says this book is blocked (`canAutoSleepArm`),
-  and when the clock is outside the window. A persisted `autoSleepType` that isn't
-  `chapter` or a positive number arms nothing rather than a nonsense timer.
-  "A timer is already standing" is deliberately **not** an input: that is a live
-  reading of the timer store, enforced by the controller (below), and restating it
-  here would be a second, always-false copy of a rule enforced elsewhere.
-  An `{arm:'chapter'}` decision arms through `startChapterTimer()` with **no**
-  options - i.e. `allowEndOfBook: false`, the automatic fallback rules above - so
-  a chapterless book gets a duration timer that fires rather than a target hours
-  away that would block every later arm for the session.
-- **The window test is `withinAutoSleepWindow` (`src/lib/hhmm.ts`, with
-  `parseHhMm`/`formatHhMm`)**, half-open `[from, until)` over local wall-clock
-  "HH:MM", wrapping past midnight (the 22:00-06:00 default). `from === until` reads
-  as **never**, and a malformed bound is `false`, so a corrupt value can't arm a
-  timer unexpectedly. It lives in `lib`, not in the settings store that persists the
-  strings, so `@/lib/format` (imported by some twenty modules) doesn't drag zustand
-  and the persisted settings into their graphs.
-- **The timer says how it ended**, through `onSleepTimerEnded(fn)` - see the sleep
-  timer above. `cancel()` reports `cancelled`; the grace closing, a fire against a
-  book that was not playing, and `cancelIfBookChanged` all report `expired`. A book
-  change is an expiry, not a cancellation: nobody dismissed that timer, and blocking
-  the book for the night because the listener dipped into another one would recreate
-  the failure this design fixes. Never infer the reason from the leftover fields -
-  the version that read `graceUntil !== null` as "it fired" filed a cancellation made
-  *during* the grace window as an expiry, which is precisely the case that must not
-  re-arm.
-- **The anti-nag memory** (`AutoSleepMemory`) is ONE bounded, insertion-ordered set
-  of book keys: the books the listener has **cancelled** a timer on. It is folded by
-  the pure `recordAutoSleepOutcome` (a `cancelled` outcome adds, an `expired` one
-  changes nothing) and read by `canAutoSleepArm`, and it caps at
-  `MAX_REMEMBERED_BOOKS` (50), evicting the oldest. A block is final for the session:
-  never unblocked by anything later, including the listener's own manual timer
-  running out on the same book.
-  The other half - "a timer is standing for this book right now, so nothing may arm
-  a second one" - is **not remembered at all**: the timer store answers it live as
-  `phase !== 'idle'`, and answers it better. A remembered copy was only as good as the
-  bookkeeping that maintained it, and could go stale in a way the live reading cannot.
-- **Re-arming can't loop.** Firing pauses playback, so the only route back to an
-  armed timer is a fresh transition into `playing` - the listener's own hand. The
-  one case with no such edge is a listener who resumed by hand *during* the grace
-  window; there the poll (60s) picks it up once the grace closes, which is also the
-  floor on how often anything can be armed.
-- **`startAutoSleep()` (`src/playback/auto-sleep-controller.ts`)** is started once
-  from `src/app/_layout.tsx` (`useEffect(() => startAutoSleep(), [])`) and returns its
-  teardown. It is a module with subscriptions rather than a component that renders
-  `null` - it uses no context, router, props or rendering - and it holds the session
-  memory in **module state**, so "never again for this book" lasts as long as the JS
-  context rather than as long as a mounted component. It must run whether or not the
-  player modal is open: the timer has to arm for a book started from the mini player,
-  the library, or a lock-screen play.
-  It listens to three things: the **setting** (which attaches and detaches everything
-  else - `autoSleepTimer` defaults to off, and the player subscription would otherwise
-  run on every progress write for a feature nobody switched on); the **player**, for
-  the transition edge into `playing` (one look per resume, not one per progress tick);
-  and **`onSleepTimerEnded`**, which is installed for the whole session because a
-  cancellation counts even if auto sleep is enabled later. The 60s poll
-  (`ticker` from `src/lib/ticker.ts`) runs only while a book plays with the feature
-  on, no timer standing and the book unblocked - each gate being a "re-asking cannot
-  change the answer" test.
-
-## The player controls and title display
-
-Two smaller UI concerns round out the player:
-
-- **Speed and sleep-timer are bottom sheets.** `SpeedButton` / `SleepTimerButton`
-  are only the footer readouts; the controls themselves (`SpeedSheet`,
-  `SleepSheet`) are mounted at the player's *root* and use the shared `Sheet`
-  primitive from `src/components/ui/` - a footer-nested sheet would be clipped to
-  the footer's bounds. The tablet/desktop docked player bar
-  (`src/components/shell/docked-player.tsx`) reuses the same two buttons and
-  sheets, rendering the sheets as its own siblings in the shell's root column so
-  they cover the whole app. Speed drives a `Stepper` (0.5-2x, 0.05 steps); the sleep
-  sheet offers duration presets, an end-of-chapter list (from `chapterCountdowns`
-  at the live rate), and an end-of-book fallback. `SleepSheetBody` is a child of
-  `Sheet` so the per-tick countdown scan mounts only while the sheet is open, and
-  it swaps its header for a **Keep listening** call to action whenever
-  `selectSleepPhase` is `ending` or `grace` (demoting *Cancel timer* to a neutral
-  button so the two can't compete). That header reads the timer's `origin` so it
-  can only promise what is happening: `player.sleepTimer.fading` ("Fading out")
-  for a duration timer, `player.sleepTimer.ending` ("Ending soon") for a chapter
-  one, and `player.sleepTimer.grace` once playback has paused. `SleepTimerButton`
-  and the badge over the cover in `player-view.tsx` read only the phase - a
-  countdown while `running`, solid pink plus a short "keep going" label once the
-  timer is ending or has paused - so they are identical for both kinds.
-- **`prettify-title.ts` cleans filename-shaped labels for display.** Audiobook
-  "chapter" labels are often just the underlying audio *filename*
-  (`01_the_hobbit_ch1.mp3`). `prettifyChapterTitle` strips a recognised audio
-  extension, turns underscores into spaces, and drops a trailing encoder bitrate
-  tag (`64kb`, `128 kbps`) - but only for labels that already look like filenames,
-  leaving genuine titles ("Chapter 1", "The Shadow of the Past") untouched. It is
-  **display-only**: it never changes the streamed path, the saved position, or the
-  chapter model, and is applied wherever a chapter/track label surfaces - the full
-  player title, the mini-player caption, the iOS accessory player and the docked
-  player bar, the command palette, the book's History tab, the chapter list, and
-  the sleep-timer chapter picker. Those surfaces name the current chapter through
-  one helper, `chapterLabel()` (`src/lib/chapter-label.ts`), which falls back to
-  "Chapter N" for an untitled chapter before prettifying.
+- [The end of a book](end-of-book.md): finishing a book, what plays next, the
+  automatic download of the book you start.
+- [The sleep timer](sleep-timer.md): the timer, drift-offs, the grace card.
+- [Player UI](player-ui.md): jump undo, time left, the companion, the controls,
+  sheets, and the compact and full players.

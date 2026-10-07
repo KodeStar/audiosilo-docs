@@ -838,8 +838,9 @@ not the community-written `community_description` on
 [`/books`](#get-apiv1librariesidbooks).
 
 `direct_playable` reports whether the codec plays natively in browsers (unknown
-codec ⇒ `true`; the client falls back to `?transcode=1` if direct playback
-fails). Durations/positions are seconds (float).
+codec ⇒ `true`). The web player streams a `false` book with `?transcode=1` when
+the `transcode` capability is true; it does not retry through the transcoder after
+a failed direct play. Durations/positions are seconds (float).
 
 `path` may be the book's own path or a path inside it: a part of a folder book,
 or a disc folder (or a file in one) of a book

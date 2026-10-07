@@ -22,6 +22,8 @@ shot), builds the `audiosilo-meta` data artifact (composed with
 `audiosilo-meta-community`) + site and starts a `metaserve` on `:8795` for the
 meta-site shots, then runs the Playwright captures and backfills placeholders.
 `SKIP_META=1` skips the meta stack (for a web/admin-only run).
+The header of `run.sh` lists all of its knobs (which checkouts to use, skipping
+the admin captures, ports and the rest).
 `SHOTS_ONLY=<prefix>` writes only the screenshots whose path starts with it
 (e.g. `SHOTS_ONLY=admin/`), so adding a few shots doesn't re-encode every
 other committed PNG. It takes a comma-separated list too
@@ -110,9 +112,20 @@ loss, so the committed image is the optimized one. It's optional: if pngquant
 isn't on `PATH` the shots are just left raw (with a one-time warning).
 
 Prereqs: Go 1.26+, Node 24 (also builds the server's admin console), ffmpeg/ffprobe, pngquant (optional; for image
-optimization), and a web export at `../../audiosilo-frontend/dist`
-(`audiosilo-server/scripts/build-web.sh` builds one; `run.sh` triggers it
-automatically when missing).
+optimization), and a web export at `FRONTEND/dist` (the sibling
+`../../audiosilo-frontend` by default; `audiosilo-server/scripts/build-web.sh`
+builds one, and `run.sh` triggers it automatically when it is missing - an existing
+export is used as it is, so rebuild it after changing the frontend).
+
+### Staging the web-player shots
+
+Each `web-player/` entry's `hint` in `manifest.mjs` says what state its shot shows.
+The player shots are staged **paused**, so they are still frames: the full player,
+the phone sheets, the end credits (opened early from the player's menu) and the
+docked bar just after a next-chapter jump, while the Undo chip shows (it is undone
+straight after). On a desktop every shot after `web-player/home.png` (which shows
+the book playing) has the docked bar paused, in a `SHOTS_ONLY` run too: the Home
+and pause steps always run, so a partial run stages its shots as a full one does.
 
 ## Adding a screenshot
 

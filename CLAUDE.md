@@ -33,9 +33,9 @@ Node 24 (workspace convention; `.nvmrc` in the sibling repos).
   the build never breaks.
 - **Accuracy over completeness**: verify behaviour in the sibling repos'
   source before documenting it; never document a route/flag/UI element you
-  didn't find in code. Features that are designed-but-unshipped (web transcode
-  auto-negotiation, WebSocket sync, `POST /uploads`, manager installers) are
-  explicitly marked "planned" - when one ships, search the whole tree for it.
+  didn't find in code. Features that are designed-but-unshipped (WebSocket sync,
+  `POST /uploads`, manager installers) are explicitly marked "planned" - when
+  one ships, search the whole tree for it.
 - **Audience separation**: no Go/TS symbols or source paths in the User Guide;
   the Developer Docs reference symbols/paths as inline code (not links).
 - **Hyphens, not em dashes**: use `-` or restructure the sentence; do not use the

@@ -53,8 +53,12 @@ themselves.
 - **`streamUrl(libraryId, path, download?, opts?)`** can request the
   download-disposition variant (`download=1`, used by the download engines) and
   an on-the-fly MP3 transcode (`transcode=1`, `t=<seconds>` for a mid-file
-  start). Note: nothing *automatically* requests the transcode yet - the
-  `direct_playable` negotiation on web is a known open follow-up.
+  start); when the web player uses it is
+  [web transcode negotiation](playback.md#web-transcode-negotiation-transcodets).
+- **`history(libraryId, path, limit?)`** returns a book's listening spans, newest
+  first: the server's default 100, or up to `limit` from 1 to 500 (a `limit` of 0
+  or less, or above 500, falls back to 100; the end credits ask for 500, the most
+  it returns, to sum the time listened).
 - **`coverUrl(libraryId, path, opts?)`** takes `{ size, version }`: `size`
   (`CoverSize`, `160 | 320 | 640`) asks for a JPEG thumbnail whose **longer side**
   is at most that many pixels, and only when the server advertises `cover_sizes`
@@ -105,8 +109,9 @@ Patterns to copy when adding an endpoint:
 - Paged reads: `useBrowseInfinite` uses `useInfiniteQuery` against the server's
   `next_offset` cursor (500-entry pages); the browse screen drains all pages so
   the A–Z rail and filter operate on the complete folder.
-- Mutations invalidate their exact key on success (`useAddBookmark`,
-  `useAddNote`, …). `useToggleFavourite` shows the full optimistic pattern:
+- Mutations invalidate their exact key on success (`useAddNote`,
+  `useDeleteBookmark`, …; `addBookmark()` is the framework-free twin for callers
+  outside React and invalidates `qk.bookmarks` after the write). `useToggleFavourite` shows the full optimistic pattern:
   `onMutate` cancels + snapshots + patches the cached list, `onError` rolls
   back, `onSettled` invalidates to reconcile server-derived fields.
 - `useMarkFinished` deliberately routes through the offline-aware
@@ -141,8 +146,14 @@ Phase 2 browse screens consume them (see
 `undefined` while the connection's `/server` info is unknown (still loading, or
 unreachable), then `true` or `false` (a server that predates the flag reads
 `false`). A screen picks its fallback, or hides the feature, on `false`, and on
-`undefined` waits or decides for itself. `useServerInfo(connectionId?)` takes the
-same optional connection id and keeps its answer (`gcTime: Infinity`), so a gated
+`undefined` waits or decides for itself. Outside React, `cachedCapability(cid, flag)`
+reads the cached flag without asking, and `fetchCapabilities(cid, client)` reads the
+flags through `fetchFailFast` - `fetchQuery` with `networkMode: 'always'` and no
+retry, after cancelling a paused fetch a mounted hook holds for the same key, so a
+framework-free reader (the play path, the end of a book, keep-ahead) always settles
+instead of waiting for the browser's online flag or a hidden tab's focus - falling
+back to the cached flags when the server can't be read. `useServerInfo(connectionId?)` takes the
+same optional connection id as `useCapability` and keeps its answer (`gcTime: Infinity`), so a gated
 hook mounted later starts from the known flags.
 
 Each gated hook asks only a server whose flag is `true`. Until then its query has
@@ -181,8 +192,9 @@ older server (React Query rejects it instead) and the query stays pending.
   (outside any route scope) can ask the playing book's own server, and an
   `enabled` flag so it fetches only when the answer is needed. A community `next`
   can be in another of the caller's libraries: open it by its own `library_id`.
-  The shipped end-of-book flow still resolves the folder sibling on the device
-  ([Playback](playback.md)) until a later phase switches to it.
+  The end-of-book flow asks it through `resolveUpNext` after the Up next queue,
+  keeping the device-side folder sibling as the fallback for a server without
+  `next_book` ([The end of a book](end-of-book.md#what-plays-next-up-next-resolverts)).
 - **New wire fields** (all optional, absent on older servers): `Book.published`,
   `description` (`/item` only), `cover_color` (`CoverColor { bg, accent?,
   on_accent? }`, read by the cover wash) and `cover_version` (the cover cache
@@ -225,7 +237,8 @@ the old index. `useSetQueue` / `useSetCollectionItems` have no caller.
 Phase 1b adds the listener's own state to the data layer the same way: typed
 mirrors in `types.ts`, methods in `client.ts` and hooks in `hooks.ts`, each gated
 on its capability. Phase 2 consumes `queue`, `collections`, `progress_edit` and
-`user_stats`; `ratings` and `my_devices` still wait for their screens.
+`user_stats`; Phase 3's end credits read `ratings` (`useRating` + `useMyRatings`,
+`useSetRating`) and the year's stats; `my_devices` still waits for its screen.
 
 | Capability | Query hooks | Mutation hooks | Types |
 |---|---|---|---|
@@ -424,6 +437,21 @@ second progress cache. Chapter numbers are the *work's* logical chapters, which
 only approximate a given recording's edition - hence the deliberate escape hatches
 (the toggle, and a finished book showing everything).
 
+The **live** side is `src/components/player/use-listening-position.ts`:
+`useListeningPosition` (the book page, at `LIVE_POSITION_BUCKET_S`, 15 s; the
+series page's Resume chapter, per minute), `useListeningChapter` (the player's
+companion: the same rule at 15 s, selected as a chapter number) and
+`useLivePosition` (Search's characters, floored by the saved place in Search's own
+model). Each reads the player's position while the book is loaded, never below the
+saved one, in buckets rounded down - and only once the book is
+**placed** (`selectPlacedBookKey`): right after `playBook` swaps a book in, the
+snapshot still holds the previous book's place until the engine load lands (the
+store's `loadingBook`), and reading it as the new book's would reveal its cast by a
+position the listener never reached. Previously on reads the saved place only. The
+chain that feeds the player-side gates (the `metadata` flag, the book, `/meta`, the
+chapters, the corrected starts) is `useBookCommunity`
+(`src/components/library/use-book-community.ts`).
+
 #### Catching up on previous books (`client.metaWork`)
 
 Both the Recaps and Characters tabs end with a **Previous books** block: one closed
@@ -512,7 +540,8 @@ pure:
   from fewer than three listening days or under an hour in all.
 - `now-card-model.ts`: the whole-book scale (one tick per chapter, merged past 120
   chapters), bookmark pins, chapter place, percent heard (100 only once finished)
-  and time left at the book's own speed. Chapter starts come from the file
+  (the time left comes from `src/playback/time-left.ts`, at the book's own speed,
+  [Player UI](player-ui.md#time-left-time-leftts)). Chapter starts come from the file
   durations (`chapterStartsOf`), as on the book page.
 
 ### Search and the spoiler model

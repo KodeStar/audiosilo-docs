@@ -122,8 +122,9 @@ Implementation notes worth knowing before touching it:
 **Entry shape** (`src/downloads/types.ts`): `status` (`queued → downloading →
 downloaded | error`), aggregate `progress` (0..1), `bytes`/`totalBytes`, an
 optional `error` message, `failure` (a classified `DownloadFailure` for an
-`error` status, below), `origin` (`listener`, the default when absent, or
-`keep-ahead`), and the **manifest** - the offline source of truth: the full `Book`,
+`error` status, below), `origin` (`listener`, the default when absent; `auto`,
+the playback store's download of the book you start; or `keep-ahead`), and the
+**manifest** - the offline source of truth: the full `Book`,
 the `ChaptersResponse`, the ordered `files` (`relPath → localUri`, plus the
 `bytes` written, absent on entries saved before it was recorded), `coverUri`,
 `savedAt`. The manifest is everything the player needs to build a queue and render
@@ -133,9 +134,21 @@ with no network.
 
 - **Queue**: `download(connectionId, libraryId, book, chapterData?, origin?)`
   registers a `queued` entry and pushes its key onto a module-level FIFO; **one
-  book downloads at a time** (`runQueue`/`runOne`). Repeat requests for a
+  book downloads at a time** (`runQueue`/`runOne`). It refuses a book that
+  streams through the server's transcoder on web (`webTranscodeFromCache`, see
+  [Playback](playback.md#web-transcode-negotiation-transcodets)): its raw files
+  would not play offline in that browser, and refusing here covers the book page,
+  the automatic download and keep-ahead alike. Repeat requests for a
   non-errored entry are ignored; an `error` entry is retried, keeping its
-  manifest's finished `files` (and chapters). No `ApiClient` is passed in - `runOne` resolves
+  manifest's finished `files` (and chapters). It is also the **one choke point for the
+  automatic rules**: for the `auto` (the book you start) and `keep-ahead` origins it
+  refuses a book the listener declined this session and one that would eat into the
+  reserve (`roomLeft`; an unknowable room lets it start, one at a time); the
+  listener's own download is never held back. The book you start outranks
+  keep-ahead's books still **queued**: when only they stand in its way, they step
+  aside (unmarked, so keep-ahead plans them again around it) and it goes next. It
+  resolves a `DownloadOutcome` - `queued`, or why not: `exists`, `unsupported`,
+  `transcoded`, `declined`, `no-space` - so a caller can act on a refusal. No `ApiClient` is passed in - `runOne` resolves
   the entry's **own** server client via `resolveClient(entry.connectionId)`
   (`src/api/connection-clients.ts`), so two servers' queued downloads never race a
   shared client; a queued download whose connection was removed errors the entry
@@ -175,10 +188,18 @@ with no network.
   (`isDeclined(cid, lib, path)`, a module-level `Set`, never stored), so no
   automatic download fetches a book the listener just cancelled or removed (also
   through "remove a download when you finish the book"). A `download()` with
-  `origin: 'listener'` lifts the mark.
+  `origin: 'listener'` lifts the mark; `auto` and `keep-ahead` never do, which is
+  why the playback store's automatic download asks as `auto`.
 - **UI**: `useDownloadControls` (`use-download-controls.ts`) wraps all of this
-  for the book screen / badges; the book menu (`book-actions.tsx`) calls the store
-  directly; the `/downloads` page is below. Every user-facing removal (the book
+  for the book screen, the badges and the book menu (`book-actions.tsx` reads the
+  same hook); the `/downloads` page is below. Its `needsTranscode` (web, a book that
+  streams transcoded, with no entry or an errored one - a download already on disk
+  stays removable) turns `supported` off so `DownloadControl` reads "Can't download
+  in this browser" rather than the generic "Downloads unavailable". List responses
+  carry no `direct_playable`, so on web `download()` looks a list-shape book up in
+  full (`itemQuery` + `chaptersQuery` through the cache) before deciding, and the book
+  menu offers Download only once its own lookup (made when the menu opens) says the
+  browser plays the book directly. Every user-facing removal (the book
   page, the book menu, the Downloads page) asks first through the shared
   `RemoveDownloadConfirm` (`src/components/downloads/remove-download-confirm.tsx`),
   which says how much room it frees.
@@ -240,10 +261,16 @@ has downloads on the device.
 The `keepAhead` setting (`0 | 1 | 2 | 3`, default `0` = off) downloads the next N
 books **after** the loaded one. It sits beside the existing automatic download
 (`maybeAutoDownloadCurrent` in `src/playback/store.ts`, which downloads the book you
-*start* under `autoDownloadNext` and is unchanged): both obey the same network rule
-and both go through the store's one-at-a-time queue, and the current book always
-wins, because the store enqueues it the moment playback starts while keep-ahead
-waits `SETTLE_MS` (4 s) after any change before it plans.
+*start* under `autoDownloadNext` - see
+[Auto-download on play](end-of-book.md#auto-download-on-play)): both obey the same
+network rule, and both ask the downloads store's `download()`, which applies the
+same declined mark and reserve to both and runs one book at a time. The current book
+goes first among the waiting downloads: the store queues it the moment playback
+starts (behind any download already running) while keep-ahead waits `SETTLE_MS`
+(4 s) after any change before it plans, and keep-ahead's books still queued step
+aside if they are in its way. A keep-ahead download already running finishes first;
+if its remaining bytes leave no room, the store answers `no-space`, which the
+playback store does not retry.
 
 **The planner** (`src/downloads/keep-ahead.ts`) is pure and tested:
 
@@ -253,14 +280,18 @@ waits `SETTLE_MS` (4 s) after any change before it plans.
   device), `active` (queued or downloading), `failed` (left for the listener to
   retry), `declined` (cancelled or removed this session; it keeps its place, the
   planner never reaches past it for another), `waiting` (the network rule says
-  not now), `no-space`, `later` (room unknown: one download at a time), or `start`.
-  Space: `free - pending - reserveBytes(capacity)`, where `reserveBytes` is
+  not now), `no-space`, `later` (room unknown: one download at a time),
+  `unavailable` (this device can't keep it: a web browser that plays it through the
+  server's transcoder; left alone in its place), or `start`. A book the store turned
+  away for room although the plan thought it fit (`tooBig`: the full item is bigger
+  than the list said) reads as no room.
+  Space: `roomLeft(storage, pending)` = `free - pending - reserveBytes(capacity)`, where `reserveBytes` is
   `max(1 GB, 10% of capacity)`, `pending` is what queued and running downloads
   still have to write, and a book's need is `estimateBytes` (its size, else its
   length at about 128 kbps, else 1 GB). Books start in window order and stop at the
   first that doesn't fit. The plan's `status` (`off`, `never`, `idle`, `working`,
-  `no-space`, `waiting`, `failed`, `ready`, `declined`) is what the status line
-  says.
+  `no-space`, `waiting`, `failed`, `ready`, `declined`, `unavailable` - "This
+  browser can't keep the next books offline.") is what the status line says.
 
 **The controller** (`keep-ahead-controller.ts`, framework-free, started once by
 `startKeepAhead()` from the root layout like `startAutoSleep`) gathers the inputs
@@ -268,12 +299,19 @@ for the **loaded book's** connection: its capabilities, the queue (when `queue`;
 entries without `book` can't be downloaded and are skipped), the finished set from
 `allProgress`, and, only when the queue leaves room, the series - the server's
 `/next` answer step by step when it has `next_book`, else the folder's next sibling
-(`resolveNextBook`, what the end-of-book flow uses). It reads the network gate from
+(`resolveNextBook`) - nearly the order `resolveUpNext` plays books in at the end of
+a book, so the book kept ready is usually the book that plays (keep-ahead also skips
+finished series books, follows the loaded book's series after a short queue, and
+plans nothing when `/next` fails, where the resolver falls back to the folder). It
+reads the network gate from
 `autoDownloadNext` (`never` → status `never`; `wifi` on a metered connection →
 `waiting`), the storage estimate and the registry, publishes `{ status, slots }` to
 the `useKeepAhead` store, then for each `start` fetches the full item and chapters
-and calls `download(..., 'keep-ahead')` unless the book was declined or registered
-meanwhile. It re-plans (one `SETTLE_MS` timer, and once more if something changed
+and calls `download(..., 'keep-ahead')` unless the book was registered meanwhile
+(an errored entry too: keep-ahead never retries a failure); a `transcoded` outcome
+marks the book `unavailable` and a `no-space` one `tooBig` (until the registry
+changes), and the same run plans again at once without it. Between runs it re-plans
+(one `SETTLE_MS` timer, and once more if something changed
 during a run) on the loaded book, the two settings, the registry's statuses (not
 byte counts), any successful `queue` query, and on native a network change. It
 never throws and reports nothing to reachability: a server that can't be reached
@@ -298,7 +336,10 @@ re-exports it) renders what the pure `src/downloads/downloads-view.ts` returns:
 
 Keep-ahead's held-back books (`waiting`, `no-space`, `later` slots not in the
 registry yet) render as `PlannedRow`s in In progress; entries with `origin:
-'keep-ahead'` are labelled "Kept ahead". The **Automatic downloads** card
+'keep-ahead'` are labelled "Kept ahead". A failed row for a book this browser now plays through
+the server's transcoder (`useNeedsWebTranscode`) offers no Retry - the store would
+refuse it - and says why ("This browser can't play this book offline. Remove it to
+free the space."), leaving only Cancel. The **Automatic downloads** card
 (`rules-card.tsx`) edits `autoDownloadNext`, `keepAhead` and `autoDeleteFinished`;
 Settings and the series page's `KeepAheadCard` show the same control and status
 line (`KeepAheadControl`, `KeepAheadStatusLine`). The summary line is published into the sub-nav with

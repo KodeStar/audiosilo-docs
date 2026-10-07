@@ -50,29 +50,29 @@ Your playback preferences (kept per device, so your phone and your desktop can d
 
 ## Sleep timer
 
-Whether AudioSilo should set a [sleep timer](playback.md#sleep-timer) for you at night, so you don't have to remember. Off out of the box; the three settings below only appear once it's on. Like Playback, these are kept per device.
+Whether AudioSilo should set a [sleep timer](sleep-timer.md) for you at night, so you don't have to remember, and how a shake of the phone keeps a timer going. Like Playback, these are kept per device.
 
 | Setting | What it does | Options (default) |
 |---|---|---|
 | **Auto sleep timer** | Start a sleep timer automatically for playback that begins between the hours below | On / Off (default **Off**) |
 | **From** / **Until** | The nightly window it applies to, adjustable in **30-minute steps** and shown in your device's own clock format | Any times (default **10:00 PM** to **6:00 AM**) |
 | **Timer type** | What the automatic timer does | End of chapter, or 15 / 30 / 45 / 60 minutes (default **End of chapter**) |
+| **Shake to extend** | A shake keeps a sleep timer going at its end ([Shake to extend](sleep-timer.md#shake-to-extend)); mobile apps only | On / Off (default **On**) |
+| **Shake sensitivity** | How hard that shake has to be (shown while Shake to extend is on) | Low / Medium / High (default **Medium**) |
 
-The window may cross midnight, which is the whole point of the default. Setting **From** and **Until** to the same time switches it off rather than covering the whole day.
+**From**, **Until** and **Timer type** only appear once **Auto sleep timer** is on. The window may cross midnight, which is the whole point of the default. Setting **From** and **Until** to the same time switches it off rather than covering the whole day.
 
-:::note
-The automatic timer stays out of your way: only ever one at a time, and it never replaces a timer you set yourself. If one runs out and you press play again inside the window, you get a fresh one - waking at 3:00 AM shouldn't leave you unprotected. **Cancel** one, though, and nothing will arm another for that book for the rest of the session.
-:::
+How the automatic timer behaves is under [Starting a timer automatically at night](sleep-timer.md#starting-a-timer-automatically-at-night).
 
 ## Up next
 
-Controls for what happens as one book ends and the next begins (see [When a book finishes](playback.md#when-a-book-finishes)). Like Playback, these are kept per device. (This section is about settings; the queue of books you line up yourself is [Up next](up-next.md).) The three download settings also appear on the Downloads page, as its **Automatic downloads** card - changing one place changes the other.
+Controls for what happens as one book ends and the next begins (see [The end of a book](end-of-book.md)). Like Playback, these are kept per device. (This section is about settings; the queue of books you line up yourself is [Up next](up-next.md).) The three download settings also appear on the Downloads page, as its **Automatic downloads** card - changing one place changes the other.
 
 | Setting | What it does | Options (default) |
 |---|---|---|
-| **Automatically play next book** | Start the next book in the folder when one finishes, after a short countdown on the end credits screen | On / Off (default **Off**) |
-| **Download automatically** | Download the book you start listening to, so it's ready to hear offline. Streaming begins straight away, and playback switches to the downloaded copy quietly once it's on the device | Never / On Wi-Fi / Always (default **On Wi-Fi**) |
-| **Keep the next books ready** | While you listen, download this many of the next books - from your Up next queue first, then the series - so they're ready offline. Follows the automatic download setting above, and always leaves at least 1 GB free. See [Keep the next books ready](offline-downloads.md#keep-the-next-books-ready) | Off / 1 / 2 / 3 (default **Off**) |
+| **Automatically play next book** | When a book finishes, start [what plays next](end-of-book.md#what-plays-next) after a short countdown on the end credits | On / Off (default **Off**) |
+| **Download automatically** | Download the book you start listening to, so it's ready to hear offline. Streaming begins straight away, and playback switches to the downloaded copy quietly once it's on the device. It leaves the same free space as Keep the next books ready, and skips a book you cancelled or removed earlier in the session | Never / On Wi-Fi / Always (default **On Wi-Fi**) |
+| **Keep the next books ready** | While you listen, download this many of the next books - from your Up next queue first, then the series - so they're ready offline. Follows the automatic download setting above, and always leaves at least 1 GB free (or a tenth of your storage, if that's more). See [Keep the next books ready](offline-downloads.md#keep-the-next-books-ready) | Off / 1 / 2 / 3 (default **Off**) |
 | **Remove a download when you finish the book** | Remove a book's downloaded files from the device when it's marked finished, to free up space. Your place in it is kept | On / Off (default **On**) |
 
 :::note

@@ -22,7 +22,9 @@ export const SHOTS = [
   {file: 'web-player/collection.png', capture: 'web', title: 'Web player - Collection', hint: 'the provisioned "Victorian evenings" collection page: name, description, count and length, Edit / Delete (Share hidden on a demo account), its books'},
   {file: 'web-player/up-next.png', capture: 'web', title: 'Web player - Up next', hint: 'the desktop Up next drawer open beside Library > Books: Now playing, three queued books, Continue the series and more'},
   {file: 'web-player/book-detail.png', capture: 'web', title: 'Web player - Book detail', hint: 'book page with the tab row and the right-hand cover panel with Listen'},
-  {file: 'web-player/player.png', capture: 'web', title: 'Web player - Now playing', hint: 'the full player, opened from the docked bar'},
+  {file: 'web-player/player.png', capture: 'web', title: 'Web player - Now playing', hint: 'the full player on a desktop, opened from the docked bar with the book paused: cover, status line, seek bar and timeline, transport, actions, and the companion column'},
+  {file: 'web-player/dock-undo.png', capture: 'web', title: 'Web player - Docked bar with Undo', hint: 'the docked player bar (a strip along the window bottom) just after a next-chapter jump: the Back to <time> chip leading the actions'},
+  {file: 'web-player/end-credits.png', capture: 'web', title: 'Web player - End credits', hint: 'the end credits, opened early from the full player menu (book paused): shelf or cover, stats, Up next card'},
   {file: 'web-player/palette.png', capture: 'web', title: 'Web player - Quick search', hint: 'the command palette (top bar search / ⌘K) with "holmes" typed: Books and Series groups'},
   {file: 'web-player/profile-menu.png', capture: 'web', title: 'Web player - Profile menu', hint: "the top bar's profile menu: servers, Add a server, account, appearance"},
   {file: 'web-player/search.png', capture: 'web', title: 'Web player - Search', hint: 'the Search page with "holmes": grouped Books, and Series as the series card with its mini shelf'},
@@ -38,7 +40,9 @@ export const SHOTS = [
   {file: 'web-player/phone-home.png', capture: 'web', title: 'Phone - Home', hint: 'phone-width Home: large title with the Up next button, the Now card, the tab bar and mini player'},
   {file: 'web-player/phone-up-next.png', capture: 'web', title: 'Phone - Up next', hint: 'phone-width Up next sheet opened from the header button: Now playing and the queue'},
   {file: 'web-player/phone-book-detail.png', capture: 'web', title: 'Phone - Book detail', hint: 'phone-width book page'},
-  {file: 'web-player/phone-player.png', capture: 'web', title: 'Phone - Now playing', hint: 'phone-width full-screen player'},
+  {file: 'web-player/phone-player.png', capture: 'web', title: 'Phone - Now playing', hint: 'phone-width full player, paused: the companion chips under the actions'},
+  {file: 'web-player/phone-speed-sheet.png', capture: 'web', title: 'Phone - Speed sheet', hint: 'the speed sheet over the phone player: readout, slider with -/+, presets with time left'},
+  {file: 'web-player/phone-sleep-sheet.png', capture: 'web', title: 'Phone - Sleep sheet', hint: 'the sleep timer sheet over the phone player: minute tiles, End of chapter, Or stop after, the sleep settings'},
 
   // ── Admin console (admin-ui, desktop 1440x900 dark unless noted) + public server pages
   {file: 'admin/login.png', capture: 'admin', title: 'Admin - Sign in', hint: 'the console sign-in page, signed out'},

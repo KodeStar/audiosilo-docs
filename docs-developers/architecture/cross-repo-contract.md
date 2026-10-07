@@ -66,8 +66,9 @@ the admin-only catalog API (`/api/v1/admin/books` and friends), which the admin
 console in the server repo consumes.
 
 **Player-redesign data API (Phase 1a).** Additive shapes the frontend mirrors in
-`types.ts`/`client.ts`/`hooks.ts`, each behind a capability flag (seam 8), with no
-screen consuming them yet: every `Book` gains `published`, `cover_color` (`{bg,
+`types.ts`/`client.ts`/`hooks.ts`, each behind a capability flag (seam 8), read by
+the browse screens and Home and by the player (the cover wash, the end of a book):
+every `Book` gains `published`, `cover_color` (`{bg,
 accent?, on_accent?}`, sent only while it matches the current art) and
 `cover_version` (a hash of the book's cover art identity, a cache buster rather than
 a content hash); `GET /libraries/{id}/authors`,
@@ -79,7 +80,8 @@ browse lists, and `/books` takes `narrator=` (`useLibraryBooks`); `GET
 byte-range prefix, matching `Scope.Allows` exactly.
 
 **Player-redesign user state (Phase 1b).** The listener's own state, mirrored the
-same way and gated per feature (seam 8), still with no screen: up next
+same way and gated per feature (seam 8), read by Up next, collections, the book
+menu, Home and the end credits (only `/me/devices` has no screen yet): up next
 (`/me/queue`, `{ queue }`), collections shared read-only with named users
 (`/me/collections/**`, `{ collections }` / `{ collection, items }`, and
 `/me/share-targets`, `{ users }`), ratings (`/libraries/{id}/rating`,
@@ -135,7 +137,7 @@ workaround.
 **A change requires:** any change to how audio is served (new container support,
 a proxy in front) must preserve true audio MIME types, validated on an iOS device.
 
-## 5. Transcode negotiation - `direct_playable` + `?transcode=1`
+## 5. Transcode negotiation: `direct_playable` and `?transcode=1`
 
 **What couples:** whether a file needs server-side transcoding to play in a given
 client.
@@ -148,17 +150,23 @@ output isn't byte-seekable). All gated by the `--ffmpeg` flag and reflected in t
 `transcode` capability (seam 8).
 **Frontend:** `Book.direct_playable`/`codec` and
 `ChaptersResponse.direct_playable`/`codec` are mirrored in `types.ts`, and
-`client.ts` `streamUrl(…, { transcode, t })` can request a transcoded stream.
-
-:::caution Planned, not shipped
-**Automatic web transcode negotiation is not yet wired**: the playback engines in
-`src/playback/` do not read `direct_playable` to switch to the transcoded URL, and
-seeking a non-byte-seekable stream needs more work. This is a tracked follow-up.
-:::
+`client.ts` `streamUrl(…, { transcode, t })` builds a transcoded stream URL. The
+**web player negotiates it** (`src/playback/transcode.ts`): on web, a book whose
+`direct_playable` is explicitly `false` streams with `?transcode=1` when its
+server's `transcode` capability is `true`; the web engine re-requests with a new
+`&t=` on every seek and keeps positions track-absolute, the book page says the
+audio is converted for this browser, and downloading such a book is off in the
+browser. Native engines never transcode (they rely on the platform's own
+decoders); a downloaded file is never transcoded. Details in
+[frontend playback](../frontend/playback.md#web-transcode-negotiation-transcodets).
 
 **A change requires:** changing `direct_playable`'s meaning or the transcode query
-params changes both sides - and auto-negotiation, when wired, must degrade
-gracefully against a server with ffmpeg disabled (`transcode: false`).
+params changes both sides. The negotiation degrades by design: an absent
+`direct_playable` (an older server, or any list response - only `item` and
+`chapters` carry it) reads as playable, as does a codec never probed (sent as
+`true`), and
+an unknown or `false` `transcode` capability streams the file directly, exactly as
+before negotiation existed.
 
 ## 6. The chapter / whole-book timeline model
 
@@ -355,7 +363,9 @@ candidates pass `metaserve`'s `score` and `reasons` through to the console's
 hand-mirrored types (`admin-ui/src/api/types.ts`), not to the player.
 **Frontend:** the `BookMeta` envelope (hand-mirrored in `src/api/types.ts`) is
 fetched by `client.bookMeta` and rendered capability-gated on the book screen's
-Recaps/Characters/Series tabs; `client.metaWork` / `useMetaWork` lazily fetch a
+Recaps/Characters/Series tabs, and also read by the series page, Home (the Now card
+and Previously on), Search, the end credits and the player's companion and reveal
+toast; `client.metaWork` / `useMetaWork` lazily fetch a
 previous book's work when the reader opens its row. Reading-order families
 (metaserve `schema_version` 7 `ordering` / `ordering_of` / `orderings`) are
 collapsed **server-side** into one rail per family, with the other orders as
