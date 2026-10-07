@@ -1,6 +1,6 @@
 ---
 title: "Libraries"
-description: "Adding, editing, ordering, rescanning, exporting and deleting libraries in the AudioSilo admin console, scan schedules and skipped files, correcting folder detection, and what happens when a library's folder goes missing."
+description: "Adding, editing, ordering, rescanning, exporting and deleting libraries in the AudioSilo admin console, scan schedules and skipped files, whether book details come from tags or folder names, correcting folder detection, and what happens when a library's folder goes missing."
 ---
 
 A **library** is a folder on the server that AudioSilo reads for audiobooks.
@@ -13,7 +13,9 @@ Libraries live under **Library > Libraries** in the
 where they are."). Each library is a card with a few of its newest covers, its
 name, its status, its folder and its book count - and, when it is scanned on a
 schedule, the schedule and when the next scan is due ("Every 6 hours · next in
-5 hr").
+5 hr"). A library that takes its book details from folder names says "Details
+from folder names" (see
+[Where book details come from](#where-book-details-come-from)).
 
 ![The Libraries page](/img/screenshots/admin/libraries.png)
 
@@ -46,8 +48,10 @@ dialog asks for two things:
 
 Under them are two optional scan settings, **Scan automatically** and **Skip
 these files and folders** - see [Scanning on a schedule](#scanning-on-a-schedule)
-and [Skipping files and folders](#skipping-files-and-folders). You can leave
-both as they are and set them later.
+and [Skipping files and folders](#skipping-files-and-folders) - and **Book
+details come from** (see
+[Where book details come from](#where-book-details-come-from)). You can leave
+them all as they are and set them later.
 
 ![Adding a library with the folder picker open](/img/screenshots/admin/library-add.png)
 
@@ -89,17 +93,21 @@ container and use the in-container path (see
 **⋯ > Edit library...** opens the **Edit *name*** dialog: "Rename the library,
 point it at another folder, or change how it's scanned."
 
-![Editing a library: the folder and the scan settings](/img/screenshots/admin/library-edit.png)
+![Editing a library: the folder, the scan settings and where book details come from](/img/screenshots/admin/library-edit.png)
 
 - **Name** and **Folder** (with the same **Browse** picker).
 - **Scan automatically** and **Time** - see
   [Scanning on a schedule](#scanning-on-a-schedule).
 - **Skip these files and folders** - see
   [Skipping files and folders](#skipping-files-and-folders).
+- **Book details come from** - see
+  [Where book details come from](#where-book-details-come-from).
 
 Click **Save changes**. Changing the **folder** or the **skipped files**
 rescans the library ("AudioSilo is rescanning it now."); renaming it or
-changing its schedule doesn't, since the books haven't changed. When you
+changing its schedule doesn't, since the books haven't changed. Changing where
+book details come from doesn't rescan either: every book in the library is
+updated as you save. When you
 change the folder, listening progress follows the books the scan finds again
 at the same place inside the new folder.
 
@@ -181,6 +189,36 @@ longer cover come back. This works even if the patterns cover every book in
 the library - AudioSilo doesn't mistake that for a missing folder. Skipped files are hidden from the folder view too,
 and can't be opened from it. The patterns are stored by AudioSilo, not in a
 file in your library folder - AudioSilo never writes there.
+
+## Where book details come from
+
+**Book details come from** (in **⋯ > Edit library...**, or when adding a
+library) decides where the library's books take their title, author, series
+and series number from:
+
+- **The files' tags first** - the default. The audio files' tags are used,
+  and the folder names fill in whatever the tags leave empty (see
+  [Where titles, authors and series come from](../getting-started/organizing-your-library.md#where-titles-authors-and-series-come-from)).
+- **Folder names first** - for a library whose folders are named well and
+  whose tags aren't. The folders are read as `Author / Series / 03 - Title`:
+  the top folder is the author, the folder holding the book is the series,
+  and the book's own folder (or file) name is the title, with a leading number
+  read as its number in the series. A book directly inside its author's folder
+  (`George Orwell/Animal Farm`) gets an author and a title but no series from
+  the folders. Disc and track folders (`CD1`, `Disc 2`) are parts of the book
+  above them, never its title.
+
+Whichever comes second fills what the first leaves empty, so with **Folder
+names first** the tags still give the narrator, and a series for a book the
+folders don't name one for. A tag title that is exactly the folder's name,
+number and all (`13 Reasons Why`), is kept whole, so a number that is part of
+the title isn't read as a series number.
+
+Changing this setting updates every book in the library at once, without a
+rescan, and your own edits (and values you accepted from community metadata)
+stay on top. On a book's page, the values taken from the folders are marked
+**Path** (see [Editing details](books.md#editing-details)). Switching back to
+**The files' tags first** puts the tags' values back.
 
 ## Library order
 

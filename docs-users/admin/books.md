@@ -118,6 +118,11 @@ Each value has a marker saying where it came from:
 - **Edited** - your edit, locked against rescans.
 - **Community** - accepted from community metadata.
 
+In a library set to take
+[book details from folder names first](libraries.md#where-book-details-come-from),
+the title, author, series and series number the folders give are marked
+**Path** even when the files have tags of their own.
+
 A few rules keep values sensible, and the field tells you when one is broken:
 a book needs a title, a series number is a number like `1` or `2.5`,
 **Published** is a year (`2010`, `2010-08` or `2010-08-31`), an ASIN is 10
@@ -169,6 +174,12 @@ WebP image up to 5 MB. Custom covers are stored in AudioSilo's database, never
 in the book folder, and players show them in place of the book's own art.
 **Remove the custom cover** goes back to the book's own art.
 
+You can also take a book's cover from community metadata when you
+[match it](#matching-with-community-metadata). It is kept exactly like an
+uploaded one: stored in AudioSilo's database, with the book folder untouched,
+and **Remove the custom cover** goes back to the book's own art. A community
+cover larger than 5 MB is scaled down to fit within 1600 pixels first.
+
 ### Listeners and who can see the book
 
 - **Listeners** - everyone who has started the book, with their progress or
@@ -213,22 +224,40 @@ missing.
    or paste an ASIN or ISBN, and click **Search**. Typed words are matched
    alongside the book's own tags and folders, in any order ("sharpe 8" finds
    the eighth Sharpe book); an ASIN or ISBN on its own looks up just that.
-3. **Possible matches** lists what was found, each with how closely it
-   matches ("92% match"), its narrators and whether its length matches your
+3. **Possible matches** lists what was found, each with its cover, how
+   closely it matches ("92% match"), its narrators and whether its length matches your
    files. The score counts whichever fits the book best: its tags, its
    folders or what you typed. An ASIN or ISBN that matches scores 100%. Pick
    one and click **Compare fields**.
-4. If the book was recorded more than once, pick the right **Edition**.
+4. If the book was recorded more than once, pick the right **Edition**. A
+   recording sold in several Audible stores has an ASIN in each; the match
+   takes the one from your **Audible marketplace** (see
+   [Community metadata](server.md#community-metadata)), and the list shows
+   which store it is from ("B0... · UK").
 5. The comparison shows each field **On your server** and from the
    **Community**. Tick the ones to **Take**. Fields you've edited yourself
-   are unticked, so they're never overwritten unless you tick them.
-6. Click **Accept** (it says how many fields, for example "Accept 4 fields").
+   are unticked, so they're never overwritten unless you tick them. The first
+   row is the **Cover**: the book's art beside the community's. It starts
+   ticked only when the book has no cover art of its own (and the community's
+   cover could be fetched), so art in your files, or a cover you uploaded, is
+   kept unless you tick it.
+6. Click **Accept** (it says how many fields, for example "Accept 4 fields";
+   a ticked cover counts as one).
 
 ![Matching a book with community metadata](/img/screenshots/admin/book-match.png)
+
+To match many books at once, use **Match automatically** on the Health page
+(see [Matching every book at once](health.md#matching-every-book-at-once)).
 
 Accepted values are marked **Community** and are locked like your own edits;
 you can revert them the same way. If you have unsaved edits on the page, save
 or discard them before matching.
+
+A cover you accept becomes the book's [custom cover](#covers). If it can't be
+fetched and it was all you ticked, the dialog stays open ("The cover couldn't
+be fetched. Nothing changed."), so you can try again or untick it. If you
+ticked fields too, the fields are still accepted and a message says the cover
+couldn't be fetched.
 
 If the catalogue can't be reached, or is too busy to answer in time, the
 dialog says "meta.audiosilo.app isn't answering" - try again in a minute.
@@ -240,6 +269,10 @@ names (the top folder, the folder holding the book, and the book's own folder
 or file name) to the metadata service. It sends nothing about your server or
 who listens. Players looking up "About this book" send only the ASIN or ISBN
 (see [Community metadata](server.md#community-metadata)).
+
+To show the candidates' covers, your server also downloads each cover image
+from wherever the catalogue keeps it (Audible's image servers or Open
+Library, for example). Only the image itself is asked for.
 :::
 
 ## Authors and narrators

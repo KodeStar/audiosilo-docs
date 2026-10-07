@@ -368,7 +368,13 @@ CSP-sensitive work against a real build served by Go. The console's own gate is
   a save bar with a diff, chapter renames), custom covers (`PUT`/`DELETE
   …/cover`), the match dialog (`GET …/book/match`, which matches the book's tag
   and path facts through metaserve's `works/match`; the ticked fields, ASIN and ISBN
-  included, are accepted as one `PATCH …/book` with `source: "community"`),
+  included, are accepted as one `PATCH …/book` with `source: "community"`;
+  candidates' covers are thumbnails the server fetched, `POST /admin/meta/covers`,
+  batched by URL in `src/api/cover-batch.ts`, since the CSP loads no other
+  host's images; a ticked Cover row, ticked by default only for a book with no
+  art whose preview loaded (`defaultCoverTick`), is kept with `PUT
+  …/cover/community` after the fields, and a failure with nothing else ticked
+  leaves the dialog open),
   listeners, shares
   and the "Files on disk" section with the disabled on-disk rename. The more
   menu's "Read the files again" calls `POST …/book/rescan`. `?match=1` opens the
@@ -380,7 +386,10 @@ CSP-sensitive work against a real build served by Go. The console's own gate is
   settings ("Scan automatically" + a time for a daily schedule, "Skip these
   files and folders" as a textarea; `features/libraries/scan-settings.ts`
   converts between the form and `scan_schedule` / `ignore_patterns`, and an
-  `invalid_schedule` / `invalid_pattern` error lands on its field),
+  `invalid_schedule` / `invalid_pattern` / `invalid_metadata_source` error
+  lands on its field), "Book details come from" (`metadata_source`; a change
+  refetches the library's books and the Health issues, since the server
+  re-resolved them),
   drag-and-drop or keyboard reorder (`PUT /admin/libraries/order`), rescan with
   live progress (the list's `scan`, including `queued`, shown as a "Waiting"
   badge, and `unavailable`), the next scheduled scan from `next_scan_at`, folder
@@ -447,7 +456,19 @@ CSP-sensitive work against a real build served by Go. The console's own gate is
   in the URL (`?issue=<kind>&ignored=1`). Without `?issue=` the page opens the
   first category needing attention and keeps it open, so clearing it shows "All
   clear" instead of jumping to the next. "Check again" queues a scan of every
-  library (`POST /admin/scan`).
+  library (`POST /admin/scan`). Above the "Not matched" list, **Match
+  automatically** (`bulk-match.tsx`, rules in `bulk-match-model.ts`) follows the
+  newest [match run](api/reference.md#bulk-community-matching)
+  (`GET /admin/match-runs`, polled each second while one works): Find matches
+  (and, with a preferred marketplace set, "Use *country* ASINs", a repick), its
+  progress with Stop, then the counts and "Review and apply". The review dialog
+  pages each outcome's items (`GET …/items?outcome=`), ticks the confident ones,
+  shows what the chosen scope writes from each item's server-computed `changes`,
+  and posts the admin's picks as `exclude`/`include` ids. When the newest run's
+  status changes to one that isn't working, the book lists, issues, book pages
+  and covers are refetched (a small apply can finish between two polls).
+  Marketplace names come from `lib/regions.ts` (`Intl.DisplayNames`, with each
+  store's domain), shared with the Settings select.
 - **Health > Jobs** (`features/health/jobs-page.tsx`) - over `GET /admin/jobs`
   (polled every second while a job runs or waits, every 15 seconds otherwise):
   the running scan with its progress and counters and Stop, the queue with

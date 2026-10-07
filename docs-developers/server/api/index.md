@@ -159,13 +159,15 @@ Failures a person can fix also carry a machine-readable **`code`** next to
 | `cannot_delete_self` | `400` | an admin deleting their own account |
 | `path_not_absolute` | `400` | `GET /admin/fs/dirs` with a relative `path` |
 | `folder_unreadable` | `404` | `GET /admin/fs/dirs` on a missing or unreadable folder |
-| `book_not_found` | `404` | an admin catalog call on a path that is not an indexed book (book page, edit, bulk edit, match, cover upload); an admin progress edit on a path with no progress and no indexed book |
+| `book_not_found` | `404` | an admin catalog call on a path that is not an indexed book (book page, edit, bulk edit, match, cover upload, community cover); an admin progress edit on a path with no progress and no indexed book |
 | `invalid_override` | `400` | a metadata edit the server refuses; the body also carries a `field` key naming the offending field (`PATCH /admin/libraries/{id}/book`, `POST /admin/books/bulk`) |
-| `metadata_off` | `404` | a community match search, or a `POST /admin/books/works` work-id batch, while community metadata is turned off |
-| `too_large` | `400` / `413` | a bulk edit or an issue ignore over 1000 books, a cover batch over 60, or a work-id batch over 100 (`400`); a custom cover over 5 MiB (`413`) |
-| `unsupported_image` | `415` | a custom cover that is not a JPEG, PNG or WebP image |
+| `metadata_off` | `404` | a community match search, a `POST /admin/books/works` work-id batch, or a community cover (`POST /admin/meta/covers`, `PUT /admin/libraries/{id}/cover/community`) while community metadata is turned off |
+| `too_large` | `400` / `413` | a bulk edit or an issue ignore over 1000 books, a cover batch over 60, a community cover batch over 12, or a work-id batch over 100 (`400`); a custom cover upload over 5 MiB, or a community cover over 16 MiB or 40 megapixels (`413`) |
+| `unsupported_image` | `415` | a custom cover (uploaded or community) that is not a JPEG, PNG or WebP image |
+| `cover_unavailable` | `502` | `PUT /admin/libraries/{id}/cover/community` when the server couldn't fetch the image |
 | `invalid_schedule` | `400` | a library `scan_schedule` that isn't `""`, `every:<N>h` (1, 3, 6, 12, 24) or `daily:HH:MM` (`POST`/`PATCH /admin/libraries`) |
 | `invalid_pattern` | `400` | a library `ignore_patterns` list the server refuses: more than 100 patterns, one over 200 bytes, one that matches nothing, or a malformed wildcard; the message names the line (`POST`/`PATCH /admin/libraries`) |
+| `invalid_metadata_source` | `400` | a library `metadata_source` other than `"tags"` or `"path"` (`POST`/`PATCH /admin/libraries`) |
 | `not_indexable` | `404` | `POST /admin/libraries/{id}/book/rescan` on a path with no book any more (gone, not a book, or skipped by the library's ignore rules) |
 | `current_device` | `409` | `DELETE /admin/devices/{id}` on the token making the request (sign out instead) |
 | `no_access` | `409` | `PATCH /admin/libraries/{id}/progress` that would start progress on a book the person can't see (their own access, not the admin's) |
@@ -202,7 +204,7 @@ Status mapping is consistent across handlers:
 | `415` | an upload of a type the endpoint doesn't take (a custom cover that isn't JPEG/PNG/WebP) |
 | `429` | a rate limiter tripped (see below) |
 | `500` | unexpected internal failure - the message is generic; details go to the server log only |
-| `502` | an upstream service failed: the community metadata service (`/meta`, `/meta/work`, the admin match search) |
+| `502` | an upstream service failed: the community metadata service (`/meta`, `/meta/work`, the admin match search), or a community cover's own host (`PUT /admin/libraries/{id}/cover/community`) |
 | `503` | database unreachable (`/healthz`), transcoding requested without ffmpeg, demo at capacity, or the request timeout (below) |
 
 **Request timeout.** Non-streaming requests are bounded at **30 s** by

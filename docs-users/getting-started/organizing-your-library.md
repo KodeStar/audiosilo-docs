@@ -72,11 +72,11 @@ Audible's DRM-protected files are deliberately **not** indexed: the server can n
 
 For each book, AudioSilo starts with the names on disk, then lets the audio files' embedded tags override them when they're present and meaningful:
 
-- **From your folders**: the book's folder (or file) name becomes the title; a leading number like `03 - The Title` is read as its position in a series; the parent folder is read as the series and the folder above that as the author. So an `Author/Series/03 - Title/` layout works with no tags at all.
+- **From your folders**: the book's folder (or file) name becomes the title; a leading number like `03 - The Title` is read as its position in a series (but not a number that runs into the name, like `3rd Rock` or `20,000 Leagues Under the Sea`); the parent folder is read as the series and the folder above that as the author. So an `Author/Series/03 - Title/` layout works with no tags at all.
 - **From embedded tags**: a title (audiobooks usually carry it in the *album* tag; when the album holds the series name and the *title* tag carries the full "Series: Book" title, the more specific title tag wins), the author (album artist or artist tag), the narrator (composer or narrator tag), and the series where a tag exists. Junk tag titles like "Track 01" are ignored in favour of the folder name.
 - **From ffmpeg's ffprobe**, when available: durations and any chapter list embedded in the file, so a chaptered M4B shows its real chapters in the player.
 
-Audiobook tags are famously messy, which is why the folder names always provide a sane baseline - a well-named folder beats a badly-tagged file. Anything still wrong can be corrected in the admin console without touching the files: see [Books and metadata](../admin/books.md).
+Audiobook tags are famously messy, which is why the folder names always provide a sane baseline - a well-named folder beats a badly-tagged file. If a library's folders are named well and its tags aren't, you can set it to take book details from the [folder names first](../admin/libraries.md#where-book-details-come-from) instead. Anything still wrong can be corrected in the admin console without touching the files: see [Books and metadata](../admin/books.md).
 
 ### Covers
 

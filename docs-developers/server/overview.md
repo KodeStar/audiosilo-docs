@@ -146,7 +146,10 @@ normalization, move detection, pruning). See [Scanner](scanner.md).
 Metadata extraction: embedded tags in-process via `dhowden/tag`, durations /
 chapters / codec via ffprobe when available (`probe.go`), and
 `DeriveFromPath` - the structural path heuristic
-(`Author/Series/01 - Title.m4b`) that fills gaps for untagged files. Defines the
+(`Author/Series/01 - Title.m4b`) that fills gaps for untagged files. `layout.go`
+reads a path's author/series/book LAYOUT (`ReadPathLayout`, the community
+match's path facts) and turns it into a path-first library's values
+(`FromPathLayout`). Defines the
 normalized `metadata.Chapter` shape (with `file_path` and `book_offset`) that
 makes single-file and multi-file books look identical to clients. All ffprobe
 paths degrade gracefully when the tool is absent.

@@ -374,7 +374,11 @@ reflects whether either lookup is live. The admin console's match dialog
 `GET /works/match` with the book's tag and path facts, falling back to
 `lookup` + `works/search` against a `metaserve` that predates the route; its
 candidates pass `metaserve`'s `score` and `reasons` through to the console's
-hand-mirrored types (`admin-ui/src/api/types.ts`), not to the player.
+hand-mirrored types (`admin-ui/src/api/types.ts`), not to the player. Each
+recording's ASINs keep their `region` (`asin_refs`), and `asins` is ordered by
+the server's preferred marketplace (`metadata.region`), so the server, not the
+console, decides which ASIN a match attaches; bulk match runs reuse the same
+match per book.
 **Frontend:** the `BookMeta` envelope (hand-mirrored in `src/api/types.ts`) is
 fetched by `client.bookMeta` and rendered capability-gated on the book screen's
 Recaps/Characters/Series tabs, and also read by the series page, Home (the Now card
