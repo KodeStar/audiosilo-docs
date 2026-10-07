@@ -73,10 +73,12 @@ the canonical shape of a cross-repo change. What actually landed, file by file:
   mux.Handle("POST /api/v1/libraries/{id}/history", a.requireAuth(http.HandlerFunc(a.handleAddHistory)))
   ```
 
-- Handlers `handleListAllHistory` / `handleListHistory` / `handleAddHistory` in
-  `internal/api/handlers_me.go` - thin transport over the data layer.
-- Data layer in `internal/catalog/listening.go` (`AddHistory`, `ListHistory`,
-  `ListAllHistory`), backed by the durable, **path-keyed** `listening_history`
+- Handlers `handleListHistory` / `handleAddHistory` in
+  `internal/api/handlers_me.go` (and, since the player redesign's Phase 4 paged
+  it, `handleListAllHistory` in `internal/api/handlers_annotations.go`) - thin
+  transport over the data layer.
+- Data layer in `internal/catalog/listening.go` (`AddHistory`, `ListHistory`;
+  `ListAllHistory` now in `internal/catalog/annotations.go`), backed by the durable, **path-keyed** `listening_history`
   table (`(user_id, library_id, rel_path)` - no FK to the rebuildable book
   index, per the [invariants](../architecture/invariants.md)). The cross-library
   listing is scope-filtered so users only see history for paths they can access.

@@ -43,7 +43,8 @@ stay a real file path).
 **What couples:** every response shape. Auth returns `{ token, user }`; `/me`
 returns the user directly; lists are wrapped (`{ libraries }`,
 `{ books, next_cursor }`, `{ progress }`, `{ bookmarks }`, `{ notes }`,
-`{ history }`, `{ favourites }`); chapters return `{ chapters, files, duration }`;
+`{ history }`, `{ favourites }`; the all-books `/me/bookmarks`, `/me/notes` and
+`/me/history` add an optional `next_cursor`); chapters return `{ chapters, files, duration }`;
 errors are `{ error }`. The `user` object carries `has_password`/`has_recovery`,
 which drive the frontend's sign-out warning.
 
@@ -96,6 +97,25 @@ filtered by the caller's current access, and an id that isn't the caller's is a
 [reference](../server/api/reference.md#up-next-collections-and-ratings); the
 security rules in
 [Auth & security](../server/auth-and-security.md#the-listeners-own-state-me).
+
+**Player-redesign annotations (Phase 4).** Bookmarks, notes and history, gated by
+`annotations` (seam 8): every bookmark gains `label` (`""` or a machine key such
+as `quote` or `fell_asleep` that the player turns into its own text; the server
+checks only the shape), which `POST .../bookmarks` accepts. A client sends `label`
+only to a server with the flag, since the strict decoder refuses unknown fields
+(`useAddBookmark` and the framework-free `addBookmark` pass it through only then).
+The owner edits a row with `PATCH /bookmarks/{id}` (`{ note?, label? }`) and
+`PATCH /notes/{id}` (`{ body?, position? }`), each answering the bare row
+(`BookmarkPatch`, `NotePatch` / `useUpdateBookmark`, `useUpdateNote`); another
+user's, an unknown or an out-of-access id is a `404`. `GET /me/bookmarks`
+(`{ bookmarks, next_cursor? }`) and `/me/notes` (`{ notes, next_cursor? }`) list
+the caller's rows across books newest first, current access only, with a
+list-shape `book?` per row (`MyBookmark`, `MyNote`, `Page` / `useMyBookmarks`,
+`useMyNotes`), and `/me/history` gains the same `cursor` paging and `book?` per row
+(`HistoryEntry` / `useAllHistory`; an older server ignores `cursor` and returns one
+page). Shapes, bounds (a bookmark note 2,000 characters, a note body 10,000) and
+status codes are in the
+[reference](../server/api/reference.md#patch-apiv1bookmarksid).
 
 ## 3. Media auth rides in the URL - `?token=`
 
@@ -214,21 +234,23 @@ version.
 **Server:** `handleServerInfo` advertises `admin_ui`, `web_player`, `upload`,
 `transcode`, `websocket`, `api_keys`, `export`, `metadata`, `meta_bundle`,
 `browse_people`, `cover_sizes`, `next_book`, `queue`, `collections`, `ratings`,
-`progress_edit`, `user_stats` and `my_devices`, plus the server version
+`progress_edit`, `user_stats`, `my_devices` and `annotations`, plus the server version
 (`api.Version`, stamped from the release tag via ldflags). `transcode` reflects
 ffmpeg availability; `web_player` reflects whether `/web` is populated; `api_keys`
 reflects that the server accepts user-minted API keys; `metadata` and
 `meta_bundle` follow the runtime metadata switch; `browse_people`, `cover_sizes`,
-`next_book` and the six Phase 1b flags are always true on a server that has them (the full table is in
+`next_book`, the six Phase 1b flags and `annotations` (player Phase 4) are always
+true on a server that has them (the full table is in
 [API conventions](../server/api/index.md#capability-flags---gate-your-features)).
 (`upload` and `websocket` are reserved for **planned** phases - `POST /uploads`
 and WebSocket sync are not shipped.)
 **Frontend:** the `ServerInfo` type; feature gating and the "connected server
-version" display key off it. The Phase 1a and 1b flags are optional on `Capabilities`
+version" display key off it. The Phase 1a and 1b flags and `annotations` are optional on `Capabilities`
 and read through the exported, tri-state `useCapability(flag, connectionId?)` in
 `hooks.ts` (`undefined` until `/server` answers, then `true`/`false`); the gated
 hooks give a server without the flag no query function (`skipToken`), so it is
-never asked, and the Phase 1b mutations reject with `CapabilityError` (not an
+never asked, and the Phase 1b mutations (and `useUpdateBookmark` / `useUpdateNote`)
+reject with `CapabilityError` (not an
 `ApiError`, so no reconnect banner) without sending anything while the flag is
 false or `/server` hasn't answered.
 

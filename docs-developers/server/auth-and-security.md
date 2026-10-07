@@ -277,17 +277,22 @@ files it does grant still stream (`stream` is scoped on the file path). A non-ad
 
 The player redesign's Phase 1b routes (up next, collections, ratings, progress
 edits, personal stats, the listening goal and the caller's own devices; see
-[the reference](api/reference.md#up-next-collections-and-ratings)) are all
-`requireAuth`: a session token or an API key, acting as its owner. They follow
-a few rules on top of share scope:
+[the reference](api/reference.md#up-next-collections-and-ratings)) and Phase 4's
+annotation routes (`PATCH /bookmarks/{id}`, `PATCH /notes/{id}`,
+`GET /me/bookmarks`, `GET /me/notes` and the paged `GET /me/history`, capability
+`annotations`) are all `requireAuth`: a session token or an API key, acting as
+its owner. They follow a few rules on top of share scope:
 
 - **Owner only.** Every `/me/*` route reads and writes the caller's own rows,
   keyed on the authenticated user, never on an id or user id from the request.
   The one deliberate exception is a collection shared with the caller, below.
-- **`404`, never `403`, for someone else's id.** A collection id or device id
-  that isn't the caller's answers `404` (`device not found` for a device), the
-  same as an id that doesn't exist, so the answer never confirms that another
-  user's row exists. A collection shared with the caller is the only case where
+- **`404`, never `403`, for someone else's id.** A collection id, device id,
+  bookmark id or note id that isn't the caller's answers `404` (`device not
+  found`, `bookmark not found`, `note not found`), and so does a bookmark or
+  note whose path the caller's current access no longer reaches, so an old id
+  can't edit a revoked share's row (`catalog.EditBookmark` / `EditNote`). It is
+  the same answer as for an id that doesn't exist, so it never confirms that
+  another user's row exists. A collection shared with the caller is the only case where
   the caller is told it exists but may not change it (`403 not_owner`).
 - **Current access filters every list.** A stored entry whose path the caller
   can no longer open (a share taken away) is kept, but left out of each list
