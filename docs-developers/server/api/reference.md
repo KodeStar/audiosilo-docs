@@ -1602,7 +1602,8 @@ its dates.
 *Session.* List / add bookmarks for a book (`?path=` on both). GET lists them
 by position.
 
-GET response: `{ "bookmarks": [ … ] }` (objects as below).
+GET response: `{ "bookmarks": [ … ] }` (objects as below; `[]` when there are
+none, never `null`).
 
 POST body: `{ "position": 4211.5, "note": "great line", "label": "quote" }`
 (`note` and `label` optional). Response `201` - the created bookmark **unwrapped**:
@@ -1615,13 +1616,13 @@ POST body: `{ "position": 4211.5, "note": "great line", "label": "quote" }`
   "position": 4211.5,
   "note": "great line",
   "label": "quote",
-  "created_at": "2026-06-30T21:04:11Z"
+  "created_at": "2026-06-30T21:04:11.000Z"
 }
 ```
 
 `label` (capability `annotations`) is a **machine key**, never display text: the
 player maps it to its own words and icon. It is `""` (none) or a lowercase key
-matching `^[a-z][a-z0-9_]{0,31}$` (`catalog.CheckBookmark`). The server checks
+matching `^[a-z][a-z0-9_]{0,31}$` (`catalog.checkBookmark`). The server checks
 only that shape, not a set of known keys, so a newer player can add one (the
 player's keys today, its `BookmarkLabel`, are `quote`, `favourite`, `relisten`,
 `funny`, `question` and `fell_asleep`, the sleep timer's own bookmark). A
@@ -1630,10 +1631,13 @@ older one never does, and refuses a POST that carries it (`400 invalid request`,
 the strict decoder).
 
 `note` is at most 2,000 characters (Unicode code points, `catalog.MaxBookmarkNote`).
+`position` must be a number, `0` or more (it isn't checked against the book's
+duration). `created_at` is server time in a fixed-width UTC millisecond form
+(`2026-06-30T21:04:11.000Z`), the form the across-books lists order by as text.
 
 | Status | Meaning |
 |---|---|
-| `400` | `path is required`; `invalid request` (a malformed body or an unknown key); `invalid label` (not `""` or a machine key: `Quote`, `fell-asleep`, more than 32 characters); `note too long` (over 2,000 characters) |
+| `400` | `path is required`; `invalid request` (a malformed body or an unknown key); `invalid position` (negative, or not a number, such as `"12"`); `invalid label` (not `""` or a machine key: `Quote`, `fell-asleep`, more than 32 characters); `note too long` (over 2,000 characters) |
 | `403` | `no access to this path` |
 
 ### `DELETE /api/v1/bookmarks/{id}`
@@ -1652,9 +1656,9 @@ id is a silent no-op). Response: `204 No Content` (idempotent - no 404).
 | `label` | string | replaces the label; `""` clears it; a machine key as on [POST](#get-apiv1librariesidbookmarks--post-apiv1librariesidbookmarks) |
 
 A field left out (or sent as `null`) stays as it is; the position can't be
-edited. The read, the checks and the write are one writer transaction, and the
-checks run on the bookmark as it would be saved, so a note stored before the
-2,000-character bound blocks any edit until the note itself is shortened.
+edited. The read, the checks and the write are one writer transaction, and only
+the fields sent are checked, so a label-only edit works on a bookmark whose note
+an older server let grow past 2,000 characters.
 
 Response `200` - the whole updated bookmark, unwrapped, the same object as POST
 answers.
@@ -1670,7 +1674,8 @@ answers.
 them by position.
 
 POST body: `{ "position": 0, "body": "re-read ch. 12 for the foreshadowing" }`
-(`position` optional). Response `201` - the created note unwrapped:
+(`position` optional, `0` when left out; a number, `0` or more). Response `201` -
+the created note unwrapped:
 
 ```json
 {
@@ -1679,16 +1684,19 @@ POST body: `{ "position": 0, "body": "re-read ch. 12 for the foreshadowing" }`
   "path": "Brandon Sanderson/Mistborn/The Final Empire",
   "position": 0,
   "body": "re-read ch. 12 for the foreshadowing",
-  "created_at": "2026-06-28T10:00:00Z",
-  "updated_at": "2026-06-28T10:00:00Z"
+  "created_at": "2026-06-28T10:00:00.000Z",
+  "updated_at": "2026-06-28T10:00:00.000Z"
 }
 ```
 
-GET response: `{ "notes": [ … ] }` (same object shape).
+GET response: `{ "notes": [ … ] }` (same object shape; `[]` when there are
+none). `created_at` and `updated_at` are server time in the same fixed-width UTC
+millisecond form as a bookmark's.
 
 `body` is at most 10,000 characters (Unicode code points, `catalog.MaxNoteBody`):
 over that is `400 body too long`, here and on
-[`PATCH`](#patch-apiv1notesid).
+[`PATCH`](#patch-apiv1notesid). A negative position, or one that isn't a number,
+is `400 invalid position`, also on both.
 
 ### `DELETE /api/v1/notes/{id}`
 
@@ -1704,9 +1712,9 @@ over that is `400 body too long`, here and on
 | `body` | string | replaces the text; at most 10,000 characters |
 | `position` | float | seconds on the whole-book timeline; must be `0` or more (it isn't checked against the book's duration) |
 
-A field left out (or sent as `null`) stays as it is. Every edit stamps
-`updated_at` with server time; `created_at` never changes. One writer
-transaction, as for bookmarks.
+A field left out (or sent as `null`) stays as it is, and only the fields sent are
+checked. Every edit stamps `updated_at` with server time; `created_at` never
+changes. One writer transaction, as for bookmarks.
 
 Response `200` - the whole updated note, unwrapped, the same object as POST
 answers.
@@ -1723,7 +1731,7 @@ they can still open, newest first (`catalog.ListMyBookmarks`), a page at a time.
 
 | Query param | Type | Default | Notes |
 |---|---|---|---|
-| `limit` | int | `100` | ≤ 0 or > 500 falls back to 100 |
+| `limit` | int | `100` | absent or ≤ 0 is 100; over 500 is 500 |
 | `cursor` | string | - | the previous page's `next_cursor`, passed back verbatim |
 
 ```json
@@ -1736,11 +1744,11 @@ they can still open, newest first (`catalog.ListMyBookmarks`), a page at a time.
       "position": 4211.5,
       "note": "great line",
       "label": "quote",
-      "created_at": "2026-06-30T21:04:11Z",
+      "created_at": "2026-06-30T21:04:11.000Z",
       "book": { "id": 412, "title": "The Final Empire", "author": "Brandon Sanderson", "…": "…" }
     }
   ],
-  "next_cursor": "MjAyNi0wNi0zMFQyMTowNDoxMVoAMTI"
+  "next_cursor": "MjAyNi0wNi0zMFQyMTowNDoxMS4wMDBaADEy"
 }
 ```
 
@@ -1777,8 +1785,8 @@ Rules shared with [`/me/notes`](#get-apiv1menotes) and
       "path": "Brandon Sanderson/Mistborn/The Final Empire",
       "position": 0,
       "body": "re-read ch. 12 for the foreshadowing",
-      "created_at": "2026-06-28T10:00:00Z",
-      "updated_at": "2026-06-28T10:00:00Z",
+      "created_at": "2026-06-28T10:00:00.000Z",
+      "updated_at": "2026-06-28T10:00:00.000Z",
       "book": { "id": 412, "title": "The Final Empire", "author": "Brandon Sanderson", "…": "…" }
     }
   ]
@@ -1792,7 +1800,7 @@ first (`catalog.ListAllHistory`).
 
 | Query param | Type | Default | Notes |
 |---|---|---|---|
-| `limit` | int | `100` | ≤ 0 or > 500 falls back to 100 |
+| `limit` | int | `100` | absent or ≤ 0 is 100; over 500 is 500 |
 | `cursor` | string | - | `annotations` servers: the previous page's `next_cursor` |
 
 ```json
@@ -1804,27 +1812,26 @@ first (`catalog.ListAllHistory`).
       "path": "Brandon Sanderson/Mistborn/The Final Empire",
       "from_pos": 11250.0,
       "to_pos": 12043.6,
-      "started_at": "2026-07-01T19:20:00Z",
-      "ended_at": "2026-07-01T19:42:07Z",
+      "started_at": "2026-07-01T19:20:00.000Z",
+      "ended_at": "2026-07-01T19:42:07.000Z",
       "book": { "id": 412, "title": "The Final Empire", "…": "…" }
     }
   ],
-  "next_cursor": "MjAyNi0wNy0wMVQxOTo0MjowN1oAODg"
+  "next_cursor": "MjAyNi0wNy0wMVQxOTo0MjowNy4wMDBaADg4"
 }
 ```
 
 The route predates the `annotations` capability and works on every server.
 Without `cursor` it answers the first page, as it always has. A server with
 `annotations` adds each row's `book` and `next_cursor`, and pages on `cursor` by
-the [`/me/bookmarks`](#get-apiv1mebookmarks) rules (`ended_at` is the client's
-own text from [`POST …/history`](#post-apiv1librariesidhistory), compared as
-text). An older server has neither, ignores `cursor` and always returns its one
-page.
+the [`/me/bookmarks`](#get-apiv1mebookmarks) rules. An older server has neither,
+ignores `cursor` and always returns its one page.
 
 ### `GET /api/v1/libraries/{id}/history`
 
-*Session.* History for one book (`?path=` required; `limit` as above).
-Response: `{ "history": [ … ] }`.
+*Session.* History for one book (`?path=` required; `limit` as above), newest
+`ended_at` first, ties by `id` newest first. Response: `{ "history": [ … ] }`
+(`[]` when there is none).
 
 ### `POST /api/v1/libraries/{id}/history`
 
@@ -1834,8 +1841,14 @@ Response: `{ "history": [ … ] }`.
 |---|---|---|---|
 | `from_pos` | float | no | span start position (seconds); not validated - defaults to `0` if omitted |
 | `to_pos` | float | no | span end position; not validated - defaults to `0` if omitted |
-| `started_at` | string | no | RFC 3339; defaults to server time |
-| `ended_at` | string | no | RFC 3339; defaults to server time |
+| `started_at` | string | no | RFC 3339 (any offset, any fraction) |
+| `ended_at` | string | no | RFC 3339 |
+
+Both times are stored, and returned, in the fixed-width UTC millisecond form
+(`2026-07-01T19:42:07.000Z`), so the lists can order them as text. A span is
+never refused for its times: when only one of them parses, both take it (a
+zero-length span); when neither does (or both are left out), both are the
+server's time now.
 
 Response: `201 Created`, empty body.
 

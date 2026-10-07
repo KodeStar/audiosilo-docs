@@ -57,8 +57,9 @@ themselves.
   [web transcode negotiation](playback.md#web-transcode-negotiation-transcodets).
 - **`history(libraryId, path, limit?)`** returns a book's listening spans, newest
   first: the server's default 100, or up to `limit` from 1 to 500 (a `limit` of 0
-  or less, or above 500, falls back to 100; the end credits ask for 500, the most
-  it returns, to sum the time listened).
+  or less is 100, and above 500 is 500 on a server with `annotations`, 100 on an
+  older one; the end credits ask for 500, the most it returns, to sum the time
+  listened).
 - **`coverUrl(libraryId, path, opts?)`** takes `{ size, version }`: `size`
   (`CoverSize`, `160 | 320 | 640`) asks for a JPEG thumbnail whose **longer side**
   is at most that many pixels, and only when the server advertises `cover_sizes`
@@ -110,9 +111,14 @@ Patterns to copy when adding an endpoint:
 - Paged reads: `useBrowseInfinite` uses `useInfiniteQuery` against the server's
   `next_offset` cursor (500-entry pages); the browse screen drains all pages so
   the A–Z rail and filter operate on the complete folder. The across-books lists
-  (`useAllHistory`, `useMyBookmarks`, `useMyNotes`) share `usePagedList`: pages of
-  100 on the server's opaque `next_cursor`, which the client normalises to
-  `Page<T> = { items, next_cursor? }` (`flattenPages` joins them).
+  are infinite query **options** rather than hooks (`myHistoryQuery`,
+  `myBookmarksQuery`, `myNotesQuery`), because the Journal reads every server's at
+  once (`useInfiniteQueries`, see [The Journal](journal.md#sources-one-infinite-query-per-server)):
+  pages of 100 on the server's opaque `next_cursor`, which the client normalises to
+  `Page<T> = { items, next_cursor? }` (`flattenPages` joins them), and
+  `keepFirstPage` trims a list nothing reads any more to its first page. The
+  community metadata reads are options too (`bookMetaQuery`, `metaWorkQuery`), shared
+  by `useBookMeta` / `useMetaWork`, the offline companion and Search.
 - Mutations invalidate their exact key on success (`useAddNote`,
   `useDeleteBookmark`, …; `addBookmark()` is the framework-free twin for callers
   outside React and invalidates `qk.bookmarks` and `qk.myBookmarks` after the
@@ -209,7 +215,7 @@ older server (React Query rejects it instead) and the query stays pending.
   the series page and Search's character group do); `BookMetaRecording.chapter_count`;
   `local` (`BookRef`) on rail entries (how the series page and Next in your series
   tell an owned book from a ghost); and `previous` on a matched `BookMeta`.
-  `community_description` feeds the book page's About card (`aboutText`), and
+  `community_description` feeds the book page's About card (`aboutContent`), and
   `previous` is kept and seeded by the [offline companion](offline.md#the-offline-companion-offline-metats);
   `chapter_count` has no reader yet.
 
@@ -329,8 +335,8 @@ hook takes an optional trailing `connectionId` and gates on the flag.
 
 | Capability | Query hooks | Mutation hooks | Types |
 |---|---|---|---|
-| `annotations` | `useMyBookmarks`, `useMyNotes` (infinite, `skipToken` until the flag is `true`) | `useUpdateBookmark`, `useUpdateNote` (`useCapabilityMutation`); `useAddBookmark` / `addBookmark` send a `label` only with the flag | `BookmarkLabel`, `BookmarkPatch`, `NotePatch`, `MyBookmark`, `MyNote`, `HistoryEntry`, `Page<T>`, `PageQuery`; `label?` on `Bookmark` |
-| none | `useAllHistory` (every server has `GET /me/history`) | - | `HistoryEntry` |
+| `annotations` | `myBookmarksQuery`, `myNotesQuery` (infinite query options; `skipToken` until the flag is known to be `true`) | `useUpdateBookmark`, `useUpdateNote` (`useCapabilityMutation`); `useAddBookmark` / `addBookmark` send a `label` only with the flag | `BookmarkLabel`, `BookmarkPatch`, `NotePatch`, `MyBookmark`, `MyNote`, `HistoryEntry`, `Page<T>`, `PageQuery`; `label?` on `Bookmark` |
+| none | `myHistoryQuery` (every server has `GET /me/history`) | - | `HistoryEntry` |
 
 - **Never send a label to an older server.** The server decodes strictly, so an
   unknown `label` field is a `400`. `ApiClient.addBookmark` sends it only when given;
@@ -352,10 +358,9 @@ the wire format is in the [API reference](../server/api/reference.md).
 
 ### Enriched book metadata
 
-The meta-driven blocks are rendered from `src/components/library/book-meta.tsx`:
-`BookMetaAbout` (the aside's About card: the community description with its
-attribution and **Improve this**, else the server's description, else the work's;
-see [The book page](book-page.md#the-aside)),
+The meta-driven tabs are rendered from `src/components/library/book-meta.tsx`
+(the About card is the book page's own `BookAbout`, see
+[The book page](book-page.md#the-aside)):
 `BookMetaRecapsTab`, `BookMetaCharactersTab`, and `BookMetaSeriesTab` (one
 horizontal rail per series family). `matchedMeta(meta, enabled)` narrows the
 envelope once for the screen; `seriesRails(series, currentWorkId, picks)` builds

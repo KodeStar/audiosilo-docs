@@ -275,7 +275,7 @@ directory size, so offsets are fine there.
 [`/me/bookmarks`](reference.md#get-apiv1mebookmarks),
 [`/me/notes`](reference.md#get-apiv1menotes) and (on a server with
 `annotations`) [`/me/history`](reference.md#get-apiv1mehistory) take `limit`
-(default 100; values ≤ 0 or > 500 fall back to 100) and the same kind of opaque
+(default 100 when absent or ≤ 0; over 500 is 500) and the same kind of opaque
 `cursor` / `next_cursor`, newest first on `(timestamp, id)`. Rows outside the
 caller's current access are filtered out before the page is cut, so a page
 never comes back short because of them. Without `cursor`, `/me/history`

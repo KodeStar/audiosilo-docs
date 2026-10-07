@@ -317,9 +317,13 @@ tables were rebuilt rather than migrated in place):
 - **`bookmarks`**, **`notes`** - id-PK rows keyed by
   `(user_id, library_id, rel_path)` plus `position` and text (a bookmark's
   `note`, at most 2,000 characters; a note's `body`, at most 10,000, and its
-  `updated_at`), checked by `catalog` on every write rather than by the schema.
+  `updated_at`), checked by `catalog` on every write rather than by the schema
+  (an edit checks only the fields it sets). `created_at` and `updated_at` are
+  server time in a fixed-width UTC millisecond form
+  (`2026-10-07T09:00:00.000Z`, `c.stamp`), because the lists across books order
+  by them as text.
   `bookmarks.label` *(0030)* is a machine key the player maps to its own text,
-  `''` for none: `catalog.CheckBookmark` checks only its shape,
+  `''` for none: `catalog.checkBookmark` checks only its shape,
   `^[a-z][a-z0-9_]{0,31}$`, never the player's set of keys. It lives on the row,
   so a move, a backup and a user delete take it along. Indexes
   `idx_bookmarks_user_path` / `idx_notes_user_path` *(0003)* on
@@ -330,7 +334,9 @@ tables were rebuilt rather than migrated in place):
   tiebreaker is the rowid every index entry already ends with).
 - **`listening_history`** - listening spans (`from_pos`, `to_pos`,
   `started_at`, `ended_at`) that players post when playback stops; the player's
-  own History list. Index `idx_history_user_path` *(0003)* on
+  own History list. The client's times are stored in the same fixed-width UTC
+  millisecond form (`historySpan`: one side that doesn't parse takes the other's
+  time, neither is the server's now), so a span is never refused. Index `idx_history_user_path` *(0003)* on
   `(user_id, library_id, rel_path, started_at)` serves one book's history, and
   `idx_history_user_ended` *(0031)* on `(user_id, ended_at)` the paged
   `GET /me/history` across books.
@@ -687,7 +693,7 @@ The migration history so far:
 | 0028 | `listening_goals` | `listening_goals`, a listener's books-per-year goal |
 | 0029 | `user_listening_index` | `idx_sessions_user_last` on `listening_sessions(user_id, last_at)`, so one listener's stats read only their own sessions |
 | 0030 | `bookmark_labels` | `bookmarks.label` (`''` on every existing row), a bookmark's machine-key label |
-| 0031 | `annotation_lists` | `idx_bookmarks_user_created`, `idx_notes_user_created` on `(user_id, created_at)` and `idx_history_user_ended` on `listening_history(user_id, ended_at)`, so the all-books lists seek one user and walk their order |
+| 0031 | `annotation_lists` | `idx_bookmarks_user_created`, `idx_notes_user_created` on `(user_id, created_at)` and `idx_history_user_ended` on `listening_history(user_id, ended_at)`, so the all-books lists seek one user and walk their order; rewrites the existing rows' `bookmarks.created_at`, `notes.created_at` and `listening_history.started_at` / `ended_at` into the fixed-width UTC millisecond form (`strftime('%Y-%m-%dT%H:%M:%fZ', …)`, only for a value that reads as a date; the old `RFC3339Nano` trimmed trailing zeros, and a span's times were the client's text verbatim, so neither sorted as text) |
 
 ## SQLite choices
 
@@ -733,9 +739,10 @@ A listener's own lists across books (`catalog.ListMyBookmarks`,
 `ListMyNotes`, `ListAllHistory`, through the generic `userPage`) use the same
 cursor encoding newest first: `(created_at, id) < (?, ?)` (`ended_at` for
 history), with the scope filter (`scopesFilterSQL`) in the `WHERE` before the
-`LIMIT`, so a revoked share's rows never shorten a page. Default 100, cap 500.
-The cursor is split at its **last** NUL (`decodeCursor`), since `ended_at` is a
-client's text and may hold one.
+`LIMIT`, so a revoked share's rows never shorten a page. Default 100, cap 500
+(`clampPageLimit`: more is 500). The cursor is split at its **last** NUL
+(`decodeCursor`), the exact inverse of `encodeCursor`, so a sort value holding
+one still round-trips.
 
 The admin console's book list (`catalog.ListAdminBooks`) uses the same
 technique over multi-column orderings (`adminSorts`: e.g. author, then series,
