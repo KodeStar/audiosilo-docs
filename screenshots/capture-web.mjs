@@ -10,7 +10,7 @@
 import {chromium} from 'playwright';
 import path from 'node:path';
 import {mkdir} from 'node:fs/promises';
-import {CACHE, apiClient, sleep, shoot, step} from './lib.mjs';
+import {CACHE, apiClient, sleep, shoot, step, wanted} from './lib.mjs';
 
 const BASE = process.env.AS_BASE || 'http://127.0.0.1:8790/web/';
 const api = apiClient(new URL(BASE).origin);
@@ -227,29 +227,42 @@ async function listen(page) {
   await sleep(4500);
 }
 
+// A short pause for an entrance animation to finish after the state it waits on.
+const SETTLE_MS = 600;
+
 // Stage a paused, healthy player for the shots: a still frame (no moving playhead,
 // no buffering spinner) that reads the same on every run. The play button is named
-// Pause while playing.
+// Pause while playing and Play once paused.
 async function pausePlayback(page) {
   const pause = firstVisible(page.getByRole('button', {name: /^pause$/i}));
-  if (await pause.count()) await pause.click({timeout: 8000}).catch(() => {});
-  await sleep(1500);
+  if (await pause.count()) await pause.click({timeout: 8000});
+  await firstVisible(page.getByRole('button', {name: /^play$/i})).waitFor({timeout: 8000});
 }
 
-// The full player's minimise button (top left).
+// The full player, from the docked bar's expand button (tablet/desktop).
+async function expandPlayer(page) {
+  await tid(page, 'dock-expand').click({timeout: 8000});
+  await tid(page, 'player-menu').waitFor({timeout: 8000});
+  await sleep(SETTLE_MS);
+}
+
+// The full player's minimise button (top left); done once the shell is back.
 async function minimisePlayer(page) {
   await firstVisible(page.getByRole('button', {name: 'Minimise player'})).click({timeout: 8000});
-  await sleep(1500);
+  await tid(page, 'player-menu').waitFor({state: 'hidden', timeout: 8000});
+  await sleep(SETTLE_MS);
 }
 
 // A player sheet from one of the full player's action pills (`player-speed`,
 // `player-sleep`), shot and closed again with Escape.
 async function sheetShot(page, testId, shot) {
   await tid(page, testId).click({timeout: 8000});
-  await sleep(2000);
+  const sheet = firstVisible(page.getByRole('dialog'));
+  await sheet.waitFor({timeout: 8000});
+  await sleep(SETTLE_MS);
   await shoot(page, shot);
   await page.keyboard.press('Escape');
-  await sleep(1200);
+  await sheet.waitFor({state: 'hidden', timeout: 8000});
 }
 
 // Tablet/desktop: one browsing session with a book playing in the docked bar.
@@ -261,62 +274,66 @@ async function captureWide(name, viewport, shots) {
     await listen(page);
   });
 
-  await step('home', async () => {
-    await tid(page, 'top-bar-(home)').click({timeout: 8000});
-    await sleep(3000);
-    await shoot(page, shots.home);
-  });
+  if (wanted(shots.home)) {
+    await step('home', async () => {
+      await tid(page, 'top-bar-(home)').click({timeout: 8000});
+      await sleep(3000);
+      await shoot(page, shots.home);
+    });
+  }
 
-  if (shots.player) {
+  // The player shots below are staged paused (a still frame).
+  if (wanted(shots.player, shots.dockUndo, shots.credits)) {
+    await step('pause', () => pausePlayback(page));
+  }
+
+  if (wanted(shots.player)) {
     await step('player', async () => {
-      await pausePlayback(page);
-      await tid(page, 'dock-expand').click({timeout: 8000});
-      await sleep(3500);
+      await expandPlayer(page);
       // The seeded books have no community notes, so the companion column shows its
       // Chapters tab (Who's who would only say there are none).
-      await tid(page, 'companion-tab-chapters').click({timeout: 8000}).catch(() => {});
-      await sleep(1500);
+      await tid(page, 'companion-tab-chapters').click({timeout: 8000});
+      await sleep(SETTLE_MS);
       await shoot(page, shots.player);
-      if (shots.speedSheet) await sheetShot(page, 'player-speed', shots.speedSheet);
-      if (shots.sleepSheet) await sheetShot(page, 'player-sleep', shots.sleepSheet);
       await minimisePlayer(page);
     });
   }
 
-  if (shots.dockUndo) {
+  if (wanted(shots.dockUndo)) {
     // A jump of more than a minute (the next chapter, from the docked bar) brings up
-    // the Undo chip for ten seconds; the shot is the bar along the window's bottom.
+    // the Undo chip for ten seconds; the shot is the bar itself.
     await step('dock undo chip', async () => {
-      await sleep(3500); // past jump-undo's settle window after the load
+      const undo = tid(page, 'dock-actions').getByRole('button', {name: /^Back to /});
       await firstVisible(page.getByRole('button', {name: 'Next chapter'})).click({timeout: 8000});
-      await sleep(2500);
-      await tid(page, 'dock-actions').getByRole('button', {name: /^Back to /}).waitFor({timeout: 5000});
+      await undo.waitFor({timeout: 8000});
+      await sleep(SETTLE_MS);
       const box = await tid(page, 'shell-docked-player').boundingBox();
       if (!box) throw new Error('no docked bar');
       await shoot(page, shots.dockUndo, {clip: box});
       // Undo it, so the book is back where the warm-up left it.
-      await tid(page, 'dock-actions').getByRole('button', {name: /^Back to /}).click({timeout: 5000});
-      await sleep(1500);
+      await undo.click({timeout: 5000});
+      await undo.waitFor({state: 'hidden', timeout: 8000});
+      // Its "Back where you were" toast must not ride into the next shot.
+      await firstVisible(page.getByText('Back where you were')).waitFor({state: 'hidden', timeout: 15000});
     });
   }
 
-  if (shots.credits) {
+  if (wanted(shots.credits)) {
     // The end credits, opened early from the full player's menu (the book is paused,
     // so nothing counts down): the year shelf or cover, the stats, Up next.
     await step('end credits', async () => {
-      await tid(page, 'dock-expand').click({timeout: 8000});
-      await sleep(3000);
+      await expandPlayer(page);
       await tid(page, 'player-menu').click({timeout: 8000});
-      await sleep(1000);
       await firstVisible(page.getByRole('menuitem', {name: 'View end credits'})).click({timeout: 8000});
-      await sleep(4500);
+      await firstVisible(page.getByRole('button', {name: /^Play .* now$/})).waitFor({timeout: 15000});
+      await sleep(SETTLE_MS);
       await shoot(page, shots.credits);
       await firstVisible(page.getByRole('button', {name: 'Close'})).click({timeout: 8000});
-      await sleep(2000);
+      await firstVisible(page.getByRole('button', {name: /^Play .* now$/})).waitFor({state: 'hidden', timeout: 8000});
     });
   }
 
-  if (shots.palette) {
+  if (wanted(shots.palette)) {
     await step('palette', async () => {
       await tid(page, 'top-bar-search').click({timeout: 8000});
       await sleep(1200);
@@ -328,7 +345,7 @@ async function captureWide(name, viewport, shots) {
     });
   }
 
-  if (shots.profile) {
+  if (wanted(shots.profile)) {
     await step('profile menu', async () => {
       await tid(page, 'top-bar-profile').click({timeout: 8000});
       await sleep(1500);
@@ -338,7 +355,7 @@ async function captureWide(name, viewport, shots) {
     });
   }
 
-  if (shots.library) {
+  if (wanted(shots.library)) {
     // Library > Books, the default section.
     await step('library', async () => {
       await tid(page, 'top-bar-(library)').click({timeout: 8000});
@@ -347,7 +364,7 @@ async function captureWide(name, viewport, shots) {
     });
   }
 
-  if (shots.upNext) {
+  if (wanted(shots.upNext)) {
     // The drawer beside Library > Books, opened from the top bar (and closed again).
     await step('up next', async () => {
       await tid(page, 'top-bar-(library)').click({timeout: 8000});
@@ -360,7 +377,7 @@ async function captureWide(name, viewport, shots) {
     });
   }
 
-  if (shots.librarySeries || shots.series) {
+  if (wanted(shots.librarySeries, shots.series)) {
     await step('series', async () => {
       await librarySection(page, 'Series');
       if (shots.librarySeries) await shoot(page, shots.librarySeries);
@@ -371,7 +388,7 @@ async function captureWide(name, viewport, shots) {
     });
   }
 
-  if (shots.author) {
+  if (wanted(shots.author)) {
     await step('author', async () => {
       await librarySection(page, 'Authors');
       await openNamed(page, 'Lewis Carroll');
@@ -379,7 +396,7 @@ async function captureWide(name, viewport, shots) {
     });
   }
 
-  if (shots.collection) {
+  if (wanted(shots.collection)) {
     await step('collection', async () => {
       await librarySection(page, 'Collections');
       await openNamed(page, COLLECTION.name);
@@ -387,7 +404,7 @@ async function captureWide(name, viewport, shots) {
     });
   }
 
-  if (shots.downloads) {
+  if (wanted(shots.downloads)) {
     // Download one short book first, so the Downloads page has a book ready offline.
     await step('download a book', async () => {
       await librarySection(page, 'Books');
@@ -403,7 +420,7 @@ async function captureWide(name, viewport, shots) {
     ['settings', 'top-bar-settings'],
     ['downloads', 'top-bar-(offline)'],
   ]) {
-    if (!shots[key]) continue;
+    if (!wanted(shots[key])) continue;
     await step(key, async () => {
       await tid(page, testId).click({timeout: 8000});
       await sleep(2500);
@@ -411,7 +428,7 @@ async function captureWide(name, viewport, shots) {
     });
   }
 
-  if (shots.search) {
+  if (wanted(shots.search)) {
     await step('search', async () => {
       await page.goto(BASE + 'search', {waitUntil: 'networkidle', timeout: 45000});
       await sleep(1500);
@@ -438,8 +455,8 @@ async function capturePhone(name, viewport, shots) {
     await listen(page);
     await pausePlayback(page);
     await shoot(page, shots.player);
-    if (shots.speedSheet) await sheetShot(page, 'player-speed', shots.speedSheet);
-    if (shots.sleepSheet) await sheetShot(page, 'player-sleep', shots.sleepSheet);
+    if (wanted(shots.speedSheet)) await sheetShot(page, 'player-speed', shots.speedSheet);
+    if (wanted(shots.sleepSheet)) await sheetShot(page, 'player-sleep', shots.sleepSheet);
     await minimisePlayer(page);
   });
 
@@ -449,7 +466,7 @@ async function capturePhone(name, viewport, shots) {
     await shoot(page, shots.home);
   });
 
-  if (shots.upNext) {
+  if (wanted(shots.upNext)) {
     // The sheet, from the Up next button beside Home's large title.
     await step('up next sheet', async () => {
       await tid(page, 'upnext-button-header').click({timeout: 8000});
