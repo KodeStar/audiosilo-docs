@@ -22,6 +22,11 @@ shot), builds the `audiosilo-meta` data artifact (composed with
 `audiosilo-meta-community`) + site and starts a `metaserve` on `:8795` for the
 meta-site shots, then runs the Playwright captures and backfills placeholders.
 `SKIP_META=1` skips the meta stack (for a web/admin-only run).
+`SKIP_ADMIN=1` skips the admin console build and the admin/public captures (for a
+web-player-only run). `SERVER=<dir>` and `FRONTEND=<dir>` point the run at other
+`audiosilo-server` / `audiosilo-frontend` checkouts (worktrees, say) than the
+sibling clones; `FRONTEND/dist` must be a web export built with baseUrl `/web`
+(`scripts/build-web.sh` makes one from `FRONTEND` when it is missing).
 `SHOTS_ONLY=<prefix>` writes only the screenshots whose path starts with it
 (e.g. `SHOTS_ONLY=admin/`), so adding a few shots doesn't re-encode every
 other committed PNG. It takes a comma-separated list too
@@ -95,7 +100,12 @@ After warming, it gives the demo user an **Up next** queue of three books and a
 player keeps in `localStorage`. Every desktop capture context starts with the Up
 next drawer closed (an init script writes `audiosilo.upNext`), so only
 `web-player/up-next.png` shows it; `web-player/downloads.png` downloads one
-short book first. The series, Up next and collection shots need a server with
+short book first. The player shots are staged **paused** (a still frame with no moving playhead):
+`web-player/player.png` and the phone player, the speed and sleep sheets opened from
+the phone player's pills, the end credits opened early from the full player's menu,
+and `web-player/dock-undo.png`, a strip along the bottom of the window just after a
+next-chapter jump from the docked bar, while the Undo chip shows (it is undone
+straight after). The series, Up next and collection shots need a server with
 the `browse_people`, `queue` and `collections` capabilities.
 
 `SHOTS_PORT`, `SHOTS_SETUP_PORT` and `SHOTS_META_PORT` move the three servers

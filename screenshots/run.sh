@@ -30,6 +30,12 @@
 #              clone - point it at a worktree to capture an unmerged branch),
 #            META_COMMUNITY=<dir> (the audiosilo-meta-community checkout,
 #              default the sibling clone; its data/ is composed in),
+#            SKIP_ADMIN=1 (skip the admin console build + admin/public
+#              captures, for a web-player-only run),
+#            SERVER=<dir> / FRONTEND=<dir> (the audiosilo-server and
+#              audiosilo-frontend checkouts, default the sibling clones - point
+#              them at worktrees to capture unmerged branches; FRONTEND/dist
+#              must be a web export built with baseUrl /web),
 #            SHOTS_PORT / SHOTS_SETUP_PORT / SHOTS_META_PORT (default 8790 /
 #              8791 / 8795 - move them when a run in another checkout holds
 #              those ports; two runs in one checkout share .cache/ and clash).
@@ -37,8 +43,8 @@ set -euo pipefail
 
 HERE="$(cd "$(dirname "$0")" && pwd)"
 WORKSPACE="$(cd "$HERE/../.." && pwd)"
-SERVER="$WORKSPACE/audiosilo-server"
-FRONTEND="$WORKSPACE/audiosilo-frontend"
+SERVER="${SERVER:-$WORKSPACE/audiosilo-server}"
+FRONTEND="${FRONTEND:-$WORKSPACE/audiosilo-frontend}"
 META="${META:-$WORKSPACE/audiosilo-meta}"
 META_COMMUNITY="${META_COMMUNITY:-$WORKSPACE/audiosilo-meta-community}"
 CACHE="$HERE/.cache"
@@ -66,13 +72,15 @@ fi
 echo "==> building the admin console + audiosilo-server"
 # The admin console (admin-ui) is embedded at build time and never committed,
 # so build it first or /admin serves a "console not built" page.
-"$SERVER/scripts/build-admin.sh" --build-only
+if [ "${SKIP_ADMIN:-0}" != "1" ]; then
+  "$SERVER/scripts/build-admin.sh" --build-only
+fi
 (cd "$SERVER" && go build -o bin/audiosilo ./cmd/audiosilo)
 
 # ── Web export ──────────────────────────────────────────────────────────────
 if [ ! -f "$FRONTEND/dist/index.html" ]; then
   echo "==> no web export found; building via scripts/build-web.sh"
-  (cd "$SERVER" && scripts/build-web.sh)
+  (cd "$SERVER" && FRONTEND_DIR="$FRONTEND" scripts/build-web.sh)
 fi
 
 # ── 2. Seed library (idempotent; ~8 short-capped books) ────────────────────
@@ -168,9 +176,11 @@ cd "$HERE"
 echo "==> capturing web player"
 AS_BASE="http://127.0.0.1:$PORT/web/" ADMIN_PASSWORD="$ADMIN_PASSWORD" node capture-web.mjs
 
-echo "==> capturing admin console + public pages"
-AS_ORIGIN="http://127.0.0.1:$PORT" ADMIN_PASSWORD="$ADMIN_PASSWORD" \
-  SETUP_URL="$SETUP_URL" node capture-admin.mjs
+if [ "${SKIP_ADMIN:-0}" != "1" ]; then
+  echo "==> capturing admin console + public pages"
+  AS_ORIGIN="http://127.0.0.1:$PORT" ADMIN_PASSWORD="$ADMIN_PASSWORD" \
+    SETUP_URL="$SETUP_URL" node capture-admin.mjs
+fi
 
 if [ "${SKIP_META:-0}" != "1" ]; then
   echo "==> capturing the meta site"

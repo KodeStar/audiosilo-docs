@@ -76,11 +76,13 @@ export function optimize(file) {
 // re-encode every other committed PNG. Unset = capture everything.
 const ONLY = (process.env.SHOTS_ONLY || '').split(',').map((s) => s.trim()).filter(Boolean);
 
-export async function shoot(page, relFile) {
+// `opts.clip` ({x, y, width, height} in CSS pixels) captures just that region (a
+// bar along the bottom, say) instead of the whole viewport.
+export async function shoot(page, relFile, opts = {}) {
   if (ONLY.length && !ONLY.some((prefix) => relFile.startsWith(prefix))) return;
   const file = path.join(OUT_ROOT, relFile);
   await mkdir(path.dirname(file), {recursive: true});
-  await page.screenshot({path: file});
+  await page.screenshot({path: file, ...(opts.clip ? {clip: opts.clip} : {})});
   optimize(file);
   console.log(`  ✓ ${relFile}`);
 }

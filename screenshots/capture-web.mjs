@@ -227,6 +227,31 @@ async function listen(page) {
   await sleep(4500);
 }
 
+// Stage a paused, healthy player for the shots: a still frame (no moving playhead,
+// no buffering spinner) that reads the same on every run. The play button is named
+// Pause while playing.
+async function pausePlayback(page) {
+  const pause = firstVisible(page.getByRole('button', {name: /^pause$/i}));
+  if (await pause.count()) await pause.click({timeout: 8000}).catch(() => {});
+  await sleep(1500);
+}
+
+// The full player's minimise button (top left).
+async function minimisePlayer(page) {
+  await firstVisible(page.getByRole('button', {name: 'Minimise player'})).click({timeout: 8000});
+  await sleep(1500);
+}
+
+// A player sheet from one of the full player's action pills (`player-speed`,
+// `player-sleep`), shot and closed again with Escape.
+async function sheetShot(page, testId, shot) {
+  await tid(page, testId).click({timeout: 8000});
+  await sleep(2000);
+  await shoot(page, shot);
+  await page.keyboard.press('Escape');
+  await sleep(1200);
+}
+
 // Tablet/desktop: one browsing session with a book playing in the docked bar.
 async function captureWide(name, viewport, shots) {
   const {ctx, page} = await newProfile(name, viewport, 2);
@@ -244,11 +269,50 @@ async function captureWide(name, viewport, shots) {
 
   if (shots.player) {
     await step('player', async () => {
-      await firstVisible(page.getByRole('button', {name: 'Expand player'})).click({timeout: 8000});
+      await pausePlayback(page);
+      await tid(page, 'dock-expand').click({timeout: 8000});
       await sleep(3500);
-      await shoot(page, shots.player);
-      await firstVisible(page.getByRole('button', {name: 'Close'})).click({timeout: 8000});
+      // The seeded books have no community notes, so the companion column shows its
+      // Chapters tab (Who's who would only say there are none).
+      await tid(page, 'companion-tab-chapters').click({timeout: 8000}).catch(() => {});
       await sleep(1500);
+      await shoot(page, shots.player);
+      if (shots.speedSheet) await sheetShot(page, 'player-speed', shots.speedSheet);
+      if (shots.sleepSheet) await sheetShot(page, 'player-sleep', shots.sleepSheet);
+      await minimisePlayer(page);
+    });
+  }
+
+  if (shots.dockUndo) {
+    // A jump of more than a minute (the next chapter, from the docked bar) brings up
+    // the Undo chip for ten seconds; the shot is the bar along the window's bottom.
+    await step('dock undo chip', async () => {
+      await sleep(3500); // past jump-undo's settle window after the load
+      await firstVisible(page.getByRole('button', {name: 'Next chapter'})).click({timeout: 8000});
+      await sleep(2500);
+      await tid(page, 'dock-actions').getByRole('button', {name: /^Back to /}).waitFor({timeout: 5000});
+      const box = await tid(page, 'shell-docked-player').boundingBox();
+      if (!box) throw new Error('no docked bar');
+      await shoot(page, shots.dockUndo, {clip: box});
+      // Undo it, so the book is back where the warm-up left it.
+      await tid(page, 'dock-actions').getByRole('button', {name: /^Back to /}).click({timeout: 5000});
+      await sleep(1500);
+    });
+  }
+
+  if (shots.credits) {
+    // The end credits, opened early from the full player's menu (the book is paused,
+    // so nothing counts down): the year shelf or cover, the stats, Up next.
+    await step('end credits', async () => {
+      await tid(page, 'dock-expand').click({timeout: 8000});
+      await sleep(3000);
+      await tid(page, 'player-menu').click({timeout: 8000});
+      await sleep(1000);
+      await firstVisible(page.getByRole('menuitem', {name: 'View end credits'})).click({timeout: 8000});
+      await sleep(4500);
+      await shoot(page, shots.credits);
+      await firstVisible(page.getByRole('button', {name: 'Close'})).click({timeout: 8000});
+      await sleep(2000);
     });
   }
 
@@ -372,9 +436,11 @@ async function capturePhone(name, viewport, shots) {
   await step('book + player', async () => {
     await openFirstBook(page, shots.book);
     await listen(page);
+    await pausePlayback(page);
     await shoot(page, shots.player);
-    await firstVisible(page.getByRole('button', {name: 'Close'})).click({timeout: 8000});
-    await sleep(1500);
+    if (shots.speedSheet) await sheetShot(page, 'player-speed', shots.speedSheet);
+    if (shots.sleepSheet) await sheetShot(page, 'player-sleep', shots.sleepSheet);
+    await minimisePlayer(page);
   });
 
   await step('home', async () => {
@@ -399,6 +465,8 @@ await captureWide('desktop', {width: 1440, height: 900}, {
   home: 'web-player/home.png',
   book: 'web-player/book-detail.png',
   player: 'web-player/player.png',
+  dockUndo: 'web-player/dock-undo.png',
+  credits: 'web-player/end-credits.png',
   palette: 'web-player/palette.png',
   profile: 'web-player/profile-menu.png',
   library: 'web-player/library.png',
@@ -420,6 +488,8 @@ await capturePhone('phone', {width: 430, height: 932}, {
   home: 'web-player/phone-home.png',
   book: 'web-player/phone-book-detail.png',
   player: 'web-player/phone-player.png',
+  speedSheet: 'web-player/phone-speed-sheet.png',
+  sleepSheet: 'web-player/phone-sleep-sheet.png',
   upNext: 'web-player/phone-up-next.png',
 });
 
