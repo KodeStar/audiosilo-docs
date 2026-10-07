@@ -385,7 +385,8 @@ this mode (`--date`, `--conflicts`, `--existing-series-only`, the series lookup)
 are refused.
 
 The regeneration never judges a record with evidence older than the record.
-`--rows-as-of YYYY-MM-DD` is required: set it to the dump's snapshot date. A
+`--rows-as-of YYYY-MM-DD` is required: set it to the dump's snapshot date (a date
+after the day of the run is refused, since it would hold nothing back). A
 work whose newest provenance - its `added_at`, every recording's, and every
 `sources[].imported_at` on it and its recordings - falls on a later day is left
 as it is, counted and named in a note. Those dates record when something was
