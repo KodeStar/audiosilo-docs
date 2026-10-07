@@ -20,7 +20,7 @@ draw. The user-facing tour is [A book's page](/users/listening/book-page).
 | `hero-actions.tsx` | `HeroActions`: the primary button, `DownloadControl`, the Up next menu, favourite, Add to collection, and `BookActionsMenu` with `omit` |
 | `book-crumbs.tsx` | `BookCrumbs`: the library, each folder above the book (links), the book's own folder or file name |
 | `book-chapters-tab.tsx` | `BookChaptersTab`: "The whole book" (`BookTimeline` + legend + axis) and the rows |
-| `book-details-tab.tsx` + `book-details-model.ts` | `BookDetailsTab`: the playback notice, the files table, the path; `fileRows`, `averageKbps`, `visibleFiles`, `playbackMode`, and the About card's `aboutContent` |
+| `book-details-tab.tsx` + `book-details-model.ts` | `BookDetailsTab`: the playback notice, the files table, the path; `fileRows`, `visibleFiles`, `playbackMode`, and the About card's `aboutContent` |
 | `book-about.tsx` | `BookAbout`: the About card |
 | `book-aside.tsx` | `BookAside`: `BookAbout`, Other versions (`BookVersions`), Your listening |
 | `book-skeleton.tsx` | The loading layout |
@@ -161,7 +161,7 @@ the list is empty), the community tabs with their `Attribution`, `BookmarksSecti
   for some books);
 - for one long file with no real chapters (none, or a lone whole-book one), the
   player's own parts (`synthesizeChapters` at the listener's `virtualChapterInterval`),
-  with a `BookNotice` saying why;
+  with a `Notice` saying why;
 - else the files, each jumping by `track` (a file after one of unknown length has a
   `NaN` start, and `timelineStarts` then gives the timeline nothing).
 
@@ -183,7 +183,7 @@ few values (its state, and the bookmark glyph: a bookmark inside the book marks 
   rule playback uses; web only), else `direct`.
 - `fileRows(book, chapterData)`: the chapters response's files, else the item's, else
   the book as one file; the codec is the book's (one probe per book); "about N kbps"
-  is `averageKbps(size, duration)` = size × 8 / duration, rounded, or nothing when
+  is `bitrateKbps(size, duration)` (`src/lib/format.ts`) = size × 8 / duration / 1000, rounded, or nothing when
   either is unknown. `visibleFiles` folds past `FILES_SHOWN` (6).
 - The path: "library/" + `rel_path`, `selectable`, with the note that progress is keyed
   on it.
