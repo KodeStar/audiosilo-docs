@@ -1,16 +1,49 @@
 // Captures the web-player documentation screenshots against a locally-running
-// AudioSilo server in demo mode (run.sh starts it). Two passes:
-//   1. warm a demo session (seek several books to varied positions so the home
-//      screen's Continue Listening shelf looks lived-in) - same technique as
-//      store/tools/login.mjs in the workspace,
+// AudioSilo server in demo mode (run.sh starts it). Three passes:
+//   0. tag two seeded series through the admin API (the LibriVox files carry no
+//      series tags, so the Library's Series section and a series page would be
+//      empty) - needs ADMIN_PASSWORD, which run.sh passes,
+//   1. warm a demo session (seek several books to varied positions so Home looks
+//      lived-in - same technique as store/tools/login.mjs in the workspace), then
+//      give the demo user an Up next queue and a collection through the API,
 //   2. capture desktop, tablet and phone profiles into static/img/screenshots/web-player/.
 import {chromium} from 'playwright';
 import path from 'node:path';
 import {mkdir} from 'node:fs/promises';
-import {CACHE, sleep, shoot, step} from './lib.mjs';
+import {CACHE, apiClient, sleep, shoot, step} from './lib.mjs';
 
 const BASE = process.env.AS_BASE || 'http://127.0.0.1:8790/web/';
+const api = apiClient(new URL(BASE).origin);
+const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || '';
 const AUTH = path.join(CACHE, 'auth.json');
+
+// Series overrides for the seeded books (admin metadata edits: path-keyed, no file
+// is touched). Sherlock Holmes takes its canon numbers, so the series page shows the
+// gaps (books 1, 2 and 4) the seed doesn't have; Alice is a complete pair.
+const SERIES = [
+  {author: 'Sir Arthur Conan Doyle', title: 'Adventures of Sherlock Holmes', series: 'Sherlock Holmes', index: '3'},
+  {author: 'Sir Arthur Conan Doyle', title: 'Hound of the Baskervilles', series: 'Sherlock Holmes', index: '5'},
+  {author: 'Lewis Carroll', title: "Alice's Adventures", series: 'Alice', index: '1'},
+  {author: 'Lewis Carroll', title: 'Looking-Glass', series: 'Alice', index: '2'},
+];
+
+// The demo user's Up next queue and one collection (title substrings of seeded books).
+const QUEUE = ['Christmas Carol', 'Adventures of Sherlock Holmes', 'Art of War'];
+const COLLECTION = {
+  name: 'Victorian evenings',
+  description: 'Fog, firelight and something odd at the door.',
+  books: ['Christmas Carol', 'Hound of the Baskervilles', 'Adventures of Sherlock Holmes', 'Looking-Glass'],
+};
+
+// The desktop Up next drawer starts closed in every capture context, so the shots
+// that aren't about it keep the page's full width; the Up next shot opens it.
+const drawerClosed = () => {
+  try {
+    localStorage.setItem('audiosilo.upNext', JSON.stringify({drawerOpen: false}));
+  } catch {
+    /* storage blocked: the drawer opens, the shots are just narrower */
+  }
+};
 
 // Book-title substrings (must exist in the seeded library) + the fraction of
 // the book to seek to, so progress bars vary.
@@ -43,6 +76,27 @@ const audioHook = () => {
 
 const browser = await chromium.launch();
 await mkdir(CACHE, {recursive: true});
+
+// ── Pass 0: series tags ─────────────────────────────────────────────────────
+console.log('== provision series ==');
+await step('series tags', async () => {
+  if (!ADMIN_PASSWORD) throw new Error('ADMIN_PASSWORD not set: the series shots will show no series');
+  const {token} = await api(null, 'POST', '/auth/login', {username: 'admin', password: ADMIN_PASSWORD});
+  try {
+    for (const s of SERIES) {
+      const list = await api(token, 'GET', `/admin/books?author=${encodeURIComponent(s.author)}&limit=50`);
+      const b = (list?.books ?? []).find((x) => `${x.title} ${x.path}`.includes(s.title));
+      if (!b) throw new Error(`no seeded book matching "${s.title}"`);
+      await api(token, 'PATCH', `/admin/libraries/${b.library_id}/book?path=${encodeURIComponent(b.path)}`, {
+        set: {series: s.series, series_index: s.index},
+      });
+    }
+  } finally {
+    // Sign this session out again, so it never shows in the admin Devices shot.
+    await api(token, 'POST', '/auth/logout').catch(() => {});
+  }
+  console.log(`  ✓ series: ${SERIES.map((s) => `${s.series} ${s.index}`).join(', ')}`);
+});
 
 // ── Pass 1: warm a demo session ─────────────────────────────────────────────
 console.log('== warm demo session ==');
@@ -83,6 +137,27 @@ console.log('== warm demo session ==');
       await sleep(16000); // progress autosaves every 15s while playing
     });
   }
+  // Up next and a collection for the demo user, through the API with its own token
+  // (the web player keeps it in localStorage under audiosilo.token.<connection id>).
+  await step('queue + collection', async () => {
+    const token = await page.evaluate(() => {
+      const key = Object.keys(localStorage).find((k) => k.startsWith('audiosilo.token.'));
+      return key ? localStorage.getItem(key) : null;
+    });
+    if (!token) throw new Error('no demo token in localStorage');
+    const [lib] = (await api(token, 'GET', '/libraries')).libraries;
+    const {books} = await api(token, 'GET', `/libraries/${lib.id}/books?limit=200`);
+    const find = (t) => books.find((b) => `${b.title} ${b.rel_path}`.includes(t));
+    const ref = (b) => ({library_id: lib.id, path: b.rel_path});
+    const queued = QUEUE.map(find).filter(Boolean);
+    for (const b of queued) await api(token, 'POST', '/me/queue', ref(b)); // in order
+    const {name, description} = COLLECTION;
+    const made = await api(token, 'POST', '/me/collections', {name, description});
+    const items = COLLECTION.books.map(find).filter(Boolean).map(ref);
+    await api(token, 'PUT', `/me/collections/${made.collection.id}/items`, {items});
+    console.log(`  ✓ queued ${queued.length}, collection of ${items.length}`);
+  });
+
   await ctx.storageState({path: AUTH});
   await ctx.close();
   console.log('  ✓ demo session warmed');
@@ -95,7 +170,13 @@ console.log('== warm demo session ==');
 // player bar along the bottom (its expand button opens the full player). Moving
 // around with the chrome (not page.goto) keeps the book loaded, so the shots
 // after Listen show the mini player / docked bar.
-const tid = (page, id) => page.locator(`[data-testid="${id}"]`).first();
+//
+// Every visited tab page (and every page further down a stack) stays mounted but
+// hidden, so a test id or a button name can match several elements: always act on
+// the visible one.
+const firstVisible = (locator) => locator.filter({visible: true}).first();
+const tid = (page, id) => firstVisible(page.getByTestId(id));
+const escapeRe = (s) => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 
 async function newProfile(name, viewport, dsf) {
   console.log(`== ${name} (${viewport.width}x${viewport.height}) ==`);
@@ -106,7 +187,26 @@ async function newProfile(name, viewport, dsf) {
     reducedMotion: 'reduce',
     storageState: AUTH,
   });
+  await ctx.addInitScript(drawerClosed);
   return {ctx, page: await ctx.newPage()};
+}
+
+// A Library section in the sub-nav (tablet/desktop), e.g. 'Series'; its radio's name
+// carries the count ("Series, 2").
+async function librarySection(page, label) {
+  await tid(page, 'top-bar-(library)').click({timeout: 8000});
+  await sleep(1500);
+  await tid(page, 'shell-sub-nav')
+    .getByRole('radio', {name: new RegExp(`^${label}\\b`)})
+    .click({timeout: 8000});
+  await sleep(2500);
+}
+
+// A card or tile whose accessible name starts with `name`.
+async function openNamed(page, name) {
+  await firstVisible(page.getByRole('button', {name: new RegExp(`^${escapeRe(name)}`)})).click({timeout: 8000});
+  await page.waitForLoadState('networkidle').catch(() => {});
+  await sleep(3000);
 }
 
 // Home, open the first Continue listening card's book, and (optionally) shoot it.
@@ -123,8 +223,7 @@ async function openFirstBook(page, shot) {
 }
 
 async function listen(page) {
-  const btn = page.getByRole('button', {name: /^listen$/i}).first();
-  await btn.click({timeout: 8000});
+  await firstVisible(page.getByRole('button', {name: /^listen$/i})).click({timeout: 8000});
   await sleep(4500);
 }
 
@@ -145,10 +244,10 @@ async function captureWide(name, viewport, shots) {
 
   if (shots.player) {
     await step('player', async () => {
-      await page.getByRole('button', {name: 'Expand player'}).first().click({timeout: 8000});
+      await firstVisible(page.getByRole('button', {name: 'Expand player'})).click({timeout: 8000});
       await sleep(3500);
       await shoot(page, shots.player);
-      await page.getByRole('button', {name: 'Close'}).first().click({timeout: 8000});
+      await firstVisible(page.getByRole('button', {name: 'Close'})).click({timeout: 8000});
       await sleep(1500);
     });
   }
@@ -176,13 +275,63 @@ async function captureWide(name, viewport, shots) {
   }
 
   if (shots.library) {
-    // The library list, then into the seeded library's folders (the browse view).
+    // Library > Books, the default section.
     await step('library', async () => {
       await tid(page, 'top-bar-(library)').click({timeout: 8000});
-      await sleep(2000);
-      await page.getByText('Books', {exact: true}).filter({visible: true}).first().click({timeout: 8000});
-      await sleep(2500);
+      await sleep(3000);
       await shoot(page, shots.library);
+    });
+  }
+
+  if (shots.upNext) {
+    // The drawer beside Library > Books, opened from the top bar (and closed again).
+    await step('up next', async () => {
+      await tid(page, 'top-bar-(library)').click({timeout: 8000});
+      await sleep(1500);
+      await tid(page, 'upnext-button-bar').click({timeout: 8000});
+      await sleep(3000);
+      await shoot(page, shots.upNext);
+      await tid(page, 'upnext-button-bar').click({timeout: 8000});
+      await sleep(1000);
+    });
+  }
+
+  if (shots.librarySeries || shots.series) {
+    await step('series', async () => {
+      await librarySection(page, 'Series');
+      if (shots.librarySeries) await shoot(page, shots.librarySeries);
+      if (shots.series) {
+        await openNamed(page, 'Sherlock Holmes');
+        await shoot(page, shots.series);
+      }
+    });
+  }
+
+  if (shots.author) {
+    await step('author', async () => {
+      await librarySection(page, 'Authors');
+      await openNamed(page, 'Lewis Carroll');
+      await shoot(page, shots.author);
+    });
+  }
+
+  if (shots.collection) {
+    await step('collection', async () => {
+      await librarySection(page, 'Collections');
+      await openNamed(page, COLLECTION.name);
+      await shoot(page, shots.collection);
+    });
+  }
+
+  if (shots.downloads) {
+    // Download one short book first, so the Downloads page has a book ready offline.
+    await step('download a book', async () => {
+      await librarySection(page, 'Books');
+      await openNamed(page, 'The Art of War');
+      await firstVisible(page.getByRole('button', {name: /^download$/i})).click({timeout: 8000});
+      // Done once the book page offers Remove download.
+      await firstVisible(page.getByRole('button', {name: /^remove download$/i})).waitFor({timeout: 120000});
+      await sleep(1500);
     });
   }
 
@@ -224,7 +373,7 @@ async function capturePhone(name, viewport, shots) {
     await openFirstBook(page, shots.book);
     await listen(page);
     await shoot(page, shots.player);
-    await page.getByRole('button', {name: 'Close'}).first().click({timeout: 8000});
+    await firstVisible(page.getByRole('button', {name: 'Close'})).click({timeout: 8000});
     await sleep(1500);
   });
 
@@ -233,6 +382,15 @@ async function capturePhone(name, viewport, shots) {
     await sleep(3000);
     await shoot(page, shots.home);
   });
+
+  if (shots.upNext) {
+    // The sheet, from the Up next button beside Home's large title.
+    await step('up next sheet', async () => {
+      await tid(page, 'upnext-button-header').click({timeout: 8000});
+      await sleep(2500);
+      await shoot(page, shots.upNext);
+    });
+  }
 
   await ctx.close();
 }
@@ -244,6 +402,11 @@ await captureWide('desktop', {width: 1440, height: 900}, {
   palette: 'web-player/palette.png',
   profile: 'web-player/profile-menu.png',
   library: 'web-player/library.png',
+  upNext: 'web-player/up-next.png',
+  librarySeries: 'web-player/library-series.png',
+  series: 'web-player/series.png',
+  author: 'web-player/author.png',
+  collection: 'web-player/collection.png',
   search: 'web-player/search.png',
   settings: 'web-player/settings.png',
   downloads: 'web-player/downloads.png',
@@ -257,6 +420,7 @@ await capturePhone('phone', {width: 430, height: 932}, {
   home: 'web-player/phone-home.png',
   book: 'web-player/phone-book-detail.png',
   player: 'web-player/phone-player.png',
+  upNext: 'web-player/phone-up-next.png',
 });
 
 // ── Unauthenticated screens ─────────────────────────────────────────────────

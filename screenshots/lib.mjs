@@ -22,6 +22,29 @@ export const DESKTOP_CONTEXT = {
   reducedMotion: 'reduce',
 };
 
+// A JSON client for a server's /api/v1: api(token, method, path, body?, headers?)
+// returns the parsed body (null when empty or not JSON) and throws on a non-2xx.
+export const apiClient = (origin) => async (token, method, p, body, headers = {}) => {
+  const res = await fetch(`${origin}/api/v1${p}`, {
+    method,
+    headers: {
+      'content-type': 'application/json',
+      ...(token ? {authorization: `Bearer ${token}`} : {}),
+      ...headers,
+    },
+    body: body === undefined ? undefined : JSON.stringify(body),
+  });
+  const text = await res.text();
+  let json = null;
+  try {
+    json = text ? JSON.parse(text) : null;
+  } catch {
+    /* non-JSON */
+  }
+  if (!res.ok) throw new Error(`${method} ${p} -> ${res.status} ${text.slice(0, 120)}`);
+  return json;
+};
+
 // Raw Playwright PNGs at deviceScaleFactor 2 are large (a full desktop shot is
 // ~0.5-1.3 MB); pngquant's lossy-palette pass shrinks them ~60% with no
 // perceptible loss on UI captures. It's a deterministic transform run on every

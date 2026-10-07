@@ -66,16 +66,17 @@ The automatic timer stays out of your way: only ever one at a time, and it never
 
 ## Up next
 
-Controls for what happens as one book ends and the next begins (see [When a book finishes](playback.md#when-a-book-finishes)). Like Playback, these are kept per device.
+Controls for what happens as one book ends and the next begins (see [When a book finishes](playback.md#when-a-book-finishes)). Like Playback, these are kept per device. (This section is about settings; the queue of books you line up yourself is [Up next](up-next.md).) The three download settings also appear on the Downloads page, as its **Automatic downloads** card - changing one place changes the other.
 
 | Setting | What it does | Options (default) |
 |---|---|---|
 | **Automatically play next book** | Start the next book in the folder when one finishes, after a short countdown on the end credits screen | On / Off (default **Off**) |
-| **Automatically download books** | Download the book you start listening to, so it's ready to hear offline. Streaming begins straight away, and playback switches to the downloaded copy quietly once it's on the device | Never / Wi-Fi only / Always (default **Wi-Fi only**) |
-| **Automatically delete finished books** | Remove a book's downloaded files from the device when it's marked finished, to free up space | On / Off (default **On**) |
+| **Download automatically** | Download the book you start listening to, so it's ready to hear offline. Streaming begins straight away, and playback switches to the downloaded copy quietly once it's on the device | Never / On Wi-Fi / Always (default **On Wi-Fi**) |
+| **Keep the next books ready** | While you listen, download this many of the next books - from your Up next queue first, then the series - so they're ready offline. Follows the automatic download setting above, and always leaves at least 1 GB free. See [Keep the next books ready](offline-downloads.md#keep-the-next-books-ready) | Off / 1 / 2 / 3 (default **Off**) |
+| **Remove a download when you finish the book** | Remove a book's downloaded files from the device when it's marked finished, to free up space. Your place in it is kept | On / Off (default **On**) |
 
 :::note
-**Wi-Fi only** skips the automatic download on a known mobile-data connection, so it won't eat your data allowance. In the web player, and when the connection type can't be determined, it goes ahead. You can always download a book by hand on the book's page - see [Offline downloads](offline-downloads.md).
+**On Wi-Fi** skips the automatic download on a known mobile-data connection, so it won't eat your data allowance. In the web player, and when the connection type can't be determined, it goes ahead. You can always download a book by hand on the book's page - see [Offline downloads](offline-downloads.md).
 :::
 
 ## Support

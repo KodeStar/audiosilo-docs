@@ -14,23 +14,29 @@
 
 export const SHOTS = [
   // ── Web player (desktop 1440x900, dark) ────────────────────────────────
-  {file: 'web-player/home.png', capture: 'web', title: 'Web player - Home', hint: 'home screen with Continue Listening + Recently Added shelves, the top bar and the docked player bar'},
-  {file: 'web-player/library.png', capture: 'web', title: 'Web player - Library', hint: 'library browse grid'},
+  {file: 'web-player/home.png', capture: 'web', title: 'Web player - Home', hint: 'Home (Up next drawer hidden): greeting + sync pill, the Now card with its chapter scale, This week (if the server has user_stats), Continue listening and the shelves, docked player bar'},
+  {file: 'web-player/library.png', capture: 'web', title: 'Web player - Library', hint: 'Library > Books (the default section): Books / Authors / Series / Narrators / Collections / Folders in the sub-nav with sort + grid/list, the filter chips and the cover grid with progress bars'},
+  {file: 'web-player/library-series.png', capture: 'web', title: 'Web player - Library series', hint: 'Library > Series (/library?mode=series): series cards with their mini shelves (the seeded Sherlock Holmes series shows its gaps)'},
+  {file: 'web-player/series.png', capture: 'web', title: 'Web player - Series page', hint: 'the Sherlock Holmes series page: hero with the progress track, the bookcase with the book in progress face-out and dashed gaps, the list below'},
+  {file: 'web-player/author.png', capture: 'web', title: 'Web player - Author page', hint: "Lewis Carroll's author page: stat tiles, the Alice series shelf, other books"},
+  {file: 'web-player/collection.png', capture: 'web', title: 'Web player - Collection', hint: 'the provisioned "Victorian evenings" collection page: name, description, count and length, Edit / Delete (Share hidden on a demo account), its books'},
+  {file: 'web-player/up-next.png', capture: 'web', title: 'Web player - Up next', hint: 'the desktop Up next drawer open beside Library > Books: Now playing, three queued books, Continue the series and more'},
   {file: 'web-player/book-detail.png', capture: 'web', title: 'Web player - Book detail', hint: 'book page with the tab row and the right-hand cover panel with Listen'},
   {file: 'web-player/player.png', capture: 'web', title: 'Web player - Now playing', hint: 'the full player, opened from the docked bar'},
-  {file: 'web-player/palette.png', capture: 'web', title: 'Web player - Quick search', hint: 'the command palette (top bar search / ⌘K) with "holmes" typed'},
+  {file: 'web-player/palette.png', capture: 'web', title: 'Web player - Quick search', hint: 'the command palette (top bar search / ⌘K) with "holmes" typed: Books and Series groups'},
   {file: 'web-player/profile-menu.png', capture: 'web', title: 'Web player - Profile menu', hint: "the top bar's profile menu: servers, Add a server, account, appearance"},
-  {file: 'web-player/search.png', capture: 'web', title: 'Web player - Search', hint: 'search results for a query'},
+  {file: 'web-player/search.png', capture: 'web', title: 'Web player - Search', hint: 'the Search page with "holmes": grouped Books, and Series as the series card with its mini shelf'},
   {file: 'web-player/settings.png', capture: 'web', title: 'Web player - Settings', hint: 'settings screen (servers, appearance, language, playback)'},
-  {file: 'web-player/downloads.png', capture: 'web', title: 'Web player - Downloads', hint: 'offline downloads screen'},
+  {file: 'web-player/downloads.png', capture: 'web', title: 'Web player - Downloads', hint: 'the Downloads page with a book downloaded by hand (and the playing one, downloaded automatically): storage by server, Automatic downloads (incl. Keep the next books ready), the browser notice, Ready offline'},
   {file: 'web-player/connect.png', capture: 'web', title: 'Web player - Connect', hint: 'connect/pairing screen with code field'},
   {file: 'web-player/demo.png', capture: 'web', title: 'Web player - Demo mode', hint: 'the /web/demo landing screen'},
 
   // ── Web player (tablet 834x1112 portrait, dark)
-  {file: 'web-player/tablet-home.png', capture: 'web', title: 'Tablet - Home', hint: 'tablet-width home: top bar with icon destinations, docked player bar'},
+  {file: 'web-player/tablet-home.png', capture: 'web', title: 'Tablet - Home', hint: 'tablet-width Home: top bar with icon destinations and the Up next button, the Now card, docked player bar'},
 
   // ── Web player (phone 430x932 portrait, dark) - stands in for the mobile app UI
-  {file: 'web-player/phone-home.png', capture: 'web', title: 'Phone - Home', hint: 'phone-width home screen with the tab bar and mini player'},
+  {file: 'web-player/phone-home.png', capture: 'web', title: 'Phone - Home', hint: 'phone-width Home: large title with the Up next button, the Now card, the tab bar and mini player'},
+  {file: 'web-player/phone-up-next.png', capture: 'web', title: 'Phone - Up next', hint: 'phone-width Up next sheet opened from the header button: Now playing and the queue'},
   {file: 'web-player/phone-book-detail.png', capture: 'web', title: 'Phone - Book detail', hint: 'phone-width book page'},
   {file: 'web-player/phone-player.png', capture: 'web', title: 'Phone - Now playing', hint: 'phone-width full-screen player'},
 

@@ -1,6 +1,6 @@
 ---
 title: Testing the player
-description: "The jest-expo harness, the checks npm test runs before jest, the global mocks in jest.setup.ts, the conventions that keep logic testable, the overlay and route-tree harnesses, and the patterns for mocking fetch, reachability, and Platform.OS."
+description: "The jest-expo harness, the checks npm test runs before jest, the global mocks in jest.setup.ts (including FlashList's measurements), the conventions that keep logic testable, rendering covers and grids, the overlay and route-tree harnesses, and the patterns for mocking fetch, reachability, and Platform.OS."
 ---
 
 Every piece of new logic in the frontend ships with a unit test. The harness is
@@ -48,7 +48,7 @@ three fast Node checks before jest:
 
 ## Global setup (`jest.setup.ts`)
 
-Loaded via `setupFilesAfterEnv`, it does five things:
+Loaded via `setupFilesAfterEnv`, it does six things:
 
 1. **Imports `@/i18n`** so i18next is initialised with the English catalog -
    components using `useTranslation` and the locale-aware formatters resolve
@@ -65,9 +65,16 @@ Loaded via `setupFilesAfterEnv`, it does five things:
    animations resolve synchronously (timing callbacks fire with
    `finished: true`), `Animated.*` map to plain RN components, shared values
    carry the `get`/`set` accessors as well as `.value`, the
-   layout-animation builders (`FadeIn`, `SlideInDown`, …) are chainable no-op
-   stubs, and `useReducedMotion` is a `jest.fn` returning `false` that a test can
-   flip.
+   layout-animation builders (`FadeIn`, `SlideInDown`, `LinearTransition`, …)
+   are chainable no-op stubs, and `useReducedMotion` is a `jest.fn` returning
+   `false` that a test can flip.
+6. Mocks **FlashList v2's measurements**
+   (`@shopify/flash-list/dist/recyclerview/utils/measureLayout`). FlashList
+   measures its parent and items natively, which yields nothing under Node, so
+   a list would render no items at all; the mock answers with a fixed 400x900
+   viewport and 100x100 items (the values of the package's own `jestSetup.js`,
+   whose FlashList-to-RecyclerView swap no longer matches its exports). Any
+   `ShelfRow` or `CoverGrid` renders its first items in a test because of it.
 
 Together these let the storage, session, sync, settings and downloads layers
 run unchanged without a device or browser. Nothing else is mocked globally -
@@ -184,6 +191,29 @@ overlays also only appear once they have measured their trigger, and React
 Native's jest preset stubs `measure` with a no-op, so the helper answers it with
 a fixed box. Await it, and every `fireEvent` after it (see above).
 
+### Rendering covers, shelves and grids
+
+A component that draws a `BookCover` (every `CoverTile`, shelf and grid) reaches
+into several app-wide modules, so a render test mocks them at the top of the file,
+as `src/components/library/cover-pieces.test.tsx` and
+`src/components/series/browse-pieces.test.tsx` do:
+
+- `@/api/provider` - `useOptionalApi` (and `useCid` where the screen reads it), for
+  the cover URL; `@/api/hooks` - `useServerInfo` (the `cover_sizes` flag; while it
+  is unknown the cover deliberately fetches nothing);
+- `@/downloads/store` - `useDownloadEntry` (the downloaded-copy source and the
+  downloaded flag);
+- `@/theme/theme-provider` - `useTheme` (`CoverFrame`'s iOS shadow reads the
+  scheme, and the real provider imports `global.css`);
+- `@/lib/layout` - a fixed `useLayout()` (tile and grid sizes depend on it), and
+  `@/components/player/mini-player` - `useMiniPlayerInset` for a grid's bottom
+  padding.
+
+`book-cover.test.tsx` replaces `expo-image` with a host `View` so it can read the
+chosen source and fire its `onError` (the thumbnail-to-full-art fallback). Screens
+that publish into the sub-nav mock `@/components/shell/tab-root-nav` (or render on a
+phone layout, where the sections render in place).
+
 ### Route-tree tests
 
 `src/components/shell/route-tree.test.tsx`, `route-tree-cold.test.tsx` and
@@ -291,16 +321,20 @@ Co-located suites exist for:
 |---|---|
 | API layer | `src/api/client.test.ts`, `connection-clients.test.ts`, `hooks.test.ts`, `reachability.test.ts` |
 | Playback | `src/playback/book-queue.test.ts`, `progress-sync.test.ts`, `store.test.ts`, `service.web.test.ts`, `sleep-timer.test.ts`, `auto-sleep.test.ts`, `auto-sleep-controller.test.ts`, `rate.test.ts`, `next-book.test.ts`, `prettify-title.test.ts`, `types.test.ts` |
-| Downloads | `src/downloads/store.test.ts` |
-| Stores | `src/stores/session.test.ts`, `settings.test.ts`, `series-orderings.test.ts` |
+| Downloads | `src/downloads/store.test.ts`, `keep-ahead.test.ts`, `keep-ahead-controller.test.ts`, `failure.test.ts`, `downloads-view.test.ts`; `src/components/downloads/downloads-screen.test.tsx` |
+| Stores | `src/stores/session.test.ts`, `settings.test.ts`, `series-orderings.test.ts`, `library-selection.test.ts`, `search.test.ts` |
+| Home | `src/components/home/home-model.test.ts`, `listening.test.ts`, `now-card-model.test.ts`, `now-card.test.tsx`, `home-screen.test.tsx` |
+| Search | `src/components/search/search-model.test.ts` (the spoiler rules), `use-search-sources.test.tsx`, `search-screen.test.tsx` |
+| Series and people | `src/components/series/series-model.test.ts`, `spine-fit.test.ts`, `people-model.test.ts`, `series-page.test.tsx`, `browse-pieces.test.tsx`, `keep-ahead-card.test.tsx` |
+| Up next | `src/components/upnext/up-next-model.test.ts`, `up-next-store.test.ts`, `use-up-next.test.tsx`, `queue-list.test.tsx`, `up-next-panel.test.tsx`, `up-next-button.test.tsx` |
 | Theme | `src/theme/scheme-pref.test.ts` (the default-theme rule), `theme-provider.test.tsx`, `use-theme-colors.test.tsx` |
-| i18n | `src/i18n/language.test.ts`, `language-provider.test.tsx` |
-| Shell | `src/components/shell/destinations.test.ts`, `shell-chrome.test.tsx`, `command-palette.test.tsx`, `palette-model.test.ts`, `palette-store.test.ts`, `profile-menu.test.tsx`, `shell-metrics.test.ts`, `toast-offset.test.ts`, and the three route-tree suites (above); `src/components/layout/offline-banner.test.tsx` |
+| i18n | `src/i18n/language.test.ts`, `language-provider.test.tsx`, `locales.test.ts` (every catalog names the auto-download setting once) |
+| Shell | `src/components/shell/destinations.test.ts`, `shell-chrome.test.tsx`, `command-palette.test.tsx`, `palette-model.test.ts`, `palette-store.test.ts`, `profile-menu.test.tsx`, `shell-metrics.test.ts`, `phone-header.test.tsx`, `tab-root-nav.test.tsx`, `use-shell-effects.test.ts`, `toast-offset.test.ts`, and the three route-tree suites (above); `src/components/layout/offline-banner.test.tsx` |
 | Account flows | `src/components/account/use-api-keys-manager.test.tsx`, `use-sign-out.test.tsx` |
-| Player UI | `src/components/player/sleep-timer-button.test.tsx`, `end-credits-logic.test.ts`, `book-progress.test.tsx`, `transport.test.ts` (the shared previous/next and chapter-segment math of the full player and the docked bar) |
-| Library UI | `src/components/library/book-meta.test.ts`, `book-meta.render.test.tsx`, `book-tabs.test.ts`, `cover-frame.test.tsx`, `meta-gating.test.ts`, `entry-row.test.tsx`, `progress-card.test.tsx`, `skeletons.test.tsx`; `src/components/layout/content-scope.test.tsx` |
-| UI primitives | `src/components/ui/` - `animated-pressable`, `badge`, `button`, `confirm-dialog`, `dialog`, `empty-state`, `icon-data` (validates every vendored SVG glyph), `input`, `overlay` (root insets, `withFlatStyle`), `overlay-host`, `popover`, `row-surface`, `section-header`, `select`, `sheet`, `skeleton`, `slider`, `switch`, `tabs`, `text`, `time-stepper`, `toast`, `toggle-group` |
-| `src/lib` helpers | `account`, `alpha-sections`, `app-resume`, `auth-failure`, `base-url`, `chapter-label`, `client-id`, `clipboard`, `content-key`, `dedup`, `format`, `hhmm`, `known-servers`, `layout`, `network`, `pairing`, `paths`, `progress-view`, `rnw-button-fix`, `scroll-memory`, `secure-store`, `series-orderings`, `share`, `storage-migration`, `support`, `ticker`, `use-debounced-value`, `use-dom-id`, `utils` |
+| Player UI | `src/components/player/sleep-timer-button.test.tsx`, `end-credits-logic.test.ts`, `book-progress.test.tsx`, `transport.test.ts` (the shared previous/next and chapter-segment math of the full player and the docked bar), `use-listening-position.test.tsx` |
+| Library UI | `src/components/library/book-meta.test.ts`, `book-meta.render.test.tsx`, `book-tabs.test.ts`, `cover-frame.test.tsx`, `meta-gating.test.ts`, `entry-row.test.tsx`, `history-section.test.tsx`, `book-panes.test.ts`, `download-control.test.tsx`, `book-cover.test.tsx`, `cover-pieces.test.tsx`, `cover-layout.test.ts`, `cover-wash.test.tsx`, `library-modes.test.ts`, `library-screen.test.tsx`, `use-queue-actions.test.tsx`, `tile-actions.test.tsx`, and under `books/` (`books-view`, `book-actions`, `list-columns`, `use-whole-library`), `collections/` (`collections-model`, `collection-dialogs`) and `modes/books-mode`; `src/components/player/use-play-book.test.tsx`; `src/components/layout/content-scope.test.tsx` |
+| UI primitives | `src/components/ui/` - `animated-pressable`, `badge`, `button`, `confirm-dialog`, `cover`, `dialog`, `empty-state`, `icon-data` (validates every vendored SVG glyph), `input`, `overlay` (root insets, `withFlatStyle`), `overlay-host`, `popover`, `progress-bar`, `row-surface`, `section-header`, `select`, `sheet`, `skeleton`, `slider`, `switch`, `tabs`, `text`, `time-stepper`, `toast`, `toggle-group` |
+| `src/lib` helpers | `account`, `alpha-sections`, `app-resume`, `auth-failure`, `base-url`, `chapter-label`, `client-id`, `clipboard`, `content-key`, `cover-tint`, `dedup`, `format`, `hhmm`, `keyboard`, `known-servers`, `layout`, `monogram`, `names`, `network`, `pairing`, `paths`, `register-sw.web`, `progress-view`, `rnw-button-fix`, `scroll-memory`, `secure-store`, `series-orderings`, `share`, `storage-migration`, `support`, `ticker`, `use-debounced-value`, `use-dom-id`, `use-latest`, `utils` |
 | Generators (Node, not jest) | `scripts/gen-tokens.test.mjs` |
 
 The shared test helpers live outside that list, in `src/testing/`: the

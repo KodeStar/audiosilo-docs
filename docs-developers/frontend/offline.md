@@ -1,6 +1,6 @@
 ---
 title: Offline & PWA
-description: "Downloads on native (expo-file-system) and web (Cache API + service worker), the manifest/registry store, playing local files, and what the PWA layer actually covers offline."
+description: "Downloads on native (expo-file-system) and web (Cache API + service worker), the manifest/registry store, failures that keep finished files, keeping the next books ready, the Downloads page, playing local files, and what the PWA layer actually covers offline."
 ---
 
 Offline support has two halves that meet in the middle:
@@ -39,6 +39,12 @@ by Metro exactly like the playback service (`engine.native.ts` /
   location and return `true`, or delete them and return `false` when `target`
   is `null`. See the migration step below.
 - `removeBook(connectionId, libraryId, path)`, `totalBytesUsed`.
+- `storageEstimate?()` - how much room there is, as a `StorageEstimate { scope,
+  capacity, free }`, or null when the platform can't say. Native: the disk
+  (`Paths.totalDiskSpace` / `availableDiskSpace`, scope `device`). Web: the origin's
+  quota from `navigator.storage.estimate()` (scope `browser`; `free` = quota minus
+  everything the site stores; other apps' use is not knowable there). Read by the
+  Downloads page's storage card and by keep-ahead's space rule.
 
 Every content op is scoped by **connection id** (`Connection.id` from the
 session store) as its first coordinate - the same `(connectionId, libraryId,
@@ -99,8 +105,12 @@ Implementation notes worth knowing before touching it:
   without a real download, so the UI can hide downloads up front in
   environments where they'd never play (no controlling SW, insecure context,
   SSR pass).
-- `hasControllingSW()` waits briefly (bounded at 3 s) for a first-ever
-  registration to claim the page before giving up.
+- `hasControllingSW()` waits for `navigator.serviceWorker.ready`, **bounded at
+  10 s**, then up to 3 s more for a first-ever registration to claim the page,
+  before giving up. `ready` never settles when no worker registers at all
+  (registration failed, or a browser or policy blocks it); unbounded, the probe hung
+  and the page kept offering downloads that could never play offline. 10 s is
+  generous so a first visit's worker still has time to install.
 
 ## The registry store (`src/downloads/store.ts`)
 
@@ -111,17 +121,21 @@ Implementation notes worth knowing before touching it:
 
 **Entry shape** (`src/downloads/types.ts`): `status` (`queued → downloading →
 downloaded | error`), aggregate `progress` (0..1), `bytes`/`totalBytes`, an
-optional `error` message, and the **manifest** - the offline source of truth:
-the full `Book`, the `ChaptersResponse`, the ordered `files`
-(`relPath → localUri`), `coverUri`, `savedAt`. The manifest is everything the
-player needs to build a queue and render with no network.
+optional `error` message, `failure` (a classified `DownloadFailure` for an
+`error` status, below), `origin` (`listener`, the default when absent, or
+`keep-ahead`), and the **manifest** - the offline source of truth: the full `Book`,
+the `ChaptersResponse`, the ordered `files` (`relPath → localUri`, plus the
+`bytes` written, absent on entries saved before it was recorded), `coverUri`,
+`savedAt`. The manifest is everything the player needs to build a queue and render
+with no network.
 
 ### Lifecycle
 
-- **Queue**: `download(connectionId, libraryId, book, chapterData?)` registers a
-  `queued` entry and pushes its key onto a module-level FIFO; **one book
-  downloads at a time** (`runQueue`/`runOne`). Repeat requests for a
-  non-errored entry are ignored. No `ApiClient` is passed in - `runOne` resolves
+- **Queue**: `download(connectionId, libraryId, book, chapterData?, origin?)`
+  registers a `queued` entry and pushes its key onto a module-level FIFO; **one
+  book downloads at a time** (`runQueue`/`runOne`). Repeat requests for a
+  non-errored entry are ignored; an `error` entry is retried, keeping its
+  manifest's finished `files` (and chapters). No `ApiClient` is passed in - `runOne` resolves
   the entry's **own** server client via `resolveClient(entry.connectionId)`
   (`src/api/connection-clients.ts`), so two servers' queued downloads never race a
   shared client; a queued download whose connection was removed errors the entry
@@ -137,14 +151,37 @@ player needs to build a queue and render with no network.
   first file can't actually be served offline, the entry is marked `error`
   with a "reload the app, then retry" message - **keeping the cached bytes**
   for the retry - so the downloaded badge can never lie.
-- **Errors**: a failed run removes the partial files (`engine.removeBook`) and
-  marks the entry `error`; a **cancel** (`cancel()` aborts the in-flight
-  controller) removes files *and* the entry entirely. `remove()` is the
-  user-facing delete: abort + `engine.removeBook` + drop the entry. Files on
-  the server are never touched.
+- **Errors keep the finished files.** A failed run marks the entry `error` with
+  `failure = { ...classifyDownloadError(e), kept }` and keeps the files that
+  finished in its manifest (the one being written is partial and is written over).
+  `kept` is the share of the book's files that finished (0..1), so a single-file
+  book keeps nothing. A retry walks the specs in order and **skips** a file whose
+  manifest slot has the same `relPath` and still exists on disk (the on-disk name is
+  the file's index, so a file only counts where it was saved). `runOne` lists each
+  finished file in the persisted entry as it lands, so this survives a restart
+  too (hydrate's `reviveEntry`, below).
+- **Failure classification** (`src/downloads/failure.ts`): `classifyDownloadError`
+  maps whatever the platform threw (a fetch `TypeError`, expo-file-system's native
+  messages, a `QuotaExceededError`, the web engine's `Download failed (404)`) to
+  `network`, `server` (with the HTTP `status`), `storage`, or `unknown`; the store
+  itself sets `unservable` (saved, but the web worker can't serve it yet),
+  `removed` (the entry's connection is gone) and, on hydrate, `interrupted` (the
+  app closed mid-download). The Downloads page words each one for
+  the listener; entries saved before classification read as `unknown`.
+- **Cancel and remove**: a **cancel** (`cancel()` aborts the in-flight
+  controller) removes the files *and* the entry; `remove()` is the user-facing
+  delete: abort + `engine.removeBook` + drop the entry. Files on the server are
+  never touched. Both also add the book to a **session-only decline mark**
+  (`isDeclined(cid, lib, path)`, a module-level `Set`, never stored), so no
+  automatic download fetches a book the listener just cancelled or removed (also
+  through "remove a download when you finish the book"). A `download()` with
+  `origin: 'listener'` lifts the mark.
 - **UI**: `useDownloadControls` (`use-download-controls.ts`) wraps all of this
-  for the book screen / badges; the `/downloads` screen lists entries and shows
-  `engine.totalBytesUsed()`.
+  for the book screen / badges; the book menu (`book-actions.tsx`) calls the store
+  directly; the `/downloads` page is below. Every user-facing removal (the book
+  page, the book menu, the Downloads page) asks first through the shared
+  `RemoveDownloadConfirm` (`src/components/downloads/remove-download-confirm.tsx`),
+  which says how much room it frees.
 
 ### Hydrate and the iOS container-move problem
 
@@ -175,11 +212,16 @@ player needs to build a queue and render with no network.
    there is no drift to correct, but a legacy download adopted into a connection
    on hydrate has been re-put under the new scoped prefix - relocation recomputes
    its URL there as well so the existence check finds it.
-3. **Only fully-downloaded books survive a relaunch.** The engines can't resume
-   a download interrupted by an app kill, so partial entries are dropped and
-   cleaned up. A surviving entry requires `status === 'downloaded'` and every
-   file passing `engine.fileExists`.
-4. Surviving manifests **seed the React Query cache** (`qk.item(connectionId, …)`
+3. **`reviveEntry(entry, allPresent)` decides what survives** (pure, tested). An
+   entry with no listed files, or with any listed file failing `engine.fileExists`,
+   is dropped and its folder removed. A `downloaded` entry stays as it is. Anything
+   else comes back as `error` keeping its files: a failure keeps its classified
+   `failure`, a download the app closed mid-way becomes `{ kind: 'interrupted' }`
+   ("The app closed before it finished"), and `kept`, `progress` and `bytes` are
+   recomputed from the files really on disk. The engines can't resume a
+   half-written file, so Retry starts that one again and skips the rest. No engine
+   or storage format change came with this.
+4. Surviving `downloaded` manifests **seed the React Query cache** (`qk.item(connectionId, …)`
    and `qk.chapters(connectionId, …)`), so the book screen renders instantly
    offline.
 5. On web, `probe()` then runs and may downgrade `supported` - the UI hides
@@ -192,6 +234,75 @@ deletes its books' files (`engine.removeBook`), and drops their entries. Re-addi
 the server mints a **new** id, so those records would otherwise be unreachable
 forever. The connection-remove and sign-out UI warn the user first when the server
 has downloads on the device.
+
+## Keep the next books ready (`keep-ahead.ts` + `keep-ahead-controller.ts`)
+
+The `keepAhead` setting (`0 | 1 | 2 | 3`, default `0` = off) downloads the next N
+books **after** the loaded one. It sits beside the existing automatic download
+(`maybeAutoDownloadCurrent` in `src/playback/store.ts`, which downloads the book you
+*start* under `autoDownloadNext` and is unchanged): both obey the same network rule
+and both go through the store's one-at-a-time queue, and the current book always
+wins, because the store enqueues it the moment playback starts while keep-ahead
+waits `SETTLE_MS` (4 s) after any change before it plans.
+
+**The planner** (`src/downloads/keep-ahead.ts`) is pure and tested:
+
+- `aheadWindow` - the next `count` books after the current one: the Up next queue
+  first, then the series, without the current book, finished books or repeats.
+- `planKeepAhead` - for each book of the window a `SlotState`: `ready` (on the
+  device), `active` (queued or downloading), `failed` (left for the listener to
+  retry), `declined` (cancelled or removed this session; it keeps its place, the
+  planner never reaches past it for another), `waiting` (the network rule says
+  not now), `no-space`, `later` (room unknown: one download at a time), or `start`.
+  Space: `free - pending - reserveBytes(capacity)`, where `reserveBytes` is
+  `max(1 GB, 10% of capacity)`, `pending` is what queued and running downloads
+  still have to write, and a book's need is `estimateBytes` (its size, else its
+  length at about 128 kbps, else 1 GB). Books start in window order and stop at the
+  first that doesn't fit. The plan's `status` (`off`, `never`, `idle`, `working`,
+  `no-space`, `waiting`, `failed`, `ready`, `declined`) is what the status line
+  says.
+
+**The controller** (`keep-ahead-controller.ts`, framework-free, started once by
+`startKeepAhead()` from the root layout like `startAutoSleep`) gathers the inputs
+for the **loaded book's** connection: its capabilities, the queue (when `queue`;
+entries without `book` can't be downloaded and are skipped), the finished set from
+`allProgress`, and, only when the queue leaves room, the series - the server's
+`/next` answer step by step when it has `next_book`, else the folder's next sibling
+(`resolveNextBook`, what the end-of-book flow uses). It reads the network gate from
+`autoDownloadNext` (`never` → status `never`; `wifi` on a metered connection →
+`waiting`), the storage estimate and the registry, publishes `{ status, slots }` to
+the `useKeepAhead` store, then for each `start` fetches the full item and chapters
+and calls `download(..., 'keep-ahead')` unless the book was declined or registered
+meanwhile. It re-plans (one `SETTLE_MS` timer, and once more if something changed
+during a run) on the loaded book, the two settings, the registry's statuses (not
+byte counts), any successful `queue` query, and on native a network change. It
+never throws and reports nothing to reachability: a server that can't be reached
+just plans nothing this time.
+
+## The Downloads page
+
+`src/components/downloads/downloads-screen.tsx` (the `/downloads` route
+re-exports it) renders what the pure `src/downloads/downloads-view.ts` returns:
+
+- `splitDownloads` - **In progress** (running, then waiting in the order asked, then
+  failed) and **Ready offline** (newest first); `groupByServer` groups the ready ones
+  in connection order (unknown connections last).
+- `storageBar` - one segment per server, taking the chart colours in
+  `CHART_ORDER` (`chart-2..5`, then `chart-1`: the brand pink comes last, so the
+  page keeps one pink thing; a sixth server and on fold into "N more servers"), an **Other apps** segment on a device (`capacity - free -
+  ours`; a browser can't see other apps), and `used` preferring the engine's
+  `totalBytesUsed` over the registry's sum. `useStorage` re-reads both only when a
+  book lands or leaves.
+- `unsupportedReason` - `insecure`, `no-cache` or `no-worker`, for the page's
+  unsupported state.
+
+Keep-ahead's held-back books (`waiting`, `no-space`, `later` slots not in the
+registry yet) render as `PlannedRow`s in In progress; entries with `origin:
+'keep-ahead'` are labelled "Kept ahead". The **Automatic downloads** card
+(`rules-card.tsx`) edits `autoDownloadNext`, `keepAhead` and `autoDeleteFinished`;
+Settings and the series page's `KeepAheadCard` show the same control and status
+line (`KeepAheadControl`, `KeepAheadStatusLine`). The summary line is published into the sub-nav with
+`SubNavActions`.
 
 ## Playing downloaded content
 
@@ -249,9 +360,14 @@ shell in `src/app/+html.tsx`.
 
 ### Registration wiring
 
-`src/lib/register-sw.web.ts` registers `<BASE_URL>/sw.js` on `window` `load`,
-appending `?dev=1` under the dev server; it no-ops without `serviceWorker`
-support or a secure context. `register-sw.ts` is the native no-op twin; the
+`src/lib/register-sw.web.ts` registers `<BASE_URL>/sw.js`, appending `?dev=1`
+under the dev server; it no-ops without `serviceWorker` support or a secure
+context. It registers **at once when `document.readyState` is already
+`complete`**, else on `load`. The module runs when the root layout is first
+required, which in the static export is usually after `load` has fired; it used to
+only add a `load` listener, which then never ran, so the exported player never
+registered its worker (no offline shell, and downloads that never became playable
+offline). `register-sw.web.test.ts` pins both paths. `register-sw.ts` is the native no-op twin; the
 root layout imports `@/lib/register-sw` for its side effect and Metro picks the
 right file per platform.
 

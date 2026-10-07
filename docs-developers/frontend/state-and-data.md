@@ -1,6 +1,6 @@
 ---
 title: State & data
-description: "The typed API client and its hand-mirrored types, React Query conventions, the Zustand stores, offline-safe progress sync, reachability tracking, and the two storage layers."
+description: "The typed API client and its hand-mirrored types, React Query conventions, capability gating in the screens, Home and Search's models (including the character spoiler rules), the Zustand stores, offline-safe progress sync, reachability tracking, and the two storage layers."
 ---
 
 The data layer follows one split consistently: **server state lives in TanStack
@@ -133,8 +133,9 @@ emptied while offline repopulate without a remount.
 ### Capability-gated reads (player redesign Phase 1a)
 
 The player redesign's data layer landed ahead of its screens: these methods and
-hooks exist, are tested (`client.test.ts`, `hooks-capability.test.tsx`), and are
-**not consumed by any screen yet** (Phase 2 onwards uses them).
+hooks are tested in `client.test.ts` and `hooks-capability.test.tsx`, and the
+Phase 2 browse screens consume them (see
+[Who reads what](#who-reads-what-phase-2) below).
 
 **`useCapability(flag, connectionId?)`** (exported from `hooks.ts`) is tri-state:
 `undefined` while the connection's `/server` info is unknown (still loading, or
@@ -182,19 +183,49 @@ older server (React Query rejects it instead) and the query stays pending.
   can be in another of the caller's libraries: open it by its own `library_id`.
   The shipped end-of-book flow still resolves the folder sibling on the device
   ([Playback](playback.md)) until a later phase switches to it.
-- **New wire fields, typed but unused so far:** `Book.published`, `description`
-  (`/item` only), `cover_color` (`CoverColor { bg, accent?, on_accent? }`) and
-  `cover_version`; `BookMetaWork.community_description` and `attribution`
+- **New wire fields** (all optional, absent on older servers): `Book.published`,
+  `description` (`/item` only), `cover_color` (`CoverColor { bg, accent?,
+  on_accent? }`, read by the cover wash) and `cover_version` (the cover cache
+  buster); `BookMetaWork.community_description` and `attribution`
   (`BookMetaAttribution`: the server writes the CC BY-SA credit, and a screen that
-  shows community content must render it beside that content, never compose it);
-  `BookMetaRecording.chapter_count`; `local` (`BookRef`) on rail entries; and
-  `previous` on a matched `BookMeta`. All optional, absent on older servers.
+  shows community content must render it beside that content, never compose it -
+  the series page and Search's character group do); `BookMetaRecording.chapter_count`;
+  `local` (`BookRef`) on rail entries (how the series page and Next in your series
+  tell an owned book from a ghost); and `previous` on a matched `BookMeta`.
+  `community_description`, `chapter_count` and `previous` have no reader yet.
+
+### Who reads what (Phase 2)
+
+Every screen reads a capability with `useCapability(flag, connectionId)` for the
+connection it is about, and treats the three states the same way: `undefined`
+(the `/server` answer isn't in) hides the feature or waits, never shows it and
+takes it away; `false` hides it (or picks the old behaviour); `true` shows it.
+Cross-server screens ask per connection (`useCapabilitiesAll` /
+`anyCapability` in `src/components/search/use-search-sources.ts`).
+
+| Capability | Read by |
+|---|---|
+| `browse_people` | the Library's Authors / Series / Narrators modes and their counts, the person pages (`narrator=` filter), Search's series and people groups, Home's "&lt;narrator&gt; reads" shelf |
+| `next_book` | Home's Next in your series (`useNextInSeries`, one `/next` per candidate on its own server), Up next's suggestions, keep-ahead's series window |
+| `metadata` | the series page's community rails (`useBookMeta` + `useMetaWork`), the Now card's Who's who / Story so far, Search's character sources |
+| `cover_sizes` | `BookCover`'s thumbnail choice |
+| `queue` | every Up next entry point and panel, the book menu's Up next item, the series page's Queue it (else Play), keep-ahead's queue window |
+| `collections` | the Collections mode, the collection page, the book menu's Add to collection |
+| `progress_edit` | the book menu's Mark as not finished, and Mark as finished with Undo (without it: `useMarkFinished`, no Undo) |
+| `user_stats` | Home's This week card, the Now card's finish date and the "&lt;narrator&gt; reads" shelf's top narrator (`useMyStats('30d')`, `useMyListening`, `useListeningGoal`) |
+
+Writes from screens follow the [1b write rules](#the-listeners-own-state-player-redesign-phase-1b)
+(positioned adds, exact-path removes): Up next's drag/keys and a collection's Move
+up / Move down send `position` = the visible index (`moveIndex` in
+`collections-model.ts`, `moveItem` in `up-next-model.ts`), and an Undo re-adds at
+the old index. `useSetQueue` / `useSetCollectionItems` have no caller.
 
 ### The listener's own state (player redesign Phase 1b)
 
 Phase 1b adds the listener's own state to the data layer the same way: typed
 mirrors in `types.ts`, methods in `client.ts` and hooks in `hooks.ts`, each gated
-on its capability, and none consumed by a screen yet.
+on its capability. Phase 2 consumes `queue`, `collections`, `progress_edit` and
+`user_stats`; `ratings` and `my_devices` still wait for their screens.
 
 | Capability | Query hooks | Mutation hooks | Types |
 |---|---|---|---|
@@ -458,6 +489,67 @@ metadata site **externally** (a real new tab on web, an in-app browser tab on
 native) - the client never constructs a metadata URL. UI strings live under
 `book.meta.*` in the locale catalogs.
 
+### Home
+
+Home (`src/components/home/`) aggregates every connection and keeps its rules
+pure:
+
+- `home-model.ts`: `pickNowBook` (the loaded book, else the most recently played
+  in progress), `syncPill` (told as it is: a save still in the offline queue, or an
+  unreachable server, is "Saved on this device, will sync"; otherwise the newest
+  `updated_at` any server holds), `nextCandidates` (the Now book, other books in
+  progress, then recently finished, at most `NEXT_CANDIDATES` = 6, one `/next` each
+  on the candidate's own server), `nextInSeriesItems` (an owned next book, else the
+  community rail's next work as a ghost; books already on Home are skipped and a
+  book two candidates lead to shows once), `smartShelves` (Finish what you started,
+  Short listens = recently added books in the Library's `len=short` bucket
+  (`lengthBucket`, under five hours), the top narrator's shelf, Added this week;
+  fewer than two gives none). Its links into the Library's Books mode are
+  `libraryBooksHref` from `books-view.ts`.
+- `listening.ts`: the streak, the seven day bars and the pace behind the finish
+  date, all in **server time** (a stats response's days are dates in the server's
+  zone; "today" is its `to` moved by `utc_offset`, never the device clock). No pace
+  from fewer than three listening days or under an hour in all.
+- `now-card-model.ts`: the whole-book scale (one tick per chapter, merged past 120
+  chapters), bookmark pins, chapter place, percent heard (100 only once finished)
+  and time left at the book's own speed. Chapter starts come from the file
+  durations (`chapterStartsOf`), as on the book page.
+
+### Search and the spoiler model
+
+`useSearch(query, { limit, refetchProgress })` (`src/components/search/use-search.ts`)
+is shared by the Search screen and the palette. Each group carries its own
+`GroupState` (`supported`, `isLoading`, `isError`, `retry`), so a failing group never
+hides the others:
+
+- **Books**: `useSearchAll` across every connection, de-duplicated (`src/lib/dedup.ts`),
+  "Also on" for the other servers.
+- **Series and people** (`usePeopleSources`): every library's `seriesList`,
+  `authors` and `narrators` lists on every `browse_people` server (sharing the
+  Library's `qk.*` cache, 5-minute `staleTime`), matched **on the device** by
+  `matchNamed` in `search-model.ts`: folded (case and accents), ranked starts-with
+  > word-start > contains, one hit per folded name opening the first copy in
+  connection order, the rest kept as `also`.
+- **Characters** (`useCharacterSources`): the community characters of the
+  listener's started books (in progress or finished, newest first, on `metadata`
+  servers, at most `MAX_CHARACTER_BOOKS` = 8, `characterBooksToLoad`). The plain
+  `/meta` envelope is fetched and gated **on the device**; chapters are fetched
+  only for unfinished books that have characters. `listeningIn` places the listener
+  with the book page's rule (`meta-gating`'s `listeningProgressFor` over
+  `chapterStartsOf`): the saved position, or the live one when the book is loaded
+  and further on (sampled every 15 s, so a reveal is only ever late), and "from the
+  start" until the chapters arrive - a late chapter list can reveal more, never
+  less.
+
+`matchCharacters` is where spoiler safety lives. A character matches by name or
+alias; one the listener hasn't reached (`characterIsVisible` false) goes into an
+`unmet` set and is **only counted**, never named - also not through an alias, and
+an alias-only match ranks after every name match. A name met in any book shows
+once (the most recently played book's entry) and is not counted again for another
+book that hasn't reached it. The counted remainder is the `hidden` number behind
+"2 more matches after your place in the book". The result carries the CC BY-SA
+`attributions` of the books its hits come from, rendered beside the group.
+
 ## Zustand stores
 
 ### Session (`src/stores/session.ts`)
@@ -484,7 +576,13 @@ redirects on it. Mirror fields (`user`, `activeServerUrl`,
 Playback tunables persisted as one JSON blob (`audiosilo.settings`):
 `skipForward` (30), `skipBackward` (15), `defaultRate` (1), `autoRewindMax`
 (5 s), `virtualChapterInterval` (30 min). The playback layer subscribes and
-re-`configure`s the engine whenever these change.
+re-`configure`s the engine whenever these change. The same document holds the
+end-of-book and download behaviour - `autoPlayNext` (off), `autoDownloadNext`
+(`never | wifi | always`, default `wifi`), `keepAhead` (`0 | 1 | 2 | 3`, default
+`0` = off; `toKeepAhead` reads a stored value that isn't one as off; see
+[Offline](offline.md#keep-the-next-books-ready-keep-aheadts--keep-ahead-controllerts))
+and `autoDeleteFinished`
+(on) - and the auto sleep timer's settings.
 
 ### Series orderings (`src/stores/series-orderings.ts`)
 
@@ -512,11 +610,40 @@ remounting, plus a `focusRequest` counter: on a native tablet the top bar's sear
 field calls `requestFocus()` and jumps to the Search tab, and the screen keys its
 input on the counter so a fresh mount with `autoFocus` takes the focus even when
 the tab was already open. (On web that field opens the command palette, whose
-own state - including the recent searches it keeps per device - is `usePalette`
-in `src/components/shell/palette-store.ts`; see
-[the shell](overview.md#command-palette-web).) The shell (`useShellEffects`) clears the query when you
-leave the Search tab; within the tab it is kept, so opening a result and coming
-back shows the same results. Not persisted.
+open state and query are `usePalette` in `src/components/shell/palette-store.ts`;
+see [the shell](overview.md#command-palette-web).) The shell (`useShellEffects`)
+clears the query when you leave the Search tab; within the tab it is kept, so
+opening a result and coming back shows the same results. The query is not
+persisted.
+
+The same module holds **`useRecentSearches`**: ONE recent list for the Search
+screen and the palette (newest first, at most `MAX_RECENT` = 5, de-duplicated
+ignoring case by `addRecent`), persisted per device - not per server, they are the
+listener's words - under `audiosilo.paletteRecent` (the key predates the sharing).
+`hydrate()` is lazy (whichever opens first) and replays searches remembered before
+the read finished on top of the stored list.
+
+### Library selection (`src/stores/library-selection.ts`)
+
+`useLibrarySelection` is the library the Library tab's single-library modes show:
+`{ connectionId, libraryId }` or null, a `persistedDocument` under
+`audiosilo.librarySelection`, hydrated at boot from `_layout.tsx`. An
+`onConnectionRemoved` handler drops a removed connection's pick; it is not a scoped
+storage key, because a stale pick is harmless. Read it through
+`useSelectedLibrary()` (`src/components/library/use-selected-library.ts`), which runs
+the pure `resolveLibrarySelection` against every connection's library list (sharing
+`qk.libraries`): the stored pick while its server's list still has it - or while
+that list is loading or failing, since offline is not gone - else the first library
+of the first connection, waiting (null) at a connection that is still loading so
+the pick never jumps from a later server to an earlier one.
+
+### Other device preferences
+
+`persistedDocument` stores that are deliberately not per server: `useBooksLayout`
+(`audiosilo.booksLayout`, grid or list for book lists, hydrated on first use) and
+`useUpNext` (`audiosilo.upNext`, the desktop drawer's open state and width). The
+keep-ahead count is not one of these: it is `keepAhead` in the
+[settings](#settings-srcstoressettingsts).
 
 ### Player and downloads stores
 
