@@ -53,8 +53,13 @@ themselves.
 - **`streamUrl(libraryId, path, download?, opts?)`** can request the
   download-disposition variant (`download=1`, used by the download engines) and
   an on-the-fly MP3 transcode (`transcode=1`, `t=<seconds>` for a mid-file
-  start). Note: nothing *automatically* requests the transcode yet - the
-  `direct_playable` negotiation on web is a known open follow-up.
+  start). The web player requests it by itself for a book the server marks
+  `direct_playable: false` when the server has the `transcode` capability (see
+  [Playback](playback.md#web-transcode-negotiation-transcodets)); the engine
+  re-requests with a new `t` on every seek.
+- **`history(libraryId, path, limit?)`** returns a book's listening spans, newest
+  first: the server's default 100, or up to `limit` (the server caps it at 500; the
+  end credits ask for 500 to sum the time listened).
 - **`coverUrl(libraryId, path, opts?)`** takes `{ size, version }`: `size`
   (`CoverSize`, `160 | 320 | 640`) asks for a JPEG thumbnail whose **longer side**
   is at most that many pixels, and only when the server advertises `cover_sizes`
@@ -181,8 +186,9 @@ older server (React Query rejects it instead) and the query stays pending.
   (outside any route scope) can ask the playing book's own server, and an
   `enabled` flag so it fetches only when the answer is needed. A community `next`
   can be in another of the caller's libraries: open it by its own `library_id`.
-  The shipped end-of-book flow still resolves the folder sibling on the device
-  ([Playback](playback.md)) until a later phase switches to it.
+  The end-of-book flow asks it through `resolveUpNext` after the Up next queue,
+  keeping the device-side folder sibling as the fallback for a server without
+  `next_book` ([Playback](playback.md#what-plays-next-up-next-resolverts)).
 - **New wire fields** (all optional, absent on older servers): `Book.published`,
   `description` (`/item` only), `cover_color` (`CoverColor { bg, accent?,
   on_accent? }`, read by the cover wash) and `cover_version` (the cover cache
@@ -512,7 +518,8 @@ pure:
   from fewer than three listening days or under an hour in all.
 - `now-card-model.ts`: the whole-book scale (one tick per chapter, merged past 120
   chapters), bookmark pins, chapter place, percent heard (100 only once finished)
-  and time left at the book's own speed. Chapter starts come from the file
+  (the time left comes from `src/playback/time-left.ts`, at the book's own speed,
+  [Playback](playback.md#time-left-time-leftts)). Chapter starts come from the file
   durations (`chapterStartsOf`), as on the book page.
 
 ### Search and the spoiler model
