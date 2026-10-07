@@ -131,7 +131,8 @@ The server's priorities, in order - when they conflict, the earlier one wins:
   [media serving](server/media.md), the [baked-in web UI](server/web-ui.md),
   [configuration](server/configuration.md), and the [HTTP API](server/api/index.md).
 - **[Player app](frontend/overview.md)** - the Expo codebase:
-  [playback](frontend/playback.md) (the fiddly part),
+  [playback](frontend/playback.md) (the fiddly part), [the end of a book](frontend/end-of-book.md),
+  [the sleep timer](frontend/sleep-timer.md), [player UI](frontend/player-ui.md),
   [offline downloads](frontend/offline.md), [state and data](frontend/state-and-data.md),
   [i18n](frontend/i18n.md), [testing](frontend/testing.md).
 - **[Desktop manager](manager/overview.md)** - the Wails app:

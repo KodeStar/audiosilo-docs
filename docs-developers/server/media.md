@@ -263,12 +263,9 @@ failure). The flag is surfaced as `direct_playable` on the `item` and `chapters`
 responses, so a web client knows up front that e.g. an AC-3 or WMA book needs the
 transcoder.
 
-The web player acts on it: for a book with `direct_playable: false`, on a server
-whose `transcode` capability is true, it streams `?transcode=1` and seeks by
-re-requesting with `&t=` - see the
-[cross-repo contract](../architecture/cross-repo-contract.md#5-transcode-negotiation---direct_playable--transcode1)
-and [frontend playback](../frontend/playback.md#web-transcode-negotiation-transcodets).
-The native apps decode these codecs themselves and always stream directly.
+How the web player acts on it is
+[web transcode negotiation](../frontend/playback.md#web-transcode-negotiation-transcodets);
+the native apps always stream directly.
 
 ## Transcoding: `media.Transcode`
 

@@ -53,10 +53,8 @@ themselves.
 - **`streamUrl(libraryId, path, download?, opts?)`** can request the
   download-disposition variant (`download=1`, used by the download engines) and
   an on-the-fly MP3 transcode (`transcode=1`, `t=<seconds>` for a mid-file
-  start). The web player requests it by itself for a book the server marks
-  `direct_playable: false` when the server has the `transcode` capability (see
-  [Playback](playback.md#web-transcode-negotiation-transcodets)); the engine
-  re-requests with a new `t` on every seek.
+  start); when the web player uses it is
+  [web transcode negotiation](playback.md#web-transcode-negotiation-transcodets).
 - **`history(libraryId, path, limit?)`** returns a book's listening spans, newest
   first: the server's default 100, or up to `limit` (the server caps it at 500; the
   end credits ask for 500 to sum the time listened).
@@ -194,7 +192,7 @@ older server (React Query rejects it instead) and the query stays pending.
   can be in another of the caller's libraries: open it by its own `library_id`.
   The end-of-book flow asks it through `resolveUpNext` after the Up next queue,
   keeping the device-side folder sibling as the fallback for a server without
-  `next_book` ([Playback](playback.md#what-plays-next-up-next-resolverts)).
+  `next_book` ([The end of a book](end-of-book.md#what-plays-next-up-next-resolverts)).
 - **New wire fields** (all optional, absent on older servers): `Book.published`,
   `description` (`/item` only), `cover_color` (`CoverColor { bg, accent?,
   on_accent? }`, read by the cover wash) and `cover_version` (the cover cache
@@ -537,7 +535,7 @@ pure:
 - `now-card-model.ts`: the whole-book scale (one tick per chapter, merged past 120
   chapters), bookmark pins, chapter place, percent heard (100 only once finished)
   (the time left comes from `src/playback/time-left.ts`, at the book's own speed,
-  [Playback](playback.md#time-left-time-leftts)). Chapter starts come from the file
+  [Player UI](player-ui.md#time-left-time-leftts)). Chapter starts come from the file
   durations (`chapterStartsOf`), as on the book page.
 
 ### Search and the spoiler model

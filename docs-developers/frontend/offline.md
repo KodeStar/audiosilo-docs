@@ -258,7 +258,7 @@ The `keepAhead` setting (`0 | 1 | 2 | 3`, default `0` = off) downloads the next 
 books **after** the loaded one. It sits beside the existing automatic download
 (`maybeAutoDownloadCurrent` in `src/playback/store.ts`, which downloads the book you
 *start* under `autoDownloadNext` - see
-[Auto-download on play](playback.md#auto-download-on-play)): both obey the same
+[Auto-download on play](end-of-book.md#auto-download-on-play)): both obey the same
 network rule, and both ask the downloads store's `download()`, which applies the
 same declined mark and reserve to both and runs one book at a time. The current book
 always wins: the store enqueues it the moment playback starts while keep-ahead waits
