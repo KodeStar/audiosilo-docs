@@ -271,15 +271,9 @@ under another `sort`/`order` is `400 invalid cursor`.
 when more entries remain - `next_offset`. Directory listings are bounded by
 directory size, so offsets are fine there.
 
-**A listener's own lists across books are keyset-paginated too.**
-[`/me/bookmarks`](reference.md#get-apiv1mebookmarks),
-[`/me/notes`](reference.md#get-apiv1menotes) and (on a server with
-`annotations`) [`/me/history`](reference.md#get-apiv1mehistory) take `limit`
-(default 100 when absent or ≤ 0; over 500 is 500) and the same kind of opaque
-`cursor` / `next_cursor`, newest first on `(timestamp, id)`. Rows outside the
-caller's current access are filtered out before the page is cut, so a page
-never comes back short because of them. Without `cursor`, `/me/history`
-answers its first page, as it did before it was paged.
+**A listener's own lists across books are keyset-paginated too**, newest first
+with the same kind of opaque `cursor` / `next_cursor`: see
+[the rules they share](reference.md#get-apiv1mebookmarks).
 
 Other list endpoints (`/search`, `/books/recent`, a single book's history) are
 single-shot with a `limit` and no pagination.
@@ -342,8 +336,8 @@ it, so treat a missing flag as `false`:
 | `cover_sizes` | `?size=160\|320\|640` thumbnails on [`/cover`](reference.md#get-apiv1librariesidcover) |
 | `next_book` | [`/next`](reference.md#get-apiv1librariesidnext), the server's answer to what plays after a book |
 
-Phase 1b (the listener's own state and stats) added six, each always `true` on a
-server that has it:
+The listener's own state, stats and annotations added seven, each always `true` on
+a server that has it:
 
 | Flag | Gates |
 |---|---|
@@ -353,17 +347,13 @@ server that has it:
 | `progress_edit` | [`PATCH /libraries/{id}/progress`](reference.md#patch-apiv1librariesidprogress) (mark finished or unfinished, edit the dates) and `started_at` / `finished_at` on progress responses |
 | `user_stats` | [`/me/stats`](reference.md#get-apiv1mestats), [`/me/listening`](reference.md#get-apiv1melistening) and [`/me/goal`](reference.md#get-apiv1megoal--put-apiv1megoal--delete-apiv1megoal) |
 | `my_devices` | [`/me/devices`](reference.md#get-apiv1medevices), the caller's own signed-in devices |
-
-Player redesign Phase 4 added one, always `true` on a server that has it:
-
-| Flag | Gates |
-|---|---|
 | `annotations` | a bookmark's `label` (on [`POST …/bookmarks`](reference.md#get-apiv1librariesidbookmarks--post-apiv1librariesidbookmarks) and every bookmark answer), the owner's edits [`PATCH /bookmarks/{id}`](reference.md#patch-apiv1bookmarksid) and [`PATCH /notes/{id}`](reference.md#patch-apiv1notesid), the all-books lists [`/me/bookmarks`](reference.md#get-apiv1mebookmarks) and [`/me/notes`](reference.md#get-apiv1menotes), and `cursor` paging plus each row's `book` on [`/me/history`](reference.md#get-apiv1mehistory) |
 
 Gate on the flag rather than on the server version: an older server answers
 `size=` and `narrator=` by ignoring them (full art, the unfiltered list) and the
-new routes with a `404`, and refuses a body field it doesn't know (`label` on a
-bookmark) with `400 invalid request`. Progress dates are the same: without `progress_edit` a
+new routes with a `404`. Request bodies are decoded strictly, so a field added to an
+existing body (such as a bookmark's `label`) is gated by its flag too: an older
+server refuses the unknown field with `400 invalid request`. Progress dates are the same: without `progress_edit` a
 progress response never has `started_at` / `finished_at`, so their absence says
 nothing; with it, an absent date is unknown or not set.
 

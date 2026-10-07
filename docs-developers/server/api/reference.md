@@ -101,17 +101,10 @@ a server that has them and absent on an older one:
 | `user_stats` | always `true` | [Your listening](#your-listening): `/me/stats`, `/me/listening` and `/me/goal` |
 | `my_devices` | always `true` | [Your devices](#your-devices): `/me/devices` |
 
-Player redesign Phase 4 (bookmarks and notes) adds one more, always `true` on a
-server that has it and absent on an older one:
-
-| Flag | Value | Gates |
-|---|---|---|
-| `annotations` | always `true` | a bookmark's [`label`](#get-apiv1librariesidbookmarks--post-apiv1librariesidbookmarks), the owner's edits [`PATCH /bookmarks/{id}`](#patch-apiv1bookmarksid) and [`PATCH /notes/{id}`](#patch-apiv1notesid), the all-books lists [`/me/bookmarks`](#get-apiv1mebookmarks) and [`/me/notes`](#get-apiv1menotes), and `cursor` paging plus each row's `book` on [`/me/history`](#get-apiv1mehistory) |
-
-The routes are registered on every server that has the flag; the flag is how a
-client knows they exist. The body decoder refuses unknown fields, so a client
-must not send `label` to a server without `annotations` (it would get
-`400 invalid request`).
+`annotations` (always `true`, absent on an older server) gates bookmark labels, the
+owner's edits of bookmarks and notes, and the lists across books: see
+[Capability flags](index.md#capability-flags---gate-your-features) for what it
+covers.
 
 ### `GET /healthz` · `GET /api/v1/healthz`
 
@@ -1620,15 +1613,12 @@ POST body: `{ "position": 4211.5, "note": "great line", "label": "quote" }`
 }
 ```
 
-`label` (capability `annotations`) is a **machine key**, never display text: the
-player maps it to its own words and icon. It is `""` (none) or a lowercase key
-matching `^[a-z][a-z0-9_]{0,31}$` (`catalog.checkBookmark`). The server checks
-only that shape, not a set of known keys, so a newer player can add one (the
-player's keys today, its `BookmarkLabel`, are `quote`, `favourite`, `relisten`,
-`funny`, `question` and `fell_asleep`, the sleep timer's own bookmark). A
+`label` (capability `annotations`) is a client-defined **machine key**, never
+display text: `""` (none) or a lowercase key matching `^[a-z][a-z0-9_]{0,31}$`
+(`catalog.checkBookmark`). The server checks only that shape, never a set of
+known keys (the player's are in [Labels](../../frontend/annotations.md#labels)). A
 server with `annotations` emits `label` on every bookmark (`""` when none); an
-older one never does, and refuses a POST that carries it (`400 invalid request`,
-the strict decoder).
+older one never does, and refuses a POST that carries it.
 
 `note` is at most 2,000 characters (Unicode code points, `catalog.MaxBookmarkNote`).
 `position` must be a number, `0` or more (it isn't checked against the book's
@@ -1731,7 +1721,7 @@ they can still open, newest first (`catalog.ListMyBookmarks`), a page at a time.
 
 | Query param | Type | Default | Notes |
 |---|---|---|---|
-| `limit` | int | `100` | absent or ≤ 0 is 100; over 500 is 500 |
+| `limit` | int | `100` | absent or ≤ 0 is 100; over 500 is 500 (an older server: over 500 falls back to 100) |
 | `cursor` | string | - | the previous page's `next_cursor`, passed back verbatim |
 
 ```json
@@ -1800,7 +1790,7 @@ first (`catalog.ListAllHistory`).
 
 | Query param | Type | Default | Notes |
 |---|---|---|---|
-| `limit` | int | `100` | absent or ≤ 0 is 100; over 500 is 500 |
+| `limit` | int | `100` | absent or ≤ 0 is 100; over 500 is 500 (an older server: over 500 falls back to 100) |
 | `cursor` | string | - | `annotations` servers: the previous page's `next_cursor` |
 
 ```json
@@ -1821,11 +1811,10 @@ first (`catalog.ListAllHistory`).
 }
 ```
 
-The route predates the `annotations` capability and works on every server.
-Without `cursor` it answers the first page, as it always has. A server with
-`annotations` adds each row's `book` and `next_cursor`, and pages on `cursor` by
-the [`/me/bookmarks`](#get-apiv1mebookmarks) rules. An older server has neither,
-ignores `cursor` and always returns its one page.
+Every server has this route, without the capability. Without `cursor` it answers
+the first page. A server with `annotations` adds each row's `book` and
+`next_cursor`, and pages on `cursor` by the [`/me/bookmarks`](#get-apiv1mebookmarks)
+rules; one without ignores `cursor`, sends neither, and always returns its one page.
 
 ### `GET /api/v1/libraries/{id}/history`
 

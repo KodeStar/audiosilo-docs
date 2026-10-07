@@ -277,7 +277,7 @@ files it does grant still stream (`stream` is scoped on the file path). A non-ad
 
 The player redesign's Phase 1b routes (up next, collections, ratings, progress
 edits, personal stats, the listening goal and the caller's own devices; see
-[the reference](api/reference.md#up-next-collections-and-ratings)) and Phase 4's
+[the reference](api/reference.md#up-next-collections-and-ratings)) and the
 annotation routes (`PATCH /bookmarks/{id}`, `PATCH /notes/{id}`,
 `GET /me/bookmarks`, `GET /me/notes` and the paged `GET /me/history`, capability
 `annotations`) are all `requireAuth`: a session token or an API key, acting as

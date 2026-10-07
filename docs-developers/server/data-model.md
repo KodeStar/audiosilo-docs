@@ -316,15 +316,17 @@ tables were rebuilt rather than migrated in place):
   `MoveDurableState`.
 - **`bookmarks`**, **`notes`** - id-PK rows keyed by
   `(user_id, library_id, rel_path)` plus `position` and text (a bookmark's
-  `note`, at most 2,000 characters; a note's `body`, at most 10,000, and its
-  `updated_at`), checked by `catalog` on every write rather than by the schema
+  `note`, at most `catalog.MaxBookmarkNote` characters; a note's `body`, at most
+  `catalog.MaxNoteBody`, and its `updated_at`), checked by `catalog` on every write
+  rather than by the schema
   (an edit checks only the fields it sets). `created_at` and `updated_at` are
   server time in a fixed-width UTC millisecond form
   (`2026-10-07T09:00:00.000Z`, `c.stamp`), because the lists across books order
   by them as text.
   `bookmarks.label` *(0030)* is a machine key the player maps to its own text,
-  `''` for none: `catalog.checkBookmark` checks only its shape,
-  `^[a-z][a-z0-9_]{0,31}$`, never the player's set of keys. It lives on the row,
+  `''` for none: `catalog.checkBookmark` checks only its
+  [shape](api/reference.md#get-apiv1librariesidbookmarks--post-apiv1librariesidbookmarks),
+  never the player's set of keys. It lives on the row,
   so a move, a backup and a user delete take it along. Indexes
   `idx_bookmarks_user_path` / `idx_notes_user_path` *(0003)* on
   `(user_id, library_id, rel_path)` serve one book's lists, and
@@ -739,8 +741,8 @@ A listener's own lists across books (`catalog.ListMyBookmarks`,
 `ListMyNotes`, `ListAllHistory`, through the generic `userPage`) use the same
 cursor encoding newest first: `(created_at, id) < (?, ?)` (`ended_at` for
 history), with the scope filter (`scopesFilterSQL`) in the `WHERE` before the
-`LIMIT`, so a revoked share's rows never shorten a page. Default 100, cap 500
-(`clampPageLimit`: more is 500). The cursor is split at its **last** NUL
+`LIMIT`, so a revoked share's rows never shorten a page; `clampPageLimit` sets the
+page size ([the rules](api/reference.md#get-apiv1mebookmarks)). The cursor is split at its **last** NUL
 (`decodeCursor`), the exact inverse of `encodeCursor`, so a sort value holding
 one still round-trips.
 
