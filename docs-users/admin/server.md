@@ -178,7 +178,9 @@ metadata** on a book, the book's tagged title, author and series, its length,
 any ASIN or ISBN, what you type, and the names of up to three of its folders
 (the top folder, the folder holding the book, and the book's own folder or
 file name) go to the metadata service. Nothing is sent until you open the
-dialog, and never anything about who listens. See
+dialog (or start [Match automatically](health.md#matching-every-book-at-once),
+which sends the same for every book it looks up), and never anything about who
+listens. See
 [Matching with community metadata](books.md#matching-with-community-metadata).
 
 - Flipping the switch takes effect immediately for **everyone connected**, and
@@ -188,6 +190,12 @@ dialog, and never anything about who listens. See
   player.
 - While it is on, **Status** says whether the service answers ("Responding ·
   *N* ms" or "Not responding").
+- **Audible marketplace** in the **Matching** card is the store you buy from
+  (United Kingdom, United States, Germany and so on). When a recording sells in
+  several stores, a match takes this store's ASIN; with **No preference** it
+  takes the US store's. It applies to the next match, and
+  [Use *country* ASINs](health.md#which-asin-a-match-takes) can switch books
+  matched earlier.
 - **Service address** in the **Service** card is the metadata service your
   server uses (`https://meta.audiosilo.app` out of the box). Change it only if
   you run your own; a new address is used from the next restart. If no address

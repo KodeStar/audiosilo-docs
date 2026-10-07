@@ -229,7 +229,11 @@ missing.
    files. The score counts whichever fits the book best: its tags, its
    folders or what you typed. An ASIN or ISBN that matches scores 100%. Pick
    one and click **Compare fields**.
-4. If the book was recorded more than once, pick the right **Edition**.
+4. If the book was recorded more than once, pick the right **Edition**. A
+   recording sold in several Audible stores has an ASIN in each; the match
+   takes the one from your **Audible marketplace** (see
+   [Community metadata](server.md#community-metadata)), and the list shows
+   which store it is from ("B0... · UK").
 5. The comparison shows each field **On your server** and from the
    **Community**. Tick the ones to **Take**. Fields you've edited yourself
    are unticked, so they're never overwritten unless you tick them. The first
@@ -241,6 +245,9 @@ missing.
    a ticked cover counts as one).
 
 ![Matching a book with community metadata](/img/screenshots/admin/book-match.png)
+
+To match many books at once, use **Match automatically** on the Health page
+(see [Matching every book at once](health.md#matching-every-book-at-once)).
 
 Accepted values are marked **Community** and are locked like your own edits;
 you can revert them the same way. If you have unsaved edits on the page, save

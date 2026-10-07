@@ -78,6 +78,7 @@ export const SHOTS = [
   {file: 'admin/bell.png', capture: 'admin', title: 'Admin - Notifications bell', hint: 'the top bar bell open over the overview: new books and sign-ins'},
   {file: 'admin/audit.png', capture: 'admin', title: 'Admin - Audit log', hint: 'Server > Audit log: the filters and the provisioning\'s admin changes, newest first'},
   {file: 'admin/health-issues.png', capture: 'admin', title: 'Admin - Library health', hint: 'Health > Issues: category cards over the "Files that couldn\'t be read" list (a provisioned Inbox library supplies the issues)'},
+  {file: 'admin/health-bulk-match.png', capture: 'admin', title: 'Admin - Match automatically', hint: 'Health > Not matched: Find matches has run over the unmatched books and the Review matches dialog is open on its confident ones (needs meta.audiosilo.app)'},
   {file: 'admin/health-duplicates.png', capture: 'admin', title: 'Admin - Likely duplicates', hint: 'Health > Issues ?issue=duplicate: a group\'s two copies side by side'},
   {file: 'admin/health-jobs.png', capture: 'admin', title: 'Admin - Jobs', hint: 'Health > Jobs: running now, schedules, and the history with the newest scan\'s log open (1440x980)'},
   {file: 'admin/library-edit.png', capture: 'admin', title: 'Admin - Edit library', hint: 'the Edit library dialog: folder, Scan automatically (daily) + Time, Skip these files and folders, Book details come from'},

@@ -653,6 +653,25 @@ await step('health issues', async () => {
   await shoot(page, 'admin/health-issues.png');
 });
 
+await step('match automatically', async () => {
+  // A run over every unmatched book (the seeded ones and the Inbox's), reviewed
+  // but never applied, so the other shots keep their books as they are. The
+  // marketplace is the UK store's, so the dialog shows which ASINs are UK ones.
+  await api(token, 'PATCH', '/admin/settings', {metadata: {region: 'uk'}});
+  await open(page, '/health/issues?issue=unmatched');
+  await page.getByRole('button', {name: 'Find matches', exact: true}).click({timeout: 8000});
+  // Offline, every book fails and the run stops: there is nothing to review.
+  await page.getByRole('button', {name: 'Review and apply'}).waitFor({timeout: 90000});
+  await page.getByRole('button', {name: 'Review and apply'}).click();
+  const dialog = page.getByRole('dialog', {name: 'Review matches'});
+  await dialog.getByRole('listitem').first().waitFor({timeout: 8000});
+  await sleep(1500); // the book covers
+  await shoot(page, 'admin/health-bulk-match.png');
+  await page.keyboard.press('Escape');
+  await sleep(600);
+  await api(token, 'PATCH', '/admin/settings', {metadata: {region: ''}});
+});
+
 await step('health duplicates', async () => {
   await open(page, '/health/issues?issue=duplicate');
   await page.getByRole('button', {name: "They're different books"}).first().waitFor({timeout: 8000});

@@ -3309,10 +3309,16 @@ again. A `503` (over metaserve's match budget) or any other `5xx` from
           "release_date": "2013-03-22",
           "publisher": "Podium Audio",
           "asins": ["B00B5HZGUG"],
+          "asin_refs": [
+            { "region": "uk", "asin": "B00B5HZGUG" },
+            { "region": "us", "asin": "B00B5HZGUG" }
+          ],
+          "asin_region": "uk",
           "isbns": ["9780553418026"]
         }
       ],
       "recording_id": "rec1",
+      "default_recording_id": "rec1",
       "score": 100,
       "reasons": { "identifier": "asin" }
     }
@@ -3345,24 +3351,224 @@ again. A `503` (over metaserve's match budget) or any other `5xx` from
   `first_published`, `description`, `cover_url`, `recording_id` and the
   recordings' optional fields are omitted when empty; `asins`/`isbns` are always
   arrays.
+- A recording's `asins` are its distinct ASINs **best first for this server**:
+  the preferred marketplace's ([`metadata.region`](../configuration.md#community-metadata-metadata)),
+  then the US store's, then the rest in the service's order (by region), so
+  `asins[0]` is the one to attach. `asin_refs` keeps each with its Audible
+  marketplace (`us`, `uk`, `ca`, `au`, `de`, `fr`, `es`, `it`, `jp`, `in`,
+  `br`), as the service lists them; a publisher-direct ASIN sold under one id
+  in several stores appears once per region. `asin_region` names the store of
+  `asins[0]`.
+- `default_recording_id` is the recording the book most likely is: the one an
+  identifier named, else the one whose runtime is closest to the book's, a
+  recording selling in the preferred marketplace winning a tie. The console's
+  dialog and a bulk run both start from it.
 - No hits is `200 { "candidates": [] }`.
 
 `cover_url` is an image on its own host (Audible's CDN, Open Library), which
 the console's CSP doesn't load, so the console shows it through
 [`POST /admin/meta/covers`](#post-apiv1adminmetacovers).
 
-Accepting a candidate takes up to three existing writes: attach its ASIN/ISBN with
-[`PUT …/enrichment`](#put-apiv1adminlibrariesidenrichment), apply the
-fields you take from it with [`PATCH …/book`](#patch-apiv1adminlibrariesidbook)
-and `source: "community"`, and, when the cover is taken too, keep it as the
-book's custom cover with
-[`PUT …/cover/community`](#put-apiv1adminlibrariesidcovercommunity).
+Accepting a candidate takes up to two existing writes: the fields you take
+from it, the ASIN and ISBN included, with
+[`PATCH …/book`](#patch-apiv1adminlibrariesidbook) and `source: "community"`,
+and, when the cover is taken too, keeping it as the book's custom cover with
+[`PUT …/cover/community`](#put-apiv1adminlibrariesidcovercommunity). (The
+manager attaches an ASIN/ISBN with
+[`PUT …/enrichment`](#put-apiv1adminlibrariesidenrichment) instead.) To match
+many books at once, see [Bulk community matching](#bulk-community-matching).
 
 | Status | Meaning |
 |---|---|
 | `400` | `query too long`; `invalid library id`; `path is required` |
 | `404` | `code: "metadata_off"` - community metadata is turned off; `library not found`; `code: "book_not_found"` |
 | `502` | `metadata service unavailable` - the community service failed (including a `503` or `5xx` from `works/match`) and no candidate could be returned. Partial failures still return what was found: on the fallback, if the identifier lookup or the text search fails but the other leg yields candidates, those are returned, and a candidate whose work fails to load is left out. When nothing is returned, any failure along the way (either leg, or loading a hit's work) is a `502`, not an empty list - the failed leg may well have found the book |
+
+### Bulk community matching
+
+The console's **Match automatically** (Health > Not matched). A **match run**
+matches many books against the community service in the background, exactly
+as [`…/book/match`](#get-apiv1adminlibrariesidbookmatch) matches one (the same
+facts, the preferred marketplace's ASIN), but expands only the best two works
+per book and asks a couple of books at a time. It only **looks**: each book's
+best candidate and what it offers are recorded for the admin to review, and
+nothing changes until the run is **applied**. Applying writes community
+overrides (as [`PATCH …/book`](#patch-apiv1adminlibrariesidbook) with
+`source: "community"` does) and, for a book with no cover, the community cover
+(as [`PUT …/cover/community`](#put-apiv1adminlibrariesidcovercommunity)), so
+every change is reversible. Admin only; every endpoint answers `404 code:
+"metadata_off"` while community metadata is off. One run works at a time
+(server-wide); the newest 10 runs are kept, with their books.
+
+A run is a `match` run (the books with no ASIN or ISBN: the Health page's
+"Not matched", less those ignored there) or a `repick` run (the books whose
+ASIN is a **community** override, never one from the tags, an admin's edit or
+the manager's enrichment: each is looked up, and when its recording now sells
+in the preferred marketplace under another ASIN, that is offered).
+
+Each book's **outcome**:
+
+| Outcome | Meaning |
+|---|---|
+| `auto` | Confident: the best candidate scores **90** or more, at least **10** ahead of the next, and its recording has an ASIN or ISBN. Applied unless the admin leaves it out. A repick's offers are all `auto`. |
+| `review` | A candidate that isn't confident. Applied only if the admin puts it in. |
+| `none` | No candidate. |
+| `error` | The service failed for this book (`detail: "metadata_unavailable"`). Five in a row stop the run. |
+
+Run **statuses**: `matching` → `ready` (waiting for review) → `applying` →
+`applied`; `cancelled` (stopped while matching), `failed` (stopped by itself:
+`error` is `metadata_off` when community metadata was turned off,
+`metadata_unavailable` when the service kept failing, `internal`), and
+`interrupted` (the server stopped mid-match; a run stopped mid-apply goes back
+to `ready` at the next start, its applied books marked).
+
+#### `GET /api/v1/admin/match-runs`
+
+The kept runs, newest first, and the marketplace a new run would prefer.
+
+```json
+{
+  "runs": [
+    {
+      "id": 3,
+      "library_id": null,
+      "mode": "match",
+      "region": "uk",
+      "status": "ready",
+      "started_by": 1,
+      "started_by_name": "admin",
+      "started_at": "2026-10-07T21:00:00Z",
+      "finished_at": "2026-10-07T21:04:12Z",
+      "total": 570,
+      "done": 570,
+      "scope": "",
+      "apply_total": 0,
+      "apply_done": 0,
+      "applied_at": null,
+      "counts": { "auto": 412, "pending": 412, "review": 98, "none": 58, "error": 2,
+                  "applied": 0, "skipped": 0, "failed": 0 }
+    }
+  ],
+  "region": "uk"
+}
+```
+
+`library_id` `null` = every library (`library_name` names one). `total`/`done`
+count the books matched, `apply_total`/`apply_done` the last apply. `counts`
+are the items by outcome, `pending` the `auto` ones not applied yet, and
+`applied`/`skipped`/`failed` what applying did. `scope` is the last apply's.
+
+#### `POST /api/v1/admin/match-runs`
+
+`{"library_id"?: 2, "mode"?: "match" | "repick"}` (omitted: every library, a
+`match` run). Starts the run in the background and answers `202` with it (as
+in the list). The admin's console polls
+[`GET …/match-runs/{id}`](#get-apiv1adminmatch-runsid) while it works.
+Audited as `book.match_run` or `book.asin_repick` (`run`, `books`, `region`).
+
+| Status | Meaning |
+|---|---|
+| `400` | `invalid request`; `mode must be "match" or "repick"`; `code: "no_region"` - a repick with no `metadata.region` set |
+| `404` | `library not found` |
+| `409` | `code: "match_run_busy"` - a run is matching or applying |
+
+#### `GET /api/v1/admin/match-runs/{id}`
+
+One run, as in the list (`404` when it isn't kept).
+
+#### `GET /api/v1/admin/match-runs/{id}/items`
+
+A page of the run's books in id order: `?outcome=auto|review|none|error`
+(omitted: all), `?after=<item id>` (the previous page's `next_after`),
+`?limit=` (1-200, default 50).
+
+```json
+{
+  "items": [
+    {
+      "id": 41,
+      "run_id": 3,
+      "library_id": 1,
+      "path": "Andy Weir/The Martian",
+      "outcome": "auto",
+      "score": 96,
+      "runner_up": 61,
+      "proposal": {
+        "work_id": "the-martian",
+        "recording_id": "bray",
+        "title": "The Martian",
+        "authors": "Andy Weir",
+        "narrators": "R. C. Bray",
+        "runtime_min": 634,
+        "web_url": "https://meta.audiosilo.app/work?id=the-martian",
+        "cover_url": "https://m.media-amazon.com/images/I/x.jpg",
+        "asin_region": "uk",
+        "values": { "title": "The Martian", "author": "Andy Weir", "narrator": "R. C. Bray",
+                    "published": "2011", "asin": "B0UK000001" }
+      },
+      "applied": "",
+      "book": { "title": "The Martian (Unabridged)", "author": "Andy Weir" },
+      "changes": {
+        "ids": { "fields": ["asin"], "cover": false },
+        "fill": { "fields": ["narrator", "published", "asin"], "cover": true },
+        "overwrite": { "fields": ["title", "narrator", "published", "asin"], "cover": true }
+      }
+    }
+  ],
+  "next_after": 0
+}
+```
+
+- `proposal.values` is what the best candidate offers for each overridable
+  field, in stored form (a value an override would refuse is left out), as the
+  match dialog's compare table would offer it: its chosen recording is the
+  identifier's, else the closest runtime (a recording selling in the preferred
+  marketplace wins a tie), and its ASIN is that recording's best for this
+  server, named by `asin_region`.
+- `book` is the book as it is now; `gone: true` when nothing is indexed at the
+  path any more.
+- `changes` is what applying would write under each scope (fields in display
+  order, and whether the cover is taken), worked out against the book now by
+  the same rules the apply uses, so the review can't disagree with it.
+- `applied` is what applying did: `""` (not yet), `applied`, `skipped` (with
+  `detail` `nothing_to_change` or `book_gone`) or `failed` (`edit_failed`,
+  `cover_failed`); an `applied` item can carry `cover_failed` when its fields
+  went on but its cover couldn't be fetched.
+
+#### `POST /api/v1/admin/match-runs/{id}/apply`
+
+`{"scope": "ids" | "fill" | "overwrite", "exclude"?: [item ids], "include"?:
+[item ids]}`. Applies the run's `auto` items, less `exclude`, plus the
+`include` items (`review` ones the admin chose), each only while not yet
+applied, in the background; answers `202` with the run (`applying`). What a
+book gets, under each **scope**:
+
+| Scope | Writes |
+|---|---|
+| `ids` | The ASIN and ISBN, where the book has none. |
+| `fill` | Also every field the book has empty, and the community cover when it has no cover (a checked book with none, and no custom cover). |
+| `overwrite` | Also every field whose value differs, as accepting the dialog's default ticks does; the cover only when it has none. |
+
+Under every scope a field an admin **edited** (`source: "edited"`) is never
+replaced, a value the book already has isn't rewritten, and a series position
+is written only beside the series it numbers (the book's own, or the one being
+set). A repick writes its ASIN whatever the scope, and only while the book's
+ASIN is still the community override it found. Audited as `book.match_apply`
+(`run`, `books`, `scope`). Applying `ready` again after a stopped apply takes
+the rest.
+
+| Status | Meaning |
+|---|---|
+| `400` | `invalid request`; `scope must be …`; `code: "too_large"` - more than 20,000 ids in `include` or `exclude` |
+| `404` | `no such match run` |
+| `409` | `code: "match_run_busy"` - a run is matching or applying; `code: "match_run_not_ready"` - this run isn't `ready` |
+
+#### `POST /api/v1/admin/match-runs/{id}/cancel`
+
+Stops the run while it works: matching stops (`cancelled`, nothing changed);
+applying stops after the books in hand (`ready` again, the rest still to
+apply). `204`; `409 code: "match_run_not_running"` when it isn't working.
+Audited as `book.match_stop`.
 
 ### `PUT /api/v1/admin/libraries/{id}/cover` · `DELETE /api/v1/admin/libraries/{id}/cover`
 
