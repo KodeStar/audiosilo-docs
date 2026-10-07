@@ -152,9 +152,7 @@ window crosses a threshold, not on every resize. The page column width is
 | `desktop` | >= 1024 (`DESKTOP_MIN_WIDTH`) | The tablet chrome with labelled destinations, the user's name on the profile button and (web) a ⌘K / Ctrl K hint in the omnisearch, plus the `DrawerSlot` beside the page, which holds the [Up next](#up-next-drawer-and-sheet) drawer. |
 
 Every screen reads this one value - never compare a width against a local
-constant. (This replaced the single 1024px `WIDE_BREAKPOINT`; the old right-hand
-player panel is gone, and the docked player bar is the tablet/desktop
-transport.) Dialogs follow the same split: on a phone they rise from the bottom
+constant. The docked player bar is the tablet/desktop transport. Dialogs follow the same split: on a phone they rise from the bottom
 like a sheet.
 
 ### The player in the shell

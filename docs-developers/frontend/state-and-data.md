@@ -409,7 +409,7 @@ ends") accordion. Before that, `in_short` sits behind a collapsed, spoiler-chipp
 "Whole-book summary" row and the `ending` is not offered at all. All of
 these are absent from the envelope when the upstream has none, so a work without
 them simply shows no such tab. Pure label helpers
-(`roleLabelKey`, `revealDescriptor`, `recapDescriptor`, `sortRecaps`,
+(`roleLabelKey`, `revealFromStart`, `recapDescriptor`, `sortRecaps`,
 `summaryIsVisible`) are unit-tested, and the strings live under `book.meta.*` in
 all locale catalogs.
 
@@ -418,10 +418,9 @@ all locale catalogs.
 Character and recap visibility is derived from **where the listener actually is**,
 in a framework-free module of pure functions:
 
-- `listeningProgressFor(input)` resolves the position, preferring the live player
-  chapter when this book is the one loaded (via `chapterOrdinal`) and otherwise
-  mapping the saved server progress onto the chapter list (via `chapterNumberAt`
-  over the cumulative chapter starts). `NO_PROGRESS` is the not-started value, and
+- `listeningProgressFor(input)` maps one whole-book position (the live one while
+  this book is loaded, else the saved one) onto the chapter list (via
+  `chapterNumberAt` over the cumulative chapter starts). `NO_PROGRESS` is the not-started value, and
   a finished book short-circuits everything to visible.
 - `characterIsVisible(c, p)` hides a character whose `reveal.chapter` is past the
   listener; `recapIsVisible(r, p)` hides a recap whose `through.chapter` has not
@@ -597,8 +596,8 @@ registry that those owners subscribe to (they can't be imported directly here -
 they import the session store, so a direct import would cycle); a failing cleanup
 is logged, never blocks removal. `status` is
 `loading | unauthenticated | authenticated`, and the `(app)` layout guard
-redirects on it. Mirror fields (`user`, `activeServerUrl`,
-`activeConnectionId`) are derived for ergonomic selectors.
+redirects on it. `user` mirrors the default connection's (`defaultConnectionId`)
+user, for ergonomic selectors.
 
 ### Settings (`src/stores/settings.ts`)
 
@@ -751,8 +750,8 @@ hammering a dead endpoint:
   (even a 500) → reachable; an `AbortError` (deliberate cancel) is ignored;
   anything else - including the client's `TimeoutError` - flips to offline.
   `noteSuccess()` flips back.
-- While offline, a 20 s probe loop calls `serverInfo()` on the client that
-  `ApiProvider` registered via `setReachabilityApi` until it answers.
+- While offline, a 20 s probe loop calls `serverInfo()` on each offline connection's
+  client (the map `ApiProvider` registers via `setReachabilityClients`) until it answers.
 - On web only, the browser's `online`/`offline` events short-circuit the loop
   (an `online` event triggers an immediate probe - the NIC being up doesn't
   prove the *server* is).
