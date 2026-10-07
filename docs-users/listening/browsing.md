@@ -190,7 +190,7 @@ The top of the page is the same for every book:
 
 - **Cover, title, and author**, plus the **series and number** (e.g. *"Stormlight Archive #2"*) and the **narrator** when known.
 - A **stats strip**: a heart to favourite the book, its download size and audio format, and its total length.
-- In the web player, for a book in an audio format browsers can't play, a line under the stats saying it is converted for this browser (*"AC-3 audio is converted to MP3 for this browser"*) - see [Books a browser can't play directly](playback.md#books-a-browser-cant-play-directly).
+- In the web player, for a book the browser can't play as it is, a line saying it's [converted for this browser](playback.md#books-a-browser-cant-play-directly).
 - A **Listen** button to start (or resume) playing, and a **download button** for [offline listening](offline-downloads.md). On a tablet or computer, the cover, title and Listen button sit in a panel on the right-hand side of the page (when the page is too narrow for that, for instance with the Up next drawer open, everything stacks in one column as on a phone). There, Listen starts the book without leaving the page; while that book is playing, the button reads **Open the player** instead.
 - An **About this book** block, when the book is matched in the community database (see below).
 

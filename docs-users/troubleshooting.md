@@ -145,37 +145,21 @@ your admin.
 
 ### A book plays in the app but won't play in the browser
 
-Web browsers can only decode certain audio codecs: AAC (the usual codec in
-`.m4b`/`.m4a`), MP3, FLAC, Opus, and Vorbis all work. Files encoded with
-something a browser can't decode - Apple Lossless (ALAC), AC-3 or WMA, for
-example - stream fine to the iOS and Android apps.
+Some audio formats (Apple Lossless, AC-3, WMA...) don't play in browsers, so the
+web player has the server [convert them as you listen](./listening/playback.md#books-a-browser-cant-play-directly).
+If such a book still won't play in the browser:
 
-In the web player, AudioSilo has the server **convert such a book to MP3 as
-you listen**, automatically, and the book's page says *"... audio is converted
-to MP3 for this browser"* (see
-[Books a browser can't play directly](./listening/playback.md#books-a-browser-cant-play-directly)).
-That needs **ffmpeg** on the server. If the book still won't play in the
-browser:
-
-- **Check the server has ffmpeg.** The admin console's
-  [Server > Transcoding](./admin/server.md#transcoding) shows whether it was
-  found. Without it the web player can only try the file as it is, which a
-  browser can't decode. The Docker image includes ffmpeg; the native binary
-  downloads its own on first start.
-- **Check the server has read the book's audio format.** The conversion is
-  used for books the server knows a browser can't play, which it learns with
-  ffprobe while scanning. A book scanned without ffprobe looks playable, so the
-  browser is handed the file as it is. Rescan the book once ffprobe is
-  available (the book's page in the admin console says "Transcodes to MP3 for
-  browsers" once it knows).
-- **Listen in the mobile app** ([Mobile apps](./listening/mobile-apps.md)) -
-  the native players handle more formats than browsers do.
-- **Convert the file** to `.m4b` (AAC) or `.mp3` once, and let the server
-  rescan. Your listening progress survives the swap as long as the file keeps
-  its path.
-
-Such a book can't be downloaded in the browser either (its button reads
-**Can't download in this browser**); download it in the mobile app.
+- **Ask your admin to check transcoding.** The admin console's
+  [Server > Transcoding](./admin/server.md#transcoding) shows whether ffmpeg
+  was found; the conversion needs it.
+- **Ask your admin to rescan the book** once ffprobe is available. The server
+  only converts books it knows a browser can't play, which it learns with
+  ffprobe while scanning (the book's page in the admin console then says
+  "Transcodes to MP3 for browsers").
+- **Listen in the [mobile app](./listening/mobile-apps.md)**, which plays these
+  formats as they are, or **convert the file** to `.m4b` (AAC) or `.mp3` once
+  and let the server rescan (your progress survives as long as the path stays
+  the same).
 
 ### Playback stops with an error mid-book
 
