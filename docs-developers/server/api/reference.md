@@ -3460,8 +3460,9 @@ are the items by outcome, `pending` the `auto` ones not applied yet, and
 
 #### `POST /api/v1/admin/match-runs`
 
-`{"library_id"?: 2, "mode"?: "match" | "repick"}` (omitted: every library, a
-`match` run). Starts the run in the background and answers `202` with it (as
+`{"library_id"?: 2, "mode"?: "match" | "repick"}` (omitted, or no body at all:
+every library, a `match` run). A book of a library deleted while the run works
+is left out. Starts the run in the background and answers `202` with it (as
 in the list). The admin's console polls
 [`GET …/match-runs/{id}`](#get-apiv1adminmatch-runsid) while it works.
 Audited as `book.match_run` or `book.asin_repick` (`run`, `books`, `region`).
@@ -3567,7 +3568,7 @@ the rest.
 
 Stops the run while it works: matching stops (`cancelled`, nothing changed);
 applying stops after the books in hand (`ready` again, the rest still to
-apply). `204`; `409 code: "match_run_not_running"` when it isn't working.
+apply). Turning community metadata off stops an apply the same way. `204`; `409 code: "match_run_not_running"` when it isn't working.
 Audited as `book.match_stop`.
 
 ### `PUT /api/v1/admin/libraries/{id}/cover` · `DELETE /api/v1/admin/libraries/{id}/cover`
