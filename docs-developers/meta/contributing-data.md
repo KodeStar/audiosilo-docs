@@ -369,7 +369,8 @@ metadata repository's `scripts/README.md` shows the export). For each work a row
 reaches it computes the vote, then:
 
 - a work with no user-library source (`openaudible-import`, `libation-import`,
-  `audiosilo-books-import`, `user`) whose every ASIN-carrying recording met a row
+  `audiosilo-books-import`, `user`) on it or on any of its recordings, whose
+  every ASIN-carrying recording met a row
   takes the vote as its set - unless the vote states no genre, which leaves the
   work as it is;
 - any other work only gains what the vote adds.
@@ -381,8 +382,8 @@ casts no vote - the runtime is what catches an ASIN attached to the wrong
 recording, the same test enrichment and the ASIN merge use, while a release date
 may legitimately differ for a regional re-release - and a recording whose rows
 were all contradicted does not count as covered. Flags that would do nothing in
-this mode (`--date`, `--conflicts`, `--existing-series-only`, the series lookup)
-are refused.
+this mode (`--date`, `--conflicts`, `--existing-series-only`, the series lookup,
+`--skipped`) are refused.
 
 The regeneration never judges a record with evidence older than the record.
 `--rows-as-of YYYY-MM-DD` is required: set it to the dump's snapshot date (a date
