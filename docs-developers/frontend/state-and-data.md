@@ -146,7 +146,13 @@ Phase 2 browse screens consume them (see
 `undefined` while the connection's `/server` info is unknown (still loading, or
 unreachable), then `true` or `false` (a server that predates the flag reads
 `false`). A screen picks its fallback, or hides the feature, on `false`, and on
-`undefined` waits or decides for itself. `useServerInfo(connectionId?)` takes the
+`undefined` waits or decides for itself. Outside React, `cachedCapability(cid, flag)`
+reads the cached flag without asking, and `fetchCapabilities(cid, client)` reads the
+flags through `fetchFailFast` - `fetchQuery` with `networkMode: 'always'` and no
+retry, after cancelling a paused fetch a mounted hook holds for the same key, so a
+framework-free reader (the play path, the end of a book, keep-ahead) always settles
+instead of waiting for the browser's online flag or a hidden tab's focus - falling
+back to the cached flags when the server can't be read. `useServerInfo(connectionId?)` takes the
 same optional connection id and keeps its answer (`gcTime: Infinity`), so a gated
 hook mounted later starts from the known flags.
 
@@ -429,6 +435,18 @@ reuses the existing `qk.progress(cid, lib, path)` key rather than introducing a
 second progress cache. Chapter numbers are the *work's* logical chapters, which
 only approximate a given recording's edition - hence the deliberate escape hatches
 (the toggle, and a finished book showing everything).
+
+The **live** side is `useListeningPosition` (`src/components/player/use-listening-position.ts`,
+shared by the book page, Search, the series page and the player's companion): the
+player's position while the book is loaded, never below the saved one, read in
+`LIVE_POSITION_BUCKET_S` (15 s) buckets rounded down - and only once the book is
+**placed** (`selectPlacedBookKey`): right after `playBook` swaps a book in, the
+snapshot still holds the previous book's place until the engine load lands (the
+store's `loadingBook`), and reading it as the new book's would reveal its cast by a
+position the listener never reached. Previously on reads the saved place only. The
+chain that feeds the player-side gates (the `metadata` flag, the book, `/meta`, the
+chapters, the corrected starts) is `useBookCommunity`
+(`src/components/library/use-book-community.ts`).
 
 #### Catching up on previous books (`client.metaWork`)
 

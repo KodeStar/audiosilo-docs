@@ -139,7 +139,15 @@ with no network.
   [Playback](playback.md#web-transcode-negotiation-transcodets)): its raw files
   would not play offline in that browser, and refusing here covers the book page,
   the automatic download and keep-ahead alike. Repeat requests for a
-  non-errored entry are ignored; an `error` entry is retried, keeping its
+  non-errored entry are ignored. It is also the **one choke point for the
+  automatic rules**: for the `auto` (the book you start) and `keep-ahead` origins it
+  refuses a book the listener declined this session and one that would eat into the
+  reserve (`roomLeft`; an unknowable room lets it start, one at a time); the
+  listener's own download is never held back. The book you start outranks
+  keep-ahead's books still **queued**: when only they stand in its way, they step
+  aside (unmarked, so keep-ahead plans them again around it) and it goes next. It
+  resolves a `DownloadOutcome` - `queued`, or why not: `exists`, `unsupported`,
+  `transcoded`, `declined`, `no-space` - so a caller can act on a refusal; an `error` entry is retried, keeping its
   manifest's finished `files` (and chapters). No `ApiClient` is passed in - `runOne` resolves
   the entry's **own** server client via `resolveClient(entry.connectionId)`
   (`src/api/connection-clients.ts`), so two servers' queued downloads never race a
@@ -249,12 +257,13 @@ has downloads on the device.
 The `keepAhead` setting (`0 | 1 | 2 | 3`, default `0` = off) downloads the next N
 books **after** the loaded one. It sits beside the existing automatic download
 (`maybeAutoDownloadCurrent` in `src/playback/store.ts`, which downloads the book you
-*start* under `autoDownloadNext`): both obey the same network rule, the same
-declined mark and the same reserve (`roomLeft`, shared since Phase 3 - see
-[Auto-download on play](playback.md#auto-download-on-play)), and both go through the
-store's one-at-a-time queue, and the current book always
-wins, because the store enqueues it the moment playback starts while keep-ahead
-waits `SETTLE_MS` (4 s) after any change before it plans.
+*start* under `autoDownloadNext` - see
+[Auto-download on play](playback.md#auto-download-on-play)): both obey the same
+network rule, and both ask the downloads store's `download()`, which applies the
+same declined mark and reserve to both and runs one book at a time. The current book
+always wins: the store enqueues it the moment playback starts while keep-ahead waits
+`SETTLE_MS` (4 s) after any change before it plans, and if keep-ahead's queued books
+are in its way they step aside for it.
 
 **The planner** (`src/downloads/keep-ahead.ts`) is pure and tested:
 
@@ -264,14 +273,18 @@ waits `SETTLE_MS` (4 s) after any change before it plans.
   device), `active` (queued or downloading), `failed` (left for the listener to
   retry), `declined` (cancelled or removed this session; it keeps its place, the
   planner never reaches past it for another), `waiting` (the network rule says
-  not now), `no-space`, `later` (room unknown: one download at a time), or `start`.
+  not now), `no-space`, `later` (room unknown: one download at a time),
+  `unavailable` (this device can't keep it: a web browser that plays it through the
+  server's transcoder; left alone in its place), or `start`. A book the store turned
+  away for room although the plan thought it fit (`tooBig`: the full item is bigger
+  than the list said) reads as no room.
   Space: `roomLeft(storage, pending)` = `free - pending - reserveBytes(capacity)`, where `reserveBytes` is
   `max(1 GB, 10% of capacity)`, `pending` is what queued and running downloads
   still have to write, and a book's need is `estimateBytes` (its size, else its
   length at about 128 kbps, else 1 GB). Books start in window order and stop at the
   first that doesn't fit. The plan's `status` (`off`, `never`, `idle`, `working`,
-  `no-space`, `waiting`, `failed`, `ready`, `declined`) is what the status line
-  says.
+  `no-space`, `waiting`, `failed`, `ready`, `declined`, `unavailable` - "This
+  browser can't keep the next books offline.") is what the status line says.
 
 **The controller** (`keep-ahead-controller.ts`, framework-free, started once by
 `startKeepAhead()` from the root layout like `startAutoSleep`) gathers the inputs
@@ -284,8 +297,9 @@ book, so the book kept ready is the book that plays. It reads the network gate f
 `autoDownloadNext` (`never` → status `never`; `wifi` on a metered connection →
 `waiting`), the storage estimate and the registry, publishes `{ status, slots }` to
 the `useKeepAhead` store, then for each `start` fetches the full item and chapters
-and calls `download(..., 'keep-ahead')` unless the book was declined or registered
-meanwhile. It re-plans (one `SETTLE_MS` timer, and once more if something changed
+and calls `download(..., 'keep-ahead')`; a `transcoded` outcome marks the book
+`unavailable` and a `no-space` one `tooBig` (until the registry changes), and the
+controller plans again at once around a refusal. It re-plans (one `SETTLE_MS` timer, and once more if something changed
 during a run) on the loaded book, the two settings, the registry's statuses (not
 byte counts), any successful `queue` query, and on native a network change. It
 never throws and reports nothing to reachability: a server that can't be reached
@@ -310,7 +324,10 @@ re-exports it) renders what the pure `src/downloads/downloads-view.ts` returns:
 
 Keep-ahead's held-back books (`waiting`, `no-space`, `later` slots not in the
 registry yet) render as `PlannedRow`s in In progress; entries with `origin:
-'keep-ahead'` are labelled "Kept ahead". The **Automatic downloads** card
+'keep-ahead'` are labelled "Kept ahead". A failed row for a book this browser now plays through
+the server's transcoder (`useNeedsWebTranscode`) offers no Retry - the store would
+refuse it - and says why ("This browser can't play this book offline. Remove it to
+free the space."), leaving only Cancel. The **Automatic downloads** card
 (`rules-card.tsx`) edits `autoDownloadNext`, `keepAhead` and `autoDeleteFinished`;
 Settings and the series page's `KeepAheadCard` show the same control and status
 line (`KeepAheadControl`, `KeepAheadStatusLine`). The summary line is published into the sub-nav with

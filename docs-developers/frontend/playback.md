@@ -66,7 +66,19 @@ points:
   (seek/scrub) authenticate without headers.
 - The **Media Session API** wires lock-screen/notification transport: metadata
   per track plus `play`, `pause`, `seekbackward`, `seekforward` handlers using
-  the configured jump intervals.
+  the configured jump intervals. Those seeks go back **through the store**
+  (`onRemoteSeek`, which the store registers to `seekInTrack`), so a lock-screen
+  seek lowers the resume floor and saves like any deliberate seek.
+- **A browser autoplay refusal is a pause, not an error.** `play()` without a user
+  gesture (a cold `/player` deep link) rejects with `NotAllowedError`; the engine
+  settles its snapshot on `paused` and rethrows it as `AutoplayBlockedError`
+  (`types.ts`), which the store's `startEngine` catches.
+- **A file advance is not a pause.** The element fires `pause` just before `ended`
+  at a file's natural end; when another file follows, the engine ignores it (the
+  store keeps its intent through the next file's load), so a chapter sleep timer
+  aimed at that boundary finds the book live and pauses it. A load plays on
+  `loadedmetadata` only while `pendingAutoplay` is still set: a `pause()` inside the
+  load clears it and settles the snapshot on `paused`.
 - Auto-rewind on resume: `play()` rewinds by up to `autoRewindMax` seconds
   scaled by how long the pause lasted.
 - Every element listener is guarded by an `active()` check so a second element
@@ -310,10 +322,34 @@ Speed is clamped to 0.5–2×.
 
 The store is the part of playback the player redesign promised **not** to
 redesign (decision 7 in the workspace's `PLAYER-REDESIGN-PLAN.md`: new views over
-the same store, engine changes only in Phase 6). Phase 3 changed it in exactly two
-places, each with its own regression tests: `playBook` decides the
-[web transcode flag](#web-transcode-negotiation-transcodets), and
-`maybeAutoDownloadCurrent` gained [three rules](#auto-download-on-play).
+the same store, engine changes only in Phase 6). Phase 3 changed it only where a
+feature could not live outside it, each change with its own regression tests:
+
+- `playBook` decides the [web transcode flag](#web-transcode-negotiation-transcodets);
+- `playBook` takes a **`startSpeed`**: without one a book plays at its saved speed
+  (else the default) - **also when it starts at an explicit place** (a chapter
+  tap, a bookmark, Previously on), where the resume lookup that normally supplies
+  the speed is skipped, so `knownSpeed` reads the cached progress and the local
+  mirror instead of letting the default be saved over the book's own speed;
+- **`loadingBook`**: the `contentKey` of a book `playBook` just swapped in whose
+  engine load hasn't landed. Until it lands the snapshot still holds the
+  **previous** book's place (the native engine reports the new queue only once its
+  load resolves, and old ticks can still arrive), so mapping it through the new
+  queue would place the listener somewhere they have never been. The spoiler gates
+  wait it out through `selectPlacedBookKey` (`use-listening-position.ts`): without
+  it, switching books could reveal the new book's characters by the old book's
+  position;
+- **`startEngine`** (the play step of `playBook`/`toggle`/`retry`) catches only
+  `AutoplayBlockedError` - a browser refusing `play()` without a user gesture (a
+  cold `/player` deep link) - clears the play intent so the watchdog can't turn
+  it into `error`, and settles on `paused`; every other failure propagates;
+- the store registers **`onRemoteSeek`** on the engine, so the OS media controls'
+  seeks (the web Media Session) go through `seekInTrack` and lower the resume
+  floor and save like any other seek;
+- `clampRate` moved to `rate.ts` (shared with the time-left helpers);
+- `maybeAutoDownloadCurrent` now just asks `download()` with the `'auto'` origin
+  ([below](#auto-download-on-play)).
+
 Everything else Phase 3 added - [what plays next](#what-plays-next-up-next-resolverts),
 [jump undo](#undo-a-jump-jump-undots), [drift-offs](#fell-asleep-drift-controllerts),
 [time left](#time-left-time-leftts) - sits **outside** the store and reads it
@@ -484,12 +520,14 @@ never transcode, and a downloaded (local) file is never transcoded either.
   speaks if the browser can't play it.
 
 **Reading the capability** is `src/playback/transcode-capability.ts`, kept apart so
-the rule stays framework-free: `mayNeedWebTranscode` is the cheap synchronous
-pre-check (false off web and for every ordinary book, so they skip the lookup and
-its await), `resolveWebTranscode` reads `capabilities.transcode` through the shared
-`serverInfoQuery` (normally a cache hit; a failed read falls back to the cached
-value, else "no"), and `webTranscodeFromCache` is the synchronous form for the
-download path.
+the rule stays framework-free. `mayNeedWebTranscode` (in `transcode.ts`) is the cheap
+synchronous pre-check (false off web and for every ordinary book, so they skip the
+lookup and its await); `resolveWebTranscode` reads `capabilities.transcode` through
+`fetchCapabilities` (`api/hooks.ts`: the shared `/server` entry via `fetchFailFast`,
+normally a cache hit; a failed read falls back to the cached flags, else "no");
+`webTranscodeFromCache` is the synchronous form for the download path and
+`useNeedsWebTranscode` the UI's (the book page's note, the download controls, the
+Downloads page's failed row).
 
 **Where it's decided:** once, in `playBook`, before `buildBookQueue` - and only for
 a streaming book (`!local && mayNeedWebTranscode(…) && await resolveWebTranscode(…)`).
@@ -505,6 +543,9 @@ byte ranges and no length the `<audio>` element can know (`duration` reads
   at offset 0; a transcoded one is requested *at* the position
   (`transcodeUrlAt(url, t)` replaces any `t` and keeps every other param, the media
   token included) with that `t` as the offset.
+- A transcoded stream is never requested inside its last second
+  (`transcodeStartAt`): there is nothing left to encode there, and the element
+  errors instead of ending.
 - Every seek, auto-rewind, and resume after a pause longer than
   `TRANSCODE_STALE_PAUSE_MS` (30 s, a paused back-pressured transcode may have been
   dropped by the server or a proxy) goes through `reloadTranscodedAt`, which
@@ -526,7 +567,8 @@ byte ranges and no length the `<audio>` element can know (`duration` reads
   `EARLY_END_MIN_PROGRESS_S` (5 s) of progress as the real end (a file whose audio
   is shorter than its probed duration).
 - The Media Session gets a `seekto` handler (only for transcoded tracks; direct
-  streams keep the browser default) so the OS scrubber re-requests too, and an
+  streams keep the browser default) that goes through the store's seek, so the OS
+  scrubber re-requests too, and an
   explicit `setPositionState` with the track-absolute position and known duration,
   cleared again once a direct track plays.
 
@@ -576,13 +618,28 @@ transition records `finished: true`.
   headless component mounted once in `src/app/_layout.tsx`, so it covers the phone
   modal and the desktop docked player alike. It watches `selectIsEnded` with
   **transition-edge detection** (a `wasEnded` ref, fires once per ended book) and
-  on the false→true edge calls `finishBook()` then navigates to
-  `finishedHref(…, true)` (`/finished?…&auto=1`): `router.replace` when currently on
-  `/player` (credits take the player's place), else `router.push`. If the app is
-  **backgrounded** and `autoPlayNext` is on it skips the credits, asks
-  `resolveUpNext` (the same answer the credits would give) and jumps straight to the
-  player (on iOS the OS may suspend JS once audio stops, so a visible countdown
-  can't be relied on), falling back to the credits when nothing is next.
+  on the false→true edge records whether a sleep timer was running for the book
+  (`useAutoPlayHold`, below), calls `finishBook()` and, in the foreground, navigates
+  to `finishedHref(…, true)` (`/finished?…&auto=1`): `router.replace` when currently
+  on `/player` (credits take the player's place), else `router.push`. In the
+  **background it never navigates**: `/player` and `/finished` are root
+  `fullScreenModal`s and iOS cannot present one from the background (a book that
+  ended locked came back to a black screen). It drops the finished book from Up next
+  at once and, with `autoPlayNext` on and no sleep-timer hold, resolves the next
+  book (`resolveUpNext`) and starts it **in place** (`advanceTo`), so the mini player
+  or dock shows it on return; otherwise the credits open once the app is active
+  (`whenActive`, `src/lib/when-active.ts`), unless something else is playing by
+  then.
+- **`end-of-book.ts`** holds the moving-on, framework-free (the end of a book can
+  run with no screen mounted): `advanceTo(next)` starts the next book through
+  `startBookInPlace` (`start-book.ts`: item and chapters through the query cache,
+  then `playBook` - the one way a book starts outside the player route; the
+  `/player` route only *shows* a book started that way) and then takes its queue
+  entry off Up next; `dropFromQueue(connectionId, books)` removes books from one
+  connection's queue (below); `useAutoPlayHold` holds the `contentKey` of a book
+  that ended while a sleep timer was running for it - the listener asked the timer
+  to end the night there, so the background start is skipped and the credits hold
+  their countdown (Play now still plays).
 - **`/finished` (`src/app/finished.tsx`)** is a root modal, a sibling of the
   player modal, that carries `connection`/`libraryId`/`path` params (it sits
   outside any route scope) and renders `EndCredits`. `auto=1` (the natural end, or
@@ -590,7 +647,15 @@ transition records `finished: true`.
   **still playing** (the credits opened early from the menu) is derived from the
   live player store, not the URL: loaded and not in `ended`, which covers a paused
   or errored book too, so a lock-screen pause can't read as "over" and auto-advance
-  mid-listen.
+  mid-listen. Play now and the countdown share one `playNext`: an early-opened book
+  is finished first (and leaves Up next), then `advanceTo(next)`; on success the
+  player replaces the credits once the app is active (`navigateWhenActive`, and not
+  at all if the credits were closed meanwhile), on failure the countdown stops and a
+  toast says "Couldn't start Oathbringer. Try again." Play now shows busy while the book
+  starts. The countdown counts only the time its ticks saw, so a suspended app
+  doesn't wake to a countdown that already ran out, and the still-playing countdown
+  runs at the playing speed. View details opens the book in the shell underneath
+  (`pushInShell`).
 - **`end-credits-logic.ts`** is the pure part: `endCreditsDecision` - with
   `autoPlayNext` on and a next book resolved, count down `GRACE_SECONDS` (15) after
   a real end, or the remaining audio while the book still plays, and only report
@@ -636,16 +701,24 @@ answer can be in another library), and, for a queue head, the `queueEntry` by it
 stored path. **Keep-ahead plans in the same order** (queue, then the `next_book`
 chain, else the folder), so the book kept ready is the book that plays.
 
-**Leaving the queue** is `useQueueDrop(connectionId)`
-(`src/components/player/use-queue-drop.ts`): it looks the books up in that
-connection's queue (the cached one, else one read on a server known to have
-`queue`), removes each by the stored entry's own path, and is quiet - housekeeping
-never toasts or reaches the reachability tracker. The credits drop the finished book
-when opened with `ended`, and the queue entry that plays (plus a book finished by
-an early Play now); `BookEndedListener` drops the finished book when the credits
-were already open, and both books on the background auto-play path. The listener
-keeps the last loaded book's connection in state, because `finishBook` clears
-`nowPlaying` before the next book is resolved.
+**Leaving the queue** is `dropFromQueue(connectionId, books)` (`end-of-book.ts`,
+framework-free): on a server the cache knows has `queue`, it looks the books up in
+that connection's queue (the cached one, else one read), removes each by the stored
+entry's own path and takes it out of the cached queue at once (so a second call for
+the same book, the credits opened on return after the end already dropped it, sends
+nothing), and is quiet - housekeeping never toasts or reaches the reachability
+tracker. **The finished book always leaves Up next where it is finished**, whether
+or not the next one starts (the credits opened with `ended`, an early Play now,
+`BookEndedListener` in the background or with the credits already open); the queue
+entry that plays leaves it inside `advanceTo`, only once it has started.
+
+The framework-free reads this flow waits on (`up-next-sources.ts`, the capability
+read, the queue) go through `fetchFailFast` (`api/hooks.ts`): TanStack holds a
+default fetch while the browser says it's offline and waits to retry until a hidden
+tab is focused, so a background tab's end-of-book chain waited silently.
+`fetchFailFast` asks with `networkMode: 'always'`, never retries, and first cancels
+a paused fetch a mounted hook holds for the same key; `fetchCapabilities` reads the
+`/server` flags that way with the cached flags as the fallback.
 
 ### Sibling resolution (`next-book.ts`)
 
@@ -684,28 +757,17 @@ is gone.)
 
 Guards, in order: `autoDownloadNext === 'never'` skips; an existing download
 entry whose `status` isn't `error` skips (already downloaded, queued, or
-downloading - only an errored entry is retried, matching the downloads store's
-own guard); a **declined** book skips; the network policy `canAutoDownload(mode)`;
-the **reserve**; and the download is enqueued **as `'auto'`**. Those three rules
-(added in Phase 3, the store's one behaviour change besides transcoding) make it
-agree with
-[keep-ahead](offline.md#keep-the-next-books-ready-keep-aheadts--keep-ahead-controllerts):
-
-1. **A declined book is skipped** - one the listener cancelled or removed this
-   session (`isDeclined`), so starting it again doesn't re-download what they
-   just threw away.
-2. **The reserve is kept** - `roomLeft(storageEstimate, pendingBytes)` (the same
-   `free - pending - reserveBytes(capacity)` keep-ahead plans with) must cover the
-   book's `estimateBytes`; an unknowable room lets it start, as keep-ahead starts
-   one at a time.
-3. **It asks as `'auto'`** (`DownloadOrigin`): the default `'listener'` origin
-   lifts a declined mark, as if the listener had asked. The Downloads page shows an
-   `auto` download like the listener's own.
-
-The downloads store's `download()` itself no-ops when the engine can't store
-offline (e.g. web without a controlling service worker) or the book streams
-transcoded on web, so no extra support guard is needed. `next-book.ts` does
-sibling resolution only.
+downloading - only an errored entry is retried, matching the downloads store's own
+guard); the network policy `canAutoDownload(mode)`; then it asks
+`download(..., 'auto')`. The automatic rules it must agree with
+[keep-ahead](offline.md#keep-the-next-books-ready-keep-aheadts--keep-ahead-controllerts)
+on - skip a book the listener cancelled or removed this session (`isDeclined`), and
+never eat into the reserve (`roomLeft`) - live in **one choke point**, the downloads
+store's `download()`, which applies them to the `auto` and `keep-ahead` origins and
+resolves a `DownloadOutcome` ([Offline](offline.md)). Asking as `auto` matters: the
+default `listener` origin would lift the declined mark, as if the listener had
+asked. `download()` also refuses an engine that can't store offline and a book that
+streams transcoded on web, so no extra guard is needed here.
 
 The policy gate is `canAutoDownload(mode)` in `src/lib/network.ts`, backed by
 **`expo-network`**: `never` → false, `always` → true, and `wifi` allows web (the
@@ -1000,18 +1062,21 @@ shake.
 
 ### The grace card (`grace-card.tsx`)
 
-`GraceCard` floats over the full player's controls, just above the docked bar
-(mounted by `docked-player.tsx`), and on a phone outside the full player above the
-tab bar and mini player (`PhoneGraceCard` in `ShellPlayerOverlays`, lifted to the
-measured `bottomChromeTop`) while the phase is `ending` or `grace`: a ring that empties
+`GraceCard` shows while the phase is `ending` or `grace`: a ring that empties
 over the window, "Fading out in N s" (a duration timer), "Stopping in N s" (a
 chapter timer, which doesn't fade) or "Paused by the sleep timer", how to keep
 going (mentioning the shake only where it is on and the platform has a sensor), and
 **Keep listening**. It is not a dialog - it never takes focus and blocks nothing
 outside its box - and it is announced once per phase rather than every second (a
 polite live region on Android and the web, `announceForAccessibility` on iOS,
-which has no live regions). The caller passes `bottom`, the distance to clear its
-own controls.
+which has no live regions). Where it sits: the full player gives it its status
+line's slot (`inline`, in the flow, so it can never cover the transport or the
+actions at any width; `useGraceCardOpen` tells the status line to make way);
+everywhere else ONE floating card (`FloatingGraceCard`, mounted by
+`ShellPlayerOverlays` while the full player isn't on top) sits just above the
+measured bottom chrome - the tab bar and mini player on a phone, the docked bar on
+tablet and desktop - and publishes its own top edge as the `grace` chrome piece, so
+toasts lift above it instead of landing on it.
 
 ### Fell asleep (`drift-controller.ts`)
 
@@ -1030,22 +1095,28 @@ What happens after a sleep timer stopped a book nobody was awake for.
    books, every read-modify-write serialised so a save and a take can't drop each
    other's change).
 3. **The prompt.** On the play edge of that book (a `usePlayer.subscribe`
-   transition into playing, or a different book playing), `takeDrift` reads and
+   transition into playing, or a different book playing - but not the instant a
+   book is swapped in, when the snapshot still says `playing` for the OLD book;
+   taking the record there would spend the offer on the old position), `takeDrift` reads and
    forgets the record and `driftOffer` decides: only for a gap of 1-60 content
    minutes between the touch and the stop, and only when the book starts within
    5 minutes of where it stopped. Then a toast: "You drifted off around 23:41.
    Jump back 4 minutes?" whose action `seekBook`s to the touch, only into the book
    it was offered for. If the listener pressing play is the very write that closes
    the grace (iOS slept through it), the play edge has already gone by, so the
-   controller prompts on the spot instead of saving.
+   controller prompts on the spot instead of saving. A prompt that would land while
+   the app is in the background (a headphone or CarPlay play) waits for the app to
+   come to the front, once, and is judged then (same book loaded, still near where
+   it stopped).
 
 **The last touch** is `last-interaction.ts`: memory-only, per book key (20 kept).
 `startInteractionWatch` (started by the drift watch) records what the store shows -
 the transport starting or stopping, and the position **jumping** rather than
-flowing (more than `JUMP_SECONDS`, 4 s, beyond what playback could have done) -
-which covers the lock screen and CarPlay with no change to the store.
-`noteInteraction()` records the touches the store can't see: arming a timer in the
-sheet, a shake, Keep listening. The automatic nightly arm is not a touch. A
+flowing (`isJump`, the undo chip's rule, with a finer `JUMP_SECONDS` threshold of
+4 s) - which covers the lock screen and CarPlay with no change to the store. Playing
+on into the next file is not a touch (the engine's file advance is not a pause, and
+not a jump). `noteInteraction()` records the touches the store can't see: arming a
+timer in the sheet, a shake, Keep listening, a bookmark from any surface. The automatic nightly arm is not a touch. A
 misread edge only makes the listener look awake somewhat later, which shortens the
 jump back; it never invents one.
 
@@ -1149,9 +1220,14 @@ What must **not** read as a jump, and why it doesn't:
   `loading`, `ready`, `error`... keep the last settled sample.
 - **The downloads hot-swap**: same book, same position.
 - **The app coming back after iOS suspended JS**: a 1 s heartbeat (`ticker`) notes
-  when JS last ran; a gap over `SUSPENSION_GAP_MS` (5 s) marks the next sample
-  `unobserved`, and forward movement up to the allowance is then accepted even from
-  a paused sample (a lock-screen play while suspended). Backward movement is never
+  when JS last ran - only while the app is **not** active and a book is loaded (JS
+  can only be suspended away from the foreground, so nothing wakes up once a second
+  in it; a stalled heartbeat is noticed as the app comes back). A gap over
+  `SUSPENSION_GAP_MS` (5 s) marks the return `unobserved`, and forward movement up
+  to the allowance is then accepted even from a paused sample (a lock-screen play
+  while suspended) - but only by the first sample within `RESUME_GRACE_MS` (3 s) of
+  the return, not whatever sample comes next (an hour later, with the book still
+  paused, that is a seek made in the foreground). Backward movement is never
   natural.
 - **The undo itself**: `undoJump` marks its landing (`undoLanding`, within 5 s and
   5 s of the target), which is then not recorded.
@@ -1207,69 +1283,104 @@ and last scroll on their own, `inline` lets the page scroll).
   place, gated **exactly** as the book page gates it (`meta-gating.ts`: the same
   corrected chapter starts from `chapterStartsOf`, `listeningProgressFor`, and
   `useListeningPosition` sampled in `LIVE_POSITION_BUCKET_S` buckets, never below
-  the saved position) - never a fork of those rules. Its `status` (`off`,
-  `loading`, `none`, `ready`) keeps the panels from flashing everyone hidden while
-  the chapters load. It runs inside a `ConnectionScope` for the book's own server.
+  the saved position, and only once the book is placed, `selectPlacedBookKey`) -
+  never a fork of those rules. The chain itself (the `metadata` flag, the book for
+  its ASIN/ISBN, `/meta`, the chapters, the corrected starts, the matched work) is
+  `useBookCommunity` (`src/components/library/use-book-community.ts`), shared with
+  the reveal listener and Previously on: each step waits on the one before, so
+  nothing is asked of a server without `metadata` or for a book that can't match.
+  Its `status` (`off`, `loading`, `none`, `ready`) keeps the panels from flashing
+  everyone hidden while the chapters load; an **unknown** `metadata` counts as off,
+  as for the phone's chips. It runs inside a `ConnectionScope` for the book's own
+  server. The loaded book's identity comes from `usePlayingTarget`
+  (`playing-target.ts`: the same object until another book loads, so reads keyed on
+  it don't churn; `selectIsLoaded(target)` is the per-book boolean selector).
 - **`companion-store.ts`** (`useCompanion`, memory only): the tab (kept across opens
   of the player), **one shared reveal** per book (`revealedKey`: Show anyway in
   Who's who also reveals Story so far, as on the book page, and another book starts
   hidden), and the "Just met" ids of the last crossing. It sits outside any view so
   the desktop column, the tablet's inline companion, the phone's sheet and the
   toast's Show agree.
-- **Panels:** `WhoPanel` (met people newest first, a `HiddenStrip` that counts the
-  rest without naming them, a character's description behind a per-card tap since
-  it is written for the whole book, "Just met" springing in), `StoryPanel` (the
+- **Panels:** `WhoPanel` (met people newest first, as the book page's own quiet
+  `CharacterCard` - "Just met" is the card's one pink thing - with a `HiddenStrip`
+  that counts the rest without naming them, and a character's description behind a
+  per-card tap since it is written for the whole book; the card, the strip and the
+  empty state are the same components Search and the book page use), `StoryPanel` (the
   recaps up to "Up to chapter N", the whole-book summary behind the shared spoiler
   accordion, `RecapSummaryBlock`, while unfinished), `ChaptersPanel` (a virtualised
   list opened on the current chapter; it replaced `chapter-list.tsx`), and the book
   page's `BookmarksSection` / `NotesSection` / `HistorySection` with an `onJump`
   that seeks the playing book in place (so the undo chip follows) instead of
-  opening the player. `Attribution` (`companion-pieces.tsx`) puts the server's
+  opening the player. Those three need the book's server: without a client (a
+  removed server, a download playing on) they say "This book's server isn't
+  connected" rather than throw. `Attribution` (`companion-pieces.tsx`) puts the server's
   `attribution` (credit, and the licence as a link) under every community block;
   the credit is the server's, never composed here.
 
 **The reveal toast** is `CompanionRevealListener` (`reveal-listener.tsx`), mounted
 once in the root layout so it fires wherever the listener is. For the loaded book it
-reads the cast and the chapter starts (the book page's gate inputs) and subscribes to
-`usePlayer`, comparing each sample (`RevealSample`: position, playing, gate chapter)
-with the previous one. `revealOnCrossing` announces only on a **natural crossing**
-(`isNaturalCrossing`: both samples playing, time moving forward by at most
-`NATURAL_STEP_S` = 10 s, the chapter going up) - never a load, a resume, a seek, a
-skip or a jump back - and only the people the new chapter reveals beyond the
-furthest chapter reached this session, so replaying a chapter never re-announces
-anyone; a finished book announces nothing. A hit marks them `justMet` and toasts
+reads the cast and the chapter starts (`useBookCommunity`) and subscribes to
+`usePlayer`, feeding each sample (`RevealSample`: position, playing, and the chapter
+read exactly as Who's who's gate reads it - the live place in the gate's 15 s
+buckets, only once the book is placed - so the toast and the panel agree) to
+`watchReveal`, a small pure state machine: the first playing sample is where the
+book is (a load or resume, never a crossing); a sample that isn't playing (a pause,
+a buffer, the moment between two files) is passed over, so a chapter that starts
+with a new file still crosses from the last playing sample; a sample a natural step
+(`isNaturalStep`: both playing, forward by at most `NATURAL_STEP_S` = 10 s) from the
+last is taken, and a crossing when the chapter went up; anything else is **held** as
+a possible jump until the next sample says what it was - a seek (the book plays on
+from it: taken, never a crossing) or one write of a file change the native engine
+reports in two (dropped as a glitch). `revealOnCrossing` then names only the people
+the new chapter reveals beyond the furthest chapter reached this session, so
+replaying a chapter never re-announces anyone; a finished book announces nothing. A hit marks them `justMet` and toasts
 "New in Who's who: …" with **Show** (`showWhoIsWho`: the Who's who tab, the
-companion sheet on a phone, and the player pushed when it isn't on top).
+companion through `openCompanion('who')`, the player pushed when it isn't on top -
+read when **Show** is pressed, not when the toast was made).
 
 **Previously on** (Home, `src/components/home/previously-on.tsx`, rules in
 `previously-on-model.ts`) reuses the same gate: above the Now card for an unfinished
 book last saved `PREVIOUSLY_ON_GAP_DAYS` (12) or more days ago, not loaded, on a
 server with `metadata`, showing the furthest recap the saved place is past (one
-short paragraph, clamped); "Resume, with 30 seconds of overlap" is
-`playBook(..., overlapStart(saved))` at the saved speed (which lowers the resume
-floor to where it starts, so the overlap's saves aren't refused as a slip).
-Dismissed for the session in memory.
+short paragraph, clamped); the gap is measured from the clock now. "Resume, with
+30 seconds of overlap" (`resumeWithOverlap`) starts 30 s before the **newest** saved
+place: a start at an explicit position skips the store's own resume reconciliation,
+so it runs `loadInitialProgress` (the server, the local mirror and the offline
+queue) against Home's row first, then `startBookInPlace` at `overlapStart(place)`
+with that place's speed. The card is dark in both themes through
+`ScopedThemeColors`. Dismissed for the session in memory.
 
 ## The player controls and title display
 
 The player's building blocks, shared by the full player and the docked bar:
 
+- **One chrome for the controls** (`control-pill.tsx`): `pillClass(look)` /
+  `ControlPill` give every player control the same press, hover and focus states
+  (`ghost` for the transport, the dock and the header, `outline` for the full
+  player's actions and chips, `active` for a running sleep timer's brand-soft pill).
+  **Touch targets:** a rem is 14 pt on native (`NATIVE_REM_PT`) but 16 px on the
+  web, so a rem-sized control (`h-11` = 38.5 pt) takes `hitSlop={slopTo44(rem)}`,
+  zero on the web; tests assert it with `expectNativeTarget`
+  (`src/testing/touch-target.ts`).
 - **Speed and sleep timer open sheets.** The readouts (the full player's speed and
-  sleep pills, the dock's `SpeedPill` and `SleepTimerButton`) only call
-  `usePlayerSheets.openSheet`; the sheets (`SpeedSheet`, `SleepSheet`) are rendered
+  sleep pills, the dock's speed pill and `SleepTimerButton`, all on
+  `useSleepPill` for the sleep one) only call `usePlayerSheets.openSheet`; the sheets (`SpeedSheet`, `SleepSheet`) are rendered
   by `PlayerSheetHost`, mounted in the full player and once at the shell's root, one
   active at a time
   ([overview](overview.md#player-sheets-and-overlays)), so they're never clipped.
-  Both present through `PlayerSheet`
-  (`player-sheet.tsx`): a bottom `Sheet` on a phone, a floating one on a tablet,
-  a centred `Dialog` on desktop; children mount only while open, so a body that
-  subscribes to the position costs nothing behind a closed sheet. `usePlayerSheets`
+  Every player sheet presents through one `PlayerSheet` (`player-sheet.tsx`): a
+  bottom `Sheet` on a phone, a floating one on a tablet, a centred `Dialog` on
+  desktop, with `body="scroll"` for plain content or `body="fill"` for content with
+  its own scroller (the chapter list, the companion, Up next); children mount only
+  while open, so a body that subscribes to the position costs nothing behind a
+  closed sheet. `usePlayerSheets`
   (`player-sheets.ts`) is a tiny store anyone can drive (`openSheet('sleep')` from
   the Z key, `'shortcuts'` from ?); the active host renders it from `open`.
   - **Speed** (`speed-model.ts`): the readout with "… left in the book at 1.25× ·
     remembered for this book", a `Slider` in hundredths (so its aria values are
     exact) between labelled -/+ `Button`s (`SPEED_STEP` 0.05, `snapSpeed` removes
-    float dust; the store clamps to the same 0.5-2 range), and `SPEED_PRESETS`
+    float dust; `steppedRate` steps on it; `clampRate` in `rate.ts` holds the same
+  0.5-2 range), and `SPEED_PRESETS`
     as `OptionTile`s, each captioned with the time left at that speed.
   - **Sleep** (`sleep-sheet-model.ts`): a `SleepNotice` while a timer stands
     (`sleepNotice`: "Sleep timer on", "Stopping at the end of the book", or
@@ -1282,7 +1393,23 @@ The player's building blocks, shared by the full player and the docked bar:
     closes the sheet. The sleep readouts read only the phase - a countdown on
     `brand-soft` while `running`/`ending` (`useSleepCountdown`, also first in the
     mini players' subtitle), a short "Keep going" once the timer has paused.
-- **The seek bar** (`seek-bar.tsx`) is chapter-relative: `SeekBar` draws stylised
+- **The scrubbers share their parts** (`scrub-parts.tsx`: the web hover fraction,
+  the pink `Playhead` riding the track on the UI thread, and the `ScrubTip`, which
+  reports itself through `onTip` so the caller clears what sits above - the full
+  player's status line and the seek bar's times row fade under it) and **one
+  segment hook** (`use-playing-segment.ts`): `usePlayingSegment` gives the playing
+  segment's shape and `kind` (`chapter`; `book` for a chapterless book with a
+  whole-book timeline, "Position in book" / "left in the book"; `file` without a
+  timeline), the live seconds into it, the commit (`seekBook(scrubTarget(…))`,
+  or the file's seek) and the bookmarks inside it; with `hold` it keeps the segment
+  a drag started in, so a chapter ending mid-drag can't swap the span under the
+  finger. `scrubTarget` (`transport.ts`) holds any scrub **30 s short of the
+  book's end**: landing on the end would finish the book and take the undo chip
+  with it. Both scrubbers ignore gesture-handler's keyboard pointer (the press it
+  invents at the centre for Space and Enter on the web), scrub only on a sideways
+  drag (`activeOffsetX`/`failOffsetY`, `pan-y` on the web) and never commit a
+  cancelled drag.
+- **The seek bar** (`seek-bar.tsx`) is segment-relative: `SeekBar` draws stylised
   bars - **deliberately decorative**: `seek-texture.ts` seeds a speech-like envelope
   from the book and chapter (`seekTextureKey`), so a chapter always looks the same
   and two chapters differ, without pretending to show the sound (a `peaks` prop
@@ -1292,16 +1419,25 @@ The player's building blocks, shared by the full player and the docked bar:
   Tap jumps, a drag scrubs with a tip ("41:12 · 17:26:50 in the book") and commits
   on release, bookmark glyphs sit above; it is an adjustable slider whose steps are
   the skip lengths (gesture and accessibility come from `useSliderControl`, shared
-  with `Slider`). `PlayerSeekBar` binds it to the store (the chapter, else the file
-  without a whole-book timeline); `SeekTimes` is the row under it ("21m left in the
-  chapter · ends 22:01", at the current speed on the local clock).
+  with `Slider`). `PlayerSeekBar` binds it to the store through
+  `usePlayingSegment`; `SeekTimes` is the row under it ("21m left in the chapter ·
+  ends 22:01", at the current speed on the local clock, `formatWallClock` reading
+  the device zone per call).
 - **The whole-book timeline** (`book-timeline.tsx` + the pure
-  `book-timeline-model.ts`): one segment per chapter sized by length (merging
-  neighbours too narrow to see), past chapters in ink, the current one pink,
-  bookmark and note pins (`usePlayingPins`, through the playing book's own
-  connection, never throwing when it's gone), an axis in the `full` variant, a
-  hover tip on the web; a tap or drag seeks (a jump, so the undo chip appears by
-  itself). `PlayerBookTimeline` binds it to the store.
+  `book-timeline-model.ts`): chapters merged into runs like the Now card's
+  `scaleRuns`, each placed by time (`runBox`, the one mapping the playhead, taps and
+  pins use), past chapters in ink, the current one pink; bookmark and note pins
+  (`usePlayingPins`, through the playing book's own connection, never throwing when
+  it's gone; a note without a place gets no pin) on the full player's compact
+  timeline too, where a tap on a pin lands on it; an axis in the `full` variant, a
+  hover tip on the web; a tap or drag seeks through `scrubTarget` (a jump, so the
+  undo chip appears by itself). `timelinePosition` never places the playhead before
+  the start of the chapter the place is in, so a jump to a chapter's start names that
+  chapter. `PlayerBookTimeline` binds it to the store.
+- **Rings** are `src/components/ui/progress-ring.tsx`: `ProgressRing` (a fraction
+  the caller ticks, the grace card) and `CountdownRing` (empties by itself to an
+  `until`, on the UI thread: the undo chip, the credits' countdown), both
+  transform-only on every platform.
 - **The transport cluster** (`transport-controls.tsx`): previous chapter, back,
   play/pause, forward, next chapter at three sizes (`lg` full player, `md` phone,
   `sm` dock); previous/next read the live position at press time through
@@ -1313,11 +1449,17 @@ The player's building blocks, shared by the full player and the docked bar:
   Shift+←/→ chapters, `[` `]` speed by 0.05 (`steppedRate`), B bookmark
   (`addBookmarkHere`, through the playing book's connection), P full player, Z
   sleep, ? the `ShortcutsDialog`, Esc closes the top layer (a sheet, then the
-  player). None fire while typing (`isEditable`), over another modal
-  (`isModalOpen`, any `aria-modal`), with Ctrl/Alt/Meta, or (except ? and Esc)
-  with no book loaded; Space and the arrows are left to a focused button or slider
-  (`ownsKeys`). Q (Up next) and ⌘K / `/` (the palette) keep their own handlers and
-  are listed in the overlay too.
+  player). None fire while typing (`isEditable`), over another open layer
+  (`isModalOpen`: an `aria-modal` `Sheet`, or a Radix Dialog, AlertDialog, menu or
+  select, which say so with `data-state="open"`), with Ctrl/Meta, or (except ? and
+  Esc) with no book loaded; Alt is refused too, except for `[` and `]` typed
+  through AltGr or Option on layouts that need it. Space stands aside for a focused
+  control Space activates (`ownsSpace`: a button, a tab) and the arrows for one
+  they move (`ownsArrows`: a slider), so Space still plays over a focused
+  scrubber. Q (Up next; it closes the sheet it opened, whose `layer`,
+  `UP_NEXT_LAYER`, `useGlobalShortcut` doesn't count as a blocking layer) and ⌘K / `/` (the
+  palette) keep their own handlers and are listed in the overlay too. Only the top
+  app shell (`useIsTopShell`) attaches the keys.
 - **`prettify-title.ts` cleans filename-shaped labels for display.** Audiobook
   "chapter" labels are often just the underlying audio *filename*
   (`01_the_hobbit_ch1.mp3`). `prettifyChapterTitle` strips a recognised audio

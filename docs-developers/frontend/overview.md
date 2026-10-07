@@ -199,10 +199,17 @@ like a sheet.
   What fits is decided by the bar's **measured** width, not the window class:
   `dockLayout(width)` gives `allActions` from 1024 (below it speed, bookmark and
   output step back) and the `scrubber` from 800; everything hidden is in the full
-  player. Speed and sleep open through `usePlayerSheets`; the dock mounts **no
-  sheets** itself (the shell's one `PlayerSheetHost` does, below), only the sleep
-  timer's `GraceCard` just above the bar. It publishes its height as the `dock`
-  edge.
+  player. While the Undo chip shows (`useUndoVisible`), its **measured** width comes
+  off the bar's width first and the right cluster stops growing, so the book keeps
+  its title. The sync line is `usePlaceSync` (`place-sync.ts`, shared with the full
+  player's status line): sign in again > saved on this device (the server offline,
+  or this server's saves queued) > synced / synced just now; it counts only the
+  playing book's server's queued saves and polls while playing (a 5xx save queues
+  with the server still online). Speed and sleep open through `usePlayerSheets`; the
+  dock mounts **no sheets** and no grace card (the shell's `ShellPlayerOverlays`
+  does, below). It publishes its height as the `dock` edge.
+- **Under the full player** the dock, the mini player and the accessory render
+  nothing (`usePlayerOnTop`): the player has its own controls.
 
 ### The full player
 
@@ -217,50 +224,80 @@ desktop browser can be any size:
   breathing to 94% while paused (reduced motion keeps it still); `PlayerHeader`
   (minimise, "Playing from" and the server name, the series line from `playerContext`, and the
   overflow `DropdownMenu`: View book details, Chapters, View end credits, Mark as
-  finished, Keyboard shortcuts on web); the chapter title (a tap opens the chapter
-  sheet, or the companion's Chapters tab on desktop); `PlayerStatusLine` (sync
-  state from `syncState`, the percent heard, the time left), which **becomes the
-  `UndoChip`** while a jump can be undone; `PlayerSeekBar times` over
-  `PlayerBookTimeline variant="compact"`; `TransportControls` (`md` on a phone,
+  finished, Keyboard shortcuts on web); the chapter title (a tap asks for
+  `chapters`, which the sheet host shows as the companion's Chapters tab on desktop
+  and **on a phone** - one chapters UI there - and as the chapter sheet on a
+  tablet); `PlayerStatusLine` (`usePlaceSync`, the percent heard, the time left),
+  which **becomes the `UndoChip`** while a jump can be undone, gives its slot to the
+  sleep timer's `GraceCard inline` (in the flow, never over the controls), and
+  fades while a scrubber's tip floats into it; `PlayerSeekBar times` over
+  `PlayerBookTimeline variant="compact"` (with bookmark and note pins); `TransportControls` (`md` on a phone,
   `lg` elsewhere); `PlayerErrorLine`; `PlayerActions` (speed, sleep, bookmark,
   output where `canRoutePick`, Up next with its count).
-- **Phone:** one scrolling column; `CompanionChips` (Who's who and Story so far
-  with `metadata`, Chapters) open the companion as a sheet on that tab.
+- **Phone:** a flex column whose cover slot takes what the rest leaves, so the
+  player fits without scrolling; `CompanionChips` (Who's who and Story so far with
+  `metadata`, Chapters; one row, a sideways scroller where it doesn't fit) open the
+  companion as a sheet on that tab (`openCompanion(tab)`).
 - **Tablet:** words in the action pills; the companion inline under the controls
   (`variant="inline"`, the page scrolls).
 - **Desktop:** the companion as a `COMPANION_WIDTH` (420) column (`variant="column"`),
   no Up next pill (the drawer is the desktop's), and `playerCoverSize` leaves room
   for both.
 
-It mounts its own `GraceCard` (over the controls), `PlayerSheetHost
-scope="player"` and `UpNextSheet scope="player"`. The companion is described in
+It mounts its own `PlayerSheetHost scope="player"` with its measured layout (Up
+next's sheet included). The companion is described in
 [Playback](playback.md#the-companion-companion); the sheets below.
 
 ### Player sheets and overlays
 
 `usePlayerSheets` (`player-sheets.ts`) is the one "which player sheet is open"
-store (speed, sleep, chapters, the phone's companion; `bookmark` and `output` are
-actions, `shortcuts` is the web shell's `ShortcutsDialog`). `PlayerSheetHost`
-(`player-sheet-host.tsx`) renders it, and is mounted **twice**: inside the full
-player (`scope="player"`) and once in the shell (`scope="shell"`, for the docked
-bar and the mini players). **Exactly one host is active** (`hostIsActive(scope,
-playerOnTop)`, `usePlayerOnTop` reading the root segment): the full player's
-whenever it is on top, the shell's otherwise. On native the player is a root
-`fullScreenModal`, so the shell's overlays sit under it, invisible but live - two
-active hosts would open a sheet behind the player too. `UpNextSheet` follows the
-same rule with its own `scope`. The player's host closes its sheet when the player
-unmounts (except the shortcuts overlay), so a sheet doesn't reappear in the shell,
-and a `chaptersInColumn` host (desktop) turns a chapter-sheet request into the
-companion's Chapters tab. Speed and sleep present through `PlayerSheet`; the
-chapter list and the companion through `ListSheet` (a fixed-height bottom sheet,
-or a centred dialog on desktop, since they hold their own scroller).
+store. A request says **what**, never where: `speed`, `sleep`, `chapters`,
+`companion` (through `openCompanion(tab)`), `upnext` (Up next's sheet on a tablet
+or phone, with or without a book loaded); `bookmark` and `output` are actions, and
+`shortcuts` is the web shell's `ShortcutsDialog`. A book's request (speed, sleep,
+chapters, the companion) is dropped when the book unloads, so the next book never
+opens it by itself.
 
-`ShellPlayerOverlays` is what both `(app)` layouts mount at the shell's root,
-beside `UpNextSheet`: the shell host plus `PhoneGraceCard`, the grace card on a
-phone outside the full player, lifted to `bottomChromeTop(edges)` + 12 (above the
-tab bar and the mini player). A hosted `Sheet` is `role="dialog"` +
-`aria-modal` on the web, so the player's keyboard shortcuts stand back while one is
-open and its `OverlayHost` owns Escape.
+`PlayerSheetHost` (`player-sheet-host.tsx`) renders it and decides the **form**
+from its layout - the full player's measured one, the window's in the shell: the
+chapters become the companion's Chapters tab where the full player shows the
+companion as a column (desktop) or a sheet (phone), the chapter sheet otherwise; a
+companion request opens the phone's sheet and simply selects the tab wider; Up
+next opens `UpNextSheet`. Everything presents through the one `PlayerSheet`. The
+host is mounted **twice**: inside the full player (`scope="player"`) and once in
+the shell (`scope="shell"`, for the docked bar, the mini players and Up next).
+**Exactly one host is active** (`hostIsActive(scope, playerOnTop)`): the full
+player's whenever it is on top, the shell's otherwise. On native the player is a
+root `fullScreenModal`, so the shell's overlays sit under it, invisible but live -
+two active hosts would open a sheet behind the player too. The player's host closes
+its sheet when the player unmounts (except the shortcuts overlay), so a sheet
+doesn't reappear in the shell.
+
+`ShellPlayerOverlays` is what both `(app)` layouts mount at the shell's root: the
+shell host plus the floating sleep timer `GraceCard` (while the full player isn't
+on top), just above the measured bottom chrome, publishing its own `grace` edge so
+toasts lift above it. A hosted `Sheet` is `role="dialog"` + `aria-modal` on the
+web, so the player's keyboard shortcuts stand back while one is open and its
+`OverlayHost` owns Escape (Up next's sheet carries `UP_NEXT_LAYER`, so Q still
+closes it).
+
+**One app shell.** Only the top `(app)` shell (`useIsTopShell`,
+`src/components/shell/top-shell.ts`) mounts these overlays, the palette, the
+shortcuts overlay and the keys, and the app takes care never to stack a second one:
+a shell page opened from a root route (the full player, the credits) goes through
+`pushInShell` (`src/lib/open.ts`; `useOpen` does it), which dismisses the root
+routes and pushes into the shell's active tab - a `router.push` or `replace` from
+there would put a second `(app)` over the first (two docks, two sheet hosts, every
+shortcut firing twice). Code that must know where the player is at a press reads
+`topRootRoute(currentNavState())` (`src/lib/root-stack.ts`) instead of subscribing
+with `usePlayerOnTop`; `usePlayBook` starts every layout's book in place while the
+full player is already on top (a push stacked a second player).
+
+**Never navigate from the background.** `/player` and `/finished` are root
+`fullScreenModal`s and iOS can't present one from the background, so playback-driven
+code starts books in place (`startBookInPlace`) and defers any screen with
+`whenActive` / `navigateWhenActive` (`src/lib/when-active.ts`) - see
+[Playback](playback.md#ending-a-book-end-credits-and-up-next).
 
 ### Command palette (web)
 
@@ -346,16 +383,21 @@ unknown, so nothing flashes). One `UpNextPanel` in two containers:
   collapsible; both are remembered per device by `useUpNext`
   (`up-next-store.ts`, `persistedDocument` under `audiosilo.upNext`, hydrated when
   the drawer first mounts).
-- **Tablet/phone:** `UpNextSheet`, a bottom `Sheet` mounted once by each `(app)`
-  layout. Its open state is never persisted, so a sheet can't open itself at launch.
+- **Tablet/phone:** `UpNextSheet`, a player sheet (`usePlayerSheets`' `upnext`)
+  rendered by the active `PlayerSheetHost`, so it opens over the full player as well
+  as over the shell ([Player sheets](#player-sheets-and-overlays)). Its open state is
+  never persisted, so a sheet can't open itself at launch. A row or a suggestion
+  opens its page through `useOpen`, which from over the full player lands in the
+  shell underneath (`pushInShell`).
 
 `openUpNext()` / `closeUpNext()` / `toggleUpNext()` pick the drawer or the sheet
 by the window's form factor at call time. Entry points: `UpNextButton` (the queue
 glyph with a count badge) in the top bar (`variant="bar"`), the phone header on tab
-roots (`"header"`) and the docked player (`"dock"`, no count); the palette's *Open Up
-next*; and **Q** on the web
-(`useUpNextShortcut`: never while typing, with a modifier, over a modal, or over
-the player modal - the palette shortcut's guards).
+roots (`"header"`), the docked player (`"dock"`, no count) and the full player's
+pill (phone and tablet); the palette's *Open Up next*; and **Q** on the web
+(`useUpNextShortcut`: never while typing, with a modifier, or over another modal -
+the sheet it opened carries `UP_NEXT_LAYER`, which doesn't count, so Q closes it
+again).
 
 It shows **one connection's queue**: `queueConnectionId` picks the loaded book's
 server, else the default, else the first (a removed connection falls through).
@@ -384,7 +426,8 @@ When a book ends, the head of the queue plays first (skipping finished books),
 then the server's `/next` answer, then the folder sibling: `resolveUpNext` in
 `src/playback/up-next-resolver.ts`
 ([Playback](playback.md#what-plays-next-up-next-resolverts)). The book that starts
-from the queue, and the finished book, leave it (`useQueueDrop`). Keep-ahead
+from the queue, and the finished book, leave it (`dropFromQueue` in
+`src/components/player/end-of-book.ts`). Keep-ahead
 ([offline](offline.md#keep-the-next-books-ready-keep-aheadts--keep-ahead-controllerts))
 plans in the same order.
 :::
@@ -408,7 +451,8 @@ only while the playing book's server is offline.
 The root layout mounts `ShellToastHost` (`shell-toast-host.tsx`), the app's one
 `<ToastHost>`, lifted clear of whatever chrome is at the bottom: on a phone, the
 tab bar plus the mini player (or the iOS 26 accessory); on tablet/desktop, the
-docked player bar. The phone's sleep timer grace card (`PhoneGraceCard`) reads the same edges. Each piece of bottom chrome (`bar`, `mini`, `accessory`,
+docked player bar, and the sleep timer's floating grace card while it shows (the
+`grace` piece, which sits above the rest so toasts lift over it). Each piece of bottom chrome (`bar`, `mini`, `accessory`,
 `dock`) publishes its **measured top edge** - its distance from the window's
 bottom - into `useShellMetrics` (`shell-metrics.ts`) with `useChromeEdge`
 (`setChromeEdge` underneath). The native tab bar can't be measured directly, so
