@@ -85,9 +85,21 @@ companion is [below](#the-companion-companion).
 
 `usePlayerSheets` (`player-sheets.ts`) is the one "which player sheet is open"
 store. A request says **what**, never where (the `PlayerSheet` union lists them;
-`bookmark` and `output` are actions, `shortcuts` is the web shell's
-`ShortcutsDialog`). A book's request is dropped when the book unloads, so the next
-book never opens it by itself.
+`bookmark` without an editor request and `output` are actions, `shortcuts` is the
+web shell's `ShortcutsDialog`). A book's request is dropped when the book unloads, so
+the next book never opens it by itself (`dropsWithBook`).
+
+**The annotation editors** are requests too: `openEditor(request)` sets `open` to
+`bookmark` or `note` together with an `EditorRequest` (`editor`), and the host renders
+`AnnotationEditorSheet` for it (see [Bookmarks and notes](annotations.md#the-editors)).
+An editor carries its own book, so `shownSheet` shows it whether or not a book is
+loaded, and it survives the playing book unloading (closing it would throw away what
+the listener is typing). `openSheet` clears `editor`; `editorFor(open, editor)` reads
+it only while its kind is open, so the sheet slides away with its content after
+`close()`. The one-tap bookmark (`addBookmarkHere` in `player-shortcuts.ts`, behind the
+action pills, the docked bar and the **B** key) toasts *"Bookmark added"* with an
+**Add note** action that opens the editor on the new bookmark, only when the server
+has `annotations` (`cachedCapability`).
 
 `PlayerSheetHost` (`player-sheet-host.tsx`) renders it and decides the **form** from
 its layout - the full player's measured one, the window's in the shell: chapters
@@ -214,9 +226,10 @@ variants: `column` on desktop, `inline` on a tablet, `sheet` on a phone.
   since it is written for the whole book), `StoryPanel`, `ChaptersPanel`
   (virtualised and opened on the current chapter in the column and the sheet; a
   plain list inline), and the book page's `BookmarksSection`, `NotesSection` and
-  `HistorySection` (Bookmarks and History with an `onJump` that seeks the playing
-  book in place, so the undo chip follows); those three say "This book's server isn't connected" without a
-  client rather than throw. `Attribution` (`companion-pieces.tsx`) puts the server's
+  `HistorySection` (all three with an `onJump` that seeks the playing book in place,
+  so the undo chip follows; the shared rows and the top actions are
+  [`src/components/annotations/`](annotations.md)); those three say "This book's
+  server isn't connected" without a client rather than throw. `Attribution` (`companion-pieces.tsx`) puts the server's
   `attribution` under every community block; the credit is the server's, never
   composed here.
 
@@ -292,10 +305,14 @@ The building blocks shared by the full player and the docked bar:
 - **The whole-book timeline** (`book-timeline.tsx` + the pure
   `book-timeline-model.ts`): chapters merged into runs like the Now card's
   `scaleRuns`, each placed by time (`runBox`, the one mapping the playhead, taps and
-  pins use); bookmark and note pins (`usePlayingPins`, through the playing book's
-  connection, never throwing when it's gone; a note gets one only with a position,
-  which the app's own notes, saved at 0, don't have), where a tap on a pin lands on
-  it; a tap or drag seeks through `scrubTarget`.
+  pins use); bookmark and note pins (`usePlayingPins`, the playing book's case of
+  `useBookPins` / `useBookAnnotations`, which read ANY book's bookmarks and notes
+  through its own connection and never throw when it's gone, with a 10 minute
+  `staleTime` unless the caller passes its own; `pinsOf` gives a note a pin only
+  when its position is past 0, so notes written before notes had places don't stack
+  on the start), where a tap on a pin lands on it; a tap or drag seeks through
+  `scrubTarget`. The book page draws the same `BookTimeline` for any book
+  ([The book page](book-page.md#the-chapters-tab)).
   `timelinePosition` never places the playhead before the start of the chapter the
   place is in, so a jump to a chapter's start names that chapter.
 - **Rings** (`src/components/ui/progress-ring.tsx`): `ProgressRing` (a fraction the

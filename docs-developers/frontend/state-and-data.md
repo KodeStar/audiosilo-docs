@@ -1,6 +1,6 @@
 ---
 title: State & data
-description: "The typed API client and its hand-mirrored types, React Query conventions, capability gating in the screens, Home and Search's models (including the character spoiler rules), the Zustand stores, offline-safe progress sync, reachability tracking, and the two storage layers."
+description: "The typed API client and its hand-mirrored types, React Query conventions, capability gating in the screens, the annotations data layer, Home and Search's models (including the character spoiler rules), the Zustand stores, offline-safe progress sync, reachability tracking, and the two storage layers."
 ---
 
 The data layer follows one split consistently: **server state lives in TanStack
@@ -99,7 +99,8 @@ path)`, `qk.chapters(cid, lib, path)`, `qk.progress(cid, lib, path)`,
 `qk.allProgress(cid)`, `qk.bookmarks/notes/history(cid, lib, path)`,
 `qk.favourites(cid)`, `qk.libraries(cid)`, `qk.browse(cid, lib, path)`,
 `qk.bookMeta(cid, lib, path, opts?)`, `qk.metaWork(cid, workId)`, `qk.authors/narrators/seriesList(cid, lib)`,
-`qk.libraryBooks(cid, lib, query)`, `qk.nextBook(cid, lib, path)`, `qk.server(cid)` - so mutations can invalidate
+`qk.libraryBooks(cid, lib, query)`, `qk.nextBook(cid, lib, path)`, `qk.server(cid)`, `qk.myHistory(cid)`,
+`qk.myBookmarks(cid)`, `qk.myNotes(cid)` - so mutations can invalidate
 precisely and one server's cache never shadows another's. Content keys are `(connectionId, libraryId, path)` tuples,
 extending the path-is-identity rule across connections.
 
@@ -108,10 +109,14 @@ Patterns to copy when adding an endpoint:
 - Plain reads: `useQuery` + a `qk` key + `enabled: path.length > 0` guards.
 - Paged reads: `useBrowseInfinite` uses `useInfiniteQuery` against the server's
   `next_offset` cursor (500-entry pages); the browse screen drains all pages so
-  the A–Z rail and filter operate on the complete folder.
+  the A–Z rail and filter operate on the complete folder. The across-books lists
+  (`useAllHistory`, `useMyBookmarks`, `useMyNotes`) share `usePagedList`: pages of
+  100 on the server's opaque `next_cursor`, which the client normalises to
+  `Page<T> = { items, next_cursor? }` (`flattenPages` joins them).
 - Mutations invalidate their exact key on success (`useAddNote`,
   `useDeleteBookmark`, …; `addBookmark()` is the framework-free twin for callers
-  outside React and invalidates `qk.bookmarks` after the write). `useToggleFavourite` shows the full optimistic pattern:
+  outside React and invalidates `qk.bookmarks` and `qk.myBookmarks` after the
+  write). `useToggleFavourite` shows the full optimistic pattern:
   `onMutate` cancels + snapshots + patches the cached list, `onError` rolls
   back, `onSettled` invalidates to reconcile server-derived fields.
 - `useMarkFinished` deliberately routes through the offline-aware
@@ -204,7 +209,9 @@ older server (React Query rejects it instead) and the query stays pending.
   the series page and Search's character group do); `BookMetaRecording.chapter_count`;
   `local` (`BookRef`) on rail entries (how the series page and Next in your series
   tell an owned book from a ghost); and `previous` on a matched `BookMeta`.
-  `community_description`, `chapter_count` and `previous` have no reader yet.
+  `community_description` feeds the book page's About card (`aboutText`), and
+  `previous` is kept and seeded by the [offline companion](offline.md#the-offline-companion-offline-metats);
+  `chapter_count` has no reader yet.
 
 ### Who reads what (Phase 2)
 
@@ -225,6 +232,8 @@ Cross-server screens ask per connection (`useCapabilitiesAll` /
 | `collections` | the Collections mode, the collection page, the book menu's Add to collection |
 | `progress_edit` | the book menu's Mark as not finished, and Mark as finished with Undo (without it: `useMarkFinished`, no Undo) |
 | `user_stats` | Home's This week card, the Now card's finish date and the "&lt;narrator&gt; reads" shelf's top narrator (`useMyStats('30d')`, `useMyListening`, `useListeningGoal`) |
+| `ratings` | the end credits' and the book page's stars (`useBookRating`) |
+| `annotations` | bookmark labels in the editor and on the one-tap toast's Add note, Edit on bookmark and note rows, "See all in your journal", the Journal's Bookmarks and Notes lists and their export (see [below](#bookmarks-notes-and-the-journal-phase-4)) |
 
 Writes from screens follow the [1b write rules](#the-listeners-own-state-player-redesign-phase-1b)
 (positioned adds, exact-path removes): Up next's drag/keys and a collection's Move
@@ -313,52 +322,40 @@ connection-scoped like the rest (`qk.queue`, `qk.collections`, `qk.collection`,
 - **Streaks are computed on the device** from `useMyListening`'s `days` (server
   time).
 
-### The book screen's tabs
+### Bookmarks, notes and the Journal (Phase 4)
 
-The book screen (`src/app/(app)/(home,library,search,offline,me)/book/[libraryId].tsx`)
-is an **overview plus a tab row**, not one long scroll. The overview keeps
-everything that identifies and starts the book - breadcrumbs, the version picker,
-the cover hero, the stats strip, the Listen/download actions, and the
-community-metadata **About** block (`BookMetaAbout`). Everything else lives behind
-the Stacks underline tabs (`Tabs` / `TabsList scrollable` / `TabsContent`,
-`src/components/ui/tabs.tsx`): `scrollable` puts the triggers in a horizontal
-scroller so up to seven tabs (and labels that grow in translation) stay
-reachable, and the parts carry the tablist / tab / tabpanel accessibility roles.
-The active panel renders inside the page's existing ScrollView, never in a nested
-vertical scroller. Phone and tablet/desktop share the same tab section (the wider
-layouts only add the right-hand cover panel). The tabs:
+Phase 4 mirrors the server's `annotations` capability. Like the 1b state, every
+hook takes an optional trailing `connectionId` and gates on the flag.
 
-| Tab | Shown when |
-|---|---|
-| `chapters` (labelled *Chapters* or *Files*) | the book has chapters or files |
-| `recaps` | the work has recaps, a *visible* whole-book summary, **or** earlier books in its series |
-| `characters` | the work has characters, **or** earlier books in its series |
-| `bookmarks`, `history`, `notes` | always |
-| `series` | at least one non-empty series rail |
+| Capability | Query hooks | Mutation hooks | Types |
+|---|---|---|---|
+| `annotations` | `useMyBookmarks`, `useMyNotes` (infinite, `skipToken` until the flag is `true`) | `useUpdateBookmark`, `useUpdateNote` (`useCapabilityMutation`); `useAddBookmark` / `addBookmark` send a `label` only with the flag | `BookmarkLabel`, `BookmarkPatch`, `NotePatch`, `MyBookmark`, `MyNote`, `HistoryEntry`, `Page<T>`, `PageQuery`; `label?` on `Bookmark` |
+| none | `useAllHistory` (every server has `GET /me/history`) | - | `HistoryEntry` |
 
-The list itself is a pure function - `bookTabs(input): BookTab[]` in
-`src/components/library/book-tabs.ts`, unit-tested - and the screen holds the
-selected tab in `useState` with `tabs.includes(tab) ? tab : tabs[0]`, so a tab
-that disappears when data settles falls back instead of rendering blank. Labels
-come from `TAB_LABEL_KEY` in the same module, which reuses the existing section
-strings (`library.{bookmarks,history,notes}.title`, `book.meta.characters`); only
-`book.tabs.recaps` and `book.tabs.series` are tab-only keys.
+- **Never send a label to an older server.** The server decodes strictly, so an
+  unknown `label` field is a `400`. `ApiClient.addBookmark` sends it only when given;
+  `useAddBookmark` and the framework-free `addBookmark` give it only when the flag is
+  `true` (`useCapability` / `cachedCapability`). `updateBookmark` and `updateNote`
+  send only the patch's own fields, so a spread `Bookmark` never reaches the wire.
+- **Bounds:** a bookmark's note is at most 2000 characters and a note's body at most
+  10000; the editors enforce both (`BOOKMARK_NOTE_MAX`, `NOTE_BODY_MAX`).
+- **Paging:** `limit` 1-500 (the server's default 100), `cursor` a previous page's
+  opaque `next_cursor`. A server without `annotations` answers `/me/history` with one
+  page (the newest `limit`), no `next_cursor` and no `book` per row.
+- **Cache writes:** an edit stores its answer in the book's own list
+  (`storeAnswer`) and patches the across-books pages in place (`replaceInPages`)
+  before invalidating them; a delete removes the row from the pages
+  (`removeFromPages`); an add invalidates the across-books key.
 
-A summary counts as *visible* only when it will actually render: an `in_short`
-(inline on a finished book, otherwise as a collapsed, spoiler-chipped
-"Whole-book summary" row), or an `ending` on a finished book (the ending is a
-full spoiler and is withheld until then). The screen computes that once and passes it to both `bookTabs` and
-`BookMetaRecapsTab`, so the tab and its panel can never disagree.
-
-The point of the restructure: a long chapter list used to bury bookmarks, notes,
-history and the whole metadata section below it.
+The screens are [Bookmarks and notes](annotations.md) and [The Journal](journal.md);
+the wire format is in the [API reference](../server/api/reference.md).
 
 ### Enriched book metadata
 
-The meta-driven tabs are rendered from `src/components/library/book-meta.tsx`:
-`BookMetaAbout` (description collapsed past ~300 characters with a show-more
-toggle, production details - publisher, release date, first published, an
-"abridged" badge - and a quiet **View on AudioSilo Meta** link),
+The meta-driven blocks are rendered from `src/components/library/book-meta.tsx`:
+`BookMetaAbout` (the aside's About card: the community description with its
+attribution and **Improve this**, else the server's description, else the work's;
+see [The book page](book-page.md#the-aside)),
 `BookMetaRecapsTab`, `BookMetaCharactersTab`, and `BookMetaSeriesTab` (one
 horizontal rail per series family). `matchedMeta(meta, enabled)` narrows the
 envelope once for the screen; `seriesRails(series, currentWorkId, picks)` builds
