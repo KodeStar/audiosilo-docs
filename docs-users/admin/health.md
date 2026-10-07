@@ -46,7 +46,7 @@ below.
 | **One book split into disc folders** | A book ripped from CDs sits in one folder per disc (`CD1`, `CD2`, ...), so each disc reads as its own book. The row is the first disc, and says "*folder* reads as one book per disc folder". | **Join into one book** sets the folder holding the discs to **Always one book** ("Joining the discs of *folder*"). The library rescans, then they play as one book, with listening progress carried over. See [Books split into disc folders](libraries.md#books-split-into-disc-folders). |
 | **Likely duplicates** | Copies of one book in the same library. See [Duplicates](#duplicates). | A side-by-side comparison. |
 | **Missing covers** | No cover image in the book's folder and none inside its files. | **Upload a cover** opens the book's page, where **Change cover** adds one (see [Covers](books.md#covers)). |
-| **Not matched to community metadata** | The book has no ASIN or ISBN, so community metadata can't find it. Only shown while [community metadata](server.md#community-metadata) is on. | **Review match** opens the book's page with the match dialog open (see [Matching](books.md#matching-with-community-metadata)). |
+| **Not matched to community metadata** | The book has no ASIN or ISBN, so community metadata can't find it. Only shown while [community metadata](server.md#community-metadata) is on. | **Review match** opens the book's page with the match dialog open (see [Matching](books.md#matching-with-community-metadata)). To match the whole list at once, use **Match automatically** above it (see [Matching every book at once](#matching-every-book-at-once)). |
 | **Long books without chapters** | Books over two hours long with no chapter marks (or a single chapter). Listeners can play them but can't jump between chapters. | None in the console: add chapters to the file with your tagging tool, or ignore it. |
 | **Converted to play in browsers** | The audio format doesn't play in web browsers, so the server converts it while someone listens in the web player. The apps play it as it is. | None needed: it works. Re-encode the file if you'd rather the server didn't convert it, or ignore it. |
 
@@ -70,6 +70,68 @@ disk. Click the title or cover to open the book's page.
 When a list is empty it says **All clear** - the category you were working on
 stays open rather than jumping to the next one. Books you ignored stay ignored
 until you show them again.
+
+### Matching every book at once
+
+**Not matched to community metadata** opens with a **Match automatically**
+card above its list. It looks every book in the list up in the community
+catalogue in one pass, then waits for you: nothing changes until you review
+what it found and apply it.
+
+1. Pick a library (when you have more than one) and click **Find matches**.
+   The server does the work, so you can leave the page. The card shows
+   "Matching *N* of *M* books", and **Stop** ends the run without changing
+   anything.
+2. When it's done, the card counts what it found: **confident** matches,
+   matches **to review**, books **not found**, and any it **couldn't check**
+   (the catalogue didn't answer for them). Click **Review and apply**.
+3. Choose **What to write**:
+   - **ASIN and ISBN only** marks each book matched, so players show its
+     "About this book", and changes nothing else.
+   - **Fill in what's missing** (the default) also fills every field the book
+     has empty (narrator, series, published year, description) and takes the
+     community cover for a book with no cover at all. Nothing the book already
+     has is replaced.
+   - **Use community values** also replaces fields that differ, as accepting a
+     match by hand does.
+
+   Under each book the dialog says what your choice writes, for example "Sets
+   Narrator, Published, and ASIN". Fields you edited yourself are never
+   replaced, and a series number is only set beside the series it belongs to.
+4. **Confident** matches are ticked; untick any you don't want. **To review**
+   lists matches that scored lower, or only just ahead of another work: tick
+   the ones that are right, or click **Match by hand** to open that book's
+   match dialog. **Not found** and **Not checked** list the rest.
+5. Click **Apply to *N* books**. The server applies them in the background
+   ("Applying *N* of *M* matches"). **Stop** finishes the books in hand and
+   leaves the rest to apply later from the same review.
+
+![Reviewing the matches Match automatically found](/img/screenshots/admin/health-bulk-match.png)
+
+A match is confident when it scores 90% or more, at least 10 points ahead of
+the next candidate, and its recording has an ASIN or ISBN to attach. Whatever a
+run writes shows as a **Community** value on the book's page, and you can
+revert it like any other.
+
+Books you've ignored under **Not matched** are left out of a run. If the
+catalogue stops answering, or community metadata is turned off, the run stops
+by itself and the card says why. A run sends the same as matching a book by
+hand (see [What matching sends](books.md#matching-with-community-metadata)), a
+couple of books at a time.
+
+#### Which ASIN a match takes
+
+A recording sold in several Audible stores has an ASIN in each. A match takes
+the one from the store set as **Audible marketplace** in
+[Server settings](server.md#community-metadata), then the US store's, then any
+other. The review shows each ASIN's store ("B0... · UK"). With no marketplace
+set, the US store's comes first.
+
+Once a marketplace is set, the card also offers **Use *country* ASINs**. It
+looks again at the books matched earlier, by hand or in bulk, and offers to
+switch each one to its recording's ASIN in your store, where the community
+catalogue now has one (it gains them over time). Review and apply it the same
+way. It never changes an ASIN from your tags, or one you typed.
 
 ### Duplicates
 

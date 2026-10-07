@@ -456,7 +456,19 @@ CSP-sensitive work against a real build served by Go. The console's own gate is
   in the URL (`?issue=<kind>&ignored=1`). Without `?issue=` the page opens the
   first category needing attention and keeps it open, so clearing it shows "All
   clear" instead of jumping to the next. "Check again" queues a scan of every
-  library (`POST /admin/scan`).
+  library (`POST /admin/scan`). Above the "Not matched" list, **Match
+  automatically** (`bulk-match.tsx`, rules in `bulk-match-model.ts`) follows the
+  newest [match run](api/reference.md#bulk-community-matching)
+  (`GET /admin/match-runs`, polled each second while one works): Find matches
+  (and, with a preferred marketplace set, "Use *country* ASINs", a repick), its
+  progress with Stop, then the counts and "Review and apply". The review dialog
+  pages each outcome's items (`GET …/items?outcome=`), ticks the confident ones,
+  shows what the chosen scope writes from each item's server-computed `changes`,
+  and posts the admin's picks as `exclude`/`include` ids. When the newest run's
+  status changes to one that isn't working, the book lists, issues, book pages
+  and covers are refetched (a small apply can finish between two polls).
+  Marketplace names come from `lib/regions.ts` (`Intl.DisplayNames`, with each
+  store's domain), shared with the Settings select.
 - **Health > Jobs** (`features/health/jobs-page.tsx`) - over `GET /admin/jobs`
   (polled every second while a job runs or waits, every 15 seconds otherwise):
   the running scan with its progress and counters and Stop, the queue with
