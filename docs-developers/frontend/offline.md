@@ -195,7 +195,11 @@ with no network.
   same hook); the `/downloads` page is below. Its `needsTranscode` (web, a book that
   streams transcoded, with no entry or an errored one - a download already on disk
   stays removable) turns `supported` off so `DownloadControl` reads "Can't download
-  in this browser" rather than the generic "Downloads unavailable". Every user-facing removal (the book
+  in this browser" rather than the generic "Downloads unavailable". List responses
+  carry no `direct_playable`, so on web `download()` looks a list-shape book up in
+  full (`itemQuery` + `chaptersQuery` through the cache) before deciding, and the book
+  menu offers Download only once its own lookup (made when the menu opens) says the
+  browser plays the book directly. Every user-facing removal (the book
   page, the book menu, the Downloads page) asks first through the shared
   `RemoveDownloadConfirm` (`src/components/downloads/remove-download-confirm.tsx`),
   which says how much room it frees.

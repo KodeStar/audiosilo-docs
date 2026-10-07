@@ -56,8 +56,10 @@ transition records `finished: true`.
   **still playing** (the credits opened early from the menu) is derived from the
   live player store, not the URL: loaded and not in `ended`, which covers a paused
   or errored book too, so a lock-screen pause can't read as "over" and auto-advance
-  mid-listen. Play now and the countdown share one `playNext`: an early-opened book
-  is finished first (and leaves Up next), then `advanceTo(next)`; on success the
+  mid-listen. Play now and the countdown share one `playNext`: a book that has really ended
+  (opened with `ended`, in the `ended` state, or within `FINISHED_TOLERANCE` of its end)
+  is finished first (and leaves Up next); a book still mid-way is only `stop()`ped (its
+  place saved; it stays unfinished, in Up next, with its download), then `advanceTo(next)`; on success the
   player replaces the credits once the app is active (`navigateWhenActive`, and not
   at all if the credits were closed meanwhile), on failure the countdown stops and a
   toast says "Couldn't start Oathbringer. Try again." Play now shows busy while the book
@@ -121,7 +123,7 @@ entry's own path and takes it out of the cached queue at once (so a second call 
 the same book, the credits opened on return after the end already dropped it, sends
 nothing), and is quiet - housekeeping never toasts or reaches the reachability
 tracker. **The finished book always leaves Up next where it is finished**, whether
-or not the next one starts (the credits opened with `ended`, an early Play now,
+or not the next one starts (the credits opened with `ended`, a Play now within the end tolerance,
 `BookEndedListener` in the background or with the credits already open); the queue
 entry that plays leaves it inside `advanceTo`, only once it has started.
 

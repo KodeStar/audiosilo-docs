@@ -18,7 +18,7 @@ When a book reaches its end, AudioSilo marks it **finished** (it leaves your *Co
 
 **Credits** at the top right lists who made the book: author, narrator, publisher and release date when known, the community credit when the book is matched in [AudioSilo Meta](../community/meta-site.md), and where the book lives on your server. The **X** closes the screen.
 
-You can open the end credits early from the full player's [three-dot menu](full-player.md#the-three-dot-menu) (**View end credits**, or **Mark as Finished**). Opened early with **View end credits**, the book keeps playing - but **Play now** then finishes it first: it's marked finished (it leaves *Continue listening* and Up next, and its download is removed if **Remove a download when you finish the book** is on) before the next book starts.
+You can open the end credits early from the full player's [three-dot menu](full-player.md#the-three-dot-menu) (**View end credits**, or **Mark as Finished**). Opened early with **View end credits**, the book keeps playing, and nothing starts by itself until it really ends. **Play now** there starts the next book straight away; the book you were in keeps your place, stays unfinished and keeps its download. Only a book that has actually ended (or that you marked finished) is finished when the next one starts.
 
 ## What plays next
 

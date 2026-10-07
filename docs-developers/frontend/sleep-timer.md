@@ -100,11 +100,13 @@ The pieces worth knowing before touching it:
   faded). A **frozen** (paused duration) countdown is never in the phase either,
   by the same rule rather than a second one: `ending` means "about to stop", and a
   countdown that is not counting is not about to stop. Otherwise the phase change
-  is unconditional; only the ramp is gated on `fadesAudio`. A chapter timer never
-  sets `frozenAt`, so one paused by hand inside its last 30 seconds **stays in
-  `ending`**: extendable, the accelerometer on, the grace card saying "Stopping in
-  N s" over the paused book, and a shake there retargets the next chapter without
-  resuming.
+  is unconditional; only the ramp is gated on `fadesAudio`. "Not counting" is
+  `countdownHeld(state)`: a duration timer with `frozenAt` set, or a **chapter**
+  timer while the transport isn't live (a chapter timer never sets `frozenAt`; its
+  "countdown" is the book's position). `syncChapterHold()`, run from the play-state
+  watch, moves a chapter timer paused by hand inside its last 30 seconds back to
+  `running` (not extendable, no accelerometer, no grace card) and back into
+  `ending` on resume if it is still inside the window; firing is unchanged.
 - **`fire()` pauses first, then restores the gain**, chained in a `finally` so a
   rejected pause can't leave a manual resume silently muted. It does not go to
   `idle`: it opens the `GRACE_SECONDS` (30 s) window and keeps ticking. Before

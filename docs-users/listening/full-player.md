@@ -61,7 +61,7 @@ After **any jump of more than a minute** - a tap on the seek bar or timeline, a 
 
 - **View book details** - the book's page. Playback carries on.
 - **Chapters** - the chapter list (on a computer, the companion's Chapters tab).
-- **View end credits** - the [end credits](end-of-book.md) early, handy for skipping a long spoken credits section. Playback carries on, but **Play now** there finishes this book first (see [The end credits](end-of-book.md#the-end-credits)).
+- **View end credits** - the [end credits](end-of-book.md) early, handy for skipping a long spoken credits section. Playback carries on, and **Play now** there starts the next book while this one keeps your place (see [The end credits](end-of-book.md#the-end-credits)).
 - **Mark as Finished** - marks the book finished now, stops it and opens its end credits.
 - **Keyboard shortcuts** - in the web player, the list of [keyboard shortcuts](keyboard-shortcuts.md).
 
