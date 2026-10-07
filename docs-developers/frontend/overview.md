@@ -41,9 +41,10 @@ src/playback/       PlaybackService interface + per-platform engines, the player
                     interaction), transcode (web negotiation), up-next-resolver
                     (what plays next), jump-undo, time-left, rate helpers
 src/downloads/      offline downloads: native/web engines, registry store, the
-                    keep-ahead planner + controller, failure classification and the
-                    Downloads page's pure view model (a sibling of playback, not
-                    inside it)
+                    keep-ahead planner + controller, failure classification, the
+                    offline companion (offline-meta: community metadata kept with a
+                    download) and the Downloads page's pure view model (a sibling of
+                    playback, not inside it)
 src/components/     ui/ (the Stacks primitives - Text, Icon, Button, Card, Input,
                     Dialog, Select, Tabs, Toast, Sheet... see Styling), shell/ (tab
                     destinations, auth gate, phone header + tab bar, top bar, sub-nav,
@@ -51,8 +52,10 @@ src/components/     ui/ (the Stacks primitives - Text, Icon, Button, Card, Input
                     (reconnect + offline banners, ContentScope), player/,
                     library/ (covers, shelves, grids, the Library modes, the
                     collection/person/series route screens), series/ (bookcase,
-                    person pages), home/, search/, upnext/, downloads/ (the
-                    Downloads tab), account/, brand/
+                    person pages), book/ (the book page), annotations/
+                    (bookmark and note rows, editors, labels), journal/ (the
+                    Journal and its export), home/, search/, upnext/, downloads/
+                    (the Downloads tab), account/, brand/
 src/stores/         Zustand: session (connections + tokens), settings, search
                     (+ recent searches), series-orderings, library-selection
 src/i18n/           i18next init, LanguageProvider, locale catalogs (locales/*.json)
@@ -81,7 +84,8 @@ Two conventions keep this layout healthy:
   screen lives with its components under `src/components/<feature>/`, and each
   feature keeps its rules in a pure, tested `*-model.ts` (`home-model.ts`,
   `series-model.ts`, `search-model.ts`, `up-next-model.ts`, `books-view.ts`,
-  `downloads-view.ts`, `keep-ahead.ts`).
+  `downloads-view.ts`, `keep-ahead.ts`, `book-page-model.ts`, `diary-model.ts`,
+  `editor-model.ts`).
 - **Path is identity, scoped by connection.** Every content call passes
   `?path=<rel_path>`, never a database id. Because the app can be signed in to
   several servers at once (and two can share a library id), durable and cached
@@ -114,9 +118,10 @@ URLs, so every URL below is the same as before the groups existed.
 | `/collection?connection=…&id=…` | `collection.tsx` (same group) → `src/components/library/collection-screen.tsx` | A collection (per server, not per library: its items can span libraries). Owner: Edit, Share, Delete, Move up / Move down / Remove in the list view; viewer (`owned: false`): Leave. A `404` reads as deleted or no longer shared. |
 | `/library/favourites` | `(app)/(home,library,search,offline,me)/library/favourites.tsx` → `src/components/library/collections/favourites-screen.tsx` | The hearted books (cover grid) and folders of every server. |
 | `/library/[libraryId]?connection=…&path=…` | `(app)/(home,library,search,offline,me)/library/[libraryId].tsx` | Library browse, root and nested folders alike - a two-line re-export of `src/components/library/browse-screen.tsx`. Content routes are **flat**: the connection id and the library-relative folder `path` ride as query params, never as nested route segments (an in-app `router.push` cannot resolve a route nested under a dynamic layout segment - it lands on the group's first child; rationale and helpers in `src/lib/paths.ts`). Each content screen scopes itself to its own `?connection=` with `<ContentScope>`, and the content hooks read that scope via `useScopedCid()`. |
-| `/book/[libraryId]?connection=…&path=…&tab=…` | `(app)/(home,library,search,offline,me)/book/[libraryId].tsx` | Book detail (an optional `tab`, parsed by `parseBookTab`, opens it on that tab when the tab exists - Home's Who's who and Story so far use `characters` / `recaps`): an overview (breadcrumbs, versions, cover hero, stats, play/resume + download control, and the capability-gated community-metadata **About** block) above a horizontally scrollable underline **tab row** (`Tabs`) - Chapters/Files, Recaps, Characters, Bookmarks, History, Notes, Series - whose meta-driven tabs appear only when the data exists ([State & data](state-and-data.md#the-book-screens-tabs)). On tablet/desktop a right-hand cover panel (300 wide, 380 on desktop) carries the Listen button, which plays inline because the docked player bar is the transport there; while this book is playing the button becomes **Open the player**. The panes follow the page's **measured** width, not the window's class (`bookPanes` in `src/components/library/book-panes.ts`): the Up next drawer can leave a 1024 window a narrow page, so below `BOOK_TWO_PANE_MIN` (720) the page stacks into one column like a phone's (and takes the 380 panel only from 960). A stacked tablet/desktop page still plays inline, so its Listen button too becomes *Open the player* for the playing book. Same flat query-param addressing as the library routes. |
+| `/book/[libraryId]?connection=…&path=…&tab=…` | `(app)/(home,library,search,offline,me)/book/[libraryId].tsx` → `src/components/book/book-page.tsx` | The book page, opened on `tab` when that tab exists (`parseBookTab`): see [The book page](book-page.md). |
 | `/downloads` | `(app)/(offline)/downloads.tsx` → `src/components/downloads/downloads-screen.tsx` | The Downloads page: storage per server, the automatic-download rules (including keep-ahead), in-progress and failed downloads, and the books ready offline by server ([Offline](offline.md#the-downloads-page)). The group is `(offline)`, not `(downloads)`, on purpose - see [cold deep links](#the-shell-tabs-and-navigation). |
-| `/settings` | `(app)/(me)/settings.tsx` | The root of the **Me** tab (a fuller Me hub is a later redesign phase). App-level preferences only: playback tunables, the auto sleep timer's window and type, shake to extend and its sensitivity (native; the row says so on web), up-next/download behaviour, language, theme, plus the Servers list that opens each connection's account screen. |
+| `/settings` | `(app)/(me)/settings.tsx` | The root of the **Me** tab (a fuller Me hub is a later redesign phase). A Journal row (`JournalEntryRow`) on top, then app-level preferences: playback tunables, the auto sleep timer's window and type, shake to extend and its sensitivity (native; the row says so on web), up-next/download behaviour, language, theme, plus the Servers list that opens each connection's account screen. |
+| `/journal?tab=diary\|bookmarks\|notes` | `(app)/(home,library,search,offline,me)/journal.tsx` → `src/components/journal/journal-screen.tsx` | The Journal, on every signed-in server: see [The Journal](journal.md). |
 | `/account?connection=…` | `(app)/(home,library,search,offline,me)/account.tsx` | Per-connection account screen, reached from the Settings screen's Servers list: set/change the self-service password (the sign-out guard nudges a password-less user here via `sign-out-confirm.tsx`), pairing another device, personal API keys (capability-gated, demo-hidden), and sign-out. |
 | `/player` | `src/app/player.tsx` | The full player ([Player UI](player-ui.md#the-full-player)), presented as a full-screen modal above the tabs on every form factor (opened from the mini player, the iOS accessory player, the docked player bar, or a phone's Listen button). Accepts `libraryId`/`path` (+ optional `position`/`track`) params and gates playback start on the chapters query settling. |
 | `/finished` | `src/app/finished.tsx` | The end-credits screen shown when a book finishes (or from the player's menu). A root modal sibling of the player; `connection`/`libraryId`/`path` params, plus `auto=1` when the book ended (or was marked finished) rather than being opened early. Renders `EndCredits`: the year shelf, listening stats, a rating, and the book `resolveUpNext` says plays next. See [The end of a book](end-of-book.md#ending-a-book). |
@@ -147,9 +152,7 @@ window crosses a threshold, not on every resize. The page column width is
 | `desktop` | >= 1024 (`DESKTOP_MIN_WIDTH`) | The tablet chrome with labelled destinations, the user's name on the profile button and (web) a ⌘K / Ctrl K hint in the omnisearch, plus the `DrawerSlot` beside the page, which holds the [Up next](#up-next-drawer-and-sheet) drawer. |
 
 Every screen reads this one value - never compare a width against a local
-constant. (This replaced the single 1024px `WIDE_BREAKPOINT`; the old right-hand
-player panel is gone, and the docked player bar is the tablet/desktop
-transport.) Dialogs follow the same split: on a phone they rise from the bottom
+constant. The docked player bar is the tablet/desktop transport. Dialogs follow the same split: on a phone they rise from the bottom
 like a sheet.
 
 ### The player in the shell
@@ -186,7 +189,7 @@ still jumps to the Search tab instead.
   the same `useSearch` call with `refetchProgress: false`; the characters not
   met yet are a `GroupNote` row that is not an option, so the arrow keys skip
   it), then **Go to** (`TOP_BAR_TABS`, already filtered to what this browser
-  can do). Empty groups are dropped. A series opens `openSeries` with its
+  can do, then the Journal, `openJournal`). Empty groups are dropped. A series opens `openSeries` with its
   local name, a person their page, a character the book it is from. The module also owns the arrow-key clamp (`moveSelection`, no
   wrap), the recent list (`addRecent`), the shortcut test (`isPaletteShortcut`)
   and the key hint (`shortcutHint`: ⌘K on Apple platforms, Ctrl K elsewhere).
@@ -292,7 +295,7 @@ button (the user's initial, plus the name on desktop) and a `DropdownMenu`: ever
 connected server with its state - the pure `serverStatus()`
 (`src/api/reachability.ts`), where "needs signing in again" (the reconnect flag)
 wins over "offline", else "Signed in as &lt;user&gt;" - each opening that server's account screen; **Add a server**
-(`/connect?add=1`); **Account on &lt;default server&gt;**; and a light/dark
+(`/connect?add=1`); **Journal** (`journalHref()`); **Account on &lt;default server&gt;**; and a light/dark
 appearance switch (`useTheme().toggleScheme()`, which the palette's action uses
 too). A phone keeps all of this in the Me tab. The same `serverStatus()` drives
 the top bar's server line (the default server's name, or "Offline" / "Needs
@@ -441,11 +444,12 @@ in `src/components/library/`:
 | `FilterChip` / `ChipRow` (`src/components/ui/filter-chip.tsx`) | The filter chips. |
 | `useQueueActions` / `QueueButton` | "Queue it" for one connection's server: `isQueued`, `queue(lib, path, position?)` and `unqueue` with Undo toasts; hidden until `queue` is known to be on; a `CapabilityError` is swallowed, a `409` says the queue is full. `QueueButton` ("Queue it" / "Queued") is the series page's action for an unread owned book. |
 
-Every browse surface (Home, the Library, the series page, Up next) starts a book
-through **`usePlayBook`** (`src/components/player/use-play-book.ts`): a phone opens
-the full player, a tablet or desktop plays in place under the docked bar once the
-chapters are in, through the book's own connection; a book already loaded just
-plays on. It rejects when the book couldn't be fetched, so the caller can say so.
+Every surface outside the player (Home, the Library, the series page, Up next, the
+book page, the bookmark, note and history rows, the Journal) starts a book, or jumps
+into one, through **`usePlayBook`** (`src/components/player/use-play-book.ts`): a
+browse surface passes the book (with `viaBookPage` from a list or Home), a play/pause
+button `toggle`, a jump `at`; where each goes is
+[the one play path](book-page.md#the-primary-action-and-the-action-row).
 
 `src/components/series/` holds the series and person pages: `series-model.ts`
 (entries, gaps, reading orders, progress track, the one action per entry),

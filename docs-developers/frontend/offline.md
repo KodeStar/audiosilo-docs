@@ -1,6 +1,6 @@
 ---
 title: Offline & PWA
-description: "Downloads on native (expo-file-system) and web (Cache API + service worker), the manifest/registry store, failures that keep finished files, keeping the next books ready, the Downloads page, playing local files, and what the PWA layer actually covers offline."
+description: "Downloads on native (expo-file-system) and web (Cache API + service worker), the manifest/registry store, the offline companion (community metadata kept with a download), failures that keep finished files, keeping the next books ready, the Downloads page, playing local files, and what the PWA layer actually covers offline."
 ---
 
 Offline support has two halves that meet in the middle:
@@ -39,6 +39,14 @@ by Metro exactly like the playback service (`engine.native.ts` /
   location and return `true`, or delete them and return `false` when `target`
   is `null`. See the migration step below.
 - `removeBook(connectionId, libraryId, path)`, `totalBytesUsed`.
+- `writeText?(connectionId, libraryId, path, fileName, text)`,
+  `readText?(...)`, `removeFile?(...)` - a small text file kept **with** a
+  downloaded book's files, so `removeBook` and `clearAll` take it too (the
+  offline companion's `meta.json`, [below](#the-offline-companion-offline-metats)).
+  Native writes it in the book's folder and never creates the folder (a book
+  removed meanwhile has none, so `writeText` resolves `false`); web puts it in the
+  media cache under the book's prefix and reads it back from the cache directly,
+  never through the service worker.
 - `storageEstimate?()` - how much room there is, as a `StorageEstimate { scope,
   capacity, free }`, or null when the platform can't say. Native: the disk
   (`Paths.totalDiskSpace` / `availableDiskSpace`, scope `device`). Web: the origin's
@@ -244,7 +252,9 @@ with no network.
    or storage format change came with this.
 4. Surviving `downloaded` manifests **seed the React Query cache** (`qk.item(connectionId, …)`
    and `qk.chapters(connectionId, …)`), so the book screen renders instantly
-   offline.
+   offline, through `seedQuery` ([its rules](#seeding)), dated with the manifest's
+   `savedAt`. Then the kept community metadata is restored
+   ([the offline companion](#the-offline-companion-offline-metats)).
 5. On web, `probe()` then runs and may downgrade `supported` - the UI hides
    downloads rather than offering ones that won't play offline.
 
@@ -255,6 +265,84 @@ deletes its books' files (`engine.removeBook`), and drops their entries. Re-addi
 the server mints a **new** id, so those records would otherwise be unreachable
 forever. The connection-remove and sign-out UI warn the user first when the server
 has downloads on the device.
+
+## The offline companion (`offline-meta.ts`)
+
+A downloaded book keeps its **community metadata**, so the book page (About,
+Recaps, Characters, Series, the previous books' catch-up), the player's companion
+and the Home cards that read it work with no network. The spoiler gate is
+unchanged: it still runs on the device against the listener's place
+(`meta-gating.ts`); nothing here decides what to show.
+
+**What is kept** (`OfflineMeta`, version 1): the `/meta` envelope as the server sent
+it (an unmatched answer too, so the book reads as unmatched offline instead of
+waiting), `savedAt`, whether it was asked with `include=previous` (`meta_bundle`),
+and `works` (the nearest earlier work in the reading order the listener picked, read
+on its own through `/meta/work` when the envelope's `previous` doesn't hold it:
+`previousWorks(seriesRails(...))`, the same rule as the book page's rows).
+`parseOfflineMeta` reads it back defensively; anything it can't read is simply
+ignored and fetched again when possible.
+
+**The server's flags are kept apart.** Every reader of community metadata first waits
+on the `metadata` flag, which a cold start with no network never answers, so each
+connection's last `/server` answer is kept once, in one small document by connection
+id (`OFFLINE_SERVERS_KEY`, `audiosilo.offlineServers`): `saveServerSnapshot` after a
+book keeps its metadata (never over a newer one), `forgetServerSnapshot` when the
+connection's downloads are purged, and a storage reset wipes it with the rest of the
+scoped cache (`SCOPED_STORAGE_KEYS` in `stores/session.ts`).
+
+**Where it lives:** in its own `meta.json` beside the book's audio (`writeText`),
+never in the registry. The registry is one JSON document saved every couple of
+seconds while a download runs, and an envelope with its characters and recaps can be
+hundreds of KB; AsyncStorage on Android and `localStorage` on web cap the whole
+store at a few MB. Beside the audio it is connection-scoped like the files, deleted
+with them, and survives a relaunch. The manifest carries only a marker
+(`DownloadManifest.meta = { savedAt }`).
+
+**Keeping it** (`keepOfflineMeta(key)`):
+
+- *When it runs:* after a download completes, apart from it (a failure never fails or
+  holds up the book), **once per download per launch** (`metaTried`, keyed by the
+  entry's `savedAt`, so a book removed and downloaded again tries afresh; no retry
+  storm against an unreachable server). Many books in a row write the registry once
+  (`persistSoon`). If the download was removed or replaced while the file was written,
+  the marker isn't set, and a removed book's file is deleted again.
+- *What `captureOfflineMeta` skips:* a book that can't match (no ASIN or ISBN:
+  `canMatch`, reading the cached full item first, since the manifest's book can be the
+  list shape) and a server without `metadata`. It reads through the screens' own
+  option factories (`bookMetaQuery`, `metaWorkQuery`), so a fresh answer they hold is
+  reused, never throws and never retries.
+
+**Restoring it** (`restoreOfflineMeta`, from hydrate):
+
+1. Waits until the launch's first screens are up (the next idle moment,
+   `requestIdleCallback`, else a moment later).
+2. Reads the kept files, three at a time, and seeds every payload.
+3. Seeds each such connection's kept `/server` answer where the cache has none (after
+   the books, so a gate it opens finds their data).
+4. One book at a time, only for servers with `metadata` (each server's flags read
+   once): fills in downloads that kept nothing or whose file can't be read, and
+   refreshes copies older than a week (`KEPT_META_REFRESH_MS`), so what a book carries
+   offline follows the community's edits.
+
+### Seeding
+
+Every seed of a downloaded book goes through `seedQuery`: never over an answer the
+cache already holds (the server's, so a fresh one always wins, and at least as full:
+the manifest's book can be the list shape), dated so an online screen still refetches
+once stale, and kept for good (`setQueryDefaults(key, { gcTime: Infinity })`), so a
+book downloaded an hour before a flight still opens offline long after launch.
+
+`seedOfflineMeta` seeds `qk.bookMeta(cid, lib, path)` (the plain request every reader
+uses: the book page, `useBookCommunity` behind the companion, the reveal listener and
+Previously on, Home's Now card, the end credits, the series page's anchor and
+Search's character sources), the `include=previous` variant when the payload was
+fetched that way, and `qk.metaWork(cid, id)` for every kept work (the previous-books
+rows and the work series page). The `spoilers=hide` variant is never stored: it is cut
+at the saved place when fetched. `seedServerSnapshot` seeds `qk.server(cid)` only where
+the cache has none, so the app holds the flags it held when it was last online until
+the server answers. A previous-book row with an answer in hand shows it even when its
+refetch fails (`book-meta.tsx`), which is what a kept work looks like offline.
 
 ## Keep the next books ready (`keep-ahead.ts` + `keep-ahead-controller.ts`)
 

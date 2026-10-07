@@ -43,7 +43,8 @@ stay a real file path).
 **What couples:** every response shape. Auth returns `{ token, user }`; `/me`
 returns the user directly; lists are wrapped (`{ libraries }`,
 `{ books, next_cursor }`, `{ progress }`, `{ bookmarks }`, `{ notes }`,
-`{ history }`, `{ favourites }`); chapters return `{ chapters, files, duration }`;
+`{ history }`, `{ favourites }`; the all-books `/me/bookmarks`, `/me/notes` and
+`/me/history` add an optional `next_cursor`); chapters return `{ chapters, files, duration }`;
 errors are `{ error }`. The `user` object carries `has_password`/`has_recovery`,
 which drive the frontend's sign-out warning.
 
@@ -96,6 +97,17 @@ filtered by the caller's current access, and an id that isn't the caller's is a
 [reference](../server/api/reference.md#up-next-collections-and-ratings); the
 security rules in
 [Auth & security](../server/auth-and-security.md#the-listeners-own-state-me).
+
+**Bookmark labels, edits and the lists across books.** Gated by `annotations`
+(seam 8): every bookmark carries `label`, which `POST .../bookmarks` accepts; the
+owner edits a row with `PATCH /bookmarks/{id}` and `PATCH /notes/{id}`, each
+answering the bare row; `GET /me/bookmarks` (`{ bookmarks, next_cursor? }`) and
+`/me/notes` (`{ notes, next_cursor? }`) list the caller's rows across books, and
+`/me/history` pages on the same `cursor` with a `book?` per row. Shapes, bounds and
+status codes are in the [reference](../server/api/reference.md#patch-apiv1bookmarksid),
+the security rules in
+[Auth & security](../server/auth-and-security.md#the-listeners-own-state-me), and the
+client side in [State & data](../frontend/state-and-data.md#bookmarks-notes-and-the-journal).
 
 ## 3. Media auth rides in the URL - `?token=`
 
@@ -213,22 +225,24 @@ version.
 
 **Server:** `handleServerInfo` advertises `admin_ui`, `web_player`, `upload`,
 `transcode`, `websocket`, `api_keys`, `export`, `metadata`, `meta_bundle`,
-`browse_people`, `cover_sizes`, `next_book`, `queue`, `collections`, `ratings`,
-`progress_edit`, `user_stats` and `my_devices`, plus the server version
+`browse_people`, `cover_sizes`, `next_book` and the flags added after it, plus the
+server version
 (`api.Version`, stamped from the release tag via ldflags). `transcode` reflects
 ffmpeg availability; `web_player` reflects whether `/web` is populated; `api_keys`
 reflects that the server accepts user-minted API keys; `metadata` and
 `meta_bundle` follow the runtime metadata switch; `browse_people`, `cover_sizes`,
-`next_book` and the six Phase 1b flags are always true on a server that has them (the full table is in
+`next_book` and every flag after it are always true on a server that has them (the
+full table is in
 [API conventions](../server/api/index.md#capability-flags---gate-your-features)).
 (`upload` and `websocket` are reserved for **planned** phases - `POST /uploads`
 and WebSocket sync are not shipped.)
 **Frontend:** the `ServerInfo` type; feature gating and the "connected server
-version" display key off it. The Phase 1a and 1b flags are optional on `Capabilities`
+version" display key off it. Every flag from `meta_bundle` on is optional on `Capabilities`
 and read through the exported, tri-state `useCapability(flag, connectionId?)` in
 `hooks.ts` (`undefined` until `/server` answers, then `true`/`false`); the gated
 hooks give a server without the flag no query function (`skipToken`), so it is
-never asked, and the Phase 1b mutations reject with `CapabilityError` (not an
+never asked, and the gated mutations (`useCapabilityMutation`) reject with
+`CapabilityError` (not an
 `ApiError`, so no reconnect banner) without sending anything while the flag is
 false or `/server` hasn't answered.
 

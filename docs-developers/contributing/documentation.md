@@ -58,10 +58,14 @@ mappings:
 | The player's design system (`STYLEGUIDE.md`, tokens, fonts, `src/components/ui/` primitives) | [frontend/overview.md](../frontend/overview.md#styling-conventions) (+ [testing.md](../frontend/testing.md) when the token generator or style guards change); the frontend's own `STYLEGUIDE.md` stays authoritative, so these pages summarise it rather than copy it |
 | The player's shell: tabs, route groups, breakpoints, top bar | [frontend/overview.md](../frontend/overview.md#the-shell-tabs-and-navigation) + the route map, `/users/listening/browsing` (getting around), `/users/listening/mobile-apps` |
 | The full player, mini / docked player, the companion, player sheets, web keyboard shortcuts | [frontend/player-ui.md](../frontend/player-ui.md) + `/users/listening/full-player`, `/users/listening/playback`, `/users/listening/companion`, `/users/listening/keyboard-shortcuts` (+ `/users/listening/up-next` for the Up next sheet, `/users/listening/browsing` for Previously on) |
+| The book page (`src/components/book/`, the book tabs) | [frontend/book-page.md](../frontend/book-page.md) + `/users/listening/book-page` + the `web-player/book-*.png` and `phone-book-detail.png` screenshots |
+| Bookmarks and notes (`src/components/annotations/`, the editors, labels) | [frontend/annotations.md](../frontend/annotations.md) + `/users/listening/bookmarks-and-notes` (+ the `annotations` rows in [state-and-data.md](../frontend/state-and-data.md#bookmarks-notes-and-the-journal)) |
+| The Journal (`src/components/journal/`, export, `src/lib/listening-sessions.ts`) | [frontend/journal.md](../frontend/journal.md) + `/users/listening/journal` + the `web-player/journal*.png` screenshots |
+| Recaps, characters, the series rails and the spoiler gate (`src/components/library/book-meta.tsx`, `meta-gating.ts`) | [frontend/state-and-data.md](../frontend/state-and-data.md#spoiler-gating-srccomponentslibrarymeta-gatingts) + `/users/listening/recaps-and-characters` |
 | The end of a book, what plays next | [frontend/end-of-book.md](../frontend/end-of-book.md) + `/users/listening/end-of-book`, `/users/listening/up-next`, the Up next settings in `/users/listening/account` |
 | The sleep timer | [frontend/sleep-timer.md](../frontend/sleep-timer.md) + `/users/listening/sleep-timer`, the Sleep timer settings in `/users/listening/account` |
 | Playback engines / native module | [frontend/playback.md](../frontend/playback.md) |
-| Downloads / PWA | [frontend/offline.md](../frontend/offline.md) + `/users/listening/offline-downloads` |
+| Downloads / PWA, the offline companion (`offline-meta.ts`) | [frontend/offline.md](../frontend/offline.md) + `/users/listening/offline-downloads` |
 | Scanner, detection, metadata | [server/scanner.md](../server/scanner.md) + `/users/getting-started/organizing-your-library` |
 | Auth, invites, shares | [server/auth-and-security.md](../server/auth-and-security.md) + `/users/admin/users-and-invites`, `/users/admin/sharing` |
 | Manager features | `/users/manager/*` + [manager developer pages](../manager/overview.md) + `manager/` screenshots |

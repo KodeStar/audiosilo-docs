@@ -33,6 +33,10 @@
 #              default the sibling clone; its data/ is composed in),
 #            SKIP_ADMIN=1 (skip the admin console build + admin/public
 #              captures, for a web-player-only run),
+#            SERVER_BIN=<file> (a server binary built elsewhere, used as it
+#              is: nothing is built into the SERVER checkout; the admin
+#              console it embeds is whatever that build had, so pair it with
+#              SKIP_ADMIN=1 unless it was built with one),
 #            SERVER=<dir> / FRONTEND=<dir> (the audiosilo-server and
 #              audiosilo-frontend checkouts, default the sibling clones - point
 #              them at worktrees to capture unmerged branches; FRONTEND/dist
@@ -50,6 +54,7 @@ WORKSPACE="$(cd "$HERE/../.." && pwd)"
 # absolute before any step runs from another directory (`cd "$SERVER"`, `cd "$META"`).
 abspath() { case "$1" in /*) printf '%s\n' "$1" ;; *) printf '%s\n' "$PWD/$1" ;; esac; }
 SERVER="$(abspath "${SERVER:-$WORKSPACE/audiosilo-server}")"
+SERVER_BIN="$(abspath "${SERVER_BIN:-$SERVER/bin/audiosilo}")"
 FRONTEND="$(abspath "${FRONTEND:-$WORKSPACE/audiosilo-frontend}")"
 META="$(abspath "${META:-$WORKSPACE/audiosilo-meta}")"
 META_COMMUNITY="$(abspath "${META_COMMUNITY:-$WORKSPACE/audiosilo-meta-community}")"
@@ -75,13 +80,18 @@ if [ "${SKIP_META:-0}" != "1" ] && [ ! -d "$META_COMMUNITY/data/works-community"
 fi
 
 # ── 1. Server binary ────────────────────────────────────────────────────────
-echo "==> building the admin console + audiosilo-server"
 # The admin console (admin-ui) is embedded at build time and never committed,
 # so build it first or /admin serves a "console not built" page.
-if [ "${SKIP_ADMIN:-0}" != "1" ]; then
-  "$SERVER/scripts/build-admin.sh" --build-only
+if [ "$SERVER_BIN" != "$SERVER/bin/audiosilo" ]; then
+  [ -x "$SERVER_BIN" ] || { echo "SERVER_BIN $SERVER_BIN is not an executable"; exit 1; }
+  echo "==> using the prebuilt server $SERVER_BIN"
+else
+  echo "==> building the admin console + audiosilo-server"
+  if [ "${SKIP_ADMIN:-0}" != "1" ]; then
+    "$SERVER/scripts/build-admin.sh" --build-only
+  fi
+  (cd "$SERVER" && go build -o bin/audiosilo ./cmd/audiosilo)
 fi
-(cd "$SERVER" && go build -o bin/audiosilo ./cmd/audiosilo)
 
 # ── Web export ──────────────────────────────────────────────────────────────
 if [ ! -f "$FRONTEND/dist/index.html" ]; then
@@ -129,7 +139,7 @@ demo:
   library: "Books"
   idle_ttl: "24h"
 EOF
-AUDIOSILO_WEB_DIR="$FRONTEND/dist" "$SERVER/bin/audiosilo" --data "$DATA" \
+AUDIOSILO_WEB_DIR="$FRONTEND/dist" "$SERVER_BIN" --data "$DATA" \
   > "$CACHE/server.log" 2>&1 &
 MAIN_PID=$!
 
@@ -138,7 +148,7 @@ if [ "${SKIP_ADMIN:-0}" != "1" ]; then
   echo "==> starting --setup server on :$SETUP_PORT"
   rm -rf "$SETUP_DATA" && mkdir -p "$SETUP_DATA"
   AUDIOSILO_BIND="127.0.0.1:$SETUP_PORT" AUDIOSILO_TLS_MODE=off \
-    "$SERVER/bin/audiosilo" --setup --data "$SETUP_DATA" \
+    "$SERVER_BIN" --setup --data "$SETUP_DATA" \
     > "$CACHE/setup.log" 2>&1 &
   SETUP_PID=$!
 fi

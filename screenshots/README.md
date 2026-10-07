@@ -100,6 +100,34 @@ next drawer closed (an init script writes `audiosilo.upNext`), so only
 short book first. The series, Up next and collection shots need a server with
 the `browse_people`, `queue` and `collections` capabilities.
 
+The book page and Journal shots need the listener's own records. Each entry of
+`capture-web.mjs`'s `WARM` table names a seeded book and the state it gets after the
+warm-up, through the API (a server with the `annotations` capability; the step fails
+loudly without it): a saved place, a finish and a rating, bookmarks, notes, listening
+history, and a sleep-timer drift-off, timed so the Journal's Diary pairs the
+bookmark with its span by the frontend's `matchDrifts` rule. History spans are posted
+with their own times (`POST /libraries/{id}/history`); bookmarks can't be backdated,
+so the drift-off span ends just before the run. The captures open those books by
+title (the finished one) or as the most recent Continue listening card (the last
+entry, the one with the place).
+
+`web-player/book-bookmarks.png`, `bookmark-editor.png` and `book-details.png` are
+taken on the playing book's page (reached through the full player's View book
+details, so the book stays loaded); the editor is closed with Cancel, so nothing
+changes. Before the Details shot the book is downloaded here unless it already is,
+so the tab says Plays from this device.
+
+`SERVER_BIN=<file>` runs a server binary built elsewhere instead of building one
+into the `SERVER` checkout (pair it with `SKIP_ADMIN=1` unless that binary
+embeds a built admin console), which is how a docs worktree captures an unmerged
+server branch without writing into it:
+
+```sh
+(cd ../../audiosilo-server-wt && go build -o /tmp/shots/audiosilo ./cmd/audiosilo)
+SERVER_BIN=/tmp/shots/audiosilo FRONTEND=../../audiosilo-frontend-wt \
+  SKIP_ADMIN=1 SKIP_META=1 SHOTS_ONLY=web-player/ ./run.sh
+```
+
 `SHOTS_PORT`, `SHOTS_SETUP_PORT` and `SHOTS_META_PORT` move the three servers
 off 8790 / 8791 / 8795 when a run in another checkout (a worktree, say) already
 holds them. Two runs in the same checkout can't overlap whatever the ports: they

@@ -4,7 +4,7 @@ description: "The SQLite schema behind audiosilo-server: the rebuildable index v
 ---
 
 The schema lives in `internal/store/migrations/` as numbered SQL files
-(`0001_init.sql` … `0029_user_listening_index.sql`), embedded into the binary and
+(`0001_init.sql` … `0031_annotation_lists.sql`), embedded into the binary and
 applied by `store.Open` at startup. This page documents the **resulting current
 schema**, noting which migration added what.
 
@@ -320,10 +320,33 @@ tables were rebuilt rather than migrated in place):
   leads with `user_id`) can't: the admin book page's listeners and
   `MoveDurableState`.
 - **`bookmarks`**, **`notes`** - id-PK rows keyed by
-  `(user_id, library_id, rel_path)` plus `position` and text.
+  `(user_id, library_id, rel_path)` plus `position` and text (a bookmark's
+  `note`, at most `catalog.MaxBookmarkNote` characters; a note's `body`, at most
+  `catalog.MaxNoteBody`, and its `updated_at`), checked by `catalog` on every write
+  rather than by the schema
+  (an edit checks only the fields it sets). `created_at` and `updated_at` are
+  server time in a fixed-width UTC millisecond form
+  (`2026-10-07T09:00:00.000Z`, `c.stamp`), because the lists across books order
+  by them as text.
+  `bookmarks.label` *(0030)* is a machine key the player maps to its own text,
+  `''` for none: `catalog.checkBookmark` checks only its
+  [shape](api/reference.md#get-apiv1librariesidbookmarks--post-apiv1librariesidbookmarks),
+  never the player's set of keys. It lives on the row,
+  so a move, a backup and a user delete take it along. Indexes
+  `idx_bookmarks_user_path` / `idx_notes_user_path` *(0003)* on
+  `(user_id, library_id, rel_path)` serve one book's lists, and
+  `idx_bookmarks_user_created` / `idx_notes_user_created` *(0031)* on
+  `(user_id, created_at)` the caller's lists across books (`GET /me/bookmarks`,
+  `/me/notes`, newest first, keyset-paged on `(created_at, id)`; the `id`
+  tiebreaker is the rowid every index entry already ends with).
 - **`listening_history`** - listening spans (`from_pos`, `to_pos`,
   `started_at`, `ended_at`) that players post when playback stops; the player's
-  own History list.
+  own History list. The client's times are stored in the same fixed-width UTC
+  millisecond form (`historySpan`: one side that doesn't parse takes the other's
+  time, neither is the server's now), so a span is never refused. Index `idx_history_user_path` *(0003)* on
+  `(user_id, library_id, rel_path, started_at)` serves one book's history, and
+  `idx_history_user_ended` *(0031)* on `(user_id, ended_at)` the paged
+  `GET /me/history` across books.
 - **`listening_sessions`** *(0018)* - one row per listening session, derived
   on the server from progress saves (see
   [Listening sessions](#listening-sessions-how-they-are-derived)): `user_id`
@@ -697,6 +720,8 @@ The migration history so far:
 | 0027 | `ratings` | `ratings`, a listener's 1 to 5 rating and note per book |
 | 0028 | `listening_goals` | `listening_goals`, a listener's books-per-year goal |
 | 0029 | `user_listening_index` | `idx_sessions_user_last` on `listening_sessions(user_id, last_at)`, so one listener's stats read only their own sessions |
+| 0030 | `bookmark_labels` | `bookmarks.label` (`''` on every existing row), a bookmark's machine-key label |
+| 0031 | `annotation_lists` | `idx_bookmarks_user_created`, `idx_notes_user_created` on `(user_id, created_at)` and `idx_history_user_ended` on `listening_history(user_id, ended_at)`, so the all-books lists seek one user and walk their order; rewrites the existing rows' `bookmarks.created_at`, `notes.created_at` and `listening_history.started_at` / `ended_at` into the fixed-width UTC millisecond form (`strftime('%Y-%m-%dT%H:%M:%fZ', …)`, only for a value that reads as a date; the old `RFC3339Nano` trimmed trailing zeros, and a span's times were the client's text verbatim, so neither sorted as text) |
 | 0032 | `library_metadata_source` | `libraries.metadata_source` (`TEXT NOT NULL DEFAULT 'tags'`, so every existing library reads as before) |
 
 ## SQLite choices
@@ -738,6 +763,15 @@ page is fetched with an index-friendly row-value comparison
 deep into a 50,000-book library the caller is, where `OFFSET n` degrades
 linearly with `n`. Default page size 50, cap 200; one extra row is fetched to
 detect whether a next page exists.
+
+A listener's own lists across books (`catalog.ListMyBookmarks`,
+`ListMyNotes`, `ListAllHistory`, through the generic `userPage`) use the same
+cursor encoding newest first: `(created_at, id) < (?, ?)` (`ended_at` for
+history), with the scope filter (`scopesFilterSQL`) in the `WHERE` before the
+`LIMIT`, so a revoked share's rows never shorten a page; `clampPageLimit` sets the
+page size ([the rules](api/reference.md#get-apiv1mebookmarks)). The cursor is split at its **last** NUL
+(`decodeCursor`), the exact inverse of `encodeCursor`, so a sort value holding
+one still round-trips.
 
 The admin console's book list (`catalog.ListAdminBooks`) uses the same
 technique over multi-column orderings (`adminSorts`: e.g. author, then series,

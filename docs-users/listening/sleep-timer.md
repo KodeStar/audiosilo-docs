@@ -1,6 +1,6 @@
 ---
 title: The sleep timer
-description: "Stopping a book after some minutes, at the end of the chapter, or after a few chapters; keeping it going in the last 30 seconds (Keep listening, or a shake of the phone); the Fell asleep bookmark and jumping back to where you drifted off; and the automatic timer at night."
+description: "Stopping a book after some minutes, at the end of the chapter, or after a few chapters; keeping it going in the last 30 seconds (Keep listening, or a shake of the phone); the Fell asleep bookmark, jumping back to where you drifted off and finding it in the Journal; and the automatic timer at night."
 ---
 
 The sleep timer stops the book for you, so you can listen yourself to sleep without losing your place. Tap the sleep button (an alarm clock, labelled **Sleep** where there's room) in the full player or on the player bar to open it (in the web player, the [Z key](keyboard-shortcuts.md) does too).
@@ -47,8 +47,9 @@ The web player can't feel the phone move, so there it says *"Not available in th
 
 When the timer stopped a book you were playing and nobody kept it going in those last 30 seconds, AudioSilo assumes you fell asleep:
 
-- **A "Fell asleep" bookmark** goes on the book where the timer stopped it.
+- **A "Fell asleep" bookmark** goes on the book where the timer stopped it, with a small moon and the **Fell asleep** label (see [Bookmarks and notes](bookmarks-and-notes.md#fell-asleep)).
 - **The next time you play the book** on that device, soon after and near where it stopped, a note offers once to take you back: *"You drifted off around 23:41. Jump back 4 minutes?"* **Jump back** returns to the last moment you touched the player.
+- **The next morning**, the [Journal's Diary](journal.md#drift-offs) shows it under the listening the timer ended.
 
 ## Starting a timer automatically at night
 

@@ -52,8 +52,8 @@ Many audiobooks arrive as dozens of MP3 files. The apps play multi-file books **
 
 ## The same app as the web player
 
-If you've used the web player, you already know the app - they are literally the same application, shipped to different places. Home shelves, library browsing, search, favourites, bookmarks, notes, [downloads](offline-downloads.md), and [settings](account.md) all look and work the same, just arranged for a phone with a tab bar along the bottom:
+If you've used the web player, you already know the app - they are literally the same application, shipped to different places. Home shelves, library browsing, search, favourites, [bookmarks and notes](bookmarks-and-notes.md), the [Journal](journal.md), [downloads](offline-downloads.md), and [settings](account.md) all look and work the same, just arranged for a phone with a tab bar along the bottom:
 
-![A book's detail page on a phone](/img/screenshots/web-player/phone-book-detail.png)
+![A book's page on a phone](/img/screenshots/web-player/phone-book-detail.png)
 
 And because your position, favourites, and bookmarks live on the server, moving between phone, tablet, and desktop is seamless - pause on one, resume on another. See [Playing a book](playback.md).

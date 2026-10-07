@@ -333,8 +333,11 @@ What happens after a sleep timer stopped a book nobody was awake for.
 1. **The bookmark.** On an outcome with `fellAsleep`, a bookmark named
    `player.sleepTimer.fellAsleepNote` ("Fell asleep", translated when made: it is
    stored on the server as text) goes on the playing book's own server at the stop
-   position, through `resolveClient`. Best effort: offline, signed out or refused,
-   it simply isn't made, and it never throws into the timer's ending path.
+   position, through `resolveClient`, labelled `fell_asleep` (`FELL_ASLEEP_LABEL`)
+   where the server has `annotations` (`addBookmark` drops the label elsewhere). Best
+   effort: offline, signed out or refused, it simply isn't made, and it never throws
+   into the timer's ending path. How the app tells it apart:
+   [The Fell asleep marker](annotations.md#the-fell-asleep-marker).
 2. **The record.** The last touch before the fire and the stop position are kept
    on the device (`drift.ts`, AsyncStorage key `audiosilo.driftOffs`, keyed by
    `contentKey(connectionId, libraryId, path)`, `DRIFT_TTL_MS` 36 h, at most 20
@@ -354,6 +357,10 @@ What happens after a sleep timer stopped a book nobody was awake for.
    the app is in the background (a headphone or CarPlay play) waits for the app to
    come to the front, once, and is judged then (same book loaded, still near where
    it stopped).
+4. **The Journal.** The Diary reads the same records (`useDriftRecords`, read only)
+   to put the offer under the session the timer ended, and spends the record with
+   `takeDrift` when its Jump back is used (see
+   [The Journal](journal.md#drift-offs-matchdrifts-and-driftstrip)).
 
 **The last touch** is `last-interaction.ts`: memory-only, per book key (20 kept).
 `startInteractionWatch` (started by the drift watch) records what the store shows -

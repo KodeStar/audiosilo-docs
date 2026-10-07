@@ -198,7 +198,7 @@ Status mapping is consistent across handlers:
 | `400` | malformed body / unknown JSON field, missing or invalid parameter (`path is required`, `invalid cursor`, non-integer `{id}`), path escaping the library root, domain validation (`mode must be "book" or "collection"`, admin needs a password, password too short) |
 | `401` | missing/invalid/expired token, bad credentials, invalid auth code, wrong `current_password` |
 | `403` | authenticated but not allowed: no share grants the library or path, `admin only`, demo accounts on the self-service routes (password/recovery/API keys), an API key on a credential-minting route (create key/recovery/pair/password), bad setup token |
-| `404` | library/user/share/invite not found, `no book at that path`, feature not configured (demo mode off, well-known files unset) |
+| `404` | library/user/share/invite not found, another user's (or an unknown) bookmark or note on an edit, `no book at that path`, feature not configured (demo mode off, well-known files unset) |
 | `409` | conflicts: `name already taken` (library/share), last-enabled-admin guard, signing out the device making the request, starting someone's progress on a book they can't see, setup already completed |
 | `413` | a request body over an endpoint's size cap (a custom cover over 5 MiB) |
 | `415` | an upload of a type the endpoint doesn't take (a custom cover that isn't JPEG/PNG/WebP) |
@@ -273,8 +273,12 @@ under another `sort`/`order` is `400 invalid cursor`.
 when more entries remain - `next_offset`. Directory listings are bounded by
 directory size, so offsets are fine there.
 
-Other list endpoints (`/search`, `/books/recent`, history) are single-shot with
-a `limit` and no pagination.
+**A listener's own lists across books are keyset-paginated too**, newest first
+with the same kind of opaque `cursor` / `next_cursor`: see
+[the rules they share](reference.md#get-apiv1mebookmarks).
+
+Other list endpoints (`/search`, `/books/recent`, a single book's history) are
+single-shot with a `limit` and no pagination.
 
 ## Capability flags - gate your features
 
@@ -303,7 +307,8 @@ a `limit` and no pagination.
     "ratings": true,
     "progress_edit": true,
     "user_stats": true,
-    "my_devices": true
+    "my_devices": true,
+    "annotations": true
   },
   "auth": { "methods": ["auth_code", "password"] },
   "demo": { "enabled": false }
@@ -333,8 +338,8 @@ it, so treat a missing flag as `false`:
 | `cover_sizes` | `?size=160\|320\|640` thumbnails on [`/cover`](reference.md#get-apiv1librariesidcover) |
 | `next_book` | [`/next`](reference.md#get-apiv1librariesidnext), the server's answer to what plays after a book |
 
-Phase 1b (the listener's own state and stats) added six, each always `true` on a
-server that has it:
+The listener's own state, stats and annotations added seven, each always `true` on
+a server that has it:
 
 | Flag | Gates |
 |---|---|
@@ -344,10 +349,13 @@ server that has it:
 | `progress_edit` | [`PATCH /libraries/{id}/progress`](reference.md#patch-apiv1librariesidprogress) (mark finished or unfinished, edit the dates) and `started_at` / `finished_at` on progress responses |
 | `user_stats` | [`/me/stats`](reference.md#get-apiv1mestats), [`/me/listening`](reference.md#get-apiv1melistening) and [`/me/goal`](reference.md#get-apiv1megoal--put-apiv1megoal--delete-apiv1megoal) |
 | `my_devices` | [`/me/devices`](reference.md#get-apiv1medevices), the caller's own signed-in devices |
+| `annotations` | a bookmark's `label` (on [`POST …/bookmarks`](reference.md#get-apiv1librariesidbookmarks--post-apiv1librariesidbookmarks) and every bookmark answer), the owner's edits [`PATCH /bookmarks/{id}`](reference.md#patch-apiv1bookmarksid) and [`PATCH /notes/{id}`](reference.md#patch-apiv1notesid), the all-books lists [`/me/bookmarks`](reference.md#get-apiv1mebookmarks) and [`/me/notes`](reference.md#get-apiv1menotes), and `cursor` paging plus each row's `book` on [`/me/history`](reference.md#get-apiv1mehistory) |
 
 Gate on the flag rather than on the server version: an older server answers
 `size=` and `narrator=` by ignoring them (full art, the unfiltered list) and the
-new routes with a `404`. Progress dates are the same: without `progress_edit` a
+new routes with a `404`. Request bodies are decoded strictly, so a field added to an
+existing body (such as a bookmark's `label`) is gated by its flag too: an older
+server refuses the unknown field with `400 invalid request`. Progress dates are the same: without `progress_edit` a
 progress response never has `started_at` / `finished_at`, so their absence says
 nothing; with it, an absent date is unknown or not set.
 

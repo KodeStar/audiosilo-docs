@@ -169,7 +169,7 @@ community has written them) character cards and story-so-far recaps - drawn
 from the free, community-run catalogue at
 [meta.audiosilo.app](https://meta.audiosilo.app). For that lookup only a
 book's ASIN or ISBN is sent, never file paths or who is listening. See
-[About this book](../listening/browsing.md#about-this-book) for what listeners
+[A book's page](../listening/book-page.md#about-this-book) for what listeners
 see.
 
 Matching a book in the admin console sends more, since its job is to find a

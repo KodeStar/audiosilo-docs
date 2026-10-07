@@ -7,6 +7,8 @@ The **Settings** screen is where you tune the player and look after your account
 
 ![The Settings screen](/img/screenshots/web-player/settings.png)
 
+At the top, a row opens your [Journal](journal.md): your listening diary, bookmarks and notes.
+
 ## Servers
 
 The servers this app is connected to. Tap one to open its [account page](#a-servers-account-page) (your password, other devices, signing out). You can **Add a server** to connect a second (or third) one - your home screen, search, and favourites then combine everything - and remove one you no longer use. See [Connecting and signing in](connecting.md).
