@@ -2405,6 +2405,7 @@ admin-only fields:
                 "added": 1, "updated": 2, "moved": 0, "removed": 1 },
       "scan_schedule": "every:6h",
       "ignore_patterns": ["# publisher samples", "*.sample.mp3", "Extras/"],
+      "metadata_source": "tags",
       "next_scan_at": "2026-10-04T15:00:00Z" }
   ]
 }
@@ -2432,6 +2433,14 @@ admin-only fields:
 - `ignore_patterns` (string array, `[]` when none) - the library's
   [ignore rules](../scanner.md#ignore-rules), one pattern per entry, comments
   (`#` lines) included.
+- `metadata_source` (string) - where the library's books take their title,
+  author, series and series position from first: `"tags"` (the default: the
+  files' tags, with the path filling what they leave empty) or `"path"` (the
+  folder layout, `Author/Series/03 - Title`, with the tags filling what it
+  leaves empty). See
+  [Data model](../data-model.md#metadata-overrides-and-effective-values). Like
+  the scan settings, it is not on the player's
+  [`GET /api/v1/libraries`](#get-apiv1libraries).
 - `next_scan_at` (RFC 3339, UTC) - when the next scheduled scan is due; omitted
   without a schedule.
 
@@ -2448,6 +2457,7 @@ works immediately; the index fills in behind).
 | `default_view` | string | no | defaults to `"hybrid"` |
 | `scan_schedule` | string | no | `""` (default), `every:<N>h` or `daily:HH:MM` - see `GET /admin/libraries`. Stored in canonical form (`every:06h` is saved as `every:6h`) |
 | `ignore_patterns` | string array | no | ignore rules, one pattern per entry (an entry with line breaks is split into one pattern per line); lines are trimmed and blank ones dropped. At most 100 patterns of 200 bytes |
+| `metadata_source` | string | no | `"tags"` (default) or `"path"` - see `GET /admin/libraries` |
 
 Response `201`: the created library (the player's library object; the scan
 settings are not echoed - read them from
@@ -2455,7 +2465,7 @@ settings are not echoed - read them from
 
 | Status | Meaning |
 |---|---|
-| `400` | `name and root are required`; `invalid request`; `code: "invalid_schedule"` (a schedule that isn't one of the forms above); `code: "invalid_pattern"` (too many patterns, one too long, one that matches nothing, or a malformed wildcard - the message names the line) |
+| `400` | `name and root are required`; `invalid request`; `code: "invalid_schedule"` (a schedule that isn't one of the forms above); `code: "invalid_pattern"` (too many patterns, one too long, one that matches nothing, or a malformed wildcard - the message names the line); `code: "invalid_metadata_source"` (a `metadata_source` other than `"tags"` or `"path"`) |
 | `409` | `name already taken` (`code: "name_taken"`) |
 
 ### `PUT /api/v1/admin/libraries/order`
@@ -2471,15 +2481,18 @@ new order, in the same enriched shape as
 
 ### `PATCH /api/v1/admin/libraries/{id}`
 
-Edits `name`, `root`, `default_view`, `scan_schedule` and/or `ignore_patterns`
-(the body fields of create). An empty or omitted `name`, `root` or
-`default_view` keeps its current value; an omitted `scan_schedule` or
-`ignore_patterns` keeps it too, while `""` / `[]` clears it (`sort_order` is
-managed via `/order`).
+Edits `name`, `root`, `default_view`, `scan_schedule`, `ignore_patterns` and/or
+`metadata_source` (the body fields of create). An empty or omitted `name`,
+`root` or `default_view` keeps its current value; an omitted `scan_schedule`,
+`ignore_patterns` or `metadata_source` keeps it too, while `""` / `[]` clears a
+schedule or the ignore rules (`sort_order` is managed via `/order`).
 
 A rescan is queued (trigger `change`) **only** when the root or the ignore rules
 change, since those make the index stale. A rename, a new default view or a new
-schedule doesn't rescan.
+schedule doesn't rescan. Nor does a new `metadata_source`: every book of the
+library is re-resolved from what the last scan stored, in the edit's own
+transaction, before the response is sent, so no reader sees the new setting
+with the old values. Admin edits and accepted community values stay on top.
 
 :::note Behaviour change
 Before admin console Phase 3, every `PATCH` rescanned the library, a rename
@@ -2489,7 +2502,8 @@ included.
 Response `200`: the updated library (without the scan settings, as for
 create), plus `job` - the queued scan, as for
 [`POST …/scan`](#post-apiv1adminlibrariesidscan) - when the edit queued one
-(omitted otherwise). `400` (including `invalid_schedule` / `invalid_pattern`) /
+(omitted otherwise). `400` (including `invalid_schedule` / `invalid_pattern` /
+`invalid_metadata_source`) /
 `404` / `409` as for create.
 
 ### `DELETE /api/v1/admin/libraries/{id}`
@@ -3244,7 +3258,7 @@ The server asks the community service's **structured match**,
 book's facts as separate guesses, since tags and folder names are each often
 wrong:
 
-- what the book's **library path** says (`derivePathFacts`, layout only): the
+- what the book's **library path** says (`metadata.ReadPathLayout`, layout only): the
   top folder as an `author` guess, the folder holding the book as a `series`
   guess, and the book's folder or file name as a `title` guess, sent as named
   (metaserve reads numbering such as `Sharpe - 08 - ` and takes the position
@@ -3333,10 +3347,16 @@ again. A `503` (over metaserve's match budget) or any other `5xx` from
   arrays.
 - No hits is `200 { "candidates": [] }`.
 
-Accepting a candidate is two existing writes: attach its ASIN/ISBN with
-[`PUT …/enrichment`](#put-apiv1adminlibrariesidenrichment), and apply the
+`cover_url` is an image on its own host (Audible's CDN, Open Library), which
+the console's CSP doesn't load, so the console shows it through
+[`POST /admin/meta/covers`](#post-apiv1adminmetacovers).
+
+Accepting a candidate takes up to three existing writes: attach its ASIN/ISBN with
+[`PUT …/enrichment`](#put-apiv1adminlibrariesidenrichment), apply the
 fields you take from it with [`PATCH …/book`](#patch-apiv1adminlibrariesidbook)
-and `source: "community"`.
+and `source: "community"`, and, when the cover is taken too, keep it as the
+book's custom cover with
+[`PUT …/cover/community`](#put-apiv1adminlibrariesidcovercommunity).
 
 | Status | Meaning |
 |---|---|
@@ -3371,6 +3391,45 @@ being sent until the next thumbnail of the new art records one.
 | `404` | `library not found`; `code: "book_not_found"` (`PUT` only - the path must be an indexed book) |
 | `413` | `code: "too_large"` - the image is larger than 5 MiB |
 | `415` | `code: "unsupported_image"` - not a JPEG, PNG or WebP image |
+
+### `PUT /api/v1/admin/libraries/{id}/cover/community`
+
+Keeps a community cover (a [match](#get-apiv1adminlibrariesidbookmatch)
+candidate's or recording's `cover_url`) as the book's **custom cover**: the
+server fetches the image and stores it exactly as an
+[upload](#put-apiv1adminlibrariesidcover--delete-apiv1adminlibrariesidcover)
+(in the database, never in the library folder; `DELETE …/cover` removes it).
+Requires the `metadata` [capability](#get-apiv1server). `?path=` required.
+
+| Body field | Type | Required | Notes |
+|---|---|---|---|
+| `url` | string | yes | an absolute `http`/`https` URL, at most 2048 characters |
+
+```json
+{ "url": "https://covers.openlibrary.org/b/isbn/9780553418026-L.jpg" }
+```
+
+The fetch connects to **public addresses only**: every connection's resolved
+address, a redirect's included, is checked when it is made, so a loopback,
+private, link-local or otherwise reserved address is refused (no proxy is
+used). It follows at most 3 redirects and gives up after 15 seconds. The image
+must be a JPEG, PNG or WebP; one with more than 40 megapixels is refused from
+its header, and one over 5 MiB (the upload limit) is re-encoded as a JPEG
+within 1600 x 1600 pixels first. The book is checked before anything is
+fetched. A success is audited as `book.cover_set` with `source: "community"`
+and, like an upload, moves the book's
+[`cover_version`](#get-apiv1librariesidbooks).
+
+Response `200`: `{ "status": "cover set", "path": "…" }`.
+
+| Status | Meaning |
+|---|---|
+| `400` | `url must be an absolute http(s) URL`; `invalid request` (malformed body or an unknown key); `invalid library id`; `path is required` |
+| `401` / `403` | anonymous / non-admin |
+| `404` | `code: "metadata_off"` - community metadata is turned off; `library not found`; `code: "book_not_found"` |
+| `413` | `code: "too_large"` - the image is over 16 MiB, or over 40 megapixels |
+| `415` | `code: "unsupported_image"` - not a JPEG, PNG or WebP image |
+| `502` | `code: "cover_unavailable"` - the image couldn't be fetched (an address that isn't public, a timeout, too many redirects, an answer other than `200`) |
 
 ### `POST /api/v1/admin/covers`
 
@@ -3424,6 +3483,54 @@ Response `200`, one entry per requested book, in request order:
 | `400` | `books is required` (an empty list); `size must be one of [160 320 640]`; `invalid request` (malformed body or an unknown key); `code: "too_large"` for more than 60 books |
 | `401` / `403` | anonymous / non-admin |
 | `500` | `could not load covers` - a database failure (an unreadable image is never an error, it is `""`) |
+
+### `POST /api/v1/admin/meta/covers`
+
+Thumbnails of community cover images - how the console's match dialog shows
+each candidate's `cover_url` (from
+[`GET …/book/match`](#get-apiv1adminlibrariesidbookmatch)), which its CSP
+can't load from the image's own host. Requires the `metadata`
+[capability](#get-apiv1server). The server fetches each image as
+[`PUT …/cover/community`](#put-apiv1adminlibrariesidcovercommunity) does
+(public addresses only, at most 3 redirects, 15 seconds each).
+
+| Body field | Type | Required | Notes |
+|---|---|---|---|
+| `urls` | string array | yes | 1 to 12 cover URLs |
+| `size` | int | no | the longest side of the thumbnail in pixels: `160`, `320` (default) or `640` |
+
+```json
+{
+  "urls": [
+    "https://meta.audiosilo.app/covers/the-martian.jpg",
+    "https://covers.openlibrary.org/b/isbn/9780553418026-L.jpg"
+  ],
+  "size": 160
+}
+```
+
+Response `200`, one entry per requested URL, in request order:
+
+```json
+{ "covers": ["data:image/jpeg;base64,/9j/4AAQSkZJRg…", ""] }
+```
+
+- Each entry is a JPEG thumbnail as a `data:` URL, scaled as for
+  [`POST /admin/covers`](#post-apiv1admincovers), or `""` when the image
+  couldn't be fetched or decoded (a URL that isn't http(s), one too large, or
+  not an image, too).
+- Thumbnails are cached in the same server memory cache, keyed by URL and
+  size. An image that couldn't be decoded is cached as `""`; a fetch that
+  failed is not, so the next request tries again.
+- The whole batch has 20 seconds: an image that hasn't arrived by then is
+  answered `""` rather than holding the rest back. Fetches are bounded across
+  all requests.
+
+| Status | Meaning |
+|---|---|
+| `400` | `urls is required` (an empty list); `size must be one of [160 320 640]`; `invalid request` (malformed body or an unknown key); `code: "too_large"` for more than 12 URLs |
+| `401` / `403` | anonymous / non-admin |
+| `404` | `code: "metadata_off"` - community metadata is turned off |
 
 ## Admin: health & jobs
 
