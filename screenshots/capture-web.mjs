@@ -88,7 +88,9 @@ const WARM = [
   },
   {q: 'Call of the Wild', frac: 0.18},
   {q: 'Looking-Glass', frac: 0.55},
-  {q: 'Baskervilles', frac: 0.4, drift: {minutes: 20, endedAgo: 2 * MIN}},
+  // The warm-up leaves this one about six minutes in (40% of its first file), so the
+  // drift-off span before the saved place fits there.
+  {q: 'Baskervilles', frac: 0.4, drift: {minutes: 5, endedAgo: 2 * MIN}},
   {
     q: 'Alice',
     frac: 0.07,
@@ -236,6 +238,10 @@ console.log('== warm demo session ==');
 
   // Each WARM book's records (capability `annotations` for labels and the lists).
   await step('listener records', async () => {
+    // Reload first: the warm-up's last book is still playing, and its next autosave
+    // (a newer PUT, last write wins) would overwrite the place set below. A reload
+    // stops it without a pause, so it records no span either (as between warm-ups).
+    await page.goto(BASE, {waitUntil: 'networkidle'});
     const token = await demoToken(page);
     const info = await api(token, 'GET', '/server');
     if (!info?.capabilities?.annotations) throw new Error('the server has no annotations capability');
@@ -460,11 +466,17 @@ async function captureWide(name, viewport, shots) {
         const quote = firstVisible(page.locator('[data-testid^="bookmark-row-"]').filter({has: page.getByTestId('bookmark-quote')}));
         await quote.getByTestId('bookmark-edit').click({timeout: 8000});
         const dialog = firstVisible(page.getByRole('dialog'));
-        await dialog.waitFor({timeout: 8000});
-        await sleep(SETTLE_MS);
-        await shoot(page, shots.bookmarkEditor);
-        await firstVisible(dialog.getByRole('button', {name: 'Cancel', exact: true})).click({timeout: 8000});
-        await dialog.waitFor({state: 'hidden', timeout: 8000});
+        try {
+          await dialog.waitFor({timeout: 8000});
+          await sleep(SETTLE_MS);
+          await shoot(page, shots.bookmarkEditor);
+        } finally {
+          // Cancel whatever happened, so a failed shot can't leave the dialog over
+          // every later step.
+          const cancel = firstVisible(dialog.getByRole('button', {name: 'Cancel', exact: true}));
+          if (await cancel.count()) await cancel.click({timeout: 8000});
+          await dialog.waitFor({state: 'hidden', timeout: 8000});
+        }
       }
       if (wanted(shots.bookDetails)) {
         // Download it here unless it already is (the default automatic download may
@@ -508,6 +520,15 @@ async function captureWide(name, viewport, shots) {
         await sleep(SETTLE_MS);
         await shoot(page, shots.journalBookmarks);
       }
+    });
+  }
+
+  if (wanted(shots.bookBookmarks, shots.bookmarkEditor, shots.bookDetails, shots.bookFinished, shots.journal, shots.journalBookmarks)) {
+    // Back to Home, where the pause left a partial run, so the palette and profile
+    // menu are shot over Home on every run.
+    await step('back home', async () => {
+      await tid(page, 'top-bar-(home)').click({timeout: 8000});
+      await sleep(3000);
     });
   }
 

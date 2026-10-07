@@ -35,7 +35,7 @@ export const SHOTS = [
   {file: 'web-player/profile-menu.png', capture: 'web', title: 'Web player - Profile menu', hint: "the top bar's profile menu: servers, Add a server, Journal, account, appearance"},
   {file: 'web-player/search.png', capture: 'web', title: 'Web player - Search', hint: 'the Search page with "holmes": grouped Books, and Series as the series card with its mini shelf'},
   {file: 'web-player/settings.png', capture: 'web', title: 'Web player - Settings', hint: 'settings screen (the Journal row, servers, appearance, language, playback)'},
-  {file: 'web-player/downloads.png', capture: 'web', title: 'Web player - Downloads', hint: 'the Downloads page with a book downloaded by hand (and the playing one, downloaded automatically): storage by server, Automatic downloads (incl. Keep the next books ready), the browser notice, Ready offline'},
+  {file: 'web-player/downloads.png', capture: 'web', title: 'Web player - Downloads', hint: 'the Downloads page with a book downloaded by hand (and the playing one, downloaded automatically or for the Details shot): storage by server, Automatic downloads (incl. Keep the next books ready), the browser notice, Ready offline'},
   {file: 'web-player/connect.png', capture: 'web', title: 'Web player - Connect', hint: 'connect/pairing screen with code field'},
   {file: 'web-player/demo.png', capture: 'web', title: 'Web player - Demo mode', hint: 'the /web/demo landing screen'},
 
