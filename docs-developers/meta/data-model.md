@@ -64,7 +64,7 @@ edit is a read-modify-write of its work.
 | `language` | yes | BCP-47-ish (`^[a-z]{2,3}(-[a-z0-9]{2,8})*$`) |
 | `first_published` | no | `YYYY` or `YYYY-MM-DD` |
 | `description` | no | community-written, never a publisher blurb |
-| `genres` | no | values from the project's controlled vocabulary (`$defs/genre`, a flat retailer-neutral list), sorted ascending |
+| `genres` | no | values from the project's controlled vocabulary (`$defs/genre`, a flat retailer-neutral list), sorted ascending. A mirror-derived set is the vote over the work's recordings, with format categories counting only when nothing else maps - see [genres](./contributing-data.md#genres-the-format-rule-the-recording-vote-and-regeneration) |
 | `credits` | no | role-qualified contributors as `{person, role}` pairs; `role` from the `$defs/credit_role` enum (adaptation, afterword, contributor, editor, foreword, illustrator, introduction, preface, translator). Additive and parallel to `authors`; emitted only when a source stated the role |
 | `translation_of` | no | the work(s) this one is a **translation** of, as a set of work slugs (`$defs/slug_set`: at least one, unique, ascending). Almost always one; a translated omnibus names every original it collects. Stated evidence only, never inferred - see [translations and reading orders](#translations-and-reading-orders) |
 | `xref` | no | `wikidata` (`Q\d+`), `openlibrary` (`OL\d+W`), `goodreads`, print `isbn[]` |

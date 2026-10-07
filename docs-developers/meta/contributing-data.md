@@ -281,7 +281,7 @@ table `metaserve` uses to 301 a retired id (see [the data model](./data-model.md
 
 ### Libex modes and recording relocation
 
-The `libex` source reads factual JSON or NDJSON rows, with four mutually
+The `libex` source reads factual JSON or NDJSON rows, with five mutually
 exclusive planning modes:
 
 | Mode | Effect |
@@ -290,6 +290,7 @@ exclusive planning modes:
 | `--enrich` | Fills absent facts on ASIN-matched records. |
 | `--recordings-only` | Adds alternate narrations to existing works; creates no work or series. |
 | `--relocate` | Moves a cross-language recording to the work its source rows resolve to in its stated language, creating that work when needed. |
+| `--regenerate-genres` | Re-derives catalogued works' `genres` from their own recordings' rows; touches no other field and creates nothing. |
 
 For relocation, export rows for **all ASINs of the cross-language recordings**
 in one batch. The metadata repository's `scripts/README.md` documents deriving
@@ -333,6 +334,81 @@ stable codes start with `relocate-`: `rows-language`, `recording-language`,
 Relocation cannot be combined with `--enrich`, `--recordings-only`, or the
 create-only `--attach-editions`. A repeated run moves nothing already relocated
 and repeats unresolved refusals. A real run validates the whole written tree.
+
+### Genres: the format rule, the recording vote and regeneration
+
+A libex row states every Audible category the book is filed under, and the
+importer maps each one onto the project's genre vocabulary
+(`internal/importer/audiblegenres.json`). Two rules decide what a work keeps.
+
+- **Format categories.** Audible's "Audio Performances & Dramatizations" (with
+  its Dramatizations and Storytelling children) and the "Radio" and "Film & TV"
+  leaves under "Entertainment & Performing Arts", in every marketplace, say how a
+  book was produced rather than what it is about. They are listed in the table's
+  `format` key (`format_tree`, derived by `scripts/genrepaths`, gives their
+  ancestors). Within one row, a format category - or an Arts & Entertainment
+  ancestor the row reaches only through one - contributes its genre only when
+  nothing else in the row maps: a full-cast radio dramatization of a mystery is a
+  mystery, a radio panel show stays `arts-entertainment`, and a row that also
+  states Arts & Entertainment > Art keeps `arts-entertainment` through Art.
+  "Radio" and "Film & TV" are a format only beside a FICTION genre (the table's
+  `genre_kinds` classifies every genre as fiction, nonfiction or neither): the
+  same leaves file books about film, television and radio, which keep
+  `arts-entertainment`, and a comedy panel show (`comedy-humor` is not fiction)
+  keeps it too. The dramatizations subtree is a format beside anything. The
+  site's `/add` prefill applies the same rule over the same table.
+- **The recording vote.** A work with several recordings from different
+  publishers is tagged by each of them, so a union of every row collects each
+  publisher's mistakes. A mirror-derived set is instead the vote over the work's
+  recordings (`importer.VoteGenres`): each recording is one vote (its regional
+  ASINs together), a recording whose rows map nothing does not vote, and with
+  three or more voters a genre is kept when at least two state it - with fewer,
+  every voter's genres are kept. A work a libex create run makes gets this set,
+  and so does a genre-less work `--enrich` fills (over the recordings its rows
+  matched); user-library imports keep adding their genres and never remove one.
+
+`--regenerate-genres` applies both rules to works already in the catalogue,
+which no other mode does: every other writer only adds to a recorded set, and
+`--enrich` fills only a work with none. Feed it the rows of **every** catalogued ASIN (the
+metadata repository's `scripts/README.md` shows the export). For each work a row
+reaches it computes the vote, then:
+
+- a work with no user-library source (`openaudible-import`, `libation-import`,
+  `audiosilo-books-import`, `user`) on it or on any of its recordings, whose
+  every ASIN-carrying recording met a row
+  takes the vote as its set - unless the vote states no genre, which leaves the
+  work as it is;
+- any other work only gains what the vote adds.
+
+It touches no field but `genres`, creates nothing and appends no source (the
+genres are derived from rows the work already cites), so a second run over the
+same rows is a no-op. A row that contradicts its recording's recorded runtime
+casts no vote - the runtime is what catches an ASIN attached to the wrong
+recording, the same test enrichment and the ASIN merge use, while a release date
+may legitimately differ for a regional re-release - and a recording whose rows
+were all contradicted does not count as covered. Flags that would do nothing in
+this mode (`--date`, `--conflicts`, `--existing-series-only`, the series lookup,
+`--skipped`) are refused.
+
+The regeneration never judges a record with evidence older than the record.
+`--rows-as-of YYYY-MM-DD` is required: set it to the dump's snapshot date (a date
+after the day of the run is refused, since it would hold nothing back). A
+work whose newest provenance - its `added_at`, every recording's, and every
+`sources[].imported_at` on it and its recordings - falls on a later day is left
+as it is, counted and named in a note. Those dates record when something was
+imported, not how old its evidence was, so a later day is safe only if every
+import up to it used rows no newer than the export. `--genre-changes <path>` writes one NDJSON line per
+changed work, `{"work","removed","added","mode"}` with `mode` `trim` or
+`add-only`, for review before the data pull request:
+
+```sh
+go run ./cmd/metaimport libex /tmp/all-rows.ndjson --regenerate-genres \
+  --rows-as-of 2026-07-29 --dry-run --genre-changes /tmp/genre-changes.ndjson
+```
+
+The summary line counts the works set to the vote, added to, unchanged and
+reached by no row, and the genre instances added and removed; notes count the
+contradicted rows and the works held back as newer than the rows.
 
 ## Scanning local files: metascan
 
