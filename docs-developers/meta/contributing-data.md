@@ -350,7 +350,12 @@ importer maps each one onto the project's genre vocabulary
   ancestor the row reaches only through one - contributes its genre only when
   nothing else in the row maps: a full-cast radio dramatization of a mystery is a
   mystery, a radio panel show stays `arts-entertainment`, and a row that also
-  states Arts & Entertainment > Art keeps `arts-entertainment` through Art. The
+  states Arts & Entertainment > Art keeps `arts-entertainment` through Art.
+  "Radio" and "Film & TV" are a format only beside a FICTION genre (the table's
+  `genre_kinds` classifies every genre as fiction, nonfiction or neither): the
+  same leaves file books about film, television and radio, which keep
+  `arts-entertainment`, and a comedy panel show (`comedy-humor` is not fiction)
+  keeps it too. The dramatizations subtree is a format beside anything. The
   site's `/add` prefill applies the same rule over the same table.
 - **The recording vote.** A work with several recordings from different
   publishers is tagged by each of them, so a union of every row collects each
