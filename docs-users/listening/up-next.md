@@ -1,6 +1,6 @@
 ---
 title: Up next
-description: "Lining up the books you want to hear next: opening Up next on a computer, tablet or phone, adding books, reordering, clearing with Undo, dragging covers in, and the suggestions under the queue."
+description: "Lining up the books you want to hear next: opening Up next on a computer, tablet or phone, adding books, reordering, clearing with Undo, dragging covers in, the suggestions under the queue, and how the queue decides what plays when a book ends."
 ---
 
 **Up next** is your queue: the books you'd like to hear after the one you're on, in the order you want them. It's kept on your server, so the same list follows you to every device you listen on.
@@ -33,7 +33,7 @@ Up next shows **one server's queue**: the server of the book you're playing, or 
 - **Now playing** at the top: the cover, the chapter you're in, and the time left at your speed.
 - **Your queue**, in order. Each book shows how far you are with it (a percentage, or **Finished**). Tap a book to open its page; its **play** button plays it now, and its **X** removes it from the queue. (In the web player those two buttons appear when you point at a book or move to it with the keyboard.)
 - **Continue the series and more** underneath: the next book in the series you're playing, books you're partway through on this server, and, when the community database knows the next book in a series but your server doesn't have it, a pale "ghost" for it with **See the series**. Tap **+** to add a suggestion to the queue.
-- **Play the next book in the series automatically** at the bottom. This is the same switch as **Automatically play next book** in [Settings](account.md#up-next) - see [When a book finishes](playback.md#when-a-book-finishes).
+- **Play the next book automatically** at the bottom: when a book ends, start the first book in Up next, or the next in the series. This is the same switch as **Automatically play next book** in [Settings](account.md#up-next) - see [When a book finishes](playback.md#when-a-book-finishes).
 
 ## Adding books
 
@@ -54,8 +54,10 @@ A short note confirms each change with **Undo**, in case you tapped the wrong bo
 
 **Clear** empties the queue in one go. A note at the bottom of the screen offers **Undo**, which puts every book back in its old order.
 
-## What Up next doesn't do yet
+## When a book ends
 
-For now, Up next is a list you keep: it **doesn't yet decide what plays when a book ends**. When a book finishes, the [end credits screen](playback.md#when-a-book-finishes) still suggests the next book in the same folder, and **Automatically play next book** still starts that one. Playing straight on into your queue is coming in a later version.
+Up next is what plays next. When a book finishes, the [end credits](playback.md#when-a-book-finishes) offer the **first book in your queue** (skipping any you've already finished), and only fall back to the next book in the series when the queue is empty. With **Play the next book automatically** on, that book starts by itself. See [What plays next](playback.md#what-plays-next).
 
-If you've turned on **Keep the next books ready**, your queue does matter already: AudioSilo downloads the books at the top of it ahead of time, so they're ready to play with no connection. See [Offline downloads](offline-downloads.md#keep-the-next-books-ready).
+Books leave the queue as you go: the book you just finished comes off it, and so does the next one the moment it starts playing, since it's now the book you're on.
+
+If you've turned on **Keep the next books ready**, AudioSilo also downloads the books at the top of your queue ahead of time, so they're ready to play with no connection. See [Offline downloads](offline-downloads.md#keep-the-next-books-ready).

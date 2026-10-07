@@ -38,7 +38,7 @@ From left to right:
 
 Under the top bar, a slim row shows the title of the page you're on, or a **Back** button once you've opened something, such as a book. On the Library page that row also carries the Library's sections and its controls (see [The Library](#the-library)). While a book is playing, the [player bar](playback.md#the-mini-player-and-the-player-bar) runs along the bottom of the window.
 
-If you get around the web player with a keyboard, **Tab** moves between controls and **Space** presses the one you're on - buttons, tabs, option choices and switches alike.
+If you get around the web player with a keyboard, **Tab** moves between controls and **Space** presses the one you're on - buttons, tabs, option choices and switches alike. The player itself has [keyboard shortcuts](keyboard-shortcuts.md) too (press **?** to list them).
 
 :::note
 The **Downloads** tab only appears where downloading is possible. In the web player that means a secure (`https://`) address - see [Offline downloads](offline-downloads.md).
@@ -189,6 +189,7 @@ The top of the page is the same for every book:
 
 - **Cover, title, and author**, plus the **series and number** (e.g. *"Stormlight Archive #2"*) and the **narrator** when known.
 - A **stats strip**: a heart to favourite the book, its download size and audio format, and its total length.
+- In the web player, for a book in an audio format browsers can't play, a line under the stats saying it is converted for this browser (*"AC-3 audio is converted to MP3 for this browser"*) - see [Books a browser can't play directly](playback.md#books-a-browser-cant-play-directly).
 - A **Listen** button to start (or resume) playing, and a **download button** for [offline listening](offline-downloads.md). On a tablet or computer, the cover, title and Listen button sit in a panel on the right-hand side of the page (when the page is too narrow for that, for instance with the Up next drawer open, everything stacks in one column as on a phone). There, Listen starts the book without leaving the page; while that book is playing, the button reads **Open the player** instead.
 - An **About this book** block, when the book is matched in the community database (see below).
 

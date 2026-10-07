@@ -40,6 +40,8 @@ const sidebars: SidebarsConfig = {
         'listening/connecting',
         'listening/browsing',
         'listening/playback',
+        'listening/sleep-timer',
+        'listening/keyboard-shortcuts',
         'listening/up-next',
         'listening/offline-downloads',
         'listening/account',

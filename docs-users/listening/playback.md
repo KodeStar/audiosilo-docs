@@ -1,6 +1,6 @@
 ---
 title: Playing a book
-description: "The player screen: chapters, skips, playback speed, the sleep timer, lock-screen controls, and how your position syncs across devices."
+description: "The player screen: chapters, the seek bar, time left, undoing a jump, playback speed, what happens when a book ends, books a browser can't play directly, lock-screen controls, and how your position syncs across devices."
 ---
 
 Tap **Listen** on any book to start it. On a phone, the full player opens straight away, filling the screen. On a tablet or computer, the book starts playing where you are and the **player bar** along the bottom of the window takes over; open the full player from it whenever you want the big view.
@@ -11,7 +11,7 @@ Tap **Listen** on any book to start it. On a phone, the full player opens straig
 
 While a book is playing, a small player stays with you on every screen, so you can pause or skip without opening the full player.
 
-**On a phone**, a **mini player** sits just above the tab bar: the cover, the title and current chapter, the **time left in the book** at your current speed, and a skip-back and play/pause button, with a thin progress line underneath. Tap it to open the full player.
+**On a phone**, a **mini player** sits just above the tab bar: the cover, the title and current chapter, the [time left in the book](#time-left), and a skip-back and play/pause button, with a thin progress line underneath. Tap it to open the full player.
 
 On an **iPhone running iOS 26 or later**, the mini player lives inside the tab bar itself, as a glass strip just above the tabs showing the current chapter, the book with its time left, and skip-back and play/pause buttons. Scroll down and the tab bar shrinks; the mini player then tucks in beside it, showing just the chapter and play/pause. Tap it to open the full player.
 
@@ -19,7 +19,7 @@ On an **iPhone running iOS 26 or later**, the mini player lives inside the tab b
 
 - a thin line along its top edge showing your progress through the whole book;
 - on the left, the cover with the current chapter and the book - tap it to open the full player;
-- in the middle, **previous chapter**, **skip back**, **play/pause**, **skip forward** and **next chapter**, above a scrubber for the current chapter with the time left in the book at your current speed;
+- in the middle, **previous chapter**, **skip back**, **play/pause**, **skip forward** and **next chapter**, above a scrubber for the current chapter with the time left in the book;
 - on the right, the **speed** and **sleep timer** buttons, the [Up next](up-next.md) button (on a server that has it), and an arrow that opens the full player.
 
 If the server can't be reached while you listen, the bar notes that your place is **saved on this device** and will sync once the server is back.
@@ -30,7 +30,7 @@ If the server can't be reached while you listen, the bar notes that your place i
 - **Skip back / skip forward** - the two round buttons beside it, labelled with the number of seconds they jump (15s back and 30s forward out of the box). You can change both, from 5 to 120 seconds, in [Settings](account.md).
 - **Previous / next chapter** - the small arrows either side of the chapter title.
 - **Chapter list** - tap the chapter title itself to open the full list of chapters (or files) and jump anywhere. On the book's detail page, tapping a chapter row does the same.
-- **Seek bar** - the scrubber is **chapter-relative**: it spans the current chapter, with the chapter's elapsed and remaining time at each end. The centre readout shows time left in the whole book at your current speed, e.g. *"5h 12m left (1.25×)"*.
+- **Seek bar** - see [The seek bar](#the-seek-bar) below.
 
 :::tip
 If a book's chapters are just named after their audio files, AudioSilo tidies those names for display - dropping the file extension and turning underscores into spaces - so the title line stays readable. Real chapter titles are left exactly as they are.
@@ -39,6 +39,37 @@ If a book's chapters are just named after their audio files, AudioSilo tidies th
 Along the bottom of the player: **playback speed**, **history**, an **AirPlay / cast** button, and the **sleep timer**. The **notes** and **bookmark** buttons, and a **three-dot menu**, sit at the top right.
 
 ![The player on a phone](/img/screenshots/web-player/phone-player.png)
+
+In the web player you can also drive all of this from the keyboard - see [Keyboard shortcuts](keyboard-shortcuts.md).
+
+## The seek bar
+
+The seek bar spans the **current chapter**, not the whole book, so even in a 30-hour book a small movement is a small jump. It's drawn as a row of bars: the part you've heard is dark, the rest is pale, and a pink line marks where you are. A small bookmark icon sits above each of your bookmarks in the chapter.
+
+The bars are a pattern, not a picture of the sound: each chapter has its own look, so you can tell chapters apart at a glance, but the height of a bar says nothing about how loud that moment is.
+
+- **Tap** anywhere on the bar to jump there.
+- **Drag** to scrub. While you drag, a label shows where you'd land, in the chapter and in the whole book (*"41:12 · 17:26:50 in the book"*). Let go to jump.
+- In the web player, pointing at the bar highlights up to that spot and shows the time, with *Click to jump*.
+
+Under the bar, the chapter's elapsed time is on the left and its remaining time on the right; in the middle is the [time left](#time-left) in the whole book.
+
+For a book whose file lengths aren't known yet, the bar spans the current **file** instead, and the middle reads *File 3 of 12*.
+
+## Time left
+
+Wherever AudioSilo tells you how much of a book is left - the mini player, the player bar, the full player, the home screen, the Library's book list, Up next - it's **real time at the speed you listen to that book**, and it says so:
+
+- *"5h 12m left at 1.25×"* for a book you listen to at 1.25×;
+- just *"5h 12m left"* at normal speed.
+
+Each book uses **its own** speed. The book you're playing uses the speed it's playing at right now; any other book uses the speed you last listened to it at, or your **default speed** from [Settings](account.md#playback) if you haven't started it. So a book you race through at 1.5× and one you savour at 1× each show an honest figure.
+
+## Undo a jump
+
+Tapped the wrong chapter, or brushed the scrubber with your thumb? After **any jump of more than a minute** - a tap on the seek bar, a chapter skip, a bookmark, even a scrub on the lock screen, your headphones or a car screen - a small dark **Back to 17:26:50** button appears for **10 seconds**, with a ring that empties as the time runs out. Tap it and you're back where you were; a note confirms *"Back where you were"*.
+
+Ordinary listening, short skips, and starting or resuming a book never bring it up.
 
 ## The three-dot menu
 
@@ -50,71 +81,25 @@ The **three-dot (More) menu** at the top right of the player has three actions:
 
 ## Playback speed
 
-Tap the speed readout (e.g. `1×`) to open the speed control. Speed goes from **0.5× to 2×** in **0.05 steps**, with pitch correction so voices don't go squeaky.
+Tap the speed readout (e.g. `1×`) to open the speed control:
 
-The speed you choose for a book is **remembered per book** - switch back to a slow narrator and your speed comes back with them. New books start at your **default speed** from Settings.
+- **The current speed**, large, with how long the rest of the book takes at it: *"5h 12m left in the book at 1.25× · remembered for this book"*.
+- **A slider** from **0.5× to 2×** in **0.05 steps**, between a **minus** and a **plus** button that each move one step (0.05×) at a time.
+- **Presets** - 0.8×, 1×, 1.1×, 1.2×, 1.25×, 1.3×, 1.5× and 2× - each showing how much of the book is left at that speed, so you can see what a faster speed would save you before you choose it.
+
+Voices keep their pitch at any speed, so they don't go squeaky.
+
+The speed you choose is **remembered per book** - switch back to a slow narrator and your speed comes back with them. New books start at your **default speed** from Settings. In the web player, the **[** and **]** keys change the speed by 0.05×.
 
 ## Sleep timer
 
-Tap the moon icon to set a sleep timer. You can stop:
+Tap the moon icon to stop the book after a number of minutes, at the end of the chapter, or after a few chapters. While a timer runs, its countdown shows on the moon icon and on the cover. In its last 30 seconds a card lets you **Keep listening** (or, in the mobile apps, shake your phone), and if you fall asleep anyway, AudioSilo leaves a **Fell asleep** bookmark and offers to take you back next time.
 
-- after a **set time** - 5, 10, 15, 20, 30, 45, or 60 minutes;
-- at the **end of a chapter** - the current one or any of the next few;
-- at the **end of the book**, for books without chapters.
-
-While a timer runs, a countdown shows on the moon icon and on the cover, and the sheet offers **Cancel timer**. When it fires, playback simply pauses - nothing is lost.
-
-A timer belongs to the book you set it on. Start a different book, or finish the one you're on, and the timer goes with it instead of following you to the next book. And if a timer reaches its point when you'd already paused by hand, it just ends quietly: there was nothing left to stop.
-
-:::tip
-The countdown is real ("wall clock") time: listening at 2× speed, an end-of-chapter timer shows how long the chapter actually takes to reach at that speed.
-:::
-
-### Pausing with a timer running
-
-**A set-time timer pauses with the book.** Pause, and the countdown stops where it is; press play and it carries on from there. Thirty minutes means thirty minutes of *listening*, not thirty minutes on the clock - so answering the door, taking a call, or pausing with a headphone button without ever looking at the screen can't quietly use up a timer you were relying on. It works the same way if you arm a timer before you press play: the countdown starts when the audio does.
-
-**Come back after more than 20 minutes and the timer starts again at its full length.** A break that long is a new sitting rather than an interruption, and the alternative is worse: a timer frozen with three minutes left, forgotten about, stopping you three minutes into the next evening's listening. Under 20 minutes it simply picks up where it left off. There's nothing to configure.
-
-An **end-of-chapter** timer needs none of this: it stops at a place in the book, not after an amount of time, so it waits exactly where you left it however long you're away, and still stops at the chapter you chose.
-
-If you pause during a set-time timer's fade-out (the last 30 seconds, below), the volume comes straight back up so the book is never left sounding quiet, and the fade picks up where it stopped when you press play again.
-
-### The last 30 seconds, and how to keep listening
-
-Every timer has a **final 30 seconds** that are your cue it's about to stop - and your chance to carry on if you're still awake. The badge on the cover turns solid pink for them, and the sheet shows the seconds left.
-
-What you hear in that window depends on the kind of timer:
-
-- A **set-time** timer stops at an arbitrary point mid-chapter, so it doesn't cut the book off mid-word: the audio **fades out gently** over those 30 seconds. The sheet shows *Fading out*.
-- An **end-of-chapter** timer (and an end-of-book one) plays those 30 seconds at **full volume** and stops at the boundary. Those closing words are the ones you stayed awake for, and the chapter ending is its own signal that the book is about to stop. The sheet shows *Ending soon*.
-
-During that final window, **and for 30 seconds after playback has paused**, one gesture keeps you going:
-
-- **Shake your phone** - in the iOS and Android apps.
-- **Tap "Keep listening"** - open the sleep timer from the moon icon and tap the pink **Keep listening** button. This works everywhere, and it's the only way in the web player, because browsers can't feel the phone move.
-
-Either one brings the volume straight back up (if it had started to fade) and **starts the timer again at the setting you chose**: a 30-minute timer becomes a fresh 30 minutes, and an end-of-chapter timer moves its target to the end of the **next** chapter. If playback had already stopped, it starts playing again too - so you never have to unlock the phone to rescue a book you were still listening to.
-
-Once those 30 seconds are up, the timer is finished and the book stays paused where it was. Shaking the phone at any other time does nothing, so a bump in your pocket can't disturb a running timer.
-
-:::note
-Safari on iPhone and iPad doesn't let a web page change its own volume, so in the **web player on those devices** a set-time timer's last 30 seconds don't audibly fade. Everything else works as described: the badge, the countdown, and the **Keep listening** button. (An end-of-chapter timer never fades anywhere, so it behaves identically on every platform.)
-:::
-
-### Starting a timer automatically at night
-
-If you listen yourself to sleep most nights, you can have AudioSilo arm the timer for you instead of remembering to. Turn on **Auto sleep timer** in [Settings](account.md#sleep-timer), choose the hours it applies to (10:00 PM to 6:00 AM out of the box) and what kind of timer it should set. Any book you start inside that window gets one automatically.
-
-It's deliberately unobtrusive: never more than one timer at a time, and never on top of a timer you set yourself.
-
-**If a timer runs out and you press play again inside the window, you get a fresh one.** Starting the book again at 3:00 AM is you saying you're still listening, so the night's remaining hours are covered too rather than leaving you unprotected after the first timer.
-
-**Cancel a timer and that's final.** Nothing will arm another one for that book for the rest of the session (until you next start the app), because a timer you've just dismissed coming quietly back is the last thing you want. That holds for the timers you set by hand as well: cancelling your own keeps the automatic one away too, while letting your own run out doesn't.
+All of it, including the automatic timer at night, is on its own page: [The sleep timer](sleep-timer.md).
 
 ## Bookmarks, notes, and history
 
-- **Bookmarks** - tap the bookmark icon, then **Add bookmark at 1:23:45** to pin the current moment. Bookmarks are listed there and on the book's detail page; tap one to jump back.
+- **Bookmarks** - tap the bookmark icon, then **Add bookmark at 1:23:45** to pin the current moment. Bookmarks are listed there and on the book's detail page; tap one to jump back. In the web player, the **B** key adds one where you are.
 - **Notes** - free-form notes on the book (markdown supported), for quotes or thoughts.
 - **History** - your past listening sessions on this book, labelled by chapter (with the same tidied chapter names as the player).
 
@@ -122,31 +107,44 @@ All three are saved to your account, not the device.
 
 ## When a book finishes
 
-When a book reaches its end, AudioSilo marks it **finished** (so it drops off your *Continue listening* shelf), hides the mini player (or the player bar), and shows an **end credits** screen:
+When a book reaches its end, AudioSilo marks it **finished** (so it drops off your *Continue listening* shelf and out of [Up next](up-next.md)), hides the mini player (or the player bar), and shows the **end credits**:
 
-- The finished book's **cover, title, and author**, plus its **folder name**. The folder name is shown on purpose - audiobook file metadata is often wrong or missing, and the folder is usually the most reliable label.
-- An **Up next** card suggesting the next book in the same folder - the sibling that comes next in natural order (so *Book 2* comes before *Book 10*). It shows the next book's folder name, with its title and author underneath if they're known. Tap **Play next** to mark the current book finished and start it.
-- If there's nothing after the current book, you'll see *"You have reached the end of this folder."* instead.
+- **Your year's shelf** - the books you've finished this year as a row of spines, with the one you just finished at the end, and *"Book 12 this year · you finished"* above the title. (Before your first other finished book of the year, or on a server without listening stats, you see the book's cover instead.)
+- The **title**, author and narrator.
+- **How you listened** - the time you actually spent listening to it, how many days that was spread across, and your speed.
+- **How was it?** - give the book one to five stars, on a server that keeps ratings. Your rating is saved straight away.
+- **Up next** - the book that plays next (below), with why it's next (*"Up next · from your queue"*, *"Up next · The Stormlight Archive, book 3"*, *"Up next · next in this folder"*), its length, and whether it's **Downloaded**, still downloading, or will stream from your server. Tap **Play now** to start it.
+- **View details** opens the finished book's page.
 
-You can also reach this screen at any time from the player's [three-dot menu](#the-three-dot-menu), via **View end credits** or **Mark as Finished**.
+The **Credits** button at the top right lists who made the book: written by, read by, the publisher and release date when known, the community credit when the book is matched in [AudioSilo Meta](../community/meta-site.md), and where the book lives on your server. The **X** at the top left closes the screen.
 
-:::note
-The books you line up in [Up next](up-next.md) don't change this yet: the suggestion here is still the next book in the folder. Playing on into your queue is coming in a later version.
-:::
+You can also reach the end credits at any time from the player's [three-dot menu](#the-three-dot-menu), via **View end credits** or **Mark as Finished**.
+
+### What plays next
+
+AudioSilo picks the next book the same way everywhere - on the end credits, and when it plays on by itself:
+
+1. The **first book in your [Up next](up-next.md) queue**, skipping any you've already finished.
+2. If your queue is empty, the **next book in the series**: your server works it out from the community's reading order, then the series numbers, then the next book in the same folder.
+3. On an older server that can't answer that, the **next book in the same folder** (in natural order, so *Book 2* comes before *Book 10*).
+
+When the next book starts, it leaves Up next - it's the book you're on now.
+
+If nothing comes next, the card says **End of the series** (*"That's every book in The Stormlight Archive on this server so far."*). When the community database knows the next book but your server doesn't have it, you'll see it as a pale cover saying it isn't on this server, with a link to **View on AudioSilo Meta**. AudioSilo never tries to play a book you don't have.
 
 ### Playing the next book automatically
 
-Turn on **Automatically play next book** in [Settings](account.md#up-next) and the end credits screen starts the next book for you:
+Turn on **Automatically play next book** in [Settings](account.md#up-next) (it's the same switch as **Play the next book automatically** at the bottom of [Up next](up-next.md)) and the end credits start the next book for you:
 
-- After a book finishes naturally, a short **15-second countdown** runs ("Starting in 15s") before the next one begins.
-- If you opened the credits screen *early* (from the menu) while the book is still playing, the countdown instead shows the **time left in the current book** - the next one starts when this one actually ends.
-- A **Cancel** button next to the countdown stops the auto-start, leaving you on the screen with the **Play next** button.
+- After a book finishes, a ring around the Up next card counts down **15 seconds**, then the next book starts.
+- If you opened the credits screen *early* (from the menu) while the book is still playing, the card instead counts down the **time left in the current book** (*"Starting in 4m 12s"*). Nothing starts while this one is still playing: when it ends, the usual 15-second countdown runs.
+- **Not now** stops the countdown for this visit, leaving the **Play now** button.
 
 :::note
 On iPhone and iPad, if the screen is **locked** when a book ends, the next book starts **straight away** with no countdown. Once audio stops the system can suspend the app, so there's no reliable way to show a countdown in the background.
 :::
 
-Two related settings keep the flow smooth and your device tidy - **Download automatically** (it downloads whatever you start listening to, so the next book downloads the moment **Play next** starts it) and **Remove a download when you finish the book**. Both are covered under [Up next in Settings](account.md#up-next).
+Two related settings keep the flow smooth and your device tidy - **Download automatically** (it downloads whatever you start listening to, so the next book downloads the moment it starts) and **Remove a download when you finish the book**. Both are covered under [Up next in Settings](account.md#up-next).
 
 ## Play to another speaker (AirPlay / Cast)
 
@@ -177,6 +175,16 @@ If the connection drops mid-listen:
 - A **streamed** book will pause with an error and a **Retry** button once its buffer runs out.
 - Either way, an *"Offline - changes sync when reconnected"* banner appears, and any progress, bookmarks, or finished-marks you make are **queued on the device and synced automatically** when the server is reachable again.
 
+## Books a browser can't play directly
+
+Most audiobooks use audio that every browser plays (AAC, the usual audio in `.m4b` files, and MP3, among others). A few use something browsers can't decode, such as AC-3, Apple Lossless (ALAC) or WMA. The mobile apps play those as they are. In the **web player**, AudioSilo has your server **convert them to MP3 as you listen**, automatically:
+
+- The book's page says so under its details: *"AC-3 audio is converted to MP3 for this browser"*.
+- Everything works as usual - chapters, the seek bar, speed, the sleep timer. A jump takes a moment longer than usual, because the server starts converting again from the new place.
+- **You can't download such a book in the browser**: its files wouldn't play offline there, so the download button reads **Can't download in this browser**. Download it in the [mobile app](mobile-apps.md) instead. (A copy downloaded earlier can still be removed.)
+
+The conversion needs **ffmpeg** on your server, which the Docker image includes and the server downloads for itself otherwise (your admin can check under [Server > Transcoding](../admin/server.md#transcoding)). Without it, the web player tries to play the book directly, and if the browser can't, you get the usual playback error - see [Troubleshooting](../troubleshooting.md#a-book-plays-in-the-app-but-wont-play-in-the-browser).
+
 ## Lock-screen and headphone controls
 
 In the mobile apps, playback continues in the background and shows up everywhere your system shows media:
@@ -189,4 +197,4 @@ See [The mobile apps](mobile-apps.md) for more on the native apps.
 
 ## Books without chapters
 
-A long audiobook that's a single file with no chapter markers still gets chapter-style navigation: the player divides it into **virtual chapters** (every 30 minutes by default - adjustable from 5 to 60 minutes in Settings), so the chapter skips, the chapter list, and end-of-chapter sleep timers all work.
+A long audiobook that's a single file with no chapter markers still gets chapter-style navigation: the player divides it into **virtual chapters** (every 30 minutes by default - adjustable from 5 to 60 minutes in Settings), so the chapter skips, the chapter list, and the sleep timer's **End of chapter** all work.

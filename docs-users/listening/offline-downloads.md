@@ -40,7 +40,7 @@ Downloads are per-device: what you downloaded on your phone isn't automatically 
 
 The **Automatic downloads** card on the Downloads page holds three settings. They're the same settings as the **Up next** section of [Settings](account.md#up-next), so changing one place changes the other.
 
-- **Download automatically**: **Never**, **On Wi-Fi** or **Always**. With On Wi-Fi or Always, the book you start listening to is downloaded as you play it, and playback quietly switches to the downloaded copy once it's on the device. On Wi-Fi skips mobile data on a phone or tablet. A browser can't tell Wi-Fi from mobile data, so in the web player On Wi-Fi downloads on any connection, and the card says so.
+- **Download automatically**: **Never**, **On Wi-Fi** or **Always**. With On Wi-Fi or Always, the book you start listening to is downloaded as you play it, and playback quietly switches to the downloaded copy once it's on the device. On Wi-Fi skips mobile data on a phone or tablet. A browser can't tell Wi-Fi from mobile data, so in the web player On Wi-Fi downloads on any connection, and the card says so. Like Keep the next books ready (below), it leaves at least 1 GB (or a tenth of your storage) free, and it won't fetch a book you cancelled or removed earlier in the session.
 - **Keep the next books ready**: **Off**, **1**, **2** or **3** (below).
 - **Remove a download when you finish the book**, to free up space as you go. Your place in the book is kept. On out of the box.
 
@@ -102,6 +102,7 @@ A few browser realities to know:
 - Browsers can clear stored data if the disk runs very low. AudioSilo asks the browser to keep its storage persistent, and installing the web player as an app (below) makes the browser much more protective of it - but a native [mobile app](mobile-apps.md) download is still the most bomb-proof option for long trips.
 - On an **iPhone or iPad**, Safari stops playback when the web player is in the background. Use the iOS app for listening with the screen off.
 - If a browser can't keep audio offline at all, the Downloads page says so and why (no secure connection, a browser without offline storage, or offline playback that isn't ready yet), rather than failing silently.
+- A book in an audio format browsers can't play (the web player has your server [convert it as you listen](playback.md#books-a-browser-cant-play-directly)) **can't be downloaded in the browser**: its files wouldn't play offline there. Its download button reads **Can't download in this browser**, and automatic downloads pass it by. Download it in the [mobile app](mobile-apps.md) instead.
 
 ## Installing the web player (PWA)
 

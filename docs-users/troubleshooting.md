@@ -147,19 +147,35 @@ your admin.
 
 Web browsers can only decode certain audio codecs: AAC (the usual codec in
 `.m4b`/`.m4a`), MP3, FLAC, Opus, and Vorbis all work. Files encoded with
-something a browser can't decode - Apple Lossless (ALAC) is the common
-example - stream fine to the iOS and Android apps but fail in the web
-player.
+something a browser can't decode - Apple Lossless (ALAC), AC-3 or WMA, for
+example - stream fine to the iOS and Android apps.
 
-The server can convert such files to MP3 on the fly (it needs ffmpeg for
-this), but the web player **doesn't yet request that automatically** - it's a
-planned improvement. Until then, your options are:
+In the web player, AudioSilo has the server **convert such a book to MP3 as
+you listen**, automatically, and the book's page says *"... audio is converted
+to MP3 for this browser"* (see
+[Books a browser can't play directly](./listening/playback.md#books-a-browser-cant-play-directly)).
+That needs **ffmpeg** on the server. If the book still won't play in the
+browser:
 
+- **Check the server has ffmpeg.** The admin console's
+  [Server > Transcoding](./admin/server.md#transcoding) shows whether it was
+  found. Without it the web player can only try the file as it is, which a
+  browser can't decode. The Docker image includes ffmpeg; the native binary
+  downloads its own on first start.
+- **Check the server has read the book's audio format.** The conversion is
+  used for books the server knows a browser can't play, which it learns with
+  ffprobe while scanning. A book scanned without ffprobe looks playable, so the
+  browser is handed the file as it is. Rescan the book once ffprobe is
+  available (the book's page in the admin console says "Transcodes to MP3 for
+  browsers" once it knows).
 - **Listen in the mobile app** ([Mobile apps](./listening/mobile-apps.md)) -
   the native players handle more formats than browsers do.
 - **Convert the file** to `.m4b` (AAC) or `.mp3` once, and let the server
   rescan. Your listening progress survives the swap as long as the file keeps
   its path.
+
+Such a book can't be downloaded in the browser either (its button reads
+**Can't download in this browser**); download it in the mobile app.
 
 ### Playback stops with an error mid-book
 
