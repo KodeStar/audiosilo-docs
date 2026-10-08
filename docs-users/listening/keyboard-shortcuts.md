@@ -20,7 +20,7 @@ In the **web player** you can control playback from the keyboard, on any page an
 | **Esc** | Close whatever is on top: a sheet, then the full player |
 | **?** | Show this list |
 
-The skip lengths follow your [Settings](account.md#playback), and the list in the app shows your own.
+The skip lengths follow your [Settings](settings.md#playback), and the list in the app shows your own.
 
 ## When they don't fire
 

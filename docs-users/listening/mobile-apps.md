@@ -28,7 +28,7 @@ Signing the app in is usually a scan, not typing - all the routes are covered in
 
 ## Getting around the app
 
-On a phone, the app uses your phone's own tab bar along the bottom of the screen, with five tabs: **Home**, **Library**, **Search**, **Downloads** and **Me** (your Settings). Each tab keeps its place while you visit the others. See [Getting around](browsing.md#getting-around) for what each one holds.
+On a phone, the app uses your phone's own tab bar along the bottom of the screen, with five tabs: **Home**, **Library**, **Search**, **Downloads** and **Me** ([You](you.md): your listening, your year, the Journal, Settings and your account). Each tab keeps its place while you visit the others. See [Getting around](browsing.md#getting-around) for what each one holds.
 
 - **iPhone**: the standard iOS tab bar. On **iOS 26 or later** it's the translucent "Liquid Glass" bar, with **Search** set apart as its own round button; the bar shrinks as you scroll down, and the [mini player](playback.md#the-mini-player-and-the-player-bar) sits inside it, just above the tabs. On older iOS versions the mini player floats just above the bar instead.
 - **Android**: the standard Material navigation bar, with every tab labelled and the current one highlighted by a soft pink pill. The mini player floats just above it.
@@ -42,7 +42,7 @@ Playback keeps going when you switch apps, turn the screen off, or pocket the ph
 ## Lock-screen controls
 
 - **Android** gives you full audiobook controls on the lock screen and in the notification: **previous chapter**, a **draggable chapter scrubber**, **next chapter**, and **30-second skip back/forward** buttons - no need to unlock the phone to hop around a book.
-- **iOS** shows the book on the lock screen and in Control Centre with play/pause, a scrubber, and **skip back/forward** buttons that use the skip lengths from your in-app Settings.
+- **iOS** shows the book on the lock screen and in Control Centre with play/pause, a scrubber, and **skip back/forward** buttons that use the skip lengths from your in-app [Settings](settings.md#playback).
 
 Headphone and earbud buttons work everywhere, and at the end of a sleep timer a [shake of the phone](sleep-timer.md#shake-to-extend) keeps you listening.
 
@@ -52,7 +52,7 @@ Many audiobooks arrive as dozens of MP3 files. The apps play multi-file books **
 
 ## The same app as the web player
 
-If you've used the web player, you already know the app - they are literally the same application, shipped to different places. Home shelves, library browsing, search, favourites, [bookmarks and notes](bookmarks-and-notes.md), the [Journal](journal.md), [downloads](offline-downloads.md), and [settings](account.md) all look and work the same, just arranged for a phone with a tab bar along the bottom:
+If you've used the web player, you already know the app - they are literally the same application, shipped to different places. Home shelves, library browsing, search, favourites, [bookmarks and notes](bookmarks-and-notes.md), the [Journal](journal.md), [downloads](offline-downloads.md), your [listening stats](you.md), and [settings](settings.md) all look and work the same, just arranged for a phone with a tab bar along the bottom:
 
 ![A book's page on a phone](/img/screenshots/web-player/phone-book-detail.png)
 

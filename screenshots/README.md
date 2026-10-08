@@ -117,6 +117,30 @@ details, so the book stays loaded); the editor is closed with Cancel, so nothing
 changes. Before the Details shot the book is downloaded here unless it already is,
 so the tab says Plays from this device.
 
+The You shots (`web-player/you-stats.png`, `year.png`, `phone-you-stats.png`,
+`phone-settings.png`) and Home's This week need a year of listening, and the server
+only derives listening sessions from progress saves as they happen. So after the
+warm-up, `capture-web.mjs` writes a year of sessions for the demo user straight into
+the capture server's throwaway database (`.cache/data/audiosilo.db`, through the
+**sqlite3** CLI, marked `token_id = -1`): most days, evening and morning-commute hours,
+a running streak over the last ten days, spread over the seeded books. It removes them
+again at the end of the web captures, so the admin Activity shots only show the
+listeners they provision. It is seeded, so a re-run draws the same charts. Without
+sqlite3 the step fails and those shots show only the warm-up's minute of listening.
+Every capture context reduces motion, so the Year in listening story stays on its first
+card. The desktop You shot picks Stats in the sub-nav first: the Journal shot (opened
+from the profile menu) leaves the Me tab on its Journal section.
+
+The connect shots run last, in a fresh browser with nothing stored:
+`web-player/connect.png` types the server's own address and presses Continue (the probe
+card), then the run signs in as the **admin** with a username and password (a real
+account, so the account page has its Password card and API keys; `ADMIN_PASSWORD` is
+required) for `connect-ready.png` ("Your library is ready.", the first connection) and
+`account.png` (Account on, from the profile menu). That player session is signed out
+through the API at the end, so it never shows in the admin Devices shot. The capture
+server is reached at `127.0.0.1`, a loopback address, so it has no home address and the
+account page shows no At home and away card.
+
 `SERVER_BIN=<file>` runs a server binary built elsewhere instead of building one
 into the `SERVER` checkout (pair it with `SKIP_ADMIN=1` unless that binary
 embeds a built admin console), which is how a docs worktree captures an unmerged
@@ -139,7 +163,8 @@ Every capture is optimized in place with **pngquant** (`brew install pngquant`)
 loss, so the committed image is the optimized one. It's optional: if pngquant
 isn't on `PATH` the shots are just left raw (with a one-time warning).
 
-Prereqs: Go 1.26+, Node 24 (also builds the server's admin console), ffmpeg/ffprobe, pngquant (optional; for image
+Prereqs: Go 1.26+, Node 24 (also builds the server's admin console), ffmpeg/ffprobe, sqlite3 (the seeded year of
+listening), pngquant (optional; for image
 optimization), and a web export at `FRONTEND/dist` (the sibling
 `../../audiosilo-frontend` by default; `audiosilo-server/scripts/build-web.sh`
 builds one, and `run.sh` triggers it automatically when it is missing - an existing

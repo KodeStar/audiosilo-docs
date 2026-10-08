@@ -34,7 +34,7 @@ Up next shows **one server's queue**: the server of the book you're playing, or 
 - **Now playing** at the top: the cover, the chapter you're in, and the time left at your speed.
 - **Your queue**, in order. Each book shows how far you are with it (a percentage, or **Finished**). Tap a book to open its page; its **play** button plays it now, and its **X** removes it from the queue. (In the web player those two buttons appear when you point at a book or move to it with the keyboard.)
 - **Continue the series and more** underneath: the next book in the series you're playing, books you're partway through on this server, and, when the community database knows the next book in a series but your server doesn't have it, a pale "ghost" for it with **See the series**. Tap **+** to add a suggestion to the queue.
-- **Play the next book automatically** at the bottom: when a book ends, start the first book in Up next, or the next in the series. This is the same switch as **Automatically play next book** in [Settings](account.md#up-next) - see [The end of a book](end-of-book.md#playing-on-automatically).
+- **Play the next book automatically** at the bottom: when a book ends, start the first book in Up next, or the next in the series. This is the same switch as **Automatically play next book** in [Settings](settings.md#up-next-and-downloads) - see [The end of a book](end-of-book.md#playing-on-automatically).
 
 ## Adding books
 

@@ -122,9 +122,9 @@ connect flow itself is described in [Connecting](./listening/connecting.md).
 
 :::tip
 If you're signed in but worried about getting locked out later, **set a
-password** from the player's Settings. It's the durable way to sign back in on
+password** on your [account page](./listening/account.md#password) in the player. It's the durable way to sign back in on
 any device without an admin - especially handy if you were invited by pairing
-and never set one. See [Your account](./listening/account.md#set-a-password).
+and never set one.
 :::
 
 ### I was signed out, or a "Reconnect" bar appeared
@@ -137,9 +137,16 @@ address already filled in), and after a full sign-out the connect screen lists
 your previous servers as one-tap **Reconnect** shortcuts.
 
 Either way you only re-enter your code or password, never the server address. If
-you have no password set, [set one](./listening/account.md#set-a-password) so
+you have no password set, [set one](./listening/account.md#password) so
 you can always get back in on any device without waiting on a fresh invite from
 your admin.
+
+### The app doesn't use the home address at home
+
+The iOS and Android apps use a server's home address only when the server has
+told them one and it answers as your server; otherwise they stay on the public
+address, which still works. The checks are in
+[If the app doesn't switch to the home address](./listening/connecting.md#if-the-app-doesnt-switch-to-the-home-address).
 
 ## Playback
 

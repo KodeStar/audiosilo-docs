@@ -15,7 +15,7 @@ AudioSilo arranges itself to fit the screen it's on.
 - **Library** - everything on your server, by book, author, series, narrator, collection or folder.
 - **Search** - find books, series, authors, narrators, and characters you've already met.
 - **Downloads** - books saved on this device for [offline listening](offline-downloads.md).
-- **Me** - your [Journal](journal.md) and your [Settings](account.md).
+- **Me** - [You](you.md): your listening stats, your [Year in listening](year-in-listening.md), your [Journal](journal.md), your [Settings](settings.md) and your [account](account.md).
 
 Each tab remembers where you were. Open a book from Search, switch to Library for a moment, come back to Search, and the book is still open there; going back takes you to your search results. Tap the tab you're already on to jump back to its first page.
 
@@ -28,11 +28,11 @@ At the top of each tab's first page, beside the big title, sits the **Up next** 
 From left to right:
 
 - The **AudioSilo** logo (tap it to go Home), with the server you're using underneath - or a note that you're **offline** if it can't be reached, or that it **needs signing in again**. If you've connected more than one server, it says how many more.
-- **Home**, **Library** and **Downloads**. On narrower screens such as a tablet held upright, these show as icons only.
+- **Home**, **Library**, **Downloads** and **You** (your [listening stats, year and Journal](you.md)). On narrower screens such as a tablet held upright, these show as icons only.
 - A **search field**. In the web player it opens [quick search](#quick-search-in-the-web-player); in the tablet app it takes you to the Search page. Where the bar is too narrow for the field (a tablet held upright, say), it shrinks to a search button that does the same.
 - The **Up next** button, with the number of books queued. It opens [Up next](up-next.md).
-- A **gear** button for [Settings](account.md).
-- Your **profile button** - your initial, plus your name on wider screens. It opens a menu listing your **servers**, each with a line saying who you're signed in as, or that it's **offline** or **needs signing in again** (pick one to open its [account page](account.md#a-servers-account-page)); **Add a server**; your [Journal](journal.md); **Account on** your main server; and a switch between **light and dark** appearance.
+- A **gear** button for [Settings](settings.md). It opens Settings over the page you're on, so going back returns you there.
+- Your **profile button** - your initial, plus your name on wider screens. It opens a menu listing your **servers**, each with a line saying who you're signed in as, or that it's **offline** or **needs signing in again** (pick one to open its [account page](account.md)); **Add a server**; your [Journal](journal.md); [Settings](settings.md); **Account on** your main server; and a switch between **light and dark** appearance.
 
 ![The profile menu open from the top bar](/img/screenshots/web-player/profile-menu.png)
 
@@ -217,10 +217,10 @@ In the web player on a tablet or computer, clicking the search field in the top 
 
 Start typing and the results are grouped:
 
-- **Actions** - things you can do right now. While a book is loaded: **Pause** (or **Resume** the current chapter), **Sleep in 30 minutes**, **Sleep at end of chapter** (for books with chapters) and **Open the full player**. On a server with [Up next](up-next.md): **Open Up next**, with how many books are queued. Always: **Go to settings** and a switch to **light or dark** appearance. Setting a sleep timer this way shows a short confirmation at the bottom of the screen.
+- **Actions** - things you can do right now. While a book is loaded: **Pause** (or **Resume** the current chapter), **Sleep in 30 minutes**, **Sleep at end of chapter** (for books with chapters) and **Open the full player**. On a server with [Up next](up-next.md): **Open Up next**, with how many books are queued. Always: a switch to **light or dark** appearance. Setting a sleep timer this way shows a short confirmation at the bottom of the screen.
 - **Books** - matching titles, authors and series from every server you're connected to, the same search as the Search page. Before you type anything, this group is **Continue listening** instead: the books you're partway through, with how much you've listened to.
 - **Series**, **Authors**, **Narrators** and **Characters** - up to three of each, from the same search as the Search page. Characters follow the same rule: only ones you've met, with a quiet note counting any you haven't.
-- **Go to** - Home, Library and Downloads, and your [Journal](journal.md).
+- **Go to** - Home, Library and Downloads, then [Your listening](you.md#your-listening), [Year in listening](year-in-listening.md), your [Journal](journal.md) and [Settings](settings.md).
 
 Use the **arrow keys** to move through the results, **Enter** to open one, and **Esc** to close. Book results say which server and library each one comes from, as on the Search page. Your recent searches appear as **Recent** shortcuts the next time you open it; it's the same list as the Search page's, kept on this device only.
 

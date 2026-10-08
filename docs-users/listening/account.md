@@ -1,133 +1,73 @@
 ---
-title: Your account and settings
-description: "The Settings screen (the Me tab on a phone): appearance and the default theme, language, playback preferences, and each server's account page for setting a password, pairing extra devices, and signing out safely."
+title: Your account on a server
+description: "Each server's account page: setting or changing your password, pairing another device with a 10-minute code, the server's home and away addresses, seeing your signed-in devices and signing one out, personal API keys, and signing this device out safely."
 ---
 
-The **Settings** screen is where you tune the player and look after your account. On a phone it's the **Me** tab at the bottom of the screen; on a tablet or computer, it's the gear button at the right-hand end of the top bar.
+Each server you're connected to has its own **account page**, covering your account on that one server: your password, your other devices, API keys, and signing out.
 
-![The Settings screen](/img/screenshots/web-player/settings.png)
+![A server's account page on a computer: who you're signed in as, the Password and Pair another device cards, the signed-in devices and the API keys](/img/screenshots/web-player/account.png)
 
-At the top, a row opens your [Journal](journal.md): your listening diary, bookmarks and notes.
+## Opening it
 
-## Servers
+- **On a tablet or computer**: pick the server in your profile menu (top right), or **Account on** your main server. Or open [Settings](settings.md#accounts-and-devices), choose **Accounts and devices**, and tap the server.
+- **On a phone**: the **Account** section of the **Me** tab shows your main server's account. If you're signed in to more than one server, a row of their names above it lets you switch. **Settings > Accounts and devices** leads to each server's page too.
 
-The servers this app is connected to. Tap one to open its [account page](#a-servers-account-page) (your password, other devices, signing out). You can **Add a server** to connect a second (or third) one - your home screen, search, and favourites then combine everything - and remove one you no longer use. See [Connecting and signing in](connecting.md).
+At the top: your name, a line like *"@sam · User on Hearthside · signed in on 3 devices"*, and your role (**User** or **Administrator**). A demo account is marked **Demo**.
 
-:::warning
-Removing a server also **deletes that server's downloaded books from this device**, plus any listening progress that hasn't synced back yet. The app warns you first if the server has downloads on the device. Your other servers are unaffected, and nothing on the server itself is touched. See [Offline downloads](offline-downloads.md).
-:::
+## Password
 
-## Appearance
-
-**Light**, **Dark**, or **System** (follow your device's setting, switching when it does).
-
-- **Light** is a cool, porcelain-white look with dark ink-blue text.
-- **Dark** is a deep ink-blue look that lets book covers stand out.
-
-Both keep AudioSilo's pink for the few things that matter most on a screen - your progress, what's selected - rather than splashing it everywhere.
-
-Which one you start on:
-
-- A **new install** starts on **System**, so AudioSilo matches your phone or computer until you choose otherwise.
-- If you were **already using AudioSilo** before System became the starting point and had never picked a theme, you stay on **Dark**, so nothing changes under you after an update.
-- Once you pick one yourself, that choice is kept.
-
-The theme is remembered per device, so your phone and your computer can differ.
-
-## Language
-
-The app speaks **English, Español, Français, Deutsch, Português, and Italiano**. Pick one, or leave it on **System** to follow your device's language.
-
-## Playback
-
-Your playback preferences (kept per device, so your phone and your desktop can differ):
-
-| Setting | What it does | Range |
-|---|---|---|
-| **Skip back** | The jump of the player's back button | 5–120 s (default 15 s) |
-| **Skip forward** | The jump of the forward button | 5–120 s (default 30 s) |
-| **Default speed** | Starting speed for books you haven't played yet (each book then remembers its own) | 0.5×–2× |
-| **Auto-rewind on resume** | How far playback backs up after a pause, so you regain the thread | Off–30 s (default 5 s) |
-| **Chapter length (unchaptered)** | Size of the virtual chapters created for long books with no chapter markers | 5–60 min (default 30 min) |
-
-## Sleep timer
-
-Whether AudioSilo should set a [sleep timer](sleep-timer.md) for you at night, so you don't have to remember, and how a shake of the phone keeps a timer going. Like Playback, these are kept per device.
-
-| Setting | What it does | Options (default) |
-|---|---|---|
-| **Auto sleep timer** | Start a sleep timer automatically for playback that begins between the hours below | On / Off (default **Off**) |
-| **From** / **Until** | The nightly window it applies to, adjustable in **30-minute steps** and shown in your device's own clock format | Any times (default **10:00 PM** to **6:00 AM**) |
-| **Timer type** | What the automatic timer does | End of chapter, or 15 / 30 / 45 / 60 minutes (default **End of chapter**) |
-| **Shake to extend** | A shake keeps a sleep timer going at its end ([Shake to extend](sleep-timer.md#shake-to-extend)); mobile apps only | On / Off (default **On**) |
-| **Shake sensitivity** | How hard that shake has to be (shown while Shake to extend is on) | Low / Medium / High (default **Medium**) |
-
-**From**, **Until** and **Timer type** only appear once **Auto sleep timer** is on. The window may cross midnight, which is the whole point of the default. Setting **From** and **Until** to the same time switches it off rather than covering the whole day.
-
-How the automatic timer behaves is under [Starting a timer automatically at night](sleep-timer.md#starting-a-timer-automatically-at-night).
-
-## Up next
-
-Controls for what happens as one book ends and the next begins (see [The end of a book](end-of-book.md)). Like Playback, these are kept per device. (This section is about settings; the queue of books you line up yourself is [Up next](up-next.md).) The three download settings also appear on the Downloads page, as its **Automatic downloads** card - changing one place changes the other.
-
-| Setting | What it does | Options (default) |
-|---|---|---|
-| **Automatically play next book** | When a book finishes, start [what plays next](end-of-book.md#what-plays-next) after a short countdown on the end credits | On / Off (default **Off**) |
-| **Download automatically** | Download the book you start listening to, so it's ready to hear offline. Streaming begins straight away, and playback switches to the downloaded copy quietly once it's on the device. It leaves the same free space as Keep the next books ready, and skips a book you cancelled or removed earlier in the session | Never / On Wi-Fi / Always (default **On Wi-Fi**) |
-| **Keep the next books ready** | While you listen, download this many of the next books - from your Up next queue first, then the series - so they're ready offline. Follows the automatic download setting above, and always leaves at least 1 GB free (or a tenth of your storage, if that's more). See [Keep the next books ready](offline-downloads.md#keep-the-next-books-ready) | Off / 1 / 2 / 3 (default **Off**) |
-| **Remove a download when you finish the book** | Remove a book's downloaded files from the device when it's marked finished, to free up space. Your place in it is kept | On / Off (default **On**) |
-
-:::note
-**On Wi-Fi** skips the automatic download on a known mobile-data connection, so it won't eat your data allowance. In the web player, and when the connection type can't be determined, it goes ahead. You can always download a book by hand on the book's page - see [Offline downloads](offline-downloads.md).
-:::
-
-## Support
-
-On the web and Android, a **Support AudioSilo** section links to GitHub Sponsors - AudioSilo is free and self-hosted, and contributions fund its development. (The section doesn't appear in the iOS app.)
-
-## Version
-
-The footer of Settings shows the version of the app you're running, e.g. *AudioSilo v1.1.1*. Handy to mention if you ever report a problem (see [Troubleshooting](../troubleshooting.md)).
-
-## A server's account page
-
-Each server you're connected to has its own account page: tap the server in the **Servers** list at the top of Settings. On a tablet or computer you can also reach it from the profile button at the top right of the screen. It covers your account on that one server.
-
-### Account
-
-Shows who you're signed in as, your role, and the server address - plus the two credentials worth setting up:
-
-#### Set a password
-
-Accounts created by invite often start **without** a password - you signed in with a code, and that's fine day to day. Setting a password is your **reliable way back in** on any device:
+Accounts created by invite often start **without** a password - you signed in with a code, and that's fine day to day. The **Password** card says whether you have one (**Set** or **Not set**). Setting one is your **reliable way back in** on any device:
 
 - Tap **Set a password** (or **Change password**), enter a new password of at least 8 characters, and save.
 - Changing an existing password asks for your **current password** first.
+- Your other devices stay signed in either way.
 
 Why it's worth doing, especially if you were invited by pairing and never set one: if you ever sign out or get a new phone, a username and password sign you straight back in with no help from anyone. Without one, getting back in means asking your admin for a fresh invite - so setting a password once is the safety net that keeps your account in your own hands.
 
-#### API keys
+Demo accounts can't have a password, so the card isn't shown for them.
 
-If your server supports them, an **API keys** section here lets you create keys for dashboards, scripts, and other tools that reach your server on your behalf. See [API keys for integrations](api-keys.md).
+## Pair another device
 
-#### Signing out
+Sign another phone, tablet or browser in to the same account without a new invite:
 
-**Sign out** disconnects this device. If you're about to sign out **without a password set**, the app stops you with a warning - *"Without one you'll need a new invite from your admin to sign back in on this server"* - and offers to **Set a password** right there. Take the offer; it's the whole reason the button exists.
+1. Tap **Show a pairing code**. A QR code appears, with a countdown: **it works for 10 minutes**, for one device.
+2. On a phone, scan it with the AudioSilo app ([Scan a QR code](connecting.md#scanning-the-qr-code-with-your-phone) on its connect screen) or the camera. Or send the link: **Copy link** in the web player, **Share link** in the apps.
+3. The other device signs straight in.
 
-Signing out also **removes this server from the app**, so it deletes that server's downloaded books from the device and any progress that hasn't synced yet. The app warns you when there are downloads to lose. (Books, progress, and bookmarks stored on the server are safe - sign back in and they're all there.)
+Once the code has expired it fades, and **Make a new code** gives you a fresh one. **Done** puts the card away.
+
+Or, if you've [set a password](#password), just sign in with your username and password on the new device.
+
+## At home and away
+
+When the server has a home address, an away address or both, an **At home and away** card lists them. In the iOS and Android apps, the one in use right now is marked **In use**, with a line such as *"Using your home address. The app switches between them by itself."* How the switching works, and what to check when it doesn't happen: [At home and away](connecting.md#at-home-and-away).
+
+## Signed-in devices
+
+Every device signed in to your account on this server, **this device** first, then the others. Each row has the name the device signed in with, the app and its version, the platform, and when it was last used: *"AudioSilo 1.4.2 · iOS · last seen 3 days ago"*. (API keys aren't in this list; they have [their own section](#personal-api-keys).)
+
+To cut off a phone you've lost or sold, tap **Sign out** on its row and confirm. It loses access straight away and needs to sign in again to reach the server.
+
+**This device** has no Sign out button in the list. To sign this device out, use [Sign out of the server](#signing-out) at the bottom of the page, which saves your place first.
+
+The list appears on servers new enough to show it.
+
+## Personal API keys
+
+**Personal API keys** let dashboards, scripts and other tools reach your server on your behalf, such as a Home Assistant or Heimdall tile. See [API keys for integrations](api-keys.md) for creating, using and revoking them. On a server too old to offer them, the section says so; demo accounts don't have it.
+
+## Signing out
+
+**Sign out of &lt;server&gt;** at the bottom of the page disconnects this device from that server.
+
+If you're about to sign out **without a password set**, the app stops you with a warning - *"Without one you'll need a new invite from your admin to sign back in on this server"* - and offers to **Set a password** right there. Take the offer; it's the whole reason the warning exists. If books from this server are downloaded on the device, the warning also says how many you'd lose.
+
+Signing out **removes this server from the app** (the card says so), so it deletes that server's downloaded books from the device and any progress that hasn't synced yet. (Books, progress, and bookmarks stored on the server are safe - sign back in and they're all there.)
 
 :::tip
-Signing out isn't a big deal. Next time you open the connect screen, any server you've connected to before shows a one-tap **"Reconnect to &lt;your server&gt;"** shortcut with the address already filled in - so you only re-enter your code or password, never the server address. See [Connecting and signing in](connecting.md#getting-back-in-after-signing-out).
+Signing out isn't a big deal. Next time you open the connect screen, any server you've connected to before shows a one-tap **Reconnect to &lt;your server&gt;** row - so you only re-enter your code or password, never the server address. See [Connecting and signing in](connecting.md#getting-back-in-after-signing-out).
 :::
 
-### Devices
+## Server version
 
-Pair another phone, tablet, or browser to your account without a new invite: tap **Add a device** and a QR code appears. Scan it with the other device (or share the link to it) and it signs straight in. The details are in [Connecting and signing in](connecting.md).
-
-### Server version
-
-The footer of a server's account page shows the version of AudioSilo that server is running.
-
-:::note
-Things an admin manages - creating accounts, invites, what libraries you can see - aren't in your Settings; they live in the server's admin console. See [People and invites](../admin/users-and-invites.md).
-:::
+The foot of the page shows the version of AudioSilo that server is running.

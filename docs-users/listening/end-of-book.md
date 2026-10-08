@@ -34,7 +34,7 @@ If nothing on your server comes next, the card says **End of the series**, and w
 
 ## Playing on automatically
 
-Turn on **Automatically play next book** in [Settings](account.md#up-next) (the same switch as **Play the next book automatically** at the bottom of Up next):
+Turn on **Automatically play next book** in [Settings](settings.md#up-next-and-downloads) (the same switch as **Play the next book automatically** at the bottom of Up next):
 
 - After a book finishes, a ring on the Up next card counts down **15 seconds**, then the next book starts. **Not now** stops it for this visit.
 - If you opened the credits early while the book is still playing, the card counts down the **time left in the book**; nothing starts until it ends.
@@ -42,4 +42,4 @@ Turn on **Automatically play next book** in [Settings](account.md#up-next) (the 
 
 If the app is in the background when a book ends (the screen locked, or another app open), there's no countdown: with auto-play on, the next book starts straight away and the mini player shows it when you return. Otherwise - auto-play off, nothing next, or a sleep timer running - the end credits are waiting when you come back. (If you had already opened the end credits, they stay instead and their countdown carries on - on a phone, once you're back in the app.)
 
-**Download automatically** and **Remove a download when you finish the book** keep this smooth and tidy; see [Up next in Settings](account.md#up-next).
+**Download automatically** and **Remove a download when you finish the book** keep this smooth and tidy; see [Up next and downloads in Settings](settings.md#up-next-and-downloads).

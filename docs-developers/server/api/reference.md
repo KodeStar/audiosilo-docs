@@ -49,7 +49,8 @@ else and gate features on the flags.
     "progress_edit": true,
     "user_stats": true,
     "my_devices": true,
-    "annotations": true
+    "annotations": true,
+    "addresses": true
   },
   "auth": { "methods": ["auth_code", "password"] },
   "demo": { "enabled": false }
@@ -104,7 +105,10 @@ a server that has them and absent on an older one:
 `annotations` (always `true`, absent on an older server) gates bookmark labels, the
 owner's edits of bookmarks and notes, and the lists across books: see
 [Capability flags](index.md#capability-flags---gate-your-features) for what it
-covers.
+covers. `addresses` (always `true`, absent on an older server) says the server reports
+its [home and away addresses](#home-and-away-addresses): on every pairing payload and
+its links, on the exchange, login and demo answers, and at
+[`GET /addresses`](#get-apiv1addresses).
 
 ### `GET /healthz` · `GET /api/v1/healthz`
 
@@ -155,7 +159,11 @@ Response `200` - the pairing payload (`PairingPayload` in `internal/api/qr.go`):
     "admin": "https://books.example.com/admin"
   },
   "code_expires_at": "2026-07-04T09:30:00Z",
-  "uses_remaining": 5
+  "uses_remaining": 5,
+  "addresses": {
+    "home": "http://192.168.1.20:8080",
+    "away": "https://books.example.com"
+  }
 }
 ```
 
@@ -172,6 +180,40 @@ app via Universal/App Links on claimed domains, else the embedded web player);
 `links.ios`/`links.android` (store links) are omitted until the store apps ship.
 `base_url` honors the configured `public_url`, falling back to the request host.
 `server_name` is the server's display name, as `GET /server`'s `name`.
+`addresses` is the server's [home and away addresses](#home-and-away-addresses), omitted
+when it has neither; both links then carry them too (below).
+
+#### Home and away addresses
+
+On a server with the `addresses` capability, every pairing payload (`/auth/redeem`,
+`/auth/pair`, the demo session's `pairing`), the [`/auth/exchange`](#post-apiv1authexchange),
+[`/auth/login`](#post-apiv1authlogin) and [`/demo/session`](#post-apiv1demosession)
+answers, and [`GET /addresses`](#get-apiv1addresses) carry the same object:
+
+| Field | Type | Meaning |
+|---|---|---|
+| `home` | string, optional | The server's address on the household network: the configured [`lan_url`](../configuration.md#home-address-lan_url), else the address **this request** arrived on (scheme + `Host`) when that is a home-network host and the request did not come through a proxy ([the rule](../configuration.md#home-address-lan_url)) |
+| `away` | string, optional | The address that works from anywhere: the configured `public_url` |
+
+A `home` equal to the `away` is dropped. On the pairing payloads and the sign-in answers
+the object is omitted when neither is known. Because `home` can be derived from the
+request, an answer read through the away address usually has no `home`: a client keeps a
+`home` it already knows rather than forgetting it.
+
+The two links carry the same addresses as extra query parameters **after** the existing
+ones, only those that are set, so an older client ignores them:
+
+```text
+audiosilo://connect?server=https%3A%2F%2Fbooks.example.com&token=…&away=https%3A%2F%2Fbooks.example.com&home=http%3A%2F%2F192.168.1.20%3A8080
+https://books.example.com/web/connect?token=…&away=https%3A%2F%2Fbooks.example.com&home=http%3A%2F%2F192.168.1.20%3A8080
+```
+
+Read them by name: the encoder sorts them (`away` before `home`).
+
+A client must not send a token to a `home` address until a tokenless
+`GET <home>/api/v1/server` there has answered with the same `server_id`: a private
+address can belong to a different machine on another network. The player's rule is in
+[Connect and home/away addresses](../../frontend/connect-and-addresses.md#the-pick-rule-srclibserver-addressts).
 
 | Status | Meaning |
 |---|---|
@@ -212,7 +254,9 @@ Response `200`:
 ```
 
 `server_id` is the paired server's stable identity (see `GET /server`); the client
-adopts it as the connection's id.
+adopts it as the connection's id. On a server with `addresses`, the answer also carries
+`addresses` (`{ "home"?, "away"? }`, omitted when neither is known; see
+[Home and away addresses](#home-and-away-addresses)).
 
 | Status | Meaning |
 |---|---|
@@ -247,8 +291,8 @@ a session out (`DELETE /admin/devices/{id}`) forgets its `device_id` on every
 session of that person, and a new password or a disabled account forgets all of
 that person's, so the browser's next sign-in is announced again.
 
-Response `200`: `{ "token": "…", "user": { … } }` - same shape as
-`/auth/exchange`.
+Response `200`: `{ "token": "…", "user": { … }, "server_id": "…" }`, plus `addresses`
+on a server with that capability - the same shape as `/auth/exchange`.
 
 | Status | Meaning |
 |---|---|
@@ -259,7 +303,9 @@ Response `200`: `{ "token": "…", "user": { … } }` - same shape as
 
 *Session.* Issues a fresh pairing payload for the calling user - "add another
 device" from an existing session. No request body. Response `200`: a
-`PairingPayload` (same shape as `/auth/redeem`).
+`PairingPayload` (same shape as `/auth/redeem`, without the invite budget fields). Its
+token is single-use and lasts 10 minutes (`pairingTTL`), so the player counts down from
+when the payload arrived.
 
 ### `POST /api/v1/auth/logout`
 
@@ -285,6 +331,23 @@ Content`.
 
 `last_seen_at` is derived from the account's most recent token activity and is
 omitted when there is none. `role` is `"admin"` or `"user"`.
+
+### `GET /api/v1/addresses`
+
+*Session* (any role, demo accounts included). Capability `addresses`. The server's
+[home and away addresses](#home-and-away-addresses) as seen from this request, so a
+device paired before an address was set learns it:
+
+```json
+{ "home": "http://192.168.1.20:8080", "away": "https://books.example.com" }
+```
+
+Either field is omitted when unknown, and the answer is `{}` when neither is.
+
+| Status | Meaning |
+|---|---|
+| `200` | the addresses (`{}` when neither is known) |
+| `401` | no valid session or API key |
 
 ## Self-service account
 
@@ -506,6 +569,7 @@ QR and join as the same demo user:
 ```json
 {
   "token": "Qm9WZbT5nR8sHc2fLdA7yUqPgVi4oXk1NwsE3vJx0eK",
+  "server_id": "kx8Qz1c7m2Vw0aB3dEfGh",
   "user": {
     "id": 91,
     "username": "demo_a3f19c02b7d4",
@@ -518,6 +582,9 @@ QR and join as the same demo user:
   "pairing": { "server_name": "AudioSilo", "pairing_token": "…", "…": "…" }
 }
 ```
+
+On a server with `addresses`, the answer and its `pairing` also carry `addresses` (see
+[Home and away addresses](#home-and-away-addresses)).
 
 | Status | Meaning |
 |---|---|
@@ -4882,6 +4949,7 @@ and `AUDIOSILO_*` variable each one is, and whether it needs a restart (see
   "general": {
     "name": "Hearthside",
     "public_url": "https://books.example.com",
+    "lan_url": "http://192.168.1.20:8080",
     "update_check": true,
     "session_days": 400
   },
@@ -4934,6 +5002,7 @@ effect. Lists are never `null`.
 |---|---|
 | `general.name` | display name; `""` means `"AudioSilo"` (what `GET /server` then reports) |
 | `general.public_url` | `""` = derived from each request's host |
+| `general.lan_url` | the [home address](../configuration.md#home-address-lan_url); `""` = derived from a request on a home-network host |
 | `players.web_dir` | read-only: changed only in `config.yaml` or `AUDIOSILO_WEB_DIR` |
 | `players.web_player` | read-only: where `/web` is served from - `"embedded"` (baked into the build), `"dir"` (from `web_dir`) or `""` (not mounted) |
 | `metadata.available` | read-only: a metadata service exists (`base_url` was a valid absolute `http(s)` URL when the server started), so `enabled` can be turned on. The live `metadata` [capability](#get-apiv1server) is `enabled && available` |

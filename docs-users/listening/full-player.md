@@ -13,7 +13,7 @@ The full player is about the book you're listening to. Its background takes on t
 - **The cover**, then **the chapter title** with the book and author under it. Tap the chapter title to open the chapters.
 - **The status line**: whether your [place is saved](playback.md#your-position-follows-you), how much of the book you've heard, and the [time left](#time-left): *"Synced just now · 38% of the book · 22h 27m left at 1.25×"*. After a big jump it turns into the [undo button](#undo-a-jump), and in a sleep timer's last seconds the [sleep timer's card](sleep-timer.md#the-last-30-seconds) takes its place.
 - **The [seek bar](#the-seek-bar-and-the-timeline)** for the current chapter, and a slim **timeline of the whole book** below it.
-- **The transport**: previous chapter, skip back, play/pause, skip forward, next chapter. The skip buttons show how far they jump (15 seconds back and 30 forward out of the box; change them in [Settings](account.md#playback)). If playback fails, the play button becomes **Retry**.
+- **The transport**: previous chapter, skip back, play/pause, skip forward, next chapter. The skip buttons show how far they jump (15 seconds back and 30 forward out of the box; change them in [Settings](settings.md#playback)). If playback fails, the play button becomes **Retry**.
 - **The actions**: [speed](#playback-speed), the [sleep timer](sleep-timer.md), **bookmark** (one tap adds one where you are; see [Bookmarks and notes](bookmarks-and-notes.md)), **output** for [AirPlay or Cast](playback.md#play-to-another-speaker-airplay--cast) where your device has one, and [Up next](up-next.md) with how many books are queued.
 
 Beside or below it sits the [companion](companion.md): Who's who, Story so far, the chapters, and your bookmarks, notes and history for the book.
@@ -49,7 +49,7 @@ Neither scrubber takes you all the way to the end: a tap or drag there lands **3
 
 Wherever AudioSilo says how much of a book is left - the player, the mini player and player bar, Home, the Library's book list, Up next - it's **real time at the speed you listen to that book**: *"5h 12m left at 1.25×"*, or just *"5h 12m left"* at normal speed.
 
-Each book uses **its own** speed: the playing book its current speed, any other book the speed you last listened to it at, or your **default speed** from [Settings](account.md#playback) if you haven't started it.
+Each book uses **its own** speed: the playing book its current speed, any other book the speed you last listened to it at, or your **default speed** from [Settings](settings.md#playback) if you haven't started it.
 
 ## Undo a jump
 

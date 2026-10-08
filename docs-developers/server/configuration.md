@@ -67,10 +67,43 @@ is enabled but not found locally, the auto-download kicks in (below).
 | Key | Type / default | Meaning |
 |---|---|---|
 | `bind` | string, `"0.0.0.0:8080"` | `host:port` to listen on. Must parse with `net.SplitHostPort` |
-| `public_url` | string, `""` | Externally reachable base URL, used in QR pairing payloads, invite links and the launcher's "open this URL" output. Empty → derived per-request from scheme + `Host` header |
+| `public_url` | string, `""` | Externally reachable base URL, used in QR pairing payloads, invite links and the launcher's "open this URL" output. Empty → derived per-request from scheme + `Host` header. Also the **away** address the apps use outside the home network (see [Home address](#home-address-lan_url)) |
+| `lan_url` | string, `""` | The server's **home** address on the household network, e.g. `http://192.168.1.20:8080`: see [Home address](#home-address-lan_url). Empty → derived per request when the request's `Host` is a home-network host |
 | `trusted_proxies` | []string (CIDRs), `[]` | Networks whose `X-Forwarded-For` is trusted when deriving the client IP (which feeds the per-IP rate limiters). Set when running behind a reverse proxy. Each entry must be a valid CIDR |
 | `cors_origins` | []string, `[]` | Browser origins granted CORS (methods `GET, POST, PUT, PATCH, DELETE, OPTIONS`). Empty = no cross-origin headers at all (native apps and same-origin web still work); `"*"` disables the check entirely. Needed for a hot-reload frontend dev server, e.g. `http://localhost:8081` |
 | `max_upload_bytes` | int64, `2147483648` (2 GiB) | Reserved for the planned `POST /uploads` (Phase B) - **not yet enforced**; JSON request bodies use a fixed 1 MiB cap regardless |
+
+#### Home address (`lan_url`)
+
+`lan_url` (`AUDIOSILO_LAN_URL`, console **Settings > General > Home address**,
+`general.lan_url`; it applies without a restart) is the server's address on the home
+network, an absolute `http(s)` address with no query or fragment. With `public_url` (the
+**away** address) it makes the `addresses` capability: the apps learn both when they pair
+(and from [`GET /addresses`](api/reference.md#get-apiv1addresses) afterwards) and switch
+to the home address whenever they can reach it, using `public_url` when away. Wire shape
+and where it appears: [Home and away addresses](api/reference.md#home-and-away-addresses).
+
+`config.Addresses(scheme, host)` is the pure core, wrapped per request by `api.addresses(r)`:
+
+- `away` is `public_url` without a trailing `/`.
+- `home` is `lan_url`, or, when that is empty, `scheme://Host` of **this request** when
+  `isHomeNetworkHost(Host)`: a private IP (RFC 1918, IPv6 ULA `fc00::/7`), a
+  link-local one, or a name ending in `.local`, `.lan`, `.home.arpa` or `.internal`, or a
+  single-label name. A bare IPv6 host is written in brackets in the address. Never loopback (`127.0.0.0/8`, `::1`, `localhost`): no other device can reach it.
+  Never carrier-grade NAT space (`100.64.0.0/10`, which Go's `IsPrivate` leaves out): it
+  is the ISP's network, not the household's. The scheme follows the same rule as the
+  pairing `base_url` (`https` on a TLS connection, else `http`), and `X-Forwarded-*` is
+  not trusted. A request that came through a reverse proxy (it carries `Forwarded` or
+  any `X-Forwarded-*` header) never derives a home address: its `Host` is the proxy's
+  upstream, not an address a device can use.
+- A `home` equal to the `away` is dropped.
+
+:::caution Reverse proxies and the derived home address
+Behind a reverse proxy the server derives no home address at all, because the request's
+`Host` is the proxy's upstream (a container name such as `audiosilo:8080`, a bridge IP,
+plain `http` behind TLS). Set `lan_url` to give the apps a home address; a configured
+`lan_url` applies to proxied requests as usual.
+:::
 
 ### TLS (`tls.*`)
 
@@ -234,6 +267,7 @@ by the settings table in `internal/config/settings.go` (`fields`: each entry's
 |---|---|---|
 | `AUDIOSILO_BIND` | `bind` | `host:port` |
 | `AUDIOSILO_PUBLIC_URL` | `public_url` | URL |
+| `AUDIOSILO_LAN_URL` | `lan_url` | URL |
 | `AUDIOSILO_WEB_DIR` | `web_dir` | path |
 | `AUDIOSILO_TLS_MODE` | `tls.mode` | `off` / `selfsigned` / `autocert` |
 | `AUDIOSILO_TLS_HOSTS` | `tls.hosts` | comma-separated list |
@@ -282,6 +316,7 @@ restart, and whether the console may change it at all:
 |---|---|---|---|
 | `general.name` | `name` | - | at once |
 | `general.public_url` | `public_url` | `AUDIOSILO_PUBLIC_URL` | at once |
+| `general.lan_url` | `lan_url` | `AUDIOSILO_LAN_URL` | at once |
 | `general.update_check` | `update_check` | `AUDIOSILO_UPDATE_CHECK` | at once |
 | `general.session_days` | `activity.session_days` | `AUDIOSILO_SESSION_DAYS` | at the next daily retention run |
 | `network.bind` | `bind` | `AUDIOSILO_BIND` | restart |
@@ -325,7 +360,7 @@ setting copied back from `boot`**. Handlers read the working config through
 `a.config()`, so a saved restart setting has no effect until the next start,
 while everything else applies to the next request: CORS and the trusted-proxy
 check (`liveConfig` parses both once per save, not per request), `public_url`
-in pairing and invite links, the display name, the well-known app-link files,
+in pairing and invite links, `lan_url` in the home and away addresses, the display name, the well-known app-link files,
 the metadata switch (`metadataOn`), the demo library and cap, the backup
 schedule and retention (the handler calls `backup.Service.SetSettings`). Things set up
 once at start (the listener and TLS in `internal/server`, the `/web` mount and
@@ -358,7 +393,7 @@ reason, and nothing is applied (all or nothing). The handler then writes
 | Setting | Accepted, and how it is stored |
 |---|---|
 | `name` | trimmed; at most 64 characters, no control characters |
-| `public_url`, `metadata.base_url` | an absolute `http`/`https` address with no query, fragment or user info; trailing `/` dropped; `""` allowed (but `Validate` refuses an empty `base_url` while metadata is on) |
+| `public_url`, `lan_url`, `metadata.base_url` | an absolute `http`/`https` address with no query, fragment or user info; trailing `/` dropped; `""` allowed (but `Validate` refuses an empty `base_url` while metadata is on) |
 | `bind` | `host:port`, port 1-65535 |
 | `tls.hosts` | lowercased host names, no scheme, port or path; `Validate` requires at least one for `autocert` |
 | `trusted_proxies` | CIDR ranges; a bare address becomes its one-address range (`10.0.0.2` → `10.0.0.2/32`, IPv6 `/128`) |

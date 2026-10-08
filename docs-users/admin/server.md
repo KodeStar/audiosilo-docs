@@ -90,6 +90,11 @@ Some settings can't be changed here, and say why:
   `https://books.example.com`, used in invite links and QR codes. Leave it
   empty to use whatever address the browser used. See
   [Tell the server its public address](../getting-started/remote-access.md#tell-the-server-its-public-address).
+- **Home address** - the address devices use on your home network, like
+  `http://192.168.1.20:8080`. The apps switch to it by themselves when they
+  can reach it, and use the public address when they can't. Leave it empty to
+  use the address the browser used when that is a home-network address. See
+  [Tell the server its home address](../getting-started/remote-access.md#tell-the-server-its-home-address).
 
 The **Listening history** card sets **Days to keep sessions** (400 out of the
 box, anything from 30 to 3650). Each listening session records which device

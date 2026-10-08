@@ -12,6 +12,8 @@
 import {chromium} from 'playwright';
 import path from 'node:path';
 import {mkdir} from 'node:fs/promises';
+import {existsSync} from 'node:fs';
+import {execFileSync} from 'node:child_process';
 import {
   CACHE,
   DAY,
@@ -159,6 +161,85 @@ const audioHook = () => {
   };
 };
 
+// ── A year of listening ─────────────────────────────────────────────────────
+// Listening stats come from listening sessions, which the server only derives from
+// progress saves as they happen (a device's listened time can't run faster than the
+// server's clock), so a fresh demo user has a minute of listening and the You shots
+// would be bare. seedListeningYear writes a year of sessions for the demo user straight
+// into the capture server's own database (run.sh's .cache/data, a throwaway copy),
+// marked token_id -1, and unseedListeningYear removes them once the web captures are
+// done, so the admin console's Activity shots (captured afterwards) only show the
+// listeners they provision. Deterministic (a fixed seed), so a re-run draws the same
+// charts. Needs the sqlite3 CLI on PATH; without it the step fails and the shots show
+// only the warm-up's listening.
+const DB = path.join(CACHE, 'data', 'audiosilo.db');
+const SEEDED_TOKEN = -1;
+// The books the year is spread over, most listened first (title substrings).
+const YEAR_BOOKS = [
+  "Alice's Adventures",
+  'Adventures of Sherlock Holmes',
+  'Hound of the Baskervilles',
+  'Call of the Wild',
+  'Looking-Glass',
+  'Christmas Carol',
+  'Art of War',
+];
+
+function sqlite(sql) {
+  if (!existsSync(DB)) throw new Error(`no capture database at ${DB}`);
+  return execFileSync('sqlite3', [DB], {input: `.timeout 15000\n${sql}\n`, encoding: 'utf8'});
+}
+
+function seedListeningYear(userId, libraryId, books) {
+  if (!books.length) throw new Error('no seeded books to listen to');
+  let state = 20261008;
+  const rand = () => ((state = (state * 1103515245 + 12345) % 2147483648) / 2147483648);
+  const q = (v) => `'${String(v).replace(/'/g, "''")}'`;
+  const rows = [];
+  const now = Date.now();
+  // Every day of the last year but today (the warm-up's own listening is today's): most
+  // days some listening, the odd quiet spell, more at weekends; evenings the busiest hour,
+  // a commute in the morning on weekdays. The last ten days all have some, so the streak
+  // is running.
+  for (let back = 364; back >= 1; back--) {
+    const day = new Date(now - back * DAY);
+    const weekend = day.getDay() === 0 || day.getDay() === 6;
+    const recent = back <= 10;
+    if (!recent && rand() < (back % 47 < 6 ? 0.85 : 0.18)) continue; // quiet spells, days off
+    const slots = weekend ? [[10, 2], [21, 1.5]] : [[7.5, 0.6], [21.5, 1]];
+    for (const [i, [hour, spread]] of slots.entries()) {
+      if (rand() < 0.3 && !(recent && i === slots.length - 1)) continue;
+      const minutes = Math.round(15 + rand() * (weekend ? 85 : 50));
+      const start = new Date(day);
+      start.setHours(0, 0, 0, 0);
+      const at = start.getTime() + (hour + (rand() - 0.5) * 2 * spread) * HOUR;
+      // A book for a few weeks at a time, so the top lists have a clear order.
+      const pick = Math.min(books.length - 1, Math.floor(((back / 30) % books.length) * rand() * 1.2));
+      const b = books[pick];
+      const startPos = Math.round(rand() * 1800);
+      const listened = minutes * 60;
+      rows.push(
+        `(${userId}, ${libraryId}, ${q(b.rel_path)}, ${SEEDED_TOKEN}, 'Pixel 9', 'AudioSilo', '1.3.0', 'android', ` +
+          `${q(new Date(at).toISOString())}, ${q(new Date(at + listened * 1000).toISOString())}, ` +
+          `${startPos}, ${startPos + listened}, ${Math.max(b.duration ?? 0, startPos + listened)}, 1, ${listened})`,
+      );
+    }
+  }
+  sqlite(
+    'BEGIN;\n' +
+      'INSERT INTO listening_sessions (user_id, library_id, rel_path, token_id, device_name, client_app, ' +
+      'client_version, client_platform, started_at, last_at, start_pos, end_pos, duration, speed, listened) VALUES\n' +
+      rows.join(',\n') +
+      ';\nCOMMIT;',
+  );
+  console.log(`  ✓ a year of listening: ${rows.length} sessions`);
+}
+
+function unseedListeningYear() {
+  sqlite(`DELETE FROM listening_sessions WHERE token_id = ${SEEDED_TOKEN};`);
+  console.log('  ✓ the seeded year removed again');
+}
+
 const browser = await chromium.launch();
 await mkdir(CACHE, {recursive: true});
 
@@ -290,6 +371,15 @@ console.log('== warm demo session ==');
       made += (w.bookmarks?.length ?? 0) + (w.notes?.length ?? 0) + (w.drift ? 1 : 0);
     }
     console.log(`  ✓ ${made} bookmarks and notes, history, a finished book and a drift-off`);
+  });
+
+  // A year of listening for You (Your listening, Year in listening) and Home's This
+  // week: see seedListeningYear.
+  await step('listening year', async () => {
+    const token = await demoToken(page);
+    const me = await api(token, 'GET', '/me');
+    const {lib, find} = await seededBooks(token);
+    seedListeningYear(me.id, lib.id, YEAR_BOOKS.map(find).filter(Boolean));
   });
 
   await ctx.storageState({path: AUTH});
@@ -682,6 +772,31 @@ async function captureWide(name, viewport, shots) {
     });
   }
 
+  if (wanted(shots.youStats, shots.year)) {
+    // You in the top bar: Your listening (Stats), then Year in listening. The context
+    // reduces motion, so the story stays on its first card (a still frame).
+    await step('you', async () => {
+      await tid(page, 'top-bar-(me)').click({timeout: 8000});
+      // The Me tab keeps its section: the Journal shot left it on the Journal.
+      await tid(page, 'shell-sub-nav').getByRole('radio', {name: /^Stats/}).click({timeout: 8000});
+      await tid(page, 'you-hub-stats').waitFor({timeout: 8000});
+      await firstVisible(page.getByText(/^(Listening calendar|No listening yet)$/)).waitFor({timeout: 15000});
+      await sleep(SETTLE_MS);
+      await page.mouse.move(0, 0);
+      await shoot(page, shots.youStats);
+      if (wanted(shots.year)) {
+        await tid(page, 'shell-sub-nav')
+          .getByRole('radio', {name: /^Year in listening/})
+          .click({timeout: 8000});
+        await tid(page, 'year-section').waitFor({timeout: 8000});
+        await firstVisible(page.getByText(/^(Share this card|Not much of a story yet)$/)).waitFor({timeout: 15000});
+        await sleep(1500); // the stage's covers
+        await page.mouse.move(0, 0);
+        await shoot(page, shots.year);
+      }
+    });
+  }
+
   for (const [key, testId] of [
     ['settings', 'top-bar-settings'],
     ['downloads', 'top-bar-(offline)'],
@@ -735,6 +850,25 @@ async function capturePhone(name, viewport, shots) {
     await shoot(page, shots.home);
   });
 
+  if (wanted(shots.youStats, shots.settings)) {
+    // The Me tab (the You hub): Stats, then its Settings section.
+    await step('me tab', async () => {
+      await tid(page, 'tab-bar-(me)').click({timeout: 8000});
+      await tid(page, 'you-hub-stats').waitFor({timeout: 8000});
+      await firstVisible(page.getByText(/^(This week|No listening yet)$/)).waitFor({timeout: 15000});
+      await sleep(SETTLE_MS);
+      await shoot(page, shots.youStats);
+      if (wanted(shots.settings)) {
+        await firstVisible(page.getByRole('radio', {name: 'Settings', exact: true})).click({timeout: 8000});
+        await tid(page, 'settings-content').waitFor({timeout: 8000});
+        await sleep(SETTLE_MS);
+        await shoot(page, shots.settings);
+      }
+      // Back to Stats, so a later visit to the tab starts where a fresh run does.
+      await firstVisible(page.getByRole('radio', {name: 'Stats', exact: true})).click({timeout: 8000}).catch(() => {});
+    });
+  }
+
   if (wanted(shots.upNext)) {
     // The sheet, from the Up next button beside Home's large title.
     await step('up next sheet', async () => {
@@ -768,6 +902,8 @@ await captureWide('desktop', {width: 1440, height: 900}, {
   author: 'web-player/author.png',
   collection: 'web-player/collection.png',
   search: 'web-player/search.png',
+  youStats: 'web-player/you-stats.png',
+  year: 'web-player/year.png',
   settings: 'web-player/settings.png',
   downloads: 'web-player/downloads.png',
 });
@@ -783,17 +919,64 @@ await capturePhone('phone', {width: 430, height: 932}, {
   speedSheet: 'web-player/phone-speed-sheet.png',
   sleepSheet: 'web-player/phone-sleep-sheet.png',
   upNext: 'web-player/phone-up-next.png',
+  youStats: 'web-player/phone-you-stats.png',
+  settings: 'web-player/phone-settings.png',
 });
 
 // ── Unauthenticated screens ─────────────────────────────────────────────────
 console.log('== public screens ==');
+// The connect flow on a fresh browser: the start screen with the probe card, then a
+// first connection (the admin, by username and password: a real account, so the
+// account page has its Password card and API keys) to "Your library is ready.", then
+// the account page from the profile menu. That player session is signed out again at
+// the end, so it never shows in the admin Devices shot.
 await step('connect', async () => {
-  const ctx = await browser.newContext({viewport: {width: 1440, height: 900}, deviceScaleFactor: 2, colorScheme: 'dark'});
+  const ctx = await browser.newContext({
+    viewport: {width: 1440, height: 900},
+    deviceScaleFactor: 2,
+    colorScheme: 'dark',
+    reducedMotion: 'reduce',
+  });
+  await ctx.addInitScript(drawerClosed);
   const page = await ctx.newPage();
-  await page.goto(BASE + 'connect', {waitUntil: 'networkidle', timeout: 45000});
-  await sleep(2500);
-  await shoot(page, 'web-player/connect.png');
-  await ctx.close();
+  try {
+    await page.goto(BASE + 'connect', {waitUntil: 'networkidle', timeout: 45000});
+    await tid(page, 'connect-start').waitFor({timeout: 15000});
+    await firstVisible(page.getByRole('textbox', {name: 'Server address'})).fill(new URL(BASE).origin);
+    await firstVisible(page.getByRole('button', {name: 'Continue', exact: true})).click({timeout: 8000});
+    await tid(page, 'probe-notice').waitFor({timeout: 15000});
+    await sleep(SETTLE_MS);
+    await page.mouse.move(0, 0);
+    await shoot(page, 'web-player/connect.png');
+    if (!wanted('web-player/connect-ready.png', 'web-player/account.png')) return;
+    if (!ADMIN_PASSWORD) throw new Error('ADMIN_PASSWORD not set: no first connection to show');
+
+    await firstVisible(page.getByRole('button', {name: /^Sign in to /})).click({timeout: 8000});
+    await tid(page, 'sign-in-step').waitFor({timeout: 8000});
+    await firstVisible(page.getByRole('radio', {name: 'Username and password'})).click({timeout: 8000});
+    await firstVisible(page.getByLabel('Username', {exact: true})).fill('admin');
+    await firstVisible(page.getByLabel('Password', {exact: true})).fill(ADMIN_PASSWORD);
+    await firstVisible(page.getByRole('button', {name: 'Sign in', exact: true})).click({timeout: 8000});
+    await tid(page, 'ready-screen').waitFor({timeout: 15000});
+    await firstVisible(page.getByRole('button', {name: 'Start listening'})).waitFor({timeout: 8000});
+    await sleep(3000); // the library sentence and the shelf
+    await shoot(page, 'web-player/connect-ready.png');
+
+    if (wanted('web-player/account.png')) {
+      await firstVisible(page.getByRole('button', {name: 'Start listening'})).click({timeout: 8000});
+      await tid(page, 'top-bar-profile').click({timeout: 15000});
+      await firstVisible(page.getByRole('menuitem', {name: /^Account on /})).click({timeout: 8000});
+      await firstVisible(page.getByText('Signed-in devices')).waitFor({timeout: 15000});
+      await sleep(SETTLE_MS);
+      await page.mouse.move(0, 0);
+      await shoot(page, 'web-player/account.png');
+    }
+  } finally {
+    // Sign the admin's player session out again, whatever happened above.
+    const token = await demoToken(page).catch(() => null);
+    if (token) await api(token, 'POST', '/auth/logout').catch(() => {});
+    await ctx.close();
+  }
 });
 
 await step('demo', async () => {
@@ -804,6 +987,8 @@ await step('demo', async () => {
   await shoot(page, 'web-player/demo.png');
   await ctx.close();
 });
+
+await step('remove the seeded year', unseedListeningYear);
 
 await browser.close();
 console.log('capture-web: done.');

@@ -43,6 +43,7 @@ A few protections work behind the scenes so you never lose your place:
 - Your position is stored **on the server and on the device**, and the most recent one wins - so a flaky connection can't quietly rewind you.
 - A book **never silently restarts from the beginning**. If a streamed book can't confirm your resume position (say, the server is briefly unreachable), the player shows an error with a **Retry** button rather than starting at zero.
 - Even if playback did slip back somehow, the app refuses to overwrite your real progress with a much earlier position - only a deliberate seek backwards counts.
+- **Picking up where another device left off**: if a book is still loaded on this device when you come back to it (you open the app again, or press play after a pause of more than a minute) and you've listened further on another device meanwhile, the player jumps to that newer place before it saves anything, and says so: *"Picked up your place from another device"*, with **Undo** to go back.
 - **Auto-rewind on resume**: after a pause, playback backs up a few seconds (5 by default, adjustable up to 30 or off) so you regain the thread of the sentence.
 
 ## Bookmarks, notes and history
@@ -72,11 +73,11 @@ The conversion needs **ffmpeg** on your server, which the Docker image includes 
 In the mobile apps, playback continues in the background and shows up everywhere your system shows media:
 
 - **Android** - the lock screen and notification give you the full audiobook row: **previous chapter**, a **chapter-relative scrubber** you can drag, **next chapter**, and **30-second skip back/forward** buttons.
-- **iOS** - the lock screen and Control Centre show play/pause, a scrubber, and **skip back/forward** buttons that use the same skip lengths you chose in Settings.
+- **iOS** - the lock screen and Control Centre show play/pause, a scrubber, and **skip back/forward** buttons that use the same skip lengths you chose in [Settings](settings.md#playback).
 - **Headphones and earbuds** - play/pause and skip buttons work as you'd expect, and playback pauses politely for interruptions (a phone call, a navigation prompt) and resumes afterwards only if it was playing before.
 
 See [The mobile apps](mobile-apps.md) for more on the native apps.
 
 ## Books without chapters
 
-A long audiobook that's a single file with no chapter markers still gets chapter-style navigation: the player divides it into **virtual chapters** (every 30 minutes by default - adjustable from 5 to 60 minutes in Settings), so the chapter skips, the chapter list, and the sleep timer's **End of chapter** all work.
+A long audiobook that's a single file with no chapter markers still gets chapter-style navigation: the player divides it into **virtual chapters** (every 30 minutes by default - adjustable from 5 to 60 minutes in [Settings](settings.md#playback)), so the chapter skips, the chapter list, and the sleep timer's **End of chapter** all work.

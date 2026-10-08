@@ -308,7 +308,8 @@ single-shot with a `limit` and no pagination.
     "progress_edit": true,
     "user_stats": true,
     "my_devices": true,
-    "annotations": true
+    "annotations": true,
+    "addresses": true
   },
   "auth": { "methods": ["auth_code", "password"] },
   "demo": { "enabled": false }
@@ -338,8 +339,8 @@ it, so treat a missing flag as `false`:
 | `cover_sizes` | `?size=160\|320\|640` thumbnails on [`/cover`](reference.md#get-apiv1librariesidcover) |
 | `next_book` | [`/next`](reference.md#get-apiv1librariesidnext), the server's answer to what plays after a book |
 
-The listener's own state, stats and annotations added seven, each always `true` on
-a server that has it:
+The listener's own state, stats, annotations and the server's addresses added eight,
+each always `true` on a server that has it:
 
 | Flag | Gates |
 |---|---|
@@ -350,6 +351,7 @@ a server that has it:
 | `user_stats` | [`/me/stats`](reference.md#get-apiv1mestats), [`/me/listening`](reference.md#get-apiv1melistening) and [`/me/goal`](reference.md#get-apiv1megoal--put-apiv1megoal--delete-apiv1megoal) |
 | `my_devices` | [`/me/devices`](reference.md#get-apiv1medevices), the caller's own signed-in devices |
 | `annotations` | a bookmark's `label` (on [`POST …/bookmarks`](reference.md#get-apiv1librariesidbookmarks--post-apiv1librariesidbookmarks) and every bookmark answer), the owner's edits [`PATCH /bookmarks/{id}`](reference.md#patch-apiv1bookmarksid) and [`PATCH /notes/{id}`](reference.md#patch-apiv1notesid), the all-books lists [`/me/bookmarks`](reference.md#get-apiv1mebookmarks) and [`/me/notes`](reference.md#get-apiv1menotes), and `cursor` paging plus each row's `book` on [`/me/history`](reference.md#get-apiv1mehistory) |
+| `addresses` | the server's [home and away addresses](reference.md#home-and-away-addresses) on every pairing payload and its links, on the exchange, login and demo answers, and [`GET /addresses`](reference.md#get-apiv1addresses) |
 
 Gate on the flag rather than on the server version: an older server answers
 `size=` and `narrator=` by ignoring them (full art, the unfiltered list) and the

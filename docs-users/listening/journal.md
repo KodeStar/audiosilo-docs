@@ -7,10 +7,12 @@ The **Journal** is your listening, looked back on: a **Diary** of every day you 
 
 ## Opening it
 
-- **On a phone**: the **Journal** row at the top of the **Me** tab.
-- **On a tablet or computer**: **Journal** in your [profile menu](browsing.md#getting-around) (it's also the first row of Settings).
+The Journal is part of [You](you.md#finding-you):
+
+- **On a phone**: the **Journal** section of the **Me** tab.
+- **On a tablet or computer**: **Journal** under **You** in the top bar, or **Journal** in your [profile menu](browsing.md#getting-around).
 - In the web player's [quick search](browsing.md#quick-search-in-the-web-player): **Journal**, under Go to.
-- On a book's **Bookmarks** or **Notes** tab: **See all in your journal**, which opens straight on that list.
+- On a book's **Bookmarks** or **Notes** tab: **See all in your journal**, which opens straight on that list. **See them in your Journal** under [Finished this year](you.md#finished-this-year) opens it too.
 
 Across the top: three tabs, **Diary**, **Bookmarks** and **Notes**, and the [export](#exporting-your-bookmarks-and-notes) buttons. Bookmarks and Notes show how many you have.
 
