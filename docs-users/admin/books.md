@@ -381,9 +381,13 @@ Library, for example). Only the image itself is asked for.
 
 **Library > Authors** lists every author with how many books they have and
 how long those books run, most books first. **Library > Narrators** does the
-same for narrators, most hours first. Use the library filter and **Filter
-authors** (or **Filter narrators**) to narrow the list. Click a name to open
-**Books** filtered to that person.
+same for narrators, most hours first. A book credited to two people ("Michael
+Kramer, Kate Reading") counts for each of them, so each has their own tile.
+AudioSilo only splits a credit where it clearly names several people (at `;`,
+`&` or `and`, or at commas between full names), so "Sanderson, Brandon" stays
+one person. Use the library filter and **Filter authors** (or **Filter
+narrators**) to narrow the list. Click a name to open **Books** filtered to that
+person, their shared books included.
 
 ![Library > Authors](/img/screenshots/admin/authors.png)
 
@@ -392,8 +396,9 @@ authors** (or **Filter narrators**) to narrow the list. Click a name to open
 Tags often spell the same person two ways. When names look alike, a
 suggestion appears above the list, for example "“Sanderson, Brandon” looks
 like Brandon Sanderson". **Merge authors** (or **Merge narrators**) sets the
-suggested spelling on every book that carries the other one, as an edit on
-each book; the files are untouched. The confirmation has an **Undo** button,
+suggested spelling on every book credited to the other one alone, as an edit
+on each book; the files are untouched. A book the other spelling shares with
+someone else keeps its credit, so a merge never drops the other person. The confirmation has an **Undo** button,
 and you can also revert the field on any single book's page.
 
 AudioSilo never merges names on its own.

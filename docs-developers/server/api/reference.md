@@ -681,9 +681,9 @@ Keyset-paginated (see [conventions](index.md#pagination)).
 
 | Query param | Type | Default | Notes |
 |---|---|---|---|
-| `author` | string | - | exact-match filter |
+| `author` | string | - | the books whose author credit is this value, or names it as one of its people (`Brandon Sanderson` finds `Brandon Sanderson & Janci Patterson`; see [the people lists](#get-apiv1librariesidauthors--get-apiv1librariesidnarrators)). Exact, case included |
 | `series` | string | - | exact-match filter |
-| `narrator` | string | - | exact-match filter on the whole narrator credit (`browse_people` capability; an older server ignores it and returns the unfiltered list) |
+| `narrator` | string | - | as `author`, on the narrator credit (`browse_people` capability; an older server ignores it and returns the unfiltered list; one before the co-credit split matches whole credits only) |
 | `sort` | string | `author` | `author` \| `title` \| `recent` (`recent` = newest `added_at` first) |
 | `limit` | int | `50` | ≤ 0 or > 200 falls back to 50 |
 | `cursor` | string | - | opaque cursor from a previous page's `next_cursor` |
@@ -3118,7 +3118,7 @@ what the first does).
 |---|---|---|---|
 | `library_id` | int | - | one library; a non-positive or non-integer id is `400` |
 | `q` | string | - | full-text search over title/author/series/narrator, the same prefix matching as [`/search`](#get-apiv1search); punctuation-only input filters nothing |
-| `author` · `series` · `narrator` | string | - | exact match on the effective value |
+| `author` · `series` · `narrator` | string | - | the effective value: `series` exactly; `author` and `narrator` the whole credit or one of the people it names, exactly (as the [player's list](#get-apiv1librariesidbooks)) |
 | `format` | string, repeatable | - | `?format=m4b&format=mp3`; at most 50 values |
 | `codec` | string, repeatable | - | ffprobe codec name (`aac`, `mp3`, …); at most 50 values |
 | `direct_playable` | `true`\|`false` | - | the book's codec plays in browsers (an unknown codec counts as playable) |
@@ -3165,6 +3165,8 @@ is a `400` too (`too many format or codec values`).
       "title": "The Martian",
       "author": "Andy Weir",
       "narrator": "R. C. Bray",
+      "authors": ["Andy Weir"],
+      "narrators": ["R. C. Bray"],
       "series": "",
       "series_index": 0,
       "published": "2011",
@@ -3304,7 +3306,7 @@ library (all libraries when absent; a non-positive or non-integer id is `400`).
     { "name": "Sanderson, Brandon", "books": 2, "duration": 140221.0 }
   ],
   "merge_suggestions": [
-    { "names": ["Brandon Sanderson", "Sanderson, Brandon"], "suggested": "Brandon Sanderson", "books": 16 }
+    { "names": ["Brandon Sanderson", "Sanderson, Brandon"], "suggested": "Brandon Sanderson", "books": 16, "other_books": 2 }
   ],
   "unknown": 3
 }
@@ -3312,14 +3314,23 @@ library (all libraries when absent; a non-positive or non-integer id is `400`).
 
 The narrators route uses the key `narrators` instead of `authors`.
 
-- A name is the **whole** effective field value: a `Michael Kramer & Kate
-  Reading` credit is one entry, matching the exact `narrator` filter and the bulk
-  edit that act on it. Names sort case-insensitively.
-- `unknown` counts books with the field blank (they are not listed).
+- A name is one **person**: a credit counts for each person it names, so a
+  `Michael Kramer & Kate Reading` book counts once for Michael Kramer and once
+  for Kate Reading, and the `narrator` filter finds it by either. The split is
+  deliberately shy: `;`, ` & ` and ` and ` always split, a comma only when every
+  part is a full name (two words or more), so `Alexandre Dumas, pere` and
+  `Sanderson, Brandon` stay one person. A name given twice in a credit counts
+  once. Names are exact (`kate reading` is another spelling, for a merge) and
+  sort case-insensitively.
+- `unknown` counts books whose credit names nobody (blank, or only joiners);
+  they are not listed.
 - A merge suggestion groups names that compare equal once `Surname, Given` is
   turned round (only when the part before the comma is one word, so `Alexandre
   Dumas, pere` stays whole) and case, spacing and punctuation are ignored (so
-  `J.R.R. Tolkien` and `J. R. R. Tolkien` group). Letters of every script are
+  `J.R.R. Tolkien` and `J. R. R. Tolkien` group). Suggestions are over **whole
+  credits**, since a merge rewrites the whole field of every book whose credit
+  is one of the other spellings (never a co-credit that merely names one):
+  `other_books` is how many books that is, `books` every spelling's together. Letters of every script are
   kept, so names in non-Latin scripts get suggestions too and two different
   ones never group by accident. `suggested` is the spelling
   with the most books (ties: the `Given Surname` form over `Surname, Given`, then
@@ -5018,8 +5029,9 @@ and only the part inside the period counts.
 - `hour_weekday` - listened seconds as 7 rows (weekday, **0 = Monday**) of 24
   hours. Raw sessions only: a rolled-up day has no hours.
 - `top_books`, `top_authors`, `top_narrators`, `top_users` - up to 10 each, by
-  listened time. Authors and narrators are the whole field value (as the
-  Library aggregates count them); `books` counts distinct books.
+  listened time. Authors and narrators are the whole field value (unlike the
+  Library's people lists, which split co-credits: shipped players match these
+  names to books by the whole value); `books` counts distinct books.
   `top_users[].finished` counts that person's books finished in the period.
 - `funnel` - people x books with a progress save in the period, by how far each
   got (the current position, so a restarted book counts where it is now; a
