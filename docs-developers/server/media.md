@@ -252,9 +252,10 @@ has browsed without any. So `internal/covercolors` reads them in the background.
 Its `Runner` waits until the start, or a burst of book changes
 (`Catalog.OnBookChange`: an index write, an edit, a custom cover set or removed),
 has been quiet for 30 s (at most 10 minutes), then runs a pass. It also runs one
-every hour, which retries art that failed to read. A scan changes a book every
-moment, so the pass waits for it to finish rather than competing with it for the
-disk.
+every hour, which retries art that failed to read. A scan that indexes books
+changes one every moment, so the pass waits for it to finish rather than
+competing with it for the disk (a rescan that finds nothing new changes nothing,
+so it doesn't hold the pass back).
 
 A pass walks `catalog.CoverColorsDue` in pages of 100 by the index's own order:
 the books that may have art (a custom cover, or `has_cover` set or not yet checked
@@ -266,10 +267,15 @@ the art already in the cache is used as it is. Otherwise a 160 px one is made an
 **not cached**, so a pass over a library never pushes out the thumbnails people
 are looking at. A book with no art, or none that decodes, is recorded as having no
 colour (`cover_color` holds only the version), so no pass reads it again until its
-art changes, across restarts too. Each page's colours are recorded in one
+art changes, across restarts too. A thumbnail that does decode still records its
+colour over that (the pass's read may have failed in passing). A book whose art
+files aren't there (an unmounted share, whose books the scan keeps indexed, or a
+book not pruned yet) is `covercolors.ErrArtMissing`: nothing is recorded, so it
+is read again next pass once the share is back, and it doesn't count as a
+failure. Each page's colours are recorded in one
 `RecordCoverColors` transaction (bounded to 30 s), compare-and-set like any
-other. Ten books in a row whose art fails to read (a mount gone away) end the pass
-until the next hour. Unchanged books aren't re-indexed by a scan, so after its
+other. Ten books in a row whose art fails to read (an unreadable mount) end the
+pass until the next hour. Unchanged books aren't re-indexed by a scan, so after its
 first full pass the runner only reads books whose art is new.
 
 ## `DirectPlayable`: when a client should transcode

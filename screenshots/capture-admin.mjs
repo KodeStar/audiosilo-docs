@@ -449,6 +449,11 @@ await step('authors', async () => {
 await step('series', async () => {
   await open(page, '/library/series');
   await sleep(2000); // community series gaps load as each card scrolls into view
+  // The spines take their cover colours, which the server reads in the background
+  // shortly after a scan, and from the cover fans' thumbnails just loaded: load the
+  // page again so the spines have them.
+  await open(page, '/library/series');
+  await sleep(2000);
   await shoot(page, 'admin/series.png');
 });
 
