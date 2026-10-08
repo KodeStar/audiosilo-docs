@@ -476,7 +476,8 @@ CSP-sensitive work against a real build served by Go. The console's own gate is
   shows what the chosen scope writes from each item's server-computed `changes`,
   and posts the admin's picks as `exclude`/`include` ids. When the newest run's
   status changes to one that isn't working, the book lists, issues, book pages
-  and covers are refetched (a small apply can finish between two polls).
+  and covers are refetched (`invalidateMatches`; a small apply can finish
+  between two polls).
   Marketplace names come from `lib/regions.ts` (`Intl.DisplayNames`, with each
   store's domain), shared with the Settings select.
 - **Health > Jobs** (`features/health/jobs-page.tsx`) - over `GET /admin/jobs`
@@ -549,7 +550,13 @@ CSP-sensitive work against a real build served by Go. The console's own gate is
   `useSaveSettings` puts the answer in the cache and refetches `GET /server`,
   the system status and the update status. Network's certificate row,
   Metadata's status row and the read-only Transcoding topic read
-  `GET /admin/system`.
+  `GET /admin/system`. Metadata ends with a Danger zone (`clear-matches.tsx`,
+  the shared `components/danger-zone.tsx`): Clear community matches picks a
+  library or all (`components/library-select.tsx`, shared with Match
+  automatically), asks for a typed word (`ConfirmDialog`), calls
+  [`DELETE /admin/community-matches`](api/reference.md#delete-apiv1admincommunity-matches)
+  and refetches what a match apply does (`invalidateMatches`, shared with Match
+  automatically) plus the match runs.
 - **Server > Logs** (`features/logs/logs-page.tsx`) - over
   [`GET /admin/logs`](api/reference.md#get-apiv1adminlogs): a level filter
   (All / Warnings / Errors), a search box (debounced 300 ms) and a Live tail
