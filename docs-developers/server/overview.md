@@ -147,7 +147,8 @@ normalization, move detection, pruning). See [Scanner](scanner.md).
 ### `internal/metadata`
 
 Metadata extraction: embedded tags in-process via `dhowden/tag`, durations /
-chapters / codec via ffprobe when available (`probe.go`), and
+chapters / codec via ffprobe when available (`probe.go`), the release
+date (`ReleaseDate`, a date tag as `YYYY[-MM[-DD]]`), and
 `DeriveFromPath` - the structural path heuristic
 (`Author/Series/01 - Title.m4b`) that fills gaps for untagged files. `layout.go`
 reads a path's author/series/book LAYOUT (`ReadPathLayout`, the community
@@ -156,6 +157,16 @@ match's path facts) and turns it into a path-first library's values
 normalized `metadata.Chapter` shape (with `file_path` and `book_offset`) that
 makes single-file and multi-file books look identical to clients. All ffprobe
 paths degrade gracefully when the tool is absent.
+
+### `internal/names`
+
+Reads the people in a single Author/Narrator credit: `Split` (the deliberately
+shy co-credit rule: `;`, ` & ` and ` and ` always split, a comma only when every
+part is a full name, so "Alexandre Dumas, pere" stays one), `Reversed` ("Surname,
+Given", particles included: "Le Guin, Ursula K.") and `SortKey` (surname first,
+for the admin list's `surname` sort; `internal/catalog` registers it, memoized,
+as the SQL function `name_sort`, never used in a migration, index or view). Used
+by the export, the merge suggestions and the sort.
 
 ### `internal/media`
 

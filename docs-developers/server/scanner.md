@@ -465,7 +465,9 @@ embedded data winning where it is trustworthy:
    extends the album with a real subtitle, the Audible shape where album holds
    the *series* and only the title tag carries the actual book title; album-artist
    ≻ artist for the author, composer as narrator, plus raw-tag lookups for
-   series/narrator atoms), then ffprobe (when configured) for duration, chapters, the audio
+   series/narrator atoms and the release date - MP4 `©day`, ID3 `TDRC`/`TYER`,
+   Vorbis `date`, read by `metadata.ReleaseDate` into `books.released`, never
+   `published`), then ffprobe (when configured) for duration, chapters, the audio
    `codec` (`codec_name` of the first audio stream - this is what feeds the
    `direct_playable` API flag), and richer container tags.
 3. **Generic-title guard**: `chooseTitle` keeps the path-derived title when the

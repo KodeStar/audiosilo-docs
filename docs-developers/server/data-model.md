@@ -194,13 +194,20 @@ covered in [Auth & security](auth-and-security.md#authorization-shares--scope).
 **`books`** *(0001; `added_at` in 0004; `codec` in 0008; `published`,
 `description`, `has_cover` and `scanned` in 0016; `scan_error`,
 `scan_error_file`, `scan_error_detail` and `suspect_parts` in 0017; `split_parent` in
-0022; `cover_art` and `cover_color` in 0023)* - one row per book,
+0022; `cover_art` and `cover_color` in 0023; `released` and `released_checked` in
+0037)* - one row per book,
 `UNIQUE (library_id, rel_path)`. Columns: `is_folder` (folder book vs
 single-file book), identity metadata (`title`, `author`, `series`,
 `series_index`, `narrator`), `duration`, `asin`/`isbn` (optional external ids -
 present so enrichment/metadata services can attach data without reshaping the
 schema), `published` (`YYYY[-MM[-DD]]`) and `description` (only an admin edit or
 an accepted community match supplies these today; the scanner reads neither),
+`released` (the date the file's tags give, `YYYY[-MM[-DD]]` via
+`metadata.ReleaseDate`: usually the recording's, so it is a separate scanned
+column, never `published`, read only by the admin list's release-date sort as
+the fallback for a book with no `published`) and `released_checked` (`1` once a
+scan has read it; a book indexed before 0037 starts at `0` and the next scan
+fills `released` with one read of its first file, without re-indexing it),
 `cover_path` (a library-relative sidecar image, `""` = fall back to embedded
 art), `has_cover` (whether the book has a sidecar image or embedded art; `NULL`
 until a scan has checked, and always true when `cover_path` is set -
@@ -848,6 +855,7 @@ The migration history so far:
 | 0033 | `match_runs` | `match_runs` and `match_run_items`, the bulk community matching runs (Health > Not matched) and each book's best candidate, with their indexes |
 | 0034 | `listening_import` | `imports`, `import_payloads` and `import_progress_prior`; `import_id` on `listening_sessions`, `listening_daily`, `listening_history` and `bookmarks` (`0` on every existing row) with partial indexes; `bookmarks.import_note`; `idx_sessions_started` and `idx_sessions_user_started`, since the session lists now order by start: see [Listening imports](#listening-imports) |
 | 0036 | `cover_source` | `book_covers.source` (`TEXT NOT NULL DEFAULT 'edited'`) and the partial index `idx_book_covers_community`; backfills `community` conservatively from the audit log (the match dialog's `book.cover_set` saves) and applied match runs (see the migration). A cover it can't place stays `edited`, which a clear keeps |
+| 0037 | `released` | `books.released` (`TEXT NOT NULL DEFAULT ''`) and `books.released_checked` (`0` on every existing row, so the next scan reads each unchanged book's date tags once) |
 
 ## SQLite choices
 
