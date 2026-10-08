@@ -192,7 +192,7 @@ answers, and [`GET /addresses`](#get-apiv1addresses) carry the same object:
 
 | Field | Type | Meaning |
 |---|---|---|
-| `home` | string, optional | The server's address on the household network: the configured [`lan_url`](../configuration.md#home-address-lan_url), else the address **this request** arrived on (scheme + `Host`) when that is a home-network host ([the rule](../configuration.md#home-address-lan_url)). `X-Forwarded-*` is not trusted for it |
+| `home` | string, optional | The server's address on the household network: the configured [`lan_url`](../configuration.md#home-address-lan_url), else the address **this request** arrived on (scheme + `Host`) when that is a home-network host and the request did not come through a proxy ([the rule](../configuration.md#home-address-lan_url)) |
 | `away` | string, optional | The address that works from anywhere: the configured `public_url` |
 
 A `home` equal to the `away` is dropped. On the pairing payloads and the sign-in answers

@@ -83,10 +83,10 @@ lan_url: "http://192.168.1.20:8080"
 
 The apps learn it with the public address when they connect (and from the server each time they start), use it whenever they can reach it, and switch to the public address when you leave home - see [At home and away](../listening/connecting.md#at-home-and-away). It applies the moment you save it.
 
-You can often leave it empty. The server then offers the address a device connected with when that address is a home-network one: a private IP address such as `192.168.1.20` or `10.0.0.5`, or a local name such as `nas.local` or `audiosilo`. A device that connected through the public address learns no home address that way, so set it when you want every device to switch.
+You can often leave it empty. The server then offers the address a device connected with when that address is a home-network one: a private IP address such as `192.168.1.20` or `10.0.0.5`, or a local name such as `nas.local`, `nas.internal` or `audiosilo`. An IPv6 address is written in square brackets. A device that connected through the public address learns no home address that way, so set it when you want every device to switch.
 
 :::note Behind a reverse proxy
-A proxy that passes requests on under its own name for the server (nginx does this by default, e.g. `audiosilo:8080`) makes that internal name the home address the server works out for itself. The apps can't reach it, so they keep using the public address - nothing breaks, they just never switch. Setting `lan_url` fixes it.
+A request that reaches AudioSilo through a reverse proxy never gives the server a home address to offer, because the address it sees is the proxy's own internal one. The apps keep using the public address and just never switch to your home network. Set `lan_url` to the server's home address to fix it.
 :::
 
 ### Why it's safe to expose

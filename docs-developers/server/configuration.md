@@ -88,21 +88,21 @@ and where it appears: [Home and away addresses](api/reference.md#home-and-away-a
 - `away` is `public_url` without a trailing `/`.
 - `home` is `lan_url`, or, when that is empty, `scheme://Host` of **this request** when
   `isHomeNetworkHost(Host)`: a private IP (RFC 1918, IPv6 ULA `fc00::/7`), a
-  link-local one, or a name ending in `.local`, `.lan` or `.home.arpa`, or a single-label
-  name. Never loopback (`127.0.0.0/8`, `::1`, `localhost`): no other device can reach it.
+  link-local one, or a name ending in `.local`, `.lan`, `.home.arpa` or `.internal`, or a
+  single-label name. A bare IPv6 host is written in brackets in the address. Never loopback (`127.0.0.0/8`, `::1`, `localhost`): no other device can reach it.
   Never carrier-grade NAT space (`100.64.0.0/10`, which Go's `IsPrivate` leaves out): it
   is the ISP's network, not the household's. The scheme follows the same rule as the
   pairing `base_url` (`https` on a TLS connection, else `http`), and `X-Forwarded-*` is
-  not trusted.
+  not trusted. A request that came through a reverse proxy (it carries `Forwarded` or
+  any `X-Forwarded-*` header) never derives a home address: its `Host` is the proxy's
+  upstream, not an address a device can use.
 - A `home` equal to the `away` is dropped.
 
 :::caution Reverse proxies and the derived home address
-A derived home address trusts the request's `Host`, like `public_url`'s per-request
-fallback. A reverse proxy that rewrites `Host` to a single-label upstream name (nginx's
-default `proxy_set_header Host $proxy_host`, giving e.g. `audiosilo:8080`) makes that
-name the derived home address. It is harmless - the app's tokenless probe of the home
-address fails, so it uses the away address - but the apps never switch to a home
-address; setting `lan_url` fixes it.
+Behind a reverse proxy the server derives no home address at all, because the request's
+`Host` is the proxy's upstream (a container name such as `audiosilo:8080`, a bridge IP,
+plain `http` behind TLS). Set `lan_url` to give the apps a home address; a configured
+`lan_url` applies to proxied requests as usual.
 :::
 
 ### TLS (`tls.*`)
