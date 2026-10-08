@@ -101,7 +101,7 @@ What each section is for:
 | **Health > Issues** | Books that could be better (unreadable files, missing covers, likely duplicates and more), each with a fix or Ignore, and offline libraries. See [Library health](health.md#library-health). |
 | **Health > Jobs** | The scan running now, the scans waiting, the schedules, and every scan's history and log. See [Jobs](health.md#jobs). |
 | **Health > System** | Everything the server depends on (ffmpeg, community metadata, the certificate, the database, backups, each library's disk, the version), each with a status. See [System](health.md#system). |
-| **Server > Settings** | The server's settings by topic: name and address, network and HTTPS, players and app links, community metadata, transcoding, demo mode, [backups](backups.md) and [notifications](notifications.md). See [Settings](server.md#settings). |
+| **Server > Settings** | The server's settings by topic: name and address, network and HTTPS, players and app links, community metadata, transcoding, demo mode, [backups](backups.md), [notifications](notifications.md) and [importing from Audiobookshelf](import.md). See [Settings](server.md#settings). |
 | **Server > Logs** | What the server has been doing since it started, with a live tail. See [Logs](server.md#logs). |
 | **Server > Audit log** | What admins changed, and when, kept for a year. See [Audit log](server.md#audit-log). |
 | **Server > About** | The version, whether a newer one exists and how to update, and facts about the server. See [About and updates](server.md#about-and-updates). |
@@ -159,9 +159,9 @@ use the arrow keys to move and Enter to open.
 - **Go to** - every destination, and (once you type) every section.
 - **Settings** - each [Server > Settings](server.md#settings) topic
   (**General**, **Network & HTTPS**, **Players & app links**, **Community
-  metadata**, **Transcoding**, **Demo mode**, **Backups** and
-  **Notifications**; typing "https", "proxy", "ffmpeg", "restore" or "webhook"
-  finds the right one), **Scan schedules and skipped files** (opens
+  metadata**, **Transcoding**, **Demo mode**, **Backups**,
+  **Notifications** and **Import**; typing "https", "proxy", "ffmpeg",
+  "restore", "webhook" or "audiobookshelf" finds the right one), **Scan schedules and skipped files** (opens
   Library > Libraries, where each library's
   [schedule and skipped files](libraries.md#scanning-on-a-schedule) are
   edited), the three themes and the console's languages.
@@ -180,8 +180,9 @@ The last entry, "Search all books for ...", opens
 
 **Server > Settings** holds everything you can change while the server runs,
 one topic at a time: its name and public address, HTTPS, app links, community
-metadata, demo mode, the update check, [backups](backups.md) and
-[notifications](notifications.md). Some settings apply at once and some at the
+metadata, demo mode, the update check, [backups](backups.md),
+[notifications](notifications.md) and [importing from Audiobookshelf](import.md).
+Some settings apply at once and some at the
 next restart; each one says which. See
 [Server settings, updates and logs](server.md), which also covers
 **Server > About** (checking for new versions), **Server > Logs** and

@@ -787,6 +787,14 @@ await step('settings: notifications', async () => {
   }
 });
 
+await step('settings: import', async () => {
+  // Step 1 only: the empty connect form needs no Audiobookshelf to reach.
+  await open(page, '/server?topic=import');
+  await page.getByLabel('Audiobookshelf address').waitFor({timeout: 15000});
+  await sleep(800);
+  await shoot(page, 'admin/settings-import.png');
+});
+
 await step('the notifications bell', async () => {
   // New books (both libraries' first scans) and the listeners' sign-ins are in
   // the feed by now.

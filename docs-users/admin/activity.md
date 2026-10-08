@@ -123,6 +123,10 @@ or a book to open their page.
   book; its **×** (**Show every book**) clears it.
 - **Show older sessions** loads the next page.
 
+Listening [imported from Audiobookshelf](import.md) shows the device
+Audiobookshelf recorded, with "Imported from Audiobookshelf" under it, among
+the other sessions by when it started.
+
 Sessions are kept for 400 days unless you
 [change it](server.md#general). After that they are summarised by day, so they
 still count in the totals and charts but no longer appear in this list.
@@ -184,6 +188,13 @@ history** in the Sessions list because the device and app weren't recorded.
 Anything older, or played offline, is estimated from where each book was left.
 Estimates count in the totals and top lists, not the day-by-day charts, and the
 Overview and Year in listening say how much of a period is estimated.
+
+**Listening imported from Audiobookshelf.** An admin can
+[import each person's Audiobookshelf history](import.md). Its sessions count
+like the ones recorded here, on the days and hours they happened, but not in
+the apps in use or the playback breakdown. Where Audiobookshelf's progress went
+further than its sessions, the rest is an estimate, and the estimated note
+covers it too ("beyond what an imported history covered").
 
 **How long it's kept.** Detailed sessions are kept for 400 days (about 13
 months) unless you set another time in

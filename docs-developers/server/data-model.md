@@ -357,11 +357,15 @@ tables were rebuilt rather than migrated in place):
   `catalog.sessionTime`, so they compare as strings), `start_pos` / `end_pos`,
   `duration`, `speed`, `listened` (wall-clock seconds), `codec` (the book's at
   the session's start), `transcoded`, `finished`, `backfilled` *(0021: made from
-  `listening_history` spans at the upgrade)*. Indexes on `started_at`,
-  `last_at`, `(user_id, id)` and `(library_id, rel_path)`.
+  `listening_history` spans at the upgrade; also set on imported sessions)*,
+  `import_id` *(0034)*. Indexes on `last_at`, `(user_id, id)`,
+  `(library_id, rel_path)` and `(token_id, library_id, rel_path, last_at)`,
+  `(user_id, last_at)` *(0029)*, and `started_at` and `(user_id, started_at)`
+  *(0034)* for the session lists, which order by start (an imported session is
+  old but has a new id; see [Listening imports](#listening-imports)).
 - **`listening_daily`** *(0018)* - raw sessions past the retention, summed per
   server-local `day` (`YYYY-MM-DD`), `user_id`, `library_id` and `rel_path`:
-  `listened` and `sessions`, and `estimated` *(0021)*. Device, app, time of day
+  `listened` and `sessions`, `estimated` *(0021)* and `import_id` *(0034)*. Device, app, time of day
   and playback mode are dropped. No primary key - a book moving onto a path that already has rows just
   adds rows, and every reader sums.
 - **`favourites`** *(0009)* - PK `(user_id, library_id, rel_path)`. A
@@ -505,6 +509,120 @@ Both tables are path-keyed durable state: they move with the book
 (`MoveDurableState`) and are deleted with their user or library by the FK
 cascade. The admin API over them is in the
 [reference](api/reference.md#admin-activity).
+
+### Listening imports
+
+Migration **0034** lets an admin copy another server's listening history
+(v1: Audiobookshelf) into a person's own (`internal/importer`,
+`catalog/imports.go`; the routes are in the
+[reference](api/reference.md#admin-listening-imports)). What an import writes
+is ordinary listening state, marked with the import's id so it can be taken
+back out (undo) or replaced (re-import) without touching anything else:
+
+- **`imports`** - one row per (source user, AudioSilo user) import: `user_id`
+  (FK CASCADE), `source` (`abs`), `source_url` (the normalised address, never a
+  credential), `source_user` / `source_id` (the ABS username and user id),
+  `status` (`fetching` | `review` | `applying` | `applied` | `failed` |
+  `undone`), `cutoff` (RFC 3339 UTC, `NULL` = none), `created_at`,
+  `applied_at`, `summary` and `unmatched` (the review's JSON) and `error` /
+  `error_code`. The ABS token is never stored anywhere. Index
+  `idx_imports_user` on `(user_id, id)`.
+- **`import_payloads`** - PK `import_id` (FK CASCADE): the fetched history,
+  gzipped JSON (the user's book items, sessions, progress and bookmarks;
+  nothing secret), so a cutoff change and the apply never fetch again. A table
+  of its own so reading `imports` never walks a large blob's overflow pages;
+  deleted once the import is applied, undone or deleted.
+- **`import_id`** on `listening_sessions`, `listening_daily`,
+  `listening_history` and `bookmarks` (`INTEGER NOT NULL DEFAULT 0`): `0` is
+  everything recorded here, anything else the import that wrote the row.
+  Partial indexes (`idx_sessions_import`, `idx_daily_import`,
+  `idx_history_import`, `idx_bookmarks_import`, `WHERE import_id <> 0`) serve
+  the undo's deletes; live rows are never looked up by it. Each imported
+  session also writes one `listening_history` span (its positions, from its
+  start to its clamped end), so the players' History and Journal show it.
+- **`bookmarks.import_note`** - the note an import wrote on the bookmark, so
+  undo can tell an imported bookmark the person has edited or labelled since
+  (kept and handed to them: `import_id` 0) from one they haven't (deleted).
+- **`import_progress_prior`** - PK `(import_id, library_id, rel_path)`, FKs
+  CASCADE to `imports`, `users` and `libraries`: for each progress row an
+  import changed, `prior` (the row before, JSON; `NULL` = there was none) and
+  `wrote` (the row it left). Path-keyed, so `carryListeningState` moves it
+  with a book (a move or a disc join). Index `idx_import_prior_path` on
+  `(library_id, rel_path)`.
+
+What an apply writes (one transaction, after undoing the person's previous
+applied import from the same source):
+
+- **Sessions** - one `listening_sessions` row per ABS session on a matched book
+  that has listening and **started before the cutoff**, with `backfilled = 1`
+  (like 0021's: no playback mode, so they stay out of the `clients` and
+  `playback` breakdowns), `client_app` `Audiobookshelf`, the ABS device name,
+  client version and platform, `token_id` `0`, `speed` `1`. A session's
+  listening is capped at 24 hours, and one whose span is under its listening or
+  over 3 times it (left open overnight) ends at its start plus its listening.
+  Their ids are ordinary, so newer than every live session's although the
+  sessions are old: the session lists order by `started_at` (then id), newest
+  first, and their `before` cursor is the previous page's last session id,
+  continued after that session's `(started_at, id)`. On the wire a session's
+  `imported` flag says it came from an import. A session whose (clamped) last
+  save is already older than the session retention (`activity.session_days`,
+  read when the apply runs, as the daily prune reads it) is written instead as
+  the `listening_daily` rows `PruneSessions` would make of it
+  (`catalog.daySums`: the same per server-local day, user, book and
+  `import_id` grouping, listening spread over the hours its span covers), so a
+  mostly-old ABS history doesn't land as sessions only to be rolled up within
+  a day. The review summary's `sessions` / `listened` still count every
+  imported ABS session.
+- **Estimates** - one `listening_daily` row (`estimated = 1`, `sessions = 0`)
+  per matched book with ABS progress where ABS's position, at the speed its sessions show (book
+  time per second listened, clamped to 0.5-4, else 1), is 5 minutes or more
+  beyond all its sessions' listening (0021's rules), dated by ABS's start of
+  the book (else its first session) in server time, and kept only when that
+  date is before the cutoff. None for a book ABS has as finished with no
+  session that recorded listening (before or after the cutoff): ABS sets a
+  finished book's position to its end, so a book only marked finished would
+  otherwise count as the whole book listened on one day.
+- **Bookmarks** - each ABS bookmark on a matched book, unless the person has
+  one there with the same text within 2 seconds; the text is cut to
+  `catalog.MaxBookmarkNote`.
+- **Progress** - fill-only (`importer.mergeProgress`). With no row here, ABS's
+  becomes it (unless ABS has nothing), with ABS's last update as `updated_at`.
+  With a row, the position and finish move on only when ABS's last update is
+  newer than the row's (`SaveProgress`'s last-write-wins rule), never back, and
+  the moved row takes ABS's last update; `started_at` becomes the earlier of
+  the two, and a finished row with no finish date takes ABS's. A changed row's
+  `version` goes up by one, and its before and after go in
+  `import_progress_prior`.
+
+The cutoff gates sessions and estimates only. Its default (`"auto"`) is the
+person's first listening recorded here (`catalog.ListeningStart`: their
+earliest `import_id = 0` session with listening, or the start of their
+earliest non-estimated rolled-up day), so a period both servers recorded is
+counted once.
+
+**Undo** (and the apply's replacing of the previous import) deletes the
+import's sessions, daily rows, history spans and untouched bookmarks by
+`import_id`, and restores each `import_progress_prior` row whose progress is
+still exactly as the import wrote it (`sameProgress`: path, version,
+`updated_at`, position, finish and dates). A restored row gets a version above
+the import's. A standalone undo also stamps the server's now as `updated_at`
+when the import had moved the row on, so a device that synced the imported row
+takes the restored one. A replace restores the row exactly (its own
+`updated_at`), so the new import's merge treats it as the review predicted, and
+then stamps now only on rows the new import leaves behind. A row someone
+changed since keeps theirs.
+
+**Retention** treats imported sessions like any other: `PruneSessions` rolls
+sessions past the retention into `listening_daily`, grouping imported ones
+apart and keeping their `import_id`, so an undo still finds them. The ones
+already past it when the import is applied are written as those daily rows
+straight away (above); the rest follow at the daily run once they age out.
+Every imported session keeps its `listening_history` span either way (history
+is never pruned).
+
+**Restarts.** `catalog.InterruptImports` runs at startup: a `fetching` import
+becomes `failed` (`error_code` `interrupted`; its token died with the process),
+an `applying` one goes back to `review`.
 
 ### Scan history
 
@@ -723,6 +841,8 @@ The migration history so far:
 | 0030 | `bookmark_labels` | `bookmarks.label` (`''` on every existing row), a bookmark's machine-key label |
 | 0031 | `annotation_lists` | `idx_bookmarks_user_created`, `idx_notes_user_created` on `(user_id, created_at)` and `idx_history_user_ended` on `listening_history(user_id, ended_at)`, so the all-books lists seek one user and walk their order; rewrites the existing rows' `bookmarks.created_at`, `notes.created_at` and `listening_history.started_at` / `ended_at` into the fixed-width UTC millisecond form (`strftime('%Y-%m-%dT%H:%M:%fZ', …)`, only for a value that reads as a date; the old `RFC3339Nano` trimmed trailing zeros, and a span's times were the client's text verbatim, so neither sorted as text) |
 | 0032 | `library_metadata_source` | `libraries.metadata_source` (`TEXT NOT NULL DEFAULT 'tags'`, so every existing library reads as before) |
+| 0033 | `match_runs` | `match_runs` and `match_run_items`, the bulk community matching runs (Health > Not matched) and each book's best candidate, with their indexes |
+| 0034 | `listening_import` | `imports`, `import_payloads` and `import_progress_prior`; `import_id` on `listening_sessions`, `listening_daily`, `listening_history` and `bookmarks` (`0` on every existing row) with partial indexes; `bookmarks.import_note`; `idx_sessions_started` and `idx_sessions_user_started`, since the session lists now order by start: see [Listening imports](#listening-imports) |
 
 ## SQLite choices
 

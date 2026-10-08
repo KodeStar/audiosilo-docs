@@ -1786,7 +1786,9 @@ Rules shared with [`/me/notes`](#get-apiv1menotes) and
 ### `GET /api/v1/me/history`
 
 *Session.* The caller's listening spans across all books, newest `ended_at`
-first (`catalog.ListAllHistory`).
+first (`catalog.ListAllHistory`). Spans an
+[imported](#admin-listening-imports) history wrote (one per imported session)
+are included, in the same shape.
 
 | Query param | Type | Default | Notes |
 |---|---|---|---|
@@ -4199,6 +4201,7 @@ The session object, shared by both session routes:
   "transcoded": false,
   "finished": false,
   "backfilled": false,
+  "imported": false,
   "state": "playing",
   "chapter": "Chapter 12",
   "ip": "192.168.1.24"
@@ -4222,7 +4225,14 @@ The session object, shared by both session routes:
   `?transcode=1` during the session.
 - `backfilled` is true for a session made at the upgrade to migration 0021 from
   the players' own listening spans, from before the server recorded sessions:
-  `device_id` is `0`, `device_name` `""`, `client` `null` and `codec` `""`.
+  `device_id` is `0`, `device_name` `""`, `client` `null` and `codec` `""`. It
+  is also true for a session [imported](#admin-listening-imports) from another
+  server. Neither kind counts in `clients` or `playback`.
+- `imported` - written by a listening import: `backfilled` too, `device_id` `0`,
+  `client.app` `"Audiobookshelf"` (with the ABS client's version and `ios`,
+  `android`, `web` or `""` as the platform), `device_name` the device ABS
+  recorded, `codec` `""` and `speed` `1`. The console labels sessions from this
+  flag.
 - `finished` - a save in the session marked the book finished.
 - `state` - `playing` (a save within the last 60 seconds), `paused` (within 10
   minutes) or `ended`. A session can come back from `ended`: a late save whose
@@ -4245,14 +4255,18 @@ only the book it is on now. Each carries `chapter` and `ip`.
 
 ### `GET /api/v1/admin/sessions`
 
-Sessions newest first (open ones included), a page at a time.
+Sessions newest first by when they **started** (ties by id; open ones
+included), a page at a time. Not by id: an
+[imported](#admin-listening-imports) session is old but has a newer id than
+every session recorded here.
 
 | Query param | Type | Default | Notes |
 |---|---|---|---|
 | `user_id` | int | - | one listener |
 | `library_id` | int | - | one library |
 | `path` | string | - | one book; needs `library_id` |
-| `before` | int | - | a session id: only older sessions (the next page) |
+| `before` | int | - | the id of the previous page's last session: the sessions after it in this order (the next page) |
+| `before_at` | string | - | that session's `started_at` (RFC3339), with `before`: the page continues from there even if the session is gone since |
 | `limit` | int | `50` | ≤ 0 or > 200 falls back to 50 |
 
 ```json
@@ -4260,8 +4274,13 @@ Sessions newest first (open ones included), a page at a time.
 ```
 
 `next_before` is the id to pass as `before` for the next page, `null` on the
-last page. `400` `invalid user_id` / `invalid library_id` / `invalid before`
-(not a positive integer); `400` `path needs library_id`.
+last page. Send the last session's `started_at` as `before_at` too (the console
+does): the page then continues exactly where the last one ended, even if that
+session is gone since (retention, an undone import). Without `before_at`, a gone
+`before` session continues from the nearest session recorded here, which can
+repeat a few imported ones. `400` `invalid user_id` / `invalid library_id` /
+`invalid before` (not a positive integer) / `invalid before_at` (not a time, or
+without `before`); `400` `path needs library_id`.
 
 ### `GET /api/v1/admin/devices`
 
@@ -4387,6 +4406,279 @@ from an `/admin` route tells the console its own session lost the admin role).
 A path with neither progress nor an indexed book is `404 book_not_found` whatever
 the person's access.
 
+## Admin: listening imports
+
+The console's **Server > Settings > Import**: another server's listening
+history copied into a person's own, so someone moving to AudioSilo keeps their
+stats. v1 reads **Audiobookshelf** (ABS) only and is **admin only**: no
+capability flag, no player route (the console ships inside the server). The
+work is `internal/importer` (the ABS client, matching, planning, the background
+fetch); the rows are `catalog/imports.go`; the handlers
+(`api/handlers_import.go`) are transport only. What an applied import writes
+is in the [data model](../data-model.md#listening-imports).
+
+The flow: **connect** (check the address and token, list the ABS users) →
+**start** (one import per mapped user, fetched in the background) → **review**
+(poll until `review`; optionally change the cutoff, re-planned from the stored
+fetch) → **apply** (one transaction) → optionally **undo**.
+
+The ABS **token** is sent in the connect and start bodies only. It is held in
+memory by the running fetch and is never stored, logged or returned; a fetch
+the server stopped mid-way can't resume (it fails as `interrupted`). The ABS
+client is read-only (`GET`s), checks `GET /status` says `audiobookshelf` (and
+`isInit`) **before** sending the token anywhere, accepts only `http`/`https`
+addresses without credentials, a query or a fragment, follows redirects only to
+the same host (never `https` → `http`, at most 4 of them), caps every response size
+and times out each request (3 minutes) and the whole fetch (30 minutes). Its
+errors are fixed English sentences with a code; an ABS response body never
+reaches a response or a log. There is no private-address block: ABS usually
+lives on the LAN or a container network, and only admins reach these routes.
+
+Import **statuses**: `fetching` → `review` (or `failed`) → `applying` →
+`applied` → `undone` (by an undo, or by a later import replacing it). At
+startup (`catalog.InterruptImports`) an import left `fetching` becomes `failed`
+with `error_code` `interrupted`, and one left `applying` goes back to `review`
+(the apply is one transaction, so nothing of it was written).
+
+An **import** reads:
+
+```json
+{
+  "id": 7,
+  "user_id": 4,
+  "username": "sam",
+  "source": "abs",
+  "source_url": "http://audiobookshelf",
+  "source_user": "sam",
+  "status": "review",
+  "cutoff": "2026-03-14T18:22:05Z",
+  "cutoff_utc_offset": 0,
+  "created_at": "2026-10-08T09:12:44Z",
+  "applied_at": null,
+  "error": "",
+  "error_code": "",
+  "summary": {
+    "items": 212,
+    "matched": { "path": 180, "asin": 9, "isbn": 0, "title": 14 },
+    "unmatched": 9,
+    "sessions": 4310,
+    "skipped_after_cutoff": 57,
+    "listened": 2215440.5,
+    "estimated": 86400,
+    "progress": 198,
+    "finished": 161,
+    "bookmarks": 73,
+    "first_listen": "2021-02-03T20:11:09Z",
+    "last_listen": "2026-03-13T22:40:51Z"
+  }
+}
+```
+
+| Field | Meaning |
+|---|---|
+| `source_url` | the ABS address as normalised (`importer.ParseBaseURL`: trimmed, no trailing slash, a pasted web-app link under `/audiobookshelf/...` cut back to `/audiobookshelf`); never a credential |
+| `source_user` | the ABS username, filled in when the fetch finishes (`""` before) |
+| `cutoff` | sessions **starting at or after** it are skipped; RFC 3339 UTC to the second (rounded down); `null` = none. Always the resolved value, never `"auto"` |
+| `cutoff_utc_offset` | the server's offset from UTC at the cutoff, in minutes (that date's, daylight saving included); `null` without a cutoff. A client shows and edits the cutoff in server time with it (a chosen day is the server's midnight), whatever its own zone |
+| `created_at`, `applied_at` | RFC 3339 UTC; `applied_at` `null` until applied |
+| `error`, `error_code` | `""` unless `failed`. `error` is a safe English sentence; `error_code` is `abs_unreachable` (also a timeout), `abs_unauthorized`, `not_abs`, `fetch_failed` or `interrupted` |
+| `summary` | `null` while fetching or when the fetch failed; planned at review (recounted by a cutoff change) and rewritten at apply with what was written |
+
+The fetched history is kept (gzipped, in `import_payloads`) only while the
+import can still be reviewed: it is deleted once the import is applied, undone
+or deleted.
+
+`summary` counts: `items` the ABS books the user has any history for (a
+session, progress or a bookmark); `matched` the matched ones by tier;
+`unmatched` the rest; `sessions` the sessions imported (matched books, before
+the cutoff, with listening; those already past the session retention are
+written as daily totals, still counted here) and `skipped_after_cutoff` those
+the cutoff drops; `listened` their seconds; `estimated` the seconds added as
+estimates (none for a book ABS has as finished without one listening session);
+`progress`
+the progress rows created or moved on; `finished` the books given a finish
+(or a missing finish date) from ABS; `bookmarks` the bookmarks added;
+`first_listen` / `last_listen` the earliest and latest imported session start
+(`null` without sessions).
+
+`GET /admin/imports/{id}` adds the books that will be skipped, most listened
+first, at most 500:
+
+```json
+{
+  "id": 7,
+  "…": "…",
+  "unmatched_items": [
+    { "title": "The Way of Kings", "author": "Brandon Sanderson",
+      "listened": 163020.4, "sessions": 61, "reason": "split_discs" }
+  ]
+}
+```
+
+| `reason` | Meaning |
+|---|---|
+| `no_match` | nothing here matched |
+| `contested` | two ABS items still in ABS (each with its own progress) resolved to the same book here, so both are skipped (one of them would be wrong), and so is any deleted item on that book |
+| `no_access` | the only match is a book the target user can't access |
+| `split_discs` | the ABS item is a folder this server splits into one book per disc folder (`books.split_parent`); the history can't be divided, so join the discs first |
+
+**Matching** (`importer.matcher`), best evidence first, only among the books
+the target user can access (a match only among the others is `no_access`):
+
+1. **Path**: whole components compared from the end, Unicode-normalised (NFC),
+   so the same relative path, or one a suffix of the other (the libraries
+   rooted at different depths; the ABS side compares its absolute path, so the
+   folders above its library folder count). A folder on one side matches the
+   single file alone in that folder on the other. The closest unique candidate
+   wins; a tie falls through.
+2. **ASIN**, then **ISBN** (normalised; the first accessible book in library
+   order).
+3. **Title, author and series**: `pkg/match.Best` among the books of an author
+   whose normalised name contains, or is contained in, the item's.
+
+Path and title matches also need the lengths to agree (within 5% of the
+longer, plus 2 minutes; an unknown length agrees with anything). An item ABS
+deleted is known only from its newest session's metadata, so it skips the path
+tier; it has no progress or bookmarks (any ABS still lists are dropped), so
+deleted items that resolve to one book all match it, with at most one item
+still in ABS, and their sessions merge. The apply matches again, so a book
+added since the review is found.
+
+**Cutoff** values, in a start or a `PATCH`: `"auto"` (each user's first
+listening recorded here, `catalog.ListeningStart`: their earliest non-imported
+session or non-estimated rolled-up day; `null` when they have none), `null`
+(no cutoff), an RFC 3339 time, or a `YYYY-MM-DD` day (its start in server
+time). Anything else is `400` `invalid_import` (`cutoff must be "auto", null
+or a date`). The cutoff gates sessions and estimates only; progress and
+bookmarks are merged whatever it is.
+
+All routes are *Admin*. The import routes' error envelopes carry the codes
+below (`invalid request`, `invalid user_id` and `invalid import id` are plain
+`400`s without a code).
+
+### `POST /api/v1/admin/imports/abs/users`
+
+`{"url": "http://audiobookshelf", "token": "…"}`. Checks the address is ABS and
+the token works, and lists its users: every user with an admin or root token or
+API key (`GET /api/users`), or only the token's own with a user's token (ABS
+answers that list `403`, so `GET /api/me`). Each carries the AudioSilo user
+with the same username (any case), if any.
+
+```json
+{
+  "version": "2.37.1",
+  "users": [
+    { "abs_id": "c1a5e0f2-…", "username": "sam", "type": "user", "suggested_user_id": 4 },
+    { "abs_id": "root", "username": "root", "type": "root", "suggested_user_id": null }
+  ]
+}
+```
+
+| Status | Meaning |
+|---|---|
+| `200` | the server's version and its users |
+| `400` | `invalid request`; `code: "invalid_url"` - not an absolute `http`/`https` URL, or it carries credentials, a query or a fragment; `code: "invalid_import"` - the token is empty, over 8 KiB or holds a line break or NUL (ABS is not contacted) |
+| `502` | `code: "abs_unreachable"` (no answer, a timeout or a `5xx`), `"not_abs"` (`/status` didn't answer as an initialised Audiobookshelf), `"abs_unauthorized"` (the token was refused) or `"fetch_failed"` (an unreadable answer) |
+
+Not audited (it changes nothing).
+
+### `POST /api/v1/admin/imports/abs`
+
+```json
+{
+  "url": "http://audiobookshelf",
+  "token": "…",
+  "users": [ { "abs_user_id": "c1a5e0f2-…", "user_id": 4 } ],
+  "cutoff": "auto"
+}
+```
+
+Records one import per mapping (`fetching`), all or none, and fetches them in
+the background on the server's lifetime context: `/status`, every **book**
+library's items the token can see (`GET /api/libraries`,
+`/api/libraries/{id}/items?limit=0`), then per user their progress and
+bookmarks (`GET /api/users/{id}`, or `/api/me` for a user's own token) and their
+sessions (`/listening-sessions`, 200 a page). Podcast libraries, episodes and
+sessions with no listening are left out. `cutoff` omitted means `"auto"`.
+Answers `202` `{"imports": [...]}` (as above, `fetching`); poll
+[`GET …/imports/{id}`](#get-apiv1adminimportsid) until the status leaves
+`fetching`. Audited per import as `import.start` (target: the username;
+`import`, `source`).
+
+| Status | Meaning |
+|---|---|
+| `400` | `invalid request`; `code: "invalid_url"`; `code: "invalid_import"` - the token is missing (`the API token is required`) or over 8 KiB or holding a line break (`the API token is not valid`), no mappings or more than 100, a mapping without `abs_user_id`, the same `user_id` twice, an unknown `user_id`, or a bad `cutoff` |
+| `409` | `code: "import_running"` - one of the users already has an import `fetching` or `applying` |
+
+Nothing reaches ABS before the `202`: an unreachable server or a refused token
+shows up as a `failed` import.
+
+### `GET /api/v1/admin/imports`
+
+`{"imports": [...]}`, newest first: everyone's, or one person's with
+`?user_id=`. `400` `invalid user_id`.
+
+### `GET /api/v1/admin/imports/{id}`
+
+The import with its `unmatched_items`. `404` `code: "import_not_found"`.
+
+### `PATCH /api/v1/admin/imports/{id}`
+
+`{"cutoff": "auto" | null | "<RFC 3339>" | "YYYY-MM-DD"}` (required). Plans the
+import again from the history it already fetched (nothing is fetched) and
+answers `200` with the import and its `unmatched_items`. Not audited (nothing is
+written outside the import).
+
+| Status | Meaning |
+|---|---|
+| `400` | `invalid request` (no `cutoff`); `code: "invalid_import"` - a bad `cutoff` |
+| `404` | `code: "import_not_found"` |
+| `409` | `code: "import_not_ready"` - it isn't in `review` |
+
+### `POST /api/v1/admin/imports/{id}/apply`
+
+Applies a `review` import: it moves to `applying`, then one transaction undoes
+the user's previous `applied` import from the same source (it becomes
+`undone`, so a re-import never double counts), matches and plans again against
+the user's state, writes it (sessions, a `listening_history` span per session,
+estimates, progress and bookmarks), and marks it `applied`. A session already
+older than the session retention (`activity.session_days` as set when the
+apply runs) is written as the `listening_daily` totals the daily prune would
+make of it rather than as a session, so it shows in the stats and history but
+not in `GET /admin/sessions`. The request's cancellation
+doesn't stop it. A failure puts it back in `review`. Answers `200` with the
+import (`applied`, `summary` as written). Audited as `import.apply` (`import`,
+`sessions`, `listened`).
+
+| Status | Meaning |
+|---|---|
+| `404` | `code: "import_not_found"` |
+| `409` | `code: "import_not_ready"` - it isn't in `review` |
+
+### `POST /api/v1/admin/imports/{id}/undo`
+
+Takes an applied import back out: its sessions, rolled-up days, estimates,
+history spans and bookmarks are deleted (by `import_id`; a bookmark the person
+edited or labelled since is kept and becomes theirs), and each progress row it
+changed is restored to what it was before, unless it changed since (a player's
+save or an edit: then it stays). Answers `200` with the import (`undone`). Audited as
+`import.undo` (`import`).
+
+| Status | Meaning |
+|---|---|
+| `404` | `code: "import_not_found"` |
+| `409` | `code: "import_not_applied"` |
+
+### `DELETE /api/v1/admin/imports/{id}`
+
+Removes an import that isn't applied, with its fetched history if it still has one. A `fetching`
+one can be deleted (its fetch then writes nothing). `204`. Not audited.
+
+| Status | Meaning |
+|---|---|
+| `404` | `code: "import_not_found"` |
+| `409` | `code: "import_applied"` - undo it first; `code: "import_not_ready"` - it is being applied |
+
 ## Admin: stats
 
 ### `GET /api/v1/admin/stats`
@@ -4497,10 +4789,12 @@ and only the part inside the period counts.
   the same for the period of equal length just before `from`, for deltas.
 - `estimated` - how many of `totals.listened`'s seconds are estimates: listening
   from before the server recorded sessions that the players' spans didn't cover
-  (see [Listening from before sessions](../data-model.md#listening-from-before-sessions)).
+  (see [Listening from before sessions](../data-model.md#listening-from-before-sessions)),
+  or where an [imported](#admin-listening-imports) history's progress went
+  further than its sessions.
   Estimates count in `totals` and the `top_*` lists, never in `days` or
-  `hour_weekday`. Sessions backfilled from spans count everywhere but `clients`
-  and `playback`.
+  `hour_weekday`. Backfilled sessions (from spans, or imported) count
+  everywhere but `clients` and `playback`.
 - `days` - one entry per day of the period, oldest first, zero days included;
   `by_user` lists each listener's seconds that day (`[]` on a quiet day).
 - `hour_weekday` - listened seconds as 7 rows (weekday, **0 = Monday**) of 24
