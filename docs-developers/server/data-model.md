@@ -208,7 +208,10 @@ single-file book), identity metadata (`title`, `author`, `series`,
 present so enrichment/metadata services can attach data without reshaping the
 schema), `published` (`YYYY[-MM[-DD]]`) and `description` (only an admin edit or
 an accepted community match supplies these today; the scanner reads neither),
-`released` (the date the file's tags give, `YYYY[-MM[-DD]]` via
+`more_series` (the effective list of the other series the book is in beyond
+`series`, as JSON `[{"name","position"}]`, `'[]'` for none: only an edit or a
+community match supplies it, an override like any other field; the full-text
+index's series column holds every series name), `released` (the date the file's tags give, `YYYY[-MM[-DD]]` via
 `metadata.ReleaseDate`: usually the recording's, so it is a separate scanned
 column, never `published`, read only by the admin list's release-date sort as
 the fallback for a book with no `published`) and `released_checked` (`1` once a
@@ -901,6 +904,7 @@ The migration history so far:
 | 0035 | `community_chapters` | `community_chapters` (each book's last community chapter check: path-keyed, rebuildable), `chapter_choices` (an admin's chapter source per book: durable, path-keyed), `books.chapters_source` / `chapters_fit` / `scanned_chapters` / `chapters_hash`: see [Community chapters](community-chapters.md) |
 | 0036 | `cover_source` | `book_covers.source` (`TEXT NOT NULL DEFAULT 'edited'`) and the partial index `idx_book_covers_community`; backfills `community` conservatively from the audit log (the match dialog's `book.cover_set` saves) and applied match runs (see the migration). A cover it can't place stays `edited`, which a clear keeps |
 | 0037 | `released` | `books.released` (`TEXT NOT NULL DEFAULT ''`) and `books.released_checked` (`0` on every existing row, so the next scan reads each unchanged book's date tags once) |
+| 0038 | `more_series` | `books.more_series` (`TEXT NOT NULL DEFAULT '[]'`), the effective list of a book's other series |
 
 ## SQLite choices
 

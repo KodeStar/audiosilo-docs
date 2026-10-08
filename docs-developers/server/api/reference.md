@@ -3091,6 +3091,7 @@ back to the scanned value, **revert** it instead.
 | `title` | required (cannot be emptied), at most 500 characters, no control characters |
 | `author`, `narrator`, `series` | at most 500 characters, no control characters |
 | `series_index` | a number from 0 to 100000 (`2`, `2.5`); stored in its shortest form, `""` for none |
+| `more_series` | the other series the book is in beyond `series`: a JSON list of `{"name": string, "position": number}` (position 0 = none, else 0 to 100000), at most 20; names trimmed and checked like `series`, blank names dropped, each name kept once (the first). Stored as canonical JSON (`[{"name":"City Watch","position":1}]`), `""` for none. Only an edit or a community match sets it; tags give one series |
 | `published` | `YYYY`, `YYYY-MM` or `YYYY-MM-DD`, and a real date |
 | `description` | at most 20000 characters; line breaks and tabs kept, other control characters refused |
 | `asin` | 10 letters or digits (uppercased) |
@@ -3118,7 +3119,7 @@ what the first does).
 |---|---|---|---|
 | `library_id` | int | - | one library; a non-positive or non-integer id is `400` |
 | `q` | string | - | full-text search over title/author/series/narrator, the same prefix matching as [`/search`](#get-apiv1search); punctuation-only input filters nothing |
-| `author` · `series` · `narrator` | string | - | the effective value: `series` exactly; `author` and `narrator` the whole credit or one of the people it names, exactly (as the [player's list](#get-apiv1librariesidbooks)) |
+| `author` · `series` · `narrator` | string | - | the effective value: `series` the main series exactly, or one its `more_series` names; `author` and `narrator` the whole credit or one of the people it names, exactly (as the [player's list](#get-apiv1librariesidbooks)) |
 | `format` | string, repeatable | - | `?format=m4b&format=mp3`; at most 50 values |
 | `codec` | string, repeatable | - | ffprobe codec name (`aac`, `mp3`, …); at most 50 values |
 | `direct_playable` | `true`\|`false` | - | the book's codec plays in browsers (an unknown codec counts as playable) |
@@ -3146,7 +3147,9 @@ author as written, series, position and title; `series` by series, position,
 then title; `narrator` by narrator, then title; `published` oldest first by the
 book's release date - its `published` value, else the date its file tags give
 (usually the recording's, never shown on the wire) - then series, position and
-title, with a bare year before that year's dates.
+title, with a bare year before that year's dates. With `series=`, `sort=series`
+orders by each book's position *in that series* (its main one or one of its
+`more_series`), unnumbered last, then title.
 
 A filter that can't be parsed (`has_cover=yes`, `min_duration=-1`,
 `added_after=last week`, an unknown `sort` or `order`) is a `400` with a message
@@ -3169,6 +3172,7 @@ is a `400` too (`too many format or codec values`).
       "narrators": ["R. C. Bray"],
       "series": "",
       "series_index": 0,
+      "series_list": [],
       "published": "2011",
       "duration": 38040.5,
       "format": "m4b",
@@ -3202,6 +3206,9 @@ is a `400` too (`too many format or codec values`).
   are omitted when empty or `0`.
   `path` is the book path (the player's `rel_path`).
 - `custom_cover` - an admin uploaded a cover; `has_cover` includes it.
+- `series_list` - every series the book is in, `[{"name", "position"}]`: its main
+  `series` first (at `series_index`), then its `more_series`, each name once; `[]`
+  for none.
 - `cover_color` - the colours read from the cover art, as on the player's `Book`
   (`bg`, plus `accent` and `on_accent` when the art has a vibrant colour that
   reads on it). Omitted until the server has read the current art's colour, from a
@@ -3353,14 +3360,18 @@ authors.
 {
   "series": [
     { "name": "Mistborn", "author": "Brandon Sanderson", "books": 3,
-      "duration": 284110.2, "positions": [1, 2, 3] }
+      "duration": 284110.2, "positions": [1, 2, 3], "extra_books": 0 }
   ]
 }
 ```
 
 `author` is the most common author among the series' books; `positions` lists
 the distinct non-zero series positions held, ascending (so a client can mark the
-gaps). Sorted case-insensitively by name. Books with no series are not counted.
+gaps). A book counts in every series it is in, its main `series` and each of its
+`more_series`, at its position there; `extra_books` is how many of `books` are in
+the series through `more_series` (the console loads such a series' books with
+`series=` rather than from the series-sorted list). Sorted case-insensitively by
+name. Books with no series are not counted.
 
 ### `POST /api/v1/admin/books/works`
 

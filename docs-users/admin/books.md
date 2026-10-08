@@ -102,7 +102,8 @@ Click any book to open its page.
 
 The top of the page shows the cover, the library, the title, then who wrote
 and narrated it and where it sits in its series ("by Brandon Sanderson · read
-by Michael Kramer · book 1 in The Stormlight Archive"). Each name, and the
+by Michael Kramer · book 1 in The Stormlight Archive"; a book in several series
+lists each, "book 8 in Discworld and book 1 in City Watch"). Each name, and the
 series, opens **Books** filtered to it. Below that is how many files the book
 has, whether browsers can play it directly ("Plays directly", "Transcodes to
 MP3 for browsers" or "Browsers can't play this format") and when it was added.
@@ -121,7 +122,13 @@ The buttons there are:
 ### Editing details
 
 The **Details** card lists **Title**, **Author**, **Narrator**, **Series**,
-**Series number**, **Published**, **Description**, **ASIN** and **ISBN**.
+**Series number**, **Other series**, **Published**, **Description**, **ASIN**
+and **ISBN**. A book can be in more than one series (Guards! Guards! is book 8 of
+Discworld and book 1 of its City Watch novels): **Series** and **Series number**
+are its main one, and **Other series** the rest, written on one line with the
+book's number after a `#` and the series apart by `;`, for example
+`Discworld: City Watch #1; Omnibus`. Matching with community metadata fills it in
+for a book in several series.
 Click any value to edit it in place. Enter keeps the change (in
 **Description**, where Enter starts a new line, use Ctrl+Enter or ⌘+Enter),
 Escape cancels.
@@ -407,7 +414,10 @@ AudioSilo never merges names on its own.
 
 **Library > Series** has a card for each series, with its books shown as
 spines in series order. Click a spine to open that book, or the series' name
-to see its books in the list, in series order.
+to see its books in the list, in series order. A book in more than one series
+(see **Other series** under [Editing details](#editing-details)) sits on each
+series' shelf at its number in that series, and filtering the list to one series
+numbers every book by its place in that series.
 
 Each spine takes its colours from the book's cover, and a longer book stands
 taller. AudioSilo reads the cover colours in the background after it indexes
