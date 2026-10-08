@@ -48,7 +48,7 @@ When the app (or the web player) isn't connected to anything yet, it opens on th
 ![The connect screen: the server address typed in, and the server it found with Sign in and Try the demo](/img/screenshots/web-player/connect.png)
 
 1. Enter the **server address** your admin gave you (e.g. `books.example.com`) and tap **Continue**. Without `https://` or `http://` in front, the app adds `https://`, so type `http://` yourself for a server that only answers plain HTTP. If you don't know the address, ask your admin.
-2. The app asks the server who it is and says what it found: *"Found Hearthside"*, with the version of AudioSilo it runs. Tap **Sign in**.
+2. The app asks the server who it is and says what it found: *"Found Hearthside"*, with the version of AudioSilo it runs, and a note when the address is plain `http://` (*"This server uses an unencrypted connection"*), which is fine at home but not over the internet (see [Remote access](../getting-started/remote-access.md)). Tap **Sign in**.
 3. Choose how to sign in - **Invite code** or **Username and password** - and tap **Sign in**.
 
 If the server can't be reached, the screen says *"Couldn't reach &lt;address&gt;"* and why that usually happens: a typo, a server that's off, or a home address (like `192.168.1.20:8080`) used from outside the home network, where it can't answer.

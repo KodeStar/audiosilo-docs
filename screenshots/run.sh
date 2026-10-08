@@ -12,7 +12,7 @@
 #   6. backfills placeholders for anything not captured (e.g. the desktop
 #      manager on a headless run - see README.md for manager captures).
 #
-# Prereqs: Go 1.26+, Node 24, ffmpeg/ffprobe, `npm install` +
+# Prereqs: Go 1.26+, Node 24, ffmpeg/ffprobe, sqlite3, `npm install` +
 # `npx playwright install chromium` in this directory. The web export at
 # FRONTEND/dist (below) is built with audiosilo-server/scripts/build-web.sh when
 # it is missing; an existing one is used as it is.

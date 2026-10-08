@@ -12,6 +12,8 @@
 import {chromium} from 'playwright';
 import path from 'node:path';
 import {mkdir} from 'node:fs/promises';
+import {existsSync} from 'node:fs';
+import {execFileSync} from 'node:child_process';
 import {
   CACHE,
   DAY,
@@ -159,6 +161,85 @@ const audioHook = () => {
   };
 };
 
+// ── A year of listening ─────────────────────────────────────────────────────
+// Listening stats come from listening sessions, which the server only derives from
+// progress saves as they happen (a device's listened time can't run faster than the
+// server's clock), so a fresh demo user has a minute of listening and the You shots
+// would be bare. seedListeningYear writes a year of sessions for the demo user straight
+// into the capture server's own database (run.sh's .cache/data, a throwaway copy),
+// marked token_id -1, and unseedListeningYear removes them once the web captures are
+// done, so the admin console's Activity shots (captured afterwards) only show the
+// listeners they provision. Deterministic (a fixed seed), so a re-run draws the same
+// charts. Needs the sqlite3 CLI on PATH; without it the step fails and the shots show
+// only the warm-up's listening.
+const DB = path.join(CACHE, 'data', 'audiosilo.db');
+const SEEDED_TOKEN = -1;
+// The books the year is spread over, most listened first (title substrings).
+const YEAR_BOOKS = [
+  "Alice's Adventures",
+  'Adventures of Sherlock Holmes',
+  'Hound of the Baskervilles',
+  'Call of the Wild',
+  'Looking-Glass',
+  'Christmas Carol',
+  'Art of War',
+];
+
+function sqlite(sql) {
+  if (!existsSync(DB)) throw new Error(`no capture database at ${DB}`);
+  return execFileSync('sqlite3', [DB], {input: `.timeout 15000\n${sql}\n`, encoding: 'utf8'});
+}
+
+function seedListeningYear(userId, libraryId, books) {
+  if (!books.length) throw new Error('no seeded books to listen to');
+  let state = 20261008;
+  const rand = () => ((state = (state * 1103515245 + 12345) % 2147483648) / 2147483648);
+  const q = (v) => `'${String(v).replace(/'/g, "''")}'`;
+  const rows = [];
+  const now = Date.now();
+  // Every day of the last year but today (the warm-up's own listening is today's): most
+  // days some listening, the odd quiet spell, more at weekends; evenings the busiest hour,
+  // a commute in the morning on weekdays. The last ten days all have some, so the streak
+  // is running.
+  for (let back = 364; back >= 1; back--) {
+    const day = new Date(now - back * DAY);
+    const weekend = day.getDay() === 0 || day.getDay() === 6;
+    const recent = back <= 10;
+    if (!recent && rand() < (back % 47 < 6 ? 0.85 : 0.18)) continue; // quiet spells, days off
+    const slots = weekend ? [[10, 2], [21, 1.5]] : [[7.5, 0.6], [21.5, 1]];
+    for (const [i, [hour, spread]] of slots.entries()) {
+      if (rand() < 0.3 && !(recent && i === slots.length - 1)) continue;
+      const minutes = Math.round(15 + rand() * (weekend ? 85 : 50));
+      const start = new Date(day);
+      start.setHours(0, 0, 0, 0);
+      const at = start.getTime() + (hour + (rand() - 0.5) * 2 * spread) * HOUR;
+      // A book for a few weeks at a time, so the top lists have a clear order.
+      const pick = Math.min(books.length - 1, Math.floor(((back / 30) % books.length) * rand() * 1.2));
+      const b = books[pick];
+      const startPos = Math.round(rand() * 1800);
+      const listened = minutes * 60;
+      rows.push(
+        `(${userId}, ${libraryId}, ${q(b.rel_path)}, ${SEEDED_TOKEN}, 'Pixel 9', 'AudioSilo', '1.3.0', 'android', ` +
+          `${q(new Date(at).toISOString())}, ${q(new Date(at + listened * 1000).toISOString())}, ` +
+          `${startPos}, ${startPos + listened}, ${Math.max(b.duration ?? 0, startPos + listened)}, 1, ${listened})`,
+      );
+    }
+  }
+  sqlite(
+    'BEGIN;\n' +
+      'INSERT INTO listening_sessions (user_id, library_id, rel_path, token_id, device_name, client_app, ' +
+      'client_version, client_platform, started_at, last_at, start_pos, end_pos, duration, speed, listened) VALUES\n' +
+      rows.join(',\n') +
+      ';\nCOMMIT;',
+  );
+  console.log(`  ✓ a year of listening: ${rows.length} sessions`);
+}
+
+function unseedListeningYear() {
+  sqlite(`DELETE FROM listening_sessions WHERE token_id = ${SEEDED_TOKEN};`);
+  console.log('  ✓ the seeded year removed again');
+}
+
 const browser = await chromium.launch();
 await mkdir(CACHE, {recursive: true});
 
@@ -290,6 +371,15 @@ console.log('== warm demo session ==');
       made += (w.bookmarks?.length ?? 0) + (w.notes?.length ?? 0) + (w.drift ? 1 : 0);
     }
     console.log(`  ✓ ${made} bookmarks and notes, history, a finished book and a drift-off`);
+  });
+
+  // A year of listening for You (Your listening, Year in listening) and Home's This
+  // week: see seedListeningYear.
+  await step('listening year', async () => {
+    const token = await demoToken(page);
+    const me = await api(token, 'GET', '/me');
+    const {lib, find} = await seededBooks(token);
+    seedListeningYear(me.id, lib.id, YEAR_BOOKS.map(find).filter(Boolean));
   });
 
   await ctx.storageState({path: AUTH});
@@ -687,6 +777,8 @@ async function captureWide(name, viewport, shots) {
     // reduces motion, so the story stays on its first card (a still frame).
     await step('you', async () => {
       await tid(page, 'top-bar-(me)').click({timeout: 8000});
+      // The Me tab keeps its section: the Journal shot left it on the Journal.
+      await tid(page, 'shell-sub-nav').getByRole('radio', {name: /^Stats/}).click({timeout: 8000});
       await tid(page, 'you-hub-stats').waitFor({timeout: 8000});
       await firstVisible(page.getByText(/^(Listening calendar|No listening yet)$/)).waitFor({timeout: 15000});
       await sleep(SETTLE_MS);
@@ -895,6 +987,8 @@ await step('demo', async () => {
   await shoot(page, 'web-player/demo.png');
   await ctx.close();
 });
+
+await step('remove the seeded year', unseedListeningYear);
 
 await browser.close();
 console.log('capture-web: done.');
