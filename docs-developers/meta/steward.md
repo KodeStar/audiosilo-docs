@@ -104,7 +104,9 @@ whole and not left for a person. The steward carries it to `main` in **parts**:
   for those entries, written onto its merge base and replayed onto `main` with
   the pack merge driver, then `metafmt` and `metacheck`. It opens as
   `[steward] <title> (part K of #N)` and goes through the gate like any other
-  data pull request - fixed there if it is flagged. A part `main` will not take
+  data pull request - fixed there if it is flagged, with the original's own
+  `ai-verify` flags in the fix's brief beside the part's, so findings already
+  known about its entries are fixed in the first round. A part `main` will not take
   mechanically opens from the original's merge base instead, and is rebased or
   re-applied like any pull request `main` moved out from under.
 - At most two parts are open at a time, so each merge does not re-run
@@ -127,7 +129,10 @@ superseding one has merged and its content is verified to be on `main`, and only
 then is it closed with a link.
 
 Attempts back off - immediately, then 1 hour, 4 hours, 12 hours, then daily -
-and never end in a closure. An item that has failed three times is listed as
+and never end in a closure. A fix whose next verdict states a **new** finding
+is progress: the backoff stays at its first hour, and a verdict posted after the
+last attempt that states a new finding is fixed at once rather than waiting that
+hour out. Only the same finding again climbs the backoff. An item that has failed three times is listed as
 **stuck** on the report with its last evidence, which is the signal to find out
 why and fix the cause.
 
