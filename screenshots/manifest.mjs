@@ -81,6 +81,7 @@ export const SHOTS = [
   {file: 'admin/settings-backups.png', capture: 'admin', title: 'Admin - Backups', hint: 'Server > Settings ?topic=backups: what a backup holds, the Schedule card, and the list with a scheduled and a manual backup (1440x1240)'},
   {file: 'admin/backup-restore.png', capture: 'admin', title: 'Admin - Restore a backup', hint: 'the Restore this backup? dialog with the word typed, never confirmed (1440x1240)'},
   {file: 'admin/settings-notifications.png', capture: 'admin', title: 'Admin - Notifications', hint: 'Server > Settings ?topic=notifications: a webhook (last sent) and an ntfy topic (last attempt failed), and the What to send matrix (1440x1240)'},
+  {file: 'admin/settings-import.png', capture: 'admin', title: 'Admin - Import', hint: 'Server > Settings ?topic=import: the intro notice and step 1, the empty Connect to Audiobookshelf form (no Audiobookshelf needed)'},
   {file: 'admin/bell.png', capture: 'admin', title: 'Admin - Notifications bell', hint: 'the top bar bell open over the overview: new books and sign-ins'},
   {file: 'admin/audit.png', capture: 'admin', title: 'Admin - Audit log', hint: 'Server > Audit log: the filters and the provisioning\'s admin changes, newest first'},
   {file: 'admin/health-issues.png', capture: 'admin', title: 'Admin - Library health', hint: 'Health > Issues: category cards over the "Files that couldn\'t be read" list (a provisioned Inbox library supplies the issues)'},

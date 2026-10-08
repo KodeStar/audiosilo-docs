@@ -51,6 +51,7 @@ internal/updates/     the update check (GitHub Releases)
 internal/logring/     in-memory log ring for the console
 internal/backup/      database backups + restore at start
 internal/notify/      event feed + webhook/ntfy/Discord
+internal/importer/    listening imports from Audiobookshelf
 internal/web/         baked-in web UI
 testdata/library/     M4B test fixtures
 ```
@@ -89,7 +90,8 @@ messy, inconsistently-tagged titles. Public because the manager uses it to match
 an Audible library against a server's index (which then feeds
 `book_enrichment` - see [Data model](data-model.md)); the server uses it too,
 for the admin catalog's author/narrator merge keys and the community match
-search's title cleaning and comparison. `Fold` is the Unicode-aware sibling of
+search's title cleaning and comparison, and the listening import's title
+tier (`internal/importer`). `Fold` is the Unicode-aware sibling of
 `Normalize` (lowercase, keep every script's letters and digits, drop spacing and
 punctuation); `Normalize` keeps ASCII only and is unchanged.
 
@@ -129,8 +131,9 @@ admin metadata overrides layered onto the index as effective values
 (`adminbooks.go`, `bookdetail.go`), listening sessions derived from progress
 saves and their retention (`sessions.go`), the admin Activity stats
 (`activity.go`) and progress edits (`progress_admin.go`), the admin audit log
-(`audit.go`), notification destinations and the event feed (`notify.go`), and
-`MoveDurableState` (move-tracking).
+(`audit.go`), notification destinations and the event feed (`notify.go`), the
+rows of listening imports and their one-transaction apply and undo
+(`imports.go`), and `MoveDurableState` (move-tracking).
 Handlers call into this package; it is where catalog business logic belongs.
 
 ### `internal/library`
@@ -215,6 +218,21 @@ bell reads, and delivers them to webhook, ntfy and Discord destinations in the
 background (signed webhooks, retries, no redirects, nothing secret in a
 message). See [Notifications](backups-and-notifications.md#notifications-internalnotify).
 
+### `internal/importer`
+
+Listening imports from Audiobookshelf (admin only in v1), so someone moving to
+AudioSilo keeps their history: the read-only ABS client (`abs.go`: `/status`
+checked before the token is sent, same-host redirects, size-capped responses,
+fixed error sentences), the normalised payload kept on the import
+(`payload.go`), the path/ASIN/ISBN/title matcher (`match.go`, using
+`pkg/match.Best` for the fuzzy tier), the pure planner the review and the apply
+share (`plan.go`), and the `Service` that runs the background fetch, the
+cutoff change, the apply and the undo (`service.go`). The rows are
+`catalog`'s (`imports.go`). The token never leaves the running fetch's memory.
+`abstest/` is a fake ABS serving recorded responses, for tests. See
+[Listening imports](data-model.md#listening-imports) and the
+[routes](api/reference.md#admin-listening-imports).
+
 ### `internal/web`
 
 The baked-in admin/connect UI - vanilla HTML/CSS/JS with no build step, embedded
@@ -229,7 +247,8 @@ strict site-wide one and the per-document `htmlCSP` for the player). See
 graph TD
   cmd["cmd/audiosilo"] --> launcher["pkg/launcher"]
   launcher --> api & server & toolfetch & backup & notify
-  api["internal/api<br/>(transport only)"] --> auth & catalog & library & media & config & web & backup & notify
+  api["internal/api<br/>(transport only)"] --> auth & catalog & library & media & config & web & backup & notify & importer
+  importer --> catalog
   server --> config
   config --> backup
   backup --> store

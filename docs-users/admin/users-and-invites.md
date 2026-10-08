@@ -109,6 +109,10 @@ A disabled account can't be invited until you enable it again.
   finish dates.
 - **Recent sessions**: their latest listening sessions. **All sessions** opens
   them all in [Activity > Sessions](activity.md#sessions).
+- **Imported history**: when listening has been
+  [imported from Audiobookshelf](import.md) for them, each import with when it
+  was applied and how much it added, and **Undo**. **Import settings** opens
+  Server > Settings > Import. The card isn't shown for someone with no imports.
 
 Each book in the two lists has a menu (**...**) to
 [mark it finished, edit its dates or see its sessions](#editing-someones-progress).

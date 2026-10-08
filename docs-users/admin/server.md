@@ -1,6 +1,6 @@
 ---
 title: "Server settings, updates and logs"
-description: "The Server pages of the AudioSilo admin console: every setting you can change while the server runs (name, address, HTTPS, app links, community metadata, transcoding, demo mode, backups, notifications), which ones wait for a restart, checking for new versions and what that sends, reading the server's log, and the audit log of what admins changed."
+description: "The Server pages of the AudioSilo admin console: every setting you can change while the server runs (name, address, HTTPS, app links, community metadata, transcoding, demo mode, backups, notifications, importing from Audiobookshelf), which ones wait for a restart, checking for new versions and what that sends, reading the server's log, and the audit log of what admins changed."
 ---
 
 The **Server** destination in the [admin console](console-tour.md) is where
@@ -21,11 +21,12 @@ space, backups - is on [Health > System](health.md#system).
 
 **Server > Settings** lists its topics down the left (across the top on a
 phone): **General**, **Network & HTTPS**, **Players & app links**,
-**Community metadata**, **Transcoding**, **Demo mode**, **Backups** and
-**Notifications**. Each setting lives in exactly one of them. Backups and
-Notifications have pages of their own:
-[Backups and restoring](backups.md) and
-[Notifications and the bell](notifications.md). The settings are the same ones the server keeps in
+**Community metadata**, **Transcoding**, **Demo mode**, **Backups**,
+**Notifications** and **Import**. Each setting lives in exactly one of them.
+Backups, Notifications and Import have pages of their own:
+[Backups and restoring](backups.md),
+[Notifications and the bell](notifications.md) and
+[Importing from Audiobookshelf](import.md). The settings are the same ones the server keeps in
 `config.yaml` in its data folder: a change you save here is written there, so
 it lasts across restarts.
 
@@ -353,9 +354,10 @@ at the foot loads the next 50.
 
 ## Where to next
 
-- [Backups and restoring](backups.md) and
-  [Notifications and the bell](notifications.md) - the two topics with pages
-  of their own.
+- [Backups and restoring](backups.md),
+  [Notifications and the bell](notifications.md) and
+  [Importing from Audiobookshelf](import.md) - the topics with pages of their
+  own.
 - [Library health and jobs](health.md) - the System page, issues and scans.
 - [Remote access](../getting-started/remote-access.md) - HTTPS, ports and
   proxies in more depth.

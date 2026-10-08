@@ -31,6 +31,7 @@ const sidebars: SidebarsConfig = {
         'admin/server',
         'admin/backups',
         'admin/notifications',
+        'admin/import',
       ],
     },
     {
