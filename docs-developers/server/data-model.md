@@ -717,8 +717,12 @@ works can't push the books' enrichments out (`catalog.PruneMetaCache`). What is 
   still addresses chapters by index; the server resolves the index to this
   identity when the edit is made.
 - **`book_covers`** *(0016)* - PK `(library_id, path)`, `mime`, `updated_by`,
-  `updated_at`, `data` (BLOB, the last column, so a revalidation that reads only
-  `mime`/`updated_at` never reads past it). A custom cover uploaded in the admin console
+  `updated_at`, `data` (BLOB, so a revalidation that reads only
+  `mime`/`updated_at` never reads past it), then `source` *(0036)*: `edited` for an
+  upload, `community` for a cover kept from a community match (the match dialog or a
+  bulk run), which [clearing the community matches](api/reference.md#delete-apiv1admincommunity-matches)
+  removes; the partial index `idx_book_covers_community` lists those without reading
+  an image. A custom cover uploaded in the admin console
   (JPEG, PNG or WebP, at most 5 MiB - `catalog.MaxCoverBytes`). It lives in the
   database rather than the library folder (files stay untouched) or a loose
   data-dir file, so it is path-keyed durable state that moves with
@@ -843,6 +847,7 @@ The migration history so far:
 | 0032 | `library_metadata_source` | `libraries.metadata_source` (`TEXT NOT NULL DEFAULT 'tags'`, so every existing library reads as before) |
 | 0033 | `match_runs` | `match_runs` and `match_run_items`, the bulk community matching runs (Health > Not matched) and each book's best candidate, with their indexes |
 | 0034 | `listening_import` | `imports`, `import_payloads` and `import_progress_prior`; `import_id` on `listening_sessions`, `listening_daily`, `listening_history` and `bookmarks` (`0` on every existing row) with partial indexes; `bookmarks.import_note`; `idx_sessions_started` and `idx_sessions_user_started`, since the session lists now order by start: see [Listening imports](#listening-imports) |
+| 0036 | `cover_source` | `book_covers.source` (`TEXT NOT NULL DEFAULT 'edited'`) and the partial index `idx_book_covers_community`; backfills `community` conservatively from the audit log (the match dialog's `book.cover_set` saves) and applied match runs (see the migration). A cover it can't place stays `edited`, which a clear keeps |
 
 ## SQLite choices
 

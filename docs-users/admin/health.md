@@ -116,7 +116,9 @@ what it found and apply it.
 A match is confident when it scores 90% or more, at least 10 points ahead of
 the next candidate, and its recording has an ASIN or ISBN to attach. Whatever a
 run writes shows as a **Community** value on the book's page, and you can
-revert it like any other.
+revert it like any other. To undo every community match at once and start
+again, use [Clear community matches](server.md#community-metadata) in Server
+settings.
 
 Books you've ignored under **Not matched** are left out of a run. If the
 catalogue stops answering, or community metadata is turned off, the run stops

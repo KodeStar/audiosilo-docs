@@ -207,6 +207,21 @@ listens. See
   you run your own; a new address is used from the next restart. If no address
   is set, the switch is greyed out and a notice ("No metadata service is
   configured") asks you to enter one and restart.
+- **Clear community matches**, in the **Danger zone** at the bottom, undoes
+  every community match so you can match from fresh. With more than one
+  library, pick one (or **All libraries**); then click **Clear matches** and
+  type the word it asks for. It removes the titles, authors, narrators, series,
+  years, descriptions, ASINs, ISBNs and covers a community match wrote, whether
+  you accepted it by hand or
+  [in bulk](health.md#matching-every-book-at-once), along with the match runs
+  and any review still waiting. Your own edits, the covers you uploaded and an
+  ASIN or ISBN from a book's own tags stay. The books go back to what their tags
+  and folders say and show under
+  [Not matched](health.md#matching-every-book-at-once) again (unless their tags
+  carry an ASIN or ISBN), ready for **Find matches**. Nothing is sent to the
+  metadata service, so it works with the switch off too. It can't be undone:
+  only matching again brings the values back. While a match run is working it
+  asks you to wait for it, or stop it, first.
 
 ### Transcoding
 

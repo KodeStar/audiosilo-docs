@@ -3805,6 +3805,35 @@ applying stops after the books in hand (`ready` again, the rest still to
 apply). Turning community metadata off stops an apply the same way. `204`; `409 code: "match_run_not_running"` when it isn't working.
 Audited as `book.match_stop`.
 
+#### `DELETE /api/v1/admin/community-matches`
+
+Undoes the community matches so the books can be matched from fresh (Server >
+Settings > Community metadata > Danger zone). `?library_id=` limits it to one
+library; without it, every library. In one transaction it removes every
+`source: "community"` override (whether a match dialog or a run wrote it) and
+every community cover (one kept from the match dialog or by a run), rebuilds
+each book's effective metadata and cover, and removes the match runs with their
+reviews: every run, or for one library its runs and its books' items in runs
+over every library. An admin's own edits and uploaded covers, the tags and an
+identifier the desktop manager attached all stay, so a book whose tags carry an
+ASIN or ISBN is still matched afterwards. It sends nothing out, so it works
+with community metadata off (and with no service configured).
+
+```json
+{ "books": 128, "covers": 41, "runs": 3 }
+```
+
+`books` counts the books that had a community value or cover, `covers` the
+community covers removed, `runs` the runs removed. Audited as
+`book.match_clear` with the same counts (target: the library's name, empty for
+every library).
+
+| Status | Meaning |
+|---|---|
+| `400` | `invalid library_id` |
+| `404` | `library not found` |
+| `409` | `code: "match_run_busy"` - a run is matching or applying (stop it or wait, then try again) |
+
 ### `PUT /api/v1/admin/libraries/{id}/cover` · `DELETE /api/v1/admin/libraries/{id}/cover`
 
 Uploads (`PUT`) or removes (`DELETE`) a book's **custom cover**. `?path=`
@@ -3840,6 +3869,9 @@ candidate's or recording's `cover_url`) as the book's **custom cover**: the
 server fetches the image and stores it exactly as an
 [upload](#put-apiv1adminlibrariesidcover--delete-apiv1adminlibrariesidcover)
 (in the database, never in the library folder; `DELETE …/cover` removes it).
+It is recorded as a community cover, so
+[clearing the community matches](#delete-apiv1admincommunity-matches) removes
+it, where an upload stays.
 Requires the `metadata` [capability](#get-apiv1server). `?path=` required.
 
 | Body field | Type | Required | Notes |
