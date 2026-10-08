@@ -74,7 +74,7 @@ Many AudioSilo accounts don't have a password at all - that's normal. Accounts a
 
 ### "Your library is ready."
 
-The first time a device connects to a server, it finishes on *"Your library is ready."*: the server's name, how many books it holds and in which libraries, and, if you already had a book on the go there, where you left off (*"Your place in The Hobbit came with you: chapter 12, 48% in."*). **Start listening** takes you to the home screen; **Browse the library** opens the Library.
+The first time a device connects to a server, it finishes on *"Your library is ready."*: the server's name, how many books it holds and in which libraries, and, if you already had a book on the go there, where you left off (*"Your place in The Hobbit came with you: chapter 12, 48% in."*). **Start listening** takes you to the home screen and, if your place came with you, plays that book from there; **Browse the library** opens the Library.
 
 ![Your library is ready: the shelf of spines, the server's name and its libraries, and Start listening](/img/screenshots/web-player/connect-ready.png)
 
@@ -111,7 +111,7 @@ You can even connect the app to **more than one server** - **Add a server** in y
 
 A server can have two addresses: a **home address** that only works on the same network as the server (fast, like `http://192.168.1.20:8080`), and an **away address** that works from anywhere (its public address, like `https://books.example.com`).
 
-When the server has both, the **iOS and Android apps** use the home address while you're at home and the away address when you're out, and **switch by themselves**: when the app opens or comes back to the front, and when your phone changes network. A book streaming at the time carries on from the new address at the same place; a paused one switches when you next press play. Downloaded books play from your phone either way.
+When the server has both, the **iOS and Android apps** use the home address while you're at home and the away address when you're out, and **switch by themselves**: when the app opens or comes back to the front, when your phone changes network, and every minute and a half or so while the app is open and away from home (so walking in the door with the app open switches it too). A book streaming at the time carries on from the new address at the same place; a paused one switches when you next press play. Downloaded books play from your phone either way.
 
 The app learns the two addresses when it connects, whichever way you sign in, and asks the server again each time it starts, so a home address your admin sets later reaches it too. When the server has both, an **At home and away** card shows them on *"Your library is ready."*, and on the sign-in screen when you reconnect to that server. Your [account page](account.md#at-home-and-away) for the server always lists them, and in the apps says which one is in use.
 

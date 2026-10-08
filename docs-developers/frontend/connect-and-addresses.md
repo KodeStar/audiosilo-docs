@@ -42,14 +42,16 @@ route table is in the [overview](overview.md#route-map). Three steps, counted by
    the library sentence (`readyLine`, from the library names and `bookTotal`, which sums
    each library's authors list under `browse_people`; null without it), the listener's
    latest place on that server (`latestPlace`), and the "At home and away" card when the
-   server has both addresses. Start listening leaves onboarding; Browse the library
-   dismisses to `/library`.
+   server has both addresses. Start listening leaves onboarding and, when a place came
+   with the listener, plays that book from it through `usePlayBook` (the full player on a
+   phone, the docked bar wider); Browse the library dismisses to `/library`.
 
 **Every way in ends in `finishConnect`** (`finish-connect.ts`): a pairing link or QR, an
 invite code, a password, the demo. It stores the connection through `setSession` with
 the server's own name when the flow knows it (the probe, the redeem payload's
 `server_name`; a connection made by a link is not named after its host) and the
-addresses the link and the answer taught (`pairingAddresses`). The device's **first**
+addresses the link (`linkAddresses`) and the answer taught, merged there once
+(`mergeAddresses`). The device's **first**
 connection then shows `/connect/ready`; an added server goes straight back with
 `leaveOnboarding()`.
 
@@ -88,8 +90,9 @@ anywhere). The server side, how each is chosen, is in
 `Connection.addresses?: ServerAddresses` (`{ home?, away? }`) is persisted with the
 connection metadata. It comes from the pairing link's
 `home=`/`away=` params (`parsePairingScan`), the redeem payload, and the exchange, login
-or demo answer, each cleaned by `cleanAddresses` (an `http(s)` URL with its scheme,
-normalised; `home` dropped when it equals `away`).
+or demo answer, each cleaned once where it arrives (`cleanAddresses` in
+`parsePairingScan` and in the `ApiClient` methods that return them: an `http(s)` URL with
+its scheme, normalised; `home` dropped when it equals `away`).
 
 - `setSession` merges what it is given with what the connection (or, for a sign-in after
   signing out, the remembered server) already knew, and keeps it when the answer has
@@ -97,9 +100,10 @@ normalised; `home` dropped when it equals `away`).
 - `mergeAddresses(prior, fresh)`: an answer's `away` is authoritative; a known `home` is
   **kept** when an answer lacks one, because the server derives the home address from
   the request, so an answer read through the away address cannot know it.
-- `setConnectionAddresses(id, addresses)` replaces them; the remembered server
-  (`known-servers.ts`, `rememberAddresses`) learns them too, so a reconnect after signing
-  out can still start at home.
+- `learnAddresses(id, fresh)` stores a `GET /addresses` answer the same way, merged with
+  what the connection had (so a `home` survives an answer read away from home); the
+  remembered server (`known-servers.ts`, `rememberAddresses`) learns the merge too, so a
+  reconnect after signing out can still start at home.
 - **`serverUrl` is never rewritten.** It stays what the listener paired with or typed.
 
 ### The pick rule (`src/lib/server-address.ts`)
@@ -144,15 +148,20 @@ connection's address:
   (`expo-network`), when a connection's URL or addresses change, and at once when the
   reachability tracker marks a connection offline (its probe loop then runs through the
   client built on the new address);
+- every `HOME_RECHECK_MS` (90 s) while the app is in the foreground, for a connection away
+  from its home address: walking in the door raises no event the runner hears (Wi-Fi
+  joins without a type change, and the app stays open). One probe per connection at a
+  time, none in the background;
 - `leaveHome()`: when the device leaves its network (`movedNetwork`: another network
-  type, or no connection), every connection using its home address drops to its away
+  type or no connection; or `ipChanged`: another IP address of its own, such as one Wi-Fi
+  network to another), every connection using its home address drops to its away
   address (else `serverUrl`) first, and the re-pick that follows checks home again;
 - a per-connection generation counter discards a probe that a newer re-pick, or a change
   to the connection, overtook.
 
 It also refreshes what the device keeps: `refreshAddresses(cid)` reads `GET /addresses`
 from a server with the flag (`addressesQuery`, `skipToken` without it) at launch, for a
-new connection and on reconnect, and stores the merge.
+new connection and on reconnect, and stores the merge (`learnAddresses`).
 
 **The playing book.** A streamed book's track URLs are baked in when it loads
 (`book-queue.ts`). When its connection's address changes, `followPlayingBook` restarts it

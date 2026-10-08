@@ -39,18 +39,19 @@ re-export of `YouHub` (`src/components/you/you-hub.tsx`). The rules are the pure
 The section control is `SubNavSections tab="(me)"`, so on tablet and desktop it is
 published into the sub-nav ([Sub-nav sections and actions](overview.md#sub-nav-sections-and-actions)).
 Stats, Year and Account are plain columns with no scroller or gutters of their own: the
-hub scrolls them, with its gutters and the mini player's inset. The Journal and Settings
-bring their own scrolling.
+hub puts them in a `TabPageScroll` (`src/components/shell/tab-page-scroll.tsx`: the page
+gutters, the mini player's room and the iOS tab bar's inset). The Journal and Settings
+bring their own scrolling, through the same scroller.
 
 The Me tab's destination in `TABS` (`src/components/shell/destinations.ts`) has
 `root: '/you'`, `labelKey: 'nav.me'` ("Me" on the tab bar), `wideLabelKey: 'nav.you'` and
 `wideIcon: 'chart'` ("You" in the top bar), and `rootParams: ['section', 'tab']`, so the
 cold-link cleanup keeps the hub's section and the Journal's tab. `TOP_BAR_TABS` includes it.
 
-**Opening the hub.** `youHref(section?, journalTab?)` and `journalHref(tab?)`
-(`src/lib/paths.ts`) build the links; open them only through `openYou(section)` /
-`openJournal(tab)` (`src/lib/open.ts`, also on `useOpen`), or `pushInShell` with one of
-those hrefs, which routes there. They go to the hub's tab root rather than pushing a copy (see
+**Opening the hub.** `youHref(section?, journalTab?)` (`src/lib/paths.ts`) builds the
+link; open it only through `openYou(section)` / `openJournal(tab)` (`src/lib/open.ts`,
+also on `useOpen`), never `pushInShell`. They pop the Me tab to its root
+(`popTabToRoot`) rather than pushing a copy (see
 [the router rules](overview.md#routing-rules)). `/journal?tab=` (the array-group
 route `journal.tsx`) also renders the Journal for older links.
 
@@ -67,7 +68,8 @@ like the player and the end credits. It never navigates into the shell.
 ## Your listening (`src/components/you/stats/`)
 
 `StatsSection` shows **one server's** listening, in **that server's time**. The server is
-chosen by the pure `statsServerChoice`: the servers with `user_stats` true are the
+chosen by `useStatsServer` (`use-stats-server.ts`, shared with Year in listening) on the
+pure `statsServerChoice`: the servers with `user_stats` true are the
 choices (a picker shows only with two or more); the listener's pick holds while it keeps
 stats, else the default connection, else the first that keeps stats. A server without
 the flag gets a calm `Notice`, never an error. The section is keyed by the server, so a
@@ -119,13 +121,16 @@ A server without `user_stats` is `unsupported`, never an error.
   book finished is the calm empty state. The words are `year-copy.ts` (`cardCopy`), the
   colours `story-themes.ts`.
 - **Earlier years**: the wire has no "which years have data", so `useStoryYears`
-  (`year-probes.tsx`) asks `/me/stats?range=YYYY` year by year (the same cache entry the
-  story reads, so a picked year shows at once), carrying on while a year or the year
-  before it (its `previous` totals) has data, and stopping after two quiet years or 25
-  years back (`OLDEST_YEAR` is 2000).
+  (`year-probes.ts`) is one query over the pure `findStoryYears`, which asks
+  `/me/stats?range=YYYY` year by year (the same cache entry the story reads, so a picked
+  year shows at once), carrying on while a year or the year before it (its `previous`
+  totals) has data, and stopping after two quiet years, a year that can't be read, or 25
+  years back (`OLDEST_YEAR` is 2000). A past year never changes, so the list and each
+  year's stats are kept for the session (`staleTime: Infinity`).
 - **One renderer**: `StoryCard` draws a card for the stage, the full-screen story and the
   share. `StoryStage` lays the progress bars and the tap zones (a third for previous, two
-  thirds for next) over it; `useStoryPlayer` is the clock (`CARD_MS` = 6 s, a plain timer
+  thirds for next) over it, and the section and the full-screen story share
+  `useStoryStage` (`use-story-stage.ts`); `useStoryPlayer` is the clock (`CARD_MS` = 6 s, a plain timer
   for the advance plus a Reanimated bar). The pure `story-model.ts` says what holds it: a
   share in progress, a native screen reader, a press, hover or keyboard focus. Reduced
   motion makes it still (no advance). Next on the last card wraps to the first.
@@ -151,9 +156,9 @@ its card. There is **no share link** (that would need a server endpoint).
   back to the download, and a download toasts the file name.
 - **Under the `/web` CSP** (`connect-src 'self'`, `img-src 'self' data: blob:`; see
   [Web UI](../server/web-ui.md)): the fonts and covers `html-to-image` inlines are
-  same-origin `fetch()`es, so the web story's covers are plain `?token=` URLs
-  (`story-cover.web.tsx`), **never** the `blob:` copy `BookCover` makes on the web, which
-  `connect-src 'self'` would refuse; `data:` URLs are kept as they are, the drawing is a
+  same-origin `fetch()`es, so covers on the web are plain `?token=` URLs (`BookCover`
+  hands the browser the URL itself, with no header), **never** a `blob:` copy (expo-image
+  makes one when it fetches with a header), which `connect-src 'self'` would refuse; `data:` URLs are kept as they are, the drawing is a
   `data:` SVG image and the PNG comes out of `canvas.toBlob`.
 - A failed capture is retried once with the covers drawn as plain title blocks
   (`coversOff`, `PlainCover`), so one unreadable image can't cost the whole card.
@@ -194,8 +199,8 @@ by `SettingsContent` so its dialog state survives the layout switch.
 back to Settings or the You section it was opened from (`accountParentKey`; none from
 the profile menu or a cold link, where the chrome's Back does it); the phone hub's Account section renders it without an id: the default
 server, with a switcher (a segmented control of the signed-in servers) when there are
-several (`resolveAccountCid`). It is a non-scrolling column (the host scrolls it and adds
-the mini player's inset), keyed by the server so a switch starts with closed editors.
+several (`resolveAccountCid`). It is a non-scrolling column (the host scrolls it, in a
+`TabPageScroll`), keyed by the server so a switch starts with closed editors.
 
 Each block is gated on its capability, so an older server shows less, quietly:
 

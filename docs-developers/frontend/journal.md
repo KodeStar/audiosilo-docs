@@ -4,8 +4,8 @@ description: "The Journal (src/components/journal/): one paged list per server m
 ---
 
 The Journal is the You hub's Journal section, `/you?section=journal&tab=diary|bookmarks|notes`
-(`journalHref` beside the other hrefs in `src/lib/paths.ts`, `openJournal` in
-`src/lib/open.ts` and on `useOpen`; `parseJournalTab` in `journal-model.ts`: anything
+(opened with `openJournal(tab?)` in `src/lib/open.ts`, also on `useOpen`, which builds
+`youHref('journal', tab)` from `src/lib/paths.ts`; `parseJournalTab` in `journal-model.ts`: anything
 unknown is the Diary). The hub renders `JournalScreen`, with `embedded` on a phone, where
 the hub's large title already says "Journal" (the export and the tabs stay); see
 [You, Settings and Account](you-and-settings.md#the-hub-and-its-routes). The older
@@ -17,7 +17,7 @@ capability, and merged. The user-facing page is [The Journal](/users/listening/j
 **Entry points:** the hub's Journal segment (the phone's Me tab, You in the top bar), a
 **Journal** item in the top bar's profile menu, **Journal** in the palette's Go to group
 (`buildGoToItems`), `JournalLink` on a book's Bookmarks and Notes tabs (through
-`pushInShell`, so from over the full player it lands in the shell), Your listening's
+`openJournal`, so from over the full player it lands in the shell), Your listening's
 "See them in your Journal", and a Diary row's cover opening a book on its History tab.
 
 ## Module map

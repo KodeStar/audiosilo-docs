@@ -472,6 +472,26 @@ overwrite real progress - the guard makes that write impossible. `retry()` also
 reloads at `max(resumeFloor, currentPosition)` so a transient 0 in the snapshot
 can't be re-loaded.
 
+### Picking up another device's place (`place-reconcile.ts`)
+
+A book this device holds loaded resumes from its engine's place on every play, without
+asking the server, so a place another device saved meanwhile would be both skipped and
+overwritten (the server is last-write-wins). `startPlaceReconcile`, started from the root
+layout, asks the server for the loaded book's progress when it is picked up again: when
+the app comes to the foreground or the book's server comes back while the book is loaded
+and settled, and when the book plays again after `LONG_PAUSE_MS` (60 s) of pause from any
+source (the store's `onPickedUpAgain`, called before that play's first save). While the
+check is out the store holds its saves (`holdSaves`, 5 s at most), so the stale place is
+never written.
+
+It moves only when the server's record was written by another `device_id`, is newer than
+anything this device's mirror knows for the book, is not finished, and is more than
+`MOVE_THRESHOLD_S` (30 s) from the engine's place; a seek of the listener's own while the
+check was out wins (`localMoveCount`). The move is `seekBook` (so the resume floor and the
+undo chip see it), and a toast ("Picked up your place from another device") offers Undo.
+This module is the only place that reconciles a loaded book: never make `toggle()` look
+anything up.
+
 ### Progress autosave and sync triggers
 
 - A 15 s interval save loop (`SAVE_INTERVAL_MS`) runs **only while actually

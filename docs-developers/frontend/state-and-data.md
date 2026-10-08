@@ -603,8 +603,8 @@ instead of adding one), merges the addresses it is given with what the device kn
 token (`src/lib/known-servers.ts`, the connect screen's Reconnect rows), and drops any
 **other** connection at the same URL: a rebuilt server mints a new `server_id` at the
 same address, so that one is a dead identity, whose token and scoped state go.
-`setConnectionAddresses` replaces a connection's addresses (the address runner calls it
-after `GET /addresses`). `removeConnection` (and `logout`,
+`learnAddresses` merges a `GET /addresses` answer into a connection's addresses
+(`mergeAddresses`, so a known `home` survives; the address runner calls it). `removeConnection` (and `logout`,
 which removes the active one) deletes its token **and purges the connection's
 scoped state** - downloads, the progress mirror + offline queue, cached queries,
 and scroll memory. It does this by running an `onConnectionRemoved` cleanup
