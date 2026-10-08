@@ -72,11 +72,11 @@ The conversion needs **ffmpeg** on your server, which the Docker image includes 
 In the mobile apps, playback continues in the background and shows up everywhere your system shows media:
 
 - **Android** - the lock screen and notification give you the full audiobook row: **previous chapter**, a **chapter-relative scrubber** you can drag, **next chapter**, and **30-second skip back/forward** buttons.
-- **iOS** - the lock screen and Control Centre show play/pause, a scrubber, and **skip back/forward** buttons that use the same skip lengths you chose in Settings.
+- **iOS** - the lock screen and Control Centre show play/pause, a scrubber, and **skip back/forward** buttons that use the same skip lengths you chose in [Settings](settings.md#playback).
 - **Headphones and earbuds** - play/pause and skip buttons work as you'd expect, and playback pauses politely for interruptions (a phone call, a navigation prompt) and resumes afterwards only if it was playing before.
 
 See [The mobile apps](mobile-apps.md) for more on the native apps.
 
 ## Books without chapters
 
-A long audiobook that's a single file with no chapter markers still gets chapter-style navigation: the player divides it into **virtual chapters** (every 30 minutes by default - adjustable from 5 to 60 minutes in Settings), so the chapter skips, the chapter list, and the sleep timer's **End of chapter** all work.
+A long audiobook that's a single file with no chapter markers still gets chapter-style navigation: the player divides it into **virtual chapters** (every 30 minutes by default - adjustable from 5 to 60 minutes in [Settings](settings.md#playback)), so the chapter skips, the chapter list, and the sleep timer's **End of chapter** all work.

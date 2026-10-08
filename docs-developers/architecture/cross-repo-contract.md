@@ -82,7 +82,7 @@ byte-range prefix, matching `Scope.Allows` exactly.
 
 **Player-redesign user state (Phase 1b).** The listener's own state, mirrored the
 same way and gated per feature (seam 8), read by Up next, collections, the book
-menu, Home and the end credits (only `/me/devices` has no screen yet): up next
+menu, Home, the end credits and the You hub (Your listening, Year in listening, the Account page's devices): up next
 (`/me/queue`, `{ queue }`), collections shared read-only with named users
 (`/me/collections/**`, `{ collections }` / `{ collection, items }`, and
 `/me/share-targets`, `{ users }`), ratings (`/libraries/{id}/rating`,
@@ -214,9 +214,27 @@ token → device-scoped session).
 the `/web/connect` route consume both carriers; `client.ts`
 `redeemCode()`/`exchange()`.
 
-**A change requires:** the scheme, the query keys (`server`, `token`), and the
-`/web/connect` route path are a contract - change the server emitter, the parser,
-and `app.json` together, or pairing breaks.
+**Home and away addresses (`addresses` capability).** Every pairing payload
+(`/auth/redeem`, `/auth/pair`, the demo session's `pairing`) may carry
+`addresses: { home?, away? }`: `away` is `public_url`; `home` is `lan_url`, else the
+request's own `Host` when that is a home-network host (`config.Addresses`,
+`config.IsHomeNetworkHost`); a home equal to the away is dropped. Both links carry them
+as extra query params **after** the existing ones, only when set
+(`…&away=…&home=…`; read them by name, the encoder sorts them; old clients ignore them).
+The `/auth/exchange`, `/auth/login` and `/demo/session` answers carry `addresses` too, and
+`GET /addresses` lets a paired device learn one set later (shapes in the
+[reference](../server/api/reference.md#home-and-away-addresses)). **Frontend:**
+`parsePairingScan` returns `addresses`; the connect flow stores them on the connection
+(`Connection.addresses`; `mergeAddresses` keeps a known `home` an answer lacks);
+`serverUrl` is never rewritten; and the native app picks the address per request:
+home only after a tokenless `GET <home>/api/v1/server` answered with this connection's
+`server_id`, else away, else `serverUrl`. **Never send a token to a home address before
+its `server_id` matched.** The web player never switches (it is served same-origin).
+Details: [Connect and home/away addresses](../frontend/connect-and-addresses.md#home-and-away-addresses).
+
+**A change requires:** the scheme, the query keys (`server`, `token`, and the optional
+`home`, `away`), and the `/web/connect` route path are a contract - change the server
+emitter, the parser, and `app.json` together, or pairing breaks.
 
 ## 8. Capability flags: `GET /api/v1/server`
 

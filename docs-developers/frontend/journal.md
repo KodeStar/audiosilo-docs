@@ -3,19 +3,22 @@ title: The Journal
 description: "The Journal (src/components/journal/): one paged list per server merged newest first, history spans joined into sessions and days, the 24 hour bar, matching drift-offs to sessions, the Bookmarks and Notes tabs, and the Markdown and CSV export."
 ---
 
-The Journal is `/journal?tab=diary|bookmarks|notes` (`journalHref` beside the other
-hrefs in `src/lib/paths.ts`, `openJournal` on `useOpen`; `parseJournalTab` in
-`journal-model.ts`: anything unknown is the Diary). The route file under
-`(home,library,search,offline,me)` only exports `JournalScreen`. It covers **every
-signed-in server**: each list is read per server, through that server's own connection
-and capability, and merged. The user-facing page is [The Journal](/users/listening/journal).
+The Journal is the You hub's Journal section, `/you?section=journal&tab=diary|bookmarks|notes`
+(`journalHref` beside the other hrefs in `src/lib/paths.ts`, `openJournal` in
+`src/lib/open.ts` and on `useOpen`; `parseJournalTab` in `journal-model.ts`: anything
+unknown is the Diary). The hub renders `JournalScreen`, with `embedded` on a phone, where
+the hub's large title already says "Journal" (the export and the tabs stay); see
+[You, Settings and Account](you-and-settings.md#the-hub-and-its-routes). The older
+`/journal?tab=` route (`journal.tsx` under `(home,library,search,offline,me)`) still
+renders `JournalScreen` for links made before the hub. It covers **every signed-in
+server**: each list is read per server, through that server's own connection and
+capability, and merged. The user-facing page is [The Journal](/users/listening/journal).
 
-**Entry points:** `JournalEntryRow` (`journal-entry.tsx`) at the top of the Settings
-screen (the phone's Me tab), a **Journal** item in the top bar's profile menu, a
-**Journal** item at the end of the palette's Go to group (`command-palette.tsx`),
-`JournalLink` on a book's Bookmarks and Notes tabs (through `pushInShell`, so from over
-the full player it lands in the shell), and a Diary row's cover opening a book on its
-History tab.
+**Entry points:** the hub's Journal segment (the phone's Me tab, You in the top bar), a
+**Journal** item in the top bar's profile menu, **Journal** in the palette's Go to group
+(`buildGoToItems`), `JournalLink` on a book's Bookmarks and Notes tabs (through
+`pushInShell`, so from over the full player it lands in the shell), Your listening's
+"See them in your Journal", and a Diary row's cover opening a book on its History tab.
 
 ## Module map
 
@@ -163,7 +166,7 @@ route it lacks), every server and both lists at once:
    `saveExport`, split by platform: `export-save.ts` (native) writes the file to the
    cache directory and opens the share sheet (`expo-sharing`, with the MIME type and
    UTI), falling back to sharing the text where files can't be shared;
-   `export-save.web.ts` downloads a Blob through a temporary link. On the web, **Copy
+   `export-save.web.ts` downloads a Blob through a temporary link (`downloadBlob`, `src/lib/download-blob.ts`, shared with the Year in listening share). On the web, **Copy
    as Markdown** goes through `copyText` and toasts only on a real copy.
 
 `ExportActions` / `exportChoices`: the web gets Copy as Markdown plus a Download menu

@@ -36,7 +36,7 @@ Safari on iPhone and iPad doesn't let a web page change its volume, so in the we
 
 ### Shake to extend
 
-In the iOS and Android apps, a shake in those two windows does the same as **Keep listening**; at any other time a shake does nothing. Two settings, in the sleep timer and in [Settings](account.md#sleep-timer):
+In the iOS and Android apps, a shake in those two windows does the same as **Keep listening**; at any other time a shake does nothing. Two settings, in the sleep timer and in [Settings](settings.md#sleep):
 
 - **Shake to extend** - on out of the box.
 - **Shake sensitivity** - **Low**, **Medium** (the starting point) or **High**: how hard the shake has to be. Choose **Low** if bumps in bed keep the book going.
@@ -53,4 +53,4 @@ When the timer stopped a book you were playing and nobody kept it going in those
 
 ## Starting a timer automatically at night
 
-Turn on **Auto sleep timer** (in the sleep timer, or in [Settings](account.md#sleep-timer), where you choose the hours and the kind of timer) and any book you start inside those hours gets a timer. It never adds a second timer or replaces one you set. If a timer runs out and you press play again inside the window, you get a fresh one. **Turn a timer off** and no automatic one comes back for that book until you next start the app.
+Turn on **Auto sleep timer** (in the sleep timer, or in [Settings](settings.md#sleep), where you choose the hours and the kind of timer) and any book you start inside those hours gets a timer. It never adds a second timer or replaces one you set. If a timer runs out and you press play again inside the window, you get a fresh one. **Turn a timer off** and no automatic one comes back for that book until you next start the app.

@@ -33,7 +33,7 @@ Downloads are per-device: what you downloaded on your phone isn't automatically 
 
 ## Automatic downloads
 
-The **Automatic downloads** card on the Downloads page holds three settings. They're the same settings as the **Up next** section of [Settings](account.md#up-next), so changing one place changes the other.
+The **Automatic downloads** card on the Downloads page holds three settings. They're the same settings as the **Up next and downloads** section of [Settings](settings.md#up-next-and-downloads), so changing one place changes the other.
 
 - **Download automatically**: **Never**, **On Wi-Fi** or **Always**. With On Wi-Fi or Always, the book you start listening to is downloaded as you play it, and playback quietly switches to the downloaded copy once it's on the device. On Wi-Fi skips mobile data on a phone or tablet. A browser can't tell Wi-Fi from mobile data, so in the web player On Wi-Fi downloads on any connection, and the card says so. Like Keep the next books ready (below), it leaves at least 1 GB (or a tenth of your storage) free, and it won't fetch a book you cancelled or removed earlier in the session.
 - **Keep the next books ready**: **Off**, **1**, **2** or **3** (below).
@@ -65,7 +65,7 @@ Each downloaded book belongs to the **server you downloaded it from**. If you've
 
 That matters when you disconnect a server:
 
-- **Removing a server** (Settings → Servers) or **signing out** of it **deletes that server's downloaded books from this device**, along with any listening progress that hadn't synced back to the server yet.
+- **Removing a server** ([Settings > Accounts and devices](settings.md#accounts-and-devices)) or **signing out** of it **deletes that server's downloaded books from this device**, along with any listening progress that hadn't synced back to the server yet.
 - The app warns you first when the server you're removing has books downloaded on the device, so you're never caught out.
 - Your other servers' downloads are untouched, and nothing on the server itself is affected - reconnect and you can download them again any time.
 

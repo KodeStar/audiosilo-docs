@@ -73,6 +73,22 @@ public_url: "https://books.example.com"
 
 It's used when building QR codes and invite links, so the links you copy from the admin console point at your public address rather than an internal one.
 
+### Tell the server its home address
+
+Inside your home, the apps can talk to the server directly over your own network, which is quicker than going out to the internet and back. Set `lan_url` (`AUDIOSILO_LAN_URL`, or **Home address** under the console's Server > Settings > General) to the address the server has on your home network:
+
+```yaml
+lan_url: "http://192.168.1.20:8080"
+```
+
+The apps learn it with the public address when they connect (and from the server each time they start), use it whenever they can reach it, and switch to the public address when you leave home - see [At home and away](../listening/connecting.md#at-home-and-away). It applies the moment you save it.
+
+You can often leave it empty. The server then offers the address a device connected with when that address is a home-network one: a private IP address such as `192.168.1.20` or `10.0.0.5`, or a local name such as `nas.local` or `audiosilo`. A device that connected through the public address learns no home address that way, so set it when you want every device to switch.
+
+:::note Behind a reverse proxy
+A proxy that passes requests on under its own name for the server (nginx does this by default, e.g. `audiosilo:8080`) makes that internal name the home address the server works out for itself. The apps can't reach it, so they keep using the public address - nothing breaks, they just never switch. Setting `lan_url` fixes it.
+:::
+
 ### Why it's safe to expose
 
 Being internet-facing for non-experts is the server's first design priority, and the protections are always on - there is nothing to remember to enable:

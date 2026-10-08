@@ -233,6 +233,9 @@ Cross-server screens ask per connection (`useCapabilitiesAll` /
 | `user_stats` | Home's This week card, the Now card's finish date and the "&lt;narrator&gt; reads" shelf's top narrator (`useMyStats('30d')`, `useMyListening`, `useListeningGoal`) |
 | `ratings` | the end credits' and the book page's stars (`useBookRating`) |
 | `annotations` | bookmark labels in the editor and on the one-tap toast's Add note, Edit on bookmark and note rows, "See all in your journal", the Journal's Bookmarks and Notes lists and their export (the full list: [Where the capability matters](annotations.md#where-the-capability-matters)) |
+| `user_stats` (You) | Your listening (`StatsSection`: `useMyListening('1y')`, `useMyStats('year')`, the goal hooks) and Year in listening (`useYearStory`: `useMyStats(range)`, past years probed by `useStoryYears`); see [You, Settings and Account](you-and-settings.md) |
+| `my_devices` | the Account page's signed-in devices and the identity card's device count (`useMyDevices`, `useRevokeMyDevice`, never on the current device) |
+| `addresses` | the Account page's At home and away card (`useServerAddresses`) and the native address runner's refresh (`addressesQuery`); see [Connect and home/away addresses](connect-and-addresses.md#home-and-away-addresses) |
 
 Writes from screens follow the [1b write rules](#the-listeners-own-state-player-redesign-phase-1b)
 (positioned adds, exact-path removes): Up next's drag/keys and a collection's Move
@@ -246,7 +249,7 @@ Phase 1b adds the listener's own state to the data layer the same way: typed
 mirrors in `types.ts`, methods in `client.ts` and hooks in `hooks.ts`, each gated
 on its capability. Phase 2 consumes `queue`, `collections`, `progress_edit` and
 `user_stats`; Phase 3's end credits read `ratings` (`useRating` + `useMyRatings`,
-`useSetRating`) and the year's stats; `my_devices` still waits for its screen.
+`useSetRating`) and the year's stats; the You hub reads `user_stats` and `my_devices` (Your listening, Year in listening, the Account page's devices).
 
 | Capability | Query hooks | Mutation hooks | Types |
 |---|---|---|---|
@@ -582,13 +585,26 @@ book that hasn't reached it. The counted remainder is the `hidden` number behind
 
 ### Session (`src/stores/session.ts`)
 
-Multi-connection: a `Connection` is `{ id, serverUrl, name, token, user }`.
+Multi-connection: a `Connection` is `{ id, serverUrl, name, token, user,
+needsReconnect?, addresses? }`. The `id` is the server-minted `server_id`, so it keys
+every per-server store. `serverUrl` is the address the listener paired with or typed,
+never rewritten; `addresses` is the server's home and away addresses (capability
+`addresses`), and which one requests go to right now is an in-memory pick, never stored
+(see [Connect and home/away addresses](connect-and-addresses.md#home-and-away-addresses)).
 Connection **metadata** persists to AsyncStorage (`audiosilo.connections` +
-`audiosilo.activeConnection`); each connection's **token** lives in
-secure-store under `audiosilo.token.<id>` - tokens are stripped before the
-metadata is persisted. `hydrate()` restores everything on launch (and migrates
-the pre-multi-connection single-session keys once); `setSession` adds or
-updates by server URL and makes it active; `removeConnection` (and `logout`,
+`audiosilo.activeConnection`, the default connection's id under its legacy name); each
+connection's **token** lives in secure-store under `audiosilo.token.<id>` - tokens are
+stripped before the metadata is persisted. `hydrate()` restores the connections whose
+token is still there (it runs after the launch reset, below, so it never reads
+wrongly-keyed records). `setSession` refuses an empty `server_id`, then adds or updates
+**by `server_id`** (re-pairing the same server at another URL updates its connection
+instead of adding one), merges the addresses it is given with what the device knew
+(`mergeAddresses`), makes it the default, remembers the server durably without its
+token (`src/lib/known-servers.ts`, the connect screen's Reconnect rows), and drops any
+**other** connection at the same URL: a rebuilt server mints a new `server_id` at the
+same address, so that one is a dead identity, whose token and scoped state go.
+`setConnectionAddresses` replaces a connection's addresses (the address runner calls it
+after `GET /addresses`). `removeConnection` (and `logout`,
 which removes the active one) deletes its token **and purges the connection's
 scoped state** - downloads, the progress mirror + offline queue, cached queries,
 and scroll memory. It does this by running an `onConnectionRemoved` cleanup
@@ -726,11 +742,19 @@ The offline-safe write path for listening progress:
   server + mirror + queue into the `ResumeLookup` (`progress`/`empty`/`failed`)
   that drives resume - the semantics live in
   [Playback](playback.md#resume-protection).
-- **One-time migration + purge.** `ensureMigrated` (memoized, run before any
-  read-modify-write) adopts pre-multi-server records into `adoptionTarget()`
-  (or drops them when no connection exists), re-keying and re-deduping mirror
-  and queue. It waits on `whenSessionReady()` only when a legacy record actually
-  exists. An `onConnectionRemoved` handler drops a removed connection's mirror
+- **Launch reset + purge.** The mirror and the queue need no migration of their own:
+  the launch-time `migrateStorage()` (`src/lib/storage-migration.ts`, one memoised run
+  the root layout awaits before any store hydrates) runs `resetStaleStorage`
+  (`src/stores/session.ts`), which reconciles storage along two independent version
+  axes. The **auth** axis (`audiosilo.storageVersion`, now `2`) wipes the connections,
+  their tokens, the pre-multi-server single-session keys and, with them, the scoped
+  cache; bump it only when the connection identity scheme itself changes, because it
+  signs everyone out. The **cache** axis (`audiosilo.cacheVersion`) wipes only the
+  scoped cache (`audiosilo.downloads`, `audiosilo.progressMirror`,
+  `audiosilo.progressQueue`, `audiosilo.offlineServers`) and keeps every login: it is
+  the knob for any change to how that cache is keyed (a pre-split install adopts the
+  version without a wipe). Either reset makes the root layout wipe the on-disk
+  downloads too. An `onConnectionRemoved` handler drops a removed connection's mirror
   records and queued saves.
 
 :::note No realtime sync

@@ -682,6 +682,29 @@ async function captureWide(name, viewport, shots) {
     });
   }
 
+  if (wanted(shots.youStats, shots.year)) {
+    // You in the top bar: Your listening (Stats), then Year in listening. The context
+    // reduces motion, so the story stays on its first card (a still frame).
+    await step('you', async () => {
+      await tid(page, 'top-bar-(me)').click({timeout: 8000});
+      await tid(page, 'you-hub-stats').waitFor({timeout: 8000});
+      await firstVisible(page.getByText(/^(Listening calendar|No listening yet)$/)).waitFor({timeout: 15000});
+      await sleep(SETTLE_MS);
+      await page.mouse.move(0, 0);
+      await shoot(page, shots.youStats);
+      if (wanted(shots.year)) {
+        await tid(page, 'shell-sub-nav')
+          .getByRole('radio', {name: /^Year in listening/})
+          .click({timeout: 8000});
+        await tid(page, 'year-section').waitFor({timeout: 8000});
+        await firstVisible(page.getByText(/^(Share this card|Not much of a story yet)$/)).waitFor({timeout: 15000});
+        await sleep(1500); // the stage's covers
+        await page.mouse.move(0, 0);
+        await shoot(page, shots.year);
+      }
+    });
+  }
+
   for (const [key, testId] of [
     ['settings', 'top-bar-settings'],
     ['downloads', 'top-bar-(offline)'],
@@ -735,6 +758,25 @@ async function capturePhone(name, viewport, shots) {
     await shoot(page, shots.home);
   });
 
+  if (wanted(shots.youStats, shots.settings)) {
+    // The Me tab (the You hub): Stats, then its Settings section.
+    await step('me tab', async () => {
+      await tid(page, 'tab-bar-(me)').click({timeout: 8000});
+      await tid(page, 'you-hub-stats').waitFor({timeout: 8000});
+      await firstVisible(page.getByText(/^(This week|No listening yet)$/)).waitFor({timeout: 15000});
+      await sleep(SETTLE_MS);
+      await shoot(page, shots.youStats);
+      if (wanted(shots.settings)) {
+        await firstVisible(page.getByRole('radio', {name: 'Settings', exact: true})).click({timeout: 8000});
+        await tid(page, 'settings-content').waitFor({timeout: 8000});
+        await sleep(SETTLE_MS);
+        await shoot(page, shots.settings);
+      }
+      // Back to Stats, so a later visit to the tab starts where a fresh run does.
+      await firstVisible(page.getByRole('radio', {name: 'Stats', exact: true})).click({timeout: 8000}).catch(() => {});
+    });
+  }
+
   if (wanted(shots.upNext)) {
     // The sheet, from the Up next button beside Home's large title.
     await step('up next sheet', async () => {
@@ -768,6 +810,8 @@ await captureWide('desktop', {width: 1440, height: 900}, {
   author: 'web-player/author.png',
   collection: 'web-player/collection.png',
   search: 'web-player/search.png',
+  youStats: 'web-player/you-stats.png',
+  year: 'web-player/year.png',
   settings: 'web-player/settings.png',
   downloads: 'web-player/downloads.png',
 });
@@ -783,17 +827,64 @@ await capturePhone('phone', {width: 430, height: 932}, {
   speedSheet: 'web-player/phone-speed-sheet.png',
   sleepSheet: 'web-player/phone-sleep-sheet.png',
   upNext: 'web-player/phone-up-next.png',
+  youStats: 'web-player/phone-you-stats.png',
+  settings: 'web-player/phone-settings.png',
 });
 
 // ── Unauthenticated screens ─────────────────────────────────────────────────
 console.log('== public screens ==');
+// The connect flow on a fresh browser: the start screen with the probe card, then a
+// first connection (the admin, by username and password: a real account, so the
+// account page has its Password card and API keys) to "Your library is ready.", then
+// the account page from the profile menu. That player session is signed out again at
+// the end, so it never shows in the admin Devices shot.
 await step('connect', async () => {
-  const ctx = await browser.newContext({viewport: {width: 1440, height: 900}, deviceScaleFactor: 2, colorScheme: 'dark'});
+  const ctx = await browser.newContext({
+    viewport: {width: 1440, height: 900},
+    deviceScaleFactor: 2,
+    colorScheme: 'dark',
+    reducedMotion: 'reduce',
+  });
+  await ctx.addInitScript(drawerClosed);
   const page = await ctx.newPage();
-  await page.goto(BASE + 'connect', {waitUntil: 'networkidle', timeout: 45000});
-  await sleep(2500);
-  await shoot(page, 'web-player/connect.png');
-  await ctx.close();
+  try {
+    await page.goto(BASE + 'connect', {waitUntil: 'networkidle', timeout: 45000});
+    await tid(page, 'connect-start').waitFor({timeout: 15000});
+    await firstVisible(page.getByRole('textbox', {name: 'Server address'})).fill(new URL(BASE).origin);
+    await firstVisible(page.getByRole('button', {name: 'Continue', exact: true})).click({timeout: 8000});
+    await tid(page, 'probe-notice').waitFor({timeout: 15000});
+    await sleep(SETTLE_MS);
+    await page.mouse.move(0, 0);
+    await shoot(page, 'web-player/connect.png');
+    if (!wanted('web-player/connect-ready.png', 'web-player/account.png')) return;
+    if (!ADMIN_PASSWORD) throw new Error('ADMIN_PASSWORD not set: no first connection to show');
+
+    await firstVisible(page.getByRole('button', {name: /^Sign in to /})).click({timeout: 8000});
+    await tid(page, 'sign-in-step').waitFor({timeout: 8000});
+    await firstVisible(page.getByRole('radio', {name: 'Username and password'})).click({timeout: 8000});
+    await firstVisible(page.getByLabel('Username', {exact: true})).fill('admin');
+    await firstVisible(page.getByLabel('Password', {exact: true})).fill(ADMIN_PASSWORD);
+    await firstVisible(page.getByRole('button', {name: 'Sign in', exact: true})).click({timeout: 8000});
+    await tid(page, 'ready-screen').waitFor({timeout: 15000});
+    await firstVisible(page.getByRole('button', {name: 'Start listening'})).waitFor({timeout: 8000});
+    await sleep(3000); // the library sentence and the shelf
+    await shoot(page, 'web-player/connect-ready.png');
+
+    if (wanted('web-player/account.png')) {
+      await firstVisible(page.getByRole('button', {name: 'Start listening'})).click({timeout: 8000});
+      await tid(page, 'top-bar-profile').click({timeout: 15000});
+      await firstVisible(page.getByRole('menuitem', {name: /^Account on /})).click({timeout: 8000});
+      await firstVisible(page.getByText('Signed-in devices')).waitFor({timeout: 15000});
+      await sleep(SETTLE_MS);
+      await page.mouse.move(0, 0);
+      await shoot(page, 'web-player/account.png');
+    }
+  } finally {
+    // Sign the admin's player session out again, whatever happened above.
+    const token = await demoToken(page).catch(() => null);
+    if (token) await api(token, 'POST', '/auth/logout').catch(() => {});
+    await ctx.close();
+  }
 });
 
 await step('demo', async () => {

@@ -117,6 +117,22 @@ details, so the book stays loaded); the editor is closed with Cancel, so nothing
 changes. Before the Details shot the book is downloaded here unless it already is,
 so the tab says Plays from this device.
 
+The You shots (`web-player/you-stats.png`, `year.png`, `phone-you-stats.png`,
+`phone-settings.png`) show the demo user's own stats, so they need a server with
+`user_stats`; the provisioned listening (the warm-up's saves, the `WARM` history and the
+finished book) is what fills them, and the finished book is what gives Year in listening
+a story. Every capture context reduces motion, so the story stays on its first card.
+
+The connect shots run last, in a fresh browser with nothing stored:
+`web-player/connect.png` types the server's own address and presses Continue (the probe
+card), then the run signs in as the **admin** with a username and password (a real
+account, so the account page has its Password card and API keys; `ADMIN_PASSWORD` is
+required) for `connect-ready.png` ("Your library is ready.", the first connection) and
+`account.png` (Account on, from the profile menu). That player session is signed out
+through the API at the end, so it never shows in the admin Devices shot. The capture
+server is reached at `127.0.0.1`, a loopback address, so it has no home address and the
+account page shows no At home and away card.
+
 `SERVER_BIN=<file>` runs a server binary built elsewhere instead of building one
 into the `SERVER` checkout (pair it with `SKIP_ADMIN=1` unless that binary
 embeds a built admin console), which is how a docs worktree captures an unmerged

@@ -46,6 +46,8 @@ const sidebars: SidebarsConfig = {
         'frontend/book-page',
         'frontend/annotations',
         'frontend/journal',
+        'frontend/you-and-settings',
+        'frontend/connect-and-addresses',
         'frontend/offline',
         'frontend/state-and-data',
         'frontend/i18n',

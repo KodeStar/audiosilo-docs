@@ -34,7 +34,8 @@ src/app/            Expo Router routes: (app) with its five tab groups, connect/
                     +html.tsx web shell
 src/api/            client.ts (typed fetch wrapper), types.ts (wire mirrors),
                     hooks.ts (React Query), provider.tsx (multi-connection registry),
-                    reachability.ts (online/offline tracking)
+                    reachability.ts (online/offline tracking), address-route.ts +
+                    address-runner.ts + server-id-probe.ts (home and away addresses)
 src/playback/       PlaybackService interface + per-platform engines, the player store,
                     book-queue (timeline math), progress-sync (offline-safe saves),
                     sleep-timer (+ auto-sleep, use-shake-to-extend, drift, last-
@@ -49,13 +50,16 @@ src/components/     ui/ (the Stacks primitives - Text, Icon, Button, Card, Input
                     Dialog, Select, Tabs, Toast, Sheet... see Styling), shell/ (tab
                     destinations, auth gate, phone header + tab bar, top bar, sub-nav,
                     docked player, accessory player, sub-nav slot), layout/
-                    (reconnect + offline banners, ContentScope), player/,
+                    (reconnect + offline banners, ContentScope, the At home and away
+                    card), player/,
                     library/ (covers, shelves, grids, the Library modes, the
                     collection/person/series route screens), series/ (bookcase,
                     person pages), book/ (the book page), annotations/
                     (bookmark and note rows, editors, labels), journal/ (the
-                    Journal and its export), home/, search/, upnext/, downloads/
-                    (the Downloads tab), account/, brand/
+                    Journal and its export), you/ (the You hub; stats/, year/),
+                    settings/ (the Settings panes), account/ (a server's Account
+                    page), connect/ (onboarding), home/, search/, upnext/, downloads/
+                    (the Downloads tab), brand/
 src/stores/         Zustand: session (connections + tokens), settings, search
                     (+ recent searches), series-orderings, library-selection
 src/i18n/           i18next init, LanguageProvider, locale catalogs (locales/*.json)
@@ -85,7 +89,8 @@ Two conventions keep this layout healthy:
   feature keeps its rules in a pure, tested `*-model.ts` (`home-model.ts`,
   `series-model.ts`, `search-model.ts`, `up-next-model.ts`, `books-view.ts`,
   `downloads-view.ts`, `keep-ahead.ts`, `book-page-model.ts`, `diary-model.ts`,
-  `editor-model.ts`).
+  `editor-model.ts`, `you-model.ts`, `stats-model.ts`, `year-model.ts`,
+  `settings-model.ts`, `account-model.ts`, `connect-model.ts`).
 - **Path is identity, scoped by connection.** Every content call passes
   `?path=<rel_path>`, never a database id. Because the app can be signed in to
   several servers at once (and two can share a library id), durable and cached
@@ -104,7 +109,7 @@ URLs, so every URL below is the same as before the groups existed.
 
 | Route | File | Purpose |
 |---|---|---|
-| - (root layout) | `src/app/_layout.tsx` | Mounts the provider tree (`GestureHandlerRootView` → `SafeAreaProvider` → `RootInsetsProvider` → `LanguageProvider` → `ThemeProvider` → `ApiProvider`), awaits the memoised launch migration `migrateStorage()` (`src/lib/storage-migration.ts`: the theme default, then `resetStaleStorage`) before it hydrates the session/settings/downloads/series-orderings/library-selection stores, imports `@/lib/register-sw` for its side effect, mounts the headless `BookEndedListener` (drives the end-of-book flow, see [The end of a book](end-of-book.md#ending-a-book)), `CompanionRevealListener` (the "New in Who's who" toast, see [Player UI](player-ui.md#the-companion-companion)) and `ShakeToExtendListener`, starts the framework-free `startAutoSleep()` controller (arms the nightly sleep timer, see [The sleep timer](sleep-timer.md#auto-sleep-timer-auto-sleepts--auto-sleep-controllerts)), `startDriftWatch()` (the Fell asleep bookmark and the jump back, see [The sleep timer](sleep-timer.md#fell-asleep-drift-controllerts)), `startJumpUndo()` (see [Player UI](player-ui.md#undo-a-jump-jump-undots)) and `startKeepAhead()` (downloads the next books when the listener opted in, see [Offline](offline.md#keep-the-next-books-ready-keep-aheadts--keep-ahead-controllerts)), and runs `useAppResume` (foreground refresh + the Android swipe-from-recents reset). Declares the `(app)` stack (the root stack's `anchor`, so it always sits at the bottom) and the `player`/`finished` screens as `fullScreenModal`s. Mounts `<PortalHost />` and `<ShellToastHost />` **last**, inside the providers, so portaled overlays and toasts stack above every screen (see [toasts](#toasts)). |
+| - (root layout) | `src/app/_layout.tsx` | Mounts the provider tree (`GestureHandlerRootView` → `SafeAreaProvider` → `RootInsetsProvider` → `LanguageProvider` → `ThemeProvider` → `ApiProvider`), awaits the memoised launch migration `migrateStorage()` (`src/lib/storage-migration.ts`: the theme default, then `resetStaleStorage`) before it hydrates the session/settings/downloads/series-orderings/library-selection stores, imports `@/lib/register-sw` for its side effect, mounts the headless `BookEndedListener` (drives the end-of-book flow, see [The end of a book](end-of-book.md#ending-a-book)), `CompanionRevealListener` (the "New in Who's who" toast, see [Player UI](player-ui.md#the-companion-companion)) and `ShakeToExtendListener`, starts the framework-free `startAutoSleep()` controller (arms the nightly sleep timer, see [The sleep timer](sleep-timer.md#auto-sleep-timer-auto-sleepts--auto-sleep-controllerts)), `startDriftWatch()` (the Fell asleep bookmark and the jump back, see [The sleep timer](sleep-timer.md#fell-asleep-drift-controllerts)), `startJumpUndo()` (see [Player UI](player-ui.md#undo-a-jump-jump-undots)), `startKeepAhead()` (downloads the next books when the listener opted in, see [Offline](offline.md#keep-the-next-books-ready-keep-aheadts--keep-ahead-controllerts)) and `startAddressRouting()` (native only: picks each server's home or away address, see [Connect and home/away addresses](connect-and-addresses.md#the-runner-srcapiaddress-runnerts)), and runs `useAppResume` (foreground refresh + the Android swipe-from-recents reset). Declares the `(app)` stack (the root stack's `anchor`, so it always sits at the bottom) and the `player`/`finished`/`year` screens as `fullScreenModal`s. Mounts `<PortalHost />` and `<ShellToastHost />` **last**, inside the providers, so portaled overlays and toasts stack above every screen (see [toasts](#toasts)). |
 | - (web HTML shell) | `src/app/+html.tsx` | The static HTML wrapper for every exported web route: PWA manifest/favicon links (base-prefixed), the CSS cascade-layer order, and a backdrop in the OS colour scheme's background (light, or dark under `prefers-color-scheme: dark`) painted before React mounts so there is no flash. |
 | `(app)` layout, native | `src/app/(app)/_layout.tsx` | `AuthGate` (`src/components/shell/auth-gate.tsx`: `loading` → spinner, `unauthenticated` → `<Redirect href="/connect" />`; also backfills `has_password`/`has_recovery` on sessions persisted before those flags existed), then **`NativeTabs`** with one trigger per destination (SF Symbols on iOS, Material Symbols on Android) and, on iOS 26, the mini player as the tab bar's `BottomAccessory`. On tablet/desktop the native tab bar is `hidden` and the shell's own top bar, sub-nav and docked player take over; `ShellFrame` (`shell-frame.tsx`) draws that chrome around the navigator in both `(app)` layouts. On a phone without the iOS 26 accessory it also renders the one `FloatingMiniPlayer` as the frame's `phoneBottom`, over NativeTabs. |
 | `(app)` layout, web | `src/app/(app)/_layout.web.tsx` | `AuthGate`, then **headless `expo-router/ui` `Tabs`** over the same route groups: a hidden `TabList` registers the five tab routes, one `<TabSlot />` renders the page, and `ShellFrame` surrounds it with our chrome (phone: `MiniPlayer`, sitting on the tab bar through a `100%` bottom offset, + `PhoneTabBar`; tablet/desktop: top bar, sub-nav, banners, `DockedPlayer`). Also mounts the web-only `CommandPalette` and its keyboard shortcut (`usePaletteShortcut`). |
@@ -120,15 +125,18 @@ URLs, so every URL below is the same as before the groups existed.
 | `/library/[libraryId]?connection=…&path=…` | `(app)/(home,library,search,offline,me)/library/[libraryId].tsx` | Library browse, root and nested folders alike - a two-line re-export of `src/components/library/browse-screen.tsx`. Content routes are **flat**: the connection id and the library-relative folder `path` ride as query params, never as nested route segments (an in-app `router.push` cannot resolve a route nested under a dynamic layout segment - it lands on the group's first child; rationale and helpers in `src/lib/paths.ts`). Each content screen scopes itself to its own `?connection=` with `<ContentScope>`, and the content hooks read that scope via `useScopedCid()`. |
 | `/book/[libraryId]?connection=…&path=…&tab=…` | `(app)/(home,library,search,offline,me)/book/[libraryId].tsx` → `src/components/book/book-page.tsx` | The book page, opened on `tab` when that tab exists (`parseBookTab`): see [The book page](book-page.md). |
 | `/downloads` | `(app)/(offline)/downloads.tsx` → `src/components/downloads/downloads-screen.tsx` | The Downloads page: storage per server, the automatic-download rules (including keep-ahead), in-progress and failed downloads, and the books ready offline by server ([Offline](offline.md#the-downloads-page)). The group is `(offline)`, not `(downloads)`, on purpose - see [cold deep links](#the-shell-tabs-and-navigation). |
-| `/settings` | `(app)/(me)/settings.tsx` | The root of the **Me** tab (a fuller Me hub is a later redesign phase). A Journal row (`JournalEntryRow`) on top, then app-level preferences: playback tunables, the auto sleep timer's window and type, shake to extend and its sensitivity (native; the row says so on web), up-next/download behaviour, language, theme, plus the Servers list that opens each connection's account screen. |
-| `/journal?tab=diary\|bookmarks\|notes` | `(app)/(home,library,search,offline,me)/journal.tsx` → `src/components/journal/journal-screen.tsx` | The Journal, on every signed-in server: see [The Journal](journal.md). |
-| `/account?connection=…` | `(app)/(home,library,search,offline,me)/account.tsx` | Per-connection account screen, reached from the Settings screen's Servers list: set/change the self-service password (the sign-out guard nudges a password-less user here via `sign-out-confirm.tsx`), pairing another device, personal API keys (capability-gated, demo-hidden), and sign-out. |
+| `/you?section=stats\|year\|journal\|settings\|account` | `(app)/(me)/you.tsx` → `src/components/you/you-hub.tsx` | The root of the **Me** tab, the **You** hub: Your listening, Year in listening, the Journal, Settings and Account on a phone (a scrolling segmented control); Stats, Year in listening and Journal in the sub-nav on tablet/desktop (Settings is the gear, Account the profile menu). `section` and the Journal's `tab` are its `rootParams`. See [You, Settings and Account](you-and-settings.md#the-hub-and-its-routes). |
+| `/settings?section=…` | `(app)/(home,library,search,offline,me)/settings.tsx` → `src/components/settings/settings-content.tsx` | Every app setting, each in one pane (Listening, App, Servers groups), pushed on the current tab by the gear, the profile menu and the palette (`openSettings`). The phone hub's Settings section renders the same `SettingsContent`. See [Settings](you-and-settings.md#settings-srccomponentssettings). |
+| `/journal?tab=diary\|bookmarks\|notes` | `(app)/(home,library,search,offline,me)/journal.tsx` → `src/components/journal/journal-screen.tsx` | The Journal, on every signed-in server, for links made before the hub; entry points open the hub's Journal section (`journalHref`, `openJournal`). See [The Journal](journal.md). |
+| `/account?connection=…` | `(app)/(home,library,search,offline,me)/account.tsx` → `src/components/account/account-section.tsx` | One server's account (`AccountSection`): password, pairing another device, the At home and away card, signed-in devices, personal API keys and sign-out, each gated on its capability, with a breadcrumb back to the page it was opened from. Reached from Settings' Accounts and devices pane and the profile menu; the phone hub's Account section renders the same body for the default server. See [Account](you-and-settings.md#account-srccomponentsaccount). |
 | `/player` | `src/app/player.tsx` | The full player ([Player UI](player-ui.md#the-full-player)), presented as a full-screen modal above the tabs on every form factor (opened from the mini player, the iOS accessory player, the docked player bar, or a phone's Listen button). Accepts `libraryId`/`path` (+ optional `position`/`track`) params and gates playback start on the chapters query settling. |
 | `/finished` | `src/app/finished.tsx` | The end-credits screen shown when a book finishes (or from the player's menu). A root modal sibling of the player; `connection`/`libraryId`/`path` params, plus `auto=1` when the book ended (or was marked finished) rather than being opened early. Renders `EndCredits`: the year shelf, listening stats, a rating, and the book `resolveUpNext` says plays next. See [The end of a book](end-of-book.md#ending-a-book). |
+| `/year?year=…&connection=…&card=…` | `src/app/year.tsx` → `src/components/you/year/year-story-screen.tsx` | The phone's full-screen Year in listening story, a root modal like the player (`yearHref`): close, pull down, Escape on the web. See [Year in listening](you-and-settings.md#year-in-listening-srccomponentsyouyear). |
 | `/connect` layout | `src/app/connect/_layout.tsx` | Onboarding stack (a spinner while the session hydrates). It deliberately does not decide redirects: on a link arriving while the app runs, the child's params only reach the layout after the child mounts. |
-| `/connect` | `connect/index.tsx` | Enter a server URL (or auto-redeem a pairing token arriving via deep link / QR `web_url`). An **authenticated** user is bounced home from here, from this route's own params, unless they are adding another server (`?add=1`, a pairing `?token=`, or a sign-in mid-flow via `pendingServerUrl`) - the app supports multiple simultaneous server connections. When signed out of everything, also lists previously-connected servers as one-tap **Reconnect** shortcuts (`src/lib/known-servers.ts`), each pre-filling the address so the user only re-enters a code or password. Onboarding returns to the app through `leaveOnboarding()` (`src/components/shell/leave-onboarding.tsx`, which calls `router.dismissTo('/')`; `<LeaveOnboarding />` when the decision is made at render time), never `replace` or `<Redirect href="/">` (also a replace): `(app)` already sits under `/connect` as the root stack's anchor, so a replace stacked a second `(app)`. |
+| `/connect` | `connect/index.tsx` → `src/components/connect/connect-start.tsx` | The first onboarding step: the server address with its probe ("Found &lt;name&gt;", Sign in, Try the demo), Scan a QR code (native) or a pasted pairing link (web), a pairing `token` arriving by deep link or QR `web_url` exchanged at once, and one-tap **Reconnect** rows for remembered servers this device isn't signed in to (`src/lib/known-servers.ts`). An **authenticated** user is bounced home from here, from this route's own params, unless they are adding another server (`?add=1`, a pairing `?token=`, or a sign-in mid-flow via `pendingServerUrl`); decided when it opens and when it is back on top. Onboarding returns to the app through `leaveOnboarding()` (`src/components/shell/leave-onboarding.tsx`, which calls `router.dismissTo('/')`; `<LeaveOnboarding />` when the decision is made at render time), never `replace` or `<Redirect href="/">` (also a replace): `(app)` already sits under `/connect` as the root stack's anchor, so a replace stacked a second `(app)`. See [Connect and home/away addresses](connect-and-addresses.md#connect-and-onboarding). |
 | `/connect/scan` | `connect/scan.tsx` | Camera QR scanner (`expo-camera`) for the pairing QR. |
-| `/connect/sign-in` | `connect/sign-in.tsx` | Auth-code **or** username/password sign-in against the pending server. Reached fresh, from a **Reconnect** shortcut, or from the dead-token `ReconnectBanner` (`src/components/layout/reconnect-banner.tsx`), all with the address pre-filled via `pendingServerUrl`. The code field redeems invite codes (legacy recovery codes still redeem server-side, but the app no longer mints them). |
+| `/connect/sign-in` | `connect/sign-in.tsx` → `src/components/connect/sign-in-step.tsx` | Invite code **or** username and password against the pending server (`pendingServerUrl`, read once). Reached from the first step, a **Reconnect** row, or the dead-token `ReconnectBanner` (`src/components/layout/reconnect-banner.tsx`, which passes `reconnect=<cid>` and the address in use now). The code field redeems invite codes (legacy recovery codes still redeem server-side, but the app no longer mints them). Every sign-in ends in `finishConnect`. |
+| `/connect/ready?connection=…` | `connect/ready.tsx` → `src/components/connect/ready-screen.tsx` | "Your library is ready.", after the device's **first** connection only (no swipe back to the spent sign-in). |
 | `/demo` | `src/app/demo.tsx` | Public demo landing: mints a throwaway session on a demo-mode server and shows the pairing QR so the same demo user opens on a phone. |
 
 ## The shell: tabs and navigation
@@ -148,7 +156,7 @@ window crosses a threshold, not on every resize. The page column width is
 | Layout | Width | Chrome |
 |---|---|---|
 | `phone` | < 640 (`TABLET_MIN_WIDTH`) | A bottom tab bar (native on iOS/Android, `PhoneTabBar` on web) and the mini player; each page's Stack header is `PhoneHeader` (a large display title on a tab root; on a pushed page an inline back button, named after the page it returns to on iOS, a bare arrow on Android and web); the reconnect and offline banners sit under the header. |
-| `tablet` | 640-1023 | `TopBar` (64 high: the mark with a server line, the Home / Library / Downloads destinations as icons, the omnisearch field - a search icon button doing the same when the bar's middle measures under `OMNISEARCH_MIN` (180), as at 640-760 - the `UpNextButton`, settings, and the `ProfileMenu`), `SubNav` (50 high: the page title on a tab root followed by whatever the root publishes - see [Sub-nav sections and actions](#sub-nav-sections-and-actions) - and a Back button on a pushed page; Home has none), the banners, the page capped at 1480 wide (`CONTENT_WIDTH`), and `DockedPlayer` (84 high) whenever a book is loaded. Up next opens as a bottom sheet. |
+| `tablet` | 640-1023 | `TopBar` (64 high: the mark with a server line, the Home / Library / Downloads / You destinations as icons (You is `wideLabelKey`/`wideIcon` on the Me tab's destination: "Me" with a person on the phone's tab bar, "You" with a chart in the top bar), the omnisearch field - a search icon button doing the same when the bar's middle measures under `OMNISEARCH_MIN` (180), as at 640-760 - the `UpNextButton`, the Settings gear (`openSettings`), and the `ProfileMenu`), `SubNav` (50 high: the page title on a tab root followed by whatever the root publishes - see [Sub-nav sections and actions](#sub-nav-sections-and-actions) - and a Back button on a pushed page; Home has none), the banners, the page capped at 1480 wide (`CONTENT_WIDTH`), and `DockedPlayer` (84 high) whenever a book is loaded. Up next opens as a bottom sheet. |
 | `desktop` | >= 1024 (`DESKTOP_MIN_WIDTH`) | The tablet chrome with labelled destinations, the user's name on the profile button and (web) a ⌘K / Ctrl K hint in the omnisearch, plus the `DrawerSlot` beside the page, which holds the [Up next](#up-next-drawer-and-sheet) drawer. |
 
 Every screen reads this one value - never compare a width against a local
@@ -188,8 +196,10 @@ still jumps to the Search tab instead.
   **Authors**, **Narrators** and **Characters** (`MAX_NAMED`, three each, from
   the same `useSearch` call with `refetchProgress: false`; the characters not
   met yet are a `GroupNote` row that is not an option, so the arrow keys skip
-  it), then **Go to** (`TOP_BAR_TABS`, already filtered to what this browser
-  can do, then the Journal, `openJournal`). Empty groups are dropped. A series opens `openSeries` with its
+  it), then **Go to** (`buildGoToItems`: `TOP_BAR_TABS`, already filtered to what
+  this browser can do, but You, which goes by its sections instead - Your listening and
+  Year in listening (`openYou`), the Journal (`openJournal`) - then Settings
+  (`openSettings`)). Empty groups are dropped. A series opens `openSeries` with its
   local name, a person their page, a character the book it is from. The module also owns the arrow-key clamp (`moveSelection`, no
   wrap), the recent list (`addRecent`), the shortcut test (`isPaletteShortcut`)
   and the key hint (`shortcutHint`: ⌘K on Apple platforms, Ctrl K elsewhere).
@@ -199,7 +209,8 @@ still jumps to the Search tab instead.
   book has real chapters - without them the end-of-chapter timer falls back to a
   duration, which the label would misdescribe) and *Open the full player*; *Open
   Up next* with the queued count when the queue's server has `queue`
-  (`openUpNext()`); always, *Go to settings* and the light/dark switch. The two sleep actions confirm with a
+  (`openUpNext()`); always, the light/dark switch. (Settings is a place, so it is in Go
+  to.) The two sleep actions confirm with a
   `toast`.
 - **Shortcut guards** are shared with Up next's Q and the player's keyboard
   shortcuts in `src/lib/keyboard.ts` (`isEditable`, `isModalOpen`, and `ownsSpace` /
@@ -295,9 +306,9 @@ button (the user's initial, plus the name on desktop) and a `DropdownMenu`: ever
 connected server with its state - the pure `serverStatus()`
 (`src/api/reachability.ts`), where "needs signing in again" (the reconnect flag)
 wins over "offline", else "Signed in as &lt;user&gt;" - each opening that server's account screen; **Add a server**
-(`/connect?add=1`); **Journal** (`journalHref()`); **Account on &lt;default server&gt;**; and a light/dark
+(`/connect?add=1`); **Journal** (`openJournal()`); **Settings** (`openSettings()`); **Account on &lt;default server&gt;**; and a light/dark
 appearance switch (`useTheme().toggleScheme()`, which the palette's action uses
-too). A phone keeps all of this in the Me tab. The same `serverStatus()` drives
+too). A phone keeps all of this in the Me tab's You hub. The same `serverStatus()` drives
 the top bar's server line (the default server's name, or "Offline" / "Needs
 signing in again"); the docked bar's sync line is `usePlaceSync` (sign in again >
 saved on this device > synced / synced just now, see
@@ -334,7 +345,7 @@ drop Downloads where the platform can't store downloads (`engine.supported`; on
 web, a secure context with the Cache API).
 
 - **The pushing tab owns a detail page.** The shared detail routes (book,
-  folder, account, favourites, browse, series, author, narrator, collection)
+  folder, account, settings, journal, favourites, browse, series, author, narrator, collection)
   live once in the array group, and
   expo-router resolves a push against the current segments, so a book pushed
   from Search stays in Search and back returns there.
@@ -346,14 +357,21 @@ web, a secure context with the Cache API).
   React Navigation copies onto that root and its ancestors (otherwise back
   landed on `/?libraryId=1`). A root keeps only its own `rootParams`
   (`Destination.rootParams` in `destinations.ts`: Library's `mode`, `sort`,
-  `status`, `dl`, `len`); every other param on a root, and every param on its
+  `status`, `dl`, `len`; the You hub's `section` and the Journal's `tab`); every other param on a root, and every param on its
   ancestors, is replaced with none.
 - **Tab presses from our chrome dispatch `JUMP_TO`** (`useTabPress`). For
   another tab:
   `navigationRef.dispatch({ type: 'JUMP_TO', payload: { name: '(library)' } })`,
   which restores that tab's stack - an href can't, because
   `router.navigate('/(home)')` resolves to `/` and pops Home. Pressing the
-  active tab again navigates to its root, popping to the top.
+  active tab again pops its stack to the root (`router.dismissAll()`), which keeps
+  the root's own params; a navigate to the root's href would push a second copy of
+  the root, since a navigate is a push in this router.
+- **A tab root opened from elsewhere is popped to, not pushed.** `openYou` /
+  `openJournal` (and `pushInShell` with `youHref`/`journalHref`) close a root modal,
+  pop the Me stack to its root (`POP_TO_TOP` on that stack's key) and then navigate;
+  Settings, a page of the array group, is pushed on the current tab instead
+  (`openSettings`). See [You, Settings and Account](you-and-settings.md#the-hub-and-its-routes).
 - **Web: `<TabSlot />` stays at a fixed ancestor path at every width**; only
   the sibling chrome toggles. Moving it between wrappers remounts every screen on
   a resize and jumps the URL to another tab.

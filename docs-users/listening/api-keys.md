@@ -9,16 +9,16 @@ Each key acts as you for everyday requests - browsing your libraries, reading yo
 
 ## Where to find it
 
-In the player, open **Settings** and go to your server's account area - the same place you set a password (see [Your account and settings](account.md)). There you'll find an **API keys** section.
+In the player, open your [account page](account.md#opening-it) for the server. There you'll find a **Personal API keys** section.
 
 :::note
-The section only appears on servers new enough to support API keys, and it is hidden for **demo accounts** - a throwaway demo login can't create keys.
+On a server too old to offer API keys, the section says it isn't available there. It is hidden for **demo accounts** - a throwaway demo login can't create keys.
 :::
 
 ## Creating a key
 
-1. Give the key a **name** that reminds you what it's for, for example *Home dashboard* (up to 100 characters).
-2. Tap **Create API key**.
+1. Tap **Create API key** beside the section's title.
+2. Give the key a **name** that reminds you what it's for, for example *Home dashboard* (up to 100 characters), and tap **Create API key** again.
 3. The key appears **once**, in a pop-up. Copy it straight away and paste it into the app you're setting up.
 
 :::warning Shown once - copy it now
@@ -42,7 +42,7 @@ Each key in the list shows when you **created** it and when it was **last used**
 
 ## Revoking a key
 
-To switch a key off, tap the trash icon next to it and confirm. Anything using that key **loses access immediately**. This can't be undone - if you need it back, create a fresh one.
+To switch a key off, tap **Revoke** next to it and confirm. Anything using that key **loses access immediately**. This can't be undone - if you need it back, create a fresh one.
 
 ## A key inherits your permissions - so pick the right account
 
