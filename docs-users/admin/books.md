@@ -37,8 +37,13 @@ Above the list:
   choice shows its book count, and a library whose folder can't be read says
   "offline".
 - **Filter books** - type to narrow by title, author, narrator or series.
-- **Sort** - **Title**, **Author, then series**, **Series**, **Narrator**,
-  **Recently added**, **Longest first** or **Largest first**.
+- **Sort** - **Title**, **Author, then series**, **Author surname**, **Series**,
+  **Narrator**, **Release date**, **Recently added**, **Longest first** or
+  **Largest first**. **Author surname** files "Ursula K. Le Guin" under L.
+  **Release date** goes oldest first by the book's **Published** date, or, for a
+  book without one, the date in its file's tags (usually when the audiobook was
+  released rather than when the book first came out, so matching or editing
+  **Published** gives a truer order).
 - **View** - **Cover grid** or **Table**. The table has columns for title,
   author, narrator, series, length, format, browser playback, community
   metadata and when the book was added. Click an author, narrator or series
@@ -69,8 +74,8 @@ Active filters show as chips above the list (for example "Author: Lewis Carroll"
 Click a chip's cross to remove it, or **Clear all**.
 
 A link to an author, narrator or series keeps the library you're looking at.
-A series' books open in series order unless you pick another sort; a sort you
-pick stays when you change the filters.
+A series' books open in series order, and an author's in release order, unless
+you pick another sort; a sort you pick stays when you change the filters.
 
 ### Changing many books at once
 

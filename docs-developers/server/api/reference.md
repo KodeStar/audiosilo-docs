@@ -3116,16 +3116,22 @@ what the first does).
 | `added_before` | date | - | exclusive upper bound, same formats |
 | `issue` | string | - | one [Health issue](#get-apiv1adminissues) kind's books: `scan_error`, `suspect`, `split_discs` (one row per split book: its first disc), `no_cover`, `unmatched`, `no_chapters` or `transcode` (not `duplicate`, which comes as groups from [`/admin/issues/duplicates`](#get-apiv1adminissuesduplicates)). Books an admin ignored for that kind are left out. Any other value is `400 unknown issue` |
 | `issue_ignored` | `true`\|`false` | - | with `issue`, list **only** the books an admin ignored for it; without `issue` it is `400 issue_ignored needs an issue` |
-| `sort` | string | `title` | `title` \| `author` \| `series` \| `narrator` \| `added` \| `duration` \| `size` |
+| `sort` | string | `title` | `title` \| `author` \| `surname` \| `series` \| `narrator` \| `published` \| `added` \| `duration` \| `size` |
 | `order` | string | `asc` | `asc` \| `desc` |
 | `limit` | int | `60` | ≤ 0 or > 200 falls back to 60 |
 | `cursor` | string | - | `next_cursor` from the previous page |
 
-Text sorts are case-insensitive. The `author`, `series` and `narrator` sorts put
-books with that field blank **last** in either direction (`order=desc` reverses
-the named books, not where the blanks go) and break ties
-sensibly: `author` sorts by author, then series, series position and title;
-`series` by series, position, then title; `narrator` by narrator, then title.
+Text sorts are case-insensitive. The `author`, `surname`, `series`, `narrator`
+and `published` sorts put books with that field blank **last** in either
+direction (`order=desc` reverses the named books, not where the blanks go) and
+break ties sensibly: `author` sorts by author, then series, series position and
+title; `surname` by the author's surname first (the first name of a co-credit;
+"Ursula K. Le Guin" and "Le Guin, Ursula K." under L, a "Jr." ignored), then
+author as written, series, position and title; `series` by series, position,
+then title; `narrator` by narrator, then title; `published` oldest first by the
+book's release date - its `published` value, else the date its file tags give
+(usually the recording's, never shown on the wire) - then series, position and
+title, with a bare year before that year's dates.
 
 A filter that can't be parsed (`has_cover=yes`, `min_duration=-1`,
 `added_after=last week`, an unknown `sort` or `order`) is a `400` with a message
