@@ -796,7 +796,7 @@ Two deliberate tiers - know which one you're writing to:
 | Layer | Module | Backing | Used for |
 |---|---|---|---|
 | Plain | `src/lib/storage.ts` (`getItem`/`setItem`/`removeItem`, JSON-serialized) | AsyncStorage (native) / localStorage (web, via AsyncStorage's web shim) | connection metadata, settings, language pref, downloads registry, progress mirror + queue, device id |
-| Secret | `src/lib/secure-store.ts` (`getSecure`/`setSecure`/`deleteSecure`) | **expo-secure-store** (iOS Keychain / Android Keystore) on native; localStorage on web, where SecureStore doesn't exist | **session tokens only** (`audiosilo.token.<connectionId>`) |
+| Secret | `src/lib/secure-store.ts` (`getSecure`/`setSecure`/`deleteSecure`) | **expo-secure-store** (iOS Keychain / Android Keystore) on native (on iOS in the `audiosilo.tokens.afu` keychain service, readable after first unlock: [Native integrations](native-integrations.md#tokens-on-a-locked-phone-srclibsecure-storets)); localStorage on web, where SecureStore doesn't exist | **session tokens only** (`audiosilo.token.<connectionId>`) |
 
 The split exists because tokens are the only true secret the app holds:
 hardware-backed storage on native is worth the extra API, while everything else

@@ -320,8 +320,10 @@ Co-located suites exist for:
 | Area | Tested modules |
 |---|---|
 | API layer | `src/api/client.test.ts`, `hooks-queue.test.ts`, `hooks-capability.test.tsx` (capability gating and the Phase 1a/1b queries and mutations), `connection-clients.test.ts`, `hooks.test.ts`, `reachability.test.ts`, `provider.test.tsx`, `address-route.test.ts`, `address-runner.test.ts` (the home/away pick, leaving home, the playing book's restart) |
-| Playback | `src/playback/book-queue.test.ts`, `progress-sync.test.ts`, `store.test.ts`, `service.web.test.ts`, `sleep-timer.test.ts`, `auto-sleep.test.ts`, `auto-sleep-controller.test.ts`, `rate.test.ts`, `next-book.test.ts`, `prettify-title.test.ts`, `types.test.ts`, `transcode.test.ts` (the web negotiation rules), `up-next-resolver.test.ts` (what plays next), `up-next-sources.test.ts`, `jump-undo.test.ts`, `time-left.test.ts`, `drift.test.ts`, `drift-controller.test.ts`, `last-interaction.test.ts`, `use-shake-to-extend.test.ts` (the burst detector and sensitivity tunings), `place-reconcile.test.ts` (a loaded book picks up another device's place) |
+| Playback | `src/playback/book-queue.test.ts`, `progress-sync.test.ts`, `store.test.ts`, `service.web.test.ts`, `sleep-timer.test.ts`, `auto-sleep.test.ts`, `auto-sleep-controller.test.ts`, `rate.test.ts`, `next-book.test.ts`, `prettify-title.test.ts`, `types.test.ts`, `transcode.test.ts` (the web negotiation rules), `up-next-resolver.test.ts` (what plays next), `up-next-sources.test.ts`, `jump-undo.test.ts`, `time-left.test.ts`, `drift.test.ts`, `drift-controller.test.ts`, `last-interaction.test.ts`, `use-shake-to-extend.test.ts` (the burst detector and sensitivity tunings), `place-reconcile.test.ts` (a loaded book picks up another device's place), `service.native.test.ts` (the native bridge: the newer events, `load`'s `book` only on a binary that takes it), `store-adopt.test.ts` (`adoptLoaded`: no engine reload, saves under the adopted book, the floor is the adopted place), `effects.test.ts` (where Smart Speed and Voice Boost apply), `time-saved.test.ts` |
 | Downloads | `src/downloads/store.test.ts`, `offline-meta.test.ts`, `offline-companion.test.tsx` (a downloaded book's community data end to end, offline), `keep-ahead.test.ts`, `keep-ahead-controller.test.ts`, `failure.test.ts`, `downloads-view.test.ts`, `use-download-controls.test.ts`; `src/components/downloads/downloads-screen.test.tsx` |
+| Car and widgets | `src/car/car-model.test.ts` (the snapshot, item ids, play specs), `car-artwork.test.ts`, `car-controller.test.ts` (writes, play requests, bookmarks, adopting), `car-task.test.ts`; `src/widgets/widget-model.test.ts`, `widget-sync.ios.test.ts`; `src/lib/bootstrap.test.ts` (the shared launch steps) |
+| Config plugins | `plugins/withCarPlay.test.ts` (the scene manifest, the AppDelegate rewrite over an SDK 56 fixture, the opt-in entitlement), `plugins/withWidgetsNoPush.test.ts` |
 | Stores | `src/stores/session.test.ts`, `settings.test.ts`, `series-orderings.test.ts`, `library-selection.test.ts`, `search.test.ts` |
 | Home | `src/components/home/home-model.test.ts`, `previously-on-model.test.ts`, `previously-on.test.tsx`, `listening.test.ts`, `now-card-model.test.ts`, `now-card.test.tsx`, `home-screen.test.tsx` |
 | Search | `src/components/search/search-model.test.ts` (the spoiler rules), `use-search-sources.test.tsx`, `search-screen.test.tsx` |
@@ -333,7 +335,7 @@ Co-located suites exist for:
 | Account and Settings | `src/components/account/account-model.test.ts` (the pairing countdown, `canRevoke`, `lastSeen`), `account-section.test.tsx`, `devices-section.test.tsx`, `pair-device-card.test.tsx`, `password-card.test.tsx`, `connections-section.test.tsx`, `use-api-keys-manager.test.tsx`, `use-sign-out.test.tsx`; `src/components/settings/settings-model.test.ts`, `settings-content.test.tsx` |
 | You | `src/components/you/you-model.test.ts`, `you-hub.test.tsx`; `stats/stats-model.test.ts`, `stats-format.test.ts`, `stats-section.test.tsx`, `listening-clock.test.tsx`; `year/year-model.test.ts`, `year-copy.test.ts`, `year-params.test.ts`, `story-model.test.ts`, `story-stage.test.tsx`, `use-story-player.test.tsx`, `use-share-card.test.tsx`, `share-card.test.ts`, `share-card.web.test.ts`, `year-probes.test.ts` (`findStoryYears`), `year-section.test.tsx`, `year-story-screen.test.tsx` |
 | Connect | `src/components/connect/connect-model.test.ts` (`repairPlan`, `readyLine`, `reconnectAddress`), `finish-connect.test.ts`, `connect-frame.test.tsx`, `connect-start.test.tsx`, `sign-in-step.test.tsx`, `ready-screen.test.tsx`, `use-ready-summary.test.tsx`, `connect-routes.test.tsx`, `route-ready.test.tsx`, `cover-patterns.test.ts`; `src/components/layout/reconnect-banner.test.tsx` |
-| Player UI | `src/components/player/sleep-timer-button.test.tsx`, `sleep-sheet-model.test.ts`, `grace-card.test.tsx`, `speed-button.test.tsx`, `speed-model.test.ts`, `end-credits-logic.test.ts`, `end-credits.test.tsx`, `book-ended-listener.test.tsx`, `seek-bar.test.tsx`, `seek-texture.test.ts`, `book-timeline.test.tsx`, `book-timeline-model.test.ts`, `transport-controls.test.tsx`, `undo-chip.test.tsx`, `use-time-left.test.tsx`, `player-shortcuts.test.ts`, `shortcuts-dialog.test.tsx`, `player-view.test.tsx` (the layouts), `player-parts.test.tsx`, `player-sheet-host.test.tsx` (one active host), `mini-player.test.tsx`, `companion/companion-model.test.ts`, `companion/companion-panels.test.tsx`, `companion/companion.test.tsx`, `companion/use-companion-data.test.tsx`, `end-of-book.test.ts`, `start-book.test.ts`, `end-credits-route.test.tsx`, `player-route.test.tsx`, `player-view-model.test.ts`, `place-sync.test.ts`, `playing-target.test.tsx`, `rating-stars.test.tsx`, `use-player-shortcuts.test.ts`, `use-playing-pins.test.ts`, `use-playing-segment.test.ts`, `companion/reveal-listener.test.tsx` (natural crossings only), `book-progress.test.tsx`, `transport.test.ts` (the shared previous/next and chapter-segment math of the full player and the docked bar), `use-listening-position.test.tsx`, `play-route.test.ts` (where a play or a jump goes), `use-book-rating.test.tsx` |
+| Player UI | `src/components/player/sleep-timer-button.test.tsx`, `sleep-sheet-model.test.ts`, `grace-card.test.tsx`, `speed-button.test.tsx`, `speed-model.test.ts`, `effects-model.test.ts`, `effects-settings.test.tsx`, `end-credits-logic.test.ts`, `end-credits.test.tsx`, `book-ended-listener.test.tsx`, `seek-bar.test.tsx`, `seek-texture.test.ts`, `book-timeline.test.tsx`, `book-timeline-model.test.ts`, `transport-controls.test.tsx`, `undo-chip.test.tsx`, `use-time-left.test.tsx`, `player-shortcuts.test.ts`, `shortcuts-dialog.test.tsx`, `player-view.test.tsx` (the layouts), `player-parts.test.tsx`, `player-sheet-host.test.tsx` (one active host), `mini-player.test.tsx`, `companion/companion-model.test.ts`, `companion/companion-panels.test.tsx`, `companion/companion.test.tsx`, `companion/use-companion-data.test.tsx`, `end-of-book.test.ts`, `start-book.test.ts`, `end-credits-route.test.tsx`, `player-route.test.tsx`, `player-view-model.test.ts`, `place-sync.test.ts`, `playing-target.test.tsx`, `rating-stars.test.tsx`, `use-player-shortcuts.test.ts`, `use-playing-pins.test.ts`, `use-playing-segment.test.ts`, `companion/reveal-listener.test.tsx` (natural crossings only), `book-progress.test.tsx`, `transport.test.ts` (the shared previous/next and chapter-segment math of the full player and the docked bar), `use-listening-position.test.tsx`, `play-route.test.ts` (where a play or a jump goes), `use-book-rating.test.tsx` |
 | Library UI | `src/components/library/book-meta.test.ts`, `use-book-community.test.tsx`, `book-meta.render.test.tsx`, `book-tabs.test.ts`, `cover-frame.test.tsx`, `meta-gating.test.ts`, `entry-row.test.tsx`, `history-section.test.tsx`, `annotation-sections.test.tsx`, `download-control.test.tsx`, `transcode-note.test.tsx`, `book-cover.test.tsx`, `cover-pieces.test.tsx`, `cover-layout.test.ts`, `cover-wash.test.tsx`, `library-modes.test.ts`, `library-screen.test.tsx`, `use-queue-actions.test.tsx`, `tile-actions.test.tsx`, and under `books/` (`books-view`, `book-actions`, `list-columns`, `use-whole-library`), `collections/` (`collections-model`, `collection-dialogs`) and `modes/books-mode`; `src/components/player/use-play-book.test.tsx`; `src/components/layout/content-scope.test.tsx` |
 | Book page | `src/components/book/book-page-model.test.ts` (layout, primary action, chapter list, facts, Your listening), `book-details-model.test.ts`, `book-about.test.tsx`, `hero-actions.test.tsx`, `book-page.test.tsx` |
 | Bookmarks and notes | `src/api/bookmark-labels.test.ts`; `src/components/annotations/editor-model.test.ts` (what Save sends), `labels.test.ts`, `drift-marker.test.ts`, `use-book-place.test.ts`, `annotation-editor.test.tsx`, `annotation-rows.test.tsx`; `src/components/player/player-sheets.test.ts` (editor requests) |
@@ -351,10 +353,76 @@ player-store double (`player-store-mock.ts`), the native touch-target assertion 
 player-store double see
 [the section above](#the-shared-player-store-double-srctestingplayer-store-mockts).
 
-Not covered by unit tests, by design or necessity: `src/app/**` screens (kept
-logic-free), and the **native module** (`modules/audiosilo-player`) - Swift and
-Kotlin can only be validated by a device rebuild, which is why its invariants
-are documented so heavily in [Playback](playback.md).
+Not covered by Jest, by design or necessity: `src/app/**` screens (kept
+logic-free), the `'widget'` functions in `src/widgets/` (they run in the widget
+extension), and the **native module** (`modules/audiosilo-player`) - Swift and
+Kotlin are checked by the native checks below and, for everything with a device or OS
+in the loop, only by a device rebuild, which is why its invariants are documented so
+heavily in [Playback](playback.md).
+
+## Native checks
+
+The pure parts of the native module have tests of their own; everything else needs a
+build on a device, an emulator, the Android Auto Desktop Head Unit or the iOS
+Simulator. Jest and the web prove nothing about Swift or Kotlin.
+
+**Android JVM tests** (no device): `TimelineMapTest` (file to item mapping and back),
+`NarrationSilenceProcessorTest` and `VoiceBoostProcessorTest` (synthetic PCM from
+`effects/Pcm.kt`). After a prebuild:
+
+```sh
+CI=1 npx expo prebuild -p android --no-install
+cd android
+./gradlew :audiosilo-player:compileReleaseKotlin :audiosilo-player:testDebugUnitTest
+```
+
+(Gradle needs JDK 17; point `JAVA_HOME` at it if the default is newer.)
+
+**The iOS self-check** (no Simulator, just the Xcode toolchain): compiles
+`SmartSpeedPlanner.swift` and `ChapterClips.swift` with `SelfCheck/main.swift` (excluded
+from the pod) and checks the silence detector, the span planner, the saved-time meter and
+the chapter-clip maths. It exits non-zero on a failure:
+
+```sh
+modules/audiosilo-player/ios/SelfCheck/run.sh
+```
+
+**Android Auto on the Desktop Head Unit (DHU)**:
+
+1. Install the DHU from the Android SDK Manager (SDK Tools > Android Auto Desktop Head
+   Unit Emulator; it lands in `$ANDROID_HOME/extras/google/auto/`).
+2. On the phone, install Android Auto, open its settings, tap **Version and permission
+   info** ten times to enable developer mode. From the overflow menu, open **Developer
+   settings** and turn on **Unknown sources** (Auto lists only apps from Google Play
+   otherwise, and a dev build is sideloaded), then choose **Start head unit server**.
+3. Install a dev build (`npx expo run:android`), connect the phone by USB, then
+   `adb forward tcp:5277 tcp:5277` and run `./desktop-head-unit` from the DHU folder.
+4. Check: the four tabs with covers and progress; a downloaded book started with the app
+   force-stopped (no JS, then JS boots and adopts it); a streaming book (JS starts it); the
+   chapter queue; skips; the bookmark in the overflow; saves reaching the server; play from
+   the car's play button after a stop (playback resumption). On the phone, the lock screen
+   row must still show five actions (`adb shell dumpsys notification` shows `actions=5`).
+
+**CarPlay in the iOS Simulator**: prebuild with the entitlement
+(`AUDIOSILO_CARPLAY=1 CI=1 npx expo prebuild -p ios --clean`), build for the Simulator
+(no signing needed there:
+`xcodebuild -workspace ios/AudioSilo.xcworkspace -scheme AudioSilo -configuration Debug
+-destination 'generic/platform=iOS Simulator' CODE_SIGN_IDENTITY=- CODE_SIGN_STYLE=Manual
+DEVELOPMENT_TEAM= build`), install and run it, then open **I/O > External Displays >
+CarPlay** in the Simulator. Check the tabs and covers, a tap (spinner, then Now
+Playing), Now Playing's chapter info, the Chapters list, the rate and bookmark buttons, a
+CarPlay-first cold launch (quit the app, then open it from the CarPlay window), and the
+pairing deep link cold and warm on the phone window (the UIScene move's riskiest
+regression).
+
+**On devices** (nothing else can show these): the iOS lock screen's chapter title,
+chapter scrubber and chapter next/previous; a lock-screen scrub back of more than two
+minutes, then kill the app: it resumes at the scrubbed place (both platforms); Smart
+Speed on real narration (no clipped word edges) and its time saved; Voice Boost by ear;
+the widget and the sleep timer Live Activity (lock screen and Dynamic Island); a token
+read with the iPhone locked after the keychain move. The widget extension in a dev build
+needs the dev bundle and App Group ids (see
+[Native integrations](native-integrations.md#widgets-and-the-live-activity-ios)).
 
 ## The full gate and CI
 

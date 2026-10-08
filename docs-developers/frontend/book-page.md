@@ -217,6 +217,9 @@ and the tabs):
   estimated: listened time from this book's history spans (`listeningSummary`, the end
   credits' rule; shown from a minute), the book's speed (`useBookSpeed`), started
   (`progress.started_at`, else the earliest span: `startedAt`) and finished
-  (`finished_at`), dates through `formatRecordDate` (`src/lib/format.ts`). Null for a
+  (`finished_at`), dates through `formatRecordDate` (`src/lib/format.ts`), and
+  `smartSpeedSaved`, what Smart Speed saved on this book on this device
+  (`useBookTimeSaved`, shown from a whole second; see
+  [time saved](audio-effects.md#time-saved-srcplaybacktime-savedts)). Null for a
   book neither started nor finished; the history is only fetched then, and kept fresh
   for ten minutes (`HISTORY_STALE_MS`: a span this device records refreshes it).

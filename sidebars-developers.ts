@@ -41,6 +41,8 @@ const sidebars: SidebarsConfig = {
       items: [
         'frontend/overview',
         'frontend/playback',
+        'frontend/audio-effects',
+        'frontend/native-integrations',
         'frontend/end-of-book',
         'frontend/sleep-timer',
         'frontend/player-ui',

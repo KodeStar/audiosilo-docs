@@ -1,7 +1,11 @@
 ---
 title: The sleep timer
-description: "The sleep timer's state machine, the freeze while paused, the fade and the engines' gain, shake to extend, the grace card, drift-offs (the Fell asleep bookmark and the jump back) and the automatic timer at night."
+description: "The sleep timer's state machine, the freeze while paused, the fade and the engines' gain, shake to extend, the grace card, drift-offs (the Fell asleep bookmark and the jump back), the automatic timer at night and the iOS Live Activity."
 ---
+
+On iOS a running timer also drives a Live Activity (lock screen and Dynamic Island),
+synced from this store by `src/widgets/widget-sync.ios.ts`; it is described with the widgets
+in [Native integrations](native-integrations.md#widgets-and-the-live-activity-ios).
 
 ## The timer (`sleep-timer.ts`)
 

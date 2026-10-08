@@ -69,7 +69,9 @@ modal but a desktop browser can be any size.
   fades while a scrubber's tip floats into it; `PlayerSeekBar` (its `SeekTimes` row
   hidden through `timesHidden` while the timeline's tip floats into it) over
   `PlayerBookTimeline` with its pins; `TransportControls`;
-  `PlayerErrorLine`; `PlayerActions`.
+  `PlayerErrorLine`; `PlayerActions` (on tablet and desktop it adds the Smart Speed /
+  Voice Boost state pill, `useEffectsPill`, while either is on: see
+  [Smart Speed and Voice Boost](audio-effects.md#the-settings-and-the-ui)).
 - **Phone:** a flex column whose cover slot takes what the rest leaves, so the
   player fits without scrolling; `CompanionChips` open the companion sheet on a
   tab (`openCompanion(tab)`).
