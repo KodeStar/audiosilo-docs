@@ -152,12 +152,12 @@ binary, and JS detects it):
 | Event | `onRemoteBookmark { trackIndex, position }` | A bookmark button outside the app (CarPlay Now Playing, Android Auto's custom action) |
 | Event | `onCarConnection { connected }` | CarPlay or Android Auto connected or left |
 | Event | `onCarPlayRequest { id }` | The car asked for a book native can't start alone |
-| Field | `onProgress.silenceSaved` | Book seconds Smart Speed removed since the engine was created, monotonic |
+| Field | `onProgress.silenceSaved` | Android: book seconds Smart Speed removed since the engine was created, monotonic (iOS sends none) |
 | Function | `setCarSnapshot(json)` | Both platforms: the [car snapshot](native-integrations.md#the-car-snapshot-srccar) |
 | Function | `getLoadedBook()` | Android: the book the service has loaded (`LoadedBook`), else null; iOS: null |
 | Function | `consumePendingBookmarks()` | Android: bookmarks pressed while no JS ran, oldest first, cleared by the read; iOS: `[]` |
 | Argument | `load(..., chapters, book)` | The `BookRef`; iOS keeps it to name the loaded book for CarPlay, Android stores it in each item's extras |
-| Config | `setConfig({ smartSpeed, voiceBoost })` | The effects switches |
+| Config | `setConfig({ smartSpeed, voiceBoost })` | The effects switches (iOS ignores `smartSpeed`) |
 
 Car and widget code is in [Native integrations](native-integrations.md); the effects in
 [Smart Speed and Voice Boost](audio-effects.md).
@@ -239,8 +239,13 @@ The hard-won behaviors, each guarding against a specific OS quirk:
 - **Rate command.** `changePlaybackRateCommand` with `supportedPlaybackRates` [0.75, 1,
   1.25, 1.5, 1.75, 2] (CarPlay's rate button needs it) applies the rate
   (`setRateFromRemote`) and sends `onRateChange` once. The engine's speed is `baseRate`;
-  Now Playing shows it as `PlaybackRate` while playing (never a Smart Speed boost) and as
-  `DefaultPlaybackRate` always, so CarPlay's button doesn't read 0x while paused.
+  Now Playing shows it as `PlaybackRate` while playing and as `DefaultPlaybackRate`
+  always, so CarPlay's button doesn't read 0x while paused.
+- **`MPNowPlayingInfoCenter.playbackState`** is set from the real transport state
+  (`syncPlaybackState`) with every Now Playing update. A device ignores it (iOS infers the
+  state from the audio session; the header says it applies on macOS only), but the
+  Simulator is macOS underneath and otherwise keeps the app "Paused" forever, so CarPlay's
+  Simulator window showed a play button, 0:00 and 0x while the book played.
 
 ### Android: Media3 / ExoPlayer
 

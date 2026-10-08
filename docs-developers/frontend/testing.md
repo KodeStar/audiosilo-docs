@@ -379,9 +379,11 @@ cd android
 (Gradle needs JDK 17; point `JAVA_HOME` at it if the default is newer.)
 
 **The iOS self-check** (no Simulator, just the Xcode toolchain): compiles
-`SmartSpeedPlanner.swift` and `ChapterClips.swift` with `SelfCheck/main.swift` (excluded
-from the pod) and checks the silence detector, the span planner, the saved-time meter and
-the chapter-clip maths. It exits non-zero on a failure:
+`VoiceBoostDSP.swift` and `ChapterClips.swift` with `SelfCheck/main.swift` (excluded
+from the pod) and checks the chapter-clip maths and Voice Boost's DSP, on synthetic signals
+(the ceiling holds, quiet speech comes up more than 8 dB) and on speech it makes with `say`
+(quiet, normal and loud must come up by more than 8, 6 and 3 dB). It prints the measured lifts
+and exits non-zero on a failure:
 
 ```sh
 modules/audiosilo-player/ios/SelfCheck/run.sh
@@ -400,7 +402,10 @@ modules/audiosilo-player/ios/SelfCheck/run.sh
 4. Check: the four tabs with covers and progress; a downloaded book started with the app
    force-stopped (no JS, then JS boots and adopts it); a streaming book (JS starts it); the
    chapter queue; skips; the bookmark in the overflow; saves reaching the server; play from
-   the car's play button after a stop (playback resumption). On the phone, the lock screen
+   the car's play button after a stop (playback resumption). There is no search button (the
+   session grants no search commands). Log lines from System UI's `ImageLoader` with
+   `cover.jpg` and `ENOENT` are harmless: Android's app data isolation keeps System UI out of
+   the app's files, and it falls back to the session's bitmap. On the phone, the lock screen
    row must still show five actions (`adb shell dumpsys notification` shows `actions=5`).
 
 **CarPlay in the iOS Simulator**: prebuild with the entitlement
@@ -410,7 +415,9 @@ modules/audiosilo-player/ios/SelfCheck/run.sh
 -destination 'generic/platform=iOS Simulator' CODE_SIGN_IDENTITY=- CODE_SIGN_STYLE=Manual
 DEVELOPMENT_TEAM= build`), install and run it, then open **I/O > External Displays >
 CarPlay** in the Simulator. Check the tabs and covers, a tap (spinner, then Now
-Playing), Now Playing's chapter info, the Chapters list, the rate and bookmark buttons, a
+Playing), Now Playing's chapter info, elapsed time and rate (they rely on the Simulator-only
+`playbackState`, see [Playback](playback.md#ios-avqueueplayer)), the Chapters list, the rate and
+bookmark buttons, a
 CarPlay-first cold launch (quit the app, then open it from the CarPlay window), and the
 pairing deep link cold and warm on the phone window (the UIScene move's riskiest
 regression).
@@ -418,7 +425,8 @@ regression).
 **On devices** (nothing else can show these): the iOS lock screen's chapter title,
 chapter scrubber and chapter next/previous; a lock-screen scrub back of more than two
 minutes, then kill the app: it resumes at the scrubbed place (both platforms); Smart
-Speed on real narration (no clipped word edges) and its time saved; Voice Boost by ear;
+Speed on real narration on Android (no clipped word edges) and its time saved; Voice Boost by
+ear, including a toggle mid-book (no dropout on iOS);
 the widget and the sleep timer Live Activity (lock screen and Dynamic Island); a token
 read with the iPhone locked after the keychain move. The widget extension in a dev build
 needs the dev bundle and App Group ids (see

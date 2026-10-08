@@ -21,8 +21,10 @@ device, the DHU or the Simulator is under [Testing](testing.md#native-checks).
 | Widgets and the Live Activity (iOS) | `src/widgets/`, `expo-widgets`, `plugins/withWidgetsNoPush.js`, `plugins/withXcode26SwiftUICoreFix.js` |
 
 Not built (deliberately, for now): a phone "car mode", Siri / App Intents, interactive
-widgets, an Android widget, search or voice in the car, a server-computed silence map, and
-Smart Speed for streaming books on iOS.
+widgets, an Android widget, search or voice in the car (Android Auto shows no search button:
+the session doesn't grant `COMMAND_CODE_LIBRARY_SEARCH` or `..._GET_SEARCH_RESULT`), a
+server-computed silence map, and Smart Speed on iOS
+([why](audio-effects.md#why-smart-speed-isnt-on-iphone-yet)).
 
 ## The car snapshot (`src/car/`)
 
