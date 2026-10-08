@@ -3178,6 +3178,7 @@ is a `400` too (`too many format or codec values`).
       "added_at": "2026-05-14T09:12:44Z",
       "has_cover": true,
       "custom_cover": false,
+      "cover_color": { "bg": "#1d2a44", "accent": "#e8a33c", "on_accent": "#000000" },
       "chapter_count": 27,
       "file_count": 1,
       "asin": "B00B5HZGUG",
@@ -3197,10 +3198,15 @@ is a `400` too (`too many format or codec values`).
 ```
 
 - Every field is always present (empty string / `0` / `false` when unknown),
-  except the four Health fields below and `chapters_check`, which are omitted
-  when empty or `0`.
+  except `cover_color`, the four Health fields below and `chapters_check`, which
+  are omitted when empty or `0`.
   `path` is the book path (the player's `rel_path`).
 - `custom_cover` - an admin uploaded a cover; `has_cover` includes it.
+- `cover_color` - the colours read from the cover art, as on the player's `Book`
+  (`bg`, plus `accent` and `on_accent` when the art has a vibrant colour that
+  reads on it). Omitted until the server has read the current art's colour, from a
+  thumbnail or in the [background colour pass](../media.md#the-background-colour-pass).
+  The book page (`GET /admin/libraries/{id}/book`) carries it too.
 - `matched` - the book has an ASIN or ISBN: the same rule as the `matched` filter.
 - `edited_fields` - the fields with an override (an edit or an accepted community
   value), `[]` when none; `edited` is also true for a chapter-title edit alone.

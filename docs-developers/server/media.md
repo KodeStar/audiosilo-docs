@@ -245,6 +245,33 @@ The write is detached from the request and bounded to 250 ms
 thumbnail. A re-index of a changed book recomputes the identity from index data,
 and the next thumbnail moves it again.
 
+### The background colour pass
+
+A colour read only from thumbnails people ask for would leave a library nobody
+has browsed without any. So `internal/covercolors` reads them in the background.
+Its `Runner` waits until the start, or a burst of book changes
+(`Catalog.OnBookChange`: an index write, an edit, a custom cover set or removed),
+has been quiet for 30 s (at most 10 minutes), then runs a pass. It also runs one
+every hour, which retries art that failed to read. A scan changes a book every
+moment, so the pass waits for it to finish rather than competing with it for the
+disk.
+
+A pass walks `catalog.CoverColorsDue` in pages of 100 by the index's own order:
+the books that may have art (a custom cover, or `has_cover` set or not yet checked
+by a scan) and hold no colour for their current art, each with its
+`CoverSource`. One book at a time, it reads each colour as a thumbnail would
+(`api.colorCover`: `coverArt`, the same `coverReads` and `thumbSem` bounds as the
+cover endpoints, so it never holds more than one of their slots). A thumbnail of
+the art already in the cache is used as it is. Otherwise a 160 px one is made and
+**not cached**, so a pass over a library never pushes out the thumbnails people
+are looking at. A book with no art, or none that decodes, is recorded as having no
+colour (`cover_color` holds only the version), so no pass reads it again until its
+art changes, across restarts too. Each page's colours are recorded in one
+`RecordCoverColors` transaction (bounded to 30 s), compare-and-set like any
+other. Ten books in a row whose art fails to read (a mount gone away) end the pass
+until the next hour. Unchanged books aren't re-indexed by a scan, so after its
+first full pass the runner only reads books whose art is new.
+
 ## `DirectPlayable`: when a client should transcode
 
 The scanner records each book's audio codec (ffprobe `codec_name`, verbatim)

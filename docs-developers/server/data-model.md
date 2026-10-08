@@ -254,13 +254,16 @@ user state:
   (`catalog.CoverVersion`).
 - `cover_color` - the palette read from a thumbnail, tagged with the
   `cover_version` it was read for: `version bg` or `version bg accent on_accent`
-  (lowercase `#rrggbb`, space-separated), `''` for none. It is decoded onto the
+  (lowercase `#rrggbb`, space-separated), `version` alone for art read and found
+  to have no colour (none, or none that decodes), `''` when nothing was read. It is decoded onto the
   book only while the tag is the current `cover_version`, so new art needs nothing
   cleared. It is written compare-and-set on `cover_art` by
-  `catalog.RecordCoverColors` (`GET /libraries/{id}/cover?size=` or the console's
-  `POST /admin/covers`).
+  `catalog.RecordCoverColors` (`GET /libraries/{id}/cover?size=`, the console's
+  `POST /admin/covers`, or the
+  [background colour pass](media.md#the-background-colour-pass)).
 
-A rebuilt index starts with `cover_art` from index data and no colours.
+A rebuilt index starts with `cover_art` from index data and no colours. The
+background pass then fills them in.
 
 Two columns deserve emphasis:
 

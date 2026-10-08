@@ -179,6 +179,15 @@ MP3 for codecs browsers can't decode), `DirectPlayable` (the codec allow-list
 clients use to decide whether to request `?transcode=1`), and `EmbeddedCover`
 extraction. See [Media & streaming](media.md).
 
+### `internal/covercolors`
+
+The background cover colour pass: a `Runner` that reads the colour of every book
+whose cover may have art and holds none for it (`catalog.CoverColorsDue`), one at
+a time, once the start or a burst of book changes has been quiet for 30 s, and
+hourly. It does no image work
+itself: `api.colorCover`, the cover endpoints' own reading, is handed in as its
+`Colorer`. See [The background colour pass](media.md#the-background-colour-pass).
+
 ### `internal/chapteralign` and `internal/chaptercheck`
 
 [Community chapters](community-chapters.md). `chapteralign` is the pure fit of a

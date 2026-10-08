@@ -409,6 +409,11 @@ AudioSilo never merges names on its own.
 spines in series order. Click a spine to open that book, or the series' name
 to see its books in the list, in series order.
 
+Each spine takes its colours from the book's cover, and a longer book stands
+taller. AudioSilo reads the cover colours in the background after it indexes
+your books. Until it has read a book's colour, the spine uses a colour of its
+own. On a big library this can take a while after the first scan.
+
 ![Library > Series](/img/screenshots/admin/series.png)
 
 With community metadata on, a series where one of your books is matched also
