@@ -18,7 +18,9 @@ you can revert any edit to what the file says.
 
 **Library > Books** shows every book across all your libraries as a cover
 grid. Books without cover art get a generated cover, so the grid never has
-holes.
+holes. Art that isn't square is shown whole, over a blurred copy of itself,
+rather than cropped. Click a book's author under its cover to see all their
+books.
 
 ![Library > Books](/img/screenshots/admin/books.png)
 
@@ -39,7 +41,8 @@ Above the list:
   **Recently added**, **Longest first** or **Largest first**.
 - **View** - **Cover grid** or **Table**. The table has columns for title,
   author, narrator, series, length, format, browser playback, community
-  metadata and when the book was added.
+  metadata and when the book was added. Click an author, narrator or series
+  in the table to see all its books.
 
 ![The books table](/img/screenshots/admin/books-table.png)
 
@@ -65,6 +68,10 @@ leads nowhere:
 Active filters show as chips above the list (for example "Author: Lewis Carroll").
 Click a chip's cross to remove it, or **Clear all**.
 
+A link to an author, narrator or series keeps the library you're looking at.
+A series' books open in series order unless you pick another sort; a sort you
+pick stays when you change the filters.
+
 ### Changing many books at once
 
 Hover a cover and tick its checkbox to select it (in the table, tick the row,
@@ -88,10 +95,13 @@ Click any book to open its page.
 
 ![A book's page](/img/screenshots/admin/book.png)
 
-The top of the page shows the cover, title, series, author and narrator, how
-many files the book has, whether browsers can play it directly ("Plays
-directly", "Transcodes to MP3 for browsers" or "Browsers can't play this
-format") and when it was added. The buttons there are:
+The top of the page shows the cover, the library, the title, then who wrote
+and narrated it and where it sits in its series ("by Brandon Sanderson · read
+by Michael Kramer · book 1 in The Stormlight Archive"). Each name, and the
+series, opens **Books** filtered to it. Below that is how many files the book
+has, whether browsers can play it directly ("Plays directly", "Transcodes to
+MP3 for browsers" or "Browsers can't play this format") and when it was added.
+The buttons there are:
 
 - **Match with community metadata** (it reads **Compare with community** once
   the book has an ASIN or ISBN) - see
@@ -299,7 +309,8 @@ AudioSilo never merges names on its own.
 ## Series
 
 **Library > Series** has a card for each series, with its books shown as
-spines in series order. Click a spine to open that book.
+spines in series order. Click a spine to open that book, or the series' name
+to see its books in the list, in series order.
 
 ![Library > Series](/img/screenshots/admin/series.png)
 

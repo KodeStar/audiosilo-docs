@@ -247,8 +247,18 @@ URL); its background tint is computed from that image in the browser
 cover (`src/components/generated-cover.tsx`, a React SVG component, colours
 from `src/lib/cover-model.ts`), never an `innerHTML` string.
 
+Covers are square frames. Art that isn't square (`CoverArt` in
+`src/components/book-cover.tsx` measures it on load) is drawn whole with
+`object-fit: contain` over a blurred copy of itself; square art, most of it,
+gets no second layer, since each blur is its own compositing pass.
+
 Book pages are addressed by identity, `/admin/library/book?library=<id>&path=<path>`
-(`src/lib/book-route.ts`), never by an internal book id.
+(`src/lib/book-route.ts`), never by an internal book id. Names and series link to
+the Books list through `BooksLink` (`src/components/books-link.tsx`, built on
+`booksRoute`), which filters on the exact value and keeps the page's `library`
+and the list's `view`. It memoizes the route per value, because TanStack's
+`<Link>` rebuilds its href whenever `search` changes identity and `booksRoute`'s
+`search` is a function.
 
 ### Downloading a file from an authenticated endpoint
 
