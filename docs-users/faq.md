@@ -53,9 +53,9 @@ any modern browser, and can be added to your phone's home screen as an app
 (PWA). "Modern" means Safari 16.4, Chrome 111, Firefox 128 or newer (Edge and
 other Chromium browsers follow Chrome); an older browser may show the player
 unstyled or not at all, so update it or use the apps. The **iOS and Android apps** add the deepest device integration:
-better background audio, wider codec support, and lock-screen playback
-controls (chapter-aware on Android). See
-[Mobile apps](./listening/mobile-apps.md).
+better background audio, wider codec support, chapter-aware lock-screen
+controls, Smart speed, [Android Auto](./listening/in-the-car.md) (CarPlay
+follows in a later iPhone update), and iPhone widgets. See [Mobile apps](./listening/mobile-apps.md).
 
 The admin console at `/admin` is also built into the server - no separate
 install for that either.

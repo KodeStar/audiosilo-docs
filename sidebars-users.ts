@@ -57,6 +57,7 @@ const sidebars: SidebarsConfig = {
         'listening/account',
         'listening/api-keys',
         'listening/mobile-apps',
+        'listening/in-the-car',
         'listening/keyboard-shortcuts',
       ],
     },

@@ -21,6 +21,12 @@ The countdown shows on the sleep button, and first in the mini player's second l
 
 **Pausing:** a minutes timer pauses with the book, so thirty minutes means thirty minutes of listening. Come back after more than **20 minutes** and it starts again at its full length; after more than **two hours** it's over. A chapter timer waits where you left it, however long you're away.
 
+### On the lock screen (iPhone)
+
+In the iPhone app, a running timer also shows as a **Live Activity**: the book, the chapter and the countdown, on the lock screen and, on iPhones that have one, in the Dynamic Island. It keeps up as the timer changes (a pause freezes the countdown; Keep listening, a jump or a new speed under an End of chapter timer moves its end) and goes away the moment the timer stops the book or you turn it off. Tap it to open the player. It comes with the next iOS app update.
+
+iOS only lets an app start a Live Activity while it's open on screen, so a timer that starts with the app in the background (the [automatic timer at night](#starting-a-timer-automatically-at-night), for a book you start from the lock screen) gets its Live Activity the next time you open the app. If you swipe it away, it stays away for that timer.
+
 ## The last 30 seconds
 
 In a timer's last 30 seconds a card appears with a ring that empties: in the full player in place of the status line, elsewhere just above the player bar or the mini player.
