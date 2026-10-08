@@ -45,17 +45,14 @@ bring their own scrolling.
 The Me tab's destination in `TABS` (`src/components/shell/destinations.ts`) has
 `root: '/you'`, `labelKey: 'nav.me'` ("Me" on the tab bar), `wideLabelKey: 'nav.you'` and
 `wideIcon: 'chart'` ("You" in the top bar), and `rootParams: ['section', 'tab']`, so the
-cold-link cleanup keeps the hub's section and the Journal's tab. `TOP_BAR_TABS` now
-includes it.
+cold-link cleanup keeps the hub's section and the Journal's tab. `TOP_BAR_TABS` includes it.
 
 **Opening the hub.** `youHref(section?, journalTab?)` and `journalHref(tab?)`
 (`src/lib/paths.ts`) build the links; open them only through `openYou(section)` /
 `openJournal(tab)` (`src/lib/open.ts`, also on `useOpen`), or `pushInShell` with one of
-those hrefs, which routes there. They close a root modal over the shell, pop the Me
-stack to its root (`POP_TO_TOP` on that stack's key) and then `navigate`: a navigate is a
-push in this router, so without the pop a second copy of the hub would stack over the
-pages, and the hub is never looked for in another tab. `/journal?tab=` (the array-group
-route `journal.tsx`) still renders the Journal for links made before the hub.
+those hrefs, which routes there. They go to the hub's tab root rather than pushing a copy (see
+[the router rules](overview.md#routing-rules)). `/journal?tab=` (the array-group
+route `journal.tsx`) also renders the Journal for older links.
 
 **Settings** is a page of the array group (`src/app/(app)/(home,library,search,offline,me)/settings.tsx`),
 `/settings?section=`, pushed on the current tab through `openSettings(section?)` by the
@@ -182,8 +179,8 @@ shortcuts, never a second copy. The rules are the pure `settings-model.ts`:
   heading, scrolled once to the pane a link names. Inside a card, a wide control sits
   beside its label from 560 px (`INLINE_MIN`).
 
-The pane bodies (`settings-panes.tsx`, `SettingsPaneBody`) use the same store keys the
-app always had (the regroup moved controls, it did not change them); `SettingRow` /
+The pane bodies (`settings-panes.tsx`, `SettingsPaneBody`) use the same store keys as the
+rest of the app; `SettingRow` /
 `SettingsCard` (`settings-row.tsx`) are the row and card. The Accounts and devices pane
 is `ConnectionsSection` (`src/components/account/connections-section.tsx`), whose remove
 flow (`useConnectionRemoval`: a confirm when the server has downloads on the device,

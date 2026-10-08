@@ -86,7 +86,7 @@ anywhere). The server side, how each is chosen, is in
 ### What the device keeps
 
 `Connection.addresses?: ServerAddresses` (`{ home?, away? }`) is persisted with the
-connection metadata, with no storage-version bump. It comes from the pairing link's
+connection metadata. It comes from the pairing link's
 `home=`/`away=` params (`parsePairingScan`), the redeem payload, and the exchange, login
 or demo answer, each cleaned by `cleanAddresses` (an `http(s)` URL with its scheme,
 normalised; `home` dropped when it equals `away`).
@@ -106,7 +106,7 @@ normalised; `home` dropped when it equals `away`).
 
 Pure and tested:
 
-- No `home`: use `serverUrl`, exactly as before addresses existed.
+- No `home`: use `serverUrl`.
 - With a `home`: ask `GET <home>/api/v1/server` **without a token** (`probeServerId`,
   `src/api/server-id-probe.ts`: a bare client, 2.5 s timeout, `PROBE_TIMEOUT_MS`) and use
   `home` **only when it answers with this connection's `server_id`**. Otherwise use

@@ -192,7 +192,7 @@ answers, and [`GET /addresses`](#get-apiv1addresses) carry the same object:
 
 | Field | Type | Meaning |
 |---|---|---|
-| `home` | string, optional | The server's address on the household network: the configured [`lan_url`](../configuration.md#home-address-lan_url), else the address **this request** arrived on (scheme + `Host`) when that is a home-network host (a private RFC 1918, ULA `fc00::/7` or link-local IP, a `.local` / `.lan` / `.home.arpa` name, or a single-label name; never loopback, `localhost` or CGNAT `100.64.0.0/10`). `X-Forwarded-*` is not trusted for it |
+| `home` | string, optional | The server's address on the household network: the configured [`lan_url`](../configuration.md#home-address-lan_url), else the address **this request** arrived on (scheme + `Host`) when that is a home-network host ([the rule](../configuration.md#home-address-lan_url)). `X-Forwarded-*` is not trusted for it |
 | `away` | string, optional | The address that works from anywhere: the configured `public_url` |
 
 A `home` equal to the `away` is dropped. On the pairing payloads and the sign-in answers
@@ -201,8 +201,7 @@ request, an answer read through the away address usually has no `home`: a client
 `home` it already knows rather than forgetting it.
 
 The two links carry the same addresses as extra query parameters **after** the existing
-ones, only those that are set, so a link without them reads exactly as before and an
-older client ignores them:
+ones, only those that are set, so an older client ignores them:
 
 ```text
 audiosilo://connect?server=https%3A%2F%2Fbooks.example.com&token=…&away=https%3A%2F%2Fbooks.example.com&home=http%3A%2F%2F192.168.1.20%3A8080

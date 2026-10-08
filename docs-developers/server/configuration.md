@@ -87,7 +87,7 @@ and where it appears: [Home and away addresses](api/reference.md#home-and-away-a
 
 - `away` is `public_url` without a trailing `/`.
 - `home` is `lan_url`, or, when that is empty, `scheme://Host` of **this request** when
-  `config.IsHomeNetworkHost(Host)`: a private IP (RFC 1918, IPv6 ULA `fc00::/7`), a
+  `isHomeNetworkHost(Host)`: a private IP (RFC 1918, IPv6 ULA `fc00::/7`), a
   link-local one, or a name ending in `.local`, `.lan` or `.home.arpa`, or a single-label
   name. Never loopback (`127.0.0.0/8`, `::1`, `localhost`): no other device can reach it.
   Never carrier-grade NAT space (`100.64.0.0/10`, which Go's `IsPrivate` leaves out): it

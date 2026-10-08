@@ -128,7 +128,7 @@ The app quietly keeps using the away address whenever the home address doesn't a
 - **Does the home address work from the phone?** Open it in the phone's browser, e.g. `http://192.168.1.20:8080/web`. If the web player loads, the app can reach it too.
 - **Was the address set after the app connected?** Close the app completely and open it again: it asks the server for its addresses each time it starts.
 
-If your server sits behind a reverse proxy, the home address the server works out for itself can be an internal name your phone can't reach. Nothing breaks - the app uses the away address - and your admin can fix it by setting the **Home address** (see [Remote access](../getting-started/remote-access.md#tell-the-server-its-home-address)).
+Behind a reverse proxy? See [Remote access](../getting-started/remote-access.md#tell-the-server-its-home-address).
 
 :::note
 Connecting from outside your home network (e.g. on mobile data) requires the server to be reachable from the internet - that's a server-setup topic, covered in [Remote access](../getting-started/remote-access.md). If the app says it can't reach the server, that's the usual reason.

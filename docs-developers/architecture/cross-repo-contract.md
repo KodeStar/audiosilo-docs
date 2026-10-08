@@ -217,8 +217,8 @@ the `/web/connect` route consume both carriers; `client.ts`
 **Home and away addresses (`addresses` capability).** Every pairing payload
 (`/auth/redeem`, `/auth/pair`, the demo session's `pairing`) may carry
 `addresses: { home?, away? }`: `away` is `public_url`; `home` is `lan_url`, else the
-request's own `Host` when that is a home-network host (`config.Addresses`,
-`config.IsHomeNetworkHost`); a home equal to the away is dropped. Both links carry them
+request's own `Host` when that is a home-network host (`config.Addresses`; the
+host rule is in [Configuration](../server/configuration.md#home-address-lan_url)); a home equal to the away is dropped. Both links carry them
 as extra query params **after** the existing ones, only when set
 (`…&away=…&home=…`; read them by name, the encoder sorts them; old clients ignore them).
 The `/auth/exchange`, `/auth/login` and `/demo/session` answers carry `addresses` too, and
