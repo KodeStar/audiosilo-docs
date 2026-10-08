@@ -193,8 +193,9 @@ by `SettingsContent` so its dialog state survives the layout switch.
 ## Account (`src/components/account/`)
 
 `AccountSection({ connectionId? })` is one server's account. `/account?connection=<cid>`
-(`account.tsx` in the array group, inside `ContentScope`) renders it with breadcrumbs back
-to Settings; the phone hub's Account section renders it without an id: the default
+(`account.tsx` in the array group, inside `ContentScope`) renders it, with a breadcrumb
+back to Settings or the You section it was opened from (`accountParentKey`; none from
+the profile menu or a cold link, where the chrome's Back does it); the phone hub's Account section renders it without an id: the default
 server, with a switcher (a segmented control of the signed-in servers) when there are
 several (`resolveAccountCid`). It is a non-scrolling column (the host scrolls it and adds
 the mini player's inset), keyed by the server so a switch starts with closed editors.

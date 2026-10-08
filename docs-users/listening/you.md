@@ -19,7 +19,7 @@ In the web player's [quick search](browsing.md#quick-search-in-the-web-player), 
 
 ![Your listening on a computer: this week's hours, the stat tiles, the listening calendar, the listening clock and the hours per week](/img/screenshots/web-player/you-stats.png)
 
-At the top, the server it comes from (*"Your listening · Hearthside"*) and how long you've listened **this week**. On a tablet or computer, **Open your 2026 story** beside it opens your [Year in listening](year-in-listening.md).
+At the top, the server it comes from (*"Your listening · Hearthside"*, or just the server's name on a phone, under the big title) and how long you've listened **this week**. On a tablet or computer, **Open your 2026 story** beside it opens your [Year in listening](year-in-listening.md).
 
 ### One server at a time
 
