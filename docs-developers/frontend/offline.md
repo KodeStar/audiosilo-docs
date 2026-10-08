@@ -211,6 +211,26 @@ with no network.
   page, the book menu, the Downloads page) asks first through the shared
   `RemoveDownloadConfirm` (`src/components/downloads/remove-download-confirm.tsx`),
   which says how much room it frees.
+- **Changed chapters** (`startChapterRefresh`, started once from the root
+  layout): a book's chapters can change on the server after it was downloaded
+  (a rescan, a [community chapter list](../server/community-chapters.md)
+  fitted onto its audio, `chapters_source: "community"`, or an admin switching
+  it back). The listener subscribes to the query cache: every **server** answer
+  for a `chapters` query (a successful fetch, not the store's own
+  `setQueryData` seeds) of a `downloaded` entry goes through
+  `refreshedChapters(manifest, fresh)`, which replaces `manifest.chapters` only
+  when the answer's audio files are the ones on the device (`bookFileSpecs`
+  gives the same paths in the same order, with the same sizes where both
+  answers know them, so a file replaced at the same path doesn't pass) and the
+  answer differs; then the entry is patched and persisted (`persistSoon`, so a
+  burst saves once). Different files mean the local audio no longer matches,
+  which is a new download, so the manifest stays. An answer that arrived while
+  the book was still downloading, or before the launch's hydrate read the
+  registry, is taken from the cache when the download finishes and at hydrate
+  (`withCachedChapters`). The audio is
+  never touched, and a queue already playing keeps its chapters until the book
+  is next started. Before this, a downloaded copy kept the chapters it was
+  downloaded with.
 
 ### Hydrate and the iOS container-move problem
 

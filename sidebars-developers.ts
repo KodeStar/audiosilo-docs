@@ -23,6 +23,7 @@ const sidebars: SidebarsConfig = {
         'server/data-model',
         'server/auth-and-security',
         'server/scanner',
+        'server/community-chapters',
         'server/media',
         'server/web-ui',
         'server/configuration',

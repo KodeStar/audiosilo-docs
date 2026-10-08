@@ -81,3 +81,5 @@ See [The mobile apps](mobile-apps.md) for more on the native apps.
 ## Books without chapters
 
 A long audiobook that's a single file with no chapter markers still gets chapter-style navigation: the player divides it into **virtual chapters** (every 30 minutes by default - adjustable from 5 to 60 minutes in [Settings](settings.md#playback)), so the chapter skips, the chapter list, and the sleep timer's **End of chapter** all work.
+
+Many such books can get real chapters instead: when your server's admin has community metadata switched on and the book is matched, the server can take its chapters from the [community database](../community/meta-site.md). They then show and play like the book's own, with a line under the chapter list saying where they came from (see [A book's page](book-page.md#chapters)).

@@ -195,7 +195,13 @@ with `field: "metadata.enabled"`).
 
 Turning it off is the one-key privacy switch: with the lookup disabled the server
 never contacts the metadata service, and every player connected to it stops
-showing the section (they gate on the `metadata` capability). Enrichment is
+showing the section (they gate on the `metadata` capability). The same switch
+gates the [community chapter checks](community-chapters.md): while it is on, the
+background pass checks matched books (sending only their ASIN or ISBN, then the
+community's work and recording ids), and finds pauses with the configured ffmpeg
+when there is one; while it is off nothing is checked and
+`POST /admin/libraries/{id}/book/community-chapters` is `404 metadata_off`.
+Chapters already in use stay until an admin switches a book back. Enrichment is
 strictly additive and cached - a slow or unreachable service degrades to no
 section, never a broken page.
 

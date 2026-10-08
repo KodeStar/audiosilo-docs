@@ -910,6 +910,13 @@ not the community-written `community_description` on
 (`published`, `cover_color`, `cover_version`) are described under
 [`/books`](#get-apiv1librariesidbooks).
 
+`chapters_source` is `"community"` when the book's `chapters` are a community
+recording's chapter list fitted onto its audio rather than the files' own (see
+[Community chapters](../community-chapters.md)), and absent otherwise. It is
+additive: the chapters have the same shape either way, and only this
+single-book response (and [`/chapters`](#get-apiv1librariesidchapters)) carries
+it.
+
 `direct_playable` reports whether the codec plays natively in browsers (unknown
 codec ⇒ `true`). The web player streams a `false` book with `?transcode=1` when
 the `transcode` capability is true; it does not retry through the transcoder after
@@ -968,9 +975,17 @@ multi-file mp3 parts render identically.
     }
   ],
   "codec": "aac",
-  "direct_playable": true
+  "direct_playable": true,
+  "chapters_source": "community"
 }
 ```
+
+`chapters_source` - `"community"` when `chapters` are a community recording's
+list fitted onto the book's audio (an admin chose them, or the files have no
+chapters of their own); **absent** for the files' own chapters, and on servers
+before it. The chapters keep the same shape either way, so an old client plays
+community chapters as ordinary ones. See
+[Community chapters](../community-chapters.md).
 
 Same status codes as `/item`.
 
@@ -3114,7 +3129,7 @@ what the first does).
 | `min_duration` · `max_duration` | number (seconds) | - | inclusive bounds; `0` means no bound |
 | `added_after` | date | - | inclusive lower bound on `added_at`: `YYYY-MM-DD` (used as is) or an RFC 3339 time (any offset; converted to UTC before comparing) |
 | `added_before` | date | - | exclusive upper bound, same formats |
-| `issue` | string | - | one [Health issue](#get-apiv1adminissues) kind's books: `scan_error`, `suspect`, `split_discs` (one row per split book: its first disc), `no_cover`, `unmatched`, `no_chapters` or `transcode` (not `duplicate`, which comes as groups from [`/admin/issues/duplicates`](#get-apiv1adminissuesduplicates)). Books an admin ignored for that kind are left out. Any other value is `400 unknown issue` |
+| `issue` | string | - | one [Health issue](#get-apiv1adminissues) kind's books: `scan_error`, `suspect`, `split_discs` (one row per split book: its first disc), `no_cover`, `unmatched`, `no_chapters`, `detailed_chapters` or `transcode` (not `duplicate`, which comes as groups from [`/admin/issues/duplicates`](#get-apiv1adminissuesduplicates)). Books an admin ignored for that kind are left out. Any other value is `400 unknown issue` |
 | `issue_ignored` | `true`\|`false` | - | with `issue`, list **only** the books an admin ignored for it; without `issue` it is `400 issue_ignored needs an issue` |
 | `sort` | string | `title` | `title` \| `author` \| `surname` \| `series` \| `narrator` \| `published` \| `added` \| `duration` \| `size` |
 | `order` | string | `asc` | `asc` \| `desc` |
@@ -3170,7 +3185,9 @@ is a `400` too (`too many format or codec values`).
       "edited_fields": ["narrator"],
       "scan_error": "probe_failed",
       "scan_error_file": "Andy Weir/The Martian/The Martian.m4b",
-      "scan_error_detail": "[mov,mp4,m4a,3gp,3g2,mj2 @ 0x7f8c] moov atom not found; Invalid data found when processing input"
+      "scan_error_detail": "[mov,mp4,m4a,3gp,3g2,mj2 @ 0x7f8c] moov atom not found; Invalid data found when processing input",
+      "chapters_source": "files",
+      "chapters_check": "refine"
     }
   ],
   "next_cursor": "eyJzIjoidGl0bGUiLCJ2IjpbIlRoZSBNYXJ0aWFuIl0sImlkIjo0MTJ9"
@@ -3178,7 +3195,8 @@ is a `400` too (`too many format or codec values`).
 ```
 
 - Every field is always present (empty string / `0` / `false` when unknown),
-  except the four Health fields below, which are omitted when empty or `0`.
+  except the four Health fields below and `chapters_check`, which are omitted
+  when empty or `0`.
   `path` is the book path (the player's `rel_path`).
 - `custom_cover` - an admin uploaded a cover; `has_cover` includes it.
 - `matched` - the book has an ASIN or ISBN: the same rule as the `matched` filter.
@@ -3197,6 +3215,14 @@ is a `400` too (`too many format or codec values`).
 - `suspect_parts` - set (to 2 or more) when a folder book's parts look like
   that many separate books (see
   [Folders that may hold several books](../scanner.md#folders-that-may-hold-several-books)).
+- `chapters_source` - where the book's chapters come from now: `files` (the
+  scan's own) or `community` (a community chapter list fitted onto the audio).
+- `chapters_check` - the status of the book's last
+  [community chapter check](../community-chapters.md): `fill`, `titles`,
+  `refine`, `restructure`, `same`, `length_mismatch`, `structure_mismatch`,
+  `crosses_files`, `no_match` or `unavailable`; omitted when it was never
+  checked. The console's `no_chapters` rows use it to say why community
+  chapters weren't used.
 - The cursor names the ordering it was minted for: replaying it with another
   `sort` or `order` (or a malformed one) is `400 invalid cursor`. Changing the
   filters between pages is not detected, so restart from the first page when
@@ -3238,8 +3264,9 @@ edited or none is**. Merging two spellings of an author is a bulk `set` of
 | Body field | Type | Required | Notes |
 |---|---|---|---|
 | `books` | array | yes | `[ { "library_id": 1, "path": "Andy Weir/Artemis" } ]`, at most 1000 |
-| `set` | object | one of `set` / `revert` | field → value, for the fields above |
-| `revert` | array | one of `set` / `revert` | field names to put back to what the scan found |
+| `set` | object | one of `set` / `revert` / `chapter_source` | field → value, for the fields above |
+| `revert` | array | one of `set` / `revert` / `chapter_source` | field names to put back to what the scan found |
+| `chapter_source` | string | one of `set` / `revert` / `chapter_source` | where every book's chapters come from: `"community"`, `"files"` or `"auto"` (as on [`PATCH …/book`](#patch-apiv1adminlibrariesidbook)). The console's Health "Use detailed chapters" sends `"community"` |
 | `source` | string | no | `"edited"` (default) or `"community"` |
 
 ```json
@@ -3258,7 +3285,7 @@ once).
 
 | Status | Meaning |
 |---|---|
-| `400` | `books is required`; `nothing to change`; `invalid request` (malformed body or an unknown key); `code: "too_large"` for more than 1000 books; `code: "invalid_override"` with `field` for a value that fails its rule, or with `field: "chapters"` for any chapter edit (`chapter titles can only be edited one book at a time` - chapter indexes are per book) |
+| `400` | `books is required`; `nothing to change`; `invalid request` (malformed body or an unknown key); `code: "too_large"` for more than 1000 books; `code: "invalid_override"` with `field` for a value that fails its rule (`field: "chapter_source"` for a source other than the three), or with `field: "chapters"` for any chapter edit (`chapter titles can only be edited one book at a time` - chapter indexes are per book) |
 | `404` | `code: "book_not_found"` - one of the paths is not an indexed book (nothing was changed) |
 
 A field cannot be both set and reverted in one request (`invalid_override`).
@@ -3411,7 +3438,23 @@ book path).
     { "share_id": 5, "name": "Library: Audiobooks", "path": "", "whole_library_id": 1 }
   ],
   "folder": { "path": "Andy Weir/The Martian", "override": "" },
-  "indexed_at": "2026-10-03T09:12:01.33Z"
+  "indexed_at": "2026-10-03T09:12:01.33Z",
+  "chapter_source": "files",
+  "chapter_choice": "",
+  "community_chapters": {
+    "status": "refine",
+    "work_id": "the-martian",
+    "recording_id": "the-martian-1",
+    "detail": {
+      "local_duration": 38040.5, "community_duration": 38052.1,
+      "ratio": 0.9997, "worst": 0.9981,
+      "local_chapters": 27, "community_chapters": 41,
+      "anchors": 26, "snapped": 14, "approximate": 0,
+      "omitted": ["Preview: Artemis"]
+    },
+    "checked_at": "2026-10-03T09:20:44.10Z"
+  },
+  "community_checking": false
 }
 ```
 
@@ -3434,6 +3477,47 @@ book path).
 - `folder` - the folder whose detection decides the book's shape (the book's
   own folder, or the folder a single-file book sits in; `""` = the library root)
   and its folder-detection `override` (`"book"`, `"collection"` or `""`).
+- `chapter_source` - where `chapters` come from now: `"files"` (the scan's
+  own) or `"community"` (the community list below, fitted onto the audio).
+- `chapter_choice` - the admin's choice of source: `"files"`, `"community"`,
+  or `""` when it is automatic (the community's chapters are used only for a
+  `fill`: a book with no chapters of its own). It is not a metadata edit, so it
+  is not in `fields` and doesn't make the book `edited`.
+- `community_chapters` - the book's last
+  [community chapter check](../community-chapters.md), `null` when it has none
+  (a book with no ASIN or ISBN is never checked):
+  - `status` - a fit (`fill`, `titles`, `refine`, `restructure`, `same`), a
+    reason it failed (`length_mismatch`: another edition; `structure_mismatch`:
+    the book's own chapters don't line up; `crosses_files`: a community chapter
+    runs from one file into the next), `no_match` (no community recording for
+    the ASIN/ISBN) or `unavailable` (the recording has no chapter list).
+  - `work_id`, `recording_id` - the community recording checked against;
+    omitted for `no_match`.
+  - `detail` - what the fit found (omitted for `no_match` and `unavailable`):
+    the two timelines' lengths (`local_duration`, `community_duration`,
+    seconds), `ratio` (the length-weighted median of local over community
+    length across the anchored stretches) and `worst` (the stretch furthest
+    from 1), both omitted when unmeasured, the two chapter counts
+    (`community_chapters` as fitted, after `omitted`), `anchors` (the book's
+    boundaries pinned to community ones), `snapped` (placed boundaries moved
+    onto a pause), `approximate` (ones that couldn't be and may be a few seconds
+    off), and when they apply `omitted[]` (community chapter titles not in this
+    copy), `title_diffs[]` (`{index, current, community}`, for `titles`) and
+    `straddle` (`{title, at, from, to}`: the chapter a file boundary falls
+    inside, the boundary's place on the book's timeline, and the files either
+    side, for `crosses_files`).
+  - `checked_at` - when the check was recorded (or last renewed: a recheck
+    that finds the same list for the same audio only moves it). The fitted
+    list itself is not sent; once used, it is the book's `chapters`.
+  - `stale` - present and `true` when the book has changed since the check
+    (other audio, other identifiers): it is not used until the book is checked
+    again.
+- `community_checking` - a check of this book is running now (`POST
+  …/book/community-chapters`, or the background pass); poll the page until it
+  is `false`.
+- `community_check_failed` - present and `true` when the book's last check
+  failed (the community service didn't answer, or the check ran out of time):
+  `community_chapters` is then the check before it.
 
 | Status | Meaning |
 |---|---|
@@ -3454,6 +3538,7 @@ one request is applied in one transaction.
 | `source` | string | `"edited"` (default) or `"community"` (accepted from a [match](#get-apiv1adminlibrariesidbookmatch)) - recorded on every field this request sets |
 | `chapters.set` | object | chapter index (as a string key) → new title; a title cannot be empty (revert it instead), at most 500 characters. The rename is stored against that chapter's file and start, not its index, so it stays on the same chapter if a rescan inserts or drops others |
 | `chapters.revert` | array | chapter indexes to put back to the scanned title |
+| `chapter_source` | string | where the book's chapters come from: `"community"` (the fitted community list, when the last check fitted), `"files"` (the scan's own) or `"auto"` (remove the choice: community only for a `fill`). Stored as a path-keyed `chapter_choices` row, so it survives rescans and moves with the book; switching back restores the files' chapters exactly, renames included |
 
 ```json
 {
@@ -3478,9 +3563,33 @@ disk access. Reverting an ASIN/ISBN falls back to any enrichment for it.
 
 `invalid_override` covers an unknown field (`field` names it, e.g.
 `cover_path`), a value that fails its rule, a field both set and reverted, a
-`source` other than the two above (`field: "source"`), and chapter problems
+`source` other than the two above (`field: "source"`), a `chapter_source` other
+than the three above (`field: "chapter_source"`), and chapter problems
 (`field: "chapters"`: a chapter the book doesn't have, an empty title, one index
 both renamed and reverted).
+
+An edit is audited as `book.edit` (`chapter_source` in its details when
+sent). It also wakes the [community chapter checks](../community-chapters.md#when-a-book-is-checked),
+so a newly set ASIN or ISBN is checked soon after.
+
+### `POST /api/v1/admin/libraries/{id}/book/community-chapters`
+
+Checks the book against its community recording's chapter list **now**, in the
+background, and returns the book page (the same body as
+[`GET …/book`](#get-apiv1adminlibrariesidbook)) with `community_checking:
+true`. `?path=` required. A long book's pause search takes a while, so poll the
+book page until `community_checking` is `false`; the check's outcome is then in
+`community_chapters`, and `chapters` / `chapter_source` reflect it (a `fill`
+is used at once unless the admin chose the files' chapters). A book already
+being checked is not checked twice. Not audited: it changes nothing an admin
+chose (picking a source is a `PATCH`).
+
+| Status | Meaning |
+|---|---|
+| `200` | the book page, `community_checking: true` |
+| `400` | `invalid library id`; `path is required` |
+| `401` / `403` | anonymous / non-admin |
+| `404` | `code: "metadata_off"` - community metadata is turned off; `library not found`; `code: "book_not_found"` - no book is indexed at that path |
 
 ### `GET /api/v1/admin/libraries/{id}/book/match`
 
@@ -4041,7 +4150,11 @@ a scan last finished.
 
 - `categories` - one entry per kind, always in this order: `scan_error`,
   `suspect`, `split_discs`, `duplicate`, `no_cover`, `unmatched`,
-  `no_chapters`, `transcode`. `split_discs` is a book split across disc
+  `no_chapters`, `detailed_chapters`, `transcode`. `detailed_chapters` is a
+  book whose last [community chapter check](../community-chapters.md) found
+  finer community chapters that fit (`refine`) and whose chapter source no
+  admin has chosen; the console's fix is a bulk edit with
+  `chapter_source: "community"`. `split_discs` is a book split across disc
   folders (a CD rip read as one book per disc), counted once and listed by its
   first disc; the console's fix sets a `book`
   [folder override](#put-apiv1adminlibrariesidfolder-override) on the folder
@@ -4113,7 +4226,7 @@ console's Undo and "Show again"). For duplicates, ignore every copy of a group
 { "kind": "no_cover", "books": [ { "library_id": 1, "path": "Sun Tzu/The Art of War" } ] }
 ```
 
-- `kind` - one of the eight kinds above.
+- `kind` - one of the nine kinds above.
 - `books` - 1 to 1000 `{library_id, path}` refs. The books needn't be indexed:
   the rows are path-keyed durable state (`issue_ignores`), so an ignore
   survives rescans and rebuilds and moves with the book. A ref in a library

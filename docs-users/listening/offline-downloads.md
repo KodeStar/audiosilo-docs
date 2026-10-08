@@ -79,6 +79,7 @@ Honestly? Barely at all - that's the point:
 
 - A downloaded book **plays from local files**, so it starts instantly and never buffers, whether or not the server is reachable.
 - Chapters, the sleep timer, speed, bookmarks, and notes all work the same.
+- **Chapters stay up to date.** If a book's chapters change on the server after you downloaded it (your admin switched it to the [community's chapters](book-page.md#chapters), or back, or a rescan found new ones), the downloaded copy picks up the new chapters the next time the app loads that book's chapters while online, as long as its audio files are the same. A book that is already playing keeps its chapters until you next start it. The audio on your device is never re-downloaded for this.
 - Your listening progress is saved on the device while you're offline and **synced to the server automatically** the next time the app can reach it - so even offline listening ends up on your other devices' *Continue listening* shelf.
 - The book's page still opens offline for downloaded books, community notes and all ([below](#community-notes-offline)), and its **Details** tab says the book **Plays from this device**.
 

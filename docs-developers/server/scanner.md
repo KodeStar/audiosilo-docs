@@ -1,6 +1,6 @@
 ---
 title: "Filesystem view & scanner"
-description: "How audiosilo-server turns a folder of audio files into a browsable, indexed catalog: the no-index filesystem view, the scan job queue, schedules and history, ignore rules, book detection and disc folders joined into one book, metadata and chapter extraction, covers, move detection, read problems and suspect folders, and the unavailable-root guard."
+description: "How audiosilo-server turns a folder of audio files into a browsable, indexed catalog: the no-index filesystem view, the scan job queue, schedules and history, ignore rules, book detection and disc folders joined into one book, metadata and chapter extraction (and where community chapters take over), covers, move detection, read problems and suspect folders, and the unavailable-root guard."
 ---
 
 `internal/library` contains two complementary subsystems:
@@ -516,6 +516,12 @@ library-relative audio file to stream), in-file `start`/`end`, and
   Book offsets accumulate across parts and the book's duration is the sum, so
   a chaptered m4b and a folder of split mp3s render identically in a player.
 
+These are the scan's own chapters. A matched book can have a community
+recording's chapter list fitted onto its audio in their place, outside the scan
+(see [Community chapters](community-chapters.md)); `UpsertBook` always writes
+the scan's chapters and `refreshEffective` puts the community's back over them
+in the same transaction when they should stand.
+
 ## Covers
 
 Cover resolution has two stages - an indexed **sidecar** path, and an
@@ -616,7 +622,8 @@ predicate over `books b`, shared by the counts (`IssueCounts`) and the lists
 | `split_discs` | it is the **first** disc (by `rel_path`) of a book split across disc folders: `split_parent` is set and that folder has no override of either mode (one settles how it reads). Its fix sets `book` on `split_parent`, which joins the discs |
 | `no_cover` | a scan has checked it (`has_cover` not `NULL`) and it has no sidecar image, no embedded art and no custom cover |
 | `unmatched` | it has no ASIN and no ISBN. Only offered while community metadata is on |
-| `no_chapters` | it is longer than **2 hours** and has at most one chapter |
+| `no_chapters` | it is longer than **2 hours** and has at most one chapter. The console shows why community chapters weren't used from the row's `chapters_check` (a failed [community chapter check](community-chapters.md)) |
+| `detailed_chapters` | its last community chapter check is `refine` (the community's finer chapters fit) and it has no `chapter_source` choice; picking either source settles it |
 | `transcode` | its codec doesn't play in browsers (`media.DirectPlayable`) |
 | `duplicate` | it is one of a group of copies (below) |
 

@@ -34,7 +34,10 @@ No - but you'll want it. The server uses two companion tools:
 - **ffmpeg** enables on-the-fly conversion of browser-unfriendly codecs to
   MP3, which the web player uses automatically for such books. Without it,
   that feature is simply off, and those books play only in the mobile apps
-  (where the device can decode them - an Android phone may not).
+  (where the device can decode them - an Android phone may not). It also finds
+  the pauses that [community chapters](./admin/books.md#community-chapters)
+  start on; without it they are placed by time alone and may be a few seconds
+  off.
 
 In practice you rarely have to think about this: the **Docker image includes
 ffmpeg**, and the native binary looks for a copy on your system and - if none
@@ -115,7 +118,9 @@ the backups) somewhere else.
 ### Where does the extra "About this book" information come from?
 
 The description, characters, story-so-far recaps and series links that some
-books show in the player come from **AudioSilo Meta**, a free, community-built
+books show in the player come from **AudioSilo Meta**, and so do the chapters
+of a book whose files have none (or whose admin chose the community's more
+detailed ones). AudioSilo Meta is a free, community-built
 audiobook database at [meta.audiosilo.app](https://meta.audiosilo.app). It's
 optional (your admin switches the lookup on or off), and you can browse and add
 to the catalogue yourself - see

@@ -194,6 +194,15 @@ timeline); `GET .../chapters` returns `{ chapters, files, duration }`.
 `src/playback/store.ts` maps `(trackIndex, position)` ↔ whole-book position via
 cumulative `offsets` and overlays chapters by `book_offset`.
 
+The chapters may be a community recording's list fitted onto the audio instead of
+the files' own ([Community chapters](../server/community-chapters.md)); they keep
+this exact shape, so a player needs nothing to play them. `chapters_source:
+"community"` on `/chapters` and the `/item` book is the only additive marker
+(mirrored as `Book.chapters_source` / `ChaptersResponse.chapters_source`): the
+player's book page captions such chapters, and a downloaded book replaces its
+saved chapters with a newer server answer while its audio files are unchanged
+(same paths, order and sizes; `startChapterRefresh`).
+
 **A change requires:** any change to chapter normalization changes the queue
 builder and the timeline math with it. And always: **stream the file, not the
 book** - a folder path in a track URL is the MediaToolbox `-12864` bug class
@@ -379,7 +388,9 @@ in this series") originates in a fourth repo, `audiosilo-meta`, and flows throug
 the server to the player.
 
 **Upstream (`audiosilo-meta`):** `metaserve` serves the community metadata
-read-only (`GET /lookup`, `/works/{id}`, `/series/{id}`) - see the
+read-only (`GET /lookup`, `/works/{id}`, `/series/{id}`, and
+`/works/{id}/recordings/{rid}/chapters` for
+[community chapters](../server/community-chapters.md)) - see the
 [metadata database developer pages](../meta/overview.md).
 **Server:** `internal/meta` resolves a book's ASIN/ISBN against `metaserve` and
 composes an enrichment envelope, returned at `GET /libraries/{id}/meta` behind an
@@ -396,7 +407,12 @@ hand-mirrored types (`admin-ui/src/api/types.ts`), not to the player. Each
 recording's ASINs keep their `region` (`asin_refs`), and `asins` is ordered by
 the server's preferred marketplace (`metadata.region`), so the server, not the
 console, decides which ASIN a match attaches; bulk match runs reuse the same
-match per book.
+match per book. Community chapters (`internal/chaptercheck`) fetch the chapter
+list of the lookup's exact `recording_id` only (never the first recording a
+work lists), fit it onto the book's audio server-side, and reach the player as
+ordinary chapters with the additive `chapters_source: "community"` (see
+[§6](#6-the-chapter--whole-book-timeline-model)); the console's panel reads the
+admin book page's `community_chapters`.
 **Frontend:** the `BookMeta` envelope (hand-mirrored in `src/api/types.ts`) is
 fetched by `client.bookMeta` and rendered capability-gated on the book screen's
 Recaps/Characters/Series tabs, and also read by the series page, Home (the Now card

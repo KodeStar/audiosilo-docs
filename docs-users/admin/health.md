@@ -16,7 +16,8 @@ pages:
   with a plain status for each.
 
 Nothing on these pages changes your audio files. Fixes are saved in AudioSilo
-(a cover you upload, a match you accept, a folder detection choice), and an
+(a cover you upload, a match you accept, a folder detection choice, the
+community's chapters), and an
 issue you ignore is only hidden.
 
 ## Library health
@@ -47,7 +48,8 @@ below.
 | **Likely duplicates** | Copies of one book in the same library. See [Duplicates](#duplicates). | A side-by-side comparison. |
 | **Missing covers** | No cover image in the book's folder and none inside its files. | **Upload a cover** opens the book's page, where **Change cover** adds one (see [Covers](books.md#covers)). |
 | **Not matched to community metadata** | The book has no ASIN or ISBN, so community metadata can't find it. Only shown while [community metadata](server.md#community-metadata) is on. | **Review match** opens the book's page with the match dialog open (see [Matching](books.md#matching-with-community-metadata)). To match the whole list at once, use **Match automatically** above it (see [Matching every book at once](#matching-every-book-at-once)). |
-| **Long books without chapters** | Books over two hours long with no chapter marks (or a single chapter). Listeners can play them but can't jump between chapters. | None in the console: add chapters to the file with your tagging tool, or ignore it. |
+| **Long books without chapters** | Books over two hours long with no chapter marks (or a single chapter). Listeners can play them but can't jump between chapters. When the book was checked against the community's chapter lists and they couldn't be used, a second line says why, for example "Community chapters: for another edition" or "Community chapters: cross from one file into the next. Merging the files would let them fit" (see [Community chapters](books.md#community-chapters)). | None in the console. [Match](books.md#matching-with-community-metadata) the book so its community chapters can be used (a book with no chapters of its own gets them automatically once they fit), add chapters to the file with your tagging tool, or ignore it. |
+| **More detailed chapters available** | The book has chapters, and the community has finer ones that fit this copy ("Has 34 chapters; the community's finer ones fit this copy"). Nothing changes until you use them. | **Use detailed chapters** switches the book to the community's chapters. Using them on the book's page does the same. Once you have chosen, the book stays off this list, even if you later switch it back to the file's chapters. |
 | **Converted to play in browsers** | The audio format doesn't play in web browsers, so the server converts it while someone listens in the web player. The apps play it as it is. | None needed: it works. Re-encode the file if you'd rather the server didn't convert it, or ignore it. |
 
 ### Working through a list
@@ -63,8 +65,9 @@ disk. Click the title or cover to open the book's page.
   *kind*"), each with **Show again**. **Back to the open ones** returns.
 - Tick the box on several rows (or **Select all**) to act on them together
   from the bar at the bottom: **Ignore** (or **Show again** in the ignored
-  view), and **Read again** in **Files that couldn't be read** (it reads two
-  books at a time, so a long selection takes a moment).
+  view), **Read again** in **Files that couldn't be read** (it reads two
+  books at a time, so a long selection takes a moment), and **Use detailed
+  chapters** in **More detailed chapters available**.
 - Long lists load 50 books at a time; **Show more** loads the next.
 
 When a list is empty it says **All clear** - the category you were working on
@@ -273,7 +276,7 @@ seconds.
 
 | Row | What it tells you |
 |---|---|
-| **ffmpeg** | Found (with its version), so formats browsers can't play are converted while someone listens; "Downloaded into the data folder" when the server fetched its own copy. **Missing**: those formats won't play in the web player. |
+| **ffmpeg** | Found (with its version), so formats browsers can't play are converted while someone listens, and [community chapters](books.md#community-chapters) start on the pause in the audio; "Downloaded into the data folder" when the server fetched its own copy. **Missing**: those formats won't play in the web player, and community chapter starts may be a few seconds off. |
 | **ffprobe** | Found, so lengths, chapters and codecs are read from the files. **Missing**: lengths and chapters come only from tags. |
 | **Community metadata** | **Healthy** with how fast the service answered, **Needs attention** when it isn't responding, or **Off** (switched off, or no service address set). The server only asks the service while the lookup is on, at most once a minute. |
 | **HTTPS certificate** | **Healthy** with the days left and who issued it, **Needs attention** when it expires within two weeks, has expired or its file can't be read, **Waiting** while Let's Encrypt hasn't issued it yet, or **Off** with plain HTTP (a reverse proxy in front handles HTTPS). |
