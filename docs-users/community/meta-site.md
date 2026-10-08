@@ -15,6 +15,12 @@ information: every recording lists its **narrators**, and one book can hold many
 recordings (for example a Stephen Fry reading and a Jim Dale reading), each with
 its own runtime, publisher, chapters and store identifiers.
 
+Those chapter lists are used by AudioSilo servers too: a matched book whose
+files have no chapters of its own gets its recording's chapters, fitted onto
+the server's copy of the audio, and an admin can switch a book with broad
+chapters to the more detailed community ones (see
+[Community chapters](../admin/books.md#community-chapters)).
+
 ![The AudioSilo Meta home page](/img/screenshots/meta/home.png)
 
 ## Browsing the database

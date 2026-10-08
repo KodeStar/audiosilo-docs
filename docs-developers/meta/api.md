@@ -501,7 +501,9 @@ only a variant places keeps that variant.
 
 The chapter list for one recording of a work: `{"chapters": [{title, start_ms,
 length_ms}]}`, ordered by chapter index. An unknown work/recording yields an empty
-list, not a 404.
+list, not a 404. audiosilo-server's
+[community chapter check](../server/community-chapters.md) calls it for the
+`recording_id` a `lookup` names, and fits the list onto the book's own audio.
 
 ## `/api/v1/people/{id}?limit=&offset=`
 

@@ -189,6 +189,13 @@ which sends the same for every book it looks up), and never anything about who
 listens. See
 [Matching with community metadata](books.md#matching-with-community-metadata).
 
+While the lookup is on, the server also checks matched books against the
+community's chapter lists in the background (see
+[Community chapters](books.md#community-chapters)). That sends only the book's
+ASIN or ISBN and then the community's own ids for the recording it names.
+Turning the lookup off stops the checks; chapters already in use stay until
+you switch a book back.
+
 - Flipping the switch takes effect immediately for **everyone connected**, and
   the choice is remembered across restarts.
 - Turning it **off** is a one-tap privacy switch: your server stops contacting

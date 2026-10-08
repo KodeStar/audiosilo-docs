@@ -263,6 +263,35 @@ disc. Set the folder holding the discs to **Always one book** and they become
 one book, with everyone's progress carried over (see
 [Books split into disc folders](./admin/libraries.md#books-split-into-disc-folders)).
 
+### A book has no chapters (or only a few broad ones)
+
+Chapters come from the audio files: an M4B's embedded chapter list, or one
+chapter per file in a folder of MP3s. A book that is one long file with no
+chapter marks shows as 30-minute **Parts** in the player.
+
+AudioSilo can also take the chapters from the
+[community database](./community/meta-site.md), which has chapter lists for
+most recordings:
+
+1. Make sure community metadata is on (**Server > Settings > Community
+   metadata** in the admin console).
+2. **Match the book.** AudioSilo doesn't read ASINs from the files' tags, so a
+   book is only checked once it is matched: open it in **Library** and use
+   **Match with community metadata**, or match many at once with **Match
+   automatically** on the Health page.
+3. Open the book's page and look at the **Community chapters** panel on the
+   Chapters card. **Check now** checks straight away. A book with no chapters
+   of its own uses the community's as soon as they fit; a book with broad
+   chapters offers **Use detailed chapters**.
+
+If the panel says the community's chapters are "for another edition" or
+"don't line up", your copy is a different release from the one the community
+timed, and its chapters can't be used. If a chapter "runs from one file into
+the next", merging the files into one (an M4B, say) would let them fit. See
+[Community chapters](./admin/books.md#community-chapters) for every message.
+Health's **Long books without chapters** list says the same reason on each
+book.
+
 ### Covers are missing
 
 The server looks for cover art in this order:

@@ -70,6 +70,7 @@ mappings:
 | Playback engines / native module | [frontend/playback.md](../frontend/playback.md) |
 | Downloads / PWA, the offline companion (`offline-meta.ts`) | [frontend/offline.md](../frontend/offline.md) + `/users/listening/offline-downloads` |
 | Scanner, detection, metadata | [server/scanner.md](../server/scanner.md) + `/users/getting-started/organizing-your-library` |
+| Community chapters (`internal/chapteralign`, `internal/chaptercheck`, `catalog/communitychapters.go`, the Chapters card's panel) | [server/community-chapters.md](../server/community-chapters.md) + the Community chapters section of `/users/admin/books` (and `/users/admin/health` for the Health rows) |
 | Auth, invites, shares | [server/auth-and-security.md](../server/auth-and-security.md) + `/users/admin/users-and-invites`, `/users/admin/sharing` |
 | Manager features | `/users/manager/*` + [manager developer pages](../manager/overview.md) + `manager/` screenshots |
 | Meta schemas, `metaserve` API, or intake tooling | [meta developer pages](../meta/overview.md) (data model, API, contributing) - and the [cross-repo contract](../architecture/cross-repo-contract.md) when the server's `/meta` envelope is affected |

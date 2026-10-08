@@ -44,6 +44,8 @@ internal/catalog/     the data layer
 internal/library/     fs view + scanner
 internal/metadata/    tag/ffprobe extraction
 internal/media/       streaming + covers
+internal/chapteralign/ fits community chapter lists onto a book's audio
+internal/chaptercheck/ background community chapter checks
 internal/toolfetch/   ffmpeg/ffprobe download
 internal/api/         HTTP transport
 internal/server/      HTTP(S) server + TLS
@@ -177,6 +179,16 @@ MP3 for codecs browsers can't decode), `DirectPlayable` (the codec allow-list
 clients use to decide whether to request `?transcode=1`), and `EmbeddedCover`
 extraction. See [Media & streaming](media.md).
 
+### `internal/chapteralign` and `internal/chaptercheck`
+
+[Community chapters](community-chapters.md). `chapteralign` is the pure fit of a
+community recording's chapter list onto a book's own files and chapters
+(anchors by title and time, proportional placement, snapping to pauses), with
+no I/O of its own. `chaptercheck` is its `Runner`: a background pass every 10
+minutes (and on a `Kick` after any book change, through `Catalog.OnBookChange`) plus one-book checks on request, which
+fetches the list through `internal/meta`, finds pauses with ffmpeg
+(`media.DetectSilences`) and records the outcome through `catalog`.
+
 ### `internal/toolfetch`
 
 On-demand download of a cached static ffmpeg/ffprobe build into
@@ -258,7 +270,10 @@ strict site-wide one and the per-document `htmlCSP` for the player). See
 graph TD
   cmd["cmd/audiosilo"] --> launcher["pkg/launcher"]
   launcher --> api & server & toolfetch & backup & notify
-  api["internal/api<br/>(transport only)"] --> auth & catalog & library & media & config & web & backup & notify & importer
+  api["internal/api<br/>(transport only)"] --> auth & catalog & library & media & config & web & backup & notify & importer & chaptercheck
+  chaptercheck --> catalog & library & media & chapteralign
+  catalog --> chapteralign
+  chapteralign --> metadata
   importer --> catalog
   server --> config
   config --> backup

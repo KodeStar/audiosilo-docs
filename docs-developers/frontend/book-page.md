@@ -165,6 +165,14 @@ the list is empty), the community tabs with their `Attribution`, `BookmarksSecti
 - else the files, each jumping by `track` (a file after one of unknown length has a
   `NaN` start, and `timelineStarts` then gives the timeline nothing).
 
+When the chapters answer says `chapters_source: "community"` (the server fitted a
+community recording's chapter list onto the audio; see
+[Community chapters](../server/community-chapters.md)) and the rows are real
+chapters, the list ends with a quiet caption, a globe icon and "Chapters from the
+AudioSilo community database" (`book.chapters.community`; `fromCommunity` on
+`BookChaptersTab`, `testID` `book-chapters-community`). Nothing else changes: the
+chapters have the same shape either way.
+
 "The whole book" is the player's `BookTimeline` for **any** book, with pins from
 `useBookAnnotations` (`pinsOf`). While the book is loaded its place follows the player
 (`timelinePosition(selectBookPosition)`) and a tap or drag `seekBook`s; otherwise it

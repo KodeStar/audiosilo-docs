@@ -20,15 +20,18 @@ thing to understand before touching it:
 - **Durable state** - `progress`, `bookmarks`, `notes`, `listening_history`,
   `listening_sessions`, `listening_daily`, `favourites`, `up_next`,
   `collection_items` and `ratings` (per-user), plus `folder_overrides`, `book_enrichment`,
-  `issue_ignores`, `book_overrides`, `chapter_overrides` and `book_covers`
-  (per-library config) - is keyed by **`(library_id, rel_path)`**, with **no
+  `issue_ignores`, `book_overrides`, `chapter_overrides`, `chapter_choices` and
+  `book_covers` (per-library config) - is keyed by **`(library_id, rel_path)`**, with **no
   foreign key to `books`**. The rest of a listener's own state hangs off the
   account rather than a path: `collections`, `collection_shares` and
   `listening_goals` (see [Lists, ratings and goals](#lists-ratings-and-goals)).
 
 A third, small group sits beside the index: **`scan_runs`**, the history of
-the scans that built it. It is a record of the index, not durable user state,
-so it goes with its library and is trimmed to the newest runs.
+the scans that built it, and **`community_chapters`**, each book's last
+community chapter check. They are records of the index, not durable user
+state: `scan_runs` goes with its library and is trimmed to the newest runs,
+and `community_chapters` is rebuilt by checking again (it is path-keyed with no
+FK to `books`, so an index rebuild keeps it and a move carries it).
 
 The server's own records - the admin audit log, the notification destinations
 and the event feed (`0019`) - belong to neither half: they hang off no library
@@ -94,6 +97,8 @@ erDiagram
     libraries ||--o{ book_covers : "durable config"
     libraries ||--o{ issue_ignores : "durable config"
     libraries ||--o{ scan_runs : "scan history"
+    libraries ||--o{ community_chapters : "path-keyed, NO FK to books"
+    libraries ||--o{ chapter_choices : "path-keyed, NO FK to books"
     users ||--o{ progress : ""
 ```
 
@@ -194,8 +199,9 @@ covered in [Auth & security](auth-and-security.md#authorization-shares--scope).
 **`books`** *(0001; `added_at` in 0004; `codec` in 0008; `published`,
 `description`, `has_cover` and `scanned` in 0016; `scan_error`,
 `scan_error_file`, `scan_error_detail` and `suspect_parts` in 0017; `split_parent` in
-0022; `cover_art` and `cover_color` in 0023; `released` and `released_checked` in
-0037)* - one row per book,
+0022; `cover_art` and `cover_color` in 0023; `chapters_source`, `chapters_fit`,
+`scanned_chapters` and `chapters_hash` in 0035; `released` and `released_checked`
+in 0037)* - one row per book,
 `UNIQUE (library_id, rel_path)`. Columns: `is_folder` (folder book vs
 single-file book), identity metadata (`title`, `author`, `series`,
 `series_index`, `narrator`), `duration`, `asin`/`isbn` (optional external ids -
@@ -298,6 +304,37 @@ library-relative audio file to stream - playback is purely path-based),
 `start`/`end` (offsets *within that file*), and **`book_offset`** (the
 chapter's start on the whole-book timeline). See
 [Scanner](scanner.md#chapter-normalization) for how these are built.
+
+While a book plays a community recording's chapter list instead of its own,
+the `chapters` rows hold the community's chapters and `books.chapters_source`
+says so (`''` = the scan's own, `'community'`; `chapters_fit` names the fit in
+the rows so an unchanged one is not rewritten). `books.scanned_chapters` always
+holds the scan's own chapters as JSON with their scanned titles (`UpsertBook`
+writes it, as it writes `scanned`). `refreshEffective` (`applyChapterSource`)
+puts the community's over the scan's in the same transaction when a current
+check fitted and either an admin chose them (`chapter_choices`, below) or, with
+no choice, the book has no chapters of its own. Chapter renames apply after,
+either way.
+
+**`community_chapters`** *(0035)* - PK `(library_id, path)` (FK to `libraries`
+`ON DELETE CASCADE` only, no FK to `books`): a book's last community chapter
+check. `basis` (identifiers, duration, a hash of the scan's chapters and the
+book-relative file paths: what the check saw; a book whose basis differs is due
+again and its check stale), `status` (`fill`, `titles`, `refine`,
+`restructure`, `same`, `length_mismatch`, `structure_mismatch`,
+`crosses_files`, `no_match` or `unavailable`), `work_id`, `recording_id`,
+`list_hash` (the community list's; the same list for the same audio only renews
+`checked_at`), `detail` (JSON, what the fit found), `chapters` (JSON, the fitted chapters,
+`[]` unless fitted) and `checked_at`. Rebuilt by checking again, but kept
+through an index rebuild and moved with the book (`moveBookState`). See
+[Community chapters](community-chapters.md).
+
+**`chapter_choices`** *(0035)* - PK `(library_id, path)`, no FK to `books`: an
+admin's choice of a book's chapter source (`source` = `files` or `community`;
+no row = automatic), `updated_by` (`ON DELETE SET NULL`), `updated_at`. Durable
+admin state like `book_overrides`, kept apart from it because it is not a
+metadata value (no part of `edited` / `edited_fields`); moved with the book's
+other edits, never copied onto a joined book.
 
 **`books_fts`** *(0001)* - see [FTS design](#fts-design-books_fts) below.
 
@@ -711,7 +748,11 @@ works can't push the books' enrichments out (`catalog.PruneMetaCache`). What is 
   so an edit outlives its author's account), `updated_at`. One row per edited
   field; `field` is one of `catalog.OverrideFields` (`title`, `author`,
   `narrator`, `series`, `series_index`, `published`, `description`, `asin`,
-  `isbn`). Values are validated and normalized by `catalog.normalizeOverride`.
+  `isbn`), whose values are validated and normalized by
+  `catalog.normalizeOverride`. One more field lives here that is not a
+  metadata value: `chapter_source` (`files` | `community`), an admin's choice of
+  [chapter source](community-chapters.md#storing-the-check-and-choosing-the-chapters),
+  which never counts as an edit.
 - **`chapter_overrides`** *(0016)* - PK `(library_id, path, file, start_ms)`,
   `title`, `updated_by`, `updated_at`. A chapter-title edit, keyed by the
   chapter's identity rather than its position: `file` is the chapter's audio file
@@ -739,7 +780,7 @@ works can't push the books' enrichments out (`catalog.PruneMetaCache`). What is 
   (FK to `users`, `ON DELETE SET NULL`), `created_at`. An admin's "ignore this"
   on a Health issue; `kind` is one of `catalog.IssueKinds` (`scan_error`,
   `suspect`, `split_discs`, `duplicate`, `no_cover`, `unmatched`,
-  `no_chapters`, `transcode`). Path-keyed like the rest of this group, so an ignore survives a
+  `no_chapters`, `detailed_chapters`, `transcode`). Path-keyed like the rest of this group, so an ignore survives a
   rebuild, moves with the book (`MoveDurableState`) and needn't point at an
   indexed book.
 
@@ -854,6 +895,7 @@ The migration history so far:
 | 0032 | `library_metadata_source` | `libraries.metadata_source` (`TEXT NOT NULL DEFAULT 'tags'`, so every existing library reads as before) |
 | 0033 | `match_runs` | `match_runs` and `match_run_items`, the bulk community matching runs (Health > Not matched) and each book's best candidate, with their indexes |
 | 0034 | `listening_import` | `imports`, `import_payloads` and `import_progress_prior`; `import_id` on `listening_sessions`, `listening_daily`, `listening_history` and `bookmarks` (`0` on every existing row) with partial indexes; `bookmarks.import_note`; `idx_sessions_started` and `idx_sessions_user_started`, since the session lists now order by start: see [Listening imports](#listening-imports) |
+| 0035 | `community_chapters` | `community_chapters` (each book's last community chapter check: path-keyed, rebuildable), `chapter_choices` (an admin's chapter source per book: durable, path-keyed), `books.chapters_source` / `chapters_fit` / `scanned_chapters` / `chapters_hash`: see [Community chapters](community-chapters.md) |
 | 0036 | `cover_source` | `book_covers.source` (`TEXT NOT NULL DEFAULT 'edited'`) and the partial index `idx_book_covers_community`; backfills `community` conservatively from the audit log (the match dialog's `book.cover_set` saves) and applied match runs (see the migration). A cover it can't place stays `edited`, which a clear keeps |
 | 0037 | `released` | `books.released` (`TEXT NOT NULL DEFAULT ''`) and `books.released_checked` (`0` on every existing row, so the next scan reads each unchanged book's date tags once) |
 

@@ -83,6 +83,8 @@ At the top, **The whole book**: a timeline with a segment for each chapter, the 
 
 Below it, every chapter in order: its number, its title (with a small bookmark when you've marked something in it), when it starts (on a tablet or computer), and its length, or a tick once you've heard it. The chapter you're in is highlighted. Tap any chapter to listen from there: on a phone the full player opens on it, elsewhere it plays where you are.
 
+Some books get their chapters from the [community database](../community/meta-site.md) rather than from their files, when the files have none of their own or your admin chose the community's more detailed ones. They work exactly like any other chapters, and the list ends with a quiet line saying so: *"Chapters from the AudioSilo community database"*.
+
 A book with no chapter marks lists its files instead. If it's one long file, it gets **Parts** instead, with a note explaining why: *"This book has no chapter marks"*. They're the same 30-minute parts the player uses, and you can change their length in [Settings](settings.md#playback) under **Chapter length**.
 
 ### History

@@ -389,6 +389,24 @@ CSP-sensitive work against a real build served by Go. The console's own gate is
   and the "Files on disk" section with the disabled on-disk rename. The more
   menu's "Read the files again" calls `POST …/book/rescan`. `?match=1` opens the
   match dialog on arrival (Health's "Review match"); closing it drops the param.
+  The Chapters card opens with the **Community chapters** panel
+  (`features/book/community-chapters.tsx`; its words and its one action come
+  from `communityState` in `book-model.ts`, a pure function of the page's
+  `community_chapters`, `chapter_source` and `chapter_choice`). It shows for a
+  matched book or one with a check: the status line, the notes ("Not in this
+  copy: …", the approximate starts while community chapters are in use, the
+  merge hint for `crosses_files`), the source switch as one `PATCH …/book
+  {chapter_source}` ("Use the community's" / "Use detailed chapters" /
+  "Use the file's chapters"; switching a `fill` back from the files sends
+  `auto`), "Review titles" for a `titles` check (each title, or all, as one
+  `chapters.set` rename, so they are ordinary revertable renames; a title the
+  admin already took drops out of the list), and "Check now" / "Check again"
+  (`POST …/book/community-chapters`, shown with the `metadata` capability on a
+  matched book). While `community_checking` is set the page polls the book
+  (`useAdminBook`) and the panel shows a spinner; when the check ends it
+  refetches the book lists and the Health issues. With community chapters in
+  use, a rename's toast and the revert hint name the community's title instead
+  of the file's.
 - **Library > Libraries** - library cards (`GET /admin/libraries` with
   `book_count`, `available`, `scan` and the scan settings, polled every second
   while any library scans or waits in the job queue, every minute otherwise),
@@ -451,8 +469,14 @@ CSP-sensitive work against a real build served by Go. The console's own gate is
   fix (`issues-model.ts` `FIXES`): "Upload a cover" opens the book page, "Review
   match" opens it with `?match=1`, "Choose detection" opens Library > Folders on
   the book's folder, "Read again" calls `POST …/book/rescan` and toasts whether
-  the problem is gone, and "Join into one book" (`split_discs`, listed by its
-  first disc) sets `book` on the folder holding the discs (`setFolderMode`). A
+  the problem is gone, "Join into one book" (`split_discs`, listed by its
+  first disc) sets `book` on the folder holding the discs (`setFolderMode`), and
+  "Use detailed chapters" (`detailed_chapters`) is a `POST /admin/books/bulk`
+  with `chapter_source: "community"` (`useIssueActions().takeDetailed`, which the
+  bulk bar uses too, in batches of 1000). A `no_chapters` row whose
+  `chapters_check` is a failed check (`length_mismatch`, `structure_mismatch`,
+  `crosses_files`, `no_match`, `unavailable`) adds a line saying why community
+  chapters weren't used (`chaptersCheckNote`). A
   row's re-read or join runs once at a time: its fix button is disabled while
   it is in flight (`useIssueActions().fixing`). Rows select into a floating bulk bar, which acts only on
   the selected books still listed (one fixed or ignored on its own row has

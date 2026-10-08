@@ -174,7 +174,9 @@ are listed as a count and the first ten, and a notification destination's
 change says `address_changed` / `secret_changed` without either value.
 Deliberately **not** audited: sign-ins and listening (Activity and People >
 Devices have them), scans, rescans and job cancels (Health > Jobs keeps their
-history), and anything a non-admin does. Backup **downloads** are audited
+history), a community chapter check (it changes nothing an admin chose; picking
+a book's chapter source is a `book.edit` or `book.bulk_edit`, with
+`chapter_source` in its details), and anything a non-admin does. Backup **downloads** are audited
 (a `GET`; a `HEAD` sends nothing and isn't), since a backup holds every
 account's hashes.
 

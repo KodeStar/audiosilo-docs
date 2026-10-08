@@ -1,6 +1,6 @@
 ---
 title: "Books and metadata"
-description: "Browsing and filtering every book in the AudioSilo admin console, fixing titles, authors and series one book at a time or in bulk, where each value comes from, custom covers, chapters, matching with community metadata, merging author spellings and spotting series gaps."
+description: "Browsing and filtering every book in the AudioSilo admin console, fixing titles, authors and series one book at a time or in bulk, where each value comes from, custom covers, chapters (including chapters from the community database), matching with community metadata, merging author spellings and spotting series gaps."
 ---
 
 The **Library** destination of the [admin console](console-tour.md) is where
@@ -177,6 +177,90 @@ Click a chapter's title to rename it. Enter (or clicking away) saves the new
 name at once as an override; Escape cancels. A renamed chapter has a revert
 button that puts the file's title back.
 
+#### Community chapters
+
+The [community database](https://meta.audiosilo.app) has chapter lists for
+most of the recordings it knows. When
+[community metadata](server.md#community-metadata) is on, AudioSilo checks
+each [matched](#matching-with-community-metadata) book (one with an ASIN or
+ISBN) against the chapter list of the exact recording it is matched to, and
+the **Community chapters** panel at the top of the Chapters card says what it
+found.
+
+:::note Match the book first
+AudioSilo doesn't read an ASIN from the files' tags, so a book is only checked
+once it is matched: with **Match with community metadata** on its page, or
+[Match automatically](health.md#matching-every-book-at-once) for many books at
+once. Until the first check, a matched book's panel says "Not checked against
+the community's chapter lists yet."
+:::
+
+Checks run in the background: matching a book (on its page or with **Match
+automatically**), editing it, or a scan that finds it changed starts one soon
+after, and every ten minutes the server also looks for books due a check. A book is
+checked again when its ASIN or ISBN, its length or its number of files
+changes, and otherwise once a month. **Check now** (**Check again** once it has
+been checked) runs a fresh check straight away, fitting the chapters again; the panel says "Checking the
+community's chapters for this copy..." until it finishes.
+
+**How the chapters are fitted.** Your copy is rarely timed exactly like the
+community's: an intro or the closing credits may be trimmed, a publisher's
+preview of another book may be missing from the end, and releases drift by a
+few seconds over many hours. So AudioSilo first pins the places where your copy
+and the community's agree: the book's own chapters whose titles match a
+community chapter at about the same time, and the boundaries between its
+files. The community chapters in between are spread in proportion, then each
+is moved onto the pause in the audio where the chapter break is, starting just
+before the reading resumes. For example, Stephen Fry's *Mythos* as one M4B
+with 34 broad chapters gets the community's 173 detailed ones, each starting on
+its pause (the 174th, "Preview: Chapter 1 from Odyssey", isn't in that copy).
+Pauses are found with ffmpeg, the tool the server already uses to convert
+audio for browsers; without it, chapter starts may be a few seconds off.
+
+What the panel says, and what it offers:
+
+| The panel says | What it means | The button |
+|---|---|---|
+| "Using the community's *N* chapters: the files have none of their own." | The book had no chapters (none at all, or a folder book with only one chapter per file), so the community's are used **automatically**. | **Use the file's chapters** goes back to the files' own. |
+| "The community has *N* detailed chapters that fit this copy (the file has *M*)." | Every chapter the book has is also a community chapter, and the community divides them more finely. The book is also listed under [More detailed chapters available](health.md#the-kinds-of-issue) on the Health page. | **Use detailed chapters**. |
+| "The community titles *N* chapters differently." | The same chapters at the same times, with other titles. | **Review titles** lists each one with its community title and "Now *current title*". **Use** takes one title, **Use all *N* titles** takes them all. They are saved as ordinary chapter renames, so each can be reverted. |
+| "The community divides this copy into *N* chapters, differently from the file's *M*." | The community's chapters fit the audio, but break it in different places. | **Use the community's**. |
+| "The file's chapters match the community's." | Nothing to do. | None. |
+| "The last check didn't finish (the community service didn't answer, or it ran out of time), so this is the one before. Check again later." | A note under the panel's line: the last check failed, and the panel shows the result before it. | **Check again** |
+| "The book has changed since the last check (other files or a new match), so its chapters wait for the next one." | The files or the match changed after the check, so its result is set aside and the book keeps its own chapters until it is checked again (within about 10 minutes, or **Check again**). | None. |
+| "Using the community's *N* detailed chapters in place of the file's *M*." (or "*N* chapters in place of the file's") | You chose the community's chapters. | **Use the file's chapters** switches back. |
+| "The community has *N* chapters that fit this copy. You chose the file's chapters." | A book without chapters of its own, where you switched back to the files. | **Use the community's**. |
+
+When the community's chapters can't be used, the panel says why:
+
+- **Another edition** - "The community's chapters are for another edition:
+  this copy runs *11h 42m*, theirs *15h 3m*." The audio
+  is a different cut of the book (abridged, another narrator's release, a
+  different edition), so the lengths don't agree.
+- **Chapters don't line up** - "The community's chapters don't line up with
+  this copy's own." Too few of the book's own chapters match community ones.
+- **A chapter crosses into the next file** - "The community's chapter
+  “*title*” runs from *02.mp3* into *03.mp3*, so it can't be played as one
+  chapter of a file." In a book made of several files, every chapter has to
+  start and end inside one file. "Merging the files into one (an M4B, say)
+  would let the community's chapters fit."
+- "The community has no recording for this book's ASIN or ISBN."
+- "The community has no chapter list for this recording."
+
+Two notes can appear under the panel's line: "Not in this copy: *titles*." for
+community chapters your copy doesn't have (a preview, end credits), and "*N*
+chapter starts couldn't be matched to a pause and may be a few seconds off."
+when community chapters are in use but some starts couldn't be placed on a
+pause.
+
+Your choice is kept like your other edits: rescans keep it, and switching back
+to the file's chapters restores them exactly as they were, renames included.
+You can rename a community chapter like any other (the revert button's hint
+shows the community's title). Nothing is written to your files. Listeners get
+community chapters as ordinary chapters, in every version of the apps, and the
+book's chapter list in the player ends with "Chapters from the AudioSilo
+community database".
+
 ### Files
 
 **Files** lists the book's audio files with their codec, bitrate, size, length
@@ -263,6 +347,9 @@ missing.
 
 To match many books at once, use **Match automatically** on the Health page
 (see [Matching every book at once](health.md#matching-every-book-at-once)).
+
+Once a book is matched, AudioSilo also checks the community's chapter list for
+it (see [Community chapters](#community-chapters)).
 
 Accepted values are marked **Community** and are locked like your own edits;
 you can revert them the same way. If you have unsaved edits on the page, save
