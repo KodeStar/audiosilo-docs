@@ -429,7 +429,9 @@ root. Its sections are the modes of `library-modes.ts`: `books`, `authors`,
   `AuthorsMode` / `NarratorsMode` (on the shared `PeopleMode` in
   `src/components/series/people-mode.tsx`: portrait cards, letter heads, the
   "no author listed" count), `SeriesMode` (series cards with a mini shelf of owned
-  spines and dashed gaps), `CollectionsMode` (Favourites, own and shared
+  spines and dashed gaps; a card fetches its books once it shows, and on a
+  `series_books` server the cards that show together share one request:
+  [Series cards share one request](state-and-data.md#capability-gated-reads-player-redesign-phase-1a)), `CollectionsMode` (Favourites, own and shared
   collections, New collection) and `FoldersMode` (the old libraries-then-folders
   flow and its Favourites row, unchanged).
 
@@ -494,7 +496,7 @@ a `metadata` server, and shares reading-order picks with the book page
 binds the device-wide `keepAhead` setting through the Downloads page's exports,
 only once the downloads store knows the device can download. Search's series
 results reuse the Library's `SeriesCard`, each asking for its series' books only
-once it shows.
+once it shows (batched with the other cards on a `series_books` server).
 
 ## Styling conventions
 

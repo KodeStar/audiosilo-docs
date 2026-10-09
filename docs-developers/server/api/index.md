@@ -303,6 +303,8 @@ single-shot with a `limit` and no pagination.
     "meta_bundle": true,
     "meta_covers": true,
     "browse_people": true,
+    "series_memberships": true,
+    "series_books": true,
     "cover_sizes": true,
     "next_book": true,
     "queue": true,
@@ -332,7 +334,7 @@ material is drawn only when it is true), `export` whether the admin
 `upload`/`websocket` are roadmap phases that will flip on when they land.
 `demo.enabled` drives the "Try the demo" affordance.
 
-The player-redesign data API added four more. A server that predates a flag omits
+The player-redesign data API added these. A server that predates a flag omits
 it, so treat a missing flag as `false`:
 
 | Flag | Gates |
@@ -341,6 +343,8 @@ it, so treat a missing flag as `false`:
 | `browse_people` | the browse lists [`/authors`, `/narrators`](reference.md#get-apiv1librariesidauthors--get-apiv1librariesidnarrators) and [`/series`](reference.md#get-apiv1librariesidseries), and `narrator=` on [`/books`](reference.md#get-apiv1librariesidbooks) |
 | `cover_sizes` | `?size=160\|320\|640` thumbnails on [`/cover`](reference.md#get-apiv1librariesidcover) |
 | `next_book` | [`/next`](reference.md#get-apiv1librariesidnext), the server's answer to what plays after a book |
+| `series_memberships` | `memberships=1` on [`/books`](reference.md#get-apiv1librariesidbooks) and [`/series`](reference.md#get-apiv1librariesidseries): a book counts in every series it is in |
+| `series_books` | [`/series/books`](reference.md#get-apiv1librariesidseriesbooks), the first page of several series' books in one request |
 
 `meta_covers`, always equal to `metadata`, came later: the server serves the
 community covers a book's `/meta` envelope hands out at

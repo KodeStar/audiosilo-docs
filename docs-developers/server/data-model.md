@@ -212,8 +212,12 @@ schema), `published` (`YYYY[-MM[-DD]]`) and `description` (only an admin edit or
 an accepted community match supplies these today; the scanner reads neither),
 `more_series` (the effective list of the other series the book is in beyond
 `series`, as JSON `[{"name","position"}]`, `'[]'` for none: only an edit or a
-community match supplies it, an override like any other field; the full-text
-index's series column holds every series name), `released` (the date the file's tags give, `YYYY[-MM[-DD]]` via
+community match supplies it, an override like any other field; an admin edit
+that sets or reverts `series` to one of these swaps the two, writing the list
+and `series_index` as overrides (a value the scan already gives is reverted to
+it instead; the console sends the values itself, so its swap writes them as
+edits);
+the full-text index's series column holds every series name), `released` (the date the file's tags give, `YYYY[-MM[-DD]]` via
 `metadata.ReleaseDate`: usually the recording's, so it is a separate scanned
 column, never `published`, read only by the admin list's release-date sort as
 the fallback for a book with no `published`) and `released_checked` (`1` once a

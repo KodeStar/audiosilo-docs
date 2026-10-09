@@ -381,7 +381,13 @@ CSP-sensitive work against a real build served by Go. The console's own gate is
   from the entry alone (`offersBook`, `offersCollection`).
 - **Book page** (`/admin/library/book?library=&path=`) - `GET`/`PATCH
   /admin/libraries/{id}/book` (click-to-edit fields with provenance, revert,
-  a save bar with a diff, chapter renames), custom covers (`PUT`/`DELETE
+  a save bar with a diff, chapter renames; committing **Series** as a name the
+  book's Other series lists drafts the server's series swap beside it,
+  `commitField` / `seriesSwap` in `book-model.ts`, unless the admin drafted Other
+  series themselves, and `saveRequest` sends the saved list when the admin took a
+  drafted swap back, so the server never swaps behind the dialog; the Undo of a
+  series revert that swapped, `undoRevertRequest`, sends the list and position it
+  had), custom covers (`PUT`/`DELETE
   …/cover`), the match dialog (`GET …/book/match`, which matches the book's tag
   and path facts through metaserve's `works/match`; its search box opens with
   the book page's `match_query`, which the server builds with

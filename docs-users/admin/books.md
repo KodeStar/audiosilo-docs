@@ -87,7 +87,9 @@ the screen with the number selected and two actions:
   selected book. Only the fields you fill in change; where the books disagree,
   the field says how many different values there are, and leaving it blank
   keeps each book's own. One bulk edit covers up to 1,000 books and is saved
-  all or nothing.
+  all or nothing. Setting **Series** to one of a book's **Other series** swaps
+  the two on that book, as on [a book's page](#editing-details); books that
+  don't list that series simply get it as their main series.
 - **Add to share** - add the selected books to a [share](sharing.md). Each
   book is added as one of the share's folders, and everyone with the share
   sees it right away.
@@ -129,9 +131,24 @@ are its main one, and **Other series** the rest, written on one line with the
 book's number after a `#` and the series apart by `;`, for example
 `Discworld: City Watch #1; Omnibus`. Matching with community metadata fills it in
 for a book in several series.
+
 Click any value to edit it in place. Enter keeps the change (in
 **Description**, where Enter starts a new line, use Ctrl+Enter or ⌘+Enter),
 Escape cancels.
+
+To make one of the other series the main one, type its name into **Series**,
+spelled exactly as in **Other series**. The two swap places: the old main
+series, with its number, moves into **Other series** where the new one was, and **Series number** becomes the book's number
+in the new main series (unless you change the number yourself). The fields show
+the swap before you save, and **Review and save** lists every value that
+changes. If you edit **Other series** yourself in the same go, your list is kept
+as you typed it (a **Series number** the swap already filled in stays, so check
+it before saving). The swapped values are saved as your edits, so each can be
+reverted. Reverting **Series** puts back the series the last scan found, and when
+that series is in **Other series** it swaps back the same way (the number then
+follows the file again, as before the swap); when the series you had before the
+swap was itself an edit, reverting doesn't bring it back.
+Matching with community metadata never swaps: the match sets every series itself.
 
 Each value has a marker saying where it came from:
 
