@@ -1099,8 +1099,8 @@ Otherwise the local steps decide, in order, and the first one with an answer win
    other series in list order, then the rest as the envelope lists them. On each
    the server reads the entry after the current work on the rail's **main view**
    (the smallest numeric position above the current one; unnumbered entries such
-   as an omnibus `1-3` are skipped). A rail whose next entry comes at or before the
-   current work on a rail ranked above it is skipped, so two orders of the same
+   as an omnibus `1-3` are skipped), passing over any entry that comes at or
+   before the current work on a rail ranked above it, so two orders of the same
    books (a chronological series and a publication-order one) can't step
    backwards or loop. The **first rail with a next entry decides**: the server
    places that entry for the caller exactly as `/meta` places
@@ -1118,9 +1118,9 @@ Otherwise the local steps decide, in order, and the first one with an answer win
    each, the candidate is the book of exactly that series in the same library
    (by its main series or one of its other series, at its position in that
    series) with the smallest higher position (ties by path), within the caller's
-   scope. A candidate that comes at or before the current book in a series ranked
-   above, which both books are in, is skipped. The first series with a later book
-   answers. When none has a later book but some other book in one of them is
+   scope, passing over any book that comes at or before the current book in a
+   series ranked above which both books are in. The first series with a later
+   book answers. When none has a later book but some other book in one of them is
    numbered, the answer is `{"source": "series"}`, the end of the series; when
    nothing else is numbered the step falls through.
 3. **`folder`** - the book's parent folder, listed whole as the caller may open it
@@ -3378,7 +3378,7 @@ A bulk edit of `series` (without `more_series`) makes the
 [series swap](#patch-apiv1adminlibrariesidbook) one book at a time: only the
 books whose `more_series` lists the new series swap; the others simply get the
 new main series. One book whose old main series can't be listed refuses the whole
-request.
+request, and the error's reason names that book's path.
 
 ### `GET /api/v1/admin/authors` · `GET /api/v1/admin/narrators`
 
@@ -3660,7 +3660,11 @@ at its old `series_index`, takes that entry's place in `more_series`, and
 `series_index` becomes the entry's position (unless the edit sets `series_index`
 itself). Reverting `series` swaps back the same way when the series it returns to
 is listed. The swapped `more_series` and `series_index` are written as the edit's
-own overrides, so they read as edited and can be reverted like any other edit.
+own overrides, so they read as edited and can be reverted like any other edit,
+except that a value equal to what the book has without an edit goes back to
+following the scan instead (for `series_index`, only when the new main series is
+the series the file's number belongs to). So swapping and reverting `series`
+leaves the number read off the file again, as it was.
 An edit that sets `more_series` never swaps, and neither does a community edit
 (`source: "community"`): a match lays out the series itself. If the old main
 series can't be listed (a name too long for a list entry, or a position out of

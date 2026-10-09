@@ -143,7 +143,8 @@ in the new main series (unless you change the number yourself). The fields show
 the swap before you save, and **Review and save** lists every value that
 changes. If you edit **Other series** yourself in the same go, nothing is swapped:
 your list is kept as you typed it. The swapped values are saved as your edits,
-so each can be reverted, and reverting **Series** swaps back the same way.
+so each can be reverted, and reverting **Series** swaps back the same way (the
+number then follows the file again, as before the swap).
 Matching with community metadata never swaps: the match sets every series itself.
 
 Each value has a marker saying where it came from:
