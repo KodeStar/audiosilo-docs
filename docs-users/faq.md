@@ -131,16 +131,15 @@ to the catalogue yourself - see
 Only as much as a lookup needs. To fetch the extra "About this book"
 information, the server asks meta.audiosilo.app about a book by its ASIN or
 ISBN, so the service sees those identifiers; matching a book in the admin
-console also sends what the match needs (its title, author, series and folder
-names). Nothing about who listens, and no file paths, is ever sent.
+console also sends what the match needs (title, author, series, folder names
+and the like; see [Server settings](./admin/server.md#community-metadata)).
+Nothing about who listens, and no file paths, is ever sent.
 
 If you'd rather not look books up over the internet at all, the admin can
 choose **Keep a local copy** for community metadata: the server then downloads
-the whole community database (about 450 MB, once a day, from GitHub; about
-1.8 GB on disk) and answers every lookup from it, so no book is looked up over
-the internet. Until the first copy has downloaded, lookups still go to
-meta.audiosilo.app. Book covers come from their own sites (Audible, Open
-Library, publishers) either way. See
+the whole community database from GitHub and answers every lookup from it.
+Until the first copy has downloaded, lookups still go to meta.audiosilo.app.
+What it costs in disk space and downloads is in
 [Keeping a local copy](./admin/server.md#keeping-a-local-copy). Or switch the
 community metadata off entirely, and the server contacts neither.
 

@@ -109,8 +109,9 @@ here.
 The **Updates** card holds the **Check for new versions** switch, on out of
 the box. While it is on, the server asks GitHub once a day whether a newer
 AudioSilo exists, and [Server > About](#about-and-updates) shows the answer.
-Turning it off stops every request to GitHub. See
-[What the update check sends](#what-the-update-check-sends).
+Turning it off stops the update check's requests to GitHub (a
+[local copy of community metadata](#keeping-a-local-copy) still downloads from
+GitHub). See [What the update check sends](#what-the-update-check-sends).
 
 ### Network & HTTPS
 
@@ -176,8 +177,7 @@ description, production details, the series they belong to, and (where the
 community has written them) character cards and story-so-far recaps - drawn
 from the free, community-run catalogue at
 [meta.audiosilo.app](https://meta.audiosilo.app). For that lookup only a
-book's ASIN or ISBN is sent, never file paths or who is listening; with a
-[local copy](#keeping-a-local-copy) nothing about a book is sent at all. See
+book's ASIN or ISBN is sent, never file paths or who is listening. See
 [A book's page](../listening/book-page.md#about-this-book) for what listeners
 see.
 
@@ -189,8 +189,7 @@ any ASIN or ISBN, what you type, and the names of up to three of its folders
 file name) go to the metadata service. Nothing is sent until you open the
 dialog (or start [Match automatically](health.md#matching-every-book-at-once),
 which sends the same for every book it looks up), and never anything about who
-listens. With a [local copy](#keeping-a-local-copy), matching is answered on
-your server and none of this leaves it. See
+listens. See
 [Matching with community metadata](books.md#matching-with-community-metadata).
 
 While the lookup is on, the server also checks matched books against the
@@ -200,18 +199,20 @@ ASIN or ISBN and then the community's own ids for the recording it names.
 Turning the lookup off stops the checks; chapters already in use stay until
 you switch a book back.
 
+With a [local copy](#keeping-a-local-copy) (once it is ready), none of these
+leaves your server: the lookup, matching and the chapter checks are all
+answered on it.
+
 - Flipping the switch takes effect immediately for **everyone connected**, and
   the choice is remembered across restarts.
 - Turning it **off** is a one-tap privacy switch: your server stops contacting
-  the metadata service at all (and, with a local copy, stops updating it), and
-  the extra section disappears from every player.
+  the metadata service at all, and the extra section disappears from every
+  player.
 - While it is on, **Status** says whether the service answers ("Responding ·
   *N* ms" or "Not responding"). With a local copy it says how the copy is
   doing instead ("Local copy ready", "Local copy downloading", "No local copy
   yet" or "Local copy couldn't download"), with a link to the details on
   [Health > System](health.md#the-local-copy-of-community-metadata).
-- **Source** chooses where the server looks books up; see
-  [Keeping a local copy](#keeping-a-local-copy) below.
 - **Audible marketplace** in the **Matching** card is the store you buy from
   (United Kingdom, United States, Germany and so on). When a recording sells in
   several stores, a match takes this store's ASIN; with **No preference** it
@@ -241,11 +242,15 @@ you switch a book back.
 
 #### Keeping a local copy
 
+Choose a local copy if you'd rather no book were looked up over the internet:
+it costs about 2 GB of disk and about 450 MB of download a day. Otherwise keep
+the default, which stores nothing.
+
 The **Source** card has two choices:
 
-- **Ask the metadata service for each book** (the default). Nothing is
-  stored. Each lookup sends the book's ASIN or ISBN to the service, as
-  described above, and matching sends what the match dialog needs.
+- **Ask the metadata service for each book** (the default). Each lookup sends
+  the book's ASIN or ISBN to the service, as described above, and matching
+  sends what the match dialog needs.
 - **Keep a local copy.** The server downloads a copy of the whole community
   database and answers every lookup from it, so **no book is looked up over
   the internet**: not the "About this book" lookups, not the match dialog or
@@ -253,12 +258,10 @@ The **Source** card has two choices:
 
 What a local copy costs:
 
-- **Disk space:** about 1.8 GB in the server's data folder, and up to about
-  twice that (about 3.5 GB) for a short while during an update, because the
-  new copy is downloaded before the old one is removed. The server checks
-  there is room first (about 2.5 GB free); if there isn't, the update is
-  skipped, the current copy stays in use, and Health > System says how much
-  space it needs.
+- **Disk space:** the copy takes about 1.8 GB in the server's data folder. An
+  update needs about 2.5 GB free on top of that while it runs; without that
+  room the update is skipped, the current copy stays in use, and Health >
+  System says how much space it needs.
 - **Bandwidth:** about 450 MB for each new copy. The server looks for a new
   copy once a day, and since the community database changes several times a
   day, that usually means a download every day.
@@ -269,17 +272,16 @@ How it behaves:
   apply** badge). After the restart the first copy is downloaded shortly
   after the server starts, then updated once a day; [Health > System](health.md#the-local-copy-of-community-metadata)
   shows its progress, and **Check now** there looks for a newer copy at once.
-- **Until the first copy is ready**, and for anything the copy can't answer,
+- **Until the first copy is ready**, and whenever the copy runs into an error,
   lookups go to the online service as before, so listeners never lose the
   extra section while it downloads. Health > System says when that is
   happening.
-- If the copy has no answer for a book the server already knew, the server
-  keeps showing the details it had rather than going blank.
-- The copy is downloaded from the AudioSilo Meta releases on **GitHub**, so
-  your server contacts GitHub once a day instead of meta.audiosilo.app for
-  each book. The download carries no information about your books or your
-  listeners.
-- Lookups are quicker too, since none of them waits on the internet.
+- A book the copy doesn't know is **not** looked up online. If the server
+  already had details for it, it keeps showing them rather than going blank.
+- The copy comes from GitHub, so the server contacts GitHub once a day instead
+  of the metadata service for each book (and lookups are quicker, since none
+  of them waits on the internet). The download carries nothing about your
+  books or listeners.
 - **Covers are not part of the copy:** book covers still come from their own
   sites (Audible, Open Library, publishers) in both modes.
 - While the **Look up community metadata** switch is off, the copy isn't
@@ -366,7 +368,7 @@ once a day plus whenever you press **Check now**. The request carries only your
 server's version (as `AudioSilo/<version>`), and GitHub sees the address it
 comes from, as with any request. Nothing about your libraries, books or people
 is sent, and there is no identifier for your server. While **Check for new
-versions** is off, the server makes no request at all. Nothing is downloaded or
+versions** is off, the server doesn't make this request at all. Nothing is downloaded or
 installed for you: updating is always your step.
 
 ## Logs

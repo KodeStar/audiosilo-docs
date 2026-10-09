@@ -295,9 +295,7 @@ Two notices can appear above the list:
 - "The community metadata service isn't responding": players still show what
   they already had, and new matches wait until it's back. **Metadata settings**
   opens [its settings](server.md#community-metadata). Nothing to do unless it
-  lasts a day. (With a local copy it only appears while the copy isn't
-  answering yet, since lookups go to the service until then; once the copy
-  answers, its own row says what's wrong.)
+  lasts a day. (With a local copy, it only appears until the copy is ready.)
 
 To change any of this, see [Server settings](server.md#settings): the HTTPS
 mode and certificate names are under **Network & HTTPS**, the tools under
@@ -315,24 +313,21 @@ about that copy:
 |---|---|
 | **Healthy** | "Answering from the local copy. No book is looked up over the internet." |
 | **Downloading** | The first copy is downloading ("Downloading the local copy for the first time."), or a newer one is downloading while the current copy keeps answering. |
-| **Waiting** | "No local copy yet. The first download starts shortly." It also shows for a short while after a restart, while the server opens the copy it already has (lookups use the online service meanwhile). |
+| **Waiting** | "No local copy yet. The first download starts shortly." It also shows briefly after a restart, while the existing copy opens. |
 | **Needs attention** | The copy still answers, but its last update failed, or it is newer than this version of AudioSilo understands. |
 | **Failed** | "The local copy couldn't be downloaded." There is no copy yet, so lookups go to the online service. |
 
 Under the row:
 
-- While a download runs, a progress bar with how much has arrived (the copy's
-  details then refresh every 2 seconds).
+- While a download runs, a progress bar with how much has arrived.
 - The copy's details: **Data version**, **Built**, **Data schema**, **Size on
   disk**, **Downloaded**, **Last check** and **Next check**.
-- "Using the online service until the local copy is ready", while there is no
-  copy to answer from yet: lookups go to the metadata service meanwhile, as
-  they would without a local copy.
-- "This copy is newer than this server understands": update AudioSilo. Until
-  then, anything the copy can't answer goes to the online service.
-- "The download failed" or "The last update failed. The current copy stays in
-  use.", with the reason, such as not enough disk space and how much is
-  needed. A failed check is tried again an hour later.
+- A notice when something needs saying: lookups are using the online service
+  until the copy is ready; the copy is newer than this server understands
+  (update AudioSilo); or the download or the last update failed, with the
+  reason (such as not enough disk space, and how much is needed). A failed
+  check is tried again an hour later, and a failed update keeps the current
+  copy in use.
 - **Check now** looks for a newer copy straight away (it's greyed out while a
   download runs). The server already checks once a day by itself, so this is
   only for when you don't want to wait.
