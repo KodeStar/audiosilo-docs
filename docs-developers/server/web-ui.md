@@ -554,7 +554,20 @@ CSP-sensitive work against a real build served by Go. The console's own gate is
   `system-model.ts` (`systemRows`; a disk under 10% free and a certificate
   under 14 days are warnings; `certificateLook` is shared with Settings).
   Notices above the list for unreachable library folders and a metadata
-  service that doesn't answer (with a link to its settings).
+  service that doesn't answer (with a link to its settings; remote mode only,
+  `metadataDown`). In mirror mode (`metadata.mode` `"mirror"` with the lookup
+  on) the community metadata row reads `metadata.mirror` instead
+  (`mirrorLook`: a failed first download, no copy yet, a first download, a copy
+  newer than the server, a failed update, then an update downloading over a
+  working copy, then ready; a copy that still answers is never shown as down),
+  and a `MirrorPanel` under it shows the download's progress, the copy's facts
+  (data version, built, schema, size, downloaded, last and next check), the
+  schema-newer, failure and fallback notices, and **Check now**
+  ([`POST /admin/meta/mirror/check`](api/reference.md#post-apiv1adminmetamirrorcheck),
+  disabled while a download runs; `mirrorCheckRefusal` words a
+  `metadata_off` or `not_mirror_mode` refusal). While a download runs the
+  copy's status is polled every 2 seconds
+  ([`GET /admin/meta/mirror`](api/reference.md#get-apiv1adminmetamirror)).
 - **Server > Settings** (`features/settings/`) - over
   [`GET`/`PATCH /admin/settings`](api/reference.md#admin-settings): an in-page
   topic list in `?topic=` (`general` is the default and has no param;
@@ -574,7 +587,10 @@ CSP-sensitive work against a real build served by Go. The console's own gate is
   `useSaveSettings` puts the answer in the cache and refetches `GET /server`,
   the system status and the update status. Network's certificate row,
   Metadata's status row and the read-only Transcoding topic read
-  `GET /admin/system`. Metadata ends with a Danger zone (`clear-matches.tsx`,
+  `GET /admin/system` (in mirror mode the status row shows the local copy's
+  state, linking to Health > System). Metadata's Source card is a two-column
+  radio `SettingsForm` field for `metadata.mode` (`METADATA_MODES`), a restart
+  setting. Metadata ends with a Danger zone (`clear-matches.tsx`,
   the shared `components/danger-zone.tsx`): Clear community matches picks a
   library or all (`components/library-select.tsx`, shared with Match
   automatically), asks for a typed word (`ConfirmDialog`), calls
