@@ -4,7 +4,7 @@ description: "The SQLite schema behind audiosilo-server: the rebuildable index v
 ---
 
 The schema lives in `internal/store/migrations/` as numbered SQL files
-(`0001_init.sql` … `0040_server_state.sql`), embedded into the binary and
+(`0001_init.sql` … `0042_cast_tokens.sql`), embedded into the binary and
 applied by `store.Open` at startup. This page documents the **resulting current
 schema**, noting which migration added what.
 
@@ -23,8 +23,11 @@ thing to understand before touching it:
   `issue_ignores`, `book_overrides`, `chapter_overrides`, `chapter_choices` and
   `book_covers` (per-library config) - is keyed by **`(library_id, rel_path)`**, with **no
   foreign key to `books`**. The rest of a listener's own state hangs off the
-  account rather than a path: `collections`, `collection_shares` and
-  `listening_goals` (see [Lists, ratings and goals](#lists-ratings-and-goals)).
+  account rather than a path: `collections`, `collection_shares`,
+  `listening_goals` and `household_sharing` (see
+  [Lists, ratings and goals](#lists-ratings-and-goals)). `cast_tokens` is
+  path-keyed with no FK to `books` too, but it is a short-lived credential rather
+  than state (see [Accounts & credentials](#accounts--credentials)).
 
 A third, small group sits beside the index: **`scan_runs`**, the history of
 the scans that built it, and **`community_chapters`**, each book's last
@@ -148,6 +151,16 @@ and the daily retention job blanks `last_ip` on revoked tokens
 signed in.
 The admin console lists live session and API-key tokens as **devices**
 (`auth.ListDevices`) and can revoke one (`auth.RevokeDevice`).
+
+**`cast_tokens`** *(0042)* - the short-lived credentials a player mints for a
+Chromecast receiver (`POST /cast/token`, capability `cast`; see
+[Auth & security](auth-and-security.md#cast-tokens)): `id`, `token_hash` (UNIQUE,
+SHA-256 of the secret), `user_id` (FK CASCADE, so a person's tokens go with the
+account), `library_id` and `rel_path` (the **book's** own path, a part path
+resolved first; no FK to the index), `created_at` and `expires_at` (fixed-width
+millisecond UTC, so they compare as text). Indexed on `(user_id, id)` and
+`expires_at`. Each mint deletes the expired rows and keeps the person's newest 20.
+A token is not moved with its book: it lives 24 hours.
 
 **`auth_codes`** *(0001; `kind` + `redeemed_at` added in 0010)* - redeemable
 codes: `code_hash` (UNIQUE, SHA-256 of the normalized code), `user_id` (FK
@@ -490,6 +503,15 @@ wins the whole row (a tie keeps the destination's).
 `collections`, `collection_shares` and `listening_goals` hold no path, so
 nothing moves them. All six are part of a database backup (`VACUUM INTO`), like
 every table.
+
+**`household_sharing`** *(0041)* - whether a person shares what they are
+listening to with the other people on the server (`/me/household`, capability
+`household`): `user_id` (`INTEGER PRIMARY KEY`, FK to `users` `ON DELETE
+CASCADE`), `share_listening` (`0`/`1`) and `updated_at` (fixed-width millisecond
+UTC). No row reads as off. It names no book, so nothing moves it, and a backup
+carries it like every table; what it lets others see is read from
+`listening_sessions` (see
+[Auth & security](auth-and-security.md#listening-in-the-house-what-other-people-see)).
 
 ### Listening from before sessions
 
@@ -946,6 +968,8 @@ The migration history so far:
 | 0038 | `more_series` | `books.more_series` (`TEXT NOT NULL DEFAULT '[]'`), the effective list of a book's other series |
 | 0039 | `more_series_index` | the partial index `idx_books_more_series` on `books(library_id) WHERE more_series <> '[]'`, so the reads of the books in more than one series (a series' members, `/series` with `memberships=1`) skip the rest |
 | 0040 | `server_state` | `server_state` (`key`, `value`, `updated_at`), small server-wide facts that aren't settings; the first key is the support card's answer: see [Server state](#server-state) |
+| 0041 | `household_sharing` | `household_sharing`, each person's opt-in to Listening in the house (no row = off) |
+| 0042 | `cast_tokens` | `cast_tokens` (hashed, book-scoped, 24-hour credentials for a Chromecast receiver) with `idx_cast_tokens_user` and `idx_cast_tokens_expires` |
 
 ## SQLite choices
 

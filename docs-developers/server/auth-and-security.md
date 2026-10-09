@@ -77,6 +77,40 @@ codes/tokens in the response body and store only the hash.
   cannot create tokens"). It can still list/revoke keys and clear a recovery code,
   which only reduce access.
 
+### Cast tokens
+
+A **cast token** (capability `cast`, `internal/auth/cast.go`) is a fourth
+credential, kept apart from the three above: it is not a `tokens.kind` but a row
+in its own `cast_tokens` table, and its request credential has the kind
+`auth.KindCast`. A player mints one (`POST /cast/token`, `auth.IssueCastToken`)
+for the book it is about to play on a Chromecast, and the receiver's stream and
+cover URLs carry it instead of the session token: a receiver is a device the
+listener doesn't control, and its URLs can surface in its logs or a debugger. It
+is narrow on every axis:
+
+- **One book.** `auth.CastGrant.Covers(libraryID, path)` reaches only the
+  `(library, path)` it was minted for, or a file or folder inside it on a segment
+  boundary (`Book` never reaches `Book 2`; the path is cleaned by
+  `catalog.CleanRelPath` first, so `Book/../Book 2` doesn't either). A mint for a
+  part path stores its book's path.
+- **Media only.** `api.castAuthenticate` accepts it only as the `?token=` of
+  `GET /libraries/{id}/cover` and `/stream`, only after the session/API-key lookup
+  failed, and never when the request carries an `Authorization` header. It is
+  never a bearer credential, so it can't reach any other route, mint another cast
+  token, or reach `/meta/cover`.
+- **Short-lived.** 24 hours (`CastTokenTTL`); a person keeps at most 20 live
+  (`MaxCastTokens`), and each mint deletes every expired one.
+- **Still the person's.** `auth.ResolveCastToken` refuses it once its user is
+  disabled (a deleted user's tokens go with the account, `ON DELETE CASCADE`), and
+  the media handlers check the person's **current** share scope, so a revoked
+  share is a `403`.
+
+Only the SHA-256 hash is stored. Any refusal is the uniform `401`. An API key may
+not mint one (`denyAPIKey`, the containment rule above); a demo account may (it
+can play). **Known limit:** signing out the device that minted a cast token does
+not revoke it, since the table records no device: it still dies with its 24 hours,
+the account's deletion or disabling, and a change of scope.
+
 `auth.ResolveRequest` (which `ResolveToken` wraps for a single kind) validates a presented secret for the accepted kinds: it hashes
 the secret, looks up the row, and rejects revoked tokens, expired tokens, and
 tokens whose user is disabled. On success it bumps `tokens.last_seen` - which
@@ -115,6 +149,11 @@ The middleware wrappers in `internal/api/middleware.go`:
   confines the fallback deliberately: a token in a query string can leak into
   access logs and `Referer` headers, so no other route accepts it. An API key
   works here too, since it authenticates wherever a session does.
+- `requireBookMediaAuth` - `requireMediaAuth` that, when that authentication
+  fails, also tries a [cast token](#cast-tokens) (`castAuthenticate`). Only a
+  book's own cover and stream use it; `/meta/cover` keeps `requireMediaAuth`.
+  A cast-authenticated answer sets `Cross-Origin-Resource-Policy: cross-origin`
+  (below).
 - `requireAdmin` - `requireAuth` plus a role check; every `/admin/*` route uses
   it. The baked-in admin HTML is unprivileged - the API enforces the role.
 
@@ -203,6 +242,10 @@ Three fences keep a demo session from becoming a durable login:
   (`GET /me/share-targets` and `PUT /me/collections/{id}/shares` are `403`; see
   [the listener's own state](#the-listeners-own-state-me)), and demo accounts are
   never offered as share targets.
+- A demo account can't share its listening with the house (`PUT /me/household`
+  is `403`, `nonDemoAccount`), and demo accounts never appear in anyone's
+  `GET /household/listening`, so a public demo never shows up in a household. It
+  may mint a cast token, since it can play.
 - A background reaper (`launcher.demoReaper`, every 15 minutes) deletes demo
   accounts idle past `demo.idle_ttl` - by the `is_demo` flag, never by username
   prefix. Deletion cascades all their state.
@@ -362,6 +405,30 @@ its owner. They follow a few rules on top of share scope:
 Each of these routes has a denied test (another user's data refused or
 invisible) beside its allowed one.
 
+### Listening in the house: what other people see
+
+`GET /household/listening` (capability `household`) is the one `/me`-adjacent
+route that shows a listener something about **other** people, so its rules sit in
+`catalog.HouseListening` rather than the handler, each with an allowed and a
+denied test:
+
+- **Opt-in and reciprocal.** `household_sharing` has no row until a person sets
+  `PUT /me/household` (no row reads as off), and a caller who doesn't share gets
+  `listening: []`: you see housemates only while they can see you.
+- **Who can appear.** Other users only (never the caller), enabled, not demo, with
+  sharing on.
+- **What of them.** One row per person: their newest session recorded on this
+  server (`import_id = 0`, not backfilled, listened > 0) within 24 hours.
+- **Only books the caller may open.** That newest book passes the **caller's**
+  current scopes (`ScopesAllow`) or the person is dropped; an older in-scope book
+  never stands in for it.
+- **No device fields.** `HouseListeningRow` has no field for a device, address,
+  app or token, unlike the admin-only `LiveSessions`, which must never be reused
+  for anything a non-admin sees.
+
+There is no admin route over these choices: an admin sees listening on the
+Activity pages as before, and nothing shows who shares.
+
 ## Path traversal: `library.SafeJoin`
 
 Any filesystem access derived from user input goes through
@@ -408,7 +475,8 @@ policy itself: it refuses the request while the address's `ipLimiter` bucket is
 empty (`Ready`, which checks without spending), charges that bucket one token
 when authentication fails (no token, or a bad one), so unauthenticated media is
 bounded exactly like the general API, and otherwise spends from `mediaLimiter`,
-keyed by the credential (token row id) rather than the address: several people
+keyed by the credential (token row id, or `cast:<id>` for a cast token, whose
+ids would collide with the tokens': `mediaBucket`) rather than the address: several people
 behind one address would otherwise share a budget. A request its credential's
 bucket refuses has still cost a token lookup, so it is charged to the address
 too. Charges use `Charge`, which always lands, even past empty (down to minus
@@ -426,7 +494,11 @@ appears as the proxy's address and shares its general bucket and its lockouts.
 
 `secureHeaders` sets `X-Content-Type-Options: nosniff`, `X-Frame-Options:
 DENY`, `Referrer-Policy: no-referrer`, and `Cross-Origin-Resource-Policy:
-same-site` on every response. **HSTS is set only in `autocert` TLS mode**:
+same-site` on every response. The one exception is an answer a
+[cast token](#cast-tokens) authenticated: it is `cross-origin`, because the
+Chromecast receiver is a web app on another site (`gstatic.com`) loading the
+book's audio and cover as no-cors `<audio>`/`<img>` requests, which `same-site`
+would make the browser block. It reaches one book's media only. **HSTS is set only in `autocert` TLS mode**:
 pinning it with a self-signed cert would make the certificate warning
 impossible to bypass, and behind a reverse proxy (`off`) the proxy owns HSTS.
 
@@ -452,9 +524,10 @@ Two policies, both owned by `internal/web`:
   images allowed for the connect page's QR PNG and the console's covers,
   `frame-ancestors 'none'`.
 - The **web player** at `/web` gets a per-document `htmlCSP`: `script-src
-  'self'` plus a sha256 hash of each inline `<script>` in that HTML document,
-  and `style-src 'unsafe-inline'` (react-native-web injects runtime styles that
-  cannot be hashed).
+  'self'`, `https://www.gstatic.com` (the Cast Web Sender, capability `cast`: the
+  only remote origin in either policy) and a sha256 hash of each inline
+  `<script>` in that HTML document, and `style-src 'unsafe-inline'`
+  (react-native-web injects runtime styles that cannot be hashed).
 
 Details and the reasoning live in [Web UI](web-ui.md).
 
@@ -487,6 +560,8 @@ The enumerated critical list:
 - `Scope.Allows` / `Scope.VisibleInBrowse` / `pathFilterSQL`
 - the rate limiters (`limiter`, `rateLimiter`) and the route classes in `rateLimit`
 - `auth.ResolveRequest` / `lookupToken`
+- the cast token checks: `auth.CastGrant.Covers`, `auth.ResolveCastToken`,
+  `api.castAuthenticate`
 - `web.htmlCSP`
 
 Anything touching these must land with a test showing the permitted case *and*

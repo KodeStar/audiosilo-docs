@@ -862,12 +862,18 @@ and emits:
 ```
 default-src 'self'; img-src 'self' data: blob:; media-src 'self' blob:;
 font-src 'self' data:; style-src 'self' 'unsafe-inline';
-script-src 'self' 'sha256-…' […]; connect-src 'self';
+script-src 'self' https://www.gstatic.com 'sha256-…' […]; connect-src 'self';
 base-uri 'none'; frame-ancestors 'none'
 ```
 
 - **`script-src` stays strict** - only the exact inline scripts present in
-  that document run; no `'unsafe-inline'`.
+  that document run; no `'unsafe-inline'`. The one remote origin is
+  `https://www.gstatic.com` (`castSenderOrigin`): Google's Cast Web Sender
+  (`cast_sender.js` and the Cast framework it loads), which the player loads
+  lazily on Chromium to cast (capability `cast`, see
+  [Chromecast](../frontend/chromecast.md)). Nothing else widens:
+  `TestHTMLCSPCastSender` pins the whole policy string, so a second origin, or the
+  Cast origin leaking into another directive, fails the test.
 - **`style-src` allows `'unsafe-inline'`** deliberately: react-native-web and
   Uniwind inject style rules at runtime, which cannot be hashed ahead of
   time. This is the single relaxation, confined to the player.
