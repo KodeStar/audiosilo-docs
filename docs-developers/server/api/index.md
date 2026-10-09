@@ -102,6 +102,14 @@ three routes (`requireMediaAuth` in `internal/api/middleware.go`): a token in a 
 string can leak into access logs and `Referer` headers, so no other route
 accepts it. Native clients should keep using the header even for media.
 
+A book's cover and stream (not `/meta/cover`) also accept a **cast token**
+(capability `cast`) as the `?token=`: a short-lived credential for one book that a
+player mints with [`POST /cast/token`](reference.md#post-apiv1casttoken) and puts
+in the URLs it hands a Chromecast receiver, so the receiver never sees the session
+token. It is never accepted as a header, never beside one, and never on any other
+route; the full rules are in
+[Cast tokens as media auth](reference.md#cast-tokens-as-media-auth).
+
 ### Client identification: `X-AudioSilo-Client`
 
 A client names itself on each request with an optional header:
@@ -315,7 +323,9 @@ single-shot with a `limit` and no pagination.
     "user_stats": true,
     "my_devices": true,
     "annotations": true,
-    "addresses": true
+    "addresses": true,
+    "household": true,
+    "cast": true
   },
   "auth": { "methods": ["auth_code", "password"] },
   "demo": { "enabled": false }
@@ -367,6 +377,13 @@ each always `true` on a server that has it:
 | `annotations` | a bookmark's `label` (on [`POST …/bookmarks`](reference.md#get-apiv1librariesidbookmarks--post-apiv1librariesidbookmarks) and every bookmark answer), the owner's edits [`PATCH /bookmarks/{id}`](reference.md#patch-apiv1bookmarksid) and [`PATCH /notes/{id}`](reference.md#patch-apiv1notesid), the all-books lists [`/me/bookmarks`](reference.md#get-apiv1mebookmarks) and [`/me/notes`](reference.md#get-apiv1menotes), and `cursor` paging plus each row's `book` on [`/me/history`](reference.md#get-apiv1mehistory) |
 | `addresses` | the server's [home and away addresses](reference.md#home-and-away-addresses) on every pairing payload and its links, on the exchange, login and demo answers, and [`GET /addresses`](reference.md#get-apiv1addresses) |
 
+The player redesign's Phase 8 added two, each always `true` on a server that has it:
+
+| Flag | Gates |
+|---|---|
+| `household` | [Listening in the house](reference.md#listening-in-the-house): the caller's opt-in at [`/me/household`](reference.md#get-apiv1mehousehold--put-apiv1mehousehold) and [`GET /household/listening`](reference.md#get-apiv1householdlistening). Without it the player hides the sharing switch and the Home row |
+| `cast` | [`POST /cast/token`](reference.md#post-apiv1casttoken) and a cast token as the `?token=` of a book's cover and stream. Without it the player shows no Cast button |
+
 Gate on the flag rather than on the server version: an older server answers
 `size=` and `narrator=` by ignoring them (full art, the unfiltered list) and the
 new routes with a `404`. Request bodies are decoded strictly, so a field added to an
@@ -384,7 +401,7 @@ with an error envelope.
 | Limiter | Scope | Policy |
 |---|---|---|
 | General token bucket | every request except static files and media | ~50 requests/second, burst 200, per IP (`rate limit exceeded`) |
-| Media token bucket | `GET /libraries/{id}/cover`, `GET /libraries/{id}/stream` | ~200 requests/second, burst 2000, per credential; a failed authentication counts against the general bucket ([details](../auth-and-security.md#rate-limiting)) |
+| Media token bucket | `GET /libraries/{id}/cover`, `GET /libraries/{id}/stream`, `GET /libraries/{id}/meta/cover` | ~200 requests/second, burst 2000, per credential (a cast token has a bucket of its own); a failed authentication counts against the general bucket ([details](../auth-and-security.md#rate-limiting)) |
 | Login lockout | `POST /auth/login` | 10 *failed* attempts per 15 min per IP; a success resets the counter |
 | Redeem lockout | `POST /auth/redeem` | 10 *failed* attempts per 15 min per IP; a success resets |
 | Demo cap | `POST /demo/session` | at most 5 demo sessions per IP per 15 min, metered at admission (failures count too) |
