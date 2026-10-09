@@ -108,7 +108,7 @@ Each author or narrator gets a card with how many of their books you have, how m
 Tap a card to open that person's page:
 
 - Their name, with tiles for the books here, the total length, and how many you've finished or listened to.
-- A **shelf for each series** of theirs. Tap a series name to open its page.
+- A **shelf for each series** of theirs. A book in more than one series sits on each of those shelves, at its number there. Tap a series name to open its page.
 - Their **other books** in a grid.
 - **Read by** chips on an author's page (the narrators of their books), or **Books by** chips on a narrator's page.
 
@@ -121,6 +121,8 @@ Each series gets a card with a small shelf of the books you have, gaps where a n
 ![The Library's Series section: one card per series, each with a mini shelf of its books](/img/screenshots/web-player/library-series.png)
 
 Tap a card to open the [series page](#series-pages).
+
+A book can be in more than one series (*Guards! Guards!* is Discworld book 8 and the first City Watch book). It then appears in each, at its number there. This needs a recent server; an older one shows each book in its main series only.
 
 ### Collections
 

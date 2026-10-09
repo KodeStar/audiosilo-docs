@@ -11,7 +11,7 @@ Tap a book anywhere in AudioSilo to open its page. It tells you where you are in
 
 The top of the page takes on the colours of the book's cover. Above it, a slim line shows where the book sits on your server: the library, each folder above the book, and the book's own folder or file name. Tap a folder to open it.
 
-- **The series and the book's number** (*"The Stormlight Archive · Book 2"*) open the [series page](browsing.md#series-pages). A book in no series shows its library and server instead.
+- **The series and the book's number** (*"The Stormlight Archive · Book 2"*) open the [series page](browsing.md#series-pages). A book in more than one series lists each, with its number there (*"Discworld · Book 8 / Discworld: City Watch · Book 1"*), and each opens its own page. A book in no series shows its library and server instead.
 - **The title**, then **by** the author and **read by** the narrator. Each name opens that person's page (the narrator's page needs a recent server).
 - **The facts**: the length, how many chapters (or *"12 parts of 30 min"* for a book without chapter marks), the audio (*"MP3 · 3 MP3 files · 210 MB"*), the year it was published (and by whom, when the community database knows), and where it lives (*"Home › Books"*). Anything the book doesn't say is simply left out.
 
