@@ -60,7 +60,10 @@ protection), so a car shows its lists at once, before or without JS.
     CarPlay trims further to its own `maximumItemCount`).
 - Each `CarItem` has an `id` (`carItemId(ref)`: `book:` plus the URI-encoded connection id,
   library id and path joined by `:`; path is the identity, scoped by connection, never a
-  database id; `parseCarItemId` reverses it), the `book` itself (a `BookRef`, so native compares
+  database id; `parseCarItemId` reverses it, mapping a connection id from before the
+  [identity migration](state-and-data.md#connection-identity-server_iduser_id) to its new
+  one through `resolveConnectionId`, so an item of a snapshot written by an older build
+  still plays), the `book` itself (a `BookRef`, so native compares
   its fields instead of decoding the id), `title`, `subtitle` (the author, then the time
   left at the book's own speed once started), `progress` (0..1 or null), `finished`,
   `downloaded`, `artwork` and, **only for a downloaded book**, a `play` spec.

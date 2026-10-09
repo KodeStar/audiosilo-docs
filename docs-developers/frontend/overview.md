@@ -60,9 +60,12 @@ src/components/     ui/ (the Stacks primitives - Text, Icon, Button, Card, Input
                     Journal and its export), you/ (the You hub; stats/, year/),
                     settings/ (the Settings panes), account/ (a server's Account
                     page), connect/ (onboarding), home/, search/, upnext/, downloads/
-                    (the Downloads tab), brand/
+                    (the Downloads tab), house/ (Listening in the house), brand/
 src/car/            CarPlay + Android Auto, the JS side: the car snapshot (car-model),
                     car covers, the car controller, the AudiosiloCar headless task
+src/cast/           Chromecast: the route switch (routed-service), the cast engine
+                    (cast-service), cast tokens, the native and web drivers, the
+                    Cast button (see Chromecast)
 src/widgets/        iOS widget + sleep timer Live Activity ('widget' functions) and
                     their sync (widget-model, widget-sync.ios)
 src/stores/         Zustand: session (connections + tokens), settings, search
@@ -75,11 +78,13 @@ src/lib/            storage, secure-store, paths, format, hhmm (wall-clock "HH:M
                     ticker (one start/stop interval), pairing, known-servers, device,
                     base-url, layout (the three form factors), utils (cn),
                     storage-migration (the one launch-time storage migration),
+                    connection-id + identity-migration (connection ids,
+                    <server_id>.<user_id>, and their one-time key migration),
                     bootstrap (the launch steps, shared with the car task),
                     register-sw, and other pure helpers
 modules/audiosilo-player/  the local Expo module (Swift + Kotlin + TS bridge)
-plugins/            config plugins (CarPlay scenes, the Xcode 26 and widget fixes);
-                    withCarPlay and withWidgetsNoPush have jest tests
+plugins/            config plugins (CarPlay scenes, Cast, the Xcode 26 and widget
+                    fixes); withCarPlay, withCast and withWidgetsNoPush have jest tests
 index.ts            the app entry (package.json main): registers the car's headless
                     task, then expo-router/entry
 public/             sw.js (service worker) + manifest.json (PWA), copied verbatim
