@@ -337,10 +337,10 @@ makes the cache survive a restart and an outage:
   answer, which stays the outage fallback) keyed by its ASIN or ISBN, and works
   fetched by id (`/meta/work`, and the previous books `/meta` adds), matches only.
   Never a service error, and never a row for an unknown work id (an id is the
-  caller's choice, so storing misses would let any user grow the table); in
-  remote mode a `404` for a work already stored replaces its row, so a dropped
-  work isn't served again in a later outage (in mirror mode it never does: see
-  [Mirror mode](#mirror-mode-metadatamode-mirror)).
+  caller's choice, so storing misses would let any user grow the table); a
+  `404` from the service for a work already stored replaces its row, so a dropped
+  work isn't served again in a later outage (in mirror mode a `404` the local copy
+  gave never does: see [Mirror mode](#mirror-mode-metadatamode-mirror)).
 - **How it is read:** after a memory miss. A row still within its TTL is served
   and warms memory for the rest of that TTL. A match past its TTL is not served
   while the service answers, but when the service fails it is served anyway

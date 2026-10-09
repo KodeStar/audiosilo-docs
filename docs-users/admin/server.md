@@ -243,7 +243,7 @@ answered on it.
 #### Keeping a local copy
 
 Choose a local copy if you'd rather no book were looked up over the internet:
-it costs about 2 GB of disk and about 450 MB of download a day. Otherwise keep
+it costs about 1.8 GB of disk and about 450 MB of download a day. Otherwise keep
 the default, which stores nothing.
 
 The **Source** card has two choices:

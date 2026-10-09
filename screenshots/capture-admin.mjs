@@ -769,11 +769,14 @@ await step('health: system', async () => {
 // the copy's panel under it, clipped.
 await step('health: system in mirror mode', async () => {
   if (!wanted('admin/system-mirror.png')) return;
-  if (!MIRROR_ORIGIN || !MIRROR_PASSWORD) throw new Error('MIRROR_ORIGIN not set (run.sh starts it when it builds the meta artifact)');
+  if (!MIRROR_ORIGIN || !MIRROR_PASSWORD) {
+    console.log('  - admin/system-mirror.png skipped: no mirror-mode server (run.sh starts one when it builds the meta artifact and the server takes the seeded copy)');
+    return;
+  }
   // The seeded copy opens in the background after start (state "opening", a
   // few seconds). Any other state but ready means the server refused it and
-  // is after a real one ("empty", then "downloading" half a minute after
-  // start): stop at once, with its metadata switched off so nothing is fetched.
+  // is after a real one ("empty", then a check half a minute after start, which
+  // run.sh's dead proxy fails): stop at once, with its metadata switched off.
   const mapi = apiClient(MIRROR_ORIGIN);
   const {token: mtoken} = await mapi(null, 'POST', '/auth/login', {username: 'admin', password: MIRROR_PASSWORD});
   for (const until = Date.now() + 30000; ; await sleep(500)) {

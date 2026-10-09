@@ -53,11 +53,12 @@ in mirror mode, with no library and the update check off, and seeds its
 `meta-mirror/` folder with that artifact (a hard link where it can, else a
 copy) and a `state.json` saying it was downloaded and checked just now (after
 the artifact's build time, as a real copy is), so the copy opens at start and
-its next check is a day away. Should that server refuse the
-seeded copy (its log says "the local copy can't be used"), `run.sh` stops it
-and skips the shot rather than let it download a real one; `capture-admin.mjs`
-likewise stops at once when the copy is in any state but opening or ready, and
-turns that server's metadata off so nothing is fetched. Otherwise it waits for
+its next check is a day away. That server's HTTPS goes to a proxy on a closed
+port, so it can never download a real copy. Should it refuse the seeded copy
+(its log says "the local copy can't be used"), `run.sh` stops it and skips the
+shot when it sees that by the time the server is healthy; the copy opens in the
+background, so `capture-admin.mjs` also stops at once when the copy is in any
+state but opening or ready, and turns that server's metadata off. Otherwise it waits for
 the copy to open, signs in there and clips the
 shot to the Community metadata row and the copy's panel. The server isn't
 started when `SHOTS_ONLY` leaves the shot out; without the meta stack the step
