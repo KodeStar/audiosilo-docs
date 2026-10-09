@@ -155,6 +155,8 @@ path (e.g. `/mnt/cache/appdata/audiosilo`) so the database isn't on the slower
 user-share layer; the **library** can be any `/mnt/user` share. Files are written
 as `nobody:users`. Docker Compose is used if the Compose Manager plugin is
 installed, otherwise a plain container.
+
+To install by hand instead, use the LinuxServer.io app from Community Applications: see [Install on Unraid](../getting-started/install-unraid.md).
 :::
 
 ### On a VPS (Hetzner)
