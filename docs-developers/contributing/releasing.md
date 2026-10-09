@@ -18,6 +18,7 @@ step-by-step runbook. The maintainer notes it follows are
 | `ghcr.io/kodestar/audiosilo-web` | `audiosilo-frontend/.github/workflows/web.yml` | push to `main` (`:latest`); `v*` tags (semver) | GHCR - a tiny image holding only the static web export (`baseUrl=/web`) |
 | `ghcr.io/kodestar/audiosilo-server` | `audiosilo-server/.github/workflows/image.yml` | `v*` tags; manual dispatch | GHCR - the deployable image, web player baked in at `/app/web` |
 | Native server binaries | `audiosilo-server/.github/workflows/release.yml` (GoReleaser) | `v*` tags; manual dispatch | **Draft** GitHub Release on `KodeStar/audiosilo-server` |
+| `lscr.io/linuxserver/audiosilo` | LinuxServer.io's CI ([linuxserver/docker-audiosilo](https://github.com/linuxserver/docker-audiosilo)) | publishing a server release (polled hourly) | Docker Hub / GHCR / lscr.io, and Unraid Community Applications |
 | iOS / Android apps | EAS Build (manual, outside CI) | on demand | App Store Connect / Google Play Console |
 | Manager desktop app | `audiosilo-manager/.github/workflows/desktop.yml` | `v*` tags; manual dispatch | Workflow artifacts (installers via GitHub Releases are **planned**) |
 
@@ -83,7 +84,10 @@ amd64/arm64 all cross-compile from one Linux runner.
 - Outputs: `.tar.gz` (Linux/macOS), `.zip` (Windows), `.deb`/`.rpm` (which depend
   on the distro's ffmpeg and install a systemd unit), and `checksums.txt`.
 - The GitHub Release is created as a **draft** - a human reviews the notes and
-  artifacts, then publishes.
+  artifacts, then publishes. The draft appears before the workflow finishes: its
+  last step then smoke-tests the uploaded archives, so **publish only once the run
+  is green**. Publishing is also what triggers the LinuxServer.io image (see
+  [the release pipeline](../architecture/release-pipeline.md#smoke-test-and-the-linuxserverio-image-downstream)).
 
 Validate the GoReleaser config locally without releasing:
 
@@ -100,7 +104,10 @@ real console.)
 ## Versions and tags
 
 - Releases are **`v`-prefixed semver tags** (`v*`) on each repo; there is no
-  cross-repo version lockstep. The server↔web pairing is by **image pinning**,
+  cross-repo version lockstep. GoReleaser does not mark a pre-release tag (for
+  example `v2.1.0-rc1`) as a pre-release itself: tick **Set as a pre-release**
+  when publishing one, or `releases/latest` moves to it and the LinuxServer.io
+  image ships it to every Unraid install. The server↔web pairing is by **image pinning**,
   not version numbers, and native apps negotiate against any server version via
   the `GET /server` capability flags.
 - The server version string comes from the release tag via ldflags
