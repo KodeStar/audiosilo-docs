@@ -112,8 +112,9 @@ The overview is the console's home: a greeting and a line saying how many
 people are listening right now, then:
 
 - **Listening now** - a card per device playing or paused in the last ten
-  minutes, with the listener's name, the cover, the book and its chapter, a
-  progress bar and **Playing** or **Paused**. Click a card to open
+  minutes, with the listener's name, the cover, the book and its chapter (named
+  as on [Live now](activity.md#live-now): "Chapter 4" when the chapter's own
+  title is only a number), a progress bar and **Playing** or **Paused**. Click a card to open
   [Activity > Live now](activity.md#live-now) for the device, app and playback
   details.
 - **Totals** - **Books** (every audiobook indexed, across all libraries),

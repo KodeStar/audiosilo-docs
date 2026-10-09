@@ -42,7 +42,7 @@ Four tiles sit at the top:
 - **Peak concurrent streams**: the most sessions open at the same time, and
   when that was.
 - **Books finished** in the period, with the finish rate ("40% finish rate ·
-  2 of 5 started").
+  2 of 5 started"). A book counts once however many people finished it.
 
 Where the period before had something to compare with (the same length, just
 before it), a tile also shows the change as an arrow and a percentage.
@@ -60,12 +60,14 @@ Below the tiles, when someone listened in the period:
 - **Top books**: the books listened to most, with how many people listened.
   Click one to open its page.
 - **Top people**: who listened most, with how many books they listened to and
-  finished. Click a name to open their page.
+  finished. A book someone marked finished without listening to it in the
+  period counts among their books too. Click a name to open their page.
 - **Most heard**: the top authors and narrators by time listened.
 - **Started vs finished**: of the people who played a book in the period, how
   many have reached 25%, 50% and 75% of it, and how many finished it.
   **Where people stopped** lists books where at least two people stopped at the
-  same chapter and haven't come back for 30 days. When the book also has a file
+  same chapter and haven't come back for 30 days, naming the chapter as
+  [Live now](#live-now) does. When the book also has a file
   that couldn't be read, **See the read problem** opens it in
   [Library health](health.md).
 - **How it played**: how much listening played directly and how much went
@@ -97,7 +99,12 @@ playing · 1 direct, 1 transcoding · 1 paused"), and the page refreshes every
 ten seconds.
 
 Each card shows the cover, who is listening, **Playing** or **Paused**, the
-book, the chapter and how far they are, plus:
+book, the chapter and how far they are, plus the details below. The chapter is
+its title as the player shows it, with a file name tidied up
+("01_Opening_Credits.mp3" reads "01 Opening Credits"). A title that says
+nothing but a number, such as "024" or "Track 01", is named by its place in
+the book instead (the fifth chapter reads "Chapter 5"); a numbered title such
+as "Chapter 10" is kept as written. A book that is one long chapter shows no chapter.
 
 - **Device** - the name the device gave when it signed in.
 - **App** - the app and its version, for example "AudioSilo 1.4.2 · iOS".
@@ -144,7 +151,10 @@ current year reads "so far".
 - **Book of the year**: the book listened to most, how many people spent how
   long with it, and the most heard narrator.
 - Books finished, books listened to, the longest run of days in a row with some
-  listening, and the busiest hour. (The busiest hour needs the detailed
+  listening, and the busiest hour. A book finished by several people counts
+  once, and a book marked finished (or imported as finished) without any
+  listening recorded that year still counts as a book listened to, so books
+  finished is never more than books listened to. (The busiest hour needs the detailed
   sessions, so a year past the sessions' keeping time, 400 days unless
   changed, has none.)
 - The year day by day, as a calendar.
