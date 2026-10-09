@@ -169,9 +169,11 @@ older server (React Query rejects it instead) and the query stays pending.
 | `listBooks(lib, { author, series, narrator, sort, limit, cursor })` | `useLibraryBooks(lib, query?, connectionId?)` | `browse_people`, only when `query.narrator` is set | `GET /libraries/{id}/books` (keyset pages of 100, `BookPage`; key `qk.libraryBooks`) |
 | `authors(lib)` / `narrators(lib)` | `useAuthors` / `useNarrators(lib, connectionId?)` | `browse_people` | `GET /libraries/{id}/authors`, `/narrators` |
 | `seriesList(lib)` | `useSeriesList(lib, connectionId?)` | `browse_people` | `GET /libraries/{id}/series` (`SeriesCount[]`) |
+| `seriesBooks(lib, names, { limit })` / `seriesBooksPage(lib, name, { limit })` | `useLibraryBooks(..., { batch: true })` (the Series cards, through `useSeriesBooks`) | `series_books` picks this endpoint for the first page; without it the hook still asks `listBooks` | `GET /libraries/{id}/series/books?name=...` (`SeriesBooks`, one `SeriesBooksEntry` per distinct name) |
 | `nextBook(lib, path)` | `useNextBook(lib, path, enabled?, connectionId?)` | `next_book` | `GET /libraries/{id}/next` (`NextBook`) |
 | `bookMeta(lib, path, signal, { includePrevious, hideSpoilers })` | `useBookMeta(lib, path, enabled, opts?)` | `meta_bundle` (the caller checks it; the hook gates only on `enabled`) | `GET /libraries/{id}/meta?include=previous&spoilers=hide` |
 | `coverUrl(lib, path, { size, version })` | - | `cover_sizes` for `size` | `GET /libraries/{id}/cover?size=&v=` |
+| `communityCoverUrl(lib, path, coverUrl, { size })` | `useCommunityCover(cid, lib, path)` (a resolver, not a query) | `meta_covers` | `GET /libraries/{id}/meta/cover?path=&url=&size=` ([below](#community-covers-clientcommunitycoverurl)) |
 
 - **People lists are normalised.** The server answers `{ authors, unknown }` and
   `{ narrators, unknown }`; the client returns both as one shape,
@@ -183,6 +185,23 @@ older server (React Query rejects it instead) and the query stays pending.
   `author`/`series`/`narrator`, `sort`). `author` and `series` work on every
   server; a `narrator` filter needs `browse_people`, because an older server
   ignores it and would answer with the whole library.
+- **Series cards share one request.** With the `batch` option (only the Series
+  cards pass it, through `useSeriesBooks(..., { batch: true })`) and `series_books`
+  on the server, a plain series list (`isPlainSeriesQuery`: `series` with
+  `memberships`, which `series_memberships` adds, and no other key, so no other
+  filter and the default sort) fetches its **first page** through
+  `client.seriesBooksPage`. That is a per-(library, page size) `createBatchLoader`
+  (`src/lib/batch-loader.ts`): every series asked for within 10 ms goes out as one
+  `GET /libraries/{id}/series/books` per 50 names (`SERIES_BOOKS_MAX_NAMES`), or
+  fewer when long names would pass 4000 bytes of query
+  (`SERIES_BATCH_MAX_QUERY_BYTES`). The page lands under the same
+  `qk.libraryBooks` key as an ordinary `listBooks` answer, so the series page,
+  which asks plainly, reuses the cards' cache, and later pages stay on `/books`.
+  The batched fetch never reads react-query's `signal`: react-query cancels and
+  throws away a fetch whose signal was read once its last observer leaves, so a
+  card scrolled off before its page arrives still caches it from the shared
+  request (which no caller can cancel, with the client's normal timeout).
+  Without `series_books` each card asks `/books` on its own.
 - **`bookMeta` options are part of the key.** `qk.bookMeta(cid, lib, path, opts)`
   adds a variant segment only when an option is set, under the plain key as a
   prefix (invalidating the plain key reaches every variant). A `hideSpoilers`
@@ -224,6 +243,7 @@ Cross-server screens ask per connection (`useCapabilitiesAll` /
 | Capability | Read by |
 |---|---|
 | `browse_people` | the Library's Authors / Series / Narrators modes and their counts, the person pages (`narrator=` filter), Search's series and people groups, Home's "&lt;narrator&gt; reads" shelf |
+| `series_books` | the Library's Series cards and Search's series results (one request for the cards on screen; without it, one `/books` per card) |
 | `next_book` | Home's Next in your series (`useNextInSeries`, one `/next` per candidate on its own server), Up next's suggestions, keep-ahead's series window |
 | `metadata` | the series page's community rails (`useBookMeta` + `useMetaWork`), the Now card's Who's who / Story so far, Search's character sources |
 | `cover_sizes` | `BookCover`'s thumbnail choice |
@@ -518,6 +538,36 @@ carries its own `web_url`, so tapping a series work or the footer link opens the
 metadata site **externally** (a real new tab on web, an in-app browser tab on
 native) - the client never constructs a metadata URL. UI strings live under
 `book.meta.*` in the locale catalogs.
+
+#### Community covers (`client.communityCoverUrl`)
+
+The envelope's covers - each series rail entry's `cover_url` (the Series tab's
+tiles) and the Previous books rows - point at third-party hosts, which the web
+player's CSP refuses (`img-src` takes only the server). A server with
+`meta_covers` serves them itself: `client.communityCoverUrl(libraryId, path,
+coverUrl, { size })` builds `GET /libraries/{id}/meta/cover?path=&url=&size=`
+with `?token=` like every media URL. The server serves only a `cover_url` the
+envelope of that book hands out, so the call takes the same `libraryId`/`path`
+`useBookMeta` was asked for.
+
+`BookTabPanel` builds one resolver per book with
+`useCommunityCover(useScopedCid(), libraryId, path)` and passes it to the Series,
+Recaps and Characters tabs as `coverFor`. Every community cover is asked for at
+one size, 320 (`COMMUNITY_COVER_SIZE` in `book-meta.tsx`), so the same cover is
+fetched and cached once, on the server and on the device, whichever tab shows it
+first. A tab without `coverFor` (`noCommunityCover`) shows placeholders: the
+title on a rail tile, the title's monogram on a previous book's row.
+
+The rule is the pure `communityCoverSource` (`community-cover.ts`), unit-tested:
+
+- **`meta_covers` on:** the proxied URL.
+- **`meta_covers` off** (an older server, or metadata off): native loads the
+  direct `cover_url`, as it always has; the web player shows the placeholder.
+- **`/server` unreachable:** counts as no flag (a server that can't answer
+  `/server` can't serve a cover either), so native loads a kept envelope's
+  covers directly and the web player shows placeholders.
+- **`/server` not answered yet:** nothing loads, so a cover is never fetched
+  twice (directly, then proxied).
 
 ### Home
 

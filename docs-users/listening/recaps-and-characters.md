@@ -37,6 +37,8 @@ It's the "wait, who is this again?" fix before starting book four of a series. I
 
 The **Series** tab lists the other books in the same series, each opening its page on the metadata site so you can see what to read next.
 
+The covers on the Series tab and in the Previous books rows come from your server, which fetches them from the community catalogue, so your device never contacts those image hosts. With an older server, the web player shows a placeholder (the book's title) instead of each cover; the apps load them directly.
+
 Some series can be read in more than one order - The Chronicles of Narnia in the order the books were published or in the story's chronological order, for example. When the community database knows a series' other orders, the **Series** tab shows it as **one** row with a small switch above it - **Publication**, **Chronological** or **Recommended** (or the name of that order, if it doesn't say which kind it is). Pick one and the row lists the series in that order.
 
 - **Your choice is remembered per series, on that device.** Choose Chronological on one Narnia book and every Narnia book on that phone or browser opens in chronological order too, and so does the [series page](browsing.md#series-pages). Other series keep their own choice, and another device starts from the default (usually publication order).

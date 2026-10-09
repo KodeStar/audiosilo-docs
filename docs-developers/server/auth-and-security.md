@@ -18,8 +18,10 @@ Two different hashing strategies, chosen by entropy:
   on modest self-hosted hardware, with memory comfortably above the OWASP
   floor. Hashes are stored PHC-style
   (`$argon2id$v=19$m=65536,t=2,p=4$<salt>$<key>`); `VerifyPassword` compares
-  with `subtle.ConstantTimeCompare`. Minimum length for a non-empty password is
-  8 (`auth.MinPasswordLen`).
+  with `subtle.ConstantTimeCompare`, reading the cost from the hash itself.
+  Minimum length for a non-empty password is 8 (`auth.MinPasswordLen`). Test
+  binaries may lower the cost with `auth.UseCheapHashingForTests()`, which
+  panics outside a test binary (`testing.Testing()`).
 - **Tokens and auth codes** (full-entropy, machine-generated) are stored only
   as **SHA-256 hashes** (`hashSecret`). A fast hash is appropriate here because
   the secrets are 256-bit random values - argon2id is reserved for passwords.
@@ -107,7 +109,8 @@ The middleware wrappers in `internal/api/middleware.go`:
   token is never accepted here, so a QR/pairing secret can't be used as a durable
   credential.
 - `requireMediaAuth` - additionally accepts `?token=` as a query parameter,
-  used **only** for the two media GETs (`/cover`, `/stream`) because browser
+  used **only** for the media GETs (`/cover`, `/stream`, and `/meta/cover` for a
+  community cover) because browser
   `<img>`/`<audio>` elements cannot set headers. `bearerToken(r, allowQuery)`
   confines the fallback deliberately: a token in a query string can leak into
   access logs and `Referer` headers, so no other route accepts it. An API key
@@ -384,7 +387,7 @@ Two mechanisms in `internal/api/ratelimit.go`, six buckets wired in `api.New`:
 | Bucket | Mechanism | Limit | Applied to |
 |---|---|---|---|
 | `ipLimiter` | Token bucket per IP (`rateLimiter`) | ~50 req/s, burst 200 | The general API: every request (global `rateLimit` middleware) except static files and authenticated media. Static files are those the mux hands to a handler the web package registered (`web.IsStatic`: the console, the web player, the connect page and its assets, served from memory); one cold console page loads forty-odd chunks, so they are not counted. The health check and the setup page are counted |
-| `mediaLimiter` | Token bucket per credential (`rateLimiter`) | ~200 req/s, burst 2000 | Media GETs (`/cover`, `/stream`: the routes `requireMediaAuth` wraps) once they authenticate. See below |
+| `mediaLimiter` | Token bucket per credential (`rateLimiter`) | ~200 req/s, burst 2000 | Media GETs (`/cover`, `/stream`, `/meta/cover`: the routes `requireMediaAuth` wraps) once they authenticate. See below |
 | `loginLimiter` | Failure lockout per IP (`limiter`) | 10 failures / 15 min | `POST /auth/login` |
 | `redeemLimiter` | Failure lockout per IP | 10 failures / 15 min | `POST /auth/redeem` |
 | `demoLimiter` | **Attempt** cap per IP (`Acquire`) | 5 / 15 min | `POST /demo/session` |
@@ -433,7 +436,9 @@ configured origins, cross-origin browser requests simply get no CORS headers
 
 Non-streaming requests are bounded by a 30 s timeout (`requestTimeout`) that
 cancels the request context and returns 503 - resilience against a stuck
-writer connection, not latency policing. Streaming reads (`/stream`, `/cover`,
+writer connection, not latency policing. Streaming reads
+(`/libraries/{id}/stream` and `/libraries/{id}/cover`, matched exactly by
+`isLibraryMedia` so the community `/libraries/{id}/meta/cover` stays bounded,
 a backup's download, `GET /admin/backups/{name}`, `/web/...`) are exempt because
 audio and large downloads must run long.
 

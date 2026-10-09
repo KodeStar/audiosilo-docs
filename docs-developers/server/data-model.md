@@ -4,7 +4,7 @@ description: "The SQLite schema behind audiosilo-server: the rebuildable index v
 ---
 
 The schema lives in `internal/store/migrations/` as numbered SQL files
-(`0001_init.sql` … `0031_annotation_lists.sql`), embedded into the binary and
+(`0001_init.sql` … `0040_server_state.sql`), embedded into the binary and
 applied by `store.Open` at startup. This page documents the **resulting current
 schema**, noting which migration added what.
 
@@ -39,7 +39,9 @@ or book, and are trimmed by age (see
 [Audit and notifications](#audit-and-notifications)). Nor does the community
 metadata cache (`meta_cache`, `0024`): answers from the metadata service, keyed
 by identifier and rebuildable by asking again (see
-[Community metadata cache](#community-metadata-cache)).
+[Community metadata cache](#community-metadata-cache)), nor `server_state`
+(`0040`): small server-wide facts the server keeps for itself, which name no
+book and aren't rebuildable (see [Server state](#server-state)).
 
 Why no FK across the seam? Three reasons, all load-bearing:
 
@@ -210,8 +212,12 @@ schema), `published` (`YYYY[-MM[-DD]]`) and `description` (only an admin edit or
 an accepted community match supplies these today; the scanner reads neither),
 `more_series` (the effective list of the other series the book is in beyond
 `series`, as JSON `[{"name","position"}]`, `'[]'` for none: only an edit or a
-community match supplies it, an override like any other field; the full-text
-index's series column holds every series name), `released` (the date the file's tags give, `YYYY[-MM[-DD]]` via
+community match supplies it, an override like any other field; an admin edit
+that sets or reverts `series` to one of these swaps the two, writing the list
+and `series_index` as overrides (a value the scan already gives is reverted to
+it instead; the console sends the values itself, so its swap writes them as
+edits);
+the full-text index's series column holds every series name), `released` (the date the file's tags give, `YYYY[-MM[-DD]]` via
 `metadata.ReleaseDate`: usually the recording's, so it is a separate scanned
 column, never `published`, read only by the admin list's release-date sort as
 the fallback for a book with no `published`) and `released_checked` (`1` once a
@@ -725,6 +731,24 @@ a foreign key, so deleting an account or a library leaves them as they were.
 
 Backups need no table: they are files in the backups folder.
 
+### Server state
+
+**`server_state`** *(0040)* - small server-wide facts the server keeps for
+itself, one row per key: `key` (primary key), `value` (the key's own JSON) and
+`updated_at` (fixed-width millisecond UTC). Not settings: nobody types these in
+`config.yaml` and no `AUDIOSILO_*` variable sets them. Durable, but not part of
+either half: it names no book and can't be rebuilt, so a backup carries it like
+every other table. `catalog/server_state.go` reads and writes a key
+(`getServerState`, where a value that can't be read counts as none, and
+`putServerState`), taking a querier or execer so a caller can read and write one
+key in a single transaction.
+
+One key so far, `support_card`: the answer to the admin console's
+[support card](web-ui.md#the-support-card), `{"choice":"donated"}` or
+`{"choice":"snoozed","until":"<time>"}`. `catalog.SetSupportChoice` reads and
+writes it in one transaction, so a donation is never downgraded by a later
+snooze.
+
 ### Community metadata cache
 
 **`meta_cache`** *(0024)* - the persistent second level of the community
@@ -921,6 +945,7 @@ The migration history so far:
 | 0037 | `released` | `books.released` (`TEXT NOT NULL DEFAULT ''`) and `books.released_checked` (`0` on every existing row, so the next scan reads each unchanged book's date tags once) |
 | 0038 | `more_series` | `books.more_series` (`TEXT NOT NULL DEFAULT '[]'`), the effective list of a book's other series |
 | 0039 | `more_series_index` | the partial index `idx_books_more_series` on `books(library_id) WHERE more_series <> '[]'`, so the reads of the books in more than one series (a series' members, `/series` with `memberships=1`) skip the rest |
+| 0040 | `server_state` | `server_state` (`key`, `value`, `updated_at`), small server-wide facts that aren't settings; the first key is the support card's answer: see [Server state](#server-state) |
 
 ## SQLite choices
 

@@ -105,6 +105,19 @@ sliver. That
 wait is most of an admin run's length; a smaller value is fine for checking the
 script.
 
+The support shots come after those (`admin/support-card.png`,
+`admin/account-menu.png`, `admin/update-notice.png`). The overview's support
+card only shows once the server's first account is 30 days old, so the
+"support card" step backdates every non-demo account by 40 days in the capture
+database (**sqlite3**, like the web player's seeded year) and runs after every
+other console shot, so none of them shows the card. The capture server is a
+local build, which never has an update to offer, so the update notice is its
+own `GET /admin/system` answer shown as a Docker server one release behind
+would see it (a Playwright route), with the real latest release: the server's
+own update check, or, when GitHub refused that (60 unauthenticated requests an
+hour), asked again from the script with `GITHUB_TOKEN` when it is set
+(`GITHUB_TOKEN=$(gh auth token)`).
+
 The web player's browse shots need state the seeded library doesn't carry.
 Before warming the demo session, `capture-web.mjs` signs in as the admin
 (`run.sh` passes `ADMIN_PASSWORD`), sets **series overrides** on four seeded

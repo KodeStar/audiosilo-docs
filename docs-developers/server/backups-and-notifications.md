@@ -31,7 +31,8 @@ What is in it: accounts and their password hashes, sessions and API keys
 (as token hashes), invites, progress, bookmarks, notes, history, listening
 sessions, favourites, shares, metadata edits, custom covers, folder detection
 choices, ignored issues, the audit log, notification destinations (their
-addresses and secrets included) and the event feed. The library index is in it
+addresses and secrets included), the event feed and `server_state` (the
+support card's answer). The library index is in it
 too, though the next scan would rebuild it anyway. **Not** in it:
 `config.yaml`, the certificates, downloaded tools, and the audiobooks.
 
@@ -163,7 +164,7 @@ key) or `system`. No IP address is stored.
 | `device` | `revoke` |
 | `progress` | `edit` |
 | `issue` | `ignore`, `unignore` |
-| `settings` | `update` (details: `changes`, each `{setting, from, to}`) |
+| `settings` | `update` (details: `changes`, each `{setting, from, to}`), `support` (an answer to the console's [support card](web-ui.md#the-support-card); details: `choice` `donated` or `snoozed`, and a snooze's `returns_at`; not recorded when a donation was already stored and nothing changed) |
 | `backup` | `create`, `download`, `delete`, `restore`, `restore_cancel`, `restore_applied`, `restore_failed` |
 | `notify` | `create`, `update`, `delete` |
 | `import` | `start` (details: `import`, `source`), `apply` (`import`, `sessions`, `listened`), `undo` (`import`); the target is the person the history went to. Connecting, a cutoff change and deleting an unapplied import aren't audited |

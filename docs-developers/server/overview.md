@@ -348,9 +348,10 @@ Every feature ships with a test (see
 [Gates & CI](../contributing/gates-and-ci.md) for the full gate):
 
 - **Handler/integration tests** use the `newTestEnv` harness in
-  `internal/api/api_test.go`: an in-memory SQLite store (`store.Open(ctx,
-  ":memory:")`), a seeded admin + auth code, and the real `testdata/library`
-  fixtures (tiny generated M4B files under author/series folders).
+  `internal/api/api_test.go`: a file-backed SQLite store from
+  `storetest.Open(t)` (migrated once per test binary, copied per test), a
+  seeded admin + auth code, and the real `testdata/library` fixtures (tiny
+  generated M4B files under author/series folders).
   `newTestEnvWith` accepts a config mutator for routes registered at build time
   (e.g. the demo root redirect).
 - **Pure-logic tests** sit next to the code: `internal/api/middleware_test.go`,
