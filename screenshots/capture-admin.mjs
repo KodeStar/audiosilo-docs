@@ -36,7 +36,7 @@ import http from 'node:http';
 import {cp, mkdir, rm, writeFile} from 'node:fs/promises';
 import path from 'node:path';
 import {chromium} from 'playwright';
-import {CACHE, DAY, MIN, apiClient, isoAgo, pathQuery, sleep, shoot, step, DESKTOP_CONTEXT} from './lib.mjs';
+import {CACHE, DAY, MIN, apiClient, isoAgo, pathQuery, sleep, shoot, step, wanted, DESKTOP_CONTEXT} from './lib.mjs';
 
 const ORIGIN = (process.env.AS_ORIGIN || 'http://127.0.0.1:8790').replace(/\/$/, '');
 const ADMIN = `${ORIGIN}/admin`;
@@ -354,9 +354,9 @@ const page = await ctx.newPage();
 // Opens a console route and waits for it to render: by default its page
 // heading (the h1.display every screen's PageHead and the overview greeting
 // render); `ready` names something else for the screens without one (Library >
-// Books, a book's page).
-const open = async (p, route, ready = (pg) => pg.locator('h1.display').first()) => {
-  await p.goto(`${ADMIN}${route}`, {waitUntil: 'networkidle', timeout: 45000});
+// Books, a book's page). `origin` is this run's server unless another is named.
+const open = async (p, route, ready = (pg) => pg.locator('h1.display').first(), origin = ORIGIN) => {
+  await p.goto(`${origin}/admin${route}`, {waitUntil: 'networkidle', timeout: 45000});
   await ready(p).waitFor({timeout: 15000});
   // Covers arrive after the page renders, in batches (POST /admin/covers).
   await sleep(1500);
@@ -370,11 +370,16 @@ await step('sign-in page', async () => {
   await shoot(page, 'admin/login.png');
 });
 
+// Signs in as admin from the console's sign-in form (already open on `p`).
+const signIn = async (p, password) => {
+  await p.getByLabel('Username', {exact: true}).fill('admin');
+  await p.getByLabel('Password', {exact: true}).fill(password);
+  await p.getByRole('button', {name: 'Sign in', exact: true}).click();
+  await p.locator('h1.display').first().waitFor({timeout: 15000});
+};
+
 await step('sign in', async () => {
-  await page.getByLabel('Username', {exact: true}).fill('admin');
-  await page.getByLabel('Password', {exact: true}).fill(PASSWORD);
-  await page.getByRole('button', {name: 'Sign in', exact: true}).click();
-  await page.locator('h1.display').first().waitFor({timeout: 15000});
+  await signIn(page, PASSWORD);
   await sleep(1500);
 });
 
@@ -570,7 +575,7 @@ await step('server settings: network & https', async () => {
 
 await step('server settings: community metadata', async () => {
   // Taller, so the switch, Source, Matching and Service cards fit.
-  await page.setViewportSize({width: 1440, height: 1240});
+  await page.setViewportSize({width: 1440, height: 1300});
   try {
     await open(page, '/server?topic=metadata');
     await page.getByText('Keep a local copy', {exact: true}).waitFor({timeout: 8000});
@@ -763,31 +768,30 @@ await step('health: system', async () => {
 // place as the copy (so nothing is downloaded): the community metadata row and
 // the copy's panel under it, clipped.
 await step('health: system in mirror mode', async () => {
+  if (!wanted('admin/system-mirror.png')) return;
   if (!MIRROR_ORIGIN || !MIRROR_PASSWORD) throw new Error('MIRROR_ORIGIN not set (run.sh starts it when it builds the meta artifact)');
+  // The seeded copy opens in the background after start (state "opening", a
+  // few seconds). Any other state but ready means the server refused it and
+  // is after a real one ("empty", then "downloading" half a minute after
+  // start): stop at once, with its metadata switched off so nothing is fetched.
+  const mapi = apiClient(MIRROR_ORIGIN);
+  const {token: mtoken} = await mapi(null, 'POST', '/auth/login', {username: 'admin', password: MIRROR_PASSWORD});
+  for (const until = Date.now() + 30000; ; await sleep(500)) {
+    const m = await mapi(mtoken, 'GET', '/admin/meta/mirror');
+    if (m.state === 'ready') break;
+    if (m.state !== 'opening' || Date.now() > until) {
+      await mapi(mtoken, 'PATCH', '/admin/settings', {metadata: {enabled: false}}).catch(() => {});
+      throw new Error(`the seeded local copy isn't answering: ${JSON.stringify(m)}`);
+    }
+  }
   const mctx = await browser.newContext(DESKTOP_CONTEXT);
   try {
     const mp = await mctx.newPage();
-    await mp.goto(`${MIRROR_ORIGIN}/admin/`, {waitUntil: 'networkidle', timeout: 45000});
-    await mp.getByLabel('Username', {exact: true}).fill('admin');
-    await mp.getByLabel('Password', {exact: true}).fill(MIRROR_PASSWORD);
-    await mp.getByRole('button', {name: 'Sign in', exact: true}).click();
-    await mp.locator('h1.display').first().waitFor({timeout: 15000});
-    // The copy opens in the background after the server starts: wait for it.
-    const mapi = apiClient(MIRROR_ORIGIN);
-    const mlogin = await mapi(null, 'POST', '/auth/login', {username: 'admin', password: MIRROR_PASSWORD});
-    const until = Date.now() + 120000;
-    for (;;) {
-      const st = await mapi(mlogin.token, 'GET', '/admin/system');
-      if (st?.metadata?.mirror?.state === 'ready') break;
-      if (Date.now() > until) throw new Error(`the local copy isn't ready: ${JSON.stringify(st?.metadata?.mirror)}`);
-      await sleep(1000);
-    }
-    await mapi(mlogin.token, 'POST', '/auth/logout').catch(() => {});
-    await mp.goto(`${MIRROR_ORIGIN}/admin/health/system`, {waitUntil: 'networkidle', timeout: 45000});
+    await open(mp, '/', (pg) => pg.getByLabel('Username', {exact: true}), MIRROR_ORIGIN);
+    await signIn(mp, MIRROR_PASSWORD);
     const row = mp.locator('li').filter({has: mp.getByText('Data version', {exact: true})}).first();
-    await row.waitFor({timeout: 15000});
+    await open(mp, '/health/system', () => row, MIRROR_ORIGIN);
     await row.scrollIntoViewIfNeeded();
-    await sleep(1000);
     const box = await row.boundingBox();
     if (!box) throw new Error('no community metadata row');
     const pad = 16;
