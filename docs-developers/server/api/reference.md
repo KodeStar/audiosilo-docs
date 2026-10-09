@@ -2384,10 +2384,12 @@ zone, as on the admin Activity page.
 The fields mean what they mean in the admin's
 [`activity`](#range-listening-activity), for the caller alone:
 
-- `totals` - the caller's `listened` (wall-clock seconds), `sessions`, `books`
-  listened to and books `finished` in the period (by the caller's own finish
-  dates, **all** of them, including books they can no longer open: a count, no
-  paths, so `totals.finished` can exceed `finished_books`' length); `previous`
+- `totals` - the caller's `listened` (wall-clock seconds), `sessions`, books
+  `finished` in the period (by the caller's own finish dates, **all** of them,
+  including books they can no longer open: a count, no paths, so
+  `totals.finished` can exceed `finished_books`' length) and `books` listened to
+  **or** finished in it (a book marked finished with no listening recorded
+  still counts, so `finished` is never more than `books`); `previous`
   the same for the period of equal length just before;
   `estimated` how many of `totals.listened`'s seconds are estimates.
 - `days` - every day of the period, oldest first, zero days included;
@@ -3492,7 +3494,8 @@ book path).
     },
     "checked_at": "2026-10-03T09:20:44.10Z"
   },
-  "community_checking": false
+  "community_checking": false,
+  "match_query": "The Martian: Classroom Edition Andy Weir"
 }
 ```
 
@@ -3556,6 +3559,19 @@ book path).
 - `community_check_failed` - present and `true` when the book's last check
   failed (the community service didn't answer, or the check ran out of time):
   `community_chapters` is then the check before it.
+- `match_query` - the text the console's
+  [match dialog](#get-apiv1adminlibrariesidbookmatch) opens its search box
+  with (`meta.SearchPrefill`): the book's title and author, unless the tags
+  look swapped or junk, where the folders' reading of the path
+  (`metadata.FromPathLayout`) replaces them. Swapped means the title is the
+  author folder's name, or the author, cleaned of series and numbering, is the
+  path's title; a tag that matches its own path fact is never swapped
+  (`Dune/Dune` by Frank Herbert). A junk title (`Unknown`, `Untitled`,
+  `Track 01`, `03`) or a junk author (`Unknown`, `Various Artists`) is replaced
+  on its own. A fact the path doesn't give keeps the tag's value. It only fills
+  the box: the match itself always sends the book's own facts, and `q` is what
+  the admin then searches for. Always present (`""` for a book with nothing to
+  say).
 
 | Status | Meaning |
 |---|---|
@@ -4460,6 +4476,7 @@ The session object, shared by both session routes:
   "imported": false,
   "state": "playing",
   "chapter": "Chapter 12",
+  "chapter_index": 12,
   "ip": "192.168.1.24"
 }
 ```
@@ -4494,14 +4511,26 @@ The session object, shared by both session routes:
   minutes) or `ended`. A session can come back from `ended`: a late save whose
   position advanced by about the time that passed (a phone that kept playing
   without saving) continues it, up to 12 hours after its last save.
-- `chapter` (the chapter title at `position`) and `ip` (the device's newest
-  address) are present on **live** sessions only.
+- `chapter`, `chapter_index` and `ip` are present on **live** sessions only.
+  `chapter_index` is the 0-based place of the chapter at `position` and
+  `chapter` its title, tidied the way the player tidies a filename-shaped one
+  (the audio extension dropped, underscores as spaces, a trailing bitrate tag
+  removed). `chapter` is omitted when the title names nothing (empty, a bare
+  number such as `024`, a track or disc number such as `Track 01`; a title in
+  another script always names something), so a client says "Chapter
+  `chapter_index` + 1" instead. A numbered title such as `Chapter 10` or
+  `Part 7` is kept as written: in a book that opens with a prologue the
+  thirteenth chapter can be titled `Chapter 12`, as in the example. A book with
+  a single chapter (the whole book) has neither field. `ip` is the device's
+  newest address.
 
 ### `GET /api/v1/admin/sessions/live`
 
 Who is listening now: the open sessions (a save within the last 10 minutes),
 newest first, **one per device** - a device that moved on to another book shows
-only the book it is on now. Each carries `chapter` and `ip`.
+only the book it is on now. Each carries `ip`, and `chapter_index` and `chapter`
+as described [above](#admin-activity) for a book with more than one
+chapter.
 
 ```json
 { "sessions": [ { "id": 412, "username": "sam", "state": "playing", "…": "…" } ] }
@@ -5040,9 +5069,12 @@ and only the part inside the period counts.
   is rounded up to the next whole second). `timezone` is the server zone's
   abbreviation at `to` and `utc_offset` its offset from UTC in minutes.
 - `totals` - `listened` (wall-clock seconds), `sessions` (sessions that started
-  in the period), `listeners` (people who listened), `books` (books listened
-  to), `finished` (books whose finish date falls in the period). `previous` is
-  the same for the period of equal length just before `from`, for deltas.
+  in the period), `listeners` (people who listened), `finished` (the distinct
+  books with a finish date in the period: a book two people finished counts
+  once) and `books` (the books listened to **or** finished in the period, so a
+  book marked finished or imported with no listening recorded still counts, and
+  `finished` is never more than `books`). `previous` is the same for the period
+  of equal length just before `from`, for deltas.
 - `estimated` - how many of `totals.listened`'s seconds are estimates: listening
   from before the server recorded sessions that the players' spans didn't cover
   (see [Listening from before sessions](../data-model.md#listening-from-before-sessions)),
@@ -5059,13 +5091,17 @@ and only the part inside the period counts.
   listened time. Authors and narrators are the whole field value (unlike the
   Library's people lists, which split co-credits: shipped players match these
   names to books by the whole value); `books` counts distinct books.
-  `top_users[].finished` counts that person's books finished in the period.
+  `top_users[].finished` counts that person's books finished in the period and
+  `top_users[].books` the books they listened to or finished in it, counted
+  like `totals`.
 - `funnel` - people x books with a progress save in the period, by how far each
   got (the current position, so a restarted book counts where it is now; a
   finished book counts as 100%).
 - `drop_offs` - up to 5 chapters where at least two people stopped the same
   book: unfinished progress with no save for 30 days. `chapter_index` is
-  0-based; `scan_error` says the book has a read problem the Health page lists.
+  0-based; `chapter` is its title tidied as on a live session (`""` when it
+  names nothing, where the console says "Chapter `chapter_index` + 1");
+  `scan_error` says the book has a read problem the Health page lists.
   Independent of the period.
 - `playback` - listening by how it played: direct or `transcoded`, per `codec`
   (`""` unknown), with `listened` in the period and `sessions` started in it.
