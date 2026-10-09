@@ -210,8 +210,11 @@ audiosilo-meta's data releases on GitHub (through audiosilo-meta's public
 (`pkg/query`) over it. `internal/meta` puts it in front of the remote service
 (`meta.Service.SetMirror`), which still answers whatever the copy can't. The
 launcher builds it only in mirror mode (`pkg/launcher/metamirror.go`) and hands
-it to the API in `api.Runtime.MetaMirror`; a server started in remote mode
-deletes the folder. `ghfake/` is a fake GitHub of data releases for tests.
+it to the API with `API.SetMetaMirror` right after `api.New`; `Run` opens the
+copy in the background, then checks on its schedule. A server started in remote
+mode deletes the folder. `internal/mirrortest` is its test support (data
+releases on audiosilo-meta's public `pkg/release/releasetest` fake GitHub, a
+counting remote service), tests only.
 `internal/diskspace` is the free-space reading its disk guard shares with the
 library disks on Health > System. Behaviour, schedule and fallback:
 [Mirror mode](configuration.md#mirror-mode-metadatamode-mirror).

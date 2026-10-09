@@ -79,6 +79,7 @@ pkg/scan       PUBLIC local folder scanner (tags + path/filename heuristics + ff
 pkg/query      PUBLIC read side of the artifact: Open, every query, and the JSON API handler (NewHandler)
 pkg/query/querytest  PUBLIC test support: a small real fixture artifact + constants naming its facts
 pkg/release    PUBLIC data-release fetcher: newest data release, verified download
+pkg/release/releasetest  PUBLIC test support: one fake of GitHub's releases API + checksum/gzip helpers
 internal/importer   OpenAudible / Libation export -> canonical records (ASIN dedup)
 internal/issueform  issue-form body -> canonical records + an ok/duplicate/needs-human/invalid verdict
 internal/build      the deterministic SQLite builder (FTS5, ASIN/ISBN indexes, added_at)
@@ -95,7 +96,7 @@ in `pkg/query`; `internal/serve` adds what is metaserve's own.
 
 ## Public Go packages
 
-Three packages are a public API for programs outside this repo. Mirror-mode
+These packages are a public API for programs outside this repo. Mirror-mode
 AudioSilo servers (`metadata.mode: mirror`, see the server's
 [configuration](../server/configuration.md#mirror-mode-metadatamode-mirror))
 use them to download the data release once a day and answer the same API
@@ -127,6 +128,12 @@ in-process:
   verified against `meta.sqlite.gz.sha256`, fsynced and renamed; bounded,
   stall-guarded and only from allowlisted GitHub hosts). metaserve's poller uses
   it too, adding its delta and cache paths on top.
+- **`pkg/release/releasetest`** - the one fake of GitHub's releases API (ETag
+  and `304`, hit counts, failing, throttled and hung releases, a redirect
+  route, the `User-Agent` of each request) and the checksum and gzip helpers its
+  assets are built with. `pkg/release`'s tests, metaserve's refresh tests and
+  the AudioSilo server's mirror tests all publish their releases there, so they
+  can't drift apart on what a release looks like on the wire.
 
 Two rules follow from these being public:
 

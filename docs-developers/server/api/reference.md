@@ -5345,8 +5345,7 @@ server keeps a local copy of the community metadata. Its status, here, in
   "built_at": "2026-10-08T21:14:03Z",
   "schema_version": 7,
   "size_bytes": 1712345088,
-  "checked_at": "2026-10-09T08:00:12Z",
-  "next_check_at": "2026-10-10T08:00:12Z",
+  "checked_at": "2026-10-08T08:00:12Z",
   "downloaded_at": "2026-10-08T08:01:40Z",
   "progress": { "done": 183500800, "total": 443547136 },
   "fallback": false
@@ -5355,17 +5354,17 @@ server keeps a local copy of the community metadata. Its status, here, in
 
 | Field | Meaning |
 |---|---|
-| `state` | `"empty"` (no copy, and no failed attempt yet), `"downloading"` (a download is running, over a copy or not), `"ready"` (a usable copy answers) or `"error"` (no usable copy, and the last attempt failed). A failed update over a working copy stays `"ready"`, with `error` set |
+| `state` | `"empty"` (no copy and no failed attempt yet, or, just after a start, the copy still opening), `"downloading"` (a download is running, over a copy or not), `"ready"` (a usable copy answers) or `"error"` (no usable copy, and the last attempt failed). A failed update over a working copy stays `"ready"`, with `error` set |
 | `tag` | the data release the copy came from (`data-vYYYY.MM.DD-<core7>-<community7>`); absent without a copy |
 | `built_at` | when audiosilo-meta built the artifact |
 | `schema_version` | the artifact's schema version |
 | `schema_newer` | `true` when that is newer than this server's code understands (`query.MaxSchemaVersion`): the copy still answers, any query that breaks on it goes to `base_url`, and the server wants updating. Absent otherwise |
 | `size_bytes` | the copy's size on disk |
 | `checked_at` | the last check of the release list (successful or not); absent before the first |
-| `next_check_at` | when the next check is due: 30 s after start without a copy, a day after the last check, an hour after a failed one |
+| `next_check_at` | when the next check is due: 30 s after start without a copy, a day after the last check, an hour after a failed one, now once **Check now** asked for one; absent while a check is running |
 | `downloaded_at` | when the copy was downloaded |
 | `progress` | only while downloading: `done` and `total` compressed bytes (`total` `0` when the release declares no size) |
-| `error` | the last failed check, as the server words it (e.g. `not enough disk space: need 2.4 GB, have 1.1 GB`); kept while a working copy answers, cleared by the next successful check |
+| `error` | the last failed check, as the server words it (e.g. `not enough disk space: need 2.5 GB, have 1.1 GB`); kept while a working copy answers, cleared by the next successful check |
 | `fallback` | `true` while lookups go to `base_url` because no usable copy is loaded |
 
 The timestamps and `tag`, `built_at`, `schema_version`, `size_bytes` and
@@ -5425,8 +5424,9 @@ error here: it is reported in `error`.
 ### `GET /api/v1/admin/meta/mirror`
 
 *Admin.* The local metadata copy's [status](#the-local-copys-status-metadatamirror)
-on its own, without the rest of `GET /admin/system`: the console polls it every
-2 seconds while a download runs.
+on its own, without the rest of `GET /admin/system` (no tool versions, disk
+probes or health check): Health > System polls it every 2 seconds while the copy
+is busy (downloading, a check running, or a check due now after **Check now**).
 
 | Status | Meaning |
 |---|---|
@@ -5438,9 +5438,10 @@ on its own, without the rest of `GET /admin/system`: the console polls it every
 
 *Admin.* Asks the mirror to look for a newer copy now (the console's **Check
 now**). It never waits for the check: it wakes the mirror and answers `202` with
-the copy's [status](#the-local-copys-status-metadatamirror) as it is, and the
-check runs in the background (a download, if there is a newer copy, shows in
-`state` and `progress`). While a check is already running it does nothing more.
+the copy's [status](#the-local-copys-status-metadatamirror), whose
+`next_check_at` is now (the check is due), and the check runs in the background
+(a download, if there is a newer copy, shows in `state` and `progress`). While a
+check is already running it does nothing more.
 The check is the scheduled one: the conditional release-list request, then a
 download only when the newest data release isn't the copy held (see
 [Mirror mode](../configuration.md#mirror-mode-metadatamode-mirror)). Not
