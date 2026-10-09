@@ -152,7 +152,8 @@ Metadata extraction: embedded tags in-process via `dhowden/tag`, durations /
 chapters / codec via ffprobe when available (`probe.go`), the release
 date (`ReleaseDate`, a date tag as `YYYY[-MM[-DD]]`), and
 `DeriveFromPath` - the structural path heuristic
-(`Author/Series/01 - Title.m4b`) that fills gaps for untagged files. `layout.go`
+(`Author/Series/01 - Title.m4b`; a lone folder above the book is its author,
+`Author/Title.m4b`) that fills gaps for untagged files. `layout.go`
 reads a path's author/series/book LAYOUT (`ReadPathLayout`, the community
 match's path facts) and turns it into a path-first library's values
 (`FromPathLayout`). Defines the

@@ -295,6 +295,17 @@ row itself (as migration 0016 did) instead of blanking the fields, and
 `scanned_title` from their titles. See
 [Metadata overrides and effective values](#metadata-overrides-and-effective-values).
 
+A scan also writes an `@rev` key (`catalog.scannedRevKey`): the revision of the
+path baseline (`metadata.DeriveFromPath`) the snapshot was read with. A snapshot
+without one (any older server's) was read when the lone folder above a book
+(`Charles Dickens/Great Expectations`) was its series rather than its author. For
+a book one folder deep, `Catalog.Signatures` sorts such a snapshot out in SQL
+(`pathCheckExpr`):
+- **Settled by the snapshot alone:** a series other than the folder came from a tag, so only a blank author (missing, or the `""` migration 0016 wrote) changes (to the folder); the folder as both series and author means the series was the path's.
+- **Needs the tags:** the folder as series with another author, or none, can't be told from a series tag naming the folder (`Discworld/Mort`); nor can a blank or stale snapshot (the row is an older server's reading, whatever revision the stale snapshot names).
+
+The next scan reads the second kind's first file once (not while ffprobe fails where it read the file before, so a series only ffprobe reads is never recorded as none), and `Catalog.SetPathReading` rewrites both kinds' snapshots and re-resolves them, in batches, without re-indexing. It skips a snapshot re-indexed in the meantime, and keeps the chapter titles of an older server's row. Until then, `bookLayers.pathBaseline` tells a snapshot's path values from its tags' with the baseline it was read with, so a library that prefers its folders still drops the lone folder as a series.
+
 **`book_files`** *(0001; `codec` in 0016)* - the ordered parts of a folder
 book: `book_id` (FK CASCADE), `rel_path`, `seq`, `duration`, `format`, `codec`
 (each part's own codec, so a mixed-codec folder shows honestly; admin-only, the
@@ -838,9 +849,9 @@ book the series when there is an author folder above it, the leaf the title
 with its leading number split off as the position; disc and track folders are
 parts) and puts its title, author and series over the scanned ones wherever it
 says anything. Where it says nothing it still replaces a scanned value that is
-only the scan's own path reading (`DeriveFromPath` takes the one folder above a
-book for its series, so `George Orwell/Animal Farm` would get series "George
-Orwell"); a real tag value stays. The title always keeps a value. The position
+only the scan's own path reading (`DeriveFromPath` takes the folder holding a
+book for its series even when it is a disc folder's book, so
+`Frank Herbert/Dune/CD1` would get series "Dune"); a real tag value stays. The title always keeps a value. The position
 goes with the series: the layout's own, else the scanned one only while the
 series it numbers stays (the same series, by any case). A tag title that IS the
 leaf's name, number and all (`13 Reasons Why`), is kept whole with no position
