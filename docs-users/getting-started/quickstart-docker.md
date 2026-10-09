@@ -9,6 +9,10 @@ Docker is the recommended way to run AudioSilo on a NAS, home server or VPS. The
 
 The image is **`ghcr.io/kodestar/audiosilo-server`**.
 
+:::tip On Unraid?
+Install from Community Applications instead - see [Install on Unraid](./install-unraid.md).
+:::
+
 ### What you need
 
 - Docker with the Compose plugin (`docker compose`).

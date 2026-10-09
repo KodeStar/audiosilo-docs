@@ -145,6 +145,22 @@ transcoding/probing (both are optional by design) and retries on the next start.
 The `.deb`/`.rpm` packages sidestep all of this by declaring a dependency on the
 distro's `ffmpeg`.
 
+### Smoke test, and the LinuxServer.io image downstream
+
+`release.yml`'s last step smoke-tests the archives while the release is still a
+draft: the exact linux archive names, the binary at each archive's root, each
+binary's `embedplayer` tag, `CGO_ENABLED=0` and architecture (`go version -m`), and
+an amd64 boot with `--data` only (the headless first run and the self-signed TLS
+default) that must serve `/healthz` and `/web/`.
+
+That is a contract, because
+[linuxserver/docker-audiosilo](https://github.com/linuxserver/docker-audiosilo)
+(`lscr.io/linuxserver/audiosilo`, the image Unraid's Community Applications lists)
+installs `audiosilo_<version>_linux_{amd64,arm64}.tar.gz` from the published release
+onto Alpine. Their CI polls `releases/latest` hourly, so publishing the draft is
+what triggers a new `<tag>-ls<N>` image. The full list is in
+`audiosilo-server/RELEASING.md` section 2c.
+
 ## 4. Manager desktop builds - `audiosilo-manager/.github/workflows/desktop.yml`
 
 The Wails UI can't cross-compile, so `desktop.yml` runs a per-OS matrix on `v*`
@@ -171,6 +187,10 @@ Gatekeeper/SmartScreen warnings.
   re-run them after. On a plain tag push all workflows fire together; the web
   image resolved is whatever `:latest` (or the dispatched `web_version`) points at,
   which is why the runbook publishes the web image first.
+- **Publish the native draft last.** The draft is uploaded before `release.yml`'s
+  smoke test runs, and publishing it is what the LinuxServer.io image follows:
+  publish only once the run is green, and tick *Set as a pre-release* for a `-rc`
+  tag.
 - **Docker vs. native:** same server code, same pinned player; the differences are
   ffmpeg (bundled in the image, resolved/fetched at runtime for binaries) and how
   the player is attached (`/app/web` + `AUDIOSILO_WEB_DIR` vs. `-tags embedplayer`).

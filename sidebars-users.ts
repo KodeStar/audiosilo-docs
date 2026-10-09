@@ -11,6 +11,7 @@ const sidebars: SidebarsConfig = {
       collapsed: false,
       items: [
         'getting-started/quickstart-docker',
+        'getting-started/install-unraid',
         'getting-started/install-binary',
         'getting-started/first-run',
         'getting-started/organizing-your-library',
