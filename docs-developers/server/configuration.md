@@ -243,7 +243,7 @@ publishers) in both modes.
 |---|---|
 | isn't ready (not downloaded yet, or not opened yet after a start) | goes to `base_url`, exactly as in remote mode |
 | answers `5xx` (a query this code can't run, e.g. on an artifact schema newer than it knows; a local answer over 15 s, over 32 MiB, or a panic counts the same) | goes to `base_url` unchanged |
-| answers `404` | the copy's answer is authoritative, with one exception: a "no match" never replaces a stored **positive** answer in `meta_cache` (a book's enrichment or a work). The stored answer is served, stale, and held in memory for 2 minutes, and its row is left alone, so a lagging or broken copy can't blank a companion that worked. The exception holds only while a copy is ready: before that the "no match" came from `base_url` itself, which is authoritative, so it replaces the row as in remote mode |
+| answers `404` | the copy's answer is authoritative, with one exception: a "no match" never replaces a stored **positive** answer in `meta_cache` (a book's enrichment or a work). The stored answer is served, stale, and held in memory for 2 minutes, and its row is left alone, so a lagging or broken copy can't blank a companion that worked. The exception holds only for a "no match" the copy itself answered: one from `base_url` (no copy ready yet, or a request the copy failed and sent on) is authoritative and replaces the row as in remote mode |
 | and `base_url` both fail | the persistent cache serves the last known answer, as in a remote-mode outage |
 
 A `base_url` with a path (metaserve behind a proxy at `/meta`, say) works too:
