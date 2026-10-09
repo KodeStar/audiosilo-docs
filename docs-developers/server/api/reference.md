@@ -89,6 +89,7 @@ gates:
 | `browse_people` | always `true` | the browse lists [`/authors`, `/narrators`](#get-apiv1librariesidauthors--get-apiv1librariesidnarrators) and [`/series`](#get-apiv1librariesidseries), and the `narrator` filter on [`/books`](#get-apiv1librariesidbooks) |
 | `cover_sizes` | always `true` | cover thumbnails, [`/cover?size=`](#get-apiv1librariesidcover) |
 | `next_book` | always `true` | [`/next`](#get-apiv1librariesidnext), what to play after a book |
+| `series_memberships` | always `true` | `memberships=1` on [`/books`](#get-apiv1librariesidbooks) and [`/series`](#get-apiv1librariesidseries): a book counts in every series it is in, not only its main one (an older server ignores the param and places books by their main series) |
 
 Phase 1b (the listener's own state and stats) adds six more, all always `true` on
 a server that has them and absent on an older one:
@@ -682,7 +683,8 @@ Keyset-paginated (see [conventions](index.md#pagination)).
 | Query param | Type | Default | Notes |
 |---|---|---|---|
 | `author` | string | - | the books whose author credit is this value, or names it as one of its people (`Brandon Sanderson` finds `Brandon Sanderson & Janci Patterson`; see [the people lists](#get-apiv1librariesidauthors--get-apiv1librariesidnarrators)). Exact, case included |
-| `series` | string | - | exact-match filter |
+| `series` | string | - | the books whose main `series` is exactly this value. With `memberships=1`, also the books that list it among their other series (see `series_list` below) |
+| `memberships` | `1` | - | `series_memberships` capability: makes `series` match every series a book is in. Without it a book is found only by its main series, as shipped players expect |
 | `narrator` | string | - | as `author`, on the narrator credit (`browse_people` capability; an older server ignores it and returns the unfiltered list; one before the co-credit split matches whole credits only) |
 | `sort` | string | `author` | `author` \| `title` \| `recent` (`recent` = newest `added_at` first) |
 | `limit` | int | `50` | ≤ 0 or > 200 falls back to 50 |
@@ -726,6 +728,7 @@ probed; `added_at` when unknown. Every book response (lists, search, recent,
 | `published` | string | the publication date, `YYYY`, `YYYY-MM` or `YYYY-MM-DD`: the effective value from an [admin edit](#patch-apiv1adminlibrariesidbook) or an accepted community match |
 | `cover_color` | object | the cover's palette, lowercase `#rrggbb`: `bg` is its dominant colour; `accent` a vibrant colour of the cover adjusted to a WCAG contrast of at least 4.5:1 against `bg`, and `on_accent` (`#ffffff` or `#000000`) the text colour on it. `accent` and `on_accent` are omitted together when the cover has no usable vibrant colour |
 | `cover_version` | string | an opaque token (10 characters) for the cover art. Append it to a cover URL as `v=` so a client cache refetches a replaced cover |
+| `series_list` | array | every series the book is in, `[{"name", "position"}]` (position `0` = unnumbered): its main `series` first (at `series_index`), then the others an [admin edit](#patch-apiv1adminlibrariesidbook) or a community match added. Sent only for a book in more than one series; otherwise `series`/`series_index` say it all |
 
 `cover_version` is on every indexed book: a short hash of the book's cover art
 identity (`books.cover_art`). That identity starts from index data alone (a custom
@@ -775,9 +778,10 @@ to the caller's share scope and without `merge_suggestions`.
 
 The narrators route uses the key `narrators` instead of `authors`.
 
-- A name is the **whole** effective field value: a `Michael Kramer & Kate
-  Reading` credit is one entry, matching the exact `author` / `narrator` filter on
-  [`/books`](#get-apiv1librariesidbooks). Names sort case-insensitively.
+- A co-credit counts once for each person it names: a `Michael Kramer & Kate
+  Reading` credit adds a book to both `Michael Kramer` and `Kate Reading`, and the
+  `author` / `narrator` filter on [`/books`](#get-apiv1librariesidbooks) finds it
+  by either name. Names sort case-insensitively.
 - `unknown` counts books with the field blank (they are not listed).
 - Only books the caller's shares grant are counted, so a share-scoped user never
   sees a count for a book outside their grant.
@@ -799,7 +803,7 @@ scope.
 {
   "series": [
     { "name": "Mistborn", "author": "Brandon Sanderson", "books": 3,
-      "duration": 284110.2, "positions": [1, 2, 3] }
+      "duration": 284110.2, "positions": [1, 2, 3], "extra_books": 0 }
   ]
 }
 ```
@@ -808,6 +812,12 @@ scope.
 distinct non-zero series positions held, ascending (so a client can mark the
 gaps). Sorted case-insensitively by name; books with no series are not counted.
 Same status codes as `/authors`.
+
+By default a book counts only in its main `series`, which is what shipped players
+expect. With `?memberships=1` (`series_memberships` capability) it counts in every
+series of its `series_list`, at its position there, and `extra_books` is how many
+of `books` are in the series that way (without the param it is always `0`). Load
+such a series' books with `/books?series=...&memberships=1`.
 
 ### `GET /api/v1/search`
 
