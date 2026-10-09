@@ -270,8 +270,9 @@ The **Demo mode** card runs a public demo from this server (see
 **Server > About** starts with the **Updates** card, which says one of:
 
 - **You're up to date** - this version is the newest release.
-- **AudioSilo *version* is available** - with a **Release notes** button and
-  how to update this server:
+- **AudioSilo *version* is available** - with a **Release notes** button, a
+  line saying AudioSilo is free and that sponsors keep it going (with a
+  **Sponsor on GitHub** link), and how to update this server:
   - **Docker**: pull the new image (`ghcr.io/kodestar/audiosilo-server:<version>`,
     or `:latest`) and recreate the container (`docker compose pull` then
     `docker compose up -d`). Your data folder stays as it is.
@@ -290,6 +291,8 @@ The **Demo mode** card runs a public demo from this server (see
 - **The update check is off** - with a **General settings** button to turn it
   on.
 
+![An update available, with the sponsor line](/img/screenshots/admin/update-notice.png)
+
 The card's header says when the server last asked, and its foot names the
 latest release and when it was published. **Check now** asks GitHub
 straight away (a second press within a minute shows the same answer rather
@@ -302,8 +305,9 @@ When an update exists, the version line on the
 The **About *name*** card lists the server's name, version, how it is installed
 (Docker container, Program or Local build), platform, how long it has been
 running, its data folder, the database's size and schema number, and its
-server ID. Under it are links to this documentation, the source code and the
-issue tracker.
+server ID. Under it are links to this documentation, the source code, the
+issue tracker and **Support AudioSilo** (the project's GitHub Sponsors page; see
+[The support card](console-tour.md#the-support-card)).
 
 ### What the update check sends
 
@@ -362,8 +366,10 @@ restore at start, are listed under **AudioSilo**.
 
 What is recorded: changes to accounts, invites, devices signed out, shares and
 access, people's progress, libraries, books and covers, ignored health issues,
-settings, backups (including every download, restore and cancelled restore)
-and notification destinations.
+settings, backups (including every download, restore and cancelled restore),
+notification destinations, and answers to the
+[support card](console-tour.md#the-support-card) ("Answered the support card",
+with the answer and, for **Not now**, when the card shows again).
 
 What isn't:
 

@@ -97,7 +97,9 @@ CGO-free (modernc SQLite), so everything cross-compiles with no C toolchain:
 - **Linux packages:** `.deb`/`.rpm` (nfpm) that depend on the **distro's** ffmpeg
   and install a systemd unit (`packaging/systemd/audiosilo.service`).
 - **`checksums.txt`**, and the release is created as a **draft** for human review
-  before publishing.
+  before publishing. Its notes end with the `release.footer` in
+  `.goreleaser.yml`: the install pointers and the one sponsor line, linking
+  GitHub Sponsors.
 - **Version stamping:** the same ldflags as the Docker build -
   `-X …/internal/api.Version={{ .Version }}` overrides `var Version = "dev"` in
   `internal/api/api.go`, and `GET /server`, the admin console, and the web player

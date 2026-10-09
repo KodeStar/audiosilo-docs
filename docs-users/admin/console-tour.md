@@ -1,6 +1,6 @@
 ---
 title: "Admin console tour"
-description: "Where to find the AudioSilo admin console, how to sign in, how it is laid out, what the overview and the search palette show, and where activity, library health, scans, server settings, updates and logs live."
+description: "Where to find the AudioSilo admin console, how to sign in, how it is laid out, what the overview, its support card and the search palette show, and where activity, library health, scans, server settings, updates and logs live."
 ---
 
 Every AudioSilo server ships with a built-in admin console. It is a web page
@@ -74,7 +74,8 @@ Along the top of every page:
 - The **Notifications** bell (new books, failed scans, offline libraries,
   sign-ins and more; see [Notifications and the bell](notifications.md)), a
   theme menu (**Light**, **Dark** or **Match system**) and your account menu
-  (**Open the web player**, **Language**, **Sign out**).
+  (**Open the web player**, **Language**,
+  [**Support AudioSilo**](#the-support-card), **Sign out**).
 
 On a phone the destinations move to a tab bar at the bottom of the screen and
 the sections scroll sideways.
@@ -145,6 +146,37 @@ to keep.) See
 
 A brand-new server with no libraries shows a welcome card instead, with an
 **Add your first library** button.
+
+### The support card
+
+![The Support AudioSilo card](/img/screenshots/admin/support-card.png)
+
+AudioSilo is free, with nothing held back. Once your server has been in use
+for a while, the overview shows a small **Support AudioSilo** card at the foot
+of the right-hand column, with a link to the project's page on GitHub
+Sponsors. It never shows on a new server: it first appears 30 days after the
+server's first account was made, or after 7 days once 10 books have been
+finished on the server (books marked finished before the server existed, such
+as ones [imported from Audiobookshelf](import.md), don't count).
+
+- **Sponsor on GitHub** opens GitHub Sponsors in a new tab. It doesn't hide the
+  card.
+- **I've donated** hides the card for good.
+- **Not now** hides it for six months. A message says the date it comes back.
+
+Your answer counts for the whole server: when one admin presses **I've
+donated** or **Not now**, the card is hidden for every admin, and a **Not now**
+never brings it back after an **I've donated**. It is taken on trust: nothing
+is checked, nothing is sent anywhere, and a donation unlocks nothing (every
+feature is there either way). The answer is recorded in the
+[audit log](server.md#audit-log).
+
+The card is part of the admin console only. Only admins see it, and it is
+never shown in the apps or the web player. Whether or not it is showing,
+**Support AudioSilo** stays in the account menu, and on
+[Server > About](server.md#about-and-updates).
+
+![The account menu with Support AudioSilo](/img/screenshots/admin/account-menu.png)
 
 ## Search and commands
 
