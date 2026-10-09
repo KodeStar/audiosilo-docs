@@ -318,7 +318,9 @@ CSP-sensitive work against a real build served by Go. The console's own gate is
   host while it is the default "AudioSilo"), the five destinations (Library,
   People, Activity, Health, Server), a health line (version, offline
   libraries, server unreachable), ⌘K search, the notifications bell (see
-  below), theme and account menus; a per-destination section bar; a bottom
+  below), theme and account menus (the account menu ends with a "Support
+  AudioSilo" link to GitHub Sponsors, `SPONSOR_URL` in `lib/support.ts`); a
+  per-destination section bar; a bottom
   tab bar on phones. Every section has a screen (`PAGES` in
   `features/section-page.tsx`); an unknown section is a 404.
   Interface text is in all six languages.
@@ -342,7 +344,8 @@ CSP-sensitive work against a real build served by Go. The console's own gate is
   attention" card: up to six categories with something to fix, each linking to
   its Health queue). "Recent listening" is the stats' progress feed minus the
   user/book pairs that are live (`splitListening` in
-  `features/overview/overview-model.ts`).
+  `features/overview/overview-model.ts`). The side column ends with the
+  [support card](#the-support-card) when `GET /admin/support` says it shows.
 - **Library > Books** - the cover grid (virtualized) or table over
   `GET /admin/books` (keyset pages loaded as you scroll), the "Recently added"
   and "Continue curating" shelves, the library filter, search, sort and a
@@ -595,8 +598,11 @@ CSP-sensitive work against a real build served by Go. The console's own gate is
   notes link and an `install`-specific how-to, check failed, development
   build, up to date, not checked yet; "Check now" calls
   [`POST /admin/update/check`](api/reference.md#post-apiv1adminupdatecheck)
-  and writes the answer into the system and update caches) and an
-  "About *name*" facts card with links to the docs, source and issues.
+  and writes the answer into the system and update caches; the
+  update-available notice ends with the one sponsor line, "AudioSilo is free;
+  sponsors keep it going. Sponsor on GitHub") and an "About *name*" facts card
+  with links to the docs, source, issues and Support AudioSilo (GitHub
+  Sponsors).
 
 - **Settings > Backups** (`features/settings/backups-topic.tsx`) - over
   [`GET /admin/backups`](api/reference.md#get-apiv1adminbackups) (`useBackups`,
@@ -652,6 +658,43 @@ CSP-sensitive work against a real build served by Go. The console's own gate is
   know) and its details (a settings save as one "from → to" line per setting,
   a backup schedule in words, an ignored issue's kind by its Health name, a
   book edit per field, a share's paths as the first few and a count).
+
+### The support card
+
+`features/overview/support-card.tsx` is a quiet card at the foot of the
+Overview's side column: AudioSilo is free, and GitHub Sponsors is where to
+support it. The server decides when it shows
+([`GET /admin/support`](api/reference.md#get-apiv1adminsupport), `{show}`;
+the rule is `catalog.SupportCardDue`):
+
+- never after an "I've donated", and not while a "Not now" lasts;
+- otherwise once the server's age is at least 30 days
+  (`catalog.SupportAfterDays`), or at least 7 (`SupportMinDays`) with at least
+  10 books finished on it (`SupportAfterFinished`).
+
+The server's age runs from the earliest non-demo `users.created_at`, so a
+server restored from a backup keeps its age and one whose setup isn't finished
+has none. Only finishes dated on or after that first account, by non-demo
+accounts, count: an Audiobookshelf import can bring a household's finished
+books on day one, which is also why the 7-day floor exists.
+
+Its buttons: **Sponsor on GitHub** (a link, `SPONSOR_URL`; it hides nothing),
+**I've donated** and **Not now** (both
+[`POST /admin/support`](api/reference.md#post-apiv1adminsupport) with
+`"donated"` or `"snoozed"`). The answer goes into the support query's cache
+(`keys.support`), so the card disappears at once, and the toast is worded from
+the answer, not the button: with `until` it says "Hidden until *date*",
+without it "Thank you" (a "Not now" after another admin's donation stores
+nothing and comes back without `until`). The answer is server-wide, for every
+admin, and taken on trust: nothing is checked, nothing is sent anywhere, and
+it unlocks nothing (a donation stays a gift). The card is console-only: the
+player never asks, and there is no capability flag. Its strings are the
+`support.*` i18n group (also the account menu's item, About's link and the
+update notice's line); `settings.support` audit events read "Answered the
+support card", with `choice` worded as the button.
+
+The same sponsor line closes every GitHub Release's notes (the GoReleaser
+`release.footer`; see [Releasing](../contributing/releasing.md)).
 
 ### Charts
 

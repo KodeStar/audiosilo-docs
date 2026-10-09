@@ -5692,6 +5692,66 @@ is in [Audit log](../backups-and-notifications.md#audit-log).
 | `200` | the page |
 | `400` | `actor_id` or `before` isn't a number, `area` doesn't match, or `q` is over 200 characters |
 
+## Admin: support card
+
+The admin console's Overview card that points at GitHub Sponsors
+(`catalog/support.go`, `api/handlers_support.go`). Only the console asks: the
+player never sees it, and there is no capability flag. Both routes are *Admin*:
+`401` without a valid session or API key, `403` for a member's token. What the
+console does with them is in
+[The admin console](../web-ui.md#the-support-card).
+
+### `GET /api/v1/admin/support`
+
+*Admin.* Whether the card shows now:
+
+```json
+{ "show": true }
+```
+
+`show` is false after an "I've donated" (for good), while a "Not now" lasts,
+and on a server that hasn't been in use long enough: it turns true 30 days
+after the earliest non-demo account's `created_at`
+(`catalog.SupportAfterDays`), or after 7 (`SupportMinDays`) once 10 books
+(`SupportAfterFinished`) have been finished by non-demo accounts since then. A
+server with no non-demo account (setup not finished) never shows it. The
+answer is worked out on every request; nothing is cached.
+
+### `POST /api/v1/admin/support`
+
+*Admin.* An admin's answer, stored for the whole server (in `server_state`,
+key `support_card`; see [Data model](../data-model.md#server-state)). Taken on
+trust: nothing is checked, nothing leaves the server, and it unlocks nothing.
+
+```json
+{ "action": "snoozed" }
+```
+
+| `action` | Effect |
+|---|---|
+| `"donated"` | hides the card for good |
+| `"snoozed"` | hides it for six months from now (`catalog.SupportSnoozeMonths`) |
+
+```json
+{ "show": false, "until": "2027-04-09T14:16:29Z" }
+```
+
+`show` is always false (the card is hidden either way, so nothing is
+recomputed). `until` (RFC 3339) is when a snooze this request stored ends, and
+is absent after `"donated"`, or when nothing changed: once a server holds a
+donation, a later `"donated"` or `"snoozed"` stores nothing (a snooze never
+turns "for good" back into a snooze) and answers `{ "show": false }`. The
+console words its toast from `until`, not from the button pressed. A change is
+recorded in the [audit log](#admin-audit-log) as `settings.support`, with
+`choice` and, for a snooze, `returns_at`; a request that changed nothing is not.
+
+| Status | Meaning |
+|---|---|
+| `200` | the answer was taken (or there was nothing to change) |
+| `400` | `invalid request` (no body, not JSON, or a field other than `action`), or `action must be "donated" or "snoozed"` |
+| `401` | no valid session or API key |
+| `403` | not an admin |
+
 ## Well-known
 
 Native deep-link association files. Both are *Public*, config-driven
