@@ -150,7 +150,10 @@ Characters; the gate is `listeningProgressFor` over the corrected chapter starts
 `BookTabPanel` renders the active tab: `BookChaptersTab` (or five skeleton rows while
 the list is empty), the community tabs with their `Attribution`, `BookmarksSection` /
 `NotesSection` (both `AnnotationSection`, see [Bookmarks and notes](annotations.md)),
-`HistorySection`, `BookMetaSeriesTab` and `BookDetailsTab`.
+`HistorySection`, `BookMetaSeriesTab` and `BookDetailsTab`. It also builds the
+community cover resolver (`useCommunityCover`) and hands it to the Series, Recaps and
+Characters tabs as `coverFor` (see
+[Community covers](state-and-data.md#community-covers-clientcommunitycoverurl)).
 
 ### The Chapters tab
 

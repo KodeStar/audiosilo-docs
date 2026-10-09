@@ -196,11 +196,17 @@ ASIN or ISBN and then the community's own ids for the recording it names.
 Turning the lookup off stops the checks; chapters already in use stay until
 you switch a book back.
 
+While the lookup is on, your server also downloads community cover images
+from wherever the catalogue keeps them (Audible's image servers or Open
+Library, for example) for the players' series rails and previous-book rows,
+and hands the players small copies. Only the image itself is asked for, and
+listeners' devices never contact those image hosts.
+
 - Flipping the switch takes effect immediately for **everyone connected**, and
   the choice is remembered across restarts.
 - Turning it **off** is a one-tap privacy switch: your server stops contacting
-  the metadata service at all, and the extra section disappears from every
-  player.
+  the metadata service and the cover image hosts at all, and the extra section
+  disappears from every player.
 - While it is on, **Status** says whether the service answers ("Responding ·
   *N* ms" or "Not responding").
 - **Audible marketplace** in the **Matching** card is the store you buy from
