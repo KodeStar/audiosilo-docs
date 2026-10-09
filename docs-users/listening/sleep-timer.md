@@ -1,6 +1,6 @@
 ---
 title: The sleep timer
-description: "Stopping a book after some minutes, at the end of the chapter, or after a few chapters; keeping it going in the last 30 seconds (Keep listening, or a shake of the phone); the Fell asleep bookmark, jumping back to where you drifted off and finding it in the Journal; and the automatic timer at night."
+description: "Stopping a book after some minutes, at the end of the chapter, or after a few chapters; keeping it going in the last 30 seconds (Keep listening, or a shake of the phone); the Fell asleep bookmark, jumping back to where you drifted off and finding it in the Journal; the countdown on the iPhone lock screen (a Live Activity); and the automatic timer at night, which never starts in the car."
 ---
 
 The sleep timer stops the book for you, so you can listen yourself to sleep without losing your place. Tap the sleep button (an alarm clock, labelled **Sleep** where there's room) in the full player or on the player bar to open it (in the web player, the [Z key](keyboard-shortcuts.md) does too).
@@ -20,6 +20,12 @@ Tap one to start it. The times are real time at your current speed.
 The countdown shows on the sleep button, and first in the mini player's second line on a phone. Open the sleep timer again to see what's set (*"Stopping after 3 chapters"* counts down as chapters go by), **Turn off** the timer, or pick another option to replace it. When it fires, playback simply pauses. A timer belongs to its book: start another book and it goes away. And if a book ends while a timer is still running for it, whatever it was set to, the next book doesn't [start by itself](end-of-book.md#playing-on-automatically).
 
 **Pausing:** a minutes timer pauses with the book, so thirty minutes means thirty minutes of listening. Come back after more than **20 minutes** and it starts again at its full length; after more than **two hours** it's over. A chapter timer waits where you left it, however long you're away.
+
+### On the lock screen (iPhone)
+
+In the iPhone app, a running timer also shows as a **Live Activity** (see [Availability](mobile-apps.md#availability)): the book, the chapter and the countdown, on the lock screen and, on iPhones that have one, in the Dynamic Island. It follows the timer (a pause freezes the countdown) and goes away when the timer stops the book or you turn it off. Tap it to open the player.
+
+A timer that starts while the app isn't open on screen, such as the [automatic timer at night](#starting-a-timer-automatically-at-night) for a book you start from the lock screen, gets its Live Activity the next time you open the app. If you swipe it away, it stays away for that timer.
 
 ## The last 30 seconds
 
@@ -54,3 +60,5 @@ When the timer stopped a book you were playing and nobody kept it going in those
 ## Starting a timer automatically at night
 
 Turn on **Auto sleep timer** (in the sleep timer, or in [Settings](settings.md#sleep), where you choose the hours and the kind of timer) and any book you start inside those hours gets a timer. It never adds a second timer or replaces one you set. If a timer runs out and you press play again inside the window, you get a fresh one. **Turn a timer off** and no automatic one comes back for that book until you next start the app.
+
+The automatic timer never starts while your phone is connected to [CarPlay or Android Auto](in-the-car.md). If the book is still playing once the car is gone, and it's still inside the hours, it gets its timer then.

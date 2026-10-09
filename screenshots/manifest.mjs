@@ -36,7 +36,7 @@ export const SHOTS = [
   {file: 'web-player/search.png', capture: 'web', title: 'Web player - Search', hint: 'the Search page with "holmes": grouped Books, and Series as the series card with its mini shelf'},
   {file: 'web-player/you-stats.png', capture: 'web', title: 'Web player - Your listening', hint: "You in the top bar (Stats): the header with this week, the four stat tiles (week, streak, goal, daily average), the listening calendar, the clock and hours per week (the seeded year of listening)"},
   {file: 'web-player/year.png', capture: 'web', title: 'Web player - Year in listening', hint: 'You > Year in listening: the story card on stage (held: the pointer parked on it) beside the title, how it works, the thumbnails and Share this card'},
-  {file: 'web-player/settings.png', capture: 'web', title: 'Web player - Settings', hint: 'Settings from the top bar gear: the grouped section nav (Listening, App, Servers) with Playback open beside it'},
+  {file: 'web-player/settings.png', capture: 'web', title: 'Web player - Settings', hint: 'Settings from the top bar gear: the grouped section nav (Listening, App, Servers) with Playback open beside it (the steppers, then the Smart speed and Voice boost switches)'},
   {file: 'web-player/account.png', capture: 'web', title: 'Web player - Account', hint: "the admin's account page in a fresh browser signed in by password (Account on, from the profile menu): identity, the Password and Pair another device cards, the signed-in devices, Personal API keys, Sign out (no At home and away card: the capture server is on loopback)"},
   {file: 'web-player/downloads.png', capture: 'web', title: 'Web player - Downloads', hint: 'the Downloads page with a book downloaded by hand (and the playing one, downloaded automatically or for the Details shot): storage by server, Automatic downloads (incl. Keep the next books ready), the browser notice, Ready offline'},
   {file: 'web-player/connect.png', capture: 'web', title: 'Web player - Connect', hint: 'the connect start screen, signed out: the server address typed and Continue pressed, the probe card "Found <name>" with Sign in and Try the demo'},
@@ -51,10 +51,10 @@ export const SHOTS = [
   {file: 'web-player/phone-up-next.png', capture: 'web', title: 'Phone - Up next', hint: 'phone-width Up next sheet opened from the header button: Now playing and the queue'},
   {file: 'web-player/phone-book-detail.png', capture: 'web', title: 'Phone - Book page', hint: 'phone-width book page: the cover over the title, the place, Resume across the page and the action row'},
   {file: 'web-player/phone-player.png', capture: 'web', title: 'Phone - Now playing', hint: 'phone-width full player, paused: the companion chips under the actions'},
-  {file: 'web-player/phone-speed-sheet.png', capture: 'web', title: 'Phone - Speed sheet', hint: 'the speed sheet over the phone player: readout, slider with -/+, presets with time left'},
+  {file: 'web-player/phone-speed-sheet.png', capture: 'web', title: 'Phone - Speed sheet', hint: 'the speed sheet over the phone player: readout, slider with -/+, presets with time left, the Smart speed (not in the browser) and Voice boost switches'},
   {file: 'web-player/phone-sleep-sheet.png', capture: 'web', title: 'Phone - Sleep sheet', hint: 'the sleep timer sheet over the phone player: minute tiles, End of chapter, Or stop after, the sleep settings'},
   {file: 'web-player/phone-you-stats.png', capture: 'web', title: 'Phone - Your listening', hint: 'the Me tab (the You hub on Stats): the large title Your listening, the sections row (Stats, Year, Journal, Settings, Account), this week and the stat tiles in two columns'},
-  {file: 'web-player/phone-settings.png', capture: 'web', title: 'Phone - Settings', hint: 'the Me tab on Settings: the large title Settings, the sections row, the Listening group with the Playback card stacked'},
+  {file: 'web-player/phone-settings.png', capture: 'web', title: 'Phone - Settings', hint: 'the Me tab on Settings: the large title Settings, the sections row, the Listening group with the Playback card stacked (steppers, Smart speed, Voice boost)'},
 
   // ── Admin console (admin-ui, desktop 1440x900 dark unless noted) + public server pages
   {file: 'admin/login.png', capture: 'admin', title: 'Admin - Sign in', hint: 'the console sign-in page, signed out'},

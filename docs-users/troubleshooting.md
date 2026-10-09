@@ -201,6 +201,14 @@ So if you see the book at 0:00 with an error showing, don't scrub around -
 just hit **Retry**, and the player re-fetches your real position. Your
 progress on the server is intact.
 
+### AudioSilo doesn't appear in Android Auto or CarPlay
+
+Android Auto only lists apps installed from Google Play unless you allow
+unknown sources, and AudioSilo isn't in CarPlay until Apple approves it (see
+[Availability](./listening/mobile-apps.md#availability)). See
+[Getting AudioSilo into the car](./listening/in-the-car.md#getting-audiosilo-into-the-car)
+for the steps and checks.
+
 ## Library & files
 
 ### My library shows no books, or books suddenly vanished

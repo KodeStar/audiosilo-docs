@@ -23,7 +23,8 @@ content by `(library_id, rel_path)`, and owns exactly one hard problem:
 | Lists | **FlashList v2** (`@shopify/flash-list`) for the cover shelves and grids (`ShelfRow`, `CoverGrid`) |
 | Audio | A **custom native Expo module**, `modules/audiosilo-player`: `AVQueuePlayer` on iOS, `Media3/ExoPlayer` on Android; **HTML5 Audio + Media Session** on web. There is no react-native-track-player dependency - older docs that mention it are stale. |
 | Icons | FontAwesome Pro 7 glyphs **vendored as raw SVG path data** in `src/components/ui/icon-data.ts`, drawn with `react-native-svg`. No `@fortawesome/*` dependency, so no private npm token is needed to build. |
-| Secrets | **expo-secure-store** (Keychain/Keystore) for session tokens; **AsyncStorage** for everything else (`src/lib/secure-store.ts` / `src/lib/storage.ts`) |
+| Secrets | **expo-secure-store** (Keychain/Keystore) for session tokens (on iOS readable after first unlock, for CarPlay: see [Native integrations](native-integrations.md#tokens-on-a-locked-phone-srclibsecure-storets)); **AsyncStorage** for everything else (`src/lib/secure-store.ts` / `src/lib/storage.ts`) |
+| Car and widgets | **CarPlay** (our own `CPTemplateApplicationScene` code) and **Android Auto** (a Media3 `MediaLibraryService`) in the native module; iOS widgets and the sleep timer Live Activity through **expo-widgets** - see [Native integrations](native-integrations.md) |
 | i18n | **i18next + react-i18next + expo-localization** (`src/i18n/`) - see [Internationalisation](i18n.md) |
 
 ## Source layout
@@ -31,7 +32,7 @@ content by `(library_id, rel_path)`, and owns exactly one hard problem:
 ```
 src/app/            Expo Router routes: (app) with its five tab groups, connect/
                     onboarding, the player + finished modals, demo landing,
-                    +html.tsx web shell
+                    +html.tsx web shell, +native-intent.tsx (app links as paths)
 src/api/            client.ts (typed fetch wrapper), types.ts (wire mirrors),
                     hooks.ts (React Query), provider.tsx (multi-connection registry),
                     reachability.ts (online/offline tracking), address-route.ts +
@@ -60,6 +61,10 @@ src/components/     ui/ (the Stacks primitives - Text, Icon, Button, Card, Input
                     settings/ (the Settings panes), account/ (a server's Account
                     page), connect/ (onboarding), home/, search/, upnext/, downloads/
                     (the Downloads tab), brand/
+src/car/            CarPlay + Android Auto, the JS side: the car snapshot (car-model),
+                    car covers, the car controller, the AudiosiloCar headless task
+src/widgets/        iOS widget + sleep timer Live Activity ('widget' functions) and
+                    their sync (widget-model, widget-sync.ios)
 src/stores/         Zustand: session (connections + tokens), settings, search
                     (+ recent searches), series-orderings, library-selection
 src/i18n/           i18next init, LanguageProvider, locale catalogs (locales/*.json)
@@ -70,8 +75,13 @@ src/lib/            storage, secure-store, paths, format, hhmm (wall-clock "HH:M
                     ticker (one start/stop interval), pairing, known-servers, device,
                     base-url, layout (the three form factors), utils (cn),
                     storage-migration (the one launch-time storage migration),
+                    bootstrap (the launch steps, shared with the car task),
                     register-sw, and other pure helpers
 modules/audiosilo-player/  the local Expo module (Swift + Kotlin + TS bridge)
+plugins/            config plugins (CarPlay scenes, the Xcode 26 and widget fixes);
+                    withCarPlay and withWidgetsNoPush have jest tests
+index.ts            the app entry (package.json main): registers the car's headless
+                    task, then expo-router/entry
 public/             sw.js (service worker) + manifest.json (PWA), copied verbatim
                     into the web export
 STYLEGUIDE.md       Stacks, the player's design system (authoritative for its look)
@@ -109,7 +119,8 @@ URLs, so every URL below is the same as before the groups existed.
 
 | Route | File | Purpose |
 |---|---|---|
-| - (root layout) | `src/app/_layout.tsx` | Mounts the provider tree (`GestureHandlerRootView` → `SafeAreaProvider` → `RootInsetsProvider` → `LanguageProvider` → `ThemeProvider` → `ApiProvider`), awaits the memoised launch migration `migrateStorage()` (`src/lib/storage-migration.ts`: the theme default, then `resetStaleStorage`) before it hydrates the session/settings/downloads/series-orderings/library-selection stores, imports `@/lib/register-sw` for its side effect, mounts the headless `BookEndedListener` (drives the end-of-book flow, see [The end of a book](end-of-book.md#ending-a-book)), `CompanionRevealListener` (the "New in Who's who" toast, see [Player UI](player-ui.md#the-companion-companion)) and `ShakeToExtendListener`, starts the framework-free `startAutoSleep()` controller (arms the nightly sleep timer, see [The sleep timer](sleep-timer.md#auto-sleep-timer-auto-sleepts--auto-sleep-controllerts)), `startDriftWatch()` (the Fell asleep bookmark and the jump back, see [The sleep timer](sleep-timer.md#fell-asleep-drift-controllerts)), `startJumpUndo()` (see [Player UI](player-ui.md#undo-a-jump-jump-undots)), `startKeepAhead()` (downloads the next books when the listener opted in, see [Offline](offline.md#keep-the-next-books-ready-keep-aheadts--keep-ahead-controllerts)), `startAddressRouting()` (native only: picks each server's home or away address, see [Connect and home/away addresses](connect-and-addresses.md#the-runner-srcapiaddress-runnerts)) and `startPlaceReconcile()` (a loaded book picks up a newer place from another device, see [Playback](playback.md#picking-up-another-devices-place-place-reconcilets)), and runs `useAppResume` (foreground refresh + the Android swipe-from-recents reset). Declares the `(app)` stack (the root stack's `anchor`, so it always sits at the bottom) and the `player`/`finished`/`year` screens as `fullScreenModal`s. Mounts `<PortalHost />` and `<ShellToastHost />` **last**, inside the providers, so portaled overlays and toasts stack above every screen (see [toasts](#toasts)). |
+| - (root layout) | `src/app/_layout.tsx` | Mounts the provider tree (`GestureHandlerRootView` → `SafeAreaProvider` → `RootInsetsProvider` → `LanguageProvider` → `ThemeProvider` → `ApiProvider`), runs the launch steps through `bootstrapPlayback()` (`src/lib/bootstrap.ts`, one memoised run shared with the car's headless task: the memoised launch migration `migrateStorage()` (`src/lib/storage-migration.ts`: the theme default, then `resetStaleStorage`), the downloads wipe after a reset, then hydrating the session/settings/downloads/series-orderings/library-selection stores; see [Native integrations](native-integrations.md#booting-js-without-an-activity)), imports `@/lib/register-sw` for its side effect, mounts the headless `BookEndedListener` (drives the end-of-book flow, see [The end of a book](end-of-book.md#ending-a-book)), `CompanionRevealListener` (the "New in Who's who" toast, see [Player UI](player-ui.md#the-companion-companion)) and `ShakeToExtendListener`, starts the framework-free `startAutoSleep()` controller (arms the nightly sleep timer, see [The sleep timer](sleep-timer.md#auto-sleep-timer-auto-sleepts--auto-sleep-controllerts)), `startDriftWatch()` (the Fell asleep bookmark and the jump back, see [The sleep timer](sleep-timer.md#fell-asleep-drift-controllerts)), `startJumpUndo()` (see [Player UI](player-ui.md#undo-a-jump-jump-undots)), `startKeepAhead()` (downloads the next books when the listener opted in, see [Offline](offline.md#keep-the-next-books-ready-keep-aheadts--keep-ahead-controllerts)), `startAddressRouting()` (native only: picks each server's home or away address, see [Connect and home/away addresses](connect-and-addresses.md#the-runner-srcapiaddress-runnerts)), `startPlaceReconcile()` (a loaded book picks up a newer place from another device, see [Playback](playback.md#picking-up-another-devices-place-place-reconcilets)), `startChapterRefresh()` (a downloaded book takes its server's changed chapters, see [Offline](offline.md#lifecycle)), `startWidgetSync()` (iOS only: the widget and the sleep timer Live Activity, see [Native integrations](native-integrations.md#widgets-and-the-live-activity-ios)) and `startCarSync()` (CarPlay and Android Auto, never stopped, see [Native integrations](native-integrations.md#the-car-snapshot-srccar)), and runs `useAppResume` (foreground refresh + the Android swipe-from-recents reset). Declares the `(app)` stack (the root stack's `anchor`, so it always sits at the bottom) and the `player`/`finished`/`year` screens as `fullScreenModal`s. Mounts `<PortalHost />` and `<ShellToastHost />` **last**, inside the providers, so portaled overlays and toasts stack above every screen (see [toasts](#toasts)). |
+| - (incoming app links, native) | `src/app/+native-intent.tsx` | Expo Router's `redirectSystemPath`: an `audiosilo://` link (the pairing link, the iOS widget and Live Activity) becomes a plain path before routing, so its query keeps its encoding (`appLinkPath`, `src/lib/native-intent.ts`; see [Native integrations](native-integrations.md#widgets-and-the-live-activity-ios)). |
 | - (web HTML shell) | `src/app/+html.tsx` | The static HTML wrapper for every exported web route: PWA manifest/favicon links (base-prefixed), the CSS cascade-layer order, and a backdrop in the OS colour scheme's background (light, or dark under `prefers-color-scheme: dark`) painted before React mounts so there is no flash. |
 | `(app)` layout, native | `src/app/(app)/_layout.tsx` | `AuthGate` (`src/components/shell/auth-gate.tsx`: `loading` → spinner, `unauthenticated` → `<Redirect href="/connect" />`; also backfills `has_password`/`has_recovery` on sessions persisted before those flags existed), then **`NativeTabs`** with one trigger per destination (SF Symbols on iOS, Material Symbols on Android) and, on iOS 26, the mini player as the tab bar's `BottomAccessory`. On tablet/desktop the native tab bar is `hidden` and the shell's own top bar, sub-nav and docked player take over; `ShellFrame` (`shell-frame.tsx`) draws that chrome around the navigator in both `(app)` layouts. On a phone without the iOS 26 accessory it also renders the one `FloatingMiniPlayer` as the frame's `phoneBottom`, over NativeTabs. |
 | `(app)` layout, web | `src/app/(app)/_layout.web.tsx` | `AuthGate`, then **headless `expo-router/ui` `Tabs`** over the same route groups: a hidden `TabList` registers the five tab routes, one `<TabSlot />` renders the page, and `ShellFrame` surrounds it with our chrome (phone: `MiniPlayer`, sitting on the tab bar through a `100%` bottom offset, + `PhoneTabBar`; tablet/desktop: top bar, sub-nav, banners, `DockedPlayer`). Also mounts the web-only `CommandPalette` and its keyboard shortcut (`usePaletteShortcut`). |
@@ -608,7 +619,7 @@ ones a contributor trips over first.
   it also reaches content portaled to `<body>`. `useTheme().toggleScheme()` flips
   between light and dark. **The default** is written by the launch migration
   `migrateStorage()` (`src/lib/storage-migration.ts`), one memoised run that both
-  the root layout and `ThemeProvider` await, so no effect-order contract is
+  `bootstrapPlayback` and `ThemeProvider` await, so no effect-order contract is
   involved. Only when nothing is stored under `THEME_STORAGE_KEY`
   (`audiosilo.theme`), it reads `hasExistingInstall()` (`src/stores/session.ts`:
   a persisted connection, a known server, or a legacy session) **before**

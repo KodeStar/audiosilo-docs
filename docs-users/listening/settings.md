@@ -28,8 +28,10 @@ Everything here except your servers is **kept per device**, so your phone and yo
 | **Default speed** | Starting speed for books you haven't played yet (each book then remembers its own) | 0.5×-2× |
 | **Auto-rewind on resume** | How far playback backs up after a pause, so you regain the thread | Off-30 s (default 5 s) |
 | **Chapter length (unchaptered)** | Size of the virtual chapters created for long books with no chapter markers | 5-60 min (default 30 min) |
+| **Smart speed** | Shortens the silences between words ([where it works](full-player.md#smart-speed-and-voice-boost)) | On / Off (default **Off**) |
+| **Voice boost** | Evens out quiet and loud voices ([where it works](full-player.md#smart-speed-and-voice-boost)) | On / Off (default **Off**) |
 
-Each has **-** and **+** buttons on either side of its value.
+**Smart speed** and **Voice boost** are switches, the same two the speed sheet shows; the others have **-** and **+** buttons on either side of their value.
 
 ## Sleep
 

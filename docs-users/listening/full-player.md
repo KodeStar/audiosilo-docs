@@ -1,6 +1,6 @@
 ---
 title: The full player
-description: "The full player on a phone, a tablet and a computer: the status line, the seek bar and the whole-book timeline, time left, undoing a jump, the three-dot menu and playback speed."
+description: "The full player on a phone, a tablet and a computer: the status line, the seek bar and the whole-book timeline, time left, undoing a jump, the three-dot menu, playback speed, and Smart speed and Voice boost."
 ---
 
 ## What's on it
@@ -14,7 +14,7 @@ The full player is about the book you're listening to. Its background takes on t
 - **The status line**: whether your [place is saved](playback.md#your-position-follows-you), how much of the book you've heard, and the [time left](#time-left): *"Synced just now · 38% of the book · 22h 27m left at 1.25×"*. After a big jump it turns into the [undo button](#undo-a-jump), and in a sleep timer's last seconds the [sleep timer's card](sleep-timer.md#the-last-30-seconds) takes its place.
 - **The [seek bar](#the-seek-bar-and-the-timeline)** for the current chapter, and a slim **timeline of the whole book** below it.
 - **The transport**: previous chapter, skip back, play/pause, skip forward, next chapter. The skip buttons show how far they jump (15 seconds back and 30 forward out of the box; change them in [Settings](settings.md#playback)). If playback fails, the play button becomes **Retry**.
-- **The actions**: [speed](#playback-speed), the [sleep timer](sleep-timer.md), **bookmark** (one tap adds one where you are; see [Bookmarks and notes](bookmarks-and-notes.md)), **output** for [AirPlay or Cast](playback.md#play-to-another-speaker-airplay--cast) where your device has one, and [Up next](up-next.md) with how many books are queued.
+- **The actions**: [speed](#playback-speed), the [sleep timer](sleep-timer.md), **bookmark** (one tap adds one where you are; see [Bookmarks and notes](bookmarks-and-notes.md)), **output** for [AirPlay or Cast](playback.md#play-to-another-speaker-airplay--cast) where your device has one, and [Up next](up-next.md) with how many books are queued. On a tablet or computer, while [Smart speed or Voice boost](#smart-speed-and-voice-boost) is on, one more button says so: *"Saved 2h 11m"* (Android, once Smart speed has saved some), else *"Voice boost"* or *"Smart speed"* for whichever is on. It opens the speed sheet.
 
 Beside or below it sits the [companion](companion.md): Who's who, Story so far, the chapters, and your bookmarks, notes and history for the book.
 
@@ -67,8 +67,21 @@ After **any jump of more than a minute** - a tap on the seek bar or timeline, a 
 
 ## Playback speed
 
-![The speed sheet on a phone: the current speed, the slider between minus and plus, and the presets with the time left at each](/img/screenshots/web-player/phone-speed-sheet.png)
+![The speed sheet on a phone: the current speed, the slider between minus and plus, the presets with the time left at each, and the Smart speed and Voice boost switches](/img/screenshots/web-player/phone-speed-sheet.png)
 
 Tap the speed (e.g. `1×`) to change it: from **0.5× to 2×** in **0.05 steps**, with the slider, the minus and plus buttons, or a preset that shows how much of the book would be left at that speed. Voices keep their pitch.
 
-The speed is **remembered per book**; new books start at your **default speed** from Settings.
+The speed is **remembered per book**; new books start at your **default speed** from Settings. Under the presets sit the [Smart speed and Voice boost](#smart-speed-and-voice-boost) switches.
+
+## Smart speed and Voice boost
+
+Two switches in the speed sheet (and in [Settings](settings.md#playback), where they're the same two settings) change how the book sounds. Both start **off**, and each applies to every book you play on this device.
+
+| | What it does | Where it works |
+|---|---|---|
+| **Smart speed** | Shortens the silences between words and sentences, so a book takes less time without the voice getting any faster. The speech itself is never touched, and your speed setting stays as it is | **Android**: every book. **iPhone and iPad**: not yet (*"Not available on iPhone yet"*). **Web player**: not available (*"Not available in the browser"*) |
+| **Voice boost** | Evens out quiet and loud voices, lifting a soft-spoken narrator so you can follow along in a noisy car or kitchen. Quiet passages come up the most (about 10 dB), loud ones the least, and the peaks are held below the top so nothing distorts | **Android**, **iPhone and iPad**: every book. **Web player**: Chrome, Edge and Firefox, but not Safari or any browser on an iPhone or iPad (*"Not available in this browser"*) |
+
+**Time saved** (Android). Once Smart speed has saved you a second or more, the speed sheet says how much in total on this device (*"Saved 2h 11m"*), and a book's page shows what it saved on that book under [Your listening](book-page.md#about-this-book) (*"Smart speed saved 14m"*). The figure is the silence removed, counted at normal speed, so listening faster doesn't inflate it. It's kept on the device, not on your server: each phone has its own. Removing a server from the app forgets its books' figures; the total stays.
+
+**Voice boost in the web player** starts the first time you switch it on or press play with it on. It works on books from the server the web player is opened from, and on every downloaded book; a book streamed from another server you've added plays without it.

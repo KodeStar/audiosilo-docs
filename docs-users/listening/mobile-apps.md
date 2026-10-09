@@ -1,6 +1,6 @@
 ---
 title: The mobile apps
-description: "The native iOS and Android apps: current availability, connecting, getting around with the tab bar, background playback, lock-screen controls, and gapless listening."
+description: "The native iOS and Android apps: current availability, connecting, getting around with the tab bar, background playback, lock-screen controls, the car, iPhone widgets and the sleep timer Live Activity, and gapless listening."
 ---
 
 AudioSilo has native apps for **iOS** and **Android**. They're the same player you know from the web - same screens, same shelves, same account - plus the things only a real app can do well: rock-solid background playback, lock-screen controls, and downloads that live comfortably on your phone.
@@ -11,6 +11,9 @@ AudioSilo has native apps for **iOS** and **Android**. They're the same player y
 
 - **iOS**: the app is on the **[App Store](https://apps.apple.com/us/app/audiosilo/id6783431375)** - search for AudioSilo, or follow the link.
 - **Android**: the app is finished and in active use, but **not yet on Google Play** - it's going through Google Play's testing tracks, which require a testing period before an app can go public. If you'd like early access, ask whoever runs your server whether a tester invite is available, or check the AudioSilo project on GitHub for current status.
+- **CarPlay**: built into the iPhone app, but Apple has to approve an app for CarPlay audio before a car will show it. That approval isn't part of the App Store app yet, so AudioSilo doesn't appear in CarPlay until a later update.
+- **Android Auto**: built into the Android app; see [In the car](in-the-car.md#android-auto) for getting it onto the car's screen.
+- **iPhone widgets and the sleep timer Live Activity**: not in the App Store version yet; they arrive with a later update.
 
 And you don't need the app to listen on your phone: the **web player works great on mobile** and can be [installed to your home screen](offline-downloads.md), downloads included.
 
@@ -41,10 +44,20 @@ Playback keeps going when you switch apps, turn the screen off, or pocket the ph
 
 ## Lock-screen controls
 
-- **Android** gives you full audiobook controls on the lock screen and in the notification: **previous chapter**, a **draggable chapter scrubber**, **next chapter**, and **30-second skip back/forward** buttons - no need to unlock the phone to hop around a book.
-- **iOS** shows the book on the lock screen and in Control Centre with play/pause, a scrubber, and **skip back/forward** buttons that use the skip lengths from your in-app [Settings](settings.md#playback).
+Both apps show the current chapter on the lock screen, with a chapter scrubber and skip buttons, and work with headphone buttons; see [Lock-screen and headphone controls](playback.md#lock-screen-and-headphone-controls). At the end of a sleep timer a [shake of the phone](sleep-timer.md#shake-to-extend) keeps you listening.
 
-Headphone and earbud buttons work everywhere, and at the end of a sleep timer a [shake of the phone](sleep-timer.md#shake-to-extend) keeps you listening.
+## In the car
+
+The apps put your books on the car's screen through **Android Auto** and **CarPlay** (see [Availability](#availability)). See [In the car](in-the-car.md).
+
+## Widgets on iPhone
+
+The iPhone app comes with a home screen widget and a Live Activity for the sleep timer (see [Availability](#availability)).
+
+- **Continue listening** - a widget for your home screen in two sizes. The **small** one shows the cover and title of the book you're listening to (or listened to last); the **medium** one adds the author, the chapter, the time left at your speed and a progress bar. It's for looking at, with no buttons: tap it to open the player on that book. Before you've played anything it says *"Play a book and it shows up here."*, and it clears when you remove that book's server from the app. Add it as you would any widget: touch and hold the home screen, tap **Edit** (or **+**), and pick AudioSilo.
+- **The sleep timer** - a Live Activity on the lock screen while a timer counts down; see [On the lock screen](sleep-timer.md#on-the-lock-screen-iphone).
+
+There are no widgets on Android yet.
 
 ## Gapless, chapter-aware listening
 

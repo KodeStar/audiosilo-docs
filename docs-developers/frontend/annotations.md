@@ -110,6 +110,10 @@ counts as unsupported.
   `usePlaceIn(target)`: the live place once the engine has placed the loaded book
   (`selectPlacedBookKey`), else the saved place, else 0. It re-renders every second
   while the book plays, so it lives in its own small leaf.
+- **The car's bookmark button** (CarPlay's Now Playing, Android Auto): not
+  `addBookmarkHere` but the car controller (`src/car/car-controller.ts`), at the
+  engine's place, with no label and no toast; one that can't reach its server is kept
+  and sent later. See [Native integrations](native-integrations.md#the-car-snapshot-srccar).
 
 ## Rows
 

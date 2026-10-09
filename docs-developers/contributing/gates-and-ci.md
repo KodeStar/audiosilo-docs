@@ -188,9 +188,11 @@ drift; read it before adding code. The digest:
 
 **If you edited native code** (`modules/audiosilo-player/{ios,android}`)
 
-- Rebuilt on a device (`npx expo run:ios` / `run:android`) and verified the
-  behavior - a Metro reload does not pick up native changes, and there is no
-  other way to know it even compiles.
+- Ran the [native checks](../frontend/testing.md#native-checks) for what you
+  changed (the Android JVM tests, the iOS self-check, Android Auto on the Desktop
+  Head Unit, CarPlay in the Simulator, or a device build via `npx expo run:ios` /
+  `run:android`) and verified the behavior - a Metro reload does not pick up
+  native changes, and Jest and the web prove nothing about Swift or Kotlin.
 
 :::caution Green gates ≠ verified
 The gates all run on Node/CI engines with full `Intl` and no real device - a

@@ -140,6 +140,16 @@ meta repo at the workspace root). The honest summary:
   `eas.json` uses `appVersionSource: remote` with `autoIncrement: true`, so build
   numbers are managed by EAS; the user-facing **marketing version** is bumped by
   hand in `app.json` → `expo.version` for each real release.
+- **The first iOS build with the widget extension** signs two targets: the App
+  Group `group.app.audiosilo` has to be registered with Apple and enabled on both
+  `app.audiosilo` and `app.audiosilo.widget`, and EAS needs a provisioning profile
+  for each. EAS can register the extension's id and the group itself when it is
+  signed in with an Apple ID (an App Store Connect API key alone skips the group).
+  Details in [Native integrations](../frontend/native-integrations.md#widgets-and-the-live-activity-ios).
+- **Android Auto on Google Play** needs the Android Auto form factor added to the
+  release (Play Console > Advanced settings > Form factors), and Google reviews such
+  releases against its car app quality guidelines (a failure blocks open testing and
+  production).
 - **The project is on the EAS free tier**, so the preferred path is
   **`eas build --local`** - it compiles on your own machine (no build-quota
   usage, no cloud queue) while still using EAS-managed signing credentials and

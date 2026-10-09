@@ -234,7 +234,8 @@ with no network.
 
 ### Hydrate and the iOS container-move problem
 
-`hydrate()` (called from the root layout) reloads the registry and prunes it:
+`hydrate()` (called at launch by `bootstrapPlayback`, from the root layout or, on Android,
+the car's headless task) reloads the registry and prunes it:
 
 1. **Adopt legacy (pre-connection-scoping) downloads.** An entry saved by an
    older build has no `connectionId`: each is passed to
@@ -455,7 +456,7 @@ line (`KeepAheadControl`, `KeepAheadStatusLine`). The summary line is published 
 
 ## Playing downloaded content
 
-Two paths, both in `src/playback/store.ts`:
+Three paths, the first two in `src/playback/store.ts`:
 
 - **Downloaded before play**: `playBook` looks up the entry; if
   `status === 'downloaded'` it passes a `local` map
@@ -471,6 +472,11 @@ Two paths, both in `src/playback/store.ts`:
   isn't controlling the page - leaves the streaming queue untouched, so
   playback never dies from trying to go local. The store only commits the new
   queue once the engine has actually moved.
+- **Started by the car** (Android, no JS running): the playback service starts a
+  downloaded book from the car snapshot's play spec (`file://` tracks, no auth
+  headers), and once JS boots the store's `adoptLoaded` takes it over, building the
+  same queue from the manifest without reloading the engine (see
+  [Native integrations](native-integrations.md#adopting-a-book-the-service-loaded)).
 
 ## The PWA layer
 

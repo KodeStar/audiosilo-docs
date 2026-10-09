@@ -1,7 +1,11 @@
 ---
 title: The sleep timer
-description: "The sleep timer's state machine, the freeze while paused, the fade and the engines' gain, shake to extend, the grace card, drift-offs (the Fell asleep bookmark and the jump back) and the automatic timer at night."
+description: "The sleep timer's state machine, the freeze while paused, the fade and the engines' gain, shake to extend, the grace card, drift-offs (the Fell asleep bookmark and the jump back) and the automatic timer at night (never in a car)."
 ---
+
+On iOS a running timer also drives a Live Activity (lock screen and Dynamic Island),
+synced from this store by `src/widgets/widget-sync.ios.ts`; it is described with the widgets
+in [Native integrations](native-integrations.md#widgets-and-the-live-activity-ios).
 
 ## The timer (`sleep-timer.ts`)
 
@@ -391,6 +395,10 @@ controller, so all the policy is unit-tested and none of it lives in a component
   options - i.e. `allowEndOfBook: false`, the automatic fallback rules above - so
   a chapterless book gets a duration timer that fires rather than a target hours
   away that would block every later arm for the session.
+- **Never in a car.** The controller arms nothing while CarPlay or Android Auto is connected
+  (`isCarConnected`, `src/car/car-connection.ts`, which the car sync keeps; see
+  [Native integrations](native-integrations.md#the-car-snapshot-srccar)). Its poll goes on,
+  so a book still playing inside the window once the car has gone is armed then.
 - **The window test is `withinAutoSleepWindow` (`src/lib/hhmm.ts`, with
   `parseHhMm`/`formatHhMm`)**, half-open `[from, until)` over local wall-clock
   "HH:MM", wrapping past midnight (the 22:00-06:00 default). `from === until` reads

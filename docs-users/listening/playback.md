@@ -1,6 +1,6 @@
 ---
 title: Playing a book
-description: "Starting a book, the mini player and the player bar, playing to another speaker, how your position syncs across devices, listening offline, books a browser can't play directly, lock-screen controls, and books without chapters."
+description: "Starting a book, the mini player and the player bar, playing to another speaker, how your position syncs across devices, listening offline, books a browser can't play directly, lock-screen, headphone and car controls, and books without chapters."
 ---
 
 Tap **Start listening** (or **Resume**) on any [book's page](book-page.md) to start it. On a phone the [full player](full-player.md) opens straight away. On a tablet or computer the book plays where you are, under the **player bar** along the bottom of the window; open the full player from it whenever you want the big view.
@@ -42,7 +42,7 @@ A few protections work behind the scenes so you never lose your place:
 
 - Your position is stored **on the server and on the device**, and the most recent one wins - so a flaky connection can't quietly rewind you.
 - A book **never silently restarts from the beginning**. If a streamed book can't confirm your resume position (say, the server is briefly unreachable), the player shows an error with a **Retry** button rather than starting at zero.
-- Even if playback did slip back somehow, the app refuses to overwrite your real progress with a much earlier position - only a deliberate seek backwards counts.
+- Even if playback did slip back somehow, the app refuses to overwrite your real progress with a much earlier position - only a deliberate move backwards counts. In the mobile apps that includes a move from the lock screen, headphones or a [car](in-the-car.md): a scrub back there is saved as your new place straight away.
 - **Picking up where another device left off**: if a book is still loaded on this device when you come back to it (you open the app again, or press play after a pause of more than a minute) and you've listened further on another device meanwhile, the player jumps to that newer place before it saves anything, and says so: *"Picked up your place from another device"*, with **Undo** to go back.
 - **Auto-rewind on resume**: after a pause, playback backs up a few seconds (5 by default, adjustable up to 30 or off) so you regain the thread of the sentence.
 
@@ -72,9 +72,12 @@ The conversion needs **ffmpeg** on your server, which the Docker image includes 
 
 In the mobile apps, playback continues in the background and shows up everywhere your system shows media:
 
-- **Android** - the lock screen and notification give you the full audiobook row: **previous chapter**, a **chapter-relative scrubber** you can drag, **next chapter**, and **30-second skip back/forward** buttons.
-- **iOS** - the lock screen and Control Centre show play/pause, a scrubber, and **skip back/forward** buttons that use the same skip lengths you chose in [Settings](settings.md#playback).
+- **Android** - the lock screen and notification give you the full audiobook row: **previous chapter**, a **chapter-relative scrubber** you can drag, **next chapter**, and **skip back/forward** buttons that use the skip lengths you chose in [Settings](settings.md#playback).
+- **iOS** - the lock screen and Control Centre show the **chapter** you're in (its title, with the book and author under it) and a **scrubber for that chapter**, with play/pause and **skip back/forward** buttons that use the same skip lengths you chose in [Settings](settings.md#playback). Next and previous track, from headphones or a car, move by **chapter**. A book without chapter marks shows the current file instead.
 - **Headphones and earbuds** - play/pause and skip buttons work as you'd expect, and playback pauses politely for interruptions (a phone call, a navigation prompt) and resumes afterwards only if it was playing before.
+- **In the car** - Android Auto and CarPlay show your books on the car's screen; see [In the car](in-the-car.md).
+
+On both, previous goes back to the start of the chapter when you're more than 3 seconds into it, and to the chapter before when you're right at its start.
 
 See [The mobile apps](mobile-apps.md) for more on the native apps.
 
