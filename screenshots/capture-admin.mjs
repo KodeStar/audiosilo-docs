@@ -3,6 +3,9 @@
 //   AS_ORIGIN       server origin (default http://127.0.0.1:8790)
 //   ADMIN_PASSWORD  the first-run admin password (parsed from the log by run.sh)
 //   SETUP_URL       optional: a second --setup server's wizard URL (with #token)
+//   MIRROR_ORIGIN   optional: a third server in metadata mirror mode with a seeded
+//                   local copy (run.sh starts it when it built the meta artifact)
+//   MIRROR_PASSWORD that server's first-run admin password
 //
 // Before capturing it provisions a little demo state through the admin API
 // (a listener account, an invite, a share, some listening progress, one
@@ -39,6 +42,8 @@ const ORIGIN = (process.env.AS_ORIGIN || 'http://127.0.0.1:8790').replace(/\/$/,
 const ADMIN = `${ORIGIN}/admin`;
 const PASSWORD = process.env.ADMIN_PASSWORD;
 const SETUP_URL = process.env.SETUP_URL || '';
+const MIRROR_ORIGIN = (process.env.MIRROR_ORIGIN || '').replace(/\/$/, '');
+const MIRROR_PASSWORD = process.env.MIRROR_PASSWORD || '';
 const INBOX_DIR = path.resolve(process.env.INBOX_DIR || path.join(CACHE, 'inbox'));
 if (!PASSWORD) {
   console.error('capture-admin: ADMIN_PASSWORD is required');
@@ -563,6 +568,19 @@ await step('server settings: network & https', async () => {
   }
 });
 
+await step('server settings: community metadata', async () => {
+  // Taller, so the switch, Source, Matching and Service cards fit.
+  await page.setViewportSize({width: 1440, height: 1240});
+  try {
+    await open(page, '/server?topic=metadata');
+    await page.getByText('Keep a local copy', {exact: true}).waitFor({timeout: 8000});
+    await sleep(800); // the status row reads the system status
+    await shoot(page, 'admin/settings-metadata.png');
+  } finally {
+    await page.setViewportSize(DESKTOP_CONTEXT.viewport);
+  }
+});
+
 await step('overview on a phone', async () => {
   const phone = await browser.newContext({
     ...DESKTOP_CONTEXT,
@@ -737,6 +755,47 @@ await step('health: system', async () => {
     await shoot(page, 'admin/system.png');
   } finally {
     await page.setViewportSize(DESKTOP_CONTEXT.viewport);
+  }
+});
+
+// Mirror mode's local copy on Health > System, from the third server run.sh
+// starts in metadata mirror mode with the meta artifact it built already in
+// place as the copy (so nothing is downloaded): the community metadata row and
+// the copy's panel under it, clipped.
+await step('health: system in mirror mode', async () => {
+  if (!MIRROR_ORIGIN || !MIRROR_PASSWORD) throw new Error('MIRROR_ORIGIN not set (run.sh starts it when it builds the meta artifact)');
+  const mctx = await browser.newContext(DESKTOP_CONTEXT);
+  try {
+    const mp = await mctx.newPage();
+    await mp.goto(`${MIRROR_ORIGIN}/admin/`, {waitUntil: 'networkidle', timeout: 45000});
+    await mp.getByLabel('Username', {exact: true}).fill('admin');
+    await mp.getByLabel('Password', {exact: true}).fill(MIRROR_PASSWORD);
+    await mp.getByRole('button', {name: 'Sign in', exact: true}).click();
+    await mp.locator('h1.display').first().waitFor({timeout: 15000});
+    // The copy opens in the background after the server starts: wait for it.
+    const mapi = apiClient(MIRROR_ORIGIN);
+    const mlogin = await mapi(null, 'POST', '/auth/login', {username: 'admin', password: MIRROR_PASSWORD});
+    const until = Date.now() + 120000;
+    for (;;) {
+      const st = await mapi(mlogin.token, 'GET', '/admin/system');
+      if (st?.metadata?.mirror?.state === 'ready') break;
+      if (Date.now() > until) throw new Error(`the local copy isn't ready: ${JSON.stringify(st?.metadata?.mirror)}`);
+      await sleep(1000);
+    }
+    await mapi(mlogin.token, 'POST', '/auth/logout').catch(() => {});
+    await mp.goto(`${MIRROR_ORIGIN}/admin/health/system`, {waitUntil: 'networkidle', timeout: 45000});
+    const row = mp.locator('li').filter({has: mp.getByText('Data version', {exact: true})}).first();
+    await row.waitFor({timeout: 15000});
+    await row.scrollIntoViewIfNeeded();
+    await sleep(1000);
+    const box = await row.boundingBox();
+    if (!box) throw new Error('no community metadata row');
+    const pad = 16;
+    await shoot(mp, 'admin/system-mirror.png', {
+      clip: {x: Math.max(0, box.x - pad), y: Math.max(0, box.y - pad), width: box.width + 2 * pad, height: box.height + 2 * pad},
+    });
+  } finally {
+    await mctx.close();
   }
 });
 

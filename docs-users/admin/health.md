@@ -295,8 +295,9 @@ Two notices can appear above the list:
 - "The community metadata service isn't responding": players still show what
   they already had, and new matches wait until it's back. **Metadata settings**
   opens [its settings](server.md#community-metadata). Nothing to do unless it
-  lasts a day. (A server with a local copy doesn't show this notice: the
-  copy's own row says what's wrong.)
+  lasts a day. (With a local copy it only appears while the copy isn't
+  answering yet, since lookups go to the service until then; once the copy
+  answers, its own row says what's wrong.)
 
 To change any of this, see [Server settings](server.md#settings): the HTTPS
 mode and certificate names are under **Network & HTTPS**, the tools under
@@ -308,18 +309,20 @@ When the server [keeps a local copy](server.md#keeping-a-local-copy) of the
 community metadata (and the lookup is on), the **Community metadata** row is
 about that copy:
 
+![Health > System, the community metadata row with a local copy](/img/screenshots/admin/system-mirror.png)
+
 | Status | What it means |
 |---|---|
 | **Healthy** | "Answering from the local copy. No book is looked up over the internet." |
 | **Downloading** | The first copy is downloading ("Downloading the local copy for the first time."), or a newer one is downloading while the current copy keeps answering. |
-| **Waiting** | "No local copy yet. The first download starts shortly." |
+| **Waiting** | "No local copy yet. The first download starts shortly." It also shows for a short while after a restart, while the server opens the copy it already has (lookups use the online service meanwhile). |
 | **Needs attention** | The copy still answers, but its last update failed, or it is newer than this version of AudioSilo understands. |
 | **Failed** | "The local copy couldn't be downloaded." There is no copy yet, so lookups go to the online service. |
 
 Under the row:
 
-- While a download runs, a progress bar with how much has arrived (the page
-  then refreshes every 2 seconds).
+- While a download runs, a progress bar with how much has arrived (the copy's
+  details then refresh every 2 seconds).
 - The copy's details: **Data version**, **Built**, **Data schema**, **Size on
   disk**, **Downloaded**, **Last check** and **Next check**.
 - "Using the online service until the local copy is ready", while there is no

@@ -44,6 +44,19 @@ the network): `admin/book-match.png` shows the match dialog's candidates, and
 matches. Offline, the match shot captures the dialog's "isn't answering"
 message instead and the series cards show no gaps.
 
+`admin/system-mirror.png` shows Health > System on a server in metadata
+**mirror mode**, which keeps a local copy of the community metadata (about
+1.7 GB, downloaded from GitHub). The run never downloads one: once it has built
+the meta artifact (section 4 of `run.sh`, so not with `SKIP_META=1`), it starts
+a third server on `:8792` (`SHOTS_MIRROR_PORT`) in `.cache/mirror-data` with
+`metadata.mode: mirror`, no library and the update check off, and seeds its
+`meta-mirror/` folder with that artifact (a hard link, so it costs no space)
+and a `state.json` saying it was checked five hours ago, so the copy opens at
+start and its next check is a day away. `capture-admin.mjs` signs in there,
+waits for the copy to be ready and clips the shot to the Community metadata row
+and the copy's panel. Without the meta stack the step is skipped and the shot
+keeps its previous image (or a placeholder).
+
 The Health shots (`admin/health-*.png`) need issues to show, and the seeded
 library has almost none. After the other admin shots, `capture-admin.mjs`
 builds a small **Inbox** library under `.cache/inbox` (`INBOX_DIR` overrides)

@@ -167,6 +167,8 @@ domain, so most servers leave it empty:
 
 ### Community metadata
 
+![Server settings, Community metadata](/img/screenshots/admin/settings-metadata.png)
+
 The **Look up community metadata** switch turns the community metadata lookup
 on or off for the whole server. When it is on, books that can be matched (they
 carry an ASIN or ISBN) gain an extra "About this book" block in the player - a

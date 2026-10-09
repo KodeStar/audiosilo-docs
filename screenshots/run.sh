@@ -43,9 +43,10 @@
 #              is built when missing, else used as it is, so rebuild it after a
 #              frontend change; relative paths are taken from where run.sh
 #              starts),
-#            SHOTS_PORT / SHOTS_SETUP_PORT / SHOTS_META_PORT (default 8790 /
-#              8791 / 8795 - move them when a run in another checkout holds
-#              those ports; two runs in one checkout share .cache/ and clash).
+#            SHOTS_PORT / SHOTS_SETUP_PORT / SHOTS_META_PORT /
+#              SHOTS_MIRROR_PORT (default 8790 / 8791 / 8795 / 8792 - move them
+#              when a run in another checkout holds those ports; two runs in one
+#              checkout share .cache/ and clash).
 set -euo pipefail
 
 HERE="$(cd "$(dirname "$0")" && pwd)"
@@ -65,6 +66,8 @@ SETUP_DATA="$CACHE/setup-data"
 PORT="${SHOTS_PORT:-8790}"
 SETUP_PORT="${SHOTS_SETUP_PORT:-8791}"
 META_PORT="${SHOTS_META_PORT:-8795}"
+MIRROR_PORT="${SHOTS_MIRROR_PORT:-8792}"
+MIRROR_DATA="$CACHE/mirror-data"
 
 mkdir -p "$CACHE"
 
@@ -114,6 +117,7 @@ cleanup() {
   [ -n "${MAIN_PID:-}" ] && kill "$MAIN_PID" 2>/dev/null || true
   [ -n "${SETUP_PID:-}" ] && kill "$SETUP_PID" 2>/dev/null || true
   [ -n "${META_PID:-}" ] && kill "$META_PID" 2>/dev/null || true
+  [ -n "${MIRROR_PID:-}" ] && kill "$MIRROR_PID" 2>/dev/null || true
 }
 trap cleanup EXIT
 
@@ -191,6 +195,42 @@ if [ "${SKIP_META:-0}" != "1" ]; then
 
   echo "==> waiting for metaserve"
   wait_healthy "http://127.0.0.1:$META_PORT/healthz" "$CACHE/metaserve.log" "metaserve"
+
+  # A third server in metadata mirror mode, for the admin/system-mirror.png
+  # shot. Its local copy is seeded with the artifact just built (a hard link,
+  # or a copy-on-write clone where links fail) and a state.json saying it was
+  # checked a few hours ago, so the mirror opens it and its next check is a day
+  # away: nothing is downloaded. No library, no update check.
+  if [ "${SKIP_ADMIN:-0}" != "1" ]; then
+    echo "==> starting a mirror-mode server on :$MIRROR_PORT (seeded local copy)"
+    rm -rf "$MIRROR_DATA" && mkdir -p "$MIRROR_DATA/meta-mirror"
+    chmod 700 "$MIRROR_DATA" "$MIRROR_DATA/meta-mirror"
+    MIRROR_TAG="data-v$(date -u +%Y.%m.%d)-$(git -C "$META" rev-parse --short=7 HEAD)-$(git -C "$META_COMMUNITY" rev-parse --short=7 HEAD)"
+    MIRROR_COPY="$MIRROR_DATA/meta-mirror/meta-$MIRROR_TAG.sqlite"
+    ln "$CACHE/meta.sqlite" "$MIRROR_COPY" 2>/dev/null || cp -c "$CACHE/meta.sqlite" "$MIRROR_COPY" 2>/dev/null \
+      || cp "$CACHE/meta.sqlite" "$MIRROR_COPY"
+    node -e '
+      const fs = require("node:fs");
+      const [file, tag, copy] = process.argv.slice(1);
+      const ago = (h) => new Date(Date.now() - h * 3600e3).toISOString();
+      fs.writeFileSync(file, JSON.stringify({
+        tag, published_at: ago(5.2), size_bytes: fs.statSync(copy).size,
+        downloaded_at: ago(5), checked_at: ago(5),
+      }, null, 2), {mode: 0o600});
+    ' "$MIRROR_DATA/meta-mirror/state.json" "$MIRROR_TAG" "$MIRROR_COPY"
+    cat > "$MIRROR_DATA/config.yaml" <<EOF
+bind: "127.0.0.1:$MIRROR_PORT"
+tls:
+  mode: "off"
+update_check: false
+metadata:
+  mode: mirror
+EOF
+    "$SERVER_BIN" --data "$MIRROR_DATA" > "$CACHE/mirror.log" 2>&1 &
+    MIRROR_PID=$!
+    wait_healthy "http://127.0.0.1:$MIRROR_PORT/healthz" "$CACHE/mirror.log" "mirror-mode server"
+    MIRROR_PASSWORD="$(grep 'Admin password' "$CACHE/mirror.log" | awk -F': ' '{print $2}' | tr -d ' ')"
+  fi
 fi
 
 # ── 5. Captures ─────────────────────────────────────────────────────────────
@@ -201,7 +241,9 @@ AS_BASE="http://127.0.0.1:$PORT/web/" ADMIN_PASSWORD="$ADMIN_PASSWORD" node capt
 if [ "${SKIP_ADMIN:-0}" != "1" ]; then
   echo "==> capturing admin console + public pages"
   AS_ORIGIN="http://127.0.0.1:$PORT" ADMIN_PASSWORD="$ADMIN_PASSWORD" \
-    SETUP_URL="$SETUP_URL" node capture-admin.mjs
+    SETUP_URL="$SETUP_URL" \
+    MIRROR_ORIGIN="${MIRROR_PASSWORD:+http://127.0.0.1:$MIRROR_PORT}" \
+    MIRROR_PASSWORD="${MIRROR_PASSWORD:-}" node capture-admin.mjs
 fi
 
 if [ "${SKIP_META:-0}" != "1" ]; then
