@@ -81,8 +81,8 @@ section on it and should re-read it after reconnecting. `export` is true on
 servers that support the admin
 [library export](#get-apiv1adminlibrariesidexport).
 
-The player-redesign data API (Phase 1a) adds these flags. An older server omits
-them, so a client treats a missing flag as false and never sends the request it
+The player-redesign data API (Phase 1a, and the series flags after it) adds
+these flags. An older server omits them, so a client treats a missing flag as false and never sends the request it
 gates:
 
 | Flag | Value | Gates |
@@ -1102,7 +1102,8 @@ Otherwise the local steps decide, in order, and the first one with an answer win
    as an omnibus `1-3` are skipped), passing over any entry that comes at or
    before the current work on a rail ranked above it, so two orders of the same
    books (a chronological series and a publication-order one) can't step
-   backwards or loop. The **first rail with a next entry decides**: the server
+   backwards or loop. The **first rail with a next entry decides**, and a later
+   rail's entry never answers in its place: the server
    places that entry for the caller exactly as `/meta` places
    [`local`](#owned-entries-local), and when it is placed the answer is `next` +
    `book` + `work`. When it is not (the caller's copy is untagged, or filed under
@@ -1110,17 +1111,18 @@ Otherwise the local steps decide, in order, and the first one with an answer win
    nothing, so the steps below answer and the entry rides along as `work` without
    `local`. Nothing comes from this step (no `work`) when the book has no
    ASIN/ISBN, has no match or no rails, the metadata service fails, or no rail has
-   a next entry (no current position is a number, or the current work is last on
-   every rail; a rail can lag the library). A failure reading the caller's books
-   leaves the entry unplaced, as `/meta` degrades.
+   a next entry (no current position is a number, the current work is last on
+   every rail, or every later entry steps back; a rail can lag the library). A
+   failure reading the caller's books leaves the entry unplaced, as `/meta`
+   degrades.
 2. **`series`** - the book's series with a position above 0, main series first
    (`series` at `series_index`, then each other series at its position there). For
    each, the candidate is the book of exactly that series in the same library
    (by its main series or one of its other series, at its position in that
    series) with the smallest higher position (ties by path), within the caller's
    scope, passing over any book that comes at or before the current book in a
-   series ranked above which both books are in. The first series with a later
-   book answers. When none has a later book but some other book in one of them is
+   series ranked above in which both books are numbered. The first series with a
+   later book that isn't passed over answers. When none has a later book but some other book in one of them is
    numbered, the answer is `{"source": "series"}`, the end of the series; when
    nothing else is numbered the step falls through.
 3. **`folder`** - the book's parent folder, listed whole as the caller may open it
@@ -3378,7 +3380,8 @@ A bulk edit of `series` (without `more_series`) makes the
 [series swap](#patch-apiv1adminlibrariesidbook) one book at a time: only the
 books whose `more_series` lists the new series swap; the others simply get the
 new main series. One book whose old main series can't be listed refuses the whole
-request, and the error's reason names that book's path.
+request: `400` `code: "invalid_override"` with `field: "series"`, its `error`
+ending with that book's path in parentheses.
 
 ### `GET /api/v1/admin/authors` · `GET /api/v1/admin/narrators`
 
@@ -3656,10 +3659,11 @@ disk access. Reverting an ASIN/ISBN falls back to any enrichment for it.
 **Making an other series the main one swaps them.** When an edit sets `series` to
 a name the book's `more_series` lists (exactly, case included), and does not set
 or revert `more_series` itself, the server swaps the two: the old main series,
-at its old `series_index`, takes that entry's place in `more_series`, and
-`series_index` becomes the entry's position (unless the edit sets `series_index`
-itself). Reverting `series` swaps back the same way when the series it returns to
-is listed. The swapped `more_series` and `series_index` are written as the edit's
+at its old `series_index`, takes that entry's place in `more_series` (a book with
+no main series just drops the entry, and another entry already naming the old
+main series gives way), and `series_index` becomes the entry's position (unless
+the edit sets or reverts `series_index` itself). Reverting `series` swaps back
+the same way when the series it returns to is listed. The swapped `more_series` and `series_index` are written as the edit's
 own overrides, so they read as edited and can be reverted like any other edit,
 except that a value equal to what the book has without an edit goes back to
 following the scan instead (for `series_index`, only when the new main series is
@@ -3670,7 +3674,10 @@ An edit that sets `more_series` never swaps, and neither does a community edit
 series can't be listed (a name too long for a list entry, or a position out of
 range), the edit is refused: `400` `invalid_override` with `field: "series"`.
 The console's Book page drafts the same swap before saving, so the fields and the
-save dialog show it.
+save dialog show it, and its save sends the drafted `more_series` and
+`series_index` itself. As that edit names `more_series`, the server swaps nothing
+and writes the values as edits, even one equal to the file's; reverting `series`
+afterwards is an ordinary revert, so it swaps back as above.
 
 | Status | Meaning |
 |---|---|
@@ -3684,6 +3691,7 @@ save dialog show it.
 
 `invalid_override` covers an unknown field (`field` names it, e.g.
 `cover_path`), a value that fails its rule, a field both set and reverted, a
+series swap whose old main series can't be listed (`field: "series"`), a
 `source` other than the two above (`field: "source"`), a `chapter_source` other
 than the three above (`field: "chapter_source"`), and chapter problems
 (`field: "chapters"`: a chapter the book doesn't have, an empty title, one index

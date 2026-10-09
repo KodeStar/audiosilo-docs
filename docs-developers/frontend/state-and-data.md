@@ -169,7 +169,7 @@ older server (React Query rejects it instead) and the query stays pending.
 | `listBooks(lib, { author, series, narrator, sort, limit, cursor })` | `useLibraryBooks(lib, query?, connectionId?)` | `browse_people`, only when `query.narrator` is set | `GET /libraries/{id}/books` (keyset pages of 100, `BookPage`; key `qk.libraryBooks`) |
 | `authors(lib)` / `narrators(lib)` | `useAuthors` / `useNarrators(lib, connectionId?)` | `browse_people` | `GET /libraries/{id}/authors`, `/narrators` |
 | `seriesList(lib)` | `useSeriesList(lib, connectionId?)` | `browse_people` | `GET /libraries/{id}/series` (`SeriesCount[]`) |
-| `seriesBooks(lib, names, { limit })` / `seriesBooksPage(lib, name, { limit })` | `useLibraryBooks(..., { batch: true })` (the Series cards, through `useSeriesBooks`) | `series_books` | `GET /libraries/{id}/series/books?name=...` (`SeriesBooks`, one `SeriesBooksEntry` per name) |
+| `seriesBooks(lib, names, { limit })` / `seriesBooksPage(lib, name, { limit })` | `useLibraryBooks(..., { batch: true })` (the Series cards, through `useSeriesBooks`) | `series_books` picks this endpoint for the first page; without it the hook still asks `listBooks` | `GET /libraries/{id}/series/books?name=...` (`SeriesBooks`, one `SeriesBooksEntry` per distinct name) |
 | `nextBook(lib, path)` | `useNextBook(lib, path, enabled?, connectionId?)` | `next_book` | `GET /libraries/{id}/next` (`NextBook`) |
 | `bookMeta(lib, path, signal, { includePrevious, hideSpoilers })` | `useBookMeta(lib, path, enabled, opts?)` | `meta_bundle` (the caller checks it; the hook gates only on `enabled`) | `GET /libraries/{id}/meta?include=previous&spoilers=hide` |
 | `coverUrl(lib, path, { size, version })` | - | `cover_sizes` for `size` | `GET /libraries/{id}/cover?size=&v=` |
@@ -187,7 +187,8 @@ older server (React Query rejects it instead) and the query stays pending.
 - **Series cards share one request.** With the `batch` option (only the Series
   cards pass it, through `useSeriesBooks(..., { batch: true })`) and `series_books`
   on the server, a plain series list (`isPlainSeriesQuery`: `series` with
-  `memberships` and no other filter) fetches its **first page** through
+  `memberships`, which `series_memberships` adds, and no other key, so no other
+  filter and the default sort) fetches its **first page** through
   `client.seriesBooksPage`. That is a per-(library, page size) `createBatchLoader`
   (`src/lib/batch-loader.ts`): every series asked for within 10 ms goes out as one
   `GET /libraries/{id}/series/books` per 50 names (`SERIES_BOOKS_MAX_NAMES`), or
@@ -195,8 +196,10 @@ older server (React Query rejects it instead) and the query stays pending.
   (`SERIES_BATCH_MAX_QUERY_BYTES`). The page lands under the same
   `qk.libraryBooks` key as an ordinary `listBooks` answer, so the series page,
   which asks plainly, reuses the cards' cache, and later pages stay on `/books`.
-  The batched fetch never reads react-query's `signal`: the request is shared, so a
-  card scrolled off still caches its page instead of cancelling it for the others.
+  The batched fetch never reads react-query's `signal`: react-query cancels and
+  throws away a fetch whose signal was read once its last observer leaves, so a
+  card scrolled off before its page arrives still caches it from the shared
+  request (which no caller can cancel, with the client's normal timeout).
   Without `series_books` each card asks `/books` on its own.
 - **`bookMeta` options are part of the key.** `qk.bookMeta(cid, lib, path, opts)`
   adds a variant segment only when an option is set, under the plain key as a

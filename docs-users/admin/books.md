@@ -141,10 +141,13 @@ spelled exactly as in **Other series**. The two swap places: the old main
 series, with its number, moves into **Other series** where the new one was, and **Series number** becomes the book's number
 in the new main series (unless you change the number yourself). The fields show
 the swap before you save, and **Review and save** lists every value that
-changes. If you edit **Other series** yourself in the same go, nothing is swapped:
-your list is kept as you typed it. The swapped values are saved as your edits,
-so each can be reverted, and reverting **Series** swaps back the same way (the
-number then follows the file again, as before the swap).
+changes. If you edit **Other series** yourself in the same go, your list is kept
+as you typed it (a **Series number** the swap already filled in stays, so check
+it before saving). The swapped values are saved as your edits, so each can be
+reverted. Reverting **Series** puts back the series the last scan found, and when
+that series is in **Other series** it swaps back the same way (the number then
+follows the file again, as before the swap); when the series you had before the
+swap was itself an edit, reverting doesn't bring it back.
 Matching with community metadata never swaps: the match sets every series itself.
 
 Each value has a marker saying where it came from:

@@ -75,8 +75,8 @@ accent?, on_accent?}`, sent only while it matches the current art) and
 a content hash); `GET /libraries/{id}/authors`,
 `/narrators` (`{ authors|narrators, unknown }`, normalised by the client to
 `PeopleList { people, unknown }`) and `/series` (`{ series }`) are scope-filtered
-browse lists, and `/books` takes `narrator=` (`useLibraryBooks`); `GET
-/libraries/{id}/series/books?name=A&name=B` (`series_books`) answers
+browse lists, and `/books` takes `narrator=` (`useLibraryBooks`); added after
+Phase 1a, `GET /libraries/{id}/series/books?name=A&name=B` (`series_books`) answers
 `{ series: [{ name, books, next_cursor? }] }` (`SeriesBooks`), each entry exactly
 the first page of `/books?series=<name>&memberships=1` (`client.seriesBooksPage`
 batches the Series cards on screen into it); `GET
@@ -443,9 +443,11 @@ behind the `meta_bundle` capability; spoiler gating still **stays on the device
 by default** (the player gates against its live position and does not send the
 param). A failure placing the caller's books sends the envelope without `local`
 rather than failing it. `GET /libraries/{id}/next` follows every series the book
-is in (main first, then its other series): the first community rail, in that
-order, with a next work answers when it places that work on one of the caller's
-books (possibly in another library); otherwise the local series (each in turn),
+is in (main first, then its other series): of the community rails in that order
+(rails named like none of its series last), the first with a next work that
+doesn't step back decides, and answers when it places that work on one of the
+caller's books (possibly in another library; a later rail never answers in its
+place); otherwise the local series (each in turn),
 then the folder, then none answer, with an unplaced community next work riding
 along as `work` without `local`. The wire shape is the same as for one series.
 Answers are also kept in a persistent `meta_cache` table (no config key, follows
