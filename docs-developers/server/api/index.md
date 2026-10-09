@@ -93,11 +93,12 @@ See the [reference](reference.md#personal-api-keys).
 
 ### Media requests: `?token=` - media GETs only
 
-`GET /libraries/{id}/cover` and `GET /libraries/{id}/stream` accept the session
-token **either** as the bearer header **or** as a `?token=` query parameter.
-This exists because browser `<img>` and `<audio>` elements cannot set an
-`Authorization` header. The query fallback is deliberately confined to these two
-routes (`requireMediaAuth` in `internal/api/middleware.go`): a token in a query
+`GET /libraries/{id}/cover`, `GET /libraries/{id}/stream` and
+`GET /libraries/{id}/meta/cover` (a community cover, `meta_covers`) accept the
+session token **either** as the bearer header **or** as a `?token=` query
+parameter. This exists because browser `<img>` and `<audio>` elements cannot set
+an `Authorization` header. The query fallback is deliberately confined to these
+three routes (`requireMediaAuth` in `internal/api/middleware.go`): a token in a query
 string can leak into access logs and `Referer` headers, so no other route
 accepts it. Native clients should keep using the header even for media.
 
@@ -164,7 +165,7 @@ Failures a person can fix also carry a machine-readable **`code`** next to
 | `metadata_off` | `404` | a community match search, a `POST /admin/books/works` work-id batch, or a community cover (`POST /admin/meta/covers`, `PUT /admin/libraries/{id}/cover/community`) while community metadata is turned off |
 | `too_large` | `400` / `413` | a bulk edit or an issue ignore over 1000 books, a cover batch over 60, a community cover batch over 12, or a work-id batch over 100 (`400`); a custom cover upload over 5 MiB, or a community cover over 16 MiB or 40 megapixels (`413`) |
 | `unsupported_image` | `415` | a custom cover (uploaded or community) that is not a JPEG, PNG or WebP image |
-| `cover_unavailable` | `502` | `PUT /admin/libraries/{id}/cover/community` when the server couldn't fetch the image |
+| `cover_unavailable` | `502` | `PUT /admin/libraries/{id}/cover/community` or `GET /libraries/{id}/meta/cover` when the server couldn't fetch the image (the latter also for a minute after a failed fetch, without asking again) |
 | `invalid_schedule` | `400` | a library `scan_schedule` that isn't `""`, `every:<N>h` (1, 3, 6, 12, 24) or `daily:HH:MM` (`POST`/`PATCH /admin/libraries`) |
 | `invalid_pattern` | `400` | a library `ignore_patterns` list the server refuses: more than 100 patterns, one over 200 bytes, one that matches nothing, or a malformed wildcard; the message names the line (`POST`/`PATCH /admin/libraries`) |
 | `invalid_metadata_source` | `400` | a library `metadata_source` other than `"tags"` or `"path"` (`POST`/`PATCH /admin/libraries`) |
@@ -204,13 +205,14 @@ Status mapping is consistent across handlers:
 | `415` | an upload of a type the endpoint doesn't take (a custom cover that isn't JPEG/PNG/WebP) |
 | `429` | a rate limiter tripped (see below) |
 | `500` | unexpected internal failure - the message is generic; details go to the server log only |
-| `502` | an upstream service failed: the community metadata service (`/meta`, `/meta/work`, the admin match search), or a community cover's own host (`PUT /admin/libraries/{id}/cover/community`) |
+| `502` | an upstream service failed: the community metadata service (`/meta`, `/meta/cover`, `/meta/work`, the admin match search), or a community cover's own host (`PUT /admin/libraries/{id}/cover/community`, and `GET /libraries/{id}/meta/cover`, which answers a URL whose fetch failed less than a minute ago with the same `502` without asking its host again) |
 | `503` | database unreachable (`/healthz`), transcoding requested without ffmpeg, demo at capacity, or the request timeout (below) |
 
 **Request timeout.** Non-streaming requests are bounded at **30 s** by
 `http.TimeoutHandler`; a request that exceeds it gets
 `503 {"error":"request timed out"}`. Streaming reads - `GET`/`HEAD` on
-`/stream`, `/cover`, a backup's download (`GET /admin/backups/{name}`, not the
+`/libraries/{id}/stream` and `/libraries/{id}/cover` (exactly: the community
+`/libraries/{id}/meta/cover` is a bounded thumbnail and stays under the timeout), a backup's download (`GET /admin/backups/{name}`, not the
 `…/restore` beside it) and the `/web` static mount - are exempt, so audio playback can run indefinitely and a
 large backup can finish downloading. Only reads are exempt: an upload to a streaming-shaped
 path (the admin custom-cover `PUT /admin/libraries/{id}/cover`) stays bounded
@@ -299,6 +301,7 @@ single-shot with a `limit` and no pagination.
     "metadata": true,
     "export": true,
     "meta_bundle": true,
+    "meta_covers": true,
     "browse_people": true,
     "series_memberships": true,
     "series_books": true,
@@ -342,6 +345,12 @@ it, so treat a missing flag as `false`:
 | `next_book` | [`/next`](reference.md#get-apiv1librariesidnext), the server's answer to what plays after a book |
 | `series_memberships` | `memberships=1` on [`/books`](reference.md#get-apiv1librariesidbooks) and [`/series`](reference.md#get-apiv1librariesidseries): a book counts in every series it is in |
 | `series_books` | [`/series/books`](reference.md#get-apiv1librariesidseriesbooks), the first page of several series' books in one request |
+
+`meta_covers`, always equal to `metadata`, came later: the server serves the
+community covers a book's `/meta` envelope hands out at
+[`/meta/cover`](reference.md#get-apiv1librariesidmetacover). Without it the web
+player shows placeholders for those covers, since its CSP takes images only from
+the server; native apps load the `cover_url` directly.
 
 The listener's own state, stats, annotations and the server's addresses added eight,
 each always `true` on a server that has it:

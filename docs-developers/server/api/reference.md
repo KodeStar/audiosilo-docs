@@ -40,6 +40,7 @@ else and gate features on the flags.
     "metadata": true,
     "export": true,
     "meta_bundle": true,
+    "meta_covers": true,
     "browse_people": true,
     "series_memberships": true,
     "series_books": true,
@@ -113,6 +114,9 @@ covers. `addresses` (always `true`, absent on an older server) says the server r
 its [home and away addresses](#home-and-away-addresses): on every pairing payload and
 its links, on the exchange, login and demo answers, and at
 [`GET /addresses`](#get-apiv1addresses).
+`meta_covers` (the same as `metadata`, absent on an older server) says the server
+serves the community covers a book's `/meta` envelope hands out, as thumbnails at
+[`GET /libraries/{id}/meta/cover`](#get-apiv1librariesidmetacover).
 
 ### `GET /healthz` · `GET /api/v1/healthz`
 
@@ -1459,6 +1463,64 @@ that the client treats as "nothing to show":
 | `500` | with `spoilers=hide`, `could not load progress` - the caller's progress could not be read; the ungated envelope is never sent instead |
 | `502` | `metadata service unavailable` - the upstream was unreachable or errored and the server holds no earlier answer for the book |
 
+### `GET /api/v1/libraries/{id}/meta/cover`
+
+*Session (media).* A community cover from the book's `/meta` envelope, as a JPEG
+thumbnail the server fetched: a series rail entry's `cover_url` (main view or any
+ordering, so the `previous[]` books too) or the recording's. This is how the player
+shows community covers. The web player's CSP takes images only from the server, so
+it can't load a `cover_url` from its own host, and with this route a listener's
+device never contacts the cover hosts at all. Gated by the `meta_covers`
+[capability](#get-apiv1server), which follows `metadata`: when it is false the
+route returns 404. Like `/cover` it takes media auth, so the session token may ride
+as `?token=` on an `<img>`.
+
+| Query param | Type | Required | Notes |
+|---|---|---|---|
+| `path` | string | yes | the book whose `/meta` envelope handed out the cover; authorized against the caller's share scope exactly like `/meta` |
+| `url` | string | yes | the `cover_url`, exactly as the envelope carries it |
+| `size` | int | no | `160`, `320` (default) or `640`: the thumbnail's longest side in pixels |
+| `token` | string | no | media-auth fallback |
+
+**Not an open proxy.** The server looks up the book's envelope (the same lookup and
+cache as `/meta`) and serves `url` only when it is, character for character, a
+cover URL that envelope hands out. Anything else is `404 no such cover` before
+anything is fetched, so a caller can make the server fetch only images it could
+already see named in a book it can reach. The fetch itself keeps the guards of
+[`PUT …/cover/community`](#put-apiv1adminlibrariesidcovercommunity): public
+addresses only, at most 3 redirects, 15 seconds, at most 16 MiB.
+
+Response `200`: `image/jpeg`, the image decoded and re-encoded within `size` x
+`size` pixels (never scaled up), so the upstream's bytes and content type never
+reach the client.
+
+- Thumbnails come from the server's in-memory thumbnail cache, the one
+  [`POST /admin/meta/covers`](#post-apiv1adminmetacovers) uses (keyed by URL and
+  size). Requests for the same thumbnail at once share one fetch.
+- `ETag` is `"community-<size>-<hash>"`, the hash of the URL, and
+  `Cache-Control` is `private, max-age=86400` (a community cover URL names one
+  image; a new cover is a new URL). A matching `If-None-Match` is a `304` without
+  the image being fetched.
+- **A failed fetch is not cached, but it is remembered for 1 minute**: until then
+  the same URL is answered `502 cover_unavailable` straight away, without asking
+  its host again, so a broken or hung host isn't fetched on every render. The
+  console's batch ignores that window and always tries again.
+- An image that can't be decoded or is over 40 megapixels is cached as "no
+  cover" (`404`).
+- Unlike `/cover` and `/stream`, this route stays under the 30 s
+  [request timeout](index.md#error-envelope-and-status-conventions): it is a
+  bounded thumbnail, not a stream.
+
+| Status | Meaning |
+|---|---|
+| `200` | the JPEG thumbnail |
+| `304` | `If-None-Match` matched |
+| `400` | `url is required`; `size must be one of [160 320 640]` (an empty `size=` too); `path is required` / `invalid library id` |
+| `401` | missing/invalid token |
+| `403` | path outside the caller's share scope |
+| `404` | `no such cover` - the book is unmatched (no `asin`/`isbn`, or no match upstream) or its envelope hands out no such URL; `no cover` - the image isn't one the server can decode, or is over 40 megapixels; `no book at that path`; `metadata lookup not enabled` (`meta_covers` false) |
+| `502` | `metadata service unavailable` - the book's envelope couldn't be had; `code: "cover_unavailable"` - the image couldn't be fetched (an address that isn't public, a timeout, too many redirects, an answer other than `200`), or its fetch failed less than a minute ago |
+
 ### `GET /api/v1/meta/work`
 
 *Session.* One community **work** document by its metadata-database id, with no
@@ -2444,10 +2506,12 @@ zone, as on the admin Activity page.
 The fields mean what they mean in the admin's
 [`activity`](#range-listening-activity), for the caller alone:
 
-- `totals` - the caller's `listened` (wall-clock seconds), `sessions`, `books`
-  listened to and books `finished` in the period (by the caller's own finish
-  dates, **all** of them, including books they can no longer open: a count, no
-  paths, so `totals.finished` can exceed `finished_books`' length); `previous`
+- `totals` - the caller's `listened` (wall-clock seconds), `sessions`, books
+  `finished` in the period (by the caller's own finish dates, **all** of them,
+  including books they can no longer open: a count, no paths, so
+  `totals.finished` can exceed `finished_books`' length) and `books` listened to
+  **or** finished in it (a book marked finished with no listening recorded
+  still counts, so `finished` is never more than `books`); `previous`
   the same for the period of equal length just before;
   `estimated` how many of `totals.listened`'s seconds are estimates.
 - `days` - every day of the period, oldest first, zero days included;
@@ -3559,7 +3623,8 @@ book path).
     },
     "checked_at": "2026-10-03T09:20:44.10Z"
   },
-  "community_checking": false
+  "community_checking": false,
+  "match_query": "The Martian: Classroom Edition Andy Weir"
 }
 ```
 
@@ -3623,6 +3688,19 @@ book path).
 - `community_check_failed` - present and `true` when the book's last check
   failed (the community service didn't answer, or the check ran out of time):
   `community_chapters` is then the check before it.
+- `match_query` - the text the console's
+  [match dialog](#get-apiv1adminlibrariesidbookmatch) opens its search box
+  with (`meta.SearchPrefill`): the book's title and author, unless the tags
+  look swapped or junk, where the folders' reading of the path
+  (`metadata.FromPathLayout`) replaces them. Swapped means the title is the
+  author folder's name, or the author, cleaned of series and numbering, is the
+  path's title; a tag that matches its own path fact is never swapped
+  (`Dune/Dune` by Frank Herbert). A junk title (`Unknown`, `Untitled`,
+  `Track 01`, `03`) or a junk author (`Unknown`, `Various Artists`) is replaced
+  on its own. A fact the path doesn't give keeps the tag's value. It only fills
+  the box: the match itself always sends the book's own facts, and `q` is what
+  the admin then searches for. Always present (`""` for a book with nothing to
+  say).
 
 | Status | Meaning |
 |---|---|
@@ -4237,8 +4315,11 @@ Response `200`, one entry per requested URL, in request order:
   couldn't be fetched or decoded (a URL that isn't http(s), one too large, or
   not an image, too).
 - Thumbnails are cached in the same server memory cache, keyed by URL and
-  size. An image that couldn't be decoded is cached as `""`; a fetch that
-  failed is not, so the next request tries again.
+  size, and shared with the player's
+  [`/meta/cover`](#get-apiv1librariesidmetacover). An image that couldn't be
+  decoded is cached as `""`; a fetch that failed is not, so the next request
+  tries again (this batch ignores the minute `/meta/cover` waits after a failed
+  fetch). Requests for the same thumbnail at once share one fetch.
 - The whole batch has 20 seconds: an image that hasn't arrived by then is
   answered `""` rather than holding the rest back. Fetches are bounded across
   all requests.
@@ -4551,6 +4632,7 @@ The session object, shared by both session routes:
   "imported": false,
   "state": "playing",
   "chapter": "Chapter 12",
+  "chapter_index": 12,
   "ip": "192.168.1.24"
 }
 ```
@@ -4585,14 +4667,26 @@ The session object, shared by both session routes:
   minutes) or `ended`. A session can come back from `ended`: a late save whose
   position advanced by about the time that passed (a phone that kept playing
   without saving) continues it, up to 12 hours after its last save.
-- `chapter` (the chapter title at `position`) and `ip` (the device's newest
-  address) are present on **live** sessions only.
+- `chapter`, `chapter_index` and `ip` are present on **live** sessions only.
+  `chapter_index` is the 0-based place of the chapter at `position` and
+  `chapter` its title, tidied the way the player tidies a filename-shaped one
+  (the audio extension dropped, underscores as spaces, a trailing bitrate tag
+  removed). `chapter` is omitted when the title names nothing (empty, a bare
+  number such as `024`, a track or disc number such as `Track 01`; a title in
+  another script always names something), so a client says "Chapter
+  `chapter_index` + 1" instead. A numbered title such as `Chapter 10` or
+  `Part 7` is kept as written: in a book that opens with a prologue the
+  thirteenth chapter can be titled `Chapter 12`, as in the example. A book with
+  a single chapter (the whole book) has neither field. `ip` is the device's
+  newest address.
 
 ### `GET /api/v1/admin/sessions/live`
 
 Who is listening now: the open sessions (a save within the last 10 minutes),
 newest first, **one per device** - a device that moved on to another book shows
-only the book it is on now. Each carries `chapter` and `ip`.
+only the book it is on now. Each carries `ip`, and `chapter_index` and `chapter`
+as described [above](#admin-activity) for a book with more than one
+chapter.
 
 ```json
 { "sessions": [ { "id": 412, "username": "sam", "state": "playing", "…": "…" } ] }
@@ -5131,9 +5225,12 @@ and only the part inside the period counts.
   is rounded up to the next whole second). `timezone` is the server zone's
   abbreviation at `to` and `utc_offset` its offset from UTC in minutes.
 - `totals` - `listened` (wall-clock seconds), `sessions` (sessions that started
-  in the period), `listeners` (people who listened), `books` (books listened
-  to), `finished` (books whose finish date falls in the period). `previous` is
-  the same for the period of equal length just before `from`, for deltas.
+  in the period), `listeners` (people who listened), `finished` (the distinct
+  books with a finish date in the period: a book two people finished counts
+  once) and `books` (the books listened to **or** finished in the period, so a
+  book marked finished or imported with no listening recorded still counts, and
+  `finished` is never more than `books`). `previous` is the same for the period
+  of equal length just before `from`, for deltas.
 - `estimated` - how many of `totals.listened`'s seconds are estimates: listening
   from before the server recorded sessions that the players' spans didn't cover
   (see [Listening from before sessions](../data-model.md#listening-from-before-sessions)),
@@ -5150,13 +5247,17 @@ and only the part inside the period counts.
   listened time. Authors and narrators are the whole field value (unlike the
   Library's people lists, which split co-credits: shipped players match these
   names to books by the whole value); `books` counts distinct books.
-  `top_users[].finished` counts that person's books finished in the period.
+  `top_users[].finished` counts that person's books finished in the period and
+  `top_users[].books` the books they listened to or finished in it, counted
+  like `totals`.
 - `funnel` - people x books with a progress save in the period, by how far each
   got (the current position, so a restarted book counts where it is now; a
   finished book counts as 100%).
 - `drop_offs` - up to 5 chapters where at least two people stopped the same
   book: unfinished progress with no save for 30 days. `chapter_index` is
-  0-based; `scan_error` says the book has a read problem the Health page lists.
+  0-based; `chapter` is its title tidied as on a live session (`""` when it
+  names nothing, where the console says "Chapter `chapter_index` + 1");
+  `scan_error` says the book has a read problem the Health page lists.
   Independent of the period.
 - `playback` - listening by how it played: direct or `transcoded`, per `codec`
   (`""` unknown), with `listened` in the period and `sessions` started in it.
@@ -5782,6 +5883,66 @@ is in [Audit log](../backups-and-notifications.md#audit-log).
 |---|---|
 | `200` | the page |
 | `400` | `actor_id` or `before` isn't a number, `area` doesn't match, or `q` is over 200 characters |
+
+## Admin: support card
+
+The admin console's Overview card that points at GitHub Sponsors
+(`catalog/support.go`, `api/handlers_support.go`). Only the console asks: the
+player never sees it, and there is no capability flag. Both routes are *Admin*:
+`401` without a valid session or API key, `403` for a member's token. What the
+console does with them is in
+[The admin console](../web-ui.md#the-support-card).
+
+### `GET /api/v1/admin/support`
+
+*Admin.* Whether the card shows now:
+
+```json
+{ "show": true }
+```
+
+`show` is false after an "I've donated" (for good), while a "Not now" lasts,
+and on a server that hasn't been in use long enough: it turns true 30 days
+after the earliest non-demo account's `created_at`
+(`catalog.SupportAfterDays`), or after 7 (`SupportMinDays`) once 10 books
+(`SupportAfterFinished`) have been finished by non-demo accounts since then. A
+server with no non-demo account (setup not finished) never shows it. The
+answer is worked out on every request; nothing is cached.
+
+### `POST /api/v1/admin/support`
+
+*Admin.* An admin's answer, stored for the whole server (in `server_state`,
+key `support_card`; see [Data model](../data-model.md#server-state)). Taken on
+trust: nothing is checked, nothing leaves the server, and it unlocks nothing.
+
+```json
+{ "action": "snoozed" }
+```
+
+| `action` | Effect |
+|---|---|
+| `"donated"` | hides the card for good |
+| `"snoozed"` | hides it for six months from now (`catalog.SupportSnoozeMonths`) |
+
+```json
+{ "show": false, "until": "2027-04-09T14:16:29Z" }
+```
+
+`show` is always false (the card is hidden either way, so nothing is
+recomputed). `until` (RFC 3339) is when a snooze this request stored ends, and
+is absent after `"donated"`, or when nothing changed: once a server holds a
+donation, a later `"donated"` or `"snoozed"` stores nothing (a snooze never
+turns "for good" back into a snooze) and answers `{ "show": false }`. The
+console words its toast from `until`, not from the button pressed. A change is
+recorded in the [audit log](#admin-audit-log) as `settings.support`, with
+`choice` and, for a snooze, `returns_at`; a request that changed nothing is not.
+
+| Status | Meaning |
+|---|---|
+| `200` | the answer was taken (or there was nothing to change) |
+| `400` | `invalid request` (no body, not JSON, or a field other than `action`), or `action must be "donated" or "snoozed"` |
+| `401` | no valid session or API key |
+| `403` | not an admin |
 
 ## Well-known
 

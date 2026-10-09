@@ -119,8 +119,8 @@ client side in [State & data](../frontend/state-and-data.md#bookmarks-notes-and-
 `<img>`/`<audio>`, so cover and stream GETs accept the session token as a
 `?token=` query param on every platform.
 
-**Server:** `internal/api/middleware.go` - only cover + stream routes use
-`requireMediaAuth`, which calls `bearerToken(r, true)`; all other routes are
+**Server:** `internal/api/middleware.go` - only the cover, stream and community
+cover (`/meta/cover`) routes use `requireMediaAuth`, which calls `bearerToken(r, true)`; all other routes are
 header-only (`bearerToken(r, false)`), so tokens never ride the query string where
 they could leak into access logs or Referer headers.
 **Frontend:** `client.ts` `mediaTokenQuery()` → `coverUrl()`/`streamUrl()`. Native
@@ -133,6 +133,12 @@ version and `Cache-Control: private, no-cache` (custom cover) or
 that can't be made is a `404` the client answers by falling back to the full-art
 URL. Clients add the book's `cover_version` as `v=` purely as a cache buster:
 `coverUrl(lib, path, { size, version })`.
+
+**Community covers** (capability `meta_covers`) are the other media-auth image
+route: `GET /libraries/{id}/meta/cover?path=&url=&size=160|320|640` is a JPEG
+thumbnail of a community `cover_url` that the server fetched, so the web player,
+whose CSP stays `img-src 'self' data: blob:`, never contacts a cover host. Details
+in [§14](#14-community-metadata-a-three-repo-seam).
 
 **A change requires:** do **not** "tighten" the server to reject query-param
 tokens on media routes without first removing the web player's dependency on
@@ -256,12 +262,13 @@ version.
 
 **Server:** `handleServerInfo` advertises `admin_ui`, `web_player`, `upload`,
 `transcode`, `websocket`, `api_keys`, `export`, `metadata`, `meta_bundle`,
-`browse_people`, `cover_sizes`, `next_book` and the flags added after it, plus the
+`browse_people`, `cover_sizes`, `next_book` and the flags added after it (the
+latest, `meta_covers`, gates the community cover route), plus the
 server version
 (`api.Version`, stamped from the release tag via ldflags). `transcode` reflects
 ffmpeg availability; `web_player` reflects whether `/web` is populated; `api_keys`
-reflects that the server accepts user-minted API keys; `metadata` and
-`meta_bundle` follow the runtime metadata switch; `browse_people`, `cover_sizes`,
+reflects that the server accepts user-minted API keys; `metadata`,
+`meta_bundle` and `meta_covers` follow the runtime metadata switch; `browse_people`, `cover_sizes`,
 `next_book` and every flag after it are always true on a server that has them (the
 full table is in
 [API conventions](../server/api/index.md#capability-flags---gate-your-features)).
@@ -456,6 +463,26 @@ id at most 2,000 of them) so a restart is warm and an outage serves the last kno
 answer. See
 [`/meta`](../server/api/reference.md#get-apiv1librariesidmeta) and
 [Configuration](../server/configuration.md#the-persistent-cache).
+
+**Community covers through the server** (`meta_covers`, which tracks `metadata`).
+`GET /libraries/{id}/meta/cover?path=&url=&size=160|320|640` (`size` optional,
+default 320; media auth, `?token=`) answers `image/jpeg`, a thumbnail of `url`,
+**only when** that exact URL is a `cover_url` the `/meta` envelope for the same
+`(library_id, path)` hands out (the recording's, or any rail entry's in a main
+view or an ordering). Anything else is `404 no such cover` **before any fetch**:
+it is never an open proxy. Scope and errors are as `/meta` (403/404 for the path,
+404 with metadata off, 502 metadata unavailable), plus `502 cover_unavailable`
+(the fetch failed; that URL is not fetched again for a minute, and concurrent
+misses share one fetch) and `404 no cover` (not an image, or over the pixel
+bound). Only a re-encoded JPEG is served, with `ETag` `"community-<size>-<hash>"`
+and `private, max-age=86400`. Frontend: `Capabilities.meta_covers`,
+`client.communityCoverUrl(lib, path, cover_url, { size })`, and
+`communityCoverSource` / `useCommunityCover`: proxied when the flag is on; without
+it (an older server, or `/server` unreachable) native loads `cover_url` directly
+and the web player shows the placeholder, because its CSP blocks third-party
+images by design. Privacy: with metadata on, the server, not listeners' devices,
+contacts the cover hosts. See
+[`/meta/cover`](../server/api/reference.md#get-apiv1librariesidmetacover).
 
 **A change requires:** because the server consumes `metaserve`'s response shapes,
 a change to those shapes ripples audiosilo-meta -> the server's `internal/meta` ->

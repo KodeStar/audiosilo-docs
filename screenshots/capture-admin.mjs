@@ -21,7 +21,9 @@
 // files produce one of each issue - an empty file, a damaged m4b, two copies of
 // one book, a folder of two hour-long books, a long book without chapters, an
 // ALAC file - and adds it through the API; that needs ffmpeg on PATH for the
-// generated audio (without it those few issues are just missing). The console
+// generated audio (without it those few issues are just missing). The support
+// shots come last: the overview's support card needs the accounts backdated in
+// the capture database (sqlite3 on PATH). The console
 // (admin-ui) is driven through its real UI
 // with role/label selectors that use the exact English labels from
 // audiosilo-server/admin-ui/src/i18n/locales/en.json - if a label changes there,
@@ -896,6 +898,94 @@ await step("a person's Listening tab", async () => {
     await shoot(page, 'admin/person-listening.png');
   } finally {
     await page.setViewportSize(DESKTOP_CONTEXT.viewport);
+  }
+});
+
+// ── The support card: captured after every other console shot ──────────────
+// The Overview's support card shows once the server's first real account is 30
+// days old, and the capture server is minutes old. So this step backdates the
+// accounts in the capture database (run.sh's .cache/data, a throwaway copy, as
+// capture-web's year of listening is) and runs after every other console shot,
+// so none of them shows the card. Needs the sqlite3 CLI on PATH.
+const DB = path.join(CACHE, 'data', 'audiosilo.db');
+const sqlite = (sql) => {
+  const r = spawnSync('sqlite3', [DB], {input: `.timeout 15000\n${sql}\n`, encoding: 'utf8'});
+  if (r.status !== 0) throw new Error(`sqlite3: ${(r.stderr || r.error?.message || '').trim()}`);
+  return r.stdout;
+};
+// A clip around `boxes` (each from boundingBox()), `pad` CSS pixels wider on every side.
+const around = (boxes, pad = 16) => {
+  const x = Math.max(0, Math.min(...boxes.map((b) => b.x)) - pad);
+  const y = Math.max(0, Math.min(...boxes.map((b) => b.y)) - pad);
+  const right = Math.max(...boxes.map((b) => b.x + b.width)) + pad;
+  const bottom = Math.max(...boxes.map((b) => b.y + b.height)) + pad;
+  return {x, y, width: right - x, height: bottom - y};
+};
+
+await step('support card', async () => {
+  sqlite(`UPDATE users SET created_at = strftime('%Y-%m-%dT%H:%M:%SZ', 'now', '-40 days') WHERE is_demo = 0;`);
+  if (!(await api(token, 'GET', '/admin/support'))?.show) throw new Error('the server says the card is not due');
+  // Tall enough that the overview's side column, the card at its foot, needs no scroll.
+  await page.setViewportSize({width: 1440, height: 2400});
+  try {
+    await open(page, '/');
+    const card = page.locator('section[aria-labelledby="support-heading"]');
+    await card.waitFor({timeout: 15000});
+    await page.mouse.move(0, 0);
+    await sleep(500);
+    await shoot(page, 'admin/support-card.png', {clip: around([await card.boundingBox()])});
+  } finally {
+    await page.setViewportSize(DESKTOP_CONTEXT.viewport);
+  }
+});
+
+await step('account menu', async () => {
+  await open(page, '/');
+  const trigger = page.getByRole('button', {name: 'Account menu', exact: true});
+  await trigger.click();
+  const item = page.getByRole('menuitem', {name: 'Support AudioSilo', exact: true});
+  await item.waitFor({timeout: 8000});
+  await page.mouse.move(0, 0);
+  await sleep(500);
+  const menu = page.getByRole('menu').first();
+  await shoot(page, 'admin/account-menu.png', {
+    clip: around([await trigger.boundingBox(), await menu.boundingBox()]),
+  });
+  await page.keyboard.press('Escape');
+});
+
+await step('about: update notice', async () => {
+  // The capture server is a local build ("dev"), which never has an update to
+  // offer. Its own GET /admin/system answer is shown as a Docker server one
+  // release behind would see it, so the Updates card shows the notice and its
+  // sponsor line. The release is the real latest one: from the server's update
+  // check in "server: about", or, when GitHub refused that (its unauthenticated
+  // limit is 60 requests an hour), asked here, with GITHUB_TOKEN when it is set.
+  const latest = async () => {
+    const res = await fetch('https://api.github.com/repos/KodeStar/audiosilo-server/releases/latest', {
+      headers: process.env.GITHUB_TOKEN ? {authorization: `Bearer ${process.env.GITHUB_TOKEN}`} : {},
+    });
+    if (!res.ok) throw new Error(`GitHub answered ${res.status}`);
+    const r = await res.json();
+    return {version: r.tag_name, name: r.name, url: r.html_url, published_at: r.published_at};
+  };
+  const release = (await api(token, 'GET', '/admin/update'))?.latest ?? (await latest());
+  const route = '**/api/v1/admin/system';
+  await page.route(route, async (r) => {
+    const res = await r.fetch();
+    const sys = await res.json();
+    sys.update = {...sys.update, latest: release, comparable: true, update_available: true, error: '', install: 'docker'};
+    await r.fulfill({response: res, json: sys});
+  });
+  try {
+    await open(page, '/server/about');
+    const card = page.locator('[aria-labelledby="update-title"]');
+    await card.getByText('Sponsor on GitHub', {exact: true}).waitFor({timeout: 15000});
+    await page.mouse.move(0, 0);
+    await sleep(500);
+    await shoot(page, 'admin/update-notice.png', {clip: around([await card.boundingBox()])});
+  } finally {
+    await page.unroute(route);
   }
 });
 

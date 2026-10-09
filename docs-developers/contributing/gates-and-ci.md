@@ -54,7 +54,7 @@ Every workflow across the three repos, verified against
 
 | Workflow | Name | Triggers | What it does |
 |---|---|---|---|
-| `ci.yml` | `ci` | every PR; push to `main` | Job **test**: Go from `go.mod`, Node from `admin-ui/.nvmrc` and `scripts/build-admin.sh` (before the Go steps, so the embed tests see a real build), installs ffmpeg (so the ffprobe-dependent scanner tests stay live), `go build ./...`, `go vet ./...`, `go test -race -coverprofile=coverage.out ./...`, uploads the coverage artifact. Job **lint**: `golangci-lint-action@v8` (golangci-lint v2, config `.golangci.yml`). |
+| `ci.yml` | `ci` | every PR; push to `main` | Three jobs side by side. **test**: Go from `go.mod`, Node from `admin-ui/.nvmrc` and `scripts/build-admin.sh --vite-only` (before the Go steps, so the embed tests see a real build; no typecheck, the admin-ui job does that), installs ffmpeg (so the ffprobe-dependent scanner tests stay live), `go test -race -coverprofile=coverage.out ./...` (which compiles every package, test files or not, so there is no separate build step), uploads the coverage artifact. **admin-ui**: the full `scripts/build-admin.sh` (`npm ci`, `npm run check`, the build). **lint**: `golangci-lint-action@v9` (golangci-lint v2, config `.golangci.yml`; its govet replaces a separate `go vet` step). |
 | `image.yml` | `server image` | `v*` tags; manual dispatch (input `web_version`) | Builds the Docker image, baking the pinned web player in via the `WEB_IMAGE` build-arg, and pushes `ghcr.io/<owner>/audiosilo-server` (semver + sha + `latest` tags). See [releasing](releasing.md). |
 | `release.yml` | `release (native binaries)` | `v*` tags; manual dispatch (input `web_version`) | GoReleaser: cross-platform native binaries with the web player embedded (`-tags embedplayer`), published as a **draft** GitHub Release. |
 
@@ -119,6 +119,13 @@ the repo:
   `TestMain` (see `internal/api/main_test.go`): one argon2id hash at the real
   cost takes about a quarter of a second under `-race`. It panics outside a
   test binary.
+- **Tests run in parallel.** A new top-level test starts with `t.Parallel()`:
+  each has its own database and temp dirs, so the only thing tests share is
+  the read-only `testdata/` fixtures (copy one into `t.TempDir()` before
+  changing it). The exceptions are a test that calls `t.Setenv` or `t.Chdir`
+  (both panic in a parallel test) and one that writes a package-level
+  variable - pass the value in instead, as `hashWithCost` does for
+  `TestHashCost`.
 - Pure-logic tests sit next to the code (`internal/api/middleware_test.go`,
   `internal/catalog/shares_test.go`, `internal/web/web_test.go`, …). Keep
   business logic out of `internal/api` handlers - `api` is transport-only - so it

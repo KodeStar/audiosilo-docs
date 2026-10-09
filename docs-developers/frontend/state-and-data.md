@@ -173,6 +173,7 @@ older server (React Query rejects it instead) and the query stays pending.
 | `nextBook(lib, path)` | `useNextBook(lib, path, enabled?, connectionId?)` | `next_book` | `GET /libraries/{id}/next` (`NextBook`) |
 | `bookMeta(lib, path, signal, { includePrevious, hideSpoilers })` | `useBookMeta(lib, path, enabled, opts?)` | `meta_bundle` (the caller checks it; the hook gates only on `enabled`) | `GET /libraries/{id}/meta?include=previous&spoilers=hide` |
 | `coverUrl(lib, path, { size, version })` | - | `cover_sizes` for `size` | `GET /libraries/{id}/cover?size=&v=` |
+| `communityCoverUrl(lib, path, coverUrl, { size })` | `useCommunityCover(cid, lib, path)` (a resolver, not a query) | `meta_covers` | `GET /libraries/{id}/meta/cover?path=&url=&size=` ([below](#community-covers-clientcommunitycoverurl)) |
 
 - **People lists are normalised.** The server answers `{ authors, unknown }` and
   `{ narrators, unknown }`; the client returns both as one shape,
@@ -537,6 +538,36 @@ carries its own `web_url`, so tapping a series work or the footer link opens the
 metadata site **externally** (a real new tab on web, an in-app browser tab on
 native) - the client never constructs a metadata URL. UI strings live under
 `book.meta.*` in the locale catalogs.
+
+#### Community covers (`client.communityCoverUrl`)
+
+The envelope's covers - each series rail entry's `cover_url` (the Series tab's
+tiles) and the Previous books rows - point at third-party hosts, which the web
+player's CSP refuses (`img-src` takes only the server). A server with
+`meta_covers` serves them itself: `client.communityCoverUrl(libraryId, path,
+coverUrl, { size })` builds `GET /libraries/{id}/meta/cover?path=&url=&size=`
+with `?token=` like every media URL. The server serves only a `cover_url` the
+envelope of that book hands out, so the call takes the same `libraryId`/`path`
+`useBookMeta` was asked for.
+
+`BookTabPanel` builds one resolver per book with
+`useCommunityCover(useScopedCid(), libraryId, path)` and passes it to the Series,
+Recaps and Characters tabs as `coverFor`. Every community cover is asked for at
+one size, 320 (`COMMUNITY_COVER_SIZE` in `book-meta.tsx`), so the same cover is
+fetched and cached once, on the server and on the device, whichever tab shows it
+first. A tab without `coverFor` (`noCommunityCover`) shows placeholders: the
+title on a rail tile, the title's monogram on a previous book's row.
+
+The rule is the pure `communityCoverSource` (`community-cover.ts`), unit-tested:
+
+- **`meta_covers` on:** the proxied URL.
+- **`meta_covers` off** (an older server, or metadata off): native loads the
+  direct `cover_url`, as it always has; the web player shows the placeholder.
+- **`/server` unreachable:** counts as no flag (a server that can't answer
+  `/server` can't serve a cover either), so native loads a kept envelope's
+  covers directly and the web player shows placeholders.
+- **`/server` not answered yet:** nothing loads, so a cover is never fetched
+  twice (directly, then proxied).
 
 ### Home
 

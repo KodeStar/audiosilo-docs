@@ -26,8 +26,8 @@ A backup is one file holding the whole database at the moment it was made:
 - shares and who can see what;
 - your metadata edits, custom covers and folder detection choices;
 - the [audit log](server.md#audit-log), your
-  [notification](notifications.md) destinations, and the event list behind the
-  bell.
+  [notification](notifications.md) destinations, the event list behind the
+  bell, and the answer to the [support card](console-tour.md#the-support-card).
 
 It does **not** hold:
 

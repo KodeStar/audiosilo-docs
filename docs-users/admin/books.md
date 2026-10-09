@@ -343,8 +343,12 @@ missing.
    or file name as the title. So a book whose tags are wrong or swapped (a
    title tag that holds the author's name, say) is still found when its
    folders are named well, and the other way round.
-2. To search for something else, type in **Search the community database**,
-   or paste an ASIN or ISBN, and click **Search**. Typed words are matched
+2. **Search the community database** opens with the book's title and author.
+   When the tags look swapped (the title is the author's folder name, say) or
+   say nothing ("Unknown", "Track 01", "Various Artists"), it opens with what
+   the folders say instead, so searching again starts from something sensible.
+   To search for something else, type in it or paste an ASIN or ISBN, and
+   click **Search**. Typed words are matched
    alongside the book's own tags and folders, in any order ("sharpe 8" finds
    the eighth Sharpe book); an ASIN or ISBN on its own looks up just that.
 3. **Possible matches** lists what was found, each with its cover, how

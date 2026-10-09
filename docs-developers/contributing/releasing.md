@@ -83,7 +83,11 @@ amd64/arm64 all cross-compile from one Linux runner.
 - Outputs: `.tar.gz` (Linux/macOS), `.zip` (Windows), `.deb`/`.rpm` (which depend
   on the distro's ffmpeg and install a systemd unit), and `checksums.txt`.
 - The GitHub Release is created as a **draft** - a human reviews the notes and
-  artifacts, then publishes.
+  artifacts, then publishes. The notes end with GoReleaser's `release.footer`,
+  which also carries the one sponsor line ("AudioSilo is free; sponsors keep it
+  going", linking GitHub Sponsors, the same message as the admin console's update
+  notice). Keep it when you rewrite the notes by hand, and add nothing more (no
+  tiers, no rewards).
 
 Validate the GoReleaser config locally without releasing:
 
