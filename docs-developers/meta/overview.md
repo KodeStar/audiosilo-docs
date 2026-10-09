@@ -135,20 +135,10 @@ in-process:
   the AudioSilo server's mirror tests all publish their releases there, so they
   can't drift apart on what a release looks like on the wire.
 
-Two rules follow from these being public:
-
-- **The handler's responses are a contract.** A mirror-mode server decodes them
-  with the same structs it uses against meta.audiosilo.app, so a response shape
-  changes additively, as any public API's does.
-- **Artifact schema changes must stay additive** - new tables and columns, never
-  a renamed or dropped one. A mirror-mode server downloads whatever the newest
-  data release is, so it routinely reads an artifact **newer** than its own
-  code: `Open` accepts one (every optional read is gated with `>=`), the server
-  shows that its copy is newer than it understands, and a query that breaks on
-  it is a 5xx the server answers from the remote service instead.
-
-The seam is recorded in the
-[cross-repo contract](../architecture/cross-repo-contract.md#14-community-metadata-a-three-repo-seam).
+Being public, they follow the
+[cross-repo contract](../architecture/cross-repo-contract.md#14-community-metadata-a-three-repo-seam)'s
+rules: the handler's responses change additively, and so does the artifact
+schema ([how its versions are gated](data-model.md#the-compiled-artifact-and-schema-versioning)).
 
 ## The CLI tool set at a glance
 

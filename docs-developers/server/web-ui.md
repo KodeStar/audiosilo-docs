@@ -547,22 +547,23 @@ CSP-sensitive work against a real build served by Go. The console's own gate is
   About read the same query without polling, fresh for a minute): one list of rows (ffmpeg, ffprobe, community metadata, HTTPS
   certificate, database, backups, each library's folder with its disk space,
   web player, AudioSilo version), each with a status (Healthy, Needs
-  attention, Missing, Off, Waiting, Update available, Failed). The Backups row
+  attention, Missing, Off, Waiting, Downloading, Update available, Failed). The Backups row
   reads the answer's `backups` block: Failed (with the reason) when the last
   attempt failed, Off when nothing is scheduled (a warning when there is no
   backup at all), else Healthy with the latest backup and the next one. The rules live in the pure
   `system-model.ts` (`systemRows`; a disk under 10% free and a certificate
   under 14 days are warnings; `certificateLook` is shared with Settings).
   Notices above the list for unreachable library folders and a metadata
-  service that doesn't answer (with a link to its settings; `metadataDown`: in
+  service that doesn't answer, with a link to its settings (`metadataDown`; in
   mirror mode only while the copy isn't answering, since the health check goes
-  where lookups go). In mirror mode (`activeMirror`: `metadata.mirror` present
-  and the lookup on, the one rule the row, Settings' status line and
-  `metadataDown` share) the community metadata row reads `metadata.mirror` instead
-  (`mirrorLook`: a failed first download, no copy yet, a first download, a copy
-  newer than the server, a failed update, then an update downloading over a
-  working copy, then ready; a copy that still answers is never shown as down),
-  and a `MirrorPanel` under it shows the download's progress, the copy's facts
+  where lookups go).
+  In mirror mode (`activeMirror`: `metadata.mirror` present and the lookup on,
+  the one rule the row, Settings' status line and `metadataDown` share) the
+  community metadata row reads `metadata.mirror` instead (`mirrorLook`, in this
+  order: a failed first download, no copy yet, a first download, a copy newer
+  than the server, a failed update, an update downloading over a working copy,
+  ready); a copy that still answers is never shown as down.
+  A `MirrorPanel` under the row shows the download's progress, the copy's facts
   (data version, built, schema, size, downloaded, last and next check), the
   schema-newer, failure and fallback notices, and **Check now**
   ([`POST /admin/meta/mirror/check`](api/reference.md#post-apiv1adminmetamirrorcheck),

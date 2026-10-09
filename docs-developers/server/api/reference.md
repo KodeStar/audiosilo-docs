@@ -5342,9 +5342,9 @@ server keeps a local copy of the community metadata. Its status, here, in
 {
   "state": "downloading",
   "tag": "data-v2026.10.08-1a2b3c4-5d6e7f8",
-  "built_at": "2026-10-08T21:14:03Z",
+  "built_at": "2026-10-08T05:14:03Z",
   "schema_version": 7,
-  "size_bytes": 1712345088,
+  "size_bytes": 1755340800,
   "checked_at": "2026-10-08T08:00:12Z",
   "downloaded_at": "2026-10-08T08:01:40Z",
   "progress": { "done": 183500800, "total": 443547136 },
@@ -5361,7 +5361,7 @@ server keeps a local copy of the community metadata. Its status, here, in
 | `schema_newer` | `true` when that is newer than this server's code understands (`query.MaxSchemaVersion`): the copy still answers, any query that breaks on it goes to `base_url`, and the server wants updating. Absent otherwise |
 | `size_bytes` | the copy's size on disk |
 | `checked_at` | the last check of the release list (successful or not); absent before the first |
-| `next_check_at` | when the next check is due: 30 s after start without a copy, a day after the last check, an hour after a failed one, now once **Check now** asked for one; absent while a check is running |
+| `next_check_at` | when the next check is due (the **Schedule** in [Mirror mode](../configuration.md#mirror-mode-metadatamode-mirror)); absent while a check is running |
 | `downloaded_at` | when the copy was downloaded |
 | `progress` | only while downloading: `done` and `total` compressed bytes (`total` `0` when the release declares no size) |
 | `error` | the last failed check, as the server words it (e.g. `not enough disk space: need 2.5 GB, have 1.1 GB`); kept while a working copy answers, cleared by the next successful check |
@@ -5425,8 +5425,8 @@ error here: it is reported in `error`.
 
 *Admin.* The local metadata copy's [status](#the-local-copys-status-metadatamirror)
 on its own, without the rest of `GET /admin/system` (no tool versions, disk
-probes or health check): Health > System polls it every 2 seconds while the copy
-is busy (downloading, a check running, or a check due now after **Check now**).
+probes or health check): what Health > System
+[polls while the copy is busy](../web-ui.md#what-the-console-has-today).
 
 | Status | Meaning |
 |---|---|

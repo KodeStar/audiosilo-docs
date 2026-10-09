@@ -204,7 +204,8 @@ and every player connected to it stops
 showing the section (they gate on the `metadata` capability). The same switch
 gates the [community chapter checks](community-chapters.md): while it is on, the
 background pass checks matched books (sending only their ASIN or ISBN, then the
-community's work and recording ids), and finds pauses with the configured ffmpeg
+community's work and recording ids; in mirror mode the local copy answers once it
+is ready, so nothing leaves the server), and finds pauses with the configured ffmpeg
 when there is one; while it is off nothing is checked and
 `POST /admin/libraries/{id}/book/community-chapters` is `404 metadata_off`.
 Chapters already in use stay until an admin switches a book back. Enrichment is
@@ -218,9 +219,9 @@ database and answers its metadata questions in-process, so no book is looked up
 over the internet. The copy is audiosilo-meta's data release artifact (the
 SQLite `meta.sqlite`, the CC0 core and the CC BY-SA community layer in one
 file), and it is answered by metaserve's own code: the server imports
-audiosilo-meta's public [`pkg/query`](/developers/meta/overview#public-go-packages)
+audiosilo-meta's public [`pkg/query`](../meta/overview.md#public-go-packages)
 (`query.Open` and `query.NewHandler`, the very JSON API handler
-meta.audiosilo.app runs) and [`pkg/release`](/developers/meta/overview#public-go-packages)
+meta.audiosilo.app runs) and [`pkg/release`](../meta/overview.md#public-go-packages)
 (the release fetcher). Remote mode stays the default. Players see no
 difference: no wire change and no capability change.
 
@@ -274,20 +275,18 @@ again when metadata is back on). The list request goes to
 `User-Agent: AudioSilo/<version>` and no token, and is conditional
 (`If-None-Match` with the stored ETag, sent only while a copy is held, and
 dropped after a failed download, so a `304` can't hide a release that failed).
-The release taken is the newest non-draft, non-prerelease release carrying
-`meta.sqlite.gz` (the repository also cuts code `v*` releases, so GitHub's
-"latest" release is not the data release); a tag that couldn't name a file is
-refused.
+The release taken is the newest data release, by
+[audiosilo-meta's selection rule](../meta/overview.md#release-artifacts);
+a tag that couldn't name a file is refused.
 
 **Download and swap.** Before downloading, the disk guard needs free space on
 the folder's volume of at least the larger of 4.5 times the gz asset's declared
 size and the current copy's size, plus 512 MiB; otherwise the check fails with
 `not enough disk space: need X, have Y` (when the free space can't be read, it
-downloads anyway). The download (`release.DownloadData`) comes only from GitHub
-hosts, is verified against `meta.sqlite.gz.sha256` while it streams, is
-decompressed into the temporary file, fsynced and renamed to
-`meta-<tag>.sqlite`. It is abandoned after 60 seconds without a byte, and its
-decompressed size is bounded. The new file is opened with `query.Open` (which
+downloads anyway). The download is `release.DownloadData`'s (verified, from
+GitHub hosts only; see
+[`pkg/release`](../meta/overview.md#public-go-packages)) into
+`meta-<tag>.sqlite`. It is abandoned after 60 seconds without a byte. The new file is opened with `query.Open` (which
 runs metaserve's integrity checks; a file that doesn't open is deleted), then
 swapped in atomically; the replaced copy stays open for 60 seconds for the
 queries that started on it, then is closed and deleted. **Any failure keeps the
@@ -300,7 +299,7 @@ check). The copy is opened in the background, so a start isn't held up by it:
 until it is open, lookups go to `base_url`.
 
 **Sizes and cost** (measured October 2026, schema 7, about 281,000 works): the
-gz asset is 444 MB and the copy 1.76 GB on disk (1,755,340,800 bytes). The gz is
+gz asset is 444 MB and the copy about 1.8 GB on disk (1,755,340,800 bytes). The gz is
 streamed and never kept, so a first download peaks at about the copy's size; an
 update holds the old copy and the new one (about 3.5 GB) until the swap, and the
 disk guard wants about 2.5 GB free before it starts. Data releases come several
@@ -309,12 +308,10 @@ times a day, so in practice every daily check downloads a new copy (about
 connection; once the copy is ready, an uncached book lookup took 5-40 ms,
 against 170-350 ms from meta.audiosilo.app.
 
-**Artifact schema.** `query.MaxSchemaVersion` is the newest artifact schema this
-server's code knows. A newer copy still opens and answers (metaserve gates its
-optional reads with `>=`); the console flags it (`schema_newer`) and says to
-update the server, and any query that breaks on it is a 5xx that falls back to
-`base_url`. This is why audiosilo-meta's artifact schema changes must stay
-additive (see the
+**Artifact schema.** A copy newer than this server's code knows still opens and
+answers; the console flags it (`schema_newer`) and says to update the server,
+and any query that breaks on it is a 5xx that falls back to `base_url` (why that
+works: the
 [cross-repo contract](../architecture/cross-repo-contract.md#14-community-metadata-a-three-repo-seam)).
 
 **Switching back.** A server started in remote mode (with a metadata service)
@@ -673,7 +670,7 @@ tools):
 | `<data>/certs/` | autocert certificate cache |
 | `<data>/selfsigned-cert.pem`, `<data>/selfsigned-key.pem` | Persisted self-signed certificate (mode `selfsigned`, default paths) |
 | `<data>/tools/` | Auto-downloaded ffmpeg/ffprobe, when no local copy was found |
-| `<data>/meta-mirror/` | [Mirror mode](#mirror-mode-metadatamode-mirror)'s local copy of the community metadata: `meta-<tag>.sqlite` (about 1.8 GB), `state.json`, and a transient `.meta-*.tmp` while a download runs. Derived data: not in backups, and deleted when the server starts in remote mode |
+| `<data>/meta-mirror/` | [Mirror mode](#mirror-mode-metadatamode-mirror)'s local copy of the community metadata (what it holds: **The copy** there) |
 | `<data>/backups/` | Database backups (`audiosilo-<UTC time>-<kind>.db`), unless `backups.dir` puts them elsewhere |
 | `<data>/restore.json` | A restore waiting for the next start (removed when it is applied or refused) |
 | `<data>/restore-result.json` | How the last restore went |
