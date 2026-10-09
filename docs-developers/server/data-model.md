@@ -905,6 +905,7 @@ The migration history so far:
 | 0036 | `cover_source` | `book_covers.source` (`TEXT NOT NULL DEFAULT 'edited'`) and the partial index `idx_book_covers_community`; backfills `community` conservatively from the audit log (the match dialog's `book.cover_set` saves) and applied match runs (see the migration). A cover it can't place stays `edited`, which a clear keeps |
 | 0037 | `released` | `books.released` (`TEXT NOT NULL DEFAULT ''`) and `books.released_checked` (`0` on every existing row, so the next scan reads each unchanged book's date tags once) |
 | 0038 | `more_series` | `books.more_series` (`TEXT NOT NULL DEFAULT '[]'`), the effective list of a book's other series |
+| 0039 | `more_series_index` | the partial index `idx_books_more_series` on `books(library_id) WHERE more_series <> '[]'`, so the reads of the books in more than one series (a series' members, `/series` with `memberships=1`) skip the rest |
 
 ## SQLite choices
 
