@@ -283,7 +283,7 @@ How it behaves:
 - **Covers are not part of the copy:** book covers still come from their own
   sites (Audible, Open Library, publishers) in both modes.
 - While the **Look up community metadata** switch is off, the copy isn't
-  updated either.
+  updated either, and turning it off stops an update that is downloading.
 - The copy isn't part of the server's [backups](backups.md), and doesn't need
   to be in yours: it can always be downloaded again.
 - Switching back to **Ask the metadata service for each book** deletes the

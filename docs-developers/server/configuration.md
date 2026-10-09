@@ -242,10 +242,12 @@ publishers) in both modes.
 |---|---|
 | isn't ready (not downloaded yet, or not opened yet after a start) | goes to `base_url`, exactly as in remote mode |
 | answers `5xx` (a query this code can't run, e.g. on an artifact schema newer than it knows; a local answer over 15 s, over 32 MiB, or a panic counts the same) | goes to `base_url` unchanged |
-| answers `404` | the copy's answer is authoritative, with one exception: a "no match" never replaces a stored **positive** answer in `meta_cache` (a book's enrichment or a work). The stored answer is served, stale, and held in memory for 2 minutes, and its row is left alone, so a lagging or broken copy can't blank a companion that worked. In remote mode a "no match" replaces the row as before |
+| answers `404` | the copy's answer is authoritative, with one exception: a "no match" never replaces a stored **positive** answer in `meta_cache` (a book's enrichment or a work). The stored answer is served, stale, and held in memory for 2 minutes, and its row is left alone, so a lagging or broken copy can't blank a companion that worked. The exception holds only while a copy is ready: before that the "no match" came from `base_url` itself, which is authoritative, so it replaces the row as in remote mode |
 | and `base_url` both fail | the persistent cache serves the last known answer, as in a remote-mode outage |
 
-`meta_cache` rows keep `source` = `base_url` in both modes, so switching modes
+A `base_url` with a path (metaserve behind a proxy at `/meta`, say) works too:
+the copy is asked at its own root, and a retired slug's redirect gets the path
+back. `meta_cache` rows keep `source` = `base_url` in both modes, so switching modes
 keeps the cache warm. A request the copy couldn't answer is logged at most once
 every ten minutes ("the local copy couldn't answer; asked the online service
 instead").
@@ -265,7 +267,9 @@ with no copy checks 30 seconds after start; a failed check is retried after an
 hour; **Check now** in the console
 ([`POST /admin/meta/mirror/check`](api/reference.md#post-apiv1adminmetamirrorcheck))
 wakes it at once (a no-op while a check is running). Nothing is checked or
-downloaded while `metadata.enabled` is off. The list request goes to
+downloaded while `metadata.enabled` is off, and turning it off cancels a check
+already running, download included (nothing is recorded, so the check is due
+again when metadata is back on). The list request goes to
 `https://api.github.com/repos/KodeStar/audiosilo-meta/releases` with
 `User-Agent: AudioSilo/<version>` and no token, and is conditional
 (`If-None-Match` with the stored ETag, sent only while a copy is held, and
