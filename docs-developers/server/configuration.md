@@ -270,7 +270,8 @@ hour; **Check now** in the console
 wakes it at once (a no-op while a check is running). Nothing is checked or
 downloaded while `metadata.enabled` is off, and turning it off cancels a check
 already running, download included (nothing is recorded, so the check is due
-again when metadata is back on). The list request goes to
+again when metadata is back on). Turning it back on wakes the mirror at once
+(`Mirror.Wake`), which runs a check only if one is due. The list request goes to
 `https://api.github.com/repos/KodeStar/audiosilo-meta/releases` with
 `User-Agent: AudioSilo/<version>` and no token, and is conditional
 (`If-None-Match` with the stored ETag, sent only while a copy is held, and
@@ -296,7 +297,9 @@ current copy.**
 file and any copy other than the current one, and forgets a copy that is
 missing, changed size or doesn't open (a new one is downloaded at the next
 check). The copy is opened in the background, so a start isn't held up by it:
-until it is open, lookups go to `base_url`.
+until it is open (the status says `opening`), lookups go to `base_url`. A
+finished download is `opening` too, for the seconds before it is swapped in,
+while the current copy keeps answering.
 
 **Sizes and cost** (measured October 2026, schema 7, about 281,000 works): the
 gz asset is 444 MB and the copy about 1.8 GB on disk (1,755,340,800 bytes). The gz is

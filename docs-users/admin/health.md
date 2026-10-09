@@ -269,7 +269,7 @@ there), the more recently saved of the two is kept.
 
 **Health > System** lists everything the server depends on, one row each, with
 a status on the right: **Healthy**, **Needs attention**, **Missing**, **Off**,
-**Waiting**, **Downloading**, **Update available** or **Failed**. The page
+**Waiting**, **Downloading**, **Opening**, **Update available** or **Failed**. The page
 refreshes itself every 30 seconds.
 
 ![Health > System](/img/screenshots/admin/system.png)
@@ -313,7 +313,8 @@ about that copy:
 |---|---|
 | **Healthy** | "Answering from the local copy. No book is looked up over the internet." |
 | **Downloading** | The first copy is downloading ("Downloading the local copy for the first time."), or a newer one is downloading while the current copy keeps answering. |
-| **Waiting** | "No local copy yet. The first download starts shortly." It also shows briefly after a restart, while the existing copy opens. |
+| **Opening** | "Opening the local copy. This takes a few seconds." Shown just after a restart, while lookups use the online service; once a newer copy has downloaded, "Opening the new copy. The current one answers meanwhile." |
+| **Waiting** | "No local copy yet. The first download starts shortly." |
 | **Needs attention** | The copy still answers, but its last update failed, or it is newer than this version of AudioSilo understands. |
 | **Failed** | "The local copy couldn't be downloaded." There is no copy yet, so lookups go to the online service. |
 
@@ -321,7 +322,8 @@ Under the row:
 
 - While a download runs, a progress bar with how much has arrived.
 - The copy's details: **Data version**, **Built**, **Data schema**, **Size on
-  disk**, **Downloaded**, **Last check** and **Next check**.
+  disk**, **Downloaded**, **Last check** and **Next check** ("Checking now"
+  while a check runs).
 - A notice when something needs saying: lookups are using the online service
   until the copy is ready; the copy is newer than this server understands
   (update AudioSilo); or the download or the last update failed, with the
@@ -329,7 +331,7 @@ Under the row:
   check is tried again an hour later, and a failed update keeps the current
   copy in use.
 - **Check now** looks for a newer copy straight away (it's greyed out while a
-  download runs). The server already checks once a day by itself, so this is
+  download runs or a copy opens). The server already checks once a day by itself, so this is
   only for when you don't want to wait.
 
 ## Where to next

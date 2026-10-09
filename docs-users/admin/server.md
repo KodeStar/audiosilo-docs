@@ -210,8 +210,8 @@ answered on it.
   player.
 - While it is on, **Status** says whether the service answers ("Responding ·
   *N* ms" or "Not responding"). With a local copy it says how the copy is
-  doing instead ("Local copy ready", "Local copy downloading", "No local copy
-  yet" or "Local copy couldn't download"), with a link to the details on
+  doing instead ("Local copy ready", "Local copy downloading", "Opening the
+  local copy", "No local copy yet" or "Local copy couldn't download"), with a link to the details on
   [Health > System](health.md#the-local-copy-of-community-metadata).
 - **Audible marketplace** in the **Matching** card is the store you buy from
   (United Kingdom, United States, Germany and so on). When a recording sells in

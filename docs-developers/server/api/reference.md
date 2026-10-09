@@ -5354,7 +5354,7 @@ server keeps a local copy of the community metadata. Its status, here, in
 
 | Field | Meaning |
 |---|---|
-| `state` | `"empty"` (no copy and no failed attempt yet, or, just after a start, the copy still opening), `"downloading"` (a download is running, over a copy or not), `"ready"` (a usable copy answers) or `"error"` (no usable copy, and the last attempt failed). A failed update over a working copy stays `"ready"`, with `error` set |
+| `state` | `"empty"` (no copy and no failed attempt yet), `"downloading"` (a download is running, over a copy or not), `"opening"` (a copy is being opened, which takes seconds: the one on disk just after a start, with `fallback` true, or a finished download before it replaces the current copy, which answers meanwhile), `"ready"` (a usable copy answers) or `"error"` (no usable copy, and the last attempt failed). A failed update over a working copy stays `"ready"`, with `error` set |
 | `tag` | the data release the copy came from (`data-vYYYY.MM.DD-<core7>-<community7>`); absent without a copy |
 | `built_at` | when audiosilo-meta built the artifact |
 | `schema_version` | the artifact's schema version |
