@@ -208,7 +208,10 @@ single-file book), identity metadata (`title`, `author`, `series`,
 present so enrichment/metadata services can attach data without reshaping the
 schema), `published` (`YYYY[-MM[-DD]]`) and `description` (only an admin edit or
 an accepted community match supplies these today; the scanner reads neither),
-`released` (the date the file's tags give, `YYYY[-MM[-DD]]` via
+`more_series` (the effective list of the other series the book is in beyond
+`series`, as JSON `[{"name","position"}]`, `'[]'` for none: only an edit or a
+community match supplies it, an override like any other field; the full-text
+index's series column holds every series name), `released` (the date the file's tags give, `YYYY[-MM[-DD]]` via
 `metadata.ReleaseDate`: usually the recording's, so it is a separate scanned
 column, never `published`, read only by the admin list's release-date sort as
 the fallback for a book with no `published`) and `released_checked` (`1` once a
@@ -254,13 +257,16 @@ user state:
   (`catalog.CoverVersion`).
 - `cover_color` - the palette read from a thumbnail, tagged with the
   `cover_version` it was read for: `version bg` or `version bg accent on_accent`
-  (lowercase `#rrggbb`, space-separated), `''` for none. It is decoded onto the
+  (lowercase `#rrggbb`, space-separated), `version` alone for art read and found
+  to have no colour (none, or none that decodes), `''` when nothing was read. It is decoded onto the
   book only while the tag is the current `cover_version`, so new art needs nothing
   cleared. It is written compare-and-set on `cover_art` by
-  `catalog.RecordCoverColors` (`GET /libraries/{id}/cover?size=` or the console's
-  `POST /admin/covers`).
+  `catalog.RecordCoverColors` (`GET /libraries/{id}/cover?size=`, the console's
+  `POST /admin/covers`, or the
+  [background colour pass](media.md#the-background-colour-pass)).
 
-A rebuilt index starts with `cover_art` from index data and no colours.
+A rebuilt index starts with `cover_art` from index data and no colours. The
+background pass then fills them in.
 
 Two columns deserve emphasis:
 
@@ -288,6 +294,17 @@ row itself (as migration 0016 did) instead of blanking the fields, and
 `refreshEffective` records that snapshot, stamped, and backfills the chapters'
 `scanned_title` from their titles. See
 [Metadata overrides and effective values](#metadata-overrides-and-effective-values).
+
+A scan also writes an `@rev` key (`catalog.scannedRevKey`): the revision of the
+path baseline (`metadata.DeriveFromPath`) the snapshot was read with. A snapshot
+without one (any older server's) was read when the lone folder above a book
+(`Charles Dickens/Great Expectations`) was its series rather than its author. For
+a book one folder deep, `Catalog.Signatures` sorts such a snapshot out in SQL
+(`pathCheckExpr`):
+- **Settled by the snapshot alone:** a series other than the folder came from a tag, so only a blank author (missing, or the `""` migration 0016 wrote) changes (to the folder); the folder as both series and author means the series was the path's.
+- **Needs the tags:** the folder as series with another author, or none, can't be told from a series tag naming the folder (`Discworld/Mort`); nor can a blank or stale snapshot (the row is an older server's reading, whatever revision the stale snapshot names).
+
+The next scan reads the second kind's first file once (not while ffprobe fails where it read the file before, so a series only ffprobe reads is never recorded as none), and `Catalog.SetPathReading` rewrites both kinds' snapshots and re-resolves them, in batches, without re-indexing. It skips a snapshot re-indexed in the meantime, and keeps the chapter titles of an older server's row. Until then, `bookLayers.pathBaseline` tells a snapshot's path values from its tags' with the baseline it was read with, so a library that prefers its folders still drops the lone folder as a series.
 
 **`book_files`** *(0001; `codec` in 0016)* - the ordered parts of a folder
 book: `book_id` (FK CASCADE), `rel_path`, `seq`, `duration`, `format`, `codec`
@@ -832,9 +849,9 @@ book the series when there is an author folder above it, the leaf the title
 with its leading number split off as the position; disc and track folders are
 parts) and puts its title, author and series over the scanned ones wherever it
 says anything. Where it says nothing it still replaces a scanned value that is
-only the scan's own path reading (`DeriveFromPath` takes the one folder above a
-book for its series, so `George Orwell/Animal Farm` would get series "George
-Orwell"); a real tag value stays. The title always keeps a value. The position
+only the scan's own path reading (`DeriveFromPath` takes the folder holding a
+book for its series even when it is a disc folder's book, so
+`Frank Herbert/Dune/CD1` would get series "Dune"); a real tag value stays. The title always keeps a value. The position
 goes with the series: the layout's own, else the scanned one only while the
 series it numbers stays (the same series, by any case). A tag title that IS the
 leaf's name, number and all (`13 Reasons Why`), is kept whole with no position
@@ -898,6 +915,8 @@ The migration history so far:
 | 0035 | `community_chapters` | `community_chapters` (each book's last community chapter check: path-keyed, rebuildable), `chapter_choices` (an admin's chapter source per book: durable, path-keyed), `books.chapters_source` / `chapters_fit` / `scanned_chapters` / `chapters_hash`: see [Community chapters](community-chapters.md) |
 | 0036 | `cover_source` | `book_covers.source` (`TEXT NOT NULL DEFAULT 'edited'`) and the partial index `idx_book_covers_community`; backfills `community` conservatively from the audit log (the match dialog's `book.cover_set` saves) and applied match runs (see the migration). A cover it can't place stays `edited`, which a clear keeps |
 | 0037 | `released` | `books.released` (`TEXT NOT NULL DEFAULT ''`) and `books.released_checked` (`0` on every existing row, so the next scan reads each unchanged book's date tags once) |
+| 0038 | `more_series` | `books.more_series` (`TEXT NOT NULL DEFAULT '[]'`), the effective list of a book's other series |
+| 0039 | `more_series_index` | the partial index `idx_books_more_series` on `books(library_id) WHERE more_series <> '[]'`, so the reads of the books in more than one series (a series' members, `/series` with `memberships=1`) skip the rest |
 
 ## SQLite choices
 

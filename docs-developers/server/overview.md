@@ -152,7 +152,8 @@ Metadata extraction: embedded tags in-process via `dhowden/tag`, durations /
 chapters / codec via ffprobe when available (`probe.go`), the release
 date (`ReleaseDate`, a date tag as `YYYY[-MM[-DD]]`), and
 `DeriveFromPath` - the structural path heuristic
-(`Author/Series/01 - Title.m4b`) that fills gaps for untagged files. `layout.go`
+(`Author/Series/01 - Title.m4b`; a lone folder above the book is its author,
+`Author/Title.m4b`) that fills gaps for untagged files. `layout.go`
 reads a path's author/series/book LAYOUT (`ReadPathLayout`, the community
 match's path facts) and turns it into a path-first library's values
 (`FromPathLayout`). Defines the
@@ -178,6 +179,15 @@ like iOS AVPlayer accept the stream), `Transcode` (on-the-fly ffmpeg pipe to
 MP3 for codecs browsers can't decode), `DirectPlayable` (the codec allow-list
 clients use to decide whether to request `?transcode=1`), and `EmbeddedCover`
 extraction. See [Media & streaming](media.md).
+
+### `internal/covercolors`
+
+The background cover colour pass: a `Runner` that reads the colour of every book
+whose cover may have art and holds none for it (`catalog.CoverColorsDue`), one at
+a time, once the start or a burst of book changes has been quiet for 30 s, and
+hourly. It does no image work
+itself: `api.colorCover`, the cover endpoints' own reading, is handed in as its
+`Colorer`. See [The background colour pass](media.md#the-background-colour-pass).
 
 ### `internal/chapteralign` and `internal/chaptercheck`
 

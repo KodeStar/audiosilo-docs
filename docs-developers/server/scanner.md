@@ -456,9 +456,15 @@ embedded data winning where it is trustworthy:
    `Book 3 - …`, `C02 …`, but not a number running straight into a letter, a
    comma or an apostrophe: `3rd Rock`, `20,000 Leagues Under the Sea` and
    `1's and 0's` keep their whole name as the title); the nearest ancestor directory is the series and the
-   one above it the author (`Author/Series/01 - Title.m4b`). A book at the
-   library root simply has no ancestors - the old "flat" layout falls out for
-   free.
+   one above it the author (`Author/Series/01 - Title.m4b`), except a lone
+   ancestor, which is the author with no series (`Author/Title/`, the commonest
+   layout; `ReadPathLayout` reads it the same way). A book at the library root
+   simply has no ancestors - the old "flat" layout falls out for free. A lone
+   ancestor used to be read as the series; a snapshot from then (no `@rev`, see
+   [Data model](data-model.md#the-rebuildable-index)) is put
+   right by the next scan without a re-index: from the snapshot alone where it
+   tells, else from one read of the first file's tags, as the `released_checked`
+   backfill reads them.
 2. **Embedded tags + probe** (`metadata.Extract` on the primary file - the
    first part for folder books) overlay the baseline: tags via `dhowden/tag`
    in-process (album ≻ title for the book title - except when the title tag
@@ -482,8 +488,8 @@ for the book's path is `path`, anything else `tag` - one rule for every row, old
 or new (see [Data model](data-model.md#metadata-overrides-and-effective-values)).
 A library whose `metadata_source` is `path` takes the folder layout over the
 tags (`metadata.FromPathLayout`: the top folder is the author and the folder
-holding the book the series, so a book one folder deep gets an author and no
-series, where `DeriveFromPath` reads that folder as its series); that too is applied when the book is resolved,
+holding the book the series when there is an author folder above it, and disc
+and track folders are parts of the book); that too is applied when the book is resolved,
 not by the scanner, so the stored snapshot is the same in either mode and
 switching re-resolves the books without a rescan.
 The scanner does record each folder-book part's own codec (`book_files.codec`)
