@@ -1,6 +1,6 @@
 ---
 title: "Server settings, updates and logs"
-description: "The Server pages of the AudioSilo admin console: every setting you can change while the server runs (name, address, HTTPS, app links, community metadata, transcoding, demo mode, backups, notifications, importing from Audiobookshelf), which ones wait for a restart, checking for new versions and what that sends, reading the server's log, and the audit log of what admins changed."
+description: "The Server pages of the AudioSilo admin console: every setting you can change while the server runs (name, address, HTTPS, app links, community metadata and keeping a local copy of it, transcoding, demo mode, backups, notifications, importing from Audiobookshelf), which ones wait for a restart, checking for new versions and what that sends, reading the server's log, and the audit log of what admins changed."
 ---
 
 The **Server** destination in the [admin console](console-tour.md) is where
@@ -45,8 +45,8 @@ them, and a toast says "Applied now. No restart needed."
 
 A few are only read when the server starts, and carry a **Restart to apply**
 badge: the listen address, the HTTPS mode and certificate names, the web
-player folder, the community metadata service address, turning demo mode on or
-off, how long idle demo guests are kept, and the backups folder. When you save one of them:
+player folder, the community metadata service address and where community
+metadata is looked up (its **Source**), turning demo mode on or off, how long idle demo guests are kept, and the backups folder. When you save one of them:
 
 - On **Network & HTTPS**, the console asks first ("Save and apply at the next
   restart?"), because a wrong value there can stop the server from starting.
@@ -174,7 +174,8 @@ description, production details, the series they belong to, and (where the
 community has written them) character cards and story-so-far recaps - drawn
 from the free, community-run catalogue at
 [meta.audiosilo.app](https://meta.audiosilo.app). For that lookup only a
-book's ASIN or ISBN is sent, never file paths or who is listening. See
+book's ASIN or ISBN is sent, never file paths or who is listening; with a
+[local copy](#keeping-a-local-copy) nothing about a book is sent at all. See
 [A book's page](../listening/book-page.md#about-this-book) for what listeners
 see.
 
@@ -186,7 +187,8 @@ any ASIN or ISBN, what you type, and the names of up to three of its folders
 file name) go to the metadata service. Nothing is sent until you open the
 dialog (or start [Match automatically](health.md#matching-every-book-at-once),
 which sends the same for every book it looks up), and never anything about who
-listens. See
+listens. With a [local copy](#keeping-a-local-copy), matching is answered on
+your server and none of this leaves it. See
 [Matching with community metadata](books.md#matching-with-community-metadata).
 
 While the lookup is on, the server also checks matched books against the
@@ -199,10 +201,15 @@ you switch a book back.
 - Flipping the switch takes effect immediately for **everyone connected**, and
   the choice is remembered across restarts.
 - Turning it **off** is a one-tap privacy switch: your server stops contacting
-  the metadata service at all, and the extra section disappears from every
-  player.
+  the metadata service at all (and, with a local copy, stops updating it), and
+  the extra section disappears from every player.
 - While it is on, **Status** says whether the service answers ("Responding ·
-  *N* ms" or "Not responding").
+  *N* ms" or "Not responding"). With a local copy it says how the copy is
+  doing instead ("Local copy ready", "Local copy downloading", "No local copy
+  yet" or "Local copy couldn't download"), with a link to the details on
+  [Health > System](health.md#the-local-copy-of-community-metadata).
+- **Source** chooses where the server looks books up; see
+  [Keeping a local copy](#keeping-a-local-copy) below.
 - **Audible marketplace** in the **Matching** card is the store you buy from
   (United Kingdom, United States, Germany and so on). When a recording sells in
   several stores, a match takes this store's ASIN; with **No preference** it
@@ -229,6 +236,56 @@ you switch a book back.
   metadata service, so it works with the switch off too. It can't be undone:
   only matching again brings the values back. While a match run is working it
   asks you to wait for it, or stop it, first.
+
+#### Keeping a local copy
+
+The **Source** card has two choices:
+
+- **Ask the metadata service for each book** (the default). Nothing is
+  stored. Each lookup sends the book's ASIN or ISBN to the service, as
+  described above, and matching sends what the match dialog needs.
+- **Keep a local copy.** The server downloads a copy of the whole community
+  database and answers every lookup from it, so **no book is looked up over
+  the internet**: not the "About this book" lookups, not the match dialog or
+  Match automatically, not the community chapter checks.
+
+What a local copy costs:
+
+- **Disk space:** about 1.7 GB in the server's data folder, and up to about
+  twice that (about 3.5 GB) for a short while during an update, because the
+  new copy is downloaded before the old one is removed. The server checks
+  there is room first (about 2.5 GB free); if there isn't, the update is
+  skipped, the current copy stays in use, and Health > System says how much
+  space it needs.
+- **Bandwidth:** about 450 MB for each new copy. The server looks for a new
+  copy once a day, and since the community database changes several times a
+  day, that usually means a download every day.
+
+How it behaves:
+
+- The choice applies **after a restart** (the card carries a **Restart to
+  apply** badge). After the restart the first copy is downloaded shortly
+  after the server starts, then updated once a day; [Health > System](health.md#the-local-copy-of-community-metadata)
+  shows its progress, and **Check now** there looks for a newer copy at once.
+- **Until the first copy is ready**, and for anything the copy can't answer,
+  lookups go to the online service as before, so listeners never lose the
+  extra section while it downloads. Health > System says when that is
+  happening.
+- If the copy has no answer for a book the server already knew, the server
+  keeps showing the details it had rather than going blank.
+- The copy is downloaded from the AudioSilo Meta releases on **GitHub**, so
+  your server contacts GitHub once a day instead of meta.audiosilo.app for
+  each book. The download carries no information about your books or your
+  listeners.
+- Lookups are quicker too, since none of them waits on the internet.
+- **Covers are not part of the copy:** book covers still come from their own
+  sites (Audible, Open Library, publishers) in both modes.
+- While the **Look up community metadata** switch is off, the copy isn't
+  updated either.
+- The copy isn't part of the server's [backups](backups.md), and doesn't need
+  to be in yours: it can always be downloaded again.
+- Switching back to **Ask the metadata service for each book** deletes the
+  copy when the server next starts.
 
 ### Transcoding
 

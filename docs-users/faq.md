@@ -98,7 +98,9 @@ Two things:
   files as the source of truth and never modifies them, so any backup of the
   folders is a backup of your library.
 - **The server's data directory** (the `--data` folder, or the `/data` volume
-  in Docker). It holds `config.yaml`, the certificates, and the database.
+  in Docker). It holds `config.yaml`, the certificates, and the database. If
+  the server keeps a local copy of the community metadata, its `meta-mirror`
+  folder can be left out: it is downloaded again when it's missing.
 
 The database's book *index* is rebuildable - the server can recreate it from
 your files at any time - but the database also holds the things that
@@ -123,6 +125,28 @@ audiobook database at [meta.audiosilo.app](https://meta.audiosilo.app). It's
 optional (your admin switches the lookup on or off), and you can browse and add
 to the catalogue yourself - see
 [The community metadata site](./community/meta-site.md).
+
+### Does my server tell anyone which books I have?
+
+Only as much as a lookup needs. To fetch the extra "About this book"
+information, the server asks meta.audiosilo.app about a book by its ASIN or
+ISBN, so the service sees those identifiers; matching a book in the admin
+console also sends what the match needs (its title, author, series and folder
+names). Nothing about who listens, and no file paths, is ever sent.
+
+If you'd rather not look books up over the internet at all, the admin can
+choose **Keep a local copy** for community metadata: the server then downloads
+the whole community database (about 450 MB, once a day, from GitHub; about
+1.7 GB on disk) and answers every lookup from it, so no book is looked up over
+the internet. Until the first copy has downloaded, lookups still go to
+meta.audiosilo.app. Book covers come from their own sites (Audible, Open
+Library, publishers) either way. See
+[Keeping a local copy](./admin/server.md#keeping-a-local-copy). Or switch the
+community metadata off entirely, and the server contacts neither.
+
+Separately, the server asks GitHub once a day whether a newer AudioSilo
+version exists (it can be turned off); see
+[What the update check sends](./admin/server.md#what-the-update-check-sends).
 
 ## Users & sharing
 
