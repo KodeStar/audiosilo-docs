@@ -140,9 +140,15 @@ thumbnail of a community `cover_url` that the server fetched, so the web player,
 whose CSP stays `img-src 'self' data: blob:`, never contacts a cover host. Details
 in [§14](#14-community-metadata-a-three-repo-seam).
 
+**Cast tokens** (capability `cast`) ride the same `?token=`, on a book's cover and
+stream only: a player casting to a Chromecast mints one for the book
+(`POST /cast/token`) and builds the receiver's URLs with it, never with its session
+token. Details in [§15](#15-listening-in-the-house-and-casting).
+
 **A change requires:** do **not** "tighten" the server to reject query-param
 tokens on media routes without first removing the web player's dependency on
-them - the web player cannot authenticate media any other way.
+them - the web player cannot authenticate media any other way (and a Cast
+receiver has no other way either).
 
 ## 4. Audio `Content-Type` must be real (byte-sniffed)
 
@@ -263,7 +269,7 @@ version.
 **Server:** `handleServerInfo` advertises `admin_ui`, `web_player`, `upload`,
 `transcode`, `websocket`, `api_keys`, `export`, `metadata`, `meta_bundle`,
 `browse_people`, `cover_sizes`, `next_book` and the flags added after it (the
-latest, `meta_covers`, gates the community cover route), plus the
+latest, `household` and `cast`, gate [§15](#15-listening-in-the-house-and-casting)), plus the
 server version
 (`api.Version`, stamped from the release tag via ldflags). `transcode` reflects
 ffmpeg availability; `web_player` reflects whether `/web` is populated; `api_keys`
@@ -517,6 +523,42 @@ the player (only if the server's outward `/meta` envelope changes). Keep it
 additive, same as every other seam here. A change to `pkg/query` or
 `pkg/release`'s exported API reaches the server through its `go.mod` (and the
 desktop manager, which builds the server).
+
+## 15. Listening in the house and casting
+
+The player redesign's Phase 8, two additive features each behind its own flag
+(seam 8), mirrored in `types.ts` (`HouseholdSettings`, `HouseListeningRow`,
+`HouseListening`, `CastToken`), `client.ts` and `hooks.ts`.
+
+**Listening in the house** (capability `household`): `GET`/`PUT /me/household`
+(`{ share_listening }`, off by default, demo accounts can't turn it on) and
+`GET /household/listening` (`{ sharing, listening: [Row] }`). The privacy rules
+are the server's alone (`catalog.HouseListening`): reciprocal (an empty list unless
+the caller shares), other enabled, non-demo people who share, one row per person
+(their newest session in 24 hours), dropped when that book is outside the caller's
+scopes, and never a device, address, app or token in a row. The player only decides
+what to show of the answer and how often to ask: `useHousehold(cid)`,
+`useSetHousehold(cid)` (a `CapabilityError` without the flag) and
+`useHouseListening(cid, { enabled })`, polled every minute (`HOUSE_POLL_MS`) only
+while the app is in the foreground, the surface is focused and the listener shares.
+No realtime channel. Client side:
+[Listening in the house](../frontend/listening-in-the-house.md).
+
+**Casting** (capability `cast`): `POST /cast/token` `{ library_id, path }` ->
+`201 { token, expires_at }`, a 24-hour credential for one book, accepted only as
+the `?token=` of that book's cover and stream (never as a header, never on another
+route, never `/meta/cover`, never for another book or library), with
+`Cross-Origin-Resource-Policy: cross-origin` on the answers it authenticates. The
+web player's CSP admits the Cast Web Sender's origin, `https://www.gstatic.com`, in
+`script-src` and nothing else. The player's rules: the receiver never sees the
+session token; the receiver's URLs are built on the connection's address in use
+(`effectiveUrl`, never `localhost`); a token is cached in memory per book until an
+hour before it expires; no flag, no Cast button. An API key can't mint one (`403`).
+Client side: [Chromecast](../frontend/chromecast.md).
+
+**A change requires:** the household rules stay in the server's catalog (a player
+must never filter someone in); any widening of where a cast token is accepted is a
+security-critical change with allowed and denied tests on the server.
 
 ## The wire-change checklist
 
