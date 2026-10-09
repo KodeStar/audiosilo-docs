@@ -560,3 +560,14 @@ claim, because the builder always writes the two together. The same versioning
 drives the [coverage endpoints](api.md#coverage-endpoints), which omit a
 dimension's count rather than report it as a misleading zero when the artifact
 predates its table.
+
+The opposite direction matters as much. Mirror-mode AudioSilo servers download
+the newest data release once a day and read it with the `pkg/query` their own
+build carries, so they routinely read an artifact **newer** than their code.
+`query.MaxSchemaVersion` is the newest version the code understands; a newer
+artifact still opens (every optional read is gated with `>=`), and the server
+flags that its copy is newer than it understands. That only works while schema
+changes stay **additive**: new tables and columns, never a renamed or dropped
+one, and never a changed meaning for an existing column. A new version bumps
+`internal/build.SchemaVersion` and `query.MaxSchemaVersion` together (a test pins
+them equal). See [Public Go packages](overview.md#public-go-packages).
