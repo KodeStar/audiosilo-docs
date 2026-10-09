@@ -162,7 +162,7 @@ Failures a person can fix also carry a machine-readable **`code`** next to
 | `folder_unreadable` | `404` | `GET /admin/fs/dirs` on a missing or unreadable folder |
 | `book_not_found` | `404` | an admin catalog call on a path that is not an indexed book (book page, edit, bulk edit, match, cover upload, community cover); an admin progress edit on a path with no progress and no indexed book |
 | `invalid_override` | `400` | a metadata edit the server refuses; the body also carries a `field` key naming the offending field (`PATCH /admin/libraries/{id}/book`, `POST /admin/books/bulk`) |
-| `metadata_off` | `404` | a community match search, a `POST /admin/books/works` work-id batch, or a community cover (`POST /admin/meta/covers`, `PUT /admin/libraries/{id}/cover/community`) while community metadata is turned off |
+| `metadata_off` | `404` | a community match search, a `POST /admin/books/works` work-id batch, a community cover (`POST /admin/meta/covers`, `PUT /admin/libraries/{id}/cover/community`), or the metadata mirror (`GET /admin/meta/mirror`, `POST /admin/meta/mirror/check`) while community metadata is turned off |
 | `too_large` | `400` / `413` | a bulk edit or an issue ignore over 1000 books, a cover batch over 60, a community cover batch over 12, or a work-id batch over 100 (`400`); a custom cover upload over 5 MiB, or a community cover over 16 MiB or 40 megapixels (`413`) |
 | `unsupported_image` | `415` | a custom cover (uploaded or community) that is not a JPEG, PNG or WebP image |
 | `cover_unavailable` | `502` | `PUT /admin/libraries/{id}/cover/community` or `GET /libraries/{id}/meta/cover` when the server couldn't fetch the image (the latter also for a minute after a failed fetch, without asking again) |
@@ -178,6 +178,7 @@ Failures a person can fix also carry a machine-readable **`code`** next to
 | `setting_read_only` | `400` | `PATCH /admin/settings` changing a setting shown but not changeable there (`players.web_dir`, `backups.dir`; `field` names it) |
 | `setting_locked` | `409` | `PATCH /admin/settings` changing a setting an `AUDIOSILO_*` variable or the launcher sets (`field` names it) |
 | `update_check_off` | `409` | `POST /admin/update/check` while the update check is turned off |
+| `not_mirror_mode` | `409` | `GET /admin/meta/mirror` or `POST /admin/meta/mirror/check` on a server that isn't keeping a local copy of the community metadata (remote mode, or `metadata.mode: mirror` saved but not restarted into) |
 | `backup_running` | `409` | `POST /admin/backups` while a backup is being made |
 | `backup_not_found` | `404` | a backup name that isn't in the backups folder (download, delete, restore) |
 | `invalid_backup` | `400` | `POST /admin/backups/{name}/restore` on a file that is damaged or isn't an AudioSilo database |

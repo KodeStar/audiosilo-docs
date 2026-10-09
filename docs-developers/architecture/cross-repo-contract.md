@@ -484,10 +484,39 @@ images by design. Privacy: with metadata on, the server, not listeners' devices,
 contacts the cover hosts. See
 [`/meta/cover`](../server/api/reference.md#get-apiv1librariesidmetacover).
 
+**Mirror mode** (`metadata.mode: mirror`, opt-in; `remote` is the default)
+makes the seam tighter. The server downloads audiosilo-meta's data release
+artifact (`meta.sqlite.gz`, the CC0 core and the CC BY-SA community layer in one
+file) once a day into `<data>/meta-mirror/`, and answers the same `/api/v1`
+requests in-process with audiosilo-meta's public
+[`pkg/query`](../meta/overview.md#public-go-packages) (`Open`, `NewHandler`:
+metaserve's own handler, byte for byte), fetched with its public `pkg/release`.
+`internal/meta`'s client is unchanged: the local copy answers while one is
+ready, and `base_url` otherwise (the full
+[fallback ladder](../server/configuration.md#mirror-mode-metadatamode-mirror)).
+The player is untouched: no wire change and no capability change.
+
+Two couplings follow, both now part of this seam:
+
+- **The handler's responses are a public API.** A mirror-mode server decodes the
+  local answers with the same structs it uses against meta.audiosilo.app, so
+  `pkg/query`'s responses change the way metaserve's always have: additively.
+- **The artifact schema is a direct coupling.** A mirror-mode server reads
+  whatever the newest data release is, routinely an artifact **newer** than its
+  own code, so artifact schema changes must stay **additive**: new tables and
+  columns, never a renamed or dropped one, and never a changed meaning for an
+  existing column. A newer artifact still opens and answers; how the versions
+  are gated and bumped is in
+  [the meta data model](../meta/data-model.md#the-compiled-artifact-and-schema-versioning).
+  A server picks up `pkg/query` changes only when its `go.mod` moves to a new
+  audiosilo-meta tag.
+
 **A change requires:** because the server consumes `metaserve`'s response shapes,
 a change to those shapes ripples audiosilo-meta -> the server's `internal/meta` ->
 the player (only if the server's outward `/meta` envelope changes). Keep it
-additive, same as every other seam here.
+additive, same as every other seam here. A change to `pkg/query` or
+`pkg/release`'s exported API reaches the server through its `go.mod` (and the
+desktop manager, which builds the server).
 
 ## The wire-change checklist
 

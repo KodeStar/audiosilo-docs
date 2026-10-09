@@ -269,8 +269,8 @@ there), the more recently saved of the two is kept.
 
 **Health > System** lists everything the server depends on, one row each, with
 a status on the right: **Healthy**, **Needs attention**, **Missing**, **Off**,
-**Waiting**, **Update available** or **Failed**. The page refreshes itself every 30
-seconds.
+**Waiting**, **Downloading**, **Opening**, **Update available** or **Failed**. The page
+refreshes itself every 30 seconds.
 
 ![Health > System](/img/screenshots/admin/system.png)
 
@@ -278,7 +278,7 @@ seconds.
 |---|---|
 | **ffmpeg** | Found (with its version), so formats browsers can't play are converted while someone listens, and [community chapters](books.md#community-chapters) start on the pause in the audio; "Downloaded into the data folder" when the server fetched its own copy. **Missing**: those formats won't play in the web player, and community chapter starts may be a few seconds off. |
 | **ffprobe** | Found, so lengths, chapters and codecs are read from the files. **Missing**: lengths and chapters come only from tags. |
-| **Community metadata** | **Healthy** with how fast the service answered, **Needs attention** when it isn't responding, or **Off** (switched off, or no service address set). The server only asks the service while the lookup is on, at most once a minute. |
+| **Community metadata** | **Healthy** with how fast the service answered, **Needs attention** when it isn't responding, or **Off** (switched off, or no service address set). The server only asks the service while the lookup is on, at most once a minute. A server that keeps a [local copy](server.md#keeping-a-local-copy) shows the copy here instead: see [below](#the-local-copy-of-community-metadata). |
 | **HTTPS certificate** | **Healthy** with the days left and who issued it, **Needs attention** when it expires within two weeks, has expired or its file can't be read, **Waiting** while Let's Encrypt hasn't issued it yet, or **Off** with plain HTTP (a reverse proxy in front handles HTTPS). |
 | **Database** | Its schema number. The book index can be rebuilt from your folders; accounts and progress can't, which is why the server makes [backups](backups.md) of it. |
 | **Backups** | The backups folder, when the last backup was made and when the next one runs. **Failed** (with the reason) when the last backup failed; **Off** when no backups are scheduled, marked as a problem if there isn't a single backup either. See [Backups and restoring](backups.md). |
@@ -295,11 +295,44 @@ Two notices can appear above the list:
 - "The community metadata service isn't responding": players still show what
   they already had, and new matches wait until it's back. **Metadata settings**
   opens [its settings](server.md#community-metadata). Nothing to do unless it
-  lasts a day.
+  lasts a day. (With a local copy, it only appears until the copy is ready.)
 
 To change any of this, see [Server settings](server.md#settings): the HTTPS
 mode and certificate names are under **Network & HTTPS**, the tools under
 **Transcoding**, the backup schedule under **Backups**.
+
+### The local copy of community metadata
+
+When the server [keeps a local copy](server.md#keeping-a-local-copy) of the
+community metadata (and the lookup is on), the **Community metadata** row is
+about that copy:
+
+![Health > System, the community metadata row with a local copy](/img/screenshots/admin/system-mirror.png)
+
+| Status | What it means |
+|---|---|
+| **Healthy** | "Answering from the local copy. No book is looked up over the internet." |
+| **Downloading** | The first copy is downloading ("Downloading the local copy for the first time."), or a newer one is downloading while the current copy keeps answering. |
+| **Opening** | "Opening the local copy. This takes a few seconds." Shown just after a restart, while lookups use the online service; once a newer copy has downloaded, "Opening the new copy. The current one answers meanwhile." |
+| **Waiting** | "No local copy yet. The first download starts shortly." |
+| **Needs attention** | The copy still answers, but its last update failed, or it is newer than this version of AudioSilo understands. |
+| **Failed** | "The local copy couldn't be downloaded." There is no copy yet, so lookups go to the online service. |
+
+Under the row:
+
+- While a download runs, a progress bar with how much has arrived.
+- The copy's details: **Data version**, **Built**, **Data schema**, **Size on
+  disk**, **Downloaded**, **Last check** and **Next check** ("Checking now"
+  while a check runs).
+- A notice when something needs saying: lookups are using the online service
+  until the copy is ready; the copy is newer than this server understands
+  (update AudioSilo); or the download or the last update failed, with the
+  reason (such as not enough disk space, and how much is needed). A failed
+  check is tried again an hour later, and a failed update keeps the current
+  copy in use.
+- **Check now** looks for a newer copy straight away (it's greyed out while a
+  download runs or a copy opens). The server already checks once a day by itself, so this is
+  only for when you don't want to wait.
 
 ## Where to next
 

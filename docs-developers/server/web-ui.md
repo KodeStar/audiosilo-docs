@@ -571,14 +571,36 @@ CSP-sensitive work against a real build served by Go. The console's own gate is
   About read the same query without polling, fresh for a minute): one list of rows (ffmpeg, ffprobe, community metadata, HTTPS
   certificate, database, backups, each library's folder with its disk space,
   web player, AudioSilo version), each with a status (Healthy, Needs
-  attention, Missing, Off, Waiting, Update available, Failed). The Backups row
+  attention, Missing, Off, Waiting, Downloading, Opening, Update available, Failed). The Backups row
   reads the answer's `backups` block: Failed (with the reason) when the last
   attempt failed, Off when nothing is scheduled (a warning when there is no
   backup at all), else Healthy with the latest backup and the next one. The rules live in the pure
   `system-model.ts` (`systemRows`; a disk under 10% free and a certificate
   under 14 days are warnings; `certificateLook` is shared with Settings).
   Notices above the list for unreachable library folders and a metadata
-  service that doesn't answer (with a link to its settings).
+  service that doesn't answer, with a link to its settings (`metadataDown`; in
+  mirror mode only while the copy isn't answering, since the health check goes
+  where lookups go).
+  In mirror mode (`activeMirror`: `metadata.mirror` present and the lookup on,
+  the one rule the row, Settings' status line and `metadataDown` share) the
+  community metadata row reads `metadata.mirror` instead (`mirrorLook`, in this
+  order: a failed first download, no copy yet, the copy opening with nothing
+  answering, a first download, a copy newer than the server, a failed update, a
+  fallback, a new copy opening or an update downloading over a working copy,
+  ready); a copy that still answers is never shown as down.
+  A `MirrorPanel` under the row shows the download's progress, the copy's facts
+  (data version, built, schema, size, downloaded, last and next check; the next
+  check reads "Checking now" while one runs), the schema-newer, failure and
+  fallback notices, and **Check now**
+  ([`POST /admin/meta/mirror/check`](api/reference.md#post-apiv1adminmetamirrorcheck),
+  disabled while a download runs or a copy opens; a `metadata_off` or
+  `not_mirror_mode` refusal is worded by `errorMessage`). While the copy is busy
+  (`mirrorBusy`: downloading, opening, a check running, or a check due now) `useMirrorPoll` polls only
+  [`GET /admin/meta/mirror`](api/reference.md#get-apiv1adminmetamirror) every 2
+  seconds, merges each answer into the cached system status, and fetches
+  `GET /admin/system` once when the copy settles (or when the route answers
+  `metadata_off` or `not_mirror_mode`, which drops the copy from the cache and
+  stops the poll); the page's own 30-second poll is unchanged.
 - **Server > Settings** (`features/settings/`) - over
   [`GET`/`PATCH /admin/settings`](api/reference.md#admin-settings): an in-page
   topic list in `?topic=` (`general` is the default and has no param;
@@ -598,7 +620,11 @@ CSP-sensitive work against a real build served by Go. The console's own gate is
   `useSaveSettings` puts the answer in the cache and refetches `GET /server`,
   the system status and the update status. Network's certificate row,
   Metadata's status row and the read-only Transcoding topic read
-  `GET /admin/system`. Metadata ends with a Danger zone (`clear-matches.tsx`,
+  `GET /admin/system` (in mirror mode the status row shows the local copy's
+  state, linking to Health > System, and follows it with `useMirrorPoll` while
+  it is busy). Metadata's Source card is a two-column
+  radio `SettingsForm` field for `metadata.mode` (`METADATA_MODES`), a restart
+  setting. Metadata ends with a Danger zone (`clear-matches.tsx`,
   the shared `components/danger-zone.tsx`): Clear community matches picks a
   library or all (`components/library-select.tsx`, shared with Match
   automatically), asks for a typed word (`ConfirmDialog`), calls

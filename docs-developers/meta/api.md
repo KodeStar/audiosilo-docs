@@ -4,7 +4,11 @@ description: "The metaserve read-only JSON API reference: every /api/v1 route, t
 ---
 
 `metaserve` (`cmd/metaserve` over `internal/serve`) is a **read-only** JSON API
-over the compiled SQLite artifact. All data is public, so there is **no auth**;
+over the compiled SQLite artifact. The queries and the API handler are the
+public `pkg/query` (`NewHandler`), which metaserve serves behind its own CORS and
+gzip, and which a mirror-mode AudioSilo server mounts in-process over a
+downloaded copy of the artifact, so the same responses come from either (see
+[Public Go packages](overview.md#public-go-packages)). All data is public, so there is **no auth**;
 every `/api/v1` route (and both Audiobookshelf provider routes) responds with permissive CORS
 (`Access-Control-Allow-Origin: *`, `Vary: Origin`), and responses are
 gzip-compressed. Cross-origin `GET`s work from any browser; there is no
@@ -251,7 +255,7 @@ Everything that names a record outright is **never** filtered: `works/{id}`,
 the watch feeds. Hiding a record there would be a 404 for a book the catalogue
 holds.
 
-**Parsing** (`parseLangFilter` in `internal/serve/langfilter.go`, the one parser
+**Parsing** (`parseLangFilter` in `pkg/query/langfilter.go`, the one parser
 every surface reads):
 
 - A comma-separated list; a repeated parameter is the same list
@@ -310,7 +314,7 @@ whatever precision the source stated - `YYYY`, `YYYY-MM` or `YYYY-MM-DD`
 **string** order over the recordings that state one, which sorts chronologically
 for any pair that differs in the part they share; where two recordings state the
 same year at different precisions the shorter value wins. The rule lives in one
-place, `snapshot.cardFactsByWork` in `internal/serve/store.go`, alongside the
+place, `DB.cardFactsByWork` in `pkg/query/store.go`, alongside the
 "which cover wins" rule it now shares a query with.
 
 Unlike `series`, `cover_url` and `added_at` - which are always present and null
@@ -342,7 +346,7 @@ client should treat it as optional.
 A **stateless** notification feed for a list of series, in Atom 1.0
 (`application/atom+xml; charset=utf-8`) and JSON Feed 1.1
 (`application/feed+json; charset=utf-8`). Both routes share one implementation
-(`internal/serve/watchfeed.go`) and differ only in the renderer.
+(`pkg/query/watchfeed.go`) and differ only in the renderer.
 
 Stateless is the whole design: **the series list is carried in the request URL**
 and the server stores no subscription, no reader identity and no delivery state.
@@ -365,7 +369,7 @@ future are always included, however far ahead they are - a preorder is the news.
 ### The `s` encodings
 
 `s` has two spellings, both parsed by `decodeSeriesParam`
-(`internal/serve/seriesparam.go`):
+(`pkg/query/seriesparam.go`):
 
 - **CSV** - `s=the-stormlight-archive,mistborn`. Readable, and what a hand-written
   subscription uses.
@@ -788,13 +792,14 @@ must be a readiness probe and never a liveness one.
 
 ## Serving and refresh
 
-The current artifact lives behind an atomic pointer (a `snapshot`); readers load
-the pointer once per request. With `--poll`, a background loop plus the optional
+The current artifact lives behind an atomic pointer (a `*query.DB`); readers
+load the pointer once per request. With `--poll`, a background loop plus the optional
 webhook keep it current:
 
 - It selects the newest **data** release (the selection rule is on
   [the overview](overview.md#release-artifacts)) and fetches conditionally
-  (`If-None-Match` / 304).
+  (`If-None-Match` / 304), through `pkg/release`, the fetcher mirror-mode
+  AudioSilo servers use too.
 - On a new release it first tries a `--patch-from` binary delta against the
   currently-loaded artifact (zstd, `--long=31` window), verifying the reconstructed
   file byte-for-byte against `meta.sqlite.sha256` before installing it; it falls

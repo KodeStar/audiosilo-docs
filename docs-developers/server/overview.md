@@ -47,6 +47,8 @@ internal/media/       streaming + covers
 internal/chapteralign/ fits community chapter lists onto a book's audio
 internal/chaptercheck/ background community chapter checks
 internal/toolfetch/   ffmpeg/ffprobe download
+internal/metamirror/  metadata mirror mode's local copy
+internal/diskspace/   free disk space per OS
 internal/api/         HTTP transport
 internal/server/      HTTP(S) server + TLS
 internal/updates/     the update check (GitHub Releases)
@@ -198,6 +200,24 @@ no I/O of its own. `chaptercheck` is its `Runner`: a background pass every 10
 minutes (and on a `Kick` after any book change, through `Catalog.OnBookChange`) plus one-book checks on request, which
 fetches the list through `internal/meta`, finds pauses with ffmpeg
 (`media.DetectSilences`) and records the outcome through `catalog`.
+
+### `internal/metamirror`
+
+Mirror mode's runner (`metadata.mode: mirror`): it keeps a local copy of the
+community metadata database in `<data>/meta-mirror/`, downloaded from
+audiosilo-meta's data releases on GitHub (through audiosilo-meta's public
+`pkg/release`) once a day, and serves metaserve's own JSON API handler
+(`pkg/query`) over it. `internal/meta` puts it in front of the remote service
+(`meta.Service.SetMirror`), which still answers whatever the copy can't. The
+launcher builds it only in mirror mode (`pkg/launcher/metamirror.go`) and hands
+it to the API with `API.SetMetaMirror` right after `api.New`; `Run` opens the
+copy in the background, then checks on its schedule. A server started in remote
+mode deletes the folder. `internal/mirrortest` is its test support (data
+releases on audiosilo-meta's public `pkg/release/releasetest` fake GitHub, a
+counting remote service), tests only.
+`internal/diskspace` is the free-space reading its disk guard shares with the
+library disks on Health > System. Behaviour, schedule and fallback:
+[Mirror mode](configuration.md#mirror-mode-metadatamode-mirror).
 
 ### `internal/toolfetch`
 

@@ -173,12 +173,16 @@ the recaps/characters/series tabs). The same config also gates
 `GET /meta/work?id=…`, which passes a single work document through so a player
 can catch a listener up on the earlier books of a series. The lookup is
 server-side by design - one cached seam, and one config key that turns off all
-outbound calls.
+outbound calls. By default each question goes to the service at `base_url`;
+with `metadata.mode: mirror` the server keeps a local copy of the service's
+database and answers the same questions itself (see
+[Mirror mode](#mirror-mode-metadatamode-mirror)).
 
 | Key | Type / default | Meaning |
 |---|---|---|
 | `metadata.enabled` | bool, `true` | Turn the metadata lookup on. When `false`, the server makes **no outbound metadata calls**, `GET /libraries/{id}/meta` and `GET /meta/work` both return 404, and the `metadata` capability reports false so players hide the enriched-book material entirely. Seeds the initial state only - an admin can flip this at runtime (see below) |
-| `metadata.base_url` | string, `"https://meta.audiosilo.app"` | Base URL of the metadata service (the site is served at `/` and the API at `/api/v1`). **Must be an absolute `http`/`https` URL when metadata is enabled** |
+| `metadata.base_url` | string, `"https://meta.audiosilo.app"` | Base URL of the metadata service (the site is served at `/` and the API at `/api/v1`). **Must be an absolute `http`/`https` URL when metadata is enabled**. Still needed in mirror mode: it is the fallback, and the site links (`web_url`, the attribution's `source_url`) name it |
+| `metadata.mode` | string, `"remote"` | Where the lookups are answered: `remote` asks `base_url` for each book; `mirror` keeps a local copy of the service's database in `<data>/meta-mirror/` and answers from it ([below](#mirror-mode-metadatamode-mirror)). Any case, stored lower case; empty (a `config.yaml` written before the key existed) reads as `remote`; any other value is a config error naming the allowed ones. **Read at start** (a restart setting) |
 | `metadata.region` | string, `""` | The Audible marketplace a community match prefers when a recording sells in several: one of `us`, `uk`, `ca`, `au`, `de`, `fr`, `es`, `it`, `jp`, `in`, `br` (the community metadata's region vocabulary; any case, stored lower case). `""` = no preference: the US store's ASIN first. Orders each match candidate's `asins` (preferred store's, then `us`, then the rest), breaks a runtime tie between recordings for the one selling there, and is what a [bulk match](api/reference.md#bulk-community-matching) repick looks for. Applies live |
 
 `metadata.enabled` applies **live**: an admin can switch the lookup on or off
@@ -191,19 +195,134 @@ shows the switch as locked. `metadata.base_url` is also editable there but is a
 start from the boot value, and whether one was built (a valid absolute
 `http(s)` URL) decides whether the feature is *available* at all. The switch can
 only turn the lookup on when a service exists (else `400 invalid_setting`
-with `field: "metadata.enabled"`).
+with `field: "metadata.enabled"`). `metadata.region` applies live too;
+`metadata.mode` is a restart setting like `base_url`.
 
 Turning it off is the one-key privacy switch: with the lookup disabled the server
-never contacts the metadata service, and every player connected to it stops
+never contacts the metadata service (nor, in mirror mode, GitHub for a new copy),
+and every player connected to it stops
 showing the section (they gate on the `metadata` capability). The same switch
 gates the [community chapter checks](community-chapters.md): while it is on, the
 background pass checks matched books (sending only their ASIN or ISBN, then the
-community's work and recording ids), and finds pauses with the configured ffmpeg
+community's work and recording ids; in mirror mode the local copy answers once it
+is ready, so nothing leaves the server), and finds pauses with the configured ffmpeg
 when there is one; while it is off nothing is checked and
 `POST /admin/libraries/{id}/book/community-chapters` is `404 metadata_off`.
 Chapters already in use stay until an admin switches a book back. Enrichment is
 strictly additive and cached - a slow or unreachable service degrades to no
 section, never a broken page.
+
+#### Mirror mode (`metadata.mode: mirror`)
+
+In mirror mode the server keeps a local copy of the metadata service's own
+database and answers its metadata questions in-process, so no book is looked up
+over the internet. The copy is audiosilo-meta's data release artifact (the
+SQLite `meta.sqlite`, the CC0 core and the CC BY-SA community layer in one
+file), and it is answered by metaserve's own code: the server imports
+audiosilo-meta's public [`pkg/query`](../meta/overview.md#public-go-packages)
+(`query.Open` and `query.NewHandler`, the very JSON API handler
+meta.audiosilo.app runs) and [`pkg/release`](../meta/overview.md#public-go-packages)
+(the release fetcher). Remote mode stays the default. Players see no
+difference: no wire change and no capability change.
+
+**Parity by construction.** `meta.Service.SetMirror` swaps the metadata client's
+transport for `fallbackTransport` (`internal/meta/mirror.go`). The client still
+builds the same `/api/v1/...` requests it sends in remote mode; the transport
+serves each one through the local handler (in memory, no listener) while a copy
+is ready, so every response shape, a retired slug's 301, and every match score
+are metaserve's, byte for byte, and nothing above the client (composition, the
+rails, matching, both cache levels) knows which one answered. That covers the
+admin console's match search and bulk matching too, and the
+[community chapter checks](community-chapters.md). Cover images are not part of
+this: they still come from their own hosts (the Audible CDN, Open Library,
+publishers) in both modes.
+
+**The fallback ladder.** The remote service at `base_url` stays the safety net:
+
+| The local copy... | The request |
+|---|---|
+| isn't ready (not downloaded yet, or not opened yet after a start) | goes to `base_url`, exactly as in remote mode |
+| answers `5xx` (a query this code can't run, e.g. on an artifact schema newer than it knows; a local answer over 15 s, over 32 MiB, or a panic counts the same) | goes to `base_url` unchanged |
+| answers `404` | the copy's answer is authoritative, with one exception: a "no match" never replaces a stored **positive** answer in `meta_cache` (a book's enrichment or a work). The stored answer is served, stale, and held in memory for 2 minutes, and its row is left alone, so a lagging or broken copy can't blank a companion that worked. The exception holds only for a "no match" the copy itself answered: one from `base_url` (no copy ready yet, or a request the copy failed and sent on) is authoritative and replaces the row as in remote mode |
+| and `base_url` both fail | the persistent cache serves the last known answer, as in a remote-mode outage |
+
+A `base_url` with a path (metaserve behind a proxy at `/meta`, say) works too:
+the copy is asked at its own root, and a retired slug's redirect gets the path
+back. `meta_cache` rows keep `source` = `base_url` in both modes, so switching modes
+keeps the cache warm. A request the copy couldn't answer is logged at most once
+every ten minutes ("the local copy couldn't answer; asked the online service
+instead").
+
+**The copy.** `internal/metamirror` keeps it in `<data>/meta-mirror/` (`0700`):
+exactly one `meta-<tag>.sqlite` once a swap settles, and `state.json` (`tag`,
+`published_at`, `built_at`, `schema_version`, `sha256`, `size_bytes`, `etag`,
+`checked_at`, `downloaded_at`, `last_error`; written `0600` under a temporary
+name, then renamed). A download in progress is a temporary `.meta-*.tmp` file in
+the same folder. The folder is derived data: it is **not** in
+[database backups](backups-and-notifications.md#backups-internalbackup), which
+hold the database only.
+
+**Schedule.** The release list is asked at most once a day, measured from the
+`checked_at` recorded on disk, so a restart does not download again. A server
+with no copy checks 30 seconds after start; a failed check is retried after an
+hour; **Check now** in the console
+([`POST /admin/meta/mirror/check`](api/reference.md#post-apiv1adminmetamirrorcheck))
+wakes it at once (a no-op while a check is running). Nothing is checked or
+downloaded while `metadata.enabled` is off, and turning it off cancels a check
+already running, download included (nothing is recorded, so the check is due
+again when metadata is back on). Turning it back on wakes the mirror at once
+(`Mirror.Wake`), which runs a check only if one is due. The list request goes to
+`https://api.github.com/repos/KodeStar/audiosilo-meta/releases` with
+`User-Agent: AudioSilo/<version>` and no token, and is conditional
+(`If-None-Match` with the stored ETag, sent only while a copy is held, and
+dropped after a failed download, so a `304` can't hide a release that failed).
+The release taken is the newest data release, by
+[audiosilo-meta's selection rule](../meta/overview.md#release-artifacts);
+a tag that couldn't name a file is refused.
+
+**Download and swap.** Before downloading, the disk guard needs free space on
+the folder's volume of at least the larger of 4.5 times the gz asset's declared
+size and the current copy's size, plus 512 MiB; otherwise the check fails with
+`not enough disk space: need X, have Y` (when the free space can't be read, it
+downloads anyway). The download is `release.DownloadData`'s (verified, from
+GitHub hosts only; see
+[`pkg/release`](../meta/overview.md#public-go-packages)) into
+`meta-<tag>.sqlite`. It is abandoned after 60 seconds without a byte. The new file is opened with `query.Open` (which
+runs metaserve's integrity checks; a file that doesn't open is deleted), then
+swapped in atomically; the replaced copy stays open for 60 seconds for the
+queries that started on it, then is closed and deleted. **Any failure keeps the
+current copy.**
+
+**At start**, the mirror deletes leftover temporary files, a half-written state
+file and any copy other than the current one, and forgets a copy that is
+missing, changed size or doesn't open (a new one is downloaded at the next
+check). The copy is opened in the background, so a start isn't held up by it:
+until it is open (the status says `opening`), lookups go to `base_url`. A
+finished download is `opening` too, for the seconds before it is swapped in,
+while the current copy keeps answering.
+
+**Sizes and cost** (measured October 2026, schema 7, about 281,000 works): the
+gz asset is 444 MB and the copy about 1.8 GB on disk (1,755,340,800 bytes). The gz is
+streamed and never kept, so a first download peaks at about the copy's size; an
+update holds the old copy and the new one (about 3.5 GB) until the swap, and the
+disk guard wants about 2.5 GB free before it starts. Data releases come several
+times a day, so in practice every daily check downloads a new copy (about
+444 MB a day). Download, verification and opening took about 20 s on a fast
+connection; once the copy is ready, an uncached book lookup took 5-40 ms,
+against 170-350 ms from meta.audiosilo.app.
+
+**Artifact schema.** A copy newer than this server's code knows still opens and
+answers; the console flags it (`schema_newer`) and says to update the server,
+and any query that breaks on it is a 5xx that falls back to `base_url` (why that
+works: the
+[cross-repo contract](../architecture/cross-repo-contract.md#14-community-metadata-a-three-repo-seam)).
+
+**Switching back.** A server started in remote mode (with a metadata service)
+deletes `<data>/meta-mirror/` if it exists, and logs that it did. A server with
+no metadata service (an empty or invalid `base_url`) builds no mirror in either
+mode. If the folder can't be prepared, the server logs it and lookups go to
+`base_url`: a metadata problem never stops the server. The desktop manager runs
+the same launcher, so its embedded server honours the mode too.
 
 #### The persistent cache
 
@@ -218,9 +337,10 @@ makes the cache survive a restart and an outage:
   answer, which stays the outage fallback) keyed by its ASIN or ISBN, and works
   fetched by id (`/meta/work`, and the previous books `/meta` adds), matches only.
   Never a service error, and never a row for an unknown work id (an id is the
-  caller's choice, so storing misses would let any user grow the table); a `404`
-  for a work already stored replaces its row, so a dropped work isn't served again
-  in a later outage.
+  caller's choice, so storing misses would let any user grow the table); a
+  `404` from the service for a work already stored replaces its row, so a dropped
+  work isn't served again in a later outage (in mirror mode a `404` the local copy
+  gave never does: see [Mirror mode](#mirror-mode-metadatamode-mirror)).
 - **How it is read:** after a memory miss. A row still within its TTL is served
   and warms memory for the rest of that TTL. A match past its TTL is not served
   while the service answers, but when the service fails it is served anyway
@@ -287,6 +407,7 @@ by the settings table in `internal/config/settings.go` (`fields`: each entry's
 | `AUDIOSILO_METADATA_ENABLED` | `metadata.enabled` | `strconv.ParseBool` (`true`/`1`/…) |
 | `AUDIOSILO_METADATA_BASE_URL` | `metadata.base_url` | URL |
 | `AUDIOSILO_METADATA_REGION` | `metadata.region` | marketplace code (`uk`) |
+| `AUDIOSILO_METADATA_MODE` | `metadata.mode` | `remote` or `mirror` (any case) |
 | `AUDIOSILO_UPDATE_CHECK` | `update_check` | `strconv.ParseBool` (`false`/`0`/… turns it off) |
 | `AUDIOSILO_SESSION_DAYS` | `activity.session_days` | integer, 30-3650 |
 | `AUDIOSILO_BACKUP_SCHEDULE` | `backups.schedule` | `""`, `daily:HH:MM` or `weekly:DAY:HH:MM` |
@@ -336,6 +457,8 @@ restart, and whether the console may change it at all:
 | `players.android_sha256` | `app_links.android_sha256` | - | at once |
 | `metadata.enabled` | `metadata.enabled` | `AUDIOSILO_METADATA_ENABLED` | at once |
 | `metadata.base_url` | `metadata.base_url` | `AUDIOSILO_METADATA_BASE_URL` | restart |
+| `metadata.region` | `metadata.region` | `AUDIOSILO_METADATA_REGION` | at once |
+| `metadata.mode` | `metadata.mode` | `AUDIOSILO_METADATA_MODE` | restart |
 | `demo.enabled` | `demo.enabled` | `AUDIOSILO_DEMO_ENABLED` | restart |
 | `demo.library` | `demo.library` | `AUDIOSILO_DEMO_LIBRARY` | at once |
 | `demo.max_users` | `demo.max_users` | `AUDIOSILO_DEMO_MAX_USERS` | at once |
@@ -371,7 +494,7 @@ the metadata switch (`metadataOn`), the demo library and cap, the backup
 schedule and retention (the handler calls `backup.Service.SetSettings`). Things set up
 once at start (the listener and TLS in `internal/server`, the `/web` mount and
 the site-root demo redirect in `Handler()`, the metadata service built in
-`api.New`, the demo reaper's TTL) are only built then, from the config the
+`api.New`, the metadata mirror the launcher builds in mirror mode, the demo reaper's TTL) are only built then, from the config the
 server started with. Turning `update_check` on or
 off also calls `updates.Checker.SetEnabled`. A saved restart setting whose
 value differs from `boot` is listed in the envelope's `restart_pending`
@@ -400,6 +523,8 @@ reason, and nothing is applied (all or nothing). The handler then writes
 |---|---|
 | `name` | trimmed; at most 64 characters, no control characters |
 | `public_url`, `lan_url`, `metadata.base_url` | an absolute `http`/`https` address with no query, fragment or user info; trailing `/` dropped; `""` allowed (but `Validate` refuses an empty `base_url` while metadata is on) |
+| `metadata.region` | trimmed and lowercased; one of the marketplace codes above, or `""` |
+| `metadata.mode` | trimmed and lowercased, `""` stored as `remote`; `remote` or `mirror` |
 | `bind` | `host:port`, port 1-65535 |
 | `tls.hosts` | lowercased host names, no scheme, port or path; `Validate` requires at least one for `autocert` |
 | `trusted_proxies` | CIDR ranges; a bare address becomes its one-address range (`10.0.0.2` → `10.0.0.2/32`, IPv6 `/128`) |
@@ -459,6 +584,8 @@ overrides). It rejects:
 - demo mode without `demo.library`; a `demo.idle_ttl` that doesn't parse or
   isn't positive (rejected loudly rather than silently replaced by 24h);
 - metadata enabled with an empty or non-absolute-`http(s)` `metadata.base_url`;
+  a `metadata.region` that isn't one of the marketplace codes; a `metadata.mode`
+  other than `remote` or `mirror`;
 - a `backups.schedule` that isn't one of the forms above, a `backups.keep`
   outside 1-365, or a `backups.dir` that isn't an absolute path.
 
@@ -546,6 +673,7 @@ tools):
 | `<data>/certs/` | autocert certificate cache |
 | `<data>/selfsigned-cert.pem`, `<data>/selfsigned-key.pem` | Persisted self-signed certificate (mode `selfsigned`, default paths) |
 | `<data>/tools/` | Auto-downloaded ffmpeg/ffprobe, when no local copy was found |
+| `<data>/meta-mirror/` | [Mirror mode](#mirror-mode-metadatamode-mirror)'s local copy of the community metadata (what it holds: **The copy** there) |
 | `<data>/backups/` | Database backups (`audiosilo-<UTC time>-<kind>.db`), unless `backups.dir` puts them elsewhere |
 | `<data>/restore.json` | A restore waiting for the next start (removed when it is applied or refused) |
 | `<data>/restore-result.json` | How the last restore went |

@@ -3,6 +3,9 @@
 //   AS_ORIGIN       server origin (default http://127.0.0.1:8790)
 //   ADMIN_PASSWORD  the first-run admin password (parsed from the log by run.sh)
 //   SETUP_URL       optional: a second --setup server's wizard URL (with #token)
+//   MIRROR_ORIGIN   optional: a third server in metadata mirror mode with a seeded
+//                   local copy (run.sh starts it when it built the meta artifact)
+//   MIRROR_PASSWORD that server's first-run admin password
 //
 // Before capturing it provisions a little demo state through the admin API
 // (a listener account, an invite, a share, some listening progress, one
@@ -35,12 +38,14 @@ import http from 'node:http';
 import {cp, mkdir, rm, writeFile} from 'node:fs/promises';
 import path from 'node:path';
 import {chromium} from 'playwright';
-import {CACHE, DAY, MIN, apiClient, isoAgo, pathQuery, sleep, shoot, step, DESKTOP_CONTEXT} from './lib.mjs';
+import {CACHE, DAY, MIN, apiClient, isoAgo, pathQuery, sleep, shoot, step, wanted, DESKTOP_CONTEXT} from './lib.mjs';
 
 const ORIGIN = (process.env.AS_ORIGIN || 'http://127.0.0.1:8790').replace(/\/$/, '');
 const ADMIN = `${ORIGIN}/admin`;
 const PASSWORD = process.env.ADMIN_PASSWORD;
 const SETUP_URL = process.env.SETUP_URL || '';
+const MIRROR_ORIGIN = (process.env.MIRROR_ORIGIN || '').replace(/\/$/, '');
+const MIRROR_PASSWORD = process.env.MIRROR_PASSWORD || '';
 const INBOX_DIR = path.resolve(process.env.INBOX_DIR || path.join(CACHE, 'inbox'));
 if (!PASSWORD) {
   console.error('capture-admin: ADMIN_PASSWORD is required');
@@ -351,9 +356,9 @@ const page = await ctx.newPage();
 // Opens a console route and waits for it to render: by default its page
 // heading (the h1.display every screen's PageHead and the overview greeting
 // render); `ready` names something else for the screens without one (Library >
-// Books, a book's page).
-const open = async (p, route, ready = (pg) => pg.locator('h1.display').first()) => {
-  await p.goto(`${ADMIN}${route}`, {waitUntil: 'networkidle', timeout: 45000});
+// Books, a book's page). `origin` is this run's server unless another is named.
+const open = async (p, route, ready = (pg) => pg.locator('h1.display').first(), origin = ORIGIN) => {
+  await p.goto(`${origin}/admin${route}`, {waitUntil: 'networkidle', timeout: 45000});
   await ready(p).waitFor({timeout: 15000});
   // Covers arrive after the page renders, in batches (POST /admin/covers).
   await sleep(1500);
@@ -367,11 +372,16 @@ await step('sign-in page', async () => {
   await shoot(page, 'admin/login.png');
 });
 
+// Signs in as admin from the console's sign-in form (already open on `p`).
+const signIn = async (p, password) => {
+  await p.getByLabel('Username', {exact: true}).fill('admin');
+  await p.getByLabel('Password', {exact: true}).fill(password);
+  await p.getByRole('button', {name: 'Sign in', exact: true}).click();
+  await p.locator('h1.display').first().waitFor({timeout: 15000});
+};
+
 await step('sign in', async () => {
-  await page.getByLabel('Username', {exact: true}).fill('admin');
-  await page.getByLabel('Password', {exact: true}).fill(PASSWORD);
-  await page.getByRole('button', {name: 'Sign in', exact: true}).click();
-  await page.locator('h1.display').first().waitFor({timeout: 15000});
+  await signIn(page, PASSWORD);
   await sleep(1500);
 });
 
@@ -565,6 +575,19 @@ await step('server settings: network & https', async () => {
   }
 });
 
+await step('server settings: community metadata', async () => {
+  // Taller, so the switch, Source, Matching and Service cards fit.
+  await page.setViewportSize({width: 1440, height: 1300});
+  try {
+    await open(page, '/server?topic=metadata');
+    await page.getByText('Keep a local copy', {exact: true}).waitFor({timeout: 8000});
+    await sleep(800); // the status row reads the system status
+    await shoot(page, 'admin/settings-metadata.png');
+  } finally {
+    await page.setViewportSize(DESKTOP_CONTEXT.viewport);
+  }
+});
+
 await step('overview on a phone', async () => {
   const phone = await browser.newContext({
     ...DESKTOP_CONTEXT,
@@ -739,6 +762,49 @@ await step('health: system', async () => {
     await shoot(page, 'admin/system.png');
   } finally {
     await page.setViewportSize(DESKTOP_CONTEXT.viewport);
+  }
+});
+
+// Mirror mode's local copy on Health > System, from the third server run.sh
+// starts in metadata mirror mode with the meta artifact it built already in
+// place as the copy (so nothing is downloaded): the community metadata row and
+// the copy's panel under it, clipped.
+await step('health: system in mirror mode', async () => {
+  if (!wanted('admin/system-mirror.png')) return;
+  if (!MIRROR_ORIGIN || !MIRROR_PASSWORD) {
+    console.log('  - admin/system-mirror.png skipped: no mirror-mode server (run.sh starts one when it builds the meta artifact and the server takes the seeded copy)');
+    return;
+  }
+  // The seeded copy opens in the background after start (state "opening", a
+  // few seconds). Any other state but ready means the server refused it and
+  // is after a real one ("empty", then a check half a minute after start, which
+  // run.sh's dead proxy fails): stop at once, with its metadata switched off.
+  const mapi = apiClient(MIRROR_ORIGIN);
+  const {token: mtoken} = await mapi(null, 'POST', '/auth/login', {username: 'admin', password: MIRROR_PASSWORD});
+  for (const until = Date.now() + 30000; ; await sleep(500)) {
+    const m = await mapi(mtoken, 'GET', '/admin/meta/mirror');
+    if (m.state === 'ready') break;
+    if (m.state !== 'opening' || Date.now() > until) {
+      await mapi(mtoken, 'PATCH', '/admin/settings', {metadata: {enabled: false}}).catch(() => {});
+      throw new Error(`the seeded local copy isn't answering: ${JSON.stringify(m)}`);
+    }
+  }
+  const mctx = await browser.newContext(DESKTOP_CONTEXT);
+  try {
+    const mp = await mctx.newPage();
+    await open(mp, '/', (pg) => pg.getByLabel('Username', {exact: true}), MIRROR_ORIGIN);
+    await signIn(mp, MIRROR_PASSWORD);
+    const row = mp.locator('li').filter({has: mp.getByText('Data version', {exact: true})}).first();
+    await open(mp, '/health/system', () => row, MIRROR_ORIGIN);
+    await row.scrollIntoViewIfNeeded();
+    const box = await row.boundingBox();
+    if (!box) throw new Error('no community metadata row');
+    const pad = 16;
+    await shoot(mp, 'admin/system-mirror.png', {
+      clip: {x: Math.max(0, box.x - pad), y: Math.max(0, box.y - pad), width: box.width + 2 * pad, height: box.height + 2 * pad},
+    });
+  } finally {
+    await mctx.close();
   }
 });
 

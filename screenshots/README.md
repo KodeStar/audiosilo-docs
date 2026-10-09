@@ -44,6 +44,26 @@ the network): `admin/book-match.png` shows the match dialog's candidates, and
 matches. Offline, the match shot captures the dialog's "isn't answering"
 message instead and the series cards show no gaps.
 
+`admin/system-mirror.png` shows Health > System on a server in metadata
+**mirror mode**, which keeps a local copy of the community metadata (about
+1.8 GB, downloaded from GitHub). The run never downloads one: right after it
+builds the meta artifact (section 4 of `run.sh`, so not with `SKIP_META=1`), it
+starts a third server on `:8792` (`SHOTS_MIRROR_PORT`) in `.cache/mirror-data`
+in mirror mode, with no library and the update check off, and seeds its
+`meta-mirror/` folder with that artifact (a hard link where it can, else a
+copy) and a `state.json` saying it was downloaded and checked just now (after
+the artifact's build time, as a real copy is), so the copy opens at start and
+its next check is a day away. That server's HTTPS goes to a proxy on a closed
+port, so it can never download a real copy. Should it refuse the seeded copy
+(its log says "the local copy can't be used"), `run.sh` stops it and skips the
+shot when it sees that by the time the server is healthy; the copy opens in the
+background, so `capture-admin.mjs` also stops at once when the copy is in any
+state but opening or ready, and turns that server's metadata off. Otherwise it waits for
+the copy to open, signs in there and clips the
+shot to the Community metadata row and the copy's panel. The server isn't
+started when `SHOTS_ONLY` leaves the shot out; without the meta stack the step
+is skipped and the shot keeps its previous image (or a placeholder).
+
 The Health shots (`admin/health-*.png`) need issues to show, and the seeded
 library has almost none. After the other admin shots, `capture-admin.mjs`
 builds a small **Inbox** library under `.cache/inbox` (`INBOX_DIR` overrides)

@@ -43,9 +43,10 @@
 #              is built when missing, else used as it is, so rebuild it after a
 #              frontend change; relative paths are taken from where run.sh
 #              starts),
-#            SHOTS_PORT / SHOTS_SETUP_PORT / SHOTS_META_PORT (default 8790 /
-#              8791 / 8795 - move them when a run in another checkout holds
-#              those ports; two runs in one checkout share .cache/ and clash).
+#            SHOTS_PORT / SHOTS_SETUP_PORT / SHOTS_META_PORT /
+#              SHOTS_MIRROR_PORT (default 8790 / 8791 / 8795 / 8792 - move them
+#              when a run in another checkout holds those ports; two runs in one
+#              checkout share .cache/ and clash).
 set -euo pipefail
 
 HERE="$(cd "$(dirname "$0")" && pwd)"
@@ -65,6 +66,8 @@ SETUP_DATA="$CACHE/setup-data"
 PORT="${SHOTS_PORT:-8790}"
 SETUP_PORT="${SHOTS_SETUP_PORT:-8791}"
 META_PORT="${SHOTS_META_PORT:-8795}"
+MIRROR_PORT="${SHOTS_MIRROR_PORT:-8792}"
+MIRROR_DATA="$CACHE/mirror-data"
 
 mkdir -p "$CACHE"
 
@@ -114,8 +117,27 @@ cleanup() {
   [ -n "${MAIN_PID:-}" ] && kill "$MAIN_PID" 2>/dev/null || true
   [ -n "${SETUP_PID:-}" ] && kill "$SETUP_PID" 2>/dev/null || true
   [ -n "${META_PID:-}" ] && kill "$META_PID" 2>/dev/null || true
+  # Stopped before its folder goes, so nothing writes there meanwhile.
+  [ -n "${MIRROR_PID:-}" ] && { kill "$MIRROR_PID" 2>/dev/null; wait "$MIRROR_PID" 2>/dev/null; } || true
+  rm -rf "$MIRROR_DATA"
 }
 trap cleanup EXIT
+
+# The first-run admin password a server printed to <log> ("" when it didn't).
+admin_password() { # <log>
+  grep 'Admin password' "$1" | awk -F': ' '{print $2}' | tr -d ' ' || true
+}
+
+# Whether SHOTS_ONLY (see lib.mjs) keeps <file>: unset keeps everything, else
+# one of its comma-separated prefixes must start the path.
+shot_wanted() { # <file>
+  [ -z "${SHOTS_ONLY:-}" ] && return 0
+  local p
+  for p in ${SHOTS_ONLY//,/ }; do
+    case "$1" in "$p"*) return 0 ;; esac
+  done
+  return 1
+}
 
 wait_healthy() { # <url> <logfile> <name>
   for i in $(seq 1 60); do
@@ -157,7 +179,7 @@ echo "==> waiting for the demo server"
 wait_healthy "http://127.0.0.1:$PORT/healthz" "$CACHE/server.log" "server"
 sleep 8   # let the startup scan index the seeded books
 
-ADMIN_PASSWORD="$(grep 'Admin password' "$CACHE/server.log" | awk -F': ' '{print $2}' | tr -d ' ')"
+ADMIN_PASSWORD="$(admin_password "$CACHE/server.log")"
 if [ -z "$ADMIN_PASSWORD" ]; then
   echo "could not parse admin password from $CACHE/server.log"; exit 1
 fi
@@ -177,6 +199,32 @@ if [ "${SKIP_META:-0}" != "1" ]; then
   (cd "$META" && go run ./cmd/metabuild -data data \
     --community "$META_COMMUNITY/data" -o "$CACHE/meta.sqlite")
 
+  # A third server in metadata mirror mode, for the admin/system-mirror.png
+  # shot. Its local copy is seeded with the artifact just built (a hard link
+  # where it can be) and a state.json saying it was downloaded and checked just
+  # now, so the mirror opens it and its next check is a day away: nothing is
+  # downloaded. No library, no update check, and its HTTPS goes to a proxy on a
+  # closed port, so even a copy it refused (in the background, after it is
+  # healthy) can't be replaced by a real download. Started now so the copy opens
+  # (seconds: query.Open reads all of it) while metaserve starts.
+  if [ "${SKIP_ADMIN:-0}" != "1" ] && shot_wanted admin/system-mirror.png; then
+    echo "==> starting a mirror-mode server on :$MIRROR_PORT (seeded local copy)"
+    rm -rf "$MIRROR_DATA" && mkdir -p "$MIRROR_DATA/meta-mirror"
+    MIRROR_TAG="data-v$(date -u +%Y.%m.%d)-$(git -C "$META" rev-parse --short=7 HEAD 2>/dev/null || echo local)-$(git -C "$META_COMMUNITY" rev-parse --short=7 HEAD 2>/dev/null || echo local)"
+    ln "$CACHE/meta.sqlite" "$MIRROR_DATA/meta-mirror/meta-$MIRROR_TAG.sqlite" 2>/dev/null \
+      || cp "$CACHE/meta.sqlite" "$MIRROR_DATA/meta-mirror/meta-$MIRROR_TAG.sqlite"
+    node -e '
+      const [file, tag] = process.argv.slice(1);
+      const now = new Date().toISOString(); // after the artifact was built, as a real copy is
+      require("node:fs").writeFileSync(file, JSON.stringify({tag, downloaded_at: now, checked_at: now}));
+    ' "$MIRROR_DATA/meta-mirror/state.json" "$MIRROR_TAG"
+    AUDIOSILO_BIND="127.0.0.1:$MIRROR_PORT" AUDIOSILO_TLS_MODE=off \
+      AUDIOSILO_UPDATE_CHECK=false AUDIOSILO_METADATA_MODE=mirror \
+      HTTPS_PROXY=http://127.0.0.1:9 HTTP_PROXY=http://127.0.0.1:9 \
+      "$SERVER_BIN" --data "$MIRROR_DATA" > "$CACHE/mirror.log" 2>&1 &
+    MIRROR_PID=$!
+  fi
+
   if [ ! -f "$META/site/dist/index.html" ]; then
     echo "==> no meta site build found; building (yarn, Node 24)"
     (cd "$META/site" && yarn install --frozen-lockfile && yarn build)
@@ -191,6 +239,21 @@ if [ "${SKIP_META:-0}" != "1" ]; then
 
   echo "==> waiting for metaserve"
   wait_healthy "http://127.0.0.1:$META_PORT/healthz" "$CACHE/metaserve.log" "metaserve"
+
+  if [ -n "${MIRROR_PID:-}" ]; then
+    echo "==> waiting for the mirror-mode server"
+    wait_healthy "http://127.0.0.1:$MIRROR_PORT/healthz" "$CACHE/mirror.log" "mirror-mode server"
+    # A seeded copy it refused already by now (the copy opens in the
+    # background, so a later refusal is capture-admin.mjs's to catch): stop the
+    # server and skip the shot.
+    if grep -q "the local copy can't be used" "$CACHE/mirror.log"; then
+      echo "  ! the mirror-mode server refused the seeded copy (see $CACHE/mirror.log); skipping admin/system-mirror.png"
+      kill "$MIRROR_PID" 2>/dev/null || true
+      MIRROR_PID=""
+    else
+      MIRROR_PASSWORD="$(admin_password "$CACHE/mirror.log")"
+    fi
+  fi
 fi
 
 # ── 5. Captures ─────────────────────────────────────────────────────────────
@@ -201,7 +264,9 @@ AS_BASE="http://127.0.0.1:$PORT/web/" ADMIN_PASSWORD="$ADMIN_PASSWORD" node capt
 if [ "${SKIP_ADMIN:-0}" != "1" ]; then
   echo "==> capturing admin console + public pages"
   AS_ORIGIN="http://127.0.0.1:$PORT" ADMIN_PASSWORD="$ADMIN_PASSWORD" \
-    SETUP_URL="$SETUP_URL" node capture-admin.mjs
+    SETUP_URL="$SETUP_URL" \
+    MIRROR_ORIGIN="${MIRROR_PASSWORD:+http://127.0.0.1:$MIRROR_PORT}" \
+    MIRROR_PASSWORD="${MIRROR_PASSWORD:-}" node capture-admin.mjs
 fi
 
 if [ "${SKIP_META:-0}" != "1" ]; then

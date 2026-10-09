@@ -397,8 +397,10 @@ Opening the match dialog sends the book's tagged title, author and series, its
 length, its ASIN or ISBN, anything you type, and up to three of its folder
 names (the top folder, the folder holding the book, and the book's own folder
 or file name) to the metadata service. It sends nothing about your server or
-who listens. Players looking up "About this book" send only the ASIN or ISBN
-(see [Community metadata](server.md#community-metadata)).
+who listens. For a player's "About this book", the server sends only the ASIN
+or ISBN (see [Community metadata](server.md#community-metadata)). With a
+[local copy](server.md#keeping-a-local-copy) of the community metadata (once it
+is ready), none of this leaves your server.
 
 To show the candidates' covers, your server also downloads each cover image
 from wherever the catalogue keeps it (Audible's image servers or Open

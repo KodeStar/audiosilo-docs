@@ -5352,6 +5352,8 @@ and `AUDIOSILO_*` variable each one is, and whether it needs a restart (see
   "metadata": {
     "enabled": true,
     "base_url": "https://meta.audiosilo.app",
+    "region": "uk",
+    "mode": "remote",
     "available": true
   },
   "demo": {
@@ -5369,7 +5371,7 @@ and `AUDIOSILO_*` variable each one is, and whether it needs a restart (see
   "locked": { "players.web_dir": "AUDIOSILO_WEB_DIR" },
   "restart_settings": [
     "network.bind", "network.tls_mode", "network.tls_hosts", "players.web_dir",
-    "metadata.base_url", "demo.enabled", "demo.idle_ttl", "backups.dir"
+    "metadata.base_url", "metadata.mode", "demo.enabled", "demo.idle_ttl", "backups.dir"
   ],
   "restart_pending": []
 }
@@ -5387,6 +5389,8 @@ effect. Lists are never `null`.
 | `general.lan_url` | the [home address](../configuration.md#home-address-lan_url); `""` = derived from a request on a home-network host |
 | `players.web_dir` | read-only: changed only in `config.yaml` or `AUDIOSILO_WEB_DIR` |
 | `players.web_player` | read-only: where `/web` is served from - `"embedded"` (baked into the build), `"dir"` (from `web_dir`) or `""` (not mounted) |
+| `metadata.region` | the preferred Audible marketplace (`""` = none; see [Configuration](../configuration.md#community-metadata-metadata)) |
+| `metadata.mode` | `"remote"` (ask `base_url` for each book) or `"mirror"` (keep a local copy and answer from it; see [Mirror mode](../configuration.md#mirror-mode-metadatamode-mirror)). A restart setting: a saved change is listed in `restart_pending`, and `GET /admin/system`'s `metadata.mode` keeps the running mode until the restart |
 | `metadata.available` | read-only: a metadata service exists (`base_url` was a valid absolute `http(s)` URL when the server started), so `enabled` can be turned on. The live `metadata` [capability](#get-apiv1server) is `enabled && available` |
 | `demo.max_users` | `null` = the default cap (`max_users_default`); `0` = no limit |
 | `demo.idle_ttl` | `""` = 24h |
@@ -5470,7 +5474,8 @@ What the console's Health > System, Server > About and Server > Logs show. All
     "enabled": true,
     "available": true,
     "base_url": "https://meta.audiosilo.app",
-    "health": { "reachable": true, "latency_ms": 84, "checked_at": "2026-10-04T09:40:02Z" }
+    "health": { "reachable": true, "latency_ms": 84, "checked_at": "2026-10-04T09:40:02Z" },
+    "mode": "remote"
   },
   "tls": {
     "mode": "autocert",
@@ -5504,16 +5509,59 @@ What the console's Health > System, Server > About and Server > Logs show. All
 | `database` | `bytes`: pages in use × page size (the WAL isn't counted); `schema`: the newest applied migration |
 | `tools` | ffmpeg then ffprobe. `path` `""` when off or not found; `version` from `-version` (cached per path; `""` if it didn't say); `source` `"local"` (configured, next to the binary or on `PATH`), `"downloaded"` (in `<data>/tools`), or `""` |
 | `metadata` | `enabled` is the live switch; `available` and `base_url` are the service the server started with (a saved new `base_url` waits for a restart) |
-| `metadata.health` | the service's `/healthz`: `reachable`, `latency_ms`, `checked_at` and `error` when it didn't answer. Cached for a minute, and asked **only while the lookup is on**; `null` while it's off |
+| `metadata.health` | the service's `/healthz`: `reachable`, `latency_ms`, `checked_at` and `error` when it didn't answer. Cached for a minute, and asked **only while the lookup is on**; `null` while it's off. In mirror mode the request takes the same path as every lookup, so the local copy answers it once the copy is ready, and `base_url` until then |
+| `metadata.mode` | the mode the server **runs** with, `"remote"` or `"mirror"` (a saved change to the setting waits for a restart) |
+| `metadata.mirror` | mirror mode only (absent in remote mode, and when the server has no metadata service): the local copy's status, the object below |
 | `tls` | the boot `tls.mode` and `tls.hosts`, and the certificates it serves, read from their files (never generated or requested here): the self-signed pair, or one per host from the autocert cache (`issued: false` until Let's Encrypt has issued it). Empty for mode `off`. `error` is set when a certificate file couldn't be read |
 | `libraries[]` | each library's root, whether it answers (the same bounded probe as the scanner's), and `disk` (`total`, `free` to the server, in bytes) or `null` when the root doesn't answer or the OS doesn't say |
 | `web_player` | as in the settings envelope |
 | `update` | the [update status](#get-apiv1adminupdate) |
 | `backups` | the backups' `status` as in [`GET /admin/backups`](#get-apiv1adminbackups) (folder, running, last attempt, latest backup, next scheduled one); `null` only for a server built without the backup service (tests), never one the launcher starts |
 
-Nothing here reaches outside the server except the metadata health check. The
-slow parts (a tool's first `-version`, the health check, the root probes) run
-side by side, each with its own bound.
+Nothing here reaches outside the server except the metadata health check (in
+mirror mode, only while no local copy is ready). The slow parts (a tool's first
+`-version`, the health check, the root probes) run side by side, each with its
+own bound.
+
+#### The local copy's status (`metadata.mirror`)
+
+In [mirror mode](../configuration.md#mirror-mode-metadatamode-mirror) the
+server keeps a local copy of the community metadata. Its status, here, in
+[`GET /admin/meta/mirror`](#get-apiv1adminmetamirror) and in the answer of
+[`POST /admin/meta/mirror/check`](#post-apiv1adminmetamirrorcheck):
+
+```json
+{
+  "state": "downloading",
+  "tag": "data-v2026.10.08-1a2b3c4-5d6e7f8",
+  "built_at": "2026-10-08T05:14:03Z",
+  "schema_version": 7,
+  "size_bytes": 1755340800,
+  "checked_at": "2026-10-08T08:00:12Z",
+  "downloaded_at": "2026-10-08T08:01:40Z",
+  "progress": { "done": 183500800, "total": 443547136 },
+  "fallback": false
+}
+```
+
+| Field | Meaning |
+|---|---|
+| `state` | `"empty"` (no copy and no failed attempt yet), `"downloading"` (a download is running, over a copy or not), `"opening"` (a copy is being opened, which takes seconds: the one on disk just after a start, with `fallback` true, or a finished download before it replaces the current copy, which answers meanwhile, so `fallback` stays false), `"ready"` (a usable copy answers) or `"error"` (no usable copy, and the last attempt failed). A failed update over a working copy stays `"ready"`, with `error` set |
+| `tag` | the data release the copy came from (`data-vYYYY.MM.DD-<core7>-<community7>`); absent without a copy |
+| `built_at` | when audiosilo-meta built the artifact |
+| `schema_version` | the artifact's schema version |
+| `schema_newer` | `true` when that is newer than this server's code understands (`query.MaxSchemaVersion`): the copy still answers, any query that breaks on it goes to `base_url`, and the server wants updating. Absent otherwise |
+| `size_bytes` | the copy's size on disk |
+| `checked_at` | the last check of the release list (successful or not); absent before the first |
+| `next_check_at` | when the next check is due (the **Schedule** in [Mirror mode](../configuration.md#mirror-mode-metadatamode-mirror)); absent while a check is running |
+| `downloaded_at` | when the copy was downloaded |
+| `progress` | only while downloading: `done` and `total` compressed bytes (`total` `0` when the release declares no size) |
+| `error` | the last failed check, as the server words it (e.g. `not enough disk space: need 2.5 GB, have 1.1 GB`); kept while a working copy answers, cleared by the next successful check |
+| `fallback` | `true` while lookups go to `base_url` because no usable copy is loaded |
+
+The timestamps and `tag`, `built_at`, `schema_version`, `size_bytes` and
+`downloaded_at` are omitted when they have no value. `fallback` is always
+present.
 
 ### `GET /api/v1/admin/update`
 
@@ -5564,6 +5612,38 @@ error here: it is reported in `error`.
 |---|---|
 | `200` | the update status |
 | `409` `update_check_off` | the update check is turned off |
+
+### `GET /api/v1/admin/meta/mirror`
+
+*Admin.* The local metadata copy's [status](#the-local-copys-status-metadatamirror)
+on its own, without the rest of `GET /admin/system` (no tool versions, disk
+probes or health check): what Health > System
+[polls while the copy is busy](../web-ui.md#what-the-console-has-today).
+
+| Status | Meaning |
+|---|---|
+| `200` | the copy's status |
+| `404` `metadata_off` | community metadata is switched off |
+| `409` `not_mirror_mode` | the server isn't keeping a local copy: it runs in remote mode (a saved `metadata.mode: mirror` waits for a restart), or the copy's folder couldn't be prepared |
+
+### `POST /api/v1/admin/meta/mirror/check`
+
+*Admin.* Asks the mirror to look for a newer copy now (the console's **Check
+now**). It never waits for the check: it wakes the mirror and answers `202` with
+the copy's [status](#the-local-copys-status-metadatamirror), whose
+`next_check_at` is now (the check is due), and the check runs in the background
+(a download, if there is a newer copy, shows in `state` and `progress`). While a
+check is already running it does nothing more.
+The check is the scheduled one: the conditional release-list request, then a
+download only when the newest data release isn't the copy held (see
+[Mirror mode](../configuration.md#mirror-mode-metadatamode-mirror)). Not
+recorded in the audit log, since it changes nothing an admin chose.
+
+| Status | Meaning |
+|---|---|
+| `202` | the check was asked for; body is the copy's status |
+| `404` `metadata_off` | community metadata is switched off (checked first, in either mode) |
+| `409` `not_mirror_mode` | the server isn't keeping a local copy (as above) |
 
 ### `GET /api/v1/admin/logs`
 

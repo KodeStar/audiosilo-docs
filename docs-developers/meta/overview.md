@@ -52,8 +52,10 @@ is in [the data model](data-model.md).
 
 The tooling follows the same discipline as the rest of the workspace: thin CLIs
 under `cmd/`, all logic in reusable packages, and a clean split between the
-public `pkg/*` (consumed by the sibling `audiosilo-sidecars` module as ordinary
-dependencies) and the private `internal/*`.
+public `pkg/*` (consumed as ordinary dependencies by the sibling
+`audiosilo-sidecars` module and, for `pkg/query` and `pkg/release`, by the
+AudioSilo server; see [Public Go packages](#public-go-packages)) and the private
+`internal/*`.
 
 `data/` carries its own `data/go.mod` - a nested Go module with no code in it,
 so the go command leaves the whole ~1.6 GB JSON tree out of this module's
@@ -74,17 +76,69 @@ pkg/canonical  PUBLIC canonical JSON (sorted keys, 2-space indent, trailing LF)
 pkg/check      PUBLIC schema validation + pack-storage invariants + integrity/uniqueness/chapter/series rules
 pkg/extract    PUBLIC epub split + the word-shingle near-verbatim check
 pkg/scan       PUBLIC local folder scanner (tags + path/filename heuristics + ffprobe)
+pkg/query      PUBLIC read side of the artifact: Open, every query, and the JSON API handler (NewHandler)
+pkg/query/querytest  PUBLIC test support: a small real fixture artifact + constants naming its facts
+pkg/release    PUBLIC data-release fetcher: newest data release, verified download
+pkg/release/releasetest  PUBLIC test support: one fake of GitHub's releases API + checksum/gzip helpers
 internal/importer   OpenAudible / Libation export -> canonical records (ASIN dedup)
 internal/issueform  issue-form body -> canonical records + an ok/duplicate/needs-human/invalid verdict
 internal/build      the deterministic SQLite builder (FTS5, ASIN/ISBN indexes, added_at)
-internal/serve      the read-only HTTP API + ABS provider + GitHub-release poller/hot-swap
+internal/serve      metaserve: serves pkg/query's handler (behind CORS + gzip), the hot swap,
+                    the GitHub-release poller (over pkg/release), webhook, OpenAPI, HTML pages, sitemaps
+internal/httpx      the response helpers pkg/query and internal/serve share
 Dockerfile     image: the site build + the metaserve binary - no baked data; the catalogue is fetched from the newest data release at boot (see below)
 .github/       issue forms + CI workflows (check, release, image, intake, ai-verify)
 ```
 
 Dependency direction mirrors the server's "transport is logic-free" rule:
-`cmd/metaserve` is flag wiring only, and all business logic lives in
-`internal/serve`.
+`cmd/metaserve` is flag wiring only. The queries and the JSON API handler live
+in `pkg/query`; `internal/serve` adds what is metaserve's own.
+
+## Public Go packages
+
+These packages are a public API for programs outside this repo. Mirror-mode
+AudioSilo servers (`metadata.mode: mirror`, see the server's
+[configuration](../server/configuration.md#mirror-mode-metadatamode-mirror))
+use them to download the data release once a day and answer the same API
+in-process:
+
+- **`pkg/query`** - `Open(path, tag)` opens an artifact read-only (a safe DSN,
+  so a `?` or `#` in the path can't drop read-only mode) and runs the load-time
+  integrity checks; `DB.Info()` reports `SchemaVersion`, `BuiltAt`, `Tag`,
+  `Version` and the catalogue's counts; `NewHandler(current, HandlerOptions)`
+  serves the JSON API (`/healthz`, `/api/v1/...` and the `/abs` provider routes;
+  `Routes()` lists them) over whichever `*DB` `current` returns at request time,
+  answering 503 with `Retry-After` while it returns nil. It is the very handler
+  metaserve serves, without CORS or gzip (the caller adds its own).
+  `HandlerOptions` carries the logger, the 503s' `Retry-After`, `SiteURL` (the
+  origin the watch feeds link to), the feeds' clock, and the `works/match`
+  budget and concurrency; the zero value suits an in-process consumer.
+  `MaxSchemaVersion` is the newest artifact schema the code understands (pinned
+  to the builder's `SchemaVersion` by a test).
+- **`pkg/query/querytest`** - `Build(tb, dir)` writes a small, deterministic,
+  real artifact (well under 1 MiB, built by the real builder from a fixed
+  fixture) and constants naming its facts: an ASIN and an ISBN that look up
+  (with their work and recording ids), an ASIN that doesn't, a numbered series,
+  a chaptered recording, a retired slug and its target, and a work carrying the
+  community layer. Downstream tests run against true metaserve behaviour.
+- **`pkg/release`** - the one implementation of the release asset contract
+  (below): `New(repo, token, opts...)`, `LatestData(ctx, etag)` (the newest data
+  release, conditional on an ETag) and `DownloadData(ctx, rel, dst, progress)`
+  (the gz streamed through gunzip into a temp `.meta-*.tmp` file beside `dst`,
+  verified against `meta.sqlite.gz.sha256`, fsynced and renamed; bounded,
+  stall-guarded and only from allowlisted GitHub hosts). metaserve's poller uses
+  it too, adding its delta and cache paths on top.
+- **`pkg/release/releasetest`** - the one fake of GitHub's releases API (ETag
+  and `304`, hit counts, failing, throttled and hung releases, a redirect
+  route, the `User-Agent` of each request) and the checksum and gzip helpers its
+  assets are built with. `pkg/release`'s tests, metaserve's refresh tests and
+  the AudioSilo server's mirror tests all publish their releases there, so they
+  can't drift apart on what a release looks like on the wire.
+
+Being public, they follow the
+[cross-repo contract](../architecture/cross-repo-contract.md#14-community-metadata-a-three-repo-seam)'s
+rules: the handler's responses change additively, and so does the artifact
+schema ([how its versions are gated](data-model.md#the-compiled-artifact-and-schema-versioning)).
 
 ## The CLI tool set at a glance
 
@@ -185,8 +239,8 @@ The repo also cuts code/image `v*` releases with no data assets, so consumers
 select the newest **data** release by asset presence: the non-draft,
 non-prerelease release carrying `meta.sqlite.gz` with the maximum `published_at`
 (GitHub's release list order is not publish-chronological, and its "latest" can be
-either kind). The [`metaserve` refresh loop](api.md#serving-and-refresh) applies
-the same rule.
+either kind). The [`metaserve` refresh loop](api.md#serving-and-refresh) and
+mirror-mode AudioSilo servers apply the same rule, through `pkg/release`.
 
 ## The published image
 
@@ -217,12 +271,13 @@ The practical consequences for a deployment:
 ## How it connects to the rest of AudioSilo
 
 audiosilo-meta is the **upstream** of a three-repo metadata seam. `metaserve`
-serves the community data; the AudioSilo server composes a book's enrichment from
-it (and re-exposes a single work document, unchanged, for the earlier books of a
+serves the community data (or, for a server in mirror mode, the same handler
+answers in-process over a downloaded copy of the artifact); the AudioSilo server
+composes a book's enrichment from it (and re-exposes a single work document, unchanged, for the earlier books of a
 series the listener may not own); the player renders both. Covers are
 referenced by URL, so the server also fetches the images behind those `cover_url`s
-from their own hosts and hands the player thumbnails (`meta_covers`): a
-listener's device never contacts a cover host.
+from their own hosts (in mirror mode too) and hands the player thumbnails
+(`meta_covers`): a listener's device never contacts a cover host.
 
 ```mermaid
 flowchart LR
@@ -230,7 +285,7 @@ flowchart LR
     hosts["cover image hosts<br/>(each cover_url)"]
     srv["audiosilo-server<br/>internal/meta"]
     player["audiosilo-frontend<br/>book screen"]
-    meta -->|"GET /lookup, /works/{id}, /series/{id};<br/>admin match: /works/match"| srv
+    meta -->|"GET /lookup, /works/{id}, /series/{id};<br/>admin match: /works/match<br/>(mirror mode: the data release + pkg/query, in-process)"| srv
     hosts -->|"cover images, fetched by the server<br/>(public addresses only, bounded)"| srv
     srv -->|"GET /libraries/{id}/meta (composed envelope)<br/>GET /meta/work?id= (one work, passed through)<br/>GET /libraries/{id}/meta/cover (cover thumbnails)"| player
 ```

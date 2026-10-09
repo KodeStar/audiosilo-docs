@@ -769,7 +769,11 @@ newest **20,000** rows by `stored_at` (`catalog.MetaCacheRows`), of which works
 fetched by id (`w:` keys, a caller-chosen id) are first trimmed to their own newest
 **2,000** (`catalog.MetaCacheWorkRows`), so a walk through the metadata site's
 works can't push the books' enrichments out (`catalog.PruneMetaCache`). What is written and when a row is served is in
-[Configuration](configuration.md#community-metadata-metadata).
+[Configuration](configuration.md#community-metadata-metadata). The table is shared
+by both metadata modes (rows keep the `base_url` as `source` in mirror mode too);
+mirror mode's local copy of the community database is a file in
+`<data>/meta-mirror/`, not a table here (see
+[Mirror mode](configuration.md#mirror-mode-metadatamode-mirror)).
 
 ### Durable per-library config (path-keyed, no FK to books)
 
