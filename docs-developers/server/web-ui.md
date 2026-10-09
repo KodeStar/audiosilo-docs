@@ -334,8 +334,9 @@ CSP-sensitive work against a real build served by Go. The console's own gate is
   the query.
 - **Overview** - built on `GET /admin/stats`, `GET /admin/sessions/live`
   ("Listening now": one card per live session, playing first, each linking to
-  Activity > Live now; a failed live list reads as nobody live rather than
-  holding the page back), `GET /admin/settings`, `GET /admin/update` (the
+  Activity > Live now, its second line the chapter label described under Live
+  now, else the author or device; a failed live list reads as nobody live
+  rather than holding the page back), `GET /admin/settings`, `GET /admin/update` (the
   Server card's "*version* available" link to About, cached ten minutes),
   `GET /admin/libraries`
   (offline-library notices), `GET /server` and `GET /admin/issues` (the "Needs
@@ -377,7 +378,11 @@ CSP-sensitive work against a real build served by Go. The console's own gate is
   /admin/libraries/{id}/book` (click-to-edit fields with provenance, revert,
   a save bar with a diff, chapter renames), custom covers (`PUT`/`DELETE
   …/cover`), the match dialog (`GET …/book/match`, which matches the book's tag
-  and path facts through metaserve's `works/match`; the ticked fields, ASIN and ISBN
+  and path facts through metaserve's `works/match`; its search box opens with
+  the book page's `match_query`, which the server builds with
+  `meta.SearchPrefill`: the title and author, or the folders' reading of the
+  path when the tags look swapped or junk, so the console never works this out
+  itself; the ticked fields, ASIN and ISBN
   included, are accepted as one `PATCH …/book` with `source: "community"`;
   candidates' covers are thumbnails the server fetched, `POST /admin/meta/covers`,
   batched by URL in `src/api/cover-batch.ts`, since the CSP loads no other
@@ -531,7 +536,15 @@ CSP-sensitive work against a real build served by Go. The console's own gate is
   `activity-model.ts`, which is unit-tested.
 - **Activity > Live now** (`live-page.tsx`) - `GET /admin/sessions/live`,
   polled every 10 seconds (`useLiveSessions`, also used by the overview and
-  the people cards), playing first.
+  the people cards), playing first. The chapter under each title is
+  `chapterLabel` (`features/activity/live-model.ts`, shared with the Overview's
+  cards and the funnel's drop-offs): the server's `chapter` when it sent one,
+  else "Chapter N" from `chapter_index` in the viewer's language, else nothing
+  (a book with one chapter). The server decides what a title says with
+  `metadata.ChapterTitle`: a filename-shaped title is tidied as the player's
+  `prettifyChapterTitle` tidies it, and a title that names nothing ("024",
+  "Track 01": `metadata.NamesNothing`, so a title in another script stays) is
+  left out; "Chapter 10" or "Part 7" is kept as written.
 - **Activity > Sessions** (`sessions-page.tsx`) - `GET /admin/sessions` as an
   infinite query (50 a page, "Show older sessions" passes `next_before`),
   filtered by `?person=`, `?library=` and `?path=` (a book needs its library).

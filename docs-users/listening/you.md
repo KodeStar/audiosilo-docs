@@ -36,7 +36,7 @@ A server running an older AudioSilo doesn't keep listening stats. It says so (*"
 | **This week** | Your listening in the last seven days, and how that compares with the seven days before (*"↑ 2h 10m more than last week"*) |
 | **Streak** | How many days in a row you've listened, counting today once you've played something (until then, up to yesterday: a streak isn't broken until the day is over). Underneath, your longest streak this year |
 | **Goal** | Your yearly goal: books finished this year against the number you aim for, with a ring for how far you are |
-| **Daily average** | How long you listen a day on average this year, counting the days you didn't listen too. Underneath, how many books you've listened to this year |
+| **Daily average** | How long you listen a day on average this year, counting the days you didn't listen too. Underneath, how many books you've listened to or finished this year |
 
 ### Your yearly goal
 
