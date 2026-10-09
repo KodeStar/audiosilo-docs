@@ -106,8 +106,19 @@ the repo:
 ### Server (Go)
 
 - Handler/integration tests use the **`newTestEnv` harness** in
-  `internal/api/api_test.go` - an in-memory SQLite database plus the tiny
-  generated M4B fixtures in `testdata/library`.
+  `internal/api/api_test.go` - a file-backed SQLite database plus the tiny
+  generated M4B fixtures in `testdata/library`. File-backed, as in production:
+  reads go to the read-only reader pool, so a write sent through a read method
+  fails the test instead of passing on `:memory:`.
+- **Never migrate per test.** Open a test database with **`storetest.Open(t)`**
+  (`internal/store/storetest`; `storetest.Path(t)` when the test opens the file
+  itself), not `store.Open` on a fresh file or `:memory:`. Under `-race` running
+  every migration costs about a second, so the helper migrates once per test
+  binary and hands each test a file-backed copy. A package whose tests create
+  many password users calls `auth.UseCheapHashingForTests()` from its
+  `TestMain` (see `internal/api/main_test.go`): one argon2id hash at the real
+  cost takes about a quarter of a second under `-race`. It panics outside a
+  test binary.
 - Pure-logic tests sit next to the code (`internal/api/middleware_test.go`,
   `internal/catalog/shares_test.go`, `internal/web/web_test.go`, …). Keep
   business logic out of `internal/api` handlers - `api` is transport-only - so it

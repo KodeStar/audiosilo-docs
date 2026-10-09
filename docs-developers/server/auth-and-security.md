@@ -18,8 +18,10 @@ Two different hashing strategies, chosen by entropy:
   on modest self-hosted hardware, with memory comfortably above the OWASP
   floor. Hashes are stored PHC-style
   (`$argon2id$v=19$m=65536,t=2,p=4$<salt>$<key>`); `VerifyPassword` compares
-  with `subtle.ConstantTimeCompare`. Minimum length for a non-empty password is
-  8 (`auth.MinPasswordLen`).
+  with `subtle.ConstantTimeCompare`, reading the cost from the hash itself.
+  Minimum length for a non-empty password is 8 (`auth.MinPasswordLen`). Test
+  binaries may lower the cost with `auth.UseCheapHashingForTests()`, which
+  panics outside a test binary (`testing.Testing()`).
 - **Tokens and auth codes** (full-entropy, machine-generated) are stored only
   as **SHA-256 hashes** (`hashSecret`). A fast hash is appropriate here because
   the secrets are 256-bit random values - argon2id is reserved for passwords.
