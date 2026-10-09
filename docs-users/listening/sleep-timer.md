@@ -23,9 +23,9 @@ The countdown shows on the sleep button, and first in the mini player's second l
 
 ### On the lock screen (iPhone)
 
-In the iPhone app, a running timer also shows as a **Live Activity**: the book, the chapter and the countdown, on the lock screen and, on iPhones that have one, in the Dynamic Island. It keeps up as the timer changes (a pause freezes the countdown; Keep listening, a jump or a new speed under an End of chapter timer moves its end) and goes away the moment the timer stops the book or you turn it off. Tap it to open the player. It comes with the next iOS app update.
+In the iPhone app, a running timer also shows as a **Live Activity** (see [Availability](mobile-apps.md#availability)): the book, the chapter and the countdown, on the lock screen and, on iPhones that have one, in the Dynamic Island. It follows the timer (a pause freezes the countdown) and goes away when the timer stops the book or you turn it off. Tap it to open the player.
 
-iOS only lets an app start a Live Activity while it's open on screen, so a timer that starts with the app in the background (the [automatic timer at night](#starting-a-timer-automatically-at-night), for a book you start from the lock screen) gets its Live Activity the next time you open the app. If you swipe it away, it stays away for that timer.
+A timer that starts while the app isn't open on screen, such as the [automatic timer at night](#starting-a-timer-automatically-at-night) for a book you start from the lock screen, gets its Live Activity the next time you open the app. If you swipe it away, it stays away for that timer.
 
 ## The last 30 seconds
 
@@ -61,4 +61,4 @@ When the timer stopped a book you were playing and nobody kept it going in those
 
 Turn on **Auto sleep timer** (in the sleep timer, or in [Settings](settings.md#sleep), where you choose the hours and the kind of timer) and any book you start inside those hours gets a timer. It never adds a second timer or replaces one you set. If a timer runs out and you press play again inside the window, you get a fresh one. **Turn a timer off** and no automatic one comes back for that book until you next start the app.
 
-The automatic timer never starts while your phone is connected to [CarPlay or Android Auto](in-the-car.md): one that faded out and paused the book mid-drive would send you to your phone. If the book is still playing once the car is gone, and it's still inside the hours, it gets its timer then.
+The automatic timer never starts while your phone is connected to [CarPlay or Android Auto](in-the-car.md). If the book is still playing once the car is gone, and it's still inside the hours, it gets its timer then.

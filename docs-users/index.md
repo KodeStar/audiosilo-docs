@@ -22,7 +22,7 @@ Install it with [Docker](./getting-started/quickstart-docker.md) or as a [single
 
 ### The player app
 
-Where you actually listen. One app ships as a web player (served by your own server, installable as a PWA) and as native iOS and Android apps. It handles chapters, playback speed, sleep timers, favourites, offline downloads and background playback with lock-screen controls, and the Android app plays in the car through Android Auto (CarPlay follows in a later iPhone update). See [Connecting to a server](./listening/connecting.md) to get started.
+Where you actually listen. One app ships as a web player (served by your own server, installable as a PWA) and as native iOS and Android apps. It handles chapters, playback speed, sleep timers, favourites, offline downloads and background playback, and the native apps add more device integration (see [The mobile apps](./listening/mobile-apps.md)). See [Connecting to a server](./listening/connecting.md) to get started.
 
 ### The desktop manager
 

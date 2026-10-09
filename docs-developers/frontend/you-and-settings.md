@@ -185,9 +185,9 @@ shortcuts, never a second copy. The rules are the pure `settings-model.ts`:
   beside its label from 560 px (`INLINE_MIN`).
 
 The pane bodies (`settings-panes.tsx`, `SettingsPaneBody`) use the same store keys as the
-rest of the app (the Playback pane ends with `EffectsSettings`, the Smart Speed and Voice
+rest of the app (the Playback pane ends with `EffectsSettings`, the Smart speed and Voice
 Boost switches the speed sheet also mounts: see
-[Smart Speed and Voice Boost](audio-effects.md#the-settings-and-the-ui)); `SettingRow` /
+[Smart speed and Voice boost](audio-effects.md#the-settings-and-the-ui)); `SettingRow` /
 `SettingsCard` (`settings-row.tsx`) are the row and card. The Accounts and devices pane
 is `ConnectionsSection` (`src/components/account/connections-section.tsx`), whose remove
 flow (`useConnectionRemoval`: a confirm when the server has downloads on the device,

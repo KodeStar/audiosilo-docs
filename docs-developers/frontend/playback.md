@@ -52,12 +52,12 @@ identically.
   route in and clamps once.
 - `configure(config)` - runtime tunables from the settings store: auto-rewind
   window, lock-screen skip intervals, and the `smartSpeed` / `voiceBoost` switches
-  ([Smart Speed and Voice Boost](audio-effects.md)).
+  ([Smart speed and Voice boost](audio-effects.md)).
 - Optional native hooks (the web has none of them): `onRemoteMove(handler)` - the
-  engine **already** moved for something outside the JS API (lock screen, headset,
-  CarPlay, Android Auto and their chapter lists) and landed at `(trackIndex,
-  positionInTrack)`; `onRateChange(handler)` - the OS changed the speed and the engine
-  already runs at it; `onSilenceSaved(handler)` - Smart Speed's running total (not playback state, so not in
+  engine **already** moved for something outside the JS API (see the
+  [module's events](#the-native-module-modulesaudiosilo-player)) and landed at
+  `(trackIndex, positionInTrack)`; `onRateChange(handler)` - the OS changed the speed and the engine
+  already runs at it; `onSilenceSaved(handler)` - Smart speed's running total (not playback state, so not in
   the snapshot); `adoptPlace(snapshot)` - seed the merged snapshot without emitting, for
   [adopting](native-integrations.md#adopting-a-book-the-service-loaded) a book the
   Android service loaded. (A bookmark button outside the app is not an engine hook: the
@@ -97,9 +97,9 @@ points:
   load clears it and settles the snapshot on `paused`.
 - Auto-rewind on resume: `play()` rewinds by up to `autoRewindMax` seconds
   scaled by how long the pause lasted.
-- **Voice Boost** routes the element through one lazily-built Web Audio compressor
+- **Voice boost** routes the element through one lazily-built Web Audio compressor
   where the browser allows it (never Safari, same-origin sources only) - see
-  [Smart Speed and Voice Boost](audio-effects.md#web-one-web-audio-graph).
+  [Smart speed and Voice boost](audio-effects.md#web-one-web-audio-graph).
 - Every element listener is guarded by an `active()` check so a second element
   being buffered by `swapTo` can't drive the snapshot until the switch commits.
 - `swapTo` buffers the new (local) source on a **separate** element while the
@@ -130,7 +130,7 @@ place; `onRateChange` is passed on; `onProgress`'s optional
 the JS bundle can be newer than the installed binary (a shipped store build lags) and an
 Expo function called with more arguments than it declares throws: `load`'s 5th `book`
 argument is passed only when the binary also has `getLoadedBook` (`moduleTakesBook`; the
-two ship together), exactly as `setVolume` was detected before it.
+two ship together), the same way `setVolume` is detected.
 
 ## The native module (`modules/audiosilo-player`)
 
@@ -148,20 +148,20 @@ binary, and JS detects it):
 
 | | Name | What |
 |---|---|---|
-| Event | `onRemoteMove { trackIndex, position }` | The engine moved for something outside the JS API (lock screen or notification scrubber, its skip and chapter buttons, a headset, CarPlay, Android Auto, incl. their chapter lists), sent once the move landed, in file coordinates. Never for JS-asked moves (`seekTo`, `skipToTrack`, `load`), auto-rewind, Smart Speed's skips, or a file running on into the next |
+| Event | `onRemoteMove { trackIndex, position }` | The engine moved for something outside the JS API (lock screen or notification scrubber, its skip and chapter buttons, a headset, CarPlay, Android Auto, incl. their chapter lists), sent once the move landed, in file coordinates. Never for JS-asked moves (`seekTo`, `skipToTrack`, `load`), auto-rewind, Smart speed's skips, or a file running on into the next |
 | Event | `onRateChange { rate }` | The OS changed the speed (iOS `changePlaybackRateCommand`, CarPlay's rate button, an Android controller); already applied |
 | Event | `onRemoteBookmark { trackIndex, position, connectionId?, libraryId?, path? }` | A bookmark button outside the app (CarPlay Now Playing, Android Auto's custom action), with the engine's own book when it has one (listened for by the car controller, not the engine) |
 | Event | `onCarConnection { connected }` | CarPlay or Android Auto connected or left |
 | Event | `onCarPlayRequest { id }` | The car asked for a book native can't start alone |
-| Field | `onProgress.silenceSaved` | Android: book seconds Smart Speed removed since the engine was created, monotonic (iOS sends none) |
+| Field | `onProgress.silenceSaved` | Book seconds Smart speed removed since the engine was created, monotonic ([Android only](audio-effects.md#why-smart-speed-isnt-on-iphone-yet)) |
 | Function | `setCarSnapshot(json)` | Both platforms: the [car snapshot](native-integrations.md#the-car-snapshot-srccar) |
 | Function | `getLoadedBook()` | Android: the book the service has loaded (`LoadedBook`), else null; iOS: null |
 | Function | `consumePendingBookmarks()` | Android: bookmarks pressed while no JS ran, oldest first, cleared by the read; iOS: `[]` |
 | Argument | `load(..., chapters, book)` | The `BookRef`; iOS keeps it to name the loaded book for CarPlay, Android stores it in each item's extras |
-| Config | `setConfig({ smartSpeed, voiceBoost })` | The effects switches (iOS ignores `smartSpeed`) |
+| Config | `setConfig({ smartSpeed, voiceBoost })` | The effects switches |
 
 Car and widget code is in [Native integrations](native-integrations.md); the effects in
-[Smart Speed and Voice Boost](audio-effects.md).
+[Smart speed and Voice boost](audio-effects.md).
 
 ### iOS: AVQueuePlayer
 
@@ -231,7 +231,7 @@ The hard-won behaviors, each guarding against a specific OS quirk:
   through `skip(to:position:)`; nothing at the last), and `previousTrackCommand` restarts
   the clip when more than 3 s in (`ChapterClips.restartThreshold`, Media3's
   `seekToPrevious` rule), else goes to the previous one. 0 or 1 clips: whole-file info and
-  next/previous file, as before. Which of the skip or track buttons the lock screen draws
+  next/previous file. Which of the skip or track buttons the lock screen draws
   is iOS's choice; headsets and CarPlay send the track commands.
 - **Remote moves.** Every command handler above that moves the playhead passes
   `remote: true`, and `onRemoteMove` goes out only once the move has landed: after the
@@ -243,17 +243,14 @@ The hard-won behaviors, each guarding against a specific OS quirk:
   Now Playing shows it as `PlaybackRate` while playing and as `DefaultPlaybackRate`
   always, so CarPlay's button doesn't read 0x while paused.
 - **`MPNowPlayingInfoCenter.playbackState`** is set from the real transport state
-  (`syncPlaybackState`) with every Now Playing update. A device ignores it (iOS infers the
-  state from the audio session; the header says it applies on macOS only), but the
-  Simulator is macOS underneath and otherwise keeps the app "Paused" forever, so CarPlay's
-  Simulator window showed a play button, 0:00 and 0x while the book played.
+  (`syncPlaybackState`) with every Now Playing update. A device ignores it, but the
+  Simulator needs it: without it CarPlay's Simulator window reads the app as paused.
 
 ### Android: Media3 / ExoPlayer
 
-Playback lives in a `MediaLibraryService` (`AudiosiloPlayerService`; a
-`MediaSessionService` until Android Auto needed browsing, see
-[Native integrations](native-integrations.md#android-auto)) so it survives
-backgrounding; the Expo module talks to it through a `MediaController` on the main
+Playback lives in a `MediaLibraryService` (`AudiosiloPlayerService`, which Android Auto
+also browses: [Native integrations](native-integrations.md#a-medialibraryservice)) so it
+survives backgrounding; the Expo module talks to it through a `MediaController` on the main
 thread, connected with the `audiosilo.app` hint so the service can tell the app's own
 commands from every other controller's (that is how it reports
 [remote moves](native-integrations.md#who-moved-the-player)). Media3 renders the
@@ -274,18 +271,20 @@ chapter** for free.
   is right for a queue the module loaded **and** for one the service loaded itself (the
   car). `load`, `seekTo`, `skipToTrack`, the progress loop and
   `onMediaItemTransition` all translate through it, so the reported positions and
-  durations are indistinguishable from file mode. The wire contract between JS and
-  native never changed. (It replaced `ChapterMap`, which kept the mapping in the
-  module; `TimelineMapTest` covers it on the JVM.)
-- **30 s skip buttons are custom session commands** (`audiosilo.SEEK_BACK` /
+  durations are indistinguishable from file mode, and the wire contract between JS and
+  native stays file-based. Each item's extras also carry the `BookRef` (from `load`'s
+  `book` or the car's play spec); items are built by one shared `MediaItems.buildQueue` /
+  `toClipItem`.
+- **The skip buttons are custom session commands** (`audiosilo.SEEK_BACK` /
   `audiosilo.SEEK_FORWARD`), granted in `MediaSession.Callback.onConnect` and
   executed in `onCustomCommand` as `player.seekBack()/seekForward()`. They are
   **not** the standard `COMMAND_SEEK_BACK/FORWARD` - those map to the legacy
   `ACTION_REWIND`/`ACTION_FAST_FORWARD`, which the modern Android media UI
   silently ignores (`dumpsys media_session` showed `custom actions=[]` and no
-  buttons). The buttons use Media3's **predefined** `CommandButton` icons
-  (`ICON_SKIP_BACK_30` / `ICON_SKIP_FORWARD_30`, available since Media3 1.5.0),
-  so no app-shipped drawable and no icon-less action for newer Android to drop.
+  buttons). They seek by the listener's skip lengths (`PlayerConfig`) and wear the
+  nearest of Media3's **predefined** `CommandButton` icons (`ICON_SKIP_BACK_5/10/15/30`
+  and `ICON_SKIP_FORWARD_*`, available since Media3 1.5.0), so no app-shipped drawable and
+  no icon-less action for newer Android to drop.
 - **Registered with `setCustomLayout`, not `setMediaButtonPreferences`.** The
   slot-based preferences API capped the Media3 1.5.1 notification at 3 actions
   (it drops the secondary slots - verified via `dumpsys notification`,
@@ -312,7 +311,7 @@ chapter** for free.
   **only for a request to the origin of the loaded book's tracks**: never to another
   host a media item or artwork URI names. The exported service also refuses playable
   items from any controller but the app's own (see
-  [Native integrations](native-integrations.md#who-moved-the-player)).
+  [Native integrations](native-integrations.md#a-medialibraryservice)).
 - The app logo is the notification small icon
   (`DefaultMediaNotificationProvider.setSmallIcon` +
   `res/drawable/ic_notification.xml`).
@@ -436,8 +435,8 @@ behaviours it gained, each with its own regression tests:
 - the store registers **`onRemoteSeek`** on the engine, so the OS media controls'
   seeks go through `seekInTrack` and lower the resume floor and save like any other
   seek (web);
-- on native it registers **`onRemoteMove`**: the engine has already moved (the lock
-  screen, a headset, the car), so the store calls `userMoved` with the landed whole-book
+- on native it registers **`onRemoteMove`**: the engine has already moved (the
+  [module's event](#the-native-module-modulesaudiosilo-player)), so the store calls `userMoved` with the landed whole-book
   position - `lowerFloorTo` lowers the resume floor to it and `localMoves` counts it, so a
   [place reconcile](#picking-up-another-devices-place-place-reconcilets) in flight stands
   back - and persists. Without it a lock-screen scrub back by more than the slip
@@ -445,11 +444,7 @@ behaviours it gained, each with its own regression tests:
   out-of-range speed goes back to the engine) and persists; **`onSilenceSaved`** feeds [time saved](audio-effects.md#time-saved-srcplaybacktime-savedts),
   which is also flushed when playback halts;
 - every `load` and `swapTo` passes the book (`bookRefOf(nowPlaying)`);
-- **`adoptLoaded(book)`** (Android) takes over a book the playback service loaded
-  without reloading the engine, and runs the place reconcile's pick-up check before its
-  first save (another device may have played on since) - see
-  [Native integrations](native-integrations.md#adopting-a-book-the-service-loaded); its
-  regression tests are `store-adopt.test.ts`;
+- **`adoptLoaded(book)`** (Android): [adopting a book the service loaded](native-integrations.md#adopting-a-book-the-service-loaded);
 - `clampRate` lives in `rate.ts` (shared with the time-left helpers);
 - `maybeAutoDownloadCurrent` asks `download()` with the `'auto'` origin
   ([The end of a book](end-of-book.md#auto-download-on-play)).
@@ -732,7 +727,7 @@ under the stats ("AC-3 audio is converted to MP3 for this browser"), under exact
 - [The sleep timer](sleep-timer.md): the timer, drift-offs, the grace card.
 - [Player UI](player-ui.md): jump undo, time left, the companion, the controls,
   sheets, and the compact and full players.
-- [Smart Speed and Voice Boost](audio-effects.md): the audio effects on every engine,
+- [Smart speed and Voice boost](audio-effects.md): the audio effects on every engine,
   and time saved.
 - [Native integrations](native-integrations.md): CarPlay, Android Auto, the widgets
   and the sleep timer Live Activity.

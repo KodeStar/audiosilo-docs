@@ -78,8 +78,8 @@ src/lib/            storage, secure-store, paths, format, hhmm (wall-clock "HH:M
                     bootstrap (the launch steps, shared with the car task),
                     register-sw, and other pure helpers
 modules/audiosilo-player/  the local Expo module (Swift + Kotlin + TS bridge)
-plugins/            config plugins (CarPlay scenes, the Xcode 26 and widget fixes),
-                    tested over fixtures
+plugins/            config plugins (CarPlay scenes, the Xcode 26 and widget fixes);
+                    withCarPlay and withWidgetsNoPush have jest tests
 index.ts            the app entry (package.json main): registers the car's headless
                     task, then expo-router/entry
 public/             sw.js (service worker) + manifest.json (PWA), copied verbatim

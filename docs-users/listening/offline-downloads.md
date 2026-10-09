@@ -115,5 +115,5 @@ The web player is an installable app - a *Progressive Web App*. Installing it ge
 Once installed, it behaves like any other app - and because installation marks the site as important to you, the browser guards your downloaded books' storage far more strongly.
 
 :::note
-Installing the web player and installing the native mobile app are different things. The PWA is the web player in an app suit; the native apps add chapter-aware lock-screen controls, tighter background playback, [the car](in-the-car.md), and the like - see [The mobile apps](mobile-apps.md).
+Installing the web player and installing the native mobile app are different things. The PWA is the web player in an app suit; the native apps add more device integration - see [The mobile apps](mobile-apps.md).
 :::
