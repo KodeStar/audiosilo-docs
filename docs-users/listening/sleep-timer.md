@@ -60,3 +60,5 @@ When the timer stopped a book you were playing and nobody kept it going in those
 ## Starting a timer automatically at night
 
 Turn on **Auto sleep timer** (in the sleep timer, or in [Settings](settings.md#sleep), where you choose the hours and the kind of timer) and any book you start inside those hours gets a timer. It never adds a second timer or replaces one you set. If a timer runs out and you press play again inside the window, you get a fresh one. **Turn a timer off** and no automatic one comes back for that book until you next start the app.
+
+The automatic timer never starts while your phone is connected to [CarPlay or Android Auto](in-the-car.md): one that faded out and paused the book mid-drive would send you to your phone. If the book is still playing once the car is gone, and it's still inside the hours, it gets its timer then.

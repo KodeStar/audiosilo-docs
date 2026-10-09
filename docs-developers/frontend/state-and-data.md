@@ -612,7 +612,21 @@ registry that those owners subscribe to (they can't be imported directly here -
 they import the session store, so a direct import would cycle); a failing cleanup
 is logged, never blocks removal. `status` is
 `loading | unauthenticated | authenticated`, and the `(app)` layout guard
-redirects on it. `user` mirrors the default connection's (`defaultConnectionId`)
+redirects on it.
+
+**A hydrate that can't read the tokens** leaves `sessionHydrateFailed()` true: the
+persisted connections are not in memory, so nothing may act on the empty list as if it
+were real (`sessionReady()` stays false, so the offline queue's replay keeps every save
+instead of dropping them as unroutable; car bookmarks waiting to be sent are kept; the car
+snapshot isn't rewritten as signed out; a sign-in hydrates first, so it can't write a list
+holding only its own server). On iOS a failure that is only the **locked keychain**
+(`isLockedKeychainError`, "interaction is not allowed": a CarPlay launch with the phone
+locked, before the token moved to its after-first-unlock item, see
+[Native integrations](native-integrations.md#tokens-on-a-locked-phone-srclibsecure-storets))
+keeps `status` on `loading` (screens wait on their spinner, never the connect screen) and
+retries every `LOCKED_RETRY_MS` (5 s) and when the app comes to the front. Any other failure
+is surfaced as `unauthenticated` (never stuck on `loading`) and retried on the next
+foreground. `user` mirrors the default connection's (`defaultConnectionId`)
 user, for ergonomic selectors.
 
 ### Settings (`src/stores/settings.ts`)

@@ -57,11 +57,12 @@ identically.
   engine **already** moved for something outside the JS API (lock screen, headset,
   CarPlay, Android Auto and their chapter lists) and landed at `(trackIndex,
   positionInTrack)`; `onRateChange(handler)` - the OS changed the speed and the engine
-  already runs at it; `onRemoteBookmark(handler)` - a bookmark button outside the app;
-  `onSilenceSaved(handler)` - Smart Speed's running total (not playback state, so not in
+  already runs at it; `onSilenceSaved(handler)` - Smart Speed's running total (not playback state, so not in
   the snapshot); `adoptPlace(snapshot)` - seed the merged snapshot without emitting, for
   [adopting](native-integrations.md#adopting-a-book-the-service-loaded) a book the
-  Android service loaded.
+  Android service loaded. (A bookmark button outside the app is not an engine hook: the
+  car controller listens for the module's `onRemoteBookmark` itself, see
+  [Native integrations](native-integrations.md#the-car-snapshot-srccar).)
 - `getSnapshot()` / `subscribe(listener)` - a single merged
   `PlaybackSnapshot { state, trackIndex, position, duration, rate }`,
   **per-track** positions only. States: `idle | loading | ready | playing |
@@ -124,7 +125,7 @@ field rides along with every fresh one.
 It also listens for the module's newer events on **every** binary (an older one
 simply never sends them): `onRemoteMove` updates the snapshot's `trackIndex` and
 `position` **before** calling the store's handler, so a save inside it saves the landed
-place; `onRateChange` and `onRemoteBookmark` are passed on; `onProgress`'s optional
+place; `onRateChange` is passed on; `onProgress`'s optional
 `silenceSaved` feeds `onSilenceSaved`. New **functions** are feature-detected, because
 the JS bundle can be newer than the installed binary (a shipped store build lags) and an
 Expo function called with more arguments than it declares throws: `load`'s 5th `book`
@@ -149,7 +150,7 @@ binary, and JS detects it):
 |---|---|---|
 | Event | `onRemoteMove { trackIndex, position }` | The engine moved for something outside the JS API (lock screen or notification scrubber, its skip and chapter buttons, a headset, CarPlay, Android Auto, incl. their chapter lists), sent once the move landed, in file coordinates. Never for JS-asked moves (`seekTo`, `skipToTrack`, `load`), auto-rewind, Smart Speed's skips, or a file running on into the next |
 | Event | `onRateChange { rate }` | The OS changed the speed (iOS `changePlaybackRateCommand`, CarPlay's rate button, an Android controller); already applied |
-| Event | `onRemoteBookmark { trackIndex, position }` | A bookmark button outside the app (CarPlay Now Playing, Android Auto's custom action) |
+| Event | `onRemoteBookmark { trackIndex, position, connectionId?, libraryId?, path? }` | A bookmark button outside the app (CarPlay Now Playing, Android Auto's custom action), with the engine's own book when it has one (listened for by the car controller, not the engine) |
 | Event | `onCarConnection { connected }` | CarPlay or Android Auto connected or left |
 | Event | `onCarPlayRequest { id }` | The car asked for a book native can't start alone |
 | Field | `onProgress.silenceSaved` | Android: book seconds Smart Speed removed since the engine was created, monotonic (iOS sends none) |
@@ -307,7 +308,11 @@ chapter** for free.
   already-downloaded bytes and the parsed container header instead of the
   network - no audible gap (device-verified). Local `file://` sources bypass
   the cache. Auth headers are injected at request time from `AuthHolder` (one
-  bearer token per book, set on every `load`).
+  bearer token per book, set on every `load`), through a `ResolvingDataSource`, and
+  **only for a request to the origin of the loaded book's tracks**: never to another
+  host a media item or artwork URI names. The exported service also refuses playable
+  items from any controller but the app's own (see
+  [Native integrations](native-integrations.md#who-moved-the-player)).
 - The app logo is the notification small icon
   (`DefaultMediaNotificationProvider.setSmallIcon` +
   `res/drawable/ic_notification.xml`).
@@ -437,13 +442,12 @@ behaviours it gained, each with its own regression tests:
   [place reconcile](#picking-up-another-devices-place-place-reconcilets) in flight stands
   back - and persists. Without it a lock-screen scrub back by more than the slip
   tolerance would never save. **`onRateChange`** sets `rate` (clamped; only an
-  out-of-range speed goes back to the engine) and persists; **`onRemoteBookmark`** hands
-  the book and whole-book position to the one `onRemoteBookmarkRequest` listener (the car
-  controller); **`onSilenceSaved`** feeds [time saved](audio-effects.md#time-saved-srcplaybacktime-savedts),
+  out-of-range speed goes back to the engine) and persists; **`onSilenceSaved`** feeds [time saved](audio-effects.md#time-saved-srcplaybacktime-savedts),
   which is also flushed when playback halts;
 - every `load` and `swapTo` passes the book (`bookRefOf(nowPlaying)`);
 - **`adoptLoaded(book)`** (Android) takes over a book the playback service loaded
-  without reloading the engine - see
+  without reloading the engine, and runs the place reconcile's pick-up check before its
+  first save (another device may have played on since) - see
   [Native integrations](native-integrations.md#adopting-a-book-the-service-loaded); its
   regression tests are `store-adopt.test.ts`;
 - `clampRate` lives in `rate.ts` (shared with the time-left helpers);

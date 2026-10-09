@@ -20,11 +20,11 @@ Four lists, as tabs along the car's screen:
 
 Each book shows its cover, its author and, once you've started it, the time left at that book's speed (*"Arthur Conan Doyle · 3h 12m left"*). The car also marks how far through each book you are, whether you've finished it, and (on Android Auto) whether it's downloaded. Cars show only so many items, so the longer lists are cut short: up to 20 books in Continue listening and Up next, 50 in Downloads and Library, and fewer where the car allows fewer.
 
-The lists follow what you do on the phone: start a book, pause, add to your queue or finish a download, and the car catches up within a few seconds. If you're not signed in to a server, the car says *"Connect a server in AudioSilo to listen in the car"*, and an empty list says *"Nothing here yet"*. The car's words are in the language you chose for the app.
+The lists follow what you do on the phone: start a book, pause, add to your queue or finish a download, and the car catches up within a few seconds. If none of your servers can be reached when the car connects (no signal in a car park, say), the car keeps the lists it showed last time rather than going blank, and your downloaded books still play. If you're not signed in to a server, the car says *"Connect a server in AudioSilo to listen in the car"*, and an empty list says *"Nothing here yet"*. The car's words are in the language you chose for the app.
 
 ## Playing a book
 
-Tap a book to play it from your saved place. It plays through your phone's AudioSilo app, with the same speed, auto-rewind and [Smart speed and Voice boost](full-player.md#smart-speed-and-voice-boost) settings as on the phone.
+Tap a book to play it from your saved place; tap the book that's already playing and it simply carries on. It plays through your phone's AudioSilo app, with the same speed, auto-rewind and [Smart speed and Voice boost](full-player.md#smart-speed-and-voice-boost) settings as on the phone.
 
 - **Android Auto** starts a **downloaded** book straight away, even if the AudioSilo app isn't open on your phone. Any other book starts the app in the background (you don't need to touch the phone) and plays once it has loaded.
 - **CarPlay** always starts the book through the app, in the background; the book's row shows a spinner until it plays.
@@ -32,6 +32,8 @@ Tap a book to play it from your saved place. It plays through your phone's Audio
 If a book can't start within about 10 seconds (the server can't be reached for a book that isn't downloaded, say), Android Auto says *"This book can't play right now"*, and on CarPlay the spinner stops and nothing plays. A [downloaded](offline-downloads.md) book is the safe choice for a drive through places with no signal.
 
 Connecting the car never starts a book by itself. On Android, pressing play in the car (or on a Bluetooth headset) with nothing playing picks up the first book in Continue listening, when it's downloaded.
+
+**By voice (Android Auto):** *"Hey Google, play AudioSilo"* carries on with the book you're listening to, or starts the first book in Continue listening. Name a book (*"play The Hound of the Baskervilles on AudioSilo"*) and it plays the first book in the car's lists whose title contains what you said.
 
 ## While it plays
 
@@ -65,6 +67,8 @@ Once CarPlay arrives (see the note at the top), AudioSilo appears on the CarPlay
 
 ## Good to know
 
-- The car shows your books and plays them; it doesn't search, browse folders or take voice requests.
+- The car shows your books and plays them; it has no search button, doesn't browse folders, and takes only the voice requests above (Android Auto).
 - Covers in the car are small copies kept on your phone. The app fetches them the first time a car connects, so the very first drive may show a few books without their cover for a moment.
 - A book you start in the car is the book playing on your phone too: the mini player, the lock screen and the [sleep timer](sleep-timer.md) all work as usual.
+- The [automatic sleep timer at night](sleep-timer.md#starting-a-timer-automatically-at-night) never starts while the phone is connected to CarPlay or Android Auto, so a late drive home won't fade out and pause. A timer you set yourself still works.
+- If CarPlay starts the app while your iPhone is locked and the app can't read your sign-in yet (the first drive after updating the app, or after a restart before you've unlocked the phone), it waits until you unlock the phone and then carries on; it never signs you out. Meanwhile the car shows the lists from last time.
