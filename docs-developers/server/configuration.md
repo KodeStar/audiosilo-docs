@@ -669,7 +669,7 @@ tools):
 | `<data>/certs/` | autocert certificate cache |
 | `<data>/selfsigned-cert.pem`, `<data>/selfsigned-key.pem` | Persisted self-signed certificate (mode `selfsigned`, default paths) |
 | `<data>/tools/` | Auto-downloaded ffmpeg/ffprobe, when no local copy was found |
-| `<data>/meta-mirror/` | [Mirror mode](#mirror-mode-metadatamode-mirror)'s local copy of the community metadata: `meta-<tag>.sqlite` (about 1.7 GB), `state.json`, and a transient `.meta-*.tmp` while a download runs. Derived data: not in backups, and deleted when the server starts in remote mode |
+| `<data>/meta-mirror/` | [Mirror mode](#mirror-mode-metadatamode-mirror)'s local copy of the community metadata: `meta-<tag>.sqlite` (about 1.8 GB), `state.json`, and a transient `.meta-*.tmp` while a download runs. Derived data: not in backups, and deleted when the server starts in remote mode |
 | `<data>/backups/` | Database backups (`audiosilo-<UTC time>-<kind>.db`), unless `backups.dir` puts them elsewhere |
 | `<data>/restore.json` | A restore waiting for the next start (removed when it is applied or refused) |
 | `<data>/restore-result.json` | How the last restore went |

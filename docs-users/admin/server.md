@@ -253,7 +253,7 @@ The **Source** card has two choices:
 
 What a local copy costs:
 
-- **Disk space:** about 1.7 GB in the server's data folder, and up to about
+- **Disk space:** about 1.8 GB in the server's data folder, and up to about
   twice that (about 3.5 GB) for a short while during an update, because the
   new copy is downloaded before the old one is removed. The server checks
   there is room first (about 2.5 GB free); if there isn't, the update is

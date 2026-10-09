@@ -137,7 +137,7 @@ names). Nothing about who listens, and no file paths, is ever sent.
 If you'd rather not look books up over the internet at all, the admin can
 choose **Keep a local copy** for community metadata: the server then downloads
 the whole community database (about 450 MB, once a day, from GitHub; about
-1.7 GB on disk) and answers every lookup from it, so no book is looked up over
+1.8 GB on disk) and answers every lookup from it, so no book is looked up over
 the internet. Until the first copy has downloaded, lookups still go to
 meta.audiosilo.app. Book covers come from their own sites (Audible, Open
 Library, publishers) either way. See
