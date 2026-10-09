@@ -165,7 +165,7 @@ What you see here is what your account has been granted - see [Sharing](../admin
 
 ### When your server is older
 
-The Library adapts to what your server can do. Authors, Series and Narrators (and the author, narrator and series pages) need a recent AudioSilo server, and so do Collections, Up next, the This week card, Next in your series, and **Mark as not finished**. On an older server those parts simply don't appear, and everything else works as before. Ask whoever runs your server to update it to get them.
+The Library adapts to what your server can do. Authors, Series and Narrators (and the author, narrator and series pages) need a recent AudioSilo server, and so do Collections, Up next, the This week card, Next in your series, **Mark as not finished**, [Listening in the house](in-the-house.md) and the [Cast](chromecast.md) button. On an older server those parts simply don't appear, and everything else works as before. Ask whoever runs your server to update it to get them.
 
 ## Series pages
 
