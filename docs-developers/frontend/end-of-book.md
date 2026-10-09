@@ -102,8 +102,9 @@ without a server. In order:
    book folder above a part path), entries the server could not index (no `book`)
    and books already finished (from `allProgress`).
 2. **Else the server's answer**, `GET /libraries/{id}/next` (capability
-   `next_book`): community order, then series, then folder. Its "nothing follows"
-   stands. A community work it could not place (`work` without `local`) is never
+   `next_book`): community order, then series, then folder, following every series
+   the book is in (its main series first, then its other series). Its "nothing
+   follows" stands. A community work it could not place (`work` without `local`) is never
    played, only reported as `unplaced` so the credits can show it as a ghost.
 3. **Else the folder's next sibling** (`resolveNextBook`, below) - on a server
    without `next_book`, or when asking it failed.

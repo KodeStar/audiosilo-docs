@@ -41,6 +41,8 @@ else and gate features on the flags.
     "export": true,
     "meta_bundle": true,
     "browse_people": true,
+    "series_memberships": true,
+    "series_books": true,
     "cover_sizes": true,
     "next_book": true,
     "queue": true,
@@ -79,7 +81,7 @@ section on it and should re-read it after reconnecting. `export` is true on
 servers that support the admin
 [library export](#get-apiv1adminlibrariesidexport).
 
-The player-redesign data API (Phase 1a) adds four flags. An older server omits
+The player-redesign data API (Phase 1a) adds these flags. An older server omits
 them, so a client treats a missing flag as false and never sends the request it
 gates:
 
@@ -90,6 +92,7 @@ gates:
 | `cover_sizes` | always `true` | cover thumbnails, [`/cover?size=`](#get-apiv1librariesidcover) |
 | `next_book` | always `true` | [`/next`](#get-apiv1librariesidnext), what to play after a book |
 | `series_memberships` | always `true` | `memberships=1` on [`/books`](#get-apiv1librariesidbooks) and [`/series`](#get-apiv1librariesidseries): a book counts in every series it is in, not only its main one (an older server ignores the param and places books by their main series) |
+| `series_books` | always `true` | [`/series/books`](#get-apiv1librariesidseriesbooks): the first page of several series' books in one request (without it, ask `/books` once per series) |
 
 Phase 1b (the listener's own state and stats) adds six more, all always `true` on
 a server that has them and absent on an older one:
@@ -819,6 +822,48 @@ series of its `series_list`, at its position there, and `extra_books` is how man
 of `books` are in the series that way (without the param it is always `0`). Load
 such a series' books with `/books?series=...&memberships=1`.
 
+### `GET /api/v1/libraries/{id}/series/books`
+
+*Session.* The first page of books of several series in one request
+(`series_books` capability): the player's Library > Series cards ask for the
+series on screen together instead of one [`/books`](#get-apiv1librariesidbooks)
+request each.
+
+| Query param | Type | Default | Notes |
+|---|---|---|---|
+| `name` | string, repeated | - | a series name, exact (case included), once per series: `?name=Mistborn&name=Discworld`. At least one, at most 50 distinct. Empty names are ignored and a repeated name is answered once |
+| `limit` | int | `50` | the page size of each series, as on `/books` (≤ 0 or > 200 falls back to 50) |
+
+```json
+{
+  "series": [
+    {
+      "name": "Mistborn",
+      "books": [
+        { "id": 412, "library_id": 1, "rel_path": "Brandon Sanderson/Mistborn/The Final Empire",
+          "title": "The Final Empire", "series": "Mistborn", "series_index": 1 }
+      ],
+      "next_cursor": "QnJhbmRvbiBTYW5kZXJzb24ANDEy"
+    },
+    { "name": "Discworld", "books": [] }
+  ]
+}
+```
+
+One entry per distinct name, in the order the names were given. Each entry is
+exactly the first page that `/books?series=<name>&memberships=1&limit=<limit>`
+returns (the default `author` sort, a book in several series found by each of
+them, the same book fields), so its `next_cursor` continues on that `/books`
+query; it is omitted once the series has no more books. `books` is `[]`, never
+`null`, for a series with no books the caller can reach. The caller's share path
+rules apply as on `/books`.
+
+| Status | Meaning |
+|---|---|
+| `400` | invalid library id; `at least one series name is required` (no non-empty `name`); `at most 50 series per request` |
+| `403` | `no access to this library` - no share grants it |
+| `404` | `library not found` |
+
 ### `GET /api/v1/search`
 
 *Session.* Full-text search (FTS5 over title/author/series/narrator) across
@@ -1040,31 +1085,44 @@ answer names is inside the caller's share scope.
 | `source` | the step that produced `next`, or that decided nothing follows: `community`, `series`, `folder` or `none` |
 | `next` | `{library_id, path}`, the book to play next, always one the caller can open. Open it by its own `library_id`: a `community` answer can name a book in **another** of the caller's libraries. Absent when nothing follows |
 | `book` | the next book's indexed metadata in the list shape (no `files`, `chapters` or `description`); absent when `next` is a folder not indexed yet |
-| `work` | the community series rail's next entry, shaped like a [`/meta` rail entry](#get-apiv1librariesidmeta). With `local` beside a `community` answer; **without** `local` beside a `series`, `folder` or `none` answer when the rail names a next work the server could not place on one of the caller's books (a client can show it as "next in the series, not on this server"). Absent when the rail names nothing |
+| `work` | the next entry of the community rail that decided (see step 1), shaped like a [`/meta` rail entry](#get-apiv1librariesidmeta). With `local` beside a `community` answer; **without** `local` beside a `series`, `folder` or `none` answer when the rail names a next work the server could not place on one of the caller's books (a client can show it as "next in the series, not on this server"). Absent when no rail names one |
 
-The community rail answers first, but only when it can **place** its next entry on
-one of the caller's books. Otherwise the local steps decide, in order, and the
-first one with an answer wins:
+The server follows **every series the book is in**: its main `series` first, then
+its other series (`series_list`) in their order. The community rails answer first,
+but only when they can **place** the next entry on one of the caller's books.
+Otherwise the local steps decide, in order, and the first one with an answer wins:
 
 1. **`community`** - community metadata is on and the book matches a work with at
-   least one series rail. The server reads the entry after the current work on the
-   **first rail's main view** (the smallest numeric position above the current
-   one; unnumbered entries such as an omnibus `1-3` are skipped) and places it for
-   the caller exactly as `/meta` places [`local`](#owned-entries-local). When it is
-   placed, the answer is `next` + `book` + `work`. When it is not (the caller's copy
-   is untagged, or filed under a series named unlike the rail, or they don't have
-   it), failing to place proves nothing, so the steps below answer and the entry
-   rides along as `work` without `local`. Nothing comes from this step (no `work`)
-   when the book has no ASIN/ISBN, has no match or no rails, the metadata service
-   fails, the current position is not a number, or the current work is last on the
-   rail (a rail can lag the library). A failure reading the caller's books leaves
-   the entry unplaced, as `/meta` degrades.
-2. **`series`** - the book has a `series` and a `series_index` above 0: the book of
-   exactly that series in the same library with the smallest higher
-   `series_index` (ties by path), within the caller's scope. When other books of
-   the series are numbered but none comes later the answer is
-   `{"source": "series"}`, the end of the series; when nothing else is numbered the
-   step falls through.
+   least one series rail. The rails are taken in the book's own order: a rail
+   named like its main series first (by the rail's name or one of its orderings',
+   ignoring case, accents, punctuation and spacing), then rails named like its
+   other series in list order, then the rest as the envelope lists them. On each
+   the server reads the entry after the current work on the rail's **main view**
+   (the smallest numeric position above the current one; unnumbered entries such
+   as an omnibus `1-3` are skipped). A rail whose next entry comes at or before the
+   current work on a rail ranked above it is skipped, so two orders of the same
+   books (a chronological series and a publication-order one) can't step
+   backwards or loop. The **first rail with a next entry decides**: the server
+   places that entry for the caller exactly as `/meta` places
+   [`local`](#owned-entries-local), and when it is placed the answer is `next` +
+   `book` + `work`. When it is not (the caller's copy is untagged, or filed under
+   a series named unlike the rail, or they don't have it), failing to place proves
+   nothing, so the steps below answer and the entry rides along as `work` without
+   `local`. Nothing comes from this step (no `work`) when the book has no
+   ASIN/ISBN, has no match or no rails, the metadata service fails, or no rail has
+   a next entry (no current position is a number, or the current work is last on
+   every rail; a rail can lag the library). A failure reading the caller's books
+   leaves the entry unplaced, as `/meta` degrades.
+2. **`series`** - the book's series with a position above 0, main series first
+   (`series` at `series_index`, then each other series at its position there). For
+   each, the candidate is the book of exactly that series in the same library
+   (by its main series or one of its other series, at its position in that
+   series) with the smallest higher position (ties by path), within the caller's
+   scope. A candidate that comes at or before the current book in a series ranked
+   above, which both books are in, is skipped. The first series with a later book
+   answers. When none has a later book but some other book in one of them is
+   numbered, the answer is `{"source": "series"}`, the end of the series; when
+   nothing else is numbered the step falls through.
 3. **`folder`** - the book's parent folder, listed whole as the caller may open it
    (their share scope and the library's ignore rules): the first book or folder
    whose name sorts after the current one, preferring an indexed book. Names are
@@ -3316,6 +3374,12 @@ once).
 A field cannot be both set and reverted in one request (`invalid_override`).
 Reverting a field that has no edit is a no-op.
 
+A bulk edit of `series` (without `more_series`) makes the
+[series swap](#patch-apiv1adminlibrariesidbook) one book at a time: only the
+books whose `more_series` lists the new series swap; the others simply get the
+new main series. One book whose old main series can't be listed refuses the whole
+request.
+
 ### `GET /api/v1/admin/authors` · `GET /api/v1/admin/narrators`
 
 The distinct authors (or narrators) with their book counts and total duration,
@@ -3588,6 +3652,21 @@ one request is applied in one transaction.
 
 A revert restores the value from what the last scan stored - no rescan and no
 disk access. Reverting an ASIN/ISBN falls back to any enrichment for it.
+
+**Making an other series the main one swaps them.** When an edit sets `series` to
+a name the book's `more_series` lists (exactly, case included), and does not set
+or revert `more_series` itself, the server swaps the two: the old main series,
+at its old `series_index`, takes that entry's place in `more_series`, and
+`series_index` becomes the entry's position (unless the edit sets `series_index`
+itself). Reverting `series` swaps back the same way when the series it returns to
+is listed. The swapped `more_series` and `series_index` are written as the edit's
+own overrides, so they read as edited and can be reverted like any other edit.
+An edit that sets `more_series` never swaps, and neither does a community edit
+(`source: "community"`): a match lays out the series itself. If the old main
+series can't be listed (a name too long for a list entry, or a position out of
+range), the edit is refused: `400` `invalid_override` with `field: "series"`.
+The console's Book page drafts the same swap before saving, so the fields and the
+save dialog show it.
 
 | Status | Meaning |
 |---|---|
