@@ -53,6 +53,8 @@ const sidebars: SidebarsConfig = {
         'listening/offline-downloads',
         'listening/mobile-apps',
         'listening/in-the-car',
+        'listening/chromecast',
+        'listening/in-the-house',
         'listening/you',
         'listening/year-in-listening',
         'listening/settings',

@@ -50,6 +50,10 @@ Both apps show the current chapter on the lock screen, with a chapter scrubber a
 
 The apps put your books on the car's screen through **Android Auto** and **CarPlay** (see [Availability](#availability)). See [In the car](in-the-car.md).
 
+## Casting to a TV or speaker
+
+Both apps can play a book on a Chromecast, a TV with Google Cast or a Nest speaker, with the phone as the remote. See [Chromecast](chromecast.md) for what your setup needs.
+
 ## Widgets on iPhone
 
 The iPhone app comes with a home screen widget and a Live Activity for the sleep timer (see [Availability](#availability)).

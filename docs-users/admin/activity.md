@@ -252,3 +252,31 @@ Deleting an account removes these too: its queue, its collections (and its
 place in other people's shared ones), its ratings and its goal. Deleting a
 library removes its books from everyone's queues, collections and ratings. All
 of it is part of every [backup](backups.md).
+
+### Listening in the house
+
+Listeners can choose to share what they're listening to with the other people on
+the server who share too ([Listening in the house](../listening/in-the-house.md)).
+It is off for everyone until each person turns it on in their own app. The server
+keeps only that choice, one switch per account; what it shows other listeners
+comes from the listening sessions it already records:
+
+- only between people who **both** share, never to someone who doesn't;
+- each person's most recent book in the last 24 hours, and only when the person
+  looking may open that book themselves;
+- their username, the book, the chapter and whether they're listening now,
+  paused or listened earlier, **never** their device, network address or app;
+- never demo accounts or disabled accounts.
+
+Nothing in the admin console shows who shares or changes anyone's choice. As an
+admin you already see everyone's listening on this page, whether or not they
+share. Deleting an account removes its choice, and it is part of every backup.
+
+### Casting
+
+When a listener plays a book on a Chromecast, their app asks the server for a
+**cast token**: a key that works for 24 hours, for that one book's audio and
+cover only, so the Cast device never gets the listener's own sign-in. Cast tokens
+stop working when the account is disabled or deleted, or when the person loses
+access to the book. They are not listed in the console, and signing the device
+out doesn't cancel the ones it already made (they still run out after 24 hours).

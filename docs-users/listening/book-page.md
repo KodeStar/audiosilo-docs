@@ -62,6 +62,8 @@ A long description folds after a few lines, with **Show more**. Under it, what's
 
 **Other versions** appears when the same book is on more than one of your servers or libraries (say, an M4B copy and an MP3 copy). Each line says where that copy lives and what it is (*"M4B · single file · 480 MB"*); tap one to open its page.
 
+**In the house** appears when someone else on your server who shares what they're listening to is on this book too, with their name and where they are in it (see [Listening in the house](in-the-house.md)).
+
 **Your listening** appears once you've started the book: how long you've **Listened** to it, your **Speed** for it, and when you **Started** and **Finished** it, as far as your server's records go. In the Android app, once [Smart speed](full-player.md#smart-speed-and-voice-boost) has saved time on the book, **Smart speed saved** says how much, on this device.
 
 ## The tabs

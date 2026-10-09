@@ -89,6 +89,8 @@ The app speaks **English, Español, Français, Deutsch, Português, and Italiano
 
 Profiles - everyone in the house with their own place in every book, a kids mode, and sharing - come in a later update. Until then this section says so, and there's nothing to set.
 
+{/* Phase 8 profiles: replace the paragraph above with the Household pane as shipped: people on this device (rename, PIN, kids mode, remove), "Ask who's listening when the app opens", and the per-server "Share what I'm listening to with the house" switch (link in-the-house.md#turning-it-on). */}
+
 ## Accounts and devices
 
 The servers this device is signed in to, each with your username and its address. Tap one to open your [account on that server](account.md): your password, pairing another device, your signed-in devices, API keys and signing out. **Add a server** connects another one - your home screen, search, and favourites then combine everything (see [Connecting and signing in](connecting.md)). The bin button beside a server removes it from this device.

@@ -147,6 +147,16 @@ Separately, the server asks GitHub once a day whether a newer AudioSilo
 version exists (it can be turned off); see
 [What the update check sends](./admin/server.md#what-the-update-check-sends).
 
+### Can other people on my server see what I'm listening to?
+
+Not unless you choose to. **Listening in the house** is off by default: once you
+turn it on, the other people on your server who have turned it on too see your
+current book on their Home page, and you see theirs. It never shows your device,
+your network address or your app. See
+[Listening in the house](./listening/in-the-house.md). The server's admin can see
+everyone's listening in the admin console's
+[Activity](./admin/activity.md#what-the-server-records) either way.
+
 ## Users & sharing
 
 ### How many users can I have, and can I limit what each one sees?
