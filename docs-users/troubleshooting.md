@@ -204,7 +204,7 @@ progress on the server is intact.
 ### AudioSilo doesn't appear in Android Auto or CarPlay
 
 Android Auto only lists apps installed from Google Play unless you allow
-unknown sources, and CarPlay depends on Apple's approval (see
+unknown sources, and AudioSilo isn't in CarPlay until Apple approves it (see
 [Availability](./listening/mobile-apps.md#availability)). See
 [Getting AudioSilo into the car](./listening/in-the-car.md#getting-audiosilo-into-the-car)
 for the steps and checks.

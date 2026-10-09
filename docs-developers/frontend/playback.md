@@ -138,9 +138,11 @@ A local Expo module - Swift (`ios/AudiosiloPlayerModule.swift`, the thin module
 definition, and `ios/AudioEngine.swift`, the engine, plus the files below) and Kotlin
 (`android/…/AudiosiloPlayerModule.kt` + `AudiosiloPlayerService.kt` and their
 helpers). It owns the audio session, background audio, lock-screen/remote commands,
-gapless multi-file playback, pitch-corrected speed, the audio effects and the car. It
-can only be validated by a **device rebuild** (`npx expo run:ios` / `run:android`) - a
-JS reload does not reload native code. Its TypeScript surface is
+gapless multi-file playback, pitch-corrected speed, the audio effects and the car. A JS
+reload does not reload native code, so a change needs a **native rebuild** (`npx expo
+run:ios` / `run:android`); only its pure parts (`TimelineMap`, the effects processors,
+`VoiceBoostDSP`, `ChapterClips`) have checks that need neither a device nor the Simulator
+([Native checks](testing.md#native-checks)). Its TypeScript surface is
 `modules/audiosilo-player/src/AudiosiloPlayer.types.ts` and `AudiosiloPlayerModule.ts`.
 
 The surface added for the native integrations (every function is optional on an older
@@ -153,7 +155,7 @@ binary, and JS detects it):
 | Event | `onRemoteBookmark { trackIndex, position, connectionId?, libraryId?, path? }` | A bookmark button outside the app (CarPlay Now Playing, Android Auto's custom action), with the engine's own book when it has one (listened for by the car controller, not the engine) |
 | Event | `onCarConnection { connected }` | CarPlay or Android Auto connected or left |
 | Event | `onCarPlayRequest { id }` | The car asked for a book native can't start alone |
-| Field | `onProgress.silenceSaved` | Book seconds Smart speed removed since the engine was created, monotonic ([Android only](audio-effects.md#why-smart-speed-isnt-on-iphone-yet)) |
+| Field | `onProgress.silenceSaved` | Book seconds Smart speed removed since the app's process started (summed over every player the service builds), monotonic ([Android only](audio-effects.md#why-smart-speed-isnt-on-iphone-yet)) |
 | Function | `setCarSnapshot(json)` | Both platforms: the [car snapshot](native-integrations.md#the-car-snapshot-srccar) |
 | Function | `getLoadedBook()` | Android: the book the service has loaded (`LoadedBook`), else null; iOS: null |
 | Function | `consumePendingBookmarks()` | Android: bookmarks pressed while no JS ran, oldest first, cleared by the read; iOS: `[]` |
@@ -192,9 +194,9 @@ The hard-won behaviors, each guarding against a specific OS quirk:
 - **One real-state toggle for remote commands.** A single earbud/headset press
   is a *toggle*, but iOS delivers it as a discrete Play **or** Pause chosen from
   iOS's own notion of the app's play state - which a third-party app cannot
-  correct (`MPNowPlayingInfoCenter.playbackState` is entitlement-gated and
-  silently ignored, so iOS infers the state itself and can get stuck on
-  "paused"). When iOS guesses wrong it sends Play while already playing and the
+  correct (a device ignores `MPNowPlayingInfoCenter.playbackState`, so iOS infers
+  the state itself and can get stuck on "paused"; the engine sets it anyway for the
+  Simulator, see below). When iOS guesses wrong it sends Play while already playing and the
   press no-ops - the "pause needs two presses" bug. Fix: `playCommand`,
   `pauseCommand` and `togglePlayPauseCommand` **all route through
   `togglePlayback()`**, which flips from the real `timeControlStatus` (a pending
@@ -224,9 +226,10 @@ The hard-won behaviors, each guarding against a specific OS quirk:
   clips, Now Playing shows the **chapter**: title = the chapter's (else the track's),
   album = the book, artist = the author, duration = the clip's length, elapsed = the
   position in the file minus the clip start, plus
-  `MPNowPlayingInfoPropertyChapterNumber`/`ChapterCount`. The whole info is rewritten
-  when the 1 s tick or a seek crosses into another clip; otherwise only elapsed and rate
-  are. `changePlaybackPositionCommand`'s time is chapter-relative (mapped into the shown
+  `MPNowPlayingInfoPropertyChapterNumber`/`ChapterCount`. The 1 s tick updates only
+  elapsed and rate unless the playhead has crossed into another clip; that crossing, and
+  every seek, play, pause, rate change, rebuild or file advance, rewrites the whole info.
+  `changePlaybackPositionCommand`'s time is chapter-relative (mapped into the shown
   clip and clamped inside it); `nextTrackCommand` goes to the next clip (across files
   through `skip(to:position:)`; nothing at the last), and `previousTrackCommand` restarts
   the clip when more than 3 s in (`ChapterClips.restartThreshold`, Media3's
@@ -235,16 +238,18 @@ The hard-won behaviors, each guarding against a specific OS quirk:
   is iOS's choice; headsets and CarPlay send the track commands.
 - **Remote moves.** Every command handler above that moves the playhead passes
   `remote: true`, and `onRemoteMove` goes out only once the move has landed: after the
-  seek's completion (and its `onProgress`), or, for a rebuild, after the deferred start
-  seek (`remoteMovePending`). Auto-rewind in `play()` sends nothing.
+  seek's completion (and its `onProgress`); for a rebuild, after the deferred start seek
+  (`remoteMovePending`), or at once for a 0 target (no deferred seek). Auto-rewind in
+  `play()` sends nothing.
 - **Rate command.** `changePlaybackRateCommand` with `supportedPlaybackRates` [0.75, 1,
   1.25, 1.5, 1.75, 2] (CarPlay's rate button needs it) applies the rate
-  (`setRateFromRemote`) and sends `onRateChange` once. The engine's speed is `baseRate`;
+  (`setRateFromRemote`) and sends `onRateChange` once. The engine's speed is `rate`;
   Now Playing shows it as `PlaybackRate` while playing and as `DefaultPlaybackRate`
-  always, so CarPlay's button doesn't read 0x while paused.
+  always, so CarPlay's button doesn't read 0× while paused.
 - **`MPNowPlayingInfoCenter.playbackState`** is set from the real transport state
-  (`syncPlaybackState`) with every Now Playing update. A device ignores it, but the
-  Simulator needs it: without it CarPlay's Simulator window reads the app as paused.
+  (`syncPlaybackState`) on every `timeControlStatus` change, every whole-info rewrite and
+  `reset`. A device ignores it, but the Simulator needs it: without it CarPlay's Simulator
+  window reads the app as paused.
 
 ### Android: Media3 / ExoPlayer
 
@@ -545,7 +550,11 @@ discriminated `ResumeLookup` reconciling three sources by `updated_at`
 replay queue.
 
 - `progress` - a saved position exists somewhere; `playBook` resumes from it
-  (and restores the saved playback speed).
+  (and restores the saved playback speed), except that a finished book starts again
+  at 0 (`resumeStart`). That rule, `bookSourceOf` (a book's item, chapters and local
+  files: the download's copy, else through the query cache) and `localFromManifest` live
+  in `src/playback/book-source.ts`, which `playBook`, `startBookInPlace`, `adoptLoaded`
+  and the car share.
 - `empty` - the server answered (HTTP 200) and there is no record anywhere: a
   genuinely new book, start at 0.
 - `failed` - the server was unreachable **and** there is no local record. For a

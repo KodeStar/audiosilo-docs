@@ -6,7 +6,7 @@ description: "Listening with Android Auto and Apple CarPlay: getting AudioSilo o
 The AudioSilo apps for Android and iPhone can put your books on a car's screen: **Android Auto** on Android, **CarPlay** on iPhone. The car shows the same lists on both, plays through the app on your phone, and saves your place exactly as the phone does. The web player has no car mode.
 
 :::note
-CarPlay depends on Apple's approval; see [Availability](mobile-apps.md#availability).
+CarPlay isn't available yet: Apple has to approve AudioSilo for CarPlay first (see [Availability](mobile-apps.md#availability)). Until then, AudioSilo doesn't appear in CarPlay.
 :::
 
 ## Getting AudioSilo into the car
@@ -19,19 +19,19 @@ CarPlay depends on Apple's approval; see [Availability](mobile-apps.md#availabil
 
 If AudioSilo isn't in the launcher:
 
-- **Android Auto only lists apps installed from Google Play** (a Google Play test track counts). An app installed any other way, such as an APK, only shows up once you turn on **Unknown sources** in Android Auto's developer settings on the phone.
+- **Android Auto only lists apps installed from Google Play** (a Google Play test track counts). An app installed any other way, such as an APK, only shows up once you turn on **Unknown sources** in Android Auto's developer settings on the phone. To reach those, open Android Auto's settings, tap **Version and permission info** ten times and allow development settings, then open **Developer settings** from the three-dot menu.
 - Check it isn't hidden: on the phone, open Android Auto's settings and look under **Customize launcher**.
 
 ### CarPlay
 
-AudioSilo appears on the CarPlay home screen like any audio app: connect your iPhone to the car and tap it. It works with your iPhone locked in your pocket, as long as you've unlocked it once since it last restarted; until then it waits, and never signs you out.
+Once Apple has approved AudioSilo for CarPlay, it appears on the CarPlay home screen like any audio app: connect your iPhone to the car and tap it. It works with your iPhone locked in your pocket, as long as you've unlocked it once since it last restarted; until then it waits, and never signs you out.
 
 ## What the car shows
 
 Up to four lists, as tabs along the car's screen:
 
 - **Continue listening** - the books you're part-way through, on every server you're signed in to, the one you're playing first (the same books as Home's Continue listening).
-- **Up next** - the [Up next](up-next.md) queue on your default server, where it has one.
+- **Up next** - the same [Up next](up-next.md) queue the app shows: the one on the server of the book you're playing, or on your main server when nothing is playing (where that server has a queue).
 - **Downloads** - the books downloaded to your phone, newest first.
 - **Library** - the most recently added books in the library you have selected.
 
@@ -41,7 +41,7 @@ The lists follow what you do on the phone: start a book, pause, add to your queu
 
 ## Playing a book
 
-Tap a book to play it from your saved place; tap the book that's already playing and it simply carries on. It plays through your phone's AudioSilo app, with the same speed, auto-rewind and [Smart speed and Voice boost](full-player.md#smart-speed-and-voice-boost) settings as on the phone. Connecting the car never starts a book by itself.
+Tap a book to play it from your saved place; tap the book that's already playing and it simply carries on. It plays through your phone's AudioSilo app, with the same speed, auto-rewind and [Smart speed and Voice boost](full-player.md#smart-speed-and-voice-boost) settings as on the phone. Connecting the car doesn't start a book by itself, but if your car (or Android Auto's setting to start music automatically) presses play when you connect, that works like the car's play button.
 
 | Feature | Android Auto | CarPlay |
 |---|---|---|
@@ -62,7 +62,7 @@ A [downloaded](offline-downloads.md) book is the safe choice for a drive through
 
 ## While it plays
 
-The car's own Now Playing screen shows the **chapter** you're in, with the book and the author under it, and a scrubber for that chapter. Previous goes back to the start of the chapter when you're more than 3 seconds into it, and to the chapter before when you're right at its start. A speed you pick in the car is remembered for the book, as one you pick on the phone is.
+The car's own Now Playing screen shows the **chapter** you're in, with the author under it (CarPlay shows the book too), and a scrubber for that chapter. Next and previous move by chapter, as on the [lock screen](playback.md#lock-screen-and-headphone-controls). A speed you pick in the car is remembered for the book, as one you pick on the phone is.
 
 **Bookmark** adds a bookmark where you are, on the book in your account, like the bookmark button in the app; the button fills for a moment to say it's done. A bookmark you add with the app closed is saved as soon as the app has started in the background, and one that can't reach your server yet is kept on the phone and sent later.
 

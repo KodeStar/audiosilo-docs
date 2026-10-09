@@ -13,6 +13,8 @@ That note carries an **Add note** button: tap it while the note is showing to op
 
 On a book's **Bookmarks** tab (on its [page](book-page.md#the-tabs), or in the player's [companion](companion.md)), the **Bookmark 17:26:50** button at the top does the same for the book you're playing. For a book that isn't playing, it opens the editor at your place in the book first, so you can see where the bookmark will land before you make it.
 
+In the car, the car's own bookmark button adds one too (see [In the car](in-the-car.md#while-it-plays)).
+
 ## The bookmark editor
 
 ![The bookmark editor: the bookmark's time and chapter, the note, and the label chips with Quote chosen](/img/screenshots/web-player/bookmark-editor.png)

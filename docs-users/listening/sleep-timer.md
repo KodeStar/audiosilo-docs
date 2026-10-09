@@ -1,6 +1,6 @@
 ---
 title: The sleep timer
-description: "Stopping a book after some minutes, at the end of the chapter, or after a few chapters; keeping it going in the last 30 seconds (Keep listening, or a shake of the phone); the Fell asleep bookmark, jumping back to where you drifted off and finding it in the Journal; and the automatic timer at night."
+description: "Stopping a book after some minutes, at the end of the chapter, or after a few chapters; keeping it going in the last 30 seconds (Keep listening, or a shake of the phone); the Fell asleep bookmark, jumping back to where you drifted off and finding it in the Journal; the countdown on the iPhone lock screen (a Live Activity); and the automatic timer at night, which never starts in the car."
 ---
 
 The sleep timer stops the book for you, so you can listen yourself to sleep without losing your place. Tap the sleep button (an alarm clock, labelled **Sleep** where there's room) in the full player or on the player bar to open it (in the web player, the [Z key](keyboard-shortcuts.md) does too).

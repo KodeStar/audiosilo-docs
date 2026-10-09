@@ -4,22 +4,25 @@ description: "CarPlay and Android Auto (the car snapshot, the Android MediaLibra
 ---
 
 The surfaces outside the app's own window: the car (Android Auto and CarPlay), the iOS
-home screen widget and the sleep timer Live Activity. They all sit on the same native module
-as playback ([Playback](playback.md#the-native-module-modulesaudiosilo-player)) and on
-shared JS controllers; none of them adds a wire change. The audio effects the car also
+home screen widget and the sleep timer Live Activity. The car sits on the same native module
+as playback ([Playback](playback.md#the-native-module-modulesaudiosilo-player)), the widget
+and the Live Activity on `expo-widgets`, and all of them on shared JS controllers; none of
+them adds a wire change. The audio effects the car also
 applies are in [Smart speed and Voice boost](audio-effects.md); how to run each of these on a
 device, the DHU or the Simulator is under [Testing](testing.md#native-checks).
 
-**Status.** Android Auto ships in every build. CarPlay's code ships too, but iOS connects a
+**Status.** Android Auto ships in every build (listing it through Google Play has a step of
+its own: [Releasing](../contributing/releasing.md#the-app-store-track-ios--android)).
+CarPlay's code ships too, but iOS connects a
 CarPlay scene only in a build prebuilt with `AUDIOSILO_CARPLAY=1` (the entitlement Apple has
-to grant; [below](#the-uiscene-life-cycle-pluginswithcarplayjs)). The widgets and the Live
-Activity are not in the current store build: it needs the App Group and the extension
-provisioned ([below](#widgets-and-the-live-activity-ios)). Users read this on
-[Availability](/users/listening/mobile-apps#availability).
+to grant; [below](#the-uiscene-life-cycle-pluginswithcarplayjs)). A store build with the
+widgets and the Live Activity needs the App Group and the extension provisioned first
+([below](#widgets-and-the-live-activity-ios)). Which store release has each of these is on
+the users' [Availability](/users/listening/mobile-apps#availability).
 
 | Piece | Where |
 |---|---|
-| Car snapshot, play requests, car bookmarks, adopting | `src/car/` (`car-model.ts`, `car-artwork.ts`, `car-controller.ts`, `car-connection.ts`, `car-native*.ts`, `car-task.ts`, `register-car-task*.ts`) |
+| Car snapshot, play requests, car bookmarks, adopting | `src/car/` |
 | JS entry (registers the headless task) | `index.ts` (`package.json` `main`), then `expo-router/entry` |
 | Launch steps shared by the root layout and the car task | `src/lib/bootstrap.ts` (`bootstrapPlayback`) |
 | Android Auto | `modules/audiosilo-player/android/.../AudiosiloPlayerService.kt`, `LibraryCallback.kt`, `CarBrowseTree.kt`, `CarSnapshot.kt`, `ArtworkProvider.kt`, `JsRuntime.kt`, `PlayerBridge.kt`, `PendingBookmarks.kt`, `CarConnectionMonitor.kt`, `ResumptionReceiver.kt`, `MediaItems.kt` |
@@ -46,10 +49,14 @@ protection), so a car shows its lists at once, before or without JS.
   `unavailable`) and up to four `tabs`, each carrying its own localized `title`:
   - `continue` - Home's rule (`isInProgress`, newest first, every signed-in server), the
     loaded book first (`continueRefs`), at most 20;
-  - `upnext` - the default connection's queue (`queue` capability), at most 20;
+  - `upnext` - the queue the app's Up next shows (`queueConnectionId`: the loaded book's
+    connection, else the default, else the first; see
+    [Overview](overview.md#up-next-drawer-and-sheet)), left out when that server has no
+    `queue` capability, at most 20;
   - `downloads` - every downloaded book, newest download first, at most 50;
-  - `library` - the selected library (`useLibrarySelection`, else the default connection's
-    first), `sort: 'recent'`, at most 50 (`CAR_TAB_LIMITS`; Android Auto doesn't page, and
+  - `library` - the library the Library tab shows (`resolveLibrarySelection`, as in
+    [State and data](state-and-data.md#library-selection-srcstoreslibrary-selectionts)),
+    `sort: 'recent'`, at most 50 (`CAR_TAB_LIMITS`; Android Auto doesn't page, and
     CarPlay trims further to its own `maximumItemCount`).
 - Each `CarItem` has an `id` (`carItemId(ref)`: `book:` plus the URI-encoded connection id,
   library id and path joined by `:`; path is the identity, scoped by connection, never a
@@ -59,12 +66,14 @@ protection), so a car shows its lists at once, before or without JS.
   `downloaded`, `artwork` and, **only for a downloaded book**, a `play` spec.
 - `playSpec(...)`: what Android needs to start a downloaded book with no JS: the `BookRef`,
   the tracks as `file://` URLs **with no headers**, the chapter clips (`buildChapterClips`),
-  the start index and position (the resume lookup, read the way `playBook` reads it: a
-  finished book starts at 0, its saved speed wins over the default) and the rate. No session
+  the start index and position (the resume lookup, read through `resumeStart` in
+  `src/playback/book-source.ts` as `playBook` reads it: a finished book starts at 0, its
+  saved speed wins over the default) and the rate. No session
   token is ever written outside expo-secure-store for the car.
 - **Covers** (`car-artwork.ts`) are files the app wrote, never URLs: a downloaded book's own
-  cover file, else a small JPEG under `Paths.document/car-artwork/` named from a hash of the
-  `contentKey` and `cover_version` (`artworkName`), fetched once at 320 px (`cover_sizes`),
+  cover file, else a file under `Paths.document/car-artwork/` named from a hash of the
+  `contentKey` and `cover_version` (`artworkName`), fetched once (the 320 px thumbnail when
+  the server's cached flags say `cover_sizes`, else the full cover, kept as it is),
   downloaded to a `.part` file and moved into place when complete, and pruned once no snapshot
   names it. They are fetched only after the snapshot that needs them is out (a list never waits
   on the network) and only once a car has connected on this device (`audiosilo.carSeen`).
@@ -75,11 +84,14 @@ connected on this device** (`audiosilo.carSeen`; a phone that never meets a car 
 one), never two writes closer than `MIN_GAP_MS` (2 s):
 
 - at start;
-- when a car connects (always a fresh build);
-- when the progress lists, the Up next queue or the downloads registry change (after
-  `SETTLE_MS`, 2 s);
+- when a car connects (always a fresh build), and after adopting a book the service loaded
+  (Android);
 - when the language changes;
-- while a car is connected, when a book starts or pauses.
+- while a car is connected, when a book starts or pauses;
+- after `SETTLE_MS` (2 s), when the progress lists, the Up next queue, the downloads
+  registry, the session's connections or default connection, the library selection or the
+  default speed change, and once covers a written snapshot lacked have been fetched (so the
+  next one names them).
 
 It **never overwrites** native's last snapshot with a worse one: not while the session's
 hydrate has failed (`sessionHydrateFailed`), and not when no signed-in server's lists could be
@@ -91,8 +103,9 @@ keeps the [auto sleep timer](sleep-timer.md#auto-sleep-timer-auto-sleepts--auto-
 from arming in a car. It answers:
 
 - **Play requests** (`onCarPlayRequest {id}`, a book native can't start alone):
-  `handleCarPlayRequest` lets the loaded book play on (never restarted) and starts any other
-  through `startBookInPlace`, from its saved place (a downloaded book from its download when
+  `handleCarPlayRequest` lets the loaded book play on (never restarted; an ended or failed
+  one starts again like any other) and starts any other through `startBookInPlace`, from
+  its saved place (a downloaded book from its download when
   its server is slow or away, see [The end of a book](end-of-book.md#ending-a-book)). A failure
   is logged; native times the request out.
 - **Remote bookmarks** (`carNative.onBookmark`, the module's `onRemoteBookmark`, which carries
@@ -133,7 +146,7 @@ is the same `AudiobookPlayer` the phone's lock screen uses. The module's own `An
 
   | Situation | What the service does |
   |---|---|
-  | The book the player already has | Plays on from where it is (`playingQueue`; sent to JS it would wait for a `load` that never comes) |
+  | The book the player already has, ready or buffering | Plays on from where it is (`playingQueue`; sent to JS it would wait for a `load` that never comes) |
   | No JS runtime (`PlayerBridge.sink == null`) and a play spec (downloaded) | Starts at once from the spec (no auth headers: every track is local) |
   | Anything else (incl. a downloaded book while a JS runtime exists: JS may hold another book as `nowPlaying`, and swapping the engine under it would save one book's place as another's) | Returns a `SettableFuture`, makes sure JS runs, emits `onCarPlayRequest`, and completes with the queue the module's next `load` sets (an identical re-set Media3 then makes is absorbed), or fails after 10 s with an error Auto shows (`labels.unavailable`) |
 
@@ -180,12 +193,16 @@ is the same `AudiobookPlayer` the phone's lock screen uses. The module's own `An
 The module's `MediaController` connects with the connection hint `audiosilo.app=true`
 (`PlayerBridge.HINT_APP`). `PlayerBridge.isAppController` requires the hint **and** the
 app's own uid (`controller.uid == Process.myUid()`): any connecting app could send the hint,
-and Media3's own notification controller shares the uid but not the hint. `AudiobookPlayer` asks, for every seek, skip and speed change,
-whether the request came from a controller other than the app's (`isRemoteRequest`, via the
-session's `controllerForCurrentRequest`) and reports those through `PlayerBridge` (an
-in-process seam: same process, no session round trip). Its own auto-rewind and nested seeks
-never count. The module translates the clip position into file coordinates and emits
-`onRemoteMove` / `onRateChange`.
+and Media3's own notification controller shares the uid but not the hint. `AudiobookPlayer`
+asks, for every seek, skip and speed change, whether the request came from a controller
+other than the app's (`isRemoteRequest`, via the session's `controllerForCurrentRequest`;
+the skip buttons are custom session commands, which the session doesn't attribute, so
+`onCustomCommand` passes their origin in with `withOrigin`) and reports those through
+`PlayerBridge` (an in-process seam: same process, no session round trip). Its own
+auto-rewind and nested seeks never count. The service translates the clip position into
+file coordinates (`TimelineMap.toFile` over the current item's extras); the module emits
+`onRateChange` at once and `onRemoteMove` once its own controller has caught up (its next
+position discontinuity, or after 300 ms).
 
 Media items carry their own mapping and their `BookRef` in `MediaMetadata.extras`, so the
 module's `TimelineMap` is right for a queue the **service** loaded too (see
@@ -226,9 +243,9 @@ position, rate and whether it plays. The controller calls the store's
 `adoptLoaded(book)` at start, when a car connects, on returning to the foreground and when the
 engine moves to another file or starts playing on its own (never for the store's own switch
 or load), if `nowPlaying` isn't that book. Adopting builds the queue as
-`playBook` would (from the download manifest when downloaded, else through the query cache),
-sets `nowPlaying` and the rate, makes the **resume floor** the engine's place, seeds the
-bridge's snapshot (`adoptPlace`, so the next tick maps onto the right file) and, if playing,
+`playBook` would, from `bookSourceOf` (`src/playback/book-source.ts`: the download manifest
+when downloaded, else through the query cache), sets `nowPlaying` and the rate, makes the
+**resume floor** the engine's place, seeds the bridge's snapshot (`adoptPlace`, so the next tick maps onto the right file) and, if playing,
 runs the place reconcile's pick-up check (`onPickedUpAgain`) before its first save (another
 device may have played on since the place the car started from) and starts the save loop and
 a listening span, all **without `svc.load`** (a reload would cut the
@@ -252,8 +269,9 @@ and starts React Native in `didFinishLaunching`, so the config plugin:
 2. rewrites the AppDelegate: the template's window creation and `startReactNative` become a
    stored starter (`AudiosiloScenes.configure(start:mirrorWindow:)`). The template text is
    matched exactly and **any other text fails the prebuild** (a silent miss would ship a black
-   screen). Mods of one kind run in reverse registration order, so it is listed before
-   `expo-widgets` and after nothing that rewrites the AppDelegate;
+   screen). Mods of one kind run in reverse registration order, so no plugin that rewrites
+   the AppDelegate may be listed after it (that plugin's edit would run first and break the
+   match);
 3. adds `com.apple.developer.carplay-audio` to the entitlements **only with
    `AUDIOSILO_CARPLAY=1`** at prebuild. A device build carrying it can't be signed unless Apple
    has granted the entitlement; without it iOS never connects a CarPlay scene, while the scene
@@ -275,25 +293,30 @@ AppDelegate fixture.
 - A `CPTabBarTemplate` of up to `CPTabBarTemplate.maximumTabCount` `CPListTemplate`s from the
   snapshot, each item with its cover (decoded and scaled off the main thread from the
   snapshot's file URIs; nothing is fetched), `detailText`, `playbackProgress` (1 for
-  finished) and `isPlaying` for the loaded book. Before a snapshot or signed out, one list
-  whose empty text is the snapshot's label (never "use your phone", per Apple's guideline).
+  finished) and `isPlaying` for the loaded book while it plays. Signed out, one list whose
+  empty text is the snapshot's label, as an empty tab's is (never "use your phone", per
+  Apple's guideline); with no snapshot at all (none on disk at connect: the first CarPlay
+  connection on the device, until JS writes one), one list titled AudioSilo with no text.
   A refresh with the same tabs updates them in place, keeping the selected tab and scroll.
 - A tap sends `onCarPlayRequest {id}` (iOS always lets JS start books: JS has the session,
-  the saved place and the queue rules), shows the item's spinner until the engine reports the
-  book or 10 s pass, then pushes `CPNowPlayingTemplate.shared`.
+  the saved place and the queue rules) and shows the item's spinner until the engine reports
+  the book, then pushes `CPNowPlayingTemplate.shared` (at once for the book already loaded).
+  After 10 s it gives up: the spinner stops, nothing is pushed, the list stays, and a request
+  JS hasn't received yet is dropped, so a slow cold boot never starts it later.
 - **Now Playing** reads the engine's chapter-aware Now Playing info (title, chapter scrubber;
   [Playback](playback.md#ios-avqueueplayer)). Its Up Next button, titled with
   `labels.chapters`, is enabled with 2+ chapters and pushes a chapter list windowed around the
   current chapter to `maximumItemCount`; a pick seeks natively and so reaches JS as an
   `onRemoteMove`. Buttons: `CPNowPlayingPlaybackRateButton` (cycles the engine's
-  `supportedRates`, 0.75x to 2x, through `setRateFromRemote`, which emits `onRateChange`) and a
+  `supportedRates`, 0.75× to 2×, through `setRateFromRemote`, which emits `onRateChange`) and a
   `CPNowPlayingImageButton` bookmark (`bookmark`, `bookmark.fill` for about 2 s) that emits
   `onRemoteBookmark`.
 - Car events (`onCarConnection`, `onCarPlayRequest`) go through `AudiosiloCarEvents`, which
   queues them until JS listens (`OnStartObserving`), so a connect or tap before JS is ready
-  isn't lost.
+  isn't lost (only the latest of each is kept, and a tap is dropped once it times out or its
+  car leaves).
 - The templates read the engine directly through `AudioEngine.shared`
-  (`AudioEngine+CarPlay.swift`: the loaded book id from `load`'s `book`, the rate, the
+  (`AudioEngine+CarPlay.swift`: the loaded book, `loadedBook`, from `load`'s `book`, the rate, the
   chapters) and refresh on `.audiosiloPlayerDidChange`, which the engine posts on every state
   and Now Playing chapter change. Items are matched to the loaded book by the item's `book`
   (its `BookRef` fields), not by its id.
@@ -332,7 +355,7 @@ Push Notifications capability).
   and every string arriving in props, already localized.
 - `widget-model.ts` (pure, tested) decides what to write and when: `continueListeningProps`
   (title, author, chapter, a cover file, time left at the book's speed, progress, playing, and
-  a `audiosilo://player?connection=..&libraryId=..&path=..` deep link from the player
+  an `audiosilo://player?connection=..&libraryId=..&path=..` deep link from the player
   route's own `playerParams`, so a cold launch opens that book) and `sleepActivityProps` (title, chapter, cover, `endsAt`, `pausedAt`, deep
   link).
 - **Links into the app keep their encoding**: `src/app/+native-intent.tsx`
@@ -346,8 +369,10 @@ Push Notifications capability).
   no-op elsewhere) wires it: the widget is rewritten on a book, chapter, play/pause or speed
   change, a jump over 30 s, a stop, and once a minute while playing, coalesced to one write per
   `MIN_WRITE_MS`. Covers are written into the widgets directory once per book (the extension
-  can't fetch): the server's 320 px thumbnail for the widget and 160 px for the activity, else
-  the downloaded cover, only when its header says it fits (`fitsCover`; there is no resizer).
+  can't fetch): the server's 320 px thumbnail for the widget and 160 px for the activity (not
+  asked of a server known to lack `cover_sizes`), else the cover the player shows (the
+  downloaded one, or the streamed one, fetched), each only when its header says it fits
+  (`fitsCover`; there is no resizer).
   Removing the widget's connection clears it.
 - The **Live Activity** starts only with the app in the foreground (ActivityKit's rule; a
   timer armed in the background gets one on the next foreground), is updated when the end moves
@@ -361,19 +386,8 @@ Push Notifications capability).
 **The store build needs** the App Group `group.app.audiosilo` registered with Apple, the
 extension's bundle id `app.audiosilo.widget` registered with the App Groups capability (and
 the group on both the app's and the extension's identifiers), and EAS credentials for the app
-extension as well as the app, so both targets get a provisioning profile.
+extension as well as the app, so both targets get a provisioning profile (a one-time step of
+the [app-store track](../contributing/releasing.md#the-app-store-track-ios--android)).
 
-**The dev build** (`app.audiosilo.dev`) must not claim the store app's ids. After prebuild,
-change:
-
-- the extension target's `PRODUCT_BUNDLE_IDENTIFIER` in `ios/AudioSilo.xcodeproj/project.pbxproj`
-  (Debug and Release) from `app.audiosilo.widget` to `app.audiosilo.dev.widget`, with a
-  `DEVELOPMENT_TEAM` beside it;
-- `com.apple.security.application-groups` from `group.app.audiosilo` to
-  `group.app.audiosilo.dev` in `ios/AudioSilo/AudioSilo.entitlements` and
-  `ios/ExpoWidgetsTarget/ExpoWidgetsTarget.entitlements`;
-- `ExpoWidgetsAppGroupIdentifier` (which expo-widgets reads at runtime) to the same group in
-  `ios/AudioSilo/Info.plist` and `ios/ExpoWidgetsTarget/Info.plist`.
-
-A half-patched build signs but shows an empty widget, so check the embedded extension's bundle
-id and group after the build.
+A dev build installed beside the store app needs its own ids for the app, the extension and
+the group; [Testing](testing.md#on-devices) lists the edits.

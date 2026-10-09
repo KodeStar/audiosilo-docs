@@ -1,6 +1,6 @@
 ---
 title: Smart speed and Voice boost
-description: "The player's two audio effects: where each runs, the shared switches, Android's processor chain (the vendored NarrationSilenceProcessor and VoiceBoostProcessor), iOS's Voice boost processing tap and why Smart speed isn't on iPhone yet, the web's Web Audio chain, and time saved."
+description: "The player's two audio effects: where each runs, the shared switches, Android's processor chain (NarrationSilenceProcessor, vendored from Media3, and our own VoiceBoostProcessor), iOS's Voice boost processing tap and why Smart speed isn't on iPhone yet, the web's Web Audio chain, and time saved."
 ---
 
 Smart speed (shorten the silences in narration) and Voice boost (compress and lift speech)
@@ -21,7 +21,7 @@ No wire change: both are client-side, and "time saved" is kept on the device.
 | Make-up | +12 dB | the browser's own, plus a +1.6 dB trim: about +10 dB below the threshold |
 | Limiter | -1 dBFS ceiling; attack about 1 ms (Android) or instant (iOS); release 80 ms (Android), 50 ms (iOS) | -3 dBFS, 20:1, 1 ms attack, 80 ms release (lands near -1 dBFS) |
 
-The detector is per-sample peak, so a curve's unity point is threshold + makeup x ratio /
+The detector is per-sample peak, so a curve's unity point is threshold + makeup × ratio /
 (ratio - 1): -2 dBFS here, above narration's peaks, so the make-up is never taken back.
 Measured on real speech (active-speech RMS): quiet narration comes up about +10 to +11 dB,
 normal +8.5 dB, loud +5 dB, with peaks held at the ceiling.
@@ -76,12 +76,14 @@ time at any speed. One chain instance per sink.
   (androidx/media#3271), keeping a quarter of the intended padding around each word in
   stereo, and fades per byte. Narration defaults: threshold 330 (about -40 dBFS peak),
   minimum silence 300 ms, retention ratio 0.25, at most 1 s of silence kept, mute to 10%. It
-  also keeps a monotonic count of the book time the skipped frames were worth (`savedUs`; the
-  sink's own `skippedFrames` still resets on every flush, as `applySkipping` needs).
+  also keeps a monotonic count of the book time the skipped frames were worth (`savedUs`; its
+  per-flush `skippedFrames`, which the sink reads through `getSkippedOutputFrameCount`, still
+  resets on every flush, as `applySkipping` needs).
 - **`VoiceBoostProcessor`**: the native preset, then a final clip; one gain for every channel
   (stereo-linked). It is **always active**: changing `isActive` would make the sink flush (a
   gap and a position jump), so the switch moves a ~20 ms ramp between dry and wet, and fully
-  off the output is the input byte for byte. `queueInput` never allocates or locks.
+  off the output is the input byte for byte. `queueInput` never locks, and allocates nothing
+  beyond the base class's reusable output buffer.
 - **Switching**: the module's `setConfig` sends the custom session command
   `audiosilo.SET_EFFECTS` (extras `smartSpeed`, `voiceBoost`); the service applies them
   (`AudioEffects.apply`: `player.skipSilenceEnabled`, which lets ExoPlayer drain and
@@ -106,10 +108,11 @@ tap, can't express the knee and ratio, and can allocate on a first render. Real-
 hold in `process`: no allocation, no locks, no Swift reference counting (the state is a plain
 struct allocated in the tap's `init` and freed in `finalize`).
 
-**Every queued item gets its tap when it is queued, switch on or off**
+**Every item gets its tap before it plays, switch on or off**
 (`AudioEngine.attachVoiceBoostTaps`): setting `audioMix` on a **playing** item rebuilds its
 render chain, an audible ~1 s dropout on a device. So the mix is set while an item is still
-waiting, for the current item and the **two ahead** (a window, not the whole queue: `loadTracks`
+waiting, for the current item and the **two ahead** (a window that slides on at each file
+change, not the whole queue AVQueuePlayer holds: `loadTracks`
 on a streamed asset reads the file's header over HTTP, and a book can be a hundred files; two
 ahead means the next item has its tap before AVQueuePlayer prerolls it). Playback never waits
 for a tap. The switch only flips one process-wide aligned 32-bit word that the tap reads once
@@ -145,21 +148,24 @@ frames. Until then `smartSpeedApplies` is Android only, the iOS engine accepts a
   `createMediaElementSource` throws), made only while the context runs (a suspended one would
   silence the book) and only for a **same-origin** source (`sameOrigin`,
   `src/lib/same-origin.ts`): a cross-origin element routed through Web Audio without CORS
-  plays zeroes. So a book from another signed-in server, or the Metro dev server talking to a
-  remote API, plays unboosted; a load of such a source onto an already-routed element swaps in
-  a fresh element.
+  plays zeroes. So a book streamed from another signed-in server, or through the Metro dev
+  server talking to a remote API, plays unboosted (a downloaded copy, served from the page's
+  own origin under `/_offline/`, is boosted); a load of such a source onto an already-routed
+  element swaps in a fresh element.
 - Switching off reconnects each source straight to the destination; nothing is rebuilt.
 
 ## Time saved (`src/playback/time-saved.ts`)
 
-"Time saved" is the book seconds Smart speed removed: the same as time saved at 1x, so speed
-isn't counted. Framework-free and kept on the device:
+"Time saved" is the book seconds Smart speed removed: the same as time saved at 1×, so speed
+isn't counted. Kept on the device, and counted outside React (only the two hooks at the end
+use it):
 
 - The native bridge's `onSilenceSaved(total)` (from `onProgress`'s `silenceSaved`) goes to
   `noteSilenceSaved(total, bookKey)` with the playing book's `contentKey`. `silenceDelta`
   counts positive growth only: the first total this JS sees is a base (the Android service can
-  outlive the JS, and its total then holds savings already counted), and a lower total means a
-  new engine (new base, nothing added).
+  outlive the JS, and its total then holds savings already counted), and a lower total only
+  becomes the new base, adding nothing (a guard: Android's total is process-wide, so a
+  rebuilt player never lowers it).
 - `persistedDocument('audiosilo.timeSaved')` holds `{ lifetime, books }`. Never a write per
   tick: flushed when playback halts (the store's `haltAndPersist`), when the app leaves the
   foreground, and every 30 s while it grows (an `engineTicker`, which Android's paused JS

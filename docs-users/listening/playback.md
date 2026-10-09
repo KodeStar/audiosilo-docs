@@ -73,9 +73,11 @@ The conversion needs **ffmpeg** on your server, which the Docker image includes 
 In the mobile apps, playback continues in the background and shows up everywhere your system shows media:
 
 - **Android** - the lock screen and notification give you the full audiobook row: **previous chapter**, a **chapter-relative scrubber** you can drag, **next chapter**, and **skip back/forward** buttons that use the skip lengths you chose in [Settings](settings.md#playback).
-- **iOS** - the lock screen and Control Centre show the **chapter** you're in (its title, with the book and author under it) and a **scrubber for that chapter**, with play/pause and **skip back/forward** buttons that use the same skip lengths you chose in [Settings](settings.md#playback). Next and previous track, from headphones or a car, move by **chapter**: previous goes back to the start of the chapter when you're more than 3 seconds into it. A book without chapter marks shows the current file instead.
+- **iOS** - the lock screen and Control Centre show the **chapter** you're in (its title, with the book and author under it) and a **scrubber for that chapter**, with play/pause and **skip back/forward** buttons that use the same skip lengths you chose in [Settings](settings.md#playback). Next and previous track, from headphones or a car, move by **chapter**. A book without chapter marks shows the current file instead.
 - **Headphones and earbuds** - play/pause and skip buttons work as you'd expect, and playback pauses politely for interruptions (a phone call, a navigation prompt) and resumes afterwards only if it was playing before.
 - **In the car** - Android Auto and CarPlay show your books on the car's screen; see [In the car](in-the-car.md).
+
+On both, previous goes back to the start of the chapter when you're more than 3 seconds into it, and to the chapter before when you're right at its start.
 
 See [The mobile apps](mobile-apps.md) for more on the native apps.
 

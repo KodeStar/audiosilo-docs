@@ -11,8 +11,9 @@ AudioSilo has native apps for **iOS** and **Android**. They're the same player y
 
 - **iOS**: the app is on the **[App Store](https://apps.apple.com/us/app/audiosilo/id6783431375)** - search for AudioSilo, or follow the link.
 - **Android**: the app is finished and in active use, but **not yet on Google Play** - it's going through Google Play's testing tracks, which require a testing period before an app can go public. If you'd like early access, ask whoever runs your server whether a tester invite is available, or check the AudioSilo project on GitHub for current status.
-- **CarPlay**: built into the iPhone app, but Apple has to approve an app for CarPlay audio before a car will show it. That approval isn't part of the App Store app yet, so AudioSilo doesn't appear in CarPlay until a later update. [Android Auto](in-the-car.md) needs nothing extra.
-- **iPhone widgets and the sleep timer Live Activity**: in the app, but not in the App Store build yet; they arrive with the next iOS release.
+- **CarPlay**: built into the iPhone app, but Apple has to approve an app for CarPlay audio before a car will show it. That approval isn't part of the App Store app yet, so AudioSilo doesn't appear in CarPlay until a later update.
+- **Android Auto**: built into the Android app; see [In the car](in-the-car.md#android-auto) for getting it onto the car's screen.
+- **iPhone widgets and the sleep timer Live Activity**: not in the App Store version yet; they arrive with a later update.
 
 And you don't need the app to listen on your phone: the **web player works great on mobile** and can be [installed to your home screen](offline-downloads.md), downloads included.
 

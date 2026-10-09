@@ -1,6 +1,6 @@
 ---
 title: Testing the player
-description: "The jest-expo harness, the checks npm test runs before jest, the global mocks in jest.setup.ts (including FlashList's measurements), the conventions that keep logic testable, rendering covers and grids, the overlay and route-tree harnesses, and the patterns for mocking fetch, reachability, and Platform.OS."
+description: "The jest-expo harness, the checks npm test runs before jest, the global mocks in jest.setup.ts (including FlashList's measurements), the conventions that keep logic testable, rendering covers and grids, the overlay and route-tree harnesses, the patterns for mocking fetch, reachability, and Platform.OS, and the native checks (the Android JVM tests, the iOS self-check, Android Auto on the Desktop Head Unit, CarPlay in the Simulator, on-device checks)."
 ---
 
 Every piece of new logic in the frontend ships with a unit test. The harness is
@@ -320,7 +320,7 @@ Co-located suites exist for:
 | Area | Tested modules |
 |---|---|
 | API layer | `src/api/client.test.ts`, `hooks-queue.test.ts`, `hooks-capability.test.tsx` (capability gating and the Phase 1a/1b queries and mutations), `connection-clients.test.ts`, `hooks.test.ts`, `reachability.test.ts`, `provider.test.tsx`, `address-route.test.ts`, `address-runner.test.ts` (the home/away pick, leaving home, the playing book's restart) |
-| Playback | `src/playback/book-queue.test.ts`, `progress-sync.test.ts`, `store.test.ts`, `service.web.test.ts`, `sleep-timer.test.ts`, `auto-sleep.test.ts`, `auto-sleep-controller.test.ts`, `rate.test.ts`, `next-book.test.ts`, `prettify-title.test.ts`, `types.test.ts`, `transcode.test.ts` (the web negotiation rules), `up-next-resolver.test.ts` (what plays next), `up-next-sources.test.ts`, `jump-undo.test.ts`, `time-left.test.ts`, `drift.test.ts`, `drift-controller.test.ts`, `last-interaction.test.ts`, `use-shake-to-extend.test.ts` (the burst detector and sensitivity tunings), `place-reconcile.test.ts` (a loaded book picks up another device's place), `service.native.test.ts` (the native bridge: the newer events, `load`'s `book` only on a binary that takes it), `store-adopt.test.ts` (`adoptLoaded`: no engine reload, saves under the adopted book, the floor is the adopted place), `effects.test.ts` (where Smart speed and Voice boost apply), `time-saved.test.ts`, `book-source.test.ts` (where a book plays and resumes from), `store-race.test.ts` (the bridge created once however many callers race; a remote move while a book loads is ignored) |
+| Playback | `src/playback/book-queue.test.ts`, `progress-sync.test.ts`, `store.test.ts`, `service.web.test.ts`, `sleep-timer.test.ts`, `auto-sleep.test.ts`, `auto-sleep-controller.test.ts`, `rate.test.ts`, `next-book.test.ts`, `prettify-title.test.ts`, `types.test.ts`, `transcode.test.ts` (the web negotiation rules), `up-next-resolver.test.ts` (what plays next), `up-next-sources.test.ts`, `jump-undo.test.ts`, `time-left.test.ts`, `drift.test.ts`, `drift-controller.test.ts`, `last-interaction.test.ts`, `use-shake-to-extend.test.ts` (the burst detector and sensitivity tunings), `place-reconcile.test.ts` (a loaded book picks up another device's place), `engine-ticks.test.ts` (`engineTicker`), `service.native.test.ts` (the native bridge: the newer events, `load`'s `book` only on a binary that takes it), `store-adopt.test.ts` (`adoptLoaded`: no engine reload, saves under the adopted book, the floor is the adopted place), `effects.test.ts` (where Smart speed and Voice boost apply), `time-saved.test.ts`, `book-source.test.ts` (where a book plays and resumes from), `store-race.test.ts` (the bridge created once however many callers race; a remote move while a book loads is ignored) |
 | Downloads | `src/downloads/store.test.ts`, `offline-meta.test.ts`, `offline-companion.test.tsx` (a downloaded book's community data end to end, offline), `keep-ahead.test.ts`, `keep-ahead-controller.test.ts`, `failure.test.ts`, `downloads-view.test.ts`, `use-download-controls.test.ts`; `src/components/downloads/downloads-screen.test.tsx` |
 | Car and widgets | `src/car/car-model.test.ts` (the snapshot, item ids, play specs), `car-artwork.test.ts`, `car-controller.test.ts` (writes, play requests, bookmarks, adopting), `car-task.test.ts`; `src/widgets/widget-model.test.ts`, `widget-sync.ios.test.ts`; `src/lib/bootstrap.test.ts` (the shared launch steps) |
 | Config plugins | `plugins/withCarPlay.test.ts` (the scene manifest, the AppDelegate rewrite over an SDK 56 fixture, the opt-in entitlement), `plugins/withWidgetsNoPush.test.ts` |
@@ -341,7 +341,7 @@ Co-located suites exist for:
 | Bookmarks and notes | `src/api/bookmark-labels.test.ts`; `src/components/annotations/editor-model.test.ts` (what Save sends), `labels.test.ts`, `drift-marker.test.ts`, `use-book-place.test.ts`, `annotation-editor.test.tsx`, `annotation-rows.test.tsx`; `src/components/player/player-sheets.test.ts` (editor requests) |
 | Journal | `src/lib/listening-sessions.test.ts` (sessions, days), `use-day-label.test.tsx`, `use-infinite-queries.test.tsx`; `src/components/journal/merge-model.test.ts`, `diary-model.test.ts` (days, bar colours, drift matching), `journal-model.test.ts`, `use-journal-sources.test.tsx`, `journal-screen.test.tsx`, `journal-route-cold.test.tsx`, `export-collect.test.ts`, `export-format.test.ts`, `export-save.test.ts`, `export-save.web.test.ts`, `export-actions.test.tsx`, `use-journal-export.test.tsx` |
 | UI primitives | `src/components/ui/` - `animated-pressable`, `badge`, `breadcrumbs`, `button`, `confirm-dialog`, `cover`, `dialog`, `empty-state`, `icon-data` (validates every vendored SVG glyph), `input`, `notice`, `overlay` (root insets, `withFlatStyle`), `overlay-host`, `popover`, `progress-bar`, `progress-ring`, `row-surface`, `section-header`, `select`, `sheet`, `skeleton`, `slider`, `use-slider-control`, `switch`, `tabs`, `text`, `time-stepper`, `toast`, `touch-target`, `toggle-group` |
-| `src/lib` helpers | `account`, `alpha-sections`, `app-resume`, `auth-failure`, `base-url`, `by-position`, `chapter-label`, `client-id`, `clipboard`, `content-key`, `cover-tint`, `dedup`, `format`, `hhmm`, `keyboard`, `keyboard-lift`, `known-servers`, `layout`, `monogram`, `names`, `network`, `pairing`, `paths`, `register-sw.web`, `progress-view`, `published`, `root-stack`, `rnw-button-fix`, `scroll-memory`, `secure-store`, `series-orderings`, `server-address` (the pick rule, `mergeAddresses`), `native-intent` (app links keep their encoding), `same-origin`, `serial-queue`, `map-limit`, `fnv1a`, `share`, `storage-migration`, `support`, `ticker`, `use-debounced-value`, `use-dom-id`, `use-latest`, `use-now`, `when-active`, `utils` |
+| `src/lib` helpers | `account`, `alpha-sections`, `app-resume`, `auth-failure`, `base-url`, `by-position`, `chapter-label`, `client-id`, `clipboard`, `content-key`, `cover-tint`, `dedup`, `fnv1a`, `format`, `hhmm`, `keyboard`, `keyboard-lift`, `known-servers`, `layout`, `map-limit`, `monogram`, `names`, `native-intent` (app links keep their encoding), `network`, `pairing`, `paths`, `progress-view`, `published`, `register-sw.web`, `rnw-button-fix`, `root-stack`, `same-origin`, `scroll-memory`, `secure-store`, `serial-queue`, `series-orderings`, `server-address` (the pick rule, `mergeAddresses`), `share`, `storage-migration`, `support`, `ticker`, `use-debounced-value`, `use-dom-id`, `use-latest`, `use-now`, `utils`, `when-active` |
 | Generators (Node, not jest) | `scripts/gen-tokens.test.mjs` |
 
 The shared test helpers live outside that list, in `src/testing/`: the
@@ -357,8 +357,8 @@ Not covered by Jest, by design or necessity: `src/app/**` screens (kept
 logic-free), the `'widget'` functions in `src/widgets/` (they run in the widget
 extension), and the **native module** (`modules/audiosilo-player`) - Swift and
 Kotlin are checked by the native checks below and, for everything with a device or OS
-in the loop, only by a device rebuild, which is why its invariants are documented so
-heavily in [Playback](playback.md).
+in the loop, only by a native build on a device, an emulator or the Simulator, which is
+why its invariants are documented so heavily in [Playback](playback.md).
 
 ## Native checks
 
@@ -368,9 +368,9 @@ Simulator. Jest and the web prove nothing about Swift or Kotlin.
 
 | You changed... | Run... |
 |---|---|
-| Android `TimelineMap`, `MediaItems` or the effects processors | [the Android JVM tests](#android-jvm-tests) |
+| Android `TimelineMap` (in `MediaItems.kt`) or the effects processors | [the Android JVM tests](#android-jvm-tests) |
 | iOS `VoiceBoostDSP.swift` or `ChapterClips.swift` | [the iOS self-check](#the-ios-self-check) |
-| Android Auto (the service, the browse tree, the car snapshot, the car JS) | [the DHU](#android-auto-on-the-desktop-head-unit) |
+| Android Auto (the service, the browse tree, the `MediaItems` queue builder and extras, the car snapshot, the car JS) | [the DHU](#android-auto-on-the-desktop-head-unit) |
 | CarPlay, the UIScene life cycle (`withCarPlay.js`, the scene delegates) | [the CarPlay Simulator](#carplay-in-the-ios-simulator) |
 | Lock screens, the audio effects by ear, widgets, the Live Activity, the token store | [a device](#on-devices) |
 
@@ -408,10 +408,16 @@ modules/audiosilo-player/ios/SelfCheck/run.sh
    info** ten times to enable developer mode. From the overflow menu, open **Developer
    settings** and turn on **Unknown sources** (Auto lists only apps from Google Play
    otherwise, and a dev build is sideloaded), then choose **Start head unit server**.
-3. Install a dev build, connect the phone by USB and start the DHU:
+3. Connect the phone by USB and install a dev build. Leave it running: `run:android` keeps
+   Metro in the foreground, and the debug build loads its JS from it:
 
    ```sh
    npx expo run:android
+   ```
+
+4. In a second terminal, start the DHU:
+
+   ```sh
    adb forward tcp:5277 tcp:5277
    cd "$ANDROID_HOME/extras/google/auto" && ./desktop-head-unit
    ```
@@ -478,10 +484,26 @@ Nothing else can show these:
 - Smart speed on real narration on Android (no clipped word edges) and its time saved;
 - Voice boost by ear, including a toggle mid-book (no dropout on iOS);
 - the widget and the sleep timer Live Activity (lock screen and Dynamic Island); the widget
-  extension in a dev build needs the dev bundle and App Group ids (see
-  [Native integrations](native-integrations.md#widgets-and-the-live-activity-ios));
+  extension in a dev build beside the store app needs its own ids (below);
 - a token read with the iPhone locked, after the token has moved to the after-first-unlock
   store.
+
+A dev build installed beside the store app (say `app.audiosilo.dev`) must not claim the
+store app's ids, and prebuild writes the store's ids into every target. After prebuild,
+change:
+
+- in `ios/AudioSilo.xcodeproj/project.pbxproj` (Debug and Release), the app target's
+  `PRODUCT_BUNDLE_IDENTIFIER` from `app.audiosilo` to `app.audiosilo.dev` and the extension
+  target's from `app.audiosilo.widget` to `app.audiosilo.dev.widget`, each with a
+  `DEVELOPMENT_TEAM` beside it;
+- `com.apple.security.application-groups` from `group.app.audiosilo` to
+  `group.app.audiosilo.dev` in `ios/AudioSilo/AudioSilo.entitlements` and
+  `ios/ExpoWidgetsTarget/ExpoWidgetsTarget.entitlements`;
+- `ExpoWidgetsAppGroupIdentifier` (which expo-widgets reads at runtime) to the same group in
+  `ios/AudioSilo/Info.plist` and `ios/ExpoWidgetsTarget/Info.plist`.
+
+A half-patched build signs but shows an empty widget, so after the build check the app's
+bundle id and the embedded extension's bundle id and group.
 
 ## The full gate and CI
 

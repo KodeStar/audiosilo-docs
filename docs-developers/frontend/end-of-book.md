@@ -41,10 +41,10 @@ transition records `finished: true`.
   (`whenActive`, `src/lib/when-active.ts`), unless another book is loaded by then.
 - **`end-of-book.ts`** holds the moving-on, framework-free (the end of a book can
   run with no screen mounted): `advanceTo(next)` starts the next book through
-  `startBookInPlace` (`start-book.ts`: item and chapters through the query cache - for
-  a downloaded book, asked of its server first with a `FRESH_SOURCE_WAIT_MS` (3 s) limit,
-  then the download's own copy, so it starts offline and from the car - then `playBook` -
-  the one way a book starts outside the player route; the
+  `startBookInPlace` (`start-book.ts`: item and chapters through the query cache, then
+  `playBook`; a downloaded book asks its server first, for up to `FRESH_SOURCE_WAIT_MS`
+  (3 s), and otherwise uses the download's own copy, so it starts offline and from the
+  car. `startBookInPlace` is the one way a book starts outside the player route; the
   `/player` route only *shows* a book started that way) and then takes its queue
   entry off Up next; `dropFromQueue(connectionId, books)` removes books from one
   connection's queue (below); `useAutoPlayHold` holds the `contentKey` of a book
@@ -133,8 +133,9 @@ The resolver's reads (`up-next-sources.ts`: the capability read, the queue, the
 finished set, `/next`) go through `fetchFailFast` (`api/hooks.ts`): TanStack holds a
 default fetch while the browser says it's offline and waits to retry until a hidden
 tab is focused, so a background tab's end-of-book chain waited silently. (The start
-itself, `startBookInPlace`'s item and chapters, and `dropFromQueue`'s queue read are
-still ordinary `fetchQuery` reads.)
+reads the same way: `startBookInPlace`'s item and chapters come through
+`fetchBookSource`, `src/playback/book-source.ts`. Only `dropFromQueue`'s queue read is
+still an ordinary `fetchQuery`.)
 `fetchFailFast` asks with `networkMode: 'always'`, never retries, and first cancels
 a paused fetch a mounted hook holds for the same key; `fetchCapabilities` reads the
 `/server` flags that way with the cached flags as the fallback.

@@ -612,30 +612,32 @@ registry that those owners subscribe to (they can't be imported directly here -
 they import the session store, so a direct import would cycle); a failing cleanup
 is logged, never blocks removal. `status` is
 `loading | unauthenticated | authenticated`, and the `(app)` layout guard
-redirects on it.
+redirects on it. `user` mirrors the default connection's (`defaultConnectionId`)
+user, for ergonomic selectors.
 
 **A hydrate that can't read the tokens** leaves `sessionHydrateFailed()` true: the
 persisted connections are not in memory, so nothing may act on the empty list as if it
 were real (`sessionReady()` stays false, so the offline queue's replay keeps every save
 instead of dropping them as unroutable; car bookmarks waiting to be sent are kept; the car
-snapshot isn't rewritten as signed out; a sign-in hydrates first, so it can't write a list
-holding only its own server). On iOS a failure that is only the **locked keychain**
+snapshot isn't rewritten as signed out; a sign-in hydrates first, so it keeps the stored
+servers, and only when that read fails again does it write a list holding just its own
+server and stop retrying). On iOS a failure that is only the **locked keychain**
 (`isLockedKeychainError`, "interaction is not allowed": a CarPlay launch with the phone
 locked, before the token moved to its after-first-unlock item, see
 [Native integrations](native-integrations.md#tokens-on-a-locked-phone-srclibsecure-storets))
 keeps `status` on `loading` (screens wait on their spinner, never the connect screen) and
 retries every `LOCKED_RETRY_MS` (5 s) and when the app comes to the front. Any other failure
 is surfaced as `unauthenticated` (never stuck on `loading`) and retried on the next
-foreground. `user` mirrors the default connection's (`defaultConnectionId`)
-user, for ergonomic selectors.
+foreground.
 
 ### Settings (`src/stores/settings.ts`)
 
 Playback tunables persisted as one JSON blob (`audiosilo.settings`):
 `skipForward` (30), `skipBackward` (15), `defaultRate` (1), `autoRewindMax`
-(5 s), `virtualChapterInterval` (30 min). The playback layer subscribes and
-re-`configure`s the engine whenever these change. The same document holds the
-end-of-book and download behaviour - `autoPlayNext` (off), `autoDownloadNext`
+(5 s), `virtualChapterInterval` (30 min), and the audio effects `smartSpeed` and
+`voiceBoost` (off; see [Smart speed and Voice boost](audio-effects.md#the-settings-and-the-ui)).
+The playback layer subscribes and re-`configure`s the engine whenever these change.
+The same document holds the end-of-book and download behaviour - `autoPlayNext` (off), `autoDownloadNext`
 (`never | wifi | always`, default `wifi`), `keepAhead` (`0 | 1 | 2 | 3`, default
 `0` = off; `toKeepAhead` reads a stored value that isn't one as off; see
 [Offline](offline.md#keep-the-next-books-ready-keep-aheadts--keep-ahead-controllerts))
@@ -646,7 +648,8 @@ and `autoDeleteFinished`
 
 `useSeriesOrderings` holds `picks` - family key -> the id of the reading order the
 reader chose - persisted as one JSON document (`audiosilo.seriesOrderings`, validated
-by `parsePicks`) and hydrated once at boot from `_layout.tsx`. It is a **device**
+by `parsePicks`) and hydrated once at boot by `bootstrapPlayback` (`src/lib/bootstrap.ts`,
+which the root layout and the car's headless task run). It is a **device**
 preference, not per-server state: family keys are community-metadata series ids, the
 same on every server, so it is deliberately not one of the session's scoped storage
 keys and neither storage-reset axis wipes it.
@@ -685,15 +688,18 @@ the read finished on top of the stored list.
 
 `useLibrarySelection` is the library the Library tab's single-library modes show:
 `{ connectionId, libraryId }` or null, a `persistedDocument` under
-`audiosilo.librarySelection`, hydrated at boot from `_layout.tsx`. An
+`audiosilo.librarySelection`, hydrated at boot by `bootstrapPlayback`. An
 `onConnectionRemoved` handler drops a removed connection's pick; it is not a scoped
 storage key, because a stale pick is harmless. Read it through
 `useSelectedLibrary()` (`src/components/library/use-selected-library.ts`), which runs
 the pure `resolveLibrarySelection` against every connection's library list (sharing
 `qk.libraries`): the stored pick while its server's list still has it - or while
-that list is loading or failing, since offline is not gone - else the first library
-of the first connection, waiting (null) at a connection that is still loading so
-the pick never jumps from a later server to an earlier one.
+that list is loading or failing, since offline is not gone - else the library the
+modes last showed (`shown`, in memory only) while it stands, else the first library of
+the first connection that has one. That fallback passes over a connection still
+loading (a slow first server would otherwise hold the Library up), and holding `shown`
+keeps it from jumping to that earlier server when its list arrives. The car's Library
+tab resolves its library the same way.
 
 ### Other device preferences
 
@@ -758,7 +764,7 @@ The offline-safe write path for listening progress:
   [Playback](playback.md#resume-protection).
 - **Launch reset + purge.** The mirror and the queue need no migration of their own:
   the launch-time `migrateStorage()` (`src/lib/storage-migration.ts`, one memoised run
-  the root layout awaits before any store hydrates) runs `resetStaleStorage`
+  `bootstrapPlayback` awaits before any store hydrates) runs `resetStaleStorage`
   (`src/stores/session.ts`), which reconciles storage along two independent version
   axes. The **auth** axis (`audiosilo.storageVersion`, now `2`) wipes the connections,
   their tokens, the pre-multi-server single-session keys and, with them, the scoped
@@ -767,7 +773,7 @@ The offline-safe write path for listening progress:
   scoped cache (`audiosilo.downloads`, `audiosilo.progressMirror`,
   `audiosilo.progressQueue`, `audiosilo.offlineServers`) and keeps every login: it is
   the knob for any change to how that cache is keyed (a pre-split install adopts the
-  version without a wipe). Either reset makes the root layout wipe the on-disk
+  version without a wipe). Either reset makes `bootstrapPlayback` wipe the on-disk
   downloads too. An `onConnectionRemoved` handler drops a removed connection's mirror
   records and queued saves.
 
@@ -816,5 +822,8 @@ The split exists because tokens are the only true secret the app holds:
 hardware-backed storage on native is worth the extra API, while everything else
 is non-sensitive state that benefits from the simpler JSON layer. On web both
 tiers degrade to localStorage - same-origin script access is the trust boundary
-there regardless. Both modules swallow storage errors (best-effort semantics),
-so callers never need try/catch for a full disk or a blocked localStorage.
+there regardless. `storage.ts` swallows storage errors (best-effort semantics), so
+its callers never need try/catch for a full disk or a blocked localStorage.
+`secure-store.ts` does so only on the web: on native a token read can reject (on iOS
+a locked keychain, "interaction is not allowed"), and the session's hydrate relies on
+that ([Session](#session-srcstoressessionts)).
