@@ -219,15 +219,20 @@ The practical consequences for a deployment:
 audiosilo-meta is the **upstream** of a three-repo metadata seam. `metaserve`
 serves the community data; the AudioSilo server composes a book's enrichment from
 it (and re-exposes a single work document, unchanged, for the earlier books of a
-series the listener may not own); the player renders both.
+series the listener may not own); the player renders both. Covers are
+referenced by URL, so the server also fetches the images behind those `cover_url`s
+from their own hosts and hands the player thumbnails (`meta_covers`): a
+listener's device never contacts a cover host.
 
 ```mermaid
 flowchart LR
     meta["audiosilo-meta<br/>metaserve (this repo)"]
+    hosts["cover image hosts<br/>(each cover_url)"]
     srv["audiosilo-server<br/>internal/meta"]
     player["audiosilo-frontend<br/>book screen"]
     meta -->|"GET /lookup, /works/{id}, /series/{id};<br/>admin match: /works/match"| srv
-    srv -->|"GET /libraries/{id}/meta (composed envelope)<br/>GET /meta/work?id= (one work, passed through)"| player
+    hosts -->|"cover images, fetched by the server<br/>(public addresses only, bounded)"| srv
+    srv -->|"GET /libraries/{id}/meta (composed envelope)<br/>GET /meta/work?id= (one work, passed through)<br/>GET /libraries/{id}/meta/cover (cover thumbnails)"| player
 ```
 
 The seam of record is
