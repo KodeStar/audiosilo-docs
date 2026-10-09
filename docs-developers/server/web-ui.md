@@ -788,6 +788,12 @@ base-uri 'none'; frame-ancestors 'none'
 `media-src blob:` and `img-src blob:` support the player's offline
 (service-worker / object-URL) playback paths.
 
+`img-src` deliberately names no other host (`TestHTMLCSPImagesStaySameOrigin`
+pins it). Community covers, whose `cover_url` points at a third-party host, reach
+the player through the server instead, as thumbnails from
+[`GET /libraries/{id}/meta/cover`](api/reference.md#get-apiv1librariesidmetacover)
+(`meta_covers`); on a server without that route the web player shows placeholders.
+
 ### The `embedplayer` build tag
 
 Native single-binary releases bake the player in so `/web` works with no

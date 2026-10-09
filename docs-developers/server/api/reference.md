@@ -40,6 +40,7 @@ else and gate features on the flags.
     "metadata": true,
     "export": true,
     "meta_bundle": true,
+    "meta_covers": true,
     "browse_people": true,
     "cover_sizes": true,
     "next_book": true,
@@ -110,6 +111,9 @@ covers. `addresses` (always `true`, absent on an older server) says the server r
 its [home and away addresses](#home-and-away-addresses): on every pairing payload and
 its links, on the exchange, login and demo answers, and at
 [`GET /addresses`](#get-apiv1addresses).
+`meta_covers` (the same as `metadata`, absent on an older server) says the server
+serves the community covers a book's `/meta` envelope hands out, as thumbnails at
+[`GET /libraries/{id}/meta/cover`](#get-apiv1librariesidmetacover).
 
 ### `GET /healthz` · `GET /api/v1/healthz`
 
@@ -1398,6 +1402,64 @@ that the client treats as "nothing to show":
 | `404` | `no book at that path`, **or** metadata lookup is disabled on this server (`metadata` capability false) |
 | `500` | with `spoilers=hide`, `could not load progress` - the caller's progress could not be read; the ungated envelope is never sent instead |
 | `502` | `metadata service unavailable` - the upstream was unreachable or errored and the server holds no earlier answer for the book |
+
+### `GET /api/v1/libraries/{id}/meta/cover`
+
+*Session (media).* A community cover from the book's `/meta` envelope, as a JPEG
+thumbnail the server fetched: a series rail entry's `cover_url` (main view or any
+ordering, so the `previous[]` books too) or the recording's. This is how the player
+shows community covers. The web player's CSP takes images only from the server, so
+it can't load a `cover_url` from its own host, and with this route a listener's
+device never contacts the cover hosts at all. Gated by the `meta_covers`
+[capability](#get-apiv1server), which follows `metadata`: when it is false the
+route returns 404. Like `/cover` it takes media auth, so the session token may ride
+as `?token=` on an `<img>`.
+
+| Query param | Type | Required | Notes |
+|---|---|---|---|
+| `path` | string | yes | the book whose `/meta` envelope handed out the cover; authorized against the caller's share scope exactly like `/meta` |
+| `url` | string | yes | the `cover_url`, exactly as the envelope carries it |
+| `size` | int | no | `160`, `320` (default) or `640`: the thumbnail's longest side in pixels |
+| `token` | string | no | media-auth fallback |
+
+**Not an open proxy.** The server looks up the book's envelope (the same lookup and
+cache as `/meta`) and serves `url` only when it is, character for character, a
+cover URL that envelope hands out. Anything else is `404 no such cover` before
+anything is fetched, so a caller can make the server fetch only images it could
+already see named in a book it can reach. The fetch itself keeps the guards of
+[`PUT …/cover/community`](#put-apiv1adminlibrariesidcovercommunity): public
+addresses only, at most 3 redirects, 15 seconds, at most 16 MiB.
+
+Response `200`: `image/jpeg`, the image decoded and re-encoded within `size` x
+`size` pixels (never scaled up), so the upstream's bytes and content type never
+reach the client.
+
+- Thumbnails come from the server's in-memory thumbnail cache, the one
+  [`POST /admin/meta/covers`](#post-apiv1adminmetacovers) uses (keyed by URL and
+  size). Requests for the same thumbnail at once share one fetch.
+- `ETag` is `"community-<size>-<hash>"`, the hash of the URL, and
+  `Cache-Control` is `private, max-age=86400` (a community cover URL names one
+  image; a new cover is a new URL). A matching `If-None-Match` is a `304` without
+  the image being fetched.
+- **A failed fetch is not cached, but it is remembered for 1 minute**: until then
+  the same URL is answered `502 cover_unavailable` straight away, without asking
+  its host again, so a broken or hung host isn't fetched on every render. The
+  console's batch ignores that window and always tries again.
+- An image that can't be decoded or is over 40 megapixels is cached as "no
+  cover" (`404`).
+- Unlike `/cover` and `/stream`, this route stays under the 30 s
+  [request timeout](index.md#error-envelope-and-status-conventions): it is a
+  bounded thumbnail, not a stream.
+
+| Status | Meaning |
+|---|---|
+| `200` | the JPEG thumbnail |
+| `304` | `If-None-Match` matched |
+| `400` | `url is required`; `size must be one of [160 320 640]` (an empty `size=` too); `path is required` / `invalid library id` |
+| `401` | missing/invalid token |
+| `403` | path outside the caller's share scope |
+| `404` | `no such cover` - the book is unmatched (no `asin`/`isbn`, or no match upstream) or its envelope hands out no such URL; `no cover` - the image isn't one the server can decode, or is over 40 megapixels; `no book at that path`; `metadata lookup not enabled` (`meta_covers` false) |
+| `502` | `metadata service unavailable` - the book's envelope couldn't be had; `code: "cover_unavailable"` - the image couldn't be fetched (an address that isn't public, a timeout, too many redirects, an answer other than `200`), or its fetch failed less than a minute ago |
 
 ### `GET /api/v1/meta/work`
 
@@ -4146,8 +4208,11 @@ Response `200`, one entry per requested URL, in request order:
   couldn't be fetched or decoded (a URL that isn't http(s), one too large, or
   not an image, too).
 - Thumbnails are cached in the same server memory cache, keyed by URL and
-  size. An image that couldn't be decoded is cached as `""`; a fetch that
-  failed is not, so the next request tries again.
+  size, and shared with the player's
+  [`/meta/cover`](#get-apiv1librariesidmetacover). An image that couldn't be
+  decoded is cached as `""`; a fetch that failed is not, so the next request
+  tries again (this batch ignores the minute `/meta/cover` waits after a failed
+  fetch). Requests for the same thumbnail at once share one fetch.
 - The whole batch has 20 seconds: an image that hasn't arrived by then is
   answered `""` rather than holding the rest back. Fetches are bounded across
   all requests.
