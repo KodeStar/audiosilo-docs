@@ -161,9 +161,11 @@ chunk (`import.meta.glob` in `src/i18n/index.ts`), loaded when it is chosen.
   `go build` without Node still compiles - and `/admin` then answers **503**
   with a short "console not built" page that says how to build it.
 - `scripts/build-admin.sh` is the one recipe (`npm ci`, `npm run check`, `npm
-  run build`; `--build-only` skips the check). **CI** (`ci.yml`) runs it
-  **before** the Go steps, so `TestEmbeddedBuild` checks the
-  real embedded `index.html` (it skips locally when nothing is built). The
+  run build`; `--build-only` skips the check, `--vite-only` also skips the
+  typecheck). **CI** (`ci.yml`) runs the full recipe in its `admin-ui` job,
+  and `--vite-only` in the Go job **before** the Go steps, so
+  `TestEmbeddedBuild` checks the real embedded `index.html` (it skips locally
+  when nothing is built). The
   **Dockerfile** has a `node:24-alpine` stage that builds the console and
   copies `dist` in before `go build`; **GoReleaser** runs the script as a
   before-hook. The build fails on any CSP violation (a Vite plugin).
