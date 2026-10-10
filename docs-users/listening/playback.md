@@ -24,10 +24,10 @@ When the bar is short of room (a narrower window, or the undo button taking its 
 
 ## Play to another speaker (AirPlay and Chromecast)
 
-The **output** button in the full player (and on the player bar) hands audio off to another output:
+The **output** button in the full player (and on the player bar; a screen reader calls it **Audio output**) hands audio off to another output:
 
 - **iPhone / iPad** - opens the AirPlay picker, so you can send playback to a HomePod, an Apple TV, or AirPlay speakers.
-- **Android** - opens the system output switcher, for a Bluetooth speaker (an Echo paired as a speaker, for example).
+- **Android** - opens the system's media output panel (or the Bluetooth settings where there isn't one), for a Bluetooth speaker (an Echo paired as a speaker, for example).
 - **Web** - uses AirPlay in Safari. Other browsers have no output picker, so the button is hidden there.
 
 To play on a **Chromecast**, a TV with Google Cast or a Nest speaker, use the **Cast** button beside it instead: see [Chromecast](chromecast.md).
