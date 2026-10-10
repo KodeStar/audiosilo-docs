@@ -1709,17 +1709,22 @@ A Chromecast receiver plays a book from URLs the player hands it, so the player
 never hands over its session token: it mints a **cast token** for the book with
 [`POST /cast/token`](#post-apiv1casttoken) and builds the receiver's URLs with that
 instead. The two routes above accept one as the `?token=` (the middleware
-`requireBookMediaAuth`; `api.castAuthenticate`) only when **all** of these hold:
+`requireBookMediaAuth`; `auth.ResolveCastRequest`, one token lookup that decides
+session, API key or cast) only when **all** of these hold:
 
 - the request carries **no** `Authorization` header (a cast token is never a bearer
-  credential, nor accepted beside one) and the session or API-key lookup of the
-  `?token=` failed first;
-- the token exists and has not expired (24 hours from its mint), and its user still
-  exists and is not disabled;
+  credential, nor accepted beside one);
+- the token is live: not revoked, not expired (24 hours from its mint), its user
+  still exists and is not disabled, and **the token that minted it** (the sending
+  device's session) is still signed in;
 - the request's library is the token's, and its `?path=` (cleaned first, so `..`
   can't climb out) is the token's book or a file or folder inside it on a segment
   boundary: a token for `Author/Book` reaches `Author/Book/01.mp3`, never
-  `Author/Book 2/01.mp3`.
+  `Author/Book 2/01.mp3`;
+- the path addresses the token's **own** book in the index (`api.castOwnBook`): a
+  folder book's folder can hold other books (`Series` holding `Series/Book 2`), and
+  a cast token for `Series` never reaches them; a path the index places in no book is
+  refused too.
 
 Any refusal is the same `401` as a bad session token. The handler then checks the
 person's **current** share scope as for every request, so a book whose share was
@@ -1733,9 +1738,9 @@ that loads the files as `<audio>` and `<img>`, which the browser would otherwise
 block. Only these answers opt out. A cast token authenticates `?transcode=1&t=`
 like a session (the player asks for it for codecs a Cast receiver can't play);
 each such stream holds one of the transcoder's slots while the receiver reads it,
-and a cast stream does not mark the listening session as transcoded (the sender's
-own progress saves make the session). The media rate limiter keeps a separate
-bucket per cast token.
+and it marks the **sending device's** listening session as transcoded (the sender's
+own progress saves make the session). The media rate limiter keys a cast token by its
+token id like any credential, so it has a bucket of its own.
 
 ## Listening state
 
@@ -2715,8 +2720,8 @@ token** instead of the player's session token (`internal/auth/cast.go`,
 `internal/api/handlers_cast.go`). Where the token is accepted is
 [Cast tokens as media auth](#cast-tokens-as-media-auth). For the web player to
 cast, the per-document CSP of `/web` admits Google's Cast Web Sender:
-`script-src` names `https://www.gstatic.com`, the only remote origin in the
-policy (see [Web UI](../web-ui.md#per-document-csp-htmlcsp)).
+`script-src` names its three scripts on `https://www.gstatic.com` by path, the only
+remote sources in the policy (see [Web UI](../web-ui.md#per-document-csp-htmlcsp)).
 
 ### `POST /api/v1/cast/token`
 
@@ -2737,23 +2742,26 @@ Response `201`:
 
 The path resolves exactly as on the media routes, and a part path (one file, or a
 disc folder) resolves to its book: the token then covers every file of that book.
-The secret is returned once; only its SHA-256 hash is stored. A token lives 24
-hours (`CastTokenTTL`), and each mint deletes every expired cast token and keeps
-the caller's newest 20 (`MaxCastTokens`), dropping the oldest. A demo account may
-mint (it can play).
+The secret is returned once; only its SHA-256 hash is stored. It is a `tokens` row
+of kind `cast` with a `cast_grants` row naming its book and its **parent**: the
+caller's own token. A token lives 24 hours (`expires_at` falls on a whole second),
+and each mint deletes every dead cast token (expired, or its parent signed out) and
+keeps the caller's newest 20, dropping the oldest; the daily retention job prunes
+the dead ones too. A demo account may mint (it can play).
 
 | Status | Meaning |
 |---|---|
 | `201` | `{ token, expires_at }` |
 | `400` | `invalid request` (a malformed body or an unknown field), `path is required` |
 | `401` | no session (a cast token can't mint another: it is never a bearer credential) |
-| `403` | the library or the path is outside the caller's access; or `not available when authenticating with an API key` (a key must not spawn a credential that outlives its revocation) |
+| `403` | the library or the path is outside the caller's access; or `not available when authenticating with an API key` (a key never mints another credential) |
 | `404` | no book at the path |
 | `500` | `could not start casting` |
 
-Signing out the device that minted a token does not revoke it (the table records
-no device): a cast token still dies with its 24 hours, its user's deletion or
-disabling, and a change of share scope (checked at every request).
+A cast token ends when its 24 hours run out, when **the device that minted it signs
+out** (`POST /auth/logout`, the listener's own [devices](#delete-apiv1medevicesid)
+or the admin's), and with its user's deletion or disabling; a change of share scope
+is checked at every request. A cast token is never listed as a device.
 
 ## Admin: users & auth codes
 

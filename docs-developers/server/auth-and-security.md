@@ -40,8 +40,9 @@ codes/tokens in the response body and store only the hash.
 
 ## Tokens: session, pairing, and API keys
 
-`tokens.kind` distinguishes three kinds (`auth.KindSession`, `auth.KindPairing`,
-`auth.KindAPI`):
+`tokens.kind` distinguishes three kinds of credential a client holds
+(`auth.KindSession`, `auth.KindPairing`, `auth.KindAPI`), plus the
+[cast tokens](#cast-tokens) a player hands a Chromecast receiver (`auth.KindCast`):
 
 - **Session tokens** are the durable bearer credential (`Authorization: Bearer
   …`). Issued by `POST /auth/login` and `POST /auth/exchange` with **no
@@ -79,37 +80,43 @@ codes/tokens in the response body and store only the hash.
 
 ### Cast tokens
 
-A **cast token** (capability `cast`, `internal/auth/cast.go`) is a fourth
-credential, kept apart from the three above: it is not a `tokens.kind` but a row
-in its own `cast_tokens` table, and its request credential has the kind
-`auth.KindCast`. A player mints one (`POST /cast/token`, `auth.IssueCastToken`)
-for the book it is about to play on a Chromecast, and the receiver's stream and
-cover URLs carry it instead of the session token: a receiver is a device the
-listener doesn't control, and its URLs can surface in its logs or a debugger. It
-is narrow on every axis:
+A **cast token** (capability `cast`, `internal/auth/cast.go`) is a fourth kind of
+`tokens` row, `kind = 'cast'` (`auth.KindCast`), with a `cast_grants` row that says
+what it may read. A player mints one (`POST /cast/token`, `auth.IssueCastToken`) for
+the book it is about to play on a Chromecast, and the receiver's stream and cover
+URLs carry it instead of the session token: a receiver is a device the listener
+doesn't control, and its URLs can surface in its logs or a debugger. It is narrow on
+every axis:
 
-- **One book.** `auth.CastGrant.Covers(libraryID, path)` reaches only the
-  `(library, path)` it was minted for, or a file or folder inside it on a segment
-  boundary (`Book` never reaches `Book 2`; the path is cleaned by
-  `catalog.CleanRelPath` first, so `Book/../Book 2` doesn't either). A mint for a
-  part path stores its book's path.
-- **Media only.** `api.castAuthenticate` accepts it only as the `?token=` of
-  `GET /libraries/{id}/cover` and `/stream`, only after the session/API-key lookup
-  failed, and never when the request carries an `Authorization` header. It is
-  never a bearer credential, so it can't reach any other route, mint another cast
+- **One book.** Its grant reaches only the `(library, path)` it was minted for, or a
+  file or folder inside it on a segment boundary (`relpath.Within`: `Book` never
+  reaches `Book 2`; the path is cleaned first, so `Book/../Book 2` doesn't either).
+  A mint for a part path stores its book's path. And because a folder book's folder
+  can hold other books (`Series` holding `Series/Book 2`), `api.castOwnBook` also
+  requires the requested path to address the token's **own** book in the index
+  (`catalog.BookPathAt`); a path the index places in no book is refused.
+- **Media only.** `auth.ResolveRequest` never accepts a cast token;
+  `auth.ResolveCastRequest` does, and the api calls it only for the `?token=` of
+  `GET /libraries/{id}/cover` and `/stream` with **no** `Authorization` header. It
+  is never a bearer credential, so it can't reach any other route, mint another cast
   token, or reach `/meta/cover`.
-- **Short-lived.** 24 hours (`CastTokenTTL`); a person keeps at most 20 live
-  (`MaxCastTokens`), and each mint deletes every expired one.
-- **Still the person's.** `auth.ResolveCastToken` refuses it once its user is
-  disabled (a deleted user's tokens go with the account, `ON DELETE CASCADE`), and
-  the media handlers check the person's **current** share scope, so a revoked
-  share is a `403`.
+- **Tied to the sending device.** The grant's `parent_token_id` is the session that
+  minted it. Validity is `lookupToken`'s one check (unknown, revoked, expired,
+  disabled user) plus, for a cast token, a grant and a live parent, so **signing out
+  the device that minted it** (logout, My devices, the console) ends it.
+- **Short-lived.** 24 hours; a person keeps at most 20, and each mint deletes every
+  dead cast token (expired, no grant, or its parent gone, signed out or expired). The
+  daily retention job runs the same prune (`auth.PruneCastTokens`), so a dead token's
+  row (the receiver's `last_ip`) and grant (which book was cast) never outlive it by
+  more than a day.
+- **Still the person's.** A disabled or deleted account ends it, and the media
+  handlers check the person's **current** share scope, so a revoked share is a
+  `403`.
 
 Only the SHA-256 hash is stored. Any refusal is the uniform `401`. An API key may
-not mint one (`denyAPIKey`, the containment rule above); a demo account may (it
-can play). **Known limit:** signing out the device that minted a cast token does
-not revoke it, since the table records no device: it still dies with its 24 hours,
-the account's deletion or disabling, and a change of scope.
+not mint one (`denyAPIKey`, the containment rule above: a key never mints another
+credential); a demo account may (it can play). A cast token is never a **device**:
+`ListDevices` and the device sign-outs take only session and API-key tokens.
 
 `auth.ResolveRequest` (which `ResolveToken` wraps for a single kind) validates a presented secret for the accepted kinds: it hashes
 the secret, looks up the row, and rejects revoked tokens, expired tokens, and
@@ -149,8 +156,8 @@ The middleware wrappers in `internal/api/middleware.go`:
   confines the fallback deliberately: a token in a query string can leak into
   access logs and `Referer` headers, so no other route accepts it. An API key
   works here too, since it authenticates wherever a session does.
-- `requireBookMediaAuth` - `requireMediaAuth` that, when that authentication
-  fails, also tries a [cast token](#cast-tokens) (`castAuthenticate`). Only a
+- `requireBookMediaAuth` - `requireMediaAuth` whose one token lookup also accepts a
+  [cast token](#cast-tokens) (`ResolveCastRequest`, then `castOwnBook`). Only a
   book's own cover and stream use it; `/meta/cover` keeps `requireMediaAuth`.
   A cast-authenticated answer sets `Cross-Origin-Resource-Policy: cross-origin`
   (below).
@@ -475,8 +482,8 @@ policy itself: it refuses the request while the address's `ipLimiter` bucket is
 empty (`Ready`, which checks without spending), charges that bucket one token
 when authentication fails (no token, or a bad one), so unauthenticated media is
 bounded exactly like the general API, and otherwise spends from `mediaLimiter`,
-keyed by the credential (token row id, or `cast:<id>` for a cast token, whose
-ids would collide with the tokens': `mediaBucket`) rather than the address: several people
+keyed by the credential (its token row id; a cast token is a `tokens` row too, so it
+has a bucket of its own) rather than the address: several people
 behind one address would otherwise share a budget. A request its credential's
 bucket refuses has still cost a token lookup, so it is charged to the address
 too. Charges use `Charge`, which always lands, even past empty (down to minus
@@ -524,8 +531,9 @@ Two policies, both owned by `internal/web`:
   images allowed for the connect page's QR PNG and the console's covers,
   `frame-ancestors 'none'`.
 - The **web player** at `/web` gets a per-document `htmlCSP`: `script-src
-  'self'`, `https://www.gstatic.com` (the Cast Web Sender, capability `cast`: the
-  only remote origin in either policy) and a sha256 hash of each inline
+  'self'`, the Cast Web Sender's three scripts on `https://www.gstatic.com` by path
+  (capability `cast`: the only remote sources in either policy, never the whole
+  origin) and a sha256 hash of each inline
   `<script>` in that HTML document, and `style-src 'unsafe-inline'`
   (react-native-web injects runtime styles that cannot be hashed).
 
@@ -560,8 +568,8 @@ The enumerated critical list:
 - `Scope.Allows` / `Scope.VisibleInBrowse` / `pathFilterSQL`
 - the rate limiters (`limiter`, `rateLimiter`) and the route classes in `rateLimit`
 - `auth.ResolveRequest` / `lookupToken`
-- the cast token checks: `auth.CastGrant.Covers`, `auth.ResolveCastToken`,
-  `api.castAuthenticate`
+- the cast token checks: `relpath.Within` / `relpath.Clean`, the grant's `covers`,
+  `auth.ResolveCastRequest`, `api.authenticate` / `castOwnBook`
 - `web.htmlCSP`
 
 Anything touching these must land with a test showing the permitted case *and*

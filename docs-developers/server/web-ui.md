@@ -862,18 +862,23 @@ and emits:
 ```
 default-src 'self'; img-src 'self' data: blob:; media-src 'self' blob:;
 font-src 'self' data:; style-src 'self' 'unsafe-inline';
-script-src 'self' https://www.gstatic.com 'sha256-…' […]; connect-src 'self';
+script-src 'self' https://www.gstatic.com/cv/js/sender/v1/cast_sender.js
+  https://www.gstatic.com/cast/sdk/libs/sender/1.0/cast_framework.js
+  https://www.gstatic.com/eureka/clank/ 'sha256-…' […]; connect-src 'self';
 base-uri 'none'; frame-ancestors 'none'
 ```
 
 - **`script-src` stays strict** - only the exact inline scripts present in
-  that document run; no `'unsafe-inline'`. The one remote origin is
-  `https://www.gstatic.com` (`castSenderOrigin`): Google's Cast Web Sender
-  (`cast_sender.js` and the Cast framework it loads), which the player loads
-  lazily on Chromium to cast (capability `cast`, see
-  [Chromecast](../frontend/chromecast.md)). Nothing else widens:
-  `TestHTMLCSPCastSender` pins the whole policy string, so a second origin, or the
-  Cast origin leaking into another directive, fails the test.
+  that document run; no `'unsafe-inline'`. The only remote sources are Google's
+  Cast Web Sender's three scripts on `https://www.gstatic.com`, named **by path**
+  (`castSenderScripts`): `cast_sender.js` (the player adds `?loadCastFramework=1`,
+  which a source's path ignores), the Cast framework it loads, and the Chrome sender
+  API it loads from `/eureka/clank/`. The player loads them lazily on Chromium to cast
+  (capability `cast`, see [Chromecast](../frontend/chromecast.md)). Never the whole
+  origin: `www.gstatic.com` also serves AngularJS, a known CSP allowlist bypass that
+  would let an HTML injection run script. Nothing else widens:
+  `TestHTMLCSPCastSender` pins the whole policy string, so another source, or a Cast
+  source leaking into another directive, fails the test.
 - **`style-src` allows `'unsafe-inline'`** deliberately: react-native-web and
   Uniwind inject style rules at runtime, which cannot be hashed ahead of
   time. This is the single relaxation, confined to the player.

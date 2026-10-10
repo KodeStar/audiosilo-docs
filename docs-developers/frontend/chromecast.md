@@ -68,7 +68,9 @@ the store built.
   path)` and reuses it for that book until an hour before it expires
   (`CAST_TOKEN_MARGIN_MS`): a receiver still fetches later files and seeks with it.
   Concurrent asks share one request. In memory only, never persisted; a removed
-  connection's tokens are dropped (`onConnectionRemoved`).
+  connection's tokens are dropped (`onConnectionRemoved`). On the server a cast token
+  is tied to the session that minted it, so signing this device out of the server
+  ends its cast tokens too.
 
 The pure rules are `cast-media.ts`:
 
@@ -87,7 +89,9 @@ The pure rules are `cast-media.ts`:
 
 The web player's Remote Playback prompt (`el.remote.prompt()`) was **removed** for
 this reason: it hands the receiver the element's own URL, which carries the session
-token. The web's route picker is now Safari's AirPlay only (`routePickerKind`).
+token. The web's route picker is now Safari's AirPlay only (`routePickerKind`), and
+the output pill beside the Cast button is labelled "Audio output" on every platform
+(AirPlay on iOS and Safari, the media output panel on Android).
 
 ## The drivers
 
@@ -101,11 +105,16 @@ reports the session's life (`starting`, `started`, `resumed`, `startFailed`,
   Play services isn't available. Status comes from the `RemoteMediaClient` events,
   with reads bounded to 1.5 s (an Android getter can hang).
 - **Web**: Google's Cast Web Sender (`cast_sender.js?loadCastFramework=1` from
-  `https://www.gstatic.com`), only on Chromium in a secure context
-  (`webCastSupported`: `window.isSecureContext` and a Chromium brand; never Safari,
-  Firefox or any iOS browser), loaded **lazily** the first time the Cast button
-  shows (`ensureCastReady`, 15 s timeout), never at startup. The server's web CSP
-  admits that one origin in `script-src`
+  `https://www.gstatic.com`), only on Chromium on an **https** page
+  (`webCastSupported`: a secure context, `location.protocol` `https:`, and a
+  Chromium brand; never Safari, Firefox or any iOS browser). A secure context alone
+  is not enough: on `http://localhost` the sender loads its framework from
+  scheme-relative URLs that become `http://`, which the CSP refuses (and a receiver
+  couldn't reach a localhost server anyway). It is loaded **lazily** the first time
+  the Cast button shows for a book it can cast (`ensureCastReady`, 15 s timeout),
+  never at startup and never for a button that can only explain a blocked book; a
+  failed load is kept for the page rather than retried. The server's web CSP admits
+  the sender's three scripts by path in `script-src`
   ([Web UI](../server/web-ui.md#per-document-csp-htmlcsp)).
 
 ## The Cast button
@@ -180,8 +189,6 @@ reads where the TV got to when it comes back (`refresh`).
   from there.
 - The docked player shows the Cast button only when it is wide enough for all its
   actions; the full player always has it.
-- The server can't revoke a cast token when the device that minted it signs out (it
-  still dies after 24 hours, with the account, or with a change of access).
 
 ## Testing
 

@@ -548,9 +548,10 @@ No realtime channel. Client side:
 `201 { token, expires_at }`, a 24-hour credential for one book, accepted only as
 the `?token=` of that book's cover and stream (never as a header, never on another
 route, never `/meta/cover`, never for another book or library), with
-`Cross-Origin-Resource-Policy: cross-origin` on the answers it authenticates. The
-web player's CSP admits the Cast Web Sender's origin, `https://www.gstatic.com`, in
-`script-src` and nothing else. The player's rules: the receiver never sees the
+`Cross-Origin-Resource-Policy: cross-origin` on the answers it authenticates. It is
+a `tokens` row of kind `cast` tied to the session that minted it, so signing that
+device out ends it. The web player's CSP admits the Cast Web Sender's three scripts on
+`https://www.gstatic.com` by path in `script-src`, and nothing else. The player's rules: the receiver never sees the
 session token; the receiver's URLs are built on the connection's address in use
 (`effectiveUrl`, never `localhost`); a token is cached in memory per book until an
 hour before it expires; no flag, no Cast button. An API key can't mint one (`403`).

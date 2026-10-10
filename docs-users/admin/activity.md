@@ -277,6 +277,7 @@ share. Deleting an account removes its choice, and it is part of every backup.
 When a listener plays a book on a Chromecast, their app asks the server for a
 **cast token**: a key that works for 24 hours, for that one book's audio and
 cover only, so the Cast device never gets the listener's own sign-in. Cast tokens
-stop working when the account is disabled or deleted, or when the person loses
-access to the book. They are not listed in the console, and signing the device
-out doesn't cancel the ones it already made (they still run out after 24 hours).
+stop working when the device that asked for them signs out (including when you
+[sign that device out](users-and-invites.md#the-devices-page)), when the account is
+disabled or deleted, or when the person loses access to the book. They are not
+listed as devices in the console.

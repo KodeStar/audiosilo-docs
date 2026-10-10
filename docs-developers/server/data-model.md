@@ -25,9 +25,9 @@ thing to understand before touching it:
   foreign key to `books`**. The rest of a listener's own state hangs off the
   account rather than a path: `collections`, `collection_shares`,
   `listening_goals` and `household_sharing` (see
-  [Lists, ratings and goals](#lists-ratings-and-goals)). `cast_tokens` is
-  path-keyed with no FK to `books` too, but it is a short-lived credential rather
-  than state (see [Accounts & credentials](#accounts--credentials)).
+  [Lists, ratings and goals](#lists-ratings-and-goals)). `cast_grants` is
+  path-keyed with no FK to `books` too, but it belongs to a short-lived credential
+  rather than state (see [Accounts & credentials](#accounts--credentials)).
 
 A third, small group sits beside the index: **`scan_runs`**, the history of
 the scans that built it, and **`community_chapters`**, each book's last
@@ -132,8 +132,9 @@ last activity is derived from `MAX(tokens.last_seen)`.
 **`tokens`** *(0001; `auth_code_id` added in 0014; `client_app`,
 `client_version`, `client_platform` and `last_ip` in 0018)* - opaque bearer tokens:
 `user_id` (FK CASCADE), `token_hash` (UNIQUE - only the SHA-256 hash is
-stored), `kind` (`'session'`/`'pairing'`/`'api'`, the last being a user-minted personal
-API key whose label rides in `device_name`), `device_name`, `created_at`,
+stored), `kind` (`'session'`/`'pairing'`/`'api'`/`'cast'`: `'api'` a user-minted personal
+API key whose label rides in `device_name`, `'cast'` *(0042)* a
+cast token with its `cast_grants` row (below)), `device_name`, `created_at`,
 `last_seen` (bumped by authenticated requests, at most once a minute unless the
 request's address or `X-AudioSilo-Client` changed: `auth.touchInterval`, so a
 progress save isn't also a token write), `expires_at` (NULL = no
@@ -149,18 +150,21 @@ alone), and `last_ip` the address of its newest request. Both are overwritten by
 and the daily retention job blanks `last_ip` on revoked tokens
 (`auth.ForgetRevokedAddresses`), so an address is kept only while the device is
 signed in.
-The admin console lists live session and API-key tokens as **devices**
+The admin console lists live session and API-key tokens as **devices** (never pairing
+or cast tokens)
 (`auth.ListDevices`) and can revoke one (`auth.RevokeDevice`).
 
-**`cast_tokens`** *(0042)* - the short-lived credentials a player mints for a
-Chromecast receiver (`POST /cast/token`, capability `cast`; see
-[Auth & security](auth-and-security.md#cast-tokens)): `id`, `token_hash` (UNIQUE,
-SHA-256 of the secret), `user_id` (FK CASCADE, so a person's tokens go with the
-account), `library_id` and `rel_path` (the **book's** own path, a part path
-resolved first; no FK to the index), `created_at` and `expires_at` (fixed-width
-millisecond UTC, so they compare as text). Indexed on `(user_id, id)` and
-`expires_at`. Each mint deletes the expired rows and keeps the person's newest 20.
-A token is not moved with its book: it lives 24 hours.
+**`cast_grants`** *(0042)* - what a **cast token** may read. A cast token is a
+`tokens` row of kind `'cast'` (`POST /cast/token`, capability `cast`; see
+[Auth & security](auth-and-security.md#cast-tokens)) with `expires_at` 24 hours
+on; its grant is `token_id` (PK, FK CASCADE to `tokens`), `library_id` and
+`rel_path` (the **book's** own path, a part path resolved first; no FK to the
+index) and `parent_token_id` (FK CASCADE to `tokens`: the session that minted it,
+indexed). A cast token without a grant, or whose parent is gone, signed out or
+expired, is never valid; each mint and the daily retention job delete those dead
+rows, and a mint keeps the person's newest 20. Partial index
+`idx_tokens_cast_expiry` on `tokens(expires_at) WHERE kind = 'cast'`. A grant is not
+moved with its book: it lives 24 hours.
 
 **`auth_codes`** *(0001; `kind` + `redeemed_at` added in 0010)* - redeemable
 codes: `code_hash` (UNIQUE, SHA-256 of the normalized code), `user_id` (FK
@@ -969,7 +973,7 @@ The migration history so far:
 | 0039 | `more_series_index` | the partial index `idx_books_more_series` on `books(library_id) WHERE more_series <> '[]'`, so the reads of the books in more than one series (a series' members, `/series` with `memberships=1`) skip the rest |
 | 0040 | `server_state` | `server_state` (`key`, `value`, `updated_at`), small server-wide facts that aren't settings; the first key is the support card's answer: see [Server state](#server-state) |
 | 0041 | `household_sharing` | `household_sharing`, each person's opt-in to Listening in the house (no row = off) |
-| 0042 | `cast_tokens` | `cast_tokens` (hashed, book-scoped, 24-hour credentials for a Chromecast receiver) with `idx_cast_tokens_user` and `idx_cast_tokens_expires` |
+| 0042 | `cast_tokens` | `tokens.kind` `'cast'` (cast tokens for a Chromecast receiver) and `cast_grants` (each one's book and parent token), with `idx_cast_grants_parent` and the partial `idx_tokens_cast_expiry` |
 
 ## SQLite choices
 
