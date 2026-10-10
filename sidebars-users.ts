@@ -54,6 +54,8 @@ const sidebars: SidebarsConfig = {
         'listening/mobile-apps',
         'listening/in-the-car',
         'listening/chromecast',
+        'listening/profiles',
+        'listening/kids-mode',
         'listening/in-the-house',
         'listening/you',
         'listening/year-in-listening',

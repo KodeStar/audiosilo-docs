@@ -87,9 +87,15 @@ The app speaks **English, Español, Français, Deutsch, Português, and Italiano
 
 ## Household and sharing
 
-Profiles - everyone in the house with their own place in every book, a kids mode, and sharing - come in a later update. Until then this section says so, and there's nothing to set.
+Everyone who listens on this device, each with their own servers, place in every book, queue and stats (see [Sharing a device with your household](profiles.md)). Each person has a card:
 
-{/* Phase 8 profiles: replace the paragraph above with the Household pane as shipped: people on this device (rename, PIN, kids mode, remove), "Ask who's listening when the app opens", and the per-server "Share what I'm listening to with the house" switch (link in-the-house.md#turning-it-on). */}
+- **Switch** to them, or *Listening now* for the person listening;
+- **Name** - rename them on this device (their account keeps its username);
+- **PIN** - an optional four-digit [PIN](profiles.md#a-pin-for-a-person), asked when someone switches to them. **Set a PIN**, or **Change** and **Remove** (both ask for the current one);
+- **Kids mode** - turns this person's app into [kids mode](kids-mode.md), with the **Library** it shows and the **Bedtime** (from then until 06:00, playing starts a 20 minute sleep timer);
+- **Remove from this device** - signs them out of their servers here and deletes their downloads here. Their place in every book stays on the server. It doesn't ask for their PIN: it's the way out of a forgotten one.
+
+Under the people: **Who's listening?** and **Add someone**; **Ask who's listening when the app opens** (with two or more people on the device); and **Listening in the house**, with a **Share what I'm listening to with the house** switch for each server of the person listening that supports it (see [Listening in the house](in-the-house.md#turning-it-on)).
 
 ## Accounts and devices
 

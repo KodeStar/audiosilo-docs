@@ -758,7 +758,12 @@ old code) is moved by the next launch the same way. A new document keyed by a
 connection id must be added to `ID_DOCUMENTS` or it is left behind. In-memory state
 (scroll memory, the React Query cache) needs no migration.
 
-{/* Phase 8 profiles: describe the profiles document the migration writes (one profile holding every connection, at most one per server) and link the profiles section once it ships. */}
+The **first profiles document** (`audiosilo.profiles`) is written in the same
+`setMany`: one profile holding every connection, except that a profile holds at most
+one connection per server (a second user on a server, signed in before the migration
+ran, gets a profile of their own), named after its first connection's user, the
+default connection's profile active, `askAtLaunch` off. An existing document is only
+re-keyed. See [Profiles](profiles.md).
 
 **Aliases.** The migration records `{ [old]: new }` under `audiosilo.connectionAliases`,
 which `loadConnectionAliases` reads into memory in `bootstrapPlayback`.

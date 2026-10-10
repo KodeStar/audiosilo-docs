@@ -99,7 +99,12 @@ Strings live in the `house` i18n namespace.
   or in the control's label. `ring` draws the pink "who is listening on this device"
   ring outside the box, so leave 4 pt of room around a ringed one.
 
-{/* Phase 8 profiles: the Home row and the sharing switches take the active profile's connections (not every connection); document that, and where the Household settings pane renders HouseSharingRow, once profiles ship. */}
+**Whose connections.** Everything here is the person listening's: Home hands
+`HouseRow` the active profile's connections (`useProfileConnections`), and
+Settings > Household and sharing renders one `HouseSharingRow` per connection of the
+active profile whose server has `household`, under a "Listening in the house" heading
+(a note when none of them offers it, once every server has answered). See
+[Profiles](profiles.md#visible-and-background-connections).
 
 ## Testing
 

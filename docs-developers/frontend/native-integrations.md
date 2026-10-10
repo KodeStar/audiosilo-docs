@@ -44,16 +44,24 @@ protection), so a car shows its lists at once, before or without JS.
 
 `car-model.ts` builds it, pure (`buildCarSnapshot`):
 
+- Every tab is built from the **person listening's** connections only
+  ([Profiles](profiles.md#visible-and-background-connections)), the
+  Downloads tab included (no play spec is written for another person's book), and
+  none while nobody is chosen. The snapshot is rebuilt when the active profile
+  changes. A play request (`handleCarPlayRequest`) and the Android service-book
+  adoption quietly refuse another person's book, or any book while nobody is chosen
+  (an item of an older snapshot); a connection no profile holds still plays (a
+  CarPlay launch before the session could be read).
 - `version: 1`, `generatedAt`, `signedIn`, the localized `labels` (`carLabels(t)`, the
   `car.*` keys: `continue`, `chapters`, `bookmark`, `bookmarkSaved`, `empty`, `signedOut`,
   `unavailable`) and up to four `tabs`, each carrying its own localized `title`:
-  - `continue` - Home's rule (`isInProgress`, newest first, every signed-in server), the
+  - `continue` - Home's rule (`isInProgress`, newest first, every server of the person listening), the
     loaded book first (`continueRefs`), at most 20;
   - `upnext` - the queue the app's Up next shows (`queueConnectionId`: the loaded book's
     connection, else the default, else the first; see
     [Overview](overview.md#up-next-drawer-and-sheet)), left out when that server has no
     `queue` capability, at most 20;
-  - `downloads` - every downloaded book, newest download first, at most 50;
+  - `downloads` - the person listening's downloaded books, newest download first, at most 50;
   - `library` - the library the Library tab shows (`resolveLibrarySelection`, as in
     [State and data](state-and-data.md#library-selection-srcstoreslibrary-selectionts)),
     `sort: 'recent'`, at most 50 (`CAR_TAB_LIMITS`; Android Auto doesn't page, and

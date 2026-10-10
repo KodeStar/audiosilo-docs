@@ -15,9 +15,7 @@ Open [Settings](settings.md) and go to **Household and sharing**. Each of your s
 
 (with your server's name in place of *Hearthside*). Turn it on, and from then on you see the others who share, and they see you. Turn it off again whenever you like: you stop showing up for them, and the house disappears from your Home page straight away.
 
-{/* Phase 8 profiles: confirm the pane's layout once the Household settings pane ships (per-profile switches, who's on this device) and link its anchor in settings.md. */}
-
-The switch is per server: if you're signed in to two servers, you choose for each one. It only appears for a server running an AudioSilo version that has the feature, and a [demo](../demo.md) account can't turn it on.
+The switch is per server: if you're signed in to two servers, you choose for each one. It belongs to the person listening: when several people share the device ([profiles](profiles.md)), each sees and sets the switches for their own accounts. It only appears for a server running an AudioSilo version that has the feature, and a [demo](../demo.md) account can't turn it on.
 
 ## What you see
 

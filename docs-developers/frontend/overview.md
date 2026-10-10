@@ -60,7 +60,9 @@ src/components/     ui/ (the Stacks primitives - Text, Icon, Button, Card, Input
                     Journal and its export), you/ (the You hub; stats/, year/),
                     settings/ (the Settings panes), account/ (a server's Account
                     page), connect/ (onboarding), home/, search/, upnext/, downloads/
-                    (the Downloads tab), house/ (Listening in the house), brand/
+                    (the Downloads tab), house/ (Listening in the house), profiles/
+                    (Who's listening?, the PIN dialog, Settings > Household), kids/
+                    (kids mode), brand/
 src/car/            CarPlay + Android Auto, the JS side: the car snapshot (car-model),
                     car covers, the car controller, the AudiosiloCar headless task
 src/cast/           Chromecast: the route switch (routed-service), the cast engine
@@ -68,7 +70,8 @@ src/cast/           Chromecast: the route switch (routed-service), the cast engi
                     Cast button (see Chromecast)
 src/widgets/        iOS widget + sleep timer Live Activity ('widget' functions) and
                     their sync (widget-model, widget-sync.ios)
-src/stores/         Zustand: session (connections + tokens), settings, search
+src/stores/         Zustand: session (connections + tokens), profiles (people on this
+                    device), settings, search
                     (+ recent searches), series-orderings, library-selection
 src/i18n/           i18next init, LanguageProvider, locale catalogs (locales/*.json)
 src/theme/          tokens.json (the colour source) -> generated tokens.ts,
@@ -318,8 +321,10 @@ the book that starts from it and the finished book leave it through `dropFromQue
 ### Profile menu
 
 `ProfileMenu` (`src/components/shell/profile-menu.tsx`) is the top bar's profile
-button (the user's initial, plus the name on desktop) and a `DropdownMenu`: every
-connected server with its state - the pure `serverStatus()`
+button (the person listening's initial, plus their name on desktop) and a `DropdownMenu`:
+"Listening as" the active [profile](profiles.md) and a "Switch to &lt;name&gt;" item per other
+person on the device (through `useChooseProfile`, PIN included); every
+server of the person listening with its state - the pure `serverStatus()`
 (`src/api/reachability.ts`), where "needs signing in again" (the reconnect flag)
 wins over "offline", else "Signed in as &lt;user&gt;" - each opening that server's account screen; **Add a server**
 (`/connect?add=1`); **Journal** (`openJournal()`); **Settings** (`openSettings()`); **Account on &lt;default server&gt;**; and a light/dark

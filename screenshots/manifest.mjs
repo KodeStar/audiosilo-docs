@@ -55,6 +55,15 @@ export const SHOTS = [
   {file: 'web-player/phone-sleep-sheet.png', capture: 'web', title: 'Phone - Sleep sheet', hint: 'the sleep timer sheet over the phone player: minute tiles, End of chapter, Or stop after, the sleep settings'},
   {file: 'web-player/phone-you-stats.png', capture: 'web', title: 'Phone - Your listening', hint: 'the Me tab (the You hub on Stats): the large title Your listening, the sections row (Stats, Year, Journal, Settings, Account), this week and the stat tiles in two columns'},
   {file: 'web-player/phone-settings.png', capture: 'web', title: 'Phone - Settings', hint: 'the Me tab on Settings: the large title Settings, the sections row, the Listening group with the Playback card stacked (steppers, Smart speed, Voice boost)'},
+  // Phase 8 (Household). Not embedded yet: capture-web.mjs needs a step for each (and a
+  // seed with two non-demo accounts on one server, both sharing, one with a recent session).
+  {file: 'web-player/profiles.png', capture: 'web', title: "Web player - Who's listening?", hint: "the /profiles picker with two or three people (one ringed as listening, one asking for a PIN, a kids profile with its bedtime line) and Add someone"},
+  {file: 'web-player/settings-household.png', capture: 'web', title: 'Web player - Settings, Household and sharing', hint: "Settings on the Household and sharing pane: a person's card (Switch, Name, PIN, Kids mode with Library and Bedtime, Remove from this device), Ask who's listening when the app opens, and the Listening in the house switch with its privacy sentence"},
+  {file: 'web-player/kids.png', capture: 'web', title: 'Web player - Kids mode', hint: '/kids for a kids profile: Hi <name> and the Grown-ups button, the bedtime card, the kids player with a story loaded, the story tiles'},
+  {file: 'web-player/phone-kids.png', capture: 'web', title: 'Phone - Kids mode', hint: 'phone-width /kids: the bedtime card, the kids player (four big buttons), two columns of story tiles'},
+  {file: 'web-player/home-house.png', capture: 'web', title: 'Web player - Listening in the house', hint: 'Home with the Listening in the house section: the viewer shares, and two other non-demo sharing accounts have sessions within 24 h (one playing, one paused); the "<server> · shared by choice" line and Sharing settings'},
+  {file: 'web-player/book-in-the-house.png', capture: 'web', title: 'Web player - In the house card', hint: "the book page's aside for a book another sharing account is on: About, Your listening, In the house"},
+  {file: 'web-player/player-cast.png', capture: 'web', title: 'Web player - Cast button', hint: 'the full player action row with the Cast button (Chromium on an https page; server has cast)'},
 
   // ── Admin console (admin-ui, desktop 1440x900 dark unless noted) + public server pages
   {file: 'admin/login.png', capture: 'admin', title: 'Admin - Sign in', hint: 'the console sign-in page, signed out'},

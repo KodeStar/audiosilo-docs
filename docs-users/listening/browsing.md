@@ -32,7 +32,7 @@ From left to right:
 - A **search field**. In the web player it opens [quick search](#quick-search-in-the-web-player); in the tablet app it takes you to the Search page. Where the bar is too narrow for the field (a tablet held upright, say), it shrinks to a search button that does the same.
 - The **Up next** button, with the number of books queued. It opens [Up next](up-next.md).
 - A **gear** button for [Settings](settings.md). It opens Settings over the page you're on, so going back returns you there.
-- Your **profile button** - your initial, plus your name on wider screens. It opens a menu listing your **servers**, each with a line saying who you're signed in as, or that it's **offline** or **needs signing in again** (pick one to open its [account page](account.md)); **Add a server**; your [Journal](journal.md); [Settings](settings.md); **Account on** your main server; and a switch between **light and dark** appearance.
+- Your **profile button** - your initial, plus your name on wider screens. It opens a menu that starts with who's **Listening as** and a **Switch to** line for each other person on this device (see [Sharing a device with your household](profiles.md)), then your **servers**, each with a line saying who you're signed in as, or that it's **offline** or **needs signing in again** (pick one to open its [account page](account.md)); **Add a server**; your [Journal](journal.md); [Settings](settings.md); **Account on** your main server; and a switch between **light and dark** appearance.
 
 ![The profile menu open from the top bar](/img/screenshots/web-player/profile-menu.png)
 
