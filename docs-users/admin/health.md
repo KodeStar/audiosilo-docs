@@ -96,11 +96,18 @@ what it found and apply it.
      community cover for a book with no cover at all. Nothing the book already
      has is replaced.
    - **Use community values** also replaces fields that differ, as accepting a
-     match by hand does.
+     match by hand does. A book's series become the community's: any series an
+     earlier match wrote that the community no longer lists for the book (one
+     it removed or merged, or an edition for another narration) is removed, back
+     to what your files say. Series you typed yourself stay.
 
    Under each book the dialog says what your choice writes, for example "Sets
-   Narrator, Published, and ASIN". Fields you edited yourself are never
-   replaced, and a series number is only set beside the series it belongs to.
+   Narrator, Published, and ASIN". When your choice changes the book's series,
+   it shows them before and after, for example "Series: Harry Potter
+   (Full-Cast Editions) #2; Harry Potter (Narrated by Stephen Fry) #2 → Harry
+   Potter #2", so a series it removes is never a surprise. Fields you edited
+   yourself are never replaced, and a series number is only set beside the
+   series it belongs to.
 4. Each book shows its path in the library (hover it for the whole path on
    disk) and, under an arrow, the community match: its title, authors,
    narrators and length, the series it belongs to with its position ("Series:
@@ -142,6 +149,24 @@ looks again at the books matched earlier, by hand or in bulk, and offers to
 switch each one to its recording's ASIN in your store, where the community
 catalogue now has one (it gains them over time). Review and apply it the same
 way. It never changes an ASIN from your tags, or one you typed.
+
+#### Filling in books that are already matched
+
+**Fill in matched books** looks up every book that already has an ASIN or
+ISBN, by that alone, and offers the community's details for it: title, series,
+narrator, description and cover. Use it for books that got an ASIN or ISBN
+without their details (from the AudioSilo manager, or a run applied with
+**ASIN and ISBN only**), and to clean up books an earlier match gave too many
+series. Review and apply it as above, choosing **Fill in what's missing** or
+**Use community values** (the ASIN and ISBN stay as they are, so **ASIN and
+ISBN only** isn't offered). Books that are already up to date aren't listed.
+A book whose ASIN or ISBN the community doesn't
+know is listed under **Not found** ("The community doesn't know this book's
+ASIN or ISBN"); it is never matched to another book by its title.
+
+To clean up series an earlier match added (every edition and reading order of
+a series, say), run **Fill in matched books** and apply it with **Use
+community values**: the review shows each book's series before and after.
 
 ### Duplicates
 

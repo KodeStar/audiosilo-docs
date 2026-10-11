@@ -1261,6 +1261,34 @@ work's position in that series; `series[].works` is the full ordered rail,
 **including the current work** (the client filters it out before drawing a "more
 in this series" row). Positions are strings ("1", "2.5", "1-3.5").
 
+#### Series rules
+
+The community lists every series a work is in, and not each of them is a series
+a book of the work is in. The server applies one set of rules
+(`internal/meta/seriesrules.go`) to the rails above and to the
+[match dialog's candidates](#get-apiv1adminlibrariesidbookmatch), which is what a
+match writes onto a book:
+
+- a **variant reading order** (`ordering_of`) is an alternate view of its rail,
+  never a series of its own;
+- a **translation** (`translation_of`) of another series the work is in, whose
+  original is in the work's language, and a series whose derived `language`
+  differs from the work's (primary subtags; an unknown language agrees), are left
+  out;
+- an **edition** is a series named exactly like another of the work's series plus a
+  bracketed qualifier or a "narrated by" tail. The community API links no series to
+  a recording, so the qualifier says which recordings hold it: `abridged` (the
+  abridged recordings), a full cast or dramatisation (a recording with four or more
+  narrators, or one named "Full Cast"), "Narrated by X" / "Gesprochen von X" (the
+  recordings X narrates). An "(Unabridged)" edition repeats its base, and a language
+  edition or an ordering note holds no recording, so those are left out. A book is
+  in an edition only as one of its recordings, and then it is its main series.
+- A name that only extends another ("Discworld: Tiffany Aching") is a series of its
+  own.
+
+The language and translation facts come from each series' record (`series/{id}`),
+read once per series and cached as long as an enrichment.
+
 #### Reading-order families
 
 Some series come in more than one reading order: a **primary** series (usually
@@ -1284,8 +1312,21 @@ work belongs to into **one** rail rather than one rail per order (`seriesRails` 
   (`maxOrderingAlternates`), and every main view is fetched before any alternate, so
   a slow upstream under the compose deadline costs alternates, never rails.
 - **The three-rail cap counts families** (`maxSeriesRails`), not series, so a work
-  in "Narnia" and "Narnia (Chronological)" spends one slot. One enrichment issues at
-  most 3 x (1 + 2) series requests.
+  in "Narnia" and "Narnia (Chronological)" spends one slot.
+- **The cap goes to the book's own series** (the [series rules](#series-rules)).
+  Before the cap, an **edition** named for a kind of recording ("Discworld
+  (abridged)", "Harry Potter (Full-Cast Editions)") is kept only when the envelope's
+  recording is that kind (the recording the lookup named, or the work's only one;
+  never a guess of the first recording), and then goes first, since it is the
+  book's main series; other editions are left out. Without this, a Discworld novel
+  listed in six series, three of them "(abridged)" editions, lost its "Discworld:
+  Tiffany Aching" rail to them. An edition named for anything else (an ordering note
+  from a metaserve that predates `ordering_of`) keeps its place, so a pre-v7 upstream
+  still yields the same rails. A series known to be **foreign** (another language
+  than the work, or a translation of another of its series) is left out: before the
+  cap when the server already holds its record, else once its record is fetched, and
+  then it hands its slot to the next family (at most twice, `maxForeignRails`). One
+  enrichment issues at most (3 + 2) main-view requests plus 3 x 2 alternates.
 - **Failures are partial, not fatal.** A failed alternate ships the rail without
   it; like a failed rail, it makes the envelope partial, which is cached for the
   2-minute transport-error TTL rather than 24 h, so the missing order reappears soon.
@@ -3833,7 +3874,10 @@ with no `q` only looks that identifier up. A book with nothing to match on
 (no title, author, series or usable identifier) gets an empty answer without a
 request. At most **6** results are expanded into full works with their
 recordings. Results are not cached (an admin action, so the fan-out is bounded
-instead: work fetches share the same concurrency limit as `GET /meta/work`).
+instead: work fetches share the same concurrency limit as `GET /meta/work`). The
+[series rules](#series-rules) read each candidate series' record once (at most 16
+per request, within 5 seconds, none for a work with no language and one series),
+and those facts are cached.
 
 **Older community service.** A metaserve that predates `works/match` answers it
 as a missing route (a `404`, since it reads `match` as a work id; a `405`; or a
@@ -3870,7 +3914,8 @@ again. A `503` (over metaserve's match budget) or any other `5xx` from
             { "region": "us", "asin": "B00B5HZGUG" }
           ],
           "asin_region": "uk",
-          "isbns": ["9780553418026"]
+          "isbns": ["9780553418026"],
+          "series": []
         }
       ],
       "recording_id": "rec1",
@@ -3902,8 +3947,14 @@ again. A `503` (over metaserve's match budget) or any other `5xx` from
   equal to one of the work's authors or contains every word of a multi-word
   name (so `Brandon Sanderson, Mary Robinette Kowal` matches both); otherwise
   the word overlap counts. Comparisons keep letters of every script.
-- `series` lists each series once, at its main position (`{ "name", "position"
-  }`); alternate reading orders are left out. `subtitle`, `language`,
+- `series` lists the series a book of the work is in whatever its recording
+  (`{ "id", "name", "position" }`, each once, at its first position), by the
+  [series rules](#series-rules): no alternate reading orders, translations,
+  other-language series or editions. Each recording's `series` is the list for a
+  book that is that recording, its main series first: an edition named for it
+  ("Harry Potter (Full-Cast Editions)" for the full-cast recording) in front of the
+  work's series. The console's dialog offers the chosen recording's list, the book's
+  own series first when the work is in it. `subtitle`, `language`,
   `first_published`, `description`, `cover_url`, `recording_id` and the
   recordings' optional fields are omitted when empty; `asins`/`isbns` are always
   arrays.
@@ -3957,10 +4008,23 @@ every change is reversible. Admin only; every endpoint answers `404 code:
 (server-wide); the newest 10 runs are kept, with their books.
 
 A run is a `match` run (the books with no ASIN or ISBN: the Health page's
-"Not matched", less those ignored there) or a `repick` run (the books whose
+"Not matched", less those ignored there), a `repick` run (the books whose
 ASIN is a **community** override, never one from the tags, an admin's edit or
 the manager's enrichment: each is looked up, and when its recording now sells
-in the preferred marketplace under another ASIN, that is offered).
+in the preferred marketplace under another ASIN, that is offered) or a
+`refresh` run (every book with an ASIN or ISBN, whoever set it: each is looked
+up by its own identifier alone, the ISBN when the ASIN finds nothing, and the
+record it names is the book, `auto` whatever its score; an identifier the
+community doesn't know is `none` with `detail: "identifier_unknown"`, never a
+fuzzy match by title). A refresh fills in, or with `overwrite` replaces, the
+details an identifier alone didn't bring (the manager's enrichment, an `ids`
+apply), and cleans up the series an earlier match wrote (see the `overwrite`
+scope below); it never changes the identifier itself. Only books a scope would
+change are recorded (a book already up to date leaves no item, as a repick
+records only books with a new ASIN), and each refresh proposal names the
+identifier it was found by (`proposal.found_by`, `"asin:<ASIN>"` or
+`"isbn:<ISBN>"`): applying it changes nothing on a book that no longer has that
+identifier (matched again since, by hand).
 
 Each book's **outcome**:
 
@@ -4016,16 +4080,17 @@ are the items by outcome, `pending` the `auto` ones not applied yet, and
 
 #### `POST /api/v1/admin/match-runs`
 
-`{"library_id"?: 2, "mode"?: "match" | "repick"}` (omitted, or no body at all:
+`{"library_id"?: 2, "mode"?: "match" | "repick" | "refresh"}` (omitted, or no body at all:
 every library, a `match` run). A book of a library deleted while the run works
 is left out. Starts the run in the background and answers `202` with it (as
 in the list). The admin's console polls
 [`GET …/match-runs/{id}`](#get-apiv1adminmatch-runsid) while it works.
-Audited as `book.match_run` or `book.asin_repick` (`run`, `books`, `region`).
+Audited as `book.match_run`, `book.asin_repick` or `book.match_refresh` (`run`,
+`books`, `region`).
 
 | Status | Meaning |
 |---|---|
-| `400` | `invalid request`; `mode must be "match" or "repick"`; `code: "no_region"` - a repick with no `metadata.region` set |
+| `400` | `invalid request`; `mode must be "match", "repick" or "refresh"`; `code: "no_region"` - a repick with no `metadata.region` set |
 | `404` | `library not found` |
 | `409` | `code: "match_run_busy"` - a run is matching or applying |
 
@@ -4084,9 +4149,27 @@ A page of the run's books in id order: `?outcome=auto|review|none|error`
   server, named by `asin_region`.
 - `book` is the book as it is now; `gone: true` when nothing is indexed at the
   path any more.
-- `changes` is what applying would write under each scope (fields in display
-  order, and whether the cover is taken), worked out against the book now by
-  the same rules the apply uses, so the review can't disagree with it.
+- `changes` is what applying would write under each scope the run's mode takes
+  (fields in display order, set or reverted, and whether the cover is taken),
+  worked out against the book now by the same rules the apply uses, so the
+  review can't disagree with it. A `match` run's items carry `ids`, `fill` and
+  `overwrite`; a `refresh` run's `fill` and `overwrite` (it writes no
+  identifier); a `repick` run's only `ids` (its ASIN, whatever the scope). When a
+  scope changes the book's series, its change also carries `series`: the book's
+  series `from` (now) and `to` (after), each `[{ "name", "position" }]` with the
+  main series first (`position` 0 = none), so a series it removes is visible:
+
+  ```json
+  "overwrite": {
+    "fields": ["series", "more_series"],
+    "cover": false,
+    "series": {
+      "from": [ { "name": "Harry Potter (Full-Cast Editions)", "position": 2 },
+                { "name": "Harry Potter (Narrated by Stephen Fry)", "position": 2 } ],
+      "to": [ { "name": "Harry Potter", "position": 2 } ]
+    }
+  }
+  ```
 - `applied` is what applying did: `""` (not yet), `applied`, `skipped` (with
   `detail` `nothing_to_change` or `book_gone`) or `failed` (`edit_failed`,
   `cover_failed`); an `applied` item can carry `cover_failed` when its fields
@@ -4104,19 +4187,26 @@ book gets, under each **scope**:
 |---|---|
 | `ids` | The ASIN and ISBN, where the book has none. |
 | `fill` | Also every field the book has empty, and the community cover when it has no cover (a checked book with none, and no custom cover). |
-| `overwrite` | Also every field whose value differs, as accepting the dialog's default ticks does; the cover only when it has none. |
+| `overwrite` | Also every field whose value differs, as accepting the dialog's default ticks does; the cover only when it has none. The book's series are **replaced** by the community's for its recording (the [series rules](#series-rules)): a `series`, `series_index` or `more_series` value the community wrote earlier that it no longer offers (a series it deleted or merged, an edition or a translation) is reverted to what the files say. |
 
 Under every scope a field an admin **edited** (`source: "edited"`) is never
 replaced, a value the book already has isn't rewritten, and a series position
 is written only beside the series it numbers (the book's own, or the one being
-set). A repick writes its ASIN whatever the scope, and only while the book's
-ASIN is still the community override it found. Audited as `book.match_apply`
-(`run`, `books`, `scope`). Applying `ready` again after a stopped apply takes
-the rest.
+set). Only `overwrite` reverts, and only community values: a series an admin
+typed stays, and a revert never removes an edit made after the run looked (a
+[`PATCH …/book`](#patch-apiv1adminlibrariesidbook) revert sent with `source:
+"community"` removes only a community value). A series position is put back from
+the files only beside the files' own series. A
+retired work id is a redirect the server follows, so a merged record's series
+are the ones written. A repick writes its ASIN whatever the scope, and only while
+the book's ASIN is still the community override it found; a refresh takes only
+`fill` or `overwrite` (`400` for `ids`, which would write nothing). Audited as
+`book.match_apply` (`run`, `books`, `scope`). Applying `ready` again after a
+stopped apply takes the rest.
 
 | Status | Meaning |
 |---|---|
-| `400` | `invalid request`; `scope must be …`; `code: "too_large"` - more than 20,000 ids in `include` or `exclude` |
+| `400` | `invalid request`; `scope must be …` (also a scope the run's mode doesn't take: `ids` for a refresh); `code: "too_large"` - more than 20,000 ids in `include` or `exclude` |
 | `404` | `no such match run` |
 | `409` | `code: "match_run_busy"` - a run is matching or applying; `code: "match_run_not_ready"` - this run isn't `ready` |
 
