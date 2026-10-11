@@ -360,7 +360,13 @@ missing.
    recording sold in several Audible stores has an ASIN in each; the match
    takes the one from your **Audible marketplace** (see
    [Community metadata](server.md#community-metadata)), and the list shows
-   which store it is from ("B0... · UK").
+   which store it is from ("B0... · UK"). The edition also decides the series
+   offered. The community sometimes lists a series again for one kind of
+   recording, such as "Harry Potter (Full-Cast Editions)" or "Discworld
+   (abridged)". Such a series is offered only for that edition, never for
+   another narration of the same book. A different reading order of a series
+   (a chronological order, say), a translation's series, or a series in another
+   language than the book is never offered as one of its series.
 5. The comparison shows each field **On your server** and from the
    **Community**. Tick the ones to **Take**. Fields you've edited yourself
    are unticked, so they're never overwritten unless you tick them. The first
@@ -455,6 +461,18 @@ of 5; missing 3, 5". A series none of whose books is matched yet says "Match a
 book of this series to see what's missing". With community metadata off, the
 page offers to turn it on.
 
+A book is often in more than one community series (a Tiffany Aching novel is
+in Discworld and in Discworld: Tiffany Aching). The card uses the community
+series named like yours, ignoring case, accents and punctuation (or a reading
+order of it named like yours), then one named like it apart from a leading
+"The" or a trailing "Series". Failing that, it uses the community series that
+holds at least two of your matched books in this series, and most of them. If
+your series' name is another series' name with more after a colon or a dash
+("Discworld: Tiffany Aching"), that other series ("Discworld") is never used:
+it is the bigger series this one belongs to. When no community series fits,
+the card shows your books by their own numbers, with no gaps, rather than
+another series' gaps.
+
 Each [matched](#matching-with-community-metadata) book (one with an ASIN or
 ISBN the community catalogue knows) is placed by which book it actually is,
 not by its series number. So a matched book with no series number, or with a
@@ -462,7 +480,10 @@ different number on your server (one you numbered 3 that the community lists
 as 2.5, say), still fills its own place in the series: it counts towards "You
 have ..." and the badge, and its spine sits in that place, showing the
 community's number. Books that aren't matched, or can't be looked up, are
-placed by their own series number. A matched book the catalogue says is a
+placed by their own series number. One with no series number takes the missing
+place whose title it has, ignoring a numbering in front ("BV03 - All These
+Worlds" is All These Worlds) and a part in brackets at the end, so it counts
+towards "You have ..." instead of being listed as missing. A matched book the catalogue says is a
 different book from any in the series (a companion story filed under the
 series name, for example) sits at the end of the shelf and doesn't fill a gap.
 
