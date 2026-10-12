@@ -40,6 +40,8 @@ Under the top bar, a slim row shows the title of the page you're on, or a **Back
 
 If you get around the web player with a keyboard, **Tab** moves between controls and **Space** presses the one you're on - buttons, tabs, option choices and switches alike. The player itself has [keyboard shortcuts](keyboard-shortcuts.md) too (press **?** to list them).
 
+The browser tab is named after the page you're on: a book, an author, a series, **Library**, **Settings** and so on. While a book is playing, the tab shows ▶ and that book's title instead, wherever you are in the player, so you can find it among your other tabs. Pause it and the tab goes back to naming the page.
+
 :::note
 The **Downloads** tab only appears where downloading is possible. In the web player that means a secure (`https://`) address - see [Offline downloads](offline-downloads.md).
 :::
