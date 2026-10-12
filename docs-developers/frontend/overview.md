@@ -318,7 +318,7 @@ button (the user's initial, plus the name on desktop) and a `DropdownMenu`: ever
 connected server with its state - the pure `serverStatus()`
 (`src/api/reachability.ts`), where "needs signing in again" (the reconnect flag)
 wins over "offline", else "Signed in as &lt;user&gt;" - each opening that server's account screen; **Add a server**
-(`/connect?add=1`); **Journal** (`openJournal()`); **Settings** (`openSettings()`); **Account on &lt;default server&gt;**; and a light/dark
+(`/connect?add=1`; hidden on the served web player, `servedOrigin()`, as in Settings' accounts pane); **Journal** (`openJournal()`); **Settings** (`openSettings()`); **Account on &lt;default server&gt;**; and a light/dark
 appearance switch (`useTheme().toggleScheme()`, which the palette's action uses
 too). A phone keeps all of this in the Me tab's You hub. The same `serverStatus()` drives
 the top bar's server line (the default server's name, or "Offline" / "Needs
