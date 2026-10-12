@@ -9,6 +9,8 @@ AudioSilo can play a book on a **Chromecast** or any other Google Cast device: a
 
 The **Cast** button is in the [full player](full-player.md), in its row of buttons with speed, the sleep timer and bookmark. On a tablet or computer it's also on the player bar along the bottom, when the window is wide enough to show all the bar's buttons.
 
+![The web player's full player in Chrome over HTTPS: the Cast button at the end of the row with speed, Sleep and Bookmark](/img/screenshots/web-player/player-cast.png)
+
 Tap it, pick your Cast device, and the book carries on there from where you were. If it was playing, it keeps playing on the Cast device; if it was paused, it waits there paused.
 
 The button appears:

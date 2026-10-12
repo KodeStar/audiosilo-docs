@@ -27,7 +27,11 @@ The switch is per server: if you're signed in to two servers, you choose for eac
 
 Tap a card to open that book's page. **Sharing settings** beside the title takes you to the switch. When nobody else is listening, the section isn't shown at all.
 
+![Listening in the house on the Home page: jamie listening now to The Hound of the Baskervilles and rosa paused on The Call of the Wild, with Sharing settings beside the title](/img/screenshots/web-player/home-house.png)
+
 **On a book's page**, an **In the house** card appears when someone who shares is on that same book, with their name and where they are in it.
+
+![A book's page with the In the house card under About: jamie, listening now, and the chapter](/img/screenshots/web-player/book-in-the-house.png)
 
 The house is checked again every minute while the app is open on the Home page or a book's page.
 

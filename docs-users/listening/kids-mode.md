@@ -19,10 +19,14 @@ It's a good idea to give the grown-ups' profiles a [PIN](profiles.md#a-pin-for-a
 
 ## What the child sees
 
+![Kids mode on a computer: Hi Leo, the bedtime card, the big player with a story loaded, and the story tiles](/img/screenshots/web-player/kids.png)
+
 - **"Hi Leo"** at the top, with the **Grown-ups** button.
 - **The bedtime card**: *"Bedtime is at 19:30"*, and what happens then. At bedtime it says *"It's bedtime"*, and while the sleep timer runs, how many minutes it has left.
 - **The story playing now**, in a big player: the cover, the title, the chapter and the minutes left in it, a line showing how far through the chapter they are, and four big buttons: **previous chapter**, **go back 30 seconds**, **play/pause** and **next chapter**. No speed, no sleep menu, no bookmarks.
 - **Your stories**: the library as big cover tiles, the stories they're part-way through first, then every other book, finished ones too (children listen again). Tap one and it plays right there.
+
+![Kids mode on a phone: the bedtime card, the four big player buttons and the story tiles in two columns](/img/screenshots/web-player/phone-kids.png)
 
 If the server can't be reached, kids mode shows the stories downloaded to this device for the child's account, so a downloaded story still plays in the car or on a plane. With no downloads, it says the stories can't load and offers **Try again**.
 

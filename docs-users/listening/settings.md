@@ -87,6 +87,8 @@ The app speaks **English, Español, Français, Deutsch, Português, and Italiano
 
 ## Household and sharing
 
+![Household and sharing on a computer: a kids profile's card with its Library and Bedtime, Ask who's listening when the app opens, and Share what I'm listening to with the house](/img/screenshots/web-player/settings-household.png)
+
 Everyone who listens on this device, each with their own servers, place in every book, queue and stats (see [Sharing a device with your household](profiles.md)). Each person has a card:
 
 - **Switch** to them, or *Listening now* for the person listening;

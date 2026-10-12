@@ -11,6 +11,8 @@ If you were already using AudioSilo when profiles arrived, nothing changes until
 
 **Who's listening?** shows everyone on this device as a large initial in a coloured circle, with a line under each name. The person listening now has a pink ring. Tap someone to switch to them, or **Close** to carry on as you are.
 
+![Who's listening? on a computer: Ellen with the pink ring, Jamie with a key for the PIN, Leo in kids mode with his bedtime, and Add someone](/img/screenshots/web-player/profiles.png)
+
 Open it from:
 
 - **on a phone**, the **Me** tab's **Account** section, under *Listening as*;
@@ -46,6 +48,8 @@ Each person can have a **PIN**: four digits, asked whenever someone switches **t
 **Forgotten a PIN?** Remove that person from this device in Settings > Household and sharing (removing someone doesn't ask for their PIN), then sign in to their account again with **Add someone**. Their place in every book is on the server, so nothing is lost.
 
 ## Settings > Household and sharing
+
+![Settings, Household and sharing on a computer: Leo's card with Switch, Name, PIN, Kids mode, Library and Bedtime, then Ask who's listening when the app opens and the Listening in the house switch](/img/screenshots/web-player/settings-household.png)
 
 [Settings](settings.md#household-and-sharing) lists everyone on this device. For each person:
 

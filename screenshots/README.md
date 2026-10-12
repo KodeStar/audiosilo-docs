@@ -164,6 +164,38 @@ Every capture context reduces motion, so the Year in listening story stays on it
 card. The desktop You shot picks Stats in the sub-nav first: the Journal shot (opened
 from the profile menu) leaves the Me tab on its Journal section.
 
+The household shots (`web-player/profiles.png`, `settings-household.png`,
+`home-house.png`, `book-in-the-house.png`, `kids.png`, `phone-kids.png`,
+`player-cast.png`) need people rather than the demo user: a demo account can't share
+what it listens to, and the people on a device, their PINs and kids mode live in that
+browser's `localStorage`. So `capture-web.mjs` provisions four accounts through the
+admin API (`ADMIN_PASSWORD`): **ellen** (the viewer, with a place in A Christmas
+Carol), **jamie** and **rosa** (who share; their listening comes from progress saves
+as the apps make them, two 15 s apart, and jamie keeps saving every 15 s, so the house
+shows jamie listening now and rosa paused once her last save is a minute old) and
+**leo** (a child, whose account only sees a "Stories" share of the Lewis Carroll and
+Charles Dickens folders). Then it drives the UI as a family would, in a fresh browser:
+Ellen signs in by password, Settings > Household and sharing renames her, "Add
+someone" signs Jamie and Leo in as people of their own, Ellen switches back, gives
+Jamie a PIN, turns kids mode on for Leo (library Books) and turns sharing on. The
+Settings shot is taken at 1440x1000 with Leo's card at the top. Leo's shots choose him
+on "Who's listening?" (a reload asks, with two or more people) and load a story,
+paused; the phone shot reuses that browser's storage. Every household context runs in a
+fixed-offset time zone where it is 8 pm, after Leo's 7:30 pm bedtime, so the kids
+bedtime card reads the same on every run. The accounts and the share are deleted again
+at the end, so the admin console's shots never show them (the Audit log keeps the
+admin's create and delete entries).
+
+The Cast button only shows on an https page in a Chromium browser, for a server that
+isn't reached at a loopback address, and the capture server is plain http on
+`127.0.0.1`. For `web-player/player-cast.png` the script starts a local https proxy in
+front of it with a throwaway self-signed certificate (**openssl**, into
+`.cache/cast-tls`), on a free port, and opens it as `audiosilo.shots.test` in a separate
+Chromium that resolves that name to `127.0.0.1` and accepts the certificate. Ellen
+signs in there, her book is loaded and paused, and the shot is clipped to the full
+player's transport and action row. Nothing leaves the machine except the Cast sender
+script the button loads from `www.gstatic.com` (offline, the button still shows).
+
 The connect shots run last, in a fresh browser with nothing stored:
 `web-player/connect.png` types the server's own address and presses Continue (the probe
 card), then the run signs in as the **admin** with a username and password (a real
@@ -196,7 +228,7 @@ Every capture is optimized in place with **pngquant** (`brew install pngquant`)
 loss, so the committed image is the optimized one. It's optional: if pngquant
 isn't on `PATH` the shots are just left raw (with a one-time warning).
 
-Prereqs: Go 1.26+, Node 24 (also builds the server's admin console), ffmpeg/ffprobe, sqlite3 (the seeded year of
+Prereqs: Go 1.26+, Node 24 (also builds the server's admin console), ffmpeg/ffprobe, openssl (the Cast shot's certificate), sqlite3 (the seeded year of
 listening), pngquant (optional; for image
 optimization), and a web export at `FRONTEND/dist` (the sibling
 `../../audiosilo-frontend` by default; `audiosilo-server/scripts/build-web.sh`
