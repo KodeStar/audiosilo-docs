@@ -690,7 +690,7 @@ Keyset-paginated (see [conventions](index.md#pagination)).
 | Query param | Type | Default | Notes |
 |---|---|---|---|
 | `author` | string | - | the books whose author credit is this value, or names it as one of its people (`Brandon Sanderson` finds `Brandon Sanderson & Janci Patterson`; see [the people lists](#get-apiv1librariesidauthors--get-apiv1librariesidnarrators)). Exact, case included |
-| `series` | string | - | the books whose main `series` is exactly this value. With `memberships=1`, also the books that list it among their other series (see `series_list` below) |
+| `series` | string | - | the books whose main `series` is this series, in any spelling (case, accents, punctuation and spacing aside; see [`/series`](#get-apiv1librariesidseries)). With `memberships=1`, also the books that list it among their other series (see `series_list` below) |
 | `memberships` | `1` | - | `series_memberships` capability: makes `series` match every series a book is in. Without it a book is found only by its main series, as shipped players expect |
 | `narrator` | string | - | as `author`, on the narrator credit (`browse_people` capability; an older server ignores it and returns the unfiltered list; one before the co-credit split matches whole credits only) |
 | `sort` | string | `author` | `author` \| `title` \| `recent` (`recent` = newest `added_at` first) |
@@ -759,7 +759,11 @@ until the next thumbnail. The long `description` is not on list responses: only
 
 Metadata fields (`title`, `author`, `narrator`, `series`, `series_index`,
 `asin`, `isbn`) and chapter titles carry the **effective** values: what the scan
-found, with any admin metadata edits layered on top. The shape is unchanged; a
+found, with any admin metadata edits layered on top. A book with a `series` and
+no position takes the one its title gives when the title is the series' name
+and then a number ("He Who Fights with Monsters 4: A LitRPG Adventure" is
+`series_index` 4); a number run on from the name, a range ("1-12") or one
+followed by more words gives none. The shape is unchanged; a
 player simply sees the edited value. The same holds for every book-shaped
 response, search, the `/fs` annotations and the export.
 List responses omit `files`, `chapters`, and `direct_playable` (single-book
@@ -820,6 +824,18 @@ distinct non-zero series positions held, ascending (so a client can mark the
 gaps). Sorted case-insensitively by name; books with no series are not counted.
 Same status codes as `/authors`.
 
+**One series, any spelling.** Series names that differ only in case, accents,
+punctuation or spacing are one series ("He Who Fights With Monsters", "He Who
+Fights with Monsters" and "He Who Fights WIth Monsters"): one entry, its books,
+positions and length merged. Its `name` is the spelling its matched books (with
+an ASIN or ISBN) use most, else the one most of its books use, ties to the first
+alphabetically. Every series filter takes any spelling of the series it names
+(`/books?series=`, [`/series/books`](#get-apiv1librariesidseriesbooks), the
+admin [`/admin/books?series=`](#get-apiv1adminbooks)) and so does
+[`/next`](#get-apiv1librariesidnext)'s series step, so the `name` here loads all of
+them. Nothing fuzzier merges: "The Expanse" and "Expanse" stay two series. The
+JSON is unchanged; an older player simply sees fewer, fuller series.
+
 By default a book counts only in its main `series`, which is what shipped players
 expect. With `?memberships=1` (`series_memberships` capability) it counts in every
 series of its `series_list`, at its position there, and `extra_books` is how many
@@ -835,7 +851,7 @@ request each.
 
 | Query param | Type | Default | Notes |
 |---|---|---|---|
-| `name` | string, repeated | - | a series name, exact (case included), once per series: `?name=Mistborn&name=Discworld`. At least one, at most 50 distinct. Empty names are ignored and a repeated name is answered once |
+| `name` | string, repeated | - | a series name, once per series: `?name=Mistborn&name=Discworld`. It finds the series in any spelling (see [`/series`](#get-apiv1librariesidseries)) and comes back verbatim. At least one, at most 50 distinct. Empty names are ignored and a repeated name is answered once |
 | `limit` | int | `50` | the page size of each series, as on `/books` (≤ 0 or > 200 falls back to 50) |
 
 ```json
@@ -1121,7 +1137,8 @@ Otherwise the local steps decide, in order, and the first one with an answer win
    degrades.
 2. **`series`** - the book's series with a position above 0, main series first
    (`series` at `series_index`, then each other series at its position there). For
-   each, the candidate is the book of exactly that series in the same library
+   each, the candidate is the book of that series (in any spelling, as
+   [`/series`](#get-apiv1librariesidseries) groups them) in the same library
    (by its main series or one of its other series, at its position in that
    series) with the smallest higher position (ties by path), within the caller's
    scope, passing over any book that comes at or before the current book in a
@@ -3294,7 +3311,7 @@ what the first does).
 |---|---|---|---|
 | `library_id` | int | - | one library; a non-positive or non-integer id is `400` |
 | `q` | string | - | full-text search over title/author/series/narrator, the same prefix matching as [`/search`](#get-apiv1search); punctuation-only input filters nothing |
-| `author` · `series` · `narrator` | string | - | the effective value: `series` the main series exactly, or one its `more_series` names; `author` and `narrator` the whole credit or one of the people it names, exactly (as the [player's list](#get-apiv1librariesidbooks)) |
+| `author` · `series` · `narrator` | string | - | the effective value: `series` the main series, or one its `more_series` names, in any spelling (case, accents, punctuation and spacing aside, as [`/series`](#get-apiv1librariesidseries) groups them); `author` and `narrator` the whole credit or one of the people it names, exactly (as the [player's list](#get-apiv1librariesidbooks)) |
 | `format` | string, repeatable | - | `?format=m4b&format=mp3`; at most 50 values |
 | `codec` | string, repeatable | - | ffprobe codec name (`aac`, `mp3`, …); at most 50 values |
 | `direct_playable` | `true`\|`false` | - | the book's codec plays in browsers (an unknown codec counts as playable) |
@@ -3551,9 +3568,10 @@ authors.
 the distinct non-zero series positions held, ascending (so a client can mark the
 gaps). A book counts in every series it is in, its main `series` and each of its
 `more_series`, at its position there; `extra_books` is how many of `books` are in
-the series through `more_series` (the console loads such a series' books with
-`series=` rather than from the series-sorted list). Sorted case-insensitively by
-name. Books with no series are not counted.
+the series through `more_series`. Spellings of one series are one entry, named as
+on the [player's `/series`](#get-apiv1librariesidseries); the console loads each
+card's books with `series=<name>&sort=series`, which finds every spelling. Sorted
+case-insensitively by name. Books with no series are not counted.
 
 ### `POST /api/v1/admin/books/works`
 
@@ -3776,7 +3794,7 @@ A revert restores the value from what the last scan stored - no rescan and no
 disk access. Reverting an ASIN/ISBN falls back to any enrichment for it.
 
 **Making an other series the main one swaps them.** When an edit sets `series` to
-a name the book's `more_series` lists (exactly, case included), and does not set
+a series the book's `more_series` lists (in any spelling: case, accents, punctuation and spacing aside), and does not set
 or revert `more_series` itself, the server swaps the two: the old main series,
 at its old `series_index`, takes that entry's place in `more_series` (a book with
 no main series just drops the entry, and another entry already naming the old

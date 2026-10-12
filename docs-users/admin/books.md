@@ -137,7 +137,8 @@ Click any value to edit it in place. Enter keeps the change (in
 Escape cancels.
 
 To make one of the other series the main one, type its name into **Series**,
-spelled exactly as in **Other series**. The two swap places: the old main
+spelled as in **Other series** (capitals, accents, punctuation and spaces
+aside). The two swap places: the old main
 series, with its number, moves into **Other series** where the new one was, and **Series number** becomes the book's number
 in the new main series (unless you change the number yourself). The fields show
 the swap before you save, and **Review and save** lists every value that
@@ -447,6 +448,33 @@ to see its books in the list, in series order. A book in more than one series
 (see **Other series** under [Editing details](#editing-details)) sits on each
 series' shelf at its number in that series, and filtering the list to one series
 numbers every book by its place in that series.
+
+The page shows 24 series at a time. Use the page numbers under the cards to
+move through a long list, or jump straight to a page. Type in **Find a series
+or author** to show only the series whose name or author holds what you type,
+ignoring case, accents, punctuation and spaces ("fights with" finds "He Who
+Fights with Monsters"). The page and the search are part of the page's
+address, so after you open a book, **Back** returns you to the same page, the
+same search and the same place on it. Picking another library starts again on
+the first page.
+
+Books whose series is spelled slightly differently still make one series.
+Spellings that differ only in capitals, accents, punctuation or spaces ("He
+Who Fights With Monsters", "He Who Fights with Monsters", "He Who Fights WIth
+Monsters") are one series, everywhere: on this page, in the books list
+filtered to the series and in the players. The card is named the way your
+matched books spell it, or else the way most of its books do. Names that
+differ in any other way stay apart ("The Expanse" and "Expanse" are two
+series), so fix those with a [bulk edit](#changing-many-books-at-once).
+
+A book with a series but no series number takes the number its title gives
+when the title is the series' name followed by a number: "He Who Fights with
+Monsters 4: A LitRPG Adventure" is book 4, and so are "... 4 - A LitRPG
+Adventure", "The Expanse, Book 4" and "Discworld #4". A title where the number
+runs straight on from the name ("Catch-22"), reads as a range ("Dork Diaries
+1-12") or is followed by more words ("Jack Reacher 61 Hours") gives no number. The book's
+page shows that number as coming from its file tags (or its folders, when the
+title came from them), and your own **Series number** always wins.
 
 Each spine takes its colours from the book's cover, and a longer book stands
 taller. AudioSilo reads the cover colours in the background after it indexes
