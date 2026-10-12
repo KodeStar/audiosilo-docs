@@ -664,10 +664,16 @@ given with what the device knew (the prior connection's, else another user's
 connection to the same server, else the remembered server's; `mergeAddresses`), makes
 it the default, remembers the server durably without its token
 (`src/lib/known-servers.ts`, the connect screen's Reconnect rows, keyed by `server_id`
-with no user), and drops any connection at the same URL **whose `server_id` differs**:
-a rebuilt server mints a new `server_id` at the same address, so that one is a dead
-identity, whose token and scoped state go. A different user is never a reason to drop
-one.
+with no user). A connection at the same URL **whose `server_id` differs**
+(`staleIdentities`: a rebuilt server mints a new `server_id` at the same address) is a
+dead identity, but only the ones named in `retire` go, with their token and scoped
+state: `finishConnect` names the **re-pairing person's own** (`staleToRetire`: the
+profile holding the reconnect banner's connection, else the person listening; nobody's
+for **Add someone**), and the new connection takes the retired one's place in that
+person's profile (`onConnectionReplaced`). Every other stale identity is another
+person's: it stays, flagged `needsReconnect: 'server-reset'`, for them to sign in again
+(dropping it would delete their profile, PIN and kids settings). A different user is
+never a reason to drop one.
 `learnAddresses` merges a `GET /addresses` answer into a connection's addresses
 (`mergeAddresses`, so a known `home` survives; the address runner calls it). `removeConnection` (and `logout`,
 which removes the active one) deletes its token **and purges the connection's
@@ -723,9 +729,14 @@ keeps its id. So:
 **The one-time key migration** (`migrateConnectionIdentity`,
 `src/lib/identity-migration.ts`) moves every legacy connection to its new id without
 signing anyone out. `migrateStorage()` runs it after `resetStaleStorage` and before any
-store hydrates or any lazy reader runs. It is ordered so a crash, a locked keychain or
-a failed write at **any** step leaves a working app that simply runs it again next
-launch:
+store hydrates or any lazy reader runs. Until the plan is stored, a crash, a locked
+keychain or a failed write leaves the legacy data usable and the run waits for the next
+launch. Once the plan is stored the run only goes **forward**: `migrateStorage()` retries
+it up to `RECOVERY_ATTEMPTS` (5) times, a second apart, with every reader held, so no store
+ever sees half-moved documents. When it still fails it gives up for this launch and sets
+`identityMovePending()`: the downloads store and the offline queue's replay keep what
+names an id no connection has yet instead of pruning it as gone, and a later launch
+finishes the plan.
 
 1. **Read and plan** `{ legacyId: newId }` for each legacy connection with a usable
    `user.id` whose new id no other connection already has (plus the plan a run cut
@@ -735,18 +746,23 @@ launch:
    a later launch.
 2. **Tokens first.** Copy each `audiosilo.token.<old>` to `audiosilo.token.<new>` and
    read it back. Any failure, a locked keychain included (a CarPlay launch with the
-   phone locked), aborts with nothing else changed. Old tokens are never deleted here.
+   phone locked), aborts with nothing else changed. Old tokens are never deleted here,
+   and a copy is never undone.
 3. **Record the plan, then move the files**: native `downloads/<old>` to
-   `downloads/<new>`, web the Cache API's `/_offline/<old>/` entries to
-   `/_offline/<new>/` (the engines' `moveConnection`). A failure moves back what this
-   run moved and aborts: the registry still names the old ids.
+   `downloads/<new>` (`engine.native`'s `moveConnection`). Moves are idempotent and
+   **never reversed** (a retry can't tell which moves an earlier process made, and the
+   documents may already name the new ids); a failure keeps the plan and the next try
+   goes on from there. The web moves **no** files: `engine.web` has no `moveConnection`
+   and keeps a moved connection's Cache API entries under the legacy id
+   (`/_offline/<legacyId>/`), which the registry's new ids reach through the aliases
+   (`legacyIdOf`).
 4. **Rewrite every document naming a connection id in one `setMany`**: the
    connections (new `id`, `serverId` added), the default connection, the downloads
    registry (keys and each `connectionId`), the progress mirror (keys and values) and
    queue, `offlineServers`, the car bookmarks waiting to be sent, the library
    selection, Smart speed's time saved, the drift-offs, plus the aliases and the first
-   profiles document. A failed write puts the documents back and the files with them.
-   `audiosilo.carSnapshotWritten` is removed, so the next car snapshot is built fresh
+   profiles document. A failed write (iOS and the web write key by key) keeps the plan,
+   and the next try finishes it. `audiosilo.carSnapshotWritten` is removed, so the next car snapshot is built fresh
    (even offline).
 5. **Mark it done**: `audiosilo.identityVersion` = `2`.
 6. **Delete the old tokens and the plan**, best effort (a later launch finishes them).
@@ -758,12 +774,8 @@ old code) is moved by the next launch the same way. A new document keyed by a
 connection id must be added to `ID_DOCUMENTS` or it is left behind. In-memory state
 (scroll memory, the React Query cache) needs no migration.
 
-The **first profiles document** (`audiosilo.profiles`) is written in the same
-`setMany`: one profile holding every connection, except that a profile holds at most
-one connection per server (a second user on a server, signed in before the migration
-ran, gets a profile of their own), named after its first connection's user, the
-default connection's profile active, `askAtLaunch` off. An existing document is only
-re-keyed. See [Profiles](profiles.md).
+The same `setMany` writes the **first profiles document** (`audiosilo.profiles`); how
+it groups the connections is on [Profiles](profiles.md#the-store-srcstoresprofilests).
 
 **Aliases.** The migration records `{ [old]: new }` under `audiosilo.connectionAliases`,
 which `loadConnectionAliases` reads into memory in `bootstrapPlayback`.

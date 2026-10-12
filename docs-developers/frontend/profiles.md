@@ -36,12 +36,33 @@ interface ProfilesDoc {
 }
 ```
 
-The [identity migration](state-and-data.md#connection-identity-server_iduser_id)
-writes the first document. When it is missing on an install with connections (the
-migration aborted, or an install from before profiles signed in again), the store
-builds it from the session's connections with the same rule. A stored document is
-validated on read (`parseProfilesDoc`): an unreadable one is empty and is rebuilt
-from the session; an `activeProfileId` naming nobody reads as `null`, never as the
+**The first document** (`initialProfiles`) is written by the
+[identity migration](state-and-data.md#connection-identity-server_iduser_id), in the
+same `setMany` as its re-keyed documents (an existing document is only re-keyed). It
+puts every connection in one profile, except that a profile holds at most one
+connection per server: a second user on a server (signed in before the migration ran)
+gets a profile of their own. Each profile is named after its first connection's user,
+the profile holding the default connection is active, and `askAtLaunch` is off. When
+the document is missing on an install with connections (the migration aborted, or an
+install from before profiles signed in again), the store builds it from the session's
+connections with the same rule.
+
+**Reading it.** A read that **fails** is never taken as a missing document (reconciling
+an empty one would replace every profile: new ids, no PIN, no kids settings). The store
+retries it `HYDRATE_ATTEMPTS` (5) times, a second apart (`hydrationFailed` while it
+does), then stops holding the launch (`giveUpOnRead`), decided once the session has
+settled:
+
+- **Someone is signed in**: they may have a PIN or a kids profile this run can't know,
+  so the store stays `hydrationFailed` (nothing of anyone shows or plays, nobody new
+  signs in) and reads again whenever the app comes to the front.
+- **Nobody is** (the web with site data blocked, where the session couldn't read its
+  list either): the store runs `unread`, in memory only, and never writes over the
+  stored document; whoever signs in now gets a profile of their own.
+
+Only a document that **reads but doesn't parse** counts as missing (waiting can't fix
+it) and is rebuilt from the session. A parsed document is validated
+(`parseProfilesDoc`): an `activeProfileId` naming nobody reads as `null`, never as the
 first person (that person may have a PIN, and nobody gave it).
 
 Reads: `useActiveProfile()`, `useProfileConnections()` (the active profile's
@@ -109,11 +130,16 @@ breaking their background work:
 - The UI then resets every tab to its root and goes Home (or `/kids` for a kids
   profile).
 
-The same rule guards the paths that can start a book without the UI: a car play
-request and the Android service's book adoption quietly refuse another person's book,
-or any book while nobody is chosen (an item of an older snapshot); a connection no
-profile holds still plays (a CarPlay launch before the session could be read). See
-[Native integrations](native-integrations.md#the-car-snapshot-srccar).
+**Who may start a book** is one rule, `mayActFor(connectionId)`, and the **playback
+store** enforces it at every start (`playBook`, `startBookInPlace`, `adoptLoaded`), so it
+covers the player route, a car play request, the Android service's book adoption and a
+resumed Cast session alike: never another person's book (playing it would save to their
+account without their PIN), never any book while nobody is chosen (an item of an older
+snapshot). A connection no profile holds still plays (a CarPlay launch before the
+session could be read). While the store's read failed (`hydrationFailed`) nothing plays;
+while it runs `unread`, only the connections of the people who signed in this run.
+Screens never decide this themselves: they only offer the switch (`OtherPersonGate`,
+below). See also [Native integrations](native-integrations.md#the-car-snapshot-srccar).
 
 ## Who's listening? (`/profiles`)
 
@@ -146,8 +172,15 @@ anyone with the device and a browser's developer tools can read a session token 
   `audiosilo.profilePin.<profileId>` as JSON `{ v: 1, salt, iterations, hash }`. `salt`
   is 16 random bytes; `hash` is SHA-256 over salt + PIN, then over salt + the previous
   digest, **10,000** digests in all (`PIN_ITERATIONS`), compared in constant time. The
-  profile mirrors `hasPin` so screens know without reading the secure store; a mirror
-  whose hash is gone (an install restored without its secure store) counts as no PIN.
+  profile mirrors `hasPin` for display only.
+- **The secure store is the authority** (`readPin` first, in `useChooseProfile` and the
+  Household pane), never the mirror alone: the mirror is written best effort with the
+  whole profiles document, which a failed write or a second web tab holding an older
+  document can leave behind. A stored hash the mirror lost still asks (and repairs the
+  mirror); a mirror whose hash is gone (an install restored without its secure store)
+  counts as no PIN and is cleared; a secure store that can't be read still asks (the
+  prompt says it couldn't check). **Setting** a PIN over a stored one asks for the
+  current one first, so a PIN is never overwritten unseen.
 - **SHA-256 in plain JS** (`src/lib/sha256.ts`, synchronous, checked against the
   standard's vectors): 10,000 rounds through `expo-crypto` would be 10,000 asynchronous
   native calls, and on the web `crypto.subtle` exists only in a secure context, so a
@@ -161,16 +194,24 @@ anyone with the device and a browser's developer tools can read a session token 
 
 ## Links to another person's book
 
-A content link (`?connection=`: the widget, the Live Activity, web history, a shared
-link) is checked by `ContentScope` and the player route:
+Every route that carries `?connection=` (the widget, the Live Activity, web history, a
+shared link) follows one rule, `useRouteConnection(connection)`
+(`src/components/layout/content-scope.tsx`): the content screens through `ContentScope`,
+and the root modals outside any scope (the player, the end credits, the Year in
+listening story, the connect flow's ready page) directly. It reads the param through
+`connectionParam` (an old id resolves) and returns the gate to show instead of the
+screen:
 
 - a connection of **another person** on this device gets `OtherPersonGate`: "This
   belongs to &lt;name&gt;", with **Switch to &lt;name&gt;** (their PIN rules apply; after the switch
   the page opens where it is) and **Go back**;
-- a connection this device isn't signed in to (a stale link to a removed server or a
-  removed person's book) gets "Not signed in to that server" with a way back, never the
-  page and never a redirect (a redirect inside a tab stack fired again on every focus of
-  the tab).
+- an **unknown** connection, one this device isn't signed in to (a stale link to a
+  removed server or a removed person's book), gets the not-found state "Not signed in to
+  that server" with a way back, never the page and never a redirect (a redirect inside a
+  tab stack fired again on every focus of the tab).
+
+The gate only offers the switch; refusing the play itself is the playback store's job
+(`mayActFor`, [above](#switching-and-the-play-rule)).
 
 ## Settings > Household and sharing
 

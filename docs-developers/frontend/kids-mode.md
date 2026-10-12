@@ -15,7 +15,9 @@ kids?: { library?: { connectionId: string; libraryId: number }; bedtime: string 
 ```
 
 `setProfileKids(profileId, kids | undefined)` turns it on (an invalid bedtime reads as
-`DEFAULT_BEDTIME`) or off. `KidsLibraryPicker` offers the libraries the profile's
+`DEFAULT_BEDTIME`) or off. Turning it on is refused when it would leave no grown-up on
+the device (`mayTurnOnKids`, which the Household pane also reads to disable the
+switch): leaving kids mode is a grown-up's job. `KidsLibraryPicker` offers the libraries the profile's
 connections list, named with their server when the profile has several; no pick means
 the first one listed.
 
@@ -30,12 +32,22 @@ tabs. A kids profile never gets the shell:
 - **`KidsRouteGuard`**, mounted once by the root layout so it covers the root routes
   too, sends a kids profile to `/kids` from anywhere it may not be. `kidsAllowsPath`
   allows only `/kids`, `/profiles` (leaving kids mode goes through it, PIN rules
-  included) and `/connect` ("Add someone" on the picker); the tabs, the full player,
+  included) and `/connect` (the child's own sign-in renewed, or "Add someone" when it is
+  allowed, below); the tabs, the full player,
   the end credits, the year story and any deep link into them go back. It uses
   `dismissTo('/kids')`, so a `/kids` already in the root stack is popped back to
   rather than stacked twice.
 - On Android the back button does nothing on `/kids` while the shell sits under it;
   with nothing under it, it leaves the app as usual.
+- **Nobody new signs in from kids mode** while a grown-up is on the device
+  (`mayAddPerson`, `src/components/profiles/connect-intent.ts`): `finishConnect` refuses
+  "Add someone", a new server and the demo ("Choose a grown-up before adding someone."),
+  and Who's listening? disables **Add someone** with that hint, so a child can't leave
+  kids mode through a new profile; they choose the grown-up first, PIN and all. A
+  re-pair of a connection the device has (the child's own sign-in renewed, through the
+  reconnect banner on the kids screen) keeps its person and is allowed. With no grown-up
+  left, Add someone stays open, the only way out. Nothing is added while the profiles
+  couldn't be read.
 
 ## What it shows (`src/components/kids/`)
 
@@ -53,11 +65,18 @@ The rules are pure in `kids-model.ts`, read through `useKidsStories()`:
 - **The shelf** (`kidsShelf`): the books in progress, most recently played first, then
   every other book of the library in the server's order, finished ones included.
 - **Offline** (`kidsDownloads`): when the server can't be reached, the finished
-  downloads of that connection (in that library when known), newest first.
+  downloads of that connection, newest first, in the library `kidsOfflineLibraryId`
+  names: the one shown when known, else (`GET /libraries` unreadable) the profile's pick
+  on this connection, else every library, so the grown-ups' downloads of another library
+  on the same account don't show.
 
-Loading, empty, error and offline states each have their own words. A tile starts its
-story through `usePlayBook`, which plays in place here on every layout (`navFor` counts
-`/kids` as a player on top), and the page scrolls back up to the player.
+The whole page is **one virtualised list** (`KidsStoriesList`, a FlashList with the
+greeting, the [reconnect banner](connect-and-addresses.md), the bedtime card and the
+player as its header), paging through the library as it scrolls. Loading, empty, error
+and offline states each have their own words. A tile starts its story with
+`startBookInPlace` on every layout (kids mode never opens the full player; the story
+already loaded only resumes), and the list scrolls back up to the player
+(`scrollToOffset`).
 
 **`KidsPlayer`** replaces the full player: cover, title, chapter and minutes left, a
 simple progress line through the chapter (no scrubbing; the view's one pink thing), and
@@ -79,9 +98,11 @@ Bedtime reuses the auto sleep controller, made profile-aware:
 
 - `isBedtime(bedtime, now)`: from the profile's bedtime until `KIDS_BEDTIME_UNTIL`
   (06:00) local time, across midnight.
-- `decideBedtime(...)`: inside the window, every story that starts or resumes arms a
-  duration timer of `KIDS_BEDTIME_MINUTES` (20) with the normal fade, unless a timer on
-  that book was cancelled this session (the same anti-nag rule as the setting's).
+- `effectiveAutoSleepConfig()` gives the rule that applies now, and `decideAutoSleep`
+  applies it as it does the setting, with the same session anti-nag memory: inside the
+  window, every story that starts or resumes arms a duration timer of
+  `KIDS_BEDTIME_MINUTES` (20) with the normal fade, unless a timer on that book was
+  cancelled this session.
 - While a kids profile is active, its bedtime rule **replaces** the device-wide auto
   sleep setting (a grown-up's "end of chapter from 22:00" is not a child's bedtime), and
   it is always on; the setting is untouched for everyone else. Switching to or from a

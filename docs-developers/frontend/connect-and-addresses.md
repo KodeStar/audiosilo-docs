@@ -61,9 +61,13 @@ connection then shows `/connect/ready`; an added server goes straight back with
   addresses): keep its paired `serverUrl` (the reconnect banner signs in through the
   address in use now, which away from home is the away address);
 - a **reset server** (the banner's connection, reached through one of its own addresses,
-  answering with a new `server_id`): store the old connection's `serverUrl`, so the
-  session store retires the dead identity at that URL, and carry its addresses over
-  (the home address is probed against the new id before it is used);
+  answering with a new `server_id`): store the old connection's `serverUrl` and carry
+  its addresses over (the home address is probed against the new id before it is
+  used). `finishConnect` then retires only the **re-pairing person's own** dead identity
+  at that URL (`staleToRetire`, passed to `setSession` as `retire`: the banner's
+  person, else the person listening, nobody for Add someone), and the new connection
+  takes its place in their profile; other people's stay, flagged `server-reset`, for
+  them to sign in again ([Session](state-and-data.md#session-srcstoressessionts));
 - anything else: the address signed in through.
 
 `/connect` decides its "nothing to add" bounce (an authenticated user without `?add=1`, a

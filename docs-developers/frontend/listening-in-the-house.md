@@ -5,9 +5,9 @@ description: "The player side of Listening in the house: the household hooks and
 
 Listening in the house is an opt-in server feature (capability `household`): people
 on one server who choose to share see what the others who share are listening to.
-The server owns every privacy rule (reciprocal, other enabled non-demo people only,
-the caller's scopes, no device fields; see
-[the reference](../server/api/reference.md#listening-in-the-house)). The
+The server owns every privacy rule
+([what other people see](../server/auth-and-security.md#listening-in-the-house-what-other-people-see);
+the wire is in [the reference](../server/api/reference.md#listening-in-the-house)). The
 player only decides what to show of the answer, where, and how often to ask.
 
 ## The wire and the hooks (`src/api/`)
@@ -19,7 +19,10 @@ missing `listening` as `[]`) in `client.ts`. The hooks in `hooks.ts`, each gated
 `household` (`useCapabilityQuery` / `useCapabilityMutation`, so a server without the
 flag is never asked):
 
-- `useHousehold(cid?)` - the caller's own `{ share_listening }`, `qk.household(cid)`.
+- `useHousehold(cid?)` - the caller's own `{ share_listening }`, `qk.household(cid)`,
+  with `staleTime: Infinity`: it only changes through `useSetHousehold`, so it is
+  fresh until the app restarts (a change made on another device shows on the next
+  launch).
 - `useSetHousehold(cid?)` - the switch. Rejects with `CapabilityError` (sending
   nothing) while the flag is off or unknown; never hand that to `noteError`. It stores
   the server's answer under `qk.household(cid)` and invalidates
@@ -56,13 +59,15 @@ Pure and tested (`house-model.test.ts`):
   wins), in the server's newest-first order.
 - `rowsForBook(rows, libraryId, path)` - the housemates on one book (path is the
   identity).
-- `houseWhen(row, now)` - `playing` and `paused` as the server says; for `recent`,
-  the **local calendar day** of the newest save worked out by hand (`daysAgo`: Hermes
+- `houseWhen(row, today)` - `playing` and `paused` as the server says; for `recent`,
+  the **local calendar day** of the newest save, as of `today` (the local day's start
+  from `useToday()`, which ticks over just after midnight), worked out by hand (Hermes
   has no `Intl.RelativeTimeFormat`): `today`, `yesterday`, or `earlier` for a clock
-  that disagrees with the server's 24 hours.
+  that disagrees with the server's 24 hours. A save in the future or one that doesn't
+  parse counts as today.
 - `chapterName(row, t)` - the chapter's title, else "Chapter N" from
   `chapter_index` (a chapter titled "Track 01"), else nothing.
-- `houseCopy(row, now, t)` - the title (the server's, else the path's last segment),
+- `houseCopy(row, today, t)` - the title (the server's, else the path's last segment),
   the state line ("Listening now · Chapter 4") and one sentence for a screen reader
   ("sam is listening to Unsouled, Chapter 4").
 - `houseColumns` / `houseCardWidth` - the Home grid: cards at least 250 wide, 12

@@ -50,8 +50,29 @@ lock screen's, so the store lowers its resume floor and saves.
 follows the driver's session events, switches the route and keeps the `useCast`
 store (`supported`, `status`, `deviceName`) current. A session resumed with our media
 playing while the app has no book loaded (it was killed or relaunched mid-cast) is
-adopted the way the Android car adoption works (`adoptLoaded`), then given the queue
+adopted the way the Android car adoption works (`adoptLoaded`, so the
+[play rule](profiles.md#switching-and-the-play-rule) applies), then given the queue
 the store built.
+
+Guards that keep a route switch honest:
+
+- **Stale work is dropped.** The router's switches (`beginCast`, the hand-back) and
+  the session sync's event handling each carry a generation: a switch or event that a
+  newer one overtook while it awaited does nothing when it resumes. A receiver status
+  that arrives while a load of ours is in flight is not trusted as the book's place.
+- **Foreign media** is told apart by stream identity (`streamIdentity` in
+  `cast-media.ts`: the URL's route and its `path`/`transcode` parameters, ignoring the
+  address, `token=` and `t=`), or by the book a receiver item names. Another sender's
+  book, or another app's media on the same receiver, is never paused, seeked, re-rated
+  or stopped by us; ours waits, paused, and the next play loads it back.
+- **An early end of a transcoded stream** (`isEarlyTranscodeEnd`: the receiver says
+  `finished` well before the file's end, a stream the server or a proxy closed) is not
+  the book's end: seen playing just now, the queue is loaded again there and plays on;
+  seen long ago, the book comes back paused there and the next play reloads it.
+- **The car wins.** A CarPlay or Android Auto play request while a book is on a
+  receiver ends the cast first (`endCastForCar`: the receiver's place is read, the book
+  comes back paused there, then the session ends), so the car's play starts on this
+  device, never on the TV.
 
 ## The receiver never gets the session token
 
@@ -68,9 +89,9 @@ the store built.
   path)` and reuses it for that book until an hour before it expires
   (`CAST_TOKEN_MARGIN_MS`): a receiver still fetches later files and seeks with it.
   Concurrent asks share one request. In memory only, never persisted; a removed
-  connection's tokens are dropped (`onConnectionRemoved`). On the server a cast token
-  is tied to the session that minted it, so signing this device out of the server
-  ends its cast tokens too.
+  connection's tokens are dropped (`onConnectionRemoved`). What a cast token may read
+  and how long it lives are the server's rules:
+  [Cast tokens](../server/auth-and-security.md#cast-tokens).
 
 The pure rules are `cast-media.ts`:
 
@@ -89,8 +110,9 @@ The pure rules are `cast-media.ts`:
 
 The web player's Remote Playback prompt (`el.remote.prompt()`) was **removed** for
 this reason: it hands the receiver the element's own URL, which carries the session
-token. The web's route picker is now Safari's AirPlay only (`routePickerKind`), and
-the output pill beside the Cast button is labelled "Audio output" on every platform
+token. The web's route picker is now Safari's AirPlay only: `service.web.ts`'s
+`canShowRoutePicker` / `showRoutePicker` answer only where the element has
+`webkitShowPlaybackTargetPicker` (`hasAirPlayPicker`), and the output pill beside the Cast button is labelled "Audio output" on every platform
 (AirPlay on iOS and Safari, the media output panel on Android).
 
 ## The drivers
@@ -113,7 +135,11 @@ reports the session's life (`starting`, `started`, `resumed`, `startFailed`,
   couldn't reach a localhost server anyway). It is loaded **lazily** the first time
   the Cast button shows for a book it can cast (`ensureCastReady`, 15 s timeout),
   never at startup and never for a button that can only explain a blocked book; a
-  failed load is kept for the page rather than retried. The server's web CSP admits
+  failed load is kept for the page rather than retried. **One tab owns a session**: the
+  sender joins any session this origin has (so a reload mid-cast finds it again), but
+  only the tab that started it follows it (a mark in that tab's `sessionStorage`); any
+  other tab leaves the session it was joined to without stopping the receiver, so two
+  tabs never drive one receiver. The server's web CSP admits
   the sender's three scripts by path in `script-src`
   ([Web UI](../server/web-ui.md#per-document-csp-htmlcsp)).
 
