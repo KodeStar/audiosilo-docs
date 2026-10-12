@@ -3322,7 +3322,7 @@ what the first does).
 | `min_duration` · `max_duration` | number (seconds) | - | inclusive bounds; `0` means no bound |
 | `added_after` | date | - | inclusive lower bound on `added_at`: `YYYY-MM-DD` (used as is) or an RFC 3339 time (any offset; converted to UTC before comparing) |
 | `added_before` | date | - | exclusive upper bound, same formats |
-| `issue` | string | - | one [Health issue](#get-apiv1adminissues) kind's books: `scan_error`, `suspect`, `split_discs` (one row per split book: its first disc), `no_cover`, `unmatched`, `no_chapters`, `detailed_chapters` or `transcode` (not `duplicate`, which comes as groups from [`/admin/issues/duplicates`](#get-apiv1adminissuesduplicates)). Books an admin ignored for that kind are left out. Any other value is `400 unknown issue` |
+| `issue` | string | - | one [Health issue](#get-apiv1adminissues) kind's books: `scan_error`, `suspect`, `split_discs` (one row per split book: its first disc), `no_cover`, `unmatched`, `series_spellings`, `no_chapters`, `detailed_chapters` or `transcode` (not `duplicate`, which comes as groups from [`/admin/issues/duplicates`](#get-apiv1adminissuesduplicates)). Books an admin ignored for that kind are left out. Any other value is `400 unknown issue` |
 | `issue_ignored` | `true`\|`false` | - | with `issue`, list **only** the books an admin ignored for it; without `issue` it is `400 issue_ignored needs an issue` |
 | `sort` | string | `title` | `title` \| `author` \| `surname` \| `series` \| `narrator` \| `published` \| `added` \| `duration` \| `size` |
 | `order` | string | `asc` | `asc` \| `desc` |
@@ -4468,7 +4468,13 @@ a scan last finished.
 
 - `categories` - one entry per kind, always in this order: `scan_error`,
   `suspect`, `split_discs`, `duplicate`, `no_cover`, `unmatched`,
-  `no_chapters`, `detailed_chapters`, `transcode`. `detailed_chapters` is a
+  `series_spellings`, `no_chapters`, `detailed_chapters`, `transcode`.
+  `series_spellings` is a book whose main series another book of its library
+  spells another way (the same series in a different case, accent, punctuation or
+  spacing; see [`/series`](#get-apiv1librariesidseries)); every book of such a
+  series is counted, and
+  [`/admin/issues/series-spellings`](#get-apiv1adminissuesseries-spellings) lists
+  them per series. `detailed_chapters` is a
   book whose last [community chapter check](../community-chapters.md) found
   finer community chapters that fit (`refine`) and whose chapter source no
   admin has chosen; the console's fix is a bulk edit with
@@ -4534,6 +4540,51 @@ different libraries are deliberate and never grouped).
 - At most 500 groups (counted after that filter, so every ignored group can be
   reached), ordered by library and the kept copy's path.
 
+### `GET /api/v1/admin/issues/series-spellings`
+
+The series a library's books spell more than one way, one entry per series and
+library, from the same rule as the `series_spellings` count.
+
+| Query param | Type | Notes |
+|---|---|---|
+| `library_id` | int | one library; a non-positive or non-integer id is `400 invalid library_id` |
+| `ignored` | `true` | return the series with a book an admin ignored for `series_spellings` (instead of those with a book not ignored) |
+
+```json
+{
+  "groups": [
+    {
+      "library_id": 5,
+      "suggested": "He Who Fights with Monsters",
+      "spellings": [
+        { "name": "He Who Fights With Monsters", "books": 8 },
+        { "name": "He Who Fights with Monsters", "books": 5 }
+      ],
+      "books": 13
+    }
+  ]
+}
+```
+
+- `suggested` - the spelling to offer, by the rule
+  [`/series`](#get-apiv1librariesidseries) names a series by (the spelling its
+  matched books use most, else the one most of its books use, ties alphabetical),
+  counted over this library's books whose main series it is. So it can differ from
+  the name `/series` or [`/admin/series`](#get-apiv1adminseries) gives when other
+  libraries or other-series lists spell it too. The console offers it first.
+- `spellings` - every spelling the library's books give it as their main series,
+  with its books, most books first (ties alphabetical). Ignored books' spellings
+  are listed too, so a rename leaves none behind.
+- `books` - all of the books in that library whose main series it is (a book that
+  lists it only among its other series is not counted, and a rename doesn't touch
+  it).
+- A series can be in both views while some of its books are ignored and some not.
+  At most 200 entries, ordered by `suggested` (case-insensitive), then library.
+
+The console's fix is a [bulk edit](#post-apiv1adminbooksbulk) setting `series` on
+the books of the other spellings, as an author merge is; ignoring a series is a
+`series_spellings` ignore of every one of its books.
+
 ### `POST /api/v1/admin/issues/ignore` · `DELETE /api/v1/admin/issues/ignore`
 
 `POST` stops listing books under one issue kind; `DELETE` lists them again (the
@@ -4544,7 +4595,7 @@ console's Undo and "Show again"). For duplicates, ignore every copy of a group
 { "kind": "no_cover", "books": [ { "library_id": 1, "path": "Sun Tzu/The Art of War" } ] }
 ```
 
-- `kind` - one of the nine kinds above.
+- `kind` - one of the ten kinds above.
 - `books` - 1 to 1000 `{library_id, path}` refs. The books needn't be indexed:
   the rows are path-keyed durable state (`issue_ignores`), so an ignore
   survives rescans and rebuilds and moves with the book. A ref in a library

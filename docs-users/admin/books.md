@@ -426,6 +426,12 @@ one person. Use the library filter and **Filter authors** (or **Filter
 narrators**) to narrow the list. Click a name to open **Books** filtered to that
 person, their shared books included.
 
+The page shows 120 people at a time. Use the page numbers under the tiles to
+move through a long list. The page and the filter are part of the page's
+address, so after you open a name, **Back** returns you to the same page and the
+same filter. A new filter, or picking another library, starts again on the first
+page.
+
 ![Library > Authors](/img/screenshots/admin/authors.png)
 
 ### Merging two spellings
@@ -465,7 +471,9 @@ Monsters") are one series, everywhere: on this page, in the books list
 filtered to the series and in the players. The card is named the way your
 matched books spell it, or else the way most of its books do. Names that
 differ in any other way stay apart ("The Expanse" and "Expanse" are two
-series), so fix those with a [bulk edit](#changing-many-books-at-once).
+series), so fix those with a [bulk edit](#changing-many-books-at-once). To make
+every book of a series spell it the same way, use
+[Series spelled several ways](health.md#series-spelled-several-ways) in Health.
 
 A book with a series but no series number takes the number its title gives
 when the title is the series' name followed by a number: "He Who Fights with
