@@ -56,7 +56,7 @@ Below the tiles, when someone listened in the period:
   you picked. The darker a day, the more listening; point at a day to see its
   hours.
 - **When** *your server* **listens**: listening by hour of day and weekday, with
-  the busiest hour in words ("Busiest: Wednesday 21:00").
+  the busiest hour in words ("Busiest: Wednesday 9:00 PM", in your clock format).
 - **Top books**: the books listened to most, with how many people listened.
   Click one to open its page.
 - **Top people**: who listened most, with how many books they listened to and
@@ -256,17 +256,10 @@ of it is part of every [backup](backups.md).
 ### Listening in the house
 
 Listeners can choose to share what they're listening to with the other people on
-the server who share too ([Listening in the house](../listening/in-the-house.md)).
-It is off for everyone until each person turns it on in their own app. The server
-keeps only that choice, one switch per account; what it shows other listeners
-comes from the listening sessions it already records:
-
-- only between people who **both** share, never to someone who doesn't;
-- each person's most recent book in the last 24 hours, and only when the person
-  looking may open that book themselves;
-- their username, the book, the chapter and whether they're listening now,
-  paused or listened earlier, **never** their device, network address or app;
-- never demo accounts or disabled accounts.
+the server who share too; who sees what is on
+[Listening in the house](../listening/in-the-house.md#who-shows-up). The server
+keeps only each account's choice, and builds what it shows from the listening
+sessions it already records.
 
 Nothing in the admin console shows who shares or changes anyone's choice. As an
 admin you already see everyone's listening on this page, whether or not they
@@ -274,10 +267,10 @@ share. Deleting an account removes its choice, and it is part of every backup.
 
 ### Casting
 
-When a listener plays a book on a Chromecast, their app asks the server for a
-**cast token**: a key that works for 24 hours, for that one book's audio and
-cover only, so the Cast device never gets the listener's own sign-in. Cast tokens
-stop working when the device that asked for them signs out (including when you
+When a listener [plays a book on a Chromecast](../listening/chromecast.md), their
+app asks the server for a temporary pass for that one book (24 hours, audio and
+cover only), so the Cast device never gets the listener's own sign-in. The pass
+stops working when the device that asked for it signs out (including when you
 [sign that device out](users-and-invites.md#the-devices-page)), when the account is
-disabled or deleted, or when the person loses access to the book. They are not
+disabled or deleted, or when the person loses access to the book. Passes are not
 listed as devices in the console.

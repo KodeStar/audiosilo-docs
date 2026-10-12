@@ -25,11 +25,11 @@ On an iPhone, if AudioSilo hasn't asked before, the first tap brings up a reques
 ## What you need
 
 - **A Cast device on the same network** as your phone or computer.
-- **A server address the Cast device can reach.** The Cast device fetches the book from your server itself, using the address your app is connected through at that moment (your [home address](../getting-started/remote-access.md#tell-the-server-its-home-address) when you're at home). So that address must work from the Cast device too:
-  - **Plain HTTP on your home network** works (for example `http://192.168.1.20:8080`): a server [behind a reverse proxy](../getting-started/remote-access.md#behind-a-reverse-proxy) serves plain HTTP on its own port, and its home address can point straight at it.
-  - **HTTPS with a trusted certificate** works: a [Let's Encrypt certificate](../getting-started/remote-access.md#a-real-certificate-with-autocert-lets-encrypt) or a [reverse proxy](../getting-started/remote-access.md#behind-a-reverse-proxy) with a real certificate.
-  - **A self-signed certificate does not work.** A Cast device can't be told to accept the warning the way a browser can, so it refuses to play from a server with the default self-signed certificate.
-  - **`localhost` doesn't work**: if the app reaches your server at `localhost` (the server runs on the same computer), the Cast device can't. The Cast button then explains this instead of casting; connect to the server by its network address instead.
+- **A server address the Cast device can reach.** The Cast device fetches the book from your server itself. It uses the address your app is connected through at that moment: your [home address](../getting-started/remote-access.md#tell-the-server-its-home-address) when you're at home. That address must work for the Cast device too:
+  - **Plain HTTP on your home network** works, for example `http://192.168.1.20:8080`. A server [behind a reverse proxy](../getting-started/remote-access.md#behind-a-reverse-proxy) serves plain HTTP on its own port, and its home address can point straight at it.
+  - **HTTPS with a trusted certificate** works: a [Let's Encrypt certificate](../getting-started/remote-access.md#a-real-certificate-with-autocert-lets-encrypt), or a [reverse proxy](../getting-started/remote-access.md#behind-a-reverse-proxy) with a real certificate.
+  - **A self-signed certificate does not work.** A Cast device can't click through a certificate warning the way you can in a browser, so it won't play from a server on the default self-signed certificate.
+  - **`localhost` doesn't work.** If the app reaches your server at `localhost` (the server runs on the same computer), the Cast device can't. The Cast button explains this instead of casting. Connect to the server by its network address instead.
 
 A downloaded book casts from your server too, since the Cast device can't read the files on your phone. So casting needs the server to be reachable even for a book you've downloaded.
 

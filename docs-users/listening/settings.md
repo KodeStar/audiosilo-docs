@@ -93,8 +93,8 @@ Everyone who listens on this device, each with their own servers, place in every
 
 - **Switch** to them, or *Listening now* for the person listening;
 - **Name** - rename them on this device (their account keeps its username);
-- **PIN** - an optional four-digit [PIN](profiles.md#a-pin-for-a-person), asked when someone switches to them. **Set a PIN**, or **Change** and **Remove** (both ask for the current one);
-- **Kids mode** - turns this person's app into [kids mode](kids-mode.md), with the **Library** it shows and the **Bedtime** (from then until 06:00, playing starts a 20 minute sleep timer);
+- **PIN** - **Set a PIN**, or **Change** and **Remove** it (see [A PIN for a person](profiles.md#a-pin-for-a-person));
+- **Kids mode** - turns this person's app into [kids mode](kids-mode.md), with the **Library** it shows and the **Bedtime** (from then until 6:00 AM, playing starts a 20-minute sleep timer);
 - **Remove from this device** - signs them out of their servers here and deletes their downloads here. Their place in every book stays on the server. It doesn't ask for their PIN: it's the way out of a forgotten one.
 
 Under the people: **Who's listening?** and **Add someone**; **Ask who's listening when the app opens** (with two or more people on the device); and **Listening in the house**, with a **Share what I'm listening to with the house** switch for each server of the person listening that supports it (see [Listening in the house](in-the-house.md#turning-it-on)).

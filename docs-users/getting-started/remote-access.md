@@ -25,7 +25,7 @@ One practical limit of a self-signed certificate: "install to home screen" for t
 :::
 
 :::note Casting needs a certificate the Cast device trusts
-A Chromecast or other Google Cast device fetches the book from your server itself, and it can't accept a self-signed certificate's warning the way a browser can, so a server on the default self-signed certificate can't be [cast](../listening/chromecast.md) from. The address your app uses must be either HTTPS with a trusted certificate (one of the two options below) or plain HTTP on your home network: for example a server [behind a reverse proxy](#behind-a-reverse-proxy), whose own port speaks plain HTTP, with its [home address](#tell-the-server-its-home-address) set to that port.
+To [cast](../listening/chromecast.md), your server's address must work for the Cast device, which can't click through a certificate warning. The default self-signed certificate won't work. Use HTTPS with a trusted certificate (one of the two options below), or plain HTTP on your home network, such as a [reverse proxy](#behind-a-reverse-proxy)'s own port set as the [home address](#tell-the-server-its-home-address).
 :::
 
 ### A real certificate with autocert (Let's Encrypt)

@@ -61,7 +61,9 @@ Kept files survive closing the app, too. A download the app closed part-way thro
 
 ## Downloads belong to their server
 
-Each downloaded book belongs to the **server you downloaded it from**. If you've connected the app to [more than one server](connecting.md), the Downloads page shows all of them together, but each book stays tied to its own server.
+Each downloaded book belongs to the **server you downloaded it from**, and to the **person** who downloaded it. If you've connected the app to [more than one server](connecting.md), the Downloads page shows all of them together, but each book stays tied to its own server. If you [share the device with your household](profiles.md), the Downloads page shows only the downloads of the person listening; everyone else's stay on the device for them.
+
+If a download belongs to an account that is no longer signed in on this device, it shows in a **Not signed in** group, where you can only remove it to free the space. Signing in to that account again puts it back in its place.
 
 That matters when you disconnect a server:
 
