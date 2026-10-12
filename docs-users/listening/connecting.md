@@ -45,7 +45,11 @@ If you have the **AudioSilo app** installed, the surest way to sign *it* in with
 
 When the app (or the web player) isn't connected to anything yet, it opens on the connect screen: *"Your audiobooks, from your own server."*
 
-![The connect screen: the server address typed in, and the server it found with Sign in and Try the demo](/img/screenshots/web-player/connect.png)
+**In the web player** there is nothing to type: the web player belongs to the server you opened it from, so it already knows the address. The connect screen opens on that server, *"Found Hearthside"*, with **Sign in** (and **Try the demo** when the server runs one). Tap **Sign in** and go on from step 3 below. Only if the server doesn't answer does the screen ask for an address, with the web player's own address already filled in.
+
+![The web player's connect screen: the server it belongs to, found, with Sign in and Try the demo](/img/screenshots/web-player/connect.png)
+
+**In the iOS and Android apps**:
 
 1. Enter the **server address** your admin gave you (e.g. `books.example.com`) and tap **Continue**. Without `https://` or `http://` in front, the app adds `https://`, so type `http://` yourself for a server that only answers plain HTTP. If you don't know the address, ask your admin.
 2. The app asks the server who it is and says what it found: *"Found Hearthside"*, with the version of AudioSilo it runs, and a note when the address is plain `http://` (*"This server uses an unencrypted connection"*), which is fine at home but not over the internet (see [Remote access](../getting-started/remote-access.md)). Tap **Sign in**.
@@ -105,7 +109,7 @@ Already signed in on one device and want another? You don't need a new invite:
 - Open your [account page](account.md#opening-it) for the server and tap **Show a pairing code** under **Pair another device**. Scan the QR with the other device, or send it the link. The code works for 10 minutes. See [Pair another device](account.md#pair-another-device).
 - Or, if you've [set a password](account.md#password), just sign in with your username and password on the new device.
 
-You can even connect the app to **more than one server** - **Add a server** in your profile menu, or under [Settings > Accounts and devices](settings.md#accounts-and-devices). Your home screen and search then span all of them.
+You can even connect the app to **more than one server** - **Add a server** in your profile menu, or under [Settings > Accounts and devices](settings.md#accounts-and-devices). Your home screen and search then span all of them. The web player has no **Add a server**: it can only reach the server it's served from, so use the iOS or Android app to listen from several servers in one place.
 
 ## At home and away
 

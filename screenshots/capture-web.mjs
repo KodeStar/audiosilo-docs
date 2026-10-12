@@ -925,8 +925,8 @@ await capturePhone('phone', {width: 430, height: 932}, {
 
 // ── Unauthenticated screens ─────────────────────────────────────────────────
 console.log('== public screens ==');
-// The connect flow on a fresh browser: the start screen with the probe card, then a
-// first connection (the admin, by username and password: a real account, so the
+// The connect flow on a fresh browser: the start screen with the probe card (the served
+// player finds its own server, nothing typed), then a first connection (the admin, by username and password: a real account, so the
 // account page has its Password card and API keys) to "Your library is ready.", then
 // the account page from the profile menu. That player session is signed out again at
 // the end, so it never shows in the admin Devices shot.
@@ -942,8 +942,13 @@ await step('connect', async () => {
   try {
     await page.goto(BASE + 'connect', {waitUntil: 'networkidle', timeout: 45000});
     await tid(page, 'connect-start').waitFor({timeout: 15000});
-    await firstVisible(page.getByRole('textbox', {name: 'Server address'})).fill(new URL(BASE).origin);
-    await firstVisible(page.getByRole('button', {name: 'Continue', exact: true})).click({timeout: 8000});
+    // The served player asks its own server on open (no address field); a frontend from
+    // before that still needs the address typed.
+    const field = page.getByRole('textbox', {name: 'Server address'});
+    if (await field.count()) {
+      await firstVisible(field).fill(new URL(BASE).origin);
+      await firstVisible(page.getByRole('button', {name: 'Continue', exact: true})).click({timeout: 8000});
+    }
     await tid(page, 'probe-notice').waitFor({timeout: 15000});
     await sleep(SETTLE_MS);
     await page.mouse.move(0, 0);

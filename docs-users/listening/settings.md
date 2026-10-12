@@ -91,7 +91,7 @@ Profiles - everyone in the house with their own place in every book, a kids mode
 
 ## Accounts and devices
 
-The servers this device is signed in to, each with your username and its address. Tap one to open your [account on that server](account.md): your password, pairing another device, your signed-in devices, API keys and signing out. **Add a server** connects another one - your home screen, search, and favourites then combine everything (see [Connecting and signing in](connecting.md)). The bin button beside a server removes it from this device.
+The servers this device is signed in to, each with your username and its address. Tap one to open your [account on that server](account.md): your password, pairing another device, your signed-in devices, API keys and signing out. **Add a server** connects another one - your home screen, search, and favourites then combine everything (see [Connecting and signing in](connecting.md)). The web player doesn't offer it, since it only reaches the server it's served from. The bin button beside a server removes it from this device.
 
 :::warning
 Removing a server also **deletes that server's downloaded books from this device**, plus any listening progress that hasn't synced back yet. The app asks first if the server has downloads on the device. Your other servers are unaffected, and nothing on the server itself is touched. See [Offline downloads](offline-downloads.md).
