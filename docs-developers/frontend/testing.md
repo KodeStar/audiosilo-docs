@@ -323,7 +323,7 @@ Co-located suites exist for:
 | Playback | `src/playback/book-queue.test.ts`, `progress-sync.test.ts`, `store.test.ts`, `service.web.test.ts`, `sleep-timer.test.ts`, `auto-sleep.test.ts`, `auto-sleep-controller.test.ts`, `rate.test.ts`, `next-book.test.ts`, `prettify-title.test.ts`, `types.test.ts`, `transcode.test.ts` (the web negotiation rules), `up-next-resolver.test.ts` (what plays next), `up-next-sources.test.ts`, `jump-undo.test.ts`, `time-left.test.ts`, `drift.test.ts`, `drift-controller.test.ts`, `last-interaction.test.ts`, `use-shake-to-extend.test.ts` (the burst detector and sensitivity tunings), `place-reconcile.test.ts` (a loaded book picks up another device's place), `engine-ticks.test.ts` (`engineTicker`), `service.native.test.ts` (the native bridge: the newer events, `load`'s `book` only on a binary that takes it), `store-adopt.test.ts` (`adoptLoaded`: no engine reload, saves under the adopted book, the floor is the adopted place), `effects.test.ts` (where Smart speed and Voice boost apply), `time-saved.test.ts`, `book-source.test.ts` (where a book plays and resumes from), `store-race.test.ts` (the bridge created once however many callers race; a remote move while a book loads is ignored) |
 | Downloads | `src/downloads/store.test.ts`, `offline-meta.test.ts`, `offline-companion.test.tsx` (a downloaded book's community data end to end, offline), `keep-ahead.test.ts`, `keep-ahead-controller.test.ts`, `failure.test.ts`, `downloads-view.test.ts`, `use-download-controls.test.ts`; `src/components/downloads/downloads-screen.test.tsx` |
 | Car and widgets | `src/car/car-model.test.ts` (the snapshot, item ids, play specs), `car-artwork.test.ts`, `car-controller.test.ts` (writes, play requests, bookmarks, adopting), `car-task.test.ts`; `src/widgets/widget-model.test.ts`, `widget-sync.ios.test.ts`; `src/lib/bootstrap.test.ts` (the shared launch steps) |
-| Config plugins | `plugins/withCarPlay.test.ts` (the scene manifest, the AppDelegate rewrite over an SDK 56 fixture, the opt-in entitlement), `plugins/withCast.test.ts` (the Cast options, the Android expanded controller, both plugins in `app.json` order over the SDK 56 AppDelegate), `plugins/withWidgetsNoPush.test.ts` |
+| Config plugins | `plugins/withCarPlay.test.ts` (the scene manifest, the AppDelegate rewrite over an SDK 56 fixture, the default-on entitlement and its `AUDIOSILO_CARPLAY=0` opt-out), `plugins/withCast.test.ts` (the Cast options, the Android expanded controller, both plugins in `app.json` order over the SDK 56 AppDelegate), `plugins/withWidgetsNoPush.test.ts` |
 | Cast | `src/cast/cast-media.test.ts` (the pure casting rules), `cast-token.test.ts`, `cast-prepare.test.ts`, `cast-service.test.ts`, `routed-service.test.ts` (the route switch), `cast-session.test.ts`, `cast-store.test.ts`, `cast-button-model.test.ts`, `cast-button.test.tsx`, `driver.native.test.ts`, `sdk-shapes.test.ts`, `web-sender.test.ts` |
 | Listening in the house | `src/components/house/house-model.test.ts`, `house-row.test.tsx`, `in-the-house-card.test.tsx`, `house-sharing-row.test.tsx`, `person-avatar.test.tsx`; `src/api/hooks-household.test.tsx` (gating and polling) |
 | Profiles | `src/stores/profiles.test.ts`, `src/lib/profile-pin.test.ts`, `sha256.test.ts`, `random.test.ts`; `src/components/profiles/profiles-model.test.ts`, `profiles-screen.test.tsx`, `pin-dialog.test.tsx`, `household-pane.test.tsx`; `src/components/shell/auth-gate.test.tsx`, `profile-menu.test.tsx` |
@@ -444,10 +444,10 @@ bitmap.
 
 ### CarPlay in the iOS Simulator
 
-1. Prebuild with the CarPlay entitlement:
+1. Prebuild (the CarPlay entitlement is on by default; `AUDIOSILO_CARPLAY=0` would leave it out):
 
    ```sh
-   AUDIOSILO_CARPLAY=1 CI=1 LANG=en_US.UTF-8 npx expo prebuild -p ios --clean
+   CI=1 LANG=en_US.UTF-8 npx expo prebuild -p ios --clean
    ```
 
 2. Build for the Simulator (no signing needed there):

@@ -13,9 +13,10 @@ device, the DHU or the Simulator is under [Testing](testing.md#native-checks).
 
 **Status.** Android Auto ships in every build (listing it through Google Play has a step of
 its own: [Releasing](../contributing/releasing.md#the-app-store-track-ios--android)).
-CarPlay's code ships too, but iOS connects a
-CarPlay scene only in a build prebuilt with `AUDIOSILO_CARPLAY=1` (the entitlement Apple has
-to grant; [below](#the-uiscene-life-cycle-pluginswithcarplayjs)). A store build with the
+CarPlay ships too and is on by default: the
+`com.apple.developer.carplay-audio` entitlement (granted by Apple on 2026-10-09; both App IDs
+carry the capability) is added at prebuild unless `AUDIOSILO_CARPLAY=0`
+([below](#the-uiscene-life-cycle-pluginswithcarplayjs)). A store build with the
 widgets and the Live Activity needs the App Group and the extension provisioned first
 ([below](#widgets-and-the-live-activity-ios)). Which store release has each of these is on
 the users' [Availability](/users/listening/mobile-apps#availability).
@@ -283,10 +284,10 @@ and starts React Native in `didFinishLaunching`, so the config plugin:
    screen). Mods of one kind run in reverse registration order, so no plugin that rewrites
    the AppDelegate may be listed after it (that plugin's edit would run first and break the
    match);
-3. adds `com.apple.developer.carplay-audio` to the entitlements **only with
-   `AUDIOSILO_CARPLAY=1`** at prebuild. A device build carrying it can't be signed unless Apple
-   has granted the entitlement; without it iOS never connects a CarPlay scene, while the scene
-   code always ships.
+3. adds `com.apple.developer.carplay-audio` to the entitlements **by default**.
+   `AUDIOSILO_CARPLAY=0` at prebuild leaves it out, for a signing identity without the grant (a
+   build carrying it can't be signed without one); without the entitlement iOS never connects a
+   CarPlay scene, while the scene code always ships.
 
 `AudiosiloScenes` starts React Native in whichever scene connects first: the phone scene into
 its own window, with launch options rebuilt from `connectionOptions` (the cold-start pairing
