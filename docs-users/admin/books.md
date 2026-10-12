@@ -426,6 +426,12 @@ one person. Use the library filter and **Filter authors** (or **Filter
 narrators**) to narrow the list. Click a name to open **Books** filtered to that
 person, their shared books included.
 
+The page shows 120 people at a time. Use the page numbers under the tiles to
+move through a long list. The page and the filter are part of the page's
+address, so after you open a name, **Back** returns you to the same page and the
+same filter. A new filter, or picking another library, starts again on the first
+page.
+
 ![Library > Authors](/img/screenshots/admin/authors.png)
 
 ### Merging two spellings
@@ -453,7 +459,10 @@ The page shows 24 series at a time. Use the page numbers under the cards to
 move through a long list, or jump straight to a page. Type in **Find a series
 or author** to show only the series whose name or author holds what you type,
 ignoring case, accents, punctuation and spaces ("fights with" finds "He Who
-Fights with Monsters"). The page and the search are part of the page's
+Fights with Monsters"). Names that differ only like that are one series, with
+one card; to make every book spell it the same way, use
+[Series spelled several ways](health.md#series-spelled-several-ways) in Health.
+The page and the search are part of the page's
 address, so after you open a book, **Back** returns you to the same page, the
 same search and the same place on it. Picking another library starts again on
 the first page.

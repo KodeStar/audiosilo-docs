@@ -4,7 +4,7 @@ description: "The SQLite schema behind audiosilo-server: the rebuildable index v
 ---
 
 The schema lives in `internal/store/migrations/` as numbered SQL files
-(`0001_init.sql` … `0040_server_state.sql`), embedded into the binary and
+(`0001_init.sql` … `0041_series_key.sql`), embedded into the binary and
 applied by `store.Open` at startup. This page documents the **resulting current
 schema**, noting which migration added what.
 
@@ -203,7 +203,7 @@ covered in [Auth & security](auth-and-security.md#authorization-shares--scope).
 `scan_error_file`, `scan_error_detail` and `suspect_parts` in 0017; `split_parent` in
 0022; `cover_art` and `cover_color` in 0023; `chapters_source`, `chapters_fit`,
 `scanned_chapters` and `chapters_hash` in 0035; `released` and `released_checked`
-in 0037)* - one row per book,
+in 0037; `series_key` in 0041)* - one row per book,
 `UNIQUE (library_id, rel_path)`. Columns: `is_folder` (folder book vs
 single-file book), identity metadata (`title`, `author`, `series`,
 `series_index`, `narrator`), `duration`, `asin`/`isbn` (optional external ids -
@@ -217,7 +217,14 @@ that sets or reverts `series` to one of these swaps the two, writing the list
 and `series_index` as overrides (a value the scan already gives is reverted to
 it instead; the console sends the values itself, so its swap writes them as
 edits);
-the full-text index's series column holds every series name), `released` (the date the file's tags give, `YYYY[-MM[-DD]]` via
+the full-text index's series column holds every series name), `series_key` (the
+main series' key, `catalog.seriesKey`: `match.SeriesKey`, so case, accents,
+punctuation and spacing aside, or the name itself when it has no letter or digit;
+`''` for no series), written by Go in `refreshEffective` beside `series` and never
+computed in SQL, so every spelling of a series is found by one index seek
+(`idx_books_series_key` on `(library_id, series_key, series, series_index)`, which
+replaced 0001's `idx_books_series`; `series` sits before `series_index` so a series'
+spellings are adjacent for Health's `series_spellings`), `released` (the date the file's tags give, `YYYY[-MM[-DD]]` via
 `metadata.ReleaseDate`: usually the recording's, so it is a separate scanned
 column, never `published`, read only by the admin list's release-date sort as
 the fallback for a book with no `published`) and `released_checked` (`1` once a
@@ -358,6 +365,15 @@ no row = automatic), `updated_by` (`ON DELETE SET NULL`), `updated_at`. Durable
 admin state like `book_overrides`, kept apart from it because it is not a
 metadata value (no part of `edited` / `edited_fields`); moved with the book's
 other edits, never copied onto a joined book.
+
+**`book_more_series`** *(0041)* - a book's other series by key: one row per
+series in `more_series` that isn't its main one (`book_id` → `books` `ON DELETE
+CASCADE`, `library_id`, `series_key`, `position`; primary key `(book_id,
+series_key)`, `WITHOUT ROWID`, index `(series_key, library_id, position)`).
+Rewritten from the effective values by `refreshEffective` (`keyOtherSeries`), as
+`books.series_key` is, so a series filter with memberships, the series order and
+the next book find a book through its list by an index seek, and the rails'
+`SeriesBooks` without reading every list.
 
 **`books_fts`** *(0001)* - see [FTS design](#fts-design-books_fts) below.
 
@@ -743,11 +759,21 @@ every other table. `catalog/server_state.go` reads and writes a key
 `putServerState`), taking a querier or execer so a caller can read and write one
 key in a single transaction.
 
-One key so far, `support_card`: the answer to the admin console's
-[support card](web-ui.md#the-support-card), `{"choice":"donated"}` or
-`{"choice":"snoozed","until":"<time>"}`. `catalog.SetSupportChoice` reads and
-writes it in one transaction, so a donation is never downgraded by a later
-snooze.
+Its keys:
+
+- `support_card`: the answer to the admin console's
+  [support card](web-ui.md#the-support-card), `{"choice":"donated"}` or
+  `{"choice":"snoozed","until":"<time>"}`. `catalog.SetSupportChoice` reads and
+  writes it in one transaction, so a donation is never downgraded by a later
+  snooze.
+- `title_positions`: `true` once `catalog.PlaceByTitles` has given the books
+  indexed before the title rule their series position from their title.
+- `series_keys`: the version the stored series keys were computed with
+  (`seriesKeysVersion`: the key rules' number, then Go's Unicode version and
+  x/text's NFKD version). `catalog.KeySeries` keys every book at start while it is
+  missing or different (first for the books indexed before 0041, then after an
+  upgrade that reads a name another way), before the listener; a failure stops
+  the start (see `book_more_series` below).
 
 ### Community metadata cache
 
@@ -946,6 +972,7 @@ The migration history so far:
 | 0038 | `more_series` | `books.more_series` (`TEXT NOT NULL DEFAULT '[]'`), the effective list of a book's other series |
 | 0039 | `more_series_index` | the partial index `idx_books_more_series` on `books(library_id) WHERE more_series <> '[]'`, so the reads of the books in more than one series (a series' members, `/series` with `memberships=1`) skip the rest |
 | 0040 | `server_state` | `server_state` (`key`, `value`, `updated_at`), small server-wide facts that aren't settings; the first key is the support card's answer: see [Server state](#server-state) |
+| 0041 | `series_key` | `books.series_key` and `book_more_series`, a series stored by its key so every series filter is an index seek in any spelling; `idx_books_series_key` replaces `idx_books_series`, and `idx_books_more_series` (0039) goes, since nothing reads it any more. Rows indexed before it are keyed at start by `catalog.KeySeries` (server_state `series_keys`), which also puts every stored `more_series` list through the list rules first |
 
 ## SQLite choices
 
