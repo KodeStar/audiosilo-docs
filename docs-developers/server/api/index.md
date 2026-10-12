@@ -102,13 +102,9 @@ three routes (`requireMediaAuth` in `internal/api/middleware.go`): a token in a 
 string can leak into access logs and `Referer` headers, so no other route
 accepts it. Native clients should keep using the header even for media.
 
-A book's cover and stream (not `/meta/cover`) also accept a **cast token**
-(capability `cast`) as the `?token=`: a short-lived credential for one book that a
-player mints with [`POST /cast/token`](reference.md#post-apiv1casttoken) and puts
-in the URLs it hands a Chromecast receiver, so the receiver never sees the session
-token. It is never accepted as a header, never beside one, and never on any other
-route; the full rules are in
-[Cast tokens as media auth](reference.md#cast-tokens-as-media-auth).
+A book's cover and stream also accept a **cast token** (capability `cast`) as the
+`?token=`, which a player mints for the Chromecast receiver so it never sees the
+session token: see [Cast tokens as media auth](reference.md#cast-tokens-as-media-auth).
 
 ### Client identification: `X-AudioSilo-Client`
 

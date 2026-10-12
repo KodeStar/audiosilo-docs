@@ -1714,9 +1714,8 @@ session, API key or cast) only when **all** of these hold:
 
 - the request carries **no** `Authorization` header (a cast token is never a bearer
   credential, nor accepted beside one);
-- the token is live: not revoked, not expired (24 hours from its mint), its user
-  still exists and is not disabled, and **the token that minted it** (the sending
-  device's session) is still signed in;
+- the token is live (not revoked or expired, its user enabled, and the session that
+  minted it still signed in; see [Cast tokens](../auth-and-security.md#cast-tokens));
 - the request's library is the token's, and its `?path=` (cleaned first, so `..`
   can't climb out) is the token's book or a file or folder inside it on a segment
   boundary: a token for `Author/Book` reaches `Author/Book/01.mp3`, never
@@ -2638,22 +2637,9 @@ open), there whether or not a goal is set.
 *Session.* Capability `household`. People on one server who choose to share see
 what the others who share are listening to (the player's Home row and the book
 page's "In the house" card). The rules live in `catalog.HouseListening`
-(`internal/catalog/household.go`):
-
-- **Opt-in.** Off until a person turns it on: no `household_sharing` row reads as
-  off.
-- **Reciprocal.** A caller who doesn't share gets an empty `listening` list.
-- **Other people only:** never the caller, never a disabled account, never a demo
-  account, never anyone who doesn't share.
-- **One row per person:** their newest listening session recorded on this server
-  (not imported, not backfilled, with some listening in it) within the last 24
-  hours (`HouseWindow`).
-- **The caller's access.** That book must be one the **caller** may open now
-  (`ScopesAllow` over the caller's current scopes); when it isn't, the person is
-  left out entirely, never shown on an older book.
-- **No device fields.** A row never carries a device, an address, an app or a
-  token: `HouseListeningRow` has no field that could hold one, unlike the admin's
-  [live sessions](#get-apiv1adminsessionslive).
+(`internal/catalog/household.go`): opt-in and reciprocal (a caller who doesn't
+share gets an empty `listening` list), with every privacy rule in
+[what other people see](../auth-and-security.md#listening-in-the-house-what-other-people-see).
 
 Polling only: there is no realtime channel (the player asks every minute while it
 is in the foreground). No admin route reads or changes anyone's choice.
@@ -2742,12 +2728,10 @@ Response `201`:
 
 The path resolves exactly as on the media routes, and a part path (one file, or a
 disc folder) resolves to its book: the token then covers every file of that book.
-The secret is returned once; only its SHA-256 hash is stored. It is a `tokens` row
-of kind `cast` with a `cast_grants` row naming its book and its **parent**: the
-caller's own token. A token lives 24 hours (`expires_at` falls on a whole second),
-and each mint deletes every dead cast token (expired, or its parent signed out) and
-keeps the caller's newest 20, dropping the oldest; the daily retention job prunes
-the dead ones too. A demo account may mint (it can play).
+The secret is returned once. `expires_at` falls on a whole second. A demo account
+may mint (it can play); an API key may not. How long a cast token lives, how many a
+person keeps, what ends it and how dead ones are pruned:
+[Cast tokens](../auth-and-security.md#cast-tokens).
 
 | Status | Meaning |
 |---|---|
@@ -2757,11 +2741,6 @@ the dead ones too. A demo account may mint (it can play).
 | `403` | the library or the path is outside the caller's access; or `not available when authenticating with an API key` (a key never mints another credential) |
 | `404` | no book at the path |
 | `500` | `could not start casting` |
-
-A cast token ends when its 24 hours run out, when **the device that minted it signs
-out** (`POST /auth/logout`, the listener's own [devices](#delete-apiv1medevicesid)
-or the admin's), and with its user's deletion or disabling; a change of share scope
-is checked at every request. A cast token is never listed as a device.
 
 ## Admin: users & auth codes
 

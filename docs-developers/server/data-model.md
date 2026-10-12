@@ -161,8 +161,8 @@ on; its grant is `token_id` (PK, FK CASCADE to `tokens`), `library_id` and
 `rel_path` (the **book's** own path, a part path resolved first; no FK to the
 index) and `parent_token_id` (FK CASCADE to `tokens`: the session that minted it,
 indexed). A cast token without a grant, or whose parent is gone, signed out or
-expired, is never valid; each mint and the daily retention job delete those dead
-rows, and a mint keeps the person's newest 20. Partial index
+expired, is never valid; how dead ones are pruned and how many a person keeps are
+in [Cast tokens](auth-and-security.md#cast-tokens). Partial index
 `idx_tokens_cast_expiry` on `tokens(expires_at) WHERE kind = 'cast'`. A grant is not
 moved with its book: it lives 24 hours.
 

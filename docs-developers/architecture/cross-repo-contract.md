@@ -531,31 +531,22 @@ The player redesign's Phase 8, two additive features each behind its own flag
 `HouseListening`, `CastToken`), `client.ts` and `hooks.ts`.
 
 **Listening in the house** (capability `household`): `GET`/`PUT /me/household`
-(`{ share_listening }`, off by default, demo accounts can't turn it on) and
-`GET /household/listening` (`{ sharing, listening: [Row] }`). The privacy rules
-are the server's alone (`catalog.HouseListening`): reciprocal (an empty list unless
-the caller shares), other enabled, non-demo people who share, one row per person
-(their newest session in 24 hours), dropped when that book is outside the caller's
-scopes, and never a device, address, app or token in a row. The player only decides
-what to show of the answer and how often to ask: `useHousehold(cid)`,
-`useSetHousehold(cid)` (a `CapabilityError` without the flag) and
-`useHouseListening(cid, { enabled })`, polled every minute (`HOUSE_POLL_MS`) only
-while the app is in the foreground, the surface is focused and the listener shares.
-No realtime channel. Client side:
+(`{ share_listening }`) and `GET /household/listening` (`{ sharing, listening: [Row] }`);
+shapes in [the reference](../server/api/reference.md#listening-in-the-house). Every
+privacy rule is the server's alone
+([what other people see](../server/auth-and-security.md#listening-in-the-house-what-other-people-see)):
+the player only decides what to show of the answer and how often to ask. Client side:
 [Listening in the house](../frontend/listening-in-the-house.md).
 
 **Casting** (capability `cast`): `POST /cast/token` `{ library_id, path }` ->
-`201 { token, expires_at }`, a 24-hour credential for one book, accepted only as
-the `?token=` of that book's cover and stream (never as a header, never on another
-route, never `/meta/cover`, never for another book or library), with
-`Cross-Origin-Resource-Policy: cross-origin` on the answers it authenticates. It is
-a `tokens` row of kind `cast` tied to the session that minted it, so signing that
-device out ends it. The web player's CSP admits the Cast Web Sender's three scripts on
-`https://www.gstatic.com` by path in `script-src`, and nothing else. The player's rules: the receiver never sees the
-session token; the receiver's URLs are built on the connection's address in use
-(`effectiveUrl`, never `localhost`); a token is cached in memory per book until an
-hour before it expires; no flag, no Cast button. An API key can't mint one (`403`).
-Client side: [Chromecast](../frontend/chromecast.md).
+`201 { token, expires_at }`, a credential for one book accepted only as the
+`?token=` of that book's cover and stream
+([Cast tokens as media auth](../server/api/reference.md#cast-tokens-as-media-auth);
+its lifetime and policy: [Cast tokens](../server/auth-and-security.md#cast-tokens)).
+The web player's CSP admits the Cast Web Sender's three scripts on
+`https://www.gstatic.com` by path in `script-src`, and nothing else. The receiver
+never sees the session token; no flag, no Cast button. Client side, including which
+address the receiver's URLs use: [Chromecast](../frontend/chromecast.md).
 
 **A change requires:** the household rules stay in the server's catalog (a player
 must never filter someone in); any widening of where a cast token is accepted is a
