@@ -14,11 +14,12 @@ import path from 'node:path';
 import http from 'node:http';
 import https from 'node:https';
 import {mkdir} from 'node:fs/promises';
-import {existsSync, readFileSync} from 'node:fs';
+import {existsSync, readFileSync, statSync} from 'node:fs';
 import {execFileSync} from 'node:child_process';
 import {
   CACHE,
   DAY,
+  DESKTOP_CONTEXT,
   HOUR,
   MIN,
   apiClient,
@@ -64,6 +65,15 @@ const drawerClosed = () => {
     /* storage blocked: the drawer opens, the shots are just narrower */
   }
 };
+
+// A capture context: DESKTOP_CONTEXT (1440x900, retina, dark, motion reduced) with
+// `options` on top (a viewport, stored auth, a time zone...), the Up next drawer
+// closed. `on` is the browser to open it in (the Cast shot has its own).
+async function newCaptureContext(options = {}, on = browser) {
+  const ctx = await on.newContext({...DESKTOP_CONTEXT, ...options});
+  await ctx.addInitScript(drawerClosed);
+  return ctx;
+}
 
 // The warmed books, oldest first (the last is the most recently played, the first
 // Continue listening card the shots open): a title substring of a seeded book (the
@@ -273,10 +283,9 @@ console.log('== warm demo session ==');
   await ctx.addInitScript(audioHook);
   const page = await ctx.newPage();
   await page.goto(BASE + 'demo', {waitUntil: 'networkidle', timeout: 60000});
-  for (let i = 0; i < 30; i++) {
-    if ((await page.locator('[role="button"]:has(img)').count().catch(() => 0)) > 0) break;
-    await sleep(1000);
-  }
+  // The demo session is ready once Home shows a cover (best effort: the warm-ups below
+  // fail loudly on their own if it never is).
+  await page.locator('[role="button"]:has(img)').first().waitFor({state: 'attached', timeout: 30000}).catch(() => {});
   await sleep(1500);
 
   for (const {q, frac} of WARM) {
@@ -400,16 +409,9 @@ console.log('== warm demo session ==');
 // Every visited page stays mounted but hidden: act through `firstVisible` / `tid`.
 const escapeRe = (s) => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 
-async function newProfile(name, viewport, dsf) {
+async function newProfile(name, viewport) {
   console.log(`== ${name} (${viewport.width}x${viewport.height}) ==`);
-  const ctx = await browser.newContext({
-    viewport,
-    deviceScaleFactor: dsf,
-    colorScheme: 'dark',
-    reducedMotion: 'reduce',
-    storageState: AUTH,
-  });
-  await ctx.addInitScript(drawerClosed);
+  const ctx = await newCaptureContext({viewport, storageState: AUTH});
   return {ctx, page: await ctx.newPage()};
 }
 
@@ -445,12 +447,19 @@ async function openFirstBook(page, shot) {
   if (shot) await shoot(page, shot);
 }
 
-// Press the book page's primary button (Resume, Start listening...) and give the book a
-// moment to start; returns when it was pressed.
-async function listen(page) {
-  await firstVisible(page.getByRole('button', {name: PRIMARY_PLAY})).click({timeout: 8000});
+// The play button is named Pause while playing, Play once paused (and while still
+// loading, with a spinner, before it starts by itself) and Retry after a failure.
+const PLAYING_OR_FAILED = /^(pause|retry)$/i;
+
+// Press the book page's primary button (Resume, Start listening...) and wait until the
+// book plays (or failed); returns when the button was pressed. `scope` narrows the
+// transport to one bar (the Cast shot's docked player); with `ifShown` a page without
+// the button (its book already started by itself) is fine.
+async function startPlayback(page, {scope = page, ifShown = false} = {}) {
+  const primary = firstVisible(page.getByRole('button', {name: PRIMARY_PLAY}));
+  if (!ifShown || (await primary.count())) await primary.click({timeout: 8000});
   const at = Date.now();
-  await sleep(4500);
+  await firstVisible(scope.getByRole('button', {name: PLAYING_OR_FAILED})).waitFor({timeout: 20000});
   return at;
 }
 
@@ -469,14 +478,20 @@ const SETTLE_MS = 600;
 const JUMP_UNDO_READY_MS = 8000;
 
 // Stage a paused, healthy player for the shots: a still frame (no moving playhead,
-// no buffering spinner) that reads the same on every run. The play button is named
-// Pause while playing, Play once paused (and while still loading, with a spinner,
-// before it starts by itself) and Retry after a failure: wait for a settled button.
-async function pausePlayback(page) {
-  await firstVisible(page.getByRole('button', {name: /^(pause|retry)$/i})).waitFor({timeout: 20000});
-  const pause = firstVisible(page.getByRole('button', {name: /^pause$/i}));
+// no buffering spinner) that reads the same on every run. Waits for a settled button
+// (PLAYING_OR_FAILED) first, then pauses a playing book.
+async function pausePlayback(page, scope = page) {
+  await firstVisible(scope.getByRole('button', {name: PLAYING_OR_FAILED})).waitFor({timeout: 20000});
+  const pause = firstVisible(scope.getByRole('button', {name: /^pause$/i}));
   if (await pause.count()) await pause.click({timeout: 8000});
-  await firstVisible(page.getByRole('button', {name: /^play$/i})).waitFor({timeout: 8000});
+  await firstVisible(scope.getByRole('button', {name: /^play$/i})).waitFor({timeout: 8000});
+}
+
+// Start the open book and stage it paused (startPlayback, then pausePlayback).
+async function playThenPause(page, opts = {}) {
+  const at = await startPlayback(page, opts);
+  await pausePlayback(page, opts.scope);
+  return at;
 }
 
 // The full player, from the docked bar's expand button (tablet/desktop).
@@ -520,12 +535,12 @@ async function sheetShot(page, testId, shot) {
 
 // Tablet/desktop: one browsing session with a book playing in the docked bar.
 async function captureWide(name, viewport, shots) {
-  const {ctx, page} = await newProfile(name, viewport, 2);
+  const {ctx, page} = await newProfile(name, viewport);
 
   let listenedAt = 0;
   await step('book', async () => {
     await openFirstBook(page, shots.book);
-    listenedAt = await listen(page);
+    listenedAt = await startPlayback(page);
   });
 
   // Home and the pause run whatever SHOTS_ONLY selects, so a partial run stages every
@@ -831,13 +846,12 @@ async function captureWide(name, viewport, shots) {
 // Phone: the primary button opens the full player; closing it leaves the mini player above
 // the tab bar, which the Home shot shows.
 async function capturePhone(name, viewport, shots) {
-  const {ctx, page} = await newProfile(name, viewport, 2);
+  const {ctx, page} = await newProfile(name, viewport);
 
   await step('book + player', async () => {
     await openFirstBook(page, shots.book);
-    await listen(page);
     try {
-      await pausePlayback(page);
+      await playThenPause(page);
       await shoot(page, shots.player);
       if (wanted(shots.speedSheet)) await sheetShot(page, 'player-speed', shots.speedSheet);
       if (wanted(shots.sleepSheet)) await sheetShot(page, 'player-sleep', shots.sleepSheet);
@@ -970,9 +984,15 @@ const HOUSE_MATES = [
 ];
 const KIDS_SHARE = {name: 'Stories', paths: ['Lewis Carroll', 'Charles Dickens']};
 const KIDS_STORY = 'Alice';
+const KIDS_USERNAME = HOUSE_DEVICE.find((p) => p.kids).username;
+// Every account the household makes (and a previous, interrupted run may have left).
+const HOUSE_USERNAMES = [...new Set([HOUSE_VIEWER, ...HOUSE_DEVICE, ...HOUSE_MATES].map((p) => p.username))];
 // The server reports a housemate as playing while their newest save is under a minute
-// old (catalog livePlaying), paused up to ten minutes.
-const HOUSE_PAUSED_AFTER_MS = 65_000;
+// old (catalog livePlaying), paused up to ten minutes (SessionGap), then only "recent".
+// It stamps a save with its own clock, so a save can't be backdated: the Home shot waits
+// for the paused housemate in real time (houseState), and saves them once more first
+// when their last save is older than this, well inside the ten minutes.
+const HOUSE_RESAVE_AFTER_MS = 5 * MIN;
 const HOUSE_SHOTS = {
   profiles: 'web-player/profiles.png',
   household: 'web-player/settings-household.png',
@@ -992,10 +1012,23 @@ function eveningZone() {
   return offset === 0 ? 'Etc/GMT' : `Etc/GMT${offset > 0 ? '-' : '+'}${Math.abs(offset)}`;
 }
 
-async function provisionHouse() {
+// Make the household's accounts into `house` (see newHouse), recording each as it is
+// made, so unprovisionHouse removes whatever a failure half-way left. Anything an
+// interrupted earlier run left (the accounts, the share) is removed first. `viewerOnly`
+// (a run that only wants the Cast shot) makes Ellen and her book on the go alone.
+const newHouse = () => ({admin: null, users: [], shareId: null, beat: null, mates: [], save: null, ready: false});
+
+async function provisionHouse(house, {viewerOnly = false} = {}) {
   if (!ADMIN_PASSWORD) throw new Error('ADMIN_PASSWORD not set: no household to provision');
   const {token: admin} = await api(null, 'POST', '/auth/login', {username: 'admin', password: ADMIN_PASSWORD});
-  const house = {admin, users: [], shareId: null, beat: null, pausedAt: 0};
+  house.admin = admin;
+  const stale = ((await api(admin, 'GET', '/admin/users'))?.users ?? []).filter((u) => HOUSE_USERNAMES.includes(u.username));
+  for (const u of stale) await api(admin, 'DELETE', `/admin/users/${u.id}`);
+  const staleShares = ((await api(admin, 'GET', '/admin/shares'))?.shares ?? []).filter((s) => s.name === KIDS_SHARE.name);
+  for (const s of staleShares) await api(admin, 'DELETE', `/admin/shares/${s.id}`);
+  if (stale.length || staleShares.length) {
+    console.log(`  ✓ removed a previous run's ${[...stale.map((u) => u.username), ...staleShares.map((s) => `"${s.name}"`)].join(', ')}`);
+  }
   const [library] = (await api(admin, 'GET', '/admin/libraries')).libraries;
   const {books} = await api(admin, 'GET', `/libraries/${library.id}/books?limit=200`);
   const find = (t) => {
@@ -1003,12 +1036,12 @@ async function provisionHouse() {
     if (!b) throw new Error(`no seeded book matching "${t}"`);
     return b;
   };
-  const names = [...new Set([HOUSE_VIEWER, ...HOUSE_DEVICE, ...HOUSE_MATES].map((p) => p.username))];
+  const names = viewerOnly ? [HOUSE_VIEWER.username] : HOUSE_USERNAMES;
   for (const username of names) {
     const made = await api(admin, 'POST', '/admin/users', {username, password: HOUSE_PASSWORD, role: 'user'});
     const id = made?.user?.id ?? made?.id;
     house.users.push(id);
-    if (username !== HOUSE_DEVICE.find((p) => p.kids).username) {
+    if (username !== KIDS_USERNAME) {
       await api(admin, 'POST', '/admin/library-access', {user_id: id, library_id: library.id});
     } else {
       const share = await api(admin, 'POST', '/admin/shares', {name: KIDS_SHARE.name});
@@ -1036,32 +1069,52 @@ async function provisionHouse() {
     await progress(token, b, {position: b.duration * HOUSE_VIEWER.at});
     await api(token, 'POST', '/auth/logout');
   }
+  if (viewerOnly) {
+    house.ready = true;
+    console.log(`  ✓ household: ${HOUSE_VIEWER.username} only (the Cast shot)`);
+    return;
+  }
   // The housemates: sharing on, then two saves 15 s apart (a session with listening in
-  // it); the live one keeps saving every 15 s until unprovisionHouse.
-  const mates = [];
+  // it: the server counts listening only as fast as its own clock runs between two
+  // saves, so this wait is real); the live one keeps saving every 15 s until
+  // unprovisionHouse.
   for (const m of HOUSE_MATES) {
     const token = await login(m.username);
     await api(token, 'PUT', '/me/household', {share_listening: true});
     const book = find(m.q);
-    mates.push({...m, token, book, pos: book.duration * m.at, last: 0});
+    house.mates.push({...m, token, book, pos: book.duration * m.at, last: 0});
   }
-  const save = (m) => {
+  house.save = (m) => {
     const now = Date.now();
     if (m.last) m.pos = Math.min(m.book.duration, m.pos + (now - m.last) / 1000);
     m.last = now;
     return progress(m.token, m.book, {position: m.pos, playback_speed: 1, device_id: `${m.username}-phone`}, 'AudioSilo/2.0.0 (ios)');
   };
-  for (const m of mates) await save(m);
+  for (const m of house.mates) await house.save(m);
   await sleep(15000);
-  for (const m of mates) await save(m);
-  house.pausedAt = Date.now() + HOUSE_PAUSED_AFTER_MS;
+  for (const m of house.mates) await house.save(m);
   house.beat = setInterval(() => {
-    for (const m of mates.filter((x) => x.live)) {
-      save(m).catch((e) => console.log(`  ! heartbeat for ${m.username}: ${e.message}`));
+    for (const m of house.mates.filter((x) => x.live)) {
+      house.save(m).catch((e) => console.log(`  ! heartbeat for ${m.username}: ${e.message}`));
     }
   }, 15000);
+  house.ready = true;
   console.log(`  ✓ household: ${names.join(', ')} (${HOUSE_MATES.map((m) => m.username).join(' and ')} share)`);
-  return house;
+}
+
+// Wait until the server reports housemate `username` as `state` (asked as another
+// housemate, who shares too and so sees them): the state comes from the age of their
+// newest save, so this waits in real time.
+async function houseState(house, username, state, timeoutMs = 2 * MIN) {
+  const viewer = house.mates.find((m) => m.username !== username);
+  const until = Date.now() + timeoutMs;
+  for (;;) {
+    const {listening} = await api(viewer.token, 'GET', '/household/listening');
+    const row = (listening ?? []).find((r) => r.username === username);
+    if (row?.state === state) return;
+    if (Date.now() > until) throw new Error(`the server never reported ${username} as ${state} (last: ${row?.state ?? 'not listed'})`);
+    await sleep(2000);
+  }
 }
 
 async function unprovisionHouse(house) {
@@ -1132,16 +1185,11 @@ async function kidsStaged(page, kidName) {
 
 async function captureHouse(house) {
   const timezoneId = eveningZone();
-  const context = (viewport, extra = {}) =>
-    browser.newContext({viewport, deviceScaleFactor: 2, colorScheme: 'dark', reducedMotion: 'reduce', timezoneId, ...extra});
   const origin = new URL(BASE).origin;
-  const {ctx, page} = await (async () => {
-    const c = await context({width: 1440, height: 900});
-    await c.addInitScript(drawerClosed);
-    return {ctx: c, page: await c.newPage()};
-  })();
+  const ctx = await newCaptureContext({timezoneId});
   const kidsName = HOUSE_DEVICE.find((p) => p.kids).name;
   try {
+    const page = await ctx.newPage();
     // Ellen on a fresh browser, then everyone else with "Add someone" (each new person
     // becomes the one listening), each renamed.
     await step('household: people', async () => {
@@ -1216,11 +1264,15 @@ async function captureHouse(house) {
       // Home once the paused housemate reads as paused; the house row in the middle of
       // the window. Then the live housemate's book, from their card.
       await step('household: home', async () => {
-        const wait = house.pausedAt - Date.now();
-        if (wait > 0) await sleep(wait);
-        await tid(page, 'top-bar-(home)').click({timeout: 8000});
         const live = HOUSE_MATES.find((m) => m.live);
         const paused = HOUSE_MATES.find((m) => !m.live);
+        // Home asks the house when it opens, then once a minute: open it once the server
+        // already says paused, so its first answer does (a save first if a slow run
+        // left the last one near the ten minutes after which a session reads as ended).
+        const mate = house.mates.find((m) => m.username === paused.username);
+        if (Date.now() - mate.last > HOUSE_RESAVE_AFTER_MS) await house.save(mate);
+        await houseState(house, paused.username, 'paused');
+        await tid(page, 'top-bar-(home)').click({timeout: 8000});
         await firstVisible(page.getByRole('button', {name: new RegExp(`^${paused.username} paused `)})).waitFor({timeout: 90000});
         await firstVisible(page.getByRole('button', {name: new RegExp(`^${live.username} is listening to `)})).waitFor({timeout: 8000});
         await firstVisible(page.locator('[data-testid^="house-row-"]')).evaluate((el) => el.scrollIntoView({block: 'center'}));
@@ -1247,7 +1299,7 @@ async function captureHouse(house) {
       });
       if (wanted(HOUSE_SHOTS.phoneKids)) {
         await step('household: phone kids', async () => {
-          const phone = await context({width: 430, height: 932}, {storageState: HOUSE_AUTH});
+          const phone = await newCaptureContext({viewport: {width: 430, height: 932}, timezoneId, storageState: HOUSE_AUTH});
           try {
             const p = await phone.newPage();
             await kidsStaged(p, kidsName);
@@ -1267,20 +1319,36 @@ async function captureHouse(house) {
 // server this device reaches at a loopback address, which no receiver could), and the
 // capture server is plain http on 127.0.0.1. So this step puts a local https proxy in
 // front of it, with a throwaway self-signed certificate (openssl, in .cache), and opens
-// it under a made-up name that a separate Chromium resolves to 127.0.0.1. Nothing leaves
-// this machine but the Cast sender script the button loads from www.gstatic.com.
+// it under a made-up name that a separate Chromium resolves to 127.0.0.1 (a separate
+// browser because --host-resolver-rules is a launch flag: no context option or route
+// can make a name resolve). Nothing leaves this machine but the Cast sender script the
+// button loads from www.gstatic.com (the button shows without it).
 const CAST_HOST = 'audiosilo.shots.test';
+
+// Whether `file` exists and was written less than a day ago.
+function freshFile(file) {
+  try {
+    return Date.now() - statSync(file).mtimeMs < DAY;
+  } catch {
+    return false;
+  }
+}
 
 async function captureCast() {
   const dir = path.join(CACHE, 'cast-tls');
   await mkdir(dir, {recursive: true});
   const key = path.join(dir, 'key.pem');
   const cert = path.join(dir, 'cert.pem');
-  execFileSync('openssl', [
-    'req', '-x509', '-newkey', 'rsa:2048', '-nodes', '-days', '2',
-    '-keyout', key, '-out', cert, '-subj', `/CN=${CAST_HOST}`, '-addext', `subjectAltName=DNS:${CAST_HOST}`,
-  ], {stdio: 'ignore'});
+  // The certificate is good for two days: one made in the last day is reused.
+  if (!(freshFile(cert) && existsSync(key))) {
+    execFileSync('openssl', [
+      'req', '-x509', '-newkey', 'rsa:2048', '-nodes', '-days', '2',
+      '-keyout', key, '-out', cert, '-subj', `/CN=${CAST_HOST}`, '-addext', `subjectAltName=DNS:${CAST_HOST}`,
+    ], {stdio: 'ignore'});
+  }
   const upstream = new URL(BASE);
+  // Plain requests only. A websocket upgrade is deliberately not proxied (no 'upgrade'
+  // listener, so Node drops it): the shot needs none of the server's live updates.
   const proxy = https.createServer({key: readFileSync(key), cert: readFileSync(cert)}, (req, res) => {
     const up = http.request(
       {host: upstream.hostname, port: upstream.port, method: req.method, path: req.url, headers: req.headers},
@@ -1292,18 +1360,15 @@ async function captureCast() {
     up.on('error', () => res.destroy());
     req.pipe(up);
   });
-  await new Promise((resolve) => proxy.listen(0, '127.0.0.1', resolve));
-  const origin = `https://${CAST_HOST}:${proxy.address().port}`;
-  const castBrowser = await chromium.launch({args: [`--host-resolver-rules=MAP ${CAST_HOST} 127.0.0.1`]});
+  let castBrowser = null;
   try {
-    const ctx = await castBrowser.newContext({
-      viewport: {width: 1440, height: 900},
-      deviceScaleFactor: 2,
-      colorScheme: 'dark',
-      reducedMotion: 'reduce',
-      ignoreHTTPSErrors: true,
+    await new Promise((resolve, reject) => {
+      proxy.once('error', reject);
+      proxy.listen(0, '127.0.0.1', resolve);
     });
-    await ctx.addInitScript(drawerClosed);
+    const origin = `https://${CAST_HOST}:${proxy.address().port}`;
+    castBrowser = await chromium.launch({args: [`--host-resolver-rules=MAP ${CAST_HOST} 127.0.0.1`]});
+    const ctx = await newCaptureContext({ignoreHTTPSErrors: true}, castBrowser);
     const page = await ctx.newPage();
     await page.goto(`${origin}/web/connect`, {waitUntil: 'networkidle', timeout: 45000});
     await probeServer(page, origin);
@@ -1317,18 +1382,17 @@ async function captureCast() {
     await card.click({timeout: 12000});
     await tid(page, 'book-page').waitFor({timeout: 15000});
     await sleep(SETTLE_MS);
-    const primary = firstVisible(page.getByRole('button', {name: PRIMARY_PLAY}));
-    if (await primary.count()) await primary.click({timeout: 8000});
-    const dock = tid(page, 'shell-docked-player');
-    await dock.getByRole('button', {name: /^(pause|retry)$/i}).waitFor({timeout: 20000});
-    const pause = dock.getByRole('button', {name: /^pause$/i});
-    if (await pause.count()) await pause.click({timeout: 8000});
-    await dock.getByRole('button', {name: /^play$/i}).waitFor({timeout: 8000});
+    await playThenPause(page, {scope: tid(page, 'shell-docked-player'), ifShown: true});
     await expandPlayer(page);
     await tid(page, 'companion-tab-chapters').click({timeout: 8000});
     // The transport and the action row, centred on the play button.
     const cast = firstVisible(page.getByRole('button', {name: 'Cast', exact: true}));
-    await cast.waitFor({timeout: 15000});
+    await cast.waitFor({timeout: 30000}).catch(() => {
+      throw new Error(
+        `no Cast button at ${origin}: it shows only in Chromium on an https page, for a book ` +
+          'the server can cast (capability cast) at an address that is not loopback',
+      );
+    });
     await sleep(SETTLE_MS);
     await page.mouse.move(0, 0);
     const playBox = await firstVisible(page.getByRole('button', {name: /^play$/i})).boundingBox();
@@ -1340,24 +1404,26 @@ async function captureCast() {
       clip: {x: cx - 420, y: top, width: 840, height: castBox.y + castBox.height + 28 - top},
     });
   } finally {
-    await castBrowser.close();
+    await castBrowser?.close();
+    // close() alone waits for the browser's kept-alive connections to time out.
+    proxy.closeAllConnections();
     proxy.close();
   }
 }
 
 if (wanted(...Object.values(HOUSE_SHOTS))) {
   console.log('== household ==');
-  let house = null;
-  await step('provision household', async () => {
-    house = await provisionHouse();
-  });
-  if (house) {
-    try {
-      await captureHouse(house);
+  // Only the Cast shot wanted: Ellen alone, no housemates to wait on.
+  const castOnly = !wanted(...Object.entries(HOUSE_SHOTS).filter(([k]) => k !== 'cast').map(([, f]) => f));
+  const house = newHouse();
+  try {
+    await step('provision household', () => provisionHouse(house, {viewerOnly: castOnly}));
+    if (house.ready) {
+      if (!castOnly) await step('household', () => captureHouse(house));
       if (wanted(HOUSE_SHOTS.cast)) await step('household: cast button', captureCast);
-    } finally {
-      await step('remove household', () => unprovisionHouse(house));
     }
+  } finally {
+    if (house.admin) await step('remove household', () => unprovisionHouse(house));
   }
 }
 
@@ -1369,13 +1435,7 @@ console.log('== public screens ==');
 // the account page from the profile menu. That player session is signed out again at
 // the end, so it never shows in the admin Devices shot.
 await step('connect', async () => {
-  const ctx = await browser.newContext({
-    viewport: {width: 1440, height: 900},
-    deviceScaleFactor: 2,
-    colorScheme: 'dark',
-    reducedMotion: 'reduce',
-  });
-  await ctx.addInitScript(drawerClosed);
+  const ctx = await newCaptureContext();
   const page = await ctx.newPage();
   try {
     await page.goto(BASE + 'connect', {waitUntil: 'networkidle', timeout: 45000});

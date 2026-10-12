@@ -172,7 +172,8 @@ browser's `localStorage`. So `capture-web.mjs` provisions four accounts through 
 admin API (`ADMIN_PASSWORD`): **ellen** (the viewer, with a place in A Christmas
 Carol), **jamie** and **rosa** (who share; their listening comes from progress saves
 as the apps make them, two 15 s apart, and jamie keeps saving every 15 s, so the house
-shows jamie listening now and rosa paused once her last save is a minute old) and
+shows jamie listening now and rosa paused once the server reads her last save as a
+minute old; she is saved again if more than 5 minutes passed before Home is shot) and
 **leo** (a child, whose account only sees a "Stories" share of the Lewis Carroll and
 Charles Dickens folders). Then it drives the UI as a family would, in a fresh browser:
 Ellen signs in by password, Settings > Household and sharing renames her, "Add
@@ -183,14 +184,16 @@ on "Who's listening?" (a reload asks, with two or more people) and load a story,
 paused; the phone shot reuses that browser's storage. Every household context runs in a
 fixed-offset time zone where it is 8 pm, after Leo's 7:30 pm bedtime, so the kids
 bedtime card reads the same on every run. The accounts and the share are deleted again
-at the end, so the admin console's shots never show them (the Audit log keeps the
-admin's create and delete entries).
+at the end, even when a step failed part-way, so the admin console's shots never show
+them (the Audit log keeps the admin's create and delete entries); any left over from a
+run that was killed are deleted before provisioning. A run that only wants
+`player-cast.png` (`SHOTS_ONLY`) provisions Ellen alone.
 
 The Cast button only shows on an https page in a Chromium browser, for a server that
 isn't reached at a loopback address, and the capture server is plain http on
 `127.0.0.1`. For `web-player/player-cast.png` the script starts a local https proxy in
 front of it with a throwaway self-signed certificate (**openssl**, into
-`.cache/cast-tls`), on a free port, and opens it as `audiosilo.shots.test` in a separate
+`.cache/cast-tls`, reused while under a day old), on a free port, and opens it as `audiosilo.shots.test` in a separate
 Chromium that resolves that name to `127.0.0.1` and accepts the certificate. Ellen
 signs in there, her book is loaded and paused, and the shot is clipped to the full
 player's transport and action row. Nothing leaves the machine except the Cast sender
