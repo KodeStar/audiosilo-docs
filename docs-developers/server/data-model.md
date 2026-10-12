@@ -13,7 +13,8 @@ schema**, noting which migration added what.
 The schema is deliberately split in two, and the split is the most important
 thing to understand before touching it:
 
-- The **rebuildable index** - `books`, `book_files`, `chapters`, `books_fts` -
+- The **rebuildable index** - `books`, `book_files`, `chapters`,
+  `book_more_series`, `books_fts` -
   is a cache of what the scanner found on disk. It can be dropped and rebuilt
   from a rescan at any time. `books.id` is an internal artifact of this half:
   it must **never** appear in the API contract or in durable user state.
@@ -76,6 +77,7 @@ erDiagram
     libraries ||--o{ books : "rebuildable index"
     books ||--o{ book_files : ""
     books ||--o{ chapters : ""
+    books ||--o{ book_more_series : "ON DELETE CASCADE"
     books ||--|| books_fts : "rowid = books.id"
     libraries ||--o{ progress : "path-keyed, NO FK to books"
     libraries ||--o{ bookmarks : ""
@@ -770,10 +772,12 @@ Its keys:
   indexed before the title rule their series position from their title.
 - `series_keys`: the version the stored series keys were computed with
   (`seriesKeysVersion`: the key rules' number, then Go's Unicode version and
-  x/text's NFKD version). `catalog.KeySeries` keys every book at start while it is
-  missing or different (first for the books indexed before 0041, then after an
-  upgrade that reads a name another way), before the listener; a failure stops
-  the start (see `book_more_series` below).
+  the Unicode version of x/text's normalization tables). `catalog.KeySeries` keys
+  every book at start while it is missing or different (first for the books
+  indexed before 0041, then after an upgrade that reads a name another way),
+  before the listener; a failure stops the start, as a failed migration does, since
+  every series filter reads only the keys (see `books.series_key` and
+  `book_more_series` in [The rebuildable index](#the-rebuildable-index)).
 
 ### Community metadata cache
 
@@ -870,8 +874,9 @@ A `books` row always holds the **effective** metadata, built in layers:
 
 `bookLayers.resolve` (in `internal/catalog/overrides.go`) is the single
 statement of that precedence, and of each field's source. `refreshEffective`
-writes its values into the book's metadata columns and chapter titles and
-refreshes the book's `books_fts` row from the result; the admin book page shows
+writes its values into the book's metadata columns (with `series_key`, and the
+book's `book_more_series` rows) and chapter titles and refreshes the book's
+`books_fts` row from the result; the admin book page shows
 the same resolution as provenance, so the two can't disagree. Every write path calls
 it inside its own transaction - `UpsertBook` (each scan or on-demand index),
 `SetEnrichment`, and `EditBook`/`EditBooks` (the admin edits, the bulk form

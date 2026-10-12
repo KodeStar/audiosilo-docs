@@ -459,10 +459,7 @@ The page shows 24 series at a time. Use the page numbers under the cards to
 move through a long list, or jump straight to a page. Type in **Find a series
 or author** to show only the series whose name or author holds what you type,
 ignoring case, accents, punctuation and spaces ("fights with" finds "He Who
-Fights with Monsters"). Names that differ only like that are one series, with
-one card; to make every book spell it the same way, use
-[Series spelled several ways](health.md#series-spelled-several-ways) in Health.
-The page and the search are part of the page's
+Fights with Monsters"). The page and the search are part of the page's
 address, so after you open a book, **Back** returns you to the same page, the
 same search and the same place on it. Picking another library starts again on
 the first page.
@@ -474,7 +471,9 @@ Monsters") are one series, everywhere: on this page, in the books list
 filtered to the series and in the players. The card is named the way your
 matched books spell it, or else the way most of its books do. Names that
 differ in any other way stay apart ("The Expanse" and "Expanse" are two
-series), so fix those with a [bulk edit](#changing-many-books-at-once).
+series), so fix those with a [bulk edit](#changing-many-books-at-once). To make
+every book of a series spell it the same way, use
+[Series spelled several ways](health.md#series-spelled-several-ways) in Health.
 
 A book with a series but no series number takes the number its title gives
 when the title is the series' name followed by a number: "He Who Fights with

@@ -4566,13 +4566,18 @@ library, from the same rule as the `series_spellings` count.
 }
 ```
 
-- `suggested` - the name [`/series`](#get-apiv1librariesidseries) gives the
-  series: the spelling its matched books use most, else the one most of its books
-  use, ties alphabetical. The console offers it first.
-- `spellings` - every spelling of the series in that library, with its books, most
-  books first (ties alphabetical). Ignored books' spellings are listed too, so a
-  rename leaves none behind.
-- `books` - all of the series' books in that library.
+- `suggested` - the spelling to offer, by the rule
+  [`/series`](#get-apiv1librariesidseries) names a series by (the spelling its
+  matched books use most, else the one most of its books use, ties alphabetical),
+  counted over this library's books whose main series it is. So it can differ from
+  the name `/series` or [`/admin/series`](#get-apiv1adminseries) gives when other
+  libraries or other-series lists spell it too. The console offers it first.
+- `spellings` - every spelling the library's books give it as their main series,
+  with its books, most books first (ties alphabetical). Ignored books' spellings
+  are listed too, so a rename leaves none behind.
+- `books` - all of the books in that library whose main series it is (a book that
+  lists it only among its other series is not counted, and a rename doesn't touch
+  it).
 - A series can be in both views while some of its books are ignored and some not.
   At most 200 entries, ordered by `suggested` (case-insensitive), then library.
 
