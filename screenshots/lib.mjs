@@ -120,3 +120,46 @@ export async function step(name, fn) {
     console.log(`  ✗ ${name}: ${String(e && e.message ? e.message : e).split('\n')[0]}`);
   }
 }
+
+// A clip around `boxes` (each from boundingBox()), `pad` CSS pixels wider on every
+// side, never starting off the page.
+export const around = (boxes, pad = 16) => {
+  const x = Math.max(0, Math.min(...boxes.map((b) => b.x)) - pad);
+  const y = Math.max(0, Math.min(...boxes.map((b) => b.y)) - pad);
+  const right = Math.max(...boxes.map((b) => b.x + b.width)) + pad;
+  const bottom = Math.max(...boxes.map((b) => b.y + b.height)) + pad;
+  return {x, y, width: right - x, height: bottom - y};
+};
+
+// A household for a capture, made as its owner (`token`) through the player's own API
+// (see README.md): a collection of theirs named `collection` holding `items` (rel paths
+// in library `libraryId`; none without a name), and `members` ({name, kind, access}),
+// each on "collections" given that collection. What a previous run left on the account
+// (a collection or a member of the same name) is reused, so a rerun adds nobody and
+// spends none of the server's self-service rate limit. Resolves to
+// {collectionId, members: [{...member spec, id, username}]}.
+export async function addHousehold(api, token, libraryId, {collection, items = [], members = []}) {
+  let collectionId = null;
+  if (collection) {
+    const owned = ((await api(token, 'GET', '/me/collections'))?.collections ?? []).find(
+      (c) => c.owned && c.name === collection,
+    );
+    collectionId = owned?.id ?? (await api(token, 'POST', '/me/collections', {name: collection})).collection.id;
+    await api(token, 'PUT', `/me/collections/${collectionId}/items`, {
+      items: items.map((p) => ({library_id: libraryId, path: p})),
+    });
+  }
+  const existing = members.length ? ((await api(token, 'GET', '/me/household/members'))?.members ?? []) : [];
+  const made = [];
+  for (const m of members) {
+    const shares = m.access === 'collections' && collectionId ? {collection_ids: [collectionId]} : {};
+    let member = existing.find((x) => x.name === m.name);
+    if (member) {
+      if (shares.collection_ids) member = await api(token, 'PATCH', `/me/household/members/${member.id}`, shares);
+    } else {
+      ({member} = await api(token, 'POST', '/me/household/members', {name: m.name, kind: m.kind, access: m.access, ...shares}));
+    }
+    made.push({...m, id: member.id, username: member.username});
+  }
+  return {collectionId, members: made};
+}

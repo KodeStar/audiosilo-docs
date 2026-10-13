@@ -38,7 +38,21 @@ import http from 'node:http';
 import {cp, mkdir, rm, writeFile} from 'node:fs/promises';
 import path from 'node:path';
 import {chromium} from 'playwright';
-import {CACHE, DAY, MIN, apiClient, isoAgo, pathQuery, sleep, shoot, step, wanted, DESKTOP_CONTEXT} from './lib.mjs';
+import {
+  CACHE,
+  DAY,
+  MIN,
+  addHousehold,
+  apiClient,
+  around,
+  isoAgo,
+  pathQuery,
+  sleep,
+  shoot,
+  step,
+  wanted,
+  DESKTOP_CONTEXT,
+} from './lib.mjs';
 
 const ORIGIN = (process.env.AS_ORIGIN || 'http://127.0.0.1:8790').replace(/\/$/, '');
 const ADMIN = `${ORIGIN}/admin`;
@@ -262,9 +276,8 @@ const LISTENERS = [
 ];
 let mayaId = null;
 let heartbeats = null;
-// Maya's household (Phase 8b-1): two members she adds from the player's own API
-// (POST /me/household/members as maya), a kid on the collection she shares with them and
-// a grown-up on everything she can listen to, so People shows a household block and a
+// Maya's household (see README.md): a kid on a collection she shares with them and a
+// grown-up on everything she can listen to, so People shows a household block and a
 // member's page has the household access to show.
 const MEMBERS = [
   {name: 'Ivy', kind: 'kid', access: 'collections'},
@@ -322,21 +335,12 @@ await step('provision listening sessions', async () => {
   mayaId = LISTENERS[0].id;
 
   // Maya's household: a collection of hers for Ivy, then the two members.
-  {
-    const maya = LISTENERS[0];
-    const made = await api(maya.token, 'POST', '/me/collections', {name: MEMBER_COLLECTION.name});
-    const items = books.slice(0, MEMBER_COLLECTION.books).map((b) => ({library_id: library.id, path: b.rel_path}));
-    await api(maya.token, 'PUT', `/me/collections/${made.collection.id}/items`, {items});
-    for (const m of MEMBERS) {
-      const {member} = await api(maya.token, 'POST', '/me/household/members', {
-        name: m.name,
-        kind: m.kind,
-        access: m.access,
-        ...(m.access === 'collections' ? {collection_ids: [made.collection.id]} : {}),
-      });
-      if (m.kind === 'kid') memberId = member.id;
-    }
-  }
+  const household = await addHousehold(api, LISTENERS[0].token, library.id, {
+    collection: MEMBER_COLLECTION.name,
+    items: books.slice(0, MEMBER_COLLECTION.books).map((b) => b.rel_path),
+    members: MEMBERS,
+  });
+  memberId = household.members.find((m) => m.kind === 'kid')?.id ?? null;
 
   // A transcoded stream from Theo's device: the mark lasts 10 minutes, so his
   // session on the book is recorded as transcoded.
@@ -1011,14 +1015,6 @@ const sqlite = (sql) => {
   const r = spawnSync('sqlite3', [DB], {input: `.timeout 15000\n${sql}\n`, encoding: 'utf8'});
   if (r.status !== 0) throw new Error(`sqlite3: ${(r.stderr || r.error?.message || '').trim()}`);
   return r.stdout;
-};
-// A clip around `boxes` (each from boundingBox()), `pad` CSS pixels wider on every side.
-const around = (boxes, pad = 16) => {
-  const x = Math.max(0, Math.min(...boxes.map((b) => b.x)) - pad);
-  const y = Math.max(0, Math.min(...boxes.map((b) => b.y)) - pad);
-  const right = Math.max(...boxes.map((b) => b.x + b.width)) + pad;
-  const bottom = Math.max(...boxes.map((b) => b.y + b.height)) + pad;
-  return {x, y, width: right - x, height: bottom - y};
 };
 
 await step('support card', async () => {
