@@ -1451,9 +1451,10 @@ if (wanted(...Object.values(HOUSE_SHOTS))) {
 
 // ── Unauthenticated screens ─────────────────────────────────────────────────
 console.log('== public screens ==');
-// The connect flow on a fresh browser: the start screen with the probe card, then a
-// first connection (the admin, by username and password: a real account, so the
-// account page has its Password card and API keys) to "Your library is ready.", then
+// The connect flow on a fresh browser: the start screen with the probe card (the served
+// player finds its own server, nothing typed), then a first connection (the admin, by
+// username and password: a real account, so the account page has its Password card and
+// API keys) to "Your library is ready.", then
 // the account page from the profile menu. That player session is signed out again at
 // the end, so it never shows in the admin Devices shot.
 await step('connect', async () => {

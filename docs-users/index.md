@@ -18,7 +18,7 @@ AudioSilo is made of three pieces that work together. You only *have* to run the
 
 The heart of the system. It scans your audiobook folders, builds a fast search index, and streams the audio to your devices (new files show up when you browse to them or after a rescan). It also includes a built-in admin console for managing libraries, users and sharing, and it can serve the web player itself - so one running server is a complete, listen-in-the-browser setup. It is designed from the start to be safe to expose to the internet.
 
-Install it with [Docker](./getting-started/quickstart-docker.md) or as a [single downloadable program](./getting-started/install-binary.md).
+Install it with [Docker](./getting-started/quickstart-docker.md), from [Unraid's Community Applications](./getting-started/install-unraid.md), or as a [single downloadable program](./getting-started/install-binary.md).
 
 ### The player app
 
@@ -38,7 +38,7 @@ An optional desktop app for the "librarian" side of things: setting up and conne
 
 ## How this guide is organized
 
-- **[Getting started](./getting-started/quickstart-docker.md)** - install the server with [Docker](./getting-started/quickstart-docker.md) or a [native binary](./getting-started/install-binary.md), understand the [first run](./getting-started/first-run.md), lay out [your library folders](./getting-started/organizing-your-library.md), and set up [remote access](./getting-started/remote-access.md).
+- **[Getting started](./getting-started/quickstart-docker.md)** - install the server with [Docker](./getting-started/quickstart-docker.md), [on Unraid](./getting-started/install-unraid.md) or as a [native binary](./getting-started/install-binary.md), understand the [first run](./getting-started/first-run.md), lay out [your library folders](./getting-started/organizing-your-library.md), and set up [remote access](./getting-started/remote-access.md).
 - **[Server administration](./admin/console-tour.md)** - the admin console: [libraries](./admin/libraries.md), [people and invites](./admin/users-and-invites.md), and [sharing parts of a library](./admin/sharing.md).
 - **[Listening](./listening/connecting.md)** - connecting a device, [browsing](./listening/browsing.md), [playing a book](./listening/playback.md), [the full player](./listening/full-player.md), [the companion](./listening/companion.md), the [sleep timer](./listening/sleep-timer.md), [Up next](./listening/up-next.md), [the end of a book](./listening/end-of-book.md), [offline downloads](./listening/offline-downloads.md), [your listening stats](./listening/you.md) and [year in listening](./listening/year-in-listening.md), [settings](./listening/settings.md), [your account](./listening/account.md), the [mobile apps](./listening/mobile-apps.md) and [keyboard shortcuts](./listening/keyboard-shortcuts.md).
 - **[Desktop manager](./manager/index.md)** - [managing servers](./manager/servers.md), [organizing and transferring books](./manager/organizing.md), and [backing up an Audible library](./manager/audible-backup.md).

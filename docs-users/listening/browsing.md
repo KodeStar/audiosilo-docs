@@ -32,13 +32,15 @@ From left to right:
 - A **search field**. In the web player it opens [quick search](#quick-search-in-the-web-player); in the tablet app it takes you to the Search page. Where the bar is too narrow for the field (a tablet held upright, say), it shrinks to a search button that does the same.
 - The **Up next** button, with the number of books queued. It opens [Up next](up-next.md).
 - A **gear** button for [Settings](settings.md). It opens Settings over the page you're on, so going back returns you there.
-- Your **profile button** - your initial, plus your name on wider screens. It opens a menu that starts with who's **Listening as**, then the other people on this device (pick one to switch to them; see [Sharing a device with your household](profiles.md)) and **Who's listening?**, then your **servers**, each with a line saying who you're signed in as, or that it's **offline** or **needs signing in again** (pick one to open its [account page](account.md)); **Add a server**; your [Journal](journal.md); [Settings](settings.md); **Account on** your main server; and a switch between **light and dark** appearance.
+- Your **profile button** - your initial, plus your name on wider screens. It opens a menu that starts with who's **Listening as**, then the other people on this device (pick one to switch to them; see [Sharing a device with your household](profiles.md)) and **Who's listening?**, then your **servers**, each with a line saying who you're signed in as, or that it's **offline** or **needs signing in again** (pick one to open its [account page](account.md)); **Add a server** (in the apps; the web player only reaches its own server); your [Journal](journal.md); [Settings](settings.md); **Account on** your main server; and a switch between **light and dark** appearance.
 
 ![The profile menu open from the top bar](/img/screenshots/web-player/profile-menu.png)
 
 Under the top bar, a slim row shows the title of the page you're on, or a **Back** button once you've opened something, such as a book. On the Library page that row also carries the Library's sections and its controls (see [The Library](#the-library)). While a book is playing, the [player bar](playback.md#the-mini-player-and-the-player-bar) runs along the bottom of the window.
 
 If you get around the web player with a keyboard, **Tab** moves between controls and **Space** presses the one you're on - buttons, tabs, option choices and switches alike. The player itself has [keyboard shortcuts](keyboard-shortcuts.md) too (press **?** to list them).
+
+The browser tab is named after the page you're on: a book, an author, a series, **Library**, **Settings** and so on. While a book is playing, the tab shows ▶ and that book's title instead, wherever you are in the player, so you can find it among your other tabs. Pause it and the tab goes back to naming the page.
 
 :::note
 The **Downloads** tab only appears where downloading is possible. In the web player that means a secure (`https://`) address - see [Offline downloads](offline-downloads.md).

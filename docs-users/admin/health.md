@@ -48,6 +48,7 @@ below.
 | **Likely duplicates** | Copies of one book in the same library. See [Duplicates](#duplicates). | A side-by-side comparison. |
 | **Missing covers** | No cover image in the book's folder and none inside its files. | **Upload a cover** opens the book's page, where **Change cover** adds one (see [Covers](books.md#covers)). |
 | **Not matched to community metadata** | The book has no ASIN or ISBN, so community metadata can't find it. Only shown while [community metadata](server.md#community-metadata) is on. | **Review match** opens the book's page with the match dialog open (see [Matching](books.md#matching-with-community-metadata)). To match the whole list at once, use **Match automatically** above it (see [Matching every book at once](#matching-every-book-at-once)). |
+| **Series spelled several ways** | Books of one series that spell its name differently, for example "He Who Fights With Monsters" on some books and "He Who Fights with Monsters" on others. AudioSilo already shows them as one series; this is only about every book saying the same. See [Series spelled several ways](#series-spelled-several-ways). | **Use this spelling** sets one spelling on every book of the series. |
 | **Long books without chapters** | Books over two hours long with no chapter marks (or a single chapter). Listeners can play them but can't jump between chapters. When the book was checked against the community's chapter lists and they couldn't be used, a second line says why, for example "Community chapters: for another edition" or "Community chapters: cross from one file into the next. Merging the files would let them fit" (see [Community chapters](books.md#community-chapters)). | None in the console. [Match](books.md#matching-with-community-metadata) the book so its community chapters can be used (a book with no chapters of its own gets them automatically once they fit), add chapters to the file with your tagging tool, or ignore it. |
 | **More detailed chapters available** | The book has chapters, and the community has finer ones that fit this copy ("Has 34 chapters; the community's finer ones fit this copy"). Nothing changes until you use them. | **Use detailed chapters** switches the book to the community's chapters. Using them on the book's page does the same. Once you have chosen, the book stays off this list, even if you later switch it back to the file's chapters. |
 | **Converted to play in browsers** | The audio format doesn't play in web browsers, so the server converts it while someone listens in the web player. The apps play it as it is. | None needed: it works. Re-encode the file if you'd rather the server didn't convert it, or ignore it. |
@@ -96,11 +97,18 @@ what it found and apply it.
      community cover for a book with no cover at all. Nothing the book already
      has is replaced.
    - **Use community values** also replaces fields that differ, as accepting a
-     match by hand does.
+     match by hand does. A book's series become the community's: any series an
+     earlier match wrote that the community no longer lists for the book (one
+     it removed or merged, or an edition for another narration) is removed, back
+     to what your files say. Series you typed yourself stay.
 
    Under each book the dialog says what your choice writes, for example "Sets
-   Narrator, Published, and ASIN". Fields you edited yourself are never
-   replaced, and a series number is only set beside the series it belongs to.
+   Narrator, Published, and ASIN". When your choice changes the book's series,
+   it shows them before and after, for example "Series: Harry Potter
+   (Full-Cast Editions) #2; Harry Potter (Narrated by Stephen Fry) #2 → Harry
+   Potter #2", so a series it removes is never a surprise. Fields you edited
+   yourself are never replaced, and a series number is only set beside the
+   series it belongs to.
 4. Each book shows its path in the library (hover it for the whole path on
    disk) and, under an arrow, the community match: its title, authors,
    narrators and length, the series it belongs to with its position ("Series:
@@ -143,6 +151,24 @@ switch each one to its recording's ASIN in your store, where the community
 catalogue now has one (it gains them over time). Review and apply it the same
 way. It never changes an ASIN from your tags, or one you typed.
 
+#### Filling in books that are already matched
+
+**Fill in matched books** looks up every book that already has an ASIN or
+ISBN, by that alone, and offers the community's details for it: title, series,
+narrator, description and cover. Use it for books that got an ASIN or ISBN
+without their details (from the AudioSilo manager, or a run applied with
+**ASIN and ISBN only**), and to clean up books an earlier match gave too many
+series. Review and apply it as above, choosing **Fill in what's missing** or
+**Use community values** (the ASIN and ISBN stay as they are, so **ASIN and
+ISBN only** isn't offered). Books that are already up to date aren't listed.
+A book whose ASIN or ISBN the community doesn't
+know is listed under **Not found** ("The community doesn't know this book's
+ASIN or ISBN"); it is never matched to another book by its title.
+
+To clean up series an earlier match added (every edition and reading order of
+a series, say), run **Fill in matched books** and apply it with **Use
+community values**: the review shows each book's series before and after.
+
 ### Duplicates
 
 **Likely duplicates** shows each group of copies side by side, with the copy
@@ -171,6 +197,33 @@ when it was **Added**. **Open book** opens a copy's page.
 - AudioSilo never deletes a copy for you. To remove one, delete its files from
   the library folder and rescan; listening progress on the deleted copy's path
   is kept (see [Jobs](#what-a-removed-book-leaves-behind)).
+
+### Series spelled several ways
+
+AudioSilo treats names that differ only in capitals, accents, punctuation or
+spacing as one series, so the Series page already shows one card for them. The
+books themselves still say it differently, which shows in the players' book
+details, the Books list and the library export. This list sorts that out.
+
+Each series has its own notice, for example "“He Who Fights With Monsters”
+looks like He Who Fights with Monsters", with how many books carry the other
+spellings.
+
+- The spelling it offers is the one this library's matched books use most, else
+  the one most of its books use (the rule the Series page names a series by, so
+  the two usually agree; the Series page can pick another when it shows every
+  library, or when a book lists the series among its other series). Pick another
+  from the list beside the button if you prefer it.
+- **Use this spelling** sets that spelling on every book that spells the series
+  another way, as an edit on each book; the files are untouched. Each book keeps
+  its number in the series. The toast has an **Undo** button, and you can also
+  revert the series on any single book's page. It works like
+  [merging two spellings of an author](books.md#merging-two-spellings).
+- **Ignore** stops suggesting the series, for all its books. **Show ignored**
+  lists those series, each with **Show again**.
+
+Only books in the same library are compared. AudioSilo never changes a spelling
+on its own.
 
 ### When a library is offline
 

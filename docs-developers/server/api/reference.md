@@ -706,7 +706,7 @@ Keyset-paginated (see [conventions](index.md#pagination)).
 | Query param | Type | Default | Notes |
 |---|---|---|---|
 | `author` | string | - | the books whose author credit is this value, or names it as one of its people (`Brandon Sanderson` finds `Brandon Sanderson & Janci Patterson`; see [the people lists](#get-apiv1librariesidauthors--get-apiv1librariesidnarrators)). Exact, case included |
-| `series` | string | - | the books whose main `series` is exactly this value. With `memberships=1`, also the books that list it among their other series (see `series_list` below) |
+| `series` | string | - | the books whose main `series` is this series, in any spelling (case, accents, punctuation and spacing aside; see [`/series`](#get-apiv1librariesidseries)). With `memberships=1`, also the books that list it among their other series (see `series_list` below) |
 | `memberships` | `1` | - | `series_memberships` capability: makes `series` match every series a book is in. Without it a book is found only by its main series, as shipped players expect |
 | `narrator` | string | - | as `author`, on the narrator credit (`browse_people` capability; an older server ignores it and returns the unfiltered list; one before the co-credit split matches whole credits only) |
 | `sort` | string | `author` | `author` \| `title` \| `recent` (`recent` = newest `added_at` first) |
@@ -775,7 +775,11 @@ until the next thumbnail. The long `description` is not on list responses: only
 
 Metadata fields (`title`, `author`, `narrator`, `series`, `series_index`,
 `asin`, `isbn`) and chapter titles carry the **effective** values: what the scan
-found, with any admin metadata edits layered on top. The shape is unchanged; a
+found, with any admin metadata edits layered on top. A book with a `series` and
+no position takes the one its title gives when the title is the series' name
+and then a number ("He Who Fights with Monsters 4: A LitRPG Adventure" is
+`series_index` 4); a number run on from the name, a range ("1-12") or one
+followed by more words gives none. The shape is unchanged; a
 player simply sees the edited value. The same holds for every book-shaped
 response, search, the `/fs` annotations and the export.
 List responses omit `files`, `chapters`, and `direct_playable` (single-book
@@ -836,6 +840,18 @@ distinct non-zero series positions held, ascending (so a client can mark the
 gaps). Sorted case-insensitively by name; books with no series are not counted.
 Same status codes as `/authors`.
 
+**One series, any spelling.** Series names that differ only in case, accents,
+punctuation or spacing are one series ("He Who Fights With Monsters", "He Who
+Fights with Monsters" and "He Who Fights WIth Monsters"): one entry, its books,
+positions and length merged. Its `name` is the spelling its matched books (with
+an ASIN or ISBN) use most, else the one most of its books use, ties to the first
+alphabetically. Every series filter takes any spelling of the series it names
+(`/books?series=`, [`/series/books`](#get-apiv1librariesidseriesbooks), the
+admin [`/admin/books?series=`](#get-apiv1adminbooks)) and so does
+[`/next`](#get-apiv1librariesidnext)'s series step, so the `name` here loads all of
+them. Nothing fuzzier merges: "The Expanse" and "Expanse" stay two series. The
+JSON is unchanged; an older player simply sees fewer, fuller series.
+
 By default a book counts only in its main `series`, which is what shipped players
 expect. With `?memberships=1` (`series_memberships` capability) it counts in every
 series of its `series_list`, at its position there, and `extra_books` is how many
@@ -851,7 +867,7 @@ request each.
 
 | Query param | Type | Default | Notes |
 |---|---|---|---|
-| `name` | string, repeated | - | a series name, exact (case included), once per series: `?name=Mistborn&name=Discworld`. At least one, at most 50 distinct. Empty names are ignored and a repeated name is answered once |
+| `name` | string, repeated | - | a series name, once per series: `?name=Mistborn&name=Discworld`. It finds the series in any spelling (see [`/series`](#get-apiv1librariesidseries)) and comes back verbatim. At least one, at most 50 distinct. Empty names are ignored and a repeated name is answered once |
 | `limit` | int | `50` | the page size of each series, as on `/books` (≤ 0 or > 200 falls back to 50) |
 
 ```json
@@ -1137,7 +1153,8 @@ Otherwise the local steps decide, in order, and the first one with an answer win
    degrades.
 2. **`series`** - the book's series with a position above 0, main series first
    (`series` at `series_index`, then each other series at its position there). For
-   each, the candidate is the book of exactly that series in the same library
+   each, the candidate is the book of that series (in any spelling, as
+   [`/series`](#get-apiv1librariesidseries) groups them) in the same library
    (by its main series or one of its other series, at its position in that
    series) with the smallest higher position (ties by path), within the caller's
    scope, passing over any book that comes at or before the current book in a
@@ -1277,6 +1294,34 @@ work's position in that series; `series[].works` is the full ordered rail,
 **including the current work** (the client filters it out before drawing a "more
 in this series" row). Positions are strings ("1", "2.5", "1-3.5").
 
+#### Series rules
+
+The community lists every series a work is in, and not each of them is a series
+a book of the work is in. The server applies one set of rules
+(`internal/meta/seriesrules.go`) to the rails above and to the
+[match dialog's candidates](#get-apiv1adminlibrariesidbookmatch), which is what a
+match writes onto a book:
+
+- a **variant reading order** (`ordering_of`) is an alternate view of its rail,
+  never a series of its own;
+- a **translation** (`translation_of`) of another series the work is in, whose
+  original is in the work's language, and a series whose derived `language`
+  differs from the work's (primary subtags; an unknown language agrees), are left
+  out;
+- an **edition** is a series named exactly like another of the work's series plus a
+  bracketed qualifier or a "narrated by" tail. The community API links no series to
+  a recording, so the qualifier says which recordings hold it: `abridged` (the
+  abridged recordings), a full cast or dramatisation (a recording with four or more
+  narrators, or one named "Full Cast"), "Narrated by X" / "Gesprochen von X" (the
+  recordings X narrates). An "(Unabridged)" edition repeats its base, and a language
+  edition or an ordering note holds no recording, so those are left out. A book is
+  in an edition only as one of its recordings, and then it is its main series.
+- A name that only extends another ("Discworld: Tiffany Aching") is a series of its
+  own.
+
+The language and translation facts come from each series' record (`series/{id}`),
+read once per series and cached as long as an enrichment.
+
 #### Reading-order families
 
 Some series come in more than one reading order: a **primary** series (usually
@@ -1300,8 +1345,21 @@ work belongs to into **one** rail rather than one rail per order (`seriesRails` 
   (`maxOrderingAlternates`), and every main view is fetched before any alternate, so
   a slow upstream under the compose deadline costs alternates, never rails.
 - **The three-rail cap counts families** (`maxSeriesRails`), not series, so a work
-  in "Narnia" and "Narnia (Chronological)" spends one slot. One enrichment issues at
-  most 3 x (1 + 2) series requests.
+  in "Narnia" and "Narnia (Chronological)" spends one slot.
+- **The cap goes to the book's own series** (the [series rules](#series-rules)).
+  Before the cap, an **edition** named for a kind of recording ("Discworld
+  (abridged)", "Harry Potter (Full-Cast Editions)") is kept only when the envelope's
+  recording is that kind (the recording the lookup named, or the work's only one;
+  never a guess of the first recording), and then goes first, since it is the
+  book's main series; other editions are left out. Without this, a Discworld novel
+  listed in six series, three of them "(abridged)" editions, lost its "Discworld:
+  Tiffany Aching" rail to them. An edition named for anything else (an ordering note
+  from a metaserve that predates `ordering_of`) keeps its place, so a pre-v7 upstream
+  still yields the same rails. A series known to be **foreign** (another language
+  than the work, or a translation of another of its series) is left out: before the
+  cap when the server already holds its record, else once its record is fetched, and
+  then it hands its slot to the next family (at most twice, `maxForeignRails`). One
+  enrichment issues at most (3 + 2) main-view requests plus 3 x 2 alternates.
 - **Failures are partial, not fatal.** A failed alternate ships the rail without
   it; like a failed rail, it makes the envelope partial, which is cached for the
   2-minute transport-error TTL rather than 24 h, so the missing order reappears soon.
@@ -3422,7 +3480,7 @@ what the first does).
 |---|---|---|---|
 | `library_id` | int | - | one library; a non-positive or non-integer id is `400` |
 | `q` | string | - | full-text search over title/author/series/narrator, the same prefix matching as [`/search`](#get-apiv1search); punctuation-only input filters nothing |
-| `author` · `series` · `narrator` | string | - | the effective value: `series` the main series exactly, or one its `more_series` names; `author` and `narrator` the whole credit or one of the people it names, exactly (as the [player's list](#get-apiv1librariesidbooks)) |
+| `author` · `series` · `narrator` | string | - | the effective value: `series` the main series, or one its `more_series` names, in any spelling (case, accents, punctuation and spacing aside, as [`/series`](#get-apiv1librariesidseries) groups them); `author` and `narrator` the whole credit or one of the people it names, exactly (as the [player's list](#get-apiv1librariesidbooks)) |
 | `format` | string, repeatable | - | `?format=m4b&format=mp3`; at most 50 values |
 | `codec` | string, repeatable | - | ffprobe codec name (`aac`, `mp3`, …); at most 50 values |
 | `direct_playable` | `true`\|`false` | - | the book's codec plays in browsers (an unknown codec counts as playable) |
@@ -3433,7 +3491,7 @@ what the first does).
 | `min_duration` · `max_duration` | number (seconds) | - | inclusive bounds; `0` means no bound |
 | `added_after` | date | - | inclusive lower bound on `added_at`: `YYYY-MM-DD` (used as is) or an RFC 3339 time (any offset; converted to UTC before comparing) |
 | `added_before` | date | - | exclusive upper bound, same formats |
-| `issue` | string | - | one [Health issue](#get-apiv1adminissues) kind's books: `scan_error`, `suspect`, `split_discs` (one row per split book: its first disc), `no_cover`, `unmatched`, `no_chapters`, `detailed_chapters` or `transcode` (not `duplicate`, which comes as groups from [`/admin/issues/duplicates`](#get-apiv1adminissuesduplicates)). Books an admin ignored for that kind are left out. Any other value is `400 unknown issue` |
+| `issue` | string | - | one [Health issue](#get-apiv1adminissues) kind's books: `scan_error`, `suspect`, `split_discs` (one row per split book: its first disc), `no_cover`, `unmatched`, `series_spellings`, `no_chapters`, `detailed_chapters` or `transcode` (not `duplicate`, which comes as groups from [`/admin/issues/duplicates`](#get-apiv1adminissuesduplicates)). Books an admin ignored for that kind are left out. Any other value is `400 unknown issue` |
 | `issue_ignored` | `true`\|`false` | - | with `issue`, list **only** the books an admin ignored for it; without `issue` it is `400 issue_ignored needs an issue` |
 | `sort` | string | `title` | `title` \| `author` \| `surname` \| `series` \| `narrator` \| `published` \| `added` \| `duration` \| `size` |
 | `order` | string | `asc` | `asc` \| `desc` |
@@ -3679,9 +3737,10 @@ authors.
 the distinct non-zero series positions held, ascending (so a client can mark the
 gaps). A book counts in every series it is in, its main `series` and each of its
 `more_series`, at its position there; `extra_books` is how many of `books` are in
-the series through `more_series` (the console loads such a series' books with
-`series=` rather than from the series-sorted list). Sorted case-insensitively by
-name. Books with no series are not counted.
+the series through `more_series`. Spellings of one series are one entry, named as
+on the [player's `/series`](#get-apiv1librariesidseries); the console loads each
+card's books with `series=<name>&sort=series`, which finds every spelling. Sorted
+case-insensitively by name. Books with no series are not counted.
 
 ### `POST /api/v1/admin/books/works`
 
@@ -3904,7 +3963,7 @@ A revert restores the value from what the last scan stored - no rescan and no
 disk access. Reverting an ASIN/ISBN falls back to any enrichment for it.
 
 **Making an other series the main one swaps them.** When an edit sets `series` to
-a name the book's `more_series` lists (exactly, case included), and does not set
+a series the book's `more_series` lists (in any spelling: case, accents, punctuation and spacing aside), and does not set
 or revert `more_series` itself, the server swaps the two: the old main series,
 at its old `series_index`, takes that entry's place in `more_series` (a book with
 no main series just drops the entry, and another entry already naming the old
@@ -4002,7 +4061,10 @@ with no `q` only looks that identifier up. A book with nothing to match on
 (no title, author, series or usable identifier) gets an empty answer without a
 request. At most **6** results are expanded into full works with their
 recordings. Results are not cached (an admin action, so the fan-out is bounded
-instead: work fetches share the same concurrency limit as `GET /meta/work`).
+instead: work fetches share the same concurrency limit as `GET /meta/work`). The
+[series rules](#series-rules) read each candidate series' record once (at most 16
+per request, within 5 seconds, none for a work with no language and one series),
+and those facts are cached.
 
 **Older community service.** A metaserve that predates `works/match` answers it
 as a missing route (a `404`, since it reads `match` as a work id; a `405`; or a
@@ -4039,7 +4101,8 @@ again. A `503` (over metaserve's match budget) or any other `5xx` from
             { "region": "us", "asin": "B00B5HZGUG" }
           ],
           "asin_region": "uk",
-          "isbns": ["9780553418026"]
+          "isbns": ["9780553418026"],
+          "series": []
         }
       ],
       "recording_id": "rec1",
@@ -4071,8 +4134,14 @@ again. A `503` (over metaserve's match budget) or any other `5xx` from
   equal to one of the work's authors or contains every word of a multi-word
   name (so `Brandon Sanderson, Mary Robinette Kowal` matches both); otherwise
   the word overlap counts. Comparisons keep letters of every script.
-- `series` lists each series once, at its main position (`{ "name", "position"
-  }`); alternate reading orders are left out. `subtitle`, `language`,
+- `series` lists the series a book of the work is in whatever its recording
+  (`{ "id", "name", "position" }`, each once, at its first position), by the
+  [series rules](#series-rules): no alternate reading orders, translations,
+  other-language series or editions. Each recording's `series` is the list for a
+  book that is that recording, its main series first: an edition named for it
+  ("Harry Potter (Full-Cast Editions)" for the full-cast recording) in front of the
+  work's series. The console's dialog offers the chosen recording's list, the book's
+  own series first when the work is in it. `subtitle`, `language`,
   `first_published`, `description`, `cover_url`, `recording_id` and the
   recordings' optional fields are omitted when empty; `asins`/`isbns` are always
   arrays.
@@ -4126,10 +4195,23 @@ every change is reversible. Admin only; every endpoint answers `404 code:
 (server-wide); the newest 10 runs are kept, with their books.
 
 A run is a `match` run (the books with no ASIN or ISBN: the Health page's
-"Not matched", less those ignored there) or a `repick` run (the books whose
+"Not matched", less those ignored there), a `repick` run (the books whose
 ASIN is a **community** override, never one from the tags, an admin's edit or
 the manager's enrichment: each is looked up, and when its recording now sells
-in the preferred marketplace under another ASIN, that is offered).
+in the preferred marketplace under another ASIN, that is offered) or a
+`refresh` run (every book with an ASIN or ISBN, whoever set it: each is looked
+up by its own identifier alone, the ISBN when the ASIN finds nothing, and the
+record it names is the book, `auto` whatever its score; an identifier the
+community doesn't know is `none` with `detail: "identifier_unknown"`, never a
+fuzzy match by title). A refresh fills in, or with `overwrite` replaces, the
+details an identifier alone didn't bring (the manager's enrichment, an `ids`
+apply), and cleans up the series an earlier match wrote (see the `overwrite`
+scope below); it never changes the identifier itself. Only books a scope would
+change are recorded (a book already up to date leaves no item, as a repick
+records only books with a new ASIN), and each refresh proposal names the
+identifier it was found by (`proposal.found_by`, `"asin:<ASIN>"` or
+`"isbn:<ISBN>"`): applying it changes nothing on a book that no longer has that
+identifier (matched again since, by hand).
 
 Each book's **outcome**:
 
@@ -4185,16 +4267,17 @@ are the items by outcome, `pending` the `auto` ones not applied yet, and
 
 #### `POST /api/v1/admin/match-runs`
 
-`{"library_id"?: 2, "mode"?: "match" | "repick"}` (omitted, or no body at all:
+`{"library_id"?: 2, "mode"?: "match" | "repick" | "refresh"}` (omitted, or no body at all:
 every library, a `match` run). A book of a library deleted while the run works
 is left out. Starts the run in the background and answers `202` with it (as
 in the list). The admin's console polls
 [`GET …/match-runs/{id}`](#get-apiv1adminmatch-runsid) while it works.
-Audited as `book.match_run` or `book.asin_repick` (`run`, `books`, `region`).
+Audited as `book.match_run`, `book.asin_repick` or `book.match_refresh` (`run`,
+`books`, `region`).
 
 | Status | Meaning |
 |---|---|
-| `400` | `invalid request`; `mode must be "match" or "repick"`; `code: "no_region"` - a repick with no `metadata.region` set |
+| `400` | `invalid request`; `mode must be "match", "repick" or "refresh"`; `code: "no_region"` - a repick with no `metadata.region` set |
 | `404` | `library not found` |
 | `409` | `code: "match_run_busy"` - a run is matching or applying |
 
@@ -4253,9 +4336,27 @@ A page of the run's books in id order: `?outcome=auto|review|none|error`
   server, named by `asin_region`.
 - `book` is the book as it is now; `gone: true` when nothing is indexed at the
   path any more.
-- `changes` is what applying would write under each scope (fields in display
-  order, and whether the cover is taken), worked out against the book now by
-  the same rules the apply uses, so the review can't disagree with it.
+- `changes` is what applying would write under each scope the run's mode takes
+  (fields in display order, set or reverted, and whether the cover is taken),
+  worked out against the book now by the same rules the apply uses, so the
+  review can't disagree with it. A `match` run's items carry `ids`, `fill` and
+  `overwrite`; a `refresh` run's `fill` and `overwrite` (it writes no
+  identifier); a `repick` run's only `ids` (its ASIN, whatever the scope). When a
+  scope changes the book's series, its change also carries `series`: the book's
+  series `from` (now) and `to` (after), each `[{ "name", "position" }]` with the
+  main series first (`position` 0 = none), so a series it removes is visible:
+
+  ```json
+  "overwrite": {
+    "fields": ["series", "more_series"],
+    "cover": false,
+    "series": {
+      "from": [ { "name": "Harry Potter (Full-Cast Editions)", "position": 2 },
+                { "name": "Harry Potter (Narrated by Stephen Fry)", "position": 2 } ],
+      "to": [ { "name": "Harry Potter", "position": 2 } ]
+    }
+  }
+  ```
 - `applied` is what applying did: `""` (not yet), `applied`, `skipped` (with
   `detail` `nothing_to_change` or `book_gone`) or `failed` (`edit_failed`,
   `cover_failed`); an `applied` item can carry `cover_failed` when its fields
@@ -4273,19 +4374,26 @@ book gets, under each **scope**:
 |---|---|
 | `ids` | The ASIN and ISBN, where the book has none. |
 | `fill` | Also every field the book has empty, and the community cover when it has no cover (a checked book with none, and no custom cover). |
-| `overwrite` | Also every field whose value differs, as accepting the dialog's default ticks does; the cover only when it has none. |
+| `overwrite` | Also every field whose value differs, as accepting the dialog's default ticks does; the cover only when it has none. The book's series are **replaced** by the community's for its recording (the [series rules](#series-rules)): a `series`, `series_index` or `more_series` value the community wrote earlier that it no longer offers (a series it deleted or merged, an edition or a translation) is reverted to what the files say. |
 
 Under every scope a field an admin **edited** (`source: "edited"`) is never
 replaced, a value the book already has isn't rewritten, and a series position
 is written only beside the series it numbers (the book's own, or the one being
-set). A repick writes its ASIN whatever the scope, and only while the book's
-ASIN is still the community override it found. Audited as `book.match_apply`
-(`run`, `books`, `scope`). Applying `ready` again after a stopped apply takes
-the rest.
+set). Only `overwrite` reverts, and only community values: a series an admin
+typed stays, and a revert never removes an edit made after the run looked (a
+[`PATCH …/book`](#patch-apiv1adminlibrariesidbook) revert sent with `source:
+"community"` removes only a community value). A series position is put back from
+the files only beside the files' own series. A
+retired work id is a redirect the server follows, so a merged record's series
+are the ones written. A repick writes its ASIN whatever the scope, and only while
+the book's ASIN is still the community override it found; a refresh takes only
+`fill` or `overwrite` (`400` for `ids`, which would write nothing). Audited as
+`book.match_apply` (`run`, `books`, `scope`). Applying `ready` again after a
+stopped apply takes the rest.
 
 | Status | Meaning |
 |---|---|
-| `400` | `invalid request`; `scope must be …`; `code: "too_large"` - more than 20,000 ids in `include` or `exclude` |
+| `400` | `invalid request`; `scope must be …` (also a scope the run's mode doesn't take: `ids` for a refresh); `code: "too_large"` - more than 20,000 ids in `include` or `exclude` |
 | `404` | `no such match run` |
 | `409` | `code: "match_run_busy"` - a run is matching or applying; `code: "match_run_not_ready"` - this run isn't `ready` |
 
@@ -4529,7 +4637,13 @@ a scan last finished.
 
 - `categories` - one entry per kind, always in this order: `scan_error`,
   `suspect`, `split_discs`, `duplicate`, `no_cover`, `unmatched`,
-  `no_chapters`, `detailed_chapters`, `transcode`. `detailed_chapters` is a
+  `series_spellings`, `no_chapters`, `detailed_chapters`, `transcode`.
+  `series_spellings` is a book whose main series another book of its library
+  spells another way (the same series in a different case, accent, punctuation or
+  spacing; see [`/series`](#get-apiv1librariesidseries)); every book of such a
+  series is counted, and
+  [`/admin/issues/series-spellings`](#get-apiv1adminissuesseries-spellings) lists
+  them per series. `detailed_chapters` is a
   book whose last [community chapter check](../community-chapters.md) found
   finer community chapters that fit (`refine`) and whose chapter source no
   admin has chosen; the console's fix is a bulk edit with
@@ -4595,6 +4709,51 @@ different libraries are deliberate and never grouped).
 - At most 500 groups (counted after that filter, so every ignored group can be
   reached), ordered by library and the kept copy's path.
 
+### `GET /api/v1/admin/issues/series-spellings`
+
+The series a library's books spell more than one way, one entry per series and
+library, from the same rule as the `series_spellings` count.
+
+| Query param | Type | Notes |
+|---|---|---|
+| `library_id` | int | one library; a non-positive or non-integer id is `400 invalid library_id` |
+| `ignored` | `true` | return the series with a book an admin ignored for `series_spellings` (instead of those with a book not ignored) |
+
+```json
+{
+  "groups": [
+    {
+      "library_id": 5,
+      "suggested": "He Who Fights with Monsters",
+      "spellings": [
+        { "name": "He Who Fights With Monsters", "books": 8 },
+        { "name": "He Who Fights with Monsters", "books": 5 }
+      ],
+      "books": 13
+    }
+  ]
+}
+```
+
+- `suggested` - the spelling to offer, by the rule
+  [`/series`](#get-apiv1librariesidseries) names a series by (the spelling its
+  matched books use most, else the one most of its books use, ties alphabetical),
+  counted over this library's books whose main series it is. So it can differ from
+  the name `/series` or [`/admin/series`](#get-apiv1adminseries) gives when other
+  libraries or other-series lists spell it too. The console offers it first.
+- `spellings` - every spelling the library's books give it as their main series,
+  with its books, most books first (ties alphabetical). Ignored books' spellings
+  are listed too, so a rename leaves none behind.
+- `books` - all of the books in that library whose main series it is (a book that
+  lists it only among its other series is not counted, and a rename doesn't touch
+  it).
+- A series can be in both views while some of its books are ignored and some not.
+  At most 200 entries, ordered by `suggested` (case-insensitive), then library.
+
+The console's fix is a [bulk edit](#post-apiv1adminbooksbulk) setting `series` on
+the books of the other spellings, as an author merge is; ignoring a series is a
+`series_spellings` ignore of every one of its books.
+
 ### `POST /api/v1/admin/issues/ignore` · `DELETE /api/v1/admin/issues/ignore`
 
 `POST` stops listing books under one issue kind; `DELETE` lists them again (the
@@ -4605,7 +4764,7 @@ console's Undo and "Show again"). For duplicates, ignore every copy of a group
 { "kind": "no_cover", "books": [ { "library_id": 1, "path": "Sun Tzu/The Art of War" } ] }
 ```
 
-- `kind` - one of the nine kinds above.
+- `kind` - one of the ten kinds above.
 - `books` - 1 to 1000 `{library_id, path}` refs. The books needn't be indexed:
   the rows are path-keyed durable state (`issue_ignores`), so an ignore
   survives rescans and rebuilds and moves with the book. A ref in a library

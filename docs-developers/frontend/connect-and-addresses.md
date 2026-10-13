@@ -31,7 +31,14 @@ route table is in the [overview](overview.md#route-map). Three steps, counted by
    Add someone, `?profile=new`, every remembered server) are one-tap "Reconnect to
    &lt;name&gt;" rows; on native, one with a home address is asked who it is there first
    (`reconnectAddress` → `pickAddress`, the rule below), and a reconnect goes straight to
-   sign-in unless the server runs a demo.
+   sign-in unless the server runs a demo. **The served player** (`servedOrigin()` in
+   `src/lib/base-url.ts`: a production web build, whose origin is the server and whose CSP,
+   `connect-src 'self'`, reaches no other) types nothing: it asks its own origin on open
+   (a spinner meanwhile) and shows the found card with no address field and no remembered
+   servers; only when that probe fails does the field show, filled in with the origin. The
+   Metro dev server (`npm run web`) is not the server, so it keeps the field. There "Add a server"
+   is hidden while every connection is at the page's origin (`onlyOwnServer`), and the
+   sign-in step's "Another server" reads "Back" and goes back.
 2. **Sign in** (`/connect/sign-in` → `SignInStep`): an invite code (`redeemCode` then
    `exchange`) or a username and password (`login`), against the address in
    `pendingServerUrl`, read once when the screen opens. It uses a bare client: it is not

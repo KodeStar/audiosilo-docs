@@ -502,7 +502,12 @@ CSP-sensitive work against a real build served by Go. The console's own gate is
   ignored books (`?issue_ignored=true`). Duplicates
   (`duplicates.tsx`) render each group side by side from
   `GET /admin/issues/duplicates`, the copy worth keeping first, with "They're
-  different books" (ignore every copy). The category and the ignored view live
+  different books" (ignore every copy). Series spelled several ways
+  (`series-spellings.tsx`) is grouped too: one notice per series and library from
+  `GET /admin/issues/series-spellings`, the suggested spelling picked first in a
+  select, "Use this spelling" running the Authors page's merge (`useMerge` on `series`:
+  a bulk `series` edit of the books whose main series is that series, with Undo),
+  and Ignore / Show again covering every one of the series' books. The category and the ignored view live
   in the URL (`?issue=<kind>&ignored=1`). Without `?issue=` the page opens the
   first category needing attention and keeps it open, so clearing it shows "All
   clear" instead of jumping to the next. "Check again" queues a scan of every

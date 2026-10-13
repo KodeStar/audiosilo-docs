@@ -628,6 +628,7 @@ predicate over `books b`, shared by the counts (`IssueCounts`) and the lists
 | `split_discs` | it is the **first** disc (by `rel_path`) of a book split across disc folders: `split_parent` is set and that folder has no override of either mode (one settles how it reads). Its fix sets `book` on `split_parent`, which joins the discs |
 | `no_cover` | a scan has checked it (`has_cover` not `NULL`) and it has no sidecar image, no embedded art and no custom cover |
 | `unmatched` | it has no ASIN and no ISBN. Only offered while community metadata is on |
+| `series_spellings` | another book of its library spells its main series another way: the same `series_key`, a different `series` (two range seeks on `idx_books_series_key`, a spelling below its own or above). `SeriesSpellingGroups` lists them per series from the same predicate; the console's fix sets one spelling with a bulk edit |
 | `no_chapters` | it is longer than **2 hours** and has at most one chapter. The console shows why community chapters weren't used from the row's `chapters_check` (a failed [community chapter check](community-chapters.md)) |
 | `detailed_chapters` | its last community chapter check is `refine` (the community's finer chapters fit) and it has no `chapter_source` choice; picking either source settles it |
 | `transcode` | its codec doesn't play in browsers (`media.DirectPlayable`) |

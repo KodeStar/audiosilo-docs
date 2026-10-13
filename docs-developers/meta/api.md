@@ -167,7 +167,7 @@ the server's [match endpoint](../server/api/reference.md#get-apiv1adminlibraries
 | Query param | Notes |
 |---|---|
 | `q` | Free text as a person typed it, title, author and series words in any order. |
-| `title` | A title guess (a tag, a folder or file name), **repeatable**; the first 4 are read. Send it as named: numbering and edition fluff are taken off here (`02 - `, `SW06 - `, `Sharpe - 08 - `, `(Unabridged)`, `: Series, Book 5`), and the number the numbering carried is the position when `position` is absent. |
+| `title` | A title guess (a tag, a folder or file name), **repeatable**; the first 4 are read. Send it as named: numbering and edition fluff are taken off here (`02 - `, `SW06 - `, `Sharpe - 08 - `, `(Unabridged)`, `: Series, Book 5`), and the number the numbering carried is the position when `position` is absent. A title that is a `series` guess's name and then a volume number (`He Who Fights with Monsters 4: A LitRPG Adventure`, `The Expanse, Book 3`) states that volume, ahead of the number a numbering prefix carried in the same guess (`01 - `, `SW06 - `); across guesses the first one stating a number decides. |
 | `author` | An author guess, **repeatable**; the first 4 are read. `A & B`, `A, B` and `A; B` are read as each person, `Cornwell, Bernard` as Bernard Cornwell. Matched by surname, then first name or initial. |
 | `series` | A series name guess (the folder a book sits in, a series tag), **repeatable**; the first 2 are read. Each is judged and the better counts, so a wrong guess beside a right one costs nothing. Numbering is taken off (`03 - Tawny Man` is `Tawny Man`). |
 | `position` | The book's position in `series` (`8`, `08`, `7.5`), one value, compared numerically and applied to whichever series guess agrees best. A value that isn't a position is ignored. |
@@ -196,8 +196,19 @@ text is scored separately, read per candidate as the facts it states about that
 work (its author words as the author, its series words plus a volume number as
 that volume, the rest as a title), and the better of the two scores counts. A
 named title that clearly disagrees outranks a numbering match, and named
-authors none of whom wrote a work scale its score down. metaserve is the one
-place a title's numbering is read, so clients send folder names raw.
+authors none of whom wrote a work scale its score down. A title guess that is
+only the `series` name (what `FWM04 - He Who Fights with Monsters - Book 4`
+leaves once its numbering is cut) says nothing about which volume, so it never
+lets another volume outrank a stated one. It still counts for a work titled that
+name, stopwords aside (a series named after its first book), unless a title
+guess ties the volume being read to the name: beside `He Who Fights with Monsters
+4: A LitRPG Adventure` the bare name is only that numbering's leftover, while a
+second guess naming another volume (`Throne of Glass 1` beside `02 - Throne of
+Glass`) doesn't count. A generic record
+("Dork Diaries 12") at the stated volume counts a little below a real title
+there that a guess matches well, unless a guess spells the record exactly.
+metaserve is the one place a title's numbering is read, so clients send folder
+names raw.
 
 ```json
 { "results": [
