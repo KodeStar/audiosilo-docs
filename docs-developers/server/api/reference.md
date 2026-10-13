@@ -2832,27 +2832,17 @@ and its `GET` always reads `false`, even if it shared before it was made a kid.
 the people they live with from the player, with no admin and no invite. A **member**
 is a real account (`role: "user"`, no password) whose `users.managed_by` is the owner,
 with a `member_kind` (`kid` or `grownup`) and a `member_access` (`all` or
-`collections`) that only the owner sets. The accounts live in `internal/auth/members.go`,
-what a member may listen to in `catalog` (the member rule; see
-[Auth & security](../auth-and-security.md#household-members)), and the transport in
-`internal/api/handlers_members.go`.
-
-- **`all`**: the owner's current access, live (an admin owner gives every library, as
-  content scope only; the member never gets the admin role).
-- **`collections`**: the books in collections the owner owns and shares with the
-  member, each only while the owner's current access allows it.
-- Either way, plus the member's own admin grants.
-- One level: an owner is never a member, a member never has members and is never an
-  admin.
+`collections`) that only the owner sets. What a member may listen to (the owner's
+current access for `all`, the collections the owner shares with them for
+`collections`, plus their own grants), and the one-level rule, are the member rule in
+[Auth & security](../auth-and-security.md#household-members).
 
 **Guards, in the order they answer.** Anonymous is `401` (`requireAuth`). On the
 `{id}` routes the ids are read first: one that isn't a number is `400` (`invalid
 member id`, or `invalid device id` for `{device_id}`). Then `memberOwner`: an API key
 is `403` (`denyAPIKey`; the list too), a demo account `403` `code: "demo_account"`, a
 member caller `403` `code: "member_cannot_manage"`. Create, session and pair then
-spend the [self-service](#self-service-account) rate limit (the account limiter, as
-`gateSelfService`'s), charged only after those refusals, so a demo's or a member's
-refused calls never spend the address's shared budget (`429`). The body comes next
+spend the account [rate limit](../auth-and-security.md#rate-limiting) (`429`). The body comes next
 (decoded strictly: an unknown field, such as `role`, is `400 invalid request`), and
 last the route's own transaction. Someone else's member (or no such account) is `404`
 `member not found` on every `{id}` route, so the answer never says whether the id
@@ -3022,14 +3012,9 @@ Response `200`: the member object. Everything runs in one transaction
 (`auth.UpdateMember`), with the ownership settled before the input is checked, so a
 refused field changes nothing.
 
-Switching a grown-up to a **kid** clears, in the same transaction
-(`clearKidCredentials`), everything a kid can't hold: the member's password (and the
-browsers it signed in from), their API keys and unused pairing tokens, their recovery
-code, their still-redeemable invites, their [house sharing](#listening-in-the-house)
-(so a kid switched back to grown-up starts with it off and opts in again), and the
-collections shared between them and anyone but the caller, both ways (theirs shared
-with others, and others' shared with them). Their signed-in sessions stay signed in.
-Switching kind leaves `access` as it was.
+Switching a grown-up to a **kid** clears, in the same transaction, everything a kid
+can't hold ([Kids](../auth-and-security.md#household-members)); their signed-in
+sessions stay signed in. Switching kind leaves `access` as it was.
 
 | Status | Meaning |
 |---|---|
@@ -3056,11 +3041,8 @@ member id`, `403` as above, `404` not the caller's member.
 | `/me/household/members/**` | `403 member_cannot_manage` (the list: `200`, `reason: "member"`) | the same |
 | `/admin/**` | `403` (role `user`) | `403` (role `user`) |
 
-The `kid_account` refusals come from `api.notKid` before the handler (wrap any new
-route a kid can't use), and the writes refuse a kid again inside their own
-transaction (`auth.refuseKid` in `IssueAPIToken`, `GenerateRecoveryCode` and
-`IssueOwnPairingToken`; `catalog.SetHouseholdSharing`), so a request that passed the
-wrapper just before the owner's switch to kid committed is still `403 kid_account`.
+Where the `kid_account` refusals are enforced, including a request that races the
+owner's switch to kid: [Kids](../auth-and-security.md#household-members).
 
 A kid's password sign-in fails like any password-less account's (`401` on
 [`/auth/login`](#post-apiv1authlogin)). A member the admin disabled can't sign in at
@@ -3270,21 +3252,14 @@ So a password and "make admin" work in one request on a password-less account, a
   Neither the owner's cap nor their switch applies: the admin decides. Moving a member
   to another owner works the same way.
 - **Joining another owner's household** (an assign to an owner the account doesn't
-  already have: a first assign, or a move) signs the
-  person out of what someone else set up for them (`auth.leaveOwners`): every session
-  and API key made on a device that isn't the new owner's (by `created_on_token_id`,
-  so the old owner's phone can't carry the new owner's access), and their open
-  unlinked pairing tokens. The devices they set up themselves stay signed in.
+  already have: a first assign, or a move) signs the person out of what someone else
+  set up for them ([Moving between households](../auth-and-security.md#household-members)).
 - **Assigning as a kid** clears what a kid can't hold, as the owner's
-  [switch to kid](#patch-apiv1mehouseholdmembersid) does: the password, API keys,
-  unused pairing tokens, recovery code, still-redeemable invites, house sharing, and
-  the collections shared between them and anyone but the new owner, both ways. Their
-  sessions stay. A non-empty `password` beside it is `400 kid_no_password`; `""` is
-  fine.
+  [switch to kid](#patch-apiv1mehouseholdmembersid) does. A non-empty `password`
+  beside it is `400 kid_no_password`; `""` is fine.
 - **Make independent** (`managed_by: null`) clears the three member columns: the
-  account keeps only its direct grants, and `display_name`. It also revokes their
-  open unlinked pairing tokens, and nothing else: the devices their old owner signed
-  them in on stay signed in, now reaching only the account's own grants. A no-op on
+  account keeps only its direct grants, and `display_name`. What it signs out is in
+  [Moving between households](../auth-and-security.md#household-members). A no-op on
   an account that isn't a member.
 
 Response `200`: the updated user object (with the fields above).
@@ -3295,9 +3270,7 @@ Response `200`: the updated user object (with the fields above).
 | `404` | user not found (the account, or the owner named by `managed_by`) |
 | `409` | would demote/disable the last enabled admin (`last_admin`); `code: "member_not_admin"` (making a member an admin, or assigning an admin as a member); `code: "owner_is_member"` (the owner is a member); `code: "owner_is_demo"` (the owner is a demo account); `code: "member_is_demo"` (the account being assigned is a demo account); `code: "self_managed"` (`managed_by` is the account itself); `code: "has_members"` (the account has members of its own) |
 
-`user.update` in the audit log gains `can_add_members`, and `managed_by` (the owner's
-username, or `null`), `member_kind` and `member_access` when an Assign or Make
-independent changes them.
+What `user.update` records: [Audit log](../backups-and-notifications.md#audit-log).
 
 ### `DELETE /api/v1/admin/users/{id}`
 
@@ -3310,10 +3283,8 @@ The person's [household members](#household-members) are deleted with them, in t
 same transaction, except those named in `keep_members`, as comma-separated ids
 (`?keep_members=3,7`), the parameter repeated (`?keep_members=3&keep_members=7`), or
 both: every value counts. Each kept member becomes an ordinary account (the three
-member columns cleared, so only their direct grants remain) and loses their open
-unlinked pairing tokens, as with Make independent. The audit event `user.delete`
-carries `members_deleted` (a count) and `members_kept` (usernames), only for someone
-who had members.
+member columns cleared, so only their direct grants remain), as with Make
+independent ([audited](../backups-and-notifications.md#audit-log) on `user.delete`).
 
 The checks answer in this order: an id that isn't a number, then a malformed
 `keep_members` (`400 invalid_keep_members`), then a self-delete (`400
@@ -6143,7 +6114,7 @@ effect. Lists are never `null`.
 | `demo.idle_ttl` | `""` = 24h |
 | `household.members_enabled` | people may add [household members](#household-members) from the player (default `true`); off refuses new ones only (`403 feature_off`) |
 | `household.max_members` | members per person, 1-50 (default 6); outside the range is `400 invalid_setting` (`field: "household.max_members"`) |
-| `household.max_members_default`, `household.max_members_min`, `household.max_members_max` | read-only facts: the cap's default (`config.DefaultMaxMembers`, 6) and range (`MinMaxMembers`, `MaxMaxMembers`: 1 and 50), so the console names the range and checks a value before saving |
+| `household.max_members_default`, `household.max_members_min`, `household.max_members_max` | read-only facts: the cap's default (6) and range (1 to 50), so the console names the range and checks a value before saving |
 | `backups.schedule` | `""` (off), `daily:HH:MM` or `weekly:DAY:HH:MM` in the server's time zone; stored in canonical form (see [Backups](#admin-backups)) |
 | `backups.keep` | how many scheduled backups are kept, 1-365 (manual and before-restore backups stay until deleted) |
 | `backups.dir` | read-only: changed only in `config.yaml` or `AUDIOSILO_BACKUP_DIR`; `""` = `<data>/backups` (`GET /admin/backups`' `status.dir` has the folder in use) |

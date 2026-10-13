@@ -165,8 +165,8 @@ restarts. See [Scheduled scans](scanner.md#scheduled-scans) and
 
 ### Household members (`household.*`)
 
-Whether people may add household members from the player (player redesign Phase
-8b-1; see [Household members](api/reference.md#household-members)), and how many each.
+Whether people may add household members from the player (see
+[Household members](api/reference.md#household-members)), and how many each.
 Both are read per request through the API's live config, so a change applies at once.
 
 | Key | Type / default | Meaning |

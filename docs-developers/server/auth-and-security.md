@@ -341,7 +341,7 @@ query shape**:
 |---|---|---|
 | `Scope.Allows(p)` | `p` is equal to or under a granted rule (segment-boundary prefix match) | `authorizedPath` in `handlers_library.go` - **every** path-addressed endpoint (`item`, `chapters`, `cover`, `stream`, progress/bookmarks/notes/history/favourites writes) |
 | `Scope.VisibleInBrowse(p)` | `Allows(p)` **or** `p` is an *ancestor* of a rule - so the user can navigate toward granted content | `handleBrowseFS` → passed as the `allow` filter to `library.BrowseFS` (applied before pagination so pages stay full) |
-| `pathFilterSQL(col, scope)` | The same grant logic as a SQL `WHERE` fragment: `col = ?` OR the byte range `col >= 'rule/' AND col < 'rule0'` (`0` is the byte after `/`), so it is a literal, **case-sensitive** prefix with no wildcards to escape. It used `LIKE` until the player-redesign data API; `LIKE` ignores ASCII case, so a grant on `Saga` also reached a sibling `saga/...` on a case-sensitive filesystem | `ListBooks`, `Search`, `RecentBooks`, the player's browse lists (`/authors`, `/narrators`, `/series`), `/next`'s series step and the owned-book placement on `/meta` rails; `scopesFilterSQL` extends it across libraries for the cross-library listings (`/me/progress`, `/me/history`, `/me/favourites`) |
+| `pathFilterSQL(col, scope)` | The same grant logic as a SQL `WHERE` fragment: `col = ?` OR the byte range `col >= 'rule/' AND col < 'rule0'` (`0` is the byte after `/`), so it is a literal, **case-sensitive** prefix with no wildcards to escape. It used `LIKE` until the player-redesign data API; `LIKE` ignores ASCII case, so a grant on `Saga` also reached a sibling `saga/...` on a case-sensitive filesystem. Over 32 paths (`jsonPathsAbove`; a `collections` [household member](#household-members) can hold a thousand) it is a single-parameter form instead (`pathsJSONFilterSQL`: a row's path and each of its ancestors looked up in one JSON list, the same rows as the `OR` form, which could not hold 1,000 arms at all; a path that isn't valid UTF-8, which JSON can't carry exactly, keeps an `OR` arm of its own). `BenchmarkMemberScopes` records its cost | `ListBooks`, `Search`, `RecentBooks`, the player's browse lists (`/authors`, `/narrators`, `/series`), `/next`'s series step and the owned-book placement on `/meta` rails; `scopesFilterSQL` extends it across libraries for the cross-library listings (`/me/progress`, `/me/history`, `/me/favourites`) |
 
 The Go predicate (`pathAllowedBy`) is authoritative; `pathFilterSQL` must stay
 behaviorally identical to it.
@@ -480,7 +480,7 @@ Activity pages as before, and nothing shows who shares.
 
 ## Household members
 
-Player redesign Phase 8b-1 (capability `household_members`) lets any non-demo person
+Household members (capability `household_members`) let any non-demo person
 (the **owner**) create accounts from the player, with no admin: a **member** is a
 user with `managed_by` set to the owner, a `member_kind` (`kid` | `grownup`) and a
 `member_access` (`all` | `collections`) only the owner sets. The routes and their
@@ -527,15 +527,9 @@ collection unshared or deleted, or a library taken from the owner, is `403` on t
 next request, including through an existing cast token (the media handler checks the
 person's current access).
 
-**Long path lists.** A `collections` member can hold a thousand item paths. Over 32
-paths, `pathFilterSQL`/`scopesFilterSQL` switch to a single-parameter form
-(`pathsJSONFilterSQL`: a row's path and each of its ancestors looked up in one JSON
-list, the same rows as the `OR` form, which could not hold 1,000 arms at all; a path
-that isn't valid UTF-8, which JSON can't carry exactly, keeps an `OR` arm of its own).
-`BenchmarkMemberScopes` (3,000 books, a 1,000-item kid against a whole-library
-listener, through the `Caller` path) records the cost: browse 2.4 ms vs 0.26 ms,
-search 9.1 ms vs 5.6 ms, the progress list 4.9 ms vs 1.7 ms, and the scope load
-itself 1.05 ms vs 0.017 ms.
+**Long path lists.** A `collections` member's scope can hold a thousand item paths;
+`pathFilterSQL` binds them as one parameter past 32 (see
+[the Scope table](#authorization-shares--scope)).
 
 **Creating accounts without an admin** (`auth/members.go`, `CreateMember`, one
 transaction): the owner is checked (`MayAddMembers`: not demo, not a member, the
@@ -545,10 +539,11 @@ by the caller, so it can't claim an existing one; numbered with no cap, so there
 always a free one), and the account inserted with `role = 'user'` and an empty
 password hash. The body is decoded strictly, so a `role` field is `400`. An API key
 can't reach any member route (`denyAPIKey`), and create, session and pair take the
-account rate limit, charged only after the API-key, demo and member refusals.
+account [rate limit](#rate-limiting).
 
 **Kids.** A kid account holds no password, API key, pairing token, recovery code,
-invite or house sharing, and shares collections only with its owner. `POST
+invite or house sharing, and shares collections only with its owner
+(**Visibility**, below). `POST
 /auth/password`, `POST /auth/tokens`, `POST /auth/pair`, `POST /auth/recovery`, `PUT
 /me/household` and `PUT /me/collections/{id}/shares` answer `403 kid_account` from one
 route wrapper (`api.notKid`, before the handler; wrap any new route a kid can't use).
@@ -572,9 +567,8 @@ Turning kids mode off in a player never widens anything: the server decides acce
 **Visibility.** A kid is listed by `ShareTargets` only to their owner, and
 `SetCollectionShares` refuses a kid target from anyone else with `ErrUnknownUser`
 (`kidOnlyToOwnerSQL`; the same answer as an unknown id, so it can't be used to probe
-who is a kid). `HouseListening` and `HouseholdSharing` leave kids out both ways:
-never a row, never a viewer, never sharing, because a kid has no `household_sharing`
-row (see [what other people see](#listening-in-the-house-what-other-people-see)).
+who is a kid). Listening in the house leaves kids out both ways (see
+[Never a kid](#listening-in-the-house-what-other-people-see)).
 
 **Ownership.** Every `{id}` member route loads the member through `memberOf`, which
 answers `ErrNotMember` (404) for anyone who isn't the caller's member, so another

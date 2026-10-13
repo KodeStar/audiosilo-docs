@@ -559,18 +559,17 @@ security-critical change with allowed and denied tests on the server.
 
 **Profiles and kids mode are client-side; household members are server-side.** A
 profile (a person on this device), its PIN and its kids mode never reach a server
-([Profiles](../frontend/profiles.md)). A **household member** (player redesign Phase
-8b-1, capability `household_members`) is a real account an owner creates from the
-player, and everything about what it may do is the server's.
+([Profiles](../frontend/profiles.md)). A **household member** (capability
+`household_members`) is a real account an owner creates from the player, and
+everything about what it may do is the server's.
 
 **The wire** (all additive; shapes in
 [the reference](../server/api/reference.md#household-members)):
 
 - `/me/household/members` (list, create) and `/{id}` (`PATCH`, `DELETE`),
   `/{id}/session`, `/{id}/pair`, `/{id}/devices` and `/{id}/devices/{device_id}`;
-  mirrored in `types.ts` (`HouseholdMember`, `HouseholdMembers`, `AddMemberBody`,
-  `AddMemberResult`, `UpdateMemberBody`, `MemberKind`, `MemberAccess`), `client.ts`
-  and `hooks.ts` ([State and data](../frontend/state-and-data.md#household-members-player-redesign-phase-8b-1)).
+  mirrored in `types.ts`, `client.ts` and `hooks.ts`
+  ([State and data](../frontend/state-and-data.md#household-members)).
 - The `user` object (`/me` and every session envelope) gains `managed_by` (`{ id,
   username }` or `null`) and `member_kind` (`"kid"`, `"grownup"` or `null`), and, for a
   member only, `display_name` (the name the owner typed; the player names a new profile
@@ -578,39 +577,30 @@ player, and everything about what it may do is the server's.
   and never needs it.
 - `/me/devices` rows gain `member_sign_ins`, and `DELETE /me/devices/{id}?also_members=1`
   answers `{ current, members_signed_out }`.
-- The admin's user objects gain `member_access`, `can_add_members`, `members_count`
-  and `display_name`, and their `managed_by` the owner's own `display_name`; a person's
-  detail gains `members` and `member_collections`, and for a member `owner_libraries`
-  and `owner_is_admin`; `PATCH /admin/users/{id}` takes `can_add_members` and
-  `managed_by` (one transaction); `DELETE /admin/users/{id}?keep_members=`. The settings
-  envelope gains `household` (`members_enabled`, `max_members`, and the read-only
-  `max_members_default`, `max_members_min`, `max_members_max`). These are the console's,
-  inside the server repo.
+- The admin console's fields and settings stay inside the server repo
+  ([Admin: users](../server/api/reference.md#get-apiv1adminusers)).
 
 **Server rules** (each with an allowed and a denied test;
-[Auth & security](../server/auth-and-security.md#household-members)): the member rule
-read with the request's token (`CallerScope`/`CallerScopes`/`CallerLibraries`; by id,
-`UserScope`/`UserScopes`/`AccessibleLibraries`) (the owner's current access for
-`all`, the owner's shared collections intersected with it for `collections`, plus
-the member's own grants), one level and never admin, the kid refusals
-(`403 kid_account`, at the route and inside the minting writes), kids out of share
-targets and Listening in the house, someone else's member always `404`, a disabled
-member's session and pairing code `409 member_disabled`.
+[Auth & security](../server/auth-and-security.md#household-members)): what a member may
+listen to (the owner's access, or the collections the owner shares, plus their own
+grants), one level and never an admin, the kid refusals (`403 kid_account`), kids out
+of share targets and Listening in the house, someone else's member always `404`, a
+disabled member's session and pairing code `409 member_disabled`.
 
-**Client rules:** a member signed in on the owner's device is placed by
-`addMemberHere` (the owner stays the person listening, the default connection
-doesn't move); `member_kind === 'kid'` turns kids mode on by default and allows it
-with no grown-up on the device; `managed_by` picks the kids shelf's collections
-(`kidsShelfMode`). The player never filters a kid's access itself. Refusals are read
-by `ApiError.code` (`apiErrorKind` in `client.ts`, the codes above), falling back on
-the status for an older server or a route without codes, and said in the app's own
-words: the server's `error` message is never shown. A new `code` therefore needs a
-case in `API_ERROR_CODES` and its words in the player, or it reads by its status.
+**Client rules** ([Household page and members](../frontend/household.md)): a member
+signed in on the owner's device is placed by `addMemberHere` (the owner stays the
+person listening, the default connection doesn't move); `member_kind === 'kid'` turns
+kids mode on by default and allows it with no grown-up on the device; `managed_by`
+picks the kids shelf's collections. The player never filters a kid's access itself.
+Refusals are read by `code`, never by the server's message
+([Error mapping](../frontend/state-and-data.md#the-api-client-srcapiclientts)), so a new
+`code` needs a case in `API_ERROR_CODES` and its words in the player, or it reads by
+its status.
 
 **Old clients:** a shipped player ignores the new `user` fields and sees a member as
 an ordinary account; a kid signed in to an old player is still limited by the
 server. An older server has no flag, so the player offers no "Add someone to your
-household" and everything Phase 8 shipped works as before.
+household" and profiles and kids mode work as before.
 
 **A change requires:** any change to the member rule is security-critical (allowed and
 denied tests on the server); a new member field is the usual wire change in both
