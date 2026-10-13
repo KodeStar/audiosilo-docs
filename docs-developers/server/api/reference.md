@@ -409,8 +409,8 @@ below, share one rate limit (10 attempts per IP per 15 minutes) and are
 accounts`), so a throwaway session can't mint a durable credential. `POST
 /auth/password`, `POST /auth/recovery` and `POST /auth/tokens` (and `POST /auth/pair`)
 are also refused for a kid's account (403 `code: "kid_account"`, `not available for a
-kid's account`): a kid's devices are set up for it, by its owner (or by an admin's
-invite). The refusal comes
+kid's account`): a kid signs in only on devices its owner sets up (the admin can't
+mint or rotate a kid's invite either: `409 kid_account`, below). The refusal comes
 from one route wrapper (`api.notKid`) before the handler runs, and the recovery code,
 API key and pairing writes refuse a kid again inside their own transaction
 (`auth.refuseKid`), so a request that passed the wrapper just before the owner's
@@ -3343,6 +3343,12 @@ shows the server's numbers rather than re-deriving them.
 The code rides in the `invite_url` **fragment**, so it never reaches server
 logs; the connect page auto-redeems it client-side.
 
+`404` if the user doesn't exist. `409 code: "kid_account"` (`not available for a kid's
+account`) for a kid household member: a kid holds no invite, only their owner sets up
+their devices (from the player). The refusal is read inside the minting transaction
+(`auth.refuseKid`), so an owner's switch to kid can't slip between the check and the
+invite.
+
 ### `DELETE /api/v1/admin/users/{id}/recovery`
 
 *Legacy - being retired alongside `POST /auth/recovery` once old clients age
@@ -3358,7 +3364,9 @@ transaction it retires the user's **other** still-redeemable invites, so the
 rotated invite is their one active invite - rotating an expired (or used-up)
 invite revives it as that one. No body. Response `200`: the same shape as
 creation (`auth_code`, `invite_url`, `max_uses`, `expires_at`). `404` if the
-invite doesn't exist.
+invite doesn't exist. `409 code: "kid_account"` when the invite's account is a kid's
+(a used-up or expired invite kept as history from before the switch to kid can't be
+revived into it).
 
 ### `DELETE /api/v1/admin/authcodes/{id}`
 

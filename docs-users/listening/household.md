@@ -54,7 +54,7 @@ The dialog then says *"Evie is added"* and *"Evie is signed in on this device, i
 
 If your own profile on this device has no [PIN](profiles.md#a-pin-for-a-person), the dialog offers to set one (*"Set a PIN for Adam, so Evie can't switch to you without it."*), with **Set a PIN** and **Not now**. Take it: without a PIN, a child who leaves kids mode can choose you on Who's listening?.
 
-A kids account has **no password**. It can't set one, create [API keys](api-keys.md), pair another device, share collections, or show up in (or see) [Listening in the house](in-the-house.md). It signs in only on devices set up for it: this one, its own device with [Set up their own device](#their-devices), or a device the server's admin pairs for it.
+A kids account has **no password**. It can't set one, create [API keys](api-keys.md), pair another device, share collections, or show up in (or see) [Listening in the house](in-the-house.md). It signs in only on devices you set up for it: this one, or its own device with [Set up their own device](#their-devices). The server's admin can't pair one for it.
 
 ## Adding a grown-up
 

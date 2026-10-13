@@ -558,8 +558,8 @@ password hash. The body is decoded strictly, so a `role` field is `400`. An API 
 can't reach any member route (`denyAPIKey`), and create, session and pair take the
 account [rate limit](#rate-limiting).
 
-**Kids.** A kid account holds no password, API key, recovery code or house sharing,
-can't make a pairing code of its own (`/auth/pair`), and shares collections only with
+**Kids.** A kid account holds no password, API key, recovery code, invite or house
+sharing, can't make a pairing code of its own (`/auth/pair`), and shares collections only with
 its owner (**Visibility**, below). `POST
 /auth/password`, `POST /auth/tokens`, `POST /auth/pair`, `POST /auth/recovery`, `PUT
 /me/household` and `PUT /me/collections/{id}/shares` answer `403 kid_account` from one
@@ -578,11 +578,13 @@ from), API keys, open pairing tokens, the recovery code, still-redeemable invite
 `household_sharing` row (so a kid made a grown-up again starts with house sharing off
 and opts in again), and the collections shared between the kid and anyone but their
 owner, both ways (so no sharer is left with a kid in a list the server would refuse
-back). Its signed-in sessions stay. A kid signs in only on devices set up for it: a
-session made on the owner's device, the member pairing code (`POST
-/me/household/members/{id}/pair`, single use, the same 10 minutes as `/auth/pair`), or
-an invite the admin makes or rotates for it (`POST /admin/users/{id}/authcode` and
-`POST /admin/authcodes/{id}/rotate` don't refuse a kid).
+back). Its signed-in sessions stay. A kid signs in only on devices the owner sets up:
+a session made on the owner's device, or the member pairing code (`POST
+/me/household/members/{id}/pair`, single use, the same 10 minutes as `/auth/pair`).
+The admin can't mint or rotate a kid's invite: `POST /admin/users/{id}/authcode` and
+`POST /admin/authcodes/{id}/rotate` answer `409 kid_account` (`auth.refuseKid` inside
+`CreateInvite` and `RotateAuthCode`, so a used-up invite kept as history can't be
+revived into a kid's account), and the console offers neither on a kid's page.
 Turning kids mode off in a player never widens anything: the server decides access.
 
 **Visibility.** A kid is listed by `ShareTargets` only to their owner, and

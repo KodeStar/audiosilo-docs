@@ -199,6 +199,7 @@ Failures a person can fix also carry a machine-readable **`code`** next to
 | `too_many_targets` | `409` | `POST /admin/notifications` when the server has 20 destinations |
 | `demo_account` | `403` | a demo account on a route it can't use: the self-service routes (password, recovery code, API keys), sharing a collection, `GET /me/share-targets`, `PUT /me/household`, every `/me/household/members` route but the list |
 | `kid_account` | `403` | a kid household member on `POST /auth/password`, `POST /auth/tokens`, `POST /auth/pair`, `POST /auth/recovery`, `PUT /me/household` or `PUT /me/collections/{id}/shares` (where it is enforced: [Kids](../auth-and-security.md#household-members)) |
+| `kid_account` | `409` | the admin's `POST /admin/users/{id}/authcode` or `POST /admin/authcodes/{id}/rotate` for a kid household member's account (a kid holds no invite; only their owner sets up their devices) |
 | `member_cannot_manage` | `403` | a household member on every `/me/household/members` route but the list (which answers a member `200`, `allowed: false`, `reason: "member"`) |
 | `feature_off` | `403` | adding a household member while `household.members_enabled` is off |
 | `not_allowed` | `403` | adding a household member while the admin turned off the caller's `can_add_members` |

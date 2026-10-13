@@ -210,8 +210,9 @@ a real account on your server, with their own progress, bookmarks and stats,
   books). Anything you give the member directly comes on top.
 - The owner renames them, signs their devices out, switches them between kid
   and grown-up, and deletes their account, all from the player.
-- A **kid** has no password. They sign in on devices their owner sets up, or
-  on one you pair for them with **Pair a device** (what else a kid can't do:
+- A **kid** has no password and no invites. They sign in only on devices their
+  owner sets up, so a kid's page offers no **Pair a device** and no **Rotate**
+  (what else a kid can't do:
   [Adding a kid](../listening/household.md#adding-a-kid)).
   A **grown-up** member is an ordinary account otherwise.
 - A member never has members of their own.
