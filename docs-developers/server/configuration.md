@@ -163,6 +163,19 @@ restarts. See [Scheduled scans](scanner.md#scheduled-scans) and
 | `demo.max_users` | int (optional), unset | Cap on concurrent live demo accounts. **Unset → safe default 200** (`config.DefaultDemoMaxUsers`); **explicit `0` = unlimited** (opt-in risk: per-IP creation limits are bypassable by rotating IPs) |
 | `demo.idle_ttl` | duration string, `"24h"` | Reap demo accounts idle longer than this (background reaper sweeps every 15 min). Must parse as a positive `time.Duration`; empty falls back to 24h |
 
+### Household members (`household.*`)
+
+Whether people may add household members from the player (player redesign Phase
+8b-1; see [Household members](api/reference.md#household-members)), and how many each.
+Both are read per request through the API's live config, so a change applies at once.
+
+| Key | Type / default | Meaning |
+|---|---|---|
+| `household.members_enabled` | bool, `true` | Anyone with an account but a demo account may add members (`POST /me/household/members`). Off refuses new ones only (`403 feature_off`); existing members keep working and their owners can still manage them. The per-person switch is the admin's `can_add_members` on each account (`PATCH /admin/users/{id}`), not a key here |
+| `household.max_members` | int, `6` | Members per person, `1` to `50` (`config.MinMaxMembers`/`MaxMaxMembers`); at it, adding is `409 member_limit`. Outside the range `Validate` refuses the config (a value from the environment included, so the server doesn't start) |
+
+A `config.yaml` written before the section keeps the defaults.
+
 ### Community metadata (`metadata.*`)
 
 The server can enrich a book with a description, production details and its
@@ -404,6 +417,8 @@ by the settings table in `internal/config/settings.go` (`fields`: each entry's
 | `AUDIOSILO_DEMO_LIBRARY` | `demo.library` | string |
 | `AUDIOSILO_DEMO_MAX_USERS` | `demo.max_users` | integer (`0` = unlimited) |
 | `AUDIOSILO_DEMO_IDLE_TTL` | `demo.idle_ttl` | Go duration, e.g. `24h` |
+| `AUDIOSILO_HOUSEHOLD_MEMBERS_ENABLED` | `household.members_enabled` | `strconv.ParseBool` (`false`/`0`/… turns it off) |
+| `AUDIOSILO_HOUSEHOLD_MAX_MEMBERS` | `household.max_members` | integer, 1-50 |
 | `AUDIOSILO_METADATA_ENABLED` | `metadata.enabled` | `strconv.ParseBool` (`true`/`1`/…) |
 | `AUDIOSILO_METADATA_BASE_URL` | `metadata.base_url` | URL |
 | `AUDIOSILO_METADATA_REGION` | `metadata.region` | marketplace code (`uk`) |
@@ -463,6 +478,8 @@ restart, and whether the console may change it at all:
 | `demo.library` | `demo.library` | `AUDIOSILO_DEMO_LIBRARY` | at once |
 | `demo.max_users` | `demo.max_users` | `AUDIOSILO_DEMO_MAX_USERS` | at once |
 | `demo.idle_ttl` | `demo.idle_ttl` | `AUDIOSILO_DEMO_IDLE_TTL` | restart |
+| `household.members_enabled` | `household.members_enabled` | `AUDIOSILO_HOUSEHOLD_MEMBERS_ENABLED` | at once |
+| `household.max_members` | `household.max_members` | `AUDIOSILO_HOUSEHOLD_MAX_MEMBERS` | at once |
 | `backups.schedule` | `backups.schedule` | `AUDIOSILO_BACKUP_SCHEDULE` | at once |
 | `backups.keep` | `backups.keep` | `AUDIOSILO_BACKUP_KEEP` | at once (pruning at the next scheduled backup) |
 | `backups.dir` | `backups.dir` | `AUDIOSILO_BACKUP_DIR` | restart; **read-only** in the console |
@@ -535,6 +552,7 @@ reason, and nothing is applied (all or nothing). The handler then writes
 | `demo.library` | trimmed; must be the name of an existing library |
 | `demo.max_users` | `null` (the default, 200) or 0 (no limit) to 100000 |
 | `demo.idle_ttl` | `""` (24h) or a positive Go duration |
+| `household.max_members` | an integer from 1 to 50 (`fixMaxMembers`) |
 | `backups.schedule` | `""`, `daily:HH:MM` or `weekly:DAY:HH:MM` (`backup.ParseSchedule`), stored in canonical form |
 | `backups.keep` | an integer from 1 to 365 (checked by `Validate`) |
 

@@ -1,14 +1,18 @@
 ---
 title: Kids mode
-description: "Kids mode (Phase 8): a property of a profile. The /kids route and its guard, which library and stories it shows, the kids player, the Grown-ups hold, and bedtime through the auto sleep controller."
+description: "Kids mode (Phase 8, with kid household members since 8b-1): a property of a profile. Kids mode by default for a kid's account, the /kids route and its guard, the stories it shows (the owner's shared collections, else one library), the kids player, the Grown-ups hold, the car, and bedtime through the auto sleep controller."
 ---
 
 Kids mode is a **property of a [profile](profiles.md)** (`Profile.kids`), set by an
-adult on the device in Settings > Household and sharing. The child's account is an
-ordinary server user whose library access the admin limited: the server's scopes
-(`GET /libraries`) are the truth, and the player never shows a child more than the
-account may open. There is no server change. The user-facing page is
-[Kids mode](/users/listening/kids-mode).
+adult on the device on the [Household page](profiles.md#the-household-page). It is
+client-side: the server has no notion of it. The child's account is either a **kid
+household member** (Phase 8b-1: `user.member_kind === 'kid'`, made by an owner from
+the player, its access decided by the server's member rule; see
+[Household members](/developers/server/api/reference#household-members)) or an ordinary
+account whose library access the admin limited (Phase 8). Either way the server's
+scopes are the truth, and the player never shows a child more than the account may
+open; turning kids mode off on a device never widens anyone's access. The user-facing
+page is [Kids mode](/users/listening/kids-mode).
 
 ```ts
 kids?: { library?: { connectionId: string; libraryId: number }; bedtime: string /* 'HH:MM', default '19:30' */ }
@@ -16,8 +20,20 @@ kids?: { library?: { connectionId: string; libraryId: number }; bedtime: string 
 
 `setProfileKids(profileId, kids | undefined)` turns it on (an invalid bedtime reads as
 `DEFAULT_BEDTIME`) or off. Turning it on is refused when it would leave no grown-up on
-the device (`mayTurnOnKids`, which the Household pane also reads to disable the
-switch): leaving kids mode is a grown-up's job. `KidsLibraryPicker` offers the libraries the profile's
+the device (`mayTurnOnKids`, which the Household page also reads to disable the
+switch): leaving kids mode is a grown-up's job. **The one exception** is a profile
+whose every connection the server says is a kid's (`isKidsAccount`: each connection's
+`user.member_kind === 'kid'`): it may be in kids mode with no grown-up on the device
+(a kid's own phone, paired from the owner's QR), since the server already limits that
+account and there is no grown-up to leave kids mode for.
+
+**On by default for a kid's account.** `addMemberHere` turns kids mode on for a kid it
+signs in beside the owner, and `finishConnect` does the same at a kid account's
+**first** placement on a device (`kidsOnForKidAccount`: a new connection, not a
+re-pair or a sign-in after a server reset, whose profile has no kids settings yet and
+holds only kid accounts), which covers the kid's own device signing in from its QR. A
+grown-up's profile that a kid's sign-in joined is never put in kids mode. On a server
+without household members, `member_kind` is absent and nothing changes. `KidsLibraryPicker` offers the libraries the profile's
 connections list, named with their server when the profile has several; no pick means
 the first one listed.
 
@@ -59,11 +75,26 @@ The rules are pure in `kids-model.ts`, read through `useKidsStories()`:
 
 - **The connection** (`kidsConnectionId`): the picked library's connection while the
   profile still holds it, else the profile's first.
-- **The library** (`kidsLibrary`): the pick when it is on that connection and still
-  listed by `GET /libraries`, else the first library listed, else none (the account
-  sees no library: an empty state says to ask a grown-up).
-- **The shelf** (`kidsShelf`): the books in progress, most recently played first, then
-  every other book of the library in the server's order, finished ones included.
+- **The collections** (`kidsCollections`, Phase 8b-1): for an account with
+  `user.managed_by` (a household member), the collections `GET /me/collections` lists
+  as shared with it (`!owned`) whose `owner.id` is `managed_by.id`, in the order the
+  list gives them (the owner's). When there is at least one, they **are** the shelf:
+  `kidsCollectionSections` reads each one's `GET /me/collections/{id}` and gives one
+  section per collection with stories (titled with the collection's name when there
+  are several, untitled when one), each in `kidsOrder` (stories in progress first,
+  most recently played first, then the rest in the collection's order, a book listed
+  twice shown once). Collections with no story yet are left out; with none left the
+  shelf says "Ask a grown-up to add stories." The client can't see `member_access` (it
+  isn't on `/me`), so an `all` member whose owner also shares collections with them
+  sees those collections; one with none sees the one-library view.
+- **The library** (`kidsLibrary`), for everyone else (an account nobody manages, a
+  Phase 8 account the admin limited, an older server, a member with no shared
+  collection): the pick when it is on that connection and still listed by `GET
+  /libraries`, else the first library listed, else none (the account sees no
+  library: an empty state says to ask a grown-up).
+- **The shelf** (`kidsShelf`) from one library: the books in progress, most recently
+  played first, then every other book of the library in the server's order, finished
+  ones included.
 - **Offline** (`kidsDownloads`): when the server can't be reached, the finished
   downloads of that connection, newest first, in the library `kidsOfflineLibraryId`
   names: the one shown when known, else (`GET /libraries` unreadable) the profile's pick
@@ -92,6 +123,17 @@ reduced motion there is no fill, and it still takes the full 2 s (the timer deci
 not the animation). A screen reader gets the hint "Hold to leave kids mode" and the long-press
 action. Holding opens Who's listening?, where the chosen profile's PIN is asked.
 
+## In the car
+
+A kids profile's CarPlay and Android Auto snapshot is the kids shelf only
+(`kidsCarBooks` in `src/car/car-model.ts`, built by `car-controller.ts` without React
+from the same reads as `useKidsStories`: the owner's shared collections, else the one
+library, else the account's downloads): the **Library** tab holds the shelf, titled
+"Your stories", and **Continue listening** the shelf's stories in progress; no Up next
+and no Downloads tab, nothing else the account could reach. It is rebuilt when kids
+mode turns on or off. See
+[Native integrations](native-integrations.md#the-car-snapshot-srccar).
+
 ## Bedtime (`src/playback/auto-sleep-controller.ts`)
 
 Bedtime reuses the auto sleep controller, made profile-aware:
@@ -116,7 +158,7 @@ running timer has left.
 
 ## Testing
 
-`kids-model.test.ts` (the rules above), `use-kids.test.tsx`, `kids-screen.test.tsx`,
+`kids-model.test.ts` (the rules above, the collections shelf included), `use-kids.test.tsx`, `kids-screen.test.tsx`,
 `kids-player.test.tsx`, `grown-ups-button.test.tsx`, `kids-route-guard.test.tsx` and
 `kids-gate.test.tsx` in `src/components/kids/`; the bedtime rule's regression tests in
 `src/playback/auto-sleep-controller.test.ts`. That a tapped story starts in place and

@@ -254,6 +254,10 @@ Three fences keep a demo session from becoming a durable login:
   (`GET /me/share-targets` and `PUT /me/collections/{id}/shares` are `403`; see
   [the listener's own state](#the-listeners-own-state-me)), and demo accounts are
   never offered as share targets.
+- A demo account can't add [household members](#household-members) (every member
+  route but the list is `403`; the list answers `allowed: false`, `reason: "demo"`),
+  and can't be anyone's owner.
+- Every demo refusal carries `code: "demo_account"` (`nonDemoAccount`).
 - A demo account can't share its listening with the house (`PUT /me/household`
   is `403`, `nonDemoAccount`), and demo accounts never appear in anyone's
   `GET /household/listening`, so a public demo never shows up in a household. It
@@ -296,7 +300,15 @@ caller gets them:
   files on disk are untouched.
 - **Passwords are optional for non-admins** - stored as an empty hash, and
   `Authenticate` rejects empty-hash accounts outright, so a password-less user
-  can only ever authenticate via code pairing.
+  can only ever authenticate via code pairing (or, for a
+  [household member](#household-members), a session their owner makes).
+- **`ErrMemberNotAdmin`** - a household member is never an admin: `SetRole`
+  refuses promoting one, and `AssignMember` refuses making an admin a member
+  (`409 member_not_admin`); "Make independent" comes first.
+- **`DeleteUser(ctx, id, keep)`** deletes the person's household members with
+  them, in the same transaction, except the ids in `keep` (cleared to ordinary
+  accounts); a `keep` id that isn't their member is `ErrInvalidKeepMembers` and
+  nothing changes. The last-admin rule is checked first.
 
 ## Authorization: shares → Scope
 
@@ -448,6 +460,87 @@ denied test:
 There is no admin route over these choices: an admin sees listening on the
 Activity pages as before, and nothing shows who shares.
 
+## Household members
+
+Player redesign Phase 8b-1 (capability `household_members`) lets any non-demo person
+(the **owner**) create accounts from the player, with no admin: a **member** is a
+user with `managed_by` set to the owner, a `member_kind` (`kid` | `grownup`) and a
+`member_access` (`all` | `collections`) only the owner sets. The routes and their
+refusals are in [the reference](api/reference.md#household-members); this is the
+security model.
+
+**One level, never admin.** An owner is never a member, a member never has members
+(`ErrHasMembers`), and a member is never an admin (`ErrMemberNotAdmin`), so the
+admin role is never derived. Callers of the scope functions keep passing `isAdmin =
+u.Role == "admin"`; the owner's admin-ness is read inside the member rule, never from
+the caller.
+
+**The member rule** (`catalog/members.go`, in `UserScope`, `UserScopes` and
+`AccessibleLibraries`; decided per request, with no cache to invalidate). A member's
+scope is the union of:
+
+- their own admin grants (unchanged);
+- for `all`: the owner's **current** scopes, computed with the owner's role. An admin
+  owner gives every library as `AllowAll` content scope;
+- for `collections`: the item paths of collections owned by `managed_by` and shared
+  with the member, each kept only while the owner's current scopes allow it
+  (`ScopesAllow`). A book is its path with `relpath.Within` semantics: a folder book
+  covers its own subtree, never a sibling (`Book` never reaches `Book 2`), and an
+  item with an empty path never grants a whole library.
+
+A member whose owner is themselves, or is a member (data the writes refuse), derives
+nothing. A disabled owner changes nothing for their members. `UserShares` (the
+console's Access tab) stays the direct grants only; the console lists the derived
+access beside it. Every consumer follows from the three functions: browse, search,
+media, cast mint and cast media, `/next`, the car and household listening. A book
+removed from a kid's collection, the collection unshared or deleted, or a library
+taken from the owner, is `403` on the next request, including through an existing
+cast token (the media handler checks the person's current access).
+
+**Long path lists.** A `collections` member can hold a thousand item paths. Over 32
+paths, `pathFilterSQL`/`scopesFilterSQL` switch to a single-parameter form
+(`pathsJSONFilterSQL`: a row's path and each of its ancestors looked up in one JSON
+list, the same rows as the `OR` form, which could not hold 1,000 arms at all).
+`BenchmarkMemberScopes` (3,000 books, a 1,000-item kid against a whole-library
+listener) records the cost: browse 2.4 ms vs 0.27 ms, search 9.2 ms vs 5.6 ms, the
+progress list 4.8 ms vs 1.7 ms.
+
+**Creating accounts without an admin** (`auth/members.go`, `CreateMember`, one
+transaction): the owner is checked (not demo, not a member, the server's
+`household.members_enabled`, their `can_add_members`, under `household.max_members`),
+the name is validated, the username derived (never chosen by the caller, so it can't
+claim an existing one), and the account inserted with `role = 'user'` and an empty
+password hash. The body is decoded strictly, so a `role` field is `400`. An API key
+can't reach any member route (`denyAPIKey`), and create, session and pair take the
+self-service rate limit.
+
+**Kids.** A kid account holds no password, API key, pairing token or recovery code:
+`POST /auth/password`, `POST /auth/tokens`, `POST /auth/pair` and `POST
+/auth/recovery` answer `403 kid_account`, and switching a member to a kid (by the
+owner, or the admin's Assign) clears all four in the same transaction
+(`clearKidCredentials`), leaving its signed-in sessions alone. A kid signs in only on
+devices the owner sets up: a session made on the owner's device, or the member
+pairing code (`POST /me/household/members/{id}/pair`, single use, 10 minutes).
+Turning kids mode off in a player never widens anything: the server decides access.
+
+**Visibility.** A kid is listed by `ShareTargets` only to their owner, and
+`SetCollectionShares` refuses a kid target from anyone else with `ErrUnknownUser`
+(the same answer as an unknown id, so it can't be used to probe who is a kid). A kid
+can't share a collection (`403 kid_account`). `HouseListening` and
+`HouseholdSharing` leave kids out both ways: never a row, never a viewer, never
+sharing (see [what other people see](#listening-in-the-house-what-other-people-see)).
+
+**Ownership.** Every `{id}` member route loads the member through `memberOf`, which
+answers `ErrNotMember` (404) for anyone who isn't the caller's member, so another
+person's member is indistinguishable from no such account.
+
+**Sign-ins made on the owner's device.** A member session made through
+`sign_in_here` or `…/session` records the owner's token in
+`tokens.created_on_token_id`. It is information only (a token's validity never reads
+it): signing the owner's device out leaves those sessions alone unless the owner asks
+`?also_members=1`, which revokes them in the same transaction, restricted to
+`managed_by = caller`.
+
 ## Path traversal: `library.SafeJoin`
 
 Any filesystem access derived from user input goes through
@@ -577,7 +670,8 @@ test.** A change that only proves the happy path can silently widen access.
 The enumerated critical list:
 
 - `library.SafeJoin`
-- `Scope.Allows` / `Scope.VisibleInBrowse` / `pathFilterSQL`
+- `Scope.Allows` / `Scope.VisibleInBrowse` / `pathFilterSQL` (its single-parameter form too)
+- the household member rule (`catalog/members.go`) and the member routes
 - the rate limiters (`limiter`, `rateLimiter`) and the route classes in `rateLimit`
 - `auth.ResolveRequest` / `lookupToken`
 - the cast token checks: `relpath.Within` / `relpath.Clean`, the grant's `covers`,

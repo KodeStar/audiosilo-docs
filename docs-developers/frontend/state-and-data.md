@@ -348,6 +348,43 @@ connection-scoped like the rest (`qk.queue`, `qk.collections`, `qk.collection`,
 - **Streaks are computed on the device** from `useMyListening`'s `days` (server
   time).
 
+### Household members (player redesign Phase 8b-1)
+
+Capability `household_members`; the wire is
+[Household members](/developers/server/api/reference#household-members). Types in
+`types.ts`: `MemberKind`, `MemberAccess`, `HouseholdMember` (and its
+`HouseholdMemberCollection`), `HouseholdMembers` (`{ allowed, reason?, max, members
+}`, `HouseholdMembersReason`), `AddMemberBody`, `AddMemberResult` (`{ member,
+session? }`), `UpdateMemberBody`; `User` gains the optional `managed_by` (a `UserRef`) and
+`member_kind` (null for a non-member, absent on an older server), `MyDevice` gains
+`member_sign_ins`, the revoke's answer is `MyDeviceRevoked` (`{ current,
+members_signed_out? }`), and `Capabilities`
+gains `household_members`.
+
+`client.ts`: `members`, `addMember`, `memberSession`, `memberPairing`,
+`memberDevices`, `revokeMemberDevice`, `updateMember`, `deleteMember`, and
+`revokeMyDevice(id, { alsoMembers })`, which adds `?also_members=1` only when asked
+(the old one-argument call is unchanged). `hooks.ts`: `useHouseholdMembers` and
+`useMemberDevices(id)` (queries gated on `useCapability('household_members')` with
+`skipToken`), and the mutations `useAddMember`, `useMemberSession`,
+`useMemberPairing`, `useRevokeMemberDevice`, `useUpdateMember` and `useDeleteMember`
+(each rejects with `CapabilityError` while the flag is off or unknown). They refresh
+the members list, that member's devices and, when a sign-in on this device appears or
+goes, the caller's own devices (whose rows carry `member_sign_ins`).
+`useRevokeMyDevice` takes `number | { id, alsoMembers }` (`RevokeMyDeviceVars`),
+sending `alsoMembers` only to a server with the flag.
+
+- **The members list never refuses an ordinary session**: a demo or member caller
+  gets `allowed: false` with a `reason`, and "at the cap" is the client's own
+  `members.length >= max` (`addBlock` in `src/components/household/household-model.ts`).
+- **A member's session is placed with `addMemberHere`**, never `finishConnect`
+  (see [Profiles](profiles.md#signing-a-member-in-here-addmemberhere)): the owner
+  stays the person listening and the default connection doesn't move.
+- **The kid's view is the server's**: the player reads `member_kind` only to start
+  kids mode by default and `managed_by` only to pick the kids shelf's collections
+  ([Kids mode](kids-mode.md)); what the account may open is always the server's
+  answer.
+
 ### Bookmarks, notes and the Journal
 
 The server's `annotations` capability, mirrored like the 1b state: every hook takes an
@@ -664,7 +701,9 @@ downloads and saves stay reachable); a new one gets `connectionIdOf(serverId,
 user.id)`, and `setSession` returns the id it used. It merges the addresses it is
 given with what the device knew (the prior connection's, else another user's
 connection to the same server, else the remembered server's; `mergeAddresses`), makes
-it the default, remembers the server durably without its token
+it the default (unless the caller passes `{ makeDefault: false }`, as `addMemberHere`
+does for a household member signed in beside the owner; it still becomes the default
+when there is none, or the current default is no longer signed in), remembers the server durably without its token
 (`src/lib/known-servers.ts`, the connect screen's Reconnect rows, keyed by `server_id`
 with no user). A connection at the same URL **whose `server_id` differs**
 (`staleIdentities`: a rebuilt server mints a new `server_id` at the same address) is a

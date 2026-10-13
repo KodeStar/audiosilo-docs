@@ -271,7 +271,8 @@ version.
 **Server:** `handleServerInfo` advertises `admin_ui`, `web_player`, `upload`,
 `transcode`, `websocket`, `api_keys`, `export`, `metadata`, `meta_bundle`,
 `browse_people`, `cover_sizes`, `next_book` and the flags added after it (the
-latest, `household` and `cast`, gate [§15](#15-listening-in-the-house-and-casting)), plus the
+latest: `household` and `cast`, which gate [§15](#15-listening-in-the-house-and-casting),
+and `household_members`, which gates [§16](#16-household-members-profiles-and-kids-mode-stay-client-side)), plus the
 server version
 (`api.Version`, stamped from the release tag via ldflags). `transcode` reflects
 ffmpeg availability; `web_player` reflects whether `/web` is populated; `api_keys`
@@ -553,6 +554,56 @@ address the receiver's URLs use: [Chromecast](../frontend/chromecast.md).
 **A change requires:** the household rules stay in the server's catalog (a player
 must never filter someone in); any widening of where a cast token is accepted is a
 security-critical change with allowed and denied tests on the server.
+
+## 16. Household members (profiles and kids mode stay client-side)
+
+**Profiles and kids mode are client-side; household members are server-side.** A
+profile (a person on this device), its PIN and its kids mode never reach a server
+([Profiles](../frontend/profiles.md)). A **household member** (player redesign Phase
+8b-1, capability `household_members`) is a real account an owner creates from the
+player, and everything about what it may do is the server's.
+
+**The wire** (all additive; shapes in
+[the reference](../server/api/reference.md#household-members)):
+
+- `/me/household/members` (list, create) and `/{id}` (`PATCH`, `DELETE`),
+  `/{id}/session`, `/{id}/pair`, `/{id}/devices` and `/{id}/devices/{device_id}`;
+  mirrored in `types.ts` (`HouseholdMember`, `HouseholdMembers`, `AddMemberBody`,
+  `AddMemberResult`, `UpdateMemberBody`, `MemberKind`, `MemberAccess`), `client.ts`
+  and `hooks.ts` ([State and data](../frontend/state-and-data.md#household-members-player-redesign-phase-8b-1)).
+- The `user` object (`/me` and every session envelope) gains `managed_by` (`{ id,
+  username }` or `null`) and `member_kind` (`"kid"`, `"grownup"` or `null`). The
+  member's access is not on it: the player can't see it and never needs it.
+- `/me/devices` rows gain `member_sign_ins`, and `DELETE /me/devices/{id}?also_members=1`
+  answers `{ current, members_signed_out }`.
+- The admin's user objects gain `member_access`, `can_add_members`, `members_count`
+  and `display_name`; `PATCH /admin/users/{id}` takes `can_add_members` and
+  `managed_by`; `DELETE /admin/users/{id}?keep_members=`. The settings envelope gains
+  `household` (`members_enabled`, `max_members`). These are the console's, inside the
+  server repo.
+
+**Server rules** (each with an allowed and a denied test;
+[Auth & security](../server/auth-and-security.md#household-members)): the member rule
+in `UserScope`/`UserScopes`/`AccessibleLibraries` (the owner's current access for
+`all`, the owner's shared collections intersected with it for `collections`, plus
+the member's own grants), one level and never admin, the kid refusals
+(`403 kid_account`), kids out of share targets and Listening in the house, someone
+else's member always `404`.
+
+**Client rules:** a member signed in on the owner's device is placed by
+`addMemberHere` (the owner stays the person listening, the default connection
+doesn't move); `member_kind === 'kid'` turns kids mode on by default and allows it
+with no grown-up on the device; `managed_by` picks the kids shelf's collections. The
+player never filters a kid's access itself.
+
+**Old clients:** a shipped player ignores the new `user` fields and sees a member as
+an ordinary account; a kid signed in to an old player is still limited by the
+server. An older server has no flag, so the player offers no "Add someone to your
+household" and everything Phase 8 shipped works as before.
+
+**A change requires:** any change to the member rule is security-critical (allowed and
+denied tests on the server); a new member field is the usual wire change in both
+repos, gated on the flag.
 
 ## The wire-change checklist
 

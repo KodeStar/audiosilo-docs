@@ -39,6 +39,10 @@ Each book shows its cover, its author and, once you've started it, the time left
 
 When several people share the phone ([profiles](profiles.md)), the car shows only the books of the person listening now, and switching person changes the lists. The lists follow what you do on the phone: start a book, pause, add to your queue or finish a download, and the car catches up within a few seconds. If none of your servers can be reached when the car connects, the car keeps the lists it showed last time, and your downloaded books still play. The car's words are in the language you chose for the app.
 
+### A kids profile in the car
+
+When the person listening is in [kids mode](kids-mode.md), the car shows only their stories: **Your stories**, the same stories as the kids screen, and **Continue listening** for the ones they're part-way through. There's no Up next or Downloads tab, and nothing else their account could reach. Switching to a grown-up, or turning kids mode off, changes the lists straight away.
+
 ## Playing a book
 
 Tap a book to play it from your saved place; tap the book that's already playing and it simply carries on. It plays through your phone's AudioSilo app, with the same speed, auto-rewind and [Smart speed and Voice boost](full-player.md#smart-speed-and-voice-boost) settings as on the phone. Connecting the car doesn't start a book by itself, but if your car (or Android Auto's setting to start music automatically) presses play when you connect, that works like the car's play button.

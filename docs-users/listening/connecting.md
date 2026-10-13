@@ -73,7 +73,7 @@ An **invite code** comes from your admin, like `9M4K-P2TQ-WX7V-3RHD`. Type it on
 If you've set a password for your account (see [Your account on a server](account.md#password)), you can also sign in the classic way, on the **Username and password** tab.
 
 :::note
-Many AudioSilo accounts don't have a password at all - that's normal. Accounts are usually created by invite, and codes and QR pairing cover everyday sign-in. A password is optional and yours to set whenever you like - and it's the most dependable way to sign back in later (see below).
+Many AudioSilo accounts don't have a password at all - that's normal. Accounts are usually created by invite (or by someone in your [household](household.md) who added you), and codes and QR pairing cover everyday sign-in. A password is optional and yours to set whenever you like - and it's the most dependable way to sign back in later (see below).
 :::
 
 ### "Your library is ready."

@@ -21,8 +21,8 @@ space, backups - is on [Health > System](health.md#system).
 
 **Server > Settings** lists its topics down the left (across the top on a
 phone): **General**, **Network & HTTPS**, **Players & app links**,
-**Community metadata**, **Transcoding**, **Demo mode**, **Backups**,
-**Notifications** and **Import**. Each setting lives in exactly one of them.
+**Community metadata**, **Transcoding**, **Household**, **Demo mode**,
+**Backups**, **Notifications** and **Import**. Each setting lives in exactly one of them.
 Backups, Notifications and Import have pages of their own:
 [Backups and restoring](backups.md),
 [Notifications and the bell](notifications.md) and
@@ -313,6 +313,25 @@ into the data folder. To use other copies, start it with the `--ffmpeg` and
 `--ffprobe` options (see the
 [configuration reference](/developers/server/configuration#cli-flags-cmdaudiosilo)).
 
+### Household
+
+The **Household members** card: "People add kids and grown-ups to their
+household from the player, with no invite from you. Each member is a real
+account, managed by the person who added it." (See
+[Household members](users-and-invites.md#household-members).)
+
+- **People can add household members** - on out of the box. Off stops new
+  members being added; members already added keep working, and the people who
+  added them can still manage them.
+- **Members per person** - from 1 to 50 (6 unless you change it). Lowering it
+  never removes anyone: someone already over the new number just can't add
+  more.
+
+Both apply at once, with no restart. To stop one person adding members, turn
+off **Can add household members** on their Account tab instead. The
+`AUDIOSILO_HOUSEHOLD_MEMBERS_ENABLED` and `AUDIOSILO_HOUSEHOLD_MAX_MEMBERS`
+variables set them too, and then lock them here.
+
 ### Demo mode
 
 The **Demo mode** card runs a public demo from this server (see
@@ -429,7 +448,9 @@ app. Things the server did by itself on an admin's behalf, like applying a
 restore at start, are listed under **AudioSilo**.
 
 What is recorded: changes to accounts, invites, devices signed out, shares and
-access, people's progress, libraries, books and covers, ignored health issues,
+access, household members (added, changed, signed in on a device, given a
+pairing code, a device signed out, or deleted, by the person who manages them
+in the player, who is named as the one who did it), people's progress, libraries, books and covers, ignored health issues,
 settings, backups (including every download, restore and cancelled restore),
 notification destinations, and answers to the
 [support card](console-tour.md#the-support-card) ("Answered the support card",
@@ -442,15 +463,15 @@ What isn't:
   [notified](notifications.md) of sign-ins).
 - **Scans** (and rescans of one book, and stopped scans): their history is in
   [Health > Jobs](health.md#jobs).
-- Anything a member does in a player.
+- Anything else people do in a player (household members aside).
 
 The log never holds a secret: a password change reads only "set" or "removed",
 an invite never shows its code, and a notification destination's address or
 secret only as "New address" or "New secret". It doesn't record IP addresses.
 Entries are kept for a year.
 
-To narrow the list, choose an **Area** (Accounts, Invites, Devices, Shares and
-access, Progress, Libraries, Books, Health, Settings, Backups, Notifications),
+To narrow the list, choose an **Area** (Accounts, Household members, Invites,
+Devices, Shares and access, Progress, Libraries, Books, Health, Settings, Backups, Notifications),
 a person under **Who** (the current admins), or type in **Search names and
 paths** (it matches what a change was made to, or who made it). **Show older**
 at the foot loads the next 50.

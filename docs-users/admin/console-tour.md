@@ -213,7 +213,7 @@ The last entry, "Search all books for ...", opens
 
 **Server > Settings** holds everything you can change while the server runs,
 one topic at a time: its name and public address, HTTPS, app links, community
-metadata, demo mode, the update check, [backups](backups.md),
+metadata, household members, demo mode, the update check, [backups](backups.md),
 [notifications](notifications.md) and [importing from Audiobookshelf](import.md).
 Some settings apply at once and some at the
 next restart; each one says which. See

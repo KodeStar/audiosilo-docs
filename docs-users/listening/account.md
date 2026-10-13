@@ -48,6 +48,8 @@ Every device signed in to your account on this server, **this device** first, th
 
 To cut off a phone you've lost or sold, tap **Sign out** on its row and confirm. It loses access straight away and needs to sign in again to reach the server.
 
+If you signed in members of [your household](household.md) on that phone (a kid you added there, say), the confirmation also offers **Also sign out Evie and Ellis on that device**, naming them, ticked. Leave it ticked and they're signed out of that phone too; the message afterwards says how many were. Untick it to sign out only yourself. Their sign-ins on other devices, including their own phones, aren't touched (see [If a phone is lost](household.md#if-a-phone-is-lost)).
+
 **This device** has no Sign out button in the list. To sign this device out, use [Sign out of the server](#signing-out) at the bottom of the page, which saves your place first.
 
 The list appears on servers new enough to show it.

@@ -67,6 +67,14 @@ protection), so a car shows its lists at once, before or without JS.
     [State and data](state-and-data.md#library-selection-srcstoreslibrary-selectionts)),
     `sort: 'recent'`, at most 50 (`CAR_TAB_LIMITS`; Android Auto doesn't page, and
     CarPlay trims further to its own `maximumItemCount`).
+- **A kids profile** (player redesign 8b-1) gets the kids shelf only
+  (`kidsCarBooks`): the `library` tab holds the shelf as [kids mode](kids-mode.md#in-the-car)
+  shows it (the owner's shared collections, else the one library, else the account's
+  downloads), titled "Your stories" through the snapshot input's `titles`, and
+  `continue` the shelf's stories in progress; `upnext` and `downloads` are `null`, so
+  those tabs are left out (`CarSnapshotInput.books` is `Record<CarTabId, CarBook[] |
+  null>`, a `null` tab omitted). The controller builds it without React from the same
+  reads as `useKidsStories` and rebuilds the snapshot when kids mode turns on or off.
 - Each `CarItem` has an `id` (`carItemId(ref)`: `book:` plus the URI-encoded connection id,
   library id and path joined by `:`; path is the identity, scoped by connection, never a
   database id; `parseCarItemId` reverses it, mapping a connection id from before the

@@ -10,7 +10,7 @@ description: "Every setting in the player, each in one place: playback, the slee
 The settings come in three groups:
 
 - **Listening**: [Playback](#playback), [Sleep](#sleep) and [Up next and downloads](#up-next-and-downloads).
-- **App**: [Appearance](#appearance), [Language](#language) and [Household and sharing](#household-and-sharing).
+- **App**: [Appearance](#appearance) and [Language](#language), then a link to the [Household](#household) page.
 - **Servers**: [Accounts and devices](#accounts-and-devices) and, on the web and Android, [Support AudioSilo](#support-audiosilo).
 
 On a wide screen the groups and their sections run down the left and one section shows beside them; pick another to switch. On a phone, or a narrow window, every section is on one page, one under the other under its group's name.
@@ -85,19 +85,9 @@ On a tablet or computer, the profile menu also has a quick switch between light 
 
 The app speaks **English, Español, Français, Deutsch, Português, and Italiano**. Pick one, or leave it on **System** to follow your device's language.
 
-## Household and sharing
+## Household
 
-![Household and sharing on a computer: a kids profile's card with its Library and Bedtime, Ask who's listening when the app opens, and Share what I'm listening to with the house](/img/screenshots/web-player/settings-household.png)
-
-Everyone who listens on this device, each with their own servers, place in every book, queue and stats (see [Sharing a device with your household](profiles.md)). Each person has a card:
-
-- **Switch** to them, or *Listening now* for the person listening;
-- **Name** - rename them on this device (their account keeps its username);
-- **PIN** - **Set a PIN**, or **Change** and **Remove** it (see [A PIN for a person](profiles.md#a-pin-for-a-person));
-- **Kids mode** - turns this person's app into [kids mode](kids-mode.md), with the **Library** it shows and the **Bedtime** (from then until 6:00 AM, playing starts a 20-minute sleep timer);
-- **Remove from this device** - signs them out of their servers here and deletes their downloads here. Their place in every book stays on the server. It doesn't ask for their PIN: it's the way out of a forgotten one.
-
-Under the people: **Who's listening?** and **Add someone**; **Ask who's listening when the app opens** (with two or more people on the device); and **Listening in the house**, with a **Share what I'm listening to with the house** switch for each server of the person listening that supports it (see [Listening in the house](in-the-house.md#turning-it-on)).
+The App group ends with **Household**, which opens the [Household page](household.md): the people on this device with their names, PINs and kids mode, the people you've added to your household on your server, and Listening in the house. It used to be a section of Settings; an old link to it opens the Household page.
 
 ## Accounts and devices
 
@@ -116,5 +106,5 @@ On the web and Android, **Support AudioSilo** links to GitHub Sponsors - AudioSi
 Settings shows the version of the app you're running, e.g. *AudioSilo v1.1.1*: under the sections on a wide screen, at the foot of the page on a phone. Handy to mention if you ever report a problem (see [Troubleshooting](../troubleshooting.md)). The version of a server is at the foot of your [account page](account.md) for it.
 
 :::note
-Things an admin manages - creating accounts, invites, what libraries you can see - aren't in Settings; they live in the server's admin console. See [People and invites](../admin/users-and-invites.md).
+Things an admin manages - invites, what libraries you can see - aren't in Settings; they live in the server's admin console. See [People and invites](../admin/users-and-invites.md). Accounts for the kids and grown-ups you live with you can make yourself, on the [Household page](household.md#household-members).
 :::

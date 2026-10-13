@@ -63,6 +63,15 @@ addresses the link (`linkAddresses`) and the answer taught, merged there once
 connection then shows `/connect/ready`; an added server goes straight back with
 `leaveOnboarding()`.
 
+A kid's account (`user.member_kind === 'kid'`, a household member) placed for the
+first time on this device starts in kids mode (`kidsOnForKidAccount`, after the
+placement; never on a re-pair, and never for a profile that also holds a grown-up's
+account): see [Kids mode](kids-mode.md). The one sign-in that does **not** go through
+`finishConnect` is a household member signed in beside the owner from the Household
+page: `addMemberHere` (`src/components/connect/add-member-here.ts`) stores it without
+moving the default connection or the person listening, and never navigates (see
+[Profiles](profiles.md#signing-a-member-in-here-addmemberhere)).
+
 `repairPlan` decides what a sign-in stores:
 
 - the **same connection again** (its `server_id` answered through one of its own
