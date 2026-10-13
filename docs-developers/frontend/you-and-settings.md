@@ -237,6 +237,17 @@ gone, or the server didn't answer).
 **A lost phone takes the household with it.** When another device's row carries
 `member_sign_ins` (capability `household_members`: the listener's household members
 signed in on that device, `memberSignIns` in `account-model.ts`), the confirm adds
-"Also sign out Evie and Ellis on that device" (`joinNames`), **ticked**, fresh for
-every device. Confirming sends `useRevokeMyDevice({ id, alsoMembers })` (the plain id
-when there are no members, today's call), and the toast counts `members_signed_out`.
+"Also sign out Evie and Ellis on that device" (`joinList` in `src/lib/names.ts`),
+**ticked**, fresh for every device. Confirming sends `useRevokeMyDevice({ id,
+alsoMembers })` (`alsoMembers` false when there are no members), and the toast counts
+`members_signed_out`.
+
+**A household member's account page** (`isKidAccount`, `managerName` in
+`src/lib/account.ts`): the page reads `/me` when it opens (`useFreshUser`), so a
+`member_kind` the owner changed since sign-in shows. A kid's account gets a Password
+card with no button ("A kid's account has no password. Adam signs it in on a new
+device."), no API keys section, and its pairing refused in the app's words (`403
+kid_account`: "A kid's account can't pair a device..."); a grown-up member's Password
+card names who set the account up. The sign-out warning for a member without a
+password names their owner instead of an invite (`signOutWarning`), and a kid's house
+sharing row is off and disabled (`house.share.kid`).

@@ -368,11 +368,25 @@ gains `household_members`.
 `useMemberDevices(id)` (queries gated on `useCapability('household_members')` with
 `skipToken`), and the mutations `useAddMember`, `useMemberSession`,
 `useMemberPairing`, `useRevokeMemberDevice`, `useUpdateMember` and `useDeleteMember`
-(each rejects with `CapabilityError` while the flag is off or unknown). They refresh
-the members list, that member's devices and, when a sign-in on this device appears or
-goes, the caller's own devices (whose rows carry `member_sign_ins`).
-`useRevokeMyDevice` takes `number | { id, alsoMembers }` (`RevokeMyDeviceVars`),
-sending `alsoMembers` only to a server with the flag.
+(each rejects with `CapabilityError` while the flag is off or unknown; never hand that
+to `noteError`). They refresh the members list, that member's devices and, when a
+sign-in on this device appears or goes, the caller's own devices (whose rows carry
+`member_sign_ins`; `invalidateHousehold`); a refused write reads the list again (a 404
+means the member is gone). A member change that touches sharing (`collection_ids`, a
+delete) also reads the collections again, since each lists the people it is shared
+with. `useRevokeMyDevice` takes `{ id, alsoMembers? }` (`RevokeMyDeviceVars`), sending
+`alsoMembers` only to a server with the flag. Every connection removed from the device
+(`removeConnection`, by any path) has the other connections to that server read their
+household again (`onConnectionRemoved` in `hooks.ts`).
+
+- **Refusals are read by kind**, never by message: `apiErrorKind(e)` in `client.ts`
+  gives the server's `code` when the app knows it (`ApiError.code`, the
+  `API_ERROR_CODES` list: `member_limit`, `username_taken`, `invalid_name`,
+  `invalid_collections`, `feature_off`, `not_allowed`, `member_cannot_manage`,
+  `member_disabled`, `kid_account`, `demo_account`), else the status's kind
+  (`too_many` 429, `not_found` 404, `forbidden` 403, `invalid` 400, `conflict` 409,
+  `failed`), so an older server without codes still reads sensibly. Screens say it in
+  their own words; `ApiError.message` (the server's English) is never shown.
 
 - **The members list never refuses an ordinary session**: a demo or member caller
   gets `allowed: false` with a `reason`, and "at the cap" is the client's own

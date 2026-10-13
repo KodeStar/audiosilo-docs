@@ -41,7 +41,7 @@ When several people share the phone ([profiles](profiles.md)), the car shows onl
 
 ### A kids profile in the car
 
-When the person listening is in [kids mode](kids-mode.md), the car shows only their stories: **Your stories**, the same stories as the kids screen, and **Continue listening** for the ones they're part-way through. There's no Up next or Downloads tab, and nothing else their account could reach. Switching to a grown-up, or turning kids mode off, changes the lists straight away.
+When the person listening is in [kids mode](kids-mode.md), the car shows only their stories: **Your stories**, the same stories as the kids screen (the first 50, as in the Library tab), and **Continue listening** for the ones they're part-way through. Bedtime's sleep timer doesn't start in the car. There's no Up next or Downloads tab, and nothing else their account could reach. Switching to a grown-up, or turning kids mode off, changes the lists straight away.
 
 ## Playing a book
 

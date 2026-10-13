@@ -383,9 +383,10 @@ The nightly auto-arm is split into a pure decision function and a framework-free
 controller, so all the policy is unit-tested and none of it lives in a component.
 
 - **`decideAutoSleep(input)`** takes the rule that applies (`AutoSleepConfig`:
-  `enabled`, `from`, `until`, `type`; the controller's `effectiveAutoSleepConfig()`
-  passes the four `autoSleep*` settings, or a kids profile's bedtime rule while one is
-  active, see [Kids mode](kids-mode.md#bedtime-srcplaybackauto-sleep-controllerts)),
+  `enabled`, `from`, `until`, `type`; the controller passes `listenerSettings().autoSleep`
+  from `src/playback/listener-settings.ts`: the four `autoSleep*` settings, or a kids
+  profile's bedtime rule while one is active, see
+  [Kids mode](kids-mode.md#bedtime-and-speed-srcplaybacklistener-settingsts)),
   `now`, the `bookKey` and the per-book memory, and returns
   `{arm:'none'} | {arm:'chapter'} | {arm:'duration', minutes}`. It bails when the
   feature is off, when the memory says this book is blocked (`canAutoSleepArm`),

@@ -97,7 +97,10 @@ build in `X-AudioSilo-Client`), saves each one's progress twice 15 s apart
 before the first shot (so the overview and the people cards show them live),
 and keeps saving every 15 s in the background. Theo's device fetches a
 `?transcode=1` stream first (so his session counts as transcoded) and has an
-unused personal API key; nora stops 90 s before the Activity shots, so Live now
+unused personal API key; maya adds two household members through the player's API
+(`POST /me/household/members` as maya: ivy, a kid on "Ivy's books", a collection of
+hers, and dan, a grown-up on everything), which `admin/people.png` shows as maya's
+household and `admin/person-member.png` as ivy's Access tab; nora stops 90 s before the Activity shots, so Live now
 shows her as paused. The Activity screens are captured last, once
 `LISTEN_MINUTES` (default 8) have passed since the listeners started, so the
 charts and totals have twenty-odd minutes of listening to show rather than a
@@ -164,32 +167,46 @@ Every capture context reduces motion, so the Year in listening story stays on it
 card. The desktop You shot picks Stats in the sub-nav first: the Journal shot (opened
 from the profile menu) leaves the Me tab on its Journal section.
 
-The household shots (`web-player/profiles.png`, `settings-household.png`,
-`home-house.png`, `book-in-the-house.png`, `kids.png`, `phone-kids.png`,
-`player-cast.png`) need people rather than the demo user: a demo account can't share
-what it listens to, and the people on a device, their PINs and kids mode live in that
-browser's `localStorage`. So `capture-web.mjs` provisions four accounts through the
-admin API (`ADMIN_PASSWORD`): **ellen** (the viewer, with a place in A Christmas
-Carol), **jamie** and **rosa** (who share; their listening comes from progress saves
-as the apps make them, two 15 s apart, and jamie keeps saving every 15 s, so the house
-shows jamie listening now and rosa paused once the server reads her last save as a
-minute old; she is saved again if more than 5 minutes passed before Home is shot) and
-**leo** (a child, whose account only sees a "Stories" share of the Lewis Carroll and
-Charles Dickens folders). Then it drives the UI as a family would, in a fresh browser:
-Ellen signs in by password, Settings > Household and sharing renames her, "Add
-someone" signs Jamie and Leo in as people of their own, Ellen switches back, gives
-Jamie a PIN, turns kids mode on for Leo (library Books) and turns sharing on. The
-Settings shot is taken at 1440x1000 with Leo's card at the top. Leo's shots choose him
-on "Who's listening?" (a reload asks, with two or more people) and load a story,
-paused; the phone shot reuses that browser's storage. Every household context runs in a
-fixed-offset time zone where it is 8 pm, after Leo's 7:30 pm bedtime, so the kids
-bedtime card reads the same on every run. If setting the household up fails part-way,
-its shots are skipped and keep their previous images. The accounts and the share are
-deleted again at the end, even when a step failed part-way, and their sign-ins are
-taken out of the server's event feed (sqlite3), so the admin console's shots never
-show them (the Audit log keeps the admin's create and delete entries); any accounts
-left over from a run that was killed are deleted before provisioning. A run that only wants
-`player-cast.png` (`SHOTS_ONLY`) provisions Ellen alone.
+The household shots (`web-player/profiles.png`, `household.png`, `household-device.png`,
+`household-member.png`, `household-add-kid.png`, `household-add-grownup.png`,
+`phone-household.png`, `home-house.png`, `book-in-the-house.png`, `kids.png`,
+`phone-kids.png`, `player-cast.png`) need people rather than the demo user: a demo
+account can't share what it listens to or add household members, and the people on a
+device, their PINs and kids mode live in that browser's `localStorage`. So
+`capture-web.mjs` provisions three accounts through the admin API (`ADMIN_PASSWORD`):
+**ellen** (the viewer and an ordinary owner, with a place in A Christmas Carol),
+**jamie** and **rosa** (who share; their listening comes from progress saves as the
+apps make them, two 15 s apart, and jamie keeps saving every 15 s, so the house shows
+jamie listening now and rosa paused once the server reads her last save as a minute
+old; she is saved again if more than 5 minutes passed before Home is shot). Then, as
+Ellen, through the player's own API, it makes a "Leo's stories" collection (Alice,
+Looking-Glass, A Christmas Carol) and two household members with
+`POST /me/household/members`: **Leo**, a kid on "Only collections I share" with that
+collection, and **Ruth**, a grown-up on "Everything I can listen to". Then it drives the
+UI as a family would, in a fresh browser: Ellen signs in by password, the Household page
+renames her, "Sign in someone who already has an account" signs Jamie in as a person of
+their own, Ellen switches back, gives Jamie a PIN, signs Leo in with "Sign in on this
+device" on his member card (he joins the device in kids mode, as a kid's account does)
+and turns sharing on. The On this device shot is taken at 1440x1000 with Leo's card at
+the top, the member card shot clips Leo's card (marked On this device, with this
+browser as This device), and the Household page shot opens the same storage in a light
+context (the app's own theme pick set to light) at 1440x1650, scrolled to Your
+household. The add dialog shots type Mia as a kid and pick "Create Mia's books" (then
+Cancel: nothing is saved), and add **Ellis** as a grown-up for the code step (Ellis is
+a real member until the end of the run). Leo's shots choose him on "Who's listening?"
+(a reload asks, with two or more people) and load a story, paused; the phone shots
+reuse that browser's storage. Every household context runs in a fixed-offset time zone
+where it is 8 pm, after Leo's 7:30 pm bedtime, so the kids bedtime card reads the same
+on every run. If setting the household up fails part-way, its shots are skipped and keep
+their previous images. The accounts are deleted again at the end (Ellen's members go
+with her), even when a step failed part-way, and their sign-ins are taken out of the
+server's event feed and Ellen's member writes out of the audit log (sqlite3), so the
+admin console's shots never show them (the Audit log keeps the admin's create and delete
+entries); any accounts left over from a run that was killed are deleted before
+provisioning. The member routes share the server's self-service rate limit (10 per
+address in 15 minutes): the web household spends five of them and the admin run two,
+so don't run the household twice against one server within 15 minutes. A run that only
+wants `player-cast.png` (`SHOTS_ONLY`) provisions Ellen alone.
 
 The Cast button only shows on an https page in a Chromium browser, and for a server
 reached at a loopback address it is only dimmed and explains why it can't cast (its

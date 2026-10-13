@@ -61,7 +61,20 @@ the server's own name when the flow knows it (the probe, the redeem payload's
 addresses the link (`linkAddresses`) and the answer taught, merged there once
 (`mergeAddresses`). The device's **first**
 connection then shows `/connect/ready`; an added server goes straight back with
-`leaveOnboarding()`.
+`leaveOnboarding()`; and whenever the person listening is in kids mode afterwards (a
+kid's account signing in, below) it goes straight to `/kids` instead, with no "Your
+library is ready.". A link's exchange that fails is said in the app's words, never the
+server's (`apiErrorKind`): 429 "Too many tries. Wait a few minutes and try again.", a
+refused link (expired, used up, unknown, malformed) "This pairing link has expired or
+was already used...", a 5xx "The server couldn't finish pairing...", and no answer
+"Could not reach the server to finish pairing.".
+
+**Kids mode never runs the flow.** `src/app/connect/_layout.tsx` is the one gate: while
+a kids profile listens, no step of the flow mounts (so a link's token is never spent),
+the child is sent back to `/kids`, and a link opened in kids mode gets the toast "Ask a
+grown-up to open this link". Only a grown-up's Add someone on a device with no grown-up
+gets through (`kidsConnectAllowed`); the layout also waits until both the session and
+the profiles have been read. See [Kids mode](kids-mode.md#the-route-and-its-guard).
 
 A kid's account (`user.member_kind === 'kid'`, a household member) placed for the
 first time on this device starts in kids mode (`kidsOnForKidAccount`, after the

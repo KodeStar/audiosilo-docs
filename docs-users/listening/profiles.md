@@ -11,7 +11,7 @@ If you were already using AudioSilo when profiles arrived, nothing changes until
 
 **Who's listening?** shows everyone on this device as a large initial in a coloured circle, with a line under each name. The person listening now has a pink ring. Tap someone to switch to them, or **Close** to carry on as you are.
 
-![Who's listening? on a computer: Ellen with the pink ring, Jamie with a key for the PIN, Leo in kids mode with their bedtime, and Add someone](/img/screenshots/web-player/profiles.png)
+![Who's listening? on a computer: Ellen with the pink ring, Jamie with a key for the PIN, Leo in kids mode with the bedtime, Add someone, and Manage household at the foot](/img/screenshots/web-player/profiles.png)
 
 Open it from:
 
@@ -53,7 +53,7 @@ Each person can have a **PIN**: four digits, asked whenever someone switches **t
 
 ## On the Household page
 
-![A person's card on this device: Leo's card with Switch, Name, PIN, Kids mode, Library and Bedtime, then Ask who's listening when the app opens and the Listening in the house switch](/img/screenshots/web-player/settings-household.png)
+![On this device on the Household page: Leo's card with Switch, Name, PIN, Kids mode and Bedtime, then Who's listening?, Sign in someone who already has an account, and Ask who's listening when the app opens](/img/screenshots/web-player/household-device.png)
 
 **On this device**, at the top of the [Household page](household.md), lists everyone on this device. For each person:
 
@@ -61,7 +61,8 @@ Each person can have a **PIN**: four digits, asked whenever someone switches **t
 - **Name**: rename them. The name shows on this device only; their account keeps its username;
 - **PIN**: set, change or remove it (above);
 - **Kids mode**, with its library and bedtime (see [Kids mode](kids-mode.md));
-- **Remove from this device**: signs them out of their servers on this device and deletes their downloads here. Their place in every book stays on the server. If they have no password on a server, the app warns you first: they'll need a new invite to sign in there again (a member of your household needs no invite: **Sign in on this device** on their card signs them in again).
+- **Signed out**, with **Sign in again**, when their sign-in to a server has ended (see [When a member is signed out on this device](household.md#when-a-member-is-signed-out-on-this-device));
+- **Remove from this device**: signs them out of their servers on this device and deletes their downloads here. Their place in every book stays on the server. If they have no password on a server, the app warns you first: they'll need a new invite to sign in there again. For a member of someone's household it says instead that their account stays, and who can sign them in here again from the Household page.
 
 Below the people: **Who's listening?**, **Sign in someone who already has an account**, and the **Ask who's listening when the app opens** switch. Further down the page come the people you've added to [your household](household.md#household-members) and [Listening in the house](in-the-house.md#turning-it-on), one switch per server of the person listening.
 

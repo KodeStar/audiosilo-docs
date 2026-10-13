@@ -1,6 +1,6 @@
 ---
 title: Kids mode
-description: "Kids mode (Phase 8, with kid household members since 8b-1): a property of a profile. Kids mode by default for a kid's account, the /kids route and its guard, the stories it shows (the owner's shared collections, else one library), the kids player, the Grown-ups hold, the car, and bedtime through the auto sleep controller."
+description: "Kids mode (Phase 8, with kid household members since 8b-1): a property of a profile. Kids mode by default for a kid's account, the /kids route and its guard, connect/_layout as the one gate between kids mode and the connect flow, the stories it shows (kidsShelfMode: the owner's shared collections, else one library), a kid signed out, the kids player at 1×, the Grown-ups hold, the car, and bedtime through listenerSettings."
 ---
 
 Kids mode is a **property of a [profile](profiles.md)** (`Profile.kids`), set by an
@@ -32,8 +32,10 @@ signs in beside the owner, and `finishConnect` does the same at a kid account's
 **first** placement on a device (`kidsOnForKidAccount`: a new connection, not a
 re-pair or a sign-in after a server reset, whose profile has no kids settings yet and
 holds only kid accounts), which covers the kid's own device signing in from its QR. A
-grown-up's profile that a kid's sign-in joined is never put in kids mode. On a server
-without household members, `member_kind` is absent and nothing changes. `KidsLibraryPicker` offers the libraries the profile's
+grown-up's profile that a kid's sign-in joined is never put in kids mode. A kid's first
+sign-in then goes straight to `/kids` (`finishConnect` dismisses to `KIDS_PATH` whenever
+the person listening is in kids mode afterwards): never "Your library is ready.". On a
+server without household members, `member_kind` is absent and nothing changes. `KidsLibraryPicker` offers the libraries the profile's
 connections list, named with their server when the profile has several; no pick means
 the first one listed.
 
@@ -48,20 +50,30 @@ tabs. A kids profile never gets the shell:
 - **`KidsRouteGuard`**, mounted once by the root layout so it covers the root routes
   too, sends a kids profile to `/kids` from anywhere it may not be. `kidsAllowsPath`
   allows only `/kids`, `/profiles` (leaving kids mode goes through it, PIN rules
-  included) and `/connect` (the child's own sign-in renewed, or "Add someone" when it is
-  allowed, below); the tabs, the full player,
-  the end credits, the year story and any deep link into them go back. It uses
+  included) and `/connect`, which keeps kids mode out itself (below); the tabs, the full
+  player, the end credits, the year story and any deep link into them go back. It uses
   `dismissTo('/kids')`, so a `/kids` already in the root stack is popped back to
   rather than stacked twice.
 - On Android the back button does nothing on `/kids` while the shell sits under it;
   with nothing under it, it leaves the app as usual.
+- **The connect flow's gate is `src/app/connect/_layout.tsx`, the only one** (8b-1,
+  D1). While a kids profile listens it runs **none** of the flow (no step mounts, so a
+  pairing link's token is never exchanged and no server is reconnected or forgotten)
+  and `dismissTo`s `/kids` once the root navigator is ready. When kids mode was already
+  on as the flow opened (a link: `audiosilo://connect?token=`, a QR scanned elsewhere,
+  `/web/connect`), a toast says "Ask a grown-up to open this link" ("A grown-up holds
+  Grown-ups first, then opens the link again."); kids mode turning on during the flow
+  is a kid's own first sign-in, which `finishConnect` has already sent to `/kids`, so no
+  toast. Nothing of the flow runs until both the session and the profiles have been
+  read (before that, kids mode can't be told and a token would be spent on a kids
+  device). The one exception is `kidsConnectAllowed()`: "Add someone" opened by a
+  grown-up from Who's listening? on a device with **no** grown-up (`openAddSomeone`
+  sets the intent, `endConnectFlow` clears it when the flow unmounts).
 - **Nobody new signs in from kids mode** while a grown-up is on the device
-  (`mayAddPerson`, `src/components/profiles/connect-intent.ts`): `finishConnect` refuses
-  "Add someone", a new server and the demo ("Choose a grown-up before adding someone."),
-  and Who's listening? disables **Add someone** with that hint, so a child can't leave
-  kids mode through a new profile; they choose the grown-up first, PIN and all. A
-  re-pair of a connection the device has (the child's own sign-in renewed, through the
-  reconnect banner on the kids screen) keeps its person and is allowed. With no grown-up
+  (`mayAddPerson`, `src/components/profiles/connect-intent.ts`): `finishConnect` and
+  `addMemberHere` refuse ("Choose a grown-up before adding someone."), and Who's
+  listening? disables **Add someone** with that hint, so a child can't leave kids mode
+  through a new profile; they choose the grown-up first, PIN and all. With no grown-up
   left, Add someone stays open, the only way out. Nothing is added while the profiles
   couldn't be read.
 
@@ -87,6 +99,14 @@ The rules are pure in `kids-model.ts`, read through `useKidsStories()`:
   shelf says "Ask a grown-up to add stories." The client can't see `member_access` (it
   isn't on `/me`), so an `all` member whose owner also shares collections with them
   sees those collections; one with none sees the one-library view.
+- **Which one** is `kidsShelfMode(user, hasCollections, collections)`: `collections`
+  when the owner shares at least one, `library` for an account nobody manages, a
+  server without `collections` or a member with none shared, and `unknown` while a
+  member's answers are still out. The Household page reads the same through
+  `useKidsSharedShelf(profile)` and hides the kids **Library** row unless the shelf is
+  one library (also while the kid is signed out or the collections can't be read).
+  When an owner switches a member to `all`, the player sends `collection_ids: []`
+  (`collectionIdsFor`), so the shares stop and the kid's shelf is one library again.
 - **The library** (`kidsLibrary`), for everyone else (an account nobody manages, a
   Phase 8 account the admin limited, an older server, a member with no shared
   collection): the pick when it is on that connection and still listed by `GET
@@ -96,15 +116,30 @@ The rules are pure in `kids-model.ts`, read through `useKidsStories()`:
   played first, then every other book of the library in the server's order, finished
   ones included.
 - **Offline** (`kidsDownloads`): when the server can't be reached, the finished
-  downloads of that connection, newest first, in the library `kidsOfflineLibraryId`
-  names: the one shown when known, else (`GET /libraries` unreadable) the profile's pick
-  on this connection, else every library, so the grown-ups' downloads of another library
-  on the same account don't show.
+  downloads of that connection, newest first, in the library `kidsOfflineScope(mode,
+  library, connectionId, kids)` names: for a one-library shelf the one shown when known,
+  else (`GET /libraries` unreadable) the profile's pick on this connection, else every
+  library, so the grown-ups' downloads of another library on the same account don't
+  show; for a shelf of collections (or one not known yet) every library, since the
+  collections can span libraries and the server already limits the account.
 
 The whole page is **one virtualised list** (`KidsStoriesList`, a FlashList with the
-greeting, the [reconnect banner](connect-and-addresses.md), the bedtime card and the
-player as its header), paging through the library as it scrolls. Loading, empty, error
-and offline states each have their own words. A tile starts its story with
+greeting, the bedtime card and the player as its header), paging through the library
+as it scrolls. Loading, empty, error and offline states each have their own words.
+
+**A kid signed out** (their connection's `needsReconnect`: a revoked session, a deleted
+account, a server reset) never gets the shell's reconnect banner, whose sign-in opens
+the connect flow. With stories still to show, `SignedOutNotice` puts a plain line over
+them, "Ask a grown-up to sign Leo in again." (`askToSignIn`; "...to sign you in again"
+without a name); with none, the list's `signed-out` state says "Signed out of
+&lt;server&gt;" with the same line and no Try again. A story that won't start says it too.
+The grown-up signs the kid in again from the Household page's **Sign in again**
+(`SignInAgainRow`: for the owner's own member, `memberSession` then `renewMemberHere`,
+which only swaps the token, keeping the connection id, profile, PIN and kids settings;
+anyone else, or after a server reset, the connect flow's reconnect). `ApiProvider` then
+reads the connection's failed queries and its `server`, `libraries` and `collections`
+lists again once its token changes (`useReadAgainOnSignIn`, `readAgainOnSignIn`), so the
+shelf recovers without a reload. A tile starts its story with
 `startBookInPlace` on every layout (kids mode never opens the full player; the story
 already loaded only resumes), and the list scrolls back up to the player
 (`scrollToOffset`).
@@ -112,7 +147,10 @@ already loaded only resumes), and the list scrolls back up to the player
 **`KidsPlayer`** replaces the full player: cover, title, chapter and minutes left, a
 simple progress line through the chapter (no scrubbing; the view's one pink thing), and
 four big controls, previous chapter, back 30 s (`KIDS_BACK_SECONDS`), play/pause and
-next chapter. No speed, sleep, bookmarks, Up next or sharing. It is laid out by the
+next chapter. No speed, sleep, bookmarks, Up next or sharing. A story starts at 1× unless it
+has a speed saved for the kid: the default speed comes from `listenerSettings()`, which
+gives a kids profile `defaultRate: 1` (the device's default speed is a grown-up's
+setting, and kids mode has no control to undo it). It is laid out by the
 measured width (`kidsPlayerLayout`): the cover beside the controls where both fit at
 the big sizes, the big controls under the cover where only they do, else the phone's
 sizes, never under the 64 pt kids minimum.
@@ -129,21 +167,28 @@ A kids profile's CarPlay and Android Auto snapshot is the kids shelf only
 (`kidsCarBooks` in `src/car/car-model.ts`, built by `car-controller.ts` without React
 from the same reads as `useKidsStories`: the owner's shared collections, else the one
 library, else the account's downloads): the **Library** tab holds the shelf, titled
-"Your stories", and **Continue listening** the shelf's stories in progress; no Up next
-and no Downloads tab, nothing else the account could reach. It is rebuilt when kids
+"Your stories", trimmed to `CAR_TAB_LIMITS.library` (50) with each story once before
+any cover is fetched (a shelf of shared collections can hold far more), and **Continue
+listening** the shelf's stories in progress (any story on the shelf, not only the first
+50); no Up next and no Downloads tab, nothing else the account could reach. It is rebuilt when kids
 mode turns on or off. See
 [Native integrations](native-integrations.md#the-car-snapshot-srccar).
 
-## Bedtime (`src/playback/auto-sleep-controller.ts`)
+## Bedtime and speed (`src/playback/listener-settings.ts`)
 
-Bedtime reuses the auto sleep controller, made profile-aware:
+`listenerSettings()` is the one read of the playback settings **of whoever listens**
+(pure `listenerSettingsFor(kids, settings)`): the default speed and the auto sleep rule.
+The playback store (`playBook`), the car's native start specs and the auto sleep
+controller (`src/playback/auto-sleep-controller.ts`) all read it; a screen showing the
+default speed uses `useListenerDefaultRate()`.
 
+- **Speed**: 1× for a kids profile, else the device's default speed.
 - `isBedtime(bedtime, now)`: from the profile's bedtime until `KIDS_BEDTIME_UNTIL`
   (06:00) local time, across midnight.
-- `effectiveAutoSleepConfig()` gives the rule that applies now, and `decideAutoSleep`
-  applies it as it does the setting, with the same session anti-nag memory: inside the
-  window, every story that starts or resumes arms a duration timer of
-  `KIDS_BEDTIME_MINUTES` (20) with the normal fade, unless a timer on that book was
+- The auto sleep rule for a kids profile is its bedtime, always on, and
+  `decideAutoSleep` applies it as it does the setting, with the same session anti-nag
+  memory: inside the window, every story that starts or resumes arms a duration timer
+  of `KIDS_BEDTIME_MINUTES` (20) with the normal fade, unless a timer on that book was
   cancelled this session.
 - While a kids profile is active, its bedtime rule **replaces** the device-wide auto
   sleep setting (a grown-up's "end of chapter from 22:00" is not a child's bedtime), and
@@ -158,8 +203,11 @@ running timer has left.
 
 ## Testing
 
-`kids-model.test.ts` (the rules above, the collections shelf included), `use-kids.test.tsx`, `kids-screen.test.tsx`,
-`kids-player.test.tsx`, `grown-ups-button.test.tsx`, `kids-route-guard.test.tsx` and
-`kids-gate.test.tsx` in `src/components/kids/`; the bedtime rule's regression tests in
-`src/playback/auto-sleep-controller.test.ts`. That a tapped story starts in place and
+`kids-model.test.ts` (the rules above, the collections shelf and `kidsShelfMode`
+included), `use-kids.test.tsx`, `kids-screen.test.tsx`, `kids-player.test.tsx`,
+`grown-ups-button.test.tsx`, `kids-route-guard.test.tsx` and `kids-gate.test.tsx` in
+`src/components/kids/`; the connect gate in `src/components/connect/connect-layout.test.tsx`;
+`src/playback/listener-settings.test.ts` (1× and the bedtime rule) and the bedtime
+regression tests in `src/playback/auto-sleep-controller.test.ts`; the read-again on a new
+token in `src/api/provider.test.tsx`; the car's trimmed shelf in `src/car/car-model.test.ts`. That a tapped story starts in place and
 never opens the full player is in `kids-screen.test.tsx`.

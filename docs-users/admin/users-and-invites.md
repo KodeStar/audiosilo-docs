@@ -10,7 +10,7 @@ they sign in. It has four sections: **People**, **Invites**, **Shares** (see
 
 ## The People page
 
-![The People page](/img/screenshots/admin/people.png)
+![The People page: person cards, with one household (an owner, a grown-up and a kid member) grouped into a block across the page](/img/screenshots/admin/people.png)
 
 **People > People** shows everyone with an account as a card, with a count of
 accounts and how many were active this month. Each card shows:
@@ -137,6 +137,8 @@ shares with them** (each collection with how many books in it Adam can still
 reach). Only Adam changes that, from the player. The list under it becomes
 **Access given here**: anything you give them directly, on top of the
 household.
+
+![A kid household member's Access tab: Managed by maya and Kid under the name, Collections maya shares with them with one collection, and Access given here with nothing given directly](/img/screenshots/admin/person-member.png)
 
 - **Give access** adds a whole library or one of your shares they don't have
   yet.

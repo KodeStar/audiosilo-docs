@@ -25,7 +25,7 @@ Everything here except your servers is **kept per device**, so your phone and yo
 |---|---|---|
 | **Skip back** | The jump of the player's back button | 5-120 s (default 15 s) |
 | **Skip forward** | The jump of the forward button | 5-120 s (default 30 s) |
-| **Default speed** | Starting speed for books you haven't played yet (each book then remembers its own) | 0.5×-2× |
+| **Default speed** | Starting speed for books you haven't played yet (each book then remembers its own). [Kids mode](kids-mode.md) always starts at 1× | 0.5×-2× |
 | **Auto-rewind on resume** | How far playback backs up after a pause, so you regain the thread | Off-30 s (default 5 s) |
 | **Chapter length (unchaptered)** | Size of the virtual chapters created for long books with no chapter markers | 5-60 min (default 30 min) |
 | **Smart speed** | Shortens the silences between words ([where it works](full-player.md#smart-speed-and-voice-boost)) | On / Off (default **Off**) |

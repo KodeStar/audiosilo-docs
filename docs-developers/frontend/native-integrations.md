@@ -70,8 +70,11 @@ protection), so a car shows its lists at once, before or without JS.
 - **A kids profile** (player redesign 8b-1) gets the kids shelf only
   (`kidsCarBooks`): the `library` tab holds the shelf as [kids mode](kids-mode.md#in-the-car)
   shows it (the owner's shared collections, else the one library, else the account's
-  downloads), titled "Your stories" through the snapshot input's `titles`, and
-  `continue` the shelf's stories in progress; `upnext` and `downloads` are `null`, so
+  downloads), titled "Your stories" through the snapshot input's `titles`, each story
+  once and trimmed to `CAR_TAB_LIMITS.library` (50) in `kidsCarBooks` itself, before
+  the controller fetches a cover for every book a tab holds (a shelf of shared
+  collections can hold a thousand), and `continue` the shelf's stories in progress
+  (found on the whole shelf, not only its first 50); `upnext` and `downloads` are `null`, so
   those tabs are left out (`CarSnapshotInput.books` is `Record<CarTabId, CarBook[] |
   null>`, a `null` tab omitted). The controller builds it without React from the same
   reads as `useKidsStories` and rebuilds the snapshot when kids mode turns on or off.

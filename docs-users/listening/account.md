@@ -26,6 +26,19 @@ Why it's worth doing, especially if you were invited by pairing and never set on
 
 Demo accounts can't have a password, so the card isn't shown for them.
 
+If someone added you to their [household](household.md), the card says so: *"Adam set up this account, so it has no password yet. Set one to sign in on a new device yourself."*
+
+## A kid's account
+
+A kid's account from someone's [household](household.md) has a simpler page, because the grown-up who manages it looks after its devices:
+
+- The **Password** card says *"A kid's account has no password. Adam signs it in on a new device."*, with no button: a kid's account can't have one.
+- **Pair another device** doesn't make a code: *"A kid's account can't pair a device. The person who manages it sets up its devices from Household."*
+- There's no **Personal API keys** section.
+- [Listening in the house](in-the-house.md) is off, and its switch on the Household page says *"A kid's account can't share what it listens to."*
+
+When the person who manages it switches the account between kid and grown-up, the page follows the next time it's opened.
+
 ## Pair another device
 
 Sign another phone, tablet or browser in to the same account without a new invite:
@@ -56,13 +69,15 @@ The list appears on servers new enough to show it.
 
 ## Personal API keys
 
-**Personal API keys** let dashboards, scripts and other tools reach your server on your behalf, such as a Home Assistant or Heimdall tile. See [API keys for integrations](api-keys.md) for creating, using and revoking them. On a server too old to offer them, the section says so; demo accounts don't have it.
+**Personal API keys** let dashboards, scripts and other tools reach your server on your behalf, such as a Home Assistant or Heimdall tile. See [API keys for integrations](api-keys.md) for creating, using and revoking them. On a server too old to offer them, the section says so; demo accounts and kids' accounts don't have it.
 
 ## Signing out
 
 **Sign out of &lt;server&gt;** at the bottom of the page disconnects this device from that server.
 
 If you're about to sign out **without a password set**, the app stops you with a warning - *"Without one you'll need a new invite from your admin to sign back in on this server"* - and offers to **Set a password** right there. Take the offer; it's the whole reason the warning exists. If books from this server are downloaded on the device, the warning also says how many you'd lose.
+
+For a member of someone's household, the warning names who can sign you in again instead: *"Without a password, Adam can sign you in again from their Household page."*, or for a kid's account, *"A kid's account has no password. Adam can sign it in again from their Household page."*
 
 Signing out **takes this server out of your app** and deletes your downloads from it on this device, along with any of your progress that hasn't synced yet. Anyone else on this device signed in to the same server keeps theirs. (Books, progress, and bookmarks stored on the server are safe - sign back in and they're all there.)
 

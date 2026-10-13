@@ -600,8 +600,12 @@ member's session and pairing code `409 member_disabled`.
 **Client rules:** a member signed in on the owner's device is placed by
 `addMemberHere` (the owner stays the person listening, the default connection
 doesn't move); `member_kind === 'kid'` turns kids mode on by default and allows it
-with no grown-up on the device; `managed_by` picks the kids shelf's collections. The
-player never filters a kid's access itself.
+with no grown-up on the device; `managed_by` picks the kids shelf's collections
+(`kidsShelfMode`). The player never filters a kid's access itself. Refusals are read
+by `ApiError.code` (`apiErrorKind` in `client.ts`, the codes above), falling back on
+the status for an older server or a route without codes, and said in the app's own
+words: the server's `error` message is never shown. A new `code` therefore needs a
+case in `API_ERROR_CODES` and its words in the player, or it reads by its status.
 
 **Old clients:** a shipped player ignores the new `user` fields and sees a member as
 an ordinary account; a kid signed in to an old player is still limited by the

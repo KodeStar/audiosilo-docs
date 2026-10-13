@@ -62,7 +62,9 @@ Instead of an address you can use:
 - **Scan a QR code** (in the iOS and Android apps) - the pairing QR from the server's connect page or from another of your devices.
 - **I have a pairing link** (in the web player) - paste a pairing link your admin or another of your devices sent you (it looks like `https://books.example.com/web/connect?token=…`) and tap **Connect**.
 
-Either signs you in straight away, with nothing to type.
+Either signs you in straight away, with nothing to type. A pairing link works once and for a short time, so one that has expired or was already used says *"This pairing link has expired or was already used. Ask for a new one, or enter your invite code on the sign-in screen."* After a lot of tries in a row, the server asks you to wait: *"Too many tries. Wait a few minutes and try again."*
+
+On a device in [kids mode](kids-mode.md#links-in-kids-mode), a link or QR code isn't opened at all: the app asks for a grown-up to open it.
 
 ### Invite codes
 

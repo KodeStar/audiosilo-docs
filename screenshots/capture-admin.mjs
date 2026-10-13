@@ -262,6 +262,16 @@ const LISTENERS = [
 ];
 let mayaId = null;
 let heartbeats = null;
+// Maya's household (Phase 8b-1): two members she adds from the player's own API
+// (POST /me/household/members as maya), a kid on the collection she shares with them and
+// a grown-up on everything she can listen to, so People shows a household block and a
+// member's page has the household access to show.
+const MEMBERS = [
+  {name: 'Ivy', kind: 'kid', access: 'collections'},
+  {name: 'Dan', kind: 'grownup', access: 'all'},
+];
+const MEMBER_COLLECTION = {name: "Ivy's books", books: 2};
+let memberId = null; // the kid's account
 
 const saveProgress = async (l) => {
   const now = Date.now();
@@ -311,6 +321,23 @@ await step('provision listening sessions', async () => {
   }
   mayaId = LISTENERS[0].id;
 
+  // Maya's household: a collection of hers for Ivy, then the two members.
+  {
+    const maya = LISTENERS[0];
+    const made = await api(maya.token, 'POST', '/me/collections', {name: MEMBER_COLLECTION.name});
+    const items = books.slice(0, MEMBER_COLLECTION.books).map((b) => ({library_id: library.id, path: b.rel_path}));
+    await api(maya.token, 'PUT', `/me/collections/${made.collection.id}/items`, {items});
+    for (const m of MEMBERS) {
+      const {member} = await api(maya.token, 'POST', '/me/household/members', {
+        name: m.name,
+        kind: m.kind,
+        access: m.access,
+        ...(m.access === 'collections' ? {collection_ids: [made.collection.id]} : {}),
+      });
+      if (m.kind === 'kid') memberId = member.id;
+    }
+  }
+
   // A transcoded stream from Theo's device: the mark lasts 10 minutes, so his
   // session on the book is recorded as transcoded.
   const theo = LISTENERS.find((l) => l.transcode);
@@ -345,7 +372,7 @@ await step('provision listening sessions', async () => {
       saveProgress(l).catch((e) => console.log(`  ! heartbeat for ${l.username}: ${e.message}`));
     }
   }, HEARTBEAT_MS);
-  console.log('  ✓ provisioned (maya, theo and nora listening)');
+  console.log('  ✓ provisioned (maya, theo and nora listening; maya\'s household)');
 });
 
 // ── Capture ────────────────────────────────────────────────────────────────
@@ -530,6 +557,12 @@ await step('a person (Access tab)', async () => {
   await open(page, `/people/user/${samId}?tab=access`);
   await page.getByRole('tab', {name: 'Access'}).waitFor({timeout: 8000});
   await shoot(page, 'admin/person.png');
+});
+
+await step("a household member's page (Access tab)", async () => {
+  if (!memberId) throw new Error('no household member was provisioned');
+  await open(page, `/people/user/${memberId}?tab=access`);
+  await shoot(page, 'admin/person-member.png');
 });
 
 await step('invite someone', async () => {

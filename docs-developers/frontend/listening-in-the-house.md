@@ -117,7 +117,10 @@ pane before Phase 8b-1) renders one `HouseSharingRow` per connection of the acti
 profile whose server has `household`, under a "Listening in the house" heading (a note
 when none of them offers it, once every server has answered). A kid household member never
 shares and never sees the house: the server answers `{ sharing: false, listening: []
-}` and refuses its `PUT` (`403 kid_account`). See
+}` and refuses its `PUT` (`403 kid_account`). `HouseSharingRow` shows a kid's account
+(`isKidAccount`) the switch off and disabled, with "A kid's account can't share what it
+listens to." in place of the privacy sentence, and a `kid_account` refusal reads the
+same, never the demo account's words. See
 [Profiles](profiles.md#visible-and-background-connections).
 
 ## Testing
