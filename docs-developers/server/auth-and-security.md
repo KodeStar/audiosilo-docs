@@ -112,7 +112,7 @@ every axis:
   more than a day.
 - **Still the person's.** Deleting the account deletes it with the account's other
   tokens. Disabling the account only **suspends** it, as it does every token
-  (`SetDisabled` revokes nothing; `lookupToken` checks the user on every request): it
+  (disabling, `UpdateUser`'s `disabled`, revokes nothing; `lookupToken` checks the user on every request): it
   is refused while the account is disabled and works again if the account is enabled
   before it expires, so signing out the device that minted it is what ends it for
   good. The media handlers check the person's **current** share scope, so a revoked
@@ -256,7 +256,8 @@ Three fences keep a demo session from becoming a durable login:
   never offered as share targets.
 - A demo account can't add [household members](#household-members) (every member
   route but the list is `403`; the list answers `allowed: false`, `reason: "demo"`),
-  and can't be anyone's owner.
+  and is never anyone's owner or member: the admin's Assign refuses both
+  (`409 owner_is_demo`, `409 member_is_demo`).
 - Every demo refusal carries `code: "demo_account"` (`nonDemoAccount`).
 - A demo account can't share its listening with the house (`PUT /me/household`
   is `403`, `nonDemoAccount`), and demo accounts never appear in anyone's
@@ -283,14 +284,18 @@ or change their own password:
 ## Admin guards
 
 Account-safety invariants live in `internal/auth`, not in handlers, so every
-caller gets them:
+caller gets them. The admin's `PATCH /admin/users/{id}` is **one** `auth.UpdateUser`
+transaction (`SetPassword` is a password-only call of it): every change in the body
+is checked against the account, each as the ones before it leave it (password,
+household, role, disabled, `can_add_members`), before anything is written, so a
+refused field changes nothing.
 
-- **`ErrLastAdmin`** - the last *enabled* admin cannot be demoted
-  (`SetRole`), disabled (`SetDisabled`), or deleted (`DeleteUser`). The console
-  can never be locked out.
+- **`ErrLastAdmin`** - the last *enabled* admin cannot be demoted or disabled
+  (`UpdateUser`) or deleted (`DeleteUser`); both read the account and the guard
+  inside the write, so two admins removing each other at once can't both pass. The
+  console can never be locked out.
 - **`ErrAdminNeedsPassword`** - an account cannot become (or remain) an admin
-  without a password: enforced on create, on promote (`SetRole`), and on
-  password clear (`SetPassword`).
+  without a password: enforced on create, on promote and on password clear.
 - **No self-delete** - enforced additionally in the delete *handler*: an admin
   may disable their own account (reversible) but never delete it
   (irreversible). `DeleteUser` cascades sessions, auth codes, progress,
@@ -302,13 +307,22 @@ caller gets them:
   `Authenticate` rejects empty-hash accounts outright, so a password-less user
   can only ever authenticate via code pairing (or, for a
   [household member](#household-members), a session their owner makes).
-- **`ErrMemberNotAdmin`** - a household member is never an admin: `SetRole`
-  refuses promoting one, and `AssignMember` refuses making an admin a member
-  (`409 member_not_admin`); "Make independent" comes first.
+- **`ErrMemberNotAdmin`** - a household member is never an admin: `UpdateUser`
+  refuses promoting one and assigning an admin as a member (`409 member_not_admin`);
+  "Make independent" comes first, and works in the same request as the promotion.
+- **`ErrKidNoPassword`** - a kid holds no password: `UpdateUser` refuses a non-empty
+  password on a kid, or beside assigning the account as a kid (`400
+  kid_no_password`); clearing one is fine.
+- **The Assign refusals** (`checkAssign`, inside the transaction): an unknown owner
+  (`404`), the account itself (`ErrSelfManaged`), an owner who is a member
+  (`ErrOwnerIsMember`) or a demo account (`ErrOwnerIsDemo`), a demo account as the
+  member (`ErrMemberIsDemo`), an admin (`ErrMemberNotAdmin`), and someone with members
+  of their own (`ErrHasMembers`), each `409` with its code.
 - **`DeleteUser(ctx, id, keep)`** deletes the person's household members with
   them, in the same transaction, except the ids in `keep` (cleared to ordinary
-  accounts); a `keep` id that isn't their member is `ErrInvalidKeepMembers` and
-  nothing changes. The last-admin rule is checked first.
+  accounts, their open pairing tokens revoked); a `keep` id that isn't their member
+  is `ErrInvalidKeepMembers` and nothing changes. The last-admin rule is checked
+  first.
 
 ## Authorization: shares → Scope
 
@@ -448,6 +462,10 @@ denied test:
   hasn't listened in 24 hours sees others without showing up for them).
 - **Who can appear.** Other users only (never the caller), enabled, not demo, with
   sharing on.
+- **Never a kid.** A kid [household member](#household-members) has no
+  `household_sharing` row: becoming a kid deletes it, and `PUT /me/household` refuses
+  a kid both at the route and inside the write. So the opt-in rule alone leaves kids
+  out, as a row and as a viewer, with no kid filter of its own.
 - **What of them.** One row per person: their newest session recorded on this
   server (`import_id = 0`, not backfilled, listened > 0) within 24 hours.
 - **Only books the caller may open.** That newest book passes the **caller's**
@@ -471,13 +489,11 @@ security model.
 
 **One level, never admin.** An owner is never a member, a member never has members
 (`ErrHasMembers`), and a member is never an admin (`ErrMemberNotAdmin`), so the
-admin role is never derived. Callers of the scope functions keep passing `isAdmin =
-u.Role == "admin"`; the owner's admin-ness is read inside the member rule, never from
-the caller.
+admin role is never derived. A demo account is never either (`ErrOwnerIsDemo`,
+`ErrMemberIsDemo`).
 
-**The member rule** (`catalog/members.go`, in `UserScope`, `UserScopes` and
-`AccessibleLibraries`; decided per request, with no cache to invalidate). A member's
-scope is the union of:
+**The member rule** (`catalog/members.go`; decided per request, with no cache to
+invalidate). A member's scope is the union of:
 
 - their own admin grants (unchanged);
 - for `all`: the owner's **current** scopes, computed with the owner's role. An admin
@@ -489,57 +505,101 @@ scope is the union of:
   item with an empty path never grants a whole library.
 
 A member whose owner is themselves, or is a member (data the writes refuse), derives
-nothing. A disabled owner changes nothing for their members. `UserShares` (the
-console's Access tab) stays the direct grants only; the console lists the derived
-access beside it. Every consumer follows from the three functions: browse, search,
-media, cast mint and cast media, `/next`, the car and household listening. A book
-removed from a kid's collection, the collection unshared or deleted, or a library
-taken from the owner, is `403` on the next request, including through an existing
-cast token (the media handler checks the person's current access).
+nothing. A disabled owner changes nothing for their members.
+
+**The rule rides on the request.** `auth.lookupToken` reads the account's
+`managed_by`, `member_kind` and the rule (`auth.User.MemberRule`: the owner, the
+access, whether the owner is an admin) in its one statement, through a primary-key
+`LEFT JOIN` of the owner (`memberColumns`/`memberScan`, which `getUser` shares). The
+transport passes it on as a `catalog.Caller` (`api.callerOf`) to `CallerScope`,
+`CallerScopes` and `CallerLibraries`, so a non-member's scopes cost the one grants
+statement they always did and a kid's refusal reads nothing. `UserScope`,
+`UserScopes` and `AccessibleLibraries` (id and `isAdmin`) read the rule themselves
+(`memberRuleOf`, the same conditions) for a caller known only by id, such as the
+importer; `TestMembers_RuleReadsAgree` holds both readings to the same scopes for
+every kind of account, bad data included. New transport code builds scopes from the
+request's user with `callerOf`, never from an id. `UserShares` (the console's Access
+tab) stays the direct grants only; the console's detail carries the derived access
+beside it (`accessible_libraries`, and a member's `owner_libraries`). Every consumer
+follows from these functions: browse, search, media, cast mint and cast media,
+`/next`, the car and household listening. A book removed from a kid's collection, the
+collection unshared or deleted, or a library taken from the owner, is `403` on the
+next request, including through an existing cast token (the media handler checks the
+person's current access).
 
 **Long path lists.** A `collections` member can hold a thousand item paths. Over 32
 paths, `pathFilterSQL`/`scopesFilterSQL` switch to a single-parameter form
 (`pathsJSONFilterSQL`: a row's path and each of its ancestors looked up in one JSON
-list, the same rows as the `OR` form, which could not hold 1,000 arms at all).
+list, the same rows as the `OR` form, which could not hold 1,000 arms at all; a path
+that isn't valid UTF-8, which JSON can't carry exactly, keeps an `OR` arm of its own).
 `BenchmarkMemberScopes` (3,000 books, a 1,000-item kid against a whole-library
-listener) records the cost: browse 2.4 ms vs 0.27 ms, search 9.2 ms vs 5.6 ms, the
-progress list 4.8 ms vs 1.7 ms.
+listener, through the `Caller` path) records the cost: browse 2.4 ms vs 0.26 ms,
+search 9.1 ms vs 5.6 ms, the progress list 4.9 ms vs 1.7 ms, and the scope load
+itself 1.05 ms vs 0.017 ms.
 
 **Creating accounts without an admin** (`auth/members.go`, `CreateMember`, one
-transaction): the owner is checked (not demo, not a member, the server's
-`household.members_enabled`, their `can_add_members`, under `household.max_members`),
-the name is validated, the username derived (never chosen by the caller, so it can't
-claim an existing one), and the account inserted with `role = 'user'` and an empty
+transaction): the owner is checked (`MayAddMembers`: not demo, not a member, the
+server's `household.members_enabled`, their `can_add_members`; then under
+`household.max_members`), the name is validated, the username derived (never chosen
+by the caller, so it can't claim an existing one; numbered with no cap, so there is
+always a free one), and the account inserted with `role = 'user'` and an empty
 password hash. The body is decoded strictly, so a `role` field is `400`. An API key
 can't reach any member route (`denyAPIKey`), and create, session and pair take the
-self-service rate limit.
+account rate limit, charged only after the API-key, demo and member refusals.
 
-**Kids.** A kid account holds no password, API key, pairing token or recovery code:
-`POST /auth/password`, `POST /auth/tokens`, `POST /auth/pair` and `POST
-/auth/recovery` answer `403 kid_account`, and switching a member to a kid (by the
-owner, or the admin's Assign) clears all four in the same transaction
-(`clearKidCredentials`), leaving its signed-in sessions alone. A kid signs in only on
-devices the owner sets up: a session made on the owner's device, or the member
-pairing code (`POST /me/household/members/{id}/pair`, single use, 10 minutes).
+**Kids.** A kid account holds no password, API key, pairing token, recovery code,
+invite or house sharing, and shares collections only with its owner. `POST
+/auth/password`, `POST /auth/tokens`, `POST /auth/pair`, `POST /auth/recovery`, `PUT
+/me/household` and `PUT /me/collections/{id}/shares` answer `403 kid_account` from one
+route wrapper (`api.notKid`, before the handler; wrap any new route a kid can't use).
+The writes that mint a credential or a share of the house refuse a kid again inside
+their own transaction (`auth.refuseKid` in `IssueAPIToken`, `GenerateRecoveryCode` and
+`IssueOwnPairingToken`; `catalog.SetHouseholdSharing`), so a request that passed the
+wrapper just before the owner's switch to kid committed can't leave the kid holding
+one; a password racing it is refused inside `UpdateUser` (`ErrKidNoPassword`).
+Switching a member to a kid (by the owner, or the admin's Assign) clears, in the same
+transaction (`clearKidCredentials`): the password (and the browsers it signed in
+from), API keys, open pairing tokens, the recovery code, still-redeemable invites
+(`supersedeActiveInvites`, whose linked pairing tokens cascade), the
+`household_sharing` row (so a kid made a grown-up again starts with house sharing off
+and opts in again), and the collections shared between the kid and anyone but their
+owner, both ways (so no sharer is left with a kid in a list the server would refuse
+back). Its signed-in sessions stay. A kid signs in only on devices the owner sets up:
+a session made on the owner's device, or the member pairing code (`POST
+/me/household/members/{id}/pair`, single use, the same 10 minutes as `/auth/pair`).
 Turning kids mode off in a player never widens anything: the server decides access.
 
 **Visibility.** A kid is listed by `ShareTargets` only to their owner, and
 `SetCollectionShares` refuses a kid target from anyone else with `ErrUnknownUser`
-(the same answer as an unknown id, so it can't be used to probe who is a kid). A kid
-can't share a collection (`403 kid_account`). `HouseListening` and
-`HouseholdSharing` leave kids out both ways: never a row, never a viewer, never
-sharing (see [what other people see](#listening-in-the-house-what-other-people-see)).
+(`kidOnlyToOwnerSQL`; the same answer as an unknown id, so it can't be used to probe
+who is a kid). `HouseListening` and `HouseholdSharing` leave kids out both ways:
+never a row, never a viewer, never sharing, because a kid has no `household_sharing`
+row (see [what other people see](#listening-in-the-house-what-other-people-see)).
 
 **Ownership.** Every `{id}` member route loads the member through `memberOf`, which
 answers `ErrNotMember` (404) for anyone who isn't the caller's member, so another
 person's member is indistinguishable from no such account.
 
+**A disabled member.** The admin's disable stops every token of the member's, as for
+anyone. The owner's session and pair routes then answer `409 member_disabled`
+(`ErrMemberDisabled`, read inside their transaction) instead of minting a token that
+could never work; the owner can still rename, sign out and delete the member.
+
 **Sign-ins made on the owner's device.** A member session made through
 `sign_in_here` or `…/session` records the owner's token in
-`tokens.created_on_token_id`. It is information only (a token's validity never reads
-it): signing the owner's device out leaves those sessions alone unless the owner asks
-`?also_members=1`, which revokes them in the same transaction, restricted to
-`managed_by = caller`.
+`tokens.created_on_token_id`. A token's validity never reads it. Signing the owner's
+device out leaves those sessions alone unless the owner asks `?also_members=1`, which
+revokes them in the same transaction, restricted to `managed_by = caller`, and audits
+each member signed out (`member.device_revoke`).
+
+**Moving between households** (`auth.leaveOwners`). When the admin assigns a person to
+an owner they don't already have (a first assign, or a move), the person is signed
+out of what someone else set up for them: every session and API key whose
+`created_on_token_id` is a device of anyone but the new owner (which would otherwise
+carry the new owner's access to the old owner's phone), and their open unlinked
+pairing tokens. Leaving a household ("Make independent", or kept by `keep_members`
+when the owner is deleted) revokes the open unlinked pairing tokens only. The
+person's own devices stay signed in either way.
 
 ## Path traversal: `library.SafeJoin`
 
@@ -570,7 +630,7 @@ Two mechanisms in `internal/api/ratelimit.go`, six buckets wired in `api.New`:
 | `loginLimiter` | Failure lockout per IP (`limiter`) | 10 failures / 15 min | `POST /auth/login` |
 | `redeemLimiter` | Failure lockout per IP | 10 failures / 15 min | `POST /auth/redeem` |
 | `demoLimiter` | **Attempt** cap per IP (`Acquire`) | 5 / 15 min | `POST /demo/session` |
-| `accountLimiter` | **Attempt** cap per IP (`Acquire`) | 10 / 15 min | `POST /auth/password`, `POST /auth/recovery`, `/auth/tokens` (create/list/revoke) |
+| `accountLimiter` | **Attempt** cap per IP (`Acquire`) | 10 / 15 min | `POST /auth/password`, `POST /auth/recovery`, `/auth/tokens` (create/list/revoke); adding a household member, and a member's session and pairing code (`POST /me/household/members`, `.../{id}/session`, `.../{id}/pair`), charged only after the API-key, demo and member refusals |
 
 The failure-lockout `limiter` has two usage patterns: `Allowed`/`Fail`/`Reset`
 counts only *failed* attempts (right for login/redeem, where success should not

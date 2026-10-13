@@ -572,23 +572,30 @@ player, and everything about what it may do is the server's.
   `AddMemberResult`, `UpdateMemberBody`, `MemberKind`, `MemberAccess`), `client.ts`
   and `hooks.ts` ([State and data](../frontend/state-and-data.md#household-members-player-redesign-phase-8b-1)).
 - The `user` object (`/me` and every session envelope) gains `managed_by` (`{ id,
-  username }` or `null`) and `member_kind` (`"kid"`, `"grownup"` or `null`). The
-  member's access is not on it: the player can't see it and never needs it.
+  username }` or `null`) and `member_kind` (`"kid"`, `"grownup"` or `null`), and, for a
+  member only, `display_name` (the name the owner typed; the player names a new profile
+  for the account after it). The member's access is not on it: the player can't see it
+  and never needs it.
 - `/me/devices` rows gain `member_sign_ins`, and `DELETE /me/devices/{id}?also_members=1`
   answers `{ current, members_signed_out }`.
 - The admin's user objects gain `member_access`, `can_add_members`, `members_count`
-  and `display_name`; `PATCH /admin/users/{id}` takes `can_add_members` and
-  `managed_by`; `DELETE /admin/users/{id}?keep_members=`. The settings envelope gains
-  `household` (`members_enabled`, `max_members`). These are the console's, inside the
-  server repo.
+  and `display_name`, and their `managed_by` the owner's own `display_name`; a person's
+  detail gains `members` and `member_collections`, and for a member `owner_libraries`
+  and `owner_is_admin`; `PATCH /admin/users/{id}` takes `can_add_members` and
+  `managed_by` (one transaction); `DELETE /admin/users/{id}?keep_members=`. The settings
+  envelope gains `household` (`members_enabled`, `max_members`, and the read-only
+  `max_members_default`, `max_members_min`, `max_members_max`). These are the console's,
+  inside the server repo.
 
 **Server rules** (each with an allowed and a denied test;
 [Auth & security](../server/auth-and-security.md#household-members)): the member rule
-in `UserScope`/`UserScopes`/`AccessibleLibraries` (the owner's current access for
+read with the request's token (`CallerScope`/`CallerScopes`/`CallerLibraries`; by id,
+`UserScope`/`UserScopes`/`AccessibleLibraries`) (the owner's current access for
 `all`, the owner's shared collections intersected with it for `collections`, plus
 the member's own grants), one level and never admin, the kid refusals
-(`403 kid_account`), kids out of share targets and Listening in the house, someone
-else's member always `404`.
+(`403 kid_account`, at the route and inside the minting writes), kids out of share
+targets and Listening in the house, someone else's member always `404`, a disabled
+member's session and pairing code `409 member_disabled`.
 
 **Client rules:** a member signed in on the owner's device is placed by
 `addMemberHere` (the owner stays the person listening, the default connection

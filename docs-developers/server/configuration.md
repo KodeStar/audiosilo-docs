@@ -174,7 +174,11 @@ Both are read per request through the API's live config, so a change applies at 
 | `household.members_enabled` | bool, `true` | Anyone with an account but a demo account may add members (`POST /me/household/members`). Off refuses new ones only (`403 feature_off`); existing members keep working and their owners can still manage them. The per-person switch is the admin's `can_add_members` on each account (`PATCH /admin/users/{id}`), not a key here |
 | `household.max_members` | int, `6` | Members per person, `1` to `50` (`config.MinMaxMembers`/`MaxMaxMembers`); at it, adding is `409 member_limit`. Outside the range `Validate` refuses the config (a value from the environment included, so the server doesn't start) |
 
-A `config.yaml` written before the section keeps the defaults.
+A `config.yaml` written before the section keeps the defaults. The admin's settings
+envelope carries the cap's default and range beside the two settings, as read-only
+facts (`household.max_members_default`, `_min`, `_max`), so the console names the
+range and refuses a value outside it before saving (see
+[`GET /admin/settings`](api/reference.md#get-apiv1adminsettings)).
 
 ### Community metadata (`metadata.*`)
 
@@ -552,7 +556,7 @@ reason, and nothing is applied (all or nothing). The handler then writes
 | `demo.library` | trimmed; must be the name of an existing library |
 | `demo.max_users` | `null` (the default, 200) or 0 (no limit) to 100000 |
 | `demo.idle_ttl` | `""` (24h) or a positive Go duration |
-| `household.max_members` | an integer from 1 to 50 (`fixMaxMembers`) |
+| `household.max_members` | an integer from 1 to 50 (checked by `Validate`) |
 | `backups.schedule` | `""`, `daily:HH:MM` or `weekly:DAY:HH:MM` (`backup.ParseSchedule`), stored in canonical form |
 | `backups.keep` | an integer from 1 to 365 (checked by `Validate`) |
 

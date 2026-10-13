@@ -140,7 +140,7 @@ per-person switch); `display_name` (`TEXT NOT NULL DEFAULT ''`, the name the own
 typed for a member, `''` for everyone else). The first three are **all set or all
 NULL**: SQLite can't add a table CHECK with `ALTER TABLE`, so `auth` (`members.go`)
 writes and clears them together and a row that says otherwise reads as no member
-(`scanUser`). `SET NULL` only covers a member an admin kept when deleting the
+(`memberScan`). `SET NULL` only covers a member an admin kept when deleting the
 owner (`auth.DeleteUser` deletes the others explicitly and clears the kept ones'
 other two columns in the same transaction). Durable: this is the account, not the
 index.
@@ -169,9 +169,12 @@ signed in.
 `created_on_token_id` *(0044; FK to `tokens` `ON DELETE SET NULL`, partial index
 `idx_tokens_created_on`)* records, for a household member's session made on their
 owner's device (`sign_in_here`, `…/members/{id}/session`), the owner's token it was
-made on. It is **information only**, never part of a token's validity: it names the
-members [`GET /me/devices`](api/reference.md#get-apiv1medevices) lists under
-`member_sign_ins`, and which tokens `DELETE /me/devices/{id}?also_members=1` revokes.
+made on. It is never part of a token's validity: it names the members
+[`GET /me/devices`](api/reference.md#get-apiv1medevices) lists under
+`member_sign_ins`, which tokens `DELETE /me/devices/{id}?also_members=1` revokes, and,
+when the admin moves the person into another owner's household, which sessions and
+API keys were made on someone else's device and are revoked with the move
+(`auth.leaveOwners`).
 The admin console lists live session and API-key tokens as **devices** (never pairing
 or cast tokens)
 (`auth.ListDevices`) and can revoke one (`auth.RevokeDevice`).

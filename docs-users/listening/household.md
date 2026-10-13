@@ -75,7 +75,7 @@ For a kid, the shared collections are what [kids mode](kids-mode.md#what-the-chi
 Each person you've added has a card on the Household page: their name, *Kid* or *Grown-up* with their username, and **On this device** when they're signed in here. On it:
 
 - **What they can listen to**, with each shared collection (tap one to open it) and **Change**.
-- **Kids account**: switch it on to make a grown-up a kid. The app asks first (*"Make Ellis a kids account?"*): their password and API keys are removed, and the devices they're signed in on stay signed in. Switching it off makes a kid a grown-up, who can then set a password.
+- **Kids account**: switch it on to make a grown-up a kid. The app asks first (*"Make Ellis a kids account?"*): their password and API keys are removed, and the devices they're signed in on stay signed in. The server also cancels any unused pairing code or invite of theirs and their recovery code, stops them sharing their listening with the house, and ends any collection sharing between them and anyone but you. Switching it off makes a kid a grown-up, who can then set a password, and turn on sharing with the house again if they want it.
 - **Their devices** (below).
 - **Name**, with **Rename**: the name everyone on the server sees. Their username stays the same.
 - **Delete their account** (below), and **Remove from this device** when they're signed in here.
@@ -86,6 +86,8 @@ The card lists every device the member is signed in on, each with **Sign out**. 
 
 - **Set up their own device** shows a code for their own phone or tablet: they scan it with the AudioSilo app, and it signs straight in. On a kid's own device the app starts in [kids mode](kids-mode.md#on-a-kids-own-device), even though no grown-up is signed in there.
 - **Sign in on this device** signs them in here too, when they aren't already.
+
+If the server's admin has turned the member's account off, neither works: the app says the account is turned off on the server and only its admin can turn it back on. The devices they're already signed in on stop working until the admin turns it back on. You can still rename them, sign them out and delete them.
 
 ## Deleting a member, or removing them from this device
 

@@ -157,7 +157,7 @@ Failures a person can fix also carry a machine-readable **`code`** next to
 
 | `code` | Status | When |
 |---|---|---|
-| `username_taken` | `409` | creating an account with a username that exists (`POST /admin/users`); a household member whose name leaves no free username (`POST /me/household/members`) |
+| `username_taken` | `409` | creating an account with a username that exists (`POST /admin/users`). Adding a household member never answers it: the derived username is numbered with no cap |
 | `name_taken` | `409` | a library or share name already in use (create, rename) |
 | `last_admin` | `409` | demoting or disabling the last enabled admin |
 | `admin_needs_password` | `400` | an admin without a password (creating one, promoting a password-less account, or clearing an admin's password) |
@@ -191,17 +191,20 @@ Failures a person can fix also carry a machine-readable **`code`** next to
 | `invalid_target` | `400` | a notification destination the server refuses (`POST`/`PATCH /admin/notifications`); `field` names the field (`kind`, `name`, `url`, `secret`, `events`) |
 | `too_many_targets` | `409` | `POST /admin/notifications` when the server has 20 destinations |
 | `demo_account` | `403` | a demo account on a route it can't use: the self-service routes (password, recovery code, API keys), sharing a collection, `GET /me/share-targets`, `PUT /me/household`, every `/me/household/members` route but the list |
-| `kid_account` | `403` | a kid household member on `POST /auth/password`, `POST /auth/tokens`, `POST /auth/pair`, `POST /auth/recovery`, `PUT /me/household` or `PUT /me/collections/{id}/shares` |
+| `kid_account` | `403` | a kid household member on `POST /auth/password`, `POST /auth/tokens`, `POST /auth/pair`, `POST /auth/recovery`, `PUT /me/household` or `PUT /me/collections/{id}/shares` (`api.notKid`, before the handler); also from inside the API key, recovery code, pairing and house sharing writes, for a request that passed the wrapper just before the owner's switch to kid committed |
 | `member_cannot_manage` | `403` | a household member on a `/me/household/members` route |
 | `feature_off` | `403` | adding a household member while `household.members_enabled` is off |
 | `not_allowed` | `403` | adding a household member while the admin turned off the caller's `can_add_members` |
 | `member_limit` | `409` | adding a household member at `household.max_members` |
+| `member_disabled` | `409` | `POST /me/household/members/{id}/session` or `.../pair` for a member whose account the admin disabled (no token of theirs would work, so none is made) |
 | `invalid_name` | `400` | a household member's name that is empty, over 40 characters, or holds control characters |
 | `invalid_collections` | `400` | a member's `collection_ids` naming a collection that isn't the caller's own |
 | `member_not_admin` | `409` | `PATCH /admin/users/{id}` making a household member an admin, or assigning an admin as a member |
 | `member_fields_required` | `400` | `PATCH /admin/users/{id}` with a `managed_by` id but not both `member_kind` and `member_access`, or either of those without it |
 | `owner_is_member` | `409` | `PATCH /admin/users/{id}` assigning to an owner who is a household member |
 | `owner_is_demo` | `409` | `PATCH /admin/users/{id}` assigning to a demo account |
+| `member_is_demo` | `409` | `PATCH /admin/users/{id}` assigning a demo account as someone's member |
+| `kid_no_password` | `400` | `PATCH /admin/users/{id}` with a non-empty `password` for a kid, or beside assigning the account as a kid (`""`, clearing, is fine); `POST /auth/password` only if the owner's switch to kid commits during the request |
 | `self_managed` | `409` | `PATCH /admin/users/{id}` assigning a person to themselves |
 | `has_members` | `409` | `PATCH /admin/users/{id}` assigning a person who has household members of their own |
 | `invalid_keep_members` | `400` | `DELETE /admin/users/{id}?keep_members=` with an entry that isn't one of that person's members |
@@ -401,7 +404,7 @@ Phase 8b-1 added one more, always `true` on a server that has it:
 
 | Flag | Gates |
 |---|---|
-| `household_members` | [Household members](reference.md#household-members): `/me/household/members/**`, `managed_by` and `member_kind` on the `user` object, `member_sign_ins` on [`/me/devices`](reference.md#get-apiv1medevices) and its `?also_members=1`. Without it the player offers no "Add someone to your household". It never depends on the caller: whether this caller may add is the members list's `allowed` |
+| `household_members` | [Household members](reference.md#household-members): `/me/household/members/**`, `managed_by`, `member_kind` and (for a member) `display_name` on the `user` object, `member_sign_ins` on [`/me/devices`](reference.md#get-apiv1medevices) and its `?also_members=1`. Without it the player offers no "Add someone to your household". It never depends on the caller: whether this caller may add is the members list's `allowed` |
 
 Gate on the flag rather than on the server version: an older server answers
 `size=` and `narrator=` by ignoring them (full art, the unfiltered list) and the

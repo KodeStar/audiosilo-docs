@@ -32,9 +32,10 @@ accounts and how many were active this month. Each card shows:
   "No devices". Personal API keys aren't counted here; the
   [Devices page](#the-devices-page) lists them.
 
-Click a card to open [that person's page](#a-persons-page). A person's
-household members come straight after their card, so a household reads as one
-run of cards.
+Click a card to open [that person's page](#a-persons-page). A household is
+grouped into one block across the page, headed *Adam's household*: the card of
+the person who added the members first, then each member's card. Someone with no
+members, or a member whose owner isn't on the page, has a card of their own.
 
 ## Inviting someone
 
@@ -161,7 +162,10 @@ and the same **Rotate** and **Revoke** buttons, as the
 
 ### Sign-in
 
-- **Password** - **Set a password** (or **Change password**) for them. It must
+- **Password** - for a kid's account there is nothing to set. The card says
+  instead how they sign in: "Kids sign in without a password: Adam signs them
+  in, or uses “Set up their own device” in the player." For anyone else,
+  **Set a password** (or **Change password**) for them. It must
   be at least 8 characters. A password lets them sign in to the web player by
   username as well as on paired devices; their paired devices stay signed in.
   The console can set or change a password but not remove one.
@@ -237,27 +241,42 @@ For a household member it shows **Managed by** their owner instead, with:
   directly, and stop getting books through their owner, who can no longer
   manage the account. A kid's account has no password: the devices already
   signed in stay signed in, and to add another, [pair a device](#a-persons-page)
-  for them or set a password.
-- **Assign to someone** - moves them to another person's household.
+  for them or set a password. Any code their owner made for their own device that
+  hasn't been used yet stops working.
+- **Assign to someone** - moves them to another person's household, and signs
+  them out on the devices someone else signed them in on, such as their old
+  owner's phone.
 
 **Assign to someone** also works for an ordinary account, such as one you made
 for a child before household members existed. Pick **Whose household**, **Kid
 or grown-up** and **What they can listen to**; the person you pick manages the
-account from then on. Their own grants stay. Making someone a kid removes their
-password, API keys and unused pairing codes (their signed-in devices stay
-signed in); choosing **Only collections** means they see nothing through their
-new owner until the owner shares a collection with them. It isn't offered for an
-admin, and is greyed out, with the reason, for someone who has household
-members of their own. A household member or a demo account can't be the owner.
-The owner's own cap and switch don't apply: you decide.
+account from then on. Their own grants stay, and so do the devices they set up
+themselves; any device someone else signed them in on (such as a previous
+owner's phone) is signed out, and any unused code for their own device stops
+working.
+
+- Making someone a kid removes their password, API keys and unused pairing
+  codes, and any collection sharing with people outside their household (their
+  signed-in devices stay signed in). It also removes their recovery code and any
+  invite of theirs that still works, and turns off sharing their listening with
+  the house. You can't set a password beside it: "A kid signs in without a
+  password. Leave the password out, or choose grown-up."
+- Choosing **Only collections** means they get books through their new owner
+  only from the collections the owner shares with them in the player, including
+  any already shared with them.
+- It isn't offered for an admin, and is greyed out, with the reason, for someone
+  who has household members of their own. A household member or a demo account
+  can't be the owner, and a demo account can't be a member.
+- The owner's own cap and switch don't apply: you decide.
 
 ### Deleting an owner
 
 Deleting someone who has household members deletes their members too, unless
 you say otherwise: the delete dialog lists **Their household members**, each
 ticked (**Delete Evie too**). Untick a member to keep them as an independent
-account. When it's done, a message says how many members were deleted and how
-many kept.
+account: as with **Make independent**, their devices stay signed in and any
+unused code for their own device stops working. When it's done, a message says
+how many members were deleted and how many kept.
 
 ## Editing someone's progress
 

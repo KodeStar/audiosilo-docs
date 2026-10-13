@@ -323,9 +323,10 @@ account, managed by the person who added it." (See
 - **People can add household members** - on out of the box. Off stops new
   members being added; members already added keep working, and the people who
   added them can still manage them.
-- **Members per person** - from 1 to 50 (6 unless you change it). Lowering it
-  never removes anyone: someone already over the new number just can't add
-  more.
+- **Members per person** - from 1 to 50 (6 unless you change it). A number
+  outside that range, or an empty box, says "Enter a whole number from 1 to 50."
+  under the field, and **Save** stays off until it's fixed. Lowering it never
+  removes anyone: someone already over the new number just can't add more.
 
 Both apply at once, with no restart. To stop one person adding members, turn
 off **Can add household members** on their Account tab instead. The
@@ -450,7 +451,8 @@ restore at start, are listed under **AudioSilo**.
 What is recorded: changes to accounts, invites, devices signed out, shares and
 access, household members (added, changed, signed in on a device, given a
 pairing code, a device signed out, or deleted, by the person who manages them
-in the player, who is named as the one who did it), people's progress, libraries, books and covers, ignored health issues,
+in the player, who is named as the one who did it; signing out a lost phone with
+its members ticked records each member signed out), people's progress, libraries, books and covers, ignored health issues,
 settings, backups (including every download, restore and cancelled restore),
 notification destinations, and answers to the
 [support card](console-tour.md#the-support-card) ("Answered the support card",
