@@ -37,10 +37,6 @@ A kid's account from someone's [household](household.md) has a simpler page, bec
 - There's no **Personal API keys** section.
 - [Listening in the house](in-the-house.md) is off, and its switch on the Household page says *"A kid's account can't share what it listens to."*
 
-When the person who manages it switches the account between kid and grown-up, the page follows the next time it's opened.
-
-Wherever the app names the person who manages an account (here, in kids mode and on the Household page), it uses the name they have on this device, as Who's listening? shows it, when they're signed in here too. Otherwise it uses the name the server has for them, which for most accounts is their username.
-
 ## Pair another device
 
 Sign another phone, tablet or browser in to the same account without a new invite:
@@ -63,7 +59,7 @@ Every device signed in to your account on this server, **this device** first, th
 
 To cut off a phone you've lost or sold, tap **Sign out** on its row and confirm. It loses access straight away and needs to sign in again to reach the server.
 
-If you signed in members of [your household](household.md) on that phone (a kid you added there, say), the confirmation also offers **Also sign out Evie and Ellis on that device**, naming them, ticked. Leave it ticked and they're signed out of that phone too; the message afterwards says how many were. Untick it to sign out only yourself. Their sign-ins on other devices, including their own phones, aren't touched (see [If a phone is lost](household.md#if-a-phone-is-lost)).
+If you signed in members of [your household](household.md) on that phone (a kid you added there, say), the confirmation also offers **Also sign out Evie and Ellis on that device**, naming them, ticked. Leave it ticked and they're signed out of that phone too; the message afterwards says how many were. Untick it to sign out only yourself, as for a family tablet that stays at home. Their sign-ins on other devices, including their own phones, aren't touched.
 
 **This device** has no Sign out button in the list. To sign this device out, use [Sign out of the server](#signing-out) at the bottom of the page, which saves your place first.
 
@@ -71,7 +67,7 @@ The list appears on servers new enough to show it.
 
 ## Personal API keys
 
-**Personal API keys** let dashboards, scripts and other tools reach your server on your behalf, such as a Home Assistant or Heimdall tile. See [API keys for integrations](api-keys.md) for creating, using and revoking them. On a server too old to offer them, the section says so; demo accounts and kids' accounts don't have it.
+**Personal API keys** let dashboards, scripts and other tools reach your server on your behalf, such as a Home Assistant or Heimdall tile. See [API keys for integrations](api-keys.md) for creating, using and revoking them. On a server too old to offer them, the section says so; demo accounts don't have it.
 
 ## Signing out
 

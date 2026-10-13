@@ -13,9 +13,7 @@ Kids mode belongs to a [profile](profiles.md): a person on this device.
 
 On a server that offers it, open the [Household page](household.md), tap **Add someone to your household**, type the child's name and leave **Kids account** on (see [Adding a kid](household.md#adding-a-kid)). The child gets an account of their own on your server, made by you with no admin, and is signed in on this device straight away, already in kids mode with the default bedtime. You stay the person listening.
 
-They hear what you share with them: **Only collections I share** (the default for a kid) gives them just the books in the collections you choose, and kids mode shows those collections as their stories. Add a book to one of those collections and it's on their shelf at once. If you change them to **Everything I can listen to**, your collections stop being shared with them and kids mode shows one library instead (the **Library** below).
-
-A kid's account is in kids mode wherever it signs in for the first time: on your device when you add them, and on their own phone or tablet when it scans the code from **Set up their own device**. It goes straight to the kids screen, with no *"Your library is ready."* page first.
+You choose what they can hear (see [What they can listen to](household.md#what-they-can-listen-to)): kids mode shows the collections you share with them as their stories, or, with none, one library (the **Library** below).
 
 ### Kids mode for any profile
 
@@ -28,7 +26,7 @@ Kids mode also works for a child who signs in with an account the server's admin
 
 Under the child's name on the Household page, with **Kids mode** on, pick:
 
-- **Library**: the one library kids mode shows, when the child's account can see more than one. Left alone, it's the first one the account lists. For a kid in your household it's only there while you share no collections with them (*"Shown when Adam shares no collections"*): while you do, those collections are the shelf. Lines like this name you as this device knows you: your name on Who's listening?.
+- **Library**: the one library kids mode shows, when the child's account can see more than one. Left alone, it's the first one the account lists. For a kid in your household it's only there while you share no collections with them (*"Shown when Adam shares no collections"*): while you do, those collections are the shelf.
 - **Bedtime**: when bedtime starts, **7:30 PM** unless you change it (times are written the way the app's language writes them: 7:30 PM in English, 19:30 in the other languages).
 
 If you turn kids mode on while the child is the one listening, the app goes straight into kids mode. To pick the library and bedtime then, hold **Grown-ups**, choose yourself and open the Household page.
@@ -79,4 +77,4 @@ To stop using kids mode for good, turn **Kids mode** off for that person on the 
 
 A kid in your household can have a phone or tablet of their own: on their card on the Household page, tap **Set up their own device** and scan the code with the AudioSilo app on their device (see [Their devices](household.md#their-devices)). The app there starts in kids mode by itself, even though no grown-up is signed in on it.
 
-On that device, holding **Grown-ups** opens Who's listening? with only the child on it, and **Add someone** stays available there: a grown-up can sign in with their own account to change the bedtime or turn kids mode off, and then remove themselves from the device again. That is the only way from kids mode into signing in: a link opened there is turned away as on any device (see [Links in kids mode](#links-in-kids-mode)). A kids account can't set a password, make API keys, pair another device or share its listening with the house, whichever device it's on.
+On that device, holding **Grown-ups** opens Who's listening? with only the child on it, and **Add someone** stays available there: a grown-up can sign in with their own account to change the bedtime or turn kids mode off, and then remove themselves from the device again.

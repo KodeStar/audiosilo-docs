@@ -15,7 +15,7 @@ The **Household** page is where you look after the people you listen with: who u
 
 The page has three parts:
 
-- **On this device**: everyone who listens on this phone, tablet or computer, a card each with their name, PIN and kids mode, then **Who's listening?**, **Sign in someone who already has an account** and **Ask who's listening when the app opens** (see [Sharing a device with your household](profiles.md#on-the-household-page)).
+- **On this device**: everyone who listens on this phone, tablet or computer, a card each with their name, PIN and kids mode, then **Who's listening?**, **Sign in someone who already has an account** and **Ask who's listening when the app opens** (see [Sharing a device (profiles)](profiles.md#on-the-household-page)).
 - **Your household**: *"People you've added. You choose what each of them can listen to."* One card for each person you've added to your household on your server, then **Add someone to your household**. With more than one server, each one that offers it has its own section, *Your household on Hearthside*.
 - **Listening in the house**: the **Share what I'm listening to with the house** switch, one per server (see [Listening in the house](in-the-house.md#turning-it-on)).
 
@@ -34,7 +34,7 @@ Beside **Add someone to your household**, the section shows how many you've adde
 - *"Demo accounts can't add people."*
 - *"You've added the most people this server allows (6)."*
 
-If you are someone's household member yourself, the section says who manages your account (*"Adam manages your account."*) and *"Only Adam can add people or change what you can listen to."* The app names them as this device knows them: their name on Who's listening? when they're signed in here too, else the name the server has for them (usually their username).
+If you are someone's household member yourself, the section says who manages your account (*"Adam manages your account."*) and *"Only Adam can add people or change what you can listen to."*, using their name on Who's listening? when they're signed in here too, else their name on the server.
 
 Even when adding is turned off, you can still rename, sign out and delete the people you added before. On a server running an older AudioSilo, the section isn't there at all.
 
@@ -48,7 +48,7 @@ Even when adding is turned off, you can still rename, sign out and delete the pe
 
 ![Adding a kid: the name typed, Kids account on, Only collections I share with an existing collection and the new Mia's books ticked, and Add and sign in here](/img/screenshots/web-player/household-add-kid.png)
 
-The new collection is only made when you tap **Add and sign in here**, so **Cancel** leaves nothing behind. If the server refuses the add, it's deleted again and nothing changes.
+The new collection is only made when you tap **Add and sign in here**, so **Cancel** leaves nothing behind.
 
 The dialog then says *"Evie is added"* and *"Evie is signed in on this device, in kids mode. Choose them in Who's listening? when it's their turn."* Evie is now a person on this device, in [kids mode](kids-mode.md), with the default bedtime. You stay the person listening, and whatever was playing carries on.
 
@@ -62,44 +62,40 @@ A kids account has **no password**. It can't set one, create [API keys](api-keys
 2. Turn **Kids account** off. **What can they listen to?** then starts on **Everything I can listen to**.
 3. Tap **Add and show their code**.
 
-The app shows **Show Ellis this code**: a QR code to scan with the AudioSilo app on their own phone, or a link to open. It works once, for 10 minutes. If they'll listen on your device too, tap **They'll also use this phone** (or **They'll also use this device**) to sign them in here as well, as a person of their own.
+The app shows **Show Ruth this code**: a QR code to scan with the AudioSilo app on their own phone, or a link to open. It works once, for 10 minutes. If they'll listen on your device too, tap **They'll also use this phone** (or **They'll also use this device**) to sign them in here as well, as a person of their own.
 
-![A grown-up added: Show Ellis this code, the QR code with its link, They'll also use this device and Done](/img/screenshots/web-player/household-add-grownup.png)
+![A grown-up added: Show Ruth this code, the QR code with its link, They'll also use this device and Done](/img/screenshots/web-player/household-add-grownup.png)
 
-A grown-up member is an ordinary account in every other way: they can set a password, pair their other devices, create API keys, share collections and share their listening with the house.
-
-The defaults follow the **Kids account** switch (a kid on Only collections I share, a grown-up on Everything I can listen to) until you pick one yourself. Either choice works for either kind of person.
+A grown-up member is an ordinary account in every other way.
 
 ## What they can listen to
 
 - **Everything I can listen to**: whatever you can listen to on that server, now and later. A library the admin gives you later is theirs too, and if you lose a library, so do they. If you're an admin, that's every library.
 - **Only collections I share**: just the books in the [collections](browsing.md#collections) you share with them. Add a book to one of those collections and they can play it straight away; take it out, or stop sharing the collection, and it's gone for them just as quickly. They only ever get books you can still listen to yourself.
 
-On top of either, a member keeps anything the server's admin gave their account directly.
+On top of either, a member keeps anything the server's admin gave their account directly. Either choice works for either kind of person.
 
-To change it, tap **Change** beside **What they can listen to** on their card: the same choice as when you added them, with **Create Evie's books** (or **Share Evie's books**) too, made when you tap **Save**. Moving someone from Only collections I share to **Everything I can listen to** stops sharing your collections with them, and the dialog says so first (*"Switching to everything stops sharing your collections with Evie."*). For a kid, kids mode then shows one library again instead of those collections.
+To change it, tap **Change** beside **What they can listen to** on their card: the same choice as when you added them, with **Create Evie's books** (or **Share Evie's books**) too, made when you tap **Save**. Moving someone from Only collections I share to **Everything I can listen to** stops sharing your collections with them, and the dialog says so first (*"Switching to everything stops sharing your collections with Evie."*). For a kid, [kids mode](kids-mode.md#what-the-child-sees) shows the collections you share, or one library on Everything I can listen to.
 
 When you share a collection with a member who is on Only collections I share, the share sheet says so: *"Evie can listen to everything in this collection."*
-
-For a kid, the shared collections are what [kids mode](kids-mode.md#what-the-child-sees) shows.
 
 ## A member's card
 
 Each person you've added has a card on the Household page: their name, *Kid* or *Grown-up* with their username (*"Kid · evie"*), and **On this device** when they're signed in here. On it:
 
 - **What they can listen to**: *Everything you can listen to*, or *Only the collections you share:* with each one and how many books it holds (tap one to open it), and **Change**.
-- **Kids account** (*"No password or API keys. You sign them in."*): switch it on to make a grown-up a kid. The app asks first (*"Make Ellis a kids account?"*): their password and API keys are removed, and the devices they're signed in on stay signed in. The server also cancels any unused pairing code or invite of theirs and their recovery code, stops them sharing their listening with the house, and ends any collection sharing between them and anyone but you. Switching it off makes a kid a grown-up, who can then set a password, and turn on sharing with the house again if they want it. When they're signed in on this device too, their account here follows the switch straight away.
+- **Kids account** (*"No password or API keys. You sign them in."*): switch it on to make a grown-up a kid, once you confirm (*"Make Ruth a kids account?"*). Everything a kid can't have goes: their password, API keys, unused pairing codes and invites, recovery code, sharing with the house, and any collection sharing with anyone but you. The devices they're signed in on stay signed in. Switch it off to make a kid a grown-up, who can then set a password and turn sharing with the house back on. When they're signed in on this device too, their account here follows straight away.
 - **Their devices** (below).
 - **Name**, with **Rename**: the name everyone on the server sees, and, when they're signed in here, their name on this device too. Their username stays the same.
 - **Delete their account** (below), and **Remove from this device** when they're signed in here.
 
 ![Leo's member card: Kid and On this device, What they can listen to with a shared collection and Change, the Kids account switch, Their devices with this device marked, Set up their own device, Name with Rename, and Delete their account beside Remove from this device](/img/screenshots/web-player/household-member.png)
 
-If a change can't be made, a message says nothing changed and why, in the app's own words: for example *"That person isn't in your household on Hearthside any more."* (they were deleted or moved from another device, and the list catches up), *"This account is turned off on Hearthside. Only the server's admin can turn it back on."*, or *"Too many tries. Wait a few minutes and try again."*
+If a change can't be made, the app says why, and nothing changes.
 
 ## Their devices
 
-The card lists every device the member is signed in on, each with **Sign out** (*"Evie isn't signed in anywhere yet."* when there are none). When they're signed in here, this device's row is marked **This device**. Signing a device out means they can't listen there until you set it up again; signing them out of this one shows them as signed out on this device at once, on their card under **On this device**.
+The card lists every device the member is signed in on, each with **Sign out** (*"Evie isn't signed in anywhere yet."* when there are none). When they're signed in here, this device's row is marked **This device**. Signing a device out means they can't listen there until you set it up again (for this device, see [When a member is signed out](#when-a-member-is-signed-out-on-this-device)).
 
 - **Set up their own device** shows a code for their own phone or tablet: they scan it with the AudioSilo app, and it signs straight in. On a kid's own device the app starts in [kids mode](kids-mode.md#on-a-kids-own-device), even though no grown-up is signed in there.
 - **Sign in on this device** signs them in here too, as a person of their own, when they aren't already. You stay the person listening; a kid starts in kids mode.
@@ -116,14 +112,12 @@ A kid can't do this from kids mode: their screen says *"Ask a grown-up to sign E
 
 These are different:
 
-- **Remove from this device** signs them out of your server on this device and deletes their downloads here. Their account, and their place in every book, stay on the server, and the confirmation says so: *"Evie's account on Hearthside stays. Adam can sign Evie in here again from the Household page, or set up a device just for Evie."* **Sign in on this device** on their card brings them back. It's the same as removing anyone else from the device (see [Sharing a device with your household](profiles.md#on-the-household-page)).
+- **Remove from this device** signs them out of your server on this device and deletes their downloads here. Their account, and their place in every book, stay on the server, and the confirmation says so: *"Evie's account on Hearthside stays. Adam can sign Evie in here again from the Household page, or set up a device just for Evie."* **Sign in on this device** on their card brings them back. It's the same as removing anyone else from the device (see [Sharing a device (profiles)](profiles.md#on-the-household-page)).
 - **Delete their account** deletes the account itself, on the server, with their listening history, bookmarks and notes. It can't be undone, so the app asks twice: first *"Delete Evie's account?"* with **Continue**, then *"Type Evie to delete their account"*: type their name and tap **Delete account**. When they're signed in here, it reminds you that they stay on this device as a person until you remove them from it too.
 
 ## If a phone is lost
 
-Kids and grown-ups you signed in **on your own phone** go with it. To cut them off along with you, open your [account page](account.md#signed-in-devices) on another device, find the lost phone under **Signed-in devices** and tap **Sign out**. When household members of yours are signed in on that phone, the confirmation adds **Also sign out Evie and Ellis on that device**, ticked: confirm, and they're signed out there too.
-
-Untick it to sign out only yourself: their sign-ins on that phone stay, which is what you want for a family tablet that stays at home. Either way, the devices they set up themselves with their own code aren't touched; sign those out from their card.
+Kids and grown-ups you signed in **on your own phone** go with it: signing the phone out from your [account page](account.md#signed-in-devices) signs them out there too, unless you untick them. Untick them for a family tablet that stays at home, so only you are signed out. The devices they set up themselves with their own code aren't touched; sign those out from their card.
 
 ## What the admin sees
 

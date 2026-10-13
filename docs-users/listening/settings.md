@@ -87,11 +87,11 @@ The app speaks **English, Español, Français, Deutsch, Português, and Italiano
 
 ## Household
 
-The App group ends with **Household**, which opens the [Household page](household.md): the people on this device with their names, PINs and kids mode, the people you've added to your household on your server, and Listening in the house. It used to be a section of Settings; an old link to it opens the Household page.
+The App group ends with **Household**, which opens the [Household page](household.md): the people on this device with their names, PINs and kids mode, the people you've added to your household on your server, and Listening in the house.
 
 ## Accounts and devices
 
-The servers you're signed in to on this device (with more than one person on the device, only the person listening's: see [Sharing a device with your household](profiles.md)), each with your username and its address. Tap one to open your [account on that server](account.md): your password, pairing another device, your signed-in devices, API keys and signing out. **Add a server** connects another one - your home screen, search, and favourites then combine everything (see [Connecting and signing in](connecting.md)). The web player doesn't offer it, since it only reaches the server it's served from. The bin button beside a server removes your sign-in to it from this device.
+The servers you're signed in to on this device (with more than one person on the device, only the person listening's: see [Sharing a device (profiles)](profiles.md)), each with your username and its address. Tap one to open your [account on that server](account.md): your password, pairing another device, your signed-in devices, API keys and signing out. **Add a server** connects another one - your home screen, search, and favourites then combine everything (see [Connecting and signing in](connecting.md)). The web player doesn't offer it, since it only reaches the server it's served from. The bin button beside a server removes your sign-in to it from this device.
 
 :::warning
 Removing a server also **deletes the books you downloaded from it on this device**, plus any of your listening progress that hasn't synced back yet. The app asks first if you have downloads from it on the device. Your other servers, and anyone else on this device signed in to the same server, are unaffected, and nothing on the server itself is touched. See [Offline downloads](offline-downloads.md).
@@ -106,5 +106,5 @@ On the web and Android, **Support AudioSilo** links to GitHub Sponsors - AudioSi
 Settings shows the version of the app you're running, e.g. *AudioSilo v1.1.1*: under the sections on a wide screen, at the foot of the page on a phone. Handy to mention if you ever report a problem (see [Troubleshooting](../troubleshooting.md)). The version of a server is at the foot of your [account page](account.md) for it.
 
 :::note
-Things an admin manages - invites, what libraries you can see - aren't in Settings; they live in the server's admin console. See [People and invites](../admin/users-and-invites.md). Accounts for the kids and grown-ups you live with you can make yourself, on the [Household page](household.md#household-members).
+Things an admin manages - invites, what libraries you can see - aren't in Settings; they live in the server's admin console. See [People and invites](../admin/users-and-invites.md). You can make accounts for the kids and grown-ups you live with yourself, on the [Household page](household.md#household-members).
 :::

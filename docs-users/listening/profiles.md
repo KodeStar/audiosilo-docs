@@ -1,5 +1,5 @@
 ---
-title: Sharing a device with your household
+title: Sharing a device (profiles)
 description: "Profiles: everyone who listens on one phone, tablet or computer keeps their own place in every book. Who's listening?, adding someone to the device, switching, the optional PIN, the Household page's On this device, removing someone, and links that belong to someone else."
 ---
 

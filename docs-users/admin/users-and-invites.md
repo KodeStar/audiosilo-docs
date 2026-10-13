@@ -209,10 +209,10 @@ a real account on your server, with their own progress, bookmarks and stats,
   books). Anything you give the member directly comes on top.
 - The owner renames them, signs their devices out, switches them between kid
   and grown-up, and deletes their account, all from the player.
-- A **kid** has no password and can't make API keys, pair a device, share a
-  collection or share their listening with the house. A **grown-up** member can
-  do all of those, like anyone.
-- A member never has members of their own, and is never an admin.
+- A **kid** has no password and signs in only on devices their owner sets up
+  (what else a kid can't do: [Adding a kid](../listening/household.md#adding-a-kid)).
+  A **grown-up** member is an ordinary account otherwise.
+- A member never has members of their own.
 - Disabling an owner doesn't disable their members, and doesn't change what the
   members can listen to.
 
@@ -226,8 +226,7 @@ On their own page, a member's username is made from the name the owner typed
   you change it, from 1 to 50): see
   [Household](server.md#household).
 - **Can add household members**, on a person's **Account** tab, turns it off
-  for just that person. Off stops them adding anyone new: members they already
-  added keep working, and they can still manage them.
+  for just that person, with the same effect.
 
 ### A person's Household card
 
@@ -241,28 +240,23 @@ For a household member it shows **Managed by** their owner instead, with:
 - **Make independent** - takes them out of the household, as an ordinary
   account you manage here. They keep their progress and anything you gave them
   directly, and stop getting books through their owner, who can no longer
-  manage the account. A kid's account has no password: the devices already
-  signed in stay signed in, and to add another, [pair a device](#a-persons-page)
-  for them or set a password. Any code their owner made for their own device that
-  hasn't been used yet stops working.
-- **Assign to someone** - moves them to another person's household, and signs
-  them out on the devices someone else signed them in on, such as their old
-  owner's phone.
+  manage the account. A kid's account has no password: to add a device,
+  [pair one](#a-persons-page) for them or set a password.
+- **Assign to someone** - moves them to another person's household.
+
+Either way, the devices they set up themselves stay signed in, and any unused
+code their owner made for their own device stops working. The devices someone
+else signed them in on, such as their owner's phone, stay signed in when they're
+made independent and are signed out when they're assigned.
 
 **Assign to someone** also works for an ordinary account, such as one you made
 for a child before household members existed. Pick **Whose household**, **Kid
 or grown-up** and **What they can listen to**; the person you pick manages the
-account from then on. Their own grants stay, and so do the devices they set up
-themselves; any device someone else signed them in on (such as a previous
-owner's phone) is signed out, and any unused code for their own device stops
-working.
+account from then on, and their own grants stay.
 
-- Making someone a kid removes their password, API keys and unused pairing
-  codes, and any collection sharing with people outside their household (their
-  signed-in devices stay signed in). It also removes their recovery code and any
-  invite of theirs that still works, and turns off sharing their listening with
-  the house. You can't set a password beside it: "A kid signs in without a
-  password. Leave the password out, or choose grown-up."
+- Making someone a kid takes away everything a kid can't have (see
+  [A member's card](../listening/household.md#a-members-card)); their
+  signed-in devices stay signed in, and you can't set a password in the same step.
 - Choosing **Only collections** means they get books through their new owner
   only from the collections the owner shares with them in the player, including
   any already shared with them.
@@ -276,8 +270,7 @@ working.
 Deleting someone who has household members deletes their members too, unless
 you say otherwise: the delete dialog lists **Their household members**, each
 ticked (**Delete Evie too**). Untick a member to keep them as an independent
-account: as with **Make independent**, their devices stay signed in and any
-unused code for their own device stops working. When it's done, a message says
+account, as with **Make independent**. When it's done, a message says
 how many members were deleted and how many kept.
 
 ## Editing someone's progress
