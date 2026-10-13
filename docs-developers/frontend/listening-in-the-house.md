@@ -20,9 +20,11 @@ missing `listening` as `[]`) in `client.ts`. The hooks in `hooks.ts`, each gated
 flag is never asked):
 
 - `useHousehold(cid?)` - the caller's own `{ share_listening }`, `qk.household(cid)`,
-  with `staleTime: Infinity`: it only changes through `useSetHousehold`, so it is
-  fresh until the app restarts (a change made on another device shows on the next
-  launch).
+  with `staleTime: Infinity`: it never goes stale by time, since this device only
+  changes it through `useSetHousehold` (which stores the server's answer). The
+  foreground refresh (`refreshAfterResume`) and a reconnect still refetch it, like
+  every active query, so a change made on another device shows the next time the app
+  (or the web tab) comes back to the foreground.
 - `useSetHousehold(cid?)` - the switch. Rejects with `CapabilityError` (sending
   nothing) while the flag is off or unknown; never hand that to `noteError`. It stores
   the server's answer under `qk.household(cid)` and invalidates
@@ -70,9 +72,10 @@ Pure and tested (`house-model.test.ts`):
 - `houseCopy(row, today, t)` - the title (the server's, else the path's last segment),
   the state line ("Listening now · Chapter 4") and one sentence for a screen reader
   ("sam is listening to Unsouled, Chapter 4").
-- `houseColumns` / `houseCardWidth` - the Home grid: cards at least 250 wide, 12
-  apart, laid out by the row's **measured** width (the Up next drawer can take part
-  of the window), one per row on a phone.
+- `houseCardWidth(width, layout)` and `HOUSE_GAP` - the Home grid (a `HOUSE_GRID`
+  spec for the shared `gridMetrics`): cards at least 250 wide, 12 apart, laid out by
+  the row's **measured** width (the Up next drawer can take part of the window), one
+  per row on a phone.
 
 Strings live in the `house` i18n namespace.
 
@@ -85,8 +88,8 @@ Strings live in the `house` i18n namespace.
   otherwise. The section's sub is "`<server name>` · shared by choice" and its action
   "Sharing settings" opens Settings at the household pane
   (`openSettings('household')`). Each `HouseCard` is the person's avatar and name (a
-  static green dot beside "Listening now"), the book's title, the state line and its
-  cover; tapping it opens the book on that connection (`openBook`).
+  static green dot after the name while they are listening now), the book's title, the
+  state line and its cover; tapping it opens the book on that connection (`openBook`).
 - **`InTheHouseCard({ connectionId, libraryId, path })`** - the book page's "In the
   house" card, last in the aside (`book-aside.tsx`): the housemates on **this** book,
   each an avatar, the name and the state line, read from the same cached answer as
@@ -94,15 +97,18 @@ Strings live in the `house` i18n namespace.
 - **`HouseSharingRow({ connectionId, first? })`** - "Share what I'm listening to with
   the house" for one connection, with the privacy sentence "Your current book shows on
   the Home page of other people on `<server>` who share theirs too. Off by default."
-  Hidden while the server lacks `household` (or that isn't known yet). The switch
+  Hidden when the connection is gone; it does not check `household` itself (the
+  Household pane renders it only for servers that advertise the flag, below). The switch
   moves at once (optimistic) and settles on the server's answer; a refusal puts it
   back with a toast (a demo account gets its own words); while it loads or saves the
   switch waits disabled, and a failed load offers Retry.
-- **`PersonAvatar({ name, size, ring? })`** - a gradient monogram with two hues from
-  the name (the same deterministic colours as the account page's portrait, so a
-  person looks the same everywhere). Decorative: the name is always written beside it
-  or in the control's label. `ring` draws the pink "who is listening on this device"
-  ring outside the box, so leave 4 pt of room around a ringed one.
+- **The avatars** are `Portrait` with `kind="user"` (`src/components/series/portrait.tsx`):
+  a gradient disc with white initials, coloured from the name (the account page's own
+  portrait, so a person looks the same everywhere). Decorative: the name is always
+  written beside it or in the control's label. Pass `ring` (true or false) wherever the
+  pink "who is listening on this device" ring can show: the portrait then keeps
+  `RING_ROOM` (4 pt) around itself and draws the ring in it, so ringing one never moves
+  the layout. Leave `ring` out where no ring ever shows.
 
 **Whose connections.** Everything here is the person listening's: Home hands
 `HouseRow` the active profile's connections (`useProfileConnections`), and
@@ -114,6 +120,6 @@ active profile whose server has `household`, under a "Listening in the house" he
 ## Testing
 
 `house-model.test.ts` (the rules above), `house-row.test.tsx`,
-`in-the-house-card.test.tsx`, `house-sharing-row.test.tsx` and
-`person-avatar.test.tsx` beside the components; the hooks' gating and polling in
+`in-the-house-card.test.tsx` and `house-sharing-row.test.tsx` beside the components;
+the avatar and its ring in `src/components/series/portrait.test.tsx`; the hooks' gating and polling in
 `src/api/hooks-household.test.tsx`; the client calls in `client.test.ts`.

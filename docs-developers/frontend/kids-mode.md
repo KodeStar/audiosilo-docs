@@ -86,10 +86,10 @@ measured width (`kidsPlayerLayout`): the cover beside the controls where both fi
 the big sizes, the big controls under the cover where only they do, else the phone's
 sizes, never under the 64 pt kids minimum.
 
-**`GrownUpsButton`**: press and hold for `HOLD_MS` (2 s) to leave; a fill grows while
-it is held and letting go early empties it. With reduced motion there is no fill, the
-label says "Keep holding", and it still takes the full 2 s (the timer decides, not the
-animation). A screen reader gets the hint "Hold to leave kids mode" and the long-press
+**`GrownUpsButton`**: press and hold for `HOLD_MS` (2 s) to leave; while it is held the
+label says "Keep holding" and a fill grows, and letting go early empties it. With
+reduced motion there is no fill, and it still takes the full 2 s (the timer decides,
+not the animation). A screen reader gets the hint "Hold to leave kids mode" and the long-press
 action. Holding opens Who's listening?, where the chosen profile's PIN is asked.
 
 ## Bedtime (`src/playback/auto-sleep-controller.ts`)
@@ -109,7 +109,8 @@ Bedtime reuses the auto sleep controller, made profile-aware:
   kids profile, or toggling kids mode, changes which rule applies.
 - Never in a car (`isCarConnected`), like the nightly timer.
 
-`MoonCard` shows "Bedtime is at 19:30" and what it does; inside the window, "It's
+`MoonCard` shows "Bedtime is at 7:30 PM" (`formatTimeOfDay`, in the UI language's
+clock: "19:30" in the languages other than English) and what it does; inside the window, "It's
 bedtime" and either that the timer comes on when a story starts or the minutes the
 running timer has left.
 
@@ -118,5 +119,5 @@ running timer has left.
 `kids-model.test.ts` (the rules above), `use-kids.test.tsx`, `kids-screen.test.tsx`,
 `kids-player.test.tsx`, `grown-ups-button.test.tsx`, `kids-route-guard.test.tsx` and
 `kids-gate.test.tsx` in `src/components/kids/`; the bedtime rule's regression tests in
-`src/playback/auto-sleep-controller.test.ts`; `src/components/player/play-route.test.ts`
-for `/kids` as a player on top.
+`src/playback/auto-sleep-controller.test.ts`. That a tapped story starts in place and
+never opens the full player is in `kids-screen.test.tsx`.

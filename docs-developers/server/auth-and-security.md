@@ -71,11 +71,12 @@ codes/tokens in the response body and store only the hash.
   `gateSelfService`, so they share the `accountLimiter` and are refused for demo
   accounts, exactly like the password/recovery routes. **Containment:** an API-key
   caller is additionally barred (403, via `denyAPIKey` in
-  `internal/api/handlers_auth.go`) from the four credential-minting routes
-  (`POST /auth/{tokens,recovery,pair,password}`), so a leaked key can never spawn a
-  fresh durable credential - another key, recovery code, pairing token, or
-  password - that would outlive its own revocation (mirrors GitHub's "a token
-  cannot create tokens"). It can still list/revoke keys and clear a recovery code,
+  `internal/api/handlers_auth.go`, also called by `handlers_cast.go`) from the five
+  credential-minting routes (`POST /auth/{tokens,recovery,pair,password}` and
+  `POST /cast/token`), so a leaked key can never spawn a fresh credential - another
+  key, recovery code, pairing token, or password that would outlive its own
+  revocation, or even a [cast token](#cast-tokens), which would die with it (mirrors
+  GitHub's "a token cannot create tokens"). It can still list/revoke keys and clear a recovery code,
   which only reduce access.
 
 ### Cast tokens
@@ -109,9 +110,13 @@ every axis:
   daily retention job runs the same prune (`auth.PruneCastTokens`), so a dead token's
   row (the receiver's `last_ip`) and grant (which book was cast) never outlive it by
   more than a day.
-- **Still the person's.** A disabled or deleted account ends it, and the media
-  handlers check the person's **current** share scope, so a revoked share is a
-  `403`.
+- **Still the person's.** Deleting the account deletes it with the account's other
+  tokens. Disabling the account only **suspends** it, as it does every token
+  (`SetDisabled` revokes nothing; `lookupToken` checks the user on every request): it
+  is refused while the account is disabled and works again if the account is enabled
+  before it expires, so signing out the device that minted it is what ends it for
+  good. The media handlers check the person's **current** share scope, so a revoked
+  share is a `403` (and a restored one works again).
 
 Only the SHA-256 hash is stored. Any refusal is the uniform `401`. An API key may
 not mint one (`denyAPIKey`, the containment rule above: a key never mints another
@@ -150,8 +155,8 @@ The middleware wrappers in `internal/api/middleware.go`:
   token is never accepted here, so a QR/pairing secret can't be used as a durable
   credential.
 - `requireMediaAuth` - additionally accepts `?token=` as a query parameter,
-  used **only** for the media GETs (`/cover`, `/stream`, and `/meta/cover` for a
-  community cover) because browser
+  used **only** for the media GETs (`/meta/cover` for a community cover; a book's
+  `/cover` and `/stream` use `requireBookMediaAuth`, below) because browser
   `<img>`/`<audio>` elements cannot set headers. `bearerToken(r, allowQuery)`
   confines the fallback deliberately: a token in a query string can leak into
   access logs and `Referer` headers, so no other route accepts it. An API key
@@ -363,13 +368,16 @@ its owner. They follow a few rules on top of share scope:
   owner's `shared_with` list is never sent to a viewer.
 - **The share picker shows usernames, so demo accounts are kept out.**
   `GET /me/share-targets` lists every enabled, non-demo account other than the
-  caller (id and username): the one way a non-admin learns other accounts'
-  usernames. A demo account is refused it (`403 not available for demo
+  caller (id and username): the one way a non-admin can list every account's
+  username (a shared collection also shows its owner's, and
+  [listening in the house](#listening-in-the-house-what-other-people-see) the
+  usernames of the other people who share). A demo account is refused it (`403 not available for demo
   accounts`), so a public demo can't enumerate the server's users, and can't
   share a collection either (the same `403`, checked before the collection id, so
   a demo caller learns nothing about whose collection an id is). Disabled and
-  demo accounts are never share targets. These two are the only `/me/*` routes
-  with a demo refusal; none has its own rate-limit class.
+  demo accounts are never share targets. These two, and `PUT /me/household`
+  ([below](#listening-in-the-house-what-other-people-see)), are the only `/me/*`
+  routes with a demo refusal; none has its own rate-limit class.
 - **Stats never cross users.** `/me/stats` and `/me/listening` are computed for
   the caller alone (the admin Activity code with its accumulator limited to the
   caller): no other listener, username, `by_user`, `top_users`, funnel,
@@ -414,14 +422,18 @@ invisible) beside its allowed one.
 
 ### Listening in the house: what other people see
 
-`GET /household/listening` (capability `household`) is the one `/me`-adjacent
-route that shows a listener something about **other** people, so its rules sit in
+`GET /household/listening` (capability `household`) is the one route that shows a
+listener what **other** people are listening to, so its rules sit in
 `catalog.HouseListening` rather than the handler, each with an allowed and a
 denied test:
 
-- **Opt-in and reciprocal.** `household_sharing` has no row until a person sets
+- **Opt-in on both sides.** `household_sharing` has no row until a person sets
   `PUT /me/household` (no row reads as off), and a caller who doesn't share gets
-  `listening: []`: you see housemates only while they can see you.
+  `listening: []`: you see housemates only while you share too. Only the choice is
+  mutual, not the view: each list passes its own caller's scopes and each other
+  person's 24-hour window, so visibility can be one-way (a housemate whose newest book
+  you can't open doesn't show for you, though you may show for them; a sharer who
+  hasn't listened in 24 hours sees others without showing up for them).
 - **Who can appear.** Other users only (never the caller), enabled, not demo, with
   sharing on.
 - **What of them.** One row per person: their newest session recorded on this
@@ -461,7 +473,7 @@ Two mechanisms in `internal/api/ratelimit.go`, six buckets wired in `api.New`:
 | Bucket | Mechanism | Limit | Applied to |
 |---|---|---|---|
 | `ipLimiter` | Token bucket per IP (`rateLimiter`) | ~50 req/s, burst 200 | The general API: every request (global `rateLimit` middleware) except static files and authenticated media. Static files are those the mux hands to a handler the web package registered (`web.IsStatic`: the console, the web player, the connect page and its assets, served from memory); one cold console page loads forty-odd chunks, so they are not counted. The health check and the setup page are counted |
-| `mediaLimiter` | Token bucket per credential (`rateLimiter`) | ~200 req/s, burst 2000 | Media GETs (`/cover`, `/stream`, `/meta/cover`: the routes `requireMediaAuth` wraps) once they authenticate. See below |
+| `mediaLimiter` | Token bucket per credential (`rateLimiter`) | ~200 req/s, burst 2000 | Media GETs (`/cover`, `/stream`, `/meta/cover`: the routes `requireBookMediaAuth` and `requireMediaAuth` wrap, both `mediaAuth`) once they authenticate. See below |
 | `loginLimiter` | Failure lockout per IP (`limiter`) | 10 failures / 15 min | `POST /auth/login` |
 | `redeemLimiter` | Failure lockout per IP | 10 failures / 15 min | `POST /auth/redeem` |
 | `demoLimiter` | **Attempt** cap per IP (`Acquire`) | 5 / 15 min | `POST /demo/session` |
@@ -476,7 +488,7 @@ stale entries so a flood of distinct IPs can't grow memory without bound.
 
 **Media is classed by route.** A cover grid loads every cover as its own
 `?token=` request, so sharing the per-IP budget turned a fast server's covers
-into 429s. `requireMediaAuth` returns a `mediaHandler`, which `rateLimit` skips
+into 429s. `requireMediaAuth` and `requireBookMediaAuth` (both `mediaAuth`) return a `mediaHandler`, which `rateLimit` skips
 (read off the handler the mux picks, like `web.IsStatic`), and owns the media
 policy itself: it refuses the request while the address's `ipLimiter` bucket is
 empty (`Ready`, which checks without spending), charges that bucket one token

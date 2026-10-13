@@ -62,7 +62,7 @@ The list appears on servers new enough to show it.
 
 If you're about to sign out **without a password set**, the app stops you with a warning - *"Without one you'll need a new invite from your admin to sign back in on this server"* - and offers to **Set a password** right there. Take the offer; it's the whole reason the warning exists. If books from this server are downloaded on the device, the warning also says how many you'd lose.
 
-Signing out **removes this server from the app** (the card says so), so it deletes that server's downloaded books from the device and any progress that hasn't synced yet. (Books, progress, and bookmarks stored on the server are safe - sign back in and they're all there.)
+Signing out **takes this server out of your app** and deletes your downloads from it on this device, along with any of your progress that hasn't synced yet. Anyone else on this device signed in to the same server keeps theirs. (Books, progress, and bookmarks stored on the server are safe - sign back in and they're all there.)
 
 :::tip
 Signing out isn't a big deal. Next time you open the connect screen, any server you've connected to before shows a one-tap **Reconnect to &lt;your server&gt;** row - so you only re-enter your code or password, never the server address. See [Connecting and signing in](connecting.md#getting-back-in-after-signing-out).

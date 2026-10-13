@@ -119,8 +119,10 @@ client side in [State & data](../frontend/state-and-data.md#bookmarks-notes-and-
 `<img>`/`<audio>`, so cover and stream GETs accept the session token as a
 `?token=` query param on every platform.
 
-**Server:** `internal/api/middleware.go` - only the cover, stream and community
-cover (`/meta/cover`) routes use `requireMediaAuth`, which calls `bearerToken(r, true)`; all other routes are
+**Server:** `internal/api/middleware.go` - only the cover and stream routes
+(`requireBookMediaAuth`, which also takes a cast token) and the community cover route
+(`/meta/cover`, `requireMediaAuth`) call `bearerToken(r, true)`, both through
+`mediaAuth`; all other routes are
 header-only (`bearerToken(r, false)`), so tokens never ride the query string where
 they could leak into access logs or Referer headers.
 **Frontend:** `client.ts` `mediaTokenQuery()` → `coverUrl()`/`streamUrl()`. Native

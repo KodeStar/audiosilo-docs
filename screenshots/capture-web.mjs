@@ -1,5 +1,5 @@
 // Captures the web-player documentation screenshots against a locally-running
-// AudioSilo server in demo mode (run.sh starts it). Three passes:
+// AudioSilo server in demo mode (run.sh starts it). Four passes:
 //   0. tag two seeded series through the admin API (the LibriVox files carry no
 //      series tags, so the Library's Series section and a series page would be
 //      empty) - needs ADMIN_PASSWORD, which run.sh passes,
@@ -8,7 +8,10 @@
 //      give the demo user an Up next queue, a collection and each WARM book's
 //      records (a place, a finish and rating, bookmarks, notes, history, a
 //      sleep-timer drift-off) through the API,
-//   2. capture desktop, tablet and phone profiles into static/img/screenshots/web-player/.
+//   2. capture desktop, tablet and phone profiles into static/img/screenshots/web-player/,
+//   3. the household: four accounts and a share made through the admin API
+//      (ADMIN_PASSWORD), driven through the UI for the profiles, kids mode and house
+//      shots and, through a local https proxy, the Cast shot, then deleted again.
 import {chromium} from 'playwright';
 import path from 'node:path';
 import http from 'node:http';
@@ -939,12 +942,16 @@ await capturePhone('phone', {width: 430, height: 932}, {
   settings: 'web-player/phone-settings.png',
 });
 
-// The connect start screen: the server's address typed and Continue pressed, done once
-// the probe card shows what it found.
+// The connect start screen, done once the probe card shows what it found. A served
+// player that asks its own server on open has no address field; one that has the field
+// gets the server's address typed and Continue pressed.
 async function probeServer(page, origin) {
   await tid(page, 'connect-start').waitFor({timeout: 15000});
-  await firstVisible(page.getByRole('textbox', {name: 'Server address'})).fill(origin);
-  await firstVisible(page.getByRole('button', {name: 'Continue', exact: true})).click({timeout: 8000});
+  const field = firstVisible(page.getByRole('textbox', {name: 'Server address'}));
+  if (await field.count()) {
+    await field.fill(origin);
+    await firstVisible(page.getByRole('button', {name: 'Continue', exact: true})).click({timeout: 8000});
+  }
   await tid(page, 'probe-notice').waitFor({timeout: 15000});
 }
 
@@ -968,7 +975,8 @@ async function signInWithPassword(page, username, password) {
 // folders). captureHouse then signs Ellen in on a fresh browser, adds Jamie and Leo
 // with "Add someone", gives Jamie a PIN and Leo kids mode, and turns sharing on for
 // Ellen in Settings > Household. unprovisionHouse deletes the accounts and the share
-// again, so the admin console's shots (captured afterwards) never show them.
+// again, and takes their sign-ins out of the server's event feed, so the admin console's
+// shots (captured afterwards) never show them.
 const HOUSE_PASSWORD = 'household-demo';
 const HOUSE_VIEWER = {username: 'ellen', name: 'Ellen', q: 'Christmas Carol', at: 0.4};
 // The others on Ellen's device, in the order "Add someone" adds them.
@@ -1002,7 +1010,6 @@ const HOUSE_SHOTS = {
   phoneKids: 'web-player/phone-kids.png',
   cast: 'web-player/player-cast.png',
 };
-const HOUSE_AUTH = path.join(CACHE, 'house-auth.json');
 
 // Kids mode's bedtime card reads the clock: every household context runs in a fixed-offset
 // zone where it is 8 pm now (after Leo's 7:30 pm bedtime), so the card says "It's bedtime"
@@ -1122,6 +1129,14 @@ async function unprovisionHouse(house) {
   for (const id of house.users) await api(house.admin, 'DELETE', `/admin/users/${id}`).catch(() => {});
   if (house.shareId) await api(house.admin, 'DELETE', `/admin/shares/${house.shareId}`).catch(() => {});
   await api(house.admin, 'POST', '/auth/logout').catch(() => {});
+  // Every household sign-in is also a "New sign-in" server event, which names no user row
+  // and so outlives the account: take those out too, or the Events shot lists them.
+  try {
+    const names = HOUSE_USERNAMES.map((u) => `'${u}'`).join(', ');
+    sqlite(`DELETE FROM server_events WHERE kind = 'new_device' AND json_extract(data, '$.user') IN (${names});`);
+  } catch (e) {
+    console.log(`  ! household sign-ins left in the server's event feed: ${e.message}`);
+  }
   console.log('  ✓ household accounts removed again');
 }
 
@@ -1192,6 +1207,7 @@ async function captureHouse(house) {
     const page = await ctx.newPage();
     // Ellen on a fresh browser, then everyone else with "Add someone" (each new person
     // becomes the one listening), each renamed.
+    let peopleReady = false;
     await step('household: people', async () => {
       await page.goto(BASE + 'connect', {waitUntil: 'networkidle', timeout: 45000});
       await probeServer(page, origin);
@@ -1230,7 +1246,11 @@ async function captureHouse(house) {
       await firstVisible(page.getByRole('switch', {name: share})).click({timeout: 8000});
       await firstVisible(page.getByRole('switch', {name: share, checked: true})).waitFor({timeout: 8000});
       console.log(`  ✓ ${[HOUSE_VIEWER, ...HOUSE_DEVICE].map((p) => p.name).join(', ')} on this device`);
+      peopleReady = true;
     });
+    // A household set up half-way would shoot the wrong state over the committed shots:
+    // they keep their previous images instead.
+    if (!peopleReady) return;
 
     if (wanted(HOUSE_SHOTS.household)) {
       // The kids profile's card at the top of a taller window: its kids mode settings,
@@ -1295,11 +1315,12 @@ async function captureHouse(house) {
       await step('household: kids', async () => {
         await kidsStaged(page, kidsName);
         await shoot(page, HOUSE_SHOTS.kids);
-        await ctx.storageState({path: HOUSE_AUTH});
       });
       if (wanted(HOUSE_SHOTS.phoneKids)) {
         await step('household: phone kids', async () => {
-          const phone = await newCaptureContext({viewport: {width: 430, height: 932}, timezoneId, storageState: HOUSE_AUTH});
+          // This device's storage, from the live browser (kidsStaged picks the child itself).
+          const storageState = await ctx.storageState();
+          const phone = await newCaptureContext({viewport: {width: 430, height: 932}, timezoneId, storageState});
           try {
             const p = await phone.newPage();
             await kidsStaged(p, kidsName);
@@ -1315,8 +1336,9 @@ async function captureHouse(house) {
   }
 }
 
-// The Cast button shows only on an https page in a Chromium browser (and never for a
-// server this device reaches at a loopback address, which no receiver could), and the
+// The Cast button shows only on an https page in a Chromium browser, and for a server
+// this device reaches at a loopback address (which no receiver could) it is only dimmed,
+// explaining instead of casting, under another name; and the
 // capture server is plain http on 127.0.0.1. So this step puts a local https proxy in
 // front of it, with a throwaway self-signed certificate (openssl, in .cache), and opens
 // it under a made-up name that a separate Chromium resolves to 127.0.0.1 (a separate
@@ -1368,7 +1390,7 @@ async function captureCast() {
     });
     const origin = `https://${CAST_HOST}:${proxy.address().port}`;
     castBrowser = await chromium.launch({args: [`--host-resolver-rules=MAP ${CAST_HOST} 127.0.0.1`]});
-    const ctx = await newCaptureContext({ignoreHTTPSErrors: true}, castBrowser);
+    const ctx = await newCaptureContext({ignoreHTTPSErrors: true, timezoneId: eveningZone()}, castBrowser);
     const page = await ctx.newPage();
     await page.goto(`${origin}/web/connect`, {waitUntil: 'networkidle', timeout: 45000});
     await probeServer(page, origin);
@@ -1389,8 +1411,8 @@ async function captureCast() {
     const cast = firstVisible(page.getByRole('button', {name: 'Cast', exact: true}));
     await cast.waitFor({timeout: 30000}).catch(() => {
       throw new Error(
-        `no Cast button at ${origin}: it shows only in Chromium on an https page, for a book ` +
-          'the server can cast (capability cast) at an address that is not loopback',
+        `no enabled Cast button at ${origin}: it shows only in Chromium on an https page, for a book ` +
+          'the server can cast (capability cast), and at a loopback address it only explains',
       );
     });
     await sleep(SETTLE_MS);

@@ -10,10 +10,12 @@ description: "A simple AudioSilo for children: one library as big covers, a big 
 Kids mode belongs to a [profile](profiles.md): a person on this device. To set one up:
 
 1. **Give the child an account on your server**, and limit what it can see to their books: in the admin console, a [share](../admin/sharing.md) with just the children's library or folders, given to that account (see [Users and invites](../admin/users-and-invites.md)). What the account can open is what kids mode can show: the app never shows a child more than their account is allowed.
-2. **Add the child to the device**: **Add someone** on [Who's listening?](profiles.md#adding-someone), signing in with the child's account.
-3. **Turn on Kids mode** for them in [Settings > Household and sharing](settings.md#household-and-sharing), under their name. Then pick:
+2. **Add the child to the device**: **Add someone** on [Who's listening?](profiles.md#adding-someone), signing in with the child's account. The app then switches to the child.
+3. **Switch back to yourself** (on Who's listening?, or **Switch** on your card in Settings > Household and sharing), then **turn on Kids mode** for the child in [Settings > Household and sharing](settings.md#household-and-sharing), under their name, and pick:
    - **Library**: the one library kids mode shows, when the child's account can see more than one. Left alone, it's the first one the account lists.
-   - **Bedtime**: when bedtime starts, **7:30 PM** unless you change it (times show in your device's clock format).
+   - **Bedtime**: when bedtime starts, **7:30 PM** unless you change it (times are written the way the app's language writes them: 7:30 PM in English, 19:30 in the other languages).
+
+If you turn kids mode on while the child is the one listening, the app goes straight into kids mode. To pick the library and bedtime then, hold **Grown-ups**, choose yourself and open Settings > Household and sharing.
 
 Kids mode can't be turned on for the last grown-up on the device: someone has to be able to leave it.
 
@@ -30,7 +32,7 @@ It's a good idea to give the grown-ups' profiles a [PIN](profiles.md#a-pin-for-a
 
 ![Kids mode on a phone: the bedtime card, the four big player buttons and the story tiles in two columns](/img/screenshots/web-player/phone-kids.png)
 
-If the server can't be reached, kids mode shows the stories downloaded to this device for the child's account (from their library only), so a downloaded story still plays in the car or on a plane. With no downloads, it says the stories can't load and offers **Try again**.
+If the server can't be reached, kids mode shows the stories downloaded to this device for the child's account, so a downloaded story still plays in the car or on a plane. They come from the child's library when the app knows which one that is: the **Library** you picked, or the one it was showing before the server went away. If the app is opened while the server can't be reached and no Library was picked, every story downloaded for the child's account shows. With no downloads, it says the stories can't load and offers **Try again**.
 
 If the child's account needs signing in again (for example after the server was reset), a banner on the kids screen says so. Signing in again there keeps the child's profile and kids mode.
 
@@ -43,7 +45,7 @@ From the bedtime you set until **6:00 AM** the next morning, starting or resumin
 
 ## Leaving kids mode
 
-**Press and hold Grown-ups for 2 seconds.** A fill grows across the button while it's held; let go early and nothing happens. (With reduced motion on, the button says *Keep holding* instead of filling, and still takes the full 2 seconds. A screen reader announces it as a hold to leave kids mode.)
+**Press and hold Grown-ups for 2 seconds.** While it's held the button says *Keep holding* and a fill grows across it; let go early and nothing happens. (With reduced motion on there's no fill, and it still takes the full 2 seconds. A screen reader announces it as a hold to leave kids mode.)
 
 Holding it opens [Who's listening?](profiles.md#whos-listening): choose a grown-up (with their PIN, if they have one) to leave kids mode, or the child again to go back. While a child is listening and a grown-up is on the device, **Add someone** is turned off there ("Choose a grown-up before adding someone."), and so is signing in to a new server or the demo, so a child can't get out of kids mode by adding a new person. Choose a grown-up first. On Android, the back button never takes a child out of kids mode (at most it closes the app).
 

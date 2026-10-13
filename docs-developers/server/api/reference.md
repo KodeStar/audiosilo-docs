@@ -69,8 +69,10 @@ admin sets in the console's Settings > General (it can change while the server
 runs); `"AudioSilo"` when unset.
 `server_id` is a stable, per-install identity minted once and persisted in
 `config.yaml` (so it survives a database rebuild). It never changes for the life of
-the install; clients use it as the identity for a paired server and key their
-per-server state (downloads, progress, cache) on it. It is also returned by the
+the install; clients use it as the identity for a paired server. The player keys its
+per-connection state (token, downloads, progress, cache) on `<server_id>.<user_id>`, one
+user on one server, so two people signed in to one server stay apart (see
+[Connection identity](../../frontend/state-and-data.md#connection-identity-server_iduser_id)). It is also returned by the
 pairing exchange (`POST /auth/exchange`) and login/demo responses, so a client has
 it the moment it pairs. `version` is stamped from the release tag (`"dev"` for local builds).
 `transcode` is true only when ffmpeg is configured; `web_player` only when the
@@ -273,8 +275,9 @@ Response `200`:
 }
 ```
 
-`server_id` is the paired server's stable identity (see `GET /server`); the client
-adopts it as the connection's id. On a server with `addresses`, the answer also carries
+`server_id` is the paired server's stable identity (see `GET /server`); the player's
+connection id is `<server_id>.<user_id>` with the answer's `user`
+([Connection identity](../../frontend/state-and-data.md#connection-identity-server_iduser_id)). On a server with `addresses`, the answer also carries
 `addresses` (`{ "home"?, "away"? }`, omitted when neither is known; see
 [Home and away addresses](#home-and-away-addresses)).
 
@@ -433,9 +436,10 @@ limit (10 attempts per IP per 15 minutes) and are **refused for demo accounts**
 (403).
 
 **Containment.** A key cannot mint a *fresh durable credential*. A request that
-authenticates with an API key is refused (**403**) on the four credential-minting
+authenticates with an API key is refused (**403**) on the five credential-minting
 routes - `POST /auth/tokens` (another key), `POST /auth/recovery`,
-`POST /auth/pair`, and `POST /auth/password` - so revoking a leaked key cuts off
+`POST /auth/pair`, `POST /auth/password`, and [`POST /cast/token`](#post-apiv1casttoken)
+(refused although a cast token would die with the key) - so revoking a leaked key cuts off
 everything it could reach: it can't spawn a key, recovery code, pairing token, or
 password that would outlive its own revocation (mirrors GitHub's "a token cannot
 create tokens"). It may still **list and revoke** keys and clear a recovery code,
@@ -2439,7 +2443,10 @@ with: every enabled, non-demo account other than the caller, by username.
 { "users": [ { "id": 6, "username": "alex" }, { "id": 9, "username": "robin" } ] }
 ```
 
-This is the one place a non-admin sees other accounts' usernames. A demo
+This is the one place a non-admin can list every other account's username (a
+shared collection also shows its owner, and
+[`GET /household/listening`](#get-apiv1householdlistening) the other people who
+share). A demo
 account gets `403` `not available for demo accounts`, so a public demo can't
 list the server's usernames.
 
@@ -2739,8 +2746,8 @@ person keeps, what ends it and how dead ones are pruned:
 | `400` | `invalid request` (a malformed body or an unknown field), `path is required` |
 | `401` | no session (a cast token can't mint another: it is never a bearer credential) |
 | `403` | the library or the path is outside the caller's access; or `not available when authenticating with an API key` (a key never mints another credential) |
-| `404` | no book at the path |
-| `500` | `could not start casting` |
+| `404` | `book not found` (no book at the path), or `library not found` (an admin naming an unknown library; anyone else gets the `403`) |
+| `500` | `could not start casting`; `access check failed`, `could not load library` or `could not load book` on a database failure |
 
 ## Admin: users & auth codes
 

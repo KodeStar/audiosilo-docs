@@ -40,7 +40,7 @@ Whether AudioSilo should set a [sleep timer](sleep-timer.md) for you at night, s
 | Setting | What it does | Options (default) |
 |---|---|---|
 | **Auto sleep timer** | Start a sleep timer automatically for playback that begins between the hours below | On / Off (default **Off**) |
-| **From** / **Until** | The nightly window it applies to, adjustable in **30-minute steps** and shown in your device's own clock format | Any times (default **10:00 PM** to **6:00 AM**) |
+| **From** / **Until** | The nightly window it applies to, adjustable in **30-minute steps** and written the way the app's language writes times (10:00 PM in English, 22:00 in the other languages) | Any times (default **10:00 PM** to **6:00 AM**) |
 | **Timer type** | What the automatic timer does | End of chapter, or 15 / 30 / 45 / 60 minutes (default **End of chapter**) |
 | **Shake to extend** | A shake keeps a sleep timer going at its end ([Shake to extend](sleep-timer.md#shake-to-extend)); mobile apps only, and the web player says it isn't available in the browser | On / Off (default **On**) |
 | **Shake sensitivity** | How hard that shake has to be (shown while Shake to extend is on) | Low / Medium / High (default **Medium**) |
@@ -101,10 +101,10 @@ Under the people: **Who's listening?** and **Add someone**; **Ask who's listenin
 
 ## Accounts and devices
 
-The servers this device is signed in to, each with your username and its address. Tap one to open your [account on that server](account.md): your password, pairing another device, your signed-in devices, API keys and signing out. **Add a server** connects another one - your home screen, search, and favourites then combine everything (see [Connecting and signing in](connecting.md)). The bin button beside a server removes it from this device.
+The servers you're signed in to on this device (with more than one person on the device, only the person listening's: see [Sharing a device with your household](profiles.md)), each with your username and its address. Tap one to open your [account on that server](account.md): your password, pairing another device, your signed-in devices, API keys and signing out. **Add a server** connects another one - your home screen, search, and favourites then combine everything (see [Connecting and signing in](connecting.md)). The bin button beside a server removes your sign-in to it from this device.
 
 :::warning
-Removing a server also **deletes that server's downloaded books from this device**, plus any listening progress that hasn't synced back yet. The app asks first if the server has downloads on the device. Your other servers are unaffected, and nothing on the server itself is touched. See [Offline downloads](offline-downloads.md).
+Removing a server also **deletes the books you downloaded from it on this device**, plus any of your listening progress that hasn't synced back yet. The app asks first if you have downloads from it on the device. Your other servers, and anyone else on this device signed in to the same server, are unaffected, and nothing on the server itself is touched. See [Offline downloads](offline-downloads.md).
 :::
 
 ## Support AudioSilo

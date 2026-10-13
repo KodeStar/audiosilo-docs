@@ -183,14 +183,17 @@ Settings shot is taken at 1440x1000 with Leo's card at the top. Leo's shots choo
 on "Who's listening?" (a reload asks, with two or more people) and load a story,
 paused; the phone shot reuses that browser's storage. Every household context runs in a
 fixed-offset time zone where it is 8 pm, after Leo's 7:30 pm bedtime, so the kids
-bedtime card reads the same on every run. The accounts and the share are deleted again
-at the end, even when a step failed part-way, so the admin console's shots never show
-them (the Audit log keeps the admin's create and delete entries); any left over from a
-run that was killed are deleted before provisioning. A run that only wants
+bedtime card reads the same on every run. If setting the household up fails part-way,
+its shots are skipped and keep their previous images. The accounts and the share are
+deleted again at the end, even when a step failed part-way, and their sign-ins are
+taken out of the server's event feed (sqlite3), so the admin console's shots never
+show them (the Audit log keeps the admin's create and delete entries); any accounts
+left over from a run that was killed are deleted before provisioning. A run that only wants
 `player-cast.png` (`SHOTS_ONLY`) provisions Ellen alone.
 
-The Cast button only shows on an https page in a Chromium browser, for a server that
-isn't reached at a loopback address, and the capture server is plain http on
+The Cast button only shows on an https page in a Chromium browser, and for a server
+reached at a loopback address it is only dimmed and explains why it can't cast (its
+name is then "Cast, not available for this book"); the capture server is plain http on
 `127.0.0.1`. For `web-player/player-cast.png` the script starts a local https proxy in
 front of it with a throwaway self-signed certificate (**openssl**, into
 `.cache/cast-tls`, reused while under a day old), on a free port, and opens it as `audiosilo.shots.test` in a separate

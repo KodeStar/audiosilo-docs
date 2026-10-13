@@ -44,7 +44,7 @@ The house is checked again every minute while the app is open on the Home page o
 
 ## What is and isn't shared
 
-Shared, while you have the switch on: your username, the book you listened to most recently (its title, author and cover), the chapter you're on, and whether you're listening now, paused, or listened earlier.
+Shared, while you have the switch on: your username, the book you listened to most recently (its title, author and cover), your exact place in it and the book's length (the app shows the chapter you're on), and the exact time your app last saved your place (the app shows whether you're listening now, paused, or listened earlier).
 
 **Never shared**: the device you listen on, your network address, or which app you use. None of that is ever sent to other listeners.
 

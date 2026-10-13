@@ -128,7 +128,9 @@ Patterns to copy when adding an endpoint:
 once. `ApiProvider` builds an `ApiClient` per connection (memoized on the
 connection list, so switching the active server doesn't recreate clients) and
 exposes them via `useApi(connectionId?)` (active by default, throws if none),
-`useOptionalApi`, and `useApis` (all of them). The `use*All` hooks
+`useOptionalApi`, and `useApis` (the person listening's: the active profile's
+connections, none while someone must be chosen; see
+[Profiles](profiles.md#visible-and-background-connections)). The `use*All` hooks
 (`useLibrariesAll`, `useSearchAll`, `useRecentAll`, `useFavouritesAll`,
 `useAllProgressAll`, `useBookCopies`) fan out with `useQueries` + `combine`,
 tag results with their connection, and de-duplicate books via `src/lib/dedup.ts`
@@ -605,7 +607,7 @@ is shared by the Search screen and the palette. Each group carries its own
 `GroupState` (`supported`, `isLoading`, `isError`, `retry`), so a failing group never
 hides the others:
 
-- **Books**: `useSearchAll` across every connection, de-duplicated (`src/lib/dedup.ts`),
+- **Books**: `useSearchAll` across the person listening's connections, de-duplicated (`src/lib/dedup.ts`),
   "Also on" for the other servers.
 - **Series and people** (`usePeopleSources`): every library's `seriesList`,
   `authors` and `narrators` lists on every `browse_people` server (sharing the
@@ -731,8 +733,8 @@ keeps its id. So:
 signing anyone out. `migrateStorage()` runs it after `resetStaleStorage` and before any
 store hydrates or any lazy reader runs. Until the plan is stored, a crash, a locked
 keychain or a failed write leaves the legacy data usable and the run waits for the next
-launch. Once the plan is stored the run only goes **forward**: `migrateStorage()` retries
-it up to `RECOVERY_ATTEMPTS` (5) times, a second apart, with every reader held, so no store
+launch. Once the plan is stored the run only goes **forward**: `migrateStorage()` runs
+it up to `RECOVERY_ATTEMPTS` (5) times in all, a second apart, with every reader held, so no store
 ever sees half-moved documents. When it still fails it gives up for this launch and sets
 `identityMovePending()`: the downloads store and the offline queue's replay keep what
 names an id no connection has yet instead of pruning it as gone, and a later launch
@@ -765,7 +767,10 @@ finishes the plan.
    and the next try finishes it. `audiosilo.carSnapshotWritten` is removed, so the next car snapshot is built fresh
    (even offline).
 5. **Mark it done**: `audiosilo.identityVersion` = `2`.
-6. **Delete the old tokens and the plan**, best effort (a later launch finishes them).
+6. **Delete the old tokens, then the plan**, best effort. A plan still stored (the app was
+   killed first, or its removal failed) is replayed by a later launch, which deletes the old
+   tokens again; a token delete that fails while the plan's removal succeeds is not
+   retried, so that old copy stays in the secure store.
 
 Every rewrite maps ids through the stored plan, so it is idempotent: a run cut short
 mid-write (`setMany` is not atomic on iOS or the web) is finished by the next one with
@@ -777,8 +782,11 @@ connection id must be added to `ID_DOCUMENTS` or it is left behind. In-memory st
 The same `setMany` writes the **first profiles document** (`audiosilo.profiles`); how
 it groups the connections is on [Profiles](profiles.md#the-store-srcstoresprofilests).
 
-**Aliases.** The migration records `{ [old]: new }` under `audiosilo.connectionAliases`,
-which `loadConnectionAliases` reads into memory in `bootstrapPlayback`.
+**Aliases.** The migration records `{ [old]: new }` under `audiosilo.connectionAliases`.
+Every launch loads them into memory with the migration's own first read
+(`migrateConnectionIdentity`, together with the landed moves of a run cut short);
+`bootstrapPlayback` reads them itself (`loadConnectionAliases`) only when that read
+failed.
 `resolveConnectionId(id)` maps an old id to its new one (else returns it) at every
 entry point JS can't rewrite first: a route's `?connection=` (`connectionParam`: web
 history, widget and Live Activity deep links), a car item id from an old snapshot
@@ -931,8 +939,9 @@ The offline-safe write path for listening progress:
   (`src/stores/session.ts`), which reconciles storage along two independent version
   axes. The **auth** axis (`audiosilo.storageVersion`, now `2`) wipes the connections,
   their tokens, the pre-multi-server single-session keys and, with them, the scoped
-  cache; bump it only when the connection identity scheme itself changes, because it
-  signs everyone out. The **cache** axis (`audiosilo.cacheVersion`) wipes only the
+  cache; bump it only for a connection identity change that can't be migrated, because
+  it signs everyone out (one that can be re-keyed gets a key migration instead, as Phase
+  8's did: [Connection identity](#connection-identity-server_iduser_id)). The **cache** axis (`audiosilo.cacheVersion`) wipes only the
   scoped cache (`audiosilo.downloads`, `audiosilo.progressMirror`,
   `audiosilo.progressQueue`, `audiosilo.offlineServers`) and keeps every login: it is
   the knob for any change to how that cache is keyed (a pre-split install adopts the

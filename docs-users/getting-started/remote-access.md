@@ -25,7 +25,7 @@ One practical limit of a self-signed certificate: "install to home screen" for t
 :::
 
 :::note Casting needs a certificate the Cast device trusts
-To [cast](../listening/chromecast.md), your server's address must work for the Cast device, which can't click through a certificate warning. The default self-signed certificate won't work. Use HTTPS with a trusted certificate (one of the two options below), or plain HTTP on your home network, such as a [reverse proxy](#behind-a-reverse-proxy)'s own port set as the [home address](#tell-the-server-its-home-address).
+To [cast](../listening/chromecast.md), your server's address must work for the Cast device, which can't click through a certificate warning. The default self-signed certificate won't work. Use HTTPS with a trusted certificate (one of the two options below), or, from the iPhone and Android apps, plain HTTP on your home network set as the [home address](#tell-the-server-its-home-address): behind a [reverse proxy](#behind-a-reverse-proxy), that's AudioSilo's own port (for example `http://192.168.1.20:8080`), not the proxy's. The web player casts only from an HTTPS page, so it needs the trusted certificate.
 :::
 
 ### A real certificate with autocert (Let's Encrypt)

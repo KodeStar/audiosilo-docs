@@ -18,10 +18,15 @@ platform engine wrapped in `routed(...)`, a **`RoutedPlaybackService`**
 (`src/cast/routed-service.ts`): the one `PlaybackService` the store ever gets. It
 forwards every call to the route in use, the device's own engine or, while a Cast
 session is connected, a **`CastPlaybackService`** (`src/cast/cast-service.ts`), and
-forwards only that route's snapshots. So `store.ts`, `book-queue.ts` and
-`progress-sync.ts` drive a cast exactly as they drive the phone and never know which
-it is: saves, the resume floor, the stall watchdog and the chapter UI work
-unchanged.
+forwards only that route's snapshots. So `book-queue.ts` and `progress-sync.ts` drive
+a cast exactly as they drive the phone, and `store.ts` nearly so: saves, the resume
+floor, the stall watchdog and the chapter UI work unchanged. The store asks about the
+route in one place: the download hot-swap (`switchCurrentBookToLocal`) checks
+`isCasting()` and, while casting, only hands the route the phone's local copy
+(`rememberLoad`) instead of reloading, since the receiver streams from the server
+whatever the phone holds; `adoptLoaded` also hands the route the adopted book's queue
+(`rememberLoad`). Both are optional `PlaybackService` members only the route switch
+implements.
 
 Switching routes is a pause on one side and a paused load on the other:
 
@@ -48,9 +53,9 @@ lock screen's, so the store lowers its resume floor and saves.
 
 `startCastSync()` (`src/cast/cast-session.ts`, started once by the root layout)
 follows the driver's session events, switches the route and keeps the `useCast`
-store (`supported`, `status`, `deviceName`) current. A session resumed with our media
-playing while the app has no book loaded (it was killed or relaunched mid-cast) is
-adopted the way the Android car adoption works (`adoptLoaded`, so the
+store (`supported`, `status`, `deviceName`) current. On native, a session resumed with
+our media playing while the app has no book loaded (it was killed or relaunched
+mid-cast) is adopted the way the Android car adoption works (`adoptLoaded`, so the
 [play rule](profiles.md#switching-and-the-play-rule) applies), then given the queue
 the store built.
 
@@ -64,11 +69,18 @@ Guards that keep a route switch honest:
   `cast-media.ts`: the URL's route and its `path`/`transcode` parameters, ignoring the
   address, `token=` and `t=`), or by the book a receiver item names. Another sender's
   book, or another app's media on the same receiver, is never paused, seeked, re-rated
-  or stopped by us; ours waits, paused, and the next play loads it back.
-- **An early end of a transcoded stream** (`isEarlyTranscodeEnd`: the receiver says
-  `finished` well before the file's end, a stream the server or a proxy closed) is not
-  the book's end: seen playing just now, the queue is loaded again there and plays on;
-  seen long ago, the book comes back paused there and the next play reloads it.
+  or stopped by the cast route's controls; ours waits, paused, and the next play loads
+  it back. Ending the session is not guarded: a car play (`endCastForCar`) and a book
+  that can't be cast (`onCastFailed`) end it with `endSession(true)`, which stops
+  whatever the receiver plays, another sender's book included.
+- **An early end of the last file** (`isEarlyTranscodeEnd`, the web engine's rule: the
+  receiver says the last file `finished` well before its end, a transcoded stream the
+  server or a proxy closed, or a dropped direct one) is not the book's end: seen
+  playing just now, the queue is loaded again there and plays on; seen long ago, the
+  book comes back paused there and the next play reloads it. A stream that ends again
+  without real progress past the reload is the end after all. On an earlier file a
+  `finished` is the receiver moving on to the next item, so an early end there is not
+  caught: the rest of that file is skipped.
 - **The car wins.** A CarPlay or Android Auto play request while a book is on a
   receiver ends the cast first (`endCastForCar`: the receiver's place is read, the book
   comes back paused there, then the session ends), so the car's play starts on this
@@ -135,11 +147,15 @@ reports the session's life (`starting`, `started`, `resumed`, `startFailed`,
   couldn't reach a localhost server anyway). It is loaded **lazily** the first time
   the Cast button shows for a book it can cast (`ensureCastReady`, 15 s timeout),
   never at startup and never for a button that can only explain a blocked book; a
-  failed load is kept for the page rather than retried. **One tab owns a session**: the
-  sender joins any session this origin has (so a reload mid-cast finds it again), but
-  only the tab that started it follows it (a mark in that tab's `sessionStorage`); any
+  failed load is kept for the page rather than retried. **One tab owns a session**: once
+  loaded, the sender joins any session this origin has, but only the tab that started
+  it follows it (a mark in that tab's `sessionStorage`); any
   other tab leaves the session it was joined to without stopping the receiver, so two
-  tabs never drive one receiver. The server's web CSP admits
+  tabs never drive one receiver. Since the sender loads only when the Cast button shows
+  for a loaded book, a reload mid-cast doesn't pick the cast up by itself: nothing is
+  joined until the listener starts a book, and that book is then handed to the
+  receiver at its own place, replacing what the receiver played (the web never adopts
+  the receiver's book). The server's web CSP admits
   the sender's three scripts by path in `script-src`
   ([Web UI](../server/web-ui.md#per-document-csp-htmlcsp)).
 
@@ -192,7 +208,10 @@ in that order, over the SDK 56 AppDelegate fixture).
 
 While a book casts, the app's Media3 engine is unloaded, so the **Cast SDK's own
 media notification and media session** are the lock screen's and the notification
-shade's controls for the cast (previous/next step by file, the receiver's queue).
+shade's controls for the cast (previous/next step by file when the receiver's queue
+has more than one item, a book in several files; a one-file book gets rewind/forward
+instead: the library's `GoogleCastOptionsProvider` shows the skip actions only when
+`getQueueItemCount() > 1`).
 Its foreground service also keeps the app alive, so the receiver's place keeps being
 saved.
 
@@ -221,6 +240,7 @@ reads where the TV got to when it comes back (`refresh`).
 `cast-media.test.ts` (the pure rules), `cast-token.test.ts`, `cast-prepare.test.ts`,
 `cast-service.test.ts`, `routed-service.test.ts`, `cast-session.test.ts`,
 `cast-store.test.ts`, `cast-button-model.test.ts`, `cast-button.test.tsx`,
-`driver.native.test.ts`, `sdk-shapes.test.ts` and `web-sender.test.ts` in `src/cast/`;
+`driver.native.test.ts`, `driver.web.test.ts` (one tab owns a session),
+`sdk-shapes.test.ts` and `web-sender.test.ts` in `src/cast/`;
 `plugins/withCast.test.ts` for the config plugin. A device pass with a Cast device
 is still owed (above).

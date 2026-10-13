@@ -149,9 +149,11 @@ version exists (it can be turned off); see
 
 ### Can other people on my server see what I'm listening to?
 
-Not unless you choose to: **Listening in the house** is off by default, and only
-works between people who have both turned it on. See
-[Listening in the house](./listening/in-the-house.md).
+Other listeners can't, unless you choose to: **Listening in the house** is off by
+default, and only works between people who have both turned it on. See
+[Listening in the house](./listening/in-the-house.md). Your server's admin is
+different: they can already see everyone's listening in the admin console's
+[Activity](./admin/activity.md#what-the-server-records), whether or not you share.
 
 ## Users & sharing
 

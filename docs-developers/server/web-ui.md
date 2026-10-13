@@ -881,7 +881,8 @@ base-uri 'none'; frame-ancestors 'none'
   source leaking into another directive, fails the test.
 - **`style-src` allows `'unsafe-inline'`** deliberately: react-native-web and
   Uniwind inject style rules at runtime, which cannot be hashed ahead of
-  time. This is the single relaxation, confined to the player.
+  time. With the Cast sender's script sources above, it is one of the policy's two
+  relaxations, both confined to the player.
 - Because the hashes are computed from the bytes being served, the policy
   stays correct after the player build is swapped (a new Docker image, a
   refreshed `web_dir`) with no server change.

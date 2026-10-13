@@ -183,7 +183,8 @@ audiobooks" into "remote file read on your NAS".
   whose `script-src` carries a sha256 hash of that document's inline scripts
   (`web.htmlCSP` in `internal/web/web.go`).
 - **Confined token-in-URL**: the `?token=` media-auth fallback is accepted **only**
-  on cover/stream GETs (`bearerToken(r, true)` via `requireMediaAuth` in
+  on the cover, stream and community cover GETs (`bearerToken(r, true)` via
+  `requireBookMediaAuth` / `requireMediaAuth` in
   `internal/api/middleware.go`); every other route is header-only, so session
   tokens can't leak into logs or Referer headers elsewhere.
 - **Tested both ways**: security-critical code (`SafeJoin`, scope checks, rate

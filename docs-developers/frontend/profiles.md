@@ -23,7 +23,7 @@ One persisted document, `audiosilo.profiles`, hydrated in `bootstrapPlayback()`:
 ```ts
 interface Profile {
   id: string;              // local, random (a UUID); never sent anywhere
-  name: string;            // defaults to the first connection's username; editable here
+  name: string;            // defaults to a connection's username; editable here
   connectionIds: string[]; // at most one per server
   kids?: { library?: { connectionId: string; libraryId: number }; bedtime: string /* 'HH:MM' */ };
   hasPin?: boolean;        // mirrors the secure store; the hash lives there
@@ -41,16 +41,17 @@ interface ProfilesDoc {
 same `setMany` as its re-keyed documents (an existing document is only re-keyed). It
 puts every connection in one profile, except that a profile holds at most one
 connection per server: a second user on a server (signed in before the migration ran)
-gets a profile of their own. Each profile is named after its first connection's user,
-the profile holding the default connection is active, and `askAtLaunch` is off. When
+gets a profile of their own. Each profile is named after its first connection's user
+(the one holding the default connection after the default connection's user), the
+profile holding the default connection is active, and `askAtLaunch` is off. When
 the document is missing on an install with connections (the migration aborted, or an
 install from before profiles signed in again), the store builds it from the session's
 connections with the same rule.
 
 **Reading it.** A read that **fails** is never taken as a missing document (reconciling
 an empty one would replace every profile: new ids, no PIN, no kids settings). The store
-retries it `HYDRATE_ATTEMPTS` (5) times, a second apart (`hydrationFailed` while it
-does), then stops holding the launch (`giveUpOnRead`), decided once the session has
+tries the read up to `HYDRATE_ATTEMPTS` (5) times in all, a second apart (`hydrationFailed`
+while it does), then stops holding the launch (`giveUpOnRead`), decided once the session has
 settled:
 
 - **Someone is signed in**: they may have a PIN or a kids profile this run can't know,
@@ -145,7 +146,7 @@ below). See also [Native integrations](native-integrations.md#the-car-snapshot-s
 
 A full-screen root route (`src/app/profiles.tsx`, no swipe-back) rendering
 `ProfilesScreen` (`src/components/profiles/`): every person as a large avatar
-(`PersonAvatar`, the active one ringed) with a one-line status (kids mode and its
+(`Portrait` with `kind="user"`, the active one ringed) with a one-line status (kids mode and its
 bedtime, else "Listening now" for the active person, else their servers), and **Add
 someone**. Choosing the active person goes back; choosing someone with a PIN asks for
 it; anyone else is switched to. Strings are in the `profiles` i18n namespace.
@@ -172,15 +173,20 @@ anyone with the device and a browser's developer tools can read a session token 
   `audiosilo.profilePin.<profileId>` as JSON `{ v: 1, salt, iterations, hash }`. `salt`
   is 16 random bytes; `hash` is SHA-256 over salt + PIN, then over salt + the previous
   digest, **10,000** digests in all (`PIN_ITERATIONS`), compared in constant time. The
-  profile mirrors `hasPin` for display only.
-- **The secure store is the authority** (`readPin` first, in `useChooseProfile` and the
-  Household pane), never the mirror alone: the mirror is written best effort with the
-  whole profiles document, which a failed write or a second web tab holding an older
-  document can leave behind. A stored hash the mirror lost still asks (and repairs the
-  mirror); a mirror whose hash is gone (an install restored without its secure store)
-  counts as no PIN and is cleared; a secure store that can't be read still asks (the
-  prompt says it couldn't check). **Setting** a PIN over a stored one asks for the
-  current one first, so a PIN is never overwritten unseen.
+  profile mirrors `hasPin`, so screens know without reading the secure store.
+- **The secure store decides whenever it can be read** (`readPin` first, in
+  `useChooseProfile` and the Household pane's **Set a PIN**): the mirror is written best
+  effort with the whole profiles document, which a failed write or a second web tab
+  holding an older document can leave behind. A stored hash the mirror lost still asks
+  (and repairs the mirror); a mirror whose hash is gone (an install restored without its
+  secure store) counts as no PIN and is cleared when someone switches to that person.
+  **When the secure store can't be read, the mirror decides**: a person marked as having
+  a PIN is still asked (the prompt says it couldn't check), a person not marked is
+  switched to without one, and **Set a PIN** goes straight to choosing a new one. **Set a
+  PIN** over a hash the secure store can read asks for the current one first. The pane's
+  **Change** and **Remove** are offered from the mirror alone and check against the
+  secure store, so with the hash gone no PIN matches there ("That PIN doesn't match")
+  until a switch to that person, or removing them, clears the mirror.
 - **SHA-256 in plain JS** (`src/lib/sha256.ts`, synchronous, checked against the
   standard's vectors): 10,000 rounds through `expo-crypto` would be 10,000 asynchronous
   native calls, and on the web `crypto.subtle` exists only in a secure context, so a
@@ -190,7 +196,8 @@ anyone with the device and a browser's developer tools can read a session token 
   reduced motion only the words); the fifth wrong try in a row (`PIN_MAX_TRIES`) makes it
   wait 30 s (`PIN_LOCK_MS`), counted per profile in memory, so closing the prompt doesn't
   reset it (a relaunch does).
-- A deleted profile takes its PIN hash with it.
+- A deleted profile takes its PIN hash with it when its mirror says it has one (best
+  effort; a leftover hash names a profile id nothing uses again).
 
 ## Links to another person's book
 

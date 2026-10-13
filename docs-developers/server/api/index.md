@@ -88,7 +88,7 @@ key satisfies the admin-role check, a regular user's does not. Pairing tokens
 are never accepted as a bearer credential, and an API key is never valid for
 `/auth/exchange`. It also **cannot mint a fresh durable credential** - an API-key
 caller is refused (403) on the credential-minting routes (create key, recovery,
-pair, set password), so revoking a leaked key cuts off everything it could reach.
+pair, set password, cast token), so revoking a leaked key cuts off everything it could reach.
 See the [reference](reference.md#personal-api-keys).
 
 ### Media requests: `?token=` - media GETs only
@@ -98,7 +98,8 @@ See the [reference](reference.md#personal-api-keys).
 session token **either** as the bearer header **or** as a `?token=` query
 parameter. This exists because browser `<img>` and `<audio>` elements cannot set
 an `Authorization` header. The query fallback is deliberately confined to these
-three routes (`requireMediaAuth` in `internal/api/middleware.go`): a token in a query
+three routes (`requireBookMediaAuth` for cover and stream, `requireMediaAuth` for
+`/meta/cover`, both `mediaAuth` in `internal/api/middleware.go`): a token in a query
 string can leak into access logs and `Referer` headers, so no other route
 accepts it. Native clients should keep using the header even for media.
 
@@ -203,7 +204,7 @@ Status mapping is consistent across handlers:
 |---|---|
 | `400` | malformed body / unknown JSON field, missing or invalid parameter (`path is required`, `invalid cursor`, non-integer `{id}`), path escaping the library root, domain validation (`mode must be "book" or "collection"`, admin needs a password, password too short) |
 | `401` | missing/invalid/expired token, bad credentials, invalid auth code, wrong `current_password` |
-| `403` | authenticated but not allowed: no share grants the library or path, `admin only`, demo accounts on the self-service routes (password/recovery/API keys), an API key on a credential-minting route (create key/recovery/pair/password), bad setup token |
+| `403` | authenticated but not allowed: no share grants the library or path, `admin only`, demo accounts on the self-service routes (password/recovery/API keys), an API key on a credential-minting route (create key/recovery/pair/password/cast token), bad setup token |
 | `404` | library/user/share/invite not found, another user's (or an unknown) bookmark or note on an edit, `no book at that path`, feature not configured (demo mode off, well-known files unset) |
 | `409` | conflicts: `name already taken` (library/share), last-enabled-admin guard, signing out the device making the request, starting someone's progress on a book they can't see, setup already completed |
 | `413` | a request body over an endpoint's size cap (a custom cover over 5 MiB) |

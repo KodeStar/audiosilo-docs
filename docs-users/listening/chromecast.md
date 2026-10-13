@@ -15,18 +15,18 @@ Tap it, pick your Cast device, and the book carries on there from where you were
 
 The button appears:
 
-- in the **iPhone and Android apps**;
+- in the **iPhone and Android apps** (on Android, with Google Play services);
 - in the **web player** in Chrome, Edge and other Chromium-based browsers, when you open the web player over **HTTPS**. Safari and Firefox can't cast, and neither can any browser on an iPhone or iPad.
 
-It only appears while a book is loaded, and only when that book's server runs an AudioSilo version that supports casting. On an older server there is no Cast button: updating AudioSilo on the server adds it.
+It only appears while a book is loaded, and only when that book's server runs an AudioSilo version that supports casting (and, in the iPhone and Android apps, a version of the app that has it). On an older server there is no Cast button: updating AudioSilo on the server adds it, and in the apps, updating the app too.
 
 On an iPhone, if AudioSilo hasn't asked before, the first tap brings up a request to use your **local network**: that's how it finds Cast devices. Allow it, or the app can't see any.
 
 ## What you need
 
 - **A Cast device on the same network** as your phone or computer.
-- **A server address the Cast device can reach.** The Cast device fetches the book from your server itself. It uses the address your app is connected through at that moment: your [home address](../getting-started/remote-access.md#tell-the-server-its-home-address) when you're at home. That address must work for the Cast device too:
-  - **Plain HTTP on your home network** works, for example `http://192.168.1.20:8080`. A server [behind a reverse proxy](../getting-started/remote-access.md#behind-a-reverse-proxy) serves plain HTTP on its own port, and its home address can point straight at it.
+- **A server address the Cast device can reach.** The Cast device fetches the book from your server itself. It uses the address your app is connected through at that moment: in the iPhone and Android apps, your [home address](../getting-started/remote-access.md#tell-the-server-its-home-address) when you're at home; in the web player, the address you opened it at. That address must work for the Cast device too:
+  - **Plain HTTP on your home network** works from the iPhone and Android apps, for example `http://192.168.1.20:8080` (the web player casts only from an HTTPS page, so it needs a trusted certificate). A server [behind a reverse proxy](../getting-started/remote-access.md#behind-a-reverse-proxy) serves plain HTTP on its own port, and its home address can point straight at it.
   - **HTTPS with a trusted certificate** works: a [Let's Encrypt certificate](../getting-started/remote-access.md#a-real-certificate-with-autocert-lets-encrypt), or a [reverse proxy](../getting-started/remote-access.md#behind-a-reverse-proxy) with a real certificate.
   - **A self-signed certificate does not work.** A Cast device can't click through a certificate warning the way you can in a browser, so it won't play from a server on the default self-signed certificate.
   - **`localhost` doesn't work.** If the app reaches your server at `localhost` (the server runs on the same computer), the Cast device can't. The Cast button explains this instead of casting. Connect to the server by its network address instead.
@@ -50,11 +50,11 @@ The Cast device keeps playing when you leave the app, but iOS stops AudioSilo so
 
 ### On Android
 
-While a book is casting, a **Cast notification** (and the lock screen) has the controls: play and pause, and previous and next, which move between the book's files. It also keeps AudioSilo running, so your place keeps saving while the app is in the background.
+While a book is casting, a **Cast notification** (and the lock screen) has the controls: play and pause, stop casting, and either previous and next, which move between the book's files (a book in several files), or skip back and skip forward (a book in one file). It also keeps AudioSilo running, so your place keeps saving while the app is in the background.
 
 ## Stopping
 
-Tap the **Cast** button again and choose to stop casting (in the web player, Chrome's Cast window has the stop button). You can also stop it from the TV, Google Home, or the Android notification. The book comes back to your device **paused** at the place the Cast device reached; press play to carry on there.
+Tap the **Cast** button again and choose to stop casting (in the web player, Chrome's Cast window has the stop button). You can also stop casting from Google Home or the Android notification. The book comes back to your device **paused** at the place the Cast device reached; press play to carry on there. Stopping the book with the TV's own remote only pauses it: the Cast device stays connected, and the next play carries on there.
 
 ## If casting doesn't start
 

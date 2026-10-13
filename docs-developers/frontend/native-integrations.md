@@ -238,8 +238,9 @@ On the JS side, `index.ts` (the `package.json` `main`) imports
 `AudiosiloCar` with `AppRegistry.registerHeadlessTask` (the task's code loads only when it
 runs); elsewhere the file is empty. `runCarTask` (`car-task.ts`) runs
 `bootstrapPlayback()` (the root layout's launch steps as one memoised run: storage
-migration, the downloads wipe after a reset, hydrating session, settings, downloads, series
-orderings and library selection, and the listener's language for the snapshot's labels),
+migration, the connection identity migration included, the downloads wipe after a reset,
+hydrating session, settings, downloads, series orderings, library selection and profiles,
+and the listener's language for the snapshot's labels),
 starts the two app-lifetime controllers the root layout would (address routing, so a server
 paired at home is reached through its away address from the car, and the place reconcile;
 both shared starts), starts the car sync, and resolves once **no car is connected** and the

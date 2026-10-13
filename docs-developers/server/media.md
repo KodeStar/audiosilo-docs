@@ -33,10 +33,11 @@ Two things happen before any bytes are read, on every media request:
 
 1. **Authorization**: `authorizedPath` resolves `{id}` + `?path=` and checks
    the caller's share scope (`Scope.Allows`). `cover` and `stream` are wired
-   through `requireMediaAuth`, the only middleware that also accepts the
-   session token as a `?token=` query parameter - browser `<img>`/`<audio>`
-   elements cannot set an `Authorization` header. Every other route rejects
-   query tokens (see [Auth & security](auth-and-security.md)).
+   through `requireBookMediaAuth`, which, like `requireMediaAuth` on
+   `/meta/cover`, also accepts the session token as a `?token=` query parameter
+   (and on these two a [cast token](auth-and-security.md#cast-tokens)) - browser
+   `<img>`/`<audio>` elements cannot set an `Authorization` header. Every other
+   route rejects query tokens (see [Auth & security](auth-and-security.md)).
 2. **Path safety**: the relative path is joined to the library root with
    `library.SafeJoin`, which rejects any traversal outside the root.
 
@@ -337,7 +338,7 @@ fallback for codecs `DirectPlayable` rejects.
 
 ```mermaid
 flowchart TD
-    A["GET /libraries/{id}/stream?path=…"] --> B["requireMediaAuth<br/>(header or ?token=)"]
+    A["GET /libraries/{id}/stream?path=…"] --> B["requireBookMediaAuth<br/>(header, or ?token= session or cast token)"]
     B --> C["authorizedPath: scope check<br/>library.SafeJoin: path safety"]
     C --> D{"transcode=1?"}
     D -- "no" --> E["media.ServeFile<br/>Range + sniffed Content-Type<br/>(?download=1 → attachment)"]
