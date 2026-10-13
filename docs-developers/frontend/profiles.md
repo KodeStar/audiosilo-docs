@@ -27,7 +27,7 @@ One persisted document, `audiosilo.profiles`, hydrated in `bootstrapPlayback()`:
 ```ts
 interface Profile {
   id: string;              // local, random (a UUID); never sent anywhere
-  name: string;            // defaults to a connection's username; editable here
+  name: string;            // defaults to personName(user): a member's display_name, else the username; editable here
   connectionIds: string[]; // at most one per server
   kids?: { library?: { connectionId: string; libraryId: number }; bedtime: string /* 'HH:MM' */ };
   hasPin?: boolean;        // mirrors the secure store; the hash lives there
@@ -104,7 +104,7 @@ for a household member signed in beside the owner
 ([`addMemberHere`](household.md#signing-a-member-in-here)) `keepActive` (the new profile is
 added **without** becoming active: the person listening stays, or nobody when the
 active person was only this connection) and `name` (the new profile's name, trimmed;
-empty means the username).
+empty means `personName(user)`: the member's `display_name`, else the username).
 
 ### Visible and background connections
 
@@ -115,8 +115,10 @@ breaking their background work:
   (`useProfileConnections`, `profileConnections`, and the cross-connection hooks'
   `useApis()`): Home, the Library and its picker, Search and the command palette, the
   Downloads page, Up next, You (stats, Year, Journal), Settings and the profile menu,
-  [Listening in the house](listening-in-the-house.md), the car snapshot and the
-  widget. Never `useSession((s) => s.connections)` for a list someone sees.
+  the Household page's members, [Listening in the house](listening-in-the-house.md),
+  the car snapshot and the widget. Never `useSession((s) => s.connections)` for a list
+  someone sees, except a list of the device's people (Who's listening? and On this
+  device show every person's servers).
 - **Background work keeps using every connection**: the offline save queue, the
   downloads engine, car bookmarks waiting to be sent, address routing, reachability. A
   switch must never make another person's queued saves unroutable (the queue flush
@@ -187,19 +189,19 @@ anyone with the device and a browser's developer tools can read a session token 
   is 16 random bytes; `hash` is SHA-256 over salt + PIN, then over salt + the previous
   digest, **10,000** digests in all (`PIN_ITERATIONS`), compared in constant time. The
   profile mirrors `hasPin`, so screens know without reading the secure store.
-- **The secure store decides whenever it can be read** (`readPin` first, in
-  `useChooseProfile` and the Household page's **Set a PIN**): the mirror is written best
+- **The secure store decides** (`readPinMirrored`, which reads it with `readPin` and
+  repairs the profile's `hasPin` mirror to match, in `useChooseProfile` and in the
+  Household page's **Set a PIN**, **Change** and **Remove**): the mirror is written best
   effort with the whole profiles document, which a failed write or a second web tab
-  holding an older document can leave behind. A stored hash the mirror lost still asks
-  (and repairs the mirror); a mirror whose hash is gone (an install restored without its
-  secure store) counts as no PIN and is cleared when someone switches to that person.
-  **When the secure store can't be read, the mirror decides**: a person marked as having
-  a PIN is still asked (the prompt says it couldn't check), a person not marked is
-  switched to without one, and **Set a PIN** goes straight to choosing a new one. **Set a
-  PIN** over a hash the secure store can read asks for the current one first. The pane's
-  **Change** and **Remove** are offered from the mirror alone and check against the
-  secure store, so with the hash gone no PIN matches there ("That PIN doesn't match")
-  until a switch to that person, or removing them, clears the mirror.
+  holding an older document can leave behind. A stored hash the mirror lost still asks;
+  a mirror whose hash is gone (an install restored without its secure store) counts as
+  no PIN. **When the secure store can't be read, nothing acts on the mirror's word**:
+  choosing that person doesn't switch, and **Set a PIN**, **Change** and **Remove**
+  change nothing; each says "Couldn't check the PIN on this device. Try again." **Set a
+  PIN** over a hash the secure store can read asks for the current one first. **Change**
+  and **Remove** are offered from the mirror; with the hash gone they repair it and say
+  "There's no PIN set for &lt;name&gt; on this device." instead of asking for a PIN
+  nothing could match.
 - **SHA-256 in plain JS** (`src/lib/sha256.ts`, synchronous, checked against the
   standard's vectors): 10,000 rounds through `expo-crypto` would be 10,000 asynchronous
   native calls, and on the web `crypto.subtle` exists only in a secure context, so a
@@ -238,8 +240,8 @@ The gate only offers the switch; refusing the play itself is the playback store'
 The [Household page](household.md)'s first part is `DevicePeople`
 (`src/components/household/device-people.tsx`, "On this device"): a card per person
 (`PersonHeader`, Switch, rename, PIN set/change/remove, kids mode with the bedtime and,
-while the shelf is one library (`useKidsSharedShelf`), `KidsLibraryPicker`, **Remove
-from this device**), **Who's listening?** and **Sign in someone who already has an
+while `useKidsSharedShelf` says `library` (a one-library shelf, or a member's shelf not
+known yet), `KidsLibraryPicker`, **Remove from this device**), **Who's listening?** and **Sign in someone who already has an
 account** (`openAddSomeone`, the connect flow's Add someone, `ADD_SOMEONE_HREF`), and
 the **Ask who's listening when the app opens** switch. A person with a connection whose
 sign-in ended (`needsReconnect`) gets a **Signed out** row with **Sign in again**

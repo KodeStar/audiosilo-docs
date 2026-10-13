@@ -15,7 +15,7 @@ AudioSilo arranges itself to fit the screen it's on.
 - **Library** - everything on your server, by book, author, series, narrator, collection or folder.
 - **Search** - find books, series, authors, narrators, and characters you've already met.
 - **Downloads** - books saved on this device for [offline listening](offline-downloads.md).
-- **Me** - [You](you.md): your listening stats, your [Year in listening](year-in-listening.md), your [Journal](journal.md), your [Settings](settings.md) and your [account](account.md).
+- **Me** - [You](you.md): your listening stats, your [Year in listening](year-in-listening.md), your [Journal](journal.md), your [Settings](settings.md), your [household](household.md) and your [account](account.md).
 
 Each tab remembers where you were. Open a book from Search, switch to Library for a moment, come back to Search, and the book is still open there; going back takes you to your search results. Tap the tab you're already on to jump back to its first page.
 
@@ -225,7 +225,7 @@ Start typing and the results are grouped:
 - **Actions** - things you can do right now. While a book is loaded: **Pause** (or **Resume** the current chapter), **Sleep in 30 minutes**, **Sleep at end of chapter** (for books with chapters) and **Open the full player**. On a server with [Up next](up-next.md): **Open Up next**, with how many books are queued. Always: a switch to **light or dark** appearance. Setting a sleep timer this way shows a short confirmation at the bottom of the screen.
 - **Books** - matching titles, authors and series from every server you're connected to, the same search as the Search page. Before you type anything, this group is **Continue listening** instead: the books you're partway through, with how much you've listened to.
 - **Series**, **Authors**, **Narrators** and **Characters** - up to three of each, from the same search as the Search page. Characters follow the same rule: only ones you've met, with a quiet note counting any you haven't.
-- **Go to** - Home, Library and Downloads, then [Your listening](you.md#your-listening), [Year in listening](year-in-listening.md), your [Journal](journal.md) and [Settings](settings.md).
+- **Go to** - Home, Library and Downloads, then [Your listening](you.md#your-listening), [Year in listening](year-in-listening.md), your [Journal](journal.md), [Settings](settings.md) and [Household](household.md).
 
 Use the **arrow keys** to move through the results, **Enter** to open one, and **Esc** to close. Book results say which server and library each one comes from, as on the Search page. Your recent searches appear as **Recent** shortcuts the next time you open it; it's the same list as the Search page's, kept on this device only.
 

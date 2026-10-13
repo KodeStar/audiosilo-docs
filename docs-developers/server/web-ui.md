@@ -609,8 +609,8 @@ CSP-sensitive work against a real build served by Go. The console's own gate is
 - **Server > Settings** (`features/settings/`) - over
   [`GET`/`PATCH /admin/settings`](api/reference.md#admin-settings): an in-page
   topic list in `?topic=` (`general` is the default and has no param;
-  `network`, `players`, `metadata`, `transcoding`, `demo`, `backups`,
-  `notifications`; `settings-model.ts` `SETTINGS_PAGES`). Each card is a `SettingsForm`
+  `network`, `players`, `metadata`, `transcoding`, `household`, `demo`, `backups`,
+  `notifications`, `import`; `settings-model.ts` `SETTINGS_PAGES`). Each card is a `SettingsForm`
   (`settings-form.tsx`): a draft of its fields, Reset and Save changes, only
   the changed fields sent (`sectionPatch`); list settings are edited as one
   entry per line. A refusal's `field` puts the server's message under that

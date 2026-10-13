@@ -75,7 +75,7 @@ The list appears on servers new enough to show it.
 
 If you're about to sign out **without a password set**, the app stops you with a warning - *"Without one you'll need a new invite from your admin to sign back in on this server"* - and offers to **Set a password** right there. Take the offer; it's the whole reason the warning exists. If books from this server are downloaded on the device, the warning also says how many you'd lose.
 
-For a member of someone's household, the warning names who can sign you in again instead: *"Without a password, Adam can sign you in again from their Household page."*, or for a kid's account, *"A kid's account has no password. Adam can sign it in again from their Household page."*
+For a member of someone's household, the warning names who can sign you in again instead: *"Without a password, Adam can sign you in again from their Household page."*, or for a kid's account, *"A kid's account has no password. Adam can sign it in again from their Household page."*, with no **Set a password** button, since a kid's account can't have one.
 
 Signing out **takes this server out of your app** and deletes your downloads from it on this device, along with any of your progress that hasn't synced yet. Anyone else on this device signed in to the same server keeps theirs. (Books, progress, and bookmarks stored on the server are safe - sign back in and they're all there.)
 

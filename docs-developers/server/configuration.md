@@ -171,7 +171,7 @@ Both are read per request through the API's live config, so a change applies at 
 
 | Key | Type / default | Meaning |
 |---|---|---|
-| `household.members_enabled` | bool, `true` | Anyone with an account but a demo account may add members (`POST /me/household/members`). Off refuses new ones only (`403 feature_off`); existing members keep working and their owners can still manage them. The per-person switch is the admin's `can_add_members` on each account (`PATCH /admin/users/{id}`), not a key here |
+| `household.members_enabled` | bool, `true` | Any account but a demo account or a household member may add members (`POST /me/household/members`). Off refuses new ones only (`403 feature_off`); existing members keep working and their owners can still manage them. The per-person switch is the admin's `can_add_members` on each account (`PATCH /admin/users/{id}`), not a key here |
 | `household.max_members` | int, `6` | Members per person, `1` to `50` (`config.MinMaxMembers`/`MaxMaxMembers`); at it, adding is `409 member_limit`. Outside the range `Validate` refuses the config (a value from the environment included, so the server doesn't start) |
 
 A `config.yaml` written before the section keeps the defaults. The admin's settings

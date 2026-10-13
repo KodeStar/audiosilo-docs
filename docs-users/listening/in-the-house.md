@@ -25,7 +25,7 @@ The switch is per server: if you're signed in to two servers, you choose for eac
 - the book's title and cover;
 - when, and the chapter: **Listening now**, **Paused**, **Earlier today**, **Yesterday** or **Recently**, then the chapter they're on (*"Listening now · Chapter 4"*).
 
-Tap a card to open that book's page. **Sharing settings** beside the title takes you to the switch. When nobody else is listening, the section isn't shown at all.
+Tap a card to open that book's page. **Sharing settings** beside the title opens the [Household page](household.md), where the switch is in its last part, **Listening in the house**. When nobody else is listening, the section isn't shown at all.
 
 ![Listening in the house on the Home page: jamie listening now to The Hound of the Baskervilles and rosa paused on The Call of the Wild, with Sharing settings beside the title](/img/screenshots/web-player/home-house.png)
 

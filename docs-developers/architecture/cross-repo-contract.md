@@ -584,12 +584,12 @@ everything about what it may do is the server's.
 [Auth & security](../server/auth-and-security.md#household-members)): what a member may
 listen to (the owner's access, or the collections the owner shares, plus their own
 grants), one level and never an admin, the kid refusals (`403 kid_account`), kids out
-of share targets and Listening in the house, someone else's member always `404`, a
+of share targets and Listening in the house, someone else's member `404` like no such account, a
 disabled member's session and pairing code `409 member_disabled`.
 
 **Client rules** ([Household page and members](../frontend/household.md)): a member
-signed in on the owner's device is placed by `addMemberHere` (the owner stays the
-person listening, the default connection doesn't move); `member_kind === 'kid'` turns
+the owner signs in on this device from the Household page is placed by `addMemberHere`
+(the owner stays the person listening, the default connection doesn't move); `member_kind === 'kid'` turns
 kids mode on by default and allows it with no grown-up on the device; `managed_by`
 picks the kids shelf's collections. The player never filters a kid's access itself.
 Refusals are read by `code`, never by the server's message

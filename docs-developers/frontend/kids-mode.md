@@ -90,20 +90,24 @@ The rules are pure in `kids-model.ts`, read through `useKidsStories()`:
   `user.managed_by` (a household member), the collections `GET /me/collections` lists
   as shared with it (`!owned`) whose `owner.id` is `managed_by.id`, in the order the
   list gives them (the owner's). When there is at least one, they **are** the shelf:
-  `kidsCollectionSections` reads each one's `GET /me/collections/{id}` and gives one
-  section per collection with stories (titled with the collection's name when there
-  are several, untitled when one), each in `kidsOrder` (stories in progress first,
-  most recently played first, then the rest in the collection's order, a book listed
-  twice shown once). Collections with no story yet are left out; with none left the
+  `useKidsStories` reads each one's `GET /me/collections/{id}`, and the pure
+  `kidsCollectionSections` gives one section per collection with stories, titled with
+  the collection's name, each in `kidsOrder` (stories in progress first, most recently
+  played first, then the rest in the collection's order, a book listed twice shown
+  once); with one section the shelf shows no title (`useKidsStories` passes `sections`
+  only when there are several). Collections with no story yet are left out; with none left the
   shelf says "Ask a grown-up to add stories." The client can't see `member_access` (it
   isn't on `/me`), so an `all` member whose owner also shares collections with them
   sees those collections; one with none sees the one-library view.
 - **Which one** is `kidsShelfMode(user, hasCollections, collections)`: `collections`
   when the owner shares at least one, `library` for an account nobody manages, a
   server without `collections` or a member with none shared, and `unknown` while a
-  member's answers are still out. The Household page reads the same through
-  `useKidsSharedShelf(profile)` and hides the kids **Library** row unless the shelf is
-  one library (also while the kid is signed out or the collections can't be read).
+  member's answers are still out. The Household page reads it through
+  `useKidsSharedShelf(profile)` (`shared`, `library` or `unknown`) and shows the kids
+  **Library** row only for `library`: a one-library shelf, and also while a member's
+  shelf isn't known yet (the row goes once the shared collections arrive). It is
+  hidden for a shelf of collections, and while the kid is signed out or reading the
+  collections failed (`unknown`).
   When an owner switches a member to `all`, the shares stop
   ([a member's card](household.md#a-members-card)), so the kid's shelf is one library again.
 - **The library** (`kidsLibrary`), for everyone else (an account nobody manages, an

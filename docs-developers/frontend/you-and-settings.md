@@ -40,7 +40,7 @@ re-export of `YouHub` (`src/components/you/you-hub.tsx`). The rules are the pure
 
 The section control is `SubNavSections tab="(me)"`, so on tablet and desktop it is
 published into the sub-nav ([Sub-nav sections and actions](overview.md#sub-nav-sections-and-actions)).
-Stats, Year and Account are plain columns with no scroller or gutters of their own: the
+Stats, Year, Household and Account are plain columns with no scroller or gutters of their own: the
 hub puts them in a `TabPageScroll` (`src/components/shell/tab-page-scroll.tsx`: the page
 gutters, the mini player's room and the iOS tab bar's inset). The Journal and Settings
 bring their own scrolling, through the same scroller.
@@ -219,9 +219,9 @@ Each block is gated on its capability, so an older server shows less, quietly:
 |---|---|---|
 | Identity: name, "@user · role on server", the signed-in device count | `IdentityCard` | the count needs `my_devices` |
 | Password: set or change in a dialog that lifts above the keyboard | `PasswordCard`, `PasswordDialog`, `usePasswordEditor` | hidden for a demo account |
-| Pair another device: `api.pair()`, the QR, a countdown from arrival (`PAIRING_TTL_MS`, the server's 10-minute `pairingTTL`), Copy link on web, Share on native, Make a new code once expired | `PairDeviceCard`, `usePairing` | - |
+| Pair another device: `api.pair()`, the QR, a countdown from arrival (`PAIRING_TTL_MS`, the server's 10-minute `pairingTTL`), Copy link on web, Share on native, Make a new code once expired | `PairDeviceCard`, `usePairing` | hidden for a kid's account (`isKidAccount`) |
 | Signed-in devices: sessions only, this device first (`signedInSessions`), app, platform, last seen (`lastSeen`) | `DevicesSection` | `my_devices` |
-| Personal API keys: list, create in a dialog, reveal once, revoke with a confirm | `ApiKeysSection`, `useApiKeysManager`, `ApiKeyCreatedModal` | `api_keys` (a notice when it's `false`); hidden for a demo account |
+| Personal API keys: list, create in a dialog, reveal once, revoke with a confirm | `ApiKeysSection`, `useApiKeysManager`, `ApiKeyCreatedModal` | `api_keys` (a notice when it's `false`); hidden for a demo or kid's account |
 | Sign out of the server | `useSignOut`, `SignOutConfirm` | - |
 
 **The current device's row never offers a sign-out**: `canRevoke` refuses `current`,
@@ -249,5 +249,6 @@ kid_account`; the owner sets up its devices from the Household page) and no API 
 section; a grown-up member's Password card names who set the account up. The page hands
 the password card and the sign-out confirmation its connection, so they name the owner
 as this device knows them (`useManagerName`). The sign-out warning for a member without a
-password names their owner instead of an invite (`signOutWarning`), and a kid's house
-sharing row is off and disabled (`house.share.kid`).
+password names their owner instead of an invite (`signOutWarning`). (A kid's house
+sharing row, on the Household page, is off and disabled (`house.share.kid`): see
+[Listening in the house](listening-in-the-house.md).)

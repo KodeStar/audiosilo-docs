@@ -1,6 +1,6 @@
 ---
 title: "Server settings, updates and logs"
-description: "The Server pages of the AudioSilo admin console: every setting you can change while the server runs (name, address, HTTPS, app links, community metadata and keeping a local copy of it, transcoding, demo mode, backups, notifications, importing from Audiobookshelf), which ones wait for a restart, checking for new versions and what that sends, reading the server's log, and the audit log of what admins changed."
+description: "The Server pages of the AudioSilo admin console: every setting you can change while the server runs (name, address, HTTPS, app links, community metadata and keeping a local copy of it, transcoding, household members, demo mode, backups, notifications, importing from Audiobookshelf), which ones wait for a restart, checking for new versions and what that sends, reading the server's log, and the audit log of what admins (and the people managing household members) changed."
 ---
 
 The **Server** destination in the [admin console](console-tour.md) is where
@@ -8,7 +8,8 @@ you look after the server itself:
 
 - **Settings** - the server's settings, one topic at a time.
 - **Logs** - what the server has been doing since it started.
-- **Audit log** - what admins changed, and when.
+- **Audit log** - what admins changed (and what people did with their household
+  members), and when.
 - **About** - which version you run, whether a newer one exists, and how to
   update.
 
@@ -437,7 +438,8 @@ A few things to know:
 
 ![Server > Audit log](/img/screenshots/admin/audit.png)
 
-**Server > Audit log** lists what admins changed, newest first: when, who,
+**Server > Audit log** lists what admins changed, and what people did with their
+household members in the player, newest first: when, who,
 what they did and to what, with the details underneath. For example
 "Changed settings" with each setting's old and new value, "Edited a book" with
 the fields that changed, "Gave access" with the person and the share, or
@@ -470,9 +472,10 @@ secret only as "New address" or "New secret". It doesn't record IP addresses.
 Entries are kept for a year.
 
 To narrow the list, choose an **Area** (Accounts, Household members, Invites,
-Devices, Shares and access, Progress, Libraries, Books, Health, Settings, Backups, Notifications),
-a person under **Who** (the current admins), or type in **Search names and
-paths** (it matches what a change was made to, or who made it). **Show older**
+Devices, Shares and access, Progress, Imports, Libraries, Books, Health, Settings,
+Backups, Notifications), a person under **Who** (everyone but demo accounts and
+household members, since the people who manage household members appear in the log
+too), or type in **Search names and paths** (it matches what a change was made to, or who made it). **Show older**
 at the foot loads the next 50.
 
 ## Where to next

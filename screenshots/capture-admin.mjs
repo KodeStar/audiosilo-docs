@@ -276,8 +276,8 @@ const LISTENERS = [
 ];
 let mayaId = null;
 let heartbeats = null;
-// Maya's household (see README.md): a kid on a collection she shares with them and a
-// grown-up on everything she can listen to, so People shows a household block and a
+// Maya's household (see README.md): a kid on a collection maya shares with them and a
+// grown-up on everything maya can listen to, so People shows a household block and a
 // member's page has the household access to show.
 const MEMBERS = [
   {name: 'Ivy', kind: 'kid', access: 'collections'},
@@ -334,14 +334,6 @@ await step('provision listening sessions', async () => {
   }
   mayaId = LISTENERS[0].id;
 
-  // Maya's household: a collection of hers for Ivy, then the two members.
-  const household = await addHousehold(api, LISTENERS[0].token, library.id, {
-    collection: MEMBER_COLLECTION.name,
-    items: books.slice(0, MEMBER_COLLECTION.books).map((b) => b.rel_path),
-    members: MEMBERS,
-  });
-  memberId = household.members.find((m) => m.kind === 'kid')?.id ?? null;
-
   // A transcoded stream from Theo's device: the mark lasts 10 minutes, so his
   // session on the book is recorded as transcoded.
   const theo = LISTENERS.find((l) => l.transcode);
@@ -376,7 +368,25 @@ await step('provision listening sessions', async () => {
       saveProgress(l).catch((e) => console.log(`  ! heartbeat for ${l.username}: ${e.message}`));
     }
   }, HEARTBEAT_MS);
-  console.log('  ✓ provisioned (maya, theo and nora listening; maya\'s household)');
+
+  // Maya's household last and on its own, only for the shots that show it (each member
+  // spends the server's self-service rate limit): a server without household members,
+  // or a refusal, costs those two shots (people.png, person-member.png) their new
+  // images, never the listening above.
+  if (wanted('admin/people.png', 'admin/person-member.png')) {
+    try {
+      // A collection of maya's for Ivy, then the two members.
+      const household = await addHousehold(api, LISTENERS[0].token, library.id, {
+        collection: MEMBER_COLLECTION.name,
+        items: books.slice(0, MEMBER_COLLECTION.books).map((b) => b.rel_path),
+        members: MEMBERS,
+      });
+      memberId = household.members.find((m) => m.kind === 'kid')?.id ?? null;
+    } catch (e) {
+      console.log(`  ! maya's household not provisioned: ${e.message}`);
+    }
+  }
+  console.log(`  ✓ provisioned (maya, theo and nora listening${memberId ? "; maya's household" : ''})`);
 });
 
 // ── Capture ────────────────────────────────────────────────────────────────
@@ -551,6 +561,8 @@ await step('folder detection', async () => {
 });
 
 await step('people', async () => {
+  // People shows maya's household as a block: without it the shot keeps its previous image.
+  if (wanted('admin/people.png') && !memberId) throw new Error("maya's household was not provisioned");
   await open(page, '/people');
   await shoot(page, 'admin/people.png');
 });
@@ -564,6 +576,7 @@ await step('a person (Access tab)', async () => {
 });
 
 await step("a household member's page (Access tab)", async () => {
+  if (!wanted('admin/person-member.png')) return;
   if (!memberId) throw new Error('no household member was provisioned');
   await open(page, `/people/user/${memberId}?tab=access`);
   await shoot(page, 'admin/person-member.png');

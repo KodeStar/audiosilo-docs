@@ -72,9 +72,11 @@ was already used...", a 5xx "The server couldn't finish pairing...", and no answ
 **Kids mode never runs the flow**: `src/app/connect/_layout.tsx` is the one gate (see
 [Kids mode](kids-mode.md#the-route-and-its-guard)). A kid's account placed for the
 first time on this device starts in kids mode (`kidsOnForKidAccount`: see
-[Kids mode](kids-mode.md)). The one sign-in that does **not** go through
-`finishConnect` is a household member signed in beside the owner, `addMemberHere`
-(see [Signing a member in here](household.md#signing-a-member-in-here)).
+[Kids mode](kids-mode.md)). Two sign-ins skip `finishConnect`: the public demo
+landing (`src/app/demo.tsx`, which calls `setSession` itself so its QR stays on
+screen), and a household member signed in beside the owner (`addMemberHere`, or
+`renewMemberHere` when signed in again; see
+[Signing a member in here](household.md#signing-a-member-in-here)).
 
 `repairPlan` decides what a sign-in stores:
 

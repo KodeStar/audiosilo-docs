@@ -161,13 +161,19 @@ different: they can already see everyone's listening in the admin console's
 
 There's no fixed user limit - create an account for everyone in the house.
 Each user gets their own listening progress, bookmarks, notes, and
-favourites, and joins by redeeming an invite code (no password needed for
-listeners - see [People and invites](./admin/users-and-invites.md)).
+favourites. You invite people with an invite code (no password needed for
+listeners - see [People and invites](./admin/users-and-invites.md)), and,
+unless you turn it off, people can also add the kids and grown-ups they live
+with from the player, with no invite (see
+[Your household](./listening/household.md)).
 
 Access is controlled with **shares**: named sets of folders (one author, one
 series, a single book, or a whole library) that you grant to users. A user
 sees only what they've been granted - browsing, search, and playback are all
-scoped to match. See [Sharing](./admin/sharing.md).
+scoped to match. A household member also gets what the person who added them
+chooses: everything that person can listen to, or only the collections they
+share. See [Sharing](./admin/sharing.md) and
+[Household members](./admin/users-and-invites.md#household-members).
 
 ## The desktop manager & Audible
 

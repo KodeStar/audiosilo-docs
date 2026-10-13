@@ -59,7 +59,7 @@ records the request's address (`last_ip`) and, when it names one, its app (see
 [Client identification](#client-identification-x-audiosilo-client)) on the
 token.
 
-There are three ways to obtain a session token:
+There are four ways to obtain a session token:
 
 1. **Auth-code pairing** (the primary flow): `POST /auth/redeem` with an
    invite or recovery code returns a *pairing payload* - a pairing token plus
@@ -73,10 +73,16 @@ There are three ways to obtain a session token:
    this only works for accounts that have one.
 3. **Demo session**: `POST /demo/session` (only when demo mode is enabled)
    mints a throwaway account and returns a session token immediately.
+4. **A household member's session, made by their owner** (capability
+   `household_members`): `POST /me/household/members` with `sign_in_here`, or
+   `POST /me/household/members/{id}/session`, returns the member's session envelope,
+   signed in on the owner's device (see
+   [Household members](reference.md#household-members)).
 
 An already-authenticated client can mint a fresh pairing payload for another
 device with `POST /auth/pair` - that token is single-use with a 10-minute TTL,
-since the user is present and can mint another. See
+since the user is present and can mint another (an owner mints one for a member's
+own device with `POST /me/household/members/{id}/pair`, alike). See
 [Auth & security](../auth-and-security.md) for the trust model behind codes,
 tokens, and hashes.
 
@@ -88,7 +94,8 @@ key satisfies the admin-role check, a regular user's does not. Pairing tokens
 are never accepted as a bearer credential, and an API key is never valid for
 `/auth/exchange`. It also **cannot mint a fresh durable credential** - an API-key
 caller is refused (403) on the credential-minting routes (create key, recovery,
-pair, set password, cast token), so revoking a leaked key cuts off everything it could reach.
+pair, set password, cast token, and every household member route), so revoking a
+leaked key cuts off everything it could reach.
 See the [reference](reference.md#personal-api-keys).
 
 ### Media requests: `?token=` - media GETs only
@@ -192,7 +199,7 @@ Failures a person can fix also carry a machine-readable **`code`** next to
 | `too_many_targets` | `409` | `POST /admin/notifications` when the server has 20 destinations |
 | `demo_account` | `403` | a demo account on a route it can't use: the self-service routes (password, recovery code, API keys), sharing a collection, `GET /me/share-targets`, `PUT /me/household`, every `/me/household/members` route but the list |
 | `kid_account` | `403` | a kid household member on `POST /auth/password`, `POST /auth/tokens`, `POST /auth/pair`, `POST /auth/recovery`, `PUT /me/household` or `PUT /me/collections/{id}/shares` (where it is enforced: [Kids](../auth-and-security.md#household-members)) |
-| `member_cannot_manage` | `403` | a household member on a `/me/household/members` route |
+| `member_cannot_manage` | `403` | a household member on every `/me/household/members` route but the list (which answers a member `200`, `allowed: false`, `reason: "member"`) |
 | `feature_off` | `403` | adding a household member while `household.members_enabled` is off |
 | `not_allowed` | `403` | adding a household member while the admin turned off the caller's `can_add_members` |
 | `member_limit` | `409` | adding a household member at `household.max_members` |
@@ -204,7 +211,7 @@ Failures a person can fix also carry a machine-readable **`code`** next to
 | `owner_is_member` | `409` | `PATCH /admin/users/{id}` assigning to an owner who is a household member |
 | `owner_is_demo` | `409` | `PATCH /admin/users/{id}` assigning to a demo account |
 | `member_is_demo` | `409` | `PATCH /admin/users/{id}` assigning a demo account as someone's member |
-| `kid_no_password` | `400` | `PATCH /admin/users/{id}` with a non-empty `password` for a kid, or beside assigning the account as a kid (`""`, clearing, is fine); `POST /auth/password` racing the owner's switch to kid |
+| `kid_no_password` | `400` | `PATCH /admin/users/{id}` with a non-empty `password` when the request leaves the account a kid (a kid with no household change in it, or an assign as a kid; `""`, clearing, is fine). `POST /auth/password` racing the owner's switch to kid answers `403 kid_account` instead |
 | `self_managed` | `409` | `PATCH /admin/users/{id}` assigning a person to themselves |
 | `has_members` | `409` | `PATCH /admin/users/{id}` assigning a person who has household members of their own |
 | `invalid_keep_members` | `400` | `DELETE /admin/users/{id}?keep_members=` with an entry that isn't one of that person's members |
@@ -224,7 +231,7 @@ Status mapping is consistent across handlers:
 | `401` | missing/invalid/expired token, bad credentials, invalid auth code, wrong `current_password` |
 | `403` | authenticated but not allowed: no share grants the library or path, `admin only`, demo accounts on the self-service routes (password/recovery/API keys), an API key on a credential-minting route (create key/recovery/pair/password/cast token) or on a household member route, a kid household member on the routes a kid can't use, a member managing members, adding a member while it is switched off, bad setup token |
 | `404` | library/user/share/invite not found, another user's (or an unknown) bookmark or note on an edit, `no book at that path`, feature not configured (demo mode off, well-known files unset) |
-| `409` | conflicts: `name already taken` (library/share), last-enabled-admin guard, the household member cap and the admin's household refusals, signing out the device making the request, starting someone's progress on a book they can't see, setup already completed |
+| `409` | conflicts: `name already taken` (library/share), last-enabled-admin guard, the household member cap, a session or pairing code for a member the admin disabled, the admin's household refusals, signing out the device making the request, starting someone's progress on a book they can't see, setup already completed |
 | `413` | a request body over an endpoint's size cap (a custom cover over 5 MiB) |
 | `415` | an upload of a type the endpoint doesn't take (a custom cover that isn't JPEG/PNG/WebP) |
 | `429` | a rate limiter tripped (see below) |

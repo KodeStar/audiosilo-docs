@@ -18,9 +18,10 @@ accounts and how many were active this month. Each card shows:
 - the person's name, with an **Admin** badge for administrators and a **Demo**
   badge for visitors' accounts on a server running in
   [demo mode](../demo.md);
-- for a [household member](#household-members), the name their owner gave
-  them, **Managed by** *owner* and **Kid** or **Grown-up**; for someone who has
-  added members, how many ("2 household members");
+- for a [household member](#household-members), **Managed by** *owner* and
+  **Kid** or **Grown-up**, after the name their owner gave them when it differs
+  from the username by more than capital letters; for someone who has added
+  members, how many ("2 household members");
 - what they're doing: **Listening now** (one of their devices is playing, or
   paused in the last ten minutes), **Active** *some time ago*, **Never signed
   in**, or **Disabled** ("their devices are paused");
@@ -196,8 +197,8 @@ last request is the honest measure of activity.
 
 ## Household members
 
-Anyone with an account (except a demo account) can add the people they live
-with from the player, on its [Household page](../listening/household.md): a
+Anyone with an account, except a demo account or a household member, can add the
+people they live with from the player, on its [Household page](../listening/household.md): a
 kid, signed in on their device straight away in kids mode, or a grown-up, who
 scans a code. You don't make an invite for them. Each **household member** is
 a real account on your server, with their own progress, bookmarks and stats,
@@ -209,22 +210,25 @@ a real account on your server, with their own progress, bookmarks and stats,
   books). Anything you give the member directly comes on top.
 - The owner renames them, signs their devices out, switches them between kid
   and grown-up, and deletes their account, all from the player.
-- A **kid** has no password and signs in only on devices their owner sets up
-  (what else a kid can't do: [Adding a kid](../listening/household.md#adding-a-kid)).
+- A **kid** has no password. They sign in on devices their owner sets up, or
+  on one you pair for them with **Pair a device** (what else a kid can't do:
+  [Adding a kid](../listening/household.md#adding-a-kid)).
   A **grown-up** member is an ordinary account otherwise.
 - A member never has members of their own.
 - Disabling an owner doesn't disable their members, and doesn't change what the
   members can listen to.
 
 On their own page, a member's username is made from the name the owner typed
-(*evie*, or *evie-adam* when that's taken); the name itself shows beside it.
+(*evie*, or *evie-adam* when that's taken). The name itself shows under the
+username only when it differs by more than capital letters (*Evie* under
+*evie-adam*, but not under *evie*).
 
 ### The two settings and the per-person switch
 
-- **Server > Settings > Household** turns household members on or off for the
-  whole server (on out of the box) and sets **Members per person** (6 unless
-  you change it, from 1 to 50): see
-  [Household](server.md#household).
+- **Server > Settings > Household** turns adding household members on or off
+  for the whole server (on out of the box; off stops new members, and members
+  already added keep working) and sets **Members per person** (6 unless you
+  change it, from 1 to 50): see [Household](server.md#household).
 - **Can add household members**, on a person's **Account** tab, turns it off
   for just that person, with the same effect.
 
@@ -245,9 +249,11 @@ For a household member it shows **Managed by** their owner instead, with:
 - **Assign to someone** - moves them to another person's household.
 
 Either way, the devices they set up themselves stay signed in, and any unused
-code their owner made for their own device stops working. The devices someone
-else signed them in on, such as their owner's phone, stay signed in when they're
-made independent and are signed out when they're assigned.
+code made in the player for one of their devices (by their owner, or by them)
+stops working. The devices someone else signed them in on, such as their owner's
+phone, stay signed in when they're made independent. When they're assigned, those
+devices are signed out, except the ones belonging to the person they're assigned
+to.
 
 **Assign to someone** also works for an ordinary account, such as one you made
 for a child before household members existed. Pick **Whose household**, **Kid
@@ -256,10 +262,11 @@ account from then on, and their own grants stay.
 
 - Making someone a kid takes away everything a kid can't have (see
   [A member's card](../listening/household.md#a-members-card)); their
-  signed-in devices stay signed in, and you can't set a password in the same step.
-- Choosing **Only collections** means they get books through their new owner
-  only from the collections the owner shares with them in the player, including
-  any already shared with them.
+  signed-in devices stay signed in, and no password can be set for them while
+  they're a kid.
+- Choosing **Only collections Adam shares** (the option names the person you
+  pick) means they get books through Adam only from the collections Adam shares
+  with them in the player, including any already shared with them.
 - It isn't offered for an admin, and is greyed out, with the reason, for someone
   who has household members of their own. A household member or a demo account
   can't be the owner, and a demo account can't be a member.
@@ -268,8 +275,8 @@ account from then on, and their own grants stay.
 ### Deleting an owner
 
 Deleting someone who has household members deletes their members too, unless
-you say otherwise: the delete dialog lists **Their household members**, each
-ticked (**Delete Evie too**). Untick a member to keep them as an independent
+you say otherwise: the delete dialog lists them under **Their household member**
+(or **Their 2 household members**), each ticked (**Delete Evie too**). Untick a member to keep them as an independent
 account, as with **Make independent**. When it's done, a message says
 how many members were deleted and how many kept.
 

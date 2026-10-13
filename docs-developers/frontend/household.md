@@ -23,10 +23,12 @@ places: the phone You hub's `household` segment (between Settings and Account,
 `embedded`, since the hub's large title already says Household) and the pushed page
 `/household` (`src/app/(app)/(home,library,search,offline,me)/household.tsx`, in the
 array group like `/settings`, so back returns where the listener was and a cold link
-opens it in Home). **Every way in** goes through `openHousehold()` (`src/lib/open.ts`,
-`householdHref()` in `paths.ts`; a no-op on the page already): the profile menu, "Who's
-listening?" > Manage household, the link at the end of Settings' App group, Home's
-house row and the web palette. `/settings?section=household` (`isHouseholdSection`)
+opens it in Home). **Every way in to the pushed page** goes through `openHousehold()`
+(`src/lib/open.ts`, `householdHref()` in `paths.ts`; a no-op on the page already): the
+profile menu, "Who's listening?" > Manage household, the link at the end of Settings'
+App group, Home's house row and the web palette. In the phone You hub, the segmented
+control and the embedded Settings' link (`SettingsContent`'s `onOpenHousehold`) switch
+to the Household segment with `router.setParams` instead. `/settings?section=household` (`isHouseholdSection`)
 **replaces** itself with `/household`, so an old link lands on the page and back
 doesn't bounce into the redirect.
 
@@ -155,13 +157,17 @@ card, the sign-out warnings, the remove confirmation) goes through
 `managerName(user, { connection, people })` in `src/lib/account.ts`, or
 `useManagerName(connectionId, user?)` in `src/stores/profiles.ts` (with
 `useDevicePeople()`), never `managed_by.username` directly: the name of the profile
-holding the owner's own sign-in to that server on this device, else
-`managed_by.display_name`, else the username. `kidsManager(profile, people)` is the
+holding the owner's own sign-in to that server on this device, else the owner's
+username (the player's `managed_by` carries no typed name; `managerName` would read a
+`display_name` there only if a server sent one). `kidsManager(profile, people)` is the
 same rule for a kids profile's connection.
 
 ## Testing
 
 In `src/components/household/`: `household-page.test.tsx`, `members-section.test.tsx`,
 `member-card.test.tsx`, `household-model.test.ts` and `use-sign-in-here.test.ts`;
-`add-member-here.test.ts` in `src/components/connect/`; `src/api/provider.test.tsx`
-(read again on a new token).
+`add-member-here.test.ts` in `src/components/connect/`; the member hooks in
+`src/api/hooks-members.test.tsx`; the page's routes in
+`src/components/shell/route-tree-household.test.tsx` and
+`route-tree-household-cold.test.tsx`; `src/api/provider.test.tsx` (read again on a new
+token).

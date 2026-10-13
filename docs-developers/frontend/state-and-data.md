@@ -365,8 +365,10 @@ Capability `household_members`; the wire is
 `types.ts`: `MemberKind`, `MemberAccess`, `HouseholdMember` (and its
 `HouseholdMemberCollection`), `HouseholdMembers` (`{ allowed, reason?, max, members
 }`, `HouseholdMembersReason`), `AddMemberBody`, `AddMemberResult` (`{ member,
-session? }`), `UpdateMemberBody`; `User` gains the optional `managed_by` (a `UserRef`) and
-`member_kind` (null for a non-member, absent on an older server), `MyDevice` gains
+session? }`), `UpdateMemberBody`; `User` gains the optional `managed_by` (a `UserRef`),
+`member_kind` (null for a non-member, absent on an older server) and `display_name` (a
+member's name as the owner typed it, absent for everyone else; `personName` names a new
+profile after it), `MyDevice` gains
 `member_sign_ins`, the revoke's answer is `MyDeviceRevoked` (`{ current,
 members_signed_out? }`), and `Capabilities`
 gains `household_members`.
@@ -393,13 +395,20 @@ household again (`onConnectionRemoved` in `hooks.ts`).
 - **The members list never refuses an ordinary session**: a demo or member caller
   gets `allowed: false` with a `reason`, and "at the cap" is the client's own
   `members.length >= max` (`addBlock` in `src/components/household/household-model.ts`).
-- **A member's session is placed with `addMemberHere`**, never `finishConnect`
-  (see [Signing a member in here](household.md#signing-a-member-in-here)): the owner
-  stays the person listening and the default connection doesn't move.
-- **The kid's view is the server's**: the player reads `member_kind` only to start
-  kids mode by default and `managed_by` only to pick the kids shelf's collections
-  ([Kids mode](kids-mode.md)); what the account may open is always the server's
-  answer.
+- **A session the owner mints for this device** (the add's `session`,
+  `useMemberSession`) **is placed with `addMemberHere`** (`renewMemberHere` for a
+  member already here), never `finishConnect` (see
+  [Signing a member in here](household.md#signing-a-member-in-here)): the owner stays
+  the person listening and the default connection doesn't move. A member pairing their
+  own device from the owner's code goes through `finishConnect` like anyone else.
+- **What a member may open is the server's answer.** The player reads `member_kind`
+  and `managed_by` only to shape its own screens, never to filter: `member_kind`
+  (`isKidAccount`) starts kids mode by default, lets a kid's own profile be in kids
+  mode with no grown-up (`mayTurnOnKids`) and leaves out what a kid's account can't do
+  (the password button, Pair another device, API keys, house sharing); `managed_by`
+  picks the kids shelf's collections ([Kids mode](kids-mode.md)), names the owner
+  (`managerName`) and finds the owner's sign-in that can renew the member's session
+  (`memberOwnerHere`).
 
 ### Bookmarks, notes and the Journal
 

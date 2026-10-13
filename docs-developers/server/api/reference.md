@@ -374,7 +374,8 @@ present: both `null` for an account nobody manages, and for a
 [household member](#household-members) the owner (`{ "id": 4, "username": "sam" }`)
 and `"kid"` or `"grownup"`. A member's `user` also carries `display_name`, the name
 the owner typed for them (`users.display_name`), so the member's own device can greet
-them by it; it is omitted for everyone else, a former member included (`api.meUser`).
+them by it; it is omitted while that is empty (a member the admin assigned, until the
+owner renames them) and for everyone else, a former member included (`api.meUser`).
 The same `user` object rides on every session envelope (exchange, login, demo, a
 member's session). The member's `member_access` is not on it: it is the owner's
 business (the [members list](#get-apiv1mehouseholdmembers)) and the admin's, and the
@@ -401,19 +402,21 @@ Either field is omitted when unknown, and the answer is `{}` when neither is.
 
 ## Self-service account
 
-The routes in this section, together with the [API keys](#personal-api-keys)
+The routes in this section but `DELETE /auth/recovery` (which only reduces access, so
+it is neither limited nor refused), together with the [API keys](#personal-api-keys)
 below, share one rate limit (10 attempts per IP per 15 minutes) and are
 **refused for demo accounts** (403 `code: "demo_account"`, `not available for demo
 accounts`), so a throwaway session can't mint a durable credential. `POST
 /auth/password`, `POST /auth/recovery` and `POST /auth/tokens` (and `POST /auth/pair`)
 are also refused for a kid's account (403 `code: "kid_account"`, `not available for a
-kid's account`): a kid signs in only on devices its owner sets up. The refusal comes
+kid's account`): a kid's devices are set up for it, by its owner (or by an admin's
+invite). The refusal comes
 from one route wrapper (`api.notKid`) before the handler runs, and the recovery code,
 API key and pairing writes refuse a kid again inside their own transaction
 (`auth.refuseKid`), so a request that passed the wrapper just before the owner's
 switch to kid committed still gets `403 kid_account` and leaves nothing behind. A
-password racing that switch is refused inside `auth.UpdateUser` instead, as
-`400 kid_no_password`.
+password racing that switch is refused inside `auth.UpdateUser` instead
+(`ErrKidNoPassword`), and the route answers it as `403 kid_account` too.
 
 ### `POST /api/v1/auth/password`
 
@@ -428,9 +431,9 @@ Response: `204 No Content`.
 
 | Status | Meaning |
 |---|---|
-| `400` | password missing or too short; `kid_no_password` (only when the owner's switch to kid commits between the wrapper and the write) |
+| `400` | password missing or too short |
 | `401` | `current_password` incorrect |
-| `403` | demo account (`demo_account`); a kid's account (`kid_account`) |
+| `403` | demo account (`demo_account`); a kid's account (`kid_account`, also when the owner's switch to kid commits between the wrapper and the write) |
 | `429` | account-mutation limit tripped |
 
 ### `POST /api/v1/auth/recovery`
@@ -472,13 +475,15 @@ limit (10 attempts per IP per 15 minutes) and are **refused for demo accounts**
 (403).
 
 **Containment.** A key cannot mint a *fresh durable credential*. A request that
-authenticates with an API key is refused (**403**) on the five credential-minting
+authenticates with an API key is refused (**403**) on the credential-minting
 routes - `POST /auth/tokens` (another key), `POST /auth/recovery`,
-`POST /auth/pair`, `POST /auth/password`, and [`POST /cast/token`](#post-apiv1casttoken)
-(refused although a cast token would die with the key) - so revoking a leaked key cuts off
-everything it could reach: it can't spawn a key, recovery code, pairing token, or
-password that would outlive its own revocation (mirrors GitHub's "a token cannot
-create tokens"). It may still **list and revoke** keys and clear a recovery code,
+`POST /auth/pair`, `POST /auth/password`, [`POST /cast/token`](#post-apiv1casttoken)
+(refused although a cast token would die with the key), and every
+[household member](#household-members) route (adding one with `sign_in_here`,
+`…/{id}/session` and `…/{id}/pair` make a member's session or pairing code) - so
+revoking a leaked key cuts off everything it could reach: it can't spawn a key,
+recovery code, pairing token, password or member session that would outlive its own
+revocation (mirrors GitHub's "a token cannot create tokens"). It may still **list and revoke** keys and clear a recovery code,
 since those only reduce access.
 
 ### `POST /api/v1/auth/tokens`
@@ -550,7 +555,9 @@ immediately. Response: `204 No Content`.
 player-side counterpart of the admin's
 [`GET /admin/devices`](#get-apiv1admindevices): a device is a live session token
 (a paired phone, a browser) or a personal API key, never a pairing token. These
-routes only ever touch the caller's own tokens.
+routes only ever touch the caller's own tokens, and, with `?also_members=1`, the
+sessions and API keys of the caller's own household members made on the device being
+signed out.
 
 ### `GET /api/v1/me/devices`
 
@@ -683,7 +690,8 @@ are untouched.
 
 ### `GET /api/v1/libraries`
 
-*Session.* Libraries the caller can reach through any share (admins see all).
+*Session.* Libraries the caller can reach through any share, or, for a
+[household member](#household-members), through their owner (admins see all).
 
 ```json
 {
@@ -2548,7 +2556,9 @@ updated (`updated_at` doesn't move).
 | `404` | not the caller's collection and not shared with them |
 
 A viewer sees the owner's username and the items **they** can open; nothing of
-the owner's access is shared with them.
+the owner's access is shared with them, except with the owner's own
+[household member](#household-members) on `access: "collections"`, whose access is
+the books of the collections their owner shares with them.
 
 ### `GET /api/v1/me/share-targets`
 
@@ -2828,11 +2838,14 @@ and its `GET` always reads `false`, even if it shared before it was made a kid.
 
 ## Household members
 
-*Session.* Capability `household_members`. Any non-demo person (the **owner**) adds
-the people they live with from the player, with no admin and no invite. A **member**
-is a real account (`role: "user"`, no password) whose `users.managed_by` is the owner,
-with a `member_kind` (`kid` or `grownup`) and a `member_access` (`all` or
-`collections`) that only the owner sets. What a member may listen to (the owner's
+*Session.* Capability `household_members`. Any non-demo person who isn't a member
+themselves (the **owner**) adds the people they live with from the player, with no
+admin and no invite, while the server's and the admin's switches allow it (below). A
+**member** is a real account (`role: "user"`, made with no password; a grown-up may
+set one later, a kid never holds one) whose `users.managed_by` is the owner, with a
+`member_kind` (`kid` or `grownup`) and a `member_access` (`all` or `collections`) that
+the owner sets (the admin can too, with
+[Assign to someone](#patch-apiv1adminusersid)). What a member may listen to (the owner's
 current access for `all`, the collections the owner shares with them for
 `collections`, plus their own grants), and the one-level rule, are the member rule in
 [Auth & security](../auth-and-security.md#household-members).
@@ -2919,10 +2932,11 @@ and, with `sign_in_here`, issues a session. Anything refused changes nothing.
 
 - **The username** is the name lowercased and folded to ASCII letters and digits
   (`Évie Marie` -> `evie-marie`, any run of anything else one `-`, at most 24 bytes,
-  `member` when nothing is left), then that with the owner's username (`evie-sam`),
-  then numbered `-2`, `-3` and on with no cap: the first one no account has, ignoring
-  case, read once inside the transaction, so there is always a free one and the
-  create never answers `username_taken`.
+  `member` when nothing is left); if that is taken, that with the owner's username
+  folded the same way (`evie-sam`; skipped when nothing is left of it), then the first
+  part numbered (`evie-2`, `evie-3` and on) with no cap: the first one no account has,
+  ignoring case, read once inside the transaction, so there is always a free one and
+  the create never answers `username_taken`.
 - **`sign_in_here`** issues a session for the member named as the caller's own
   device, recording the caller's token as its `created_on_token_id` (so the caller's
   [device list](#get-apiv1medevices) names the member under `member_sign_ins`, and
@@ -3232,7 +3246,7 @@ Edit an account in place - any subset of:
 | Body field | Type | Notes |
 |---|---|---|
 | `role` | string | `"admin"` \| `"user"` |
-| `password` | string | `""` clears the password (non-admins only); never a non-empty one for a kid |
+| `password` | string | `""` clears the password (non-admins only); a non-empty one is refused when the request leaves the account a kid (beside Make independent, or an assign as a grown-up, it is fine) |
 | `disabled` | bool | reversible lockout; disabling revokes nothing but blocks all token use |
 | `can_add_members` | bool | the per-person switch: may this person add household members |
 | `managed_by` | int \| `null` | an owner's id: "Assign to someone", with `member_kind` and `member_access` beside it. `null`: "Make independent" |
@@ -3245,7 +3259,9 @@ written, so a refused field changes nothing, not even the fields before it. The
 checks run in this order, each against the account as the ones before it leave it:
 the password, the household, the role, the disabled state, then `can_add_members`.
 So a password and "make admin" work in one request on a password-less account, and
-"Make independent" and "make admin" work in one request on a member.
+"Make independent" and "make admin" work in one request on a member (with a
+`password` beside them when the member has none, as every member starts and a kid
+always is, or it is `400 admin_needs_password`).
 
 - **Assign to someone** (`managed_by: <id>`) makes the account a member of that owner
   with the given kind and access. Its own grants stay (the member rule is a union).
@@ -3266,7 +3282,7 @@ Response `200`: the updated user object (with the fields above).
 
 | Status | Meaning |
 |---|---|
-| `400` | admin must keep a password (`admin_needs_password`) / password too short (`password_too_short`); `managed_by` that isn't a positive id or `null`; `code: "member_fields_required"` (`managed_by: <id>` without both `member_kind` and `member_access`, or either of those without it); a `kind` or `access` that isn't one of the two values; `code: "kid_no_password"` (a non-empty `password` for a kid, or beside assigning one) |
+| `400` | admin must keep a password (`admin_needs_password`) / password too short (`password_too_short`); `managed_by` that isn't a positive id or `null`; `code: "member_fields_required"` (`managed_by: <id>` without both `member_kind` and `member_access`, or either of those without it); a `kind` or `access` that isn't one of the two values; `code: "kid_no_password"` (a non-empty `password` when the request leaves the account a kid: a kid with no household change in it, or an assign as a kid) |
 | `404` | user not found (the account, or the owner named by `managed_by`) |
 | `409` | would demote/disable the last enabled admin (`last_admin`); `code: "member_not_admin"` (making a member an admin, or assigning an admin as a member); `code: "owner_is_member"` (the owner is a member); `code: "owner_is_demo"` (the owner is a demo account); `code: "member_is_demo"` (the account being assigned is a demo account); `code: "self_managed"` (`managed_by` is the account itself); `code: "has_members"` (the account has members of its own) |
 

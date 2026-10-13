@@ -137,13 +137,15 @@ The [household member](api/reference.md#household-members) columns *(0044)*:
 `'grownup'`, a column CHECK) and `member_access` (`'all'` / `'collections'`, a
 column CHECK); `can_add_members` (`INTEGER NOT NULL DEFAULT 1`, the admin's
 per-person switch); `display_name` (`TEXT NOT NULL DEFAULT ''`, the name the owner
-typed for a member, `''` for everyone else). The first three are **all set or all
+typed for a member, kept when they stop being one (Make independent, `keep_members`);
+`''` for anyone never given one, a member the admin assigned included until the owner
+renames them). The first three are **all set or all
 NULL**: SQLite can't add a table CHECK with `ALTER TABLE`, so `auth` (`members.go`)
 writes and clears them together and a row that says otherwise reads as no member
-(`memberScan`). `SET NULL` only covers a member an admin kept when deleting the
-owner (`auth.DeleteUser` deletes the others explicitly and clears the kept ones'
-other two columns in the same transaction). Durable: this is the account, not the
-index.
+(`memberScan`). `SET NULL` is only a backstop: `auth.DeleteUser` clears all three
+member columns of each member an admin keeps and deletes the others explicitly, in the
+same transaction and before the owner's row, so no row still points at the owner when
+it goes. Durable: this is the account, not the index.
 
 **`tokens`** *(0001; `auth_code_id` added in 0014; `client_app`,
 `client_version`, `client_platform` and `last_ip` in 0018; `created_on_token_id` in 0044)* - opaque bearer tokens:

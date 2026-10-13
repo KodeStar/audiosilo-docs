@@ -46,8 +46,11 @@ codes/tokens in the response body and store only the hash.
 
 - **Session tokens** are the durable bearer credential (`Authorization: Bearer
   …`). Issued by `POST /auth/login` and `POST /auth/exchange` with **no
-  expiry**; revoked by `POST /auth/logout`, by the owner signing a device out
-  (`DELETE /me/devices/{id}`), or by admin action.
+  expiry** (and, for a [household member](#household-members), by their owner:
+  `sign_in_here` or `…/members/{id}/session`); revoked by `POST /auth/logout`, by
+  the owner signing a device out (`DELETE /me/devices/{id}`, which with
+  `?also_members=1` takes the members signed in on it too), by a member's owner
+  (`DELETE /me/household/members/{id}/devices/{device_id}`), or by admin action.
 - **Pairing tokens** are intermediaries minted by `POST /auth/redeem` (auth
   code → pairing) or `POST /auth/pair` (add another device from an existing
   session). `POST /auth/exchange` turns one into a device-named session token.
@@ -56,9 +59,9 @@ codes/tokens in the response body and store only the hash.
   invite's uses and expiry - exchange claims one use per device, so one QR can
   pair several devices - and die with the code (delete/supersede cascade,
   rotate revokes); recovery-derived tokens last `pairingTTL` = 10 minutes
-  (multi-scan within it, since recovery codes are unlimited); `/auth/pair` and
-  demo tokens are unlinked - single-use (revoked on exchange) with the same
-  10-minute TTL.
+  (multi-scan within it, since recovery codes are unlimited); `/auth/pair`, a
+  household member's code (`POST /me/household/members/{id}/pair`) and demo tokens
+  are unlinked - single-use (revoked on exchange) with the same 10-minute TTL.
 - **API keys** (`auth.KindAPI`) are user-minted, **non-expiring** bearer
   credentials for headless integrations (dashboards, cron), created / listed /
   revoked via `POST` / `GET` / `DELETE /auth/tokens`
@@ -71,9 +74,11 @@ codes/tokens in the response body and store only the hash.
   `gateSelfService`, so they share the `accountLimiter` and are refused for demo
   accounts, exactly like the password/recovery routes. **Containment:** an API-key
   caller is additionally barred (403, via `denyAPIKey` in
-  `internal/api/handlers_auth.go`, also called by `handlers_cast.go`) from the five
-  credential-minting routes (`POST /auth/{tokens,recovery,pair,password}` and
-  `POST /cast/token`), so a leaked key can never spawn a fresh credential - another
+  `internal/api/handlers_auth.go`, also called by `handlers_cast.go` and
+  `handlers_members.go`) from the credential-minting routes
+  (`POST /auth/{tokens,recovery,pair,password}`, `POST /cast/token`, and every
+  [household member](#household-members) route, whose create, `…/session` and
+  `…/pair` make a member's session or pairing code), so a leaked key can never spawn a fresh credential - another
   key, recovery code, pairing token, or password that would outlive its own
   revocation, or even a [cast token](#cast-tokens), which would die with it (mirrors
   GitHub's "a token cannot create tokens"). It can still list/revoke keys and clear a recovery code,
@@ -309,18 +314,24 @@ refused field changes nothing.
   [household member](#household-members), a session their owner makes).
 - **`ErrMemberNotAdmin`** - a household member is never an admin: `UpdateUser`
   refuses promoting one and assigning an admin as a member (`409 member_not_admin`);
-  "Make independent" comes first, and works in the same request as the promotion.
+  "Make independent" comes first, so it passes this check in the same request as the
+  promotion (a member with no password also needs one in that request:
+  `ErrAdminNeedsPassword`).
 - **`ErrKidNoPassword`** - a kid holds no password: `UpdateUser` refuses a non-empty
-  password on a kid, or beside assigning the account as a kid (`400
-  kid_no_password`); clearing one is fine.
-- **The Assign refusals** (`checkAssign`, inside the transaction): an unknown owner
-  (`404`), the account itself (`ErrSelfManaged`), an owner who is a member
-  (`ErrOwnerIsMember`) or a demo account (`ErrOwnerIsDemo`), a demo account as the
-  member (`ErrMemberIsDemo`), an admin (`ErrMemberNotAdmin`), and someone with members
-  of their own (`ErrHasMembers`), each `409` with its code.
+  password when the request leaves the account a kid (a kid with no household change
+  in the request, or an assign as a kid), as `400 kid_no_password`. Clearing one is
+  fine, and so is a password beside a Make independent or an assign as a grown-up:
+  this one check reads the request's household change first.
+- **The Assign refusals**: the account itself (`ErrSelfManaged`, checked with the kind
+  and access before the transaction), then inside it (`checkAssign`) an unknown owner
+  (`404`), an owner who is a member (`ErrOwnerIsMember`) or a demo account
+  (`ErrOwnerIsDemo`), a demo account as the member (`ErrMemberIsDemo`), an admin
+  (`ErrMemberNotAdmin`), and someone with members of their own (`ErrHasMembers`); each
+  but the unknown owner is `409` with its code.
 - **`DeleteUser(ctx, id, keep)`** deletes the person's household members with
   them, in the same transaction, except the ids in `keep` (cleared to ordinary
-  accounts, their open pairing tokens revoked); a `keep` id that isn't their member
+  accounts, their open unlinked pairing tokens revoked, as
+  [Moving between households](#household-members) describes); a `keep` id that isn't their member
   is `ErrInvalidKeepMembers` and nothing changes. The last-admin rule is checked
   first.
 
@@ -328,12 +339,14 @@ refused field changes nothing.
 
 Access control is filesystem-based. A **share** is a named set of path rules
 (`share_paths`: `(library_id, path)`, where `""` = the whole library); users
-are granted shares, and a user's access is the union of their granted rules.
+are granted shares, and a user's access is the union of their granted rules (plus,
+for a household member, what their owner gives them: [the member rule](#household-members)).
 `catalog.GrantWholeLibrary` is sugar that ensures a `"Library: <name>"` share
 with a `""` rule exists and grants it.
 
 At request time the rules are compiled into a `catalog.Scope` per library -
-`AllowAll` (admins always; or any `""` rule) or a list of granted `Paths`. The
+`AllowAll` (admins always; or any `""` rule; or a member on `all` whose owner is an
+admin) or a list of granted `Paths`. The
 scope is then enforced through **three functions, each matched to a different
 query shape**:
 
@@ -389,12 +402,14 @@ its owner. They follow a few rules on top of share scope:
   sees the collection's name, description and the owner's username, and only
   the items **their own** current access allows: the owner's other items, and
   how many there are, are never revealed (`item_count` and `preview` are the
-  viewer's), and sharing grants no access to any book. Only the owner changes
+  viewer's), and sharing grants no access to any book, except to the owner's own
+  household member on `collections` access, whose access is the books of the
+  collections their owner shares with them ([the member rule](#household-members)). Only the owner changes
   the collection, its items or its shares; a viewer can only leave it. The
   owner's `shared_with` list is never sent to a viewer.
 - **The share picker shows usernames, so demo accounts are kept out.**
   `GET /me/share-targets` lists every enabled, non-demo account other than the
-  caller (id and username): the one way a non-admin can list every account's
+  caller (id and username; a kid household member only to their own owner): the one way a non-admin can list every account's
   username (a shared collection also shows its owner's, and
   [listening in the house](#listening-in-the-house-what-other-people-see) the
   usernames of the other people who share). A demo account is refused it (`403 not available for demo
@@ -483,7 +498,8 @@ Activity pages as before, and nothing shows who shares.
 Household members (capability `household_members`) let any non-demo person
 (the **owner**) create accounts from the player, with no admin: a **member** is a
 user with `managed_by` set to the owner, a `member_kind` (`kid` | `grownup`) and a
-`member_access` (`all` | `collections`) only the owner sets. The routes and their
+`member_access` (`all` | `collections`) that the owner sets (and the admin, with
+Assign to someone). The routes and their
 refusals are in [the reference](api/reference.md#household-members); this is the
 security model.
 
@@ -499,10 +515,11 @@ invalidate). A member's scope is the union of:
 - for `all`: the owner's **current** scopes, computed with the owner's role. An admin
   owner gives every library as `AllowAll` content scope;
 - for `collections`: the item paths of collections owned by `managed_by` and shared
-  with the member, each kept only while the owner's current scopes allow it
-  (`ScopesAllow`). A book is its path with `relpath.Within` semantics: a folder book
-  covers its own subtree, never a sibling (`Book` never reaches `Book 2`), and an
-  item with an empty path never grants a whole library.
+  with the member, each kept only while the owner's current scope in that library
+  allows it (`Scope.Allows`). A book is its path with `relpath.Within` semantics: a
+  folder book covers its own subtree, never a sibling (`Book` never reaches `Book 2`),
+  and an item whose path is empty or not canonical (`relpath.Clean(p) != p`) grants
+  nothing, so none grants a whole library.
 
 A member whose owner is themselves, or is a member (data the writes refuse), derives
 nothing. A disabled owner changes nothing for their members.
@@ -541,17 +558,19 @@ password hash. The body is decoded strictly, so a `role` field is `400`. An API 
 can't reach any member route (`denyAPIKey`), and create, session and pair take the
 account [rate limit](#rate-limiting).
 
-**Kids.** A kid account holds no password, API key, pairing token, recovery code,
-invite or house sharing, and shares collections only with its owner
-(**Visibility**, below). `POST
+**Kids.** A kid account holds no password, API key, recovery code or house sharing,
+can't make a pairing code of its own (`/auth/pair`), and shares collections only with
+its owner (**Visibility**, below). `POST
 /auth/password`, `POST /auth/tokens`, `POST /auth/pair`, `POST /auth/recovery`, `PUT
 /me/household` and `PUT /me/collections/{id}/shares` answer `403 kid_account` from one
 route wrapper (`api.notKid`, before the handler; wrap any new route a kid can't use).
-The writes that mint a credential or a share of the house refuse a kid again inside
-their own transaction (`auth.refuseKid` in `IssueAPIToken`, `GenerateRecoveryCode` and
-`IssueOwnPairingToken`; `catalog.SetHouseholdSharing`), so a request that passed the
-wrapper just before the owner's switch to kid committed can't leave the kid holding
-one; a password racing it is refused inside `UpdateUser` (`ErrKidNoPassword`).
+The writes that mint a credential or share something refuse a kid again inside their
+own transaction (`auth.refuseKid` in `IssueAPIToken`, `GenerateRecoveryCode` and
+`IssueOwnPairingToken`; `catalog.SetHouseholdSharing` and
+`catalog.SetCollectionShares`), so a request that passed the wrapper just before the
+owner's switch to kid committed can't leave the kid holding one; a password racing it
+is refused inside `UpdateUser` (`ErrKidNoPassword`). Each answers `403 kid_account`,
+as the wrapper does.
 Switching a member to a kid (by the owner, or the admin's Assign) clears, in the same
 transaction (`clearKidCredentials`): the password (and the browsers it signed in
 from), API keys, open pairing tokens, the recovery code, still-redeemable invites
@@ -559,9 +578,11 @@ from), API keys, open pairing tokens, the recovery code, still-redeemable invite
 `household_sharing` row (so a kid made a grown-up again starts with house sharing off
 and opts in again), and the collections shared between the kid and anyone but their
 owner, both ways (so no sharer is left with a kid in a list the server would refuse
-back). Its signed-in sessions stay. A kid signs in only on devices the owner sets up:
-a session made on the owner's device, or the member pairing code (`POST
-/me/household/members/{id}/pair`, single use, the same 10 minutes as `/auth/pair`).
+back). Its signed-in sessions stay. A kid signs in only on devices set up for it: a
+session made on the owner's device, the member pairing code (`POST
+/me/household/members/{id}/pair`, single use, the same 10 minutes as `/auth/pair`), or
+an invite the admin makes or rotates for it (`POST /admin/users/{id}/authcode` and
+`POST /admin/authcodes/{id}/rotate` don't refuse a kid).
 Turning kids mode off in a player never widens anything: the server decides access.
 
 **Visibility.** A kid is listed by `ShareTargets` only to their owner, and
