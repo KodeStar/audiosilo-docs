@@ -1,5 +1,5 @@
 // Captures the web-player documentation screenshots against a locally-running
-// AudioSilo server in demo mode (run.sh starts it). Three passes:
+// AudioSilo server in demo mode (run.sh starts it). Four passes:
 //   0. tag two seeded series through the admin API (the LibriVox files carry no
 //      series tags, so the Library's Series section and a series page would be
 //      empty) - needs ADMIN_PASSWORD, which run.sh passes,
@@ -8,15 +8,21 @@
 //      give the demo user an Up next queue, a collection and each WARM book's
 //      records (a place, a finish and rating, bookmarks, notes, history, a
 //      sleep-timer drift-off) through the API,
-//   2. capture desktop, tablet and phone profiles into static/img/screenshots/web-player/.
+//   2. capture desktop, tablet and phone profiles into static/img/screenshots/web-player/,
+//   3. the household: four accounts and a share made through the admin API
+//      (ADMIN_PASSWORD), driven through the UI for the profiles, kids mode and house
+//      shots and, through a local https proxy, the Cast shot, then deleted again.
 import {chromium} from 'playwright';
 import path from 'node:path';
+import http from 'node:http';
+import https from 'node:https';
 import {mkdir} from 'node:fs/promises';
-import {existsSync} from 'node:fs';
+import {existsSync, readFileSync, statSync} from 'node:fs';
 import {execFileSync} from 'node:child_process';
 import {
   CACHE,
   DAY,
+  DESKTOP_CONTEXT,
   HOUR,
   MIN,
   apiClient,
@@ -62,6 +68,15 @@ const drawerClosed = () => {
     /* storage blocked: the drawer opens, the shots are just narrower */
   }
 };
+
+// A capture context: DESKTOP_CONTEXT (1440x900, retina, dark, motion reduced) with
+// `options` on top (a viewport, stored auth, a time zone...), the Up next drawer
+// closed. `on` is the browser to open it in (the Cast shot has its own).
+async function newCaptureContext(options = {}, on = browser) {
+  const ctx = await on.newContext({...DESKTOP_CONTEXT, ...options});
+  await ctx.addInitScript(drawerClosed);
+  return ctx;
+}
 
 // The warmed books, oldest first (the last is the most recently played, the first
 // Continue listening card the shots open): a title substring of a seeded book (the
@@ -271,10 +286,9 @@ console.log('== warm demo session ==');
   await ctx.addInitScript(audioHook);
   const page = await ctx.newPage();
   await page.goto(BASE + 'demo', {waitUntil: 'networkidle', timeout: 60000});
-  for (let i = 0; i < 30; i++) {
-    if ((await page.locator('[role="button"]:has(img)').count().catch(() => 0)) > 0) break;
-    await sleep(1000);
-  }
+  // The demo session is ready once Home shows a cover (best effort: the warm-ups below
+  // fail loudly on their own if it never is).
+  await page.locator('[role="button"]:has(img)').first().waitFor({state: 'attached', timeout: 30000}).catch(() => {});
   await sleep(1500);
 
   for (const {q, frac} of WARM) {
@@ -398,16 +412,9 @@ console.log('== warm demo session ==');
 // Every visited page stays mounted but hidden: act through `firstVisible` / `tid`.
 const escapeRe = (s) => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 
-async function newProfile(name, viewport, dsf) {
+async function newProfile(name, viewport) {
   console.log(`== ${name} (${viewport.width}x${viewport.height}) ==`);
-  const ctx = await browser.newContext({
-    viewport,
-    deviceScaleFactor: dsf,
-    colorScheme: 'dark',
-    reducedMotion: 'reduce',
-    storageState: AUTH,
-  });
-  await ctx.addInitScript(drawerClosed);
+  const ctx = await newCaptureContext({viewport, storageState: AUTH});
   return {ctx, page: await ctx.newPage()};
 }
 
@@ -443,12 +450,19 @@ async function openFirstBook(page, shot) {
   if (shot) await shoot(page, shot);
 }
 
-// Press the book page's primary button (Resume, Start listening...) and give the book a
-// moment to start; returns when it was pressed.
-async function listen(page) {
-  await firstVisible(page.getByRole('button', {name: PRIMARY_PLAY})).click({timeout: 8000});
+// The play button is named Pause while playing, Play once paused (and while still
+// loading, with a spinner, before it starts by itself) and Retry after a failure.
+const PLAYING_OR_FAILED = /^(pause|retry)$/i;
+
+// Press the book page's primary button (Resume, Start listening...) and wait until the
+// book plays (or failed); returns when the button was pressed. `scope` narrows the
+// transport to one bar (the Cast shot's docked player); with `ifShown` a page without
+// the button (its book already started by itself) is fine.
+async function startPlayback(page, {scope = page, ifShown = false} = {}) {
+  const primary = firstVisible(page.getByRole('button', {name: PRIMARY_PLAY}));
+  if (!ifShown || (await primary.count())) await primary.click({timeout: 8000});
   const at = Date.now();
-  await sleep(4500);
+  await firstVisible(scope.getByRole('button', {name: PLAYING_OR_FAILED})).waitFor({timeout: 20000});
   return at;
 }
 
@@ -467,14 +481,20 @@ const SETTLE_MS = 600;
 const JUMP_UNDO_READY_MS = 8000;
 
 // Stage a paused, healthy player for the shots: a still frame (no moving playhead,
-// no buffering spinner) that reads the same on every run. The play button is named
-// Pause while playing, Play once paused (and while still loading, with a spinner,
-// before it starts by itself) and Retry after a failure: wait for a settled button.
-async function pausePlayback(page) {
-  await firstVisible(page.getByRole('button', {name: /^(pause|retry)$/i})).waitFor({timeout: 20000});
-  const pause = firstVisible(page.getByRole('button', {name: /^pause$/i}));
+// no buffering spinner) that reads the same on every run. Waits for a settled button
+// (PLAYING_OR_FAILED) first, then pauses a playing book.
+async function pausePlayback(page, scope = page) {
+  await firstVisible(scope.getByRole('button', {name: PLAYING_OR_FAILED})).waitFor({timeout: 20000});
+  const pause = firstVisible(scope.getByRole('button', {name: /^pause$/i}));
   if (await pause.count()) await pause.click({timeout: 8000});
-  await firstVisible(page.getByRole('button', {name: /^play$/i})).waitFor({timeout: 8000});
+  await firstVisible(scope.getByRole('button', {name: /^play$/i})).waitFor({timeout: 8000});
+}
+
+// Start the open book and stage it paused (startPlayback, then pausePlayback).
+async function playThenPause(page, opts = {}) {
+  const at = await startPlayback(page, opts);
+  await pausePlayback(page, opts.scope);
+  return at;
 }
 
 // The full player, from the docked bar's expand button (tablet/desktop).
@@ -518,12 +538,12 @@ async function sheetShot(page, testId, shot) {
 
 // Tablet/desktop: one browsing session with a book playing in the docked bar.
 async function captureWide(name, viewport, shots) {
-  const {ctx, page} = await newProfile(name, viewport, 2);
+  const {ctx, page} = await newProfile(name, viewport);
 
   let listenedAt = 0;
   await step('book', async () => {
     await openFirstBook(page, shots.book);
-    listenedAt = await listen(page);
+    listenedAt = await startPlayback(page);
   });
 
   // Home and the pause run whatever SHOTS_ONLY selects, so a partial run stages every
@@ -829,13 +849,12 @@ async function captureWide(name, viewport, shots) {
 // Phone: the primary button opens the full player; closing it leaves the mini player above
 // the tab bar, which the Home shot shows.
 async function capturePhone(name, viewport, shots) {
-  const {ctx, page} = await newProfile(name, viewport, 2);
+  const {ctx, page} = await newProfile(name, viewport);
 
   await step('book + player', async () => {
     await openFirstBook(page, shots.book);
-    await listen(page);
     try {
-      await pausePlayback(page);
+      await playThenPause(page);
       await shoot(page, shots.player);
       if (wanted(shots.speedSheet)) await sheetShot(page, 'player-speed', shots.speedSheet);
       if (wanted(shots.sleepSheet)) await sheetShot(page, 'player-sleep', shots.sleepSheet);
@@ -923,45 +942,534 @@ await capturePhone('phone', {width: 430, height: 932}, {
   settings: 'web-player/phone-settings.png',
 });
 
+// The connect start screen, done once the probe card shows what it found. A served
+// player that asks its own server on open has no address field; one that has the field
+// gets the server's address typed and Continue pressed.
+async function probeServer(page, origin) {
+  await tid(page, 'connect-start').waitFor({timeout: 15000});
+  const field = firstVisible(page.getByRole('textbox', {name: 'Server address'}));
+  if (await field.count()) {
+    await field.fill(origin);
+    await firstVisible(page.getByRole('button', {name: 'Continue', exact: true})).click({timeout: 8000});
+  }
+  await tid(page, 'probe-notice').waitFor({timeout: 15000});
+}
+
+// From the probe card: Sign in, by username and password.
+async function signInWithPassword(page, username, password) {
+  await firstVisible(page.getByRole('button', {name: /^Sign in to /})).click({timeout: 8000});
+  await tid(page, 'sign-in-step').waitFor({timeout: 8000});
+  await firstVisible(page.getByRole('radio', {name: 'Username and password'})).click({timeout: 8000});
+  await firstVisible(page.getByLabel('Username', {exact: true})).fill(username);
+  await firstVisible(page.getByLabel('Password', {exact: true})).fill(password);
+  await firstVisible(page.getByRole('button', {name: 'Sign in', exact: true})).click({timeout: 8000});
+}
+
+// ── Household: profiles, kids mode, listening in the house, Cast ────────────
+// The Phase 8 shots need people, not the demo: a demo account can't share what it
+// listens to, and profiles, PINs and kids mode are this device's (the browser's
+// localStorage), set up by driving the UI as a family would. provisionHouse makes the
+// accounts through the admin API: Ellen (the viewer, with a book on the go), Jamie and
+// Rosa (who share, Jamie listening now and Rosa paused, from progress saves as the
+// apps make them) and Leo (a child, whose account an admin limits to the KIDS_SHARE
+// folders). captureHouse then signs Ellen in on a fresh browser, adds Jamie and Leo
+// with "Add someone", gives Jamie a PIN and Leo kids mode, and turns sharing on for
+// Ellen in Settings > Household. unprovisionHouse deletes the accounts and the share
+// again, and takes their sign-ins out of the server's event feed, so the admin console's
+// shots (captured afterwards) never show them.
+const HOUSE_PASSWORD = 'household-demo';
+const HOUSE_VIEWER = {username: 'ellen', name: 'Ellen', q: 'Christmas Carol', at: 0.4};
+// The others on Ellen's device, in the order "Add someone" adds them.
+const HOUSE_DEVICE = [
+  {username: 'jamie', name: 'Jamie', pin: '2468'},
+  {username: 'leo', name: 'Leo', kids: true},
+];
+// The housemates who share; `live` keeps saving (Listening now), the other stops after
+// two saves, so the house shows it Paused once its last save is a minute old.
+const HOUSE_MATES = [
+  {username: 'jamie', q: 'Hound of the Baskervilles', at: 0.35, live: true},
+  {username: 'rosa', q: 'Call of the Wild', at: 0.62},
+];
+const KIDS_SHARE = {name: 'Stories', paths: ['Lewis Carroll', 'Charles Dickens']};
+const KIDS_STORY = 'Alice';
+const KIDS_USERNAME = HOUSE_DEVICE.find((p) => p.kids).username;
+// Every account the household makes (and a previous, interrupted run may have left).
+const HOUSE_USERNAMES = [...new Set([HOUSE_VIEWER, ...HOUSE_DEVICE, ...HOUSE_MATES].map((p) => p.username))];
+// The server reports a housemate as playing while their newest save is under a minute
+// old (catalog livePlaying), paused up to ten minutes (SessionGap), then only "recent".
+// It stamps a save with its own clock, so a save can't be backdated: the Home shot waits
+// for the paused housemate in real time (houseState), and saves them once more first
+// when their last save is older than this, well inside the ten minutes.
+const HOUSE_RESAVE_AFTER_MS = 5 * MIN;
+const HOUSE_SHOTS = {
+  profiles: 'web-player/profiles.png',
+  household: 'web-player/settings-household.png',
+  homeHouse: 'web-player/home-house.png',
+  bookHouse: 'web-player/book-in-the-house.png',
+  kids: 'web-player/kids.png',
+  phoneKids: 'web-player/phone-kids.png',
+  cast: 'web-player/player-cast.png',
+};
+
+// Kids mode's bedtime card reads the clock: every household context runs in a fixed-offset
+// zone where it is 8 pm now (after Leo's 7:30 pm bedtime), so the card says "It's bedtime"
+// on every run.
+function eveningZone() {
+  const offset = ((20 - new Date().getUTCHours() + 24 + 10) % 24) - 10; // -10..13 hours
+  return offset === 0 ? 'Etc/GMT' : `Etc/GMT${offset > 0 ? '-' : '+'}${Math.abs(offset)}`;
+}
+
+// Make the household's accounts into `house` (see newHouse), recording each as it is
+// made, so unprovisionHouse removes whatever a failure half-way left. Anything an
+// interrupted earlier run left (the accounts, the share) is removed first. `viewerOnly`
+// (a run that only wants the Cast shot) makes Ellen and her book on the go alone.
+const newHouse = () => ({admin: null, users: [], shareId: null, beat: null, mates: [], save: null, ready: false});
+
+async function provisionHouse(house, {viewerOnly = false} = {}) {
+  if (!ADMIN_PASSWORD) throw new Error('ADMIN_PASSWORD not set: no household to provision');
+  const {token: admin} = await api(null, 'POST', '/auth/login', {username: 'admin', password: ADMIN_PASSWORD});
+  house.admin = admin;
+  const stale = ((await api(admin, 'GET', '/admin/users'))?.users ?? []).filter((u) => HOUSE_USERNAMES.includes(u.username));
+  for (const u of stale) await api(admin, 'DELETE', `/admin/users/${u.id}`);
+  const staleShares = ((await api(admin, 'GET', '/admin/shares'))?.shares ?? []).filter((s) => s.name === KIDS_SHARE.name);
+  for (const s of staleShares) await api(admin, 'DELETE', `/admin/shares/${s.id}`);
+  if (stale.length || staleShares.length) {
+    console.log(`  ✓ removed a previous run's ${[...stale.map((u) => u.username), ...staleShares.map((s) => `"${s.name}"`)].join(', ')}`);
+  }
+  const [library] = (await api(admin, 'GET', '/admin/libraries')).libraries;
+  const {books} = await api(admin, 'GET', `/libraries/${library.id}/books?limit=200`);
+  const find = (t) => {
+    const b = books.find((x) => `${x.title} ${x.rel_path}`.includes(t));
+    if (!b) throw new Error(`no seeded book matching "${t}"`);
+    return b;
+  };
+  const names = viewerOnly ? [HOUSE_VIEWER.username] : HOUSE_USERNAMES;
+  for (const username of names) {
+    const made = await api(admin, 'POST', '/admin/users', {username, password: HOUSE_PASSWORD, role: 'user'});
+    const id = made?.user?.id ?? made?.id;
+    house.users.push(id);
+    if (username !== KIDS_USERNAME) {
+      await api(admin, 'POST', '/admin/library-access', {user_id: id, library_id: library.id});
+    } else {
+      const share = await api(admin, 'POST', '/admin/shares', {name: KIDS_SHARE.name});
+      house.shareId = share?.share?.id ?? share?.id;
+      for (const p of KIDS_SHARE.paths) {
+        await api(admin, 'POST', `/admin/shares/${house.shareId}/paths`, {library_id: library.id, path: p});
+      }
+      await api(admin, 'POST', '/admin/share-access', {user_id: id, share_id: house.shareId});
+    }
+  }
+  const progress = (token, book, body, client) =>
+    api(token, 'PUT', `/libraries/${library.id}/progress${pathQuery(book.rel_path)}`, {
+      duration: book.duration,
+      updated_at: new Date().toISOString(),
+      version: Date.now(),
+      ...body,
+    }, client ? {'x-audiosilo-client': client} : {});
+  const login = async (username) =>
+    (await api(null, 'POST', '/auth/login', {username, password: HOUSE_PASSWORD, device_name: `${username}'s phone`})).token;
+
+  // Ellen's book on the go (one save: a place, no listening), so her Home has a Now card.
+  {
+    const token = await login(HOUSE_VIEWER.username);
+    const b = find(HOUSE_VIEWER.q);
+    await progress(token, b, {position: b.duration * HOUSE_VIEWER.at});
+    await api(token, 'POST', '/auth/logout');
+  }
+  if (viewerOnly) {
+    house.ready = true;
+    console.log(`  ✓ household: ${HOUSE_VIEWER.username} only (the Cast shot)`);
+    return;
+  }
+  // The housemates: sharing on, then two saves 15 s apart (a session with listening in
+  // it: the server counts listening only as fast as its own clock runs between two
+  // saves, so this wait is real); the live one keeps saving every 15 s until
+  // unprovisionHouse.
+  for (const m of HOUSE_MATES) {
+    const token = await login(m.username);
+    await api(token, 'PUT', '/me/household', {share_listening: true});
+    const book = find(m.q);
+    house.mates.push({...m, token, book, pos: book.duration * m.at, last: 0});
+  }
+  house.save = (m) => {
+    const now = Date.now();
+    if (m.last) m.pos = Math.min(m.book.duration, m.pos + (now - m.last) / 1000);
+    m.last = now;
+    return progress(m.token, m.book, {position: m.pos, playback_speed: 1, device_id: `${m.username}-phone`}, 'AudioSilo/2.0.0 (ios)');
+  };
+  for (const m of house.mates) await house.save(m);
+  await sleep(15000);
+  for (const m of house.mates) await house.save(m);
+  house.beat = setInterval(() => {
+    for (const m of house.mates.filter((x) => x.live)) {
+      house.save(m).catch((e) => console.log(`  ! heartbeat for ${m.username}: ${e.message}`));
+    }
+  }, 15000);
+  house.ready = true;
+  console.log(`  ✓ household: ${names.join(', ')} (${HOUSE_MATES.map((m) => m.username).join(' and ')} share)`);
+}
+
+// Wait until the server reports housemate `username` as `state` (asked as another
+// housemate, who shares too and so sees them): the state comes from the age of their
+// newest save, so this waits in real time.
+async function houseState(house, username, state, timeoutMs = 2 * MIN) {
+  const viewer = house.mates.find((m) => m.username !== username);
+  const until = Date.now() + timeoutMs;
+  for (;;) {
+    const {listening} = await api(viewer.token, 'GET', '/household/listening');
+    const row = (listening ?? []).find((r) => r.username === username);
+    if (row?.state === state) return;
+    if (Date.now() > until) throw new Error(`the server never reported ${username} as ${state} (last: ${row?.state ?? 'not listed'})`);
+    await sleep(2000);
+  }
+}
+
+async function unprovisionHouse(house) {
+  if (house.beat) clearInterval(house.beat);
+  for (const id of house.users) await api(house.admin, 'DELETE', `/admin/users/${id}`).catch(() => {});
+  if (house.shareId) await api(house.admin, 'DELETE', `/admin/shares/${house.shareId}`).catch(() => {});
+  await api(house.admin, 'POST', '/auth/logout').catch(() => {});
+  // Every household sign-in is also a "New sign-in" server event, which names no user row
+  // and so outlives the account: take those out too, or the Events shot lists them.
+  try {
+    const names = HOUSE_USERNAMES.map((u) => `'${u}'`).join(', ');
+    sqlite(`DELETE FROM server_events WHERE kind = 'new_device' AND json_extract(data, '$.user') IN (${names});`);
+  } catch (e) {
+    console.log(`  ! household sign-ins left in the server's event feed: ${e.message}`);
+  }
+  console.log('  ✓ household accounts removed again');
+}
+
+// Settings > Household and sharing, by its link. A reload is a launch, and with two
+// people on the device it asks "Who's listening?" first: close it.
+async function openHousehold(page) {
+  await page.goto(BASE + 'settings?section=household', {waitUntil: 'networkidle', timeout: 45000});
+  const pane = tid(page, 'settings-pane-household');
+  await pane.or(tid(page, 'profiles-screen')).waitFor({timeout: 15000});
+  if (await tid(page, 'profiles-close').count()) await tid(page, 'profiles-close').click({timeout: 8000});
+  await pane.waitFor({timeout: 15000});
+  await sleep(SETTLE_MS);
+}
+
+// A person's card in the Household pane, by the name it shows.
+const personCard = (page, name) =>
+  firstVisible(
+    page.locator('[data-testid^="household-person-"]').filter({has: page.getByRole('heading', {name, exact: true})}),
+  );
+
+// Rename a person on this device (Household): usernames are lower case, people aren't.
+async function renamePerson(page, from, to) {
+  await firstVisible(page.getByRole('button', {name: `Rename ${from}`})).click({timeout: 8000});
+  await firstVisible(page.getByTestId('rename-field')).fill(to);
+  await firstVisible(page.getByRole('button', {name: 'Save', exact: true})).click({timeout: 8000});
+  await personCard(page, to).waitFor({timeout: 8000});
+}
+
+// The kids screen, choosing the child on "Who's listening?" when a launch asks first, with
+// the story loaded and paused (a still frame).
+async function kidsStaged(page, kidName) {
+  await page.goto(BASE, {waitUntil: 'networkidle', timeout: 45000});
+  const kids = tid(page, 'kids-screen');
+  await kids.or(tid(page, 'profiles-screen')).waitFor({timeout: 15000});
+  if (!(await kids.count())) {
+    await firstVisible(page.getByRole('button', {name: new RegExp(`^${escapeRe(kidName)},`)})).click({timeout: 8000});
+  }
+  await kids.waitFor({timeout: 15000});
+  const player = tid(page, 'kids-player');
+  if (!(await player.count())) {
+    await firstVisible(page.getByRole('button', {name: new RegExp(`^Play ${escapeRe(KIDS_STORY)}`)})).click({timeout: 8000});
+    await player.waitFor({timeout: 15000});
+  }
+  // The play button is named Play while the story loads (a spinner) and once paused,
+  // Pause while it plays: pause it once it plays.
+  const play = tid(page, 'kids-play');
+  await page.waitForFunction(
+    () => document.querySelector('[data-testid="kids-play"]')?.getAttribute('aria-label') === 'Pause',
+    null,
+    {timeout: 20000},
+  );
+  await play.click({timeout: 8000});
+  await page.waitForFunction(
+    () => document.querySelector('[data-testid="kids-play"]')?.getAttribute('aria-label') === 'Play',
+    null,
+    {timeout: 8000},
+  );
+  await sleep(SETTLE_MS);
+  await page.mouse.move(0, 0);
+}
+
+async function captureHouse(house) {
+  const timezoneId = eveningZone();
+  const origin = new URL(BASE).origin;
+  const ctx = await newCaptureContext({timezoneId});
+  const kidsName = HOUSE_DEVICE.find((p) => p.kids).name;
+  try {
+    const page = await ctx.newPage();
+    // Ellen on a fresh browser, then everyone else with "Add someone" (each new person
+    // becomes the one listening), each renamed.
+    let peopleReady = false;
+    await step('household: people', async () => {
+      await page.goto(BASE + 'connect', {waitUntil: 'networkidle', timeout: 45000});
+      await probeServer(page, origin);
+      await signInWithPassword(page, HOUSE_VIEWER.username, HOUSE_PASSWORD);
+      await tid(page, 'ready-screen').waitFor({timeout: 15000});
+      await openHousehold(page);
+      await renamePerson(page, HOUSE_VIEWER.username, HOUSE_VIEWER.name);
+      for (const p of HOUSE_DEVICE) {
+        await firstVisible(page.getByRole('button', {name: 'Add someone', exact: true})).click({timeout: 8000});
+        await probeServer(page, origin);
+        await signInWithPassword(page, p.username, HOUSE_PASSWORD);
+        await tid(page, 'top-bar-profile').waitFor({timeout: 15000});
+        await openHousehold(page);
+        await renamePerson(page, p.username, p.name);
+      }
+      // Back to Ellen, who sets up the others: a PIN, kids mode on one library.
+      await firstVisible(page.getByRole('button', {name: `Switch to ${HOUSE_VIEWER.name}`})).click({timeout: 8000});
+      await tid(page, 'top-bar-(home)').waitFor({timeout: 15000});
+      await openHousehold(page);
+      for (const p of HOUSE_DEVICE.filter((x) => x.pin)) {
+        await firstVisible(page.getByRole('button', {name: `Set a PIN for ${p.name}`})).click({timeout: 8000});
+        const field = firstVisible(page.getByTestId('pin-field'));
+        await field.pressSequentially(p.pin, {delay: 50});
+        await firstVisible(page.getByText('Enter the PIN again')).waitFor({timeout: 8000});
+        await field.pressSequentially(p.pin, {delay: 50});
+        await field.waitFor({state: 'hidden', timeout: 15000});
+      }
+      for (const p of HOUSE_DEVICE.filter((x) => x.kids)) {
+        await firstVisible(page.getByRole('switch', {name: `Kids mode for ${p.name}`})).click({timeout: 8000});
+        // The library the admin's share leaves the account (picked, not the fallback).
+        await personCard(page, p.name).getByRole('button', {name: 'Library', exact: true}).click({timeout: 8000});
+        await firstVisible(page.getByRole('option', {name: 'Books', exact: true})).click({timeout: 8000});
+      }
+      // Ellen shares (the switch settles on the server's answer).
+      const share = /^Share what I'm listening to with the house/;
+      await firstVisible(page.getByRole('switch', {name: share})).click({timeout: 8000});
+      await firstVisible(page.getByRole('switch', {name: share, checked: true})).waitFor({timeout: 8000});
+      console.log(`  ✓ ${[HOUSE_VIEWER, ...HOUSE_DEVICE].map((p) => p.name).join(', ')} on this device`);
+      peopleReady = true;
+    });
+    // A household set up half-way would shoot the wrong state over the committed shots:
+    // they keep their previous images instead.
+    if (!peopleReady) return;
+
+    if (wanted(HOUSE_SHOTS.household)) {
+      // The kids profile's card at the top of a taller window: its kids mode settings,
+      // then "Ask who's listening" and the sharing switch under it.
+      await step('household: settings', async () => {
+        await page.setViewportSize({width: 1440, height: 1000});
+        try {
+          await personCard(page, kidsName).evaluate((el) => el.scrollIntoView({block: 'start'}));
+          await sleep(SETTLE_MS);
+          await page.mouse.move(0, 0);
+          await shoot(page, HOUSE_SHOTS.household);
+        } finally {
+          await page.setViewportSize({width: 1440, height: 900});
+        }
+      });
+    }
+
+    if (wanted(HOUSE_SHOTS.profiles)) {
+      await step('household: who is listening', async () => {
+        await firstVisible(page.getByRole('button', {name: "Who's listening?", exact: true})).click({timeout: 8000});
+        await tid(page, 'profiles-screen').waitFor({timeout: 8000});
+        await sleep(SETTLE_MS);
+        await page.mouse.move(0, 0);
+        await shoot(page, HOUSE_SHOTS.profiles);
+        await tid(page, 'profiles-close').click({timeout: 8000});
+        await tid(page, 'profiles-screen').waitFor({state: 'hidden', timeout: 8000});
+      });
+    }
+
+    if (wanted(HOUSE_SHOTS.homeHouse, HOUSE_SHOTS.bookHouse)) {
+      // Home once the paused housemate reads as paused; the house row in the middle of
+      // the window. Then the live housemate's book, from their card.
+      await step('household: home', async () => {
+        const live = HOUSE_MATES.find((m) => m.live);
+        const paused = HOUSE_MATES.find((m) => !m.live);
+        // Home asks the house when it opens, then once a minute: open it once the server
+        // already says paused, so its first answer does (a save first if a slow run
+        // left the last one near the ten minutes after which a session reads as ended).
+        const mate = house.mates.find((m) => m.username === paused.username);
+        if (Date.now() - mate.last > HOUSE_RESAVE_AFTER_MS) await house.save(mate);
+        await houseState(house, paused.username, 'paused');
+        await tid(page, 'top-bar-(home)').click({timeout: 8000});
+        await firstVisible(page.getByRole('button', {name: new RegExp(`^${paused.username} paused `)})).waitFor({timeout: 90000});
+        await firstVisible(page.getByRole('button', {name: new RegExp(`^${live.username} is listening to `)})).waitFor({timeout: 8000});
+        await firstVisible(page.locator('[data-testid^="house-row-"]')).evaluate((el) => el.scrollIntoView({block: 'center'}));
+        await sleep(SETTLE_MS);
+        await page.mouse.move(0, 0);
+        await shoot(page, HOUSE_SHOTS.homeHouse);
+        if (!wanted(HOUSE_SHOTS.bookHouse)) return;
+        await firstVisible(page.getByRole('button', {name: new RegExp(`^${live.username} is listening to `)})).click({timeout: 8000});
+        await tid(page, 'book-page').waitFor({timeout: 15000});
+        await tid(page, 'in-the-house').waitFor({timeout: 30000});
+        await sleep(SETTLE_MS);
+        await page.mouse.move(0, 0);
+        await shoot(page, HOUSE_SHOTS.bookHouse);
+      });
+    }
+
+    if (wanted(HOUSE_SHOTS.kids, HOUSE_SHOTS.phoneKids)) {
+      // The child, chosen on "Who's listening?" (a reload asks), with a story loaded; then
+      // the same device at phone width.
+      await step('household: kids', async () => {
+        await kidsStaged(page, kidsName);
+        await shoot(page, HOUSE_SHOTS.kids);
+      });
+      if (wanted(HOUSE_SHOTS.phoneKids)) {
+        await step('household: phone kids', async () => {
+          // This device's storage, from the live browser (kidsStaged picks the child itself).
+          const storageState = await ctx.storageState();
+          const phone = await newCaptureContext({viewport: {width: 430, height: 932}, timezoneId, storageState});
+          try {
+            const p = await phone.newPage();
+            await kidsStaged(p, kidsName);
+            await shoot(p, HOUSE_SHOTS.phoneKids);
+          } finally {
+            await phone.close();
+          }
+        });
+      }
+    }
+  } finally {
+    await ctx.close();
+  }
+}
+
+// The Cast button shows only on an https page in a Chromium browser, and for a server
+// this device reaches at a loopback address (which no receiver could) it is only dimmed,
+// explaining instead of casting, under another name; and the
+// capture server is plain http on 127.0.0.1. So this step puts a local https proxy in
+// front of it, with a throwaway self-signed certificate (openssl, in .cache), and opens
+// it under a made-up name that a separate Chromium resolves to 127.0.0.1 (a separate
+// browser because --host-resolver-rules is a launch flag: no context option or route
+// can make a name resolve). Nothing leaves this machine but the Cast sender script the
+// button loads from www.gstatic.com (the button shows without it).
+const CAST_HOST = 'audiosilo.shots.test';
+
+// Whether `file` exists and was written less than a day ago.
+function freshFile(file) {
+  try {
+    return Date.now() - statSync(file).mtimeMs < DAY;
+  } catch {
+    return false;
+  }
+}
+
+async function captureCast() {
+  const dir = path.join(CACHE, 'cast-tls');
+  await mkdir(dir, {recursive: true});
+  const key = path.join(dir, 'key.pem');
+  const cert = path.join(dir, 'cert.pem');
+  // The certificate is good for two days: one made in the last day is reused.
+  if (!(freshFile(cert) && existsSync(key))) {
+    execFileSync('openssl', [
+      'req', '-x509', '-newkey', 'rsa:2048', '-nodes', '-days', '2',
+      '-keyout', key, '-out', cert, '-subj', `/CN=${CAST_HOST}`, '-addext', `subjectAltName=DNS:${CAST_HOST}`,
+    ], {stdio: 'ignore'});
+  }
+  const upstream = new URL(BASE);
+  // Plain requests only. A websocket upgrade is deliberately not proxied (no 'upgrade'
+  // listener, so Node drops it): the shot needs none of the server's live updates.
+  const proxy = https.createServer({key: readFileSync(key), cert: readFileSync(cert)}, (req, res) => {
+    const up = http.request(
+      {host: upstream.hostname, port: upstream.port, method: req.method, path: req.url, headers: req.headers},
+      (r) => {
+        res.writeHead(r.statusCode ?? 502, r.headers);
+        r.pipe(res);
+      },
+    );
+    up.on('error', () => res.destroy());
+    req.pipe(up);
+  });
+  let castBrowser = null;
+  try {
+    await new Promise((resolve, reject) => {
+      proxy.once('error', reject);
+      proxy.listen(0, '127.0.0.1', resolve);
+    });
+    const origin = `https://${CAST_HOST}:${proxy.address().port}`;
+    castBrowser = await chromium.launch({args: [`--host-resolver-rules=MAP ${CAST_HOST} 127.0.0.1`]});
+    const ctx = await newCaptureContext({ignoreHTTPSErrors: true, timezoneId: eveningZone()}, castBrowser);
+    const page = await ctx.newPage();
+    await page.goto(`${origin}/web/connect`, {waitUntil: 'networkidle', timeout: 45000});
+    await probeServer(page, origin);
+    await signInWithPassword(page, HOUSE_VIEWER.username, HOUSE_PASSWORD);
+    await tid(page, 'ready-screen').waitFor({timeout: 15000});
+    await firstVisible(page.getByRole('button', {name: 'Start listening'})).click({timeout: 8000});
+    // Ellen's book on the go, from Home's first cover (the Now card's, which may start it
+    // at once).
+    const card = page.locator('[role="button"]:has(img)').first();
+    await card.waitFor({state: 'visible', timeout: 20000});
+    await card.click({timeout: 12000});
+    await tid(page, 'book-page').waitFor({timeout: 15000});
+    await sleep(SETTLE_MS);
+    await playThenPause(page, {scope: tid(page, 'shell-docked-player'), ifShown: true});
+    await expandPlayer(page);
+    await tid(page, 'companion-tab-chapters').click({timeout: 8000});
+    // The transport and the action row, centred on the play button.
+    const cast = firstVisible(page.getByRole('button', {name: 'Cast', exact: true}));
+    await cast.waitFor({timeout: 30000}).catch(() => {
+      throw new Error(
+        `no enabled Cast button at ${origin}: it shows only in Chromium on an https page, for a book ` +
+          'the server can cast (capability cast), and at a loopback address it only explains',
+      );
+    });
+    await sleep(SETTLE_MS);
+    await page.mouse.move(0, 0);
+    const playBox = await firstVisible(page.getByRole('button', {name: /^play$/i})).boundingBox();
+    const castBox = await cast.boundingBox();
+    if (!playBox || !castBox) throw new Error('no player controls');
+    const cx = playBox.x + playBox.width / 2;
+    const top = playBox.y - 150;
+    await shoot(page, HOUSE_SHOTS.cast, {
+      clip: {x: cx - 420, y: top, width: 840, height: castBox.y + castBox.height + 28 - top},
+    });
+  } finally {
+    await castBrowser?.close();
+    // close() alone waits for the browser's kept-alive connections to time out.
+    proxy.closeAllConnections();
+    proxy.close();
+  }
+}
+
+if (wanted(...Object.values(HOUSE_SHOTS))) {
+  console.log('== household ==');
+  // Only the Cast shot wanted: Ellen alone, no housemates to wait on.
+  const castOnly = !wanted(...Object.entries(HOUSE_SHOTS).filter(([k]) => k !== 'cast').map(([, f]) => f));
+  const house = newHouse();
+  try {
+    await step('provision household', () => provisionHouse(house, {viewerOnly: castOnly}));
+    if (house.ready) {
+      if (!castOnly) await step('household', () => captureHouse(house));
+      if (wanted(HOUSE_SHOTS.cast)) await step('household: cast button', captureCast);
+    }
+  } finally {
+    if (house.admin) await step('remove household', () => unprovisionHouse(house));
+  }
+}
+
 // ── Unauthenticated screens ─────────────────────────────────────────────────
 console.log('== public screens ==');
 // The connect flow on a fresh browser: the start screen with the probe card (the served
-// player finds its own server, nothing typed), then a first connection (the admin, by username and password: a real account, so the
-// account page has its Password card and API keys) to "Your library is ready.", then
+// player finds its own server, nothing typed), then a first connection (the admin, by
+// username and password: a real account, so the account page has its Password card and
+// API keys) to "Your library is ready.", then
 // the account page from the profile menu. That player session is signed out again at
 // the end, so it never shows in the admin Devices shot.
 await step('connect', async () => {
-  const ctx = await browser.newContext({
-    viewport: {width: 1440, height: 900},
-    deviceScaleFactor: 2,
-    colorScheme: 'dark',
-    reducedMotion: 'reduce',
-  });
-  await ctx.addInitScript(drawerClosed);
+  const ctx = await newCaptureContext();
   const page = await ctx.newPage();
   try {
     await page.goto(BASE + 'connect', {waitUntil: 'networkidle', timeout: 45000});
-    await tid(page, 'connect-start').waitFor({timeout: 15000});
-    // The served player asks its own server on open (no address field); a frontend from
-    // before that still needs the address typed.
-    const field = page.getByRole('textbox', {name: 'Server address'});
-    if (await field.count()) {
-      await firstVisible(field).fill(new URL(BASE).origin);
-      await firstVisible(page.getByRole('button', {name: 'Continue', exact: true})).click({timeout: 8000});
-    }
-    await tid(page, 'probe-notice').waitFor({timeout: 15000});
+    await probeServer(page, new URL(BASE).origin);
     await sleep(SETTLE_MS);
     await page.mouse.move(0, 0);
     await shoot(page, 'web-player/connect.png');
     if (!wanted('web-player/connect-ready.png', 'web-player/account.png')) return;
     if (!ADMIN_PASSWORD) throw new Error('ADMIN_PASSWORD not set: no first connection to show');
 
-    await firstVisible(page.getByRole('button', {name: /^Sign in to /})).click({timeout: 8000});
-    await tid(page, 'sign-in-step').waitFor({timeout: 8000});
-    await firstVisible(page.getByRole('radio', {name: 'Username and password'})).click({timeout: 8000});
-    await firstVisible(page.getByLabel('Username', {exact: true})).fill('admin');
-    await firstVisible(page.getByLabel('Password', {exact: true})).fill(ADMIN_PASSWORD);
-    await firstVisible(page.getByRole('button', {name: 'Sign in', exact: true})).click({timeout: 8000});
+    await signInWithPassword(page, 'admin', ADMIN_PASSWORD);
     await tid(page, 'ready-screen').waitFor({timeout: 15000});
     await firstVisible(page.getByRole('button', {name: 'Start listening'})).waitFor({timeout: 8000});
     await sleep(3000); // the library sentence and the shelf

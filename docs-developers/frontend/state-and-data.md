@@ -128,7 +128,9 @@ Patterns to copy when adding an endpoint:
 once. `ApiProvider` builds an `ApiClient` per connection (memoized on the
 connection list, so switching the active server doesn't recreate clients) and
 exposes them via `useApi(connectionId?)` (active by default, throws if none),
-`useOptionalApi`, and `useApis` (all of them). The `use*All` hooks
+`useOptionalApi`, and `useApis` (the person listening's: the active profile's
+connections, none while someone must be chosen; see
+[Profiles](profiles.md#visible-and-background-connections)). The `use*All` hooks
 (`useLibrariesAll`, `useSearchAll`, `useRecentAll`, `useFavouritesAll`,
 `useAllProgressAll`, `useBookCopies`) fan out with `useQueries` + `combine`,
 tag results with their connection, and de-duplicate books via `src/lib/dedup.ts`
@@ -256,6 +258,8 @@ Cross-server screens ask per connection (`useCapabilitiesAll` /
 | `user_stats` (You) | Your listening (`StatsSection`: `useMyListening('1y')`, `useMyStats('year')`, the goal hooks) and Year in listening (`useYearStory`: `useMyStats(range)`, past years probed by `useStoryYears`); see [You, Settings and Account](you-and-settings.md) |
 | `my_devices` | the Account page's signed-in devices and the identity card's device count (`useMyDevices`, `useRevokeMyDevice`, never on the current device) |
 | `addresses` | the Account page's At home and away card (`useServerAddresses`) and the native address runner's refresh (`addressesQuery`); see [Connect and home/away addresses](connect-and-addresses.md#home-and-away-addresses) |
+| `household` | Home's Listening in the house row, the book page's In the house card and the sharing switch (`useHousehold`, `useSetHousehold`, `useHouseListening`); see [Listening in the house](listening-in-the-house.md) |
+| `cast` | the Cast button and `prepareCast` (no flag, or flags not known yet: no button, and a cast is refused); see [Chromecast](chromecast.md) |
 
 Writes from screens follow the [1b write rules](#the-listeners-own-state-player-redesign-phase-1b)
 (positioned adds, exact-path removes): Up next's drag/keys and a collection's Move
@@ -603,7 +607,7 @@ is shared by the Search screen and the palette. Each group carries its own
 `GroupState` (`supported`, `isLoading`, `isError`, `retry`), so a failing group never
 hides the others:
 
-- **Books**: `useSearchAll` across every connection, de-duplicated (`src/lib/dedup.ts`),
+- **Books**: `useSearchAll` across the person listening's connections, de-duplicated (`src/lib/dedup.ts`),
   "Also on" for the other servers.
 - **Series and people** (`usePeopleSources`): every library's `seriesList`,
   `authors` and `narrators` lists on every `browse_people` server (sharing the
@@ -635,9 +639,11 @@ book that hasn't reached it. The counted remainder is the `hidden` number behind
 
 ### Session (`src/stores/session.ts`)
 
-Multi-connection: a `Connection` is `{ id, serverUrl, name, token, user,
-needsReconnect?, addresses? }`. The `id` is the server-minted `server_id`, so it keys
-every per-server store. `serverUrl` is the address the listener paired with or typed,
+Multi-connection: a `Connection` is `{ id, serverId?, serverUrl, name, token, user,
+needsReconnect?, addresses? }`, **one user signed in to one server**. The `id` is the
+connection id, `<server_id>.<user_id>` ([below](#connection-identity-server_iduser_id)),
+so it keys every per-connection store; `serverId` is the server's `server_id`, read
+through `serverIdOf(conn)`. `serverUrl` is the address the listener paired with or typed,
 never rewritten; `addresses` is the server's home and away addresses (capability
 `addresses`), and which one requests go to right now is an in-memory pick, never stored
 (see [Connect and home/away addresses](connect-and-addresses.md#home-and-away-addresses)).
@@ -646,13 +652,30 @@ Connection **metadata** persists to AsyncStorage (`audiosilo.connections` +
 connection's **token** lives in secure-store under `audiosilo.token.<id>` - tokens are
 stripped before the metadata is persisted. `hydrate()` restores the connections whose
 token is still there (it runs after the launch reset, below, so it never reads
-wrongly-keyed records). `setSession` refuses an empty `server_id`, then adds or updates
-**by `server_id`** (re-pairing the same server at another URL updates its connection
-instead of adding one), merges the addresses it is given with what the device knew
-(`mergeAddresses`), makes it the default, remembers the server durably without its
-token (`src/lib/known-servers.ts`, the connect screen's Reconnect rows), and drops any
-**other** connection at the same URL: a rebuilt server mints a new `server_id` at the
-same address, so that one is a dead identity, whose token and scoped state go.
+wrongly-keyed records), filling `serverId` on a connection persisted before it
+existed. `setSession({ serverId, user, ... })` refuses an empty `server_id`, then adds
+or updates **by server and user**: the prior connection is the one with
+`serverIdOf(c) === serverId` and the same `user.id` (a legacy one saved without a
+usable user id counts as this user, since it was the server's one connection), so
+re-pairing the same account at another URL updates its connection instead of adding
+one, while **another user on the same server is another connection**. A prior
+connection keeps its id (a legacy id stays until the key migration moves it, so its
+downloads and saves stay reachable); a new one gets `connectionIdOf(serverId,
+user.id)`, and `setSession` returns the id it used. It merges the addresses it is
+given with what the device knew (the prior connection's, else another user's
+connection to the same server, else the remembered server's; `mergeAddresses`), makes
+it the default, remembers the server durably without its token
+(`src/lib/known-servers.ts`, the connect screen's Reconnect rows, keyed by `server_id`
+with no user). A connection at the same URL **whose `server_id` differs**
+(`staleIdentities`: a rebuilt server mints a new `server_id` at the same address) is a
+dead identity, but only the ones named in `retire` go, with their token and scoped
+state: `finishConnect` names the **re-pairing person's own** (`staleToRetire`: the
+profile holding the reconnect banner's connection, else the person listening; nobody's
+for **Add someone**), and the new connection takes the retired one's place in that
+person's profile (`onConnectionReplaced`). Every other stale identity is another
+person's: it stays, flagged `needsReconnect: 'server-reset'`, for them to sign in again
+(dropping it would delete their profile, PIN and kids settings). A different user is
+never a reason to drop one.
 `learnAddresses` merges a `GET /addresses` answer into a connection's addresses
 (`mergeAddresses`, so a known `home` survives; the address runner calls it). `removeConnection` (and `logout`,
 which removes the active one) deletes its token **and purges the connection's
@@ -679,6 +702,104 @@ keeps `status` on `loading` (screens wait on their spinner, never the connect sc
 retries every `LOCKED_RETRY_MS` (5 s) and when the app comes to the front. Any other failure
 is surfaced as `unauthenticated` (never stuck on `loading`) and retried on the next
 foreground.
+
+### Connection identity: `<server_id>.<user_id>`
+
+A connection is one user on one server, so its id is `connectionIdOf(serverId,
+userId)` = `<server_id>.<user_id>` (`src/lib/connection-id.ts`): two people signed in
+to the same server on one device are two connections, each with its own token,
+downloads, progress and query cache. The server's `server_id` is base64url
+(`[A-Za-z0-9_-]`, never `.`) and `user.id` a positive integer, so the `.` is an
+unambiguous separator, and the id stays inside expo-secure-store's key alphabet
+(`audiosilo.token.<id>`, `[\w.-]`), a file name and a URL path segment. It never holds
+`:` (`contentKey` joins on it, and is unchanged: `${connectionId}:${libraryId}:${path}`),
+`/`, `%`, `#` or `?`.
+
+Before the player redesign's Phase 8 the id was the bare `server_id`, a **legacy** id
+(`isLegacyConnectionId`). A legacy connection keeps working everywhere, forever: one
+the migration can't move (no usable `user.id`) or hasn't moved yet (a locked keychain)
+keeps its id. So:
+
+- **Compare servers only through `serverIdOf(conn)`** (its `serverId`, else what the
+  id says), never `conn.id`: the server-reset check (a `/server` answer whose
+  `server_id` differs, `serverResetCid`), the home-address probe and pick, the connect
+  flow's repair and Reconnect rows, `learnAddresses` (which remembers addresses under
+  the server's id).
+- `parseConnectionId(id)` gives `{ serverId, userId? }` and `usableUserId(user)` the
+  user id an id can carry; never split an id by hand.
+
+**The one-time key migration** (`migrateConnectionIdentity`,
+`src/lib/identity-migration.ts`) moves every legacy connection to its new id without
+signing anyone out. `migrateStorage()` runs it after `resetStaleStorage` and before any
+store hydrates or any lazy reader runs. Until the plan is stored, a crash, a locked
+keychain or a failed write leaves the legacy data usable and the run waits for the next
+launch. Once the plan is stored the run only goes **forward**: `migrateStorage()` runs
+it up to `RECOVERY_ATTEMPTS` (5) times in all, a second apart, with every reader held, so no store
+ever sees half-moved documents. When it still fails it gives up for this launch and sets
+`identityMovePending()`: the downloads store and the offline queue's replay keep what
+names an id no connection has yet instead of pruning it as gone, and a later launch
+finishes the plan.
+
+1. **Read and plan** `{ legacyId: newId }` for each legacy connection with a usable
+   `user.id` whose new id no other connection already has (plus the plan a run cut
+   short left, `audiosilo.identityPlan`). Nothing moves while the Android playback
+   service holds a book of a connection being moved (its tracks are files under the
+   old download folder); when the service doesn't answer within 3 s, the run waits for
+   a later launch.
+2. **Tokens first.** Copy each `audiosilo.token.<old>` to `audiosilo.token.<new>` and
+   read it back. Any failure, a locked keychain included (a CarPlay launch with the
+   phone locked), aborts with nothing else changed. Old tokens are never deleted here,
+   and a copy is never undone.
+3. **Record the plan, then move the files**: native `downloads/<old>` to
+   `downloads/<new>` (`engine.native`'s `moveConnection`). Moves are idempotent and
+   **never reversed** (a retry can't tell which moves an earlier process made, and the
+   documents may already name the new ids); a failure keeps the plan and the next try
+   goes on from there. The web moves **no** files: `engine.web` has no `moveConnection`
+   and keeps a moved connection's Cache API entries under the legacy id
+   (`/_offline/<legacyId>/`), which the registry's new ids reach through the aliases
+   (`legacyIdOf`).
+4. **Rewrite every document naming a connection id in one `setMany`**: the
+   connections (new `id`, `serverId` added), the default connection, the downloads
+   registry (keys and each `connectionId`), the progress mirror (keys and values) and
+   queue, `offlineServers`, the car bookmarks waiting to be sent, the library
+   selection, Smart speed's time saved, the drift-offs, plus the aliases and the first
+   profiles document. A failed write (iOS and the web write key by key) keeps the plan,
+   and the next try finishes it. `audiosilo.carSnapshotWritten` is removed, so the next car snapshot is built fresh
+   (even offline).
+5. **Mark it done**: `audiosilo.identityVersion` = `2`.
+6. **Delete the old tokens, then the plan**, best effort. A plan still stored (the app was
+   killed first, or its removal failed) is replayed by a later launch, which deletes the old
+   tokens again; a token delete that fails while the plan's removal succeeds is not
+   retried, so that old copy stays in the secure store.
+
+Every rewrite maps ids through the stored plan, so it is idempotent: a run cut short
+mid-write (`setMany` is not atomic on iOS or the web) is finished by the next one with
+the same plan. A legacy list written back after the mark (a web tab still running the
+old code) is moved by the next launch the same way. A new document keyed by a
+connection id must be added to `ID_DOCUMENTS` or it is left behind. In-memory state
+(scroll memory, the React Query cache) needs no migration.
+
+The same `setMany` writes the **first profiles document** (`audiosilo.profiles`); how
+it groups the connections is on [Profiles](profiles.md#the-store-srcstoresprofilests).
+
+**Aliases.** The migration records `{ [old]: new }` under `audiosilo.connectionAliases`.
+Every launch loads them into memory with the migration's own first read
+(`migrateConnectionIdentity`, together with the landed moves of a run cut short);
+`bootstrapPlayback` reads them itself (`loadConnectionAliases`) only when that read
+failed.
+`resolveConnectionId(id)` maps an old id to its new one (else returns it) at every
+entry point JS can't rewrite first: a route's `?connection=` (`connectionParam`: web
+history, widget and Live Activity deep links), a car item id from an old snapshot
+(`parseCarItemId`), the book the Android service loaded (`getLoadedBook`,
+`adoptLoaded`), bookmarks the service queued (`onRemoteBookmark`,
+`consumePendingBookmarks`), the iOS widget's last props, and `resolveClient` as a
+safety net.
+
+**Why `AUTH_STORAGE_VERSION` is never bumped for it.** Bumping the auth axis wipes
+every connection and token, signing everyone out (below). That was right for v2, when
+the old ids could not be re-keyed; the Phase 8 ids can, so the migration re-keys them
+instead and nobody re-pairs. Bump the auth axis only for an identity change that
+genuinely can't be migrated.
 
 ### Settings (`src/stores/settings.ts`)
 
@@ -818,13 +939,17 @@ The offline-safe write path for listening progress:
   (`src/stores/session.ts`), which reconciles storage along two independent version
   axes. The **auth** axis (`audiosilo.storageVersion`, now `2`) wipes the connections,
   their tokens, the pre-multi-server single-session keys and, with them, the scoped
-  cache; bump it only when the connection identity scheme itself changes, because it
-  signs everyone out. The **cache** axis (`audiosilo.cacheVersion`) wipes only the
+  cache; bump it only for a connection identity change that can't be migrated, because
+  it signs everyone out (one that can be re-keyed gets a key migration instead, as Phase
+  8's did: [Connection identity](#connection-identity-server_iduser_id)). The **cache** axis (`audiosilo.cacheVersion`) wipes only the
   scoped cache (`audiosilo.downloads`, `audiosilo.progressMirror`,
   `audiosilo.progressQueue`, `audiosilo.offlineServers`) and keeps every login: it is
   the knob for any change to how that cache is keyed (a pre-split install adopts the
   version without a wipe). Either reset makes `bootstrapPlayback` wipe the on-disk
-  downloads too. An `onConnectionRemoved` handler drops a removed connection's mirror
+  downloads too. After both axes, the same `migrateStorage()` run moves legacy
+  connection ids to `<server_id>.<user_id>`
+  ([Connection identity](#connection-identity-server_iduser_id)), keeping every login.
+  An `onConnectionRemoved` handler drops a removed connection's mirror
   records and queued saves.
 
 :::note No realtime sync

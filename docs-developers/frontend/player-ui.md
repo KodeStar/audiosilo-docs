@@ -37,7 +37,8 @@ timer have their own pages ([End of a book](end-of-book.md),
   `TransportControls size="sm"` over the dock's `ChapterScrubber`, which takes the
   playing book's `bookmarks` and draws their ticks in the segment
   (`usePlayingSegment`); and on the right the `UndoChip`, speed, sleep, bookmark,
-  output (only when `canRoutePick`), Up next and expand. What fits is decided by
+  output (only when `canRoutePick`), Cast (`CastButton`, only when the bar has room for
+  all its actions; see [Chromecast](chromecast.md#the-cast-button)), Up next and expand. What fits is decided by
   the bar's **measured** width (`dockLayout`), not the window class; everything it
   drops is in the full player. While the Undo chip shows (`useUndoVisible`), its
   measured width comes off first and the right cluster stops growing, so the book

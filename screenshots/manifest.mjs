@@ -32,7 +32,7 @@ export const SHOTS = [
   {file: 'web-player/dock-undo.png', capture: 'web', title: 'Web player - Docked bar with Undo', hint: 'the docked player bar (a strip along the window bottom) just after a next-chapter jump: the Back to <time> chip leading the actions'},
   {file: 'web-player/end-credits.png', capture: 'web', title: 'Web player - End credits', hint: 'the end credits, opened early from the full player menu (book paused): shelf or cover, stats, Up next card'},
   {file: 'web-player/palette.png', capture: 'web', title: 'Web player - Quick search', hint: 'the command palette (top bar search / ⌘K) with "holmes" typed: Books and Series groups'},
-  {file: 'web-player/profile-menu.png', capture: 'web', title: 'Web player - Profile menu', hint: "the top bar's profile menu: servers, Add a server, Journal, Settings, account, appearance"},
+  {file: 'web-player/profile-menu.png', capture: 'web', title: 'Web player - Profile menu', hint: "the top bar's profile menu: Listening as (the one person on the demo device) and Who's listening?, servers, Add a server, Journal, Settings, account, appearance"},
   {file: 'web-player/search.png', capture: 'web', title: 'Web player - Search', hint: 'the Search page with "holmes": grouped Books, and Series as the series card with its mini shelf'},
   {file: 'web-player/you-stats.png', capture: 'web', title: 'Web player - Your listening', hint: "You in the top bar (Stats): the header with this week, the four stat tiles (week, streak, goal, daily average), the listening calendar, the clock and hours per week (the seeded year of listening)"},
   {file: 'web-player/year.png', capture: 'web', title: 'Web player - Year in listening', hint: 'You > Year in listening: the story card on stage (held: the pointer parked on it) beside the title, how it works, the thumbnails and Share this card'},
@@ -55,6 +55,15 @@ export const SHOTS = [
   {file: 'web-player/phone-sleep-sheet.png', capture: 'web', title: 'Phone - Sleep sheet', hint: 'the sleep timer sheet over the phone player: minute tiles, End of chapter, Or stop after, the sleep settings'},
   {file: 'web-player/phone-you-stats.png', capture: 'web', title: 'Phone - Your listening', hint: 'the Me tab (the You hub on Stats): the large title Your listening, the sections row (Stats, Year, Journal, Settings, Account), this week and the stat tiles in two columns'},
   {file: 'web-player/phone-settings.png', capture: 'web', title: 'Phone - Settings', hint: 'the Me tab on Settings: the large title Settings, the sections row, the Listening group with the Playback card stacked (steppers, Smart speed, Voice boost)'},
+  // Household (capture-web.mjs's household pass: three people on one device, two
+  // housemates who share, a kids profile; see README.md)
+  {file: 'web-player/profiles.png', capture: 'web', title: "Web player - Who's listening?", hint: "the /profiles picker from Settings > Household: Ellen ringed as listening, Jamie with the PIN key, Leo in kids mode with his bedtime line, and Add someone"},
+  {file: 'web-player/settings-household.png', capture: 'web', title: 'Web player - Settings, Household and sharing', hint: "Settings > Household and sharing (1440x1000), scrolled to Leo's card: Switch, Name, PIN, Kids mode with Library (Books) and Bedtime, Remove from this device; then Who's listening? / Add someone, Ask who's listening when the app opens (on), and the Listening in the house switch (on)"},
+  {file: 'web-player/kids.png', capture: 'web', title: 'Web player - Kids mode', hint: "/kids for Leo at 8 pm (a fixed evening time zone): Hi Leo and Grown-ups: hold, the It's bedtime card with its sleep timer, the kids player with Alice loaded and paused, the story tiles of the account's limited share"},
+  {file: 'web-player/phone-kids.png', capture: 'web', title: 'Phone - Kids mode', hint: 'phone-width /kids on the same device: the bedtime card, the kids player (four big buttons), two columns of story tiles'},
+  {file: 'web-player/home-house.png', capture: 'web', title: 'Web player - Listening in the house', hint: 'Ellen\'s Home scrolled to Listening in the house: jamie listening now and rosa paused (both share), the "<server> · shared by choice" line and Sharing settings'},
+  {file: 'web-player/book-in-the-house.png', capture: 'web', title: 'Web player - In the house card', hint: "the page of the book jamie is listening to, opened from that house card: the aside's About and In the house cards"},
+  {file: 'web-player/player-cast.png', capture: 'web', title: 'Web player - Cast button', hint: 'the full player (book paused), clipped to the transport and the action row ending with the Cast button: an https page through a local proxy in Chromium, server with cast'},
 
   // ── Admin console (admin-ui, desktop 1440x900 dark unless noted) + public server pages
   {file: 'admin/login.png', capture: 'admin', title: 'Admin - Sign in', hint: 'the console sign-in page, signed out'},

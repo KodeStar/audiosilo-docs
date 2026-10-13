@@ -26,8 +26,9 @@ route table is in the [overview](overview.md#route-map). Three steps, counted by
    Native offers **Scan a QR code** (`/connect/scan`, `expo-camera`); web offers **I have
    a pairing link** (pasted, parsed with `parsePairingScan`). A route `token` (a pairing
    link or QR, with `server` on native and `home`/`away` when the server sent them) is
-   exchanged at once. Remembered servers this device isn't signed in to
-   (`knownToOffer`, from `src/lib/known-servers.ts`) are one-tap "Reconnect to
+   exchanged at once. Remembered servers the person listening isn't signed in to
+   (`knownToOffer` over `useProfileConnections`, from `src/lib/known-servers.ts`; for
+   Add someone, `?profile=new`, every remembered server) are one-tap "Reconnect to
    &lt;name&gt;" rows; on native, one with a home address is asked who it is there first
    (`reconnectAddress` → `pickAddress`, the rule below), and a reconnect goes straight to
    sign-in unless the server runs a demo. **The served player** (`servedOrigin()` in
@@ -68,9 +69,13 @@ connection then shows `/connect/ready`; an added server goes straight back with
   addresses): keep its paired `serverUrl` (the reconnect banner signs in through the
   address in use now, which away from home is the away address);
 - a **reset server** (the banner's connection, reached through one of its own addresses,
-  answering with a new `server_id`): store the old connection's `serverUrl`, so the
-  session store retires the dead identity at that URL, and carry its addresses over
-  (the home address is probed against the new id before it is used);
+  answering with a new `server_id`): store the old connection's `serverUrl` and carry
+  its addresses over (the home address is probed against the new id before it is
+  used). `finishConnect` then retires only the **re-pairing person's own** dead identity
+  at that URL (`staleToRetire`, passed to `setSession` as `retire`: the banner's
+  person, else the person listening, nobody for Add someone), and the new connection
+  takes its place in their profile; other people's stay, flagged `server-reset`, for
+  them to sign in again ([Session](state-and-data.md#session-srcstoressessionts));
 - anything else: the address signed in through.
 
 `/connect` decides its "nothing to add" bounce (an authenticated user without `?add=1`, a

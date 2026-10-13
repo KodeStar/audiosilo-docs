@@ -11,7 +11,7 @@ AudioSilo has native apps for **iOS** and **Android**. They're the same player y
 
 - **iOS**: the app is on the **[App Store](https://apps.apple.com/us/app/audiosilo/id6783431375)** - search for AudioSilo, or follow the link.
 - **Android**: the app is on **[Google Play](https://play.google.com/store/apps/details?id=app.audiosilo)** - search for AudioSilo, or follow the link.
-- **CarPlay**: built into the iPhone app, but Apple has to approve an app for CarPlay audio before a car will show it. That approval isn't part of the App Store app yet, so AudioSilo doesn't appear in CarPlay until a later update.
+- **CarPlay**: Apple has approved AudioSilo for CarPlay audio, but the App Store version (2.0.0) doesn't include it yet; it arrives with a later update. Until then, AudioSilo doesn't appear in CarPlay.
 - **Android Auto**: built into the Android app; see [In the car](in-the-car.md#android-auto) for getting it onto the car's screen.
 - **iPhone widgets and the sleep timer Live Activity**: not in the App Store version yet; they arrive with a later update.
 
@@ -49,6 +49,10 @@ Both apps show the current chapter on the lock screen, with a chapter scrubber a
 ## In the car
 
 The apps put your books on the car's screen through **Android Auto** and **CarPlay** (see [Availability](#availability)). See [In the car](in-the-car.md).
+
+## Casting to a TV or speaker
+
+Both apps can play a book on a Chromecast, a TV with Google Cast or a Nest speaker, with the phone as the remote. See [Chromecast](chromecast.md) for what your setup needs.
 
 ## Widgets on iPhone
 

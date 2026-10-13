@@ -88,7 +88,7 @@ key satisfies the admin-role check, a regular user's does not. Pairing tokens
 are never accepted as a bearer credential, and an API key is never valid for
 `/auth/exchange`. It also **cannot mint a fresh durable credential** - an API-key
 caller is refused (403) on the credential-minting routes (create key, recovery,
-pair, set password), so revoking a leaked key cuts off everything it could reach.
+pair, set password, cast token), so revoking a leaked key cuts off everything it could reach.
 See the [reference](reference.md#personal-api-keys).
 
 ### Media requests: `?token=` - media GETs only
@@ -98,9 +98,14 @@ See the [reference](reference.md#personal-api-keys).
 session token **either** as the bearer header **or** as a `?token=` query
 parameter. This exists because browser `<img>` and `<audio>` elements cannot set
 an `Authorization` header. The query fallback is deliberately confined to these
-three routes (`requireMediaAuth` in `internal/api/middleware.go`): a token in a query
+three routes (`requireBookMediaAuth` for cover and stream, `requireMediaAuth` for
+`/meta/cover`, both `mediaAuth` in `internal/api/middleware.go`): a token in a query
 string can leak into access logs and `Referer` headers, so no other route
 accepts it. Native clients should keep using the header even for media.
+
+A book's cover and stream also accept a **cast token** (capability `cast`) as the
+`?token=`, which a player mints for the Chromecast receiver so it never sees the
+session token: see [Cast tokens as media auth](reference.md#cast-tokens-as-media-auth).
 
 ### Client identification: `X-AudioSilo-Client`
 
@@ -199,7 +204,7 @@ Status mapping is consistent across handlers:
 |---|---|
 | `400` | malformed body / unknown JSON field, missing or invalid parameter (`path is required`, `invalid cursor`, non-integer `{id}`), path escaping the library root, domain validation (`mode must be "book" or "collection"`, admin needs a password, password too short) |
 | `401` | missing/invalid/expired token, bad credentials, invalid auth code, wrong `current_password` |
-| `403` | authenticated but not allowed: no share grants the library or path, `admin only`, demo accounts on the self-service routes (password/recovery/API keys), an API key on a credential-minting route (create key/recovery/pair/password), bad setup token |
+| `403` | authenticated but not allowed: no share grants the library or path, `admin only`, demo accounts on the self-service routes (password/recovery/API keys), an API key on a credential-minting route (create key/recovery/pair/password/cast token), bad setup token |
 | `404` | library/user/share/invite not found, another user's (or an unknown) bookmark or note on an edit, `no book at that path`, feature not configured (demo mode off, well-known files unset) |
 | `409` | conflicts: `name already taken` (library/share), last-enabled-admin guard, signing out the device making the request, starting someone's progress on a book they can't see, setup already completed |
 | `413` | a request body over an endpoint's size cap (a custom cover over 5 MiB) |
@@ -315,7 +320,9 @@ single-shot with a `limit` and no pagination.
     "user_stats": true,
     "my_devices": true,
     "annotations": true,
-    "addresses": true
+    "addresses": true,
+    "household": true,
+    "cast": true
   },
   "auth": { "methods": ["auth_code", "password"] },
   "demo": { "enabled": false }
@@ -367,6 +374,13 @@ each always `true` on a server that has it:
 | `annotations` | a bookmark's `label` (on [`POST …/bookmarks`](reference.md#get-apiv1librariesidbookmarks--post-apiv1librariesidbookmarks) and every bookmark answer), the owner's edits [`PATCH /bookmarks/{id}`](reference.md#patch-apiv1bookmarksid) and [`PATCH /notes/{id}`](reference.md#patch-apiv1notesid), the all-books lists [`/me/bookmarks`](reference.md#get-apiv1mebookmarks) and [`/me/notes`](reference.md#get-apiv1menotes), and `cursor` paging plus each row's `book` on [`/me/history`](reference.md#get-apiv1mehistory) |
 | `addresses` | the server's [home and away addresses](reference.md#home-and-away-addresses) on every pairing payload and its links, on the exchange, login and demo answers, and [`GET /addresses`](reference.md#get-apiv1addresses) |
 
+The player redesign's Phase 8 added two, each always `true` on a server that has it:
+
+| Flag | Gates |
+|---|---|
+| `household` | [Listening in the house](reference.md#listening-in-the-house): the caller's opt-in at [`/me/household`](reference.md#get-apiv1mehousehold--put-apiv1mehousehold) and [`GET /household/listening`](reference.md#get-apiv1householdlistening). Without it the player hides the sharing switch and the Home row |
+| `cast` | [`POST /cast/token`](reference.md#post-apiv1casttoken) and a cast token as the `?token=` of a book's cover and stream. Without it the player shows no Cast button |
+
 Gate on the flag rather than on the server version: an older server answers
 `size=` and `narrator=` by ignoring them (full art, the unfiltered list) and the
 new routes with a `404`. Request bodies are decoded strictly, so a field added to an
@@ -384,7 +398,7 @@ with an error envelope.
 | Limiter | Scope | Policy |
 |---|---|---|
 | General token bucket | every request except static files and media | ~50 requests/second, burst 200, per IP (`rate limit exceeded`) |
-| Media token bucket | `GET /libraries/{id}/cover`, `GET /libraries/{id}/stream` | ~200 requests/second, burst 2000, per credential; a failed authentication counts against the general bucket ([details](../auth-and-security.md#rate-limiting)) |
+| Media token bucket | `GET /libraries/{id}/cover`, `GET /libraries/{id}/stream`, `GET /libraries/{id}/meta/cover` | ~200 requests/second, burst 2000, per credential (a cast token has a bucket of its own); a failed authentication counts against the general bucket ([details](../auth-and-security.md#rate-limiting)) |
 | Login lockout | `POST /auth/login` | 10 *failed* attempts per 15 min per IP; a success resets the counter |
 | Redeem lockout | `POST /auth/redeem` | 10 *failed* attempts per 15 min per IP; a success resets |
 | Demo cap | `POST /demo/session` | at most 5 demo sessions per IP per 15 min, metered at admission (failures count too) |

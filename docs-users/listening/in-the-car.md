@@ -6,7 +6,7 @@ description: "Listening with Android Auto and Apple CarPlay: getting AudioSilo o
 The AudioSilo apps for Android and iPhone can put your books on a car's screen: **Android Auto** on Android, **CarPlay** on iPhone. The car shows the same lists on both, plays through the app on your phone, and saves your place exactly as the phone does. The web player has no car mode.
 
 :::note
-CarPlay isn't available yet: Apple has to approve AudioSilo for CarPlay first (see [Availability](mobile-apps.md#availability)). Until then, AudioSilo doesn't appear in CarPlay.
+Apple has approved AudioSilo for CarPlay, but the iPhone app in the App Store (version 2.0.0) doesn't include it yet: it arrives with a later update (see [Availability](mobile-apps.md#availability)). Until then, AudioSilo doesn't appear in CarPlay.
 :::
 
 ## Getting AudioSilo into the car
@@ -24,7 +24,7 @@ If AudioSilo isn't in the launcher:
 
 ### CarPlay
 
-Once Apple has approved AudioSilo for CarPlay, it appears on the CarPlay home screen like any audio app: connect your iPhone to the car and tap it. It works with your iPhone locked in your pocket, as long as you've unlocked it once since it last restarted; until then it waits, and never signs you out.
+Once your iPhone app has the update that brings CarPlay, AudioSilo appears on the CarPlay home screen like any audio app: connect your iPhone to the car and tap it. It works with your iPhone locked in your pocket, as long as you've unlocked it once since it last restarted; until then it waits, and never signs you out.
 
 ## What the car shows
 
@@ -32,12 +32,12 @@ Up to four lists, as tabs along the car's screen:
 
 - **Continue listening** - the books you're part-way through, on every server you're signed in to, the one you're playing first (the same books as Home's Continue listening).
 - **Up next** - the same [Up next](up-next.md) queue the app shows: the one on the server of the book you're playing, or on your main server when nothing is playing (where that server has a queue).
-- **Downloads** - the books downloaded to your phone, newest first.
+- **Downloads** - your books downloaded to the phone, newest first.
 - **Library** - the most recently added books in the library you have selected.
 
 Each book shows its cover, its author and, once you've started it, the time left at that book's speed (*"Arthur Conan Doyle · 3h 12m left"*). The car also marks how far through each book you are and whether you've finished it. Cars show only so many items, so the longer lists are cut short.
 
-The lists follow what you do on the phone: start a book, pause, add to your queue or finish a download, and the car catches up within a few seconds. If none of your servers can be reached when the car connects, the car keeps the lists it showed last time, and your downloaded books still play. The car's words are in the language you chose for the app.
+When several people share the phone ([profiles](profiles.md)), the car shows only the books of the person listening now, and switching person changes the lists. The lists follow what you do on the phone: start a book, pause, add to your queue or finish a download, and the car catches up within a few seconds. If none of your servers can be reached when the car connects, the car keeps the lists it showed last time, and your downloaded books still play. The car's words are in the language you chose for the app.
 
 ## Playing a book
 

@@ -174,8 +174,8 @@ shortcuts, never a second copy. The rules are the pure `settings-model.ts`:
   `support`). `settingsGroups(supportAvailable)` drops Support where
   `isSupportAvailable()` says the build can't link to it (Apple builds). There is no
   Accessibility pane: the app has no setting of its own for it, and the style guide says
-  not to show a switch that does nothing. Household is a flagged notice until profiles
-  ship.
+  not to show a switch that does nothing. Household is `HouseholdPane`, the people on
+  this device and the house sharing switches (see [Profiles](profiles.md#settings--household-and-sharing)).
 - `parseSettingsSection`: `preferences`, absent, unknown or a hidden pane is the first
   pane (`playback`); `accounts` is the signed-in servers. `sectionParam` writes the bare
   page for the first pane.

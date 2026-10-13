@@ -18,17 +18,19 @@ On an **iPhone running iOS 26 or later**, the mini player is a glass strip insid
 - a thin line along its top edge showing your progress through the whole book;
 - on the left, the cover, the chapter, the book and author, and whether your [place is saved](#your-position-follows-you) - tap it to open the full player;
 - in the middle, previous chapter, skip back, play/pause, skip forward and next chapter, over a scrubber for the current chapter (with a tick for each bookmark) and the time left in the book;
-- on the right, the [undo button](full-player.md#undo-a-jump) after a jump, then speed, the [sleep timer](sleep-timer.md) (with its countdown while one runs), bookmark, output, [Up next](up-next.md), and an arrow that opens the full player.
+- on the right, the [undo button](full-player.md#undo-a-jump) after a jump, then speed, the [sleep timer](sleep-timer.md) (with its countdown while one runs), bookmark, output, [Cast](chromecast.md), [Up next](up-next.md), and an arrow that opens the full player.
 
-When the bar is short of room (a narrower window, or the undo button taking its space), it drops speed, bookmark and output first, then the chapter scrubber and the time left; everything it drops is in the full player.
+When the bar is short of room (a narrower window, or the undo button taking its space), it drops speed, bookmark, output and Cast first, then the chapter scrubber and the time left; everything it drops is in the full player.
 
-## Play to another speaker (AirPlay / Cast)
+## Play to another speaker (AirPlay and Chromecast)
 
-The **output** button in the full player (and on the player bar) hands audio off to another output:
+The **output** button in the full player (and on the player bar; a screen reader calls it **Audio output**) hands audio off to another output:
 
 - **iPhone / iPad** - opens the AirPlay picker, so you can send playback to a HomePod, an Apple TV, or AirPlay speakers.
-- **Android** - opens the system output switcher, for a Bluetooth speaker (an Echo paired as a speaker, for example) or a Cast device.
-- **Web** - uses AirPlay in Safari, or the browser's Cast picker in Chrome. The button only appears in browsers that support one of these; elsewhere it's hidden.
+- **Android** - opens the system's media output panel (or the Bluetooth settings where there isn't one), for a Bluetooth speaker (an Echo paired as a speaker, for example).
+- **Web** - uses AirPlay in Safari. Other browsers have no output picker, so the button is hidden there.
+
+To play on a **Chromecast**, a TV with Google Cast or a Nest speaker, use the **Cast** button beside it instead: see [Chromecast](chromecast.md).
 
 Your position keeps syncing as normal while playing to another device.
 

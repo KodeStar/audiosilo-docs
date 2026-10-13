@@ -8,7 +8,9 @@ The complete HTTP surface, derived from the route table in
 in the [API conventions](index.md) page and are not repeated per endpoint.
 
 **Auth legend** - *Public*: no token. *Session*: bearer session token.
-*Session (media)*: session token via header **or** `?token=` query parameter.
+*Session (media)*: session token via header **or** `?token=` query parameter
+(a book's cover and stream also take a [cast token](#cast-tokens-as-media-auth)
+as the `?token=`).
 *Admin*: session token + `admin` role. A personal **API key** authenticates as
 its owner anywhere a *Session* token does - so an admin's key also satisfies
 *Admin* - with one carve-out: it is refused on the credential-minting routes (see
@@ -53,7 +55,9 @@ else and gate features on the flags.
     "user_stats": true,
     "my_devices": true,
     "annotations": true,
-    "addresses": true
+    "addresses": true,
+    "household": true,
+    "cast": true
   },
   "auth": { "methods": ["auth_code", "password"] },
   "demo": { "enabled": false }
@@ -65,8 +69,10 @@ admin sets in the console's Settings > General (it can change while the server
 runs); `"AudioSilo"` when unset.
 `server_id` is a stable, per-install identity minted once and persisted in
 `config.yaml` (so it survives a database rebuild). It never changes for the life of
-the install; clients use it as the identity for a paired server and key their
-per-server state (downloads, progress, cache) on it. It is also returned by the
+the install; clients use it as the identity for a paired server. The player keys its
+per-connection state (token, downloads, progress, cache) on `<server_id>.<user_id>`, one
+user on one server, so two people signed in to one server stay apart (see
+[Connection identity](../../frontend/state-and-data.md#connection-identity-server_iduser_id)). It is also returned by the
 pairing exchange (`POST /auth/exchange`) and login/demo responses, so a client has
 it the moment it pairs. `version` is stamped from the release tag (`"dev"` for local builds).
 `transcode` is true only when ffmpeg is configured; `web_player` only when the
@@ -117,6 +123,14 @@ its links, on the exchange, login and demo answers, and at
 `meta_covers` (the same as `metadata`, absent on an older server) says the server
 serves the community covers a book's `/meta` envelope hands out, as thumbnails at
 [`GET /libraries/{id}/meta/cover`](#get-apiv1librariesidmetacover).
+
+The player redesign's Phase 8 adds two more, both always `true` on a server that
+has them and absent on an older one:
+
+| Flag | Value | Gates |
+|---|---|---|
+| `household` | always `true` | [Listening in the house](#listening-in-the-house): `GET`/`PUT /me/household` and `GET /household/listening` |
+| `cast` | always `true` | [Casting](#casting): `POST /cast/token`, and a cast token as the `?token=` of a book's [cover](#get-apiv1librariesidcover) and [stream](#get-apiv1librariesidstream) |
 
 ### `GET /healthz` · `GET /api/v1/healthz`
 
@@ -261,8 +275,9 @@ Response `200`:
 }
 ```
 
-`server_id` is the paired server's stable identity (see `GET /server`); the client
-adopts it as the connection's id. On a server with `addresses`, the answer also carries
+`server_id` is the paired server's stable identity (see `GET /server`); the player's
+connection id is `<server_id>.<user_id>` with the answer's `user`
+([Connection identity](../../frontend/state-and-data.md#connection-identity-server_iduser_id)). On a server with `addresses`, the answer also carries
 `addresses` (`{ "home"?, "away"? }`, omitted when neither is known; see
 [Home and away addresses](#home-and-away-addresses)).
 
@@ -421,9 +436,10 @@ limit (10 attempts per IP per 15 minutes) and are **refused for demo accounts**
 (403).
 
 **Containment.** A key cannot mint a *fresh durable credential*. A request that
-authenticates with an API key is refused (**403**) on the four credential-minting
+authenticates with an API key is refused (**403**) on the five credential-minting
 routes - `POST /auth/tokens` (another key), `POST /auth/recovery`,
-`POST /auth/pair`, and `POST /auth/password` - so revoking a leaked key cuts off
+`POST /auth/pair`, `POST /auth/password`, and [`POST /cast/token`](#post-apiv1casttoken)
+(refused although a cast token would die with the key) - so revoking a leaked key cuts off
 everything it could reach: it can't spawn a key, recovery code, pairing token, or
 password that would outlive its own revocation (mirrors GitHub's "a token cannot
 create tokens"). It may still **list and revoke** keys and clear a recovery code,
@@ -1639,7 +1655,9 @@ book (`matched`, `recording`, `series`, `web_url`) are **not** returned here.
 ## Streaming & media
 
 Both routes take *media auth* (header **or** `?token=`) and are exempt from the
-30 s request timeout. See [Media](../media.md) for serving internals.
+30 s request timeout. Both also take a [cast token](#cast-tokens-as-media-auth) as
+the `?token=` (capability `cast`), for the book it was minted for. See
+[Media](../media.md) for serving internals.
 
 ### `GET /api/v1/libraries/{id}/stream`
 
@@ -1653,7 +1671,7 @@ path.
 | `download` | `1` | - | sets `Content-Disposition: attachment` so browsers save the file |
 | `transcode` | `1` | - | re-encode to MP3 via ffmpeg for codecs browsers can't decode |
 | `t` | float | `0` | with `transcode=1`: start the transcode this many seconds in |
-| `token` | string | - | session token (media-auth fallback) |
+| `token` | string | - | session token (media-auth fallback), or a [cast token](#cast-tokens-as-media-auth) for this file's book |
 
 Direct serving (default) supports HTTP **Range** (`206 Partial Content`) and
 sets the audio `Content-Type` from the file. Transcoded output is MP3 and **not
@@ -1668,7 +1686,7 @@ kills it.
 | `401` | missing/invalid token |
 | `403` | path outside the caller's scope |
 | `404` | file does not exist |
-| `503` | `transcode=1` but ffmpeg is not configured (check the `transcode` capability) |
+| `503` | `transcode=1` but ffmpeg is not configured (check the `transcode` capability), or every transcode slot is busy (`server busy transcoding; try again shortly`, with `Retry-After: 5`) |
 
 ### `GET /api/v1/libraries/{id}/cover`
 
@@ -1701,7 +1719,7 @@ three is tried, custom covers included.
 | `path` | string | yes | |
 | `size` | int | no | `160`, `320` or `640`: a JPEG thumbnail instead of the full art (`cover_sizes` capability; below) |
 | `v` | string | no | ignored by the server; clients append the book's `cover_version` as a cache buster |
-| `token` | string | no | media-auth fallback |
+| `token` | string | no | media-auth fallback: a session token, or a [cast token](#cast-tokens-as-media-auth) for this book |
 
 Response `200`: image bytes with the appropriate `Content-Type`; `404`
 (`no cover`) when there is no custom cover, no cover file and no embedded art.
@@ -1746,6 +1764,44 @@ so a cover replaced since the last fetch is a new URL to its image cache.
 | `403` | the path, or the book it resolves to, is outside the caller's share scope |
 | `404` | `no cover`: no art at all, no book at the path, or (with `size`) art that cannot be decoded or is over 40 megapixels |
 | `500` | `could not load cover` - the art could not be read (an unreadable network mount) or a database failure; not cached, so the next request tries again |
+
+### Cast tokens as media auth
+
+A Chromecast receiver plays a book from URLs the player hands it, so the player
+never hands over its session token: it mints a **cast token** for the book with
+[`POST /cast/token`](#post-apiv1casttoken) and builds the receiver's URLs with that
+instead. The two routes above accept one as the `?token=` (the middleware
+`requireBookMediaAuth`; `auth.ResolveCastRequest`, one token lookup that decides
+session, API key or cast) only when **all** of these hold:
+
+- the request carries **no** `Authorization` header (a cast token is never a bearer
+  credential, nor accepted beside one);
+- the token is live (not revoked or expired, its user enabled, and the session that
+  minted it still signed in; see [Cast tokens](../auth-and-security.md#cast-tokens));
+- the request's library is the token's, and its `?path=` (cleaned first, so `..`
+  can't climb out) is the token's book or a file or folder inside it on a segment
+  boundary: a token for `Author/Book` reaches `Author/Book/01.mp3`, never
+  `Author/Book 2/01.mp3`;
+- the path addresses the token's **own** book in the index (`api.castOwnBook`): a
+  folder book's folder can hold other books (`Series` holding `Series/Book 2`), and
+  a cast token for `Series` never reaches them; a path the index places in no book is
+  refused too.
+
+Any refusal is the same `401` as a bad session token. The handler then checks the
+person's **current** share scope as for every request, so a book whose share was
+taken away since the mint is a `403`. A cast token is never accepted on any other
+route, [`/meta/cover`](#get-apiv1librariesidmetacover) included.
+
+An answer authenticated by a cast token carries
+`Cross-Origin-Resource-Policy: cross-origin` in place of the server's usual
+`same-site`: the receiver is a web app served from another site (`gstatic.com`)
+that loads the files as `<audio>` and `<img>`, which the browser would otherwise
+block. Only these answers opt out. A cast token authenticates `?transcode=1&t=`
+like a session (the player asks for it for codecs a Cast receiver can't play);
+each such stream holds one of the transcoder's slots while the receiver reads it,
+and it marks the **sending device's** listening session as transcoded (the sender's
+own progress saves make the session). The media rate limiter keys a cast token by its
+token id like any credential, so it has a bucket of its own.
 
 ## Listening state
 
@@ -2445,7 +2501,10 @@ with: every enabled, non-demo account other than the caller, by username.
 { "users": [ { "id": 6, "username": "alex" }, { "id": 9, "username": "robin" } ] }
 ```
 
-This is the one place a non-admin sees other accounts' usernames. A demo
+This is the one place a non-admin can list every other account's username (a
+shared collection also shows its owner, and
+[`GET /household/listening`](#get-apiv1householdlistening) the other people who
+share). A demo
 account gets `403` `not available for demo accounts`, so a public demo can't
 list the server's usernames.
 
@@ -2637,6 +2696,116 @@ open), there whether or not a goal is set.
 `GET`: `400` `books_per_year must be a whole number from 1 to 1000`, or
 `invalid request` for a malformed body or an unknown field. `DELETE` clears it:
 `204 No Content`, idempotent.
+
+## Listening in the house
+
+*Session.* Capability `household`. People on one server who choose to share see
+what the others who share are listening to (the player's Home row and the book
+page's "In the house" card). The rules live in `catalog.HouseListening`
+(`internal/catalog/household.go`): opt-in and reciprocal (a caller who doesn't
+share gets an empty `listening` list), with every privacy rule in
+[what other people see](../auth-and-security.md#listening-in-the-house-what-other-people-see).
+
+Polling only: there is no realtime channel (the player asks every minute while it
+is in the foreground). No admin route reads or changes anyone's choice.
+
+### `GET /api/v1/me/household` · `PUT /api/v1/me/household`
+
+*Session.* The caller's own choice.
+
+```json
+{ "share_listening": false }
+```
+
+`PUT` takes the same shape, `{ "share_listening": true }`, and answers `200` as
+`GET`. The field is required and the body is decoded strictly: a missing field
+(`{}`), an unknown field or a wrong type is `400` `invalid request`. A demo account's
+`PUT` is `403` (`not available for demo accounts`; its `GET` works and reads
+`false`), so a public demo never shows up in anyone's house. A personal API key may
+set it: it is the person's own credential and mints nothing.
+
+### `GET /api/v1/household/listening`
+
+*Session.* What the other people who share are listening to, newest first.
+
+```json
+{
+  "sharing": true,
+  "listening": [
+    {
+      "user_id": 3,
+      "username": "sam",
+      "library_id": 1,
+      "path": "Will Wight/Cradle/Unsouled",
+      "title": "Unsouled",
+      "author": "Will Wight",
+      "state": "playing",
+      "position": 5123.4,
+      "duration": 36120.5,
+      "chapter": "Chapter 4",
+      "chapter_index": 3,
+      "updated_at": "2026-10-09T19:59:30.000Z"
+    }
+  ]
+}
+```
+
+- `sharing` - whether the caller shares. While it is `false`, `listening` is `[]`.
+- `state` - from the age of the person's newest save: `playing` within 60 seconds,
+  `paused` within 10 minutes (the session gap), else `recent`.
+- `title` - the index's title, else the path's last segment (a book no longer
+  indexed); `author` and `duration` are `null` when unknown (`duration` falls back
+  to the session's own).
+- `position` - seconds into the whole book; `chapter` and `chapter_index` (0-based)
+  are the chapter at that position, as the admin's live sessions show it: both
+  `null` for a book with one chapter or none, and `chapter` alone `null` for a
+  chapter whose title names nothing (`Track 01`), where `chapter_index` still says
+  which.
+- `updated_at` - the newest save, fixed-width millisecond UTC.
+
+## Casting
+
+*Session.* Capability `cast`. A Chromecast receiver plays a book from URLs the
+player hands it; those URLs carry a short-lived, book-scoped, media-only **cast
+token** instead of the player's session token (`internal/auth/cast.go`,
+`internal/api/handlers_cast.go`). Where the token is accepted is
+[Cast tokens as media auth](#cast-tokens-as-media-auth). For the web player to
+cast, the per-document CSP of `/web` admits Google's Cast Web Sender:
+`script-src` names its three scripts on `https://www.gstatic.com` by path, the only
+remote sources in the policy (see [Web UI](../web-ui.md#per-document-csp-htmlcsp)).
+
+### `POST /api/v1/cast/token`
+
+*Session.* Mints a cast token for one book.
+
+```json
+{ "library_id": 1, "path": "Will Wight/Cradle/Unsouled" }
+```
+
+Response `201`:
+
+```json
+{
+  "token": "q3Xb0m…",
+  "expires_at": "2026-10-10T20:00:00.000Z"
+}
+```
+
+The path resolves exactly as on the media routes, and a part path (one file, or a
+disc folder) resolves to its book: the token then covers every file of that book.
+The secret is returned once. `expires_at` falls on a whole second. A demo account
+may mint (it can play); an API key may not. How long a cast token lives, how many a
+person keeps, what ends it and how dead ones are pruned:
+[Cast tokens](../auth-and-security.md#cast-tokens).
+
+| Status | Meaning |
+|---|---|
+| `201` | `{ token, expires_at }` |
+| `400` | `invalid request` (a malformed body or an unknown field), `path is required` |
+| `401` | no session (a cast token can't mint another: it is never a bearer credential) |
+| `403` | the library or the path is outside the caller's access; or `not available when authenticating with an API key` (a key never mints another credential) |
+| `404` | `book not found` (no book at the path), or `library not found` (an admin naming an unknown library; anyone else gets the `403`) |
+| `500` | `could not start casting`; `access check failed`, `could not load library` or `could not load book` on a database failure |
 
 ## Admin: users & auth codes
 

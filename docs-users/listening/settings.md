@@ -40,7 +40,7 @@ Whether AudioSilo should set a [sleep timer](sleep-timer.md) for you at night, s
 | Setting | What it does | Options (default) |
 |---|---|---|
 | **Auto sleep timer** | Start a sleep timer automatically for playback that begins between the hours below | On / Off (default **Off**) |
-| **From** / **Until** | The nightly window it applies to, adjustable in **30-minute steps** and shown in your device's own clock format | Any times (default **10:00 PM** to **6:00 AM**) |
+| **From** / **Until** | The nightly window it applies to, adjustable in **30-minute steps** and written the way the app's language writes times (10:00 PM in English, 22:00 in the other languages) | Any times (default **10:00 PM** to **6:00 AM**) |
 | **Timer type** | What the automatic timer does | End of chapter, or 15 / 30 / 45 / 60 minutes (default **End of chapter**) |
 | **Shake to extend** | A shake keeps a sleep timer going at its end ([Shake to extend](sleep-timer.md#shake-to-extend)); mobile apps only, and the web player says it isn't available in the browser | On / Off (default **On**) |
 | **Shake sensitivity** | How hard that shake has to be (shown while Shake to extend is on) | Low / Medium / High (default **Medium**) |
@@ -87,14 +87,24 @@ The app speaks **English, Español, Français, Deutsch, Português, and Italiano
 
 ## Household and sharing
 
-Profiles - everyone in the house with their own place in every book, a kids mode, and sharing - come in a later update. Until then this section says so, and there's nothing to set.
+![Household and sharing on a computer: a kids profile's card with its Library and Bedtime, Ask who's listening when the app opens, and Share what I'm listening to with the house](/img/screenshots/web-player/settings-household.png)
+
+Everyone who listens on this device, each with their own servers, place in every book, queue and stats (see [Sharing a device with your household](profiles.md)). Each person has a card:
+
+- **Switch** to them, or *Listening now* for the person listening;
+- **Name** - rename them on this device (their account keeps its username);
+- **PIN** - **Set a PIN**, or **Change** and **Remove** it (see [A PIN for a person](profiles.md#a-pin-for-a-person));
+- **Kids mode** - turns this person's app into [kids mode](kids-mode.md), with the **Library** it shows and the **Bedtime** (from then until 6:00 AM, playing starts a 20-minute sleep timer);
+- **Remove from this device** - signs them out of their servers here and deletes their downloads here. Their place in every book stays on the server. It doesn't ask for their PIN: it's the way out of a forgotten one.
+
+Under the people: **Who's listening?** and **Add someone**; **Ask who's listening when the app opens** (with two or more people on the device); and **Listening in the house**, with a **Share what I'm listening to with the house** switch for each server of the person listening that supports it (see [Listening in the house](in-the-house.md#turning-it-on)).
 
 ## Accounts and devices
 
-The servers this device is signed in to, each with your username and its address. Tap one to open your [account on that server](account.md): your password, pairing another device, your signed-in devices, API keys and signing out. **Add a server** connects another one - your home screen, search, and favourites then combine everything (see [Connecting and signing in](connecting.md)). The web player doesn't offer it, since it only reaches the server it's served from. The bin button beside a server removes it from this device.
+The servers you're signed in to on this device (with more than one person on the device, only the person listening's: see [Sharing a device with your household](profiles.md)), each with your username and its address. Tap one to open your [account on that server](account.md): your password, pairing another device, your signed-in devices, API keys and signing out. **Add a server** connects another one - your home screen, search, and favourites then combine everything (see [Connecting and signing in](connecting.md)). The web player doesn't offer it, since it only reaches the server it's served from. The bin button beside a server removes your sign-in to it from this device.
 
 :::warning
-Removing a server also **deletes that server's downloaded books from this device**, plus any listening progress that hasn't synced back yet. The app asks first if the server has downloads on the device. Your other servers are unaffected, and nothing on the server itself is touched. See [Offline downloads](offline-downloads.md).
+Removing a server also **deletes the books you downloaded from it on this device**, plus any of your listening progress that hasn't synced back yet. The app asks first if you have downloads from it on the device. Your other servers, and anyone else on this device signed in to the same server, are unaffected, and nothing on the server itself is touched. See [Offline downloads](offline-downloads.md).
 :::
 
 ## Support AudioSilo

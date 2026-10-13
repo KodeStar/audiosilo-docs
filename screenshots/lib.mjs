@@ -28,8 +28,9 @@ export const firstVisible = (locator) => locator.filter({visible: true}).first()
 export const tid = (page, id) => firstVisible(page.getByTestId(id));
 
 // The standard desktop capture context (retina, dark, motion-reduced) shared by
-// the capture scripts. capture-web builds its own parameterized contexts (phone
-// profile, connect/demo variants) on purpose.
+// the capture scripts. capture-web spreads it into its capture contexts
+// (`newCaptureContext`), overriding the viewport where a shot needs it; its warm-up and
+// demo-landing contexts are still built by hand.
 export const DESKTOP_CONTEXT = {
   viewport: {width: 1440, height: 900},
   deviceScaleFactor: 2,

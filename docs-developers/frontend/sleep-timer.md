@@ -382,8 +382,11 @@ jump back; it never invents one.
 The nightly auto-arm is split into a pure decision function and a framework-free
 controller, so all the policy is unit-tested and none of it lives in a component.
 
-- **`decideAutoSleep(input)`** takes the four `autoSleep*` settings, `now`, the
-  `bookKey` and the per-book memory, and returns
+- **`decideAutoSleep(input)`** takes the rule that applies (`AutoSleepConfig`:
+  `enabled`, `from`, `until`, `type`; the controller's `effectiveAutoSleepConfig()`
+  passes the four `autoSleep*` settings, or a kids profile's bedtime rule while one is
+  active, see [Kids mode](kids-mode.md#bedtime-srcplaybackauto-sleep-controllerts)),
+  `now`, the `bookKey` and the per-book memory, and returns
   `{arm:'none'} | {arm:'chapter'} | {arm:'duration', minutes}`. It bails when the
   feature is off, when the memory says this book is blocked (`canAutoSleepArm`),
   and when the clock is outside the window. A persisted `autoSleepType` that isn't
@@ -439,9 +442,11 @@ controller, so all the policy is unit-tested and none of it lives in a component
   context rather than as long as a mounted component. It must run whether or not the
   player modal is open: the timer has to arm for a book started from the mini player,
   the library, or a lock-screen play.
-  It listens to three things: the **setting** (which attaches and detaches everything
-  else - `autoSleepTimer` defaults to off, and the player subscription would otherwise
-  run on every progress write for a feature nobody switched on); the **player**, for
+  It listens to four things: the **setting** and the **profiles** store (together they
+  decide whether any rule is on, `autoSleepOn()`, which attaches and detaches everything
+  else - `autoSleepTimer` defaults to off, a kids profile's bedtime is always on, and
+  the player subscription would otherwise run on every progress write for a feature
+  nobody switched on); the **player**, for
   the transition edge into `playing` (one look per resume, not one per progress tick);
   and **`onSleepTimerEnded`**, which is installed for the whole session because a
   cancellation counts even if auto sleep is enabled later. The 60s poll

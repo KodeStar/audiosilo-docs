@@ -56,7 +56,7 @@ Below the tiles, when someone listened in the period:
   you picked. The darker a day, the more listening; point at a day to see its
   hours.
 - **When** *your server* **listens**: listening by hour of day and weekday, with
-  the busiest hour in words ("Busiest: Wednesday 21:00").
+  the busiest hour in words ("Busiest: Wednesday 21:00", always on a 24-hour clock).
 - **Top books**: the books listened to most, with how many people listened.
   Click one to open its page.
 - **Top people**: who listened most, with how many books they listened to and
@@ -173,8 +173,9 @@ finished, edit its dates or see its sessions) and their recent sessions. See
 ## What the server records
 
 So that admins can see who is listening and on what, the server keeps a few
-records about each person. Only admins can see them, and they never leave your
-server.
+records about each person. Only admins can see them (apart from what a listener
+chooses to share with the house; see [Listening in the house](#listening-in-the-house)
+below), and they never leave your server.
 
 - **Devices.** For each signed-in device (a phone, a browser, a personal API
   key): its name, which app it is and its version, when it last connected, and
@@ -252,3 +253,26 @@ Deleting an account removes these too: its queue, its collections (and its
 place in other people's shared ones), its ratings and its goal. Deleting a
 library removes its books from everyone's queues, collections and ratings. All
 of it is part of every [backup](backups.md).
+
+### Listening in the house
+
+Listeners can choose to share what they're listening to with the other people on
+the server who share too; who sees what is on
+[Listening in the house](../listening/in-the-house.md#who-shows-up). The server
+keeps only each account's choice, and builds what it shows from the listening
+sessions it already records.
+
+Nothing in the admin console shows who shares or changes anyone's choice. As an
+admin you already see everyone's listening on this page, whether or not they
+share. Deleting an account removes its choice, and it is part of every backup.
+
+### Casting
+
+When a listener [plays a book on a Chromecast](../listening/chromecast.md), their
+app asks the server for a temporary pass for that one book (24 hours, audio and
+cover only), so the Cast device never gets the listener's own sign-in. The pass
+stops working for good when the device that asked for it signs out (including when
+you [sign that device out](users-and-invites.md#the-devices-page)) or when the
+account is deleted. It also doesn't work while the account is disabled or the person
+can't open the book, but it works again if that changes within its 24 hours.
+Passes are not listed as devices in the console.

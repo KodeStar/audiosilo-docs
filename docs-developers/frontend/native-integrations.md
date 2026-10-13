@@ -13,9 +13,10 @@ device, the DHU or the Simulator is under [Testing](testing.md#native-checks).
 
 **Status.** Android Auto ships in every build (listing it through Google Play has a step of
 its own: [Releasing](../contributing/releasing.md#the-app-store-track-ios--android)).
-CarPlay's code ships too, but iOS connects a
-CarPlay scene only in a build prebuilt with `AUDIOSILO_CARPLAY=1` (the entitlement Apple has
-to grant; [below](#the-uiscene-life-cycle-pluginswithcarplayjs)). A store build with the
+CarPlay ships too and is on by default: the
+`com.apple.developer.carplay-audio` entitlement (granted by Apple on 2026-10-09; both App IDs
+carry the capability) is added at prebuild unless `AUDIOSILO_CARPLAY=0`
+([below](#the-uiscene-life-cycle-pluginswithcarplayjs)). A store build with the
 widgets and the Live Activity needs the App Group and the extension provisioned first
 ([below](#widgets-and-the-live-activity-ios)). Which store release has each of these is on
 the users' [Availability](/users/listening/mobile-apps#availability).
@@ -44,23 +45,34 @@ protection), so a car shows its lists at once, before or without JS.
 
 `car-model.ts` builds it, pure (`buildCarSnapshot`):
 
+- Every tab is built from the **person listening's** connections only
+  ([Profiles](profiles.md#visible-and-background-connections)), the
+  Downloads tab included (no play spec is written for another person's book), and
+  none while nobody is chosen. The snapshot is rebuilt when the active profile
+  changes. A play request (`handleCarPlayRequest`) and the Android service-book
+  adoption quietly refuse another person's book, or any book while nobody is chosen
+  (an item of an older snapshot); a connection no profile holds still plays (a
+  CarPlay launch before the session could be read).
 - `version: 1`, `generatedAt`, `signedIn`, the localized `labels` (`carLabels(t)`, the
   `car.*` keys: `continue`, `chapters`, `bookmark`, `bookmarkSaved`, `empty`, `signedOut`,
   `unavailable`) and up to four `tabs`, each carrying its own localized `title`:
-  - `continue` - Home's rule (`isInProgress`, newest first, every signed-in server), the
+  - `continue` - Home's rule (`isInProgress`, newest first, every server of the person listening), the
     loaded book first (`continueRefs`), at most 20;
   - `upnext` - the queue the app's Up next shows (`queueConnectionId`: the loaded book's
     connection, else the default, else the first; see
     [Overview](overview.md#up-next-drawer-and-sheet)), left out when that server has no
     `queue` capability, at most 20;
-  - `downloads` - every downloaded book, newest download first, at most 50;
+  - `downloads` - the person listening's downloaded books, newest download first, at most 50;
   - `library` - the library the Library tab shows (`resolveLibrarySelection`, as in
     [State and data](state-and-data.md#library-selection-srcstoreslibrary-selectionts)),
     `sort: 'recent'`, at most 50 (`CAR_TAB_LIMITS`; Android Auto doesn't page, and
     CarPlay trims further to its own `maximumItemCount`).
 - Each `CarItem` has an `id` (`carItemId(ref)`: `book:` plus the URI-encoded connection id,
   library id and path joined by `:`; path is the identity, scoped by connection, never a
-  database id; `parseCarItemId` reverses it), the `book` itself (a `BookRef`, so native compares
+  database id; `parseCarItemId` reverses it, mapping a connection id from before the
+  [identity migration](state-and-data.md#connection-identity-server_iduser_id) to its new
+  one through `resolveConnectionId`, so an item of a snapshot written by an older build
+  still plays), the `book` itself (a `BookRef`, so native compares
   its fields instead of decoding the id), `title`, `subtitle` (the author, then the time
   left at the book's own speed once started), `progress` (0..1 or null), `finished`,
   `downloaded`, `artwork` and, **only for a downloaded book**, a `play` spec.
@@ -226,8 +238,9 @@ On the JS side, `index.ts` (the `package.json` `main`) imports
 `AudiosiloCar` with `AppRegistry.registerHeadlessTask` (the task's code loads only when it
 runs); elsewhere the file is empty. `runCarTask` (`car-task.ts`) runs
 `bootstrapPlayback()` (the root layout's launch steps as one memoised run: storage
-migration, the downloads wipe after a reset, hydrating session, settings, downloads, series
-orderings and library selection, and the listener's language for the snapshot's labels),
+migration, the connection identity migration included, the downloads wipe after a reset,
+hydrating session, settings, downloads, series orderings, library selection and profiles,
+and the listener's language for the snapshot's labels),
 starts the two app-lifetime controllers the root layout would (address routing, so a server
 paired at home is reached through its away address from the car, and the place reconcile;
 both shared starts), starts the car sync, and resolves once **no car is connected** and the
@@ -272,10 +285,10 @@ and starts React Native in `didFinishLaunching`, so the config plugin:
    screen). Mods of one kind run in reverse registration order, so no plugin that rewrites
    the AppDelegate may be listed after it (that plugin's edit would run first and break the
    match);
-3. adds `com.apple.developer.carplay-audio` to the entitlements **only with
-   `AUDIOSILO_CARPLAY=1`** at prebuild. A device build carrying it can't be signed unless Apple
-   has granted the entitlement; without it iOS never connects a CarPlay scene, while the scene
-   code always ships.
+3. adds `com.apple.developer.carplay-audio` to the entitlements **by default**.
+   `AUDIOSILO_CARPLAY=0` at prebuild leaves it out, for a signing identity without the grant (a
+   build carrying it can't be signed without one); without the entitlement iOS never connects a
+   CarPlay scene, while the scene code always ships.
 
 `AudiosiloScenes` starts React Native in whichever scene connects first: the phone scene into
 its own window, with launch options rebuilt from `connectionOptions` (the cold-start pairing

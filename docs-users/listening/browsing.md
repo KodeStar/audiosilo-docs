@@ -32,7 +32,7 @@ From left to right:
 - A **search field**. In the web player it opens [quick search](#quick-search-in-the-web-player); in the tablet app it takes you to the Search page. Where the bar is too narrow for the field (a tablet held upright, say), it shrinks to a search button that does the same.
 - The **Up next** button, with the number of books queued. It opens [Up next](up-next.md).
 - A **gear** button for [Settings](settings.md). It opens Settings over the page you're on, so going back returns you there.
-- Your **profile button** - your initial, plus your name on wider screens. It opens a menu listing your **servers**, each with a line saying who you're signed in as, or that it's **offline** or **needs signing in again** (pick one to open its [account page](account.md)); **Add a server** (in the apps; the web player only reaches its own server); your [Journal](journal.md); [Settings](settings.md); **Account on** your main server; and a switch between **light and dark** appearance.
+- Your **profile button** - your initial, plus your name on wider screens. It opens a menu that starts with who's **Listening as**, then the other people on this device (pick one to switch to them; see [Sharing a device with your household](profiles.md)) and **Who's listening?**, then your **servers**, each with a line saying who you're signed in as, or that it's **offline** or **needs signing in again** (pick one to open its [account page](account.md)); **Add a server** (in the apps; the web player only reaches its own server); your [Journal](journal.md); [Settings](settings.md); **Account on** your main server; and a switch between **light and dark** appearance.
 
 ![The profile menu open from the top bar](/img/screenshots/web-player/profile-menu.png)
 
@@ -58,6 +58,7 @@ The home screen is built around what *you* are doing, not just what's on the ser
 - **This week** - a ring for the books you've finished this year against your yearly goal (or just how many you've finished, if you haven't set one), the hours you've listened in the last seven days, your listening streak, and a small bar for each of the last seven days.
 - **Continue listening** - the other books you've started, most recent first, each showing how much is left. Tap one to open it, or open its [book menu](#the-book-menu) to resume, mark it finished, and more. **All in progress** opens the Library with just those books.
 - **Next in your series** - what comes after the books you're on, or just finished, with a line saying why ("After The Way of Kings, which you're 40% into"). It includes the next book even when you don't have it yet: those show as a pale "ghost" cover marked **Not in your library**, and tapping one opens the series page.
+- **Listening in the house** - when you and others on your server share what you're listening to, what they're on right now or listened to in the last 24 hours. It's off by default; see [Listening in the house](in-the-house.md).
 - **Smart shelves** - saved filters that keep themselves up to date: **Finish what you started**, **Short listens** (under 5 hours), **"Name" reads** for the narrator you've listened to most lately, and **Added this week**. Tap one to open the Library with that filter on (the narrator's shelf opens their page). They appear once there are at least two worth showing.
 - **Recently added**, **Favourites** (once you have some) and **Recently finished**, each with a **See all** link.
 
@@ -166,7 +167,7 @@ What you see here is what your account has been granted - see [Sharing](../admin
 
 ### When your server is older
 
-The Library adapts to what your server can do. Authors, Series and Narrators (and the author, narrator and series pages) need a recent AudioSilo server, and so do Collections, Up next, the This week card, Next in your series, and **Mark as not finished**. On an older server those parts simply don't appear, and everything else works as before. Ask whoever runs your server to update it to get them.
+The Library adapts to what your server can do. Authors, Series and Narrators (and the author, narrator and series pages) need a recent AudioSilo server, and so do Collections, Up next, the This week card, Next in your series, **Mark as not finished**, [Listening in the house](in-the-house.md) and the [Cast](chromecast.md) button. On an older server those parts simply don't appear, and everything else works as before. Ask whoever runs your server to update it to get them.
 
 ## Series pages
 

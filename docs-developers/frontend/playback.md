@@ -70,7 +70,11 @@ identically.
 
 Metro resolves the implementation per platform: `service.web.ts` on web,
 `service.native.ts` on iOS/Android. `service.ts` is a **throwing fallback that
-exists only so `tsc` can resolve the import** - it is never executed.
+exists only so `tsc` can resolve the import** - it is never executed. Both
+`createPlaybackService()`s return their engine wrapped in the Cast route switch
+(`routed`, `src/cast/routed-service.ts`), which hands playback to a Cast receiver
+while a session is connected and back after it, behind the same interface: see
+[Chromecast](chromecast.md#casting-is-a-playback-route-not-a-second-player).
 
 ### Web engine (`service.web.ts`)
 

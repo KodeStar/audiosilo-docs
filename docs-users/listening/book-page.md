@@ -64,6 +64,8 @@ A long description folds after a few lines, with **Show more**. Under it, what's
 
 **Your listening** appears once you've started the book: how long you've **Listened** to it, your **Speed** for it, and when you **Started** and **Finished** it, as far as your server's records go. In the Android app, once [Smart speed](full-player.md#smart-speed-and-voice-boost) has saved time on the book, **Smart speed saved** says how much, on this device.
 
+**In the house** appears when you share what you're listening to and someone else on your server who shares theirs is on this book, with their name and where they are in it (see [Listening in the house](in-the-house.md)).
+
 ## The tabs
 
 Everything else sits in a row of tabs, so a long chapter list never buries the rest. Swipe the row sideways if it doesn't all fit. Some tabs show a count beside their name: the chapters, your bookmarks and notes, and the characters you've met.

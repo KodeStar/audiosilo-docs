@@ -61,13 +61,15 @@ Kept files survive closing the app, too. A download the app closed part-way thro
 
 ## Downloads belong to their server
 
-Each downloaded book belongs to the **server you downloaded it from**. If you've connected the app to [more than one server](connecting.md), the Downloads page shows all of them together, but each book stays tied to its own server.
+Each downloaded book belongs to the **server you downloaded it from**, and to the **person** who downloaded it. If you've connected the app to [more than one server](connecting.md), the Downloads page shows all of them together, but each book stays tied to its own server. If you [share the device with your household](profiles.md), the Downloads page shows only the downloads of the person listening; everyone else's stay on the device for them.
+
+If a download belongs to an account that is no longer signed in on this device, it shows in a **Not signed in** group, where you can only remove it to free the space. Signing in to that account again puts it back in its place.
 
 That matters when you disconnect a server:
 
-- **Removing a server** ([Settings > Accounts and devices](settings.md#accounts-and-devices)) or **signing out** of it **deletes that server's downloaded books from this device**, along with any listening progress that hadn't synced back to the server yet.
-- The app warns you first when the server you're removing has books downloaded on the device, so you're never caught out.
-- Your other servers' downloads are untouched, and nothing on the server itself is affected - reconnect and you can download them again any time.
+- **Removing a server** ([Settings > Accounts and devices](settings.md#accounts-and-devices)) or **signing out** of it **deletes the books you downloaded from that server on this device**, along with any of your listening progress that hadn't synced back to the server yet. Someone else on this device who is signed in to the same server with their own account keeps their downloads.
+- The app warns you first when you have books from that server downloaded on the device, so you're never caught out.
+- Your other servers' downloads, and everyone else's on this device, are untouched, and nothing on the server itself is affected - reconnect and you can download them again any time.
 
 :::tip
 If you just want to free up space, use **Remove** on a single book instead - that removes one book and leaves the server connected.

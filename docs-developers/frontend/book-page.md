@@ -201,7 +201,7 @@ few values (its state, and the bookmark glyph: a bookmark inside the book marks 
 
 ## The aside
 
-`BookAside` stacks three cards (a right-hand column from `BODY_COLUMNS_MIN`, see
+`BookAside` stacks up to four cards (a right-hand column from `BODY_COLUMNS_MIN`, see
 [Layout](#layout-by-the-measured-width), else between the hero
 and the tabs):
 
@@ -226,3 +226,6 @@ and the tabs):
   [time saved](audio-effects.md#time-saved-srcplaybacktime-savedts)). Null for a
   book neither started nor finished; the history is only fetched then, and kept fresh
   for ten minutes (`HISTORY_STALE_MS`: a span this device records refreshes it).
+- **In the house** - `InTheHouseCard` (`src/components/house/`), last, only while the
+  listener shares and someone who shares is on this book; see
+  [Listening in the house](listening-in-the-house.md).

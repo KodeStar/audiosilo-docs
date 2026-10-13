@@ -431,6 +431,17 @@ just plans nothing this time.
 `src/components/downloads/downloads-screen.tsx` (the `/downloads` route
 re-exports it) renders what the pure `src/downloads/downloads-view.ts` returns:
 
+- `visibleDownloads` - only the **person listening's** downloads (the active
+  profile's connections, [Profiles](profiles.md#visible-and-background-connections)).
+  The device keeps everyone's, and they keep playing for their owner; the car's
+  Downloads tab and kids mode's offline stories read them the same way.
+- `orphanDownloads` - downloads **no connection in the session** holds (every
+  person's connections count), left by a connection that went without its purge (a
+  token that couldn't be read, an identity the key migration couldn't move). Nothing
+  else would ever list them, so their room would be taken for good: the page lists
+  them under **Not signed in**, newest first, with Remove only; signing in to that
+  account again shows them in their place. Only once the session was read (before
+  that, or after a failed read, every download would look orphaned).
 - `splitDownloads` - **In progress** (running, then waiting in the order asked, then
   failed) and **Ready offline** (newest first); `groupByServer` groups the ready ones
   in connection order (unknown connections last).
