@@ -123,6 +123,12 @@ The rules are pure in `kids-model.ts`, read through `useKidsStories()`:
   show; for a shelf of collections (or one not known yet) every library, since the
   collections can span libraries and the server already limits the account.
 
+The Household page's kids rows for a member's profile name the owner ("The stories
+Adam shares…", "Shown when Adam shares no collections") through `kidsManager(profile,
+people)`: `managerName` on the kids connection, so the owner's profile name on this
+device when they are signed in here, else `managed_by.display_name`, else the username
+(see [Profiles](profiles.md#the-household-page)).
+
 The whole page is **one virtualised list** (`KidsStoriesList`, a FlashList with the
 greeting, the bedtime card and the player as its header), paging through the library
 as it scrolls. Loading, empty, error and offline states each have their own words.

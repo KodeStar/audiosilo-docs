@@ -33,11 +33,13 @@ If someone added you to their [household](household.md), the card says so: *"Ada
 A kid's account from someone's [household](household.md) has a simpler page, because the grown-up who manages it looks after its devices:
 
 - The **Password** card says *"A kid's account has no password. Adam signs it in on a new device."*, with no button: a kid's account can't have one.
-- **Pair another device** doesn't make a code: *"A kid's account can't pair a device. The person who manages it sets up its devices from Household."*
+- There's no **Pair another device** card: the grown-up who manages the account sets up its devices, with **Set up their own device** on their [Household page](household.md#their-devices).
 - There's no **Personal API keys** section.
 - [Listening in the house](in-the-house.md) is off, and its switch on the Household page says *"A kid's account can't share what it listens to."*
 
 When the person who manages it switches the account between kid and grown-up, the page follows the next time it's opened.
+
+Wherever the app names the person who manages an account (here, in kids mode and on the Household page), it uses the name they have on this device, as Who's listening? shows it, when they're signed in here too. Otherwise it uses the name the server has for them, which for most accounts is their username.
 
 ## Pair another device
 

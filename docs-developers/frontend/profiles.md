@@ -272,7 +272,7 @@ The page is a plain column of three parts:
   members list (`useHouseholdMembers`), a `MemberCard` each and **Add someone to your
   household** with "N of M added" (`AddMemberDialog`), or one line for the list's
   `reason` (`addBlock`, which adds `at_cap` from `members.length >= max`). A member's own
-  page names their owner instead (`managerName(connection.user)`: "Adam manages your
+  page names their owner instead (`useManagerName(connection.id)`: "Adam manages your
   account.", "Only Adam can add people or change what you can listen to."). The pure
   rules are `household-model.ts` (the name rule, the default access per kind,
   `collectionIdsFor`, the error mapping, `memberConnection`, `confirmsName`).
@@ -330,6 +330,15 @@ removed, by any path through `removeConnection`, has the other connections to th
 server read their household again (`onConnectionRemoved` in `hooks.ts`,
 `invalidateHousehold`), so the owner's page stops showing this device under the
 member. Removing the person listening leaves nobody chosen.
+
+**Naming the owner.** Copy that names a member's owner (the members section, kids
+mode's lines, the password card, the sign-out warnings, the remove confirmation) goes
+through `managerName(user, { connection, people })` in `src/lib/account.ts`, or
+`useManagerName(connectionId, user?)` in `src/stores/profiles.ts` (with
+`useDevicePeople()`), never `managed_by.username` directly: the name of the profile
+holding the owner's own sign-in to that server on this device, else
+`managed_by.display_name`, else the username. `kidsManager(profile, people)` is the
+same rule for a kids profile's connection.
 
 ## Signing a member in here (`addMemberHere`)
 

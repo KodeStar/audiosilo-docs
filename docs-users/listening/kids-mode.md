@@ -28,7 +28,7 @@ Kids mode also works for a child who signs in with an account the server's admin
 
 Under the child's name on the Household page, with **Kids mode** on, pick:
 
-- **Library**: the one library kids mode shows, when the child's account can see more than one. Left alone, it's the first one the account lists. For a kid in your household it's only there while you share no collections with them (*"Shown when Adam shares no collections"*): while you do, those collections are the shelf.
+- **Library**: the one library kids mode shows, when the child's account can see more than one. Left alone, it's the first one the account lists. For a kid in your household it's only there while you share no collections with them (*"Shown when Adam shares no collections"*): while you do, those collections are the shelf. Lines like this name you as this device knows you: your name on Who's listening?.
 - **Bedtime**: when bedtime starts, **7:30 PM** unless you change it (times are written the way the app's language writes them: 7:30 PM in English, 19:30 in the other languages).
 
 If you turn kids mode on while the child is the one listening, the app goes straight into kids mode. To pick the library and bedtime then, hold **Grown-ups**, choose yourself and open the Household page.

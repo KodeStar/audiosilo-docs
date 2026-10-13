@@ -53,7 +53,7 @@ export const SHOTS = [
   {file: 'web-player/phone-player.png', capture: 'web', title: 'Phone - Now playing', hint: 'phone-width full player, paused: the companion chips under the actions'},
   {file: 'web-player/phone-speed-sheet.png', capture: 'web', title: 'Phone - Speed sheet', hint: 'the speed sheet over the phone player: readout, slider with -/+, presets with time left, the Smart speed (not in the browser) and Voice boost switches'},
   {file: 'web-player/phone-sleep-sheet.png', capture: 'web', title: 'Phone - Sleep sheet', hint: 'the sleep timer sheet over the phone player: minute tiles, End of chapter, Or stop after, the sleep settings'},
-  {file: 'web-player/phone-you-stats.png', capture: 'web', title: 'Phone - Your listening', hint: 'the Me tab (the You hub on Stats): the large title Your listening, the sections row (Stats, Year, Journal, Settings, Account), this week and the stat tiles in two columns'},
+  {file: 'web-player/phone-you-stats.png', capture: 'web', title: 'Phone - Your listening', hint: 'the Me tab (the You hub on Stats): the large title Your listening, the sections row (Stats, Year, Journal, Settings, Household, with Account just past the edge), this week and the stat tiles in two columns'},
   {file: 'web-player/phone-settings.png', capture: 'web', title: 'Phone - Settings', hint: 'the Me tab on Settings: the large title Settings, the sections row, the Listening group with the Playback card stacked (steppers, Smart speed, Voice boost)'},
   // Household (capture-web.mjs's household pass: Ellen with Jamie and her kid household
   // member Leo on one device, Ruth a grown-up member, two housemates who share; see README.md)

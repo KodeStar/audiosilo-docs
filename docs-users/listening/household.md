@@ -34,7 +34,7 @@ Beside **Add someone to your household**, the section shows how many you've adde
 - *"Demo accounts can't add people."*
 - *"You've added the most people this server allows (6)."*
 
-If you are someone's household member yourself, the section says who manages your account (*"Adam manages your account."*) and *"Only Adam can add people or change what you can listen to."*
+If you are someone's household member yourself, the section says who manages your account (*"Adam manages your account."*) and *"Only Adam can add people or change what you can listen to."* The app names them as this device knows them: their name on Who's listening? when they're signed in here too, else the name the server has for them (usually their username).
 
 Even when adding is turned off, you can still rename, sign out and delete the people you added before. On a server running an older AudioSilo, the section isn't there at all.
 

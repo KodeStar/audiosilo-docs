@@ -246,8 +246,10 @@ alsoMembers })` (`alsoMembers` false when there are no members), and the toast c
 `src/lib/account.ts`): the page reads `/me` when it opens (`useFreshUser`), so a
 `member_kind` the owner changed since sign-in shows. A kid's account gets a Password
 card with no button ("A kid's account has no password. Adam signs it in on a new
-device."), no API keys section, and its pairing refused in the app's words (`403
-kid_account`: "A kid's account can't pair a device..."); a grown-up member's Password
-card names who set the account up. The sign-out warning for a member without a
+device."), no Pair another device card (the server refuses a kid's pairing, `403
+kid_account`; the owner sets up its devices from the Household page) and no API keys
+section; a grown-up member's Password card names who set the account up. The page hands
+the password card and the sign-out confirmation its connection, so they name the owner
+as this device knows them (`useManagerName`). The sign-out warning for a member without a
 password names their owner instead of an invite (`signOutWarning`), and a kid's house
 sharing row is off and disabled (`house.share.kid`).
