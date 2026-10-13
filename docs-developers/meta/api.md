@@ -201,8 +201,10 @@ only the `series` name (what `FWM04 - He Who Fights with Monsters - Book 4`
 leaves once its numbering is cut) says nothing about which volume, so it never
 lets another volume outrank a stated one. It still counts for a work titled that
 name, stopwords aside (a series named after its first book), unless a title
-guess ties a volume to the name: beside `He Who Fights with Monsters 4: A LitRPG
-Adventure` the bare name is only that numbering's leftover. A generic record
+guess ties the volume being read to the name: beside `He Who Fights with Monsters
+4: A LitRPG Adventure` the bare name is only that numbering's leftover, while a
+second guess naming another volume (`Throne of Glass 1` beside `02 - Throne of
+Glass`) doesn't count. A generic record
 ("Dork Diaries 12") at the stated volume counts a little below a real title
 there that a guess matches well, unless a guess spells the record exactly.
 metaserve is the one place a title's numbering is read, so clients send folder
