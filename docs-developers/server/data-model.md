@@ -4,7 +4,7 @@ description: "The SQLite schema behind audiosilo-server: the rebuildable index v
 ---
 
 The schema lives in `internal/store/migrations/` as numbered SQL files
-(`0001_init.sql` … `0042_cast_tokens.sql`), embedded into the binary and
+(`0001_init.sql` … `0043_cast_tokens.sql`), embedded into the binary and
 applied by `store.Open` at startup. This page documents the **resulting current
 schema**, noting which migration added what.
 
@@ -135,7 +135,7 @@ last activity is derived from `MAX(tokens.last_seen)`.
 `client_version`, `client_platform` and `last_ip` in 0018)* - opaque bearer tokens:
 `user_id` (FK CASCADE), `token_hash` (UNIQUE - only the SHA-256 hash is
 stored), `kind` (`'session'`/`'pairing'`/`'api'`/`'cast'`: `'api'` a user-minted personal
-API key whose label rides in `device_name`, `'cast'` *(0042)* a
+API key whose label rides in `device_name`, `'cast'` *(0043)* a
 cast token with its `cast_grants` row (below)), `device_name`, `created_at`,
 `last_seen` (bumped by authenticated requests, at most once a minute unless the
 request's address or `X-AudioSilo-Client` changed: `auth.touchInterval`, so a
@@ -156,7 +156,7 @@ The admin console lists live session and API-key tokens as **devices** (never pa
 or cast tokens)
 (`auth.ListDevices`) and can revoke one (`auth.RevokeDevice`).
 
-**`cast_grants`** *(0042)* - what a **cast token** may read. A cast token is a
+**`cast_grants`** *(0043)* - what a **cast token** may read. A cast token is a
 `tokens` row of kind `'cast'` (`POST /cast/token`, capability `cast`; see
 [Auth & security](auth-and-security.md#cast-tokens)) with `expires_at` 24 hours
 on; its grant is `token_id` (PK, FK CASCADE to `tokens`), `library_id` and
@@ -526,7 +526,7 @@ wins the whole row (a tie keeps the destination's).
 nothing moves them. All six are part of a database backup (`VACUUM INTO`), like
 every table.
 
-**`household_sharing`** *(0041)* - whether a person shares what they are
+**`household_sharing`** *(0042)* - whether a person shares what they are
 listening to with the other people on the server (`/me/household`, capability
 `household`): `user_id` (`INTEGER PRIMARY KEY`, FK to `users` `ON DELETE
 CASCADE`), `share_listening` (`0`/`1`) and `updated_at` (fixed-width millisecond
@@ -1004,8 +1004,8 @@ The migration history so far:
 | 0039 | `more_series_index` | the partial index `idx_books_more_series` on `books(library_id) WHERE more_series <> '[]'`, so the reads of the books in more than one series (a series' members, `/series` with `memberships=1`) skip the rest |
 | 0040 | `server_state` | `server_state` (`key`, `value`, `updated_at`), small server-wide facts that aren't settings; the first key is the support card's answer: see [Server state](#server-state) |
 | 0041 | `series_key` | `books.series_key` and `book_more_series`, a series stored by its key so every series filter is an index seek in any spelling; `idx_books_series_key` replaces `idx_books_series`, and `idx_books_more_series` (0039) goes, since nothing reads it any more. Rows indexed before it are keyed at start by `catalog.KeySeries` (server_state `series_keys`), which also puts every stored `more_series` list through the list rules first |
-| 0041 | `household_sharing` | `household_sharing`, each person's opt-in to Listening in the house (no row = off) |
-| 0042 | `cast_tokens` | `tokens.kind` `'cast'` (cast tokens for a Chromecast receiver) and `cast_grants` (each one's book and parent token), with `idx_cast_grants_parent` and the partial `idx_tokens_cast_expiry` |
+| 0042 | `household_sharing` | `household_sharing`, each person's opt-in to Listening in the house (no row = off) |
+| 0043 | `cast_tokens` | `tokens.kind` `'cast'` (cast tokens for a Chromecast receiver) and `cast_grants` (each one's book and parent token), with `idx_cast_grants_parent` and the partial `idx_tokens_cast_expiry` |
 
 ## SQLite choices
 
