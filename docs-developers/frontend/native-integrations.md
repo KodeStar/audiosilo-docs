@@ -67,8 +67,8 @@ protection), so a car shows its lists at once, before or without JS.
     [State and data](state-and-data.md#library-selection-srcstoreslibrary-selectionts)),
     `sort: 'recent'`, at most 50 (`CAR_TAB_LIMITS`; Android Auto doesn't page, and
     CarPlay trims further to its own `maximumItemCount`).
-- **A kids profile** (player redesign 8b-1) gets the kids shelf only
-  (`kidsCarBooks`): the `library` tab holds the shelf as [kids mode](kids-mode.md#in-the-car)
+- **A kids profile** gets the kids shelf only
+  (`kidsCarBooks`): the `library` tab holds the shelf as [kids mode](kids-mode.md#what-it-shows-srccomponentskids)
   shows it (the owner's shared collections, else the one library, else the account's
   downloads), titled "Your stories" through the snapshot input's `titles`, each story
   once and trimmed to `CAR_TAB_LIMITS.library` (50) in `kidsCarBooks` itself, before

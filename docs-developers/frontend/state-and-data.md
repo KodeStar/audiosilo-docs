@@ -20,8 +20,17 @@ themselves.
   `{ history }`); the client methods unwrap them and default `null` to `[]`, so
   callers always get plain arrays. Auth returns `{ token, user }`; `/me`
   returns the user directly.
-- **Error mapping.** Any non-2xx throws `ApiError(status, message)` carrying
-  the server's `{ error }` string. A request that exceeds the client timeout
+- **Error mapping.** Any non-2xx throws `ApiError(status, message, code?)`
+  carrying the server's `{ error }` string and, when the route gives one, its
+  machine-readable `code`. Screens branch on `apiErrorKind(e)`, never on the
+  message (the server's English, never shown): the code when it is one the app
+  knows (the `API_ERROR_CODES` list: `member_limit`, `username_taken`,
+  `invalid_name`, `invalid_collections`, `feature_off`, `not_allowed`,
+  `member_cannot_manage`, `member_disabled`, `kid_account`, `demo_account`), else
+  the status's kind (`too_many` 429, `not_found` 404, `forbidden` 403, `invalid`
+  400, `conflict` 409, `failed` for anything else or no answer), so an older
+  server without codes still reads sensibly. A new code needs a case in the list
+  and its words in the screens, or it reads by its status. A request that exceeds the client timeout
   (default 15 s, enforced with an internal `AbortController`) throws
   `TimeoutError` - deliberately distinct from the `AbortError` a
   caller-supplied signal raises, so the reachability layer can classify a
@@ -348,10 +357,11 @@ connection-scoped like the rest (`qk.queue`, `qk.collections`, `qk.collection`,
 - **Streaks are computed on the device** from `useMyListening`'s `days` (server
   time).
 
-### Household members (player redesign Phase 8b-1)
+### Household members
 
 Capability `household_members`; the wire is
-[Household members](/developers/server/api/reference#household-members). Types in
+[Household members](../server/api/reference.md#household-members), the screens
+[Household page and members](household.md). Types in
 `types.ts`: `MemberKind`, `MemberAccess`, `HouseholdMember` (and its
 `HouseholdMemberCollection`), `HouseholdMembers` (`{ allowed, reason?, max, members
 }`, `HouseholdMembersReason`), `AddMemberBody`, `AddMemberResult` (`{ member,
@@ -379,20 +389,12 @@ with. `useRevokeMyDevice` takes `{ id, alsoMembers? }` (`RevokeMyDeviceVars`), s
 (`removeConnection`, by any path) has the other connections to that server read their
 household again (`onConnectionRemoved` in `hooks.ts`).
 
-- **Refusals are read by kind**, never by message: `apiErrorKind(e)` in `client.ts`
-  gives the server's `code` when the app knows it (`ApiError.code`, the
-  `API_ERROR_CODES` list: `member_limit`, `username_taken`, `invalid_name`,
-  `invalid_collections`, `feature_off`, `not_allowed`, `member_cannot_manage`,
-  `member_disabled`, `kid_account`, `demo_account`), else the status's kind
-  (`too_many` 429, `not_found` 404, `forbidden` 403, `invalid` 400, `conflict` 409,
-  `failed`), so an older server without codes still reads sensibly. Screens say it in
-  their own words; `ApiError.message` (the server's English) is never shown.
-
+- **Refusals are read by kind** ([Error mapping](#the-api-client-srcapiclientts)).
 - **The members list never refuses an ordinary session**: a demo or member caller
   gets `allowed: false` with a `reason`, and "at the cap" is the client's own
   `members.length >= max` (`addBlock` in `src/components/household/household-model.ts`).
 - **A member's session is placed with `addMemberHere`**, never `finishConnect`
-  (see [Profiles](profiles.md#signing-a-member-in-here-addmemberhere)): the owner
+  (see [Signing a member in here](household.md#signing-a-member-in-here)): the owner
   stays the person listening and the default connection doesn't move.
 - **The kid's view is the server's**: the player reads `member_kind` only to start
   kids mode by default and `managed_by` only to pick the kids shelf's collections

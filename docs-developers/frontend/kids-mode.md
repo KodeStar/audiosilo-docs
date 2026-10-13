@@ -1,15 +1,15 @@
 ---
 title: Kids mode
-description: "Kids mode (Phase 8, with kid household members since 8b-1): a property of a profile. Kids mode by default for a kid's account, the /kids route and its guard, connect/_layout as the one gate between kids mode and the connect flow, the stories it shows (kidsShelfMode: the owner's shared collections, else one library), a kid signed out, the kids player at 1×, the Grown-ups hold, the car, and bedtime through listenerSettings."
+description: "Kids mode, a property of a profile: on by default for a kid's account, the kids route and its guard, the one gate between kids mode and the connect flow, the stories it shows (the owner's shared collections, else one library), a kid signed out, the kids player at normal speed, the Grown-ups hold, the car, and bedtime."
 ---
 
 Kids mode is a **property of a [profile](profiles.md)** (`Profile.kids`), set by an
-adult on the device on the [Household page](profiles.md#the-household-page). It is
+adult on the device on the [Household page](household.md). It is
 client-side: the server has no notion of it. The child's account is either a **kid
-household member** (Phase 8b-1: `user.member_kind === 'kid'`, made by an owner from
+household member** (`user.member_kind === 'kid'`, made by an owner from
 the player, its access decided by the server's member rule; see
-[Household members](/developers/server/api/reference#household-members)) or an ordinary
-account whose library access the admin limited (Phase 8). Either way the server's
+[Household members](../server/api/reference.md#household-members)) or an ordinary
+account whose library access the admin limited. Either way the server's
 scopes are the truth, and the player never shows a child more than the account may
 open; turning kids mode off on a device never widens anyone's access. The user-facing
 page is [Kids mode](/users/listening/kids-mode).
@@ -56,8 +56,7 @@ tabs. A kids profile never gets the shell:
   rather than stacked twice.
 - On Android the back button does nothing on `/kids` while the shell sits under it;
   with nothing under it, it leaves the app as usual.
-- **The connect flow's gate is `src/app/connect/_layout.tsx`, the only one** (8b-1,
-  D1). While a kids profile listens it runs **none** of the flow (no step mounts, so a
+- **The connect flow's gate is `src/app/connect/_layout.tsx`, the only one**. While a kids profile listens it runs **none** of the flow (no step mounts, so a
   pairing link's token is never exchanged and no server is reconnected or forgotten)
   and `dismissTo`s `/kids` once the root navigator is ready. When kids mode was already
   on as the flow opened (a link: `audiosilo://connect?token=`, a QR scanned elsewhere,
@@ -87,7 +86,7 @@ The rules are pure in `kids-model.ts`, read through `useKidsStories()`:
 
 - **The connection** (`kidsConnectionId`): the picked library's connection while the
   profile still holds it, else the profile's first.
-- **The collections** (`kidsCollections`, Phase 8b-1): for an account with
+- **The collections** (`kidsCollections`): for an account with
   `user.managed_by` (a household member), the collections `GET /me/collections` lists
   as shared with it (`!owned`) whose `owner.id` is `managed_by.id`, in the order the
   list gives them (the owner's). When there is at least one, they **are** the shelf:
@@ -105,10 +104,10 @@ The rules are pure in `kids-model.ts`, read through `useKidsStories()`:
   member's answers are still out. The Household page reads the same through
   `useKidsSharedShelf(profile)` and hides the kids **Library** row unless the shelf is
   one library (also while the kid is signed out or the collections can't be read).
-  When an owner switches a member to `all`, the player sends `collection_ids: []`
-  (`collectionIdsFor`), so the shares stop and the kid's shelf is one library again.
-- **The library** (`kidsLibrary`), for everyone else (an account nobody manages, a
-  Phase 8 account the admin limited, an older server, a member with no shared
+  When an owner switches a member to `all`, the shares stop
+  ([a member's card](household.md#a-members-card)), so the kid's shelf is one library again.
+- **The library** (`kidsLibrary`), for everyone else (an account nobody manages, an
+  account the admin limited, an older server, a member with no shared
   collection): the pick when it is on that connection and still listed by `GET
   /libraries`, else the first library listed, else none (the account sees no
   library: an empty state says to ask a grown-up).
@@ -125,9 +124,7 @@ The rules are pure in `kids-model.ts`, read through `useKidsStories()`:
 
 The Household page's kids rows for a member's profile name the owner ("The stories
 Adam shares…", "Shown when Adam shares no collections") through `kidsManager(profile,
-people)`: `managerName` on the kids connection, so the owner's profile name on this
-device when they are signed in here, else `managed_by.display_name`, else the username
-(see [Profiles](profiles.md#the-household-page)).
+people)` (see [Naming the owner](household.md#naming-the-owner)).
 
 The whole page is **one virtualised list** (`KidsStoriesList`, a FlashList with the
 greeting, the bedtime card and the player as its header), paging through the library
@@ -140,12 +137,8 @@ them, "Ask a grown-up to sign Leo in again." (`askToSignIn`; "...to sign you in 
 without a name); with none, the list's `signed-out` state says "Signed out of
 &lt;server&gt;" with the same line and no Try again. A story that won't start says it too.
 The grown-up signs the kid in again from the Household page's **Sign in again**
-(`SignInAgainRow`: for the owner's own member, `memberSession` then `renewMemberHere`,
-which only swaps the token, keeping the connection id, profile, PIN and kids settings;
-anyone else, or after a server reset, the connect flow's reconnect). `ApiProvider` then
-reads the connection's failed queries and its `server`, `libraries` and `collections`
-lists again once its token changes (`useReadAgainOnSignIn`, `readAgainOnSignIn`), so the
-shelf recovers without a reload. A tile starts its story with
+([Signing a member in again](household.md#signing-a-member-in-again)), and the shelf
+recovers without a reload. A tile starts its story with
 `startBookInPlace` on every layout (kids mode never opens the full player; the story
 already loaded only resumes), and the list scrolls back up to the player
 (`scrollToOffset`).
@@ -170,14 +163,8 @@ action. Holding opens Who's listening?, where the chosen profile's PIN is asked.
 ## In the car
 
 A kids profile's CarPlay and Android Auto snapshot is the kids shelf only
-(`kidsCarBooks` in `src/car/car-model.ts`, built by `car-controller.ts` without React
-from the same reads as `useKidsStories`: the owner's shared collections, else the one
-library, else the account's downloads): the **Library** tab holds the shelf, titled
-"Your stories", trimmed to `CAR_TAB_LIMITS.library` (50) with each story once before
-any cover is fetched (a shelf of shared collections can hold far more), and **Continue
-listening** the shelf's stories in progress (any story on the shelf, not only the first
-50); no Up next and no Downloads tab, nothing else the account could reach. It is rebuilt when kids
-mode turns on or off. See
+(`kidsCarBooks` in `src/car/car-model.ts`): a **Library** tab titled "Your stories" and
+**Continue listening**, nothing else the account could reach. The spec is in
 [Native integrations](native-integrations.md#the-car-snapshot-srccar).
 
 ## Bedtime and speed (`src/playback/listener-settings.ts`)

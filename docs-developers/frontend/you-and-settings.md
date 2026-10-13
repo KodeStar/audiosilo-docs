@@ -13,7 +13,7 @@ section component, so each can be read (and tested) on its own:
 | Year ("Year in listening") | `YearSection()` | `src/components/you/year/` |
 | Journal | `JournalScreen` (`embedded` on a phone) | `src/components/journal/` ([The Journal](journal.md)) |
 | Settings | `SettingsContent({ section?, onSectionChange?, embedded? })` | `src/components/settings/` |
-| Household (phone only; elsewhere the `/household` page) | `HouseholdPage({ embedded })` | `src/components/household/` ([Profiles](profiles.md#the-household-page)) |
+| Household (phone only; elsewhere the `/household` page) | `HouseholdPage({ embedded })` | `src/components/household/` ([Household page and members](household.md)) |
 | Account | `AccountSection({ connectionId? })` | `src/components/account/` |
 
 The user-facing behaviour is in the User Guide:
@@ -30,8 +30,7 @@ re-export of `YouHub` (`src/components/you/you-hub.tsx`). The rules are the pure
 - `youSectionsFor(layout)`: a phone's segmented control offers all six sections (it has
   no top bar), Household between Settings and Account; tablet and desktop offer Stats,
   Year in listening and Journal, because Settings is the top bar's gear and Household
-  and Account the profile menu (Household there is the pushed `/household` page,
-  decision 4 of Phase 8b-1). A link to `settings`, `household` or `account` still
+  and Account the profile menu (Household there is the pushed `/household` page). A link to `settings`, `household` or `account` still
   renders there, with no segment chosen.
 - `youSectionLabelKey` / `youTitleKey`: "Year" on a phone, "Year in listening" in the
   wide sub-nav; the phone's large title follows the section (`navigation.setOptions`),
@@ -64,10 +63,9 @@ top bar's gear, the profile menu and the palette's Go to. Back returns where the
 was, and a cold link lands in Home. On the Settings page already, `openSettings` only
 moves the pane.
 
-**Household** is the same kind of page, `/household`, pushed through `openHousehold()`
-(the profile menu, "Who's listening?" > Manage household, Settings, Home's house row,
-the palette); the phone hub's Household segment renders the same `HouseholdPage`. See
-[The Household page](profiles.md#the-household-page).
+**Household** is the same kind of page, `/household`, pushed through `openHousehold()`;
+the phone hub's Household segment renders the same `HouseholdPage`. See
+[The page](household.md#the-page) for every way in.
 
 **The year story** on a phone is the root modal `/year` (`src/app/year.tsx` →
 `YearStoryScreen`), opened with `router.push(yearHref({ year?, connection?, card? }))`
@@ -180,11 +178,11 @@ shortcuts, never a second copy. The rules are the pure `settings-model.ts`:
 - Groups and panes: **Listening** (`playback`, `sleep`, `downloads` - "Up next and
   downloads"), **App** (`appearance`, `language`), **Servers** (`accounts`,
   `support`). The App group (`HOUSEHOLD_LINK_GROUP`) ends with a link to the Household
-  page where its pane used to be. `settingsGroups(supportAvailable)` drops Support where
+  page. `settingsGroups(supportAvailable)` drops Support where
   `isSupportAvailable()` says the build can't link to it (Apple builds). There is no
   Accessibility pane: the app has no setting of its own for it, and the style guide says
-  not to show a switch that does nothing. Household is a page of its own since Phase 8b-1 (see
-  [Profiles](profiles.md#the-household-page)).
+  not to show a switch that does nothing. Household is a page of its own (see
+  [Household page and members](household.md)).
 - `parseSettingsSection`: `preferences`, absent, unknown or a hidden pane is the first
   pane (`playback`); `accounts` is the signed-in servers. `household`
   (`isHouseholdSection`) is the Household page: the route replaces itself with

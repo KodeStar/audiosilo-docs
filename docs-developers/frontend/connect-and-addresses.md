@@ -69,21 +69,12 @@ refused link (expired, used up, unknown, malformed) "This pairing link has expir
 was already used...", a 5xx "The server couldn't finish pairing...", and no answer
 "Could not reach the server to finish pairing.".
 
-**Kids mode never runs the flow.** `src/app/connect/_layout.tsx` is the one gate: while
-a kids profile listens, no step of the flow mounts (so a link's token is never spent),
-the child is sent back to `/kids`, and a link opened in kids mode gets the toast "Ask a
-grown-up to open this link". Only a grown-up's Add someone on a device with no grown-up
-gets through (`kidsConnectAllowed`); the layout also waits until both the session and
-the profiles have been read. See [Kids mode](kids-mode.md#the-route-and-its-guard).
-
-A kid's account (`user.member_kind === 'kid'`, a household member) placed for the
-first time on this device starts in kids mode (`kidsOnForKidAccount`, after the
-placement; never on a re-pair, and never for a profile that also holds a grown-up's
-account): see [Kids mode](kids-mode.md). The one sign-in that does **not** go through
-`finishConnect` is a household member signed in beside the owner from the Household
-page: `addMemberHere` (`src/components/connect/add-member-here.ts`) stores it without
-moving the default connection or the person listening, and never navigates (see
-[Profiles](profiles.md#signing-a-member-in-here-addmemberhere)).
+**Kids mode never runs the flow**: `src/app/connect/_layout.tsx` is the one gate (see
+[Kids mode](kids-mode.md#the-route-and-its-guard)). A kid's account placed for the
+first time on this device starts in kids mode (`kidsOnForKidAccount`: see
+[Kids mode](kids-mode.md)). The one sign-in that does **not** go through
+`finishConnect` is a household member signed in beside the owner, `addMemberHere`
+(see [Signing a member in here](household.md#signing-a-member-in-here)).
 
 `repairPlan` decides what a sign-in stores:
 

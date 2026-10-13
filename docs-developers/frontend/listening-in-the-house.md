@@ -112,8 +112,7 @@ Strings live in the `house` i18n namespace.
 
 **Whose connections.** Everything here is the person listening's: Home hands
 `HouseRow` the active profile's connections (`useProfileConnections`), and the
-[Household page](profiles.md#the-household-page) (`HouseSharing`; Settings' Household
-pane before Phase 8b-1) renders one `HouseSharingRow` per connection of the active
+[Household page](household.md) (`HouseSharing`) renders one `HouseSharingRow` per connection of the active
 profile whose server has `household`, under a "Listening in the house" heading (a note
 when none of them offers it, once every server has answered). A kid household member never
 shares and never sees the house: the server answers `{ sharing: false, listening: []

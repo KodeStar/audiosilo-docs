@@ -1,6 +1,6 @@
 ---
 title: Profiles
-description: "Profiles (Phase 8): a person on this device as a group of connections. The profiles store and document, the consistency rules, visible versus background connections, switching and the play rule, Who's listening?, the device-local PIN, links to another person's book, the Household page (members, the add dialog, apiErrorKind), and signing a household member in beside the owner (addMemberHere, signInMemberHere, renewMemberHere)."
+description: "Profiles: a person on this device as a group of connections. The profiles store and document, the consistency rules, visible and background connections, switching and the play rule, Who's listening?, the device-local PIN, links to another person's book, and the Household page's On this device."
 ---
 
 A **profile is a person on this device**: a device-local group of connections, at
@@ -11,16 +11,12 @@ the server; the profile only says which of the device's connections belong to wh
 so the screens show one person's at a time. Nothing about profiles is sent to a
 server: there is no wire change.
 
-**Profiles and kids mode are client-side; household members are server-side.** A
-[household member](/developers/server/api/reference#household-members) (Phase 8b-1,
-capability `household_members`) is a real account on the server that an owner made
-from the player, with what it may listen to decided by the server. On the device it is
-just another connection in a profile of its own, placed by `addMemberHere`
-([below](#signing-a-member-in-here-addmemberhere)); the server's `user.member_kind`
-only decides whether that profile starts in kids mode.
+A [household member](household.md) is a real account on the server, unlike a profile
+([the contract](../architecture/cross-repo-contract.md#16-household-members-profiles-and-kids-mode-stay-client-side));
+on the device it is just another connection in a profile of its own.
 
 The user-facing side is
-[Sharing a device with your household](/users/listening/profiles) and
+[Sharing a device (profiles)](/users/listening/profiles) and
 [Kids mode](/users/listening/kids-mode); kids mode's code is
 [its own page](kids-mode.md).
 
@@ -104,7 +100,8 @@ re-pair keeps the person it had, and "Add someone" signing in as a person alread
 the device switches to them.
 
 `placeConnection(id, opts)` takes `PlaceOptions` (`placeInDoc`'s): `newProfile`, and
-for a household member signed in beside the owner `keepActive` (the new profile is
+for a household member signed in beside the owner
+([`addMemberHere`](household.md#signing-a-member-in-here)) `keepActive` (the new profile is
 added **without** becoming active: the person listening stays, or nobody when the
 active person was only this connection) and `name` (the new profile's name, trimmed;
 empty means the username).
@@ -167,7 +164,7 @@ it; anyone else is switched to. Strings are in the `profiles` i18n namespace.
 
 - **Ways in**: the profile menu (tablet and desktop top bar), the Me tab's "Listening
   as" card on a phone, the Household page, and leaving kids mode.
-- **Manage household** at its foot opens the [Household page](#the-household-page)
+- **Manage household** at its foot opens the [Household page](household.md)
   (`openHousehold`), except while someone must be chosen and for a kids profile.
 - **At a cold launch** the auth gate opens it once per launch when there are two or
   more people and `askAtLaunch` is on.
@@ -236,163 +233,32 @@ screen:
 The gate only offers the switch; refusing the play itself is the playback store's job
 (`mayActFor`, [above](#switching-and-the-play-rule)).
 
-## The Household page
+## On this device (`DevicePeople`)
 
-Phase 8b-1 moved Settings' Household pane to a page of its own, `HouseholdPage`
-(`src/components/household/household-page.tsx`), rendered in two places: the phone
-You hub's `household` segment (between Settings and Account, `embedded`, since the
-hub's large title already says Household) and the pushed page `/household`
-(`src/app/(app)/(home,library,search,offline,me)/household.tsx`, in the array group
-like `/settings`, so back returns where the listener was and a cold link opens it in
-Home). Every way in goes through `openHousehold()` (`src/lib/open.ts`, `householdHref()`
-in `paths.ts`; a no-op on the page already): the profile menu, "Who's listening?" >
-Manage household, the link at the end of Settings' App group, Home's house row and the
-web palette. `/settings?section=household` (`isHouseholdSection`) **replaces** itself
-with `/household`, so an old link lands on the page and back doesn't bounce into the
-redirect.
-
-The page is a plain column of three parts:
-
-- **`DevicePeople`** (`src/components/household/device-people.tsx`, "On this
-  device"): a card per person (`PersonHeader`, Switch, rename, PIN set/change/remove,
-  kids mode with the bedtime and, while the shelf is one library
-  (`useKidsSharedShelf`), `KidsLibraryPicker`, **Remove from this device**), **Who's
-  listening?** and **Sign in someone who already has an account** (`openAddSomeone`,
-  the connect flow's Add someone, `ADD_SOMEONE_HREF`), and the **Ask who's listening
-  when the app opens** switch. A person with a connection whose sign-in ended
-  (`needsReconnect`) gets a **Signed out** row with **Sign in again**
-  (`SignInAgainRow`): when that connection is a member the person listening owns
-  (`memberOwnerHere`) and its token is dead (not a server reset), it is
-  `useMemberSession` then `renewMemberHere`, at once and with no password; otherwise
-  `reconnectConnection`, the reconnect banner's sign-in, which keeps the person.
-  Refusals say why in the app's words (`sessionRefusalText`: too many tries, a disabled
-  member, one no longer in the household).
-- **`HouseholdMembers`** (`src/components/household/members-section.tsx`): per
-  connection of the person listening whose server has `household_members`, the
-  members list (`useHouseholdMembers`), a `MemberCard` each and **Add someone to your
-  household** with "N of M added" (`AddMemberDialog`), or one line for the list's
-  `reason` (`addBlock`, which adds `at_cap` from `members.length >= max`). A member's own
-  page names their owner instead (`useManagerName(connection.id)`: "Adam manages your
-  account.", "Only Adam can add people or change what you can listen to."). The pure
-  rules are `household-model.ts` (the name rule, the default access per kind,
-  `collectionIdsFor`, the error mapping, `memberConnection`, `confirmsName`).
-- **`HouseSharing`** (`house-sharing.tsx`): the per-server house sharing switches
-  ([Listening in the house](listening-in-the-house.md)).
-
-**Adding a member** (`AddMemberDialog`): the form is the name (cut to 40 code points,
-as the server counts them), the Kids switch and `AccessPicker`; the access default
-follows the Kids switch (kid: `collections`, grown-up: `all`) until the owner picks
-one. "Create &lt;Name&gt;'s books" creates nothing yet: it adds a pending, ticked row ("New
-collection, created when you save"); when the owner already has a collection of that
-name the button is "Share &lt;Name&gt;'s books" and ticks that one instead. On save,
-`useMemberBooks().run(booksName, write)` creates the collection first, runs the write
-with its id in `collection_ids`, and deletes it again when the write is **refused** (a
-4xx or a `CapabilityError`); with no answer, or a 5xx, the write may have landed, so it
-stays and the message says so (`booksRunText`). Then:
-
-- a kid is `addMember({ …, sign_in_here: true })`, and its `session` goes to
-  `signInMemberHere`, then the offer to set the owner's PIN when their profile has none;
-- a grown-up is `addMember`, then `MemberPairing` (`memberPairing`) shows the QR, with
-  "They'll also use this phone" (`useSignInHere`: `memberSession` then
-  `addMemberHere`).
-
-**A `MemberCard`** carries what they can listen to (and its change dialog, the same
-picker; moving `collections` to `all` sends `collection_ids: []` and says first that it
-stops sharing), the Kids switch (`PATCH kind`, confirmed when it makes a kid; when the
-member is signed in here, their connection's `user.member_kind` is updated at once so
-their password card and kids mode follow), their devices (`useMemberDevices`, each with
-Sign out; their session on **this** device is marked "This device", found by reading
-the member's own `GET /me/devices` with their token here, the only list that marks
-`current`, and signing that one out marks their connection `needsReconnect` at once with
-`markNeedsReconnect`), "Set up their own device" (`MemberPairing`), "Sign in on this
-device" while they aren't here, Rename (the server's name and, when they are here,
-their profile's), and "Delete their account" (`ConfirmDialog`, then typing the name,
-`confirmsName`), kept apart from **Remove from this device** (shown while they are
-here).
-
-**Refusals** are told apart by `apiErrorKind(e)` (`src/api/client.ts`): the server's
-`code` when it is one the app knows (`member_limit`, `username_taken`, `invalid_name`,
-`invalid_collections`, `feature_off`, `not_allowed`, `member_cannot_manage`,
-`member_disabled`, `kid_account`, `demo_account`), else the status (`too_many` 429,
-`not_found` 404, `forbidden` 403, `invalid` 400, `conflict` 409, `failed` for anything
-else or no answer). Screens map that to their own words (`writeError` /
-`writeErrorText` for the member writes, `hereFailure` for signing a member in here) and
-never show `ApiError.message`; a 429 reads "Too many tries. Wait a few minutes and try
-again." (`common.tooManyTries`).
+The [Household page](household.md)'s first part is `DevicePeople`
+(`src/components/household/device-people.tsx`, "On this device"): a card per person
+(`PersonHeader`, Switch, rename, PIN set/change/remove, kids mode with the bedtime and,
+while the shelf is one library (`useKidsSharedShelf`), `KidsLibraryPicker`, **Remove
+from this device**), **Who's listening?** and **Sign in someone who already has an
+account** (`openAddSomeone`, the connect flow's Add someone, `ADD_SOMEONE_HREF`), and
+the **Ask who's listening when the app opens** switch. A person with a connection whose
+sign-in ended (`needsReconnect`) gets a **Signed out** row with **Sign in again**
+(`SignInAgainRow`: see [Signing a member in again](household.md#signing-a-member-in-again)).
 
 **Remove from this device** (`useRemovePerson`) signs the device out of each of the
 person's servers through the same sign-out as an Account page (their book stops with
 its place saved, queued saves land, the token is revoked, their downloads here go),
 then drops their PIN and profile. It warns first where they have no password on a
 server (they would need a new invite); for a household member (`managed_by`) it says
-instead that the account stays and who can sign them in here again. Every connection
-removed, by any path through `removeConnection`, has the other connections to that
-server read their household again (`onConnectionRemoved` in `hooks.ts`,
-`invalidateHousehold`), so the owner's page stops showing this device under the
-member. Removing the person listening leaves nobody chosen.
-
-**Naming the owner.** Copy that names a member's owner (the members section, kids
-mode's lines, the password card, the sign-out warnings, the remove confirmation) goes
-through `managerName(user, { connection, people })` in `src/lib/account.ts`, or
-`useManagerName(connectionId, user?)` in `src/stores/profiles.ts` (with
-`useDevicePeople()`), never `managed_by.username` directly: the name of the profile
-holding the owner's own sign-in to that server on this device, else
-`managed_by.display_name`, else the username. `kidsManager(profile, people)` is the
-same rule for a kids profile's connection.
-
-## Signing a member in here (`addMemberHere`)
-
-`addMemberHere(session, { name })` (`src/components/connect/add-member-here.ts`)
-is the variant of `finishConnect` that signs a household member in **beside** the
-owner, with no navigation:
-
-- the member's connection is stored with the owner's `serverUrl` and server name (it
-  is the owner's server, and the answer was read through the owner's client), and both
-  connections learn the addresses the answer carried;
-- `setSession(..., { makeDefault: false })`: the default connection stays where it is
-  (it still becomes the default when there is none, or the current default is no
-  longer signed in);
-- `placeConnection(id, { newProfile: true, keepActive: true, name })`: a profile of
-  its own named as the owner typed, and **never** `switchProfile`, so the owner stays
-  the person listening and their book plays on;
-- `kidsOnForKidAccount`: a kid's account (`member_kind`) starts in kids mode with the
-  default bedtime.
-
-It refuses, changing nothing, with `AddMemberHereError` and a code: `already_here`
-when the device already holds that user on that server (`memberSignedInHere`; signing
-them in again would replace the connection, PIN and all), `choose_adult` while the
-person listening is in kids mode with a grown-up on the device (`mayAddPerson`), and
-`not_ready` when the profiles can't be read or the device has no connection to that
-server. It resolves to `{ connectionId, profileId }`.
-
-Around it, in `src/components/household/use-sign-in-here.ts`:
-
-- **`signInMemberHere(mint, member, serverId)`** asks `memberSignedInHere` first (so no
-  session is minted that `addMemberHere` would refuse), then `mint()` (the add's
-  `session`, or `memberSession`) and `addMemberHere`. It never throws: it resolves to
-  `{ status: 'done' | 'already' }` or `{ status: 'failed', reason? }`, the reason being
-  `addMemberHere`'s code or the server's refusal (`too_many`, `member_disabled`,
-  `not_found`). `useSignInHere(owner)` wraps it with `useMemberSession` and a busy flag.
-- **`renewMemberHere(session)`** (in `add-member-here.ts`) signs in again a member this
-  device already holds (their sign-in ended): only the token changes, through the same
-  store as the add, so the connection keeps its id, its person's profile, PIN and kids
-  settings, and the person listening and the default connection stay. `not_ready` when
-  the device doesn't hold that member.
-
-`ApiProvider` (`src/api/provider.tsx`) reads a connection's answers again whenever its
-token changes (`useReadAgainOnSignIn`): whatever failed while it was signed out, and its
-`server`, `libraries` and `collections` lists (`readAgainOnSignIn`). It runs in the
-provider's effect, after every screen's own, so the queries already hold the new client.
+instead that the account stays and who can sign them in here again. Removing the
+person listening leaves nobody chosen.
 
 ## Testing
 
 `src/stores/profiles.test.ts` (parsing, `reconcileProfiles`, placement, `mustChoose`,
 switching), `src/lib/profile-pin.test.ts`, `sha256.test.ts`, `random.test.ts`, and in
 `src/components/profiles/`: `profiles-model.test.ts`, `profiles-screen.test.tsx`,
-`pin-dialog.test.tsx`; in `src/components/household/`: `household-page.test.tsx`,
-`members-section.test.tsx`, `member-card.test.tsx`, `household-model.test.ts` and
-`use-sign-in-here.test.ts`; `add-member-here.test.ts` in `src/components/connect/`;
-`src/api/provider.test.tsx` (read again on a new token); the gate in
+`pin-dialog.test.tsx`; the Household page's own in [Household](household.md#testing); the gate in
 `src/components/shell/auth-gate.test.tsx` and the menu in `profile-menu.test.tsx`; the
 "no screen lists another person's servers" checks beside each screen that reads
 connections.

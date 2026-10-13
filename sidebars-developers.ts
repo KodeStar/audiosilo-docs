@@ -52,6 +52,7 @@ const sidebars: SidebarsConfig = {
         'frontend/journal',
         'frontend/you-and-settings',
         'frontend/profiles',
+        'frontend/household',
         'frontend/kids-mode',
         'frontend/listening-in-the-house',
         'frontend/connect-and-addresses',
