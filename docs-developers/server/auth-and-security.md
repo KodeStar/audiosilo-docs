@@ -690,6 +690,13 @@ book's audio and cover as no-cors `<audio>`/`<img>` requests, which `same-site`
 would make the browser block. It reaches one book's media only. **HSTS is set only in `autocert` TLS mode**:
 pinning it with a self-signed cert would make the certificate warning
 impossible to bypass, and behind a reverse proxy (`off`) the proxy owns HSTS.
+That also keeps [home HTTP](configuration.md#home-http-tlshome_http) working: on a
+self-signed server the port answers plain HTTP to clients whose **connection** comes
+from loopback, or from a private or link-local address with a home-network Host (never
+judged by `X-Forwarded-For`), and redirects every other plain HTTP client to https.
+Sign-ins on the home network then travel unencrypted, the documented trade-off for apps
+that can't trust a self-signed certificate; the Host check keeps internet clients that a
+NAT or proxy gateway hands over from a private address on https.
 
 CORS (`cors` middleware) is a strict allow-list from `cors_origins`; with no
 configured origins, cross-origin browser requests simply get no CORS headers

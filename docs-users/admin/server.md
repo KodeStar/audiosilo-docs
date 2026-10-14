@@ -128,6 +128,16 @@ apps (the same three choices as [Remote access](../getting-started/remote-access
   ports 80 and 443 open to the internet, and shows **Certificate names**: one
   name per line, like `books.example.com`, each pointing at this server.
 
+With **Self-signed** chosen, the card also shows **Plain HTTP at home**, on out
+of the box. The phone apps can't trust a self-signed certificate, so while it is
+on the server's port also answers plain HTTP to devices on your home network
+(anything else is sent to HTTPS), and that is how the apps connect at home.
+Turn it off and the apps can't connect to a self-signed server. See
+[Plain HTTP at home](../getting-started/remote-access.md#plain-http-at-home-how-the-phone-apps-connect),
+including what it means for your network. It has no effect when you give the
+server your own certificate (`tls.cert_file`). `tls.home_http` in `config.yaml` or
+`AUDIOSILO_TLS_HOME_HTTP` sets it too, and then locks it here.
+
 The **Certificate** row says how the certificate the server serves now looks:
 "Valid" with the days left, "Expires in *N* days" (under two weeks), "Expired",
 "Not issued yet" (Let's Encrypt hasn't issued one yet), or "None (plain HTTP)".
@@ -146,8 +156,8 @@ The **Network** card:
   browser, one per line (like `http://localhost:8081`). Usually empty; see
   [Settings you can leave alone](../getting-started/remote-access.md#settings-you-can-leave-alone).
 
-The HTTPS mode, the certificate names and the listen address wait for a
-restart; trusted proxies and allowed origins apply at once.
+The HTTPS mode, plain HTTP at home, the certificate names and the listen
+address wait for a restart; trusted proxies and allowed origins apply at once.
 
 ### Players & app links
 

@@ -92,7 +92,11 @@ and where it appears: [Home and away addresses](api/reference.md#home-and-away-a
   single-label name. A bare IPv6 host is written in brackets in the address. Never loopback (`127.0.0.0/8`, `::1`, `localhost`): no other device can reach it.
   Never carrier-grade NAT space (`100.64.0.0/10`, which Go's `IsPrivate` leaves out): it
   is the ISP's network, not the household's. The scheme follows the same rule as the
-  pairing `base_url` (`https` on a TLS connection, else `http`), and `X-Forwarded-*` is
+  pairing `base_url` (`https` on a TLS connection, else `http`), except on a server that
+  serves [home HTTP](#home-http-tlshome_http) (`config.ServesHomeHTTP`): there a derived
+  home is always `http://`, even for a request that came over https, and keeps the
+  request's port (`:443` is added when the `Host` has none, since that port is the one
+  answering http, never 80). A configured `lan_url` is used as it is. `X-Forwarded-*` is
   not trusted. A request that came through a reverse proxy (it carries `Forwarded` or
   any `X-Forwarded-*` header) never derives a home address: its `Host` is the proxy's
   upstream, not an address a device can use.
@@ -112,6 +116,7 @@ plain `http` behind TLS). Set `lan_url` to give the apps a home address; a confi
 | `tls.mode` | `off` \| `selfsigned` \| `autocert`, default `selfsigned` | `off` = plain HTTP (use behind a TLS-terminating proxy); `selfsigned` = generate & persist a self-signed cert (LAN default); `autocert` = Let's Encrypt via ACME |
 | `tls.hosts` | []string, `[]` | autocert: hostnames to obtain certificates for. **Required when mode is `autocert`** |
 | `tls.cache_dir` | string, `<data>/certs` | autocert: certificate cache directory (re-defaulted to `<data>/certs` whenever empty) |
+| `tls.home_http` | bool, `true` | selfsigned only: the bind port also answers plain HTTP to home-network clients, see [Home HTTP](#home-http-tlshome_http). Ignored in the other modes |
 | `tls.cert_file` / `tls.key_file` | string, `""` | selfsigned: explicit paths for the persisted cert/key. Empty → `<data>/selfsigned-cert.pem` / `<data>/selfsigned-key.pem` |
 
 Mode-related behaviors worth knowing: HSTS
@@ -120,6 +125,47 @@ Mode-related behaviors worth knowing: HSTS
 bypass), and with `off` the proxy owns HSTS. In `autocert` mode the server
 logs a warning when `bind` is not on port 443, since ACME validation will
 fail otherwise.
+
+#### Home HTTP (`tls.home_http`)
+
+The native apps can't trust a self-signed certificate (there is no "proceed anyway" in
+an app), so in `selfsigned` mode with `tls.home_http` on (the default;
+`AUDIOSILO_TLS_HOME_HTTP`, console `network.tls_home_http`, restart) the bind port
+serves both protocols. `internal/server`:
+
+- `splitListener` accepts each connection and, in its own goroutine (a silent client
+  never blocks the accept loop), reads the first byte under the 10 s header timeout:
+  `0x16` (a TLS handshake record) makes it a `*tls.Conn`, anything else stays plain. A
+  connection that sends nothing in time is closed, and so is one still being read when
+  the server shuts down. One `http.Server` serves both kinds with the usual timeouts
+  (ALPN offers `h2` and `http/1.1`, as `ServeTLS` would).
+- `homeHTTPGate` serves a plain HTTP request only when the **connection's own** remote
+  address (`r.RemoteAddr`; never `X-Forwarded-For`, which the client writes) is loopback,
+  or is `config.HomeNetworkIP` (private RFC 1918 / IPv6 ULA, link-local; not CGNAT
+  `100.64.0.0/10`) **and** the request's Host is a home-network host
+  (`config.HomeNetworkHost`: a private IP, a `.local`/`.lan`/`.home.arpa`/`.internal` or
+  single-label name). Any other plain request gets a `308` to the same URL on https (same
+  Host and port, `:80` for a Host without one), or a `400` when its Host can't make that
+  URL. TLS requests pass untouched.
+
+Home HTTP is off, whatever `home_http` says, when `tls.cert_file` is set: a certificate
+the admin supplied may be one the devices trust (a private CA, mkcert), so they keep https.
+
+The server logs at start that plain HTTP is served to home-network clients. The derived
+home address becomes `http://` (see [Home address](#home-address-lan_url)), so a device
+paired over the https QR still learns an address it can use. No HSTS is sent on
+self-signed, and no CSP carries `upgrade-insecure-requests`, so the console and the web
+player also work over http on the LAN (without the secure-context features: the service
+worker, the clipboard API).
+
+:::note Gateways and the source address
+Docker Desktop (Mac/Windows), rootless Docker, Docker's userland proxy (e.g. for IPv6
+connections to a published port) and routers that rewrite a forwarded port's source hand
+the server connections from a private address, such as `172.17.0.1`, whoever made them.
+The Host check is what keeps an internet client on https there: it names the server by
+its public name or address. A client that sends a home-network Host from outside (a
+forged one) only chooses cleartext for itself.
+:::
 
 ### Web player & app links
 
@@ -414,6 +460,7 @@ by the settings table in `internal/config/settings.go` (`fields`: each entry's
 | `AUDIOSILO_WEB_DIR` | `web_dir` | path |
 | `AUDIOSILO_TLS_MODE` | `tls.mode` | `off` / `selfsigned` / `autocert` |
 | `AUDIOSILO_TLS_HOSTS` | `tls.hosts` | comma-separated list |
+| `AUDIOSILO_TLS_HOME_HTTP` | `tls.home_http` | `strconv.ParseBool` (`false`/`0`/… turns it off) |
 | `AUDIOSILO_TRUSTED_PROXIES` | `trusted_proxies` | comma-separated CIDRs |
 | `AUDIOSILO_CORS_ORIGINS` | `cors_origins` | comma-separated origins |
 | `AUDIOSILO_MAX_UPLOAD_BYTES` | `max_upload_bytes` | integer |
@@ -467,6 +514,7 @@ restart, and whether the console may change it at all:
 | `general.session_days` | `activity.session_days` | `AUDIOSILO_SESSION_DAYS` | at the next daily retention run |
 | `network.bind` | `bind` | `AUDIOSILO_BIND` | restart |
 | `network.tls_mode` | `tls.mode` | `AUDIOSILO_TLS_MODE` | restart |
+| `network.tls_home_http` | `tls.home_http` | `AUDIOSILO_TLS_HOME_HTTP` | restart |
 | `network.tls_hosts` | `tls.hosts` | `AUDIOSILO_TLS_HOSTS` | restart |
 | `network.trusted_proxies` | `trusted_proxies` | `AUDIOSILO_TRUSTED_PROXIES` | at once |
 | `network.cors_origins` | `cors_origins` | `AUDIOSILO_CORS_ORIGINS` | at once |

@@ -236,7 +236,9 @@ HTTP transport **only**: routing (`api.go` is the full route table), middleware
 ### `internal/server`
 
 The HTTP(S) server itself: TLS modes (`off` for reverse proxies, `selfsigned`,
-`autocert`/Let's Encrypt) and graceful shutdown. `Certificates` reads the
+`autocert`/Let's Encrypt), home HTTP on the self-signed port (`splitListener` +
+`homeHTTPGate`, see [Home HTTP](configuration.md#home-http-tlshome_http)) and
+graceful shutdown. `Certificates` reads the
 served certificates back from their files for Health > System.
 
 ### `internal/updates`
