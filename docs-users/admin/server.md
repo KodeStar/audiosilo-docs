@@ -134,7 +134,8 @@ on the server's port also answers plain HTTP to devices on your home network
 (anything else is sent to HTTPS), and that is how the apps connect at home.
 Turn it off and the apps can't connect to a self-signed server. See
 [Plain HTTP at home](../getting-started/remote-access.md#plain-http-at-home-how-the-phone-apps-connect),
-including what it means for Docker setups. `tls.home_http` in `config.yaml` or
+including what it means for your network. It has no effect when you give the
+server your own certificate (`tls.cert_file`). `tls.home_http` in `config.yaml` or
 `AUDIOSILO_TLS_HOME_HTTP` sets it too, and then locks it here.
 
 The **Certificate** row says how the certificate the server serves now looks:

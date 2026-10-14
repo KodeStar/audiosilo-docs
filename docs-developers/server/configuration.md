@@ -140,11 +140,16 @@ serves both protocols. `internal/server`:
   the server shuts down. One `http.Server` serves both kinds with the usual timeouts
   (ALPN offers `h2` and `http/1.1`, as `ServeTLS` would).
 - `homeHTTPGate` serves a plain HTTP request only when the **connection's own** remote
-  address (`r.RemoteAddr`; never `X-Forwarded-For`, which the client writes) is
-  `config.HomeNetworkIP` (private RFC 1918 / IPv6 ULA, link-local; not CGNAT
-  `100.64.0.0/10`) or loopback. Any other plain request gets a `308` to the same URL on
-  https (same Host and port), or a `400` when its Host can't make that URL. TLS requests
-  pass untouched.
+  address (`r.RemoteAddr`; never `X-Forwarded-For`, which the client writes) is loopback,
+  or is `config.HomeNetworkIP` (private RFC 1918 / IPv6 ULA, link-local; not CGNAT
+  `100.64.0.0/10`) **and** the request's Host is a home-network host
+  (`config.HomeNetworkHost`: a private IP, a `.local`/`.lan`/`.home.arpa`/`.internal` or
+  single-label name). Any other plain request gets a `308` to the same URL on https (same
+  Host and port, `:80` for a Host without one), or a `400` when its Host can't make that
+  URL. TLS requests pass untouched.
+
+Home HTTP is off, whatever `home_http` says, when `tls.cert_file` is set: a certificate
+the admin supplied may be one the devices trust (a private CA, mkcert), so they keep https.
 
 The server logs at start that plain HTTP is served to home-network clients. The derived
 home address becomes `http://` (see [Home address](#home-address-lan_url)), so a device
@@ -153,13 +158,13 @@ self-signed, and no CSP carries `upgrade-insecure-requests`, so the console and 
 player also work over http on the LAN (without the secure-context features: the service
 worker, the clipboard API).
 
-:::caution Docker and the source address
-The gate trusts the TCP source address. Docker Desktop (Mac/Windows), rootless Docker and
-Docker's userland proxy (e.g. for IPv6 connections to a published port) relay
-connections from the container network's gateway, such as `172.17.0.1`, a private
-address: every client then counts as home, including internet clients if the port is
-forwarded. Such a setup that is reachable from the internet should turn `home_http` off
-or use autocert / a reverse proxy.
+:::note Gateways and the source address
+Docker Desktop (Mac/Windows), rootless Docker, Docker's userland proxy (e.g. for IPv6
+connections to a published port) and routers that rewrite a forwarded port's source hand
+the server connections from a private address, such as `172.17.0.1`, whoever made them.
+The Host check is what keeps an internet client on https there: it names the server by
+its public name or address. A client that sends a home-network Host from outside (a
+forged one) only chooses cleartext for itself.
 :::
 
 ### Web player & app links

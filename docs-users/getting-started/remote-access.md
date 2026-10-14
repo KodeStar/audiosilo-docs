@@ -36,7 +36,8 @@ To turn plain HTTP off, set `tls.home_http: false` (`AUDIOSILO_TLS_HOME_HTTP=fal
 
 :::caution What plain HTTP at home means
 - Plain HTTP isn't encrypted: anyone on your home network who can watch its traffic could see sign-ins and what you listen to. That is the usual trade-off on a trusted home Wi-Fi; on a shared or untrusted network, turn it off and use a trusted certificate instead.
-- The server decides who is "at home" from the address each connection comes from. Some setups hand the server every connection from a private address, whoever made it: Docker Desktop (Mac and Windows), rootless Docker, and Docker's userland proxy (used, for example, for IPv6 connections to a published port) relay connections from the container network's gateway, such as `172.17.0.1`. The server then serves plain HTTP to everyone, including internet visitors if you forward the port. If your server runs like that and is reachable from the internet, turn plain HTTP at home off, or use autocert or a reverse proxy.
+- The server treats a connection as "at home" when it comes from a home-network address and uses the server's home address (its LAN IP, or a name like `nas.local`). Visitors from the internet use your public name or address, so they are always sent to `https://`, even through setups (Docker Desktop, rootless Docker, some routers) that make every connection look like it comes from inside your network.
+- Plain HTTP at home is off when you give the server your own certificate (`tls.cert_file`): if your devices trust that certificate, they keep using `https://`.
 :::
 
 :::note Casting needs a certificate the Cast device trusts
