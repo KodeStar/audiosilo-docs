@@ -252,7 +252,8 @@ default), the port also answers plain HTTP to home-network clients, and a derive
 is `http://` even when the request came over https: a device pairing at
 `https://192.168.1.20:8080` gets `home` `http://192.168.1.20:8080` (an https request
 without a port gets `http://<host>:443`, the port that answers). `base_url`, `web_url`
-and the `uri`'s `server=` keep the request's own scheme, so a link reads
+and the `uri`'s `server=` stay https, even for a pairing asked for over plain HTTP
+(the https base on the same port, `:80` for a Host without one), so a link reads
 `…server=https%3A%2F%2F192.168.1.20%3A8080&token=…&home=http%3A%2F%2F192.168.1.20%3A8080&sid=…`.
 A native app that can't trust the certificate at `server` exchanges the token at that
 `home` instead, when it has the same host and port and a tokenless `GET <home>/api/v1/server`
