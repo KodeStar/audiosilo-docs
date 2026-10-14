@@ -4624,7 +4624,7 @@ Each book's **outcome**:
 
 | Outcome | Meaning |
 |---|---|
-| `auto` | Confident: the best candidate scores **90** or more, at least **10** ahead of the next, and its recording has an ASIN or ISBN. Applied unless the admin leaves it out. A repick's offers are all `auto`. |
+| `auto` | Confident: the best candidate scores **90** or more, at least **10** ahead of the next, its recording has an ASIN or ISBN, and, when both lengths are known, the recording's runtime is within **10%** of the book's (the closest recording of a work can still be another edition). Applied unless the admin leaves it out. A repick's offers are all `auto`. |
 | `review` | A candidate that isn't confident. Applied only if the admin puts it in. |
 | `none` | No candidate. |
 | `error` | The service failed for this book (`detail: "metadata_unavailable"`). Five in a row stop the run. |
@@ -5102,13 +5102,27 @@ different libraries are deliberate and never grouped).
 }
 ```
 
-- `reason` - `same_files` when the copies' audio is identical (same
-  fingerprint and size), otherwise `same_book` (the same ASIN or ISBN, or the
-  same author, title and narrator with lengths within a minute or 2%).
+- `reason` - why the books were grouped, from the joins that formed the group.
+  "Lengths match" means within a minute or 2%, an unknown length (no ffprobe)
+  matching only another unknown one.
+
+  | `reason` | Meaning |
+  |---|---|
+  | `id_length_differs` | Two of the books share an ASIN or ISBN but their lengths don't match (every pair of an identifier's books is compared): one may be matched to the wrong recording, or a copy is incomplete. Not plain copies: the console marks none as the one to keep. |
+  | `same_files` | Two of the books have identical audio (same fingerprint and size). |
+  | `same_id` | Two of the books share an ASIN or ISBN and their lengths match. |
+  | `same_book` | The books share author, title and narrator and their lengths match. |
+
+  A group joined in several ways takes the first reason of this table that
+  any of its joins gives: `id_length_differs` outranks even `same_files`, as
+  such a group holds a different recording beside its identical copies.
+  An older server says `same_book` for both identifier reasons; a client should
+  read a `reason` it doesn't know like `same_book`.
 - `books` - each copy as a [`GET /admin/books`](#get-apiv1adminbooks) row plus
   `listeners` (people with progress on it), the copy worth keeping **first**
   (better format, then a single file, then the higher bitrate, then more
-  listeners).
+  listeners). Under `id_length_differs` the order says nothing about which to
+  keep.
 - `ignored` - every copy in the group is ignored for `duplicate`. Without
   `?ignored=true` only groups with `ignored: false` are returned; with it, only
   the ignored ones. An ignored group becomes open again by itself when a new

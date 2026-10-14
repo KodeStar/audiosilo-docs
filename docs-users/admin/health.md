@@ -125,7 +125,10 @@ what it found and apply it.
 ![Reviewing the matches Match automatically found](/img/screenshots/admin/health-bulk-match.png)
 
 A match is confident when it scores 90% or more, at least 10 points ahead of
-the next candidate, and its recording has an ASIN or ISBN to attach. Whatever a
+the next candidate, its recording has an ASIN or ISBN to attach, and its
+recording's length is within 10% of the book's (when both are known: the
+closest recording can still be another edition, such as a dramatization of an
+unabridged book). Whatever a
 run writes shows as a **Community** value on the book's page, and you can
 revert it like any other. To undo every community match at once and start
 again, use [Clear community matches](server.md#community-metadata) in Server
@@ -178,8 +181,31 @@ over several, then the higher bitrate, then the copy more people listen to.
 
 ![Comparing likely duplicates](/img/screenshots/admin/health-duplicates.png)
 
-The line under the title says why they look like copies: identical audio
-files, or the same title, author and length in different files. Each column
+The line under the title says why they look like copies:
+
+| Line | Why they were grouped |
+|---|---|
+| **Identical audio files** | The audio is the same, byte for byte. |
+| **Sharing an ASIN or ISBN, of the same length** | The books carry the same identifier and their lengths match (within a minute or 2%). |
+| **Sharing an ASIN or ISBN, but of different lengths** | The books carry the same identifier, but their lengths don't match. See below: these may not be copies at all. |
+| **The same title, author and length, in different files** | Title, author and narrator agree, and so do the lengths. |
+
+**Sharing an ASIN or ISBN, but of different lengths** usually means one of the
+books is matched to the wrong recording (an unabridged book given a dramatized
+edition's ASIN, say), or one copy is incomplete. These groups have no **Worth
+keeping** or **Another copy** marks, and a note under the line says what to
+check. Don't delete either until you know which is which:
+
+- Compare the **Length** of each with the recording it should be. If one is
+  matched to the wrong recording, open it, click **Match**, and pick the
+  recording that fits its length (the match dialog shows how far each one is
+  off). If the community catalogue doesn't have that recording, clear the
+  book's ASIN on its page instead.
+- If one copy is missing files, replace it with a complete copy.
+- If both are right (two editions that really share an identifier), click
+  **They're different books**.
+
+Each column
 shows the copy's **Path**, **Format**, **Length**, **Size**, **Chapters**,
 whether it is **Matched**, how many **Listeners** have progress on it, and
 when it was **Added**. **Open book** opens a copy's page.
