@@ -247,15 +247,18 @@ covered in [Auth & security](auth-and-security.md#authorization-shares--scope).
 `scan_error_file`, `scan_error_detail` and `suspect_parts` in 0017; `split_parent` in
 0022; `cover_art` and `cover_color` in 0023; `chapters_source`, `chapters_fit`,
 `scanned_chapters` and `chapters_hash` in 0035; `released` and `released_checked`
-in 0037; `series_key` in 0041)* - one row per book,
+in 0037; `series_key` in 0041; `series_index_end` in 0045)* - one row per book,
 `UNIQUE (library_id, rel_path)`. Columns: `is_folder` (folder book vs
 single-file book), identity metadata (`title`, `author`, `series`,
-`series_index`, `narrator`), `duration`, `asin`/`isbn` (optional external ids -
+`series_index`, `narrator`; `series_index_end` is the end of a main series
+position that is a range, an omnibus of books 1-3 at `series_index` 1 and
+`series_index_end` 3, `0` for none: the `series_index` override holds the text
+`"1-3"` and `refreshEffective` writes its start and end), `duration`, `asin`/`isbn` (optional external ids -
 present so enrichment/metadata services can attach data without reshaping the
 schema), `published` (`YYYY[-MM[-DD]]`) and `description` (only an admin edit or
 an accepted community match supplies these today; the scanner reads neither),
 `more_series` (the effective list of the other series the book is in beyond
-`series`, as JSON `[{"name","position"}]`, `'[]'` for none: only an edit or a
+`series`, as JSON `[{"name","position"}]` plus `"position_end"` for a range, `'[]'` for none: only an edit or a
 community match supplies it, an override like any other field; an admin edit
 that sets or reverts `series` to one of these swaps the two, writing the list
 and `series_index` as overrides (a value the scan already gives is reverted to
@@ -412,8 +415,10 @@ other edits, never copied onto a joined book.
 
 **`book_more_series`** *(0041)* - a book's other series by key: one row per
 series in `more_series` that isn't its main one (`book_id` → `books` `ON DELETE
-CASCADE`, `library_id`, `series_key`, `position`; primary key `(book_id,
-series_key)`, `WITHOUT ROWID`, index `(series_key, library_id, position)`).
+CASCADE`, `library_id`, `series_key`, `position`, `position_end` (0045: a
+range's end, `0` for none); primary key `(book_id, series_key)`, `WITHOUT ROWID`,
+index `(series_key, library_id, position, position_end)`, which covers the next
+book's read of a member's place).
 Rewritten from the effective values by `refreshEffective` (`keyOtherSeries`), as
 `books.series_key` is, so a series filter with memberships, the series order and
 the next book find a book through its list by an index seek, and the rails'
@@ -1032,6 +1037,7 @@ The migration history so far:
 | 0042 | `household_sharing` | `household_sharing`, each person's opt-in to Listening in the house (no row = off) |
 | 0043 | `cast_tokens` | `tokens.kind` `'cast'` (cast tokens for a Chromecast receiver) and `cast_grants` (each one's book and parent token), with `idx_cast_grants_parent` and the partial `idx_tokens_cast_expiry` |
 | 0044 | `household_members` | household members: `users.managed_by` (FK `ON DELETE SET NULL`), `users.member_kind` and `users.member_access` (each with a column CHECK), `users.can_add_members` (`DEFAULT 1`) and `users.display_name` (`DEFAULT ''`), with the partial `idx_users_managed_by`; `tokens.created_on_token_id` (FK `ON DELETE SET NULL`) with the partial `idx_tokens_created_on`. No data moves: every existing account reads as no member, allowed to add members |
+| 0045 | `series_ranges` | `books.series_index_end` and `book_more_series.position_end` (`REAL NOT NULL DEFAULT 0`), the end of a series position that is a range (an omnibus, `1-3`); `idx_book_more_series_key` is rebuilt to cover `position_end`. No data moves: every existing row holds a single position |
 
 ## SQLite choices
 

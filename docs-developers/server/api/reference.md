@@ -814,7 +814,23 @@ probed; `added_at` when unknown. Every book response (lists, search, recent,
 | `published` | string | the publication date, `YYYY`, `YYYY-MM` or `YYYY-MM-DD`: the effective value from an [admin edit](#patch-apiv1adminlibrariesidbook) or an accepted community match |
 | `cover_color` | object | the cover's palette, lowercase `#rrggbb`: `bg` is its dominant colour; `accent` a vibrant colour of the cover adjusted to a WCAG contrast of at least 4.5:1 against `bg`, and `on_accent` (`#ffffff` or `#000000`) the text colour on it. `accent` and `on_accent` are omitted together when the cover has no usable vibrant colour |
 | `cover_version` | string | an opaque token (10 characters) for the cover art. Append it to a cover URL as `v=` so a client cache refetches a replaced cover |
-| `series_list` | array | every series the book is in, `[{"name", "position"}]` (position `0` = unnumbered): its main `series` first (at `series_index`), then the others an [admin edit](#patch-apiv1adminlibrariesidbook) or a community match added. Sent only for a book in more than one series; otherwise `series`/`series_index` say it all |
+| `series_index_end` | number | the end of a main series position that is a **range** (an omnibus of books 1-3: `series_index` `1`, `series_index_end` `3`). `series_index` stays the start, so a client that doesn't know the field reads the omnibus as book 1. Omitted for a single position |
+| `series_list` | array | every series the book is in, `[{"name", "position", "position_end"?}]` (position `0` = unnumbered; `position_end` only for a range, as `series_index_end`): its main `series` first (at `series_index`), then the others an [admin edit](#patch-apiv1adminlibrariesidbook) or a community match added. Sent only for a book in more than one series; otherwise `series`/`series_index` say it all |
+
+A book at a range, here as the omnibus of Mistborn 1-3 that is also book 1 of a
+box-set series:
+
+```json
+{
+  "series": "Mistborn",
+  "series_index": 1,
+  "series_index_end": 3,
+  "series_list": [
+    { "name": "Mistborn", "position": 1, "position_end": 3 },
+    { "name": "Cosmere Box Sets", "position": 1 }
+  ]
+}
+```
 
 `cover_version` is on every indexed book: a short hash of the book's cover art
 identity (`books.cover_art`). That identity starts from index data alone (a custom
@@ -842,7 +858,8 @@ found, with any admin metadata edits layered on top. A book with a `series` and
 no position takes the one its title gives when the title is the series' name
 and then a number ("He Who Fights with Monsters 4: A LitRPG Adventure" is
 `series_index` 4); a number run on from the name, a range ("1-12") or one
-followed by more words gives none. The shape is unchanged; a
+followed by more words gives none. A range comes only from an edit, a community
+match or a `series-part` tag such as `1-3` (see `series_index_end`). The shape is unchanged; a
 player simply sees the edited value. The same holds for every book-shaped
 response, search, the `/fs` annotations and the export.
 List responses omit `files`, `chapters`, and `direct_playable` (single-book
@@ -900,7 +917,10 @@ scope.
 
 `author` is the most common author among the series' books; `positions` lists the
 distinct non-zero series positions held, ascending (so a client can mark the
-gaps). Sorted case-insensitively by name; books with no series are not counted.
+gaps). A book at a range holds its start, every whole number inside it and its
+end (an omnibus of 1-3 adds `1, 2, 3`; one of 2.5-4 adds `2.5, 3, 4`), so an
+older player shows no gaps inside an omnibus it has. Sorted case-insensitively
+by name; books with no series are not counted.
 Same status codes as `/authors`.
 
 **One series, any spelling.** Series names that differ only in case, accents,
@@ -1197,8 +1217,10 @@ Otherwise the local steps decide, in order, and the first one with an answer win
    ignoring case, accents, punctuation and spacing), then rails named like its
    other series in list order, then the rest as the envelope lists them. On each
    the server reads the entry after the current work on the rail's **main view**
-   (the smallest numeric position above the current one; unnumbered entries such
-   as an omnibus `1-3` are skipped), passing over any entry that comes at or
+   (the smallest numeric position above the current one; an entry at a range
+   such as an omnibus `1-3` counts by its start, and a current work at a range
+   by its end, so after the omnibus comes `4`; a single entry wins a tie with a
+   range starting at the same number; unnumbered entries are skipped), passing over any entry that comes at or
    before the current work on a rail ranked above it, so two orders of the same
    books (a chronological series and a publication-order one) can't step
    backwards or loop. The **first rail with a next entry decides**, and a later
@@ -1219,9 +1241,13 @@ Otherwise the local steps decide, in order, and the first one with an answer win
    each, the candidate is the book of that series (in any spelling, as
    [`/series`](#get-apiv1librariesidseries) groups them) in the same library
    (by its main series or one of its other series, at its position in that
-   series) with the smallest higher position (ties by path), within the caller's
-   scope, passing over any book that comes at or before the current book in a
-   series ranked above in which both books are numbered. The first series with a
+   series) with the smallest higher position (ties: a single position before a
+   range starting there, then by path), within the caller's scope, passing over
+   any book that comes at or before the current book in a series ranked above in
+   which both books are numbered. A book at a range counts from its end (after an
+   omnibus of 1-3, the next is 4) and a candidate by its start (from book 2, an
+   omnibus of 1-3 is no step forward); a book inside the current omnibus in a
+   series ranked above is passed over. The first series with a
    later book that isn't passed over answers. When none has a later book but some other book in one of them is
    numbered, the answer is `{"source": "series"}`, the end of the series; when
    nothing else is numbered the step falls through.
@@ -1544,7 +1570,10 @@ Expanse!`). Each entry gets at most one book, the first that applies:
    upstream call, so placement doesn't change with a restart);
 3. in an alternate order, the book the main view placed for the same work;
 4. a book of a series named like this view (the rail's or ordering's own name)
-   whose `series_index` equals the entry's numeric position.
+   whose `series_index` equals the entry's numeric position. An entry at a range
+   (`"1-3"`) takes a book at that same range (`series_index` 1,
+   `series_index_end` 3); an entry at one number takes a book at it, else a book
+   whose range starts there.
 
 A book known to be a particular work is placed by that identity only, never by
 its number, so a novella numbered like the next volume holds no slot. When two
@@ -3624,7 +3653,8 @@ Per-book notes:
   two words. That keeps suffixed names such as `Alexandre Dumas, pere` and
   surname-first forms such as `Dumas, Alexandre` whole.
 - `series_position` is a string so half-positions survive: `2` for book two,
-  `2.5` for a novella between books. Omitted when there is no position.
+  `2.5` for a novella between books, `1-3` for an omnibus numbered as a range
+  (the metadata site's importer reads it as one). Omitted when there is no position.
 - `runtime_min` is the book's duration in whole minutes (rounded);
   `chapters` is the number of indexed chapters. Both are omitted when unknown.
 - `asin` / `isbn` come from the book's identifiers, including any attached via
@@ -3858,8 +3888,8 @@ back to the scanned value, **revert** it instead.
 |---|---|
 | `title` | required (cannot be emptied), at most 500 characters, no control characters |
 | `author`, `narrator`, `series` | at most 500 characters, no control characters |
-| `series_index` | a number from 0 to 100000 (`2`, `2.5`); stored in its shortest form, `""` for none |
-| `more_series` | the other series the book is in beyond `series`: a JSON list of `{"name": string, "position": number}` (position 0 = none, else 0 to 100000), at most 20; names trimmed and checked like `series`, blank names dropped, each name kept once (the first). Stored as canonical JSON (`[{"name":"City Watch","position":1}]`), `""` for none. Only an edit or a community match sets it; tags give one series |
+| `series_index` | a number from 0 to 100000 (`2`, `2.5`), or a **range** for an omnibus: two numbers apart by a hyphen or an en dash, spaces allowed (`1-3`, `1 - 3`, `1–3`), with 0 < start < end ≤ 100000 and end - start ≤ 100. Stored in its shortest form (`2.5`, `1-3`), `""` for none. Refused: `invalid_override` with the reason `must be a number from 0 to 100000, or a range like 1-3` |
+| `more_series` | the other series the book is in beyond `series`: a JSON list of `{"name": string, "position": number, "position_end"?: number}` (position 0 = none, else 0 to 100000; `position_end` a range's end, by the `series_index` rules), at most 20; names trimmed and checked like `series`, blank names dropped, each name kept once (the first). Stored as canonical JSON (`[{"name":"City Watch","position":1}]`, `[{"name":"Box Sets","position":1,"position_end":3}]`), `""` for none. Only an edit or a community match sets it; tags give one series |
 | `published` | `YYYY`, `YYYY-MM` or `YYYY-MM-DD`, and a real date |
 | `description` | at most 20000 characters; line breaks and tabs kept, other control characters refused |
 | `asin` | 10 letters or digits (uppercased) |
@@ -3974,9 +4004,10 @@ is a `400` too (`too many format or codec values`).
   are omitted when empty or `0`.
   `path` is the book path (the player's `rel_path`).
 - `custom_cover` - an admin uploaded a cover; `has_cover` includes it.
-- `series_list` - every series the book is in, `[{"name", "position"}]`: its main
+- `series_list` - every series the book is in, `[{"name", "position", "position_end"?}]`: its main
   `series` first (at `series_index`), then its `more_series`, each name once; `[]`
-  for none.
+  for none. `series_index_end` (omitted otherwise) and an entry's `position_end`
+  are a range's end, as on the player's `Book`.
 - `cover_color` - the colours read from the cover art, as on the player's `Book`
   (`bg`, plus `accent` and `on_accent` when the art has a vibrant colour that
   reads on it). Omitted until the server has read the current art's colour, from a
@@ -4142,7 +4173,7 @@ authors.
 
 `author` is the most common author among the series' books; `positions` lists
 the distinct non-zero series positions held, ascending (so a client can mark the
-gaps). A book counts in every series it is in, its main `series` and each of its
+gaps; a range holds every whole number inside it, as on the player's `/series`). A book counts in every series it is in, its main `series` and each of its
 `more_series`, at its position there; `extra_books` is how many of `books` are in
 the series through `more_series`. Spellings of one series are one entry, named as
 on the [player's `/series`](#get-apiv1librariesidseries); the console loads each
@@ -4267,7 +4298,8 @@ book path).
   Each has the effective `value`, its `source`, the `scanned` value (what the
   scan found - the revert target), `locked` (an admin edit holds it), and for an
   edit `edited_by` (the username; omitted once that account is deleted) and
-  `edited_at`. `series_index` is a string here (`"2.5"`, `""` for none).
+  `edited_at`. `series_index` is a string here (`"2.5"`, `"1-3"` for a range,
+  `""` for none).
 - `chapters` - every chapter with its effective `title`, the `scanned_title`
   and whether an edit renames it.
 - `files` - each audio file (a single-file book lists itself), with its own
@@ -4375,7 +4407,9 @@ or revert `more_series` itself, the server swaps the two: the old main series,
 at its old `series_index`, takes that entry's place in `more_series` (a book with
 no main series just drops the entry, and another entry already naming the old
 main series gives way), and `series_index` becomes the entry's position (unless
-the edit sets or reverts `series_index` itself). Reverting `series` swaps back
+the edit sets or reverts `series_index` itself). A range moves with it both ways:
+a main series at `1-3` becomes an entry with `position_end` 3, and an entry with
+one becomes `series_index` `"1-3"`. Reverting `series` swaps back
 the same way when the series it returns to is listed. The swapped `more_series` and `series_index` are written as the edit's
 own overrides, so they read as edited and can be reverted like any other edit,
 except that a value equal to what the book has without an edit goes back to
@@ -4750,8 +4784,8 @@ A page of the run's books in id order: `?outcome=auto|review|none|error`
   `overwrite`; a `refresh` run's `fill` and `overwrite` (it writes no
   identifier); a `repick` run's only `ids` (its ASIN, whatever the scope). When a
   scope changes the book's series, its change also carries `series`: the book's
-  series `from` (now) and `to` (after), each `[{ "name", "position" }]` with the
-  main series first (`position` 0 = none), so a series it removes is visible:
+  series `from` (now) and `to` (after), each `[{ "name", "position", "position_end"? }]` with the
+  main series first (`position` 0 = none; `position_end` a range's end), so a series it removes is visible:
 
   ```json
   "overwrite": {
@@ -4790,7 +4824,10 @@ set). Only `overwrite` reverts, and only community values: a series an admin
 typed stays, and a revert never removes an edit made after the run looked (a
 [`PATCH …/book`](#patch-apiv1adminlibrariesidbook) revert sent with `source:
 "community"` removes only a community value). A series position is put back from
-the files only beside the files' own series. A
+the files only beside the files' own series. A community position that is a
+range (an omnibus, `"1-3"`) is written as one: `series_index` `"1-3"`, or a
+`more_series` entry's `position_end`; one the field refuses (a span over 100) is
+no position. A
 retired work id is a redirect the server follows, so a merged record's series
 are the ones written. A repick writes its ASIN whatever the scope, and only while
 the book's ASIN is still the community override it found; a refresh takes only

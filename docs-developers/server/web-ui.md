@@ -365,7 +365,12 @@ CSP-sensitive work against a real build served by Go. The console's own gate is
   `createBatcher` as the covers) and places each book on the rail entry of its
   work, falling back to `series_index` for a book that doesn't resolve; a book
   known to be another work is drawn after the rail and fills no gap
-  (`placeBooks` in `features/library/series/series-model.ts`). Gaps wait for the
+  (`placeBooks` in `features/library/series/series-model.ts`). A position may be a
+  range (an omnibus, `series_index_end` / `position_end` on the book, `"1-3"` on a
+  rail entry): a book at a range holds every rail entry inside it, and a range
+  entry is a slot of its own only on a rail that numbers none of the books inside
+  it (`railEntries`, `holds`); the range grammar is `parseSeriesRange` in
+  `features/book/field-rules.ts`, mirroring the server's. Gaps wait for the
   works to answer (the card shows its plain "N books" line until then); a resolved
   or cleanly unmatched answer is kept for the session, a failed one is asked
   again no sooner than two minutes later.
