@@ -1,6 +1,6 @@
 ---
 title: "Server settings, updates and logs"
-description: "The Server pages of the AudioSilo admin console: every setting you can change while the server runs (name, address, HTTPS, app links, community metadata and keeping a local copy of it, transcoding, demo mode, backups, notifications, importing from Audiobookshelf), which ones wait for a restart, checking for new versions and what that sends, reading the server's log, and the audit log of what admins changed."
+description: "The Server pages of the AudioSilo admin console: every setting you can change while the server runs (name, address, HTTPS, app links, community metadata and keeping a local copy of it, transcoding, household members, demo mode, backups, notifications, importing from Audiobookshelf), which ones wait for a restart, checking for new versions and what that sends, reading the server's log, and the audit log of what admins (and the people managing household members) changed."
 ---
 
 The **Server** destination in the [admin console](console-tour.md) is where
@@ -8,7 +8,8 @@ you look after the server itself:
 
 - **Settings** - the server's settings, one topic at a time.
 - **Logs** - what the server has been doing since it started.
-- **Audit log** - what admins changed, and when.
+- **Audit log** - what admins changed (and what people did with their household
+  members), and when.
 - **About** - which version you run, whether a newer one exists, and how to
   update.
 
@@ -21,8 +22,8 @@ space, backups - is on [Health > System](health.md#system).
 
 **Server > Settings** lists its topics down the left (across the top on a
 phone): **General**, **Network & HTTPS**, **Players & app links**,
-**Community metadata**, **Transcoding**, **Demo mode**, **Backups**,
-**Notifications** and **Import**. Each setting lives in exactly one of them.
+**Community metadata**, **Transcoding**, **Household**, **Demo mode**,
+**Backups**, **Notifications** and **Import**. Each setting lives in exactly one of them.
 Backups, Notifications and Import have pages of their own:
 [Backups and restoring](backups.md),
 [Notifications and the bell](notifications.md) and
@@ -313,6 +314,24 @@ into the data folder. To use other copies, start it with the `--ffmpeg` and
 `--ffprobe` options (see the
 [configuration reference](/developers/server/configuration#cli-flags-cmdaudiosilo)).
 
+### Household
+
+The **Household members** card: "People add kids and grown-ups to their
+household from the player, with no invite from you. Each member is a real
+account, managed by the person who added it." (See
+[Household members](users-and-invites.md#household-members).)
+
+- **People can add household members** - on out of the box. Off stops new
+  members being added; members already added keep working, and the people who
+  added them can still manage them.
+- **Members per person** - from 1 to 50 (6 unless you change it). Lowering it
+  never removes anyone: someone already over the new number just can't add more.
+
+Both apply at once, with no restart. To stop one person adding members, turn
+off **Can add household members** on their Account tab instead. The
+`AUDIOSILO_HOUSEHOLD_MEMBERS_ENABLED` and `AUDIOSILO_HOUSEHOLD_MAX_MEMBERS`
+variables set them too, and then lock them here.
+
 ### Demo mode
 
 The **Demo mode** card runs a public demo from this server (see
@@ -419,7 +438,8 @@ A few things to know:
 
 ![Server > Audit log](/img/screenshots/admin/audit.png)
 
-**Server > Audit log** lists what admins changed, newest first: when, who,
+**Server > Audit log** lists what admins changed, and what people did with their
+household members in the player, newest first: when, who,
 what they did and to what, with the details underneath. For example
 "Changed settings" with each setting's old and new value, "Edited a book" with
 the fields that changed, "Gave access" with the person and the share, or
@@ -429,7 +449,9 @@ app. Things the server did by itself on an admin's behalf, like applying a
 restore at start, are listed under **AudioSilo**.
 
 What is recorded: changes to accounts, invites, devices signed out, shares and
-access, people's progress, libraries, books and covers, ignored health issues,
+access, household members (what the people who manage them do in the
+player, naming them as the one who did it), people's progress, libraries, books
+and covers, ignored health issues,
 settings, backups (including every download, restore and cancelled restore),
 notification destinations, and answers to the
 [support card](console-tour.md#the-support-card) ("Answered the support card",
@@ -442,17 +464,18 @@ What isn't:
   [notified](notifications.md) of sign-ins).
 - **Scans** (and rescans of one book, and stopped scans): their history is in
   [Health > Jobs](health.md#jobs).
-- Anything a member does in a player.
+- Anything else people do in a player.
 
 The log never holds a secret: a password change reads only "set" or "removed",
 an invite never shows its code, and a notification destination's address or
 secret only as "New address" or "New secret". It doesn't record IP addresses.
 Entries are kept for a year.
 
-To narrow the list, choose an **Area** (Accounts, Invites, Devices, Shares and
-access, Progress, Libraries, Books, Health, Settings, Backups, Notifications),
-a person under **Who** (the current admins), or type in **Search names and
-paths** (it matches what a change was made to, or who made it). **Show older**
+To narrow the list, choose an **Area** (Accounts, Household members, Invites,
+Devices, Shares and access, Progress, Imports, Libraries, Books, Health, Settings,
+Backups, Notifications), a person under **Who** (everyone but demo accounts and
+household members, since the people who manage household members appear in the log
+too), or type in **Search names and paths** (it matches what a change was made to, or who made it). **Show older**
 at the foot loads the next 50.
 
 ## Where to next

@@ -133,7 +133,8 @@ the repo:
 - **Security-critical code requires both an allowed *and* a denied regression
   test** (the denied one is the point). That covers anything touching
   `library.SafeJoin`, `Scope.Allows` / `VisibleInBrowse` / `pathFilterSQL`, the
-  rate limiters, `auth.ResolveRequest`/`lookupToken`, `web.htmlCSP`, or `bearerToken`. See
+  household member rule (`catalog/members.go`) and member routes
+  (`handlers_members.go`), the rate limiters, `auth.ResolveRequest`/`lookupToken`, `web.htmlCSP`, or `bearerToken`. See
   [auth and security](../server/auth-and-security.md).
 
 ### Frontend (TypeScript)

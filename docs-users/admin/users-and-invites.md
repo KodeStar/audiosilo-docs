@@ -1,6 +1,6 @@
 ---
 title: "People and invites"
-description: "Inviting people to an AudioSilo server with a link or QR code, each person's listening, access, devices, sign-in and account, editing someone's progress, signing out a device, rotating and revoking invites, and the safety rails around admin accounts."
+description: "Inviting people to an AudioSilo server with a link or QR code, each person's listening, access, devices, sign-in and account, household members (the kids and grown-ups people add from the player), editing someone's progress, signing out a device, rotating and revoking invites, and the safety rails around admin accounts."
 ---
 
 **People** in the [admin console](console-tour.md) is where you invite people,
@@ -10,7 +10,7 @@ they sign in. It has four sections: **People**, **Invites**, **Shares** (see
 
 ## The People page
 
-![The People page](/img/screenshots/admin/people.png)
+![The People page: person cards, with one household (an owner, a grown-up and a kid member) grouped into a block across the page](/img/screenshots/admin/people.png)
 
 **People > People** shows everyone with an account as a card, with a count of
 accounts and how many were active this month. Each card shows:
@@ -18,6 +18,10 @@ accounts and how many were active this month. Each card shows:
 - the person's name, with an **Admin** badge for administrators and a **Demo**
   badge for visitors' accounts on a server running in
   [demo mode](../demo.md);
+- for a [household member](#household-members), **Managed by** *owner* and
+  **Kid** or **Grown-up**, after the name their owner gave them when it differs
+  from the username by more than capital letters; for someone who has added
+  members, how many ("2 household members");
 - what they're doing: **Listening now** (one of their devices is playing, or
   paused in the last ten minutes), **Active** *some time ago*, **Never signed
   in**, or **Disabled** ("their devices are paused");
@@ -29,7 +33,10 @@ accounts and how many were active this month. Each card shows:
   "No devices". Personal API keys aren't counted here; the
   [Devices page](#the-devices-page) lists them.
 
-Click a card to open [that person's page](#a-persons-page).
+Click a card to open [that person's page](#a-persons-page). A household is
+grouped into one block across the page, headed *Adam's household*: the card of
+the person who added the members first, then each member's card. Someone with no
+members, or a member whose owner isn't on the page, has a card of their own.
 
 ## Inviting someone
 
@@ -124,6 +131,16 @@ Each book in the two lists has a menu (**...**) to
 What this person can listen to: each **whole library** and each
 [share](sharing.md) they have, with the folders the share covers.
 
+For a [household member](#household-members), a card above it says where
+their books come from, read-only: **Everything Adam can listen to** (with
+Adam's libraries; every library when Adam is an admin), or **Collections Adam
+shares with them** (each collection with how many books in it Adam can still
+reach). Only Adam changes that, from the player. The list under it becomes
+**Access given here**: anything you give them directly, on top of the
+household.
+
+![A kid household member's Access tab: Managed by maya and Kid under the name, Collections maya shares with them with one collection, and Access given here with nothing given directly](/img/screenshots/admin/person-member.png)
+
 - **Give access** adds a whole library or one of your shares they don't have
   yet.
 - **Remove** takes one away.
@@ -148,7 +165,10 @@ and the same **Rotate** and **Revoke** buttons, as the
 
 ### Sign-in
 
-- **Password** - **Set a password** (or **Change password**) for them. It must
+- **Password** - for a kid's account there is nothing to set. The card says
+  instead how they sign in: "Kids sign in without a password: Adam signs them
+  in, or uses “Set up their own device” in the player." For anyone else,
+  **Set a password** (or **Change password**) for them. It must
   be at least 8 characters. A password lets them sign in to the web player by
   username as well as on paired devices; their paired devices stay signed in.
   The console can set or change a password but not remove one.
@@ -162,7 +182,9 @@ and the same **Rotate** and **Revoke** buttons, as the
   library, and can use this console). Making a password-less member an admin
   asks you to choose a password for them in the same step ("Make *name* an
   admin"), since admins sign in to the console with one. You can't change your
-  own role here; another admin can.
+  own role here; another admin can. A [household member](#household-members)
+  can't be made an admin: make them independent first.
+- **Household** - the person's place in a household, below.
 - **Danger zone** - **Disable account** and **Delete account**, below.
 
 ### "Last active"
@@ -172,6 +194,92 @@ the server - browsing, playing, or syncing progress all count. It reads "Never
 signed in" for an account that has been created but has not connected yet.
 There is no separate "last login" - a player stays signed in for months, so the
 last request is the honest measure of activity.
+
+## Household members
+
+Anyone with an account, except a demo account or a household member, can add the
+people they live with from the player, on its [Household page](../listening/household.md): a
+kid, signed in on their device straight away in kids mode, or a grown-up, who
+scans a code. You don't make an invite for them. Each **household member** is
+a real account on your server, with their own progress, bookmarks and stats,
+**managed by** the person who added them (their **owner**):
+
+- The owner chooses what the member can listen to: **Everything** the owner
+  can (following the owner's access as it changes), or **only the collections
+  the owner shares** with them (and only while the owner can still reach those
+  books). Anything you give the member directly comes on top.
+- The owner renames them, signs their devices out, switches them between kid
+  and grown-up, and deletes their account, all from the player.
+- A **kid** has no password and no invites. They sign in only on devices their
+  owner sets up, so a kid's page offers no **Pair a device** and no **Rotate**
+  (what else a kid can't do:
+  [Adding a kid](../listening/household.md#adding-a-kid)).
+  A **grown-up** member is an ordinary account otherwise.
+- A member never has members of their own.
+- Disabling an owner doesn't disable their members, and doesn't change what the
+  members can listen to.
+
+On their own page, a member's username is made from the name the owner typed
+(*evie*, or *evie-adam* when that's taken). The name itself shows under the
+username only when it differs by more than capital letters (*Evie* under
+*evie-adam*, but not under *evie*).
+
+### The two settings and the per-person switch
+
+- **Server > Settings > Household** turns adding household members on or off
+  for the whole server (on out of the box; off stops new members, and members
+  already added keep working) and sets **Members per person** (6 unless you
+  change it, from 1 to 50): see [Household](server.md#household).
+- **Can add household members**, on a person's **Account** tab, turns it off
+  for just that person, with the same effect.
+
+### A person's Household card
+
+On the **Account** tab, the **Household** card shows, for someone who isn't a
+member (and isn't a demo account): the **Can add household members** switch,
+their household (each member with Kid or Grown-up and what they can listen to,
+linking to the member's page), and **Assign to someone**.
+
+For a household member it shows **Managed by** their owner instead, with:
+
+- **Make independent** - takes them out of the household, as an ordinary
+  account you manage here. They keep their progress and anything you gave them
+  directly, and stop getting books through their owner, who can no longer
+  manage the account. A kid's account has no password: to add a device,
+  [pair one](#a-persons-page) for them or set a password.
+- **Assign to someone** - moves them to another person's household.
+
+Either way, the devices they set up themselves stay signed in, and any unused
+code made in the player for one of their devices (by their owner, or by them)
+stops working. The devices someone else signed them in on, such as their owner's
+phone, stay signed in when they're made independent. When they're assigned, those
+devices are signed out, except the ones belonging to the person they're assigned
+to.
+
+**Assign to someone** also works for an ordinary account, such as one you made
+for a child before household members existed. Pick **Whose household**, **Kid
+or grown-up** and **What they can listen to**; the person you pick manages the
+account from then on, and their own grants stay.
+
+- Making someone a kid takes away everything a kid can't have (see
+  [A member's card](../listening/household.md#a-members-card)); their
+  signed-in devices stay signed in, and no password can be set for them while
+  they're a kid.
+- Choosing **Only collections Adam shares** (the option names the person you
+  pick) means they get books through Adam only from the collections Adam shares
+  with them in the player, including any already shared with them.
+- It isn't offered for an admin, and is greyed out, with the reason, for someone
+  who has household members of their own. A household member or a demo account
+  can't be the owner, and a demo account can't be a member.
+- The owner's own cap and switch don't apply: you decide.
+
+### Deleting an owner
+
+Deleting someone who has household members deletes their members too, unless
+you say otherwise: the delete dialog lists them under **Their household member**
+(or **Their 2 household members**), each ticked (**Delete Evie too**). Untick a member to keep them as an independent
+account, as with **Make independent**. When it's done, a message says
+how many members were deleted and how many kept.
 
 ## Editing someone's progress
 
@@ -242,7 +350,9 @@ These are very different levers:
   it "removes the account and everything tied to it: devices, invites,
   progress, bookmarks, notes and history. Audio files are not touched. This
   can't be undone." The confirmation offers **Disable the account instead** if
-  you want something reversible.
+  you want something reversible. For someone with household members, it also
+  lists them, ticked to be deleted too (see
+  [Deleting an owner](#deleting-an-owner)).
 
 When in doubt, disable. Delete is for accounts you are certain you'll never
 want back.
@@ -295,6 +405,7 @@ The server enforces a few guards so you can't lock yourself out:
   admin. Make someone else an admin first.").
 - **Admins must keep a password.** A password-less account can only become an
   admin together with a new password.
+- **A household member is never an admin.** Make them independent first.
 - **You can't delete or disable your own account, or change your own role,**
   from the console. Ask another admin.
 - If another admin makes you a member while you're signed in, the console signs

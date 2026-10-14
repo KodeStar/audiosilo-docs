@@ -9,9 +9,12 @@
 //      records (a place, a finish and rating, bookmarks, notes, history, a
 //      sleep-timer drift-off) through the API,
 //   2. capture desktop, tablet and phone profiles into static/img/screenshots/web-player/,
-//   3. the household: four accounts and a share made through the admin API
-//      (ADMIN_PASSWORD), driven through the UI for the profiles, kids mode and house
-//      shots and, through a local https proxy, the Cast shot, then deleted again.
+//   3. the household: three accounts made through the admin API (ADMIN_PASSWORD), and,
+//      as one of them, a collection and the kid household member through the player's
+//      own API (the grown-up member through the add dialog, or the API when only the
+//      Household page shot wants one), driven through the UI for the profiles, Household
+//      page, kids mode and house shots and, through a local https proxy, the Cast shot,
+//      then deleted again.
 import {chromium} from 'playwright';
 import path from 'node:path';
 import http from 'node:http';
@@ -25,7 +28,9 @@ import {
   DESKTOP_CONTEXT,
   HOUR,
   MIN,
+  addHousehold,
   apiClient,
+  around,
   firstVisible,
   isoAgo,
   pathQuery,
@@ -965,36 +970,39 @@ async function signInWithPassword(page, username, password) {
   await firstVisible(page.getByRole('button', {name: 'Sign in', exact: true})).click({timeout: 8000});
 }
 
-// ── Household: profiles, kids mode, listening in the house, Cast ────────────
-// The Phase 8 shots need people, not the demo: a demo account can't share what it
-// listens to, and profiles, PINs and kids mode are this device's (the browser's
-// localStorage), set up by driving the UI as a family would. provisionHouse makes the
-// accounts through the admin API: Ellen (the viewer, with a book on the go), Jamie and
-// Rosa (who share, Jamie listening now and Rosa paused, from progress saves as the
-// apps make them) and Leo (a child, whose account an admin limits to the KIDS_SHARE
-// folders). captureHouse then signs Ellen in on a fresh browser, adds Jamie and Leo
-// with "Add someone", gives Jamie a PIN and Leo kids mode, and turns sharing on for
-// Ellen in Settings > Household. unprovisionHouse deletes the accounts and the share
-// again, and takes their sign-ins out of the server's event feed, so the admin console's
-// shots (captured afterwards) never show them.
+// ── Household: profiles, members, kids mode, listening in the house, Cast ───
+// These shots need people, not the demo: a demo account can't share what it listens to
+// or add household members, and profiles, PINs and kids mode live in this browser's
+// localStorage, set up by driving the UI as a family would. Who is made, how, and what
+// each shot drives: README.md (the household shots). provisionHouse makes the accounts,
+// captureHouse drives the UI, unprovisionHouse removes them and their traces again.
 const HOUSE_PASSWORD = 'household-demo';
 const HOUSE_VIEWER = {username: 'ellen', name: 'Ellen', q: 'Christmas Carol', at: 0.4};
-// The others on Ellen's device, in the order "Add someone" adds them.
-const HOUSE_DEVICE = [
-  {username: 'jamie', name: 'Jamie', pin: '2468'},
-  {username: 'leo', name: 'Leo', kids: true},
-];
+// The others on Ellen's device who sign in with their own account, in order.
+const HOUSE_DEVICE = [{username: 'jamie', name: 'Jamie', pin: '2468'}];
 // The housemates who share; `live` keeps saving (Listening now), the other stops after
 // two saves, so the house shows it Paused once its last save is a minute old.
 const HOUSE_MATES = [
   {username: 'jamie', q: 'Hound of the Baskervilles', at: 0.35, live: true},
   {username: 'rosa', q: 'Call of the Wild', at: 0.62},
 ];
-const KIDS_SHARE = {name: 'Stories', paths: ['Lewis Carroll', 'Charles Dickens']};
+// Ellen's collection for Leo (title substrings of seeded books) and Ellen's household members.
+// Leo (`here`: signed in on Ellen's device from Leo's member card) comes from the API. Ruth
+// is added with the add dialog when its code-step shot is wanted, else from the API.
+const KIDS_COLLECTION = {name: "Leo's stories", books: ["Alice's Adventures", 'Looking-Glass', 'Christmas Carol']};
+const KID = {name: 'Leo', username: 'leo', kind: 'kid', access: 'collections', here: true};
+const GROWNUP = {name: 'Ruth', username: 'ruth', kind: 'grownup', access: 'all'};
+// The add-a-kid shot's name, typed and never saved.
+const ADD_KID_NAME = 'Mia';
 const KIDS_STORY = 'Alice';
-const KIDS_USERNAME = HOUSE_DEVICE.find((p) => p.kids).username;
 // Every account the household makes (and a previous, interrupted run may have left).
-const HOUSE_USERNAMES = [...new Set([HOUSE_VIEWER, ...HOUSE_DEVICE, ...HOUSE_MATES].map((p) => p.username))];
+const HOUSE_USERNAMES = [...new Set([HOUSE_VIEWER, ...HOUSE_DEVICE, ...HOUSE_MATES, KID, GROWNUP].map((p) => p.username))];
+// The accounts the admin API makes (the members are Ellen's).
+const HOUSE_ACCOUNTS = [...new Set([HOUSE_VIEWER, ...HOUSE_DEVICE, ...HOUSE_MATES].map((p) => p.username))];
+// The share runs from before household members made for Leo's account, removed if one was
+// left. A migration crutch: remove it (and its cleanup in provisionHouse) once no
+// hand-run server from before household members is about (run.sh starts each one empty).
+const OLD_KIDS_SHARE = 'Stories';
 // The server reports a housemate as playing while their newest save is under a minute
 // old (catalog livePlaying), paused up to ten minutes (SessionGap), then only "recent".
 // It stamps a save with its own clock, so a save can't be backdated: the Home shot waits
@@ -1002,14 +1010,21 @@ const HOUSE_USERNAMES = [...new Set([HOUSE_VIEWER, ...HOUSE_DEVICE, ...HOUSE_MAT
 // when their last save is older than this, well inside the ten minutes.
 const HOUSE_RESAVE_AFTER_MS = 5 * MIN;
 const HOUSE_SHOTS = {
+  device: 'web-player/household-device.png',
+  page: 'web-player/household.png',
+  member: 'web-player/household-member.png',
+  addKid: 'web-player/household-add-kid.png',
+  addGrownUp: 'web-player/household-add-grownup.png',
+  phonePage: 'web-player/phone-household.png',
   profiles: 'web-player/profiles.png',
-  household: 'web-player/settings-household.png',
   homeHouse: 'web-player/home-house.png',
   bookHouse: 'web-player/book-in-the-house.png',
   kids: 'web-player/kids.png',
   phoneKids: 'web-player/phone-kids.png',
   cast: 'web-player/player-cast.png',
 };
+// The shots that show Leo: Leo (and Leo's collection) are made only when one is wanted.
+const KID_SHOTS = ['device', 'member', 'page', 'profiles', 'kids', 'phoneKids'].map((k) => HOUSE_SHOTS[k]);
 
 // Kids mode's bedtime card reads the clock: every household context runs in a fixed-offset
 // zone where it is 8 pm now (after Leo's 7:30 pm bedtime), so the card says "It's bedtime"
@@ -1021,17 +1036,23 @@ function eveningZone() {
 
 // Make the household's accounts into `house` (see newHouse), recording each as it is
 // made, so unprovisionHouse removes whatever a failure half-way left. Anything an
-// interrupted earlier run left (the accounts, the share) is removed first. `viewerOnly`
-// (a run that only wants the Cast shot) makes Ellen and her book on the go alone.
-const newHouse = () => ({admin: null, users: [], shareId: null, beat: null, mates: [], save: null, ready: false});
+// interrupted earlier run left (the accounts, the old share) is removed first.
+// `viewerOnly` (a run that only wants the Cast shot) makes Ellen and Ellen's book on the
+// go alone.
+const newHouse = () => ({admin: null, users: [], members: [], beat: null, mates: [], save: null, ready: false});
 
 async function provisionHouse(house, {viewerOnly = false} = {}) {
   if (!ADMIN_PASSWORD) throw new Error('ADMIN_PASSWORD not set: no household to provision');
   const {token: admin} = await api(null, 'POST', '/auth/login', {username: 'admin', password: ADMIN_PASSWORD});
   house.admin = admin;
   const stale = ((await api(admin, 'GET', '/admin/users'))?.users ?? []).filter((u) => HOUSE_USERNAMES.includes(u.username));
-  for (const u of stale) await api(admin, 'DELETE', `/admin/users/${u.id}`);
-  const staleShares = ((await api(admin, 'GET', '/admin/shares'))?.shares ?? []).filter((s) => s.name === KIDS_SHARE.name);
+  // Deleting an owner deletes their members too: a member goes by itself only when its
+  // owner isn't one of these.
+  const staleIds = new Set(stale.map((u) => u.id));
+  for (const u of stale.filter((x) => !staleIds.has(x.managed_by?.id))) {
+    await api(admin, 'DELETE', `/admin/users/${u.id}`).catch(() => {});
+  }
+  const staleShares = ((await api(admin, 'GET', '/admin/shares'))?.shares ?? []).filter((s) => s.name === OLD_KIDS_SHARE);
   for (const s of staleShares) await api(admin, 'DELETE', `/admin/shares/${s.id}`);
   if (stale.length || staleShares.length) {
     console.log(`  ✓ removed a previous run's ${[...stale.map((u) => u.username), ...staleShares.map((s) => `"${s.name}"`)].join(', ')}`);
@@ -1043,21 +1064,12 @@ async function provisionHouse(house, {viewerOnly = false} = {}) {
     if (!b) throw new Error(`no seeded book matching "${t}"`);
     return b;
   };
-  const names = viewerOnly ? [HOUSE_VIEWER.username] : HOUSE_USERNAMES;
+  const names = viewerOnly ? [HOUSE_VIEWER.username] : HOUSE_ACCOUNTS;
   for (const username of names) {
     const made = await api(admin, 'POST', '/admin/users', {username, password: HOUSE_PASSWORD, role: 'user'});
     const id = made?.user?.id ?? made?.id;
     house.users.push(id);
-    if (username !== KIDS_USERNAME) {
-      await api(admin, 'POST', '/admin/library-access', {user_id: id, library_id: library.id});
-    } else {
-      const share = await api(admin, 'POST', '/admin/shares', {name: KIDS_SHARE.name});
-      house.shareId = share?.share?.id ?? share?.id;
-      for (const p of KIDS_SHARE.paths) {
-        await api(admin, 'POST', `/admin/shares/${house.shareId}/paths`, {library_id: library.id, path: p});
-      }
-      await api(admin, 'POST', '/admin/share-access', {user_id: id, share_id: house.shareId});
-    }
+    await api(admin, 'POST', '/admin/library-access', {user_id: id, library_id: library.id});
   }
   const progress = (token, book, body, client) =>
     api(token, 'PUT', `/libraries/${library.id}/progress${pathQuery(book.rel_path)}`, {
@@ -1069,12 +1081,33 @@ async function provisionHouse(house, {viewerOnly = false} = {}) {
   const login = async (username) =>
     (await api(null, 'POST', '/auth/login', {username, password: HOUSE_PASSWORD, device_name: `${username}'s phone`})).token;
 
-  // Ellen's book on the go (one save: a place, no listening), so her Home has a Now card.
+  // Ellen's book on the go (one save: a place, no listening), so Ellen's Home has a Now
+  // card; then, as Ellen through the player's API, Leo's collection and Ellen's household
+  // members.
   {
     const token = await login(HOUSE_VIEWER.username);
-    const b = find(HOUSE_VIEWER.q);
-    await progress(token, b, {position: b.duration * HOUSE_VIEWER.at});
-    await api(token, 'POST', '/auth/logout');
+    try {
+      const b = find(HOUSE_VIEWER.q);
+      await progress(token, b, {position: b.duration * HOUSE_VIEWER.at});
+      // Each member spends the server's self-service rate limit: only the ones a wanted
+      // shot shows. The add-a-kid shot lists Leo's collection too.
+      const wantKid = wanted(...KID_SHOTS);
+      const members = [
+        ...(wantKid ? [KID] : []),
+        ...(wanted(HOUSE_SHOTS.page) && !wanted(HOUSE_SHOTS.addGrownUp) ? [GROWNUP] : []),
+      ];
+      const collection = wantKid || wanted(HOUSE_SHOTS.addKid) ? KIDS_COLLECTION.name : undefined;
+      if (!viewerOnly && (collection || members.length)) {
+        const made = await addHousehold(api, token, library.id, {
+          collection,
+          items: KIDS_COLLECTION.books.map((t) => find(t).rel_path),
+          members,
+        });
+        house.members.push(...made.members);
+      }
+    } finally {
+      await api(token, 'POST', '/auth/logout').catch(() => {});
+    }
   }
   if (viewerOnly) {
     house.ready = true;
@@ -1106,7 +1139,10 @@ async function provisionHouse(house, {viewerOnly = false} = {}) {
     }
   }, 15000);
   house.ready = true;
-  console.log(`  ✓ household: ${names.join(', ')} (${HOUSE_MATES.map((m) => m.username).join(' and ')} share)`);
+  console.log(
+    `  ✓ household: ${names.join(', ')} (${HOUSE_MATES.map((m) => m.username).join(' and ')} share); ` +
+      `${HOUSE_VIEWER.username}'s members ${house.members.map((m) => `${m.username} (${m.kind})`).join(', ') || 'none yet'}`,
+  );
 }
 
 // Wait until the server reports housemate `username` as `state` (asked as another
@@ -1126,32 +1162,43 @@ async function houseState(house, username, state, timeoutMs = 2 * MIN) {
 
 async function unprovisionHouse(house) {
   if (house.beat) clearInterval(house.beat);
+  // Deleting Ellen deletes Ellen's members too.
   for (const id of house.users) await api(house.admin, 'DELETE', `/admin/users/${id}`).catch(() => {});
-  if (house.shareId) await api(house.admin, 'DELETE', `/admin/shares/${house.shareId}`).catch(() => {});
   await api(house.admin, 'POST', '/auth/logout').catch(() => {});
   // Every household sign-in is also a "New sign-in" server event, which names no user row
-  // and so outlives the account: take those out too, or the Events shot lists them.
+  // and so outlives the account: take those out too, or the Events shot lists them. Ellen's
+  // member writes (member.create, member.session, ...) are Ellen's in the audit log: out too.
+  const names = HOUSE_USERNAMES.map((u) => `'${u}'`).join(', ');
   try {
-    const names = HOUSE_USERNAMES.map((u) => `'${u}'`).join(', ');
     sqlite(`DELETE FROM server_events WHERE kind = 'new_device' AND json_extract(data, '$.user') IN (${names});`);
+    sqlite(`DELETE FROM audit_events WHERE actor_name IN (${names});`);
   } catch (e) {
-    console.log(`  ! household sign-ins left in the server's event feed: ${e.message}`);
+    console.log(`  ! household sign-ins or member writes left in the server's feeds: ${e.message}`);
   }
   console.log('  ✓ household accounts removed again');
 }
 
-// Settings > Household and sharing, by its link. A reload is a launch, and with two
-// people on the device it asks "Who's listening?" first: close it.
-async function openHousehold(page) {
-  await page.goto(BASE + 'settings?section=household', {waitUntil: 'networkidle', timeout: 45000});
-  const pane = tid(page, 'settings-pane-household');
-  await pane.or(tid(page, 'profiles-screen')).waitFor({timeout: 15000});
+// The Household page, by its route (`you?section=household` on a phone). A reload is a
+// launch, and with two people on the device it asks "Who's listening?" first: close it.
+async function openHousehold(page, route = 'household') {
+  await page.goto(BASE + route, {waitUntil: 'networkidle', timeout: 45000});
+  const household = tid(page, 'household-page');
+  await household.or(tid(page, 'profiles-screen')).waitFor({timeout: 15000});
   if (await tid(page, 'profiles-close').count()) await tid(page, 'profiles-close').click({timeout: 8000});
-  await pane.waitFor({timeout: 15000});
+  await household.waitFor({timeout: 15000});
   await sleep(SETTLE_MS);
+  await page.mouse.move(0, 0);
 }
 
-// A person's card in the Household pane, by the name it shows.
+// The Household page, opened again only when the browser isn't on it or a dialog covers
+// it (a reload is a launch, and a launch asks "Who's listening?").
+async function ensureHousehold(page) {
+  const onIt = (await tid(page, 'household-page').count()) > 0;
+  const dialog = (await firstVisible(page.getByRole('dialog')).count()) > 0;
+  if (!onIt || dialog) await openHousehold(page);
+}
+
+// A person's card in "On this device", by the name it shows.
 const personCard = (page, name) =>
   firstVisible(
     page.locator('[data-testid^="household-person-"]').filter({has: page.getByRole('heading', {name, exact: true})}),
@@ -1159,10 +1206,22 @@ const personCard = (page, name) =>
 
 // Rename a person on this device (Household): usernames are lower case, people aren't.
 async function renamePerson(page, from, to) {
-  await firstVisible(page.getByRole('button', {name: `Rename ${from}`})).click({timeout: 8000});
+  await personCard(page, from).getByRole('button', {name: `Rename ${from}`}).click({timeout: 8000});
   await firstVisible(page.getByTestId('rename-field')).fill(to);
   await firstVisible(page.getByRole('button', {name: 'Save', exact: true})).click({timeout: 8000});
   await personCard(page, to).waitFor({timeout: 8000});
+}
+
+// Shoot one element (a card) with a margin round it, after scrolling it into view. The
+// default margin stays under the 12 px between the Household page's cards (gap-3), so no
+// neighbour shows at the edges.
+async function shootElement(page, locator, file, margin = 8) {
+  await locator.evaluate((el) => el.scrollIntoView({block: 'center'}));
+  await sleep(SETTLE_MS);
+  await page.mouse.move(0, 0);
+  const box = await locator.boundingBox();
+  if (!box) throw new Error(`nothing to shoot for ${file}`);
+  await shoot(page, file, {clip: around([box], margin)});
 }
 
 // The kids screen, choosing the child on "Who's listening?" when a launch asks first, with
@@ -1198,15 +1257,35 @@ async function kidsStaged(page, kidName) {
   await page.mouse.move(0, 0);
 }
 
+// A second context on the household browser's storage (the same device: its people,
+// PINs and kids mode), with `options` on top. `light`: the app's own theme pick is light
+// too (it keeps one in storage, which wins over the browser's scheme).
+async function sameDevice(ctx, options = {}, {light = false} = {}) {
+  const storageState = await ctx.storageState();
+  const other = await newCaptureContext({...options, storageState, ...(light ? {colorScheme: 'light'} : {})});
+  if (light) {
+    await other.addInitScript(() => {
+      try {
+        // The app's storage holds JSON values.
+        localStorage.setItem('audiosilo.theme', JSON.stringify('light'));
+      } catch {
+        /* storage blocked: the browser's scheme decides */
+      }
+    });
+  }
+  return other;
+}
+
 async function captureHouse(house) {
   const timezoneId = eveningZone();
   const origin = new URL(BASE).origin;
   const ctx = await newCaptureContext({timezoneId});
-  const kidsName = HOUSE_DEVICE.find((p) => p.kids).name;
+  const kid = house.members.find((m) => m.kind === 'kid');
   try {
     const page = await ctx.newPage();
-    // Ellen on a fresh browser, then everyone else with "Add someone" (each new person
-    // becomes the one listening), each renamed.
+    // Ellen on a fresh browser, then Jamie with "Sign in someone who already has an
+    // account" (a new person, who becomes the one listening), each renamed; back to
+    // Ellen, who gives Jamie a PIN and signs Leo in from Leo's member card.
     let peopleReady = false;
     await step('household: people', async () => {
       await page.goto(BASE + 'connect', {waitUntil: 'networkidle', timeout: 45000});
@@ -1216,14 +1295,13 @@ async function captureHouse(house) {
       await openHousehold(page);
       await renamePerson(page, HOUSE_VIEWER.username, HOUSE_VIEWER.name);
       for (const p of HOUSE_DEVICE) {
-        await firstVisible(page.getByRole('button', {name: 'Add someone', exact: true})).click({timeout: 8000});
+        await tid(page, 'household-sign-in-existing').click({timeout: 8000});
         await probeServer(page, origin);
         await signInWithPassword(page, p.username, HOUSE_PASSWORD);
         await tid(page, 'top-bar-profile').waitFor({timeout: 15000});
         await openHousehold(page);
         await renamePerson(page, p.username, p.name);
       }
-      // Back to Ellen, who sets up the others: a PIN, kids mode on one library.
       await firstVisible(page.getByRole('button', {name: `Switch to ${HOUSE_VIEWER.name}`})).click({timeout: 8000});
       await tid(page, 'top-bar-(home)').waitFor({timeout: 15000});
       await openHousehold(page);
@@ -1235,41 +1313,157 @@ async function captureHouse(house) {
         await field.pressSequentially(p.pin, {delay: 50});
         await field.waitFor({state: 'hidden', timeout: 15000});
       }
-      for (const p of HOUSE_DEVICE.filter((x) => x.kids)) {
-        await firstVisible(page.getByRole('switch', {name: `Kids mode for ${p.name}`})).click({timeout: 8000});
-        // The library the admin's share leaves the account (picked, not the fallback).
-        await personCard(page, p.name).getByRole('button', {name: 'Library', exact: true}).click({timeout: 8000});
-        await firstVisible(page.getByRole('option', {name: 'Books', exact: true})).click({timeout: 8000});
+      // The members Ellen signs in here: a profile of their own (a kid's in kids mode),
+      // Ellen still the one listening.
+      for (const m of house.members.filter((x) => x.here)) {
+        await tid(page, `member-here-${m.id}`).click({timeout: 15000});
+        await personCard(page, m.name).waitFor({timeout: 15000});
+        // Its toast ("Leo is signed in on this device too.") is dismissed before any shot.
+        const toastLine = page.getByText(`${m.name} is signed in on this device too.`).first();
+        await toastLine.waitFor({timeout: 8000}).catch(() => {});
+        await toastLine
+          .locator('xpath=ancestor::div[.//*[@aria-label="Dismiss"]][1]')
+          .getByRole('button', {name: 'Dismiss', exact: true})
+          .click({timeout: 8000})
+          .catch(() => {});
+        await toastLine.waitFor({state: 'hidden', timeout: 15000});
       }
       // Ellen shares (the switch settles on the server's answer).
       const share = /^Share what I'm listening to with the house/;
       await firstVisible(page.getByRole('switch', {name: share})).click({timeout: 8000});
       await firstVisible(page.getByRole('switch', {name: share, checked: true})).waitFor({timeout: 8000});
-      console.log(`  ✓ ${[HOUSE_VIEWER, ...HOUSE_DEVICE].map((p) => p.name).join(', ')} on this device`);
+      console.log(`  ✓ ${[HOUSE_VIEWER, ...HOUSE_DEVICE, ...house.members.filter((m) => m.here)].map((p) => p.name).join(', ')} on this device`);
       peopleReady = true;
     });
     // A household set up half-way would shoot the wrong state over the committed shots:
     // they keep their previous images instead.
     if (!peopleReady) return;
 
-    if (wanted(HOUSE_SHOTS.household)) {
-      // The kids profile's card at the top of a taller window: its kids mode settings,
-      // then "Ask who's listening" and the sharing switch under it.
-      await step('household: settings', async () => {
+    if (wanted(HOUSE_SHOTS.device) && kid) {
+      // The kid's card in "On this device" at the top of a taller window: kids mode and
+      // bedtime, then "Ask who's listening" under it.
+      await step('household: on this device', async () => {
         await page.setViewportSize({width: 1440, height: 1000});
         try {
-          await personCard(page, kidsName).evaluate((el) => el.scrollIntoView({block: 'start'}));
-          await sleep(SETTLE_MS);
+          await scrollToTop(personCard(page, kid.name));
           await page.mouse.move(0, 0);
-          await shoot(page, HOUSE_SHOTS.household);
+          await shoot(page, HOUSE_SHOTS.device);
         } finally {
           await page.setViewportSize({width: 1440, height: 900});
         }
       });
     }
 
+    if (wanted(HOUSE_SHOTS.member) && kid) {
+      // Leo's member card, signed in here (so marked On this device, with this device in
+      // Their devices), in a window tall enough for all of it.
+      await step('household: member card', async () => {
+        await page.setViewportSize({width: 1440, height: 1200});
+        try {
+          const card = tid(page, `member-${kid.id}`);
+          await card.getByText('This device', {exact: true}).waitFor({timeout: 15000});
+          await shootElement(page, card, HOUSE_SHOTS.member);
+        } finally {
+          await page.setViewportSize({width: 1440, height: 900});
+        }
+      });
+    }
+
+    if (wanted(HOUSE_SHOTS.addGrownUp)) {
+      // Ruth added (Kids account off: Everything I can listen to), at the code step: "Show
+      // Ruth this code", the QR and "They'll also use this device". Before the page shot,
+      // which shows Ruth's card.
+      await step('household: add a grown-up', async () => {
+        await ensureHousehold(page);
+        await firstVisible(page.getByRole('button', {name: 'Add someone to your household'})).click({timeout: 8000});
+        await tid(page, 'add-member-name').fill(GROWNUP.name);
+        await tid(page, 'add-member-kids').click({timeout: 8000});
+        await tid(page, 'access-all').waitFor({timeout: 8000});
+        await tid(page, 'add-member-submit').click({timeout: 8000});
+        await firstVisible(page.getByText(`Show ${GROWNUP.name} this code`)).waitFor({timeout: 15000});
+        await tid(page, 'add-grownup-also-here').waitFor({timeout: 8000});
+        await tid(page, 'pair-countdown').waitFor({timeout: 15000});
+        await sleep(SETTLE_MS);
+        await page.mouse.move(0, 0);
+        await shoot(page, HOUSE_SHOTS.addGrownUp);
+        await tid(page, 'add-grownup-done').click({timeout: 8000});
+        await tid(page, 'add-member-dialog').waitFor({state: 'hidden', timeout: 8000});
+      });
+    }
+
+    if (wanted(HOUSE_SHOTS.page)) {
+      // The same page in light, scrolled to "Your household": the member cards, Add
+      // someone to your household with its count, then Listening in the house (a window
+      // as tall as all of it, and no taller).
+      await step('household: page (light)', async () => {
+        const height = 1650;
+        const light = await sameDevice(ctx, {viewport: {width: 1440, height}, timezoneId}, {light: true});
+        try {
+          const p = await light.newPage();
+          await openHousehold(p);
+          await firstVisible(p.getByRole('button', {name: 'Add someone to your household'})).waitFor({timeout: 15000});
+          // Leo's and Ruth's cards: Ruth comes from the add-a-grown-up step, which can fail
+          // before it saves; without both cards the shot keeps its previous image.
+          const members = tid(p, 'household-members');
+          for (const name of [KID.name, GROWNUP.name]) {
+            await firstVisible(members.getByRole('heading', {name, exact: true})).waitFor({timeout: 15000});
+          }
+          // Leo's devices, read with Leo's own token here, mark this browser: no skeleton rows.
+          await firstVisible(members.getByText('This device', {exact: true})).waitFor({timeout: 15000});
+          await scrollToTop(members);
+          // Everything from "Your household" down is shorter than the window, so the scroll
+          // stops with a strip of the card above showing: take that off the window's
+          // height and scroll again.
+          const box = await members.boundingBox();
+          const scroller = await tid(p, 'household-scroll').boundingBox();
+          const extra = box && scroller ? Math.floor(box.y - scroller.y - 16) : 0;
+          if (extra > 0) {
+            await p.setViewportSize({width: 1440, height: height - extra});
+            await scrollToTop(members);
+          }
+          await p.mouse.move(0, 0);
+          await shoot(p, HOUSE_SHOTS.page);
+        } finally {
+          await light.close();
+        }
+      });
+    }
+
+    if (wanted(HOUSE_SHOTS.phonePage)) {
+      // The Me tab's Household segment on a phone (the same device's storage).
+      await step('household: phone', async () => {
+        const phone = await sameDevice(ctx, {viewport: {width: 430, height: 932}, timezoneId});
+        try {
+          const p = await phone.newPage();
+          await openHousehold(p, 'you?section=household');
+          await shoot(p, HOUSE_SHOTS.phonePage);
+        } finally {
+          await phone.close();
+        }
+      });
+    }
+
+    if (wanted(HOUSE_SHOTS.addKid)) {
+      // "Add someone to your household" for a kid: a name typed, Kids account on, Only
+      // collections I share with "<Name>'s books" chosen (created on save). Cancelled: the
+      // form saves nothing.
+      await step('household: add a kid', async () => {
+        await ensureHousehold(page);
+        await firstVisible(page.getByRole('button', {name: 'Add someone to your household'})).click({timeout: 8000});
+        await tid(page, 'add-member-name').fill(ADD_KID_NAME);
+        await tid(page, 'create-member-books').click({timeout: 15000});
+        await tid(page, 'pick-new-books').waitFor({timeout: 8000});
+        await sleep(SETTLE_MS);
+        await page.mouse.move(0, 0);
+        await shoot(page, HOUSE_SHOTS.addKid);
+        await firstVisible(tid(page, 'add-member-dialog').getByRole('button', {name: 'Cancel', exact: true})).click({timeout: 8000});
+        await tid(page, 'add-member-dialog').waitFor({state: 'hidden', timeout: 8000});
+      });
+    }
+
     if (wanted(HOUSE_SHOTS.profiles)) {
       await step('household: who is listening', async () => {
+        await ensureHousehold(page);
         await firstVisible(page.getByRole('button', {name: "Who's listening?", exact: true})).click({timeout: 8000});
         await tid(page, 'profiles-screen').waitFor({timeout: 8000});
         await sleep(SETTLE_MS);
@@ -1309,21 +1503,20 @@ async function captureHouse(house) {
       });
     }
 
-    if (wanted(HOUSE_SHOTS.kids, HOUSE_SHOTS.phoneKids)) {
+    if (wanted(HOUSE_SHOTS.kids, HOUSE_SHOTS.phoneKids) && kid) {
       // The child, chosen on "Who's listening?" (a reload asks), with a story loaded; then
       // the same device at phone width.
       await step('household: kids', async () => {
-        await kidsStaged(page, kidsName);
+        await kidsStaged(page, kid.name);
         await shoot(page, HOUSE_SHOTS.kids);
       });
       if (wanted(HOUSE_SHOTS.phoneKids)) {
         await step('household: phone kids', async () => {
           // This device's storage, from the live browser (kidsStaged picks the child itself).
-          const storageState = await ctx.storageState();
-          const phone = await newCaptureContext({viewport: {width: 430, height: 932}, timezoneId, storageState});
+          const phone = await sameDevice(ctx, {viewport: {width: 430, height: 932}, timezoneId});
           try {
             const p = await phone.newPage();
-            await kidsStaged(p, kidsName);
+            await kidsStaged(p, kid.name);
             await shoot(p, HOUSE_SHOTS.phoneKids);
           } finally {
             await phone.close();

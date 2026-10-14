@@ -86,8 +86,8 @@ Strings live in the `house` i18n namespace.
   `HomeSection` per connection whose server has `household`, where the listener
   shares and someone else who shares listened in the last day; it renders nothing
   otherwise. The section's sub is "`<server name>` · shared by choice" and its action
-  "Sharing settings" opens Settings at the household pane
-  (`openSettings('household')`). Each `HouseCard` is the person's avatar and name (a
+  "Sharing settings" opens the Household page
+  (`openHousehold()`). Each `HouseCard` is the person's avatar and name (a
   static green dot after the name while they are listening now), the book's title, the
   state line and its cover; tapping it opens the book on that connection (`openBook`).
 - **`InTheHouseCard({ connectionId, libraryId, path })`** - the book page's "In the
@@ -98,7 +98,7 @@ Strings live in the `house` i18n namespace.
   the house" for one connection, with the privacy sentence "Your current book shows on
   the Home page of other people on `<server>` who share theirs too. Off by default."
   Hidden when the connection is gone; it does not check `household` itself (the
-  Household pane renders it only for servers that advertise the flag, below). The switch
+  Household page renders it only for servers that advertise the flag, below). The switch
   moves at once (optimistic) and settles on the server's answer; a refusal puts it
   back with a toast (a demo account gets its own words); while it loads or saves the
   switch waits disabled, and a failed load offers Retry.
@@ -111,10 +111,15 @@ Strings live in the `house` i18n namespace.
   the layout. Leave `ring` out where no ring ever shows.
 
 **Whose connections.** Everything here is the person listening's: Home hands
-`HouseRow` the active profile's connections (`useProfileConnections`), and
-Settings > Household and sharing renders one `HouseSharingRow` per connection of the
-active profile whose server has `household`, under a "Listening in the house" heading
-(a note when none of them offers it, once every server has answered). See
+`HouseRow` the active profile's connections (`useProfileConnections`), and the
+[Household page](household.md) (`HouseSharing`) renders one `HouseSharingRow` per connection of the active
+profile whose server has `household`, under a "Listening in the house" heading (a note
+when none of them offers it, once every server has answered). A kid household member never
+shares and never sees the house: the server answers `{ sharing: false, listening: []
+}` and refuses its `PUT` (`403 kid_account`). `HouseSharingRow` shows a kid's account
+(`isKidAccount`) the switch off and disabled, with "A kid's account can't share what it
+listens to." in place of the privacy sentence, and a `kid_account` refusal reads the
+same, never the demo account's words. See
 [Profiles](profiles.md#visible-and-background-connections).
 
 ## Testing

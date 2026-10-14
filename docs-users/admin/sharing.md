@@ -14,12 +14,15 @@ where you build them.
 
 The rules are short:
 
-- **A new person sees nothing until you give them something.** There is no
+- **A person you invite sees nothing until you give them something.** There is no
   default library. The [Invite someone](users-and-invites.md#inviting-someone)
   dialog asks what they can listen to, so nobody has to start empty-handed.
 - **Admins see everything.** Shares never restrict an admin account.
 - **Access is the union of a person's shares.** Give someone two shares and
-  they see everything either one covers.
+  they see everything either one covers. A
+  [household member](users-and-invites.md#household-members) also gets what
+  their owner gives them: everything the owner can listen to, or the
+  collections the owner shares with them.
 - All access over the network is **read-only** - a share lets someone listen,
   never change or delete your files.
 

@@ -177,7 +177,9 @@ audiobooks" into "remote file read on your NAS".
 - **Path safety**: `library.SafeJoin` rejects traversal outside the library root;
   every filesystem access derived from user input goes through it. Share scoping
   (`Scope.Allows`, `Scope.VisibleInBrowse`, `pathFilterSQL`) authorizes every
-  content path against the caller's grants (`authorizedPath` in the handlers).
+  content path against the caller's grants (`authorizedPath` in the handlers),
+  a household member's derived from their owner's by the
+  [member rule](../server/auth-and-security.md#household-members).
 - **Scoped CSP**: the admin/connect pages keep a strict same-origin CSP with no
   inline script/style at all; the web player at `/web` gets a per-document CSP
   whose `script-src` carries a sha256 hash of that document's inline scripts

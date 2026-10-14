@@ -312,8 +312,9 @@ cover larger than 5 MB is scaled down to fit within 1600 pixels first.
   their listening sessions on it (see
   [Editing someone's progress](users-and-invites.md#editing-someones-progress)).
 - **Who can see this** - each [share](sharing.md) that includes the book, and
-  through which folder, or "Whole-library access". If no share includes it,
-  only admins can listen to it. **Add to a share** adds the book to a share
+  through which folder, or "Whole-library access". If no share includes it:
+  "No share includes this book yet. Only admins, and the people in an admin's
+  household, can listen to it." **Add to a share** adds the book to a share
   from here.
 
 ### Files on disk

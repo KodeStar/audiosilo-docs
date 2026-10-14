@@ -3,13 +3,13 @@ title: Listening in the house
 description: "See what the other people on your server are listening to, on your Home page and on a book's page: off by default, only between people who both share, and what is and isn't shared."
 ---
 
-**Listening in the house** shows what the other people on your server are listening to: who, which book, which chapter, and whether they're listening right now. It's for a household sharing one AudioSilo server, so you can see that your partner is halfway through the book you just finished, or pick up the one the kids are on.
+**Listening in the house** shows what the other people on your server are listening to: who, which book, which chapter, and whether they're listening right now. It's for a household sharing one AudioSilo server, so you can see that your partner is halfway through the book you just finished, or see which book a housemate started last night.
 
 It is **off by default**, and it only works **both ways**: you see the others only while you share yours too, and they see you only while they share theirs.
 
 ## Turning it on
 
-Open [Settings](settings.md) and go to **Household and sharing**. Each of your servers that supports it has a switch: **Share what I'm listening to with the house**. Under it, the app says exactly what it does:
+Open the [Household page](household.md) (**Sharing settings** beside the Home page's row opens it too). Under **Listening in the house**, each of your servers that supports it has a switch: **Share what I'm listening to with the house**. Under it, the app says exactly what it does:
 
 *"Your current book shows on the Home page of other people on Hearthside who share theirs too. Off by default."*
 
@@ -25,7 +25,7 @@ The switch is per server: if you're signed in to two servers, you choose for eac
 - the book's title and cover;
 - when, and the chapter: **Listening now**, **Paused**, **Earlier today**, **Yesterday** or **Recently**, then the chapter they're on (*"Listening now · Chapter 4"*).
 
-Tap a card to open that book's page. **Sharing settings** beside the title takes you to the switch. When nobody else is listening, the section isn't shown at all.
+Tap a card to open that book's page. **Sharing settings** beside the title opens the [Household page](household.md), where the switch is in its last part, **Listening in the house**. When nobody else is listening, the section isn't shown at all.
 
 ![Listening in the house on the Home page: jamie listening now to The Hound of the Baskervilles and rosa paused on The Call of the Wild, with Sharing settings beside the title](/img/screenshots/web-player/home-house.png)
 
@@ -41,6 +41,7 @@ The house is checked again every minute while the app is open on the Home page o
 - Only their most recent book, and only if they listened to it in the last 24 hours.
 - Only books **you** can open yourself. If someone's latest book is in a library or folder you don't have access to, that person doesn't appear at all, rather than showing an older book.
 - Never a demo account, and never an account the admin has disabled.
+- Never a kids account from someone's [household](household.md): a kid can't turn sharing on, never shows up for others and never sees the house.
 
 ## What is and isn't shared
 

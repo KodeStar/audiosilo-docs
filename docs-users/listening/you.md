@@ -3,15 +3,15 @@ title: You and your listening
 description: "The You destination (the Me tab on a phone): Your listening, with this week, your streak, your yearly goal, the listening calendar and clock, hours per week, your top authors, narrators and series, and the books you finished this year."
 ---
 
-**You** is the part of AudioSilo about you rather than your library: how much you've listened, your year as a story, your [Journal](journal.md), your [settings](settings.md) and your [account](account.md).
+**You** is the part of AudioSilo about you rather than your library: how much you've listened, your year as a story, your [Journal](journal.md), your [settings](settings.md), your [household](household.md) and your [account](account.md).
 
 ## Finding You
 
-**On a phone**, it's the **Me** tab at the bottom of the screen. A row of sections runs under its title: **Stats**, **Year**, **Journal**, **Settings** and **Account**. Swipe the row to see them all, and tap one to switch. The big title says where you are: *Your listening* over Stats, *Year in listening* over Year, and so on.
+**On a phone**, it's the **Me** tab at the bottom of the screen. A row of sections runs under its title: **Stats**, **Year**, **Journal**, **Settings**, **Household** and **Account**. Swipe the row to see them all, and tap one to switch. The big title says where you are: *Your listening* over Stats, *Year in listening* over Year, and so on.
 
-**On a tablet or computer**, it's **You** in the [top bar](browsing.md#getting-around). Its sections are **Stats**, **Year in listening** and **Journal**. Settings is the gear beside your profile button, and your account is in the profile menu.
+**On a tablet or computer**, it's **You** in the [top bar](browsing.md#getting-around). Its sections are **Stats**, **Year in listening** and **Journal**. Settings is the gear beside your profile button, and the [Household page](household.md) and your account are in the profile menu.
 
-In the web player's [quick search](browsing.md#quick-search-in-the-web-player), **Go to** lists **Your listening**, **Year in listening**, **Journal** and **Settings**.
+In the web player's [quick search](browsing.md#quick-search-in-the-web-player), **Go to** lists **Your listening**, **Year in listening**, **Journal**, **Settings** and **Household**.
 
 ## Your listening
 

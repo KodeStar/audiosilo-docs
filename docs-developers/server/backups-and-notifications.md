@@ -156,7 +156,8 @@ key) or `system`. No IP address is stored.
 
 | Area | Actions |
 |---|---|
-| `user` | `create`, `update`, `delete`, `recovery_clear` |
+| `user` | `create`, `update` (details gain `can_add_members` when the request sets it, and `managed_by` (the owner's username, or `null`), `member_kind` and `member_access`, as the account is afterwards, whenever the request carries `managed_by`), `delete` (details, only for someone who had household members: `members_deleted`, a count, and `members_kept`, usernames), `recovery_clear` |
+| `member` | `create` (details: `member`, `kind`, `access`, `sign_in_here`), `update` (`member` plus what changed: `name`, `kind`, `access`, and `collections` as a count), `delete`, `session`, `pair`, `device_revoke` (`member`, `device_id`; also one per member signed out by `DELETE /me/devices/{id}?also_members=1`, with the owner's device id): [household members](api/reference.md#household-members) managed from the player. The actor is the owner (an admin too can be one), and the target the member's username |
 | `invite` | `create`, `rotate`, `revoke` |
 | `library` | `create`, `update`, `reorder`, `folder_override`, `delete` |
 | `book` | `edit`, `bulk_edit`, `enrichment`, `cover_set`, `cover_remove` |
@@ -177,7 +178,7 @@ Deliberately **not** audited: sign-ins and listening (Activity and People >
 Devices have them), scans, rescans and job cancels (Health > Jobs keeps their
 history), a community chapter check (it changes nothing an admin chose; picking
 a book's chapter source is a `book.edit` or `book.bulk_edit`, with
-`chapter_source` in its details), and anything a non-admin does. Backup **downloads** are audited
+`chapter_source` in its details), and anything else a non-admin does (the `member` area is the one exception: an owner managing their household members). Backup **downloads** are audited
 (a `GET`; a `HEAD` sends nothing and isn't), since a backup holds every
 account's hashes.
 

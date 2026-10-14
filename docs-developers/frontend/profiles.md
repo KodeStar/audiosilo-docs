@@ -1,6 +1,6 @@
 ---
 title: Profiles
-description: "Profiles (Phase 8): a person on this device as a group of connections. The profiles store and document, the consistency rules, visible versus background connections, switching and the play rule, Who's listening?, the device-local PIN, links to another person's book, and Settings > Household."
+description: "Profiles: a person on this device as a group of connections. The profiles store and document, the consistency rules, visible and background connections, switching and the play rule, Who's listening?, the device-local PIN, links to another person's book, and the Household page's On this device."
 ---
 
 A **profile is a person on this device**: a device-local group of connections, at
@@ -11,8 +11,12 @@ the server; the profile only says which of the device's connections belong to wh
 so the screens show one person's at a time. Nothing about profiles is sent to a
 server: there is no wire change.
 
+A [household member](household.md) is a real account on the server, unlike a profile
+([the contract](../architecture/cross-repo-contract.md#16-household-members-profiles-and-kids-mode-stay-client-side));
+on the device it is just another connection in a profile of its own.
+
 The user-facing side is
-[Sharing a device with your household](/users/listening/profiles) and
+[Sharing a device (profiles)](/users/listening/profiles) and
 [Kids mode](/users/listening/kids-mode); kids mode's code is
 [its own page](kids-mode.md).
 
@@ -23,7 +27,7 @@ One persisted document, `audiosilo.profiles`, hydrated in `bootstrapPlayback()`:
 ```ts
 interface Profile {
   id: string;              // local, random (a UUID); never sent anywhere
-  name: string;            // defaults to a connection's username; editable here
+  name: string;            // defaults to personName(user): a member's display_name, else the username; editable here
   connectionIds: string[]; // at most one per server
   kids?: { library?: { connectionId: string; libraryId: number }; bedtime: string /* 'HH:MM' */ };
   hasPin?: boolean;        // mirrors the secure store; the hash lives there
@@ -95,6 +99,13 @@ into the active profile, unless that profile already has a connection to this se
 re-pair keeps the person it had, and "Add someone" signing in as a person already on
 the device switches to them.
 
+`placeConnection(id, opts)` takes `PlaceOptions` (`placeInDoc`'s): `newProfile`, and
+for a household member signed in beside the owner
+([`addMemberHere`](household.md#signing-a-member-in-here)) `keepActive` (the new profile is
+added **without** becoming active: the person listening stays, or nobody when the
+active person was only this connection) and `name` (the new profile's name, trimmed;
+empty means `personName(user)`: the member's `display_name`, else the username).
+
 ### Visible and background connections
 
 The rule that keeps one person's state from leaking into another's view without
@@ -104,8 +115,10 @@ breaking their background work:
   (`useProfileConnections`, `profileConnections`, and the cross-connection hooks'
   `useApis()`): Home, the Library and its picker, Search and the command palette, the
   Downloads page, Up next, You (stats, Year, Journal), Settings and the profile menu,
-  [Listening in the house](listening-in-the-house.md), the car snapshot and the
-  widget. Never `useSession((s) => s.connections)` for a list someone sees.
+  the Household page's members, [Listening in the house](listening-in-the-house.md),
+  the car snapshot and the widget. Never `useSession((s) => s.connections)` for a list
+  someone sees, except a list of the device's people (Who's listening? and On this
+  device show every person's servers).
 - **Background work keeps using every connection**: the offline save queue, the
   downloads engine, car bookmarks waiting to be sent, address routing, reachability. A
   switch must never make another person's queued saves unroutable (the queue flush
@@ -152,14 +165,16 @@ someone**. Choosing the active person goes back; choosing someone with a PIN ask
 it; anyone else is switched to. Strings are in the `profiles` i18n namespace.
 
 - **Ways in**: the profile menu (tablet and desktop top bar), the Me tab's "Listening
-  as" card on a phone, Settings > Household and sharing, and leaving kids mode.
+  as" card on a phone, the Household page, and leaving kids mode.
+- **Manage household** at its foot opens the [Household page](household.md)
+  (`openHousehold`), except while someone must be chosen and for a kids profile.
 - **At a cold launch** the auth gate opens it once per launch when there are two or
   more people and `askAtLaunch` is on.
 - **Forced** while someone must be chosen (`mustChoose`): the gate opens it, and it has
   no Close and ignores Android's back. The shell is never mounted for a moment as the
   wrong person: the gate also waits for the profiles to hydrate.
 - `useChooseProfile()` is the one way to choose someone (the picker, the profile menu,
-  the Household pane, the gate below); `openProfiles()` the one way in.
+  the Household page, the gate below); `openProfiles()` the one way in.
 
 ## The PIN (`src/lib/profile-pin.ts`)
 
@@ -174,19 +189,19 @@ anyone with the device and a browser's developer tools can read a session token 
   is 16 random bytes; `hash` is SHA-256 over salt + PIN, then over salt + the previous
   digest, **10,000** digests in all (`PIN_ITERATIONS`), compared in constant time. The
   profile mirrors `hasPin`, so screens know without reading the secure store.
-- **The secure store decides whenever it can be read** (`readPin` first, in
-  `useChooseProfile` and the Household pane's **Set a PIN**): the mirror is written best
+- **The secure store decides** (`readPinMirrored`, which reads it with `readPin` and
+  repairs the profile's `hasPin` mirror to match, in `useChooseProfile` and in the
+  Household page's **Set a PIN**, **Change** and **Remove**): the mirror is written best
   effort with the whole profiles document, which a failed write or a second web tab
-  holding an older document can leave behind. A stored hash the mirror lost still asks
-  (and repairs the mirror); a mirror whose hash is gone (an install restored without its
-  secure store) counts as no PIN and is cleared when someone switches to that person.
-  **When the secure store can't be read, the mirror decides**: a person marked as having
-  a PIN is still asked (the prompt says it couldn't check), a person not marked is
-  switched to without one, and **Set a PIN** goes straight to choosing a new one. **Set a
-  PIN** over a hash the secure store can read asks for the current one first. The pane's
-  **Change** and **Remove** are offered from the mirror alone and check against the
-  secure store, so with the hash gone no PIN matches there ("That PIN doesn't match")
-  until a switch to that person, or removing them, clears the mirror.
+  holding an older document can leave behind. A stored hash the mirror lost still asks;
+  a mirror whose hash is gone (an install restored without its secure store) counts as
+  no PIN. **When the secure store can't be read, nothing acts on the mirror's word**:
+  choosing that person doesn't switch, and **Set a PIN**, **Change** and **Remove**
+  change nothing; each says "Couldn't check the PIN on this device. Try again." **Set a
+  PIN** over a hash the secure store can read asks for the current one first. **Change**
+  and **Remove** are offered from the mirror; with the hash gone they repair it and say
+  "There's no PIN set for &lt;name&gt; on this device." instead of asking for a PIN
+  nothing could match.
 - **SHA-256 in plain JS** (`src/lib/sha256.ts`, synchronous, checked against the
   standard's vectors): 10,000 rounds through `expo-crypto` would be 10,000 asynchronous
   native calls, and on the web `crypto.subtle` exists only in a secure context, so a
@@ -220,28 +235,32 @@ screen:
 The gate only offers the switch; refusing the play itself is the playback store's job
 (`mayActFor`, [above](#switching-and-the-play-rule)).
 
-## Settings > Household and sharing
+## On this device (`DevicePeople`)
 
-`HouseholdPane` (`src/components/profiles/household-pane.tsx`), the App group's
-`household` pane: a card per person (switch, rename, PIN set/change/remove, kids mode
-with `KidsLibraryPicker` and the bedtime, **Remove from this device**), **Who's
-listening?** and **Add someone**, the **Ask who's listening when the app opens**
-switch, and the per-server house sharing switches
-([Listening in the house](listening-in-the-house.md)).
+The [Household page](household.md)'s first part is `DevicePeople`
+(`src/components/household/device-people.tsx`, "On this device"): a card per person
+(`PersonHeader`, Switch, rename, PIN set/change/remove, kids mode with the bedtime and,
+while `useKidsSharedShelf` says `library` (a one-library shelf, or a member's shelf not
+known yet), `KidsLibraryPicker`, **Remove from this device**), **Who's listening?** and **Sign in someone who already has an
+account** (`openAddSomeone`, the connect flow's Add someone, `ADD_SOMEONE_HREF`), and
+the **Ask who's listening when the app opens** switch. A person with a connection whose
+sign-in ended (`needsReconnect`) gets a **Signed out** row with **Sign in again**
+(`SignInAgainRow`: see [Signing a member in again](household.md#signing-a-member-in-again)).
 
 **Remove from this device** (`useRemovePerson`) signs the device out of each of the
 person's servers through the same sign-out as an Account page (their book stops with
 its place saved, queued saves land, the token is revoked, their downloads here go),
 then drops their PIN and profile. It warns first where they have no password on a
-server (they would need a new invite). Removing the person listening leaves nobody
-chosen.
+server (they would need a new invite); for a household member (`managed_by`) it says
+instead that the account stays and who can sign them in here again. Removing the
+person listening leaves nobody chosen.
 
 ## Testing
 
 `src/stores/profiles.test.ts` (parsing, `reconcileProfiles`, placement, `mustChoose`,
 switching), `src/lib/profile-pin.test.ts`, `sha256.test.ts`, `random.test.ts`, and in
 `src/components/profiles/`: `profiles-model.test.ts`, `profiles-screen.test.tsx`,
-`pin-dialog.test.tsx`, `household-pane.test.tsx`; the gate in
+`pin-dialog.test.tsx`; the Household page's own in [Household](household.md#testing); the gate in
 `src/components/shell/auth-gate.test.tsx` and the menu in `profile-menu.test.tsx`; the
 "no screen lists another person's servers" checks beside each screen that reads
 connections.

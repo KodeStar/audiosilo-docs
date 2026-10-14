@@ -26,6 +26,17 @@ Why it's worth doing, especially if you were invited by pairing and never set on
 
 Demo accounts can't have a password, so the card isn't shown for them.
 
+If someone added you to their [household](household.md), the card says so: *"Adam set up this account, so it has no password yet. Set one to sign in on a new device yourself."*
+
+## A kid's account
+
+A kid's account from someone's [household](household.md) has a simpler page, because the grown-up who manages it looks after its devices:
+
+- The **Password** card says *"A kid's account has no password. Adam signs it in on a new device."*, with no button: a kid's account can't have one.
+- There's no **Pair another device** card: the grown-up who manages the account sets up its devices, with **Set up their own device** on their [Household page](household.md#their-devices).
+- There's no **Personal API keys** section.
+- [Listening in the house](in-the-house.md) is off, and its switch on the Household page says *"A kid's account can't share what it listens to."*
+
 ## Pair another device
 
 Sign another phone, tablet or browser in to the same account without a new invite:
@@ -48,6 +59,8 @@ Every device signed in to your account on this server, **this device** first, th
 
 To cut off a phone you've lost or sold, tap **Sign out** on its row and confirm. It loses access straight away and needs to sign in again to reach the server.
 
+If you signed in members of [your household](household.md) on that phone (a kid you added there, say), the confirmation also offers **Also sign out Evie and Ellis on that device**, naming them, ticked. Leave it ticked and they're signed out of that phone too; the message afterwards says how many were. Untick it to sign out only yourself, as for a family tablet that stays at home. Their sign-ins on other devices, including their own phones, aren't touched.
+
 **This device** has no Sign out button in the list. To sign this device out, use [Sign out of the server](#signing-out) at the bottom of the page, which saves your place first.
 
 The list appears on servers new enough to show it.
@@ -61,6 +74,8 @@ The list appears on servers new enough to show it.
 **Sign out of &lt;server&gt;** at the bottom of the page disconnects this device from that server.
 
 If you're about to sign out **without a password set**, the app stops you with a warning - *"Without one you'll need a new invite from your admin to sign back in on this server"* - and offers to **Set a password** right there. Take the offer; it's the whole reason the warning exists. If books from this server are downloaded on the device, the warning also says how many you'd lose.
+
+For a member of someone's household, the warning names who can sign you in again instead: *"Without a password, Adam can sign you in again from their Household page."*, or for a kid's account, *"A kid's account has no password. Adam can sign it in again from their Household page."*, with no **Set a password** button, since a kid's account can't have one.
 
 Signing out **takes this server out of your app** and deletes your downloads from it on this device, along with any of your progress that hasn't synced yet. Anyone else on this device signed in to the same server keeps theirs. (Books, progress, and bookmarks stored on the server are safe - sign back in and they're all there.)
 

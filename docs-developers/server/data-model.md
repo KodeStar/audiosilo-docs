@@ -4,7 +4,7 @@ description: "The SQLite schema behind audiosilo-server: the rebuildable index v
 ---
 
 The schema lives in `internal/store/migrations/` as numbered SQL files
-(`0001_init.sql` … `0043_cast_tokens.sql`), embedded into the binary and
+(`0001_init.sql` … `0044_household_members.sql`), embedded into the binary and
 applied by `store.Open` at startup. This page documents the **resulting current
 schema**, noting which migration added what.
 
@@ -123,7 +123,7 @@ joined book should inherit it from its discs).
 
 ### Accounts & credentials
 
-**`users`** *(0001; `is_demo` added in 0005)* - `id`, `username` (UNIQUE),
+**`users`** *(0001; `is_demo` added in 0005; the household member columns in 0044)* - `id`, `username` (UNIQUE),
 `password_hash` (argon2id PHC string; **empty string = password-less account**,
 never a hash of `""`), `role` (`'admin'`/`'user'`), `disabled`, `is_demo`,
 `created_at`, `updated_at`. `is_demo` flags throwaway demo-mode accounts so the
@@ -131,8 +131,24 @@ background reaper deletes by flag, not by username prefix (which could catch a
 real account named `demo_*`). There is deliberately **no `last_login` column** -
 last activity is derived from `MAX(tokens.last_seen)`.
 
+The [household member](api/reference.md#household-members) columns *(0044)*:
+`managed_by` (FK to `users` `ON DELETE SET NULL`, partial index
+`idx_users_managed_by`): the owner who added this member; `member_kind` (`'kid'` /
+`'grownup'`, a column CHECK) and `member_access` (`'all'` / `'collections'`, a
+column CHECK); `can_add_members` (`INTEGER NOT NULL DEFAULT 1`, the admin's
+per-person switch); `display_name` (`TEXT NOT NULL DEFAULT ''`, the name the owner
+typed for a member, kept when they stop being one (Make independent, `keep_members`);
+`''` for anyone never given one, a member the admin assigned included until the owner
+renames them). The first three are **all set or all
+NULL**: SQLite can't add a table CHECK with `ALTER TABLE`, so `auth` (`members.go`)
+writes and clears them together and a row that says otherwise reads as no member
+(`memberScan`). `SET NULL` is only a backstop: `auth.DeleteUser` clears all three
+member columns of each member an admin keeps and deletes the others explicitly, in the
+same transaction and before the owner's row, so no row still points at the owner when
+it goes. Durable: this is the account, not the index.
+
 **`tokens`** *(0001; `auth_code_id` added in 0014; `client_app`,
-`client_version`, `client_platform` and `last_ip` in 0018)* - opaque bearer tokens:
+`client_version`, `client_platform` and `last_ip` in 0018; `created_on_token_id` in 0044)* - opaque bearer tokens:
 `user_id` (FK CASCADE), `token_hash` (UNIQUE - only the SHA-256 hash is
 stored), `kind` (`'session'`/`'pairing'`/`'api'`/`'cast'`: `'api'` a user-minted personal
 API key whose label rides in `device_name`, `'cast'` *(0043)* a
@@ -152,6 +168,15 @@ alone), and `last_ip` the address of its newest request. Both are overwritten by
 and the daily retention job blanks `last_ip` on revoked tokens
 (`auth.ForgetRevokedAddresses`), so an address is kept only while the device is
 signed in.
+`created_on_token_id` *(0044; FK to `tokens` `ON DELETE SET NULL`, partial index
+`idx_tokens_created_on`)* records, for a household member's session made on their
+owner's device (`sign_in_here`, `…/members/{id}/session`), the owner's token it was
+made on. It is never part of a token's validity: it names the members
+[`GET /me/devices`](api/reference.md#get-apiv1medevices) lists under
+`member_sign_ins`, which tokens `DELETE /me/devices/{id}?also_members=1` revokes, and,
+when the admin moves the person into another owner's household, which sessions and
+API keys were made on someone else's device and are revoked with the move
+(`auth.leaveOwners`).
 The admin console lists live session and API-key tokens as **devices** (never pairing
 or cast tokens)
 (`auth.ListDevices`) and can revoke one (`auth.RevokeDevice`).
@@ -1006,6 +1031,7 @@ The migration history so far:
 | 0041 | `series_key` | `books.series_key` and `book_more_series`, a series stored by its key so every series filter is an index seek in any spelling; `idx_books_series_key` replaces `idx_books_series`, and `idx_books_more_series` (0039) goes, since nothing reads it any more. Rows indexed before it are keyed at start by `catalog.KeySeries` (server_state `series_keys`), which also puts every stored `more_series` list through the list rules first |
 | 0042 | `household_sharing` | `household_sharing`, each person's opt-in to Listening in the house (no row = off) |
 | 0043 | `cast_tokens` | `tokens.kind` `'cast'` (cast tokens for a Chromecast receiver) and `cast_grants` (each one's book and parent token), with `idx_cast_grants_parent` and the partial `idx_tokens_cast_expiry` |
+| 0044 | `household_members` | household members: `users.managed_by` (FK `ON DELETE SET NULL`), `users.member_kind` and `users.member_access` (each with a column CHECK), `users.can_add_members` (`DEFAULT 1`) and `users.display_name` (`DEFAULT ''`), with the partial `idx_users_managed_by`; `tokens.created_on_token_id` (FK `ON DELETE SET NULL`) with the partial `idx_tokens_created_on`. No data moves: every existing account reads as no member, allowed to add members |
 
 ## SQLite choices
 

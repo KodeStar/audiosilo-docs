@@ -38,7 +38,21 @@ import http from 'node:http';
 import {cp, mkdir, rm, writeFile} from 'node:fs/promises';
 import path from 'node:path';
 import {chromium} from 'playwright';
-import {CACHE, DAY, MIN, apiClient, isoAgo, pathQuery, sleep, shoot, step, wanted, DESKTOP_CONTEXT} from './lib.mjs';
+import {
+  CACHE,
+  DAY,
+  MIN,
+  addHousehold,
+  apiClient,
+  around,
+  isoAgo,
+  pathQuery,
+  sleep,
+  shoot,
+  step,
+  wanted,
+  DESKTOP_CONTEXT,
+} from './lib.mjs';
 
 const ORIGIN = (process.env.AS_ORIGIN || 'http://127.0.0.1:8790').replace(/\/$/, '');
 const ADMIN = `${ORIGIN}/admin`;
@@ -262,6 +276,15 @@ const LISTENERS = [
 ];
 let mayaId = null;
 let heartbeats = null;
+// Maya's household (see README.md): a kid on a collection maya shares with them and a
+// grown-up on everything maya can listen to, so People shows a household block and a
+// member's page has the household access to show.
+const MEMBERS = [
+  {name: 'Ivy', kind: 'kid', access: 'collections'},
+  {name: 'Dan', kind: 'grownup', access: 'all'},
+];
+const MEMBER_COLLECTION = {name: "Ivy's books", books: 2};
+let memberId = null; // the kid's account
 
 const saveProgress = async (l) => {
   const now = Date.now();
@@ -345,7 +368,25 @@ await step('provision listening sessions', async () => {
       saveProgress(l).catch((e) => console.log(`  ! heartbeat for ${l.username}: ${e.message}`));
     }
   }, HEARTBEAT_MS);
-  console.log('  ✓ provisioned (maya, theo and nora listening)');
+
+  // Maya's household last and on its own, only for the shots that show it (each member
+  // spends the server's self-service rate limit): a server without household members,
+  // or a refusal, costs those two shots (people.png, person-member.png) their new
+  // images, never the listening above.
+  if (wanted('admin/people.png', 'admin/person-member.png')) {
+    try {
+      // A collection of maya's for Ivy, then the two members.
+      const household = await addHousehold(api, LISTENERS[0].token, library.id, {
+        collection: MEMBER_COLLECTION.name,
+        items: books.slice(0, MEMBER_COLLECTION.books).map((b) => b.rel_path),
+        members: MEMBERS,
+      });
+      memberId = household.members.find((m) => m.kind === 'kid')?.id ?? null;
+    } catch (e) {
+      console.log(`  ! maya's household not provisioned: ${e.message}`);
+    }
+  }
+  console.log(`  ✓ provisioned (maya, theo and nora listening${memberId ? "; maya's household" : ''})`);
 });
 
 // ── Capture ────────────────────────────────────────────────────────────────
@@ -520,6 +561,8 @@ await step('folder detection', async () => {
 });
 
 await step('people', async () => {
+  // People shows maya's household as a block: without it the shot keeps its previous image.
+  if (wanted('admin/people.png') && !memberId) throw new Error("maya's household was not provisioned");
   await open(page, '/people');
   await shoot(page, 'admin/people.png');
 });
@@ -530,6 +573,13 @@ await step('a person (Access tab)', async () => {
   await open(page, `/people/user/${samId}?tab=access`);
   await page.getByRole('tab', {name: 'Access'}).waitFor({timeout: 8000});
   await shoot(page, 'admin/person.png');
+});
+
+await step("a household member's page (Access tab)", async () => {
+  if (!wanted('admin/person-member.png')) return;
+  if (!memberId) throw new Error('no household member was provisioned');
+  await open(page, `/people/user/${memberId}?tab=access`);
+  await shoot(page, 'admin/person-member.png');
 });
 
 await step('invite someone', async () => {
@@ -978,14 +1028,6 @@ const sqlite = (sql) => {
   const r = spawnSync('sqlite3', [DB], {input: `.timeout 15000\n${sql}\n`, encoding: 'utf8'});
   if (r.status !== 0) throw new Error(`sqlite3: ${(r.stderr || r.error?.message || '').trim()}`);
   return r.stdout;
-};
-// A clip around `boxes` (each from boundingBox()), `pad` CSS pixels wider on every side.
-const around = (boxes, pad = 16) => {
-  const x = Math.max(0, Math.min(...boxes.map((b) => b.x)) - pad);
-  const y = Math.max(0, Math.min(...boxes.map((b) => b.y)) - pad);
-  const right = Math.max(...boxes.map((b) => b.x + b.width)) + pad;
-  const bottom = Math.max(...boxes.map((b) => b.y + b.height)) + pad;
-  return {x, y, width: right - x, height: bottom - y};
 };
 
 await step('support card', async () => {

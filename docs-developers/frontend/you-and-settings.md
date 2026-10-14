@@ -1,6 +1,6 @@
 ---
 title: You, Settings and Account
-description: "The You hub (src/components/you/): its routing and sections, Your listening (the stats model and the react-native-svg charts), Year in listening (the story, the /year root modal, sharing a card as an image under the /web CSP), Settings (src/components/settings/) and a server's Account page (src/components/account/)."
+description: "The You hub (src/components/you/): its routing and sections, Your listening (the stats model and the react-native-svg charts), Year in listening (the story, the /year root modal, sharing a card as an image under the /web CSP), Settings (src/components/settings/), the Household section, and a server's Account page (src/components/account/)."
 ---
 
 The **You** destination is the Me tab's root: one hub over the listener's own data and
@@ -13,23 +13,25 @@ section component, so each can be read (and tested) on its own:
 | Year ("Year in listening") | `YearSection()` | `src/components/you/year/` |
 | Journal | `JournalScreen` (`embedded` on a phone) | `src/components/journal/` ([The Journal](journal.md)) |
 | Settings | `SettingsContent({ section?, onSectionChange?, embedded? })` | `src/components/settings/` |
+| Household (phone only; elsewhere the `/household` page) | `HouseholdPage({ embedded })` | `src/components/household/` ([Household page and members](household.md)) |
 | Account | `AccountSection({ connectionId? })` | `src/components/account/` |
 
 The user-facing behaviour is in the User Guide:
 [You and your listening](/users/listening/you), [Year in listening](/users/listening/year-in-listening),
-[Settings](/users/listening/settings) and [Your account on a server](/users/listening/account).
+[Settings](/users/listening/settings), [Your household](/users/listening/household) and [Your account on a server](/users/listening/account).
 
 ## The hub and its routes
 
-`/you?section=stats|year|journal|settings|account` is `src/app/(app)/(me)/you.tsx`, a
+`/you?section=stats|year|journal|settings|household|account` is `src/app/(app)/(me)/you.tsx`, a
 re-export of `YouHub` (`src/components/you/you-hub.tsx`). The rules are the pure
 `you-model.ts`:
 
 - `parseYouSection(raw)`: absent, unknown or repeated is `stats`.
-- `youSectionsFor(layout)`: a phone's segmented control offers all five sections (it has
-  no top bar); tablet and desktop offer Stats, Year in listening and Journal, because
-  Settings is the top bar's gear and Account the profile menu. A link to `settings` or
-  `account` still renders there, with no segment chosen.
+- `youSectionsFor(layout)`: a phone's segmented control offers all six sections (it has
+  no top bar), Household between Settings and Account; tablet and desktop offer Stats,
+  Year in listening and Journal, because Settings is the top bar's gear and Household
+  and Account the profile menu (Household there is the pushed `/household` page). A link to `settings`, `household` or `account` still
+  renders there, with no segment chosen.
 - `youSectionLabelKey` / `youTitleKey`: "Year" on a phone, "Year in listening" in the
   wide sub-nav; the phone's large title follows the section (`navigation.setOptions`),
   the wide sub-nav keeps "You".
@@ -38,7 +40,7 @@ re-export of `YouHub` (`src/components/you/you-hub.tsx`). The rules are the pure
 
 The section control is `SubNavSections tab="(me)"`, so on tablet and desktop it is
 published into the sub-nav ([Sub-nav sections and actions](overview.md#sub-nav-sections-and-actions)).
-Stats, Year and Account are plain columns with no scroller or gutters of their own: the
+Stats, Year, Household and Account are plain columns with no scroller or gutters of their own: the
 hub puts them in a `TabPageScroll` (`src/components/shell/tab-page-scroll.tsx`: the page
 gutters, the mini player's room and the iOS tab bar's inset). The Journal and Settings
 bring their own scrolling, through the same scroller.
@@ -60,6 +62,10 @@ route `journal.tsx`) also renders the Journal for older links.
 top bar's gear, the profile menu and the palette's Go to. Back returns where the listener
 was, and a cold link lands in Home. On the Settings page already, `openSettings` only
 moves the pane.
+
+**Household** is the same kind of page, `/household`, pushed through `openHousehold()`;
+the phone hub's Household segment renders the same `HouseholdPage`. See
+[The page](household.md#the-page) for every way in.
 
 **The year story** on a phone is the root modal `/year` (`src/app/year.tsx` →
 `YearStoryScreen`), opened with `router.push(yearHref({ year?, connection?, card? }))`
@@ -170,14 +176,17 @@ page's Automatic downloads card and the series page bind the same store values a
 shortcuts, never a second copy. The rules are the pure `settings-model.ts`:
 
 - Groups and panes: **Listening** (`playback`, `sleep`, `downloads` - "Up next and
-  downloads"), **App** (`appearance`, `language`, `household`), **Servers** (`accounts`,
-  `support`). `settingsGroups(supportAvailable)` drops Support where
+  downloads"), **App** (`appearance`, `language`), **Servers** (`accounts`,
+  `support`). The App group (`HOUSEHOLD_LINK_GROUP`) ends with a link to the Household
+  page. `settingsGroups(supportAvailable)` drops Support where
   `isSupportAvailable()` says the build can't link to it (Apple builds). There is no
   Accessibility pane: the app has no setting of its own for it, and the style guide says
-  not to show a switch that does nothing. Household is `HouseholdPane`, the people on
-  this device and the house sharing switches (see [Profiles](profiles.md#settings--household-and-sharing)).
+  not to show a switch that does nothing. Household is a page of its own (see
+  [Household page and members](household.md)).
 - `parseSettingsSection`: `preferences`, absent, unknown or a hidden pane is the first
-  pane (`playback`); `accounts` is the signed-in servers. `sectionParam` writes the bare
+  pane (`playback`); `accounts` is the signed-in servers. `household`
+  (`isHouseholdSection`) is the Household page: the route replaces itself with
+  `/household`. `sectionParam` writes the bare
   page for the first pane.
 - `settingsLayout(width, phone)`: from a **measured** 720 px (`SPLIT_MIN`) a grouped
   section nav beside one pane's card; narrower, every pane stacked under its group's
@@ -210,9 +219,9 @@ Each block is gated on its capability, so an older server shows less, quietly:
 |---|---|---|
 | Identity: name, "@user · role on server", the signed-in device count | `IdentityCard` | the count needs `my_devices` |
 | Password: set or change in a dialog that lifts above the keyboard | `PasswordCard`, `PasswordDialog`, `usePasswordEditor` | hidden for a demo account |
-| Pair another device: `api.pair()`, the QR, a countdown from arrival (`PAIRING_TTL_MS`, the server's 10-minute `pairingTTL`), Copy link on web, Share on native, Make a new code once expired | `PairDeviceCard`, `usePairing` | - |
+| Pair another device: `api.pair()`, the QR, a countdown from arrival (`PAIRING_TTL_MS`, the server's 10-minute `pairingTTL`), Copy link on web, Share on native, Make a new code once expired | `PairDeviceCard`, `usePairing` | hidden for a kid's account (`isKidAccount`) |
 | Signed-in devices: sessions only, this device first (`signedInSessions`), app, platform, last seen (`lastSeen`) | `DevicesSection` | `my_devices` |
-| Personal API keys: list, create in a dialog, reveal once, revoke with a confirm | `ApiKeysSection`, `useApiKeysManager`, `ApiKeyCreatedModal` | `api_keys` (a notice when it's `false`); hidden for a demo account |
+| Personal API keys: list, create in a dialog, reveal once, revoke with a confirm | `ApiKeysSection`, `useApiKeysManager`, `ApiKeyCreatedModal` | `api_keys` (a notice when it's `false`); hidden for a demo or kid's account |
 | Sign out of the server | `useSignOut`, `SignOutConfirm` | - |
 
 **The current device's row never offers a sign-out**: `canRevoke` refuses `current`,
@@ -222,3 +231,24 @@ final position, flush the queued progress) could run. This device signs out only
 counts the downloads that signing out deletes. Another device's row signs out through
 `useRevokeMyDevice` after a confirm, and a toast says what happened (signed out, already
 gone, or the server didn't answer).
+
+**A lost phone takes the household with it.** When another device's row carries
+`member_sign_ins` (capability `household_members`: the listener's household members
+signed in on that device, `memberSignIns` in `account-model.ts`), the confirm adds
+"Also sign out Evie and Ellis on that device" (`joinList` in `src/lib/names.ts`),
+**ticked**, fresh for every device. Confirming sends `useRevokeMyDevice({ id,
+alsoMembers })` (`alsoMembers` false when there are no members), and the toast counts
+`members_signed_out`.
+
+**A household member's account page** (`isKidAccount`, `managerName` in
+`src/lib/account.ts`): the page reads `/me` when it opens (`useFreshUser`), so a
+`member_kind` the owner changed since sign-in shows. A kid's account gets a Password
+card with no button ("A kid's account has no password. Adam signs it in on a new
+device."), no Pair another device card (the server refuses a kid's pairing, `403
+kid_account`; the owner sets up its devices from the Household page) and no API keys
+section; a grown-up member's Password card names who set the account up. The page hands
+the password card and the sign-out confirmation its connection, so they name the owner
+as this device knows them (`useManagerName`). The sign-out warning for a member without a
+password names their owner instead of an invite (`signOutWarning`). (A kid's house
+sharing row, on the Household page, is off and disabled (`house.share.kid`): see
+[Listening in the house](listening-in-the-house.md).)

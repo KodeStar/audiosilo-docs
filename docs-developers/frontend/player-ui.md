@@ -185,7 +185,8 @@ be told from listening.
 One rule for how every screen says the time left in a book (frontend#50: the speed
 is saved per book, so the time left must use it too): **wall-clock** time at **that
 book's** speed - the loaded book's `rate`, else its saved `playback_speed`, else the
-`defaultRate` setting (`bookSpeed`) - naming the speed except at 1× ("22h 27m left
+listener's default speed (`bookSpeed`; `useListenerDefaultRate()`, the `defaultRate`
+setting, or 1× while a kids profile listens) - naming the speed except at 1× ("22h 27m left
 at 1.25×", "22h 27m left"). `timeLeft`, `formatTimeLeft` and `timeLeftLabel` are
 the pure pieces.
 

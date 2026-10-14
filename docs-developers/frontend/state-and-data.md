@@ -20,8 +20,17 @@ themselves.
   `{ history }`); the client methods unwrap them and default `null` to `[]`, so
   callers always get plain arrays. Auth returns `{ token, user }`; `/me`
   returns the user directly.
-- **Error mapping.** Any non-2xx throws `ApiError(status, message)` carrying
-  the server's `{ error }` string. A request that exceeds the client timeout
+- **Error mapping.** Any non-2xx throws `ApiError(status, message, code?)`
+  carrying the server's `{ error }` string and, when the route gives one, its
+  machine-readable `code`. Screens branch on `apiErrorKind(e)`, never on the
+  message (the server's English, never shown): the code when it is one the app
+  knows (the `API_ERROR_CODES` list: `member_limit`, `username_taken`,
+  `invalid_name`, `invalid_collections`, `feature_off`, `not_allowed`,
+  `member_cannot_manage`, `member_disabled`, `kid_account`, `demo_account`), else
+  the status's kind (`too_many` 429, `not_found` 404, `forbidden` 403, `invalid`
+  400, `conflict` 409, `failed` for anything else or no answer), so an older
+  server without codes still reads sensibly. A new code needs a case in the list
+  and its words in the screens, or it reads by its status. A request that exceeds the client timeout
   (default 15 s, enforced with an internal `AbortController`) throws
   `TimeoutError` - deliberately distinct from the `AbortError` a
   caller-supplied signal raises, so the reachability layer can classify a
@@ -348,6 +357,59 @@ connection-scoped like the rest (`qk.queue`, `qk.collections`, `qk.collection`,
 - **Streaks are computed on the device** from `useMyListening`'s `days` (server
   time).
 
+### Household members
+
+Capability `household_members`; the wire is
+[Household members](../server/api/reference.md#household-members), the screens
+[Household page and members](household.md). Types in
+`types.ts`: `MemberKind`, `MemberAccess`, `HouseholdMember` (and its
+`HouseholdMemberCollection`), `HouseholdMembers` (`{ allowed, reason?, max, members
+}`, `HouseholdMembersReason`), `AddMemberBody`, `AddMemberResult` (`{ member,
+session? }`), `UpdateMemberBody`; `User` gains the optional `managed_by` (a `UserRef`),
+`member_kind` (null for a non-member, absent on an older server) and `display_name` (a
+member's name as the owner typed it, absent for everyone else; `personName` names a new
+profile after it), `MyDevice` gains
+`member_sign_ins`, the revoke's answer is `MyDeviceRevoked` (`{ current,
+members_signed_out? }`), and `Capabilities`
+gains `household_members`.
+
+`client.ts`: `members`, `addMember`, `memberSession`, `memberPairing`,
+`memberDevices`, `revokeMemberDevice`, `updateMember`, `deleteMember`, and
+`revokeMyDevice(id, { alsoMembers })`, which adds `?also_members=1` only when asked
+(the old one-argument call is unchanged). `hooks.ts`: `useHouseholdMembers` and
+`useMemberDevices(id)` (queries gated on `useCapability('household_members')` with
+`skipToken`), and the mutations `useAddMember`, `useMemberSession`,
+`useMemberPairing`, `useRevokeMemberDevice`, `useUpdateMember` and `useDeleteMember`
+(each rejects with `CapabilityError` while the flag is off or unknown; never hand that
+to `noteError`). They refresh the members list, that member's devices and, when a
+sign-in on this device appears or goes, the caller's own devices (whose rows carry
+`member_sign_ins`; `invalidateHousehold`); a refused write reads the list again (a 404
+means the member is gone). A member change that touches sharing (`collection_ids`, a
+delete) also reads the collections again, since each lists the people it is shared
+with. `useRevokeMyDevice` takes `{ id, alsoMembers? }` (`RevokeMyDeviceVars`), sending
+`alsoMembers` only to a server with the flag. Every connection removed from the device
+(`removeConnection`, by any path) has the other connections to that server read their
+household again (`onConnectionRemoved` in `hooks.ts`).
+
+- **Refusals are read by kind** ([Error mapping](#the-api-client-srcapiclientts)).
+- **The members list never refuses an ordinary session**: a demo or member caller
+  gets `allowed: false` with a `reason`, and "at the cap" is the client's own
+  `members.length >= max` (`addBlock` in `src/components/household/household-model.ts`).
+- **A session the owner mints for this device** (the add's `session`,
+  `useMemberSession`) **is placed with `addMemberHere`** (`renewMemberHere` for a
+  member already here), never `finishConnect` (see
+  [Signing a member in here](household.md#signing-a-member-in-here)): the owner stays
+  the person listening and the default connection doesn't move. A member pairing their
+  own device from the owner's code goes through `finishConnect` like anyone else.
+- **What a member may open is the server's answer.** The player reads `member_kind`
+  and `managed_by` only to shape its own screens, never to filter: `member_kind`
+  (`isKidAccount`) starts kids mode by default, lets a kid's own profile be in kids
+  mode with no grown-up (`mayTurnOnKids`) and leaves out what a kid's account can't do
+  (the password button, Pair another device, API keys, house sharing); `managed_by`
+  picks the kids shelf's collections ([Kids mode](kids-mode.md)), names the owner
+  (`managerName`) and finds the owner's sign-in that can renew the member's session
+  (`memberOwnerHere`).
+
 ### Bookmarks, notes and the Journal
 
 The server's `annotations` capability, mirrored like the 1b state: every hook takes an
@@ -664,7 +726,9 @@ downloads and saves stay reachable); a new one gets `connectionIdOf(serverId,
 user.id)`, and `setSession` returns the id it used. It merges the addresses it is
 given with what the device knew (the prior connection's, else another user's
 connection to the same server, else the remembered server's; `mergeAddresses`), makes
-it the default, remembers the server durably without its token
+it the default (unless the caller passes `{ makeDefault: false }`, as `addMemberHere`
+does for a household member signed in beside the owner; it still becomes the default
+when there is none, or the current default is no longer signed in), remembers the server durably without its token
 (`src/lib/known-servers.ts`, the connect screen's Reconnect rows, keyed by `server_id`
 with no user). A connection at the same URL **whose `server_id` differs**
 (`staleIdentities`: a rebuilt server mints a new `server_id` at the same address) is a

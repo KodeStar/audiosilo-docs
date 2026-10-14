@@ -57,7 +57,8 @@ else and gate features on the flags.
     "annotations": true,
     "addresses": true,
     "household": true,
-    "cast": true
+    "cast": true,
+    "household_members": true
   },
   "auth": { "methods": ["auth_code", "password"] },
   "demo": { "enabled": false }
@@ -131,6 +132,15 @@ has them and absent on an older one:
 |---|---|---|
 | `household` | always `true` | [Listening in the house](#listening-in-the-house): `GET`/`PUT /me/household` and `GET /household/listening` |
 | `cast` | always `true` | [Casting](#casting): `POST /cast/token`, and a cast token as the `?token=` of a book's [cover](#get-apiv1librariesidcover) and [stream](#get-apiv1librariesidstream) |
+
+Phase 8b-1 adds one more, always `true` on a server that has it and absent on an older one:
+
+| Flag | Value | Gates |
+|---|---|---|
+| `household_members` | always `true` | [Household members](#household-members): `/me/household/members/**`; `managed_by`, `member_kind` and (for a member) `display_name` on the [`user`](#get-apiv1me); `member_sign_ins` and `?also_members=1` on [Your devices](#your-devices) |
+
+The flag never depends on the caller or on the admin's switches: whether **this**
+caller may add a member is the members list's `allowed`.
 
 ### `GET /healthz` · `GET /api/v1/healthz`
 
@@ -328,7 +338,9 @@ on a server with that capability - the same shape as `/auth/exchange`.
 device" from an existing session. No request body. Response `200`: a
 `PairingPayload` (same shape as `/auth/redeem`, without the invite budget fields). Its
 token is single-use and lasts 10 minutes (`pairingTTL`), so the player counts down from
-when the payload arrived.
+when the payload arrived. A kid's account (a [household member](#household-members)
+with `member_kind: "kid"`) gets `403` `code: "kid_account"`: its owner sets up its
+devices with [`POST /me/household/members/{id}/pair`](#post-apiv1mehouseholdmembersidpair).
 
 ### `POST /api/v1/auth/logout`
 
@@ -348,12 +360,28 @@ Content`.
   "has_password": true,
   "has_recovery": false,
   "is_demo": false,
-  "last_seen_at": "2026-07-02T08:15:00Z"
+  "last_seen_at": "2026-07-02T08:15:00Z",
+  "managed_by": null,
+  "member_kind": null
 }
 ```
 
 `last_seen_at` is derived from the account's most recent token activity and is
 omitted when there is none. `role` is `"admin"` or `"user"`.
+
+On a server with `household_members`, `managed_by` and `member_kind` are always
+present: both `null` for an account nobody manages, and for a
+[household member](#household-members) the owner (`{ "id": 4, "username": "sam" }`)
+and `"kid"` or `"grownup"`. A member's `user` also carries `display_name`, the name
+the owner typed for them (`users.display_name`), so the member's own device can greet
+them by it; it is omitted while that is empty (a member the admin assigned, until the
+owner renames them) and for everyone else, a former member included (`api.meUser`).
+The same `user` object rides on every session envelope (exchange, login, demo, a
+member's session). The member's `member_access` is not on it: it is the owner's
+business (the [members list](#get-apiv1mehouseholdmembers)) and the admin's, and the
+player's `managed_by` never carries the owner's own typed name (only the admin's
+does). An older player ignores the new fields; the server limits a kid whatever the
+player shows.
 
 ### `GET /api/v1/addresses`
 
@@ -374,10 +402,21 @@ Either field is omitted when unknown, and the answer is `{}` when neither is.
 
 ## Self-service account
 
-The routes in this section, together with the [API keys](#personal-api-keys)
+The routes in this section but `DELETE /auth/recovery` (which only reduces access, so
+it is neither limited nor refused), together with the [API keys](#personal-api-keys)
 below, share one rate limit (10 attempts per IP per 15 minutes) and are
-**refused for demo accounts** (403), so a throwaway session can't mint a durable
-credential.
+**refused for demo accounts** (403 `code: "demo_account"`, `not available for demo
+accounts`), so a throwaway session can't mint a durable credential. `POST
+/auth/password`, `POST /auth/recovery` and `POST /auth/tokens` (and `POST /auth/pair`)
+are also refused for a kid's account (403 `code: "kid_account"`, `not available for a
+kid's account`): a kid signs in only on devices its owner sets up (the admin can't
+mint or rotate a kid's invite either: `409 kid_account`, below). The refusal comes
+from one route wrapper (`api.notKid`) before the handler runs, and the recovery code,
+API key and pairing writes refuse a kid again inside their own transaction
+(`auth.refuseKid`), so a request that passed the wrapper just before the owner's
+switch to kid committed still gets `403 kid_account` and leaves nothing behind. A
+password racing that switch is refused inside `auth.UpdateUser` instead
+(`ErrKidNoPassword`), and the route answers it as `403 kid_account` too.
 
 ### `POST /api/v1/auth/password`
 
@@ -394,7 +433,7 @@ Response: `204 No Content`.
 |---|---|
 | `400` | password missing or too short |
 | `401` | `current_password` incorrect |
-| `403` | demo account |
+| `403` | demo account (`demo_account`); a kid's account (`kid_account`, also when the owner's switch to kid commits between the wrapper and the write) |
 | `429` | account-mutation limit tripped |
 
 ### `POST /api/v1/auth/recovery`
@@ -416,7 +455,7 @@ Response `201`:
 { "recovery_code": "H7XD-4WQN-C9K2-TMPV" }
 ```
 
-`403` for demo accounts, `429` on the shared limit.
+`403` for demo accounts (`demo_account`) and kids (`kid_account`), `429` on the shared limit.
 
 ### `DELETE /api/v1/auth/recovery`
 
@@ -436,13 +475,15 @@ limit (10 attempts per IP per 15 minutes) and are **refused for demo accounts**
 (403).
 
 **Containment.** A key cannot mint a *fresh durable credential*. A request that
-authenticates with an API key is refused (**403**) on the five credential-minting
+authenticates with an API key is refused (**403**) on the credential-minting
 routes - `POST /auth/tokens` (another key), `POST /auth/recovery`,
-`POST /auth/pair`, `POST /auth/password`, and [`POST /cast/token`](#post-apiv1casttoken)
-(refused although a cast token would die with the key) - so revoking a leaked key cuts off
-everything it could reach: it can't spawn a key, recovery code, pairing token, or
-password that would outlive its own revocation (mirrors GitHub's "a token cannot
-create tokens"). It may still **list and revoke** keys and clear a recovery code,
+`POST /auth/pair`, `POST /auth/password`, [`POST /cast/token`](#post-apiv1casttoken)
+(refused although a cast token would die with the key), and every
+[household member](#household-members) route (adding one with `sign_in_here`,
+`…/{id}/session` and `…/{id}/pair` make a member's session or pairing code) - so
+revoking a leaked key cuts off everything it could reach: it can't spawn a key,
+recovery code, pairing token, password or member session that would outlive its own
+revocation (mirrors GitHub's "a token cannot create tokens"). It may still **list and revoke** keys and clear a recovery code,
 since those only reduce access.
 
 ### `POST /api/v1/auth/tokens`
@@ -474,7 +515,7 @@ authenticates a request.
 | Status | Meaning |
 |---|---|
 | `400` | `label` missing/empty, or longer than 100 characters |
-| `403` | demo account, or the caller is itself authenticating with an API key (containment - a key can't mint another) |
+| `403` | demo account (`demo_account`), a kid's account (`kid_account`), or the caller is itself authenticating with an API key (containment - a key can't mint another) |
 | `429` | account-mutation limit tripped |
 
 ### `GET /api/v1/auth/tokens`
@@ -514,7 +555,9 @@ immediately. Response: `204 No Content`.
 player-side counterpart of the admin's
 [`GET /admin/devices`](#get-apiv1admindevices): a device is a live session token
 (a paired phone, a browser) or a personal API key, never a pairing token. These
-routes only ever touch the caller's own tokens.
+routes only ever touch the caller's own tokens, and, with `?also_members=1`, the
+sessions and API keys of the caller's own household members made on the device being
+signed out.
 
 ### `GET /api/v1/me/devices`
 
@@ -532,7 +575,8 @@ first (`auth.ListDevices` for the caller).
       "created_at": "2026-07-02T11:20:31Z",
       "last_seen": "2026-10-04T19:41:56Z",
       "last_ip": "192.168.1.24",
-      "current": true
+      "current": true,
+      "member_sign_ins": [ { "id": 12, "name": "Evie" } ]
     }
   ]
 }
@@ -545,14 +589,30 @@ reported (`null` until a request names one), `last_seen` the newest
 authenticated request (`null` before any), `last_ip` that request's address, and
 `current` marks the token making this request.
 
+`member_sign_ins` (capability `household_members`; always present there, `[]` when
+none, and always `[]` for a member caller, who has no members) names the caller's own [household members](#household-members) holding a live
+session or API key that was made **on that device**: a member signed in through
+`sign_in_here` or [`…/members/{id}/session`](#post-apiv1mehouseholdmembersidsession)
+records the caller's token as its `tokens.created_on_token_id`. `name` is the member's
+display name, else their username. Someone else's members never appear, and a
+member's own device (paired from its code) is not "made on" any of the caller's.
+
 ### `DELETE /api/v1/me/devices/{id}`
 
 *Session.* Signs one of the caller's devices out by revoking its token. The
 caller's other devices stay signed in.
 
 ```json
-{ "current": false }
+{ "current": false, "members_signed_out": 2 }
 ```
+
+`?also_members=1` (or `true`; any other value is off) also revokes, in the same
+transaction, every session and API key of the caller's own household members whose
+`created_on_token_id` is that device: the "Also sign out Evie and Ellis on that
+device" of a lost phone. `members_signed_out` counts the **members** signed out (not
+their tokens): always present, `0` without the parameter. A member's sign-ins made
+anywhere else stay. The parameter is only meaningful on a server with
+`household_members`; an older server ignores it and answers `{ "current": … }`.
 
 Revoking the **current** device is allowed (unlike the admin route's
 `409 current_device`): the response says `"current": true`, and the token is
@@ -564,11 +624,13 @@ may revoke too, since revoking only reduces access. A token of the caller's that
 has expired but isn't revoked yet can still be revoked (`200`), though the list
 already hides it. Revoking also clears that browser's sign-in key, so a later
 password sign-in from it is announced as a new device. A self-revoke is not
-written to the admin audit log.
+written to the admin audit log, but each member `?also_members=1` signs out is:
+`member.device_revoke` with the caller as actor, the member as target and the
+caller's `device_id`, as on the [member route](#delete-apiv1mehouseholdmembersiddevicesdevice_id).
 
 | Status | Meaning |
 |---|---|
-| `200` | revoked; `current` says whether it was the token making this request |
+| `200` | revoked; `current` says whether it was the token making this request, `members_signed_out` how many members went with it |
 | `400` | `invalid device id` - not a number |
 | `404` | `device not found` - not one of the caller's session or API-key tokens: another user's, unknown, a pairing token or already revoked (never `403`, so the answer doesn't confirm that another user's token exists) |
 
@@ -628,7 +690,8 @@ are untouched.
 
 ### `GET /api/v1/libraries`
 
-*Session.* Libraries the caller can reach through any share (admins see all).
+*Session.* Libraries the caller can reach through any share, or, for a
+[household member](#household-members), through their owner (admins see all).
 
 ```json
 {
@@ -2479,23 +2542,29 @@ Content`, idempotent, with no access check on the path. `403`
 `400 user_ids is required`). Each id must be an existing, enabled, non-demo
 account other than the owner, or someone it is already shared with (a viewer
 disabled since stays valid, so the `shared_with` the owner was shown can be sent
-back); a new disabled, demo or unknown id rejects the whole request. After the
+back); a new disabled, demo or unknown id rejects the whole request. A kid (a
+[household member](#household-members) with `member_kind: "kid"`) is a valid id only
+for their own owner: from anyone else it is `unknown user`, whatever the collection
+held before, so the answer never says who is a kid. A kid caller can't share at all. After the
 demo check and the body, ownership is settled before the ids are checked. Response `200`: `{ "collection": { … } }`, its `shared_with`
 updated (`updated_at` doesn't move).
 
 | Status | Meaning |
 |---|---|
 | `400` | `invalid request` (a malformed body); `user_ids is required`; `unknown user`; `a collection can be shared with at most 50 users` (distinct ids) |
-| `403` | `not available for demo accounts` - the caller is a demo account (checked first, so even for a collection that isn't theirs); or `code: "not_owner"` |
+| `403` | `code: "demo_account"` - the caller is a demo account (checked first, so even for a collection that isn't theirs); `code: "kid_account"` - the caller is a kid; or `code: "not_owner"` |
 | `404` | not the caller's collection and not shared with them |
 
 A viewer sees the owner's username and the items **they** can open; nothing of
-the owner's access is shared with them.
+the owner's access is shared with them, except with the owner's own
+[household member](#household-members) on `access: "collections"`, whose access is
+the books of the collections their owner shares with them.
 
 ### `GET /api/v1/me/share-targets`
 
 *Session.* Capability `collections`. Who the caller can share a collection
-with: every enabled, non-demo account other than the caller, by username.
+with: every enabled, non-demo account other than the caller, by username. A kid
+household member is listed only to their own owner.
 
 ```json
 { "users": [ { "id": 6, "username": "alex" }, { "id": 9, "username": "robin" } ] }
@@ -2505,7 +2574,7 @@ This is the one place a non-admin can list every other account's username (a
 shared collection also shows its owner, and
 [`GET /household/listening`](#get-apiv1householdlistening) the other people who
 share). A demo
-account gets `403` `not available for demo accounts`, so a public demo can't
+account gets `403` `code: "demo_account"`, so a public demo can't
 list the server's usernames.
 
 ### `GET /api/v1/libraries/{id}/rating`
@@ -2720,9 +2789,11 @@ is in the foreground). No admin route reads or changes anyone's choice.
 `PUT` takes the same shape, `{ "share_listening": true }`, and answers `200` as
 `GET`. The field is required and the body is decoded strictly: a missing field
 (`{}`), an unknown field or a wrong type is `400` `invalid request`. A demo account's
-`PUT` is `403` (`not available for demo accounts`; its `GET` works and reads
+`PUT` is `403` (`code: "demo_account"`; its `GET` works and reads
 `false`), so a public demo never shows up in anyone's house. A personal API key may
-set it: it is the person's own credential and mints nothing.
+set it: it is the person's own credential and mints nothing. A kid's account
+(a [household member](#household-members)) gets `403` `code: "kid_account"` on `PUT`,
+and its `GET` always reads `false`, even if it shared before it was made a kid.
 
 ### `GET /api/v1/household/listening`
 
@@ -2751,6 +2822,8 @@ set it: it is the person's own credential and mints nothing.
 ```
 
 - `sharing` - whether the caller shares. While it is `false`, `listening` is `[]`.
+  A kid household member never shares and never sees anyone (`{ "sharing": false,
+  "listening": [] }`), and never appears as a row.
 - `state` - from the age of the person's newest save: `playing` within 60 seconds,
   `paused` within 10 minutes (the session gap), else `recent`.
 - `title` - the index's title, else the path's last segment (a book no longer
@@ -2762,6 +2835,235 @@ set it: it is the person's own credential and mints nothing.
   chapter whose title names nothing (`Track 01`), where `chapter_index` still says
   which.
 - `updated_at` - the newest save, fixed-width millisecond UTC.
+
+## Household members
+
+*Session.* Capability `household_members`. Any non-demo person who isn't a member
+themselves (the **owner**) adds the people they live with from the player, with no
+admin and no invite, while the server's and the admin's switches allow it (below). A
+**member** is a real account (`role: "user"`, made with no password; a grown-up may
+set one later, a kid never holds one) whose `users.managed_by` is the owner, with a
+`member_kind` (`kid` or `grownup`) and a `member_access` (`all` or `collections`) that
+the owner sets (the admin can too, with
+[Assign to someone](#patch-apiv1adminusersid)). What a member may listen to (the owner's
+current access for `all`, the collections the owner shares with them for
+`collections`, plus their own grants), and the one-level rule, are the member rule in
+[Auth & security](../auth-and-security.md#household-members).
+
+**Guards, in the order they answer.** Anonymous is `401` (`requireAuth`). On the
+`{id}` routes the ids are read first: one that isn't a number is `400` (`invalid
+member id`, or `invalid device id` for `{device_id}`). Then `memberOwner`: an API key
+is `403` (`denyAPIKey`; the list too), a demo account `403` `code: "demo_account"`, a
+member caller `403` `code: "member_cannot_manage"`. Create, session and pair then
+spend the account [rate limit](../auth-and-security.md#rate-limiting) (`429`). The body comes next
+(decoded strictly: an unknown field, such as `role`, is `400 invalid request`), and
+last the route's own transaction. Someone else's member (or no such account) is `404`
+`member not found` on every `{id}` route, so the answer never says whether the id
+exists. Only **adding** checks the server's switch, the owner's switch and the cap:
+every other route keeps working on the caller's existing members when the feature is
+off, so an owner can always rename, sign out and delete them.
+
+**The member object** (`HouseholdMember`), as the list, the create and the `PATCH`
+answer it:
+
+```json
+{
+  "id": 12,
+  "name": "Evie",
+  "username": "evie",
+  "kind": "kid",
+  "access": "collections",
+  "created_at": "2026-10-13T10:00:00.000Z",
+  "devices": 1,
+  "collections": [ { "id": 4, "name": "Evie's books", "items": 2 } ],
+  "last_listened_at": "2026-10-13T18:00:00.000Z"
+}
+```
+
+- `name` - the name the owner typed (`users.display_name`), else the username.
+  `username` is derived from it at create (below) and never changes with a rename.
+- `collections` - present (maybe `[]`) for `access: "collections"`, absent for `all`:
+  the owner's collections shared with the member, `items` counting the books the
+  **owner** can reach now.
+- `devices` - how many live sessions and API keys the member has.
+- `last_listened_at` - the member's newest listening, `null` when never.
+- `created_at` - fixed-width millisecond UTC. The list is ordered by it, then `id`.
+
+### `GET /api/v1/me/household/members`
+
+The caller's members and whether they may add one:
+
+```json
+{ "allowed": true, "max": 6, "members": [ { "id": 12, "name": "Evie", "…": "…" } ] }
+```
+
+It never refuses a signed-in session: a demo account and a member get `200` too.
+When the caller may not add, `allowed` is `false` with a `reason`, checked in this
+order (`auth.MayAddMembers`, the one ladder the create runs as well):
+
+| `reason` | Why |
+|---|---|
+| `demo` | a demo account (`members` is `[]`) |
+| `member` | the caller is a household member (`members` is `[]`) |
+| `feature_off` | the server's `household.members_enabled` is off |
+| `not_allowed` | the admin turned off the caller's `can_add_members` |
+
+Anyone else's `members` are listed whatever `allowed` says. `max` is
+`household.max_members`. Being at the cap is **not** a reason: the client compares
+`members.length` with `max`. An API key gets `403`.
+
+### `POST /api/v1/me/household/members`
+
+Adds a member.
+
+| Field | Type | Required | Notes |
+|---|---|---|---|
+| `name` | string | yes | trimmed; 1-40 characters, no control characters |
+| `kind` | string | yes | `"kid"` or `"grownup"` |
+| `access` | string | yes | `"all"` or `"collections"` |
+| `sign_in_here` | bool | no | also sign the member in on the caller's device |
+| `collection_ids` | int[] | no | the caller's own collections to share with the member (below) |
+
+In one transaction (`auth.CreateMember`) it checks the caller may add (demo, member,
+the server's switch, the caller's switch, then the cap, in that order), then the name,
+`kind` and `access`, derives the username, inserts the account (`role` user, an empty
+password hash, the three member columns and the typed name), shares the collections
+and, with `sign_in_here`, issues a session. Anything refused changes nothing.
+
+- **The username** is the name lowercased and folded to ASCII letters and digits
+  (`Évie Marie` -> `evie-marie`, any run of anything else one `-`, at most 24 bytes,
+  `member` when nothing is left); if that is taken, that with the owner's username
+  folded the same way (`evie-sam`; skipped when nothing is left of it), then the first
+  part numbered (`evie-2`, `evie-3` and on) with no cap: the first one no account has,
+  ignoring case, read once inside the transaction, so there is always a free one and
+  the create never answers `username_taken`.
+- **`sign_in_here`** issues a session for the member named as the caller's own
+  device, recording the caller's token as its `created_on_token_id` (so the caller's
+  [device list](#get-apiv1medevices) names the member under `member_sign_ins`, and
+  [`?also_members=1`](#delete-apiv1medevicesid) can sign it out).
+- **`collection_ids`** is the full set of the caller's collections to share with the
+  member (any `access`; the player sends it for `collections`), applied inside the same
+  transaction (`catalog.SetMemberCollections` through `auth.ShareFunc`). An id that
+  isn't one of the caller's own collections is `400 invalid_collections` and nothing is
+  applied. The [50-person share cap](#put-apiv1mecollectionsidshares) applies. `[]` is
+  allowed: a kid can start with nothing.
+
+Response `201`:
+
+```json
+{ "member": { "id": 12, "name": "Evie", "…": "…" },
+  "session": { "token": "…", "user": { "id": 12, "username": "evie", "managed_by": { "id": 4, "username": "sam" }, "member_kind": "kid", "display_name": "Evie", "…": "…" }, "server_id": "…" } }
+```
+
+`session` (only with `sign_in_here`) is the usual session envelope, the same shape as
+[`/auth/exchange`](#post-apiv1authexchange)'s, `addresses` included where the server
+has them. A kid is meant to be signed in here; a grown-up is usually shown a pairing
+code instead.
+
+| Status | Meaning |
+|---|---|
+| `201` | `{ member, session? }` |
+| `400` | `invalid request` (malformed, an unknown field, a wrong type); `code: "invalid_name"`; a `kind` or `access` that isn't one of the two values (no `code`); `code: "invalid_collections"`; `a collection can be shared with at most 50 users` (a chosen collection already has 50 other people) |
+| `401` | anonymous |
+| `403` | API key; `demo_account`; `member_cannot_manage`; `code: "feature_off"`; `code: "not_allowed"` |
+| `409` | `code: "member_limit"` (at `max`) |
+| `429` | the self-service rate limit |
+
+### `POST /api/v1/me/household/members/{id}/session`
+
+No body. Signs the member in on the caller's device, as `sign_in_here` does (named as
+the caller's device, `created_on_token_id` the caller's token). Response `201`: the
+session envelope. Used for "They'll also use this phone" and "Sign in on this
+device".
+
+| Status | Meaning |
+|---|---|
+| `201` | the member's session envelope |
+| `400` | `invalid member id` |
+| `403` | API key; `demo_account`; `member_cannot_manage` |
+| `404` | not the caller's member |
+| `409` | `code: "member_disabled"`: the admin disabled the member's account, so no token of theirs would work (nothing is issued) |
+| `429` | the self-service rate limit |
+
+### `POST /api/v1/me/household/members/{id}/pair`
+
+No body. Response `200`: a `PairingPayload` for the **member's** own device, built like
+[`/auth/pair`](#post-apiv1authpair)'s, with the same lifetime (`pairingTTL`, 10
+minutes): single use, unlinked. It works for a kid (who can't call `/auth/pair`
+itself). A device that signs in with it is the member's own: it records no
+`created_on_token_id`.
+
+| Status | Meaning |
+|---|---|
+| `200` | the pairing payload |
+| `400` | `invalid member id` |
+| `403` | API key; `demo_account`; `member_cannot_manage` |
+| `404` | not the caller's member |
+| `409` | `code: "member_disabled"` (as above; no pairing token is minted) |
+| `429` | the self-service rate limit |
+
+### `GET /api/v1/me/household/members/{id}/devices`
+
+Response `200`: a bare array of the member's live sessions and API keys, each shaped as
+a [`GET /me/devices`](#get-apiv1medevices) row with `current` always `false` and no
+`member_sign_ins` (`[]` when none). `400` `invalid member id`, `403` as above, `404`
+not the caller's member. No rate limit.
+
+### `DELETE /api/v1/me/household/members/{id}/devices/{device_id}`
+
+Signs the member out of one device, in one transaction. `204`; `404` `member not
+found` for anyone but the caller's member, then `404` `device not found` for a device
+that isn't the member's live session or API key; `400` for an id that isn't a number;
+`403` as above. Audited `member.device_revoke` (`device_id`).
+
+### `PATCH /api/v1/me/household/members/{id}`
+
+Changes a member: any of `name`, `kind`, `access` and `collection_ids` (the same rules
+as the create; `collection_ids` replaces the full set: a share on each listed
+collection, and the member removed from every other collection the caller owns;
+other people's collections are never touched). `{}` is `400` `nothing to change`.
+Response `200`: the member object. Everything runs in one transaction
+(`auth.UpdateMember`), with the ownership settled before the input is checked, so a
+refused field changes nothing.
+
+Switching a grown-up to a **kid** clears, in the same transaction, everything a kid
+can't hold ([Kids](../auth-and-security.md#household-members)); their signed-in
+sessions stay signed in. Switching kind leaves `access` as it was.
+
+| Status | Meaning |
+|---|---|
+| `200` | the member, as it is now |
+| `400` | `invalid member id`, `invalid request`, `nothing to change`, `invalid_name`, a bad `kind` or `access`, `invalid_collections`, `a collection can be shared with at most 50 users` |
+| `403` | API key; `demo_account`; `member_cannot_manage` |
+| `404` | not the caller's member |
+
+### `DELETE /api/v1/me/household/members/{id}`
+
+Deletes the member's account and all of its state (the schema's cascade, as
+[`DELETE /admin/users/{id}`](#delete-apiv1adminusersid)). `204`; `400` `invalid
+member id`, `403` as above, `404` not the caller's member.
+
+### What a member may and may not do
+
+| Route | A grown-up member | A kid |
+|---|---|---|
+| browse, search, play, progress, bookmarks, notes, Up next, ratings, a cast token | yes, within their access | yes, within their access |
+| their own collections (`POST /me/collections`, items) | yes | yes |
+| `PUT /me/collections/{id}/shares` | yes | `403 kid_account` |
+| `POST /auth/password`, `POST /auth/tokens`, `POST /auth/pair`, `POST /auth/recovery` | yes | `403 kid_account` |
+| `PUT /me/household` | yes | `403 kid_account` (`GET` reads `false`) |
+| `/me/household/members/**` | `403 member_cannot_manage` (the list: `200`, `reason: "member"`) | the same |
+| `/admin/**` | `403` (role `user`) | `403` (role `user`) |
+
+Where the `kid_account` refusals are enforced, including a request that races the
+owner's switch to kid: [Kids](../auth-and-security.md#household-members).
+
+A kid's password sign-in fails like any password-less account's (`401` on
+[`/auth/login`](#post-apiv1authlogin)). A member the admin disabled can't sign in at
+all, like any disabled account, and their owner's session and pair routes answer
+`409 member_disabled`. **Audit:** each route that changes something writes a
+`member.*` event with the owner as actor and the member as target (see
+[Audit log](../backups-and-notifications.md#audit-log)).
 
 ## Casting
 
@@ -2827,11 +3129,44 @@ All accounts, wrapped as `{ "users": [ … ] }`:
       "has_password": false,
       "has_recovery": true,
       "is_demo": false,
-      "last_seen_at": "2026-07-02T08:15:00Z"
+      "last_seen_at": "2026-07-02T08:15:00Z",
+      "managed_by": null,
+      "member_kind": null,
+      "member_access": null,
+      "can_add_members": true,
+      "members_count": 2,
+      "display_name": ""
+    },
+    {
+      "id": 12,
+      "username": "evie",
+      "role": "user",
+      "…": "…",
+      "managed_by": { "id": 4, "username": "sam", "display_name": "" },
+      "member_kind": "kid",
+      "member_access": "collections",
+      "can_add_members": true,
+      "members_count": 0,
+      "display_name": "Evie"
     }
   ]
 }
 ```
+
+Each user is the [`/me`](#get-apiv1me) object plus the household member fields
+(capability `household_members`) only the admin sees (`api.adminUser`):
+
+| Field | Meaning |
+|---|---|
+| `managed_by` | `{ id, username, display_name }` of the owner for a [household member](#household-members), else `null`. The owner's `display_name` is their own typed name (`""` unless they were once a member themselves): the console names an owner by it, else the username. The player's `managed_by` never carries it |
+| `member_kind` | `"kid"` or `"grownup"` for a member, else `null` |
+| `member_access` | `"all"` or `"collections"` for a member, else `null` |
+| `can_add_members` | the admin's per-person switch (default `true`) |
+| `members_count` | how many members this person has |
+| `display_name` | the name the owner typed for a member, always present (`""` for everyone else; kept when the member is made independent, though `/me` then leaves it off) |
+
+The same fields are on `GET /admin/users/{id}`'s `user`, on the `PATCH` answer and on
+the create's.
 
 ### `POST /api/v1/admin/users`
 
@@ -2843,10 +3178,11 @@ Create an account.
 | `password` | string | admins only | optional for non-admins (pairing-only accounts); required for `role: "admin"` |
 | `role` | string | yes | `"admin"` or `"user"` |
 
-Response `201`: the created user object. `409` `username already taken`
-(`code: "username_taken"`) on a duplicate username; `400` with a specific message
-on a validation failure - `admin_needs_password`, `password_too_short` (see
-[error codes](index.md#error-envelope-and-status-conventions)).
+Response `201`: the created account as the admin's user object above (re-read after
+the insert, so its stored defaults, `can_add_members` among them, are there). `409`
+`username already taken` (`code: "username_taken"`) on a duplicate username; `400`
+with a specific message on a validation failure - `admin_needs_password`,
+`password_too_short` (see [error codes](index.md#error-envelope-and-status-conventions)).
 
 ### `GET /api/v1/admin/users/{id}`
 
@@ -2855,7 +3191,7 @@ One account plus everything the console needs to manage it:
 ```json
 {
   "user": { "id": 4, "username": "sam", "role": "user", "disabled": false,
-            "has_password": false, "has_recovery": true, "is_demo": false },
+            "has_password": false, "has_recovery": true, "is_demo": false, "…": "…" },
   "accessible_libraries": [ { "id": 1, "name": "Audiobooks", "root": "/srv/audiobooks",
                               "default_view": "hybrid", "sort_order": 0 } ],
   "shares": [ { "id": 2, "name": "Fantasy shelf", "description": "", "read_only": true,
@@ -2873,9 +3209,29 @@ One account plus everything the console needs to manage it:
       "redeemed_at": "2026-07-02T11:20:31Z",
       "created_at": "2026-07-02T10:00:00Z"
     }
-  ]
+  ],
+  "members": [ { "id": 12, "name": "Evie", "username": "evie", "kind": "kid", "access": "collections",
+                 "created_at": "2026-10-13T10:00:00.000Z", "devices": 1, "disabled": false } ],
+  "member_collections": []
 }
 ```
+
+- `members` - this person's own household members, oldest first (`[]` for none):
+  each the owner's list's member (`id`, `name`, `username`, `kind`, `access`,
+  `created_at`, `devices`; without `collections` and `last_listened_at`) plus
+  `disabled`.
+- `member_collections` - for a member on `access: "collections"`, the owner's
+  collections shared with them (`{ id, name, items }`, `items` counted by the owner's
+  current access), else `[]`.
+- `accessible_libraries` includes a member's **derived** access (the owner's libraries
+  for `all`, the libraries their shared collections reach for `collections`), read
+  through the same member rule as the member's own requests, while `shares` stays the
+  admin's direct grants only.
+- For a household member only, `owner_libraries` (the libraries the owner reaches
+  now, as the member's `all` access would follow them) and `owner_is_admin` (an admin
+  owner gives every library), so the console's Access tab needs no second detail.
+  `[]` and `false` for a member whose owner derives nothing (bad data). Absent for
+  everyone else.
 
 `shares` marks whole-library grants with `whole_library_id` (see
 [`GET /admin/shares`](#get-apiv1adminshares)). `auth_codes` is **invite metadata only** (never the code itself, and never
@@ -2890,16 +3246,47 @@ Edit an account in place - any subset of:
 | Body field | Type | Notes |
 |---|---|---|
 | `role` | string | `"admin"` \| `"user"` |
-| `password` | string | `""` clears the password (non-admins only) |
+| `password` | string | `""` clears the password (non-admins only); a non-empty one is refused when the request leaves the account a kid (beside Make independent, or an assign as a grown-up, it is fine) |
 | `disabled` | bool | reversible lockout; disabling revokes nothing but blocks all token use |
+| `can_add_members` | bool | the per-person switch: may this person add household members |
+| `managed_by` | int \| `null` | an owner's id: "Assign to someone", with `member_kind` and `member_access` beside it. `null`: "Make independent" |
+| `member_kind` | string | `"kid"` \| `"grownup"`; only with a `managed_by` id |
+| `member_access` | string | `"all"` \| `"collections"`; only with a `managed_by` id |
 
-Response `200`: the updated user object.
+The body is decoded strictly, and the whole of it is **one transaction**
+(`auth.UpdateUser`): every field is checked against the account before anything is
+written, so a refused field changes nothing, not even the fields before it. The
+checks run in this order, each against the account as the ones before it leave it:
+the password, the household, the role, the disabled state, then `can_add_members`.
+So a password and "make admin" work in one request on a password-less account, and
+"Make independent" and "make admin" work in one request on a member (with a
+`password` beside them when the member has none, as every member starts and a kid
+always is, or it is `400 admin_needs_password`).
+
+- **Assign to someone** (`managed_by: <id>`) makes the account a member of that owner
+  with the given kind and access. Its own grants stay (the member rule is a union).
+  Neither the owner's cap nor their switch applies: the admin decides. Moving a member
+  to another owner works the same way.
+- **Joining another owner's household** (an assign to an owner the account doesn't
+  already have: a first assign, or a move) signs the person out of what someone else
+  set up for them ([Moving between households](../auth-and-security.md#household-members)).
+- **Assigning as a kid** clears what a kid can't hold, as the owner's
+  [switch to kid](#patch-apiv1mehouseholdmembersid) does. A non-empty `password`
+  beside it is `400 kid_no_password`; `""` is fine.
+- **Make independent** (`managed_by: null`) clears the three member columns: the
+  account keeps only its direct grants, and `display_name`. What it signs out is in
+  [Moving between households](../auth-and-security.md#household-members). A no-op on
+  an account that isn't a member.
+
+Response `200`: the updated user object (with the fields above).
 
 | Status | Meaning |
 |---|---|
-| `400` | admin must keep a password (`admin_needs_password`) / password too short (`password_too_short`) |
-| `404` | user not found |
-| `409` | would demote/disable the last enabled admin (`last_admin`) |
+| `400` | admin must keep a password (`admin_needs_password`) / password too short (`password_too_short`); `managed_by` that isn't a positive id or `null`; `code: "member_fields_required"` (`managed_by: <id>` without both `member_kind` and `member_access`, or either of those without it); a `kind` or `access` that isn't one of the two values; `code: "kid_no_password"` (a non-empty `password` when the request leaves the account a kid: a kid with no household change in it, or an assign as a kid) |
+| `404` | user not found (the account, or the owner named by `managed_by`) |
+| `409` | would demote/disable the last enabled admin (`last_admin`); `code: "member_not_admin"` (making a member an admin, or assigning an admin as a member); `code: "owner_is_member"` (the owner is a member); `code: "owner_is_demo"` (the owner is a demo account); `code: "member_is_demo"` (the account being assigned is a demo account); `code: "self_managed"` (`managed_by` is the account itself); `code: "has_members"` (the account has members of its own) |
+
+What `user.update` records: [Audit log](../backups-and-notifications.md#audit-log).
 
 ### `DELETE /api/v1/admin/users/{id}`
 
@@ -2908,9 +3295,21 @@ codes, progress, bookmarks, notes, history, listening sessions and daily
 listening totals, share grants) via cascade; files on
 disk are untouched. Response: `204 No Content`.
 
+The person's [household members](#household-members) are deleted with them, in the
+same transaction, except those named in `keep_members`, as comma-separated ids
+(`?keep_members=3,7`), the parameter repeated (`?keep_members=3&keep_members=7`), or
+both: every value counts. Each kept member becomes an ordinary account (the three
+member columns cleared, so only their direct grants remain), as with Make
+independent ([audited](../backups-and-notifications.md#audit-log) on `user.delete`).
+
+The checks answer in this order: an id that isn't a number, then a malformed
+`keep_members` (`400 invalid_keep_members`), then a self-delete (`400
+cannot_delete_self`), then the account (`404`), then, inside the transaction, the
+last-admin rule and the keep list.
+
 | Status | Meaning |
 |---|---|
-| `400` | self-delete refused (disable your own account instead) - `cannot_delete_self` |
+| `400` | self-delete refused (disable your own account instead) - `cannot_delete_self`; `code: "invalid_keep_members"` (a `keep_members` entry that isn't a positive id, or isn't one of this person's members: nothing is deleted) |
 | `404` | user not found |
 | `409` | last enabled admin - `last_admin` |
 
@@ -2944,6 +3343,12 @@ shows the server's numbers rather than re-deriving them.
 The code rides in the `invite_url` **fragment**, so it never reaches server
 logs; the connect page auto-redeems it client-side.
 
+`404` if the user doesn't exist. `409 code: "kid_account"` (`not available for a kid's
+account`) for a kid household member: a kid holds no invite, only their owner sets up
+their devices (from the player). The refusal is read inside the minting transaction
+(`auth.refuseKid`), so an owner's switch to kid can't slip between the check and the
+invite.
+
 ### `DELETE /api/v1/admin/users/{id}/recovery`
 
 *Legacy - being retired alongside `POST /auth/recovery` once old clients age
@@ -2959,7 +3364,9 @@ transaction it retires the user's **other** still-redeemable invites, so the
 rotated invite is their one active invite - rotating an expired (or used-up)
 invite revives it as that one. No body. Response `200`: the same shape as
 creation (`auth_code`, `invite_url`, `max_uses`, `expires_at`). `404` if the
-invite doesn't exist.
+invite doesn't exist. `409 code: "kid_account"` when the invite's account is a kid's
+(a used-up or expired invite kept as history from before the switch to kid can't be
+revived into it).
 
 ### `DELETE /api/v1/admin/authcodes/{id}`
 
@@ -5691,6 +6098,13 @@ and `AUDIOSILO_*` variable each one is, and whether it needs a restart (see
     "max_users_default": 200,
     "idle_ttl": "24h"
   },
+  "household": {
+    "members_enabled": true,
+    "max_members": 6,
+    "max_members_default": 6,
+    "max_members_min": 1,
+    "max_members_max": 50
+  },
   "backups": {
     "schedule": "daily:03:00",
     "keep": 7,
@@ -5722,6 +6136,9 @@ effect. Lists are never `null`.
 | `metadata.available` | read-only: a metadata service exists (`base_url` was a valid absolute `http(s)` URL when the server started), so `enabled` can be turned on. The live `metadata` [capability](#get-apiv1server) is `enabled && available` |
 | `demo.max_users` | `null` = the default cap (`max_users_default`); `0` = no limit |
 | `demo.idle_ttl` | `""` = 24h |
+| `household.members_enabled` | people may add [household members](#household-members) from the player (default `true`); off refuses new ones only (`403 feature_off`) |
+| `household.max_members` | members per person, 1-50 (default 6); outside the range is `400 invalid_setting` (`field: "household.max_members"`) |
+| `household.max_members_default`, `household.max_members_min`, `household.max_members_max` | read-only facts: the cap's default (6) and range (1 to 50), so the console names the range and checks a value before saving |
 | `backups.schedule` | `""` (off), `daily:HH:MM` or `weekly:DAY:HH:MM` in the server's time zone; stored in canonical form (see [Backups](#admin-backups)) |
 | `backups.keep` | how many scheduled backups are kept, 1-365 (manual and before-restore backups stay until deleted) |
 | `backups.dir` | read-only: changed only in `config.yaml` or `AUDIOSILO_BACKUP_DIR`; `""` = `<data>/backups` (`GET /admin/backups`' `status.dir` has the folder in use) |
@@ -5758,7 +6175,7 @@ written so a form can show it under the field:
 |---|---|---|
 | `200` | | saved; body is the settings envelope |
 | `400` | | not a JSON object of sections |
-| `400` | `invalid_setting` | a value of the wrong type, one its normalizer refuses, a config that doesn't validate (e.g. `tls_mode: "autocert"` without `tls_hosts`, demo on without a library), a `demo.library` that names no library (`field: "demo.library"`), a change that would leave `config.yaml` invalid on its own because a value it needs comes only from an `AUDIOSILO_*` variable (the file keeps its own values for those; e.g. `demo.enabled: true` while the library is only in `AUDIOSILO_DEMO_LIBRARY`; the `error` names the variable), a `general.session_days` outside 30-3650, or turning `metadata.enabled` on when no metadata service exists (`available` is false; `field: "metadata.enabled"` - set a valid `metadata.base_url` and restart first). Also JSON `null` for a setting that can't be unset (anything but `demo.max_users`, whose `null` means the default), refused with "enter a value" |
+| `400` | `invalid_setting` | a value of the wrong type, one its normalizer refuses, a config that doesn't validate (e.g. `tls_mode: "autocert"` without `tls_hosts`, demo on without a library), a `demo.library` that names no library (`field: "demo.library"`), a change that would leave `config.yaml` invalid on its own because a value it needs comes only from an `AUDIOSILO_*` variable (the file keeps its own values for those; e.g. `demo.enabled: true` while the library is only in `AUDIOSILO_DEMO_LIBRARY`; the `error` names the variable), a `general.session_days` outside 30-3650, a `household.max_members` outside 1-50, or turning `metadata.enabled` on when no metadata service exists (`available` is false; `field: "metadata.enabled"` - set a valid `metadata.base_url` and restart first). Also JSON `null` for a setting that can't be unset (anything but `demo.max_users`, whose `null` means the default), refused with "enter a value" |
 | `400` | `unknown_setting` | a section or name that isn't a setting (including the read-only extras such as `metadata.available`) |
 | `400` | `setting_read_only` | `players.web_dir` or `backups.dir` |
 | `409` | `setting_locked` | a setting an environment variable or the launcher sets (see `locked`) |
@@ -6259,7 +6676,7 @@ is in [Audit log](../backups-and-notifications.md#audit-log).
 | Query param | Type | Default | Notes |
 |---|---|---|---|
 | `actor_id` | int | - | one account's actions |
-| `area` | string | - | an action's first part (`user`, `invite`, `library`, `book`, `share`, `device`, `progress`, `issue`, `settings`, `backup`, `notify`); `[a-z_]{1,32}` |
+| `area` | string | - | an action's first part (`user`, `member`, `invite`, `library`, `book`, `share`, `device`, `progress`, `issue`, `settings`, `backup`, `notify`, `import`); `[a-z_]{1,32}` |
 | `q` | string | - | the target or the actor's name contains it, ignoring case; at most 200 characters |
 | `before` | int | - | the previous page's `next_before` |
 | `limit` | int | `50` | at most 200 (a larger one is cut to 200; zero or less means 50) |
@@ -6281,7 +6698,7 @@ is in [Audit log](../backups-and-notifications.md#audit-log).
 
 | Field | Meaning |
 |---|---|
-| `actor_id`, `actor_name` | the admin, copied when it happened (kept when the account is renamed or deleted); `null` and `""` for the server itself |
+| `actor_id`, `actor_name` | the admin (for a `member.*` event, the owner who did it in the player), copied when it happened (kept when the account is renamed or deleted); `null` and `""` for the server itself |
 | `via` | `session` (the console or another signed-in app), `api` (a personal API key) or `system` |
 | `action` | `<area>.<verb>`, like `user.update`; a console words the ones it knows and shows the code for the rest |
 | `target` | what it was done to, as a person reads it: a username, a library's name, `<library>: <path>` for a book, a backup's file name, a destination's name; `""` when the action has none |

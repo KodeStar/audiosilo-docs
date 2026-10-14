@@ -271,7 +271,8 @@ version.
 **Server:** `handleServerInfo` advertises `admin_ui`, `web_player`, `upload`,
 `transcode`, `websocket`, `api_keys`, `export`, `metadata`, `meta_bundle`,
 `browse_people`, `cover_sizes`, `next_book` and the flags added after it (the
-latest, `household` and `cast`, gate [§15](#15-listening-in-the-house-and-casting)), plus the
+latest: `household` and `cast`, which gate [§15](#15-listening-in-the-house-and-casting),
+and `household_members`, which gates [§16](#16-household-members-profiles-and-kids-mode-stay-client-side)), plus the
 server version
 (`api.Version`, stamped from the release tag via ldflags). `transcode` reflects
 ffmpeg availability; `web_player` reflects whether `/web` is populated; `api_keys`
@@ -553,6 +554,57 @@ address the receiver's URLs use: [Chromecast](../frontend/chromecast.md).
 **A change requires:** the household rules stay in the server's catalog (a player
 must never filter someone in); any widening of where a cast token is accepted is a
 security-critical change with allowed and denied tests on the server.
+
+## 16. Household members (profiles and kids mode stay client-side)
+
+**Profiles and kids mode are client-side; household members are server-side.** A
+profile (a person on this device), its PIN and its kids mode never reach a server
+([Profiles](../frontend/profiles.md)). A **household member** (capability
+`household_members`) is a real account an owner creates from the player, and
+everything about what it may do is the server's.
+
+**The wire** (all additive; shapes in
+[the reference](../server/api/reference.md#household-members)):
+
+- `/me/household/members` (list, create) and `/{id}` (`PATCH`, `DELETE`),
+  `/{id}/session`, `/{id}/pair`, `/{id}/devices` and `/{id}/devices/{device_id}`;
+  mirrored in `types.ts`, `client.ts` and `hooks.ts`
+  ([State and data](../frontend/state-and-data.md#household-members)).
+- The `user` object (`/me` and every session envelope) gains `managed_by` (`{ id,
+  username }` or `null`) and `member_kind` (`"kid"`, `"grownup"` or `null`), and, for a
+  member only, `display_name` (the name the owner typed; the player names a new profile
+  for the account after it). The member's access is not on it: the player can't see it
+  and never needs it.
+- `/me/devices` rows gain `member_sign_ins`, and `DELETE /me/devices/{id}?also_members=1`
+  answers `{ current, members_signed_out }`.
+- The admin console's fields and settings stay inside the server repo
+  ([Admin: users](../server/api/reference.md#get-apiv1adminusers)).
+
+**Server rules** (each with an allowed and a denied test;
+[Auth & security](../server/auth-and-security.md#household-members)): what a member may
+listen to (the owner's access, or the collections the owner shares, plus their own
+grants), one level and never an admin, the kid refusals (`403 kid_account`), kids out
+of share targets and Listening in the house, someone else's member `404` like no such account, a
+disabled member's session and pairing code `409 member_disabled`.
+
+**Client rules** ([Household page and members](../frontend/household.md)): a member
+the owner signs in on this device from the Household page is placed by `addMemberHere`
+(the owner stays the person listening, the default connection doesn't move); `member_kind === 'kid'` turns
+kids mode on by default and allows it with no grown-up on the device; `managed_by`
+picks the kids shelf's collections. The player never filters a kid's access itself.
+Refusals are read by `code`, never by the server's message
+([Error mapping](../frontend/state-and-data.md#the-api-client-srcapiclientts)), so a new
+`code` needs a case in `API_ERROR_CODES` and its words in the player, or it reads by
+its status.
+
+**Old clients:** a shipped player ignores the new `user` fields and sees a member as
+an ordinary account; a kid signed in to an old player is still limited by the
+server. An older server has no flag, so the player offers no "Add someone to your
+household" and profiles and kids mode work as before.
+
+**A change requires:** any change to the member rule is security-critical (allowed and
+denied tests on the server); a new member field is the usual wire change in both
+repos, gated on the flag.
 
 ## The wire-change checklist
 

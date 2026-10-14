@@ -32,7 +32,7 @@ An optional desktop app for the "librarian" side of things: setting up and conne
 
 ## What makes it a good home for your audiobooks
 
-- **Safe to expose to the internet.** No default passwords - credentials are generated on first run or chosen by you in a setup wizard. Accounts are invite-only, log-in attempts are rate limited with brute-force lockout, and HTTPS is on by default. See [Remote access](./getting-started/remote-access.md).
+- **Safe to expose to the internet.** No default passwords - credentials are generated on first run or chosen by you in a setup wizard. Nobody can sign themselves up (accounts come from an admin's invite, or from someone with an account adding a member of their household), log-in attempts are rate limited with brute-force lockout, and HTTPS is on by default. See [Remote access](./getting-started/remote-access.md).
 - **Fast, even with huge libraries.** Search and browsing are built on an indexed database that stays quick at thousands of books, and your library is browsable immediately after adding it - no long import step.
 - **Your files stay ordinary files.** AudioSilo never converts, moves or rewrites your audiobooks. The folder on disk is the source of truth; the server's database is just a rebuildable index. Rename or move a book and your listening progress follows it. See [Organizing your library](./getting-started/organizing-your-library.md).
 

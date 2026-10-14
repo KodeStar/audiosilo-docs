@@ -61,7 +61,9 @@ src/components/     ui/ (the Stacks primitives - Text, Icon, Button, Card, Input
                     settings/ (the Settings panes), account/ (a server's Account
                     page), connect/ (onboarding), home/, search/, upnext/, downloads/
                     (the Downloads tab), house/ (Listening in the house), profiles/
-                    (Who's listening?, the PIN dialog, Settings > Household), kids/
+                    (Who's listening?, the PIN dialog, the kids library picker,
+                    removing a person), household/ (the Household page: On this
+                    device, members, the add sheet, member cards), kids/
                     (kids mode), brand/
 src/car/            CarPlay + Android Auto, the JS side: the car snapshot (car-model),
                     car covers, the car controller, the AudiosiloCar headless task
@@ -145,14 +147,15 @@ URLs, so every URL below is the same as before the groups existed.
 | `/library/[libraryId]?connection=…&path=…` | `(app)/(home,library,search,offline,me)/library/[libraryId].tsx` | Library browse, root and nested folders alike - a two-line re-export of `src/components/library/browse-screen.tsx`. Content routes are **flat**: the connection id and the library-relative folder `path` ride as query params, never as nested route segments (an in-app `router.push` cannot resolve a route nested under a dynamic layout segment - it lands on the group's first child; rationale and helpers in `src/lib/paths.ts`). Each content screen scopes itself to its own `?connection=` with `<ContentScope>`, and the content hooks read that scope via `useScopedCid()`. |
 | `/book/[libraryId]?connection=…&path=…&tab=…` | `(app)/(home,library,search,offline,me)/book/[libraryId].tsx` → `src/components/book/book-page.tsx` | The book page, opened on `tab` when that tab exists (`parseBookTab`): see [The book page](book-page.md). |
 | `/downloads` | `(app)/(offline)/downloads.tsx` → `src/components/downloads/downloads-screen.tsx` | The Downloads page: storage per server, the automatic-download rules (including keep-ahead), in-progress and failed downloads, and the books ready offline by server ([Offline](offline.md#the-downloads-page)). The group is `(offline)`, not `(downloads)`, on purpose - see [cold deep links](#the-shell-tabs-and-navigation). |
-| `/you?section=stats\|year\|journal\|settings\|account` | `(app)/(me)/you.tsx` → `src/components/you/you-hub.tsx` | The root of the **Me** tab, the **You** hub: Your listening, Year in listening, the Journal, Settings and Account on a phone (a scrolling segmented control); Stats, Year in listening and Journal in the sub-nav on tablet/desktop (Settings is the gear, Account the profile menu). `section` and the Journal's `tab` are its `rootParams`. See [You, Settings and Account](you-and-settings.md#the-hub-and-its-routes). |
+| `/you?section=stats\|year\|journal\|settings\|household\|account` | `(app)/(me)/you.tsx` → `src/components/you/you-hub.tsx` | The root of the **Me** tab, the **You** hub: Your listening, Year in listening, the Journal, Settings, Household and Account on a phone (a scrolling segmented control); Stats, Year in listening and Journal in the sub-nav on tablet/desktop (Settings is the gear, Household and Account the profile menu). `section` and the Journal's `tab` are its `rootParams`. See [You, Settings and Account](you-and-settings.md#the-hub-and-its-routes). |
 | `/settings?section=…` | `(app)/(home,library,search,offline,me)/settings.tsx` → `src/components/settings/settings-content.tsx` | Every app setting, each in one pane (Listening, App, Servers groups), pushed on the current tab by the gear, the profile menu and the palette (`openSettings`). The phone hub's Settings section renders the same `SettingsContent`. See [Settings](you-and-settings.md#settings-srccomponentssettings). |
+| `/household` | `(app)/(home,library,search,offline,me)/household.tsx` → `src/components/household/household-page.tsx` | The Household page (`HouseholdPage`): the people on this device, the household members the person listening manages, and Listening in the house. Pushed on the current tab by `openHousehold`; the phone hub's Household segment renders the same page. See [Household page and members](household.md#the-page). |
 | `/journal?tab=diary\|bookmarks\|notes` | `(app)/(home,library,search,offline,me)/journal.tsx` → `src/components/journal/journal-screen.tsx` | The Journal, on every server of the person listening, for links made before the hub; entry points open the hub's Journal section (`openJournal`). See [The Journal](journal.md). |
 | `/account?connection=…` | `(app)/(home,library,search,offline,me)/account.tsx` → `src/components/account/account-section.tsx` | One server's account (`AccountSection`): password, pairing another device, the At home and away card, signed-in devices, personal API keys and sign-out, each gated on its capability, with a breadcrumb back to Settings or the You section it was opened from (`accountParentKey`; from anywhere else the chrome's own Back). Reached from Settings' Accounts and devices pane and the profile menu; the phone hub's Account section renders the same body for the default server. See [Account](you-and-settings.md#account-srccomponentsaccount). |
 | `/player` | `src/app/player.tsx` | The full player ([Player UI](player-ui.md#the-full-player)), presented as a full-screen modal above the tabs on every form factor (opened from the mini player, the iOS accessory player, the docked player bar, or a phone's Listen button). Accepts `libraryId`/`path` (+ optional `position`/`track`) params and gates playback start on the chapters query settling. |
 | `/finished` | `src/app/finished.tsx` | The end-credits screen shown when a book finishes (or from the player's menu). A root modal sibling of the player; `connection`/`libraryId`/`path` params, plus `auto=1` when the book ended (or was marked finished) rather than being opened early. Renders `EndCredits`: the year shelf, listening stats, a rating, and the book `resolveUpNext` says plays next. See [The end of a book](end-of-book.md#ending-a-book). |
 | `/year?year=…&connection=…&card=…` | `src/app/year.tsx` → `src/components/you/year/year-story-screen.tsx` | The phone's full-screen Year in listening story, a root modal like the player (`yearHref`): close, pull down, Escape on the web. See [Year in listening](you-and-settings.md#year-in-listening-srccomponentsyouyear). |
-| `/connect` layout | `src/app/connect/_layout.tsx` | Onboarding stack (a spinner while the session hydrates). It deliberately does not decide redirects: on a link arriving while the app runs, the child's params only reach the layout after the child mounts. |
+| `/connect` layout | `src/app/connect/_layout.tsx` | Onboarding stack, and the one gate between the flow and kids mode: a spinner until both the session and the profiles are read; while a kids profile listens (unless `kidsConnectAllowed()`) it runs none of the flow and `dismissTo`s `/kids` (see [Kids mode](kids-mode.md#the-route-and-its-guard)). It does not decide the signed-in bounce: on a link arriving while the app runs, the child's params only reach the layout after the child mounts, so `connect/index.tsx` decides it. |
 | `/connect` | `connect/index.tsx` → `src/components/connect/connect-start.tsx` | The first onboarding step: the server address with its probe ("Found &lt;name&gt;", Sign in, Try the demo), Scan a QR code (native) or a pasted pairing link (web), a pairing `token` arriving by deep link or QR `web_url` exchanged at once, and one-tap **Reconnect** rows for remembered servers the person listening isn't signed in to (`knownToOffer` over `useProfileConnections`; for Add someone, `?profile=new`, every remembered server) (`src/lib/known-servers.ts`). An **authenticated** user is bounced home from here, from this route's own params, unless they are adding another server (`?add=1`, a pairing `?token=`, or a sign-in mid-flow via `pendingServerUrl`); decided when it opens and when it is back on top. Onboarding returns to the app through `leaveOnboarding()` (`src/components/shell/leave-onboarding.tsx`, which calls `router.dismissTo('/')`; `<LeaveOnboarding />` when the decision is made at render time), never `replace` or `<Redirect href="/">` (also a replace): `(app)` already sits under `/connect` as the root stack's anchor, so a replace stacked a second `(app)`. See [Connect and home/away addresses](connect-and-addresses.md#connect-and-onboarding). |
 | `/connect/scan` | `connect/scan.tsx` | Camera QR scanner (`expo-camera`) for the pairing QR. |
 | `/connect/sign-in` | `connect/sign-in.tsx` → `src/components/connect/sign-in-step.tsx` | Invite code **or** username and password against the pending server (`pendingServerUrl`, read once). Reached from the first step, a **Reconnect** row, or the dead-token `ReconnectBanner` (`src/components/layout/reconnect-banner.tsx`, which passes `reconnect=<cid>` and the address in use now). The code field redeems invite codes (legacy recovery codes still redeem server-side, but the app no longer mints them). Every sign-in ends in `finishConnect`. |
@@ -221,7 +224,7 @@ still jumps to the Search tab instead.
   it), then **Go to** (`buildGoToItems`: `TOP_BAR_TABS`, already filtered to what
   this browser can do, but You, which goes by its sections instead - Your listening and
   Year in listening (`openYou`), the Journal (`openJournal`) - then Settings
-  (`openSettings`)). Empty groups are dropped. A series opens `openSeries` with its
+  (`openSettings`) and Household (`openHousehold`)). Empty groups are dropped. A series opens `openSeries` with its
   local name, a person their page, a character the book it is from. The module also owns the arrow-key clamp (`moveSelection`, no
   wrap), the recent list (`addRecent`), the shortcut test (`isPaletteShortcut`)
   and the key hint (`shortcutHint`: ⌘K on Apple platforms, Ctrl K elsewhere).
@@ -331,7 +334,7 @@ button (the person listening's initial, plus their name on desktop) and a `Dropd
 server of the person listening with its state - the pure `serverStatus()`
 (`src/api/reachability.ts`), where "needs signing in again" (the reconnect flag)
 wins over "offline", else "Signed in as &lt;user&gt;" - each opening that server's account screen; **Add a server**
-(`/connect?add=1`; hidden, as in Settings' accounts pane, when the served web player is signed in only to its own server, `onlyOwnServer(servedOrigin(), ...)`); **Journal** (`openJournal()`); **Settings** (`openSettings()`); **Account on &lt;default server&gt;**; and a light/dark
+(`/connect?add=1`; hidden, as in Settings' accounts pane, when the served web player is signed in only to its own server, `onlyOwnServer(servedOrigin(), ...)`); **Journal** (`openJournal()`); **Household** (`openHousehold()`); **Settings** (`openSettings()`); **Account on &lt;default server&gt;**; and a light/dark
 appearance switch (`useTheme().toggleScheme()`, which the palette's action uses
 too). A phone keeps all of this in the Me tab's You hub. The same `serverStatus()` drives
 the top bar's server line (the default server's name, or "Offline" / "Needs
@@ -370,7 +373,7 @@ drop Downloads where the platform can't store downloads (`engine.supported`; on
 web, a secure context with the Cache API).
 
 - **The pushing tab owns a detail page.** The shared detail routes (book,
-  folder, account, settings, journal, favourites, browse, series, author, narrator, collection)
+  folder, account, settings, household, journal, favourites, browse, series, author, narrator, collection)
   live once in the array group, and
   expo-router resolves a push against the current segments, so a book pushed
   from Search stays in Search and back returns there.
@@ -396,8 +399,8 @@ web, a secure context with the Cache API).
 - **A tab root opened from elsewhere is popped to, not pushed.** `openYou` /
   `openJournal` (never `pushInShell`, which would push a second hub) close a root
   modal, pop the Me stack to its root (`popTabToRoot`) and then navigate;
-  Settings, a page of the array group, is pushed on the current tab instead
-  (`openSettings`). See [You, Settings and Account](you-and-settings.md#the-hub-and-its-routes).
+  Settings and Household, pages of the array group, are pushed on the current tab
+  instead (`openSettings`, `openHousehold`). See [You, Settings and Account](you-and-settings.md#the-hub-and-its-routes).
 - **Web: `<TabSlot />` stays at a fixed ancestor path at every width**; only
   the sibling chrome toggles. Moving it between wrappers remounts every screen on
   a resize and jumps the URL to another tab.

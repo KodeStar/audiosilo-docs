@@ -62,7 +62,9 @@ Instead of an address you can use:
 - **Scan a QR code** (in the iOS and Android apps) - the pairing QR from the server's connect page or from another of your devices.
 - **I have a pairing link** (in the web player) - paste a pairing link your admin or another of your devices sent you (it looks like `https://books.example.com/web/connect?token=…`) and tap **Connect**.
 
-Either signs you in straight away, with nothing to type.
+Either signs you in straight away, with nothing to type. A pairing link from an invite keeps working as long as the invite does, for as many devices as it has uses left; one made on another device (or a household member's code) works once, for 10 minutes. One that has expired or been used up says *"This pairing link has expired or was already used. Ask for a new one, or enter your invite code on the sign-in screen."* After a lot of tries in a row, the server asks you to wait: *"Too many tries. Wait a few minutes and try again."*
+
+On a device in [kids mode](kids-mode.md#links-in-kids-mode), a link or QR code isn't opened at all: the app asks for a grown-up to open it.
 
 ### Invite codes
 
@@ -73,7 +75,7 @@ An **invite code** comes from your admin, like `9M4K-P2TQ-WX7V-3RHD`. Type it on
 If you've set a password for your account (see [Your account on a server](account.md#password)), you can also sign in the classic way, on the **Username and password** tab.
 
 :::note
-Many AudioSilo accounts don't have a password at all - that's normal. Accounts are usually created by invite, and codes and QR pairing cover everyday sign-in. A password is optional and yours to set whenever you like - and it's the most dependable way to sign back in later (see below).
+Many AudioSilo accounts don't have a password at all - that's normal. Accounts are usually created by invite (or by someone in your [household](household.md) who added you), and codes and QR pairing cover everyday sign-in. A password is optional and yours to set whenever you like - and it's the most dependable way to sign back in later (see below).
 :::
 
 ### "Your library is ready."

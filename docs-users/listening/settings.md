@@ -10,7 +10,7 @@ description: "Every setting in the player, each in one place: playback, the slee
 The settings come in three groups:
 
 - **Listening**: [Playback](#playback), [Sleep](#sleep) and [Up next and downloads](#up-next-and-downloads).
-- **App**: [Appearance](#appearance), [Language](#language) and [Household and sharing](#household-and-sharing).
+- **App**: [Appearance](#appearance) and [Language](#language), then a link to the [Household](#household) page.
 - **Servers**: [Accounts and devices](#accounts-and-devices) and, on the web and Android, [Support AudioSilo](#support-audiosilo).
 
 On a wide screen the groups and their sections run down the left and one section shows beside them; pick another to switch. On a phone, or a narrow window, every section is on one page, one under the other under its group's name.
@@ -25,7 +25,7 @@ Everything here except your servers is **kept per device**, so your phone and yo
 |---|---|---|
 | **Skip back** | The jump of the player's back button | 5-120 s (default 15 s) |
 | **Skip forward** | The jump of the forward button | 5-120 s (default 30 s) |
-| **Default speed** | Starting speed for books you haven't played yet (each book then remembers its own) | 0.5×-2× |
+| **Default speed** | Starting speed for books you haven't played yet (each book then remembers its own). [Kids mode](kids-mode.md) ignores it: a story the child hasn't played yet starts at 1× | 0.5×-2× |
 | **Auto-rewind on resume** | How far playback backs up after a pause, so you regain the thread | Off-30 s (default 5 s) |
 | **Chapter length (unchaptered)** | Size of the virtual chapters created for long books with no chapter markers | 5-60 min (default 30 min) |
 | **Smart speed** | Shortens the silences between words ([where it works](full-player.md#smart-speed-and-voice-boost)) | On / Off (default **Off**) |
@@ -85,23 +85,13 @@ On a tablet or computer, the profile menu also has a quick switch between light 
 
 The app speaks **English, Español, Français, Deutsch, Português, and Italiano**. Pick one, or leave it on **System** to follow your device's language.
 
-## Household and sharing
+## Household
 
-![Household and sharing on a computer: a kids profile's card with its Library and Bedtime, Ask who's listening when the app opens, and Share what I'm listening to with the house](/img/screenshots/web-player/settings-household.png)
-
-Everyone who listens on this device, each with their own servers, place in every book, queue and stats (see [Sharing a device with your household](profiles.md)). Each person has a card:
-
-- **Switch** to them, or *Listening now* for the person listening;
-- **Name** - rename them on this device (their account keeps its username);
-- **PIN** - **Set a PIN**, or **Change** and **Remove** it (see [A PIN for a person](profiles.md#a-pin-for-a-person));
-- **Kids mode** - turns this person's app into [kids mode](kids-mode.md), with the **Library** it shows and the **Bedtime** (from then until 6:00 AM, playing starts a 20-minute sleep timer);
-- **Remove from this device** - signs them out of their servers here and deletes their downloads here. Their place in every book stays on the server. It doesn't ask for their PIN: it's the way out of a forgotten one.
-
-Under the people: **Who's listening?** and **Add someone**; **Ask who's listening when the app opens** (with two or more people on the device); and **Listening in the house**, with a **Share what I'm listening to with the house** switch for each server of the person listening that supports it (see [Listening in the house](in-the-house.md#turning-it-on)).
+The App group ends with **Household**, which opens the [Household page](household.md): the people on this device with their names, PINs and kids mode, the people you've added to your household on your server, and Listening in the house.
 
 ## Accounts and devices
 
-The servers you're signed in to on this device (with more than one person on the device, only the person listening's: see [Sharing a device with your household](profiles.md)), each with your username and its address. Tap one to open your [account on that server](account.md): your password, pairing another device, your signed-in devices, API keys and signing out. **Add a server** connects another one - your home screen, search, and favourites then combine everything (see [Connecting and signing in](connecting.md)). The web player doesn't offer it, since it only reaches the server it's served from. The bin button beside a server removes your sign-in to it from this device.
+The servers you're signed in to on this device (with more than one person on the device, only the person listening's: see [Sharing a device (profiles)](profiles.md)), each with your username and its address. Tap one to open your [account on that server](account.md): your password, pairing another device, your signed-in devices, API keys and signing out. **Add a server** connects another one - your home screen, search, and favourites then combine everything (see [Connecting and signing in](connecting.md)). The web player doesn't offer it, since it only reaches the server it's served from. The bin button beside a server removes your sign-in to it from this device.
 
 :::warning
 Removing a server also **deletes the books you downloaded from it on this device**, plus any of your listening progress that hasn't synced back yet. The app asks first if you have downloads from it on the device. Your other servers, and anyone else on this device signed in to the same server, are unaffected, and nothing on the server itself is touched. See [Offline downloads](offline-downloads.md).
@@ -116,5 +106,5 @@ On the web and Android, **Support AudioSilo** links to GitHub Sponsors - AudioSi
 Settings shows the version of the app you're running, e.g. *AudioSilo v1.1.1*: under the sections on a wide screen, at the foot of the page on a phone. Handy to mention if you ever report a problem (see [Troubleshooting](../troubleshooting.md)). The version of a server is at the foot of your [account page](account.md) for it.
 
 :::note
-Things an admin manages - creating accounts, invites, what libraries you can see - aren't in Settings; they live in the server's admin console. See [People and invites](../admin/users-and-invites.md).
+Things an admin manages - invites, what libraries you can see - aren't in Settings; they live in the server's admin console. See [People and invites](../admin/users-and-invites.md). You can make accounts for the kids and grown-ups you live with yourself, on the [Household page](household.md#household-members).
 :::
