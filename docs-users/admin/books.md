@@ -132,6 +132,23 @@ book's number after a `#` and the series apart by `;`, for example
 `Discworld: City Watch #1; Omnibus`. Matching with community metadata fills it in
 for a book in several series.
 
+#### Numbering an omnibus or box set
+
+A book that holds several books of a series (an omnibus of books 1 to 3, say)
+takes a range as its **Series number**: type `1-3`. Spaces around the dash, or an
+en dash (`1–3`), are fine too. The first number must be above 0, the second above
+the first, and the two at most 100 apart. In **Other series**, write the range
+after the `#` the same way: `Box Sets #2-4`.
+
+The console then shows the book as `#1-3`, and on the
+[Series](#series) page the book fills every place from 1 to 3, so they aren't
+listed as missing. In the players, an up-to-date app shows it as `#1-3` and
+places it on books 1 to 3 of the series page, and the next book after it is
+book 4, not book 2. An older app shows it as book 1. Matching with community
+metadata writes a range too, when the community catalogue lists the book that
+way. A file whose series tag holds a range (a `series-part` of `1-3`) is read as
+one, but a range in a file or folder name isn't, so type it in here.
+
 Click any value to edit it in place. Enter keeps the change (in
 **Description**, where Enter starts a new line, use Ctrl+Enter or ⌘+Enter),
 Escape cancels.
@@ -483,7 +500,9 @@ Adventure", "The Expanse, Book 4" and "Discworld #4". A title where the number
 runs straight on from the name ("Catch-22"), reads as a range ("Dork Diaries
 1-12") or is followed by more words ("Jack Reacher 61 Hours") gives no number. The book's
 page shows that number as coming from its file tags (or its folders, when the
-title came from them), and your own **Series number** always wins.
+title came from them), and your own **Series number** always wins. For an
+omnibus, type the range into **Series number** yourself (see
+[Numbering an omnibus or box set](#numbering-an-omnibus-or-box-set)).
 
 Each spine takes its colours from the book's cover, and a longer book stands
 taller. AudioSilo reads the cover colours in the background after it indexes
@@ -523,6 +542,11 @@ Worlds" is All These Worlds) and a part in brackets at the end, so it counts
 towards "You have ..." instead of being listed as missing. A matched book the catalogue says is a
 different book from any in the series (a companion story filed under the
 series name, for example) sits at the end of the shelf and doesn't fill a gap.
+
+An omnibus fills every place it covers: a book numbered `1-3`, or matched to a
+community entry such as "Books 1-3", counts towards "You have 1-3 ..." and its
+spine is labelled `1-3`. When the community series lists only the omnibus and
+not the books inside it, the omnibus is one place of its own ("missing 1-3").
 
 While a card is still looking its books up, it shows just the number of books
 ("5 books") with no gaps, so it never flashes a gap that then disappears. A

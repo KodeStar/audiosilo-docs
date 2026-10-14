@@ -185,6 +185,8 @@ A series page is the series laid out like a bookcase:
 
 The full bookcase, with ghost spines and reading orders, comes from the [community metadata database](../community/meta-site.md) and needs your server to have the lookup switched on. Without it, the page shows the books you have in that series, with a dashed **Book 3** placeholder wherever your copies skip a number.
 
+An omnibus your server numbers as a range (books **1-3**, say; see [Numbering an omnibus](../admin/books.md#numbering-an-omnibus-or-box-set)) shows as `#1-3` and fills the places of the books inside it, so they don't show as missing. An older app shows it as book 1 instead.
+
 ## A book's page
 
 Tap a book anywhere to open its page: where you are in it, **Resume** (or **Start listening**), the download, Up next, favourite and collection buttons, About and other versions, and tabs for the chapters, your bookmarks, history and notes, the book's files, and the community's recaps, characters and series. It has a page of its own: [A book's page](book-page.md).
