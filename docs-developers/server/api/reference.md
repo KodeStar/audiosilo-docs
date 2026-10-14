@@ -745,7 +745,8 @@ with indexed-book metadata attached where available. Offset-paginated.
 ```
 
 `next_offset` is present when more entries remain. The book annotation fields
-(`is_book`, `title`, `author`, `series`, `series_index`, `duration`) are
+(`is_book`, `title`, `author`, `series`, `series_index`, `series_index_end` for a
+range as on a book, `duration`) are
 omitted for plain directories/files; `override` (`"book"` or `"collection"`)
 appears when an explicit folder-detection override is set (admin concern - see
 [Scanner](../scanner.md)). `split_discs: true` marks a folder whose audio is
@@ -2287,7 +2288,8 @@ first, enriched from the index where a book exists at the path:
 ```
 
 A favourite may also be a plain navigation folder - then `is_book` is `false`
-and the book fields are empty (render it by its path leaf).
+and the book fields are empty (render it by its path leaf). A book at a range
+position also carries `series_index_end`, as on a [book](#get-apiv1librariesidbooks).
 
 ### `POST /api/v1/libraries/{id}/favourites` · `DELETE /api/v1/libraries/{id}/favourites`
 
