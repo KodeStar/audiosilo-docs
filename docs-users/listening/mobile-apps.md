@@ -29,6 +29,8 @@ Signing the app in is usually a scan, not typing - all the routes are covered in
 - **Tap a link** - an invite link, or an `audiosilo://` link, opens the app and signs it in automatically.
 - **Type it in** - server address plus an invite code or username and password, if you prefer.
 
+A server on its default **self-signed certificate** is one the apps can't trust, so at home they connect to it over plain HTTP, which the server offers to devices on your home network ([plain HTTP at home](../getting-started/remote-access.md#plain-http-at-home-how-the-phone-apps-connect)). A QR code or invite link handles that by itself; when typing the address, put `http://` in front (`http://192.168.1.20:8080`). Away from home, the apps need the server to have a certificate they trust - see [Remote access](../getting-started/remote-access.md).
+
 ## Getting around the app
 
 On a phone, the app uses your phone's own tab bar along the bottom of the screen, with five tabs: **Home**, **Library**, **Search**, **Downloads** and **Me** ([You](you.md): your listening, your year, the Journal, Settings, your household and your account). Each tab keeps its place while you visit the others. See [Getting around](browsing.md#getting-around) for what each one holds.

@@ -80,7 +80,7 @@ By default the server speaks HTTPS with a self-signed certificate, so browse to:
 https://your-server:8080
 ```
 
-Your browser will warn about the certificate the first time - that's expected with the default setup; accept it to continue. [Remote access](./remote-access.md) covers getting a proper certificate or running behind a reverse proxy.
+Your browser will warn about the certificate the first time - that's expected with the default setup; accept it to continue. The phone apps can't accept that warning, so at home they connect over plain HTTP instead, which the server offers to devices on your home network ([plain HTTP at home](./remote-access.md#plain-http-at-home-how-the-phone-apps-connect), including a note on Docker Desktop). [Remote access](./remote-access.md) covers getting a proper certificate or running behind a reverse proxy.
 
 - **`/`** - the connect page, where a listener enters an auth code to pair a device.
 - **`/admin`** - the admin console. Log in as `admin` with the printed password.

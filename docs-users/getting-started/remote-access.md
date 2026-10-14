@@ -1,13 +1,13 @@
 ---
 title: Remote access
-description: "Listening away from home: TLS modes (self-signed, Let's Encrypt, reverse proxy), ports and firewalls, and why AudioSilo is safe to expose to the internet."
+description: "Listening away from home: TLS modes (self-signed, Let's Encrypt, reverse proxy), plain HTTP for the phone apps at home, ports and firewalls, and why AudioSilo is safe to expose to the internet."
 ---
 
 ## Remote access
 
 AudioSilo is designed from the ground up to be reachable from outside your house - that's the point of self-hosting audiobooks. This page covers the three ways to serve HTTPS, the networking basics, and what the server does to keep an internet-facing setup safe.
 
-All of these are settings in `config.yaml` in the server's data directory (edit and restart), and most can also be set with an environment variable - handy under Docker. Once the server runs, you can also change them in the admin console under [Server > Settings](../admin/server.md#settings): the HTTPS mode, certificate names and listen address on **Network & HTTPS** (they take effect at the next restart), the public address on **General** (at once). An environment variable wins over both, so a setting one sets shows as locked in the console.
+All of these are settings in `config.yaml` in the server's data directory (edit and restart), and most can also be set with an environment variable - handy under Docker. Once the server runs, you can also change them in the admin console under [Server > Settings](../admin/server.md#settings): the HTTPS mode, plain HTTP at home, certificate names and listen address on **Network & HTTPS** (they take effect at the next restart), the public address on **General** (at once). An environment variable wins over both, so a setting one sets shows as locked in the console.
 
 ### The default: self-signed HTTPS
 
@@ -21,11 +21,26 @@ tls:
 Because no public authority issued that certificate, every browser shows a "connection is not private" warning the first time - that's expected, not a sign something is broken. Accept the warning and the connection is encrypted normally. This mode is fine on a home network.
 
 :::note
-One practical limit of a self-signed certificate: "install to home screen" for the web player needs a connection the browser fully trusts (or `localhost`). Streaming in a browser tab works fine; for the installable app experience away from `localhost`, use one of the two options below - or the native [mobile apps](../listening/mobile-apps.md).
+One practical limit of a self-signed certificate: "install to home screen" for the web player needs a connection the browser fully trusts (or `localhost`). Streaming in a browser tab works fine; for the installable app experience away from `localhost`, use one of the two options below. The native [mobile apps](../listening/mobile-apps.md) can't use a self-signed certificate either: at home they connect over plain HTTP instead, as the next section explains.
+:::
+
+#### Plain HTTP at home (how the phone apps connect)
+
+A browser lets you click through the certificate warning; the iPhone and Android apps can't, so they can't connect over a self-signed certificate at all. That's why, in this mode, the server's port also answers **plain HTTP**, but only to devices on your home network: a connection from a private address (like `192.168.1.30` or `10.0.0.12`), a link-local one, or the server's own machine. Any other device that tries plain HTTP is sent to HTTPS.
+
+You don't have to set anything up on the server. Connect the app while your phone is on the same Wi-Fi as the server: scan the pairing QR code or open an invite link, and the app signs in over `http://` on the same address and port, remembering it as the server's [home address](#tell-the-server-its-home-address). To type the address instead, put `http://` in front of it, like `http://192.168.1.20:8080` (without it, the app tries `https://`, which it can't trust here).
+
+**Away from home** the apps still need a certificate they trust: use [autocert](#a-real-certificate-with-autocert-lets-encrypt) or a [reverse proxy](#behind-a-reverse-proxy), and set the [public address](#tell-the-server-its-public-address). The apps then switch between the two by themselves.
+
+To turn plain HTTP off, set `tls.home_http: false` (`AUDIOSILO_TLS_HOME_HTTP=false`, or switch off **Plain HTTP at home** under the console's Server > Settings > Network & HTTPS; it takes effect at the next restart). The phone apps then can't connect to a self-signed server.
+
+:::caution What plain HTTP at home means
+- Plain HTTP isn't encrypted: anyone on your home network who can watch its traffic could see sign-ins and what you listen to. That is the usual trade-off on a trusted home Wi-Fi; on a shared or untrusted network, turn it off and use a trusted certificate instead.
+- The server decides who is "at home" from the address each connection comes from. Some setups hand the server every connection from a private address, whoever made it: Docker Desktop (Mac and Windows), rootless Docker, and Docker's userland proxy (used, for example, for IPv6 connections to a published port) relay connections from the container network's gateway, such as `172.17.0.1`. The server then serves plain HTTP to everyone, including internet visitors if you forward the port. If your server runs like that and is reachable from the internet, turn plain HTTP at home off, or use autocert or a reverse proxy.
 :::
 
 :::note Casting needs a certificate the Cast device trusts
-To [cast](../listening/chromecast.md), your server's address must work for the Cast device, which can't click through a certificate warning. The default self-signed certificate won't work. Use HTTPS with a trusted certificate (one of the two options below), or, from the iPhone and Android apps, plain HTTP on your home network set as the [home address](#tell-the-server-its-home-address): behind a [reverse proxy](#behind-a-reverse-proxy), that's AudioSilo's own port (for example `http://192.168.1.20:8080`), not the proxy's. The web player casts only from an HTTPS page, so it needs the trusted certificate.
+To [cast](../listening/chromecast.md), your server's address must work for the Cast device, which can't click through a certificate warning. The default self-signed certificate won't work. Use HTTPS with a trusted certificate (one of the two options below), or, from the iPhone and Android apps, plain HTTP on your home network as the [home address](#tell-the-server-its-home-address) (the default self-signed setup offers it [by itself](#plain-http-at-home-how-the-phone-apps-connect)): behind a [reverse proxy](#behind-a-reverse-proxy), that's AudioSilo's own port (for example `http://192.168.1.20:8080`), not the proxy's. The web player casts only from an HTTPS page, so it needs the trusted certificate.
 :::
 
 ### A real certificate with autocert (Let's Encrypt)
@@ -87,7 +102,7 @@ lan_url: "http://192.168.1.20:8080"
 
 The apps learn it with the public address when they connect (and from the server each time they start), use it whenever they can reach it, and switch to the public address when you leave home - see [At home and away](../listening/connecting.md#at-home-and-away). It applies the moment you save it.
 
-You can often leave it empty. The server then offers the address a device connected with when that address is a home-network one: a private IP address such as `192.168.1.20` or `10.0.0.5`, or a local name such as `nas.local`, `nas.internal` or `audiosilo`. An IPv6 address is written in square brackets. A device that connected through the public address learns no home address that way, so set it when you want every device to switch.
+You can often leave it empty. The server then offers the address a device connected with when that address is a home-network one: a private IP address such as `192.168.1.20` or `10.0.0.5`, or a local name such as `nas.local`, `nas.internal` or `audiosilo`. An IPv6 address is written in square brackets. With the default self-signed certificate and [plain HTTP at home](#plain-http-at-home-how-the-phone-apps-connect) on, that address is offered as `http://`, even to a device that connected over `https://`, on the same port. A home address you set is offered exactly as you wrote it. A device that connected through the public address learns no home address that way, so set it when you want every device to switch.
 
 :::note Behind a reverse proxy
 A request that reaches AudioSilo through a reverse proxy never gives the server a home address to offer, because the address it sees is the proxy's own internal one. The apps keep using the public address and just never switch to your home network. Set `lan_url` to the server's home address to fix it.

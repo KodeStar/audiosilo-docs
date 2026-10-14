@@ -14,10 +14,11 @@ its own page, the entry links there instead of repeating it.
 Work through these in order:
 
 1. **Are you using `https://`?** Out of the box the server uses a self-signed
-   certificate, which means it speaks **HTTPS** - even on your home network. If
-   you open `http://your-server:8080` against an HTTPS server, the connection
-   simply fails. Try `https://your-server:8080` instead (and see the
-   certificate warning entry below).
+   certificate, which means it speaks **HTTPS**. It also answers plain
+   `http://` on the same port, but only to devices on your home network
+   ([plain HTTP at home](./getting-started/remote-access.md#plain-http-at-home-how-the-phone-apps-connect));
+   from anywhere else, `http://` is sent on to `https://`. If in doubt, try
+   `https://your-server:8080` (and see the certificate warning entry below).
 2. **Is the port right?** The default listen address is `0.0.0.0:8080`. With
    Docker, check that the port is actually published - the example
    `docker-compose.yml` maps `"8080:8080"`. You can change the address and port
@@ -140,6 +141,33 @@ Either way you only re-enter your code or password, never the server address. If
 you have no password set, [set one](./listening/account.md#password) so
 you can always get back in on any device without waiting on a fresh invite from
 your admin.
+
+### The app can't connect, but the browser can
+
+The usual cause is the server's default **self-signed certificate**. A browser
+lets you click through its warning; the iPhone and Android apps can't, so they
+can't connect to it over `https://`. On your home network they connect over
+plain HTTP instead, which the server offers there by itself
+([plain HTTP at home](./getting-started/remote-access.md#plain-http-at-home-how-the-phone-apps-connect)).
+Check:
+
+- **Is your phone on the same Wi-Fi as the server?** Plain HTTP is only served
+  to devices on the home network. Away from home, the apps need a certificate
+  they trust: [autocert or a reverse proxy](./getting-started/remote-access.md).
+- **Is the server up to date?** Older servers speak only HTTPS on a
+  self-signed certificate, so the apps can't connect to them at all. Update the
+  server, and the app too.
+- **Is plain HTTP at home switched on?** It's on by default; your admin finds it
+  as **Plain HTTP at home** under
+  [Server > Settings > Network & HTTPS](./admin/server.md#network--https)
+  (`tls.home_http` in `config.yaml`, `AUDIOSILO_TLS_HOME_HTTP`).
+- **Try the address the app should use** in the phone's browser, with
+  `http://` in front: `http://192.168.1.20:8080/web`, say. If the web player
+  loads, the app can connect there too; type that `http://` address into the
+  app.
+- **Is a VPN on in the phone?** The server judges "home" by the address each
+  connection arrives from. Through a VPN the phone's connection can arrive from
+  outside your home network, so the server sends it to HTTPS.
 
 ### The app doesn't use the home address at home
 

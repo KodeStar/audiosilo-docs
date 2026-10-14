@@ -224,7 +224,7 @@ answers, and [`GET /addresses`](#get-apiv1addresses) carry the same object:
 
 | Field | Type | Meaning |
 |---|---|---|
-| `home` | string, optional | The server's address on the household network: the configured [`lan_url`](../configuration.md#home-address-lan_url), else the address **this request** arrived on (scheme + `Host`) when that is a home-network host and the request did not come through a proxy ([the rule](../configuration.md#home-address-lan_url)) |
+| `home` | string, optional | The server's address on the household network: the configured [`lan_url`](../configuration.md#home-address-lan_url), else the address **this request** arrived on (scheme + `Host`) when that is a home-network host and the request did not come through a proxy ([the rule](../configuration.md#home-address-lan_url)). On a self-signed server with [home HTTP](../configuration.md#home-http-tlshome_http) the derived one is always `http://`, on the request's port |
 | `away` | string, optional | The address that works from anywhere: the configured `public_url` |
 
 A `home` equal to the `away` is dropped. On the pairing payloads and the sign-in answers
@@ -241,6 +241,17 @@ https://books.example.com/web/connect?token=…&away=https%3A%2F%2Fbooks.example
 ```
 
 Read them by name: the encoder sorts them (`away` before `home`).
+
+On a self-signed server with [home HTTP](../configuration.md#home-http-tlshome_http) (the
+default), the port also answers plain HTTP to home-network clients, and a derived `home`
+is `http://` even when the request came over https: a device pairing at
+`https://192.168.1.20:8080` gets `home` `http://192.168.1.20:8080` (an https request
+without a port gets `http://<host>:443`, the port that answers). `base_url`, `web_url`
+and the `uri`'s `server=` keep the request's own scheme, so a link reads
+`…server=https%3A%2F%2F192.168.1.20%3A8080&token=…&home=http%3A%2F%2F192.168.1.20%3A8080`.
+A native app that can't trust the certificate at `server` exchanges the token at that
+`home` instead, when it has the same host and port; the player's rule is in
+[Connect and home/away addresses](../../frontend/connect-and-addresses.md).
 
 A client must not send a token to a `home` address until a tokenless
 `GET <home>/api/v1/server` there has answered with the same `server_id`: a private
@@ -6073,6 +6084,7 @@ and `AUDIOSILO_*` variable each one is, and whether it needs a restart (see
   "network": {
     "bind": "0.0.0.0:8080",
     "tls_mode": "selfsigned",
+    "tls_home_http": true,
     "tls_hosts": [],
     "trusted_proxies": ["10.0.0.2/32"],
     "cors_origins": []
@@ -6112,7 +6124,7 @@ and `AUDIOSILO_*` variable each one is, and whether it needs a restart (see
   },
   "locked": { "players.web_dir": "AUDIOSILO_WEB_DIR" },
   "restart_settings": [
-    "network.bind", "network.tls_mode", "network.tls_hosts", "players.web_dir",
+    "network.bind", "network.tls_mode", "network.tls_home_http", "network.tls_hosts", "players.web_dir",
     "metadata.base_url", "metadata.mode", "demo.enabled", "demo.idle_ttl", "backups.dir"
   ],
   "restart_pending": []

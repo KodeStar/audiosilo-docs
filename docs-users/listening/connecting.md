@@ -51,7 +51,7 @@ When the app (or the web player) isn't connected to anything yet, it opens on th
 
 **In the iOS and Android apps**:
 
-1. Enter the **server address** your admin gave you (e.g. `books.example.com`) and tap **Continue**. Without `https://` or `http://` in front, the app adds `https://`, so type `http://` yourself for a server that only answers plain HTTP. If you don't know the address, ask your admin.
+1. Enter the **server address** your admin gave you (e.g. `books.example.com`) and tap **Continue**. Without `https://` or `http://` in front, the app adds `https://`, so type `http://` yourself for a server that only answers plain HTTP, or for a server on its default self-signed certificate while you're at home (the apps can't trust that certificate, so they use the server's [plain HTTP at home](../getting-started/remote-access.md#plain-http-at-home-how-the-phone-apps-connect)). If you don't know the address, ask your admin.
 2. The app asks the server who it is and says what it found: *"Found Hearthside"*, with the version of AudioSilo it runs, and a note when the address is plain `http://` (*"This server uses an unencrypted connection"*), which is fine at home but not over the internet (see [Remote access](../getting-started/remote-access.md)). Tap **Sign in**.
 3. Choose how to sign in - **Invite code** or **Username and password** - and tap **Sign in**.
 
