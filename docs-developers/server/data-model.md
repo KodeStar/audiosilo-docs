@@ -247,7 +247,7 @@ covered in [Auth & security](auth-and-security.md#authorization-shares--scope).
 `scan_error_file`, `scan_error_detail` and `suspect_parts` in 0017; `split_parent` in
 0022; `cover_art` and `cover_color` in 0023; `chapters_source`, `chapters_fit`,
 `scanned_chapters` and `chapters_hash` in 0035; `released` and `released_checked`
-in 0037; `series_key` in 0041; `series_index_end` in 0045)* - one row per book,
+in 0037; `series_key` in 0041; `series_index_end` in 0045; `abs_sig`, `abs_indexed_at` and `abs_file` in 0046)* - one row per book,
 `UNIQUE (library_id, rel_path)`. Columns: `is_folder` (folder book vs
 single-file book), identity metadata (`title`, `author`, `series`,
 `series_index`, `narrator`; `series_index_end` is the end of a main series
@@ -255,11 +255,16 @@ position that is a range, an omnibus of books 1-3 at `series_index` 1 and
 `series_index_end` 3, `0` for none: the `series_index` override holds the text
 `"1-3"` and `refreshEffective` writes its start and end), `duration`, `asin`/`isbn` (optional external ids -
 present so enrichment/metadata services can attach data without reshaping the
-schema), `published` (`YYYY[-MM[-DD]]`) and `description` (only an admin edit or
-an accepted community match supplies these today; the scanner reads neither),
+schema), `published` (`YYYY[-MM[-DD]]`) and `description` (an admin edit, an
+accepted community match or an Audiobookshelf `metadata.json` supplies these; the
+audio's tags never do), `abs_file` (what an Audiobookshelf `metadata.json` in a
+folder book's folder says, as JSON field -> value normalized like an edit, `''`
+for nothing) with `abs_sig` (the file's size and mtime, `''` for no file) and
+`abs_indexed_at` (the `indexed_at` it was read for, `NULL` until a scan has
+read it; see [the layers](#metadata-overrides-and-effective-values)),
 `more_series` (the effective list of the other series the book is in beyond
-`series`, as JSON `[{"name","position"}]` plus `"position_end"` for a range, `'[]'` for none: only an edit or a
-community match supplies it, an override like any other field; an admin edit
+`series`, as JSON `[{"name","position"}]` plus `"position_end"` for a range, `'[]'` for none: only an edit, a
+community match or an Audiobookshelf `metadata.json` supplies it, an override like any other field; an admin edit
 that sets or reverts `series` to one of these swaps the two, writing the list
 and `series_index` as overrides (a value the scan already gives is reverted to
 it instead; the console sends the values itself, so its swap writes them as
@@ -925,8 +930,10 @@ only served while a book is indexed at its path).
 A `books` row always holds the **effective** metadata, built in layers:
 
 1. what the scan found (`books.scanned`, `chapters.scanned_title`);
-2. then any `book_enrichment` (`asin`/`isbn`, non-blank fields only);
-3. then any `book_overrides` / `chapter_overrides`.
+2. then what an Audiobookshelf `metadata.json` in a folder book's folder says
+   (`books.abs_file`, below);
+3. then any `book_enrichment` (`asin`/`isbn`, non-blank fields only);
+4. then any `book_overrides` / `chapter_overrides`.
 
 `bookLayers.resolve` (in `internal/catalog/overrides.go`) is the single
 statement of that precedence, and of each field's source. `refreshEffective`
@@ -951,10 +958,32 @@ Per field, `resolve` yields the effective value, its source, the scanned
 value, whether it is locked, and who last edited it. Sources are not stored: a
 scanned value is `path` when it equals what `metadata.DeriveFromPath` yields for
 the book's path (or, in a path-first library, what `metadata.FromPathLayout`
-yields), otherwise `tag`; an ASIN/ISBN from enrichment is `community`;
+yields), otherwise `tag`; a value the ABS file gives is `abs`; an ASIN/ISBN from
+enrichment is `community`;
 an override carries its own (`edited` or `community`); `""` means no value. The
 rule is the same for every row, so the rows migration 0016 backfilled `scanned`
 for (from their current values) need no special case.
+
+**An Audiobookshelf `metadata.json`** (`metadata.ParseABSFile`,
+`catalog/absfile.go`) is the record ABS keeps in a book's folder when its "Store
+metadata with item" setting is on: its matches and its users' corrections, often
+with the ASIN/ISBN the tags lack. ABS ranks it above the tags by default, and so
+does `bookLayers.overABS`, applied in `scannedFields` over the scanned values
+(after a path-first library's layout, before the position a title gives): every
+field the file names replaces the scanned one. The parse is lenient (a wrongly
+typed value costs that value; at most 4 MiB): `title` (not `subtitle`),
+`authors` and `narrators` joined with ", ", `series` as `"Name #seq"` (the first
+is the main series with its position, the rest `more_series`; a series without a
+position keeps the scanned one only while it is the same series, by
+`seriesKey`), `publishedDate` else `publishedYear` as `published`, the HTML
+`description` as plain text, `asin`, `isbn`; genres, tags, publisher, language
+and chapters are not read, and an empty value says nothing. `absFields` stores
+each as an edit of its field would (`CleanOverride`, a refused value left out),
+so an ASIN from the file makes the book matched for Health, `/meta`, the
+community chapter check and a refresh run. Only a folder book's own folder
+counts (`UpsertBook` writes `NULL` for a file book), and only a regular file the
+library's ignore rules don't skip, so an ignore rule `metadata.json` turns it off
+for a library. Reverting an edit lands on the file's value.
 
 **A library's metadata source** (`libraries.metadata_source`) changes only the
 first layer. In a `'path'` library, `bookLayers.scannedFields` reads the
@@ -1038,6 +1067,7 @@ The migration history so far:
 | 0043 | `cast_tokens` | `tokens.kind` `'cast'` (cast tokens for a Chromecast receiver) and `cast_grants` (each one's book and parent token), with `idx_cast_grants_parent` and the partial `idx_tokens_cast_expiry` |
 | 0044 | `household_members` | household members: `users.managed_by` (FK `ON DELETE SET NULL`), `users.member_kind` and `users.member_access` (each with a column CHECK), `users.can_add_members` (`DEFAULT 1`) and `users.display_name` (`DEFAULT ''`), with the partial `idx_users_managed_by`; `tokens.created_on_token_id` (FK `ON DELETE SET NULL`) with the partial `idx_tokens_created_on`. No data moves: every existing account reads as no member, allowed to add members |
 | 0045 | `series_ranges` | `books.series_index_end` and `book_more_series.position_end` (`REAL NOT NULL DEFAULT 0`), the end of a series position that is a range (an omnibus, `1-3`); `idx_book_more_series_key` is rebuilt to cover `position_end`. No data moves: every existing row holds a single position |
+| 0046 | `abs_file` | `books.abs_sig` (`TEXT NOT NULL DEFAULT ''`), `books.abs_indexed_at` (`TEXT`, `NULL` on every existing row) and `books.abs_file` (`TEXT NOT NULL DEFAULT ''`): an Audiobookshelf `metadata.json` in a folder book's folder. The next scan reads the file of each folder book that has one, without re-indexing it (`catalog.SetABSFiles`); a book without one is left as it is |
 
 ## SQLite choices
 

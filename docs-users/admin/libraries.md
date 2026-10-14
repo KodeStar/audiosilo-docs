@@ -175,6 +175,7 @@ leave out. One pattern per line:
 | `Extras/` | every folder named `Extras`, wherever it is, with everything in it (the trailing `/` means folders only) |
 | `Podcasts/*` | everything inside the `Podcasts` folder at the top of the library (a `/` in the middle means "starting at the library folder") |
 | `/Extras` | only the `Extras` folder at the top of the library (a `/` at the start also means "starting at the library folder") |
+| `metadata.json` | the `metadata.json` files Audiobookshelf leaves in book folders, so this library takes no details from them (see [Coming from Audiobookshelf](../getting-started/organizing-your-library.md#coming-from-audiobookshelf)) |
 | `# publisher samples` | nothing: a line starting with `#` is a note to yourself |
 
 A pattern without a `/` (or with one only at the end) matches a file or
@@ -213,6 +214,10 @@ names first** the tags still give the narrator, and a series for a book the
 folders don't name one for. A tag title that is exactly the folder's name,
 number and all (`13 Reasons Why`), is kept whole, so a number that is part of
 the title isn't read as a series number.
+
+Either way, a book whose folder has an Audiobookshelf `metadata.json` takes the
+values in that file over both (see
+[Coming from Audiobookshelf](../getting-started/organizing-your-library.md#coming-from-audiobookshelf)).
 
 Changing this setting updates every book in the library at once, without a
 rescan, and your own edits (and values you accepted from community metadata)

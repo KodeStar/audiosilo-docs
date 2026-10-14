@@ -251,6 +251,29 @@ library. A skipped folder book indexed before migration `0017` gets the same
 kind of tag-only check for [several books in one folder](#folders-that-may-hold-several-books)
 (`suspectFromTags`, written by `catalog.SetSuspectParts`).
 
+A skipped folder book also has its **Audiobookshelf `metadata.json`** read again
+when it is new, changed or gone: ABS rewrites the file without touching the
+audio, so the book's own signature can't tell. Discovery records each folder's
+file signature (`metadata.ABSSignature`, size + mtime) from the walk it already
+makes (`audioDirs`' `absFiles`, no extra directory read), and a skipped book whose
+signature differs from the stored one (`Signature.ABSSig`), or that has a file
+not read for this index of the row (`ABSUnchecked`: `abs_indexed_at` is `NULL`
+after migration 0046, or an older server re-indexed it), is read and written by
+`catalog.SetABSFiles` in batches of 250 beside the path backfill. A book with no
+file and none before is left unwritten, so the first scan after the upgrade
+touches only books that have one. A book is re-resolved unless its reading
+equals the one recorded for this very index (an older server's re-index resolved
+the row without the file). A re-indexed book reads the file in `enrich`
+(`Scanner.readABS`) only when the walk found one; an on-demand index, with no
+walk, stats it first (`absSigAt`). The file is read only when it is a regular
+file, never through a link (one swapped in after the walk included). A file that
+can't be used (not JSON, too large, not a regular file) keeps its signature, so
+it isn't read again until it changes; one that can't be read right now (gone
+since the walk, a flaky mount) is left as it was by a skipped book and recorded
+as none by a re-index, so the next scan reads it again. Both log a warning. What
+the file means for a book's metadata is in
+[Data model](data-model.md#metadata-overrides-and-effective-values).
+
 ### Prune: what a removed book leaves behind
 
 When discovery saw the whole tree, `catalog.DeleteBooksNotIn` drops every book
@@ -484,7 +507,8 @@ embedded data winning where it is trustworthy:
 The scanner does not record where each value came from. The admin console's
 per-field provenance works it out when the book is read
 (`bookLayers.resolve`): a scanned value equal to what `DeriveFromPath` yields
-for the book's path is `path`, anything else `tag` - one rule for every row, old
+for the book's path is `path`, a value an Audiobookshelf `metadata.json` gave is
+`abs`, anything else `tag` - one rule for every row, old
 or new (see [Data model](data-model.md#metadata-overrides-and-effective-values)).
 A library whose `metadata_source` is `path` takes the folder layout over the
 tags (`metadata.FromPathLayout`: the top folder is the author and the folder

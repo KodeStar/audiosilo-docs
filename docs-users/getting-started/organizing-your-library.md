@@ -74,10 +74,22 @@ For each book, AudioSilo starts with the names on disk, then lets the audio file
 
 - **From your folders**: the book's folder (or file) name becomes the title; a leading number like `03 - The Title` is read as its position in a series (but not a number that runs into the name, like `3rd Rock` or `20,000 Leagues Under the Sea`); the parent folder is read as the series and the folder above that as the author. A book with only one folder above it (`Author/Title/`) takes that folder as its author, with no series. So an `Author/Series/03 - Title/` or an `Author/Title/` layout works with no tags at all.
 - **From embedded tags**: a title (audiobooks usually carry it in the *album* tag; when the album holds the series name and the *title* tag carries the full "Series: Book" title, the more specific title tag wins), the author (album artist or artist tag), the narrator (composer or narrator tag), and the series where a tag exists. Junk tag titles like "Track 01" are ignored in favour of the folder name.
+- **From Audiobookshelf's `metadata.json`**, when the book's folder has one: its title, authors, narrators, series, published year, description, ASIN and ISBN go over the tags. See [Coming from Audiobookshelf](#coming-from-audiobookshelf).
 - **From ffmpeg's ffprobe**, when available: durations and any chapter list embedded in the file, so a chaptered M4B shows its real chapters in the player.
 - **From the community database**, for chapters only: a book whose files have no chapters of their own (one long file, or a folder with one chapter per file) gets the community's chapter list once it is [matched](../admin/books.md#matching-with-community-metadata) and the list fits your copy. A book with only broad chapters can be switched to the community's more detailed ones. See [Community chapters](../admin/books.md#community-chapters).
 
 Audiobook tags are famously messy, which is why the folder names always provide a sane baseline - a well-named folder beats a badly-tagged file. If a library's folders are named well and its tags aren't, you can set it to take book details from the [folder names first](../admin/libraries.md#where-book-details-come-from) instead. Anything still wrong can be corrected in the admin console without touching the files: see [Books and metadata](../admin/books.md).
+
+### Coming from Audiobookshelf
+
+If Audiobookshelf manages (or managed) the same folders, it may have left a `metadata.json` file in each book's folder. Audiobookshelf writes one when its **Store metadata with item** setting is on. That file is Audiobookshelf's record of the book, including any match you ran there and any corrections you made, so AudioSilo reads it too:
+
+- The title, authors, narrators, series (with their numbers), published year, description, **ASIN** and **ISBN** in the file go **over** what the audio tags say, as they do in Audiobookshelf. A value the file leaves empty doesn't clear the tag's.
+- A book whose file has an ASIN or ISBN counts as [matched](../admin/books.md#matching-with-community-metadata) straight away, so community details and chapters can be looked up for it without matching it by hand.
+- Your own edits in the admin console still win over the file, and the book page marks each value the file gave as **Audiobookshelf**.
+- When the file changes (you edit the book in Audiobookshelf), the next scan picks the change up without re-reading the audio. If the file goes, its values go with it.
+
+Only a book's own folder counts: a loose audio file at the top of a library takes nothing from a `metadata.json` beside it. AudioSilo never writes to the file. To stop a library using these files, add `metadata.json` to its [skipped files](../admin/libraries.md#skipping-files-and-folders).
 
 ### Covers
 
