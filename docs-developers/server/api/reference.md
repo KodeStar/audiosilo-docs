@@ -4608,7 +4608,8 @@ the manager's enrichment: each is looked up, and when its recording now sells
 in the preferred marketplace under another ASIN, that is offered) or a
 `refresh` run (every book with an ASIN or ISBN, whoever set it: each is looked
 up by its own identifier alone, the ISBN when the ASIN finds nothing, and the
-record it names is the book, `auto` whatever its score; an identifier the
+record it names is the book, `auto` whatever its score unless its recording's
+length is more than 10% from the book's, which makes it `review`; an identifier the
 community doesn't know is `none` with `detail: "identifier_unknown"`, never a
 fuzzy match by title). A refresh fills in, or with `overwrite` replaces, the
 details an identifier alone didn't bring (the manager's enrichment, an `ids`
@@ -5103,8 +5104,9 @@ different libraries are deliberate and never grouped).
 ```
 
 - `reason` - why the books were grouped, from the joins that formed the group.
-  "Lengths match" means within a minute or 2%, an unknown length (no ffprobe)
-  matching only another unknown one.
+  "Lengths match" means within a minute or 2%. For `same_book` an unknown length
+  (no ffprobe) matches only another unknown one; for a shared ASIN or ISBN an
+  unknown length is no evidence either way, so it never makes the lengths differ.
 
   | `reason` | Meaning |
   |---|---|
