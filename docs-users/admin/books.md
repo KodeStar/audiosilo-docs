@@ -172,6 +172,9 @@ Each value has a marker saying where it came from:
 
 - **File tag** - read from the audio file's tags.
 - **Path** - worked out from the folder and file names.
+- **Audiobookshelf** - read from the `metadata.json` file Audiobookshelf keeps
+  in the book's folder (see
+  [Coming from Audiobookshelf](../getting-started/organizing-your-library.md#coming-from-audiobookshelf)).
 - **Edited** - your edit, locked against rescans.
 - **Community** - accepted from community metadata.
 
