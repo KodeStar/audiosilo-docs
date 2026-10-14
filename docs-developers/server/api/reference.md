@@ -5110,7 +5110,7 @@ different libraries are deliberate and never grouped).
 
   | `reason` | Meaning |
   |---|---|
-  | `id_length_differs` | Two of the books share an ASIN or ISBN but their lengths don't match (every pair of an identifier's books is compared): one may be matched to the wrong recording, or a copy is incomplete. Not plain copies: the console marks none as the one to keep. |
+  | `id_length_differs` | The books were grouped by a shared ASIN or ISBN but their lengths don't match (the group's shortest and longest known lengths are compared): one may be matched to the wrong recording, or a copy is incomplete. Not plain copies: the console marks none as the one to keep. |
   | `same_files` | Two of the books have identical audio (same fingerprint and size). |
   | `same_id` | Two of the books share an ASIN or ISBN and their lengths match. |
   | `same_book` | The books share author, title and narrator and their lengths match. |
