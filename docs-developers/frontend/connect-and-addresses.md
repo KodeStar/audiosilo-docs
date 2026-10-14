@@ -151,6 +151,31 @@ home pick is dropped the moment the device changes network, before anything else
 sent. Any new code path that talks to a home address must keep this order.
 :::
 
+### Pairing at a self-signed server's home HTTP
+
+A server on its own (self-signed) certificate also answers plain HTTP to the home
+network ([Home HTTP](../server/configuration.md#home-http-tlshome_http)), and its pairing
+links carry `home=http://<host:port>` beside an `https://` base, plus the server's id as
+`sid=` (`parsePairingScan` reads it into `PairingScan.serverId`). The app can't trust
+the certificate, so `useLinkPairing` exchanges at the base first and, only when that
+couldn't connect (`withFallback`: never after an `ApiError`, the server's own answer),
+asks `pairingFallback` whether to try the home address once. It says yes only when all
+of these hold: native (an https page can't call http), not a timeout (a host that never
+answered would only time out again), the base is https and the home is plain http on
+the **same host and port** (an absent port is 443 for https, 80 for http), the link
+carries a `sid`, and a tokenless `GET <home>/api/v1/server` answers with exactly that
+id. The exchange's own `server_id` must match too. The connection is stored with the
+https base as `serverUrl` (it fails safely by TLS on another network) and the home as
+its address, and `finishConnect` sets the home pick (`answeredAt`) before the connection
+is stored, so its first requests go home; the address runner then keeps it by the usual
+probe. Android allows cleartext for this (`expo-build-properties`
+`android.usesCleartextTraffic`); iOS's default ATS allows local networking (IP
+addresses, `.local` and single-label names), not a `.lan` or `.home.arpa` name.
+
+When pairing or the address field can't reach an https server at all, the message
+names a self-signed certificate as a likely cause (`selfSignedMayBeWhy`: native, https,
+not a timeout, and no http retry was made).
+
 ### Where the pick lives (`src/api/address-route.ts`)
 
 The pick is **in memory only**: `useAddressRoute` holds `{ [connectionId]: url }`;
