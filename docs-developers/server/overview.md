@@ -273,6 +273,16 @@ bell reads, and delivers them to webhook, ntfy and Discord destinations in the
 background (signed webhooks, retries, no redirects, nothing secret in a
 message). See [Notifications](backups-and-notifications.md#notifications-internalnotify).
 
+### `internal/bridge`
+
+The server's side of the optional [Bridge](../bridge/index.md): the Bridge's last
+heartbeat (`status.go`: validated, one row, the online rule and the `features` the
+capability carries) and the job queue (`jobs.go`: the kinds the server knows and
+their params, the dedupe on open jobs, claims with a 2-minute lease, reports bound
+to the claim's attempt, lease expiry, cancel). The server never connects to the
+Bridge; this package only answers it. Pairing and the bridge token are
+`auth/bridge.go`. See [Pairing and jobs](../bridge/pairing-and-jobs.md).
+
 ### `internal/importer`
 
 Listening imports from Audiobookshelf (admin only in v1), so someone moving to

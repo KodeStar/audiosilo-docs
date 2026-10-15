@@ -150,9 +150,12 @@ it goes. Durable: this is the account, not the index.
 **`tokens`** *(0001; `auth_code_id` added in 0014; `client_app`,
 `client_version`, `client_platform` and `last_ip` in 0018; `created_on_token_id` in 0044)* - opaque bearer tokens:
 `user_id` (FK CASCADE), `token_hash` (UNIQUE - only the SHA-256 hash is
-stored), `kind` (`'session'`/`'pairing'`/`'api'`/`'cast'`: `'api'` a user-minted personal
+stored), `kind` (`'session'`/`'pairing'`/`'api'`/`'cast'`/`'bridge'`: `'api'` a user-minted personal
 API key whose label rides in `device_name`, `'cast'` *(0043)* a
-cast token with its `cast_grants` row (below)), `device_name`, `created_at`,
+cast token with its `cast_grants` row (below), `'bridge'` *(0047)* the paired
+[Bridge](#the-bridge)'s token, named `AudioSilo Bridge`, at most one live, found by
+the partial index `idx_tokens_bridge` on `user_id` over live bridge tokens, and never
+touched by its calls), `device_name`, `created_at`,
 `last_seen` (bumped by authenticated requests, at most once a minute unless the
 request's address or `X-AudioSilo-Client` changed: `auth.touchInterval`, so a
 progress save isn't also a token write), `expires_at` (NULL = no
@@ -177,8 +180,8 @@ made on. It is never part of a token's validity: it names the members
 when the admin moves the person into another owner's household, which sessions and
 API keys were made on someone else's device and are revoked with the move
 (`auth.leaveOwners`).
-The admin console lists live session and API-key tokens as **devices** (never pairing
-or cast tokens)
+The admin console lists live session and API-key tokens as **devices** (never pairing,
+cast or bridge tokens)
 (`auth.ListDevices`) and can revoke one (`auth.RevokeDevice`).
 
 **`cast_grants`** *(0043)* - what a **cast token** may read. A cast token is a
@@ -839,6 +842,41 @@ Its keys:
   before the listener; a failure stops the start, as a failed migration does, since
   every series filter reads only the keys (see `books.series_key` and
   `book_more_series` in [The rebuildable index](#the-rebuildable-index)).
+
+### The Bridge
+
+Added by `0047` for the [Bridge](../bridge/index.md) (`internal/bridge`,
+`auth/bridge.go`). The server stores the jobs admins ask for and the Bridge's last
+report; the Bridge's own record of running them lives on its side.
+
+- **`bridge_jobs`** - one row per job: `id`, `kind`, `library_id` (FK to
+  `libraries` `ON DELETE CASCADE`, `NULL` for a job about no library), `rel_path`
+  (the book's path, `NULL` for a job about a whole library; **no FK to the index**,
+  path-keyed like durable user state), `params`, `progress`, `result` (JSON objects,
+  `'{}'` by default), `error` (`''`), `requested_by` (FK to `users`
+  `ON DELETE SET NULL`), `priority`, `dedupe_key` (`kind|library_id|path`),
+  `state` (`queued` -> `claimed` -> `running` -> `done` | `failed` |
+  `needs_attention` | `cancelled`), `attempts` (claims so far), `lease_until`,
+  `cancel_requested`, `created_at`, `updated_at`, `claimed_at`, `finished_at`
+  (RFC 3339 UTC, whole seconds, so they compare as text). A unique partial index
+  `idx_bridge_jobs_open` on `dedupe_key` over the open states (`queued`, `claimed`,
+  `running`, `needs_attention`) gives a kind, library and path one open job; partial
+  indexes serve the claim (`idx_bridge_jobs_queue`, priority then id, over
+  `queued`) and the lease expiry (`idx_bridge_jobs_lease`, over `claimed` and
+  `running`), and `idx_bridge_jobs_book` a book's jobs. A lease that runs out
+  requeues the job with `progress`, `result` and `error` reset (the dead attempt's
+  report), or fails or cancels it keeping them. A book's jobs move with it
+  in `MoveDurableState`, finished ones too; an open job that would collide with an
+  open job of its kind at the new path is cancelled instead ("the book moved onto
+  another job of this kind"). The job model is in
+  [Pairing and jobs](../bridge/pairing-and-jobs.md#the-job-model).
+- **`bridge_status`** - the one paired Bridge: a single row (`id` CHECK `= 1`)
+  holding the pairing code waiting to be exchanged (`pair_code_hash`, its
+  `pair_expires_at` and `pair_created_by`), who paired the Bridge and when
+  (`paired_at`, `paired_by`), and the last heartbeat (`heartbeat_at`, and `status`:
+  the heartbeat's JSON as the Bridge sent it, after validation and cleaning). No secret but the
+  code's hash; the token is the `tokens` row. Pairing a new Bridge clears the
+  status; unpairing deletes the row.
 
 ### Community metadata cache
 

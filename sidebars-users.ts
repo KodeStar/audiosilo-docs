@@ -16,6 +16,7 @@ const sidebars: SidebarsConfig = {
         'getting-started/first-run',
         'getting-started/organizing-your-library',
         'getting-started/remote-access',
+        'getting-started/running-a-bridge',
       ],
     },
     {
@@ -33,6 +34,7 @@ const sidebars: SidebarsConfig = {
         'admin/backups',
         'admin/notifications',
         'admin/import',
+        'admin/bridge',
       ],
     },
     {

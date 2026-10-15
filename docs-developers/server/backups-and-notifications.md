@@ -168,6 +168,7 @@ key) or `system`. No IP address is stored.
 | `settings` | `update` (details: `changes`, each `{setting, from, to}`), `support` (an answer to the console's [support card](web-ui.md#the-support-card); details: `choice` `donated` or `snoozed`, and a snooze's `returns_at`; not recorded when a donation was already stored and nothing changed) |
 | `backup` | `create`, `download`, `delete`, `restore`, `restore_cancel`, `restore_applied`, `restore_failed` |
 | `notify` | `create`, `update`, `delete` |
+| `bridge` | `code` (a pairing code made), `paired` (a Bridge exchanged a code; `via` `system`, details: `ip`), `unpair`, `job` (a job queued; details: `job`, `kind`, `library`; the target the book's path), `cancel` (details: `job`, `kind`): the [Bridge](api/reference.md#the-bridge) |
 | `import` | `start` (details: `import`, `source`), `apply` (`import`, `sessions`, `listened`), `undo` (`import`); the target is the person the history went to. Connecting, a cutoff change and deleting an unapplied import aren't audited |
 
 Details never hold a secret: a password change reads `password: "set"` or

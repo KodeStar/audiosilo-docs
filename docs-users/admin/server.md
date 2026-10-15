@@ -23,11 +23,11 @@ space, backups - is on [Health > System](health.md#system).
 **Server > Settings** lists its topics down the left (across the top on a
 phone): **General**, **Network & HTTPS**, **Players & app links**,
 **Community metadata**, **Transcoding**, **Household**, **Demo mode**,
-**Backups**, **Notifications** and **Import**. Each setting lives in exactly one of them.
-Backups, Notifications and Import have pages of their own:
+**Backups**, **Notifications**, **Import** and **Bridge**. Each setting lives in exactly one of them.
+Backups, Notifications, Import and Bridge have pages of their own:
 [Backups and restoring](backups.md),
-[Notifications and the bell](notifications.md) and
-[Importing from Audiobookshelf](import.md). The settings are the same ones the server keeps in
+[Notifications and the bell](notifications.md),
+[Importing from Audiobookshelf](import.md) and [The Bridge](bridge.md). The settings are the same ones the server keeps in
 `config.yaml` in its data folder: a change you save here is written there, so
 it lasts across restarts.
 
@@ -491,9 +491,9 @@ at the foot loads the next 50.
 ## Where to next
 
 - [Backups and restoring](backups.md),
-  [Notifications and the bell](notifications.md) and
-  [Importing from Audiobookshelf](import.md) - the topics with pages of their
-  own.
+  [Notifications and the bell](notifications.md),
+  [Importing from Audiobookshelf](import.md) and [The Bridge](bridge.md) - the
+  topics with pages of their own.
 - [Library health and jobs](health.md) - the System page, issues and scans.
 - [Remote access](../getting-started/remote-access.md) - HTTPS, ports and
   proxies in more depth.

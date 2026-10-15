@@ -74,6 +74,17 @@ const sidebars: SidebarsConfig = {
     },
     {
       type: 'category',
+      label: 'The Bridge (audiosilo-bridge)',
+      items: [
+        'bridge/index',
+        'bridge/pairing-and-jobs',
+        'bridge/mappings',
+        'bridge/configuration',
+        'bridge/development',
+      ],
+    },
+    {
+      type: 'category',
       label: 'Metadata database (audiosilo-meta)',
       items: [
         'meta/overview',

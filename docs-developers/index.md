@@ -15,6 +15,12 @@ write/management side. Everything else in these docs hangs off that split.
 | `audiosilo-frontend` | The **player** - one codebase shipping to web PWA + iOS + Android. Read side of the product; its web export is served *by* the server at `/web`. | Expo SDK 56, React Native 0.85 (new architecture), React 19, Expo Router, Uniwind (Tailwind v4) |
 | `audiosilo-manager` | The desktop **manager** - the write/management side: set up or connect to servers, organize and transfer books (SFTP or local copy), back up an owned Audible library. Consumes the server API read-only. | Wails v2 (Go 1.26 + React/Vite/TypeScript) |
 
+An optional fourth piece is being built beside them: the **[Bridge](bridge/index.md)**
+(`audiosilo-bridge`, private for now), a companion that pairs with a server,
+writes to its libraries and runs the heavy jobs, so the server stays read-only. It
+always calls the server, never the reverse, and is meant to take over the
+manager's write side in later phases.
+
 The three code repos (plus this docs site) live side by side in a single
 workspace folder (`~/dev/audiosilo`), whose root is itself the small
 `audiosilo-workspace` meta repo holding the cross-repo glue (the integration
@@ -47,12 +53,16 @@ flowchart LR
         launcher["embedded server<br/>via pkg/launcher"]
     end
 
+    bridge["audiosilo-bridge<br/>(optional companion)"]
+
     ios -->|"JSON API + media streams"| api
     droid -->|"JSON API + media streams"| api
     pwa -->|"JSON API + media streams"| api
     webmount -.->|"serves the web build"| pwa
     wails -->|"API, read-only<br/>(+ metadata enrichment, progress sync)"| api
     wails -->|"file placement:<br/>SFTP / local copy"| files
+    bridge -->|"pulls: heartbeat, jobs"| api
+    bridge -->|"writes (checked mappings)"| files
 ```
 
 Three structural facts to internalize before reading anything else:

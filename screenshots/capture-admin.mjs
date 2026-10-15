@@ -945,6 +945,89 @@ await step('server: audit log', async () => {
   await shoot(page, 'admin/audit.png');
 });
 
+// ── The Bridge: Settings > Bridge before and after pairing ──────────────────────
+// The Bridge is a separate program, so a stand-in plays its part here through
+// the server's own Bridge routes, as the real one would: it trades the code the
+// Connect a bridge dialog shows for a bridge token, sends a heartbeat with each
+// library's mapping (the seeded library mapped and writable at the server's own
+// root path, the default mapping; any other library mapped but read-only), then
+// claims a bridge.verify job the admin queued and reports it done with the sizes
+// the server gave for the sample book. Nothing is written into a library. After
+// the audit log shot, so the Bridge's audit entries stay out of it.
+const BRIDGE_CLIENT = {'x-audiosilo-client': 'AudioSilo Bridge/0.1.0 (linux)'};
+await step('settings: bridge', async () => {
+  if (!wanted('admin/settings-bridge.png', 'admin/bridge-pair.png', 'admin/settings-bridge-paired.png')) return;
+  const info = await api(null, 'GET', '/server');
+  if (!info?.capabilities || !('bridge' in info.capabilities)) throw new Error('this server build has no Bridge');
+  try {
+    await open(page, '/server?topic=bridge');
+    const connect = page.getByRole('button', {name: 'Connect a bridge', exact: true});
+    await connect.waitFor({timeout: 15000});
+    await sleep(800);
+    await shoot(page, 'admin/settings-bridge.png');
+
+    // The code is shown once, in the dialog: the stand-in reads it from the
+    // environment-variable block, as someone copying both would.
+    await connect.click();
+    const dialog = page.getByRole('dialog', {name: 'Connect a bridge'});
+    await dialog.getByText('Waiting for the bridge...').waitFor({timeout: 8000});
+    await sleep(800);
+    await shoot(page, 'admin/bridge-pair.png');
+    const env = await dialog.locator('pre').innerText();
+    const code = /AUDIOSILO_BRIDGE_PAIR_CODE=(\S+)/.exec(env)?.[1];
+    if (!code) throw new Error('no pairing code in the dialog');
+    const paired = await api(null, 'POST', '/bridge/pair', {code}, BRIDGE_CLIENT);
+    const bridge = paired.token;
+    // The page's status poll (every 3 s while a code waits) closes the dialog.
+    await dialog.waitFor({state: 'hidden', timeout: 15000});
+
+    // The first heartbeat's answer lists the libraries; the second reports them.
+    const status = {version: '0.1.0', kinds: ['bridge.verify'], libraries: [], workers: [], ui_url: 'http://192.168.1.10:8091'};
+    const libs = (await api(bridge, 'PUT', '/bridge/status', status, BRIDGE_CLIENT)).libraries;
+    const seeded = libs.find((l) => l.id === library?.id) ?? libs[0];
+    if (!seeded) throw new Error('the server has no library');
+    const sample = await api(bridge, 'GET', `/bridge/libraries/${seeded.id}/book`, undefined, BRIDGE_CLIENT);
+    status.libraries = libs.map((l) =>
+      l.id === seeded.id
+        ? {library_id: l.id, mount_path: l.root, mapped: true, writable: true, checked_path: sample.path, error: ''}
+        : {library_id: l.id, mount_path: l.root, mapped: true, writable: false, checked_path: '',
+           error: 'mapped, but not writable here: permission denied'},
+    );
+    await api(bridge, 'PUT', '/bridge/status', status, BRIDGE_CLIENT);
+
+    // Verify the seeded library, as the Verify button does, and run it to done.
+    await api(token, 'POST', '/admin/bridge/jobs', {kind: 'bridge.verify', library_id: seeded.id});
+    const job = await api(bridge, 'GET', '/bridge/jobs/next?wait=5&kind=bridge.verify', undefined, BRIDGE_CLIENT);
+    if (!job) throw new Error('the verify job was not handed out');
+    await api(bridge, 'PATCH', `/bridge/jobs/${job.id}`, {
+      attempt: job.attempts, state: 'running', progress: {step: 'stat', message: 'Comparing the files', total: sample.files.length},
+    }, BRIDGE_CLIENT);
+    await api(bridge, 'PATCH', `/bridge/jobs/${job.id}`, {
+      attempt: job.attempts,
+      state: 'done',
+      progress: {step: 'writable', message: "Checking the book's folder can be written"},
+      result: {
+        library_id: seeded.id,
+        mount_path: seeded.root,
+        path: sample.path,
+        files: sample.files.map((f) => ({path: f.path, size: f.size, expected_size: f.size, ok: true})),
+        writable: true,
+        elapsed_ms: 640,
+      },
+    }, BRIDGE_CLIENT);
+
+    await open(page, '/server?topic=bridge');
+    await page.getByRole('list', {name: 'Jobs'}).getByText('Done', {exact: true}).waitFor({timeout: 15000});
+    // As tall as the page, so every card is in the shot.
+    const height = await page.evaluate(() => document.documentElement.scrollHeight);
+    await page.setViewportSize({width: 1440, height: Math.min(Math.max(height, 900), 2400)});
+    await sleep(1000);
+    await shoot(page, 'admin/settings-bridge-paired.png');
+  } finally {
+    await page.setViewportSize(DESKTOP_CONTEXT.viewport);
+  }
+});
+
 await step('webhook deliveries', async () => {
   // What the local receiver got: every signature must check out.
   if (!hookBodies.length) throw new Error('the webhook received nothing');

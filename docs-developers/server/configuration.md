@@ -445,6 +445,28 @@ Point `backups.dir` at another disk (a NAS mount, a second drive) so a backup
 outlives the disk the server runs from. The folder is created `0700` and each
 backup is written `0600`.
 
+### The Bridge (no keys)
+
+The server has **no setting for the [Bridge](../bridge/index.md)**, and no
+environment variable: the pairing, the Bridge's token, its last heartbeat and its
+jobs live in the database (`bridge_status`, `bridge_jobs` and a `tokens` row; see
+[Data model](data-model.md#the-bridge)) and are managed from the console's
+**Settings > Bridge**. Existing settings touch it in two places:
+
+- **The address the pairing dialog gives the Bridge** (`server_url` from
+  [`POST /admin/bridge/pair`](api/reference.md#post-apiv1adminbridgepair)) is the
+  server's [home address](#home-address-lan_url) when it has one (plain `http` on
+  the local network for a self-signed server, whose certificate the Bridge can't
+  verify), else `public_url`, else the address the console was opened on. When the
+  Bridge runs in a container beside the server, it usually reaches the server by
+  another address (a compose service name), which it is given on its own side.
+- **`libraries[].root`** is where the Bridge looks for each library unless it is
+  told otherwise, so mounting the libraries at the same path in both containers
+  needs no mapping on the Bridge.
+
+The Bridge's own settings are its business: see
+[Bridge configuration](../bridge/configuration.md).
+
 ## Environment variables
 
 `applyEnv` overrides a fixed set of keys from `AUDIOSILO_*` variables, driven
