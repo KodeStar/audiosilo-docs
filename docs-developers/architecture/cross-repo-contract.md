@@ -3,8 +3,8 @@ title: Cross-repo contract
 description: "Every seam where changing one AudioSilo repo forces a change in another - a readable digest of the workspace CROSS-REPO.md."
 ---
 
-The server defines the JSON/HTTP contract; the frontend and the manager mirror it
-**by hand** (no codegen). This page is a tour of every seam - every place where a
+The server defines the JSON/HTTP contract; the frontend, the manager and the
+[Bridge](../bridge/index.md) mirror it **by hand** (no codegen). This page is a tour of every seam - every place where a
 change in one repo forces a change (or a deliberate decision) in another.
 
 :::info This page is the tour, not the source
@@ -20,6 +20,7 @@ Canonical reference points on each side of the main seam:
 - Frontend client (mirrors it 1:1): `src/api/client.ts`
 - Frontend wire types: `src/api/types.ts`
 - Manager's mirrored subset: `internal/serverapi` (in audiosilo-manager)
+- The Bridge's mirrored routes: `internal/link` (in audiosilo-bridge, private)
 
 ## 1. Path is the identity - `(library_id, rel_path)`
 
@@ -272,7 +273,8 @@ version.
 `transcode`, `websocket`, `api_keys`, `export`, `metadata`, `meta_bundle`,
 `browse_people`, `cover_sizes`, `next_book` and the flags added after it (the
 latest: `household` and `cast`, which gate [§15](#15-listening-in-the-house-and-casting),
-and `household_members`, which gates [§16](#16-household-members-profiles-and-kids-mode-stay-client-side)), plus the
+`household_members`, which gates [§16](#16-household-members-profiles-and-kids-mode-stay-client-side),
+and `bridge`, which follows the Bridge's heartbeat, [§17](#17-the-bridge-a-third-client)), plus the
 server version
 (`api.Version`, stamped from the release tag via ldflags). `transcode` reflects
 ffmpeg availability; `web_player` reflects whether `/web` is populated; `api_keys`
@@ -605,6 +607,70 @@ household" and profiles and kids mode work as before.
 **A change requires:** any change to the member rule is security-critical (allowed and
 denied tests on the server); a new member field is the usual wire change in both
 repos, gated on the flag.
+
+## 17. The Bridge: a third client
+
+**What couples:** the [Bridge](../bridge/index.md) (`audiosilo-bridge`, private) is
+a third client of the server's wire format, after the player and the manager. The
+server defines the contract and the Bridge mirrors it by hand in `internal/link`;
+a change to the server's `internal/bridge` or `handlers_bridge.go` is a change in
+both repos, with a test on each side.
+
+- **The Bridge pulls; the server never connects to it.** No route on the Bridge is
+  called by the server, and no Bridge address is dialled. The console links to the
+  Bridge's page (`ui_url` from the heartbeat, `http(s)` only) for the browser to
+  open, nothing more.
+- **Pairing:** the console's `POST /admin/bridge/pair` (a session only) mints a
+  15-minute code; the Bridge's public `POST /bridge/pair` trades it for a token of
+  kind `bridge`. One Bridge per server: pairing another revokes the first. The
+  Bridge keeps the token sealed, never in its config.
+- **The token kind:** accepted only on `/api/v1/bridge/*`, from the header only,
+  and only while its admin is an enabled admin; refused everywhere else, media
+  `?token=` included; heartbeats and claims check it again inside their own
+  write. A `401` means the token is refused: the Bridge stops calling in, says why
+  and retries every 5 minutes (a demoted admin's Bridge comes back when they are
+  re-promoted; an unpair or a new pairing revoked it for good). A failure to check
+  the token is a `503`, which the Bridge simply retries. The console's pairing code
+  comes with the server's home address when there is one.
+- **The routes it calls:** `PUT /bridge/status` (the heartbeat, every 30 s; the
+  answer lists the libraries), `GET /bridge/jobs/next?wait=&kind=` (a long-poll
+  claim, at most 25 s, narrowed to the kinds with a free lane; `204` for none),
+  `PATCH /bridge/jobs/{id}` (`{attempt, state?, progress?, result?, error?}`; the
+  answer's `cancel_requested` asks it to stop; `409 not_held` when its claim no
+  longer holds the job, a job that no longer exists included; free text is
+  cleaned, never refused), `GET /bridge/libraries/{id}/book[?path=]` (an indexed
+  book's files with the sizes the server sees now, a single-file book as its own
+  file; no path = the first whole book among the library's first five by title;
+  `404 no_book`) and
+  `POST /bridge/rescan`. Shapes: [the reference](../server/api/reference.md#the-bridge).
+- **The capability:** `capabilities.bridge` is true only while the last heartbeat
+  is under two minutes old, with `bridge: {version, features}` beside
+  `capabilities` (`features` a list, never `null`; the server reuses a heartbeat
+  it read for up to 5 s). Clients never assume it, and a feature the Bridge doesn't
+  advertise is off even when the flag is on.
+- **The job model:** the server's `bridge_jobs` row is the intent and the lease
+  (path-keyed, moved with its book, gone with its library); the Bridge's
+  `server_jobs` row is the execution truth. Leases of 2 minutes, renewed by every
+  report; three attempts; kinds allow-listed twice (the server knows it **and** the
+  Bridge advertised it, else `409 kind_unavailable`). Detail:
+  [Pairing and jobs](../bridge/pairing-and-jobs.md).
+- **Library mappings are checked, never assumed:** the Bridge compares a known
+  indexed book's file sizes through its mount with the server's before it calls a
+  library mapped, then probes writing. It checks after pairing, when the server's
+  libraries change, every `mapping.check_minutes` (default 10) and on demand; each
+  heartbeat carries the last results. See [Library mappings](../bridge/mappings.md).
+- **Hidden folders:** the server never indexes or lists a path through a dot-folder
+  by name, so the Bridge's `.audiosilo/` inside a book (Phase 1a) can't become a
+  phantom book.
+
+**Old clients:** everything is additive. An older server has no Bridge routes (the
+Bridge's pairing gets a `404` and says the server is too old) and no `bridge` flag;
+shipped players never see either. The Bridge sends `X-AudioSilo-Client:
+AudioSilo Bridge/<version> (<os>)` on every call.
+
+**A change requires:** the server handler and its test, the mirrored type in the
+Bridge's `internal/link` and its test, and CROSS-REPO.md §23. The token's rules are
+security-critical: allowed and denied tests on the server.
 
 ## The wire-change checklist
 

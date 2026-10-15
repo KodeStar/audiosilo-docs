@@ -15,6 +15,8 @@ as the `?token=`).
 its owner anywhere a *Session* token does - so an admin's key also satisfies
 *Admin* - with one carve-out: it is refused on the credential-minting routes (see
 [Personal API keys](#personal-api-keys)).
+*Bridge token*: the paired Bridge's own token, accepted only on the
+[`/bridge/*` routes](#the-bridge) and refused everywhere else.
 
 All `/api/v1` bodies and responses are JSON. Timestamps are RFC 3339. Remember
 that empty list fields may serialize as `null`.
@@ -58,7 +60,8 @@ else and gate features on the flags.
     "addresses": true,
     "household": true,
     "cast": true,
-    "household_members": true
+    "household_members": true,
+    "bridge": false
   },
   "auth": { "methods": ["auth_code", "password"] },
   "demo": { "enabled": false }
@@ -141,6 +144,12 @@ Phase 8b-1 adds one more, always `true` on a server that has it and absent on an
 
 The flag never depends on the caller or on the admin's switches: whether **this**
 caller may add a member is the members list's `allowed`.
+
+`bridge` follows the Bridge rather than a setting, so it can change from one
+request to the next: it is `true` only while a [Bridge](#the-bridge) is paired and its last heartbeat is under two minutes
+old, and only then does a top-level `bridge: {version, features}` object sit beside
+`capabilities`. An older server has neither. See
+[the `bridge` capability](#get-apiv1server-the-bridge-capability-and-block).
 
 ### `GET /healthz` · `GET /api/v1/healthz`
 
@@ -6843,6 +6852,505 @@ recorded in the [audit log](#admin-audit-log) as `settings.support`, with
 | `400` | `invalid request` (no body, not JSON, or a field other than `action`), or `action must be "donated" or "snoozed"` |
 | `401` | no valid session or API key |
 | `403` | not an admin |
+
+## The Bridge
+
+Capability `bridge`. The **Bridge** is an optional companion program that writes to
+the libraries and runs the heavy jobs, so the server stays read-only
+(`internal/bridge`, `auth/bridge.go`, `api/handlers_bridge.go`; the design is in
+[The Bridge](../../bridge/index.md)). **The server never connects to it.** It keeps
+the jobs admins ask for and the Bridge's last heartbeat, and the Bridge calls in.
+
+There are two sets of routes:
+
+- **The console's**, under `/admin/bridge`: *Admin*, like every admin route (an
+  admin's API key works on them, except on `POST /admin/bridge/pair`, which mints a
+  credential).
+- **The Bridge's own**, under `/bridge`: *Bridge token*. A **bridge token** (a token
+  of kind `bridge`, from [`POST /bridge/pair`](#post-apiv1bridgepair)) is accepted
+  on these routes **only**, in the `Authorization: Bearer` header **only** (never
+  as `?token=`), and only while the admin who paired it is still an enabled admin.
+  Every other route refuses it with `401`, and these routes refuse every other
+  credential (a session, an API key, a cast token) with `401`.
+
+On the Bridge's routes **only a missing or refused token is `401`** (`missing bearer
+token`, `invalid or expired token`): the Bridge reads it as "my token is refused",
+stops calling in and tries again every 5 minutes. A failure to **check** the token
+(the database) is `503 could not check the token, try again`, which the Bridge
+simply retries. The heartbeat and the claim also check the token again inside their
+own write, so a call authenticated just before a pairing or an unpair revoked its
+token (a long poll above all) saves nothing and claims nothing: `401`. A bridge
+token's calls never touch the token's `last_seen`: they are not its admin's
+activity.
+
+### `GET /api/v1/server`: the `bridge` capability and block
+
+`capabilities.bridge` is `true` only while a Bridge is paired **and** its last
+heartbeat is under two minutes old (the Bridge beats every 30 seconds). While it
+is, a top-level `bridge` object sits beside `capabilities` (which stays all
+booleans):
+
+```json
+{
+  "capabilities": { "…": true, "bridge": true },
+  "bridge": { "version": "0.1.0", "features": ["bridge"] }
+}
+```
+
+- `version` - the version the Bridge reported.
+- `features` - the job families the Bridge runs that this server knows: the part of
+  each known kind before its dot (`bridge.verify` is `bridge`), sorted, each once;
+  always a list (`[]` for none), never `null`. A kind the Bridge advertises that the
+  server doesn't know adds nothing.
+
+The server keeps the last heartbeat it read for up to 5 seconds, so `GET /server`,
+which every client calls often, rarely reads the database for it. A pairing or an
+unpair made on this server drops it at once; a demoted admin's Bridge shows as
+offline here within those 5 seconds.
+
+With no Bridge online the flag is `false` and there is no `bridge` key; an older
+server has neither. A client never assumes the Bridge: it checks the flag **and**
+the feature it needs.
+
+### `GET /api/v1/admin/bridge`
+
+*Admin.* The pairing, the last heartbeat and every server library with the Bridge's
+mapping of it. The console's Settings > Bridge reads this.
+
+```json
+{
+  "paired": true,
+  "paired_at": "2026-10-15T12:31:07Z",
+  "paired_by": { "id": 1, "username": "admin" },
+  "pairing": null,
+  "online": true,
+  "heartbeat_at": "2026-10-15T12:40:37Z",
+  "version": "0.1.0",
+  "kinds": ["bridge.verify"],
+  "features": ["bridge"],
+  "libraries": [
+    {
+      "id": 1, "name": "Audiobooks", "root": "/audiobooks",
+      "mapping": {
+        "library_id": 1, "mount_path": "/audiobooks", "mapped": true, "writable": true,
+        "checked_path": "Andy Weir/Project Hail Mary", "error": ""
+      }
+    },
+    { "id": 2, "name": "Kids", "root": "/kids", "mapping": null }
+  ],
+  "workers": [],
+  "ui_url": "http://192.168.1.10:8091"
+}
+```
+
+- `paired` - a bridge token is live: not revoked, and its admin still an enabled
+  admin. `paired_at` and `paired_by` (`{id, username}`, `null` once that account is
+  gone) only while it is.
+- `pairing` - `{ "expires_at": "…" }` while a pairing code made in the console is
+  waiting to be exchanged, else `null`. A code can wait while a Bridge is paired
+  (pairing another one).
+- `online` - the last heartbeat is under two minutes old (the same rule as the
+  capability). `heartbeat_at`, `version`, `kinds`, `features`, `workers` and
+  `ui_url` are the last heartbeat's, present only while paired and after the first
+  heartbeat (`kinds`, `features`, `workers` are `[]` before; the others absent).
+- `libraries` - every server library (`[]` with none), each with `mapping`: the
+  Bridge's last check of it (the fields of the
+  [heartbeat's](#put-apiv1bridgestatus) `libraries`), or `null` when it reported
+  none for that library (or none at all yet).
+- `workers` - the transcription workers the Bridge reports (`name`, `version`,
+  `platform`, `last_seen`); always `[]` today.
+- `ui_url` - the Bridge's own page on the local network, which the console links to
+  (an absolute `http(s)` URL, checked when the heartbeat arrives).
+
+### `POST /api/v1/admin/bridge/pair`
+
+*Admin, a session only.* Makes a pairing code for a Bridge to exchange at
+[`POST /bridge/pair`](#post-apiv1bridgepair). Response `201`:
+
+```json
+{
+  "code": "7KQ2-M9XD-4TPA-W3HN",
+  "expires_at": "2026-10-15T12:46:07Z",
+  "server_url": "https://audiosilo.example.com"
+}
+```
+
+The code is shown once (the server keeps only its hash) and lasts **15 minutes**.
+It is case-insensitive and its hyphens are optional, like an invite code. Making a
+code replaces one still waiting; a Bridge already paired keeps working until a new
+one exchanges the code. `server_url` is the address to give the Bridge: the
+server's [home address](#home-and-away-addresses) when it has one (its address on
+the local network, plain `http` for a server with a self-signed certificate, which
+a Bridge can't verify), else the address the server builds its links with (the
+configured `public_url`, or the address the request came in on). Audited as
+`bridge.code`.
+
+| Status | Meaning |
+|---|---|
+| `201` | `{ code, expires_at, server_url }` |
+| `401` | no valid session |
+| `403` | not an admin, or `not available when authenticating with an API key` |
+
+### `DELETE /api/v1/admin/bridge`
+
+*Admin.* Unpairs the Bridge: revokes every bridge token and forgets the Bridge's
+status and any code waiting. The Bridge's next call gets `401`. Its jobs stay: a
+queued job waits for the next Bridge, and a job it was running is queued again when
+its lease runs out (see [Leases](#leases-attempts-and-cancelling)). `204 No Content`.
+Audited as `bridge.unpair`.
+
+### The job object
+
+Every job route, the console's and the Bridge's, answers jobs in one shape:
+
+```json
+{
+  "id": 12,
+  "kind": "bridge.verify",
+  "library_id": 1,
+  "path": null,
+  "params": {},
+  "state": "done",
+  "progress": { "step": "writable", "message": "Checking the book's folder can be written" },
+  "result": {
+    "library_id": 1, "mount_path": "/audiobooks", "path": "Andy Weir/Project Hail Mary",
+    "files": [
+      { "path": "Andy Weir/Project Hail Mary/Project Hail Mary.m4b",
+        "size": 912345678, "expected_size": 912345678, "ok": true }
+    ],
+    "writable": true, "elapsed_ms": 412
+  },
+  "error": "",
+  "requested_by": { "id": 1, "username": "admin" },
+  "priority": 0,
+  "attempts": 1,
+  "lease_until": null,
+  "cancel_requested": false,
+  "created_at": "2026-10-15T12:41:02Z",
+  "updated_at": "2026-10-15T12:41:03Z",
+  "claimed_at": "2026-10-15T12:41:02Z",
+  "finished_at": "2026-10-15T12:41:03Z"
+}
+```
+
+- `library_id` and `path` - what the job is about, path-keyed like every durable
+  record: a book's indexed path, `null` for a job about a whole library (or about
+  no library). A job follows its book when the scanner sees it move, and goes with
+  its library.
+- `params` - the kind's parameters as the server normalised them (`bridge.verify`
+  stores a `hold_seconds` of 0 as `{}`); `progress` and `result` - JSON objects the
+  Bridge reported (`{}` until it does); `error` - why it failed or was parked (`""`
+  otherwise).
+- `state` - `queued`, `claimed`, `running`, `done`, `failed`, `needs_attention` or
+  `cancelled` (see [Job states](#job-states)).
+- `requested_by` - the admin who queued it, `null` once that account is deleted.
+- `attempts` - how many times it has been claimed; `lease_until` - when the current
+  claim's lease runs out (`null` when no claim holds it); `cancel_requested` - an
+  admin asked the Bridge to stop it.
+- Times are RFC 3339 UTC, whole seconds.
+
+#### Job states
+
+| State | Meaning |
+|---|---|
+| `queued` | waiting for the Bridge |
+| `claimed` | the Bridge took it (leased) and hasn't reported it running yet |
+| `running` | the Bridge reported it running (leased) |
+| `needs_attention` | the Bridge parked it: it still holds it, with no lease |
+| `done` · `failed` · `cancelled` | ended (`finished_at` set) |
+
+A kind, a library and a path have at most **one open job** (queued, claimed,
+running or needs attention) at a time: queuing the same again returns that job.
+
+#### Leases, attempts and cancelling
+
+A claim leases the job for **2 minutes**, and every report from the Bridge renews
+the lease (the Bridge reports at least every 10 seconds while it works). A lease
+that runs out puts the job back in the queue, dropping the dead attempt's
+`progress`, `result` and `error`, unless it was the **third** attempt (the job
+fails, `error` "the Bridge stopped reporting on every attempt") or an admin had
+asked to cancel it (it is cancelled); those two keep what was reported. A claim
+waiting for a job is woken when a lease runs out, so a requeued job is picked up at
+once. Leases are checked whenever a job
+is claimed, reported on, cancelled or read, so a Bridge that died mid-job leaves
+the job queued again (or ended) by the time anyone looks.
+
+Cancelling a queued or parked job ends it at once. Cancelling a claimed or running
+one sets `cancel_requested`, which the Bridge reads in the answer to its next
+report and stops; if it never reports again, the job is cancelled when the lease
+runs out.
+
+### `GET /api/v1/admin/bridge/jobs`
+
+*Admin.* Jobs, newest first.
+
+| Param | Meaning |
+|---|---|
+| `library_id` | only this library's jobs (a positive integer, else `400 invalid library_id`) |
+| `path` | only jobs about this book path |
+| `state` | only jobs in this state |
+| `before` | the previous page's `next_before` (a positive integer, else `400 invalid before`) |
+| `limit` | page size, 1 to 200 (anything outside that: 50) |
+
+```json
+{ "jobs": [ { "id": 12, "kind": "bridge.verify", "…": "…" } ], "next_before": 12 }
+```
+
+`jobs` is `[]` when there are none. `next_before` is present only when there is
+another page (the server reads one row past the page to know): pass it as
+`before`.
+
+### `POST /api/v1/admin/bridge/jobs`
+
+*Admin.* Queues a job.
+
+```json
+{ "kind": "bridge.verify", "library_id": 1, "path": "Andy Weir/Project Hail Mary", "params": { "hold_seconds": 0 } }
+```
+
+| Field | Meaning |
+|---|---|
+| `kind` | the job kind: one the server knows **and** the paired Bridge advertised in its last heartbeat (kinds are allow-listed twice) |
+| `library_id` | the library, when the kind is about one (`bridge.verify` needs it) |
+| `path` | optional: an indexed book in that library; the job is about the book's own path |
+| `params` | the kind's parameters, checked per kind (unknown fields refused) |
+
+The only kind today is **`bridge.verify`**: it needs `library_id`, takes an
+optional book `path` (without one the Bridge checks the library's sample book, the
+one its mapping check uses: see
+[`GET /bridge/libraries/{id}/book`](#get-apiv1bridgelibrariesidbook)), and `params`
+`{ "hold_seconds": 0-600 }` (optional; 0 is stored as `{}`),
+how long the Bridge waits before it finishes, so a cancel or a stopped Bridge can
+be tried mid-job. What it does and reports is in
+[Pairing and jobs](../../bridge/pairing-and-jobs.md#the-proof-job-bridgeverify).
+
+The Bridge may be offline: the job waits for it. Response `201` with the new job,
+or `200` with the open job already there for that kind, library and path (no
+second job is made). That open job may be one still stopping after a cancel
+(`cancel_requested: true`): nothing new can be queued for it until it ends, and
+the console says so. A new job is audited as `bridge.job`.
+
+| Status | Meaning |
+|---|---|
+| `201` | the job, queued |
+| `200` | the open job of that kind for that library and path |
+| `400` | `invalid request` (not JSON, an unknown field); or a check of the kind, each message starting `invalid: `: `unknown kind "…"`, `library_id is required`, `this kind takes no library or path`, `this kind takes no path`, `params too large`, or a params error (`hold_seconds must be 0-600`, an unknown field) |
+| `404` | `library not found`; `book not found` (the path is not an indexed book) |
+| `409` | `code: "kind_unavailable"` - no Bridge has reported, or the paired one doesn't run that kind |
+
+### `GET /api/v1/admin/bridge/jobs/{id}`
+
+*Admin.* One job (the [job object](#the-job-object)). `400 invalid job id`; `404 job
+not found`.
+
+### `POST /api/v1/admin/bridge/jobs/{id}/cancel`
+
+*Admin.* Cancels a job: at once when it is queued or parked, else by asking the
+Bridge (`cancel_requested`; see [Leases](#leases-attempts-and-cancelling)). Answers
+`200` with the job as it is now. Audited as `bridge.cancel`.
+
+| Status | Meaning |
+|---|---|
+| `200` | the job (`cancelled`, or still running with `cancel_requested: true`) |
+| `400` | `invalid job id` |
+| `404` | `job not found` |
+| `409` | `code: "finished"` - the job already ended |
+
+### `POST /api/v1/bridge/pair`
+
+*Public, rate limited.* The Bridge trades a pairing code from
+[`POST /admin/bridge/pair`](#post-apiv1adminbridgepair) for its token.
+
+```json
+{ "code": "7KQ2-M9XD-4TPA-W3HN" }
+```
+
+Response `201`:
+
+```json
+{ "token": "b8Hq…", "server_id": "kx8Qz1c7m2Vw0aB3dEfGh", "server_name": "AudioSilo" }
+```
+
+In one transaction the server checks the code (its hash, its expiry, and that the
+admin who made it is still an enabled admin), uses it up, revokes every earlier
+bridge token and clears the last Bridge's status: **one Bridge per server**, and a
+new one starts from nothing. The token belongs to that admin and is shown once.
+Failures count against the same per-address limit as
+[`POST /auth/redeem`](#post-apiv1authredeem) (10 failed attempts in 15 minutes); a
+success resets it. Audited as `bridge.paired`, by the server itself since no admin
+made the request (with no details: the audit log keeps no addresses).
+
+| Status | Meaning |
+|---|---|
+| `201` | `{ token, server_id, server_name }` |
+| `400` | `code is required` |
+| `401` | `invalid or expired pairing code` (wrong, used or expired, or its admin is no longer an enabled admin) |
+| `429` | `too many attempts, try again later` |
+
+A server without the Bridge routes answers `404` (or `405`); the Bridge reads that
+as "this server is too old for a Bridge".
+
+### `PUT /api/v1/bridge/status`
+
+*Bridge token.* The heartbeat, every 30 seconds: what the Bridge is and what it
+found. The server keeps the last one only (one row, never a history).
+
+```json
+{
+  "version": "0.1.0",
+  "kinds": ["bridge.verify"],
+  "libraries": [
+    { "library_id": 1, "mount_path": "/audiobooks", "mapped": true, "writable": true,
+      "checked_path": "Andy Weir/Project Hail Mary", "error": "" }
+  ],
+  "workers": [],
+  "ui_url": "http://192.168.1.10:8091"
+}
+```
+
+| Field | Meaning |
+|---|---|
+| `version` | the Bridge's version (at most 128 bytes) |
+| `kinds` | the job kinds it runs, each `family.name` in lower case, listed once (at most 64) |
+| `libraries` | its last check of each library it has checked (at most 512, each `library_id` once and above 0): `mount_path` where it looked, `mapped` (a known book's files were there with the server's sizes), `writable` (a probe file could be written and removed there), `checked_path` (the book it compared), `error` (why it isn't mapped or writable, `""` when it is); the three texts at most 1 KiB each |
+| `workers` | the transcription workers connected to it (at most 64; `name`, `version`, `platform`, `last_seen`, at most 128 bytes each; `[]` today) |
+| `ui_url` | its own page on the local network: an absolute `http(s)` URL without credentials, or `""` |
+
+The structure is checked and refused when wrong: a malformed kind, a repeated
+kind, a library id that is repeated or not above 0, too many entries, or a `ui_url`
+that isn't an absolute `http(s)` URL (the console renders it as a link). The **free
+text** (the version, each mapping's paths and error, the workers' fields) is
+**cleaned instead of refused**: broken UTF-8 becomes U+FFFD, each control character
+a space, and the text is cut to its limit. Much of it comes from the outside world
+(a file's name, an OS error), and a refused heartbeat would leave the Bridge
+offline. The body is at most 64 KiB. The answer lists the server's libraries, so
+the Bridge can map the ones it hasn't checked yet:
+
+```json
+{
+  "server_time": "2026-10-15T12:40:37Z",
+  "libraries": [ { "id": 1, "name": "Audiobooks", "root": "/audiobooks" } ]
+}
+```
+
+| Status | Meaning |
+|---|---|
+| `200` | `{ server_time, libraries }` |
+| `400` | `invalid status` (not JSON, too large, an unknown field), or a structure the checks refuse (`invalid: kind "…"`, `invalid: library 0`, `invalid: ui_url must be an http(s) URL`, …) |
+| `401` | no bridge token or a refused one, including one a pairing or an unpair revoked after the request arrived |
+| `503` | the token couldn't be checked |
+
+### `GET /api/v1/bridge/jobs/next`
+
+*Bridge token.* Claims the next job: a long poll.
+
+| Param | Meaning |
+|---|---|
+| `wait` | seconds to wait for a job when none is queued, 0 to 25 (more is 25; default 0) |
+| `kind` | repeatable: only these kinds (the ones the Bridge has a free lane for) |
+
+The server picks from the kinds the last heartbeat named **and** the server knows,
+narrowed to the `kind` values when there are any. It hands out the highest
+priority, then oldest, queued job of those kinds, leased for 2 minutes and with
+`attempts` one higher, and answers `200` with the [job](#the-job-object). With no
+job it waits up to `wait` (a job queued meanwhile, or a lease that runs out, wakes
+it) and then answers `204`; when no kind is left after the narrowing it answers
+`204` at once, and when the server is stopping it ends the wait with `204`. The
+token is checked again with every claim, so a Bridge that a pairing or an unpair
+replaced during its long poll gets `401`, never a job.
+
+| Status | Meaning |
+|---|---|
+| `200` | the job, now `claimed` |
+| `204` | no job |
+| `409` | `code: "no_heartbeat"` - send a heartbeat first |
+| `401` | no bridge token or a refused one (also when it was revoked during the wait) |
+| `503` | the token couldn't be checked |
+
+### `PATCH /api/v1/bridge/jobs/{id}`
+
+*Bridge token.* The Bridge's report on a job it holds: progress, a new state, the
+result, an error. Every report renews the lease.
+
+```json
+{
+  "attempt": 1,
+  "state": "running",
+  "progress": { "step": "stat", "message": "Comparing the files", "done": 2, "total": 4 }
+}
+```
+
+| Field | Meaning |
+|---|---|
+| `attempt` | **required**: the `attempts` its claim returned. A report from an earlier claim (one whose lease ran out and was claimed again) is refused |
+| `state` | optional: `running`, `done`, `failed`, `needs_attention` or `cancelled` (from `claimed`, `running` or `needs_attention`) |
+| `progress` | optional: a JSON object, at most 16 KiB |
+| `result` | optional: a JSON object, at most 64 KiB |
+| `error` | optional: text, cleaned rather than refused (control characters become spaces, line breaks are kept, cut at 2 KiB) |
+
+A field left out keeps its value. A `claimed` or `running` job's lease is renewed;
+`needs_attention` drops the lease (the Bridge still holds the job); `done`,
+`failed` and `cancelled` end it. The answer is the job as stored: its
+`cancel_requested` asks the Bridge to stop.
+
+| Status | Meaning |
+|---|---|
+| `200` | the job |
+| `400` | `invalid job id`; `invalid update` (not JSON, over 128 KiB, an unknown field); or a check, each message starting `invalid: `: `progress must be a JSON object` (or `result`), `progress too large` (or `result`), or a state it can't report (`state "queued" from "running"`) |
+| `409` | `code: "not_held"` - this claim no longer holds the job: it ended, was cancelled, its lease ran out and it was queued or claimed again, or it no longer exists (gone with its library). The Bridge drops it. This route never answers `finished` (only the console's cancel does) |
+
+### `GET /api/v1/bridge/libraries/{id}/book`
+
+*Bridge token.* One **indexed** book's files with the size and modification time
+the server sees **now**, for the Bridge's mapping check and its jobs. `?path=` names
+the book. Without it the answer is the library's **sample book**, the mapping
+check's: the first **whole** book (every file present on the server's disk) among
+the library's first five by title, so one book deleted before a scan notices
+doesn't make the whole library look unmapped; the first of them when none is
+whole.
+
+```json
+{
+  "library_id": 1,
+  "path": "Andy Weir/Project Hail Mary",
+  "files": [
+    { "path": "Andy Weir/Project Hail Mary/Project Hail Mary.m4b", "size": 912345678, "mod_time": 1781234567 }
+  ]
+}
+```
+
+File paths are relative to the library root. A single-file book (one audio file,
+indexed without separate parts) is listed as its own one file. `size` and
+`mod_time` (Unix seconds) are read from the disk on the request; a file the server
+can't stat keeps its indexed size and `mod_time` `0`. Only an indexed book answers:
+this never indexes a path on demand.
+
+| Status | Meaning |
+|---|---|
+| `200` | `{ library_id, path, files }` |
+| `400` | `invalid library id` |
+| `404` | `library not found`; `code: "no_book"` - no indexed book at that path (or none in the library) |
+
+### `POST /api/v1/bridge/rescan`
+
+*Bridge token.* Reads one path again now, after the Bridge changed files there (a
+book it placed or renamed).
+
+```json
+{ "library_id": 1, "path": "Andy Weir/Project Hail Mary" }
+```
+
+It indexes whatever is at the path, a new book included, and answers
+`200 { "path": "…" }` with the book's indexed path. The re-read runs detached from
+the request for up to 10 minutes, like the console's
+[rescan of one book](#post-apiv1adminlibrariesidbookrescan). A path through a
+hidden (dot) folder is never indexed.
+
+| Status | Meaning |
+|---|---|
+| `200` | `{ path }` |
+| `400` | `library_id and path are required` |
+| `404` | `library not found`; `code: "not_indexable"` - nothing indexable at that path (gone, not a book, in a hidden folder, outside the library, or skipped by its ignore rules) |
 
 ## Well-known
 

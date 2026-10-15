@@ -110,6 +110,22 @@ sliver. That
 wait is most of an admin run's length; a smaller value is fine for checking the
 script.
 
+The Bridge shots (`admin/settings-bridge.png`, `admin/bridge-pair.png`,
+`admin/settings-bridge-paired.png`) need a server built with the Bridge (its
+`GET /server` lists a `bridge` capability; an older build fails the step and the
+shots keep their previous images). The Bridge itself is a separate program, so a
+stand-in plays its part through the server's own Bridge routes: Settings > Bridge
+is shot unpaired, then **Connect a bridge** is pressed and the dialog shot with its
+fresh code, which the stand-in reads from the dialog's environment-variable block
+and exchanges (`POST /bridge/pair`, naming itself `AudioSilo Bridge/0.1.0 (linux)`).
+It sends a heartbeat that reports the seeded library mapped and writable at its own
+root path (the default mapping), any other library (the Inbox) mapped but read-only,
+and a page address on a private LAN address; the admin queues a `bridge.verify` for
+the seeded library through the API, and the stand-in claims it and reports it
+`done` with the sizes the server gave for the sample book. The paired page is shot
+as tall as it is. Nothing is written into a library. It runs after the audit log
+shot, so the Bridge's audit entries stay out of it.
+
 The support shots come after those (`admin/support-card.png`,
 `admin/account-menu.png`, `admin/update-notice.png`). The overview's support
 card only shows once the server's first account is 30 days old, so the

@@ -42,7 +42,7 @@ serializes as JSON `null`, not `[]` (e.g. `{"books": null}`). Treat `null` and
 ## Authentication
 
 Every route except the public set (`/server`, `/healthz`, `/auth/redeem`,
-`/auth/exchange`, `/auth/login`, `/demo/session`, `/setup`, the well-known files,
+`/auth/exchange`, `/auth/login`, `/demo/session`, `/bridge/pair`, `/setup`, the well-known files,
 and the static UI) requires a **session bearer token**:
 
 ```
@@ -97,6 +97,16 @@ caller is refused (403) on the credential-minting routes (create key, recovery,
 pair, set password, cast token, and every household member route), so revoking a
 leaked key cuts off everything it could reach.
 See the [reference](reference.md#personal-api-keys).
+
+The paired **Bridge** (capability `bridge`) holds a credential of its own, a token
+of kind `bridge` from [`POST /bridge/pair`](reference.md#post-apiv1bridgepair). It
+is the narrowest credential the server has: it is accepted **only** on the Bridge's
+own routes (`/api/v1/bridge/*`, except the public pairing exchange), only in the
+`Authorization` header, and only while the admin who paired it is still an
+enabled admin; every other route refuses it (`401`), and the Bridge's routes refuse
+every other credential. On those routes a failure to check the token is a `503`,
+not a `401`, since a `401` tells the Bridge its token is refused. Its calls don't
+bump `last_seen`. See [The Bridge](reference.md#the-bridge).
 
 ### Media requests: `?token=` - media GETs only
 
@@ -181,7 +191,7 @@ Failures a person can fix also carry a machine-readable **`code`** next to
 | `invalid_schedule` | `400` | a library `scan_schedule` that isn't `""`, `every:<N>h` (1, 3, 6, 12, 24) or `daily:HH:MM` (`POST`/`PATCH /admin/libraries`) |
 | `invalid_pattern` | `400` | a library `ignore_patterns` list the server refuses: more than 100 patterns, one over 200 bytes, one that matches nothing, or a malformed wildcard; the message names the line (`POST`/`PATCH /admin/libraries`) |
 | `invalid_metadata_source` | `400` | a library `metadata_source` other than `"tags"` or `"path"` (`POST`/`PATCH /admin/libraries`) |
-| `not_indexable` | `404` | `POST /admin/libraries/{id}/book/rescan` on a path with no book any more (gone, not a book, or skipped by the library's ignore rules) |
+| `not_indexable` | `404` | `POST /admin/libraries/{id}/book/rescan` on a path with no book any more (gone, not a book, or skipped by the library's ignore rules); the Bridge's `POST /bridge/rescan` on a path with nothing indexable |
 | `current_device` | `409` | `DELETE /admin/devices/{id}` on the token making the request (sign out instead) |
 | `no_access` | `409` | `PATCH /admin/libraries/{id}/progress` that would start progress on a book the person can't see (their own access, not the admin's) |
 | `invalid_range` | `400` | `GET /admin/stats?range=` or `GET /admin/listening?range=` with a range that isn't `7d`, `30d`, `90d`, `1y` or a year |
@@ -216,6 +226,11 @@ Failures a person can fix also carry a machine-readable **`code`** next to
 | `self_managed` | `409` | `PATCH /admin/users/{id}` assigning a person to themselves |
 | `has_members` | `409` | `PATCH /admin/users/{id}` assigning a person who has household members of their own |
 | `invalid_keep_members` | `400` | `DELETE /admin/users/{id}?keep_members=` with an entry that isn't one of that person's members |
+| `kind_unavailable` | `409` | `POST /admin/bridge/jobs` for a kind the paired Bridge doesn't run, or before any Bridge has reported |
+| `finished` | `409` | `POST /admin/bridge/jobs/{id}/cancel` on a job that already ended |
+| `not_held` | `409` | the Bridge's `PATCH /bridge/jobs/{id}` from a claim that no longer holds the job (it ended, was cancelled, its lease ran out, or it no longer exists) |
+| `no_heartbeat` | `409` | the Bridge's `GET /bridge/jobs/next` before its first heartbeat |
+| `no_book` | `404` | the Bridge's `GET /bridge/libraries/{id}/book` with no indexed book at the path (or in the library) |
 
 **Branch on `code`, not on the English `error` text**, which is free to change.
 Errors without a `code` are ones a client can't help the person fix.
@@ -238,7 +253,7 @@ Status mapping is consistent across handlers:
 | `429` | a rate limiter tripped (see below) |
 | `500` | unexpected internal failure - the message is generic; details go to the server log only |
 | `502` | an upstream service failed: the community metadata service (`/meta`, `/meta/cover`, `/meta/work`, the admin match search), or a community cover's own host (`PUT /admin/libraries/{id}/cover/community`, and `GET /libraries/{id}/meta/cover`, which answers a URL whose fetch failed less than a minute ago with the same `502` without asking its host again) |
-| `503` | database unreachable (`/healthz`), transcoding requested without ffmpeg, demo at capacity, or the request timeout (below) |
+| `503` | database unreachable (`/healthz`), transcoding requested without ffmpeg, demo at capacity, a Bridge's token that couldn't be checked, or the request timeout (below) |
 
 **Request timeout.** Non-streaming requests are bounded at **30 s** by
 `http.TimeoutHandler`; a request that exceeds it gets
@@ -349,7 +364,8 @@ single-shot with a `limit` and no pagination.
     "addresses": true,
     "household": true,
     "cast": true,
-    "household_members": true
+    "household_members": true,
+    "bridge": false
   },
   "auth": { "methods": ["auth_code", "password"] },
   "demo": { "enabled": false }
@@ -414,6 +430,13 @@ Phase 8b-1 added one more, always `true` on a server that has it:
 |---|---|
 | `household_members` | [Household members](reference.md#household-members): `/me/household/members/**`, `managed_by`, `member_kind` and (for a member) `display_name` on the `user` object, `member_sign_ins` on [`/me/devices`](reference.md#get-apiv1medevices) and its `?also_members=1`. Without it the player offers no "Add someone to your household". It never depends on the caller: whether this caller may add is the members list's `allowed` |
 
+The Bridge added one more, and it is the one flag that depends on something outside
+the server:
+
+| Flag | Gates |
+|---|---|
+| `bridge` | anything that needs the [Bridge](reference.md#the-bridge). It is `true` only while a Bridge is paired and its last heartbeat is under two minutes old, so it turns off when the Bridge stops. While it is `true`, a top-level `bridge: {version, features}` object sits beside `capabilities`: `features` lists the job families the Bridge runs that the server knows (`bridge` today; a list, never `null`). The server reuses the heartbeat it read for up to 5 seconds, so the flag can lag by that much. Check the flag **and** the feature you need; nothing in the player uses it yet |
+
 Gate on the flag rather than on the server version: an older server answers
 `size=` and `narrator=` by ignoring them (full art, the unfiltered list) and the
 new routes with a `404`. Request bodies are decoded strictly, so a field added to an
@@ -433,7 +456,7 @@ with an error envelope.
 | General token bucket | every request except static files and media | ~50 requests/second, burst 200, per IP (`rate limit exceeded`) |
 | Media token bucket | `GET /libraries/{id}/cover`, `GET /libraries/{id}/stream`, `GET /libraries/{id}/meta/cover` | ~200 requests/second, burst 2000, per credential (a cast token has a bucket of its own); a failed authentication counts against the general bucket ([details](../auth-and-security.md#rate-limiting)) |
 | Login lockout | `POST /auth/login` | 10 *failed* attempts per 15 min per IP; a success resets the counter |
-| Redeem lockout | `POST /auth/redeem` | 10 *failed* attempts per 15 min per IP; a success resets |
+| Redeem lockout | `POST /auth/redeem`, `POST /bridge/pair` (one shared counter) | 10 *failed* attempts per 15 min per IP; a success resets |
 | Demo cap | `POST /demo/session` | at most 5 demo sessions per IP per 15 min, metered at admission (failures count too) |
 | Account mutations | `POST /auth/password`, `POST /auth/recovery`, `/auth/tokens` (create/list/revoke) | at most 10 attempts per IP per 15 min, metered at admission |
 
@@ -462,8 +485,8 @@ For local player development against a dev server, set
 ## The contract is hand-mirrored
 
 There is no OpenAPI spec and no codegen. The player mirrors these JSON shapes by
-hand in `audiosilo-frontend/src/api/types.ts` (and the manager in its
-`internal/serverapi`), so **any wire change is a multi-repo change** - handler,
+hand in `audiosilo-frontend/src/api/types.ts` (the manager in its
+`internal/serverapi`, and the Bridge in its `internal/link`), so **any wire change is a multi-repo change** - handler,
 mirrored types, and tests on both sides move together. See the
 [cross-repo contract](../../architecture/cross-repo-contract.md) before touching
 a payload.

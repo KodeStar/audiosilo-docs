@@ -42,7 +42,8 @@ codes/tokens in the response body and store only the hash.
 
 `tokens.kind` distinguishes three kinds of credential a client holds
 (`auth.KindSession`, `auth.KindPairing`, `auth.KindAPI`), plus the
-[cast tokens](#cast-tokens) a player hands a Chromecast receiver (`auth.KindCast`):
+[cast tokens](#cast-tokens) a player hands a Chromecast receiver (`auth.KindCast`)
+and the [Bridge's token](#bridge-tokens) (`auth.KindBridge`):
 
 - **Session tokens** are the durable bearer credential (`Authorization: Bearer
   …`). Issued by `POST /auth/login` and `POST /auth/exchange` with **no
@@ -127,6 +128,48 @@ Only the SHA-256 hash is stored. Any refusal is the uniform `401`. An API key ma
 not mint one (`denyAPIKey`, the containment rule above: a key never mints another
 credential); a demo account may (it can play). A cast token is never a **device**:
 `ListDevices` and the device sign-outs take only session and API-key tokens.
+
+### Bridge tokens
+
+The paired [Bridge](../bridge/index.md) holds a token of kind `bridge`
+(`auth.KindBridge`, `internal/auth/bridge.go`), minted by exchanging a one-time
+pairing code an admin made in the console (`POST /admin/bridge/pair`, then the
+Bridge's public `POST /bridge/pair`; see
+[Pairing and jobs](../bridge/pairing-and-jobs.md#pairing)). It is narrow too:
+
+- **The Bridge's routes only.** Routes opt in to the token kinds they take, and only
+  the Bridge's own (`/api/v1/bridge/*`, behind `requireBridge`) list `bridge`, from
+  the `Authorization` header only. Every other route refuses it (`401`), media
+  `?token=` included, and the Bridge's routes refuse every other kind. A route-table
+  test sends a bridge token (header and `?token=`) to every other authenticated
+  route.
+- **Its admin's.** It belongs to the admin who made the code and works only while
+  that account exists, is enabled and is still an admin: `lookupToken` refuses a
+  disabled one and the resolver a demoted one, so demoting or disabling the admin
+  stops the Bridge (it keeps its token and tries again every 5 minutes, so it comes
+  back if the admin is made an admin again).
+- **Checked again where it matters.** "A Bridge is paired" has one statement,
+  `auth.BridgeLiveSQL` (a live bridge token of an enabled admin, with the partial
+  index `idx_tokens_bridge`), and `auth.BridgeTokenLiveSQL` asks the same of one
+  token: the heartbeat's write and every claim ask it inside their own transaction,
+  so a call authenticated just before a pairing or an unpair revoked its token (a
+  long poll above all) saves nothing and claims nothing (`401`).
+- **401 means refused, 503 means unknown.** `requireBridge` answers `401` only for
+  a missing or refused token; a failure to check it is `503`, so the Bridge never
+  takes a database hiccup for a revoked token.
+- **One at a time.** The exchange (one transaction: the code's hash, its expiry,
+  its admin) revokes every earlier bridge token, and unpairing
+  (`DELETE /admin/bridge`) revokes the current one.
+- **Minted only from a session.** Making the pairing code is refused to an API key
+  (`denyAPIKey`), like every route that leads to a new credential. The code is
+  stored only as a hash, lasts 15 minutes, and failed exchanges count against the
+  redeem limiter.
+
+A bridge token is never a **device** either: the device lists and sign-outs leave it
+out. It is never **touched** (`last_seen`, the address and the app stay as they
+were): its calls, a heartbeat every 30 seconds, are not its admin's activity, which
+is the newest `last_seen` of their tokens. The heartbeat says when the Bridge was
+last heard. Only the SHA-256 hash is stored.
 
 `auth.ResolveRequest` (which `ResolveToken` wraps for a single kind) validates a presented secret for the accepted kinds: it hashes
 the secret, looks up the row, and rejects revoked tokens, expired tokens, and
@@ -645,7 +688,7 @@ Two mechanisms in `internal/api/ratelimit.go`, six buckets wired in `api.New`:
 | `ipLimiter` | Token bucket per IP (`rateLimiter`) | ~50 req/s, burst 200 | The general API: every request (global `rateLimit` middleware) except static files and authenticated media. Static files are those the mux hands to a handler the web package registered (`web.IsStatic`: the console, the web player, the connect page and its assets, served from memory); one cold console page loads forty-odd chunks, so they are not counted. The health check and the setup page are counted |
 | `mediaLimiter` | Token bucket per credential (`rateLimiter`) | ~200 req/s, burst 2000 | Media GETs (`/cover`, `/stream`, `/meta/cover`: the routes `requireBookMediaAuth` and `requireMediaAuth` wrap, both `mediaAuth`) once they authenticate. See below |
 | `loginLimiter` | Failure lockout per IP (`limiter`) | 10 failures / 15 min | `POST /auth/login` |
-| `redeemLimiter` | Failure lockout per IP | 10 failures / 15 min | `POST /auth/redeem` |
+| `redeemLimiter` | Failure lockout per IP | 10 failures / 15 min | `POST /auth/redeem`, and the Bridge's pairing exchange `POST /bridge/pair` (one shared counter) |
 | `demoLimiter` | **Attempt** cap per IP (`Acquire`) | 5 / 15 min | `POST /demo/session` |
 | `accountLimiter` | **Attempt** cap per IP (`Acquire`) | 10 / 15 min | `POST /auth/password`, `POST /auth/recovery`, `/auth/tokens` (create/list/revoke); adding a household member, and a member's session and pairing code (`POST /me/household/members`, `.../{id}/session`, `.../{id}/pair`), charged only after the API-key, demo and member refusals |
 

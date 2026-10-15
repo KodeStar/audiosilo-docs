@@ -693,6 +693,27 @@ CSP-sensitive work against a real build served by Go. The console's own gate is
   with a `reason` as `errors.<code>.<reason>`, here `errors.invalid_target.*`,
   falling back to the server's English `error`). An
   edit puts the server's answer into the cache (`withTarget`).
+- **Settings > Bridge** (`features/bridge/`) - over
+  [`GET /admin/bridge`](api/reference.md#get-apiv1adminbridge) (`useBridge`, every
+  15 seconds, every 3 while a pairing code waits) and
+  [`GET /admin/bridge/jobs`](api/reference.md#get-apiv1adminbridgejobs) (pages of
+  30, every loaded page asked again every 3 seconds while a job on them is open,
+  else every 30). Not paired: what the Bridge is and
+  **Connect a bridge**. **Connect a bridge** (`pair-dialog.tsx`) shows the code once,
+  with its countdown, the server address and the two environment variables
+  (`AUDIOSILO_BRIDGE_SERVER_URL`, `AUDIOSILO_BRIDGE_PAIR_CODE`), and closes with a
+  toast once the status poll sees a new pairing (`codeExchanged`: paired at another
+  moment than when the code was made). Paired: a status card (Online, Offline or
+  Waiting for its first report, from `presence`; Open its page only for an
+  `http(s)` `ui_url`, `safeHttpUrl`), Libraries (each library's mapping as Ready,
+  Can't write, Not found or Not reported yet, `mappingState`, with **Verify** and a
+  dialog for a book path and a hold, `verify-dialog.tsx`), Workers, Jobs
+  (`bridge-jobs.tsx`: a state filter, cancel, the result summed up by
+  `resultSummary` and the raw JSON under Details) and the Unpair danger zone. The
+  job list also shows while no Bridge is paired, when there are jobs, so queued
+  ones can be cancelled. Queuing a job whose open twin is still stopping after a
+  cancel (`cancel_requested`) gets that job back, and the toast says it is still
+  stopping. `bridge-model.ts` holds the pure rules (tested).
 - **The bell** (`components/shell/notifications-bell.tsx`) - `GET /admin/events`
   (`useServerEvents`: the newest 20, every minute), eight listed in a popover,
   each worded by `lib/server-events.ts` `describeEvent` and linking to where it

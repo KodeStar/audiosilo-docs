@@ -22,6 +22,7 @@ it, gitignored by the meta repo:
 ├── audiosilo-server/      github.com/KodeStar/audiosilo-server    (Go)
 ├── audiosilo-frontend/    github.com/KodeStar/audiosilo-frontend  (Expo / React Native)
 ├── audiosilo-manager/     github.com/KodeStar/audiosilo-manager   (Wails desktop)
+├── audiosilo-bridge/      github.com/KodeStar/audiosilo-bridge    (the Bridge; private)
 ├── audiosilo-meta/        github.com/KodeStar/audiosilo-meta      (community metadata DB)
 ├── audiosilo-sidecars/    github.com/KodeStar/audiosilo-sidecars  (contributor extraction tool)
 ├── audiosilo-site/        github.com/KodeStar/audiosilo-site      (marketing site)
@@ -149,6 +150,15 @@ wails dev                   # hot-reload dev (Go + Vite)
 wails build                 # production app into build/bin/
 go test -race ./...         # Go-side tests
 cd frontend && npm test     # UI tests (vitest)
+```
+
+**audiosilo-bridge** (private; see [the Bridge's development page](../bridge/development.md))
+
+```sh
+scripts/build-web.sh                    # build its page and embed it into bin/audiosilo-bridge
+./bin/audiosilo-bridge --data ./data    # run (the first start prints its page's password once)
+go test -race ./...                     # Go tests
+cd web && npm test                      # page tests (vitest)
 ```
 
 **audiosilo-docs** (this site)
