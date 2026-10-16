@@ -1149,7 +1149,11 @@ DSN already carries query params.
 An in-memory DSN (tests) stays single-pool: an in-memory database is
 per-connection, so a second pool would silently be a distinct, empty database.
 Supporting telemetry: `WithTx` logs any transaction over 2 s, and a background
-sampler warns when callers queue for the writer connection.
+sampler logs the writer connection's queueing every 30 s: a warning when callers
+queue behind a held writer and none is served yet (a stall), when the average wait
+reaches 25 ms or when a sample's waits total 1 s; debug otherwise (a few
+milliseconds a caller is the single writer doing its job, for example a working
+Bridge reporting progress).
 
 ## Keyset pagination
 
