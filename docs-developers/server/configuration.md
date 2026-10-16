@@ -451,7 +451,7 @@ The server has **no setting for the [Bridge](../bridge/index.md)**, and no
 environment variable: the pairing, the Bridge's token, its last heartbeat and its
 jobs live in the database (`bridge_status`, `bridge_jobs` and a `tokens` row; see
 [Data model](data-model.md#the-bridge)) and are managed from the console's
-**Settings > Bridge**. Existing settings touch it in two places:
+**Settings > Bridge**. Existing settings touch it in three places:
 
 - **The address the pairing dialog gives the Bridge** (`server_url` from
   [`POST /admin/bridge/pair`](api/reference.md#post-apiv1adminbridgepair)) is the
@@ -463,6 +463,10 @@ jobs live in the database (`bridge_status`, `bridge_jobs` and a `tokens` row; se
 - **`libraries[].root`** is where the Bridge looks for each library unless it is
   told otherwise, so mounting the libraries at the same path in both containers
   needs no mapping on the Bridge.
+- **`metadata.enabled`** gates generating characters and recaps
+  ([`sidecars.generate`](../bridge/generating.md)): generated content reaches the
+  players through `/meta`, which is `404` while metadata is off, so the console and
+  the player offer the action only with it on.
 
 The Bridge's own settings are its business: see
 [Bridge configuration](../bridge/configuration.md).

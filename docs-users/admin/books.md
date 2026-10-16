@@ -435,6 +435,17 @@ from wherever the catalogue keeps it (Audible's image servers or Open
 Library, for example). Only the image itself is asked for.
 :::
 
+### Characters and recaps from your Bridge
+
+With a [Bridge](bridge.md) paired that can write characters and recaps, the
+**Community metadata** card has a **Characters and recaps** part: **Generate
+characters and recaps** for a book the community hasn't covered (**Regenerate**
+once it has generated ones), and while the Bridge works on it, the job's step,
+progress, time left and cost so far, with **Cancel**. The book doesn't need to be
+matched. See [Generating characters and recaps](generating-characters-and-recaps.md).
+
+![The Community metadata card with Generate characters and recaps](/img/screenshots/admin/book-generate.png)
+
 ## Authors and narrators
 
 **Library > Authors** lists every author with how many books they have and
@@ -556,6 +567,11 @@ While a card is still looking its books up, it shows just the number of books
 book the community catalogue couldn't answer for is placed by its series number
 for now, and asked about again when you come back to the page a couple of
 minutes later.
+
+With a Bridge that can write characters and recaps, a series card also has
+**Generate for the series**: it queues
+[characters and recaps](generating-characters-and-recaps.md#where-to-start-it) for
+each of the series' books that has no recaps yet, in reading order.
 
 Nothing is changed by any of this: the Series page only arranges what it
 shows. To fix a book's series number for listeners too, edit its **Series

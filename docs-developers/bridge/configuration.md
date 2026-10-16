@@ -1,6 +1,6 @@
 ---
 title: Bridge configuration
-description: "The Bridge's config.yaml and AUDIOSILO_BRIDGE_* variables, its data folder, the sealed secrets and their key, PUID/PGID, the slim, full and cuda images, and the compose example that runs it beside a server."
+description: "The Bridge's config.yaml and AUDIOSILO_BRIDGE_* variables, its data folder, the settings for characters and recaps (the agent container, the budgets, the transcript retention, the GitHub token), the sealed secrets and their key, PUID/PGID, the slim, full, cuda and agent images, and the compose example that runs it beside a server."
 ---
 
 The Bridge's own settings. The server has none for it (see
@@ -41,15 +41,43 @@ for 15 minutes, and a paired Bridge ignores it. Remove it after pairing.
 
 The engine's settings (`tools`, `asr`, `agent`, `supervisor`, `contribution`,
 `metadata`, with `AUDIOSILO_BRIDGE_TOOLS_*`, `_ASR_*`, `_AGENT_*` and so on) came
-over from audiosilo-sidecars. Phase 0 reads and validates them but runs nothing that
-uses them; they take effect with Phase 1a. The full and cuda images set
-`AUDIOSILO_BRIDGE_ASR_BACKEND=whisper-cpp` and
+over from audiosilo-sidecars and apply since Phase 1a, when the engine started
+running behind `sidecars.generate`; they are read at the start (restart to apply).
+The full and cuda images set `AUDIOSILO_BRIDGE_ASR_BACKEND=whisper-cpp` and
 `AUDIOSILO_BRIDGE_ASR_WHISPER_CLI_PATH=/opt/whisper/whisper-cli` for their bundled
 speech recognition.
 
+## Characters and recaps
+
+The settings [`sidecars.generate`](generating.md) adds, or that matter most to it:
+
+| Setting | Environment | Default | What it is |
+|---|---|---|---|
+| `agent.backend` | `AUDIOSILO_BRIDGE_AGENT_BACKEND` | `claude` (empty is claude) | the CLI the [agent container](agent-container.md) runs for this Bridge: `claude` or `codex` |
+| `agent.staging_dir` | `AUDIOSILO_BRIDGE_AGENT_STAGING_DIR` | `<data>/staging` | the folder shared with the agent container (absolute). The compose example mounts a volume at `/staging`, outside `/bridge-data`, whose first-start ownership fix would otherwise reach it |
+| `agent.claim_timeout_seconds` | `AUDIOSILO_BRIDGE_AGENT_CLAIM_TIMEOUT_SECONDS` | `120` | how long an agent job waits for the container to claim it before the book parks `agent_unavailable` (10 to 3600) |
+| `agent.monthly_budget_usd` | `AUDIOSILO_BRIDGE_AGENT_MONTHLY_BUDGET_USD` | `100` | the monthly agent spend cap across every book, the calendar month in UTC (decision 7); `0` = no cap |
+| `agent.book_budget_usd` | `AUDIOSILO_BRIDGE_AGENT_BOOK_BUDGET_USD` | `75` | one book's agent spend cap |
+| `transcripts.retention_days` | `AUDIOSILO_BRIDGE_TRANSCRIPTS_RETENTION_DAYS` | `30` | days a finished book's transcripts are kept after its job ends (0 to 3650; `0` = deleted when it ends; decision 5) |
+| `supervisor.automatic_actions` | `AUDIOSILO_BRIDGE_SUPERVISOR_AUTOMATIC_ACTIONS` | **on** | the supervisor's bounded recoveries (a retry, a readmit, a requeue, each capped per book per day). On by default since Phase 1a: the jobs are pressed in the console and left to run |
+| | `AUDIOSILO_BRIDGE_GITHUB_TOKEN` | | a GitHub token (fine-grained, able to open issues on the community repos) for `contribute: issue`. Sealed into the secrets as `github_pat` at every start, replacing the one stored before; unset or blank leaves the stored one. Never logged |
+
+`supervisor.model_assisted`, `supervisor.model_automatic_actions` and the backend
+failover are **forced off**, whatever the file or the environment says: they would
+run an agent CLI inside the Bridge, which never does (decision 15). The Bridge's
+page shows the agent, the speech recognition, the budgets with this month's
+spend and the retention on its Status tab (`GET /api/engine`), and says they are
+set in `config.yaml`.
+
+The **agent container** has no config file of its own: its flags (`--staging`,
+`--home`, `--slots`) and its credentials (`CLAUDE_CODE_OAUTH_TOKEN`,
+`ANTHROPIC_API_KEY`, `OPENAI_API_KEY`, `CODEX_API_KEY`, from its environment or
+`/agent/secrets/<lowercase name>`) are in
+[The agent container](agent-container.md#the-environment-and-the-credentials).
+
 ## Secrets
 
-The Bridge's token from the server (and, later, API keys and a GitHub token) are
+The Bridge's token from the server and its GitHub token (`github_pat`) are
 **never in `config.yaml`**. Each is an AES-256-GCM sealed file in `<data>/secrets/`
 (`0600`), bound to its name so a file renamed onto another name doesn't open. One
 master key seals them all:
@@ -89,29 +117,34 @@ user's. The entrypoint warns when it isn't writable.
 ## The images
 
 `ghcr.io/kodestar/audiosilo-bridge` (private while the repository is), built from
-one Dockerfile with three targets:
+one Dockerfile with four targets:
 
 | Tag | Target | What's in it | Arch |
 |---|---|---|---|
 | `latest` | `full` (the default) | the Bridge, ffmpeg, and a CPU build of whisper.cpp for speech recognition | amd64, arm64 |
 | `latest-slim` | `slim` | the Bridge and ffmpeg only: for a Bridge that never transcribes (today's jobs, and podcasts later) | amd64, arm64 |
 | `latest-cuda` | `cuda` | speech recognition on an NVIDIA GPU (run with `--gpus all`) on the `nvidia/cuda` runtime base | amd64 |
+| `latest-agent` | `agent` | the [agent container](agent-container.md#the-image): the pinned native `claude` and `codex` CLIs and the Bridge binary as their runner (`audiosilo-bridge agent-runner`), on Debian bookworm-slim | amd64, arm64 |
 
 The `latest` tags move **only for a release tag** (`v1.2.3`, not a pre-release
-such as `v1.2.3-rc.1`), which also publishes `<tag>`, `<tag>-slim` and `<tag>-cuda`.
-A manual dispatch from a branch publishes under the branch's name (`<branch>`,
-`<branch>-slim`, `<branch>-cuda`), never over `latest`. The whisper.cpp builds are downloaded at image build time,
+such as `v1.2.3-rc.1`), which also publishes `<tag>`, `<tag>-slim`, `<tag>-cuda`
+and `<tag>-agent`. A manual dispatch from a branch publishes under the branch's
+name (`<branch>`, `<branch>-slim`, `<branch>-cuda`, `<branch>-agent`), never over
+`latest`. The whisper.cpp builds are downloaded at image build time,
 pinned by release tag (the same one the Bridge's own downloader uses), each checked
 against the sha256 that release's `checksums.txt` lists, and each image fetches only
 the build it carries; the speech models are not baked
 in (the Bridge downloads the one it needs into its data folder on first use).
-**No image carries an AI agent's command-line tool**: agents will run in a separate
-`agent` container that sees only a staging folder, which arrives with Phase 1a.
+**Only the `agent` image carries an AI agent's command-line tool**: the Bridge's
+own images never do, and the Bridge never runs one (decision 15). Run the same
+version of the Bridge and its agent image: they check each other's protocol
+version.
 
 ## Running it beside a server
 
-`compose.example.yaml` in the Bridge's repository runs the server and the Bridge
-together:
+`compose.example.yaml` in the Bridge's repository runs the server, the Bridge and
+its agent container together (its header comment, which says the same as this
+page, left out):
 
 ```yaml
 name: audiosilo
@@ -146,11 +179,52 @@ services:
       # AUDIOSILO_BRIDGE_PAIR_CODE: XXXX-XXXX-XXXX-XXXX
       # Keep the secrets' key outside the data folder (32 bytes, hex or base64):
       # AUDIOSILO_BRIDGE_SECRET_KEY: ...
+      # The folder shared with the agent container (below). Kept outside
+      # /bridge-data, whose first-start ownership fix would otherwise reach it.
+      AUDIOSILO_BRIDGE_AGENT_STAGING_DIR: /staging
+      # The CLI the agent container runs: claude (the default) or codex.
+      # AUDIOSILO_BRIDGE_AGENT_BACKEND: codex
+      # A GitHub token (a fine-grained one that can open issues on the community
+      # repos) lets a job contribute its characters and recaps (contribute: issue).
+      # Stored sealed at the start; this value replaces any stored before.
+      # AUDIOSILO_BRIDGE_GITHUB_TOKEN: ${AUDIOSILO_BRIDGE_GITHUB_TOKEN}
     ports:
       - "8091:8091"
     volumes:
       - ./bridge-data:/bridge-data
       - /path/to/audiobooks:/audiobooks:rw
+      # Shared with the agent container, at the Bridge's agent.staging_dir.
+      # The only volume both mount.
+      - staging:/staging
+
+  agent:
+    image: ghcr.io/kodestar/audiosilo-bridge:latest-agent
+    restart: unless-stopped
+    user: "10002:10002"
+    environment:
+      # By name only: the value comes from your shell or .env and is never
+      # written here. Set the one you use; the runner reports which it found.
+      - CLAUDE_CODE_OAUTH_TOKEN
+      # - ANTHROPIC_API_KEY
+      # - OPENAI_API_KEY
+    volumes:
+      - staging:/staging
+      - agent-config:/agent
+    networks: [agent]
+    cap_drop: [ALL]
+    security_opt: ["no-new-privileges:true"]
+    read_only: true
+    tmpfs: ["/tmp"]
+    # A stop cancels the runs in progress: SIGTERM, then SIGKILL 10 s later.
+    stop_grace_period: 20s
+
+networks:
+  # The agent's own network: internet access, and nothing else of this stack.
+  agent: {}
+
+volumes:
+  staging: {}
+  agent-config: {}
 ```
 
 The points that matter:
@@ -165,3 +239,12 @@ The points that matter:
 - **Port 8091** is the Bridge's own page. It answers only the local network (see
   [Development](development.md#the-page-and-its-api)), so don't put it behind a
   public reverse proxy.
+- **The `staging` volume is the only one the Bridge and the agent share**, at the
+  Bridge's `agent.staging_dir`. The agent mounts no library and no Bridge data, runs
+  as `10002:10002` with every capability dropped, `no-new-privileges`, a read-only
+  root and a tmpfs `/tmp`, on a network of its own (the internet only). Its
+  credentials come in by name from the shell or a `.env` file, never written into
+  the compose file; see [The agent container](agent-container.md).
+- **`stop_grace_period: 20s`** gives the runner time to stop the runs in progress
+  (`SIGTERM`, then `SIGKILL` 10 seconds later) and mark them done, so the Bridge
+  hears about it at once.

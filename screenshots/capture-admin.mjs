@@ -952,11 +952,18 @@ await step('server: audit log', async () => {
 // library's mapping (the seeded library mapped and writable at the server's own
 // root path, the default mapping; any other library mapped but read-only), then
 // claims a bridge.verify job the admin queued and reports it done with the sizes
-// the server gave for the sample book. Nothing is written into a library. After
-// the audit log shot, so the Bridge's audit entries stay out of it.
-const BRIDGE_CLIENT = {'x-audiosilo-client': 'AudioSilo Bridge/0.1.0 (linux)'};
+// the server gave for the sample book. Its heartbeat offers sidecars.generate too,
+// with the cost figures a Bridge with an agent signed in sends, so the status card
+// shows the agent rows and the next step can shoot the generate action. Nothing is
+// written into a library. After the audit log shot, so the Bridge's audit entries
+// stay out of it.
+const BRIDGE_CLIENT = {'x-audiosilo-client': 'AudioSilo Bridge/0.2.0 (linux)'};
+// The stand-in's token and last heartbeat, for the generate step.
+let bridgeToken = null;
+let bridgeStatus = null;
 await step('settings: bridge', async () => {
-  if (!wanted('admin/settings-bridge.png', 'admin/bridge-pair.png', 'admin/settings-bridge-paired.png')) return;
+  if (!wanted('admin/settings-bridge.png', 'admin/bridge-pair.png', 'admin/settings-bridge-paired.png',
+    'admin/book-generate.png', 'admin/generate-dialog.png')) return;
   const info = await api(null, 'GET', '/server');
   if (!info?.capabilities || !('bridge' in info.capabilities)) throw new Error('this server build has no Bridge');
   try {
@@ -982,7 +989,15 @@ await step('settings: bridge', async () => {
     await dialog.waitFor({state: 'hidden', timeout: 15000});
 
     // The first heartbeat's answer lists the libraries; the second reports them.
-    const status = {version: '0.1.0', kinds: ['bridge.verify'], libraries: [], workers: [], ui_url: 'http://192.168.1.10:8091'};
+    const status = {
+      version: '0.2.0', kinds: ['bridge.verify', 'sidecars.generate'], libraries: [], workers: [],
+      ui_url: 'http://192.168.1.10:8091',
+      estimates: {sidecars: {
+        asr_seconds_per_audio_hour: 840, agent_usd_per_audio_hour: 1.6, agent_usd_per_ebook: 4.1, samples: 6,
+        agent_backend: 'claude', agent_ready: true, subscription: true, can_contribute: true,
+        monthly_budget_usd: 100, month_spent_usd: 23.4,
+      }},
+    };
     const libs = (await api(bridge, 'PUT', '/bridge/status', status, BRIDGE_CLIENT)).libraries;
     const seeded = libs.find((l) => l.id === library?.id) ?? libs[0];
     if (!seeded) throw new Error('the server has no library');
@@ -994,6 +1009,8 @@ await step('settings: bridge', async () => {
            error: 'mapped, but not writable here: permission denied'},
     );
     await api(bridge, 'PUT', '/bridge/status', status, BRIDGE_CLIENT);
+    bridgeToken = bridge;
+    bridgeStatus = status;
 
     // Verify the seeded library, as the Verify button does, and run it to done.
     await api(token, 'POST', '/admin/bridge/jobs', {kind: 'bridge.verify', library_id: seeded.id});
@@ -1026,6 +1043,37 @@ await step('settings: bridge', async () => {
   } finally {
     await page.setViewportSize(DESKTOP_CONTEXT.viewport);
   }
+});
+
+// ── Generate characters and recaps (Bridge Phase 1a) ─────────────────────────
+// With the stand-in Bridge offering sidecars.generate (its heartbeat sent again
+// first, so it is online), a seeded book's Community card shows the Characters
+// and recaps part with its action, and the action opens the confirmation with
+// the estimate the server costs from the heartbeat's figures. Nothing is queued:
+// the dialog is closed, never submitted.
+await step('bridge: generate characters and recaps', async () => {
+  if (!wanted('admin/book-generate.png', 'admin/generate-dialog.png')) return;
+  if (!bridgeToken || !bridgeStatus) throw new Error('no stand-in Bridge was paired');
+  if (!firstBook) throw new Error('no book was provisioned');
+  await api(bridgeToken, 'PUT', '/bridge/status', bridgeStatus, BRIDGE_CLIENT);
+  await sleep(6000); // GET /server reuses a heartbeat it read for up to 5 s
+  await open(page, bookRoute(firstBook), (p) => p.getByRole('heading', {name: 'Details', exact: true}));
+  const action = page.getByRole('button', {name: /^(Generate characters and recaps|Regenerate)$/});
+  await action.waitFor({timeout: 15000});
+  const card = page.locator('section[aria-labelledby="generate-title"]').locator('xpath=..');
+  await card.scrollIntoViewIfNeeded();
+  await sleep(800);
+  await shoot(page, 'admin/book-generate.png', {clip: around([await card.boundingBox()])});
+
+  await action.click();
+  const dialog = page.getByRole('dialog');
+  await dialog.waitFor({timeout: 8000});
+  // The estimate has loaded once its facts show.
+  await dialog.getByText('Reads', {exact: true}).waitFor({timeout: 15000});
+  await sleep(800);
+  await shoot(page, 'admin/generate-dialog.png');
+  await page.keyboard.press('Escape');
+  await sleep(400);
 });
 
 await step('webhook deliveries', async () => {

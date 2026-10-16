@@ -117,14 +117,26 @@ shots keep their previous images). The Bridge itself is a separate program, so a
 stand-in plays its part through the server's own Bridge routes: Settings > Bridge
 is shot unpaired, then **Connect a bridge** is pressed and the dialog shot with its
 fresh code, which the stand-in reads from the dialog's environment-variable block
-and exchanges (`POST /bridge/pair`, naming itself `AudioSilo Bridge/0.1.0 (linux)`).
-It sends a heartbeat that reports the seeded library mapped and writable at its own
-root path (the default mapping), any other library (the Inbox) mapped but read-only,
-and a page address on a private LAN address; the admin queues a `bridge.verify` for
+and exchanges (`POST /bridge/pair`, naming itself `AudioSilo Bridge/0.2.0 (linux)`).
+It sends a heartbeat that offers `bridge.verify` and `sidecars.generate`, reports the
+seeded library mapped and writable at its own root path (the default mapping), any
+other library (the Inbox) mapped but read-only, a page address on a private LAN
+address, and the `estimates.sidecars` figures of a Bridge whose claude agent is
+signed in on a subscription and can contribute; the admin queues a `bridge.verify` for
 the seeded library through the API, and the stand-in claims it and reports it
 `done` with the sizes the server gave for the sample book. The paired page is shot
 as tall as it is. Nothing is written into a library. It runs after the audit log
 shot, so the Bridge's audit entries stay out of it.
+
+The generate shots (`admin/book-generate.png`, `admin/generate-dialog.png`) come
+straight after, from the same stand-in (its heartbeat sent again so it is online,
+then 6 seconds for the server's cached heartbeat to expire): the first book's page,
+its Community metadata card clipped with **Generate characters and recaps**, then
+the confirmation the button opens, once its estimate has loaded. The dialog is
+closed, never submitted, so nothing is queued. They need community metadata on (the
+default) and a first book the community has no characters and recaps for (a seeded
+LibriVox book has no ASIN or ISBN, so it never matches); otherwise the step fails
+and the shots keep their previous images.
 
 The support shots come after those (`admin/support-card.png`,
 `admin/account-menu.png`, `admin/update-notice.png`). The overview's support

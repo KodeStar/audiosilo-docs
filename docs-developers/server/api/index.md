@@ -182,7 +182,7 @@ Failures a person can fix also carry a machine-readable **`code`** next to
 | `cannot_delete_self` | `400` | an admin deleting their own account |
 | `path_not_absolute` | `400` | `GET /admin/fs/dirs` with a relative `path` |
 | `folder_unreadable` | `404` | `GET /admin/fs/dirs` on a missing or unreadable folder |
-| `book_not_found` | `404` | an admin catalog call on a path that is not an indexed book (book page, edit, bulk edit, match, cover upload, community cover); an admin progress edit on a path with no progress and no indexed book |
+| `book_not_found` | `404` | an admin catalog call on a path that is not an indexed book (book page, edit, bulk edit, match, cover upload, community cover); an admin progress edit on a path with no progress and no indexed book; `POST /admin/bridge/jobs` and `GET /admin/bridge/estimate` on a path that is not an indexed book |
 | `invalid_override` | `400` | a metadata edit the server refuses; the body also carries a `field` key naming the offending field (`PATCH /admin/libraries/{id}/book`, `POST /admin/books/bulk`) |
 | `metadata_off` | `404` | a community match search, a `POST /admin/books/works` work-id batch, a community cover (`POST /admin/meta/covers`, `PUT /admin/libraries/{id}/cover/community`), or the metadata mirror (`GET /admin/meta/mirror`, `POST /admin/meta/mirror/check`) while community metadata is turned off |
 | `too_large` | `400` / `413` | a bulk edit or an issue ignore over 1000 books, a cover batch over 60, a community cover batch over 12, or a work-id batch over 100 (`400`); a custom cover upload over 5 MiB, or a community cover over 16 MiB or 40 megapixels (`413`) |
@@ -191,7 +191,7 @@ Failures a person can fix also carry a machine-readable **`code`** next to
 | `invalid_schedule` | `400` | a library `scan_schedule` that isn't `""`, `every:<N>h` (1, 3, 6, 12, 24) or `daily:HH:MM` (`POST`/`PATCH /admin/libraries`) |
 | `invalid_pattern` | `400` | a library `ignore_patterns` list the server refuses: more than 100 patterns, one over 200 bytes, one that matches nothing, or a malformed wildcard; the message names the line (`POST`/`PATCH /admin/libraries`) |
 | `invalid_metadata_source` | `400` | a library `metadata_source` other than `"tags"` or `"path"` (`POST`/`PATCH /admin/libraries`) |
-| `not_indexable` | `404` | `POST /admin/libraries/{id}/book/rescan` on a path with no book any more (gone, not a book, or skipped by the library's ignore rules); the Bridge's `POST /bridge/rescan` on a path with nothing indexable |
+| `not_indexable` | `404` | `POST /admin/libraries/{id}/book/rescan` on a path with no book any more (gone, not a book, or skipped by the library's ignore rules); the Bridge's `POST /bridge/rescan` on a path with nothing indexable (with `mode: "attachments"`, no indexed book there) |
 | `current_device` | `409` | `DELETE /admin/devices/{id}` on the token making the request (sign out instead) |
 | `no_access` | `409` | `PATCH /admin/libraries/{id}/progress` that would start progress on a book the person can't see (their own access, not the admin's) |
 | `invalid_range` | `400` | `GET /admin/stats?range=` or `GET /admin/listening?range=` with a range that isn't `7d`, `30d`, `90d`, `1y` or a year |
@@ -226,7 +226,9 @@ Failures a person can fix also carry a machine-readable **`code`** next to
 | `self_managed` | `409` | `PATCH /admin/users/{id}` assigning a person to themselves |
 | `has_members` | `409` | `PATCH /admin/users/{id}` assigning a person who has household members of their own |
 | `invalid_keep_members` | `400` | `DELETE /admin/users/{id}?keep_members=` with an entry that isn't one of that person's members |
-| `kind_unavailable` | `409` | `POST /admin/bridge/jobs` for a kind the paired Bridge doesn't run, or before any Bridge has reported |
+| `kind_unavailable` | `409` | `POST /admin/bridge/jobs` (or `GET /admin/bridge/estimate`) for a kind the paired Bridge doesn't run, or before any Bridge has reported |
+| `library_not_writable` | `409` | `POST /admin/bridge/jobs` for a kind that writes (`sidecars.generate`) in a library the Bridge's last heartbeat doesn't report mapped and writable |
+| `cannot_contribute` | `409` | `POST /admin/bridge/jobs` for `sidecars.generate` with `contribute: "issue"` while the Bridge's last heartbeat doesn't say it can contribute (`estimates.sidecars.can_contribute`) |
 | `finished` | `409` | `POST /admin/bridge/jobs/{id}/cancel` on a job that already ended |
 | `not_held` | `409` | the Bridge's `PATCH /bridge/jobs/{id}` from a claim that no longer holds the job (it ended, was cancelled, its lease ran out, or it no longer exists) |
 | `no_heartbeat` | `409` | the Bridge's `GET /bridge/jobs/next` before its first heartbeat |
@@ -246,13 +248,13 @@ Status mapping is consistent across handlers:
 | `400` | malformed body / unknown JSON field, missing or invalid parameter (`path is required`, `invalid cursor`, non-integer `{id}`), path escaping the library root, domain validation (`mode must be "book" or "collection"`, admin needs a password, password too short) |
 | `401` | missing/invalid/expired token, bad credentials, invalid auth code, wrong `current_password` |
 | `403` | authenticated but not allowed: no share grants the library or path, `admin only`, demo accounts on the self-service routes (password/recovery/API keys), an API key on a credential-minting route (create key/recovery/pair/password/cast token) or on a household member route, a kid household member on the routes a kid can't use, a member managing members, adding a member while it is switched off, bad setup token |
-| `404` | library/user/share/invite not found, another user's (or an unknown) bookmark or note on an edit, `no book at that path`, feature not configured (demo mode off, well-known files unset) |
+| `404` | library/user/share/invite not found, another user's (or an unknown) bookmark or note on an edit, `no book at that path`, a path with a hidden (dot) segment on any content route (it reads as missing, after the scope check: `library.ContentPath`), feature not configured (demo mode off, well-known files unset) |
 | `409` | conflicts: `name already taken` (library/share), last-enabled-admin guard, the household member cap, a session or pairing code for a member the admin disabled, the admin's household refusals, signing out the device making the request, starting someone's progress on a book they can't see, setup already completed |
 | `413` | a request body over an endpoint's size cap (a custom cover over 5 MiB) |
 | `415` | an upload of a type the endpoint doesn't take (a custom cover that isn't JPEG/PNG/WebP) |
 | `429` | a rate limiter tripped (see below) |
 | `500` | unexpected internal failure - the message is generic; details go to the server log only |
-| `502` | an upstream service failed: the community metadata service (`/meta`, `/meta/cover`, `/meta/work`, the admin match search), or a community cover's own host (`PUT /admin/libraries/{id}/cover/community`, and `GET /libraries/{id}/meta/cover`, which answers a URL whose fetch failed less than a minute ago with the same `502` without asking its host again) |
+| `502` | an upstream service failed: the community metadata service (`/meta` unless the book has [generated content](reference.md#generated-content), `/meta/cover`, `/meta/work`, the admin match search), or a community cover's own host (`PUT /admin/libraries/{id}/cover/community`, and `GET /libraries/{id}/meta/cover`, which answers a URL whose fetch failed less than a minute ago with the same `502` without asking its host again) |
 | `503` | database unreachable (`/healthz`), transcoding requested without ffmpeg, demo at capacity, a Bridge's token that couldn't be checked, or the request timeout (below) |
 
 **Request timeout.** Non-streaming requests are bounded at **30 s** by
@@ -435,7 +437,7 @@ the server:
 
 | Flag | Gates |
 |---|---|
-| `bridge` | anything that needs the [Bridge](reference.md#the-bridge). It is `true` only while a Bridge is paired and its last heartbeat is under two minutes old, so it turns off when the Bridge stops. While it is `true`, a top-level `bridge: {version, features}` object sits beside `capabilities`: `features` lists the job families the Bridge runs that the server knows (`bridge` today; a list, never `null`). The server reuses the heartbeat it read for up to 5 seconds, so the flag can lag by that much. Check the flag **and** the feature you need; nothing in the player uses it yet |
+| `bridge` | anything that needs the [Bridge](reference.md#the-bridge). It is `true` only while a Bridge is paired and its last heartbeat is under two minutes old, so it turns off when the Bridge stops. While it is `true`, a top-level `bridge: {version, features}` object sits beside `capabilities`: `features` lists the job families the Bridge runs that the server knows (`bridge`, and `sidecars` for generating characters and recaps; a list, never `null`). The server reuses the heartbeat it read for up to 5 seconds, so the flag can lag by that much. Check the flag **and** the feature you need: the player shows an admin **Generate characters and recaps** only with `bridge`, `sidecars` in `features` and `metadata` |
 
 Gate on the flag rather than on the server version: an older server answers
 `size=` and `narrator=` by ignoring them (full art, the unfiltered list) and the

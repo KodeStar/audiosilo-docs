@@ -713,7 +713,33 @@ CSP-sensitive work against a real build served by Go. The console's own gate is
   job list also shows while no Bridge is paired, when there are jobs, so queued
   ones can be cancelled. Queuing a job whose open twin is still stopping after a
   cancel (`cancel_requested`) gets that job back, and the toast says it is still
-  stopping. `bridge-model.ts` holds the pure rules (tested).
+  stopping. `bridge-model.ts` holds the pure rules (tested). Since Phase 1a the
+  status card adds the heartbeat's `estimates.sidecars` as Agent (backend and
+  Ready), Paid by, This month (spend against the cap) and Estimates from rows, and
+  the job list words a `sidecars.generate` job with `GenerateStatus` (its stage,
+  counts, time left and cost; a park's reason with **Open in the Bridge**, a link
+  to `<ui_url>#/jobs/<id>`; the counts and cost once done), its path linking to the
+  book's page.
+- **Generate characters and recaps** (`features/bridge/generate-*.tsx`,
+  `use-generate.ts`, `series-generate-dialog.tsx`; the pure rules in
+  `generate-model.ts`, tested) - offered while `generateAvailable` (`metadata`,
+  `bridge` and the `sidecars` feature). The book page's Community card ends with
+  `GenerateSection`: the book's generate job, polled every 10 seconds while it is
+  queued or working and every minute while it is parked (`generatePollMs`; the
+  jobs are asked while the server reports the `bridge` capability at all, so a job
+  stays visible while the Bridge is away), and the action from the brief estimate
+  (`generateAction`: Generate, Regenerate when it has generated content, hidden
+  when the community has both). `GenerateDialog` reads the full estimate: the
+  source, length, transcription and agent cost for every book it queues, where
+  the results go, a contribute switch only when `can_contribute`, the earlier
+  books (ticked), and notices for an offline Bridge, an agent not ready or not
+  reported, and a library it can't write (which blocks the submit). It queues the
+  books one by one in reading order (`queueInOrder`) and reports a partial
+  failure. Each series card (`features/library/series/`) offers **Generate for the
+  series** once its books are loaded: `SeriesGenerateDialog` asks every book's
+  brief estimate, four at a time, and queues the books with no recaps and no open
+  job, earliest first, counting the ones it leaves out. See
+  [Characters and recaps](../bridge/generating.md).
 - **The bell** (`components/shell/notifications-bell.tsx`) - `GET /admin/events`
   (`useServerEvents`: the newest 20, every minute), eight listed in a popover,
   each worded by `lib/server-events.ts` `describeEvent` and linking to where it

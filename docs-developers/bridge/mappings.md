@@ -82,8 +82,10 @@ The errors the Bridge writes:
 The server stores the entries as reported and the console shows each library with
 its state: **Ready** (mapped and writable), **Can't write** (mapped, read-only),
 **Not found** (not mapped) or **Not reported yet**, with the server's path, the
-Bridge's path, the book it checked and the error. Write jobs, which arrive with
-Phase 1a, are refused for a library that isn't both mapped and writable.
+Bridge's path, the book it checked and the error. Write jobs, like
+`sidecars.generate`, are refused for a library that isn't both mapped and
+writable (`409 library_not_writable` from the server; the Bridge checks again
+before it writes).
 
 ## When it checks
 

@@ -1,6 +1,6 @@
 ---
 title: Pairing and jobs
-description: "How a Bridge pairs with a server, the bridge token, the heartbeat and the bridge capability, and the job model: states, leases, attempts, cancelling, resuming after a restart, the double allow-list and bridge.verify."
+description: "How a Bridge pairs with a server, the bridge token, the heartbeat and the bridge capability, and the job model: states, leases, attempts, cancelling, resuming after a restart, the double allow-list, lanes, notifications and bridge.verify."
 ---
 
 How the Bridge and the server find each other, how the server knows the Bridge is
@@ -106,10 +106,11 @@ pairing and after a mapping check finishes:
 | Field | What it carries |
 |---|---|
 | `version` | the Bridge's version |
-| `kinds` | the job kinds it runs (`bridge.verify` in Phase 0) |
+| `kinds` | the job kinds it runs (`bridge.verify`, and `sidecars.generate` since Phase 1a) |
 | `libraries` | its last [mapping check](mappings.md) of each library |
 | `workers` | the transcription workers connected to it (none until Phase 1b) |
 | `ui_url` | its own page as the local network reaches it (its `public_url` setting), which the console links to |
+| `estimates` | its figures for costing a job before it is queued, one block per family (`sidecars`: [the Bridge's figures](generating.md#the-bridges-figures)); absent until its engine has started |
 
 The server checks its structure and refuses it when that is wrong (kinds of the
 form `family.name`, listed once; library ids above 0, listed once; `ui_url` an
@@ -127,13 +128,14 @@ minutes** old (`bridge.OnlineWindow`). Then, and only then, `GET /server` says
 `capabilities.bridge: true`, with a top-level `bridge: {version, features}` beside
 `capabilities`. `features` are the job families the Bridge runs **that the server
 knows**: the part of each known kind before its dot, so `bridge.verify` gives
-`bridge` (a list, `[]` for none, never `null`). The server reuses the heartbeat it
+`bridge` and `sidecars.generate` gives `sidecars` (a list, `[]` for none, never `null`). The server reuses the heartbeat it
 read for up to **5 seconds**, so `GET /server`, which every client calls often,
 rarely reads the database for it; a pairing or an unpair drops that copy at once. A
 client checks the flag **and** the feature it needs; a feature the Bridge doesn't
-advertise is off even while the flag is on. Nothing in the player
-reads it yet: the console reads `GET /admin/bridge` instead, and later phases gate
-player actions on it.
+advertise is off even while the flag is on. The console reads `GET /admin/bridge`
+for its Bridge page, and both the console and the player gate
+[Generate characters and recaps](generating.md#who-sees-the-action) on the flag
+and the `sidecars` feature.
 
 The Bridge counts itself online the same way on its own page: the last heartbeat
 went through less than two minutes ago and the last one didn't fail. It runs no job
@@ -253,7 +255,9 @@ without a final report, and is kept aside. When a link to the same server works
 again (the refusal ended, or the Bridge was paired with that server again) it is
 resumed under its claim, as after a restart: if the server took it back meanwhile,
 its first report is a `409` and it is dropped. Paired with another server instead,
-it is recorded as lost.
+it is recorded as lost: each `server_jobs` row records the `server_id` of the server
+that handed it out (Bridge store migration `0003`), so a start that finds an open
+row of another server never reports it to the wrong one.
 
 ### Kinds are allow-listed twice
 
@@ -266,9 +270,26 @@ So neither side can be made to run something the other doesn't understand: a
 Bridge can't advertise a kind into existence, and the server can't queue one the
 Bridge doesn't have.
 
+The server's table also says whether a kind **writes** into the library. Such a
+kind (`sidecars.generate`) is queued only for a library the last heartbeat reports
+**mapped and writable**, else `409 library_not_writable`, after the dedupe (an open
+job is still returned). `bridge.verify` writes nothing and works on any library.
+
 On the Bridge, each kind has a handler and a **lane**: how many jobs of that lane
-run at once. Phase 0 has one lane, `light`, with room for 2 jobs; the speech
-recognition and agent lanes arrive with Phase 1.
+run at once. `light` has room for 2 (`bridge.verify`); `pipeline` for 25
+(`sidecars.generate`, whose jobs mostly wait on the engine's own scheduler, which
+decides what actually runs).
+
+### Notifications
+
+The server tells admins about jobs itself (the Bridge has no route for it): when a
+job moves into `done` it records `bridge_job_finished`, and into `failed`, or into
+`needs_attention` with a park that isn't transient, `bridge_job_failed`, once per
+move and only after the move has committed. That covers the Bridge's reports and a
+lease that runs out on the last attempt alike. A report that leaves the state as it
+was is never news. The rules (which parks are transient) are in
+[Characters and recaps](generating.md#notifications), the events in
+[Notifications](../server/backups-and-notifications.md#events).
 
 ## The proof job: `bridge.verify`
 

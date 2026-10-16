@@ -16,7 +16,7 @@ The **companion** keeps everything about the book you're listening to one tap aw
 
 A column beside the [full player](full-player.md#on-a-phone-a-tablet-and-a-computer) on a computer, under its controls on a tablet, and a sheet from the chips under the controls on a phone. It reopens on the tab you used last.
 
-Who's who and Story so far come from the community database, [AudioSilo Meta](../community/meta-site.md), so they appear only when your server has community metadata switched on. For a book nobody has written character notes or recaps for yet, the tab says so.
+Who's who and Story so far come from the community database, [AudioSilo Meta](../community/meta-site.md), so they appear only when your server has community metadata switched on. For a book nobody has written character notes or recaps for yet, the tab says so. Your server's [Bridge](../admin/generating-characters-and-recaps.md) can also write them for a book: those carry a **Generated on this server** mark, and for an admin the empty tabs offer **Generate characters and recaps**.
 
 ## Nothing ahead of where you are
 

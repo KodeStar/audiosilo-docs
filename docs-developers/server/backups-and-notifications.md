@@ -204,11 +204,24 @@ kind. A nil `*Service` does nothing, so callers don't check.
 | `invite_redeemed` | a pairing exchange whose token came from an invite code | `user` (whose invite), `device` |
 | `update_available` | `updates.Checker.OnAvailable` after a check that finds a newer release; announced **once per version** (`dedup_key` is the version) | `version`, `name`, `url` (the release page) |
 | `backup_failed` | `backup.Service.OnFailure` (scheduled or manual) | `trigger`, `error` (`disk_full`, `permission_denied`, `failed`) |
+| `bridge_job_finished` | `bridge.Service.OnTransition` (wired by `API.SetBridge`): a [Bridge](../bridge/index.md) job moved **into** `done` | `job_id`, `job_kind`, `state`, `library`, `library_id`, `path`, `title` (the book's title as indexed now, one plain line of at most 200 characters; `""` when it can't be read) |
+| `bridge_job_failed` | the same hook: a job moved **into** `failed` (a Bridge's report, or a lease that ran out on the last attempt), or into `needs_attention` with a park that isn't transient (`bridge.Job.Notable`: never `agent_rate_limited` or `agent_unavailable`; a park changing its code in place counts when the new one isn't transient) | as `bridge_job_finished`, plus `code` (the park code, only for `needs_attention`) and `detail` (the job's `error`, the Bridge's own text, which can name a folder on its disk: **bell only**) |
 
 `notify.Kinds` lists them in this order, which is the order the console shows.
 
-A failed scan's `detail` is the tool's or the operating system's own message,
-which can name a folder on the server, so it stays inside: the bell shows it,
+A Bridge event is reported once per move, after the move has committed, on a
+context the request's end doesn't cancel. Its message names the book (its title,
+else its path, else its library): `bridge_job_finished` for a `sidecars.generate`
+job reads `Characters and recaps ready: <title>` ("Listeners see them in the
+player now."); `bridge_job_failed` reads `A Bridge job needs attention: <title>`
+(warning colour) or `Characters and recaps failed: <title>`, its text the park
+code in words (`book_not_writable`, `budget_exceeded`, `agent_credential_refused`,
+`core_needed`; anything else "See the job in Settings > Bridge."). Both link to
+`/server?topic=bridge`. See [Characters and recaps](../bridge/generating.md#notifications).
+
+A failed scan's `detail` (and a failed Bridge job's) is the tool's or the
+operating system's own message, which can name a folder on the server, so it stays
+inside: the bell shows it,
 but no destination is sent it (`internalData`, stripped by `outbound` from a
 webhook's `data`), and the message text of every `scan_failed` delivery is the
 generic "See the scan's log in Health > Jobs."

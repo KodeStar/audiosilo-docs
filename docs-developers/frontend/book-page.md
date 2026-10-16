@@ -108,7 +108,33 @@ It rejects when the book can't start, and the page toasts
 | Up next menu | `queue` | Play next (at position 0, with an Undo that puts it back where it was); Add to the end / Remove from Up next (`useQueueActions`) |
 | Favourite | - | ink, never pink |
 | Add to collection | `collections` | the book menu's dialog |
-| `BookActionsMenu` | its items' own | `omit={['play', 'queue', 'collect', 'download']}` leaves Mark as finished / not finished and More in this series; renders nothing when that leaves no item |
+| `BookActionsMenu` | its items' own | `omit={['play', 'queue', 'collect', 'download']}` leaves Mark as finished / not finished and More in this series; renders nothing when that leaves no item. For an admin whose book has generated characters or recaps it adds **Regenerate characters and recaps** (`extra`) |
+| Generate characters and recaps | `useGenerate`'s `offer === 'generate'` | an outline button after the others (its own row when stacked), for an admin a Bridge can generate for (below) |
+
+**Generating characters and recaps** (Bridge Phase 1a, `src/components/bridge/`)
+is the player's first admin-only UI. `mayGenerate(user, server)`
+(`bridge-model.ts`, pure and tested) allows it for an admin who isn't a demo
+account, a household member or a kid, on a server whose `capabilities.bridge` and
+`capabilities.metadata` are on and whose `bridge.features` holds `sidecars`.
+`useGenerate` gives the page `offer`: `generate` when the book has no characters or
+recaps at all (community or generated), `regenerate` when some were generated
+here, nothing until the book's `/meta` and its jobs are known (`metaAnswered`: a
+failed lookup is no answer) or while a job shows its status. `GenerateDialog`
+reads [`GET /admin/bridge/estimate`](../server/api/reference.md#get-apiv1adminbridgeestimate)
+and shows what the run reads, the transcription and the agent cost (for every book
+it queues), "On this server" and the earlier books of the series (ticked, queued
+first); it blocks the submit when the library isn't writable and warns when the
+agent isn't ready. It always queues `{source: "auto", contribute: "local"}`
+(`GENERATE_PARAMS`): the player never contributes. `GenerateStatus` sits under the
+actions while a job is open or failed: the stage (`bridge.stage.*`), "12 of 40",
+the time left and Cancel; while parked, the park in the player's own words
+(`bridge.park.*`) and when it tries again by itself, else "Open the console to fix
+it"; once failed, the error and Try again. `useBridgeJobs` polls the book's jobs
+every 10 seconds while one is claimed or running and every minute while one is
+parked, only while the surface is focused and the app in the foreground; the
+answer that sees a job reach `done` reads the book's `/meta` and item again
+(`refreshAfterFinish`), so the tabs appear. The companion's empty Who's who and
+Story so far mount `GenerateOffer`, the same button and status.
 
 When the hero is stacked (under 600 measured), the primary takes its own row and the
 rest stay on **one** row: the download control gets `short` ("Download", just "Cancel"
@@ -148,7 +174,9 @@ Characters; the gate is `listeningProgressFor` over the corrected chapter starts
 [Spoiler gating](state-and-data.md#spoiler-gating-srccomponentslibrarymeta-gatingts)).
 
 `BookTabPanel` renders the active tab: `BookChaptersTab` (or five skeleton rows while
-the list is empty), the community tabs with their `Attribution`, `BookmarksSection` /
+the list is empty), the community tabs with their `Attribution` (`communityCredit`:
+none for a dimension generated on this server) and a `GeneratedMark` ("Generated on
+this server") at the head of a tab whose content came from the server's own files, `BookmarksSection` /
 `NotesSection` (both `AnnotationSection`, see [Bookmarks and notes](annotations.md)),
 `HistorySection`, `BookMetaSeriesTab` and `BookDetailsTab`. It also builds the
 community cover resolver (`useCommunityCover`) and hands it to the Series, Recaps and
