@@ -85,9 +85,12 @@ as a URL from the link, so there is no open redirect. Then:
 - **Already signed in as that user there** (`signedInAs` in `connect-model.ts`: a
   connection on the `sid` server whose `user.id` is `uid`, its token not refused, no
   `needsReconnect`): no exchange. `useLinkPairing.pair` checks this first (reading the
-  connections again when the session read failed at launch, as `finishConnect` does) and
-  ends on the book; the unused token expires by itself, and no second session (or "new
-  device" notice) is made at each press.
+  connections again when the session read failed at launch, as `finishConnect` does),
+  then asks `GET /me` with the stored token at the connection's own address (never the
+  link's), and ends on the book; the unused token expires by itself, and no second
+  session (or "new device" notice) is made at each press. A 401 there (the token was
+  revoked) falls through to the exchange; a server that doesn't answer still opens the
+  book. "Add someone" never skips, so the exchange switches to that person.
 - **Otherwise** the token is exchanged as for any link, and `finishConnect`'s `book` ends
   the flow on the book's page (`router.dismissTo(bookHref(…))`) instead of
   `/connect/ready` or Home, first connection or not.
