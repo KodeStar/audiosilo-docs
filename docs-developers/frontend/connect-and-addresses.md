@@ -77,17 +77,23 @@ A connect link can name a book to end on: `book=<library_id>&path=<rel_path>`, w
 console's **Listen in player** builds one (`/web/connect?token=…&sid=…&uid=…&book=…&path=…`,
 same origin); nothing else does yet. `parseConnectBook` (`src/lib/paths.ts`) reads it: `book`
 must be a positive integer and `path` non-empty, else the link names no book and the flow
-ends as it always does. The destination is rebuilt with `bookHref`, never followed as a URL
-from the link, so there is no open redirect. Then:
+ends as it always does. It travels on the `PairingScan` as `book` and `userId`, filled the
+same way from the route's params and from a pasted link (`parsePairingScan`), so a pasted
+link behaves as the opened one. The destination is rebuilt with `bookHref`, never followed
+as a URL from the link, so there is no open redirect. Then:
 
 - **Already signed in as that user there** (`signedInAs` in `connect-model.ts`: a
   connection on the `sid` server whose `user.id` is `uid`, its token not refused, no
-  `needsReconnect`): no exchange. `ConnectStart` dismisses straight to the book; the unused
-  token expires by itself, and no second session (or "new device" notice) is made at each
-  press.
+  `needsReconnect`): no exchange. `useLinkPairing.pair` checks this first (reading the
+  connections again when the session read failed at launch, as `finishConnect` does) and
+  ends on the book; the unused token expires by itself, and no second session (or "new
+  device" notice) is made at each press.
 - **Otherwise** the token is exchanged as for any link, and `finishConnect`'s `book` ends
   the flow on the book's page (`router.dismissTo(bookHref(…))`) instead of
-  `/connect/ready` or Home, first connection or not. Kids mode still wins (`/kids`).
+  `/connect/ready` or Home, first connection or not.
+
+Both end through `endConnect` (`finish-connect.ts`), the flow's one ending, so kids mode
+still wins (`/kids`) either way.
 
 Native is unchanged: no link it receives carries `book`.
 
