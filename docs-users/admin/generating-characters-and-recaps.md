@@ -62,7 +62,9 @@ Pressing the button opens a confirmation with what the run will take:
 - **Length** - how long the audiobook is.
 - **Transcription** - about how long transcribing takes on your Bridge (**None
   needed** for an ebook). Before the Bridge has finished a book it uses a rough
-  guess; after that it learns its own speed.
+  guess; after that it learns its own speed. An
+  [ASR worker](../getting-started/running-a-worker.md) on a faster computer
+  shortens it a lot.
 - **Agent cost** - what the AI agent is expected to cost, from the books your
   Bridge has already done. Until it has finished one there is **No estimate yet**.
   When the agent runs on a subscription rather than an API key, it reads "About
@@ -125,6 +127,7 @@ in the console (**Generating is paused** in the player) with the reason, and
 |---|---|
 | The agent isn't available | Nothing: the job carries on once the agent container is running and signed in again. Check it if this lasts. |
 | The agent reached its usage limit | Nothing: it carries on once the limit resets. |
+| Waiting for an ASR worker | Nothing, or start the worker: the Bridge is set to wait for an [ASR worker](../getting-started/running-a-worker.md#when-the-worker-is-off) when none is connected, and the job carries on as soon as one connects. |
 | The agent's credential was refused | Give the agent container a new token or login (see [Running a Bridge](../getting-started/running-a-bridge.md#3-the-agent-container)). The job looks again by itself every 30 minutes. |
 | The job reached its spending limit | The monthly cap carries on by itself on the 1st of next month; raise the cap on the Bridge for sooner (below). |
 | The Bridge can't write to this book's folder | Give the Bridge's user write access to the book's folder. It checks again every minute. |
@@ -178,7 +181,8 @@ matched with community metadata, without the mark.
 
 ## Costs and the monthly cap
 
-The transcription runs on your Bridge's own computer and costs nothing but time.
+The transcription runs on your Bridge's own computer (or on an
+[ASR worker](../getting-started/running-a-worker.md)) and costs nothing but time.
 The AI agent is the cost: it runs on the account the agent container is signed in
 with, the Bridge's own (see
 [Running a Bridge](../getting-started/running-a-bridge.md#3-the-agent-container)).

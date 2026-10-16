@@ -17,6 +17,7 @@ const sidebars: SidebarsConfig = {
         'getting-started/organizing-your-library',
         'getting-started/remote-access',
         'getting-started/running-a-bridge',
+        'getting-started/running-a-worker',
       ],
     },
     {

@@ -146,7 +146,7 @@ Bridge uses and its last check, with **Check now**), **Jobs** (the jobs it ran,
 with cancel, a `bridge.verify` result as a file table, and for a
 `sidecars.generate` job its stage, progress, cost, the park's code, hint and
 retry time, and **Retry** while it is parked), **Settings** (its public address,
-the check interval, the password), **Workers** (none until Phase 1b) and **Logs**
+the check interval, the ASR fallback, the password), **Workers** (the [ASR workers](workers.md): add one, its token shown once in the commands to run, its state and figures, remove) and **Logs**
 (recent lines). It has no router: the tab rides the URL hash, and `#/jobs/<id>`
 opens one job (the server's console links a parked job there, by its server job
 id).
@@ -163,14 +163,16 @@ id).
 | `GET /api/libraries` | the server's libraries with the Bridge's folder, whether it is configured, and the last check |
 | `PUT /api/libraries/{id}` | `{ mount_path }` (absolute; `""` goes back to the server's path), then re-checks that library; `409 locked` when `AUDIOSILO_BRIDGE_LIBRARIES` sets the mappings |
 | `POST /api/libraries/check` | check the mappings now (`202`) |
-| `GET` / `PUT /api/settings` | `public_url`, `mapping_check_minutes`, and which settings the environment locks (a locked one is never written to `config.yaml`) |
+| `GET` / `PUT /api/settings` | `public_url`, `mapping_check_minutes`, `asr_worker_fallback` (`local` or `wait`; empty on a save keeps it), and which settings the environment locks (a locked one is never written to `config.yaml`) |
 | `GET /api/jobs` | the jobs it ran, newest first (`before`, `limit` up to 200) |
 | `GET /api/jobs/{id}` | one job (`404` when the Bridge has no such job) |
 | `POST /api/jobs/{id}/cancel` | stop a job it is running (`202`; `404` when it isn't running here) |
 | `POST /api/jobs/{id}/retry` | retry a parked job's work (`202`): re-admit its engine book, or make a job waiting on its own park look again now; `404` for no such job here, `409` when it isn't parked |
-| `GET /api/engine` | the engine's state: `started`, the `agent` container (backend, available and why not, version, slots, last heartbeat, each CLI's version and credential kind, subscription, the staging dir), `asr`, `monthly_budget_usd`, `month_spent_usd`, `book_budget_usd`, `transcript_retention_days` |
+| `GET /api/engine` | the engine's state: `started`, the `agent` container (backend, available and why not, version, slots, last heartbeat, each CLI's version and credential kind, subscription, the staging dir), `asr` (where speech recognition runs now: `backend` `worker` with a worker connected, and `worker_fallback`), `monthly_budget_usd`, `month_spent_usd`, `book_budget_usd`, `transcript_retention_days` |
 | `GET /api/logs` | recent log lines (`after`, `limit` up to 1000, `level`) |
-| `GET /api/workers` | the connected workers |
+| `GET /api/workers` | the paired workers: the `workers` row (name, created and last seen, version, platform, backend, device, model, segments, audio and decode seconds) with `connected` and the `task` it decodes now |
+| `POST /api/workers` | `{ name }` -> `201 { worker, token }`: pair a worker; the token is in this answer only. `400` without a name |
+| `DELETE /api/workers/{id}` | remove a worker, revoking its token (`204`; `404` for none) |
 
 Errors are `{ "error": "..." }`, with a `code` where a client branches on it. The
 page's API mirrors these shapes by hand in `web/src/api/types.ts`.

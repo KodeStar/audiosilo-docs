@@ -47,6 +47,19 @@ The full and cuda images set `AUDIOSILO_BRIDGE_ASR_BACKEND=whisper-cpp` and
 `AUDIOSILO_BRIDGE_ASR_WHISPER_CLI_PATH=/opt/whisper/whisper-cli` for their bundled
 speech recognition.
 
+## ASR workers
+
+| Setting | Environment | Default | What it is |
+|---|---|---|---|
+| `asr.worker_fallback` | `AUDIOSILO_BRIDGE_ASR_WORKER_FALLBACK` | `local` | what a segment does when no [ASR worker](workers.md) is connected: `local` (the Bridge's own `asr.*` backend; a Bridge with none waits anyway) or `wait` (the book parks `asr_worker_waiting` until one connects). Unlike the rest of `asr.*` it applies live, to the next segment, and the page's **Settings** edits it (locked when the environment sets it) |
+
+| `asr.threads` | `AUDIOSILO_BRIDGE_ASR_THREADS` | `0` | whisper.cpp's thread count for the Bridge's own (CPU) transcription; `0` keeps whisper.cpp's default of 4. On a 20-core Mac Studio in Docker, 16 threads ran 3x faster (1.4x real time against 0.4x to 0.5x); leave room for what else the machine runs. Read at the start |
+
+The worker itself takes flags, not this file: `--bridge`, `--token` (else
+`<data>/worker.token`, else `AUDIOSILO_WORKER_TOKEN`), `--data` (else
+`AUDIOSILO_WORKER_DATA`, else `~/.audiosilo-bridge-worker`), `--backend`, `--model`
+and `--whisper-cli`.
+
 ## Characters and recaps
 
 The settings [`sidecars.generate`](generating.md) adds, or that matter most to it:

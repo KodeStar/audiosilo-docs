@@ -131,8 +131,9 @@ agent isn't ready. It always queues `{source: "auto", contribute: "local"}`
 (`GENERATE_PARAMS`): the player never contributes. `GenerateStatus` sits under the
 actions while a job is open or failed: the stage (`bridge.stage.*`), "12 of 40",
 the time left and Cancel; while parked, the park in the player's own words
-(`bridge.park.*`) and when it tries again by itself, else "Open the console to fix
-it"; once failed, the error and Try again. `useBridgeJobs` polls the book's jobs
+(`bridge.park.*`) and when it tries again by itself, "It carries on by itself" for
+a book waiting for an ASR worker (`parkEndsByItself`), else "Open the console to
+fix it"; once failed, the error and Try again. `useBridgeJobs` polls the book's jobs
 every 10 seconds while one is claimed or running and every minute while one is
 parked, only while the surface is focused and the app in the foreground; the
 answer that sees a job reach `done` reads the book's `/meta` and item again

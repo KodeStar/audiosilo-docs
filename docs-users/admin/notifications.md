@@ -114,7 +114,7 @@ Tick a box to send that event there; it saves as you tick.
 | **An update is available** | A new AudioSilo version is out. Once per version, and only while **Check for new versions** is on ([General](server.md#general)). |
 | **A backup failed** | A scheduled or manual [backup](backups.md) failed, with the reason. |
 | **A Bridge job finished** | The [Bridge](bridge.md) finished a job: "Characters and recaps ready" with the book's title, when it [generated them](generating-characters-and-recaps.md). |
-| **A Bridge job failed or needs attention** | A Bridge job stopped with an error, or paused waiting for someone to look at it, with the reason. Pauses that end by themselves (the agent's usage limit, the agent briefly away) aren't sent. The bell shows the Bridge's own error; the message sent out only names the book and the reason. |
+| **A Bridge job failed or needs attention** | A Bridge job stopped with an error, or paused waiting for someone to look at it, with the reason. Pauses that end by themselves (the agent's usage limit, the agent briefly away, waiting for an ASR worker) aren't sent. The bell shows the Bridge's own error; the message sent out only names the book and the reason. |
 
 All of them show in the bell whether or not you send them anywhere.
 

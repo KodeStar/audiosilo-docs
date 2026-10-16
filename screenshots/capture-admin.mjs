@@ -990,7 +990,10 @@ await step('settings: bridge', async () => {
 
     // The first heartbeat's answer lists the libraries; the second reports them.
     const status = {
-      version: '0.2.0', kinds: ['bridge.verify', 'sidecars.generate'], libraries: [], workers: [],
+      version: '0.2.0', kinds: ['bridge.verify', 'sidecars.generate'], libraries: [],
+      // One ASR worker (Phase 1b): a Mac transcribing on Metal, heard from just now.
+      workers: [{name: 'Mac Studio', version: '0.2.0', platform: 'darwin/arm64, mlx-whisper (metal)',
+        last_seen: new Date(Date.now() - 20_000).toISOString()}],
       ui_url: 'http://192.168.1.10:8091',
       estimates: {sidecars: {
         asr_seconds_per_audio_hour: 840, agent_usd_per_audio_hour: 1.6, agent_usd_per_ebook: 4.1, samples: 6,
