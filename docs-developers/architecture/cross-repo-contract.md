@@ -67,6 +67,28 @@ off the player's book JSON (`json:"-"` on `catalog.Book`) and surface only throu
 the admin-only catalog API (`/api/v1/admin/books` and friends), which the admin
 console in the server repo consumes.
 
+**More book metadata, and genres and tags.** Every `Book` (list, search, recent,
+`/item` and `/next` alike) also carries `subtitle`, `publisher`, `language`,
+`abridged` (a bool, **absent while unknown**, never read as unabridged) and
+`genres` / `tags` (string lists), all `omitempty`; `GET /libraries/{id}/books`
+takes `genre=` and `tag=` (one value each, case-insensitive, both narrowing;
+`catalog.labelFilters`), and search matches genres and tags. No capability: an
+older server sends none of the fields and ignores the params, so the player shows
+its Library genre and tag filters (`books/label-filter.tsx`, computed on the device
+from the loaded books, in the URL as `genre=` / `tag=`) only when a loaded book has
+a label, and its book page shows the `subtitle` under the title and the labels as
+chips in the About card (`openLabelBooks`) only when they are sent. The player
+mirrors the fields in `types.ts` `Book` and the params in `client.ts`
+`BookListQuery`. The library export (`GET /admin/libraries/{id}/export`, consumed
+by the meta site) gains five of them with its `version` still `1` (the site's
+parser reads subtitle, publisher, language and abridged and ignores the rest);
+tags, the owner's own notes, ride only with `?include=tags`, and `?include=paths`
+adds `paths[]` per row (the envelope's `library.id` names the library), both for
+the admin's own scripts (`include=paths,tags` asks for both): the default export
+still carries no path and no tag. See the
+[reference](../server/api/reference.md#get-apiv1librariesidbooks) for the field
+sources and rules.
+
 **Player-redesign data API (Phase 1a).** Additive shapes the frontend mirrors in
 `types.ts`/`client.ts`/`hooks.ts`, each behind a capability flag (seam 8), read by
 the browse screens and Home and by the player (the cover wash, the end of a book):

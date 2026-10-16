@@ -79,6 +79,7 @@ Every section except Folders shows **one library at a time**. If you have more t
 Every book in the library, as a cover grid or a list:
 
 - **Filters** along the top: **Not started**, **In progress** and **Finished** (each with a count of how many books it would show), **Downloaded** (on this device), and a length: **Under 5 h**, **5 to 15 h** or **Over 15 h**. **Clear** takes them all off.
+- **Genre** and **Tag**, after the other filters, when a book in the library has one. Each opens a list of the library's genres (or tags) with how many books each would show, plus **Any genre** (**Any tag**) to drop it; the chip then names your pick (*"Fantasy"*). Capitals don't matter: "Sci-Fi" and "sci-fi" are one tag. Tapping a genre or tag on a [book's page](book-page.md#about-this-book) opens this view with it chosen.
 - **Sort** by **Recently added**, **Title**, **Author** or **Length**. Sorted by title, the books are grouped under letter headings, with an **A to Z** rail for jumping straight to a letter. A leading "The", "A" or "An" is skipped and accented letters file under their plain letter (*Émile* under E), and a book with no title is shown, and sorted, by its folder's name.
 - **Grid or list**. Your choice is remembered on that device, and the same choice applies to collections and Favourites. On a tablet or computer the list has columns for the narrator, the length and your progress.
 
@@ -201,7 +202,7 @@ Before you type, the page shows your **Recent searches** (with **Clear**) and **
 
 Results appear as you type, in groups:
 
-- **Books** - matching titles, authors and series from every server. A book you have on more than one server shows once, with "Also on" naming the others, and a book that lives on another of your servers carries a small flag with that server's name.
+- **Books** - matching titles, authors, narrators and series (and, on a recent server, genres and tags) from every server. A book you have on more than one server shows once, with "Also on" naming the others, and a book that lives on another of your servers carries a small flag with that server's name.
 - **Series** - matching series, each shown as its card with a small shelf of the books you have, opening its [series page](#series-pages).
 - **People** - matching authors and narrators, each tagged with their role, opening their page.
 - **Characters** - characters from books you've started whose names (or other names they go by) match, opening the book they're from.

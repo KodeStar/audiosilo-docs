@@ -14,7 +14,7 @@ The schema is deliberately split in two, and the split is the most important
 thing to understand before touching it:
 
 - The **rebuildable index** - `books`, `book_files`, `chapters`,
-  `book_more_series`, `books_fts` -
+  `book_more_series`, `book_labels`, `books_fts` -
   is a cache of what the scanner found on disk. It can be dropped and rebuilt
   from a rescan at any time. `books.id` is an internal artifact of this half:
   it must **never** appear in the API contract or in durable user state.
@@ -81,6 +81,7 @@ erDiagram
     books ||--o{ book_files : ""
     books ||--o{ chapters : ""
     books ||--o{ book_more_series : "ON DELETE CASCADE"
+    books ||--o{ book_labels : "ON DELETE CASCADE"
     books ||--|| books_fts : "rowid = books.id"
     libraries ||--o{ progress : "path-keyed, NO FK to books"
     libraries ||--o{ bookmarks : ""
@@ -250,7 +251,7 @@ covered in [Auth & security](auth-and-security.md#authorization-shares--scope).
 `scan_error_file`, `scan_error_detail` and `suspect_parts` in 0017; `split_parent` in
 0022; `cover_art` and `cover_color` in 0023; `chapters_source`, `chapters_fit`,
 `scanned_chapters` and `chapters_hash` in 0035; `released` and `released_checked`
-in 0037; `series_key` in 0041; `series_index_end` in 0045; `abs_sig`, `abs_indexed_at` and `abs_file` in 0046; `attachments_sig` and `attachments_indexed_at` in 0048)* - one row per book,
+in 0037; `series_key` in 0041; `series_index_end` in 0045; `abs_sig`, `abs_indexed_at` and `abs_file` in 0046; `attachments_sig` and `attachments_indexed_at` in 0048; `subtitle`, `publisher`, `language`, `abridged`, `genres`, `tags` and `genres_checked` in 0049)* - one row per book,
 `UNIQUE (library_id, rel_path)`. Columns: `is_folder` (folder book vs
 single-file book), identity metadata (`title`, `author`, `series`,
 `series_index`, `narrator`; `series_index_end` is the end of a main series
@@ -260,7 +261,15 @@ position that is a range, an omnibus of books 1-3 at `series_index` 1 and
 present so enrichment/metadata services can attach data without reshaping the
 schema), `published` (`YYYY[-MM[-DD]]`) and `description` (an admin edit, an
 accepted community match or an Audiobookshelf `metadata.json` supplies these; the
-audio's tags never do), `abs_file` (what an Audiobookshelf `metadata.json` in a
+audio's tags never do), `subtitle`, `publisher` and `language` (text, `''` for
+none; from the same three sources, never the tags), `abridged` (`1` / `0`, `NULL`
+while unknown: an ABS file or a match only ever says `1`, so `0` comes from an
+edit), `genres` and `tags` (the book's labels as a canonical JSON list, `''` for
+none: genres from the files' genre tag, an ABS file or an edit, tags from an ABS
+file or an edit only; see [Labels](#labels-genres-and-tags)) with
+`genres_checked` (`1` once a scan has read the genre tag; a book indexed before
+0049 starts at `0` and the next scan reads its primary file once, without
+re-indexing it, `catalog.SetGenres`, as `released_checked` does), `abs_file` (what an Audiobookshelf `metadata.json` in a
 folder book's folder says, as JSON field -> value normalized like an edit, `''`
 for nothing) with `abs_sig` (the file's size and mtime, `''` for no file) and
 `abs_indexed_at` (the `indexed_at` it was read for, `NULL` until a scan has
@@ -435,6 +444,17 @@ Rewritten from the effective values by `refreshEffective` (`keyOtherSeries`), as
 `books.series_key` is, so a series filter with memberships, the series order and
 the next book find a book through its list by an index seek, and the rails'
 `SeriesBooks` without reading every list.
+
+**`book_labels`** *(0049)* - a book's genres and tags by key: one row per label
+(`book_id` → `books` `ON DELETE CASCADE`, `library_id`, `kind` the label's field,
+`'genres'` | `'tags'`, `label_key` (`catalog.labelKey`: lowercased, spacing collapsed) and
+`name`, the book's own spelling); primary key `(book_id, kind, label_key)`,
+`WITHOUT ROWID`, index `(kind, label_key, library_id)`. Rewritten from the
+effective `genres` / `tags` by `refreshEffective` (`writeLabels`, beside
+`keyOtherSeries`) and never computed in SQL, so the player's `/books?genre=&tag=`,
+the admin list's `genre` / `tag` filters (`catalog.labelFilters`, kept to the
+library by `library_id`) and the facet counts find a label in any case by an
+index seek.
 
 **`book_attachments`** *(0048)* - the Bridge's generated files for a book, checked:
 `book_id` (primary key, FK to `books` `ON DELETE CASCADE`), `characters`, `recaps`
@@ -989,7 +1009,7 @@ A `books` row always holds the **effective** metadata, built in layers:
 statement of that precedence, and of each field's source. `refreshEffective`
 writes its values into the book's metadata columns (with `series_key`, and the
 book's `book_more_series` rows) and chapter titles and refreshes the book's
-`books_fts` row from the result; the admin book page shows
+`books_fts` row from the result (and its `book_labels`); the admin book page shows
 the same resolution as provenance, so the two can't disagree. Every write path calls
 it inside its own transaction - `UpsertBook` (each scan or on-demand index),
 `SetEnrichment`, and `EditBook`/`EditBooks` (the admin edits, the bulk form
@@ -1021,13 +1041,18 @@ with the ASIN/ISBN the tags lack. ABS ranks it above the tags by default, and so
 does `bookLayers.overABS`, applied in `scannedFields` over the scanned values
 (after a path-first library's layout, before the position a title gives): every
 field the file names replaces the scanned one. The parse is lenient (a wrongly
-typed value costs that value; at most 4 MiB): `title` (not `subtitle`),
+typed value costs that value; at most 4 MiB): `title`, `subtitle`,
 `authors` and `narrators` joined with ", ", `series` as `"Name #seq"` (the first
 is the main series with its position, the rest `more_series`; a series without a
 position keeps the scanned one only while it is the same series, by
 `seriesKey`), `publishedDate` else `publishedYear` as `published`, the HTML
-`description` as plain text, `asin`, `isbn`; genres, tags, publisher, language
-and chapters are not read, and an empty value says nothing. `absFields` stores
+`description` as plain text, `publisher`, `language`, `abridged` (only `true`
+says anything: ABS writes `false` for every book nobody marked), `genres` and
+`tags` (lists of strings, a non-string item dropped, then cleaned leniently by
+`catalog.CleanLabels`: an over-long label left out, the first 50 kept), `asin`,
+`isbn`; chapters are not read, and an empty value says nothing. Migration 0049
+sets every `abs_indexed_at` to `NULL`, so the next scan reads each file again
+for the new fields, without re-indexing the audio. `absFields` stores
 each as an edit of its field would (`CleanOverride`, a refused value left out),
 so an ASIN from the file makes the book matched for Health, `/meta`, the
 community chapter check and a refresh run. Only a folder book's own folder
@@ -1054,6 +1079,38 @@ same in either mode, so `UpdateLibrary` re-resolves every book of the library
 (`refreshLibrary`, `refreshEffective` per book) in the edit's own transaction
 when the stored source changes - no rescan, no disk access (about 1 s per
 5,000 books).
+
+### Labels: genres and tags
+
+`genres` and `tags` (`catalog/labels.go`) are override fields like any other
+(provenance, revert, undo and a bulk edit work on them unchanged) whose value is
+a list as canonical JSON, as `more_series` is. `normalizeLabels` checks an edit
+strictly: each label trimmed with its spacing collapsed, blanks dropped, kept
+once by `labelKey` (the first spelling wins), at most 64 characters and 50
+labels, a breach a `400`. What a file says is cleaned leniently instead
+(`CleanLabels`: a bad label is left out, the first 50 kept), so one odd value
+never costs a book the rest.
+
+Genres in the scan come from the genre tag (`metadata.SplitGenres`, dhowden's
+reading then ffprobe's, ffprobe's when it gives any): split on `;`, `,` and NUL
+(ID3v2.4's separator between values), blanks and the placeholders that only say
+"audiobook" left out (`audiobook(s)`, `audio book(s)`, `speech`, `spoken word`,
+`other`, any case); trimming and dropping a repeat are `CleanLabels`', as for
+every file source. No audio tag carries tags.
+
+A bulk edit (and the single-book PATCH) takes `add` / `remove` besides `set` /
+`revert`: `labelSets` merges them into each book's own **effective** list and
+writes the result as an override of the field only where the list changes, so a
+bulk add never wipes what each book had, and a book it changes nothing on (a tag
+it already has) is left as it is, its row not rebuilt. A field can't be set or
+reverted and added to or removed from at once, nor one label both added and
+removed.
+
+`refreshEffective` writes the lists to `books.genres` / `tags`, to `book_labels`
+by key and to the FTS `genres` / `tags` columns (a label a line), so a search
+finds a book by a label. `BookFacets` counts `genres` / `tags` from `book_labels`:
+the 100 most common by key, each named by the spelling most of its books use
+(ties alphabetical).
 
 ### `schema_migrations`
 
@@ -1120,6 +1177,7 @@ The migration history so far:
 | 0046 | `abs_file` | `books.abs_sig` (`TEXT NOT NULL DEFAULT ''`), `books.abs_indexed_at` (`TEXT`, `NULL` on every existing row) and `books.abs_file` (`TEXT NOT NULL DEFAULT ''`): an Audiobookshelf `metadata.json` in a folder book's folder. The next scan reads the file of each folder book that has one, without re-indexing it (`catalog.SetABSFiles`); a book without one is left as it is |
 | 0047 | `bridge_jobs` | `bridge_jobs` and the one-row `bridge_status`: see [The Bridge](#the-bridge) |
 | 0048 | `book_attachments` | `books.attachments_sig` (`TEXT NOT NULL DEFAULT ''`), `books.attachments_indexed_at` (`TEXT`, `NULL` on every existing row) and `book_attachments`: the Bridge's `.audiosilo/` files. `NULL` reads as unchecked, so the next scan reads the attachments of every book that has some, without re-indexing it (`catalog.SetAttachments`) |
+| 0049 | `book_labels` | `books.subtitle`, `publisher`, `language`, `genres` and `tags` (`TEXT NOT NULL DEFAULT ''`), `books.abridged` (`INTEGER`, `NULL` = unknown), `books.genres_checked` (`INTEGER NOT NULL DEFAULT 0`) and `book_labels` (see [Labels](#labels-genres-and-tags)); recreates `books_fts` with `genres, tags` columns, every row copied over (no book has a label yet), and sets `books.abs_indexed_at` to `NULL` on every book with a `metadata.json` (`abs_sig <> ''`). The next scan then reads each of those files again and each book's genre tag once (`catalog.SetGenres`), without re-indexing |
 
 ## SQLite choices
 
@@ -1193,10 +1251,11 @@ pagination - it is design priority #2.
 ## FTS design (`books_fts`)
 
 `books_fts` is a **standalone** FTS5 virtual table over
-`(title, author, series, narrator)` - it owns its own storage rather than using
+`(title, author, series, narrator, genres, tags)` (the last two since 0049, a
+label a line) - it owns its own storage rather than using
 FTS5's external-content mode. The trade-off is deliberate: standalone storage
 keeps the sync code to a trivial delete-then-insert, at the cost of duplicating
-four small text columns.
+six small text columns.
 
 It is kept in sync **by the application**, not by triggers, keyed by
 `rowid = books.id`:

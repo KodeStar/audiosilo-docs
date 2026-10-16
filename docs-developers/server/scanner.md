@@ -249,7 +249,12 @@ are written in **one transaction** after the loop
 `cover_path` as art), so the first scan after the upgrade stays cheap on a large
 library. A skipped folder book indexed before migration `0017` gets the same
 kind of tag-only check for [several books in one folder](#folders-that-may-hold-several-books)
-(`suspectFromTags`, written by `catalog.SetSuspectParts`).
+(`suspectFromTags`, written by `catalog.SetSuspectParts`). A skipped book indexed
+before migration `0049` (`books.genres_checked = 0`) has its genre tag read with
+the same one read of its primary file (tags and ffprobe) that the `0037` date
+backfill makes; `catalog.SetGenres` writes the genres into the book's scanned
+snapshot and re-resolves it only when that changes it (most books have no genre,
+or only a placeholder), flushed with the path readings.
 
 A skipped folder book also has its **Audiobookshelf `metadata.json`** read again
 when it is new, changed or gone: ABS rewrites the file without touching the
@@ -259,7 +264,10 @@ makes (`audioDirs`' `absFiles`, no extra directory read), and a skipped book who
 signature differs from the stored one (`Signature.ABSSig`), or that has a file
 not read for this index of the row (`ABSUnchecked`: `abs_indexed_at` is `NULL`
 after migration 0046, or an older server re-indexed it), is read and written by
-`catalog.SetABSFiles` in batches of 250 beside the path backfill. A book with no
+`catalog.SetABSFiles` in batches of 250 beside the path backfill. Migration 0049
+sets every `abs_indexed_at` to `NULL` again, so the first scan after it reads each
+file once more for the fields it now takes (subtitle, publisher, language,
+abridged, genres, tags). A book with no
 file and none before is left unwritten, so the first scan after the upgrade
 touches only books that have one. A book is re-resolved unless its reading
 equals the one recorded for this very index (an older server's re-index resolved
@@ -500,7 +508,11 @@ embedded data winning where it is trustworthy:
    ≻ artist for the author, composer as narrator, plus raw-tag lookups for
    series/narrator atoms and the release date - MP4 `©day`, ID3 `TDRC`/`TYER`,
    Vorbis `date`, read by `metadata.ReleaseDate` into `books.released`, never
-   `published`), then ffprobe (when configured) for duration, chapters, the audio
+   `published`, and the genre tag, read by `metadata.SplitGenres` into the
+   scanned `genres`: split on `;` and NUL (never `,`, which a store's category name can hold), each trimmed and kept once in any
+   case, with the placeholders `audiobook(s)`, `audio book(s)`, `speech`,
+   `spoken word` and `other` dropped; ffprobe's `genre` replaces dhowden's when
+   it gives any), then ffprobe (when configured) for duration, chapters, the audio
    `codec` (`codec_name` of the first audio stream - this is what feeds the
    `direct_playable` API flag), and richer container tags.
 3. **Generic-title guard**: `chooseTitle` keeps the path-derived title when the

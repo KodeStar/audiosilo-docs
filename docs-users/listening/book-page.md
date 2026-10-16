@@ -12,8 +12,8 @@ Tap a book anywhere in AudioSilo to open its page. It tells you where you are in
 The top of the page takes on the colours of the book's cover. Above it, a slim line shows where the book sits on your server: the library, each folder above the book, and the book's own folder or file name. Tap a folder to open it.
 
 - **The series and the book's number** (*"The Stormlight Archive · Book 2"*) open the [series page](browsing.md#series-pages). A book in more than one series lists each, with its number there (*"Discworld · Book 8 / Discworld: City Watch · Book 1"*), and each opens its own page. A book in no series shows its library and server instead.
-- **The title**, then **by** the author and **read by** the narrator. Each name opens that person's page (the narrator's page needs a recent server).
-- **The facts**: the length, how many chapters (or *"12 parts of 30 min"* for a book without chapter marks), the audio (*"MP3 · 3 MP3 files · 210 MB"*), the year it was published (and by whom, when the community database knows), and where it lives (*"Home › Books"*). Anything the book doesn't say is simply left out.
+- **The title**, with the book's **subtitle** under it when your server knows one (and the title doesn't already say it), then **by** the author and **read by** the narrator. Each name opens that person's page (the narrator's page needs a recent server).
+- **The facts**: the length, how many chapters (or *"12 parts of 30 min"* for a book without chapter marks), the audio (*"MP3 · 3 MP3 files · 210 MB"*), the year it was published (and by whom, when your server or the community database knows), and where it lives (*"Home › Books"*). Anything the book doesn't say is simply left out.
 
 For a book you're partway through, a line and a bar show **where you are**: *"38% · Chapter 23 of 81"*, with the [time left](full-player.md#time-left) at the speed you listen to that book.
 
@@ -60,7 +60,9 @@ The **About** card describes the book. Its words come from the first of these th
 2. The description your server holds for the book (one your admin edited, or the one in its tags).
 3. Failing both, a sentence naming the author and the narrator.
 
-A long description folds after a few lines, with **Show more**. Under it, what's known of the recording: the **Publisher**, when it was **Released**, when the story was **First published**, and whether it's **Abridged**. A matched book with no community description has a quiet **View on AudioSilo Meta** link instead of the credit.
+A long description folds after a few lines, with **Show more**. Under it, what's known of the recording: the **Publisher**, when it was **Released**, when the story was **First published**, its **Language**, and whether it's **Abridged**. What your server says about the publisher, the language and abridged comes first, then the community's. Anything nobody knows is left out, so a book that doesn't say whether it's abridged has no **Abridged** line rather than a "No". A matched book with no community description has a quiet **View on AudioSilo Meta** link instead of the credit.
+
+Then the book's **Genres** and **Tags** as chips, when it has any. Tap one to open the [Library's Books](browsing.md#books) filtered to it, in the book's library. Your admin sets them on the server (or they come from the files), and an older server sends none.
 
 **Other versions** appears when the same book is on more than one of your servers or libraries (say, an M4B copy and an MP3 copy). Each line says where that copy lives and what it is (*"M4B · single file · 480 MB"*); tap one to open its page.
 
