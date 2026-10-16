@@ -108,7 +108,7 @@ pairing and after a mapping check finishes:
 | `version` | the Bridge's version |
 | `kinds` | the job kinds it runs (`bridge.verify`, and `sidecars.generate` since Phase 1a) |
 | `libraries` | its last [mapping check](mappings.md) of each library |
-| `workers` | the transcription workers connected to it (none until Phase 1b) |
+| `workers` | its [ASR workers](workers.md) that have connected at least once: `name`, `version`, `platform` (the GOOS/GOARCH and the speech recognition in one line, e.g. `darwin/arm64, mlx-whisper (metal)`) and `last_seen` |
 | `ui_url` | its own page as the local network reaches it (its `public_url` setting), which the console links to |
 | `estimates` | its figures for costing a job before it is queued, one block per family (`sidecars`: [the Bridge's figures](generating.md#the-bridges-figures)); absent until its engine has started |
 

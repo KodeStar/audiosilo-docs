@@ -225,7 +225,8 @@ waiting on its own park look again now.
 | `agent_credential_refused` | the provider refused the CLI's credential (new in Phase 1a) | it looks again every 30 minutes, so it goes on once the credential is replaced |
 | `budget_exceeded` | the monthly cap (`retry_at` the 1st of next month, UTC) or the per-book cap was reached | the monthly one only |
 | `agent_validation_exhausted`, `qa_no_converge`, `spelling_gate_failure`, `fix_loop_exhausted`, `asr_decode_timeout`, `markers_not_confident`, `ebook_chapters_not_confident`, `supervisor_escalated`, `supervisor_budget` | an engine stage gave up after its bounded retries | no: **Retry** |
-| `media_tools_unavailable`, `asr_unavailable` | ffmpeg/ffprobe or speech recognition is missing | no |
+| `media_tools_unavailable`, `asr_unavailable` | ffmpeg/ffprobe is missing, or the Bridge's own speech recognition failed to set up | no |
+| `asr_worker_waiting` | no [ASR worker](workers.md) is connected and the fallback is `wait` (or the Bridge has no speech recognition of its own) (new in Phase 1b) | yes, as soon as a worker connects (or the fallback is `local` with a usable backend) |
 | `manifest_changed` | the book's audio changed since it was transcribed | no: cancel and generate again |
 | `ebook_unreadable`, `ebook_no_chapters` | the ebook can't be used | no: cancel and generate from the audio |
 | `contrib_unavailable` | contributing couldn't reach GitHub, or has no token | no |
@@ -266,8 +267,8 @@ last attempt, which fails the job), and `notify.BridgeJobEnded` records it:
 
 - into `done`: **`bridge_job_finished`** (`Characters and recaps ready: <title>`);
 - into `failed`, or into `needs_attention` with a park that isn't transient:
-  **`bridge_job_failed`**, with the park code. `agent_rate_limited` and
-  `agent_unavailable` are never announced, whatever their `retry_at`; a park that
+  **`bridge_job_failed`**, with the park code. `agent_rate_limited`,
+  `agent_unavailable` and `asr_worker_waiting` are never announced, whatever their `retry_at`; a park that
   changes its code in place is announced when the new code isn't transient.
 
 A report that leaves the state as it was (a keepalive, a parked job's progress)

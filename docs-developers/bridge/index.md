@@ -17,8 +17,10 @@ leases, the library mapping checks and one proof job, `bridge.verify`. **Phase 1
 added the first job that makes it useful,
 [`sidecars.generate`](generating.md): characters and recaps for a book, written
 into the book's [`.audiosilo/` folder](attachments.md) by the sidecars engine, with
-its AI agents in a separate [agent container](agent-container.md). Podcasts,
-read-along, Audible backups and file moves arrive in later phases.
+its AI agents in a separate [agent container](agent-container.md). **Phase 1b**
+added [ASR workers](workers.md): the same binary run natively where speech
+recognition is fast (a Mac's Metal), taking the transcription off the Bridge.
+Podcasts, read-along, Audible backups and file moves arrive in later phases.
 :::
 
 ## What it is for
@@ -58,6 +60,7 @@ flowchart LR
     subgraph ag["agent container"]
         agent["agent-runner<br/>(claude, codex)"]
     end
+    worker["ASR worker<br/>(native, e.g. a Mac's Metal)"]
     files[("library folders")]
     staging[("staging volume")]
     admin["admin's browser"]
@@ -66,6 +69,7 @@ flowchart LR
     runner -->|"reads and writes"| files
     runner -->|"stages jobs, harvests"| staging
     agent -->|"claims and runs jobs"| staging
+    worker -->|"long-polls segments,<br/>uploads transcripts"| page
     admin -->|"console: pair, Verify,<br/>Generate, cancel"| api
     admin -.->|"opens (link from the console)"| page
 ```

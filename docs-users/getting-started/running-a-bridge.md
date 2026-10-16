@@ -205,6 +205,8 @@ the Bridge never sees it, and it never appears in a log.
 
 Open `http://<your machine>:8091` and sign in with that password. The page has tabs
 for its **Status**, **Libraries**, **Jobs**, **Settings**, **Workers** and **Logs**.
+**Workers** is where you add an [ASR worker](running-a-worker.md): a faster
+computer, such as a Mac with Apple Silicon, that does the transcribing.
 
 It only answers from your **local network**, and it always asks for the password,
 even on the same machine. It won't open over the internet, through a reverse proxy
