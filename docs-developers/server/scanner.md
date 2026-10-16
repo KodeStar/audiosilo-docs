@@ -509,7 +509,7 @@ embedded data winning where it is trustworthy:
    series/narrator atoms and the release date - MP4 `©day`, ID3 `TDRC`/`TYER`,
    Vorbis `date`, read by `metadata.ReleaseDate` into `books.released`, never
    `published`, and the genre tag, read by `metadata.SplitGenres` into the
-   scanned `genres`: split on `;`, `,` and NUL, each trimmed and kept once in any
+   scanned `genres`: split on `;` and NUL (never `,`, which a store's category name can hold), each trimmed and kept once in any
    case, with the placeholders `audiobook(s)`, `audio book(s)`, `speech`,
    `spoken word` and `other` dropped; ffprobe's `genre` replaces dhowden's when
    it gives any), then ffprobe (when configured) for duration, chapters, the audio
