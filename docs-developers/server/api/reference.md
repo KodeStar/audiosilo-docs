@@ -3717,7 +3717,7 @@ Advertised by the `export` [capability](#get-apiv1server).
 
 | Query param | Type | Default | Notes |
 |---|---|---|---|
-| `include` | string | - | `paths` adds each row's `library_id` and `paths` (see below), for the admin's own scripts. Any other value is `400` `include must be "paths"`, so a typo never silently drops what was asked for |
+| `include` | string | - | A comma list, for the admin's own scripts: `paths` adds each row's `paths`, `tags` its `tags` (see below); `include=paths,tags` asks for both. Any other value is `400` `include must be a comma list of "paths" and "tags"`, so a typo never silently drops what was asked for |
 
 Unlike every other endpoint this one answers with a file download rather than a
 plain JSON body:
@@ -3747,7 +3747,6 @@ plain JSON body:
       "language": "English",
       "abridged": false,
       "genres": ["Thriller"],
-      "tags": ["Owned"],
       "asin": "B002V0QK4C",
       "isbn": "9780553505405",
       "runtime_min": 612,
@@ -3759,20 +3758,25 @@ plain JSON body:
 
 **The file is meant to leave the server**, so by default it carries
 bibliographic facts only. It contains **no path, size, codec, format or any
-other filesystem detail** - not even the library's root. A regression test
-pins that, both ways: no path without `?include=paths`, the paths with it.
+other filesystem detail** - not even the library's root - and **not the
+book's tags**, which are the owner's own notes ("Owned", "Read"). Genres are
+facts about the book and stay. A regression test pins that, both ways: no path
+or tag without its `include`, each with it.
 
-With `?include=paths` each row also carries `library_id` and `paths`, the path
-of every copy that collapsed into the row (index order), so a script can tie it
-back to the books:
+With `?include=paths` each row also carries `paths`, the path of every copy that
+collapsed into the row (index order), so a script can tie it back to the books;
+the envelope's `library.id` names the library they are in (one export is one
+library, so no row repeats it). With `?include=tags` each row carries its
+`tags`:
 
 ```json
-{ "title": "Die Trying", "…": "the facts above", "library_id": 1,
+{ "title": "Die Trying", "…": "the facts above", "tags": ["Owned"],
   "paths": ["Lee Child/Jack Reacher/02 Die Trying", "Lee Child/Die Trying (MP3)"] }
 ```
 
-The paths describe the server's folders (people's names, a share's layout), so
-such a file is for the admin alone: the console's **Export with file paths...**
+The paths describe the server's folders (people's names, a share's layout) and
+the tags are personal, so such a file is for the admin alone: the console's
+**Export with file paths and tags...** asks for both (`include=paths,tags`) and
 warns not to attach it to a public issue or upload it to the community site.
 
 Per-book notes:
@@ -3791,12 +3795,12 @@ Per-book notes:
   `chapters` is the number of indexed chapters. Both are omitted when unknown.
 - `asin` / `isbn` come from the book's identifiers, including any attached via
   [`PUT …/enrichment`](#put-apiv1adminlibrariesidenrichment).
-- `subtitle`, `publisher`, `language`, `abridged`, `genres` and `tags` are the
-  effective values, as on the player's [`Book`](#get-apiv1librariesidbooks)
-  (`abridged` absent while unknown). The metadata site's importer reads
-  `subtitle`, `publisher`, `language` and `abridged` and ignores keys it doesn't
-  know (`genres`, `tags`, `library_id`, `paths`), so the envelope's `version`
-  stays `1`.
+- `subtitle`, `publisher`, `language`, `abridged`, `genres` and (with
+  `include=tags`) `tags` are the effective values, as on the player's
+  [`Book`](#get-apiv1librariesidbooks) (`abridged` absent while unknown). The
+  metadata site's importer reads `subtitle`, `publisher`, `language` and
+  `abridged` and ignores keys it doesn't know (`genres`, `tags`, `paths`), so the
+  envelope's `version` stays `1`.
 - A multi-file (folder) book is **one** entry, and copies of the same book within
   the library collapse to one entry - the same grouping search and
   "recently added" de-duplicate on. The entry takes each fact from whichever

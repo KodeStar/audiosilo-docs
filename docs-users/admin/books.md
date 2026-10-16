@@ -226,7 +226,9 @@ each.
 
 Players get every one of these values, and the
 [book list export](libraries.md#exporting-a-library) carries them all but
-**Published** and **Description**. Search in the players, and **Filter books**
+**Published** and **Description** (and the tags, which only the
+[export with file paths and tags](libraries.md#exporting-with-file-paths-and-tags)
+carries). Search in the players, and **Filter books**
 here, find a book by its title, author, narrator, series, genres and tags, and a
 listener can [filter their library](../listening/browsing.md#books) by genre and
 tag.

@@ -446,14 +446,15 @@ the next book find a book through its list by an index seek, and the rails'
 `SeriesBooks` without reading every list.
 
 **`book_labels`** *(0049)* - a book's genres and tags by key: one row per label
-(`book_id` → `books` `ON DELETE CASCADE`, `library_id`, `kind` `'genre'` |
-`'tag'`, `label_key` (`catalog.labelKey`: lowercased, spacing collapsed) and
+(`book_id` → `books` `ON DELETE CASCADE`, `library_id`, `kind` the label's field,
+`'genres'` | `'tags'`, `label_key` (`catalog.labelKey`: lowercased, spacing collapsed) and
 `name`, the book's own spelling); primary key `(book_id, kind, label_key)`,
 `WITHOUT ROWID`, index `(kind, label_key, library_id)`. Rewritten from the
 effective `genres` / `tags` by `refreshEffective` (`writeLabels`, beside
 `keyOtherSeries`) and never computed in SQL, so the player's `/books?genre=&tag=`,
-the admin list's `genre` / `tag` filters (`catalog.labelFilter`) and the facet
-counts find a label in any case by an index seek.
+the admin list's `genre` / `tag` filters (`catalog.labelFilters`, kept to the
+library by `library_id`) and the facet counts find a label in any case by an
+index seek.
 
 **`book_attachments`** *(0048)* - the Bridge's generated files for a book, checked:
 `book_id` (primary key, FK to `books` `ON DELETE CASCADE`), `characters`, `recaps`
@@ -1092,20 +1093,24 @@ never costs a book the rest.
 
 Genres in the scan come from the genre tag (`metadata.SplitGenres`, dhowden's
 reading then ffprobe's, ffprobe's when it gives any): split on `;`, `,` and NUL
-(ID3v2.4's separator between values), each trimmed, a repeat dropped, and the
-placeholders that only say "audiobook" left out (`audiobook(s)`, `audio
-book(s)`, `speech`, `spoken word`, `other`, any case). No audio tag carries tags.
+(ID3v2.4's separator between values), blanks and the placeholders that only say
+"audiobook" left out (`audiobook(s)`, `audio book(s)`, `speech`, `spoken word`,
+`other`, any case); trimming and dropping a repeat are `CleanLabels`', as for
+every file source. No audio tag carries tags.
 
 A bulk edit (and the single-book PATCH) takes `add` / `remove` besides `set` /
 `revert`: `labelSets` merges them into each book's own **effective** list and
 writes the result as an override of the field only where the list changes, so a
-bulk add never wipes what each book had. A field can't be set or reverted and
-added to or removed from at once, nor one label both added and removed.
+bulk add never wipes what each book had, and a book it changes nothing on (a tag
+it already has) is left as it is, its row not rebuilt. A field can't be set or
+reverted and added to or removed from at once, nor one label both added and
+removed.
 
 `refreshEffective` writes the lists to `books.genres` / `tags`, to `book_labels`
 by key and to the FTS `genres` / `tags` columns (a label a line), so a search
 finds a book by a label. `BookFacets` counts `genres` / `tags` from `book_labels`:
-the 100 most common by key, each named by the spelling most of its books use.
+the 100 most common by key, each named by the spelling most of its books use
+(ties alphabetical).
 
 ### `schema_migrations`
 
@@ -1172,7 +1177,7 @@ The migration history so far:
 | 0046 | `abs_file` | `books.abs_sig` (`TEXT NOT NULL DEFAULT ''`), `books.abs_indexed_at` (`TEXT`, `NULL` on every existing row) and `books.abs_file` (`TEXT NOT NULL DEFAULT ''`): an Audiobookshelf `metadata.json` in a folder book's folder. The next scan reads the file of each folder book that has one, without re-indexing it (`catalog.SetABSFiles`); a book without one is left as it is |
 | 0047 | `bridge_jobs` | `bridge_jobs` and the one-row `bridge_status`: see [The Bridge](#the-bridge) |
 | 0048 | `book_attachments` | `books.attachments_sig` (`TEXT NOT NULL DEFAULT ''`), `books.attachments_indexed_at` (`TEXT`, `NULL` on every existing row) and `book_attachments`: the Bridge's `.audiosilo/` files. `NULL` reads as unchecked, so the next scan reads the attachments of every book that has some, without re-indexing it (`catalog.SetAttachments`) |
-| 0049 | `book_labels` | `books.subtitle`, `publisher`, `language`, `genres` and `tags` (`TEXT NOT NULL DEFAULT ''`), `books.abridged` (`INTEGER`, `NULL` = unknown), `books.genres_checked` (`INTEGER NOT NULL DEFAULT 0`) and `book_labels` (see [Labels](#labels-genres-and-tags)); recreates `books_fts` with `genres, tags` columns, every row copied over (no book has a label yet), and sets every `books.abs_indexed_at` to `NULL`. The next scan then reads each folder book's `metadata.json` again and each book's genre tag once (`catalog.SetGenres`), without re-indexing |
+| 0049 | `book_labels` | `books.subtitle`, `publisher`, `language`, `genres` and `tags` (`TEXT NOT NULL DEFAULT ''`), `books.abridged` (`INTEGER`, `NULL` = unknown), `books.genres_checked` (`INTEGER NOT NULL DEFAULT 0`) and `book_labels` (see [Labels](#labels-genres-and-tags)); recreates `books_fts` with `genres, tags` columns, every row copied over (no book has a label yet), and sets `books.abs_indexed_at` to `NULL` on every book with a `metadata.json` (`abs_sig <> ''`). The next scan then reads each of those files again and each book's genre tag once (`catalog.SetGenres`), without re-indexing |
 
 ## SQLite choices
 

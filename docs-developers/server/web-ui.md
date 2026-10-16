@@ -267,9 +267,9 @@ and the list's `view`. It memoizes the route per value, because TanStack's
 **Export book list** in a library's menu downloads the library's book list from
 [`GET /api/v1/admin/libraries/{id}/export`](api/reference.md#get-apiv1adminlibrariesidexport)
 - the file a user imports on meta.audiosilo.app's Watching page. **Export with
-file paths...** asks first, in a `ConfirmDialog` warning that the file is not for
-a public issue or the community site, then downloads the same list with
-`?include=paths` (`downloadLibraryExport(id, { paths: true })`).
+file paths and tags...** asks first, in a `ConfirmDialog` warning that the file is
+not for a public issue or the community site, then downloads the same list with
+`?include=paths,tags` (`downloadLibraryExport(id, { personal: true })`).
 
 The console authenticates with a bearer token held in `localStorage`, so this
 cannot be a plain `<a href>` download: the request has to carry the

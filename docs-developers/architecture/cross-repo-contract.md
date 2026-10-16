@@ -72,7 +72,7 @@ console in the server repo consumes.
 `abridged` (a bool, **absent while unknown**, never read as unabridged) and
 `genres` / `tags` (string lists), all `omitempty`; `GET /libraries/{id}/books`
 takes `genre=` and `tag=` (one value each, case-insensitive, both narrowing;
-`catalog.labelFilter`), and search matches genres and tags. No capability: an
+`catalog.labelFilters`), and search matches genres and tags. No capability: an
 older server sends none of the fields and ignores the params, so the player shows
 its Library genre and tag filters (`books/label-filter.tsx`, computed on the device
 from the loaded books, in the URL as `genre=` / `tag=`) only when a loaded book has
@@ -80,10 +80,12 @@ a label, and its book page shows the `subtitle` under the title and the labels a
 chips in the About card (`openLabelBooks`) only when they are sent. The player
 mirrors the fields in `types.ts` `Book` and the params in `client.ts`
 `BookListQuery`. The library export (`GET /admin/libraries/{id}/export`, consumed
-by the meta site) gains the same six fields with its `version` still `1` (the
-site's parser reads subtitle, publisher, language and abridged and ignores the
-rest), and `?include=paths` adds `library_id` and `paths[]` per row for the
-admin's own scripts: the default export still carries no path. See the
+by the meta site) gains five of them with its `version` still `1` (the site's
+parser reads subtitle, publisher, language and abridged and ignores the rest);
+tags, the owner's own notes, ride only with `?include=tags`, and `?include=paths`
+adds `paths[]` per row (the envelope's `library.id` names the library), both for
+the admin's own scripts (`include=paths,tags` asks for both): the default export
+still carries no path and no tag. See the
 [reference](../server/api/reference.md#get-apiv1librariesidbooks) for the field
 sources and rules.
 
