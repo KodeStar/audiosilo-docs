@@ -260,8 +260,15 @@ home only after a tokenless `GET <home>/api/v1/server` answered with this connec
 its `server_id` matched.** The web player never switches (it is served same-origin).
 Details: [Connect and home/away addresses](../frontend/connect-and-addresses.md#home-and-away-addresses).
 
+**Listen in player.** The admin console's book page mints a token for its own user
+(`POST /auth/pair`) and opens the same-origin
+`/web/connect?token=…&sid=…&uid=…&book=<library_id>&path=<rel_path>` in a new tab; the
+player skips the exchange when it is already signed in as `uid` on `sid`, and ends the flow
+on that book (rebuilt with `bookHref`, never a URL from the link). Details:
+[Connect and onboarding](../frontend/connect-and-addresses.md#a-link-that-names-a-book).
+
 **A change requires:** the scheme, the query keys (`server`, `token`, and the optional
-`home`, `away`), and the `/web/connect` route path are a contract - change the server
+`home`, `away`, `sid`, and `uid`, `book`, `path`), and the `/web/connect` route path are a contract - change the server
 emitter, the parser, and `app.json` together, or pairing breaks.
 
 ## 8. Capability flags: `GET /api/v1/server`

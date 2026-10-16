@@ -114,6 +114,11 @@ The buttons there are:
 - **Match with community metadata** (it reads **Compare with community** once
   the book has an ASIN or ISBN) - see
   [Matching with community metadata](#matching-with-community-metadata).
+- **Listen in player** - opens the book in the web player in a new tab,
+  already signed in as you, so you can check how it sounds or test its
+  chapters without signing in again. If the browser blocks the new tab, the
+  console says so: allow pop-ups for your server's address and click it again.
+  It only shows when your server has the web player.
 - **Change cover** - see [Covers](#covers).
 - The **⋯** menu (**More book actions**) - **Copy path**, **Add to a
   share...** and **Read the files again**, which re-reads this book's files

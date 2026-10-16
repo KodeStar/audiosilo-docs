@@ -61,13 +61,35 @@ the server's own name when the flow knows it (the probe, the redeem payload's
 addresses the link (`linkAddresses`) and the answer taught, merged there once
 (`mergeAddresses`). The device's **first**
 connection then shows `/connect/ready`; an added server goes straight back with
-`leaveOnboarding()`; and whenever the person listening is in kids mode afterwards (a
+`leaveOnboarding()`; a link that names a book ends on its page instead
+([below](#a-link-that-names-a-book)); and whenever the person listening is in kids mode afterwards (a
 kid's account signing in, below) it goes straight to `/kids` instead, with no "Your
 library is ready.". A link's exchange that fails is said in the app's words, never the
 server's (`apiErrorKind`): 429 "Too many tries. Wait a few minutes and try again.", a
 refused link (expired, used up, unknown, malformed) "This pairing link has expired or
 was already used...", a 5xx "The server couldn't finish pairing...", and no answer
 "Could not reach the server to finish pairing.".
+
+### A link that names a book
+
+A connect link can name a book to end on: `book=<library_id>&path=<rel_path>`, with
+`uid=<user id>`, the user its token was minted for, beside `token` and `sid`. The admin
+console's **Listen in player** builds one (`/web/connect?token=…&sid=…&uid=…&book=…&path=…`,
+same origin); nothing else does yet. `parseConnectBook` (`src/lib/paths.ts`) reads it: `book`
+must be a positive integer and `path` non-empty, else the link names no book and the flow
+ends as it always does. The destination is rebuilt with `bookHref`, never followed as a URL
+from the link, so there is no open redirect. Then:
+
+- **Already signed in as that user there** (`signedInAs` in `connect-model.ts`: a
+  connection on the `sid` server whose `user.id` is `uid`, its token not refused, no
+  `needsReconnect`): no exchange. `ConnectStart` dismisses straight to the book; the unused
+  token expires by itself, and no second session (or "new device" notice) is made at each
+  press.
+- **Otherwise** the token is exchanged as for any link, and `finishConnect`'s `book` ends
+  the flow on the book's page (`router.dismissTo(bookHref(…))`) instead of
+  `/connect/ready` or Home, first connection or not. Kids mode still wins (`/kids`).
+
+Native is unchanged: no link it receives carries `book`.
 
 **Kids mode never runs the flow**: `src/app/connect/_layout.tsx` is the one gate (see
 [Kids mode](kids-mode.md#the-route-and-its-guard)). A kid's account placed for the

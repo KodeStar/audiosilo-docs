@@ -408,7 +408,16 @@ CSP-sensitive work against a real build served by Go. The console's own gate is
   leaves the dialog open),
   listeners, shares
   and the "Files on disk" section with the disabled on-disk rename. The more
-  menu's "Read the files again" calls `POST …/book/rescan`. `?match=1` opens the
+  menu's "Read the files again" calls `POST …/book/rescan`. **Listen in player**
+  (shown while `GET /server`'s `web_player` is on) opens the book in the web
+  player in a new tab as the same user: the click opens the tab at once
+  (`window.open('', '_blank')`, so no pop-up blocker stops it; its `opener` is
+  cleared), `POST /auth/pair` mints a single-use, 10-minute pairing token, and
+  the tab goes to the same-origin `/web/connect?token=&sid=&uid=&book=&path=`
+  (`playerConnectUrl` in `book-model.ts`; never the payload's `web_url`, whose
+  base may be the `public_url`, another origin). A failed call closes the tab
+  and toasts. What the player does with the link is in
+  [Connect and onboarding](../frontend/connect-and-addresses.md#a-link-that-names-a-book). `?match=1` opens the
   match dialog on arrival (Health's "Review match"); closing it drops the param.
   The Chapters card opens with the **Community chapters** panel
   (`features/book/community-chapters.tsx`; its words and its one action come

@@ -366,7 +366,8 @@ on a server with that capability - the same shape as `/auth/exchange`.
 device" from an existing session. No request body. Response `200`: a
 `PairingPayload` (same shape as `/auth/redeem`, without the invite budget fields). Its
 token is single-use and lasts 10 minutes (`pairingTTL`), so the player counts down from
-when the payload arrived. A kid's account (a [household member](#household-members)
+when the payload arrived. The admin console's **Listen in player** uses it too, to sign the
+web player in as the admin in a new tab. An API key gets `403`. A kid's account (a [household member](#household-members)
 with `member_kind: "kid"`) gets `403` `code: "kid_account"`: its owner sets up its
 devices with [`POST /me/household/members/{id}/pair`](#post-apiv1mehouseholdmembersidpair).
 
