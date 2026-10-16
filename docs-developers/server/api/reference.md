@@ -4894,7 +4894,9 @@ item's score, so every page follows one order), `?limit=` (1-200, default 50).
 - `applied` is what applying did: `""` (not yet), `applied`, `skipped` (with
   `detail` `nothing_to_change`, `matched_since` or `book_gone`) or `failed` (`edit_failed`,
   `cover_failed`); an `applied` item can carry `cover_failed` when its fields
-  went on but its cover couldn't be fetched.
+  went on but its cover couldn't be fetched. A match item an apply's
+  stop cut short after its fields went in stays `""` with `detail`
+  `cover_pending`, so the next apply takes its cover.
 
 #### `POST /api/v1/admin/match-runs/{id}/apply`
 
