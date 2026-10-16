@@ -1,11 +1,11 @@
 ---
 title: "Books and metadata"
-description: "Browsing and filtering every book in the AudioSilo admin console, fixing titles, authors and series one book at a time or in bulk, where each value comes from, custom covers, chapters (including chapters from the community database), matching with community metadata, merging author spellings and spotting series gaps."
+description: "Browsing and filtering every book in the AudioSilo admin console, fixing titles, authors, series, genres and tags one book at a time or in bulk, where each value comes from, custom covers, chapters (including chapters from the community database), matching with community metadata, merging author spellings and spotting series gaps."
 ---
 
 The **Library** destination of the [admin console](console-tour.md) is where
 you see every book on your server and tidy up what players show about it:
-titles, authors, narrators, series, covers and chapter names.
+titles, authors, narrators, series, genres and tags, covers and chapter names.
 
 :::info Your files are never changed
 Every edit you make here is stored in AudioSilo's own database as an
@@ -36,7 +36,8 @@ Above the list:
 - **Library** - with more than one library, show **All** or just one. Each
   choice shows its book count, and a library whose folder can't be read says
   "offline".
-- **Filter books** - type to narrow by title, author, narrator or series.
+- **Filter books** - type to narrow by title, author, narrator, series, genre or
+  tag.
 - **Sort** - **Title**, **Author, then series**, **Author surname**, **Series**,
   **Narrator**, **Release date**, **Recently added**, **Longest first** or
   **Largest first**. **Author surname** files "Ursula K. Le Guin" under L.
@@ -67,6 +68,10 @@ leads nowhere:
   community metadata is on)
 - **Chapters** - **Has chapters** or **No chapters**
 - **Edited** - books with or without your edits
+- **Genre** and **Tag** - the 100 most common genres and tags among the books
+  your other filters show. A genre or tag is one choice however it is
+  capitalised ("Sci-Fi" and "sci-fi" are one tag), named the way most of its
+  books spell it.
 - **Length** - **Under 5h**, **5 to 15h**, **15 to 30h** or **Over 30h**
 - **Added** - **Last 7 days**, **Last 30 days** or **Last year**
 
@@ -90,6 +95,13 @@ the screen with the number selected and two actions:
   all or nothing. Setting **Series** to one of a book's **Other series** swaps
   the two on that book, as on [a book's page](#editing-details); books that
   don't list that series simply get it as their main series.
+
+  Under **Tags and genres**, **Add tags**, **Remove tags**, **Add genres** and
+  **Remove genres** change each book's own list rather than replace it, so
+  every book keeps its other tags and genres. Type a label and press Enter or
+  a comma. Removing ignores capitals, and adding a tag a book already has
+  changes nothing on that book. A label can't be in an add box and a remove
+  box at once.
 - **Add to share** - add the selected books to a [share](sharing.md). Each
   book is added as one of the share's folders, and everyone with the share
   sees it right away.
@@ -123,9 +135,10 @@ The buttons there are:
 
 ### Editing details
 
-The **Details** card lists **Title**, **Author**, **Narrator**, **Series**,
-**Series number**, **Other series**, **Published**, **Description**, **ASIN**
-and **ISBN**. A book can be in more than one series (Guards! Guards! is book 8 of
+The **Details** card lists **Title**, **Subtitle**, **Author**, **Narrator**,
+**Series**, **Series number**, **Other series**, **Published**, **Publisher**,
+**Language**, **Abridged**, **Genres**, **Tags**, **Description**, **ASIN** and
+**ISBN**. A book can be in more than one series (Guards! Guards! is book 8 of
 Discworld and book 1 of its City Watch novels): **Series** and **Series number**
 are its main one, and **Other series** the rest, written on one line with the
 book's number after a `#` and the series apart by `;`, for example
@@ -168,6 +181,26 @@ follows the file again, as before the swap); when the series you had before the
 swap was itself an edit, reverting doesn't bring it back.
 Matching with community metadata never swaps: the match sets every series itself.
 
+**Genres** and **Tags** are lists, shown as chips. Click them to edit: type a
+label and press Enter or a comma to add it (pasting "Fantasy, Epic" adds both),
+click a chip's cross to remove it, or press Backspace in the empty box to take
+the last one back. Enter in the empty box, or clicking away, keeps the list;
+Escape cancels. A label already in the list, in any capitals, isn't added
+twice.
+
+Genres come from the audio files' *genre* tag (a genre that only says the file
+is an audiobook, such as "Audiobook" or "Spoken Word", is left out) and from an
+Audiobookshelf `metadata.json`. Tags come only from a `metadata.json` and your
+own edits. Use them however you like: "Owned", "Read with the kids", "Book
+club".
+
+**Abridged** is a choice of **Not known**, **Abridged** or **Unabridged**.
+Most books start as **Not known**: only an Audiobookshelf file or a community
+match that marks the book abridged, or your own choice, says either way.
+
+Books indexed before your server could read these fields get their genres, and
+what their `metadata.json` says, on the next scan, without a full re-index.
+
 Each value has a marker saying where it came from:
 
 - **File tag** - read from the audio file's tags.
@@ -185,12 +218,18 @@ the title, author, series and series number the folders give are marked
 
 A few rules keep values sensible, and the field tells you when one is broken:
 a book needs a title, a series number is a number like `1` or `2.5`,
-**Published** is a year (`2010`, `2010-08` or `2010-08-31`), an ASIN is 10
-letters or digits, and an ISBN is an ISBN-10 or ISBN-13 (hyphens are fine).
+**Published** is a year (`2010`, `2010-08` or `2010-08-31`), **Language** is a
+name or a code (like `English` or `en-GB`) of up to 64 characters, an ASIN is
+10 letters or digits, and an ISBN is an ISBN-10 or ISBN-13 (hyphens are fine).
+A genre or tag can be up to 64 characters, and a book can have up to 50 of
+each.
 
-Title, author, narrator, series, series number, ASIN and ISBN are what the
-players, search and the [book list export](libraries.md#exporting-a-library)
-show. **Published** and **Description** are shown in the console only.
+Players get every one of these values, and the
+[book list export](libraries.md#exporting-a-library) carries them all but
+**Published** and **Description**. Search in the players, and **Filter books**
+here, find a book by its title, author, narrator, series, genres and tags, and a
+listener can [filter their library](../listening/browsing.md#books) by genre and
+tag.
 
 ### Saving your changes
 
@@ -355,7 +394,9 @@ When [community metadata](server.md#community-metadata) is on,
 you can match a book to its entry in the free community catalogue at
 [meta.audiosilo.app](https://meta.audiosilo.app). Matching gives listeners a
 description, series order and chapter recaps, and fills in fields you're
-missing.
+missing, including the subtitle, publisher and language, and abridged for a
+recording the community marks abridged. The community has no genres or tags
+to offer yet.
 
 1. Click **Match with community metadata** on the book's page (or **Find a
    match** in its **Community metadata** card). The dialog looks for the book

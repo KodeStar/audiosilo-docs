@@ -33,8 +33,8 @@ The status next to the name is one of:
   [When a library folder goes missing](#when-a-library-folder-goes-missing).
 
 Everything else you do to a library is on its card: **Rescan**, and the **⋯**
-menu with **Edit library...**, **Folder detection...**, **Export book list**
-and **Delete library...**.
+menu with **Edit library...**, **Folder detection...**, **Export book list**,
+**Export with file paths...** and **Delete library...**.
 
 ## Adding a library
 
@@ -383,11 +383,21 @@ metadata site: open its **Watching** page at
 which entries of a series you already own, so the site can show you what you are
 missing and what is coming next.
 
-It is a plain list of books - title, authors, narrators, series and position,
-ASIN/ISBN, runtime and chapter count. Nothing about your server goes into it:
+It is a plain list of books - title and subtitle, authors, narrators, series and
+position, publisher, language, abridged, genres and tags, ASIN/ISBN, runtime and
+chapter count. Nothing about your server goes into it:
 **no file paths, no folder names, no file sizes or formats, and not the
 library's folder**. It is safe to hand to the site or keep as a record of what
 a library holds.
+
+### Exporting with file paths
+
+**⋯ > Export with file paths...** makes the same list, but each book also names
+its library and the path of every copy of it, so your own scripts can tie a row
+back to the files. The console asks first: "This file is for you alone". The
+paths show how your folders are named and laid out, so don't attach this file
+to a public issue or upload it to the community site. Use the plain **Export
+book list** for that.
 
 :::note
 Export covers the **whole** library, not just the parts you have shared with a

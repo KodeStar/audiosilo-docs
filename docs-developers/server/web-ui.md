@@ -266,7 +266,10 @@ and the list's `view`. It memoizes the route per value, because TanStack's
 
 **Export book list** in a library's menu downloads the library's book list from
 [`GET /api/v1/admin/libraries/{id}/export`](api/reference.md#get-apiv1adminlibrariesidexport)
-- the file a user imports on meta.audiosilo.app's Watching page.
+- the file a user imports on meta.audiosilo.app's Watching page. **Export with
+file paths...** asks first, in a `ConfirmDialog` warning that the file is not for
+a public issue or the community site, then downloads the same list with
+`?include=paths` (`downloadLibraryExport(id, { paths: true })`).
 
 The console authenticates with a bearer token held in `localStorage`, so this
 cannot be a plain `<a href>` download: the request has to carry the
@@ -353,8 +356,11 @@ CSP-sensitive work against a real build served by Go. The console's own gate is
   `GET /admin/books` (keyset pages loaded as you scroll), the "Recently added"
   and "Continue curating" shelves, the library filter, search, sort and a
   Filters sheet over `GET /admin/books/facets`, with every filter in the URL so
-  each view deep-links; selection with a floating bulk bar (bulk field edits
-  through `POST /admin/books/bulk`, adding books to a share).
+  each view deep-links (the sheet's Genre and Tag groups are the facets'
+  `genres` / `tags`, matched by `labelKey` in `lib/labels.ts`); selection with a
+  floating bulk bar (bulk field edits through `POST /admin/books/bulk`, its
+  **Tags and genres** boxes sending `add` / `remove` through `bulkLabelEdit`,
+  adding books to a share).
 - **Library > Authors / Narrators / Series** - `GET /admin/authors`,
   `/admin/narrators` (merge suggestions applied as a bulk edit, with Undo) and
   `/admin/series` (community series gaps from each series' matched book's
@@ -385,7 +391,9 @@ CSP-sensitive work against a real build served by Go. The console's own gate is
   any other folder without audio. The detection dialog applies the same rule
   from the entry alone (`offersBook`, `offersCollection`).
 - **Book page** (`/admin/library/book?library=&path=`) - `GET`/`PATCH
-  /admin/libraries/{id}/book` (click-to-edit fields with provenance, revert,
+  /admin/libraries/{id}/book` (click-to-edit fields with provenance, revert;
+  `genres` and `tags` as chips edited with `components/label-input.tsx`,
+  `abridged` a three-way `NativeSelect`,
   a save bar with a diff, chapter renames; committing **Series** as a name the
   book's Other series lists drafts the server's series swap beside it,
   `commitField` / `seriesSwap` in `book-model.ts`, unless the admin drafted Other

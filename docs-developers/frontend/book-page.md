@@ -14,14 +14,14 @@ draw. The user-facing tour is [A book's page](/users/listening/book-page).
 | File | What it is |
 |---|---|
 | `book-page.tsx` | `BookScreen` (wraps the page in `ContentScope`, so it reads the route's own `?connection=`) and `BookPage`: the data (`useBook`, `useChapters`, `useBookMeta`, `useBookProgress`, `useBookAnnotations`, the history query), the tab row, the play calls, and the layout |
-| `book-page-model.ts` | Pure: `bookPageLayout`, `titleScale`, `primaryAction` / `primaryLabel`, `chapterList`, `rowAt`, `timelineStarts`, `placeLine`, `heroEyebrow`, `bookFacts`, `startedAt`, `listeningFigures` |
+| `book-page-model.ts` | Pure: `bookPageLayout`, `titleScale`, `heroSubtitle`, `primaryAction` / `primaryLabel`, `chapterList`, `rowAt`, `timelineStarts`, `placeLine`, `heroEyebrow`, `bookFacts`, `startedAt`, `listeningFigures` |
 | `book-tab-panel.tsx` | `BookTabPanel`: the active tab's panel (the tab row is the page's) |
-| `book-hero.tsx` | `BookHero`: the `CoverWash`, crumbs slot, eyebrow, title, byline, facts, the place (or the finished badge and the stars), then the actions and footer slots |
+| `book-hero.tsx` | `BookHero`: the `CoverWash`, crumbs slot, eyebrow, title, subtitle, byline, facts, the place (or the finished badge and the stars), then the actions and footer slots |
 | `hero-actions.tsx` | `HeroActions`: the primary button, `DownloadControl`, the Up next menu, favourite, Add to collection, and `BookActionsMenu` with `omit` |
 | `book-crumbs.tsx` | `BookCrumbs`: the library, each folder above the book (links), the book's own folder or file name |
 | `book-chapters-tab.tsx` | `BookChaptersTab`: "The whole book" (`BookTimeline` + legend + axis) and the rows |
-| `book-details-tab.tsx` + `book-details-model.ts` | `BookDetailsTab`: the playback notice, the files table, the path; `fileRows`, `visibleFiles`, `playbackMode`, and the About card's `aboutContent` |
-| `book-about.tsx` | `BookAbout`: the About card |
+| `book-details-tab.tsx` + `book-details-model.ts` | `BookDetailsTab`: the playback notice, the files table, the path; `fileRows`, `visibleFiles`, `playbackMode`, and the About card's `aboutContent`, `labelGroups` and `languageName` |
+| `book-about.tsx` | `BookAbout`: the About card, its genre and tag chips, and `openLabelBooks` |
 | `book-aside.tsx` | `BookAside`: `BookAbout`, Other versions (`BookVersions`), Your listening |
 | `book-skeleton.tsx` | The loading layout |
 
@@ -63,11 +63,14 @@ the page's own `ScrollView`, never a nested vertical scroller.
   `mutedForeground` without one); text never sits on raw cover colour.
 - **Eyebrow** (`heroEyebrow`): "Series · Book N" (a link through `useOpen().openSeries`),
   else "library · server".
+- **Subtitle** (`heroSubtitle`): the server's `subtitle` under the title, unless the
+  title already holds it (case aside, "Dune: The Desert Planet" over "The Desert
+  Planet"); nothing on an older server.
 - **Byline:** author and narrator as links (`openAuthor` / `openNarrator`); the narrator
   is plain text where `browse_people` is `false`.
 - **Facts** (`bookFacts`): length, chapters or "N parts of M min", the audio (codec,
-  "N FORMAT files" or the format, size), the published year and the community's
-  publisher, and "server › library". A fact the book doesn't have is left out.
+  "N FORMAT files" or the format, size), the published year and the publisher (the
+  server's `publisher`, else the community recording's), and "server › library". A fact the book doesn't have is left out.
 - **The place** of a book loaded or in progress: `percentHeard`, `placeLine` ("Chapter
   23 of 81" / "Part 3 of 12"; nothing for files) on the row `rowAt` finds,
   `useBookTimeLeft` and the progress bar, the page's one pink thing. A finished book (and
@@ -238,9 +241,16 @@ and the tabs):
   `attribution` is rendered beside it with **Improve this**, opening
   `attribution.source_url` or the work's `web_url`), else the server's `description`
   (from `/item` only), else the work's core description; with none, a sentence naming
-  the author and narrator. The detail rows are the recording's publisher and release
-  date (else the book's `published`), the work's first publication, and abridged yes/no
-  when the recording says. A matched book without community text keeps "View on
+  the author and narrator. The detail rows are the publisher (the server's
+  `publisher`, else the recording's) and release date (the recording's, else the
+  book's `published`), the work's first publication, the server's `language` (a code
+  named through `Intl.DisplayNames` in the app's language where the platform has it,
+  `languageName`; else as sent), and abridged yes/no (the server's `abridged`, else
+  the recording's; absent is unknown, so no row). Then `labelGroups`: the book's
+  `genres`, then its `tags`, each once by `labelKey`, as chips under their names; a
+  chip calls `openLabelBooks`, which selects the book's library in
+  `useLibrarySelection` and opens the Library tab's root (`openLibraryRoot`) on
+  `libraryBooksHref({ genre | tag })`. A matched book without community text keeps "View on
   AudioSilo Meta". Long text folds past six lines with Show more.
 - **Other versions** - `BookVersions`: every other copy (`useBookCopies`) with where it
   lives and its quality, each opening that copy's page; nothing when there is none.

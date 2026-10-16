@@ -461,8 +461,13 @@ library whatever the screen's sort, because every sort happens on the device; pa
 so far are usable at once, and a failed page keeps what loaded, with Retry carrying
 on. The view is
 `books-view.ts`, pure: `parseBooksView` / `booksViewParams` (the URL contract:
-`sort`, `status`, `dl=1`, `len`; defaults are omitted), on-device `filterBooks`,
+`sort`, `status`, `dl=1`, `len`, `genre`, `tag`; defaults are omitted), on-device
+`filterBooks` (a genre or tag matched by `labelKey`: lowercased, spacing collapsed),
 `statusCounts` (each chip's count among the books the *other* filters keep),
+`labelOptions` (the genre or tag choices, each counted the same way, the chosen one
+kept even at 0; shown by `books/label-filter.tsx` as a picker chip opening a dialog,
+and only when a loaded book has a label or the URL names one, so an older server
+shows no new control),
 `sortBooks` (title order folds accents and skips a leading article; an untitled book sorts, and shows, by its folder name through `bookTitle`), `letterGrid`
 for the title sort's letter heads and A-Z rail, and `lengthBucket` (the `len`
 chips, which Home's Short listens shelf reuses). The

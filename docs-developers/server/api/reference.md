@@ -801,6 +801,8 @@ Keyset-paginated (see [conventions](index.md#pagination)).
 | `series` | string | - | the books whose main `series` is this series, in any spelling (case, accents, punctuation and spacing aside; see [`/series`](#get-apiv1librariesidseries)). With `memberships=1`, also the books that list it among their other series (see `series_list` below) |
 | `memberships` | `1` | - | `series_memberships` capability: makes `series` match every series a book is in. Without it a book is found only by its main series, as shipped players expect |
 | `narrator` | string | - | as `author`, on the narrator credit (`browse_people` capability; an older server ignores it and returns the unfiltered list; one before the co-credit split matches whole credits only) |
+| `genre` | string | - | the books with this genre (see `genres` below): one value, matched case-insensitively with spacing collapsed and trimmed (`?genre=science%20fiction` finds `Science Fiction`). No capability: an older server ignores it and returns the unfiltered list |
+| `tag` | string | - | as `genre`, on `tags`. With `genre`, both must match |
 | `sort` | string | `author` | `author` \| `title` \| `recent` (`recent` = newest `added_at` first) |
 | `limit` | int | `50` | ≤ 0 or > 200 falls back to 50 |
 | `cursor` | string | - | opaque cursor from a previous page's `next_cursor` |
@@ -845,6 +847,12 @@ probed; `added_at` when unknown. Every book response (lists, search, recent,
 | `cover_version` | string | an opaque token (10 characters) for the cover art. Append it to a cover URL as `v=` so a client cache refetches a replaced cover |
 | `series_index_end` | number | the end of a main series position that is a **range** (an omnibus of books 1-3: `series_index` `1`, `series_index_end` `3`). `series_index` stays the start, so a client that doesn't know the field reads the omnibus as book 1. Omitted for a single position |
 | `series_list` | array | every series the book is in, `[{"name", "position", "position_end"?}]` (position `0` = unnumbered; `position_end` only for a range, as `series_index_end`): its main `series` first (at `series_index`), then the others an [admin edit](#patch-apiv1adminlibrariesidbook) or a community match added. Sent only for a book in more than one series; otherwise `series`/`series_index` say it all |
+| `subtitle` | string | the book's subtitle: from an Audiobookshelf `metadata.json`, the work's subtitle on an accepted community match, or an [admin edit](#patch-apiv1adminlibrariesidbook). Never from the audio tags |
+| `publisher` | string | the publisher, from the same sources as `subtitle` (the recording's publisher on a match) |
+| `language` | string | the language as the source gives it: a name (`English`) or a code (`en`, `en-GB`), at most 64 characters. Same sources as `subtitle` (the work's language on a match) |
+| `abridged` | boolean | whether the recording is abridged. **Absent means unknown**, never "unabridged": an Audiobookshelf file and a community match only ever say `true` (both write `false` for "not recorded"), so `false` comes only from an admin edit |
+| `genres` | string[] | the book's genres: the files' genre tag (split on `;`, `,` and NUL; placeholders such as `Audiobook`, `Speech`, `Spoken Word` and `Other` dropped), an Audiobookshelf `metadata.json`, or an admin edit. Each label once, compared case-insensitively, the first spelling kept; at most 50, each at most 64 characters. Sent on list and search pages too, so a client can filter a loaded library on the device |
+| `tags` | string[] | freeform tags, as `genres`, from an Audiobookshelf `metadata.json` or an admin edit only (no audio tag carries them) |
 | `generated` | boolean | `true` when the book's `.audiosilo/` folder holds characters or recaps the [Bridge](#the-bridge) generated on this server (read from the book's attachment signature, so a file that failed its checks still counts); omitted otherwise. A client asks [`/meta`](#generated-content) for such a book even when it has no `asin` or `isbn` |
 
 A book at a range, here as the omnibus of Mistborn 1-3 that is also book 1 of a
@@ -882,8 +890,9 @@ art and disappears, without anything being cleared, when the art identity moves,
 until the next thumbnail. The long `description` is not on list responses: only
 [`/item`](#get-apiv1librariesiditem) reads and sends it.
 
-Metadata fields (`title`, `author`, `narrator`, `series`, `series_index`,
-`asin`, `isbn`) and chapter titles carry the **effective** values: what the scan
+Metadata fields (`title`, `subtitle`, `author`, `narrator`, `series`,
+`series_index`, `published`, `publisher`, `language`, `abridged`, `genres`,
+`tags`, `asin`, `isbn`) and chapter titles carry the **effective** values: what the scan
 found, with any admin metadata edits layered on top. A book with a `series` and
 no position takes the one its title gives when the title is the series' name
 and then a number ("He Who Fights with Monsters 4: A LitRPG Adventure" is
@@ -1015,7 +1024,7 @@ rules apply as on `/books`.
 
 ### `GET /api/v1/search`
 
-*Session.* Full-text search (FTS5 over title/author/series/narrator) across
+*Session.* Full-text search (FTS5 over title/author/series/narrator/genres/tags) across
 every library the caller can reach, scoped per-library to their share rules.
 Results are relevance-ranked and de-duplicated across libraries. De-dup keeps
 the best copy of a book: format tier first (M4B/AAC over MP3 over anything
@@ -1081,6 +1090,16 @@ is one, its `description`:
   "codec": "aac",
   "size": 512847361,
   "added_at": "2026-05-14T09:12:44Z",
+  "published": "2006-07-17",
+  "description": "For a thousand years the ash fell and no flowers bloomed…",
+  "subtitle": "Mistborn, Book 1",
+  "publisher": "Macmillan Audio",
+  "language": "English",
+  "abridged": false,
+  "genres": ["Fantasy", "Epic"],
+  "tags": ["Owned", "Book club"],
+  "cover_color": { "bg": "#1d2a3a", "accent": "#e8a33c", "on_accent": "#000000" },
+  "cover_version": "3f9a1c07be",
   "files": [
     {
       "rel_path": "Brandon Sanderson/Mistborn/The Final Empire/The Final Empire.m4b",
@@ -1101,8 +1120,7 @@ is one, its `description`:
       "book_offset": 0
     }
   ],
-  "direct_playable": true,
-  "description": "For a thousand years the ash fell and no flowers bloomed…"
+  "direct_playable": true
 }
 ```
 
@@ -1111,8 +1129,10 @@ community match), omitted when empty. It can be long, so only this single-book
 response carries it; list, search, recent and `/next` books leave it out. It is
 not the community-written `community_description` on
 [`/meta`](#get-apiv1librariesidmeta). The other fields every book carries
-(`published`, `cover_color`, `cover_version`) are described under
-[`/books`](#get-apiv1librariesidbooks).
+(`published`, `subtitle`, `publisher`, `language`, `abridged`, `genres`, `tags`,
+`cover_color`, `cover_version`, and `series_index_end`, `series_list` and
+`generated` when they apply) are described under
+[`/books`](#get-apiv1librariesidbooks); each is omitted when empty or unknown.
 
 `chapters_source` is `"community"` when the book's `chapters` are a community
 recording's chapter list fitted onto its audio rather than the files' own (see
@@ -3695,6 +3715,10 @@ community metadata site ([meta.audiosilo.app](https://meta.audiosilo.app)) impor
 on its Watching page - so a user can mark which entries of a series they own.
 Advertised by the `export` [capability](#get-apiv1server).
 
+| Query param | Type | Default | Notes |
+|---|---|---|---|
+| `include` | string | - | `paths` adds each row's `library_id` and `paths` (see below), for the admin's own scripts. Any other value is `400` `include must be "paths"`, so a typo never silently drops what was asked for |
+
 Unlike every other endpoint this one answers with a file download rather than a
 plain JSON body:
 
@@ -3714,10 +3738,16 @@ plain JSON body:
   "books": [
     {
       "title": "Die Trying",
+      "subtitle": "A Jack Reacher Novel",
       "authors": ["Lee Child"],
       "narrators": ["Dick Hill"],
       "series": "Jack Reacher",
       "series_position": "2",
+      "publisher": "Brilliance Audio",
+      "language": "English",
+      "abridged": false,
+      "genres": ["Thriller"],
+      "tags": ["Owned"],
       "asin": "B002V0QK4C",
       "isbn": "9780553505405",
       "runtime_min": 612,
@@ -3727,9 +3757,23 @@ plain JSON body:
 }
 ```
 
-**The file is meant to leave the server**, so it carries bibliographic facts
-only. It contains **no path, size, codec, format or any other filesystem
-detail** - not even the library's root.
+**The file is meant to leave the server**, so by default it carries
+bibliographic facts only. It contains **no path, size, codec, format or any
+other filesystem detail** - not even the library's root. A regression test
+pins that, both ways: no path without `?include=paths`, the paths with it.
+
+With `?include=paths` each row also carries `library_id` and `paths`, the path
+of every copy that collapsed into the row (index order), so a script can tie it
+back to the books:
+
+```json
+{ "title": "Die Trying", "…": "the facts above", "library_id": 1,
+  "paths": ["Lee Child/Jack Reacher/02 Die Trying", "Lee Child/Die Trying (MP3)"] }
+```
+
+The paths describe the server's folders (people's names, a share's layout), so
+such a file is for the admin alone: the console's **Export with file paths...**
+warns not to attach it to a public issue or upload it to the community site.
 
 Per-book notes:
 
@@ -3747,9 +3791,16 @@ Per-book notes:
   `chapters` is the number of indexed chapters. Both are omitted when unknown.
 - `asin` / `isbn` come from the book's identifiers, including any attached via
   [`PUT …/enrichment`](#put-apiv1adminlibrariesidenrichment).
+- `subtitle`, `publisher`, `language`, `abridged`, `genres` and `tags` are the
+  effective values, as on the player's [`Book`](#get-apiv1librariesidbooks)
+  (`abridged` absent while unknown). The metadata site's importer reads
+  `subtitle`, `publisher`, `language` and `abridged` and ignores keys it doesn't
+  know (`genres`, `tags`, `library_id`, `paths`), so the envelope's `version`
+  stays `1`.
 - A multi-file (folder) book is **one** entry, and copies of the same book within
   the library collapse to one entry - the same grouping search and
-  "recently added" de-duplicate on.
+  "recently added" de-duplicate on. The entry takes each fact from whichever
+  copy has it.
 
 `404 { "error": "library not found" }` for an unknown library; `403` for a
 non-admin caller; `401` unauthenticated. The bearer token must be sent in the
@@ -3975,7 +4026,10 @@ back to the scanned value, **revert** it instead.
 | Field | Rule |
 |---|---|
 | `title` | required (cannot be emptied), at most 500 characters, no control characters |
-| `author`, `narrator`, `series` | at most 500 characters, no control characters |
+| `subtitle`, `author`, `narrator`, `series`, `publisher` | at most 500 characters, no control characters |
+| `language` | a language name or code (`English`, `en-GB`), at most 64 characters, no control characters. Refused: `must be a language name or code, at most 64 characters` |
+| `abridged` | `"true"`, `"false"` or `""` (unknown; stored as `NULL`), any case. Refused: `must be "true", "false" or empty` |
+| `genres`, `tags` | a JSON list of strings (`["Fantasy","Epic"]`), `""` for none. Each label is trimmed with its inner spacing collapsed, blanks dropped, and kept once by its key (lowercased, spacing collapsed), the first spelling winning; at most 64 characters each, no control characters, at most 50 labels. Stored as canonical JSON without HTML escaping, `""` for an empty list. Refused: `must be a list of names`, `a label must be at most 64 characters, with no control characters`, `too many labels (at most 50)`. To change a list without replacing it, use `add` / `remove` ([bulk edit](#post-apiv1adminbooksbulk)) |
 | `series_index` | a number from 0 to 100000 (`2`, `2.5`), or a **range** for an omnibus: two numbers apart by a hyphen or an en dash, spaces allowed (`1-3`, `1 - 3`, `1–3`), with 0 < start < end ≤ 100000 and end - start ≤ 100. Stored in its shortest form (`2.5`, `1-3`), `""` for none. Refused: `invalid_override` with the reason `must be a number from 0 to 100000, or a range like 1-3` |
 | `more_series` | the other series the book is in beyond `series`: a JSON list of `{"name": string, "position": number, "position_end"?: number}` (position 0 = none, else 0 to 100000; `position_end` a range's end, by the `series_index` rules), at most 20; names trimmed and checked like `series`, blank names dropped, each name kept once (the first). Stored as canonical JSON (`[{"name":"City Watch","position":1}]`, `[{"name":"Box Sets","position":1,"position_end":3}]`), `""` for none. Only an edit or a community match sets it; tags give one series |
 | `published` | `YYYY`, `YYYY-MM` or `YYYY-MM-DD`, and a real date |
@@ -3983,12 +4037,14 @@ back to the scanned value, **revert** it instead.
 | `asin` | 10 letters or digits (uppercased) |
 | `isbn` | an ISBN-10 or ISBN-13; hyphens and spaces are stripped, `x` uppercased |
 
-Values are trimmed. The player's book JSON carries the effective `published` on
-every book and `description` on [`/item`](#get-apiv1librariesiditem) only.
+Values are trimmed. The player's book JSON carries the effective `published`,
+`subtitle`, `publisher`, `language`, `abridged`, `genres` and `tags` on every
+book and `description` on [`/item`](#get-apiv1librariesiditem) only.
 
 Every field reports a **source**: `path` (a scanned value equal to what the
 folder and file names yield), `tag` (any other scanned value - it came from the
-file's embedded tags), `edited` (typed by an admin), `community` (accepted from
+file's embedded tags), `abs` (from an Audiobookshelf `metadata.json` in the
+book's folder), `edited` (typed by an admin), `community` (accepted from
 a community-metadata match, or an ASIN/ISBN attached through
 [enrichment](#put-apiv1adminlibrariesidenrichment)), or `""` when the field has
 no value. The scan does not store sources; `path` vs `tag` is worked out when
@@ -4004,8 +4060,9 @@ what the first does).
 | Query param | Type | Default | Notes |
 |---|---|---|---|
 | `library_id` | int | - | one library; a non-positive or non-integer id is `400` |
-| `q` | string | - | full-text search over title/author/series/narrator, the same prefix matching as [`/search`](#get-apiv1search); punctuation-only input filters nothing |
+| `q` | string | - | full-text search over title/author/series/narrator/genres/tags, the same prefix matching as [`/search`](#get-apiv1search); punctuation-only input filters nothing |
 | `author` · `series` · `narrator` | string | - | the effective value: `series` the main series, or one its `more_series` names, in any spelling (case, accents, punctuation and spacing aside, as [`/series`](#get-apiv1librariesidseries) groups them); `author` and `narrator` the whole credit or one of the people it names, exactly (as the [player's list](#get-apiv1librariesidbooks)) |
+| `genre` · `tag` | string | - | a genre (tag) the book has, one value each, case-insensitive with spacing collapsed, as on the [player's list](#get-apiv1librariesidbooks) |
 | `format` | string, repeatable | - | `?format=m4b&format=mp3`; at most 50 values |
 | `codec` | string, repeatable | - | ffprobe codec name (`aac`, `mp3`, …); at most 50 values |
 | `direct_playable` | `true`\|`false` | - | the book's codec plays in browsers (an unknown codec counts as playable) |
@@ -4052,6 +4109,7 @@ is a `400` too (`too many format or codec values`).
       "path": "Andy Weir/The Martian",
       "is_folder": true,
       "title": "The Martian",
+      "subtitle": "",
       "author": "Andy Weir",
       "narrator": "R. C. Bray",
       "authors": ["Andy Weir"],
@@ -4060,6 +4118,11 @@ is a `400` too (`too many format or codec values`).
       "series_index": 0,
       "series_list": [],
       "published": "2011",
+      "publisher": "Podium Audio",
+      "language": "English",
+      "abridged": null,
+      "genres": ["Science Fiction"],
+      "tags": ["Owned"],
       "duration": 38040.5,
       "format": "m4b",
       "codec": "aac",
@@ -4102,6 +4165,9 @@ is a `400` too (`too many format or codec values`).
   thumbnail or in the [background colour pass](../media.md#the-background-colour-pass).
   The book page (`GET /admin/libraries/{id}/book`) carries it too.
 - `matched` - the book has an ASIN or ISBN: the same rule as the `matched` filter.
+- `abridged` - `true`, `false`, or `null` while nothing says (always present,
+  unlike the player's `Book`, which omits it). `genres` and `tags` are `[]` for
+  none.
 - `edited_fields` - the fields with an override (an edit or an accepted community
   value), `[]` when none; `edited` is also true for a chapter-title edit alone.
 - `file_count` is `1` for a single-file book.
@@ -4148,13 +4214,19 @@ the count with all filters applied.
   "has_cover": { "yes": 790, "no": 22 },
   "has_chapters": { "yes": 650, "no": 162 },
   "matched": { "yes": 401, "no": 411 },
-  "edited": { "yes": 37, "no": 775 }
+  "edited": { "yes": 37, "no": 775 },
+  "genres": [ { "value": "Fantasy", "count": 214 }, { "value": "Science Fiction", "count": 98 } ],
+  "tags": [ { "value": "Owned", "count": 40 } ]
 }
 ```
 
 `formats` and `codecs` are ordered by count, largest first (a `""` value is a
-book whose codec was never probed). The `q`, `author`, `series`, `narrator`,
-duration and added-date filters apply to every dimension. `400` for an
+book whose codec was never probed). `genres` and `tags` count books by label key
+(case and spacing aside), each named by the spelling most of its books use (ties
+alphabetical), largest first with ties alphabetical, and hold at most the 100
+most common; `[]` when no book has one. Each is counted with every filter but its
+own (`genre` for `genres`, `tag` for `tags`). The `q`, `author`, `series`,
+`narrator`, duration and added-date filters apply to every dimension. `400` for an
 unparseable filter, as for the list.
 
 ### `POST /api/v1/admin/books/bulk`
@@ -4166,9 +4238,11 @@ edited or none is**. Merging two spellings of an author is a bulk `set` of
 | Body field | Type | Required | Notes |
 |---|---|---|---|
 | `books` | array | yes | `[ { "library_id": 1, "path": "Andy Weir/Artemis" } ]`, at most 1000 |
-| `set` | object | one of `set` / `revert` / `chapter_source` | field → value, for the fields above |
-| `revert` | array | one of `set` / `revert` / `chapter_source` | field names to put back to what the scan found |
-| `chapter_source` | string | one of `set` / `revert` / `chapter_source` | where every book's chapters come from: `"community"`, `"files"` or `"auto"` (as on [`PATCH …/book`](#patch-apiv1adminlibrariesidbook)). The console's Health "Use detailed chapters" sends `"community"` |
+| `set` | object | one of `set` / `revert` / `add` / `remove` / `chapter_source` | field → value, for the fields above |
+| `revert` | array | one of these | field names to put back to what the scan found |
+| `add` | object | one of these | label field (`genres`, `tags`) → labels to add to **each book's own** effective list: `{"tags": ["Owned", "Book club"]}`. A label the book already has (any case) is skipped. Cleaned and bounded as an edit of the field is |
+| `remove` | object | one of these | label field → labels to take out of each book's list, matched case-insensitively with spacing collapsed: `{"tags": ["read"]}` removes `Read` |
+| `chapter_source` | string | one of these | where every book's chapters come from: `"community"`, `"files"` or `"auto"` (as on [`PATCH …/book`](#patch-apiv1adminlibrariesidbook)). The console's Health "Use detailed chapters" sends `"community"` |
 | `source` | string | no | `"edited"` (default) or `"community"` |
 
 ```json
@@ -4192,6 +4266,31 @@ once).
 
 A field cannot be both set and reverted in one request (`invalid_override`).
 Reverting a field that has no edit is a no-op.
+
+`add` and `remove` exist because a bulk `set` of `tags` would give every book the
+same list, wiping each one's own. For each book they merge into its current
+effective list (the labels removed, then the new ones appended in the order
+given) and write the result as an `edited` (or `community`) override of that
+field, only where the list changes: adding a tag a book already has leaves it
+untouched (no override written). Each is refused with `400`
+`code: "invalid_override"` and `field` set when it names a field other than
+`genres` / `tags` (`only genres and tags take add`), names a field the request
+also sets or reverts (`cannot be set or reverted and changed by add at once`),
+names one label in both (`a label cannot be added and removed at once`), or would
+leave a book with more than 50 labels (`too many labels (at most 50)`). The
+single-book [`PATCH …/book`](#patch-apiv1adminlibrariesidbook) takes `add` and
+`remove` too, by the same rules.
+
+```json
+{
+  "books": [
+    { "library_id": 1, "path": "Andy Weir/The Martian" },
+    { "library_id": 1, "path": "Andy Weir/Artemis" }
+  ],
+  "add": { "tags": ["Owned"] },
+  "remove": { "tags": ["To buy"] }
+}
+```
 
 A bulk edit of `series` (without `more_series`) makes the
 [series swap](#patch-apiv1adminlibrariesidbook) one book at a time: only the
@@ -4382,12 +4481,14 @@ book path).
 }
 ```
 
-- `fields` carries **all nine** overridable fields (the example shows four).
+- `fields` carries **all sixteen** overridable fields, in the order of the
+  table above (the example shows four).
   Each has the effective `value`, its `source`, the `scanned` value (what the
   scan found - the revert target), `locked` (an admin edit holds it), and for an
   edit `edited_by` (the username; omitted once that account is deleted) and
   `edited_at`. `series_index` is a string here (`"2.5"`, `"1-3"` for a range,
-  `""` for none).
+  `""` for none), `abridged` `"true"` / `"false"` / `""`, and `genres` / `tags`
+  their canonical JSON list (`"[\"Owned\"]"`, `""` for none).
 - `chapters` - every chapter with its effective `title`, the `scanned_title`
   and whether an edit renames it.
 - `files` - each audio file (a single-file book lists itself), with its own
@@ -4473,6 +4574,7 @@ one request is applied in one transaction.
 |---|---|---|
 | `set` | object | field → value, for the fields in the table above |
 | `revert` | array | field names to put back to what the scan found |
+| `add` · `remove` | object | label field (`genres`, `tags`) → labels to add to, or take out of, the book's own list, as on the [bulk edit](#post-apiv1adminbooksbulk) (same rules and refusals) |
 | `source` | string | `"edited"` (default) or `"community"` (accepted from a [match](#get-apiv1adminlibrariesidbookmatch)) - recorded on every field this request sets |
 | `chapters.set` | object | chapter index (as a string key) → new title; a title cannot be empty (revert it instead), at most 500 characters. The rename is stored against that chapter's file and start, not its index, so it stays on the same chapter if a rescan inserts or drops others |
 | `chapters.revert` | array | chapter indexes to put back to the scanned title |
