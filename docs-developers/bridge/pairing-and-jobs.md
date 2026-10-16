@@ -106,7 +106,7 @@ pairing and after a mapping check finishes:
 | Field | What it carries |
 |---|---|
 | `version` | the Bridge's version |
-| `kinds` | the job kinds it runs (`bridge.verify`, and `sidecars.generate` since Phase 1a) |
+| `kinds` | the job kinds it runs (`bridge.verify`, `sidecars.generate` since Phase 1a, and `sidecars.describe` since Phase 1c) |
 | `libraries` | its last [mapping check](mappings.md) of each library |
 | `workers` | its [ASR workers](workers.md) that have connected at least once: `name`, `version`, `platform` (the GOOS/GOARCH and the speech recognition in one line, e.g. `darwin/arm64, mlx-whisper (metal)`) and `last_seen` |
 | `ui_url` | its own page as the local network reaches it (its `public_url` setting), which the console links to |
@@ -128,7 +128,7 @@ minutes** old (`bridge.OnlineWindow`). Then, and only then, `GET /server` says
 `capabilities.bridge: true`, with a top-level `bridge: {version, features}` beside
 `capabilities`. `features` are the job families the Bridge runs **that the server
 knows**: the part of each known kind before its dot, so `bridge.verify` gives
-`bridge` and `sidecars.generate` gives `sidecars` (a list, `[]` for none, never `null`). The server reuses the heartbeat it
+`bridge` and `sidecars.generate` (or `sidecars.describe`) gives `sidecars` (a list, `[]` for none, never `null`). The server reuses the heartbeat it
 read for up to **5 seconds**, so `GET /server`, which every client calls often,
 rarely reads the database for it; a pairing or an unpair drops that copy at once. A
 client checks the flag **and** the feature it needs; a feature the Bridge doesn't
@@ -271,14 +271,25 @@ Bridge can't advertise a kind into existence, and the server can't queue one the
 Bridge doesn't have.
 
 The server's table also says whether a kind **writes** into the library. Such a
-kind (`sidecars.generate`) is queued only for a library the last heartbeat reports
+kind (`sidecars.generate`, `sidecars.describe`) is queued only for a library the last heartbeat reports
 **mapped and writable**, else `409 library_not_writable`, after the dedupe (an open
 job is still returned). `bridge.verify` writes nothing and works on any library.
+
+Two kinds write the same book's files, so the server keeps them apart
+(`bridge.Service.Enqueue`, inside its transaction, after the dedupe): a
+`sidecars.describe` job is refused with `409 generate_open` (`ErrGenerateOpen`)
+while a `sidecars.generate` job is open for the book, which writes the description
+itself when it finishes; and a `sidecars.generate` job queued while a
+`sidecars.describe` job is open **cancels** that one (`cancelOpenTx`: at once when
+it is queued or parked, else `cancel_requested`, its error "a generate job for the
+book replaced it"). A generate job is never refused for an open describe job. See
+[A description on its own](generating.md#a-description-on-its-own-sidecarsdescribe).
 
 On the Bridge, each kind has a handler and a **lane**: how many jobs of that lane
 run at once. `light` has room for 2 (`bridge.verify`); `pipeline` for 25
 (`sidecars.generate`, whose jobs mostly wait on the engine's own scheduler, which
-decides what actually runs).
+decides what actually runs, and `sidecars.describe`, which can wait a long time
+on an agent park).
 
 ### Notifications
 

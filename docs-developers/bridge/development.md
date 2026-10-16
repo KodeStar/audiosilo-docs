@@ -78,7 +78,8 @@ internal/
   verify/     bridge.verify, the proof job
   -- Phase 1a --
   generate/   sidecars.generate: server job -> engine book, progress and parks, the
-              .audiosilo/ write, the heartbeat's estimates, the transcript retention
+              .audiosilo/ write, the heartbeat's estimates, the transcript retention;
+              sidecars.describe (Phase 1c): a description from a finished run's notes
   agentproto/ the staging protocol both sides share (names, JSON, request validation,
               regular-file reads); a leaf
   agentbox/   the Bridge's side: an agent.Runner that stages, waits, harvests
@@ -126,7 +127,8 @@ Conventions that carry the design:
 - **Writes into a library** go only through typed operations, every path through
   `mapping.SafeJoin` against a **checked** mapping, written to a temporary file and
   renamed, umask 022, with a targeted rescan after (`POST /bridge/rescan`). A
-  library that isn't mapped and writable refuses them. Phase 1a's only write is a
+  library that isn't mapped and writable refuses them. The only write (Phase 1a,
+  and Phase 1c's `description.json`) is a
   book's [`.audiosilo/` files](attachments.md#how-the-bridge-writes-them); deletes,
   when a later phase needs them, move to `.audiosilo-trash/`.
 - **No agent CLI runs in the Bridge** (decision 15). The engine gets only
@@ -144,8 +146,9 @@ speech recognition, the monthly budget with this month's spend, the per-book cap
 and the transcript retention), **Libraries** (each server library, the folder the
 Bridge uses and its last check, with **Check now**), **Jobs** (the jobs it ran,
 with cancel, a `bridge.verify` result as a file table, and for a
-`sidecars.generate` job its stage, progress, cost, the park's code, hint and
-retry time, and **Retry** while it is parked), **Settings** (its public address,
+`sidecars.generate` or `sidecars.describe` job its stage, progress, cost, the park's code, hint and
+retry time, and **Retry** while it is parked; once done, the files it saved and
+whether a description came, and for a describe job what its check measured against), **Settings** (its public address,
 the check interval, the ASR fallback, the password), **Workers** (the [ASR workers](workers.md): add one, its token shown once in the commands to run, its state and figures, remove) and **Logs**
 (recent lines). It has no router: the tab rides the URL hash, and `#/jobs/<id>`
 opens one job (the server's console links a parked job there, by its server job

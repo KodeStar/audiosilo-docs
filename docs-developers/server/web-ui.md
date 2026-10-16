@@ -733,10 +733,11 @@ CSP-sensitive work against a real build served by Go. The console's own gate is
   stopping. `bridge-model.ts` holds the pure rules (tested). Since Phase 1a the
   status card adds the heartbeat's `estimates.sidecars` as Agent (backend and
   Ready), Paid by, This month (spend against the cap) and Estimates from rows, and
-  the job list words a `sidecars.generate` job with `GenerateStatus` (its stage,
+  the job list words a `sidecars.generate` job (and, since Phase 1c, a
+  `sidecars.describe` job: `isBookKind`) with `GenerateStatus` (its stage,
   counts, time left and cost; a park's reason with **Open in the Bridge**, a link
-  to `<ui_url>#/jobs/<id>`; the counts and cost once done), its path linking to the
-  book's page.
+  to `<ui_url>#/jobs/<id>`; the counts and cost once done, and for a generate job
+  whether its description came), its path linking to the book's page.
 - **Generate characters and recaps** (`features/bridge/generate-*.tsx`,
   `use-generate.ts`, `series-generate-dialog.tsx`; the pure rules in
   `generate-model.ts`, tested) - offered while `generateAvailable` (`metadata`,
@@ -757,6 +758,15 @@ CSP-sensitive work against a real build served by Go. The console's own gate is
   brief estimate, four at a time, and queues the books with no recaps and no open
   job, earliest first, counting the ones it leaves out. See
   [Characters and recaps](../bridge/generating.md).
+- **A generated description** (Phase 1c, `features/bridge/describe-section.tsx`) -
+  `DescribeSection` follows `GenerateSection` in the Community card: the admin
+  book detail's `generated_description` with the "Generated on this server" mark
+  and its time, clamped past about four lines (`clampsDescription`) behind Show
+  more, and a note when the player's About shows another description instead
+  (the book's own, or the community's); the book's describe job through
+  `GenerateStatus`; and **Write a description**, which confirms (`DescribeDialog`)
+  and queues `sidecars.describe` when `describeOffered` allows it. See
+  [A description on its own](../bridge/generating.md#a-description-on-its-own-sidecarsdescribe).
 - **The bell** (`components/shell/notifications-bell.tsx`) - `GET /admin/events`
   (`useServerEvents`: the newest 20, every minute), eight listed in a popover,
   each worded by `lib/server-events.ts` `describeEvent` and linking to where it

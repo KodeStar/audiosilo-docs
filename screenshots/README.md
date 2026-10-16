@@ -138,6 +138,17 @@ default) and a first book the community has no characters and recaps for (a seed
 LibriVox book has no ASIN or ISBN, so it never matches); otherwise the step fails
 and the shots keep their previous images.
 
+The generated description shots (`admin/book-description.png`,
+`web-player/book-about-generated.png`, Bridge Phase 1c) need a book with a
+`description.json`. Before the servers start, `run.sh` writes one into **The Call
+of the Wild**'s `.audiosilo/` folder on every run (the fixture
+`fixtures/call-of-the-wild.description.json`, an own-words, spoiler-free
+`model.Description`, and the `bridge.json` a description job writes, dated two
+days ago); no other shot shows that book's About or Community card, and its files
+carry no description of their own. The console shot is taken before the stand-in
+Bridge is paired, so its card shows only the Description part; the web shot is the
+desktop About card on the book's page, reached through Library > Books.
+
 The support shots come after those (`admin/support-card.png`,
 `admin/account-menu.png`, `admin/update-notice.png`). The overview's support
 card only shows once the server's first account is 30 days old, so the

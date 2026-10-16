@@ -174,7 +174,10 @@ step, how far it has got, the time left and the cost so far), and once it is don
 how many characters and recaps it wrote and what it cost. One that **Needs
 attention** says why, with **Open in the Bridge**, which opens that job on the
 Bridge's own page, where **Retry** sends it on once you've fixed the cause. See
-[When a job pauses](generating-characters-and-recaps.md#when-a-job-pauses).
+[When a job pauses](generating-characters-and-recaps.md#when-a-job-pauses). Once
+done it also says whether a description came with them. A **Description** job
+([Write a description](generating-characters-and-recaps.md#writing-a-description-for-an-older-book))
+shows the same way, and "Description written" once done.
 
 **Cancel** stops a job. A job that is waiting is cancelled at once; one the Bridge
 is working on shows **Cancelling** until the Bridge stops it, within a few seconds.

@@ -570,9 +570,9 @@ in the same transaction when they should stand.
 
 ## The Bridge's attachments
 
-A book's hidden **`.audiosilo/`** folder holds the characters, recaps and
-provenance the [Bridge](../bridge/index.md) generated for it (`characters.json`,
-`recaps.json`, `bridge.json`; a single-file book's carry its file stem first,
+A book's hidden **`.audiosilo/`** folder holds the characters, recaps,
+description and provenance the [Bridge](../bridge/index.md) generated for it (`characters.json`,
+`recaps.json`, `description.json` since Phase 1c, `bridge.json`; a single-file book's carry its file stem first,
 `Book.characters.json`, in a `.audiosilo/` beside it). They are not a metadata
 layer: nothing in the effective row reads them, and `/meta` serves them. The scan
 finds them the way it finds an ABS `metadata.json`:
@@ -601,8 +601,8 @@ finds them the way it finds an ABS `metadata.json`:
 Each file is read as a regular file only, never through a link, at most 4 MiB,
 and checked against audiosilo-meta's formats; one that fails is logged, left out
 and not read again until it changes, and one that can't be read right now keeps
-what is stored. The details, and the storage (`book_attachments`, migration
-`0048`), are in [The .audiosilo folder](../bridge/attachments.md#how-the-server-finds-them).
+what is stored. The details, and the storage (`book_attachments`, migrations
+`0048` and `0050`), are in [The .audiosilo folder](../bridge/attachments.md#how-the-server-finds-them).
 
 ## Covers
 

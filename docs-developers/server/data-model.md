@@ -276,7 +276,7 @@ for nothing) with `abs_sig` (the file's size and mtime, `''` for no file) and
 read it; see [the layers](#metadata-overrides-and-effective-values)),
 `attachments_sig` (the signature of the Bridge's `.audiosilo/` files for the book,
 `name:size:mtime_ns` per known file, joined; `''` for none; `Book.generated` is
-read from it) and `attachments_indexed_at` (the `indexed_at` they were read for,
+read from it: a characters, recaps or description file) and `attachments_indexed_at` (the `indexed_at` they were read for,
 `NULL` until read; see [The .audiosilo folder](../bridge/attachments.md#storage)),
 `more_series` (the effective list of the other series the book is in beyond
 `series`, as JSON `[{"name","position"}]` plus `"position_end"` for a range, `'[]'` for none: only an edit, a
@@ -456,9 +456,9 @@ the admin list's `genre` / `tag` filters (`catalog.labelFilters`, kept to the
 library by `library_id`) and the facet counts find a label in any case by an
 index seek.
 
-**`book_attachments`** *(0048)* - the Bridge's generated files for a book, checked:
-`book_id` (primary key, FK to `books` `ON DELETE CASCADE`), `characters`, `recaps`
-and `provenance` (JSON as checked against audiosilo-meta's formats, `''` for a
+**`book_attachments`** *(0048; `description` in 0050)* - the Bridge's generated files for a book, checked:
+`book_id` (primary key, FK to `books` `ON DELETE CASCADE`), `characters`, `recaps`,
+`description` and `provenance` (JSON as checked against audiosilo-meta's formats, `''` for a
 file that isn't there or can't be used) and `updated_at`; a row only for a book
 with any. Derived from the book's `.audiosilo/` files like `abs_file`, so
 rebuildable and never carried by a move. `/meta` lays it into its answer per
@@ -1178,6 +1178,7 @@ The migration history so far:
 | 0047 | `bridge_jobs` | `bridge_jobs` and the one-row `bridge_status`: see [The Bridge](#the-bridge) |
 | 0048 | `book_attachments` | `books.attachments_sig` (`TEXT NOT NULL DEFAULT ''`), `books.attachments_indexed_at` (`TEXT`, `NULL` on every existing row) and `book_attachments`: the Bridge's `.audiosilo/` files. `NULL` reads as unchecked, so the next scan reads the attachments of every book that has some, without re-indexing it (`catalog.SetAttachments`) |
 | 0049 | `book_labels` | `books.subtitle`, `publisher`, `language`, `genres` and `tags` (`TEXT NOT NULL DEFAULT ''`), `books.abridged` (`INTEGER`, `NULL` = unknown), `books.genres_checked` (`INTEGER NOT NULL DEFAULT 0`) and `book_labels` (see [Labels](#labels-genres-and-tags)); recreates `books_fts` with `genres, tags` columns, every row copied over (no book has a label yet), and sets `books.abs_indexed_at` to `NULL` on every book with a `metadata.json` (`abs_sig <> ''`). The next scan then reads each of those files again and each book's genre tag once (`catalog.SetGenres`), without re-indexing |
+| 0050 | `book_attachments_description` | `book_attachments.description` (`TEXT NOT NULL DEFAULT ''`): the Bridge's checked `.audiosilo/description.json` (Phase 1c), derived like the rest of the row. No data moves: a book read before it had no `description.json` in its signature (the name was unknown then), so a book that has one now has a changed signature and the next scan reads it again, without re-indexing |
 
 ## SQLite choices
 

@@ -1,13 +1,17 @@
 ---
 title: Characters and recaps (sidecars.generate)
-description: "Bridge Phase 1a's job: who may queue it and where, its params, the estimate and the heartbeat's figures, how the Bridge runs it through the sidecars engine, its progress, parks, result and notifications, resuming after a restart, contributing, the budgets and the transcript retention."
+description: "Bridge Phase 1a's job: who may queue it and where, its params, the estimate and the heartbeat's figures, how the Bridge runs it through the sidecars engine, its progress, parks, result and notifications; Phase 1c's own-words description step and the description-only job (sidecars.describe); resuming after a restart, contributing, the budgets and the transcript retention."
 ---
 
 `sidecars.generate` is the job that makes the Bridge useful: an admin presses
 **Generate characters and recaps** on a book, and the Bridge transcribes it (or
 reads its ebook), runs the sidecars engine's agent passes, validates the result,
 writes it into the book's [`.audiosilo/` folder](attachments.md) and asks the
-server to read it, after which `/meta` serves it to the players. The job model it
+server to read it, after which `/meta` serves it to the players. Since Phase 1c
+the same run also writes an own-words, spoiler-free **description** of the book
+([the description step](#the-description-step)), and `sidecars.describe` writes
+one alone for a book generated earlier
+([below](#a-description-on-its-own-sidecarsdescribe)). The job model it
 rides on (states, leases, attempts, cancel) is Phase 0's:
 [Pairing and jobs](pairing-and-jobs.md#the-job-model). Server code is
 `internal/bridge` (`jobs.go`, `estimate.go`, `status.go`),
@@ -171,8 +175,10 @@ or parked. One run:
 7. **Finishes**: on `done` it writes the attachments
    ([write rules](attachments.md#how-the-bridge-writes-them)), asks the server to
    read them (`POST /bridge/rescan {mode: "attachments"}`, up to three tries; the
-   server's next scan reads them anyway) and reports the result. An engine book
-   that fails fails the job with the engine's error.
+   server's next scan reads them anyway), then runs the
+   [description step](#the-description-step) and, when that gave one, saves
+   `description.json` beside them and asks again, and reports the result. An
+   engine book that fails fails the job with the engine's error.
 
 A book's later volume waits for the earlier one: the engine holds a series lock
 until a book reaches `ready`, so a sequel's agent stages run after its
@@ -186,7 +192,7 @@ server stores it opaquely; at most 16 KiB):
 
 | Field | Meaning |
 |---|---|
-| `step` | always set: the engine state (`inspecting`, `asr`, `fact_pass`, `synthesizing`, `auditing`, `contributing`...), or the job's own `waiting` (the engine book is queued, or the job waits on the engine, the server or the mapping), `writing` (writing into `.audiosilo/`) and `rescanning` (asking the server to read them) |
+| `step` | always set: the engine state (`inspecting`, `asr`, `fact_pass`, `synthesizing`, `auditing`, `contributing`...), or the job's own `waiting` (the engine book is queued, or the job waits on the engine, the server or the mapping), `writing` (writing into `.audiosilo/`), `rescanning` (asking the server to read them) and, since Phase 1c, `describing` (the description step) |
 | `message` | the step in words ("Transcribing (12 of 40)"; "Needs attention: ..." while parked, "Paused: ..." while paused) |
 | `done`, `total` | the current stage's counts, when it has some |
 | `stage` | the engine state |
@@ -196,7 +202,8 @@ server stores it opaquely; at most 16 KiB):
 | `park` | while parked only: `code`, `hint` (the Bridge's English advice) and `retry_at` (RFC 3339) when the park resumes by itself |
 
 The console and the player word the stages themselves (`bridge.stage.*` in both
-UIs) and show `done/total`, the time left and the cost.
+UIs; `describing` is "Writing the description") and show `done/total`, the time
+left and the cost.
 
 ### States
 
@@ -244,19 +251,26 @@ On `done` (at most 64 KiB):
   "library_id": 1,
   "path": "Author/Book",
   "source": "audio",
-  "files": ["characters.json", "recaps.json", "bridge.json"],
+  "files": ["characters.json", "recaps.json", "description.json", "bridge.json"],
   "characters": 41,
   "recaps": 38,
   "cost_usd": 12.5,
   "work_id": "the-way-of-kings",
-  "contributed": { "characters": "https://github.com/...", "recaps": "https://github.com/..." }
+  "contributed": { "characters": "https://github.com/...", "recaps": "https://github.com/..." },
+  "description": true
 }
 ```
 
 `files` are the names written into `.audiosilo/` (with the `<stem>.` prefix for a
 single-file book), `work_id` the resolved community work (or the pipeline's
 placeholder slug), `contributed` only with `contribute: issue`, naming each
-dimension's intake issue.
+dimension's intake issue. `description` (Phase 1c) says whether
+`description.json` was written; when it is `false`, `description_error` says why
+in a few plain words ("the agent account hit its usage limit", "the book has a
+single chapter, so no description leaves out its ending"...), which the console
+shows as "No description this time: ...". `cost_usd` includes the description
+step's spend, a try that failed its checks included. An older Bridge sends
+neither field.
 
 ### Notifications
 
@@ -265,14 +279,189 @@ The **server** announces the jobs (not a Bridge route): `bridge.Service`'s
 committed, whatever made it (the Bridge's `PATCH`, or a lease that ran out on the
 last attempt, which fails the job), and `notify.BridgeJobEnded` records it:
 
-- into `done`: **`bridge_job_finished`** (`Characters and recaps ready: <title>`);
+- into `done`: **`bridge_job_finished`** (`Characters and recaps ready: <title>`;
+  for a `sidecars.describe` job `Description ready: <title>`, "Listeners see it
+  in the player's About when the book has no other description.");
 - into `failed`, or into `needs_attention` with a park that isn't transient:
   **`bridge_job_failed`**, with the park code. `agent_rate_limited`,
   `agent_unavailable` and `asr_worker_waiting` are never announced, whatever their `retry_at`; a park that
-  changes its code in place is announced when the new code isn't transient.
+  changes its code in place is announced when the new code isn't transient. A
+  failed job's title names its kind (`Characters and recaps failed: <title>`,
+  `Description failed: <title>`).
 
 A report that leaves the state as it was (a keepalive, a parked job's progress)
 announces nothing. See [Notifications](../server/backups-and-notifications.md#events).
+
+## The description step
+
+Phase 1c: a book's **own-words, spoiler-free description**, the paragraph a
+stranger reads before deciding to listen, written by the agent and saved as
+[`description.json`](attachments.md#the-formats). It is **local only**:
+meta-community takes descriptions by pull request, so a `contribute: issue` run
+never files one. The Bridge's code is `pipeline.Executor.Describe`
+(`internal/pipeline/describe_stage.go`, its prompt `internal/agent/prompts/description.md`)
+and `describeOnce` (`internal/generate/describejob.go`).
+
+### What the agent sees: the spoiler bound
+
+The bound is the **staging**, by construction: the agent's folder holds
+`opening.md` and an empty `out/`, nothing else. No transcript, no ebook text, no
+`knowledge-final.md` (the whole-book knowledge sheet carries the ending), no later
+chapter's notes, no publisher copy; the prompt also forbids the web and the
+agent's own memory of the book. `opening.md` is copied mechanically from the fact
+pass's own chunks (`chunk_plan.json`): the `## Chapter N` sections of the chosen
+files, their file numbering kept.
+
+The chosen files are the book's **opening**: those whose logical position is `0`
+(front matter) or among its first **K** story positions, where
+
+- `n` is the number of distinct story positions the files hold (capped at the
+  classifier's chapter count, so one misheard late announcement can't widen the
+  window, and a sequel numbered on from 45 still has an opening);
+- **K = max(2, ceil(n / 4))**, capped at **n - 1**: a quarter of the book, two
+  chapters at least, and **never the last chapter** (its ending). A book of two
+  chapters gets its first only; a book of **one** gets **no description** (the
+  step answers "the book has a single chapter").
+
+Excluded edge files (an Audible intro, the closing credits) and end matter never
+count. The positions are classified the way the sidecar stages did, so K counts
+the same logical chapters the recaps use. That classification reads the
+transcripts, which the retention deletes, so each one is kept beside the notes as
+`chapter_positions.json` (keyed by the manifest it was made from); a book whose
+transcripts are gone uses it, else its file numbers (a file's number is never
+below its story chapter, so that bound is only less generous, never unsafe).
+
+### The checks
+
+The answer is `out/description.json`, exactly `{"text": "..."}`. Before it is kept,
+every one of these must pass; a failure goes back to the agent as feedback for
+another try:
+
+- the text, trimmed, is **200 to 1500** code points, at most **two paragraphs**,
+  with no control character (nor U+2028/U+2029) but a newline, and **no em dash**;
+- a neutral reference-guide voice: no second person, no sentence ending in a
+  question mark, no sales words ("gripping", "must-read", "unforgettable"...), the
+  book's own title and series exempt (a book may be called *Me Before You*);
+- the composed `model.Description` (the run's work and sources from its
+  `characters.json`, licence `CC-BY-SA-4.0`) passes meta's
+  `description.schema.json`;
+- the **no-verbatim check**: an 8-word run shared with the book's source text
+  (audiosilo-meta's `extract.NGram`, the shingle the sidecars use) fails. It
+  measures against whatever text is still there: the transcripts (their text and
+  corrected layers) for an audio book, the ebook's chapter text for an ebook.
+  With none left it is skipped and recorded as such; a local fault of the check
+  itself (the disk, an unreadable transcript) fails the step rather than paying
+  for an agent retry.
+
+What it measured is recorded as `checked_against` (`transcripts`, `book text` or
+`none`) in `bridge.json`'s `description` object. A run whose own work and sources
+can't make a valid description fails before any spend; validation exhausted
+means no description.
+
+### When it runs in a generate job
+
+An ebook's text is deleted as its book reaches `done` (a licensing rule), so the
+step runs where the text is still there:
+
+1. **At the start of the engine's contributing stage** (which every book passes
+   through to resolve its community work, contributing or not): best effort and
+   once per book (a book with any description run, passed or failed, is never
+   paid for again, since a contributing park runs the stage again), only for a
+   book an open `sidecars.generate` job follows, without waiting out a rate
+   limit, any error only logged.
+2. **At the job's finish** (the engine book `done`, or parked at
+   `contributing`), after the characters and recaps are saved: the job's pass
+   **reuses** the description already in the engine's work folder, re-composed
+   with the work and sources the contributing stage resolved, nothing spent, its
+   `checked_against` kept. With none, it tries once itself (and once more at
+   `done` when it first asked at a contributing park, so the description never
+   ships naming another work than the characters do), unless the book's latest
+   description run failed after spending: a run never pays twice.
+
+The step **never fails, parks or holds the job**: no rate-limit wait, an engine
+that keeps the book for more than a few polls is given up on, and any error
+leaves the job to finish with its characters and recaps, its result saying
+`description: false` and why. A description it got follows in a second save.
+
+The step is not an engine stage. It records its own `describing` stage run on the
+engine book (so its spend counts in the per-book and monthly budgets, the monthly
+sum and the estimates, and both budgets are checked before any spend), runs
+under the scheduler's hold on the book (no stage, delete, purge or sweep acts on
+it meanwhile), and uses the agent model `agent.claude` routes as `describing`
+(`sonnet` by default). The kept file is the engine's `sidecars/description.json`,
+which the transcript purge keeps.
+
+## A description on its own: `sidecars.describe`
+
+Phase 1c's second kind (family `sidecars`, so the same `bridge.features` entry):
+a description for a book the Bridge generated earlier, written from the notes
+it kept (no new speech recognition). The notes outlive the transcripts: the
+retention deletes the transcript text but keeps the fact notes, the chapter
+positions and the sidecars. The player has no such action; the console offers it.
+
+**Queueing:** `POST /admin/bridge/jobs` with `kind: "sidecars.describe"`, a
+`library_id`, a **required** book `path` and `params` `{}` or none (any field is
+`400`; stored as `{}`). It writes, so `409 library_not_writable` as for a
+generate job, and a Bridge that doesn't advertise it (a 1a or 1b Bridge) is
+`409 kind_unavailable`. It is refused with **`409 generate_open`** while a
+`sidecars.generate` job is open for the book (that run writes the description
+itself); a second press returns the open describe job (its own dedupe key).
+The other way round, a generate job queued while a describe job is open
+**cancels** that job in the same transaction (at once when it is queued or
+parked, else by `cancel_requested`, its error "a generate job for the book
+replaced it"), since the generate run writes the description from fresher notes.
+See [Kinds are allow-listed twice](pairing-and-jobs.md#kinds-are-allow-listed-twice).
+
+**The console** (`admin-ui/src/features/bridge/describe-section.tsx`): the book
+page's Community card has a **Description** part. It shows a generated
+description (from the admin book detail's `generated_description`) with the
+"Generated on this server" mark and its time, clamped behind **Show more**, and
+says when listeners see another description in the player instead (the book's
+own, or the community's). **Write a description** confirms, then queues the job
+(`describeOffered`): offered only when the estimate says `can_describe` and
+`writable`, the book has generated characters or recaps (their notes are the
+source), no description from either side (`has.local.description`,
+`has.community.description`, with `community_unknown` unset), no description of
+its own, and no generate or describe job open (the estimate's `open_job`
+included). The describe job's status shows in the same part.
+
+**The Bridge** (`DescribeJob`, the `pipeline` lane) prepares as a generate job
+does (strict when new; a resumed job parks `library_not_writable`), then finds
+the engine book whose notes describe the book: the latest at its source path,
+else the latest generate job's book at its library path (a book that moved
+while that job ran), else the run the book's own `bridge.json` names (a book that
+moved after). It runs the description step until it writes one; the agent's parks
+(rate limit, budget, credential, unavailable) are the job's park
+(`needs_attention`, with `code`, `hint` and `retry_at`), tried again at
+`retry_at` or on **Retry**. Then it saves `description.json` and `bridge.json`
+([how](attachments.md#how-the-bridge-writes-them)) and asks for the attachments
+rescan. It fails, with a sentence the console shows as it is, when:
+
+| Failure | Message |
+|---|---|
+| no engine book (never generated here, or removed) | The Bridge has no notes for this book (it was not generated here, or they were removed). Generate characters and recaps again to get a description. |
+| a generate run still works on it | A generate job is still running for this book; it writes the description when it finishes. |
+| a single-chapter book | This book has a single chapter, so no description could leave out its ending. |
+| validation exhausted | Couldn't write a description that passed the checks. |
+| the engine keeps the book | The engine is busy with this book; try again in a minute. |
+
+Its progress is `{step: describing | writing | rescanning | done, message, done,
+total, stage: "describing", source, cost_usd, park?}`, and its result:
+
+```json
+{
+  "library_id": 1,
+  "path": "Author/Book",
+  "description": true,
+  "files": ["description.json", "bridge.json"],
+  "cost_usd": 0.18,
+  "checked_against": "none"
+}
+```
+
+`description` is always `true` (the console's shared result parser reads it).
+An audio book past its transcript retention, or an ebook (its text went at
+`done`), is checked against nothing: `checked_against: "none"`.
 
 ## Resuming after a restart
 
@@ -339,7 +528,11 @@ files that quote the transcript (the spelling candidates and reference matches,
 the QA reports, plan and accepted ledger, the tail verdicts, the correction and
 repair logs). It keeps what a sequel builds on (the facts in
 `knowledge-final.md`, the spelling ledger and rules, the series glossary), the
-manifest and the sidecars.
+fact notes a [`sidecars.describe`](#a-description-on-its-own-sidecarsdescribe)
+reads, the description step's `chapter_positions.json`, the manifest and the
+sidecars (`description.json` included). Each purge takes the engine's hold on
+the book: the daily sweep leaves a held book (a description being written) for
+its next run.
 
 ## The engine wiring
 

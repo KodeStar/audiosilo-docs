@@ -20,7 +20,9 @@ into the book's [`.audiosilo/` folder](attachments.md) by the sidecars engine, w
 its AI agents in a separate [agent container](agent-container.md). **Phase 1b**
 added [ASR workers](workers.md): the same binary run natively where speech
 recognition is fast (a Mac's Metal), taking the transcription off the Bridge.
-Podcasts, read-along, Audible backups and file moves arrive in later phases.
+**Phase 1c** added own-words, spoiler-free [descriptions](generating.md#the-description-step):
+every generate run writes one too, and `sidecars.describe` writes one alone for a
+book generated earlier. Podcasts, read-along, Audible backups and file moves arrive in later phases.
 :::
 
 ## What it is for
@@ -144,8 +146,8 @@ the mark; see [generated content](../server/api/reference.md#generated-content))
 - [Library mappings](mappings.md) - how the Bridge finds each library and proves it
   has the right one.
 - [Characters and recaps](generating.md) - `sidecars.generate`: queueing, the
-  estimate, the run, its progress, parks and result, budgets and the transcript
-  retention.
+  estimate, the run, its progress, parks and result, the description step and
+  `sidecars.describe`, budgets and the transcript retention.
 - [The .audiosilo folder](attachments.md) - where the results go, their formats,
   and how the server finds, checks and serves them.
 - [The agent container](agent-container.md) - where the AI agents run, and the

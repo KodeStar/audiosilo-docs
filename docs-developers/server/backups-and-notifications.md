@@ -213,8 +213,11 @@ A Bridge event is reported once per move, after the move has committed, on a
 context the request's end doesn't cancel. Its message names the book (its title,
 else its path, else its library): `bridge_job_finished` for a `sidecars.generate`
 job reads `Characters and recaps ready: <title>` ("Listeners see them in the
-player now."); `bridge_job_failed` reads `A Bridge job needs attention: <title>`
-(warning colour) or `Characters and recaps failed: <title>`, its text the park
+player now."), and for a `sidecars.describe` job (Phase 1c) `Description ready:
+<title>` ("Listeners see it in the player's About when the book has no other
+description."); `bridge_job_failed` reads `A Bridge job needs attention: <title>`
+(warning colour) or `<kind> failed: <title>` (`Characters and recaps`,
+`Description`, `Bridge check`, else `Bridge job`; `notify.bridgeKindWords`), its text the park
 code in words (`book_not_writable`, `budget_exceeded`, `agent_credential_refused`,
 `core_needed`; anything else "See the job in Settings > Bridge."). Both link to
 `/server?topic=bridge`. See [Characters and recaps](../bridge/generating.md#notifications).
