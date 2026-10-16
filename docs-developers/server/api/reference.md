@@ -4817,9 +4817,10 @@ One run, as in the list (`404` when it isn't kept).
 
 #### `GET /api/v1/admin/match-runs/{id}/items`
 
-A page of the run's books in id order: `?outcome=auto|review|none|error`
-(omitted: all), `?after=<item id>` (the previous page's `next_after`),
-`?limit=` (1-200, default 50).
+A page of the run's books, the best match first (score descending, a tie in
+the order they were recorded): `?outcome=auto|review|none|error` (omitted: all),
+`?after=<item id>` (the previous page's `next_after`; the page reads on from that
+item's score, so every page follows one order), `?limit=` (1-200, default 50).
 
 ```json
 {
