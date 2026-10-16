@@ -4867,6 +4867,9 @@ item's score, so every page follows one order), `?limit=` (1-200, default 50).
   server, named by `asin_region`.
 - `book` is the book as it is now; `gone: true` when nothing is indexed at the
   path any more.
+- `matched_since: true` (a match run only) when the book has an ASIN or ISBN now
+  that it didn't have when the run looked: matched since, by hand or otherwise.
+  Its `changes` are empty, and an apply leaves it alone under any scope.
 - `changes` is what applying would write under each scope the run's mode takes
   (fields in display order, set or reverted, and whether the cover is taken),
   worked out against the book now by the same rules the apply uses, so the
@@ -4889,7 +4892,7 @@ item's score, so every page follows one order), `?limit=` (1-200, default 50).
   }
   ```
 - `applied` is what applying did: `""` (not yet), `applied`, `skipped` (with
-  `detail` `nothing_to_change` or `book_gone`) or `failed` (`edit_failed`,
+  `detail` `nothing_to_change`, `matched_since` or `book_gone`) or `failed` (`edit_failed`,
   `cover_failed`); an `applied` item can carry `cover_failed` when its fields
   went on but its cover couldn't be fetched.
 
