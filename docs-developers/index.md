@@ -18,8 +18,10 @@ write/management side. Everything else in these docs hangs off that split.
 An optional fourth piece is being built beside them: the **[Bridge](bridge/index.md)**
 (`audiosilo-bridge`, private for now), a companion that pairs with a server,
 writes to its libraries and runs the heavy jobs, so the server stays read-only. It
-always calls the server, never the reverse, and is meant to take over the
-manager's write side in later phases.
+always calls the server, never the reverse. Its first real job generates a book's
+[characters and recaps](bridge/generating.md) into the book's folder, with its AI
+agents in a separate [agent container](bridge/agent-container.md); it is meant to
+take over the manager's write side in later phases.
 
 The three code repos (plus this docs site) live side by side in a single
 workspace folder (`~/dev/audiosilo`), whose root is itself the small

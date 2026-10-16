@@ -9,14 +9,16 @@ stay read-only and safe to expose to the internet. It is a separate program in i
 own repository, `audiosilo-bridge`, and runs beside the server, usually as a second
 container.
 
-:::info Private repository, Phase 0
-The `audiosilo-bridge` repository (and its image, `ghcr.io/kodestar/audiosilo-bridge`)
-is **private** for now, and the Bridge is being built in phases. **Phase 0**, which
-these pages describe, lays the foundations: pairing, the heartbeat and the
-capability, the job queue with leases, the library mapping checks and one proof job,
-`bridge.verify`. The jobs that make the Bridge useful (generated character sheets
-and recaps first, then podcasts, read-along, Audible backups and file moves) arrive
-in later phases.
+:::info Private repository, built in phases
+The `audiosilo-bridge` repository (and its images, `ghcr.io/kodestar/audiosilo-bridge`)
+is **private** for now, and the Bridge is being built in phases. **Phase 0** laid
+the foundations: pairing, the heartbeat and the capability, the job queue with
+leases, the library mapping checks and one proof job, `bridge.verify`. **Phase 1a**
+added the first job that makes it useful,
+[`sidecars.generate`](generating.md): characters and recaps for a book, written
+into the book's [`.audiosilo/` folder](attachments.md) by the sidecars engine, with
+its AI agents in a separate [agent container](agent-container.md). Podcasts,
+read-along, Audible backups and file moves arrive in later phases.
 :::
 
 ## What it is for
@@ -31,9 +33,10 @@ desktop app.
 The engine came from **audiosilo-sidecars**: its packages (speech recognition, the
 agent pipeline, QA, spelling, contribution, the scheduler and supervisor) were
 imported **with their history**, so `git log --follow` and `git blame` still reach
-the reliability fixes made there. Phase 0 imports and tests the engine but doesn't
-run it; the shell around it (the server link, the job runner, the mapping checks,
-the Bridge's own page) is new and smaller.
+the reliability fixes made there. The shell around it (the server link, the job
+runner, the mapping checks, the Bridge's own page) is new and smaller. Since Phase
+1a the engine runs, behind `sidecars.generate`
+([the engine wiring](generating.md#the-engine-wiring)).
 
 ## The pull-only rule
 
@@ -49,15 +52,21 @@ flowchart LR
     end
     subgraph br["audiosilo-bridge"]
         link["server link"]
-        runner["job runner"]
+        runner["job runner + engine"]
         page["its own page<br/>(LAN, :8091)"]
     end
+    subgraph ag["agent container"]
+        agent["agent-runner<br/>(claude, codex)"]
+    end
     files[("library folders")]
+    staging[("staging volume")]
     admin["admin's browser"]
 
     link -->|"pair, heartbeat every 30 s,<br/>long-poll claims, progress"| api
     runner -->|"reads and writes"| files
-    admin -->|"console: pair, Verify, cancel"| api
+    runner -->|"stages jobs, harvests"| staging
+    agent -->|"claims and runs jobs"| staging
+    admin -->|"console: pair, Verify,<br/>Generate, cancel"| api
     admin -.->|"opens (link from the console)"| page
 ```
 
@@ -90,7 +99,8 @@ workspace `CROSS-REPO.md`; this site's digest is
 | Status | stores the last heartbeat; `capabilities.bridge` while it is under 2 minutes old | `PUT /bridge/status` every 30 s |
 | Jobs | `bridge_jobs`: the intent and the lease | `server_jobs`: the execution truth |
 | Libraries | lists them (id, name, root) and each indexed book's files with their sizes | checks where it sees each one, and whether it can write there |
-| UI | Settings > Bridge in the admin console | its own page on port 8091 |
+| UI | Settings > Bridge, the book page's Community card and the series cards in the admin console; the player's book page for an admin | its own page on port 8091 |
+| Generated content | indexes a book's `.audiosilo/` files and serves them on `/meta` | writes them |
 
 A few rules hold across the seam:
 
@@ -103,15 +113,24 @@ A few rules hold across the seam:
   anything may write there. See [Library mappings](mappings.md).
 - **Path is the identity**, as everywhere: a job is about `(library_id, rel_path)`,
   follows its book when it moves, and goes with its library.
-- **Hidden folders stay hidden.** The server never indexes or lists a path through a
-  dot-folder by name, so the folder the Bridge will keep its own files in, inside a
-  book (`.audiosilo/`, from Phase 1a), can never become a phantom book.
+- **Hidden folders stay hidden.** No server route reaches content through a
+  dot-folder by name (it never indexes, lists, streams or serves one), so the
+  folder the Bridge keeps its files in, inside a book (`.audiosilo/`), can never
+  become a phantom book or a streamable file. See
+  [the hidden-path rule](attachments.md#the-hidden-path-rule).
+- **Agents never touch the library.** The AI agent CLIs run only in the
+  [agent container](agent-container.md), which sees a staging folder and its own
+  config, nothing else.
 
 ## Compatibility
 
 Everything is additive. An older server has no Bridge routes and no `bridge` flag:
-the Bridge's pairing gets a `404` (or `405`) and says the server is too old. Shipped players
-never see either, and nothing in the player uses the Bridge yet.
+the Bridge's pairing gets a `404` (or `405`) and says the server is too old. The
+player's first Bridge UI (Phase 1a, admins only) is gated on the flag and the
+`sidecars` feature, so it never shows against an older server. Players shipped
+before it never see the Bridge, but they do see generated characters and recaps
+for a book matched with community metadata (merged into its `/meta` work, without
+the mark; see [generated content](../server/api/reference.md#generated-content)).
 
 ## In these pages
 
@@ -120,6 +139,13 @@ never see either, and nothing in the player uses the Bridge yet.
   restart) and `bridge.verify`.
 - [Library mappings](mappings.md) - how the Bridge finds each library and proves it
   has the right one.
+- [Characters and recaps](generating.md) - `sidecars.generate`: queueing, the
+  estimate, the run, its progress, parks and result, budgets and the transcript
+  retention.
+- [The .audiosilo folder](attachments.md) - where the results go, their formats,
+  and how the server finds, checks and serves them.
+- [The agent container](agent-container.md) - where the AI agents run, and the
+  staging protocol.
 - [Configuration](configuration.md) - the Bridge's settings and environment, the
   images and the compose example.
 - [Development](development.md) - the gate, the layout and the Bridge's own page.

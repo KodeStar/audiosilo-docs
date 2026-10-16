@@ -35,6 +35,7 @@ const sidebars: SidebarsConfig = {
         'admin/notifications',
         'admin/import',
         'admin/bridge',
+        'admin/generating-characters-and-recaps',
       ],
     },
     {

@@ -845,6 +845,7 @@ probed; `added_at` when unknown. Every book response (lists, search, recent,
 | `cover_version` | string | an opaque token (10 characters) for the cover art. Append it to a cover URL as `v=` so a client cache refetches a replaced cover |
 | `series_index_end` | number | the end of a main series position that is a **range** (an omnibus of books 1-3: `series_index` `1`, `series_index_end` `3`). `series_index` stays the start, so a client that doesn't know the field reads the omnibus as book 1. Omitted for a single position |
 | `series_list` | array | every series the book is in, `[{"name", "position", "position_end"?}]` (position `0` = unnumbered; `position_end` only for a range, as `series_index_end`): its main `series` first (at `series_index`), then the others an [admin edit](#patch-apiv1adminlibrariesidbook) or a community match added. Sent only for a book in more than one series; otherwise `series`/`series_index` say it all |
+| `generated` | boolean | `true` when the book's `.audiosilo/` folder holds characters or recaps the [Bridge](#the-bridge) generated on this server (read from the book's attachment signature, so a file that failed its checks still counts); omitted otherwise. A client asks [`/meta`](#generated-content) for such a book even when it has no `asin` or `isbn` |
 
 A book at a range, here as the omnibus of Mistborn 1-3 that is also book 1 of a
 box-set series:
@@ -1570,9 +1571,10 @@ carry different licences. It is absent for most works.
 | `license_url` | `https://creativecommons.org/licenses/by-sa/4.0/` |
 | `source_url` | the work's page on the metadata site (the envelope's `web_url`) |
 
-It is present **if and only if** the work carries CC BY-SA content
-(`characters`, `recaps`, `recap_summary` or `community_description`), so a client
-shows the credit exactly when it shows content that needs it. The server writes
+It is present **if and only if** the work's **community** content carries CC
+BY-SA material (`characters`, `recaps`, `recap_summary` or
+`community_description`), so a client shows the credit exactly when it shows
+content that needs it. [Generated content](#generated-content) never counts. The server writes
 the legal text: a client renders these fields beside that content and never
 composes its own. It is on every work the server returns: the envelope's `work`,
 each `previous[]` work and [`/meta/work`](#get-apiv1metawork). With
@@ -1649,14 +1651,70 @@ that the client treats as "nothing to show":
 { "matched": false }
 ```
 
+#### Generated content
+
+Characters and recaps the [Bridge](#the-bridge) generated for the book on this
+server (its [`.audiosilo/` files](../../bridge/attachments.md), checked and
+indexed by the scan) are laid into the answer **per request**, after the shared
+cache and `local`, on the request's own copy: never into the cache. Community
+content wins **per dimension**:
+
+- **A matched book.** When the community work has no characters,
+  `work.characters` are the generated ones; when it has no recaps,
+  `work.recaps` are the generated recaps and, when it has no `recap_summary`
+  either, `work.recap_summary` the generated `{in_short, ending}` (omitted when
+  both are blank). `work.generated` then names what came from the files:
+
+  ```json
+  "generated": { "characters": false, "recaps": true, "generated_at": "2026-10-16T09:12:44Z" }
+  ```
+
+  `recaps` covers the recap list and the summary alike; `generated_at` is the
+  provenance's time, omitted when unknown; the whole object is omitted when
+  nothing was generated (or the community has both).
+- **A book with no match** (no `asin`/`isbn`, or none upstream) but generated
+  content answers `matched: false` **with a work** of its own: `id` empty,
+  `title` the book's, `authors` `[]`, the generated `characters`, `recaps` and
+  `recap_summary`, and `generated`:
+
+  ```json
+  { "matched": false, "work": { "id": "", "title": "The Book", "authors": [], "language": "",
+    "characters": [ … ], "recaps": [ … ], "generated": { "characters": true, "recaps": true } } }
+  ```
+
+- **An upstream failure** is a `502` only when the book has no generated
+  content; with some, the answer is the unmatched one above (the server's own
+  content doesn't depend on the upstream).
+
+**Attribution is the community's alone.** `work.attribution` is decided from
+the community content before anything generated is laid in, so generated
+characters or recaps never make the server claim the CC BY-SA credit, and a work
+whose only content is generated carries none. A client shows the credit beside
+the community's dimension only (the player's `communityCredit`).
+
+**Spoiler gates:** `spoilers=hide` gates the generated parts exactly as it
+gates the community's (a gate that leaves an unmatched book nothing answers
+plain `{ "matched": false }`). `include=previous` stays community only.
+
+Metadata off, `/meta` is `404` as ever: generated content needs metadata on, as
+the generate action does. A book whose row names no generated file
+(`generated` absent) isn't looked up, so this costs nothing for other books.
+
+**Older players.** A player that predates the field ignores everything beside
+`matched: false`, so it shows nothing for an unmatched book. For a matched book
+it shows the merged work as it would the community's: the generated dimension
+without a mark, and the work's community credit beside it when the community
+has the other dimension. The owner kept that behaviour as built (Bridge Phase
+1a): newer players mark the generated dimension and drop the credit there.
+
 | Status | Meaning |
 |---|---|
-| `200` | `{ "matched": true, … }` on a match, or `{ "matched": false }` when there is nothing to show |
+| `200` | `{ "matched": true, … }` on a match, or `{ "matched": false }` (with a `work` when the book has generated content) otherwise |
 | `400` | missing `path` / invalid library id |
 | `403` | path outside the caller's share scope |
 | `404` | `no book at that path`, **or** metadata lookup is disabled on this server (`metadata` capability false) |
 | `500` | with `spoilers=hide`, `could not load progress` - the caller's progress could not be read; the ungated envelope is never sent instead |
-| `502` | `metadata service unavailable` - the upstream was unreachable or errored and the server holds no earlier answer for the book |
+| `502` | `metadata service unavailable` - the upstream was unreachable or errored, the server holds no earlier answer for the book, and it has no generated content |
 
 ### `GET /api/v1/libraries/{id}/meta/cover`
 
@@ -6664,7 +6722,8 @@ A destination reads:
 *Admin.* `{"targets": [...], "events": [...], "kinds": [...]}`: the
 destinations (oldest first), the event kinds the server knows (`book_added`,
 `scan_failed`, `library_unavailable`, `new_device`, `invite_redeemed`,
-`update_available`, `backup_failed`) and the destination kinds.
+`update_available`, `backup_failed`, `bridge_job_finished`, `bridge_job_failed`)
+and the destination kinds.
 
 ### `POST /api/v1/admin/notifications`
 
@@ -6893,13 +6952,14 @@ booleans):
 ```json
 {
   "capabilities": { "…": true, "bridge": true },
-  "bridge": { "version": "0.1.0", "features": ["bridge"] }
+  "bridge": { "version": "0.2.0", "features": ["bridge", "sidecars"] }
 }
 ```
 
 - `version` - the version the Bridge reported.
 - `features` - the job families the Bridge runs that this server knows: the part of
-  each known kind before its dot (`bridge.verify` is `bridge`), sorted, each once;
+  each known kind before its dot (`bridge.verify` is `bridge`, `sidecars.generate`
+  is `sidecars`), sorted, each once;
   always a list (`[]` for none), never `null`. A kind the Bridge advertises that the
   server doesn't know adds nothing.
 
@@ -6939,7 +6999,15 @@ mapping of it. The console's Settings > Bridge reads this.
     { "id": 2, "name": "Kids", "root": "/kids", "mapping": null }
   ],
   "workers": [],
-  "ui_url": "http://192.168.1.10:8091"
+  "ui_url": "http://192.168.1.10:8091",
+  "estimates": {
+    "sidecars": {
+      "asr_seconds_per_audio_hour": 900, "agent_usd_per_audio_hour": 1.6,
+      "agent_usd_per_ebook": null, "samples": 3, "agent_backend": "claude",
+      "agent_ready": true, "subscription": true, "can_contribute": false,
+      "monthly_budget_usd": 100, "month_spent_usd": 12.3
+    }
+  }
 }
 ```
 
@@ -6961,6 +7029,9 @@ mapping of it. The console's Settings > Bridge reads this.
   `platform`, `last_seen`); always `[]` today.
 - `ui_url` - the Bridge's own page on the local network, which the console links to
   (an absolute `http(s)` URL, checked when the heartbeat arrives).
+- `estimates` - the last heartbeat's [costing figures](#put-apiv1bridgestatus),
+  omitted when it sent none (or they were dropped as out of bounds). The console's
+  agent, Paid by, This month and Estimates from rows read them.
 
 ### `POST /api/v1/admin/bridge/pair`
 
@@ -7038,9 +7109,11 @@ Every job route, the console's and the Bridge's, answers jobs in one shape:
   no library). A job follows its book when the scanner sees it move, and goes with
   its library.
 - `params` - the kind's parameters as the server normalised them (`bridge.verify`
-  stores a `hold_seconds` of 0 as `{}`); `progress` and `result` - JSON objects the
-  Bridge reported (`{}` until it does); `error` - why it failed or was parked (`""`
-  otherwise).
+  stores a `hold_seconds` of 0 as `{}`; `sidecars.generate` stores every field with
+  its default); `progress` and `result` - JSON objects the Bridge reported (`{}`
+  until it does; the server stores them as they are: `sidecars.generate`'s shapes
+  are in [Characters and recaps](../../bridge/generating.md#progress)); `error` -
+  why it failed or was parked (`""` otherwise).
 - `state` - `queued`, `claimed`, `running`, `done`, `failed`, `needs_attention` or
   `cancelled` (see [Job states](#job-states)).
 - `requested_by` - the admin who queued it, `null` once that account is deleted.
@@ -7111,18 +7184,29 @@ another page (the server reads one row past the page to know): pass it as
 | Field | Meaning |
 |---|---|
 | `kind` | the job kind: one the server knows **and** the paired Bridge advertised in its last heartbeat (kinds are allow-listed twice) |
-| `library_id` | the library, when the kind is about one (`bridge.verify` needs it) |
-| `path` | optional: an indexed book in that library; the job is about the book's own path |
+| `library_id` | the library, when the kind is about one (both kinds need it) |
+| `path` | an indexed book in that library (optional or required, per kind); the job is about the book's own path |
 | `params` | the kind's parameters, checked per kind (unknown fields refused) |
 
-The only kind today is **`bridge.verify`**: it needs `library_id`, takes an
-optional book `path` (without one the Bridge checks the library's sample book, the
-one its mapping check uses: see
-[`GET /bridge/libraries/{id}/book`](#get-apiv1bridgelibrariesidbook)), and `params`
-`{ "hold_seconds": 0-600 }` (optional; 0 is stored as `{}`),
-how long the Bridge waits before it finishes, so a cancel or a stopped Bridge can
-be tried mid-job. What it does and reports is in
-[Pairing and jobs](../../bridge/pairing-and-jobs.md#the-proof-job-bridgeverify).
+The kinds:
+
+- **`bridge.verify`** needs `library_id`, takes an optional book `path` (without
+  one the Bridge checks the library's sample book, the one its mapping check uses:
+  see [`GET /bridge/libraries/{id}/book`](#get-apiv1bridgelibrariesidbook)), and
+  `params` `{ "hold_seconds": 0-600 }` (optional; 0 is stored as `{}`), how long
+  the Bridge waits before it finishes, so a cancel or a stopped Bridge can be
+  tried mid-job. What it does and reports is in
+  [Pairing and jobs](../../bridge/pairing-and-jobs.md#the-proof-job-bridgeverify).
+- **`sidecars.generate`** (Phase 1a) generates a book's characters and recaps and
+  writes them into its `.audiosilo/` folder. It needs `library_id` **and** a book
+  `path`, and takes `params`
+  `{ "source": "auto" | "audio" | "ebook", "contribute": "local" | "issue", "work_id": "…" }`,
+  all optional (stored as `{"source": "auto", "contribute": "local"}` plus a
+  `work_id` when given: at most 200 bytes, no control characters). It **writes**
+  into the library, so it is queued only for a library the last heartbeat reports
+  mapped and writable, and `contribute: "issue"` only while the heartbeat's
+  `estimates.sidecars.can_contribute` is true. See
+  [Characters and recaps](../../bridge/generating.md).
 
 The Bridge may be offline: the job waits for it. Response `201` with the new job,
 or `200` with the open job already there for that kind, library and path (no
@@ -7134,9 +7218,9 @@ the console says so. A new job is audited as `bridge.job`.
 |---|---|
 | `201` | the job, queued |
 | `200` | the open job of that kind for that library and path |
-| `400` | `invalid request` (not JSON, an unknown field); or a check of the kind, each message starting `invalid: `: `unknown kind "…"`, `library_id is required`, `this kind takes no library or path`, `this kind takes no path`, `params too large`, or a params error (`hold_seconds must be 0-600`, an unknown field) |
-| `404` | `library not found`; `book not found` (the path is not an indexed book) |
-| `409` | `code: "kind_unavailable"` - no Bridge has reported, or the paired one doesn't run that kind |
+| `400` | `invalid request` (not JSON, an unknown field); or a check of the kind, each message starting `invalid: `: `unknown kind "…"`, `library_id is required`, `this kind takes no library or path`, `this kind takes no path`, `path is required`, `params too large`, or a params error (`hold_seconds must be 0-600`, `source must be auto, audio or ebook`, `contribute must be local or issue`, a `work_id` too long or with a control character, an unknown field) |
+| `404` | `library not found`; `code: "book_not_found"` - the path is not an indexed book |
+| `409` | `code: "kind_unavailable"` - no Bridge has reported, or the paired one doesn't run that kind; `code: "library_not_writable"` - a kind that writes, for a library the last heartbeat doesn't report mapped and writable; `code: "cannot_contribute"` - `sidecars.generate` with `contribute: "issue"` while the Bridge can't contribute. The last two are checked after the dedupe: an open job of the book is still returned (`200`) |
 
 ### `GET /api/v1/admin/bridge/jobs/{id}`
 
@@ -7155,6 +7239,69 @@ Bridge (`cancel_requested`; see [Leases](#leases-attempts-and-cancelling)). Answ
 | `400` | `invalid job id` |
 | `404` | `job not found` |
 | `409` | `code: "finished"` - the job already ended |
+
+### `GET /api/v1/admin/bridge/estimate`
+
+*Admin* (an API key works). What queueing `sidecars.generate` for a book would
+take: the confirmation dialogs (the console's and the player's) read it, and the
+console's book card and series batch read its brief form. How each figure is
+worked out is in
+[Characters and recaps](../../bridge/generating.md#the-estimate).
+
+| Param | Meaning |
+|---|---|
+| `library_id`, `path` | the book (required; an indexed book's path) |
+| `kind` | `sidecars.generate` (the default, and the only kind with an estimate) |
+| `brief` | `1`: no look into the book's folder for an ebook (`source` is `audio`, no `ebook`) and no scan of the series (`earlier` is `[]`): the cheap answer for a label or a batch |
+
+```json
+{
+  "kind": "sidecars.generate",
+  "library_id": 1,
+  "path": "Brandon Sanderson/The Stormlight Archive/Words of Radiance",
+  "source": "audio",
+  "asr_hours": 12.06,
+  "agent_cost_usd": 77.16,
+  "subscription": true,
+  "agent_ready": true,
+  "can_contribute": false,
+  "figures": true,
+  "duration_seconds": 173621,
+  "writable": true,
+  "has": {
+    "community": { "characters": false, "recaps": false },
+    "local": { "characters": false, "recaps": false }
+  },
+  "earlier": [
+    { "library_id": 1, "path": "Brandon Sanderson/The Stormlight Archive/The Way of Kings",
+      "title": "The Way of Kings", "series_index": "1", "asr_hours": 11.43, "agent_cost_usd": 73.15 }
+  ]
+}
+```
+
+| Field | Meaning |
+|---|---|
+| `source` | `ebook` when the book has an ebook the Bridge would read (exactly one regular, non-hidden `.epub` directly in a folder book's folder; `<stem>.epub` beside a single-file book), else `audio` |
+| `ebook` | that `.epub`, library-relative; omitted for audio |
+| `duration_seconds` | the book's length (`0` when unknown) |
+| `asr_hours` | expected transcription wall time: `duration_seconds / 3600 * asr_seconds_per_audio_hour / 3600`, rounded to hundredths; `0` for an ebook, without figures, or for audio of unknown length |
+| `agent_cost_usd` | expected agent spend, rounded to cents: the length times `agent_usd_per_audio_hour`, or `agent_usd_per_ebook`; `null` when the Bridge has no history for that source yet (or sent no figures): no estimate, never a free run |
+| `subscription`, `agent_ready`, `can_contribute` | the Bridge's: its agent credential is a subscription (the cost is notional), the agent container is ready, and it can offer results to the community (`contribute: "issue"`) |
+| `figures` | the last heartbeat carried estimates. Without them every field above is a default, so a false `agent_ready` means "not known yet" |
+| `writable` | the Bridge last reported the library mapped and writable (else queueing is `409 library_not_writable`) |
+| `has.community` | what the book's community work carries (metadata on and the book matched; `false` otherwise) |
+| `has.community_unknown` | `true` when the community couldn't be asked right now, so `has.community` is no answer (never read it as "none"); omitted otherwise |
+| `has.local` | what the book's indexed [`.audiosilo/` files](../../bridge/attachments.md) carry |
+| `earlier` | the books of the same library before this one in its first numbered series (any spelling), with no recaps generated here and, metadata on, none in the community (a book the community couldn't be asked about is left out): the nearest 10, in reading order, each with its own `asr_hours` and `agent_cost_usd` (costed from its audio). `[]` for none, and with `brief=1` |
+| `open_job` | the book's open `sidecars.generate` [job](#the-job-object); omitted when there is none |
+
+| Status | Meaning |
+|---|---|
+| `200` | the estimate |
+| `400` | `library_id and path are required`; `no estimate for that kind` |
+| `401` / `403` | no admin credential |
+| `404` | `library not found`; `code: "book_not_found"` - no indexed book at that path |
+| `409` | `code: "kind_unavailable"` - no Bridge has reported, or it doesn't offer the kind |
 
 ### `POST /api/v1/bridge/pair`
 
@@ -7204,7 +7351,21 @@ found. The server keeps the last one only (one row, never a history).
       "checked_path": "Andy Weir/Project Hail Mary", "error": "" }
   ],
   "workers": [],
-  "ui_url": "http://192.168.1.10:8091"
+  "ui_url": "http://192.168.1.10:8091",
+  "estimates": {
+    "sidecars": {
+      "asr_seconds_per_audio_hour": 900,
+      "agent_usd_per_audio_hour": 1.6,
+      "agent_usd_per_ebook": null,
+      "samples": 3,
+      "agent_backend": "claude",
+      "agent_ready": true,
+      "subscription": true,
+      "can_contribute": false,
+      "monthly_budget_usd": 100,
+      "month_spent_usd": 12.3
+    }
+  }
 }
 ```
 
@@ -7215,6 +7376,7 @@ found. The server keeps the last one only (one row, never a history).
 | `libraries` | its last check of each library it has checked (at most 512, each `library_id` once and above 0): `mount_path` where it looked, `mapped` (a known book's files were there with the server's sizes), `writable` (a probe file could be written and removed there), `checked_path` (the book it compared), `error` (why it isn't mapped or writable, `""` when it is); the three texts at most 1 KiB each |
 | `workers` | the transcription workers connected to it (at most 64; `name`, `version`, `platform`, `last_seen`, at most 128 bytes each; `[]` today) |
 | `ui_url` | its own page on the local network: an absolute `http(s)` URL without credentials, or `""` |
+| `estimates` | optional: its figures for costing a job before it is queued, one block per job family. `sidecars`: `asr_seconds_per_audio_hour` (ASR wall time per hour of audio, learned or a seed), `agent_usd_per_audio_hour` and `agent_usd_per_ebook` (agent spend from finished books, `null` before any), `samples` (the finished books they come from), `agent_backend` (`""` when none), `agent_ready` (the agent container answers and has a credential), `subscription` (that credential is a subscription login), `can_contribute` (it can file community intake issues), `monthly_budget_usd` (`0` = no cap) and `month_spent_usd`. Read leniently: an unknown key is ignored, and a block that doesn't decode, or holds a number below 0 or past its bound, is **dropped**, never refused (`agent_backend` is cleaned like the other text) |
 
 The structure is checked and refused when wrong: a malformed kind, a repeated
 kind, a library id that is repeated or not above 0, too many entries, or a `ui_url`
@@ -7315,9 +7477,22 @@ whole.
   "path": "Andy Weir/Project Hail Mary",
   "files": [
     { "path": "Andy Weir/Project Hail Mary/Project Hail Mary.m4b", "size": 912345678, "mod_time": 1781234567 }
-  ]
+  ],
+  "book": {
+    "title": "Project Hail Mary", "authors": ["Andy Weir"], "narrators": ["Ray Porter"],
+    "series": "", "series_index": "", "asin": "B08G9PRS1K", "isbn": "",
+    "duration": 58008.4, "work_id": "project-hail-mary"
+  }
 }
 ```
+
+`book` is present only when a `path` was asked for (never on the sample-book
+answer): what a job about the book reads. The effective values; `authors` and
+`narrators` are the credits split as the server splits them (`[]` for none);
+`series_index` is the position as the server formats it (`"3"`, `"1-3"`, `""`
+for none); `duration` is in seconds; `work_id` is the community work the
+metadata cache already knows for the book's ASIN or ISBN, `""` otherwise (the
+cache only, never an upstream call; `""` while metadata is off).
 
 File paths are relative to the library root. A single-file book (one audio file,
 indexed without separate parts) is listed as its own one file. `size` and
@@ -7327,30 +7502,51 @@ this never indexes a path on demand.
 
 | Status | Meaning |
 |---|---|
-| `200` | `{ library_id, path, files }` |
+| `200` | `{ library_id, path, files, book? }` |
 | `400` | `invalid library id` |
 | `404` | `library not found`; `code: "no_book"` - no indexed book at that path (or none in the library) |
 
 ### `POST /api/v1/bridge/rescan`
 
-*Bridge token.* Reads one path again now, after the Bridge changed files there (a
-book it placed or renamed).
+*Bridge token.* Reads one path again now, after the Bridge changed files there.
 
 ```json
-{ "library_id": 1, "path": "Andy Weir/Project Hail Mary" }
+{ "library_id": 1, "path": "Andy Weir/Project Hail Mary", "mode": "full", "from": "Andy Weir/Hail Mary" }
 ```
 
-It indexes whatever is at the path, a new book included, and answers
-`200 { "path": "…" }` with the book's indexed path. The re-read runs detached from
-the request for up to 10 minutes, like the console's
-[rescan of one book](#post-apiv1adminlibrariesidbookrescan). A path through a
-hidden (dot) folder is never indexed.
+| Field | Meaning |
+|---|---|
+| `library_id`, `path` | required: the path to read again |
+| `mode` | `full` (the default when absent) or `attachments` |
+| `from` | with `full` only: the book's path **before** a move the Bridge made |
+
+- **`full`** indexes whatever is at the path, a new book included (re-reading its
+  audio), and answers `200 { "path": "…" }` with the book's indexed path. With
+  `from`, the server also carries the book's durable state from there exactly as
+  a scan's [move detection](../scanner.md#move-detection) would (listening state,
+  edits, covers, enrichment, Bridge jobs, the favourites of the folders it left),
+  then drops the old row, but only when no book is at `from` on disk any more and
+  the two fingerprints match; otherwise `from` is ignored (logged), never an
+  error. This closes Phase 0's gap where a rescan of a renamed book defeated move
+  detection.
+- **`attachments`** re-reads only the book's
+  [`.audiosilo/` files](../../bridge/attachments.md), never its audio: the
+  Bridge's call after writing characters and recaps. The path is the book's, or a
+  path inside it. It answers what is now indexed:
+
+```json
+{ "path": "Andy Weir/Project Hail Mary", "attachments": { "characters": true, "recaps": true, "bridge": true } }
+```
+
+The re-read runs detached from the request for up to 10 minutes, like the
+console's [rescan of one book](#post-apiv1adminlibrariesidbookrescan). A path
+through a hidden (dot) folder is never indexed. The body is at most 8 KiB.
 
 | Status | Meaning |
 |---|---|
-| `200` | `{ path }` |
-| `400` | `library_id and path are required` |
-| `404` | `library not found`; `code: "not_indexable"` - nothing indexable at that path (gone, not a book, in a hidden folder, outside the library, or skipped by its ignore rules) |
+| `200` | `{ path }` (`full`), or `{ path, attachments }` (`attachments`) |
+| `400` | `library_id and path are required`; `mode must be full or attachments`; `invalid from`; `from is only for a full rescan` |
+| `404` | `library not found`; `code: "not_indexable"` - nothing indexable at that path (gone, not a book, in a hidden folder, outside the library, or skipped by its ignore rules), or for `attachments` no indexed book there |
 
 ## Well-known
 

@@ -274,6 +274,10 @@ as none by a re-index, so the next scan reads it again. Both log a warning. What
 the file means for a book's metadata is in
 [Data model](data-model.md#metadata-overrides-and-effective-values).
 
+A skipped book's **`.audiosilo/` attachments** (the Bridge's generated
+characters and recaps) are backfilled the same way, from the same walk: see
+[The Bridge's attachments](#the-bridges-attachments).
+
 ### Prune: what a removed book leaves behind
 
 When discovery saw the whole tree, `catalog.DeleteBooksNotIn` drops every book
@@ -552,6 +556,42 @@ recording's chapter list fitted onto its audio in their place, outside the scan
 the scan's chapters and `refreshEffective` puts the community's back over them
 in the same transaction when they should stand.
 
+## The Bridge's attachments
+
+A book's hidden **`.audiosilo/`** folder holds the characters, recaps and
+provenance the [Bridge](../bridge/index.md) generated for it (`characters.json`,
+`recaps.json`, `bridge.json`; a single-file book's carry its file stem first,
+`Book.characters.json`, in a `.audiosilo/` beside it). They are not a metadata
+layer: nothing in the effective row reads them, and `/meta` serves them. The scan
+finds them the way it finds an ABS `metadata.json`:
+
+- **Discovery** never walks into a hidden folder, but a folder named exactly
+  `.audiosilo` (a real folder, not ignored) is **listed once** without going in
+  (`audioDirs`' `sidecarFiles`, beside the ABS signatures), its known regular files
+  recorded by the folder holding it. A folder that can't be listed marks its books
+  *unread*: what is stored for them stays, and no audio lives there, so the prune
+  is not at stake.
+- **Each book's signature** (`attachments_sig`) is its own part of that listing,
+  `name:size:mtime_ns` per known name present, joined.
+- **A skipped (unchanged) book** whose signature differs, or whose attachments
+  were never read for this index of the row (`attachments_indexed_at` `NULL` or
+  another index's), has them read and recorded by `catalog.SetAttachments`
+  **without** a re-index (the attachments backfill, flushed with the path and ABS
+  backfills). The write is recorded only while the row still holds the state the
+  scan read when it began, so it never overwrites a newer reading from the
+  Bridge's own refresh.
+- **A re-indexed book** reads them in `enrich`; `IndexPath` looks up only the
+  book's own names (`attachmentsSigAt`).
+- `Scanner.RefreshAttachments` is the Bridge's
+  [`POST /bridge/rescan {mode: "attachments"}`](api/reference.md#post-apiv1bridgerescan):
+  the attachments of one indexed book, never its audio.
+
+Each file is read as a regular file only, never through a link, at most 4 MiB,
+and checked against audiosilo-meta's formats; one that fails is logged, left out
+and not read again until it changes, and one that can't be read right now keeps
+what is stored. The details, and the storage (`book_attachments`, migration
+`0048`), are in [The .audiosilo folder](../bridge/attachments.md#how-the-server-finds-them).
+
 ## Covers
 
 Cover resolution has two stages - an indexed **sidecar** path, and an
@@ -561,7 +601,9 @@ Cover resolution has two stages - an indexed **sidecar** path, and an
   (`cover.jpg`, `cover.jpeg`, `cover.png`, `folder.jpg`, `folder.png`). For a
   **folder book** it searches *inside* the book folder and - only there - will
   fall back to any image file (`.jpg/.jpeg/.png/.webp/.gif`), preferring one
-  with "cover" in its name over an arbitrary first-alphabetical thumbnail. A
+  with "cover" in its name over an arbitrary first-alphabetical thumbnail, and
+  never a hidden file (macOS writes an AppleDouble `._Cover.jpg` beside each image
+  on a share, which sorts first and is no image). A
   multi-CD disc subfolder (`CD1`, `Disc 2` - `isDiscFolder`) falls back to its
   *parent* folder, where the art usually lives, and a
   [joined book](#joined-books-disc-sets) with no image of its own falls back to
@@ -802,7 +844,23 @@ granted files still stream.
 A path that is not a book - a directory with no direct audio, one the
 detector treats as a collection, or one the library's
 [ignore rules](#ignore-rules) cover - returns `ErrNotIndexable`, which handlers
-map to 404.
+map to 404. So does a path with a hidden segment: `library.ContentPath` is the
+one statement of that rule (`ContentJoin` is `SafeJoin` with it first), shared
+by `IndexPathWithin`, `listDir` and every path-taking content route
+(`scopedPathIn`, which answers it `404` after the scope check), so nothing
+indexes, lists, streams or serves a path through a dot-folder by name (the
+Bridge's `.audiosilo/`, a share's `.Trash`). `library.ErrHidden` is both
+`fs.ErrNotExist` and `ErrNotIndexable`.
+
+**`IndexMoved`** is `IndexPath` for a book the Bridge has just moved: the
+Bridge's [`POST /bridge/rescan`](api/reference.md#post-apiv1bridgerescan) with
+`from`. It carries the durable state from `from` exactly as
+[move detection](#move-detection) does (`carryMove`, then the favourites of the
+folders it left) and drops the old row, but only when no book resolves at `from`
+on disk any more (`bookOnDisk`, which errs toward present: a path it can't check
+keeps its state), the fingerprints match and it isn't one folder seen two ways;
+otherwise `from` is ignored and logged. The state is carried before the new book
+is indexed, so its row resolves with the carried edits.
 
 `POST /admin/libraries/{id}/book/rescan?path=` (the console's "Read the files
 again" and Health's "Read again") calls `IndexPath` for an already-indexed book

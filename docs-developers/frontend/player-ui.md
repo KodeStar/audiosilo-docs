@@ -233,7 +233,10 @@ variants: `column` on desktop, `inline` on a tablet, `sheet` on a phone.
   [`src/components/annotations/`](annotations.md)); those three say "This book's
   server isn't connected" without a client rather than throw. `Attribution` (`companion-pieces.tsx`) puts the server's
   `attribution` under every community block; the credit is the server's, never
-  composed here.
+  composed here, and a dimension generated on this server gets the
+  "Generated on this server" mark instead (`communityCredit`, `GeneratedMark`).
+  For an admin, the empty Who's who and Story so far end with `GenerateOffer`
+  ([Generating characters and recaps](book-page.md#the-primary-action-and-the-action-row)).
 
 **The reveal toast** is `CompanionRevealListener` (`reveal-listener.tsx`), mounted
 once in the root layout so it fires wherever the listener is. It subscribes to

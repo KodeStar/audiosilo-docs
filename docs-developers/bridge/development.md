@@ -18,7 +18,7 @@ the Dockerfile changed:
 cd ~/dev/audiosilo/audiosilo-bridge
 go build ./... && go vet ./... && go test -race ./... && golangci-lint run   # Go
 cd web && npm run typecheck && npm run lint && npm run format && npm test   # the page
-docker build --target slim .   # a Dockerfile change: slim | cuda | full
+docker build --target slim .   # a Dockerfile change: slim | cuda | full | agent
 ```
 
 - **`npm run typecheck`, never `npx tsc --noEmit`**: the root `tsconfig.json` only
@@ -67,7 +67,7 @@ gets `index.html`, while a missing file with an extension is a real `404`.
 ## Layout
 
 ```
-cmd/audiosilo-bridge/  serve (default) and version; --data, --listen
+cmd/audiosilo-bridge/  serve (default), version, agent-runner, agent-login; --data, --listen
 internal/
   -- the shell (new in Phase 0) --
   app/        the wiring, and the page API's Backend: pairing, the heartbeat, mapping checks
@@ -76,24 +76,35 @@ internal/
   mapping/    library mappings: SafeJoin, the size comparison, the write probe
   jobs/       the generic runner: lanes, claims, the lease keepalive, cancel, resume
   verify/     bridge.verify, the proof job
+  -- Phase 1a --
+  generate/   sidecars.generate: server job -> engine book, progress and parks, the
+              .audiosilo/ write, the heartbeat's estimates, the transcript retention
+  agentproto/ the staging protocol both sides share (names, JSON, request validation,
+              regular-file reads); a leaf
+  agentbox/   the Bridge's side: an agent.Runner that stages, waits, harvests
+  agentrun/   the agent container's runner (agent-runner) and agent-login
   logring/    recent log lines for the page (secret-looking attributes redacted)
   web/        go:embed of the page (chosen by build tag)
   secrets/    sealed-file secrets keyed by AUDIOSILO_BRIDGE_SECRET_KEY or secret.key
   config/     config.yaml + AUDIOSILO_BRIDGE_* (bridge.go: the Bridge's own settings)
-  store/      SQLite, append-only migrations (0001 the engine, 0002 server_jobs)
+  store/      SQLite, append-only migrations (0001 the engine, 0002 server_jobs,
+              0003 generate_books, server_jobs.server_id, books.contrib_mode)
   auth/       the page's single password, hashed sessions, the login limiter
-  -- the engine (from audiosilo-sidecars; wired in Phase 1a) --
+  -- the engine (from audiosilo-sidecars; wired by app/engine.go since Phase 1a) --
   toolfetch/ audio/ asr/ transcript/ ebook/ scratch/ qa/ spelling/ agent/ repair/
   pipeline/ contrib/ state/ eta/ scheduler/ supervisor/ metaops/ events/ pricing/ fsutil/
 web/          the page: Vite + React 19 + TypeScript + Tailwind v4
 docker/       entrypoint.sh (owns /bridge-data, umask 022, drops to PUID:PGID)
-Dockerfile    the slim, full and cuda targets
+Dockerfile    the slim, full, cuda and agent targets
+compose.example.yaml  the server, the Bridge and the agent container
 ```
 
 **Dependency direction:** `app` depends on everything in the shell; `api` calls
 only the Backend interface `app` implements (it imports the other packages for
 their types); `verify -> {jobs, link, mapping}`; `jobs -> {link, store}`;
-`mapping -> link`; and `link` is a leaf. The engine keeps the directions it had in
+`mapping -> link`; `generate -> {jobs, link, mapping, store, engine}`;
+`agentbox -> {agent, agentproto}`, `agentrun -> agentproto`; `link` and
+`agentproto` are leaves. The engine keeps the directions it had in
 audiosilo-sidecars (`PACKAGES.md`).
 
 Conventions that carry the design:
@@ -112,22 +123,33 @@ Conventions that carry the design:
 - **Every feature ships with a test**, and the security-critical code (the
   local-network guard, the page's auth, `SafeJoin`, the secrets, the claim and
   lease handling) with an allowed **and** a denied test.
-- **Writes into a library** (from Phase 1a) go only through typed operations, every
-  path through `mapping.SafeJoin` against a **checked** mapping, written to a
-  temporary file and renamed, umask 022, with a targeted rescan after
-  (`POST /bridge/rescan`) and deletes moved to `.audiosilo-trash/`. A library that
-  isn't mapped and writable refuses them.
+- **Writes into a library** go only through typed operations, every path through
+  `mapping.SafeJoin` against a **checked** mapping, written to a temporary file and
+  renamed, umask 022, with a targeted rescan after (`POST /bridge/rescan`). A
+  library that isn't mapped and writable refuses them. Phase 1a's only write is a
+  book's [`.audiosilo/` files](attachments.md#how-the-bridge-writes-them); deletes,
+  when a later phase needs them, move to `.audiosilo-trash/`.
+- **No agent CLI runs in the Bridge** (decision 15). The engine gets only
+  `agentbox`'s runner; the local claude and codex runners stay for their output
+  parsers (`agent.ClaudeResult`, `agent.CodexResult`, shared with the container
+  runs) and their tests.
 
 ## The page and its API
 
 The Bridge serves its own page and a small JSON API under `/api` on its `listen`
 address (`:8091`). The page has six tabs: **Status** (pairing, the last heartbeat,
-the job kinds and lanes, where the secret key came from), **Libraries** (each
-server library, the folder the Bridge uses and its last check, with **Check now**),
-**Jobs** (the jobs it ran, with cancel and a `bridge.verify` result as a file
-table), **Settings** (its public address, the check interval, the password),
-**Workers** (none until Phase 1b) and **Logs** (recent lines). It has no router:
-the tab rides the URL hash.
+the job kinds and lanes, where the secret key came from, and a **Characters and
+recaps** card: the agent container and each CLI's version and credential kind, the
+speech recognition, the monthly budget with this month's spend, the per-book cap
+and the transcript retention), **Libraries** (each server library, the folder the
+Bridge uses and its last check, with **Check now**), **Jobs** (the jobs it ran,
+with cancel, a `bridge.verify` result as a file table, and for a
+`sidecars.generate` job its stage, progress, cost, the park's code, hint and
+retry time, and **Retry** while it is parked), **Settings** (its public address,
+the check interval, the password), **Workers** (none until Phase 1b) and **Logs**
+(recent lines). It has no router: the tab rides the URL hash, and `#/jobs/<id>`
+opens one job (the server's console links a parked job there, by its server job
+id).
 
 | Route | What it does |
 |---|---|
@@ -143,7 +165,10 @@ the tab rides the URL hash.
 | `POST /api/libraries/check` | check the mappings now (`202`) |
 | `GET` / `PUT /api/settings` | `public_url`, `mapping_check_minutes`, and which settings the environment locks (a locked one is never written to `config.yaml`) |
 | `GET /api/jobs` | the jobs it ran, newest first (`before`, `limit` up to 200) |
+| `GET /api/jobs/{id}` | one job (`404` when the Bridge has no such job) |
 | `POST /api/jobs/{id}/cancel` | stop a job it is running (`202`; `404` when it isn't running here) |
+| `POST /api/jobs/{id}/retry` | retry a parked job's work (`202`): re-admit its engine book, or make a job waiting on its own park look again now; `404` for no such job here, `409` when it isn't parked |
+| `GET /api/engine` | the engine's state: `started`, the `agent` container (backend, available and why not, version, slots, last heartbeat, each CLI's version and credential kind, subscription, the staging dir), `asr`, `monthly_budget_usd`, `month_spent_usd`, `book_budget_usd`, `transcript_retention_days` |
 | `GET /api/logs` | recent log lines (`after`, `limit` up to 1000, `level`) |
 | `GET /api/workers` | the connected workers |
 
@@ -162,7 +187,8 @@ Two rules protect the page, and both hold for **every** request, loopback includ
   local). Carrier-grade NAT ranges (Tailscale's among them) are **not** local.
 - **The password, always.** Every route but `/api/health` and `/api/login` needs a
   session token, even from the same machine. An agent container sharing the
-  Bridge's network (Phase 1a) could otherwise reach the page; the research spike
+  Bridge's network could otherwise reach the page (the compose example gives it a
+  network of its own, but nothing makes an installation do so); the research spike
   that settled the agent design showed it could.
 
 Responses carry `X-Content-Type-Options: nosniff`, `X-Frame-Options: DENY` and

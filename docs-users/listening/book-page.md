@@ -40,6 +40,8 @@ Beside it:
 - **Add to collection**, which opens the same dialog as the [book menu](browsing.md#the-book-menu).
 - **More** (**...**): **Mark as finished**, or **Mark as not finished** for a book you've finished, and **More in this series**. On a phone it opens as a sheet from the bottom.
 
+If you're an admin and your server has a [Bridge](../admin/bridge.md) that can write characters and recaps, a book with neither gets one more button, **Generate characters and recaps**, after the others (on a phone, on a row of its own). It opens a confirmation with what it will read and cost; while the Bridge works on it, its progress shows under the buttons, with **Cancel**. For a book whose characters and recaps were generated on your server, **Regenerate characters and recaps** is in the **More** menu instead. See [Generating characters and recaps](../admin/generating-characters-and-recaps.md).
+
 In the web player, a book the browser can't play as it is says so under the buttons: *"AC-3 audio is converted to MP3 for this browser"* (see [Books a browser can't play directly](playback.md#books-a-browser-cant-play-directly)).
 
 Up next and collections need a recent server; on an older one those buttons simply don't appear.

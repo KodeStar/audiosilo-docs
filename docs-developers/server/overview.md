@@ -279,8 +279,13 @@ The server's side of the optional [Bridge](../bridge/index.md): the Bridge's las
 heartbeat (`status.go`: validated, one row, the online rule and the `features` the
 capability carries) and the job queue (`jobs.go`: the kinds the server knows and
 their params, the dedupe on open jobs, claims with a 2-minute lease, reports bound
-to the claim's attempt, lease expiry, cancel). The server never connects to the
-Bridge; this package only answers it. Pairing and the bridge token are
+to the claim's attempt, lease expiry, cancel, and `OnTransition`, which the API
+wires to the notifications), and `estimate.go`, which costs a `sidecars.generate`
+run from the heartbeat's figures. The server never connects to the
+Bridge; this package only answers it. The Bridge's generated `.audiosilo/` files
+are read by the scanner (`library/attachments.go`), stored by the catalog
+(`catalog/attachments.go`) and laid into `/meta` by `meta.Answer`
+(`meta/generated.go`). Pairing and the bridge token are
 `auth/bridge.go`. See [Pairing and jobs](../bridge/pairing-and-jobs.md).
 
 ### `internal/importer`

@@ -641,8 +641,14 @@ both repos, with a test on each side.
   cleaned, never refused), `GET /bridge/libraries/{id}/book[?path=]` (an indexed
   book's files with the sizes the server sees now, a single-file book as its own
   file; no path = the first whole book among the library's first five by title;
-  `404 no_book`) and
-  `POST /bridge/rescan`. Shapes: [the reference](../server/api/reference.md#the-bridge).
+  `404 no_book`; with a path, an additive `book` of the book's facts: title,
+  credits split, series and position, ASIN, ISBN, duration and the cached
+  `work_id`) and `POST /bridge/rescan {library_id, path, mode?, from?}` (`full`,
+  optionally carrying a Bridge-made move's durable state from `from`, or
+  `attachments`: only the book's `.audiosilo/` files). The heartbeat carries an
+  additive `estimates` block the server reads leniently (an unknown key ignored,
+  a bad block dropped, never the heartbeat). Shapes:
+  [the reference](../server/api/reference.md#the-bridge).
 - **The capability:** `capabilities.bridge` is true only while the last heartbeat
   is under two minutes old, with `bridge: {version, features}` beside
   `capabilities` (`features` a list, never `null`; the server reuses a heartbeat
@@ -659,17 +665,46 @@ both repos, with a test on each side.
   library mapped, then probes writing. It checks after pairing, when the server's
   libraries change, every `mapping.check_minutes` (default 10) and on demand; each
   heartbeat carries the last results. See [Library mappings](../bridge/mappings.md).
-- **Hidden folders:** the server never indexes or lists a path through a dot-folder
-  by name, so the Bridge's `.audiosilo/` inside a book (Phase 1a) can't become a
-  phantom book.
+- **Hidden folders:** no content route reaches a path through a dot-folder by name
+  (`library.ContentPath`: never indexed, listed, streamed or served; `404`), so the
+  Bridge's `.audiosilo/` inside a book can't become a phantom book or a streamable
+  file.
+- **`sidecars.generate` (Phase 1a):** the first job that writes. Params
+  `{source, contribute, work_id}` checked strictly; refused `409
+  library_not_writable` for a library the heartbeat doesn't report mapped and
+  writable, and `409 cannot_contribute` for `contribute: issue` unless the
+  heartbeat says it can; the progress (`step`, `stage`, `eta_seconds`,
+  `cost_usd`, `source`, `park {code, hint, retry_at}`) and result shapes are the
+  Bridge's, stored opaquely by the server and read by the console and the player
+  by hand. `GET /admin/bridge/estimate` costs a run from the heartbeat's figures.
+  The server announces `bridge_job_finished` / `bridge_job_failed` itself, on
+  transitions. Detail: [Characters and recaps](../bridge/generating.md).
+- **`.audiosilo/` is a file contract:** the Bridge writes `characters.json` and
+  `recaps.json` (audiosilo-meta's `model.Characters` / `model.Recaps`) and
+  `bridge.json` into a book's folder (`<stem>.` before each for a single-file
+  book); the server indexes them (checked, size-capped, regular files only) and
+  lays them into `/meta` per request: community content wins per dimension,
+  `work.generated` names what came from the files, an unmatched book answers
+  `matched: false` with a `work`, and the CC BY-SA `attribution` never covers
+  them. A change to the formats touches audiosilo-meta's model, the Bridge's
+  writer and the server's reader. Detail: [The .audiosilo folder](../bridge/attachments.md).
+- **The player (Phase 1a):** its first admin-only UI, gated on `user.role ===
+  'admin'`, `capabilities.bridge`, `bridge.features` holding `sidecars` and
+  `capabilities.metadata`; `Book.generated` makes it ask `/meta` for a book with no
+  ASIN or ISBN. Its `types.ts` mirrors the job, the estimate and
+  `BookMetaWork.generated` by hand.
 
 **Old clients:** everything is additive. An older server has no Bridge routes (the
 Bridge's pairing gets a `404` and says the server is too old) and no `bridge` flag;
-shipped players never see either. The Bridge sends `X-AudioSilo-Client:
+shipped players never see either. A shipped player ignores a `work` beside
+`matched: false`, and shows a matched book's merged work without the
+`generated` mark (the owner kept that as built). The Bridge sends `X-AudioSilo-Client:
 AudioSilo Bridge/<version> (<os>)` on every call.
 
 **A change requires:** the server handler and its test, the mirrored type in the
-Bridge's `internal/link` and its test, and CROSS-REPO.md §23. The token's rules are
+Bridge's `internal/link` and its test (and, for the generate action, the console's
+`admin-ui` and the player's `types.ts`/`client.ts`/hooks with theirs), and
+CROSS-REPO.md §23. The token's rules are
 security-critical: allowed and denied tests on the server.
 
 ## The wire-change checklist

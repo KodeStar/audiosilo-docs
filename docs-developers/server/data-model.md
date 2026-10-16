@@ -250,7 +250,7 @@ covered in [Auth & security](auth-and-security.md#authorization-shares--scope).
 `scan_error_file`, `scan_error_detail` and `suspect_parts` in 0017; `split_parent` in
 0022; `cover_art` and `cover_color` in 0023; `chapters_source`, `chapters_fit`,
 `scanned_chapters` and `chapters_hash` in 0035; `released` and `released_checked`
-in 0037; `series_key` in 0041; `series_index_end` in 0045; `abs_sig`, `abs_indexed_at` and `abs_file` in 0046)* - one row per book,
+in 0037; `series_key` in 0041; `series_index_end` in 0045; `abs_sig`, `abs_indexed_at` and `abs_file` in 0046; `attachments_sig` and `attachments_indexed_at` in 0048)* - one row per book,
 `UNIQUE (library_id, rel_path)`. Columns: `is_folder` (folder book vs
 single-file book), identity metadata (`title`, `author`, `series`,
 `series_index`, `narrator`; `series_index_end` is the end of a main series
@@ -265,6 +265,10 @@ folder book's folder says, as JSON field -> value normalized like an edit, `''`
 for nothing) with `abs_sig` (the file's size and mtime, `''` for no file) and
 `abs_indexed_at` (the `indexed_at` it was read for, `NULL` until a scan has
 read it; see [the layers](#metadata-overrides-and-effective-values)),
+`attachments_sig` (the signature of the Bridge's `.audiosilo/` files for the book,
+`name:size:mtime_ns` per known file, joined; `''` for none; `Book.generated` is
+read from it) and `attachments_indexed_at` (the `indexed_at` they were read for,
+`NULL` until read; see [The .audiosilo folder](../bridge/attachments.md#storage)),
 `more_series` (the effective list of the other series the book is in beyond
 `series`, as JSON `[{"name","position"}]` plus `"position_end"` for a range, `'[]'` for none: only an edit, a
 community match or an Audiobookshelf `metadata.json` supplies it, an override like any other field; an admin edit
@@ -431,6 +435,14 @@ Rewritten from the effective values by `refreshEffective` (`keyOtherSeries`), as
 `books.series_key` is, so a series filter with memberships, the series order and
 the next book find a book through its list by an index seek, and the rails'
 `SeriesBooks` without reading every list.
+
+**`book_attachments`** *(0048)* - the Bridge's generated files for a book, checked:
+`book_id` (primary key, FK to `books` `ON DELETE CASCADE`), `characters`, `recaps`
+and `provenance` (JSON as checked against audiosilo-meta's formats, `''` for a
+file that isn't there or can't be used) and `updated_at`; a row only for a book
+with any. Derived from the book's `.audiosilo/` files like `abs_file`, so
+rebuildable and never carried by a move. `/meta` lays it into its answer per
+request; see [The .audiosilo folder](../bridge/attachments.md).
 
 **`books_fts`** *(0001)* - see [FTS design](#fts-design-books_fts) below.
 
@@ -1106,6 +1118,8 @@ The migration history so far:
 | 0044 | `household_members` | household members: `users.managed_by` (FK `ON DELETE SET NULL`), `users.member_kind` and `users.member_access` (each with a column CHECK), `users.can_add_members` (`DEFAULT 1`) and `users.display_name` (`DEFAULT ''`), with the partial `idx_users_managed_by`; `tokens.created_on_token_id` (FK `ON DELETE SET NULL`) with the partial `idx_tokens_created_on`. No data moves: every existing account reads as no member, allowed to add members |
 | 0045 | `series_ranges` | `books.series_index_end` and `book_more_series.position_end` (`REAL NOT NULL DEFAULT 0`), the end of a series position that is a range (an omnibus, `1-3`); `idx_book_more_series_key` is rebuilt to cover `position_end`. No data moves: every existing row holds a single position |
 | 0046 | `abs_file` | `books.abs_sig` (`TEXT NOT NULL DEFAULT ''`), `books.abs_indexed_at` (`TEXT`, `NULL` on every existing row) and `books.abs_file` (`TEXT NOT NULL DEFAULT ''`): an Audiobookshelf `metadata.json` in a folder book's folder. The next scan reads the file of each folder book that has one, without re-indexing it (`catalog.SetABSFiles`); a book without one is left as it is |
+| 0047 | `bridge_jobs` | `bridge_jobs` and the one-row `bridge_status`: see [The Bridge](#the-bridge) |
+| 0048 | `book_attachments` | `books.attachments_sig` (`TEXT NOT NULL DEFAULT ''`), `books.attachments_indexed_at` (`TEXT`, `NULL` on every existing row) and `book_attachments`: the Bridge's `.audiosilo/` files. `NULL` reads as unchecked, so the next scan reads the attachments of every book that has some, without re-indexing it (`catalog.SetAttachments`) |
 
 ## SQLite choices
 

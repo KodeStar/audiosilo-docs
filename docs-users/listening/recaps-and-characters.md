@@ -1,6 +1,6 @@
 ---
 title: Recaps and characters
-description: "The community's character cards and recaps on a book's page, how they never show more than you've heard, catching up on earlier books in a series, series with more than one reading order, and when this material appears."
+description: "The community's character cards and recaps on a book's page, ones generated on your own server, how they never show more than you've heard, catching up on earlier books in a series, series with more than one reading order, and when this material appears."
 ---
 
 When the [community database](../community/meta-site.md) has written them, a [book's page](book-page.md#the-tabs) gets two more tabs:
@@ -9,6 +9,12 @@ When the [community database](../community/meta-site.md) has written them, a [bo
 - The **Recaps** tab - short "what's happened up to here" recaps, each labelled with the chapter it's safe to read after. They stay closed by default, so you only open the one for as far as you've listened. Some books also have an **In short** summary of the whole book. Because it covers the ending too, it stays behind a **Whole-book summary** row (marked **Spoiler**) until you've finished the book; after that it opens the tab, followed by a separate **How it ends** recap. A recap marked for the very start reads "Previously, in earlier books" - a catch-up from earlier in the series.
 
 Under each, a line credits the people who wrote them and links the open licence they share them under.
+
+## Generated on this server
+
+For a book the community hasn't covered, your server's admin can have the server's [Bridge](../admin/bridge.md) write characters and recaps itself (see [Generating characters and recaps](../admin/generating-characters-and-recaps.md)). They appear in the same tabs and follow the same spoiler rules, with a small **Generated on this server** mark at the top of the tab and no community credit line. A book doesn't need to be matched for them to appear.
+
+The community's material always comes first: when the community has characters but no recaps for a book, you see the community's characters and the generated recaps, each tab marked for what it holds. An app version from before this feature shows generated material only for a book matched with community metadata, without the mark.
 
 ## Nothing gets spoiled before you reach it
 
@@ -47,4 +53,4 @@ Some series can be read in more than one order - The Chronicles of Narnia in the
 
 ## When the community material appears
 
-This material comes from the **AudioSilo community metadata database** at [meta.audiosilo.app](https://meta.audiosilo.app), a free, community-run catalogue of audiobook details that you can also browse and contribute to yourself (see [The community metadata site](../community/meta-site.md)). It appears only when the book can be matched (it carries an ASIN or ISBN) and your server has the metadata lookup switched on. The **Characters** and **Recaps** material is contributed by the community, so a matched book gets those tabs only once someone has written them - many books will have a community description and the Series tab but not these yet. If a book shows none of this, it simply isn't matched or your admin has turned the feature off; everything else on the page is unaffected. A server admin can switch the lookup on or off at any time under **Server > Settings > Community metadata** in the admin console (see [Server settings](../admin/server.md#community-metadata)).
+This material comes from the **AudioSilo community metadata database** at [meta.audiosilo.app](https://meta.audiosilo.app), a free, community-run catalogue of audiobook details that you can also browse and contribute to yourself (see [The community metadata site](../community/meta-site.md)). It appears only when the book can be matched (it carries an ASIN or ISBN) and your server has the metadata lookup switched on. The **Characters** and **Recaps** material is contributed by the community, so a matched book gets those tabs only once someone has written them - many books will have a community description and the Series tab but not these yet. If a book shows none of this, it simply isn't matched (and nothing was [generated on your server](#generated-on-this-server)) or your admin has turned the feature off; everything else on the page is unaffected. A server admin can switch the lookup on or off at any time under **Server > Settings > Community metadata** in the admin console (see [Server settings](../admin/server.md#community-metadata)).

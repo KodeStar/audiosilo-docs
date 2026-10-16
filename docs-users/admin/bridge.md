@@ -1,6 +1,6 @@
 ---
 title: "The Bridge"
-description: "Connect an optional Bridge to your server from Settings > Bridge: make a pairing code, see whether it's online, check that it can find and write to each library, verify a library, follow its jobs and unpair it."
+description: "Connect an optional Bridge to your server from Settings > Bridge: make a pairing code, see whether it's online and what its AI agent costs, check that it can find and write to each library, verify a library, follow its jobs and unpair it."
 ---
 
 The **Bridge** is an optional companion you can run beside your AudioSilo server.
@@ -11,11 +11,11 @@ safe to put on the internet.
 You don't need one. Without a Bridge everything in AudioSilo works as before.
 
 :::info What it does today
-The Bridge is new. This first version only **proves the connection**: you pair it,
-it tells the server which of your libraries it can find and write to, and you can
-ask it to **Verify** a library. It changes nothing in your books. Later versions add
-the jobs it is for, such as generated recaps and character sheets, podcasts, and
-more.
+The Bridge is new. Today it
+[generates characters and recaps](generating-characters-and-recaps.md) for books
+the community hasn't covered, saving them with the book, and you can ask it to
+**Verify** a library to check it is set up. Later versions add more jobs, such as
+podcasts.
 :::
 
 To set one up, see [Running a Bridge](../getting-started/running-a-bridge.md). This
@@ -65,7 +65,18 @@ how it is:
 - **Waiting for its first report** - it has paired but hasn't reported yet.
 
 Below that: when it last reported, its version, when it was paired and by whom, the
-jobs it can run and its features. **Open its page** opens the Bridge's own page,
+jobs it can run and its features. Once the Bridge reports on its AI agent, four more
+lines cover [characters and recaps](generating-characters-and-recaps.md):
+
+- **Agent** - the tool the agent container runs (`claude` or `codex`) and whether
+  it is **Ready**, or **None set up**.
+- **Paid by** - a **Subscription** (the costs are what the same use would cost on
+  an API key) or an **API key**.
+- **This month** - what the agent has cost this month against the Bridge's
+  monthly cap ("$12.30 of $100"), or "no monthly cap".
+- **Estimates from** - how many finished books the cost estimates are based on.
+
+**Open its page** opens the Bridge's own page,
 when the Bridge has been told the address your network reaches it at.
 
 The Bridge never needs the server to connect to it: it always calls the server.
@@ -108,6 +119,10 @@ When a library isn't **Ready**, the line under it says why. The usual reasons:
   read-only for the Bridge, or the Bridge runs as a user who can't write there.
   Mount it read-write and set the Bridge's `PUID`/`PGID` to the owner of your
   library folders.
+
+A library must be **Ready** before the Bridge can
+[generate characters and recaps](generating-characters-and-recaps.md) for its
+books, since it saves them in each book's folder.
 
 The Bridge checks its libraries after pairing, when your libraries change, and
 every 10 minutes after that by default (not on every report, so it doesn't keep
@@ -154,6 +169,13 @@ Each job shows the library (and book), its progress, who asked and when. A finis
 Verify sums up what it found (how many files matched, whether it can write, how long
 it took); **Details** shows everything it reported.
 
+A **Characters and recaps** job links to its book and shows what it is doing (the
+step, how far it has got, the time left and the cost so far), and once it is done,
+how many characters and recaps it wrote and what it cost. One that **Needs
+attention** says why, with **Open in the Bridge**, which opens that job on the
+Bridge's own page, where **Retry** sends it on once you've fixed the cause. See
+[When a job pauses](generating-characters-and-recaps.md#when-a-job-pauses).
+
 **Cancel** stops a job. A job that is waiting is cancelled at once; one the Bridge
 is working on shows **Cancelling** until the Bridge stops it, within a few seconds.
 
@@ -184,6 +206,8 @@ Bridge forget the server, so unpair it here too.
 
 ## Where to next
 
+- [Generating characters and recaps](generating-characters-and-recaps.md) - the
+  job the Bridge is for.
 - [Running a Bridge](../getting-started/running-a-bridge.md) - setting one up beside
   your server.
 - [Server settings, updates and logs](server.md) - the other settings topics and the
