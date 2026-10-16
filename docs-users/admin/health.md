@@ -117,7 +117,15 @@ what it found and apply it.
 5. **Confident** matches are ticked; untick any you don't want. **To review**
    lists matches that scored lower, or only just ahead of another work: tick
    the ones that are right, or click **Match by hand** to open that book's
-   match dialog. **Not found** and **Not checked** list the rest.
+   match dialog over the review. When you accept a match there, you're back on
+   the review where you left it, and the book reads **Matched since this run**.
+   To look closer first, or to listen to it, the icon beside **Match by hand**
+   opens the book's page in a new tab. **Not found** and **Not checked** list
+   the rest. Each list is ordered best match first.
+
+   An apply never writes over a book matched since the run looked, whatever you
+   choose to write: by hand from the review, on its book page, by another admin,
+   or from an ASIN a rescan found in its tags.
 6. Click **Apply to *N* books**. The server applies them in the background
    ("Applying *N* of *M* matches"). **Stop** finishes the books in hand and
    leaves the rest to apply later from the same review.
