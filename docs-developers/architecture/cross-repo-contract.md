@@ -717,17 +717,35 @@ both repos, with a test on each side.
   `matched: false` with a `work`, and the CC BY-SA `attribution` never covers
   them. A change to the formats touches audiosilo-meta's model, the Bridge's
   writer and the server's reader. Detail: [The .audiosilo folder](../bridge/attachments.md).
+- **Own-words descriptions (Phase 1c):** a `sidecars.generate` run also writes
+  `description.json` (audiosilo-meta's `model.Description`, 200-1500 characters,
+  written from the opening chapters' fact notes only, so spoiler-free, and local
+  only: never contributed), and `sidecars.describe` writes one alone from the
+  notes a run kept (params `{}`; `409 generate_open` while a generate job is open
+  for the book, and a generate job cancels an open describe job). `/meta` serves
+  it in its **own** additive field, `work.generated_description: {text}`, never in
+  `community_description` (the shipped 2.0 app shows that one first and credits
+  the community, so a generated text there would replace real blurbs on old apps),
+  only when the community work has no `community_description`, marked by
+  `work.generated.description` (the three booleans are always sent), kept under
+  `spoilers=hide`. The player orders About itself: the community description, the
+  book's own, the work's core one, then the generated one with its mark. The
+  estimate gains `can_describe` and `has.*.description`, the admin book detail
+  `generated_description`, the attachments rescan answer `description`. Detail:
+  [The description step](../bridge/generating.md#the-description-step).
 - **The player (Phase 1a):** its first admin-only UI, gated on `user.role ===
   'admin'`, `capabilities.bridge`, `bridge.features` holding `sidecars` and
   `capabilities.metadata`; `Book.generated` makes it ask `/meta` for a book with no
-  ASIN or ISBN. Its `types.ts` mirrors the job, the estimate and
-  `BookMetaWork.generated` by hand.
+  ASIN or ISBN. Its `types.ts` mirrors the job, the estimate,
+  `BookMetaWork.generated` and (Phase 1c) `BookMetaWork.generated_description` by
+  hand.
 
 **Old clients:** everything is additive. An older server has no Bridge routes (the
 Bridge's pairing gets a `404` and says the server is too old) and no `bridge` flag;
 shipped players never see either. A shipped player ignores a `work` beside
 `matched: false`, and shows a matched book's merged work without the
-`generated` mark (the owner kept that as built). The Bridge sends `X-AudioSilo-Client:
+`generated` mark (the owner kept that as built); it ignores
+`generated_description` entirely. The Bridge sends `X-AudioSilo-Client:
 AudioSilo Bridge/<version> (<os>)` on every call.
 
 **A change requires:** the server handler and its test, the mirrored type in the

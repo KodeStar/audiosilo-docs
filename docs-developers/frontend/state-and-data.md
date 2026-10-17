@@ -449,17 +449,20 @@ The meta-driven tabs are rendered from `src/components/library/book-meta.tsx`
 (the About card is the book page's own `BookAbout`, see
 [The book page](book-page.md#the-aside)):
 `BookMetaRecapsTab`, `BookMetaCharactersTab`, and `BookMetaSeriesTab` (one
-horizontal rail per series family). `matchedMeta(meta, enabled)` narrows the
-envelope once for the screen (the matched half only: About, the rails and the
-AudioSilo Meta links need a real community work); `bookMetaWork(meta, enabled)` is
-the work the Characters and Recaps tabs, their counts and the companion render:
-the matched work, or an unmatched book's [generated work](../server/api/reference.md#generated-content)
-(`matched: false` with a `work`, Bridge Phase 1a). `metaEnabledFor` asks `/meta`
+horizontal rail per series family). Each field is read through one of two
+readers, never both: `matchedMeta(meta, enabled)` narrows the envelope once for
+the screen (the matched half only: the rails, the AudioSilo Meta links, the end
+credits and About's recording facts need a real community match);
+`bookMetaWork(meta, enabled)` is the work About's text and every work-level field,
+the Characters and Recaps tabs, their counts and the companion render: the
+matched work, or an unmatched book's [generated work](../server/api/reference.md#generated-content)
+(`matched: false` with a `work`, Bridge Phase 1a), so an unmatched book's generated
+description (Phase 1c) reaches About too. `metaEnabledFor` asks `/meta`
 for a book with an ASIN or ISBN **or** `generated: true`; an answer that is only
 generated content goes stale after 2 minutes (`META_GENERATED_ONLY_STALE_MS`)
 rather than the hour a community answer keeps. `work.generated` drives the
-`GeneratedMark` chip, and `communityCredit` drops the CC BY-SA credit from a
-generated dimension; `seriesRails(series, currentWorkId, picks)` builds
+`GeneratedMark` chip (and About's `GeneratedChip` for `generated.description`),
+and `communityCredit` drops the CC BY-SA credit from a generated dimension; `seriesRails(series, currentWorkId, picks)` builds
 one rail per family showing the picked reading order, drops the current work from
 it, and drops a rail only when **every** one of its orders is empty once the
 current work is removed (so switching order can never make the tab vanish).

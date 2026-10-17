@@ -619,6 +619,24 @@ async function captureWide(name, viewport, shots) {
     });
   }
 
+  if (wanted(shots.bookAboutGenerated)) {
+    // The Call of the Wild's About card: run.sh seeds its .audiosilo folder with a
+    // description.json, the book has no description of its own and no community
+    // match, so About shows the generated one with its mark (Library > Books, by
+    // its title).
+    await step('generated description', async () => {
+      await librarySection(page, 'Books');
+      await openNamed(page, 'The Call of the Wild');
+      const mark = tid(page, 'about-generated-mark');
+      await mark.waitFor({timeout: 15000});
+      const card = mark.locator('xpath=..');
+      await card.scrollIntoViewIfNeeded();
+      await sleep(SETTLE_MS);
+      await page.mouse.move(0, 0);
+      await shoot(page, shots.bookAboutGenerated, {clip: around([await card.boundingBox()])});
+    });
+  }
+
   if (wanted(shots.journal, shots.journalBookmarks)) {
     // The Journal from the profile menu: the Diary (today's drift-off strip), then
     // the Bookmarks tab with its label filter.
@@ -912,6 +930,7 @@ await captureWide('desktop', {width: 1440, height: 900}, {
   bookmarkEditor: 'web-player/bookmark-editor.png',
   bookDetails: 'web-player/book-details.png',
   bookFinished: 'web-player/book-finished.png',
+  bookAboutGenerated: 'web-player/book-about-generated.png',
   journal: 'web-player/journal.png',
   journalBookmarks: 'web-player/journal-bookmarks.png',
   player: 'web-player/player.png',

@@ -854,7 +854,7 @@ probed; `added_at` when unknown. Every book response (lists, search, recent,
 | `abridged` | boolean | whether the recording is abridged. **Absent means unknown**, never "unabridged": an Audiobookshelf file and a community match only ever say `true` (both write `false` for "not recorded"), so `false` comes only from an admin edit |
 | `genres` | string[] | the book's genres: the files' genre tag (split on `;` and NUL, never `,`; placeholders such as `Audiobook`, `Speech`, `Spoken Word` and `Other` dropped), an Audiobookshelf `metadata.json`, or an admin edit. Each label once, compared case-insensitively, the first spelling kept; at most 50, each at most 64 characters. Sent on list and search pages too, so a client can filter a loaded library on the device |
 | `tags` | string[] | freeform tags, as `genres`, from an Audiobookshelf `metadata.json` or an admin edit only (no audio tag carries them) |
-| `generated` | boolean | `true` when the book's `.audiosilo/` folder holds characters or recaps the [Bridge](#the-bridge) generated on this server (read from the book's attachment signature, so a file that failed its checks still counts); omitted otherwise. A client asks [`/meta`](#generated-content) for such a book even when it has no `asin` or `isbn` |
+| `generated` | boolean | `true` when the book's `.audiosilo/` folder holds characters, recaps or (since Bridge Phase 1c) a description the [Bridge](#the-bridge) generated on this server (read from the book's attachment signature, so a file that failed its checks still counts); omitted otherwise. A client asks [`/meta`](#generated-content) for such a book even when it has no `asin` or `isbn` |
 
 A book at a range, here as the omnibus of Mistborn 1-3 that is also book 1 of a
 box-set series:
@@ -1579,7 +1579,9 @@ client that ignores these fields is unaffected.
 `work.community_description` (`{ "text": …, "license": … }`, `license` omitted
 when unstated) is the community-written, spoiler-free description: part of the CC
 BY-SA layer, kept apart from `description` (the CC0 core's blurb) because the two
-carry different licences. It is absent for most works.
+carry different licences. It is absent for most works. A description generated
+on this server never appears here: it rides in `work.generated_description`
+([Generated content](#generated-content)).
 
 #### Attribution
 
@@ -1674,59 +1676,93 @@ that the client treats as "nothing to show":
 
 #### Generated content
 
-Characters and recaps the [Bridge](#the-bridge) generated for the book on this
-server (its [`.audiosilo/` files](../../bridge/attachments.md), checked and
-indexed by the scan) are laid into the answer **per request**, after the shared
-cache and `local`, on the request's own copy: never into the cache. Community
-content wins **per dimension**:
+Characters, recaps and (since Bridge Phase 1c) the description the
+[Bridge](#the-bridge) generated for the book on this server (its
+[`.audiosilo/` files](../../bridge/attachments.md), checked and indexed by the
+scan) are laid into the answer **per request**, after the shared cache and
+`local`, on the request's own copy: never into the cache. Community content wins
+**per dimension**:
 
 - **A matched book.** When the community work has no characters,
   `work.characters` are the generated ones; when it has no recaps,
   `work.recaps` are the generated recaps and, when it has no `recap_summary`
   either, `work.recap_summary` the generated `{in_short, ending}` (omitted when
-  both are blank). `work.generated` then names what came from the files:
+  both are blank); when it has no `community_description`,
+  `work.generated_description` is the generated description (below).
+  `work.generated` then names what came from the files:
 
   ```json
-  "generated": { "characters": false, "recaps": true, "generated_at": "2026-10-16T09:12:44Z" }
+  "generated": { "characters": false, "recaps": true, "description": true, "generated_at": "2026-10-16T09:12:44Z" }
   ```
 
-  `recaps` covers the recap list and the summary alike; `generated_at` is the
-  provenance's time, omitted when unknown; the whole object is omitted when
-  nothing was generated (or the community has both).
+  `recaps` covers the recap list and the summary alike; the three booleans are
+  always sent together (`description` since Phase 1c); `generated_at` is the
+  provenance's time (`bridge.json`'s `generated_at`, or its `description`
+  object's when the description is all the object names, so a description
+  written later by a `sidecars.describe` job shows its own time), omitted when
+  unknown; the whole object is omitted when nothing was generated (or the
+  community has it all).
 - **A book with no match** (no `asin`/`isbn`, or none upstream) but generated
   content answers `matched: false` **with a work** of its own: `id` empty,
-  `title` the book's, `authors` `[]`, the generated `characters`, `recaps` and
-  `recap_summary`, and `generated`:
+  `title` the book's, `authors` `[]`, the generated `characters`, `recaps`,
+  `recap_summary` and `generated_description`, and `generated`:
 
   ```json
   { "matched": false, "work": { "id": "", "title": "The Book", "authors": [], "language": "",
-    "characters": [ … ], "recaps": [ … ], "generated": { "characters": true, "recaps": true } } }
+    "characters": [ … ], "recaps": [ … ],
+    "generated": { "characters": true, "recaps": true, "description": false } } }
+  ```
+
+  A book whose only generated file is its description answers just that:
+
+  ```json
+  { "matched": false, "work": { "id": "", "title": "The Book", "authors": [], "language": "",
+    "generated_description": { "text": "…" },
+    "generated": { "characters": false, "recaps": false, "description": true,
+                   "generated_at": "2026-10-16T09:31:02Z" } } }
   ```
 
 - **An upstream failure** is a `502` only when the book has no generated
   content; with some, the answer is the unmatched one above (the server's own
   content doesn't depend on the upstream).
 
+**The generated description** (Phase 1c) is the book's own-words, spoiler-free
+description, `work.generated_description: { "text": … }` (no licence, no
+attribution). It rides in its **own** field, never in `community_description`:
+the shipped 2.0 app shows `community_description` first in About, over the
+book's own description, and credits it to the community, so a generated text
+there would replace real blurbs on old apps; those apps ignore the new field.
+The server fills it only when the community work has no `community_description`;
+the work's core `description` (the publisher's kind) doesn't block it, since the
+player orders those itself (the book's own description, then the core one, then
+the generated one).
+
 **Attribution is the community's alone.** `work.attribution` is decided from
 the community content before anything generated is laid in, so generated
-characters or recaps never make the server claim the CC BY-SA credit, and a work
-whose only content is generated carries none. A client shows the credit beside
-the community's dimension only (the player's `communityCredit`).
+characters, recaps or a description never make the server claim the CC BY-SA
+credit, and a work whose only content is generated carries none. A client shows
+the credit beside the community's dimension only (the player's `communityCredit`).
 
-**Spoiler gates:** `spoilers=hide` gates the generated parts exactly as it
-gates the community's (a gate that leaves an unmatched book nothing answers
-plain `{ "matched": false }`). `include=previous` stays community only.
+**Spoiler gates:** `spoilers=hide` gates the generated characters and recaps
+exactly as it gates the community's (a gate that leaves an unmatched book nothing
+answers plain `{ "matched": false }`), and **keeps** the generated description:
+it is spoiler-free by construction (the Bridge writes it from the opening
+chapters' notes only). `include=previous` stays community only.
 
 Metadata off, `/meta` is `404` as ever: generated content needs metadata on, as
 the generate action does. A book whose row names no generated file
-(`generated` absent) isn't looked up, so this costs nothing for other books.
+(`generated` absent) isn't looked up, so this costs nothing for other books, and
+only the parts the community work leaves to fill **and** the book's signature
+names are read (a work with community characters and recaps reads just the
+description).
 
 **Older players.** A player that predates the field ignores everything beside
 `matched: false`, so it shows nothing for an unmatched book. For a matched book
 it shows the merged work as it would the community's: the generated dimension
 without a mark, and the work's community credit beside it when the community
 has the other dimension. The owner kept that behaviour as built (Bridge Phase
-1a): newer players mark the generated dimension and drop the credit there.
+1a): newer players mark the generated dimension and drop the credit there. No
+older player shows a generated description: it is a field they don't know.
 
 | Status | Meaning |
 |---|---|
@@ -4482,7 +4518,9 @@ book path).
     "checked_at": "2026-10-03T09:20:44.10Z"
   },
   "community_checking": false,
-  "match_query": "The Martian: Classroom Edition Andy Weir"
+  "match_query": "The Martian: Classroom Edition Andy Weir",
+  "generated_description": { "text": "Mark Watney, a botanist on the third crewed mission to Mars, ...",
+                             "generated_at": "2026-10-16T09:31:02Z" }
 }
 ```
 
@@ -4562,6 +4600,12 @@ book path).
   the box: the match itself always sends the book's own facts, and `q` is what
   the admin then searches for. Always present (`""` for a book with nothing to
   say).
+- `generated_description` - the description the [Bridge](#the-bridge) generated
+  for the book (its checked `.audiosilo/description.json`, Phase 1c), with
+  `generated_at` the time `bridge.json`'s `description` object gives (omitted when
+  unknown). Omitted when the book has none. It is read only when the book's
+  attachment signature names a description, and never the characters or recaps.
+  The console's Community card shows it in its Description part.
 
 | Status | Meaning |
 |---|---|
@@ -7072,7 +7116,7 @@ booleans):
 - `version` - the version the Bridge reported.
 - `features` - the job families the Bridge runs that this server knows: the part of
   each known kind before its dot (`bridge.verify` is `bridge`, `sidecars.generate`
-  is `sidecars`), sorted, each once;
+  and `sidecars.describe` are `sidecars`), sorted, each once;
   always a list (`[]` for none), never `null`. A kind the Bridge advertises that the
   server doesn't know adds nothing.
 
@@ -7223,9 +7267,10 @@ Every job route, the console's and the Bridge's, answers jobs in one shape:
   its library.
 - `params` - the kind's parameters as the server normalised them (`bridge.verify`
   stores a `hold_seconds` of 0 as `{}`; `sidecars.generate` stores every field with
-  its default); `progress` and `result` - JSON objects the Bridge reported (`{}`
+  its default; `sidecars.describe` stores `{}`); `progress` and `result` - JSON objects the Bridge reported (`{}`
   until it does; the server stores them as they are: `sidecars.generate`'s shapes
-  are in [Characters and recaps](../../bridge/generating.md#progress)); `error` -
+  are in [Characters and recaps](../../bridge/generating.md#progress), `sidecars.describe`'s in
+  [A description on its own](../../bridge/generating.md#a-description-on-its-own-sidecarsdescribe)); `error` -
   why it failed or was parked (`""` otherwise).
 - `state` - `queued`, `claimed`, `running`, `done`, `failed`, `needs_attention` or
   `cancelled` (see [Job states](#job-states)).
@@ -7297,7 +7342,7 @@ another page (the server reads one row past the page to know): pass it as
 | Field | Meaning |
 |---|---|
 | `kind` | the job kind: one the server knows **and** the paired Bridge advertised in its last heartbeat (kinds are allow-listed twice) |
-| `library_id` | the library, when the kind is about one (both kinds need it) |
+| `library_id` | the library, when the kind is about one (every kind needs it) |
 | `path` | an indexed book in that library (optional or required, per kind); the job is about the book's own path |
 | `params` | the kind's parameters, checked per kind (unknown fields refused) |
 
@@ -7319,7 +7364,17 @@ The kinds:
   into the library, so it is queued only for a library the last heartbeat reports
   mapped and writable, and `contribute: "issue"` only while the heartbeat's
   `estimates.sidecars.can_contribute` is true. See
-  [Characters and recaps](../../bridge/generating.md).
+  [Characters and recaps](../../bridge/generating.md). Queuing it while a
+  `sidecars.describe` job is open for the book cancels that job (at once when it
+  is queued or parked, else by asking the Bridge), since this run writes the
+  description too.
+- **`sidecars.describe`** (Phase 1c) writes a book's own-words description from
+  the notes the Bridge kept when it generated the book (no new speech
+  recognition) into its `.audiosilo/` folder. It needs `library_id` **and** a book
+  `path`, and takes `params` `{}` or none (any field is refused; stored as `{}`).
+  It writes, so the same mapped-and-writable rule applies, and it is refused
+  while a `sidecars.generate` job is open for the book. See
+  [A description on its own](../../bridge/generating.md#a-description-on-its-own-sidecarsdescribe).
 
 The Bridge may be offline: the job waits for it. Response `201` with the new job,
 or `200` with the open job already there for that kind, library and path (no
@@ -7333,7 +7388,7 @@ the console says so. A new job is audited as `bridge.job`.
 | `200` | the open job of that kind for that library and path |
 | `400` | `invalid request` (not JSON, an unknown field); or a check of the kind, each message starting `invalid: `: `unknown kind "…"`, `library_id is required`, `this kind takes no library or path`, `this kind takes no path`, `path is required`, `params too large`, or a params error (`hold_seconds must be 0-600`, `source must be auto, audio or ebook`, `contribute must be local or issue`, a `work_id` too long or with a control character, an unknown field) |
 | `404` | `library not found`; `code: "book_not_found"` - the path is not an indexed book |
-| `409` | `code: "kind_unavailable"` - no Bridge has reported, or the paired one doesn't run that kind; `code: "library_not_writable"` - a kind that writes, for a library the last heartbeat doesn't report mapped and writable; `code: "cannot_contribute"` - `sidecars.generate` with `contribute: "issue"` while the Bridge can't contribute. The last two are checked after the dedupe: an open job of the book is still returned (`200`) |
+| `409` | `code: "kind_unavailable"` - no Bridge has reported, or the paired one doesn't run that kind (a Bridge from before Phase 1c doesn't run `sidecars.describe`); `code: "library_not_writable"` - a kind that writes, for a library the last heartbeat doesn't report mapped and writable; `code: "cannot_contribute"` - `sidecars.generate` with `contribute: "issue"` while the Bridge can't contribute; `code: "generate_open"` - `sidecars.describe` while a `sidecars.generate` job is open for the book ("a generate job is still open for this book; it writes the description when it finishes"). The last three are checked after the dedupe: an open job of the same kind for the book is still returned (`200`) |
 
 ### `GET /api/v1/admin/bridge/jobs/{id}`
 
@@ -7357,8 +7412,9 @@ Bridge (`cancel_requested`; see [Leases](#leases-attempts-and-cancelling)). Answ
 
 *Admin* (an API key works). What queueing `sidecars.generate` for a book would
 take: the confirmation dialogs (the console's and the player's) read it, and the
-console's book card and series batch read its brief form. How each figure is
-worked out is in
+console's book card and series batch read its brief form (the card's
+**Write a description** reads its `can_describe` and `has.*.description` too).
+How each figure is worked out is in
 [Characters and recaps](../../bridge/generating.md#the-estimate).
 
 | Param | Meaning |
@@ -7381,9 +7437,10 @@ worked out is in
   "figures": true,
   "duration_seconds": 173621,
   "writable": true,
+  "can_describe": true,
   "has": {
-    "community": { "characters": false, "recaps": false },
-    "local": { "characters": false, "recaps": false }
+    "community": { "characters": false, "recaps": false, "description": false },
+    "local": { "characters": false, "recaps": false, "description": false }
   },
   "earlier": [
     { "library_id": 1, "path": "Brandon Sanderson/The Stormlight Archive/The Way of Kings",
@@ -7402,9 +7459,10 @@ worked out is in
 | `subscription`, `agent_ready`, `can_contribute` | the Bridge's: its agent credential is a subscription (the cost is notional), the agent container is ready, and it can offer results to the community (`contribute: "issue"`) |
 | `figures` | the last heartbeat carried estimates. Without them every field above is a default, so a false `agent_ready` means "not known yet" |
 | `writable` | the Bridge last reported the library mapped and writable (else queueing is `409 library_not_writable`) |
-| `has.community` | what the book's community work carries (metadata on and the book matched; `false` otherwise) |
+| `can_describe` | the Bridge is online and runs `sidecars.describe` (Phase 1c; a 1a or 1b Bridge doesn't). With `brief=1` too |
+| `has.community` | what the book's community work carries (metadata on and the book matched; `false` otherwise): `characters`, `recaps` and `description`, which is its `community_description` **or** its core `description` (the player shows either before a generated one, so a generated description would never be read) |
 | `has.community_unknown` | `true` when the community couldn't be asked right now, so `has.community` is no answer (never read it as "none"); omitted otherwise |
-| `has.local` | what the book's indexed [`.audiosilo/` files](../../bridge/attachments.md) carry |
+| `has.local` | what the book's indexed [`.audiosilo/` files](../../bridge/attachments.md) carry: `characters`, `recaps` and `description` |
 | `earlier` | the books of the same library before this one in its first numbered series (any spelling), with no recaps generated here and, metadata on, none in the community (a book the community couldn't be asked about is left out): the nearest 10, in reading order, each with its own `asr_hours` and `agent_cost_usd` (costed from its audio). `[]` for none, and with `brief=1` |
 | `open_job` | the book's open `sidecars.generate` [job](#the-job-object); omitted when there is none |
 
@@ -7644,11 +7702,12 @@ this never indexes a path on demand.
   detection.
 - **`attachments`** re-reads only the book's
   [`.audiosilo/` files](../../bridge/attachments.md), never its audio: the
-  Bridge's call after writing characters and recaps. The path is the book's, or a
-  path inside it. It answers what is now indexed:
+  Bridge's call after writing characters, recaps or a description. The path is
+  the book's, or a path inside it. It answers what is now indexed (`description`
+  since Phase 1c):
 
 ```json
-{ "path": "Andy Weir/Project Hail Mary", "attachments": { "characters": true, "recaps": true, "bridge": true } }
+{ "path": "Andy Weir/Project Hail Mary", "attachments": { "characters": true, "recaps": true, "description": true, "bridge": true } }
 ```
 
 The re-read runs detached from the request for up to 10 minutes, like the

@@ -238,11 +238,20 @@ few values (its state, and the bookmark glyph: a bookmark inside the book marks 
 and the tabs):
 
 - **About** - `BookAbout` (`book-about.tsx`), drawing the pure `aboutContent(book,
-  meta, t)`: the community's `community_description` (CC BY-SA, so the server's
-  `attribution` is rendered beside it with **Improve this**, opening
-  `attribution.source_url` or the work's `web_url`), else the server's `description`
-  (from `/item` only), else the work's core description; with none, a sentence naming
-  the author and narrator. The detail rows are the publisher (the server's
+  work, recording, t)`. `work` is the `bookMetaWork` value (the matched work, or an
+  unmatched book's generated one) and the one source of every work-level field, the
+  credit included; `BookAbout` takes it as a required prop, and `recording` (the
+  match's, from `matchedMeta`) gives the recording facts. The text is picked once,
+  in this order, into `source` (`AboutSource`): the community's
+  `community_description` (`'community'`: CC BY-SA, so the server's `attribution`
+  is rendered beside it with **Improve this**, opening `attribution.source_url` or
+  the work's `web_url`), else the server's `description` (from `/item` only) or the
+  work's core description (`'own'`), else the description a Bridge generated on this
+  server (`'generated'`, Bridge Phase 1c: `work.generated_description`, read only
+  when `work.generated.description` is set), which wears the "Generated on this
+  server" chip (`GeneratedChip`, `testID` `about-generated-mark`) under the eyebrow
+  and never the credit or **Improve this**; with none (`'fallback'`), a sentence
+  naming the author and narrator. The detail rows are the publisher (the server's
   `publisher`, else the recording's) and release date (the recording's, else the
   book's `published`), the work's first publication, the server's `language` (a code
   named through `Intl.DisplayNames` in the app's language where the platform has it,

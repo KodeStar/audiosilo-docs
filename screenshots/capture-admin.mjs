@@ -945,6 +945,26 @@ await step('server: audit log', async () => {
   await shoot(page, 'admin/audit.png');
 });
 
+// ── A generated description (Bridge Phase 1c) ────────────────────────────────
+// run.sh seeds The Call of the Wild's .audiosilo folder with a description.json
+// and the bridge.json a description job writes, so its Community card shows the
+// Description part with the description and its Generated on this server mark.
+// Before the stand-in Bridge is paired, so the card has no Characters and recaps
+// part beside it (and no Write a description offer: the book has one already).
+await step('book: generated description', async () => {
+  if (!wanted('admin/book-description.png')) return;
+  const list = await api(token, 'GET', `/admin/books?author=${encodeURIComponent('Jack London')}&limit=50`);
+  const book = (list?.books ?? []).find((b) => `${b.title} ${b.path}`.includes('Call of the Wild'));
+  if (!book) throw new Error('no seeded Call of the Wild');
+  await open(page, bookRoute(book), (p) => p.getByRole('heading', {name: 'Details', exact: true}));
+  const part = page.locator('section[aria-labelledby="describe-title"]');
+  await part.getByText(/^Generated on this server/).waitFor({timeout: 15000});
+  const card = part.locator('xpath=..');
+  await card.scrollIntoViewIfNeeded();
+  await sleep(800);
+  await shoot(page, 'admin/book-description.png', {clip: around([await card.boundingBox()])});
+});
+
 // ── The Bridge: Settings > Bridge before and after pairing ──────────────────────
 // The Bridge is a separate program, so a stand-in plays its part here through
 // the server's own Bridge routes, as the real one would: it trades the code the

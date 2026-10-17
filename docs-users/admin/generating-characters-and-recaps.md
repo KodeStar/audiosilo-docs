@@ -1,6 +1,6 @@
 ---
 title: Generating characters and recaps
-description: "Have your Bridge write character sheets and chapter recaps for a book the community hasn't covered yet: who can, where the button is, the confirmation and its estimate, keeping them on your server or contributing them, following a run, what to do when one pauses, where the results appear, costs and the monthly cap, and how long transcripts are kept."
+description: "Have your Bridge write character sheets and chapter recaps for a book the community hasn't covered yet: who can, where the button is, the confirmation and its estimate, keeping them on your server or contributing them, following a run, what to do when one pauses, where the results appear, the spoiler-free description it writes too (and Write a description for an older book), costs and the monthly cap, and how long transcripts are kept."
 ---
 
 The community database at [meta.audiosilo.app](https://meta.audiosilo.app) gives
@@ -9,7 +9,9 @@ every book. For one it hasn't covered, your [Bridge](bridge.md) can write them
 itself: it transcribes the book (or reads its ebook), has an AI agent read it for
 the people and the events, checks the result for mistakes and spoilers, and saves
 it with the book. Some hours later the book's **Characters** and **Recaps** tabs
-appear in the player, with nothing else to do.
+appear in the player, with nothing else to do. It also writes a short,
+spoiler-free [description](#a-description-for-the-book) of the book, which the
+player shows when nothing else describes it.
 
 ## Who can, and what it needs
 
@@ -105,7 +107,7 @@ agent reads it in several passes. You can close the page; the Bridge carries on.
 
 - **In the console**, the book's **Characters and recaps** part shows the job:
   its state, what it is doing now ("Transcribing", "Writing characters and
-  recaps", "Checking for mistakes"...), how far it has got, about how long is
+  recaps", "Checking for mistakes", "Writing the description"...), how far it has got, about how long is
   left and what it has cost so far, with **Cancel**. The job also appears under
   **Jobs** in [Settings > Bridge](bridge.md#jobs), linked to the book.
 - **In the player**, the same status sits under the book's buttons:
@@ -145,7 +147,8 @@ reason shown; in the player, **Try again** queues it afresh.
 
 Two events in [Notifications](notifications.md#what-to-send) cover the Bridge's
 jobs: **A Bridge job finished** ("Characters and recaps ready" with the book's
-title) and **A Bridge job failed or needs attention**. Pauses that end by
+title, or "Description ready" for [Write a description](#writing-a-description-for-an-older-book))
+and **A Bridge job failed or needs attention**. Pauses that end by
 themselves (the agent's usage limit, the agent container briefly away) aren't
 announced. Both show in the console's bell whether or not you send them anywhere.
 
@@ -168,7 +171,8 @@ longer shown (and the console no longer offers the button), though they stay in
 the book's folder.
 
 The files live in a hidden **`.audiosilo`** folder inside the book's folder:
-`characters.json`, `recaps.json` and `bridge.json` (what made them, and when).
+`characters.json`, `recaps.json`, `description.json` (the
+[description](#a-description-for-the-book)) and `bridge.json` (what made them, and when).
 For a book that is a single audio file, they sit in a `.audiosilo` folder beside
 it, named after the file (`The Book.characters.json`). The server never shows that
 folder as a book or plays anything from it, and its next scan picks up any change
@@ -178,6 +182,79 @@ replaces them.
 The current apps and web player show generated characters and recaps for every
 book. An app version from before this feature shows them only for a book that is
 matched with community metadata, without the mark.
+
+## A description for the book
+
+Besides the characters and recaps, every run writes a short **description** of
+the book: the paragraph someone reads before deciding to listen, where a
+publisher's blurb would go.
+
+- **Spoiler-free.** The agent writes it from its notes on the book's **opening
+  chapters only** (about the first quarter of the book, never its last chapter),
+  not from the whole book, so it can't give away what happens later. A book that
+  is a single chapter gets no description, since its opening is the whole book.
+- **In its own words.** It never copies the book: a description that repeats a
+  run of eight words from the book's text is sent back to be rewritten. It is also
+  checked for length (200 to 1500 characters) and for a plain, neutral tone.
+- **Kept on your server.** It is never offered to the community, even when the
+  run contributes the characters and recaps.
+
+It never holds up the characters and recaps: they are saved first. When a
+description can't be written (the agent reached its usage limit, say), the job
+still finishes with the characters and recaps, and the console's job line says
+"No description this time" with the reason.
+
+### Where it shows
+
+On a book's page in the player, the [About card](../listening/book-page.md#about-this-book)
+shows the generated description **only when nothing else describes the book**:
+the community's description comes first, then the book's own (an admin edit, one
+taken from a community match or an Audiobookshelf `metadata.json`, or the community
+database's record), and only then the generated one.
+It carries a small **Generated on this server** mark, and no credit line or
+**Improve this**. Spoiler protection never hides it: there is nothing in it to
+hide. A book doesn't need to be matched with community metadata for it to show.
+
+An app version from before this feature doesn't show a generated description.
+
+In the console, the book's **Community metadata** card has a **Description** part
+that shows it, with **Show more** for a long one and when it was written. When
+listeners see another description instead (the book's own, or the community's),
+it says so.
+
+![The Community metadata card's Description part with a generated description and its Generated on this server mark](/img/screenshots/admin/book-description.png)
+
+### Writing a description for an older book
+
+A book generated before descriptions existed, or whose run couldn't write one,
+can get one on its own: the **Description** part offers **Write a description**
+when
+
+- the Bridge is online, can write descriptions and can write to the book's library;
+- the book has characters or recaps generated on this server;
+- it has no description yet: none generated here, none from the community, and
+  none of its own;
+- nothing is being generated for it right now.
+
+It asks first, then queues the job. The Bridge writes it from the notes it kept
+when it generated the book: **nothing is transcribed again**, so it is quick and
+uses a little agent time, far less than generating (counted against the same
+caps). Those notes are kept after the transcripts are deleted, so this works for a
+book generated months ago. The job's progress shows in the same part, and it
+pauses like a generate job (the agent's usage limit, the spending cap...) and
+carries on the same way.
+
+It can fail with a reason that says what to do:
+
+- **The Bridge has no notes for this book** (it wasn't generated by this Bridge,
+  or its notes were removed): generate its characters and recaps again, which
+  writes a description too.
+- **A generate job is still running for this book**: it writes the description
+  when it finishes. For the same reason, generating or regenerating a book cancels
+  a description job that hasn't finished yet.
+- **The book has a single chapter**, so no description could leave out its ending.
+
+When it is done the event reads "Description ready" with the book's title.
 
 ## Costs and the monthly cap
 

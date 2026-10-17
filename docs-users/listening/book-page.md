@@ -57,8 +57,11 @@ A finished book shows **Finished** with the date (*"Finished 3 Oct"*) in place o
 The **About** card describes the book. Its words come from the first of these that has some:
 
 1. The **community's description** from [AudioSilo Meta](../community/meta-site.md), when your server has community metadata switched on and the book is matched there. A line under it credits the people who wrote it and links the open licence they share it under, and **Improve this** opens the book's entry, so you can make it better.
-2. The description your server holds for the book (one your admin edited, or the one in its tags).
-3. Failing both, a sentence naming the author and the narrator.
+2. The description your server holds for the book (one your admin edited, or one it took from a community match or an Audiobookshelf `metadata.json`), else the one in the community database's record of the book.
+3. A description your server's [Bridge](../admin/bridge.md) wrote for the book, with a small **Generated on this server** mark under the heading and no credit line. It is spoiler-free: it covers only how the book begins (see [Generating characters and recaps](../admin/generating-characters-and-recaps.md#a-description-for-the-book)).
+4. Failing all of these, a sentence naming the author and the narrator.
+
+![The About card of a book with a description generated on the server, marked Generated on this server](/img/screenshots/web-player/book-about-generated.png)
 
 A long description folds after a few lines, with **Show more**. Under it, what's known of the recording: the **Publisher**, when it was **Released**, when the story was **First published**, its **Language**, and whether it's **Abridged**. What your server says about the publisher, the language and abridged comes first, then the community's. Anything nobody knows is left out, so a book that doesn't say whether it's abridged has no **Abridged** line rather than a "No". A matched book with no community description has a quiet **View on AudioSilo Meta** link instead of the credit.
 

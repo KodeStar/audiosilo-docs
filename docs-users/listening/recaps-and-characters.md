@@ -16,6 +16,8 @@ For a book the community hasn't covered, your server's admin can have the server
 
 The community's material always comes first: when the community has characters but no recaps for a book, you see the community's characters and the generated recaps, each tab marked for what it holds. An app version from before this feature shows generated material only for a book matched with community metadata, without the mark.
 
+The Bridge also writes a short, spoiler-free description of the book, which the book page's [About card](book-page.md#about-this-book) shows, with the same mark, when nothing else describes the book.
+
 ## Nothing gets spoiled before you reach it
 
 The Characters and Recaps tabs follow **where you are in the book**, using your current playback position (or your saved progress if you aren't playing it right now):

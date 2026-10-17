@@ -112,6 +112,32 @@ if [ "${SKIP_SEED:-0}" != "1" ]; then
     christmas_carol_1111_librivox art_of_war_librivox
 fi
 
+# ── 2b. A generated description (Bridge Phase 1c) ──────────────────────────
+# One seeded book gets the files a Bridge leaves when it writes a description
+# (sidecars.describe): .audiosilo/description.json, an own-words, spoiler-free
+# model.Description (fixtures/), and the bridge.json such a job writes (dated
+# two days ago), for admin/book-description.png and
+# web-player/book-about-generated.png. The Call of the Wild: no other shot shows
+# its About or its Community card, and its files describe nothing themselves, so
+# the player's About falls through to the generated one. Written on every run
+# (the cached library may predate it); the server only reads it.
+DESC_BOOK="$LIBRARY/Jack London/The Call of the Wild"
+if [ -d "$DESC_BOOK" ]; then
+  mkdir -p "$DESC_BOOK/.audiosilo"
+  cp "$HERE/fixtures/call-of-the-wild.description.json" "$DESC_BOOK/.audiosilo/description.json"
+  node -e '
+    const at = new Date(Date.now() - 2 * 86400e3).toISOString().replace(/\.\d+Z$/, "Z");
+    const prov = {
+      generator: "audiosilo-bridge", version: "0.2.0", kind: "sidecars.describe", job_id: 7,
+      generated_at: at, source: "audio", work_id: "the-call-of-the-wild", inputs: [],
+      description: {job_id: 7, generated_at: at, from: "opening_notes", chapters: 2, checked_against: "transcripts"},
+    };
+    require("node:fs").writeFileSync(process.argv[1], JSON.stringify(prov, null, 2) + "\n");
+  ' "$DESC_BOOK/.audiosilo/bridge.json"
+else
+  echo "  ! no $DESC_BOOK: the generated description shots will fail"
+fi
+
 # ── 3. Servers ──────────────────────────────────────────────────────────────
 cleanup() {
   [ -n "${MAIN_PID:-}" ] && kill "$MAIN_PID" 2>/dev/null || true

@@ -492,6 +492,11 @@ once it has generated ones), and while the Bridge works on it, the job's step,
 progress, time left and cost so far, with **Cancel**. The book doesn't need to be
 matched. See [Generating characters and recaps](generating-characters-and-recaps.md).
 
+Under it, a **Description** part shows the short, spoiler-free description the
+Bridge wrote for the book, if it has one, and offers **Write a description** for a
+book generated before descriptions existed. See
+[A description for the book](generating-characters-and-recaps.md#a-description-for-the-book).
+
 ![The Community metadata card with Generate characters and recaps](/img/screenshots/admin/book-generate.png)
 
 ## Authors and narrators
