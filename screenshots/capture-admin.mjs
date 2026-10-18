@@ -1132,12 +1132,14 @@ await step('bridge: detect chapters', async () => {
   if (!lecture) throw new Error('no A Long Lecture under Long books without chapters');
   await open(page, '/health/issues?issue=no_chapters');
   const list = page.getByRole('list', {name: 'Long books without chapters'});
-  const detect = list.getByRole('button', {name: 'Detect chapters'});
-  await detect.first().waitFor({timeout: 15000});
+  // The lecture's own row, so the job queued is the one the stand-in writes for.
+  const detect = list.getByRole('listitem').filter({hasText: lecture.title || 'A Long Lecture'})
+    .getByRole('button', {name: 'Detect chapters'});
+  await detect.waitFor({timeout: 15000});
   await sleep(800);
   await shoot(page, 'admin/health-detect-chapters.png');
 
-  await detect.first().click();
+  await detect.click();
   const dialog = page.getByRole('dialog', {name: 'Detect chapters'});
   await dialog.getByText('None: no agent is used').waitFor({timeout: 8000});
   await dialog.getByText(/^About /).first().waitFor({timeout: 15000}); // the transcription time
@@ -1149,6 +1151,9 @@ await step('bridge: detect chapters', async () => {
   // The stand-in's run.
   const job = await api(bridgeToken, 'GET', '/bridge/jobs/next?wait=5&kind=chapters.detect', undefined, BRIDGE_CLIENT);
   if (!job) throw new Error('the chapters.detect job was not handed out');
+  if (job.library_id !== inbox.id || job.path !== lecture.path) {
+    throw new Error(`the chapters.detect job is for ${job.path}, not ${lecture.path}`);
+  }
   await api(bridgeToken, 'PATCH', `/bridge/jobs/${job.id}`, {
     attempt: job.attempts, state: 'running',
     progress: {step: 'chapter_detecting', stage: 'chapter_detecting', source: 'audio',

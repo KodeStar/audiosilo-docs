@@ -364,9 +364,11 @@ It doesn't carry on by itself. What you can do:
 
 A Detect chapters job can also fail straight away, saying why: the book already
 has chapters (its file carries chapter markers, or its chapters are its files),
-its file has one marker covering only part of it (remove it, then try again), or
-its characters and recaps were made without chapters found in the narration (new
-chapters would move their spoiler positions: generate the book again instead).
+its file has one marker covering only part of it (remove it, then try again), its
+file doesn't say how long it is, the Bridge already generated the book's
+characters and recaps, or they were made without chapters found in the narration
+(new chapters would move their spoiler positions). In the last two cases, generate
+the book again instead: that run finds its chapters too.
 
 ### Where found chapters show, and turning them off
 
@@ -384,9 +386,12 @@ you choose on the book's page overrides both. Found chapters also belong to the
 exact file they were found in: replace or re-encode the file and they are no
 longer used (and a long book shows under **Long books without chapters** again).
 
-They are saved in the book's `.audiosilo` folder as `chapters.json` (for a
-single-file book, `The Book.chapters.json` beside it), like the characters and
-recaps, so they move with the book and nothing is written into your audio file.
+They are saved in the book's `.audiosilo` folder as `chapters.json` (for a book
+that is a single audio file, as `The Book.chapters.json` in the `.audiosilo` folder
+beside it), like the characters and recaps, and nothing is written into your audio
+file. Moving a book's folder takes them along; moving or renaming a single audio
+file on its own leaves them behind, and the book has no found chapters until they
+are found again.
 
 ## Costs and the monthly cap
 

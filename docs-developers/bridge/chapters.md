@@ -27,8 +27,11 @@ Code: the Bridge's `internal/chapterdetect` (the detector, pure),
 (the windows), `internal/generate/chapters.go` (the job and the file); the
 server's `metadata/chapterlist.go`, `catalog/generatedchapters.go` and the
 `chapters.detect` kind in `internal/bridge/jobs.go`. The spike that set the rules
-(five real books, every spoken story boundary found within 0.66 s, median 0.06 to
-0.14 s) is in the workspace `BRIDGE-PLAN.md`'s handoff log.
+(five books, 118 of 119 story boundaries found, the one miss having no spoken
+heading, every error under 0.7 s) is in the workspace `BRIDGE-PLAN.md`'s handoff
+log; the env-gated corpus test (`internal/pipeline/chapterdetect_corpus_test.go`)
+measures the built detector on the same books: every spoken story boundary within
+0.66 s, median 0.06 to 0.14 s.
 
 ## Which books
 
@@ -122,11 +125,12 @@ heading text, when the heading was heard, the pause before it and its number) an
 a confidence verdict.
 
 - **A heading** is a heading word, case-insensitive with punctuation stripped:
-  `chapter`, `part`, `book`, `stave`, `day`, `volume` or `episode` followed within
-  the next 1 to 5 words by a number (digits 1-999, ordinals `first` to `tenth`, or
-  English number words: several words only as one cardinal, so "one hundred and
-  twenty one" is 121 and "one two" no number; never past a word that ends in
-  punctuation, so "Chapter One. Two days later" is 1); or `prologue`, `epilogue`,
+  `chapter`, `part`, `book`, `stave`, `day`, `volume` or `episode` with a number
+  starting at the very next word and running at most 5 words (digits 1-999,
+  ordinals `first` to `tenth`, or English number words: several words only as one
+  cardinal, so "one hundred and twenty one" is 121, while "one two" is never added
+  up and reads as 1; never past a word that ends in punctuation, so "Chapter One.
+  Two days later" is 1); or `prologue`, `epilogue`,
   `interlude`, `preface`, `introduction`, `afterword`, `foreword` or
   `intermission` alone. Never `dedication`, and never a number that runs straight
   on into "of" ("Book 10 of The Messenger" in a series' credits).
@@ -153,17 +157,18 @@ a confidence verdict.
   opening is its own first chapter, "Opening". Credits after the last heading stay
   in the last chapter.
 
-**Confidence.** A book of 60 minutes or more is **not confident**, each with a
-plain reason that becomes the park's message:
+**Confidence.** A book of 60 minutes or more is **not confident** when any of these
+holds, each with a plain reason that becomes the park's message:
 
 | Rule | Reason |
 |---|---|
-| fewer than two headings | "no chapter headings were heard in the narration" |
+| no heading heard | "no chapter headings were heard in the narration" |
+| one heading heard | "only one chapter heading was heard in the narration" |
 | a chapter longer than max(90 min, 3 x the median chapter) | "chapter 12 runs 2 h 40 min, so headings were probably missed" |
-| a numbered run (not `day`) missing more than a quarter of the numbers between its first and last | "the narration numbers chapters 1 to 30 but only 14 were heard" |
+| the longest numbered run (on a tie, the heading word first in the list above), unless its word is `day`, missing more than a quarter of the numbers between its first and last | "the narration numbers chapters 1 to 30 but only 14 were heard" |
 
-A book under 60 minutes with no heading is one chapter, confidently (and gets no
-`chapters.json`: one chapter is no chapters).
+A book under 60 minutes is always confident: with no heading it is one chapter
+(and gets no `chapters.json`: one chapter is no chapters).
 
 ## The list: `chapters_detected.json`
 

@@ -256,8 +256,9 @@ book-relative paths, sizes and lengths), so a refresh of an unchanged book neith
 decodes nor fits the list again. Leaving it (the file gone, other audio, a
 community fill, a `files` choice) restores the scan's own. `useChapters` is the one
 write of a stand-in list for both sources: on a row from before the snapshot it
-records the rows as the snapshot, and when the book's community check was made of
-the book as it is now it re-stamps that check's basis, so the check stays current.
+records the rows as the snapshot and then, only when the book's community check was
+made of the book as it is now, re-stamps that check's basis, so the check stays
+current.
 
 `generated` is never a choice an admin makes: `PATCH .../book {chapter_source}`
 still takes `files`, `community` or `auto`. A `files` choice turns found chapters

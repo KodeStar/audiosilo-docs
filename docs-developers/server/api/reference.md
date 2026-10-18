@@ -4570,10 +4570,13 @@ book path).
   `"generated"`. It is not a metadata edit, so it is not in `fields` and doesn't
   make the book `edited`.
 - `generated_chapters_fit` - present and `true` when the book has a stored
-  `chapters.json` that fits its files as they are now, so it stands in with no
-  choice when the community's don't apply: always while `chapter_source` is
-  `"generated"`, and, with a choice made, when removing it would bring them back
-  (the console's Chapters card then offers **Use automatic**). Omitted otherwise.
+  `chapters.json` that fits its files as they are now, so it would stand in with
+  no choice whenever the community's don't apply: always while `chapter_source` is
+  `"generated"`; otherwise it is checked only while a choice is made (the
+  community's own fit is not weighed, so with a `community` choice it can be `true`
+  while removing the choice would keep the community's). Over a `files` choice the
+  console's Chapters card then offers **Use automatic** with a note that found
+  chapters are kept out. Omitted otherwise.
 - `community_chapters` - the book's last
   [community chapter check](../community-chapters.md), `null` when it has none
   (a book with no ASIN or ISBN is never checked):

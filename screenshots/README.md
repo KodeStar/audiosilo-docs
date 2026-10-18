@@ -138,6 +138,19 @@ default) and a first book the community has no characters and recaps for (a seed
 LibriVox book has no ASIN or ISBN, so it never matches); otherwise the step fails
 and the shots keep their previous images.
 
+The Detect chapters shots (`admin/health-detect-chapters.png`,
+`admin/detect-chapters-dialog.png`, `admin/book-chapters-generated.png`, Bridge
+Phase 1d) are the last Bridge step. The stand-in's heartbeat is sent again with
+`chapters.detect` among its kinds and the Inbox mapped and writable; Health >
+Issues `?issue=no_chapters` is shot with **Detect chapters** on the Inbox's **A
+Long Lecture** (so they need ffmpeg for that fixture), then its confirmation, which
+is submitted. The stand-in claims the `chapters.detect` job and runs it as a Bridge
+would: since the fixture's audio is silence, it writes a fixed six-chapter
+`chapters.json` (and the `bridge.json` beside it) into the book's `.audiosilo/`
+folder under the Inbox (`.cache/inbox`, rebuilt every run), asks for the attachments
+rescan and reports the job done. The book's Chapters card is then shot clipped,
+with the found chapters in use. Nothing is written into the seeded library.
+
 The generated description shots (`admin/book-description.png`,
 `web-player/book-about-generated.png`, Bridge Phase 1c) need a book with a
 `description.json`. Before the servers start, `run.sh` writes one into **The Call

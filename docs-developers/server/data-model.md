@@ -465,8 +465,9 @@ index seek.
 file that isn't there or can't be used), `chapters` (the checked `chapters.json`,
 the chapters a Bridge found in the narration, a chapter source of its own) and
 `updated_at`; a row only for a book with any. Derived from the book's `.audiosilo/` files like `abs_file`, so
-rebuildable and never carried by a move. `/meta` lays it into its answer per
-request; see [The .audiosilo folder](../bridge/attachments.md).
+rebuildable and never carried by a move. `/meta` lays the generated content (not
+`chapters`, which `refreshEffective` reads) into its answer per request; see
+[The .audiosilo folder](../bridge/attachments.md).
 
 **`books_fts`** *(0001)* - see [FTS design](#fts-design-books_fts) below.
 
