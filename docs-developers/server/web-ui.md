@@ -447,9 +447,9 @@ CSP-sensitive work against a real build served by Go. The console's own gate is
   of the file's. With chapters a Bridge found in the narration in use
   (`chapter_source: "generated"`, Bridge Phase 1d), the card says "Found in the
   narration on this server." and offers **Use the file's chapters**
-  (`PATCH {chapter_source: "files"}`); over a chosen source the book isn't using the
-  community's for it offers **Use automatic** (`auto`), noting when a files
-  choice keeps fitting found chapters out (`generated_chapters_fit`). That control
+  (`PATCH {chapter_source: "files"}`). With a source chosen (unless the book is on
+  community chapters) it offers **Use automatic** (`auto`), with a note when a
+  `files` choice is keeping found chapters that fit out (`generated_chapters_fit`). That control
   is `chapterSourceAction` in `book-model.ts`, never shown beside the community
   panel's own action; a rename's hints then name the narration's title ("Found:
   ..."). The card follows the book's `chapters.detect` job

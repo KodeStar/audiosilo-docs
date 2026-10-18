@@ -7415,10 +7415,9 @@ The kinds:
   book whose chapter source an admin chose (`chapters_chosen`: the list would
   never be used). See [Chapterless books](../../bridge/chapters.md).
 
-Of the open jobs that refuse a new one, a job being cancelled
-(`cancel_requested`) refuses nothing (it ends without writing), and one the new
-job also cancels (a parked `chapters.detect` for a new `sidecars.generate`) refuses
-only while queued or working.
+A job being cancelled (`cancel_requested`) refuses nothing (it ends without
+writing). Which open kind refuses, or gives way to, which is one table:
+[Kinds are allow-listed twice](../../bridge/pairing-and-jobs.md#kinds-are-allow-listed-twice).
 
 The Bridge may be offline: the job waits for it. Response `201` with the new job,
 or `200` with the open job already there for that kind, library and path (no

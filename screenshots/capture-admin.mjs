@@ -978,13 +978,19 @@ await step('book: generated description', async () => {
 // written into a library. After the audit log shot, so the Bridge's audit entries
 // stay out of it.
 const BRIDGE_CLIENT = {'x-audiosilo-client': 'AudioSilo Bridge/0.2.0 (linux)'};
-// The stand-in's token and last heartbeat, for the generate step.
+// The stand-in's token and last heartbeat, for the later Bridge steps.
 let bridgeToken = null;
 let bridgeStatus = null;
+// The later Bridge steps' shots: each needs the stand-in paired here first.
+const GENERATE_SHOTS = ['admin/book-generate.png', 'admin/generate-dialog.png'];
+const DETECT_SHOTS = ['admin/health-detect-chapters.png', 'admin/detect-chapters-dialog.png',
+  'admin/book-chapters-generated.png'];
+// The stand-in's heartbeat. The server keeps a heartbeat it just saved as the
+// current one, so the next GET /server sees it at once.
+const standInHeartbeat = (status) => api(bridgeToken, 'PUT', '/bridge/status', status, BRIDGE_CLIENT);
 await step('settings: bridge', async () => {
   if (!wanted('admin/settings-bridge.png', 'admin/bridge-pair.png', 'admin/settings-bridge-paired.png',
-    'admin/book-generate.png', 'admin/generate-dialog.png', 'admin/health-detect-chapters.png',
-    'admin/detect-chapters-dialog.png', 'admin/book-chapters-generated.png')) return;
+    ...GENERATE_SHOTS, ...DETECT_SHOTS)) return;
   const info = await api(null, 'GET', '/server');
   if (!info?.capabilities || !('bridge' in info.capabilities)) throw new Error('this server build has no Bridge');
   try {
@@ -1076,11 +1082,10 @@ await step('settings: bridge', async () => {
 // the estimate the server costs from the heartbeat's figures. Nothing is queued:
 // the dialog is closed, never submitted.
 await step('bridge: generate characters and recaps', async () => {
-  if (!wanted('admin/book-generate.png', 'admin/generate-dialog.png')) return;
+  if (!wanted(...GENERATE_SHOTS)) return;
   if (!bridgeToken || !bridgeStatus) throw new Error('no stand-in Bridge was paired');
   if (!firstBook) throw new Error('no book was provisioned');
-  await api(bridgeToken, 'PUT', '/bridge/status', bridgeStatus, BRIDGE_CLIENT);
-  await sleep(6000); // GET /server reuses a heartbeat it read for up to 5 s
+  await standInHeartbeat(bridgeStatus);
   await open(page, bookRoute(firstBook), (p) => p.getByRole('heading', {name: 'Details', exact: true}));
   const action = page.getByRole('button', {name: /^(Generate characters and recaps|Regenerate)$/});
   await action.waitFor({timeout: 15000});
@@ -1101,23 +1106,17 @@ await step('bridge: generate characters and recaps', async () => {
 });
 
 // ── Detect chapters (Bridge Phase 1d) ────────────────────────────────────────
-// The stand-in Bridge's heartbeat now offers chapters.detect too and reports the
-// Inbox library mapped and writable, so Health's Long books without chapters
-// offers Detect chapters on the Inbox's A Long Lecture (2.5 h, no chapter marks).
-// The confirmation is shot, then submitted, and the stand-in runs the job as a
-// Bridge would: it claims it, reports the chapter_detecting stage, writes the
-// chapters.json a Bridge writes for a book whose narration announces its
-// sections (the fixture's audio is silence, so the list is the fixture's own,
-// laid exactly over the file the server indexed) and the bridge.json beside it,
-// asks for the attachments rescan and reports done. The book's Chapters card then
-// shows the found chapters in use. Last of the Bridge steps, so no other shot sees
-// the Inbox writable or the found chapters.
+// Detect chapters on the Inbox's A Long Lecture (2.5 h, no chapter marks), then
+// the stand-in runs the job as a Bridge would. The fixture's audio is silence, so
+// the chapters.json it writes is the fixture's own list, laid over the file the
+// server indexed. Last of the Bridge steps, so no other shot sees the Inbox
+// writable or the found chapters.
 const LECTURE_TITLES = ['Introduction', 'Part One: Keeping Time', 'Part Two: The Clockmakers',
   'Part Three: Longitude', 'Part Four: Railway Time', 'Afterword'];
-const LECTURE_SHARES = [0.04, 0.22, 0.2, 0.24, 0.22, 0.08];
+// Each chapter's share of the file but the last, which runs to the end.
+const LECTURE_SHARES = [0.04, 0.22, 0.2, 0.24, 0.22];
 await step('bridge: detect chapters', async () => {
-  if (!wanted('admin/health-detect-chapters.png', 'admin/detect-chapters-dialog.png',
-    'admin/book-chapters-generated.png')) return;
+  if (!wanted(...DETECT_SHOTS)) return;
   if (!bridgeToken || !bridgeStatus) throw new Error('no stand-in Bridge was paired');
   if (!inbox) throw new Error('the Inbox library was not provisioned');
   const status = {
@@ -1126,8 +1125,7 @@ await step('bridge: detect chapters', async () => {
     libraries: bridgeStatus.libraries.map((l) =>
       l.library_id === inbox.id ? {...l, mapped: true, writable: true, checked_path: '', error: ''} : l),
   };
-  await api(bridgeToken, 'PUT', '/bridge/status', status, BRIDGE_CLIENT);
-  await sleep(6000); // GET /server reuses a heartbeat it read for up to 5 s
+  await standInHeartbeat(status);
 
   const lecture = (await api(token, 'GET', `/admin/books?library_id=${inbox.id}&issue=no_chapters&limit=50`))
     ?.books?.find((b) => b.path.endsWith('A Long Lecture'));
@@ -1161,13 +1159,13 @@ await step('bridge: detect chapters', async () => {
   const file = detail?.files?.[0];
   if (!file || detail.files.length !== 1) throw new Error('A Long Lecture is not one file');
   const total = Math.round((file.duration || detail.book.duration) * 1000);
+  const chapters = [];
   let start = 0;
-  const chapters = LECTURE_TITLES.map((title, i) => {
-    const length = i === LECTURE_TITLES.length - 1 ? total - start : Math.round(total * LECTURE_SHARES[i]);
-    const ch = {title, start_ms: start, length_ms: length};
+  for (const [i, title] of LECTURE_TITLES.entries()) {
+    const length = i < LECTURE_SHARES.length ? Math.round(total * LECTURE_SHARES[i]) : total - start;
+    chapters.push({title, start_ms: start, length_ms: length});
     start += length;
-    return ch;
-  });
+  }
   const at = new Date().toISOString().replace(/\.\d+Z$/, 'Z');
   const folder = path.join(INBOX_DIR, lecture.path, '.audiosilo');
   await mkdir(folder, {recursive: true});

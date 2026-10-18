@@ -129,8 +129,8 @@ as tall as it is. Nothing is written into a library. It runs after the audit log
 shot, so the Bridge's audit entries stay out of it.
 
 The generate shots (`admin/book-generate.png`, `admin/generate-dialog.png`) come
-straight after, from the same stand-in (its heartbeat sent again so it is online,
-then 6 seconds for the server's cached heartbeat to expire): the first book's page,
+straight after, from the same stand-in (its heartbeat sent again so it is online):
+the first book's page,
 its Community metadata card clipped with **Generate characters and recaps**, then
 the confirmation the button opens, once its estimate has loaded. The dialog is
 closed, never submitted, so nothing is queued. They need community metadata on (the

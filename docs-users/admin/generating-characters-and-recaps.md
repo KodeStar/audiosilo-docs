@@ -375,8 +375,7 @@ chapters would move their spoiler positions: generate the book again instead).
   An app version from before this feature shows them as ordinary chapters,
   without the line.
 - **In the console**, the book's [Chapters card](books.md#chapters-found-in-the-narration)
-  says "Found in the narration on this server." with **Use the file's chapters**,
-  which turns them off; **Use automatic** brings them back.
+  shows them and turns them off or back on.
 
 **Which chapters win.** A book's own chapters always come first: found chapters
 are only ever used for a book with none. Next come the community's, when the book

@@ -254,12 +254,10 @@ it):
   (`pipeline.DetectionRerunnable`) is re-admitted there, so the detection runs
   again from the window layer with the whole pipeline after it.
 
-The server keeps the two kinds apart (see
+The server keeps the two kinds apart (the table in
 [Kinds are allow-listed twice](pairing-and-jobs.md#kinds-are-allow-listed-twice)):
-a generate job is refused `409 detect_open` while a detect job is queued or
-working (cancelling it would throw its transcription away), and cancels a
-**parked** one (it finds the chapters itself). The Bridge hears that cancel at the
-detect job's next report, so the generate job first waits a few polls for the
+a generate job is refused while a detect job is queued or working, and cancels a **parked**
+one. The Bridge hears that cancel at the detect job's next report, so the generate job first waits a few polls for the
 parked job to give way (`awaitChaptersGivingWay`); one that stays open is refused.
 
 ### `chapters.json` from a generate run

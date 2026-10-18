@@ -364,11 +364,11 @@ server.**, with **Use the file's chapters** to turn them off.
 
 Turned off, the book goes back to its file's own (none, or one long chapter), and
 the card says "Chapters found in the narration are saved for this book, but the
-file's were chosen." with **Use automatic**, which brings them back. **Use
-automatic** also shows for a book whose chapter source you chose another way
-("The file's chapters were chosen for this book."), since found chapters, and
-[Detect chapters](health.md#the-kinds-of-issue), are only used for a book with no
-choice. You can rename a found chapter like any other: the revert button's hint
+file's were chosen." with **Use automatic**, which brings them back. Found
+chapters (and [Detect chapters](health.md#the-kinds-of-issue)) are only used when
+no chapter source is chosen, so **Use automatic** also shows for a book whose
+chapter source you chose another way ("The file's chapters were chosen for this
+book."). You can rename a found chapter like any other: the revert button's hint
 shows the narration's title ("Found: *title*"). When the book's job to find its
 chapters ends, the card shows them straight away.
 

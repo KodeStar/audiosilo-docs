@@ -579,9 +579,9 @@ description, chapters and provenance the [Bridge](../bridge/index.md) generated 
 `Book.characters.json`, in a `.audiosilo/` beside it). They are not a metadata
 layer: nothing in the effective row reads them but `chapters.json`, a chapter
 source of its own, and `/meta` serves the rest. Recording a book's attachments
-(`SetAttachments`, `RefreshAttachments`) re-resolves the book, and fires the
-change listener, only when its stored `chapters` changed (or its stored reading
-wasn't made for this index). The scan
+(`SetAttachments`, `RefreshAttachments`) re-resolves the book when its
+`chapters.json` changed (the exact rule is in
+[The attachments refresh](../bridge/attachments.md#the-attachments-refresh)). The scan
 finds them the way it finds an ABS `metadata.json`:
 
 - **Discovery** never walks into a hidden folder, but a folder named exactly
