@@ -253,35 +253,41 @@ rather than transcribing again. Two runs continue:
   detected one, so the path goes straight on to `sanitizing`;
 - one **cancelled or failed at `chapter_detecting`** (a parked detect job the new
   generate job cancelled, say) whose kept windows can run it again
-  (`pipeline.DetectionRerunnable`: every window's raw is complete and the audio
-  file is still the one inspected, its size the one `probe.json` records and not
-  modified since `probe.json` was written, since a tag editor adding markers can
-  keep the size) goes on there, so the detection runs again from the window layer
-  with the whole pipeline after it.
+  (`pipeline.DetectionRerunnable`: every window's raw is complete, the confident
+  detection is kept for the windows or every window's silences can still be had,
+  and the audio file is still the one inspected, its size the one `probe.json`
+  records and not modified since `probe.json` was written, give or take two
+  minutes for another machine's clock, since a tag editor adding markers can keep
+  the size) goes on there, so the detection runs again from the window layer with
+  the whole pipeline after it.
 
-Either only while the book is still the one audio file it was
+Both only while the book is still the one audio file it was
 (`audio.ResolveSource`: a folder that has gained an audio file is a multi-file book
 now).
 
-The continue (`continueChapters` -> `store.ContinueChapters`) first waits for the
+The continue (`continueChapters` -> `store.ContinueChapters`) waits for the
 engine's hold, as [a delete does](generating.md#how-the-bridge-runs-it): a stage the
 cancel just stopped may still be finishing, and one that stays busy fails the job
-rather than changing the run unseen. Once held, it reads the book again, since that
-stage may have finished it. Then, in one transaction, the book becomes a whole-run
-book with the new job's identity, `contrib_mode` and `work_id`, its status, park and
-retry cleared, and the new job is mapped to it (a job cancelled meanwhile leaves the
-run as it was).
+(try again in a minute) rather than letting the run be cleared, its transcription
+with it, before it could be looked at. Once held, it reads the book again, since
+that stage may have finished it, and checks the list or the windows on what it
+reads. Then, in one transaction, the book becomes a whole-run book with the new
+job's identity, `contrib_mode` and `work_id`, its status, error, park and retry
+cleared, and the new job is mapped to it (a job cancelled meanwhile leaves the run
+as it was).
 
 The server keeps the two kinds apart (the table in
 [Kinds are allow-listed twice](pairing-and-jobs.md#kinds-are-allow-listed-twice)):
 a generate job is refused while a detect job is queued or working (until an admin
-cancels it), and cancels a **parked** one. The Bridge hears a cancel at the detect
-job's next report, so the generate job first waits a few polls
-(`awaitChaptersGivingWay`) until no chapters job, working or parked, follows the
-book and the book has stopped (the ending job
-[stops it](generating.md#states)). When the wait runs out, a job still open is
-refused, and a book no job follows that still isn't stopped (an orphan run) is
-stopped there, then continued. Stopping leaves alone a book another open job
+cancels it: one cancelled before `chapter_detecting` leaves no run to continue, so
+the generate job transcribes again), and cancels a **parked** one. The Bridge hears
+a cancel at the detect job's next report, so before any continue the generate job
+waits a few polls (`awaitChaptersGivingWay`) until no chapters job follows the
+book (working, parked, or done and saving its list) and the book has stopped (the
+ending job [stops it](generating.md#states)). When the wait runs out, a job still
+open is refused, and a book no job follows that still isn't stopped (an orphan
+run) is stopped there, then continued when it is one of the two runs above, else
+cleared as any earlier run is. Stopping leaves alone a book another open job
 follows, so a late end of the detect job never stops the continued run.
 
 ### `chapters.json` from a generate run
