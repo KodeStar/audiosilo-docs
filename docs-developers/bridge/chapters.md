@@ -245,9 +245,7 @@ latest job).
 
 A `sidecars.generate` job reading the audio, for a book whose engine book is a
 goal-chapters book not yet swept and followed by no open job, **continues** it
-rather than transcribing again, either kind only while the book is still the one
-audio file it was (`audio.ResolveSource`: a folder that gained an audio file is a
-multi-file book now):
+rather than transcribing again. Two runs continue:
 
 - a **done** one whose list is current for the file on disk goes on from
   `splitting`: the done-time purge removed the chapter FLACs, so `splitting` cuts
@@ -255,30 +253,36 @@ multi-file book now):
   detected one, so the path goes straight on to `sanitizing`;
 - one **cancelled or failed at `chapter_detecting`** (a parked detect job the new
   generate job cancelled, say) whose kept windows can run it again
-  (`pipeline.DetectionRerunnable`: every window's raw complete, and the file the one
-  inspected, the size `probe.json` states and not modified since it was written, as
-  a tag editor adding markers can keep the size) goes on there, so the detection
-  runs again from the window layer with the whole pipeline after it.
+  (`pipeline.DetectionRerunnable`: every window's raw is complete and the audio
+  file is still the one inspected, its size the one `probe.json` records and not
+  modified since `probe.json` was written, since a tag editor adding markers can
+  keep the size) goes on there, so the detection runs again from the window layer
+  with the whole pipeline after it.
 
-The continue (`continueChapters` -> `store.ContinueChapters`) waits for the engine's
-hold as a delete would (a stage the cancel just stopped may still be finishing; one
-that stays busy fails the job rather than changing the run unseen) and reads the
-book again once held (that stage may have finished it). Then one transaction, on the
-job's context: the book becomes a whole-run book with the new job's identity,
-`contrib_mode` and `work_id`, its status, park and retry cleared, and the new job is
-mapped to it.
+Either only while the book is still the one audio file it was
+(`audio.ResolveSource`: a folder that has gained an audio file is a multi-file book
+now).
+
+The continue (`continueChapters` -> `store.ContinueChapters`) first waits for the
+engine's hold, as [a delete does](generating.md#how-the-bridge-runs-it): a stage the
+cancel just stopped may still be finishing, and one that stays busy fails the job
+rather than changing the run unseen. Once held, it reads the book again, since that
+stage may have finished it. Then, in one transaction, the book becomes a whole-run
+book with the new job's identity, `contrib_mode` and `work_id`, its status, park and
+retry cleared, and the new job is mapped to it (a job cancelled meanwhile leaves the
+run as it was).
 
 The server keeps the two kinds apart (the table in
 [Kinds are allow-listed twice](pairing-and-jobs.md#kinds-are-allow-listed-twice)):
 a generate job is refused while a detect job is queued or working (until an admin
 cancels it), and cancels a **parked** one. The Bridge hears a cancel at the detect
 job's next report, so the generate job first waits a few polls
-(`awaitChaptersGivingWay`) while any chapters job still follows the book, working or
-parked, or none does but the book isn't stopped yet (its job's end is stopping it).
-A book still not stopped when the wait runs out (an orphan run) is stopped there,
-then continued; a job that stays open is refused. Stopping leaves alone a book
-another open job follows, so a late end of the detect job never stops the continued
-run.
+(`awaitChaptersGivingWay`) until no chapters job, working or parked, follows the
+book and the book has stopped (the ending job
+[stops it](generating.md#states)). When the wait runs out, a job still open is
+refused, and a book no job follows that still isn't stopped (an orphan run) is
+stopped there, then continued. Stopping leaves alone a book another open job
+follows, so a late end of the detect job never stops the continued run.
 
 ### `chapters.json` from a generate run
 

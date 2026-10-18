@@ -18,9 +18,10 @@ pages:
 Nothing on these pages changes your audio files. Fixes are saved in AudioSilo
 (a cover you upload, a match you accept, a folder detection choice, the
 community's chapters), and an
-issue you ignore is only hidden. The one exception is **Detect chapters**: the
-Bridge saves the chapters it finds in the book's `.audiosilo` folder, beside
-the audio, and nothing else on disk changes.
+issue you ignore is only hidden. **Detect chapters** is the one fix that writes
+to disk: the Bridge
+[saves the chapters it finds](generating-characters-and-recaps.md#where-found-chapters-show-and-turning-them-off)
+in the book's `.audiosilo` folder, beside the audio.
 
 ## Library health
 
