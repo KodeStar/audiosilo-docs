@@ -566,15 +566,22 @@ These are the scan's own chapters. A matched book can have a community
 recording's chapter list fitted onto its audio in their place, outside the scan
 (see [Community chapters](community-chapters.md)); `UpsertBook` always writes
 the scan's chapters and `refreshEffective` puts the community's back over them
-in the same transaction when they should stand.
+in the same transaction when they should stand. A book with no chapters of its
+own can likewise get the chapters a Bridge found in its narration (its
+`.audiosilo/chapters.json`, below; see
+[Generated chapters](community-chapters.md#generated-chapters)).
 
 ## The Bridge's attachments
 
 A book's hidden **`.audiosilo/`** folder holds the characters, recaps,
-description and provenance the [Bridge](../bridge/index.md) generated for it (`characters.json`,
-`recaps.json`, `description.json` since Phase 1c, `bridge.json`; a single-file book's carry its file stem first,
+description, chapters and provenance the [Bridge](../bridge/index.md) generated for it (`characters.json`,
+`recaps.json`, `description.json` since Phase 1c, `chapters.json` since Phase 1d, `bridge.json`; a single-file book's carry its file stem first,
 `Book.characters.json`, in a `.audiosilo/` beside it). They are not a metadata
-layer: nothing in the effective row reads them, and `/meta` serves them. The scan
+layer: nothing in the effective row reads them but `chapters.json`, a chapter
+source of its own, and `/meta` serves the rest. Recording a book's attachments
+(`SetAttachments`, `RefreshAttachments`) re-resolves the book, and fires the
+change listener, only when its stored `chapters` changed (or its stored reading
+wasn't made for this index). The scan
 finds them the way it finds an ABS `metadata.json`:
 
 - **Discovery** never walks into a hidden folder, but a folder named exactly

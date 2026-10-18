@@ -13,8 +13,10 @@ You don't need one. Without a Bridge everything in AudioSilo works as before.
 :::info What it does today
 The Bridge is new. Today it
 [generates characters and recaps](generating-characters-and-recaps.md) for books
-the community hasn't covered, saving them with the book, and you can ask it to
-**Verify** a library to check it is set up. Later versions add more jobs, such as
+the community hasn't covered, saving them with the book,
+[finds the chapters](generating-characters-and-recaps.md#books-without-chapters) of
+a book that has none, and you can ask it to **Verify** a library to check it is
+set up. Later versions add more jobs, such as
 podcasts.
 :::
 
@@ -177,7 +179,9 @@ Bridge's own page, where **Retry** sends it on once you've fixed the cause. See
 [When a job pauses](generating-characters-and-recaps.md#when-a-job-pauses). Once
 done it also says whether a description came with them. A **Description** job
 ([Write a description](generating-characters-and-recaps.md#writing-a-description-for-an-older-book))
-shows the same way, and "Description written" once done.
+shows the same way, and "Description written" once done, and so does a
+**Chapters** job ([Detect chapters](generating-characters-and-recaps.md#detect-chapters-without-characters-and-recaps)),
+with "24 chapters found" once done.
 
 **Cancel** stops a job. A job that is waiting is cancelled at once; one the Bridge
 is working on shows **Cancelling** until the Bridge stops it, within a few seconds.

@@ -983,7 +983,8 @@ let bridgeToken = null;
 let bridgeStatus = null;
 await step('settings: bridge', async () => {
   if (!wanted('admin/settings-bridge.png', 'admin/bridge-pair.png', 'admin/settings-bridge-paired.png',
-    'admin/book-generate.png', 'admin/generate-dialog.png')) return;
+    'admin/book-generate.png', 'admin/generate-dialog.png', 'admin/health-detect-chapters.png',
+    'admin/detect-chapters-dialog.png', 'admin/book-chapters-generated.png')) return;
   const info = await api(null, 'GET', '/server');
   if (!info?.capabilities || !('bridge' in info.capabilities)) throw new Error('this server build has no Bridge');
   try {
@@ -1097,6 +1098,107 @@ await step('bridge: generate characters and recaps', async () => {
   await shoot(page, 'admin/generate-dialog.png');
   await page.keyboard.press('Escape');
   await sleep(400);
+});
+
+// ── Detect chapters (Bridge Phase 1d) ────────────────────────────────────────
+// The stand-in Bridge's heartbeat now offers chapters.detect too and reports the
+// Inbox library mapped and writable, so Health's Long books without chapters
+// offers Detect chapters on the Inbox's A Long Lecture (2.5 h, no chapter marks).
+// The confirmation is shot, then submitted, and the stand-in runs the job as a
+// Bridge would: it claims it, reports the chapter_detecting stage, writes the
+// chapters.json a Bridge writes for a book whose narration announces its
+// sections (the fixture's audio is silence, so the list is the fixture's own,
+// laid exactly over the file the server indexed) and the bridge.json beside it,
+// asks for the attachments rescan and reports done. The book's Chapters card then
+// shows the found chapters in use. Last of the Bridge steps, so no other shot sees
+// the Inbox writable or the found chapters.
+const LECTURE_TITLES = ['Introduction', 'Part One: Keeping Time', 'Part Two: The Clockmakers',
+  'Part Three: Longitude', 'Part Four: Railway Time', 'Afterword'];
+const LECTURE_SHARES = [0.04, 0.22, 0.2, 0.24, 0.22, 0.08];
+await step('bridge: detect chapters', async () => {
+  if (!wanted('admin/health-detect-chapters.png', 'admin/detect-chapters-dialog.png',
+    'admin/book-chapters-generated.png')) return;
+  if (!bridgeToken || !bridgeStatus) throw new Error('no stand-in Bridge was paired');
+  if (!inbox) throw new Error('the Inbox library was not provisioned');
+  const status = {
+    ...bridgeStatus,
+    kinds: [...bridgeStatus.kinds, 'chapters.detect'],
+    libraries: bridgeStatus.libraries.map((l) =>
+      l.library_id === inbox.id ? {...l, mapped: true, writable: true, checked_path: '', error: ''} : l),
+  };
+  await api(bridgeToken, 'PUT', '/bridge/status', status, BRIDGE_CLIENT);
+  await sleep(6000); // GET /server reuses a heartbeat it read for up to 5 s
+
+  const lecture = (await api(token, 'GET', `/admin/books?library_id=${inbox.id}&issue=no_chapters&limit=50`))
+    ?.books?.find((b) => b.path.endsWith('A Long Lecture'));
+  if (!lecture) throw new Error('no A Long Lecture under Long books without chapters');
+  await open(page, '/health/issues?issue=no_chapters');
+  const list = page.getByRole('list', {name: 'Long books without chapters'});
+  const detect = list.getByRole('button', {name: 'Detect chapters'});
+  await detect.first().waitFor({timeout: 15000});
+  await sleep(800);
+  await shoot(page, 'admin/health-detect-chapters.png');
+
+  await detect.first().click();
+  const dialog = page.getByRole('dialog', {name: 'Detect chapters'});
+  await dialog.getByText('None: no agent is used').waitFor({timeout: 8000});
+  await dialog.getByText(/^About /).first().waitFor({timeout: 15000}); // the transcription time
+  await sleep(800);
+  await shoot(page, 'admin/detect-chapters-dialog.png');
+  await dialog.getByRole('button', {name: 'Detect chapters'}).click();
+  await dialog.waitFor({state: 'hidden', timeout: 15000});
+
+  // The stand-in's run.
+  const job = await api(bridgeToken, 'GET', '/bridge/jobs/next?wait=5&kind=chapters.detect', undefined, BRIDGE_CLIENT);
+  if (!job) throw new Error('the chapters.detect job was not handed out');
+  await api(bridgeToken, 'PATCH', `/bridge/jobs/${job.id}`, {
+    attempt: job.attempts, state: 'running',
+    progress: {step: 'chapter_detecting', stage: 'chapter_detecting', source: 'audio',
+      message: 'Finding the chapters in the narration', done: 0, total: 1},
+  }, BRIDGE_CLIENT);
+  const detail = await api(token, 'GET',
+    `/admin/libraries/${inbox.id}/book?path=${encodeURIComponent(lecture.path)}`);
+  const file = detail?.files?.[0];
+  if (!file || detail.files.length !== 1) throw new Error('A Long Lecture is not one file');
+  const total = Math.round((file.duration || detail.book.duration) * 1000);
+  let start = 0;
+  const chapters = LECTURE_TITLES.map((title, i) => {
+    const length = i === LECTURE_TITLES.length - 1 ? total - start : Math.round(total * LECTURE_SHARES[i]);
+    const ch = {title, start_ms: start, length_ms: length};
+    start += length;
+    return ch;
+  });
+  const at = new Date().toISOString().replace(/\.\d+Z$/, 'Z');
+  const folder = path.join(INBOX_DIR, lecture.path, '.audiosilo');
+  await mkdir(folder, {recursive: true});
+  const json = (v) => JSON.stringify(v, null, 2) + '\n';
+  await writeFile(path.join(folder, 'chapters.json'), json({
+    version: 1, generator: 'audiosilo-bridge', generated_at: at, from: 'narration',
+    files: [{path: path.posix.basename(file.path), size: file.size, duration_ms: total}],
+    chapters,
+  }));
+  await writeFile(path.join(folder, 'bridge.json'), json({
+    generator: 'audiosilo-bridge', version: '0.2.0', kind: 'chapters.detect', job_id: job.id,
+    generated_at: at, source: 'audio', work_id: '',
+    inputs: [{path: file.path, size: file.size, mod_time: Math.floor(Date.now() / 1000)}],
+    chapters: {job_id: job.id, generated_at: at, from: 'narration', chapters: chapters.length},
+  }));
+  const rescan = await api(bridgeToken, 'POST', '/bridge/rescan',
+    {library_id: inbox.id, path: lecture.path, mode: 'attachments'}, BRIDGE_CLIENT);
+  if (!rescan?.attachments?.chapters) throw new Error('the server did not take the chapters.json');
+  await api(bridgeToken, 'PATCH', `/bridge/jobs/${job.id}`, {
+    attempt: job.attempts, state: 'done',
+    progress: {step: 'done', stage: 'done', source: 'audio', message: 'Finished', done: 1, total: 1},
+    result: {library_id: inbox.id, path: lecture.path, chapters: chapters.length,
+      files: ['chapters.json', 'bridge.json'], source: 'audio'},
+  }, BRIDGE_CLIENT);
+
+  await open(page, bookRoute(lecture), (p) => p.getByRole('heading', {name: 'Details', exact: true}));
+  const card = page.locator('section[aria-labelledby="chapters-title"]');
+  await card.getByText('Found in the narration on this server.').waitFor({timeout: 15000});
+  await card.scrollIntoViewIfNeeded();
+  await sleep(800);
+  await shoot(page, 'admin/book-chapters-generated.png', {clip: around([await card.boundingBox()])});
 });
 
 await step('webhook deliveries', async () => {

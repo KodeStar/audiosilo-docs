@@ -129,9 +129,11 @@ it queues), "On this server" and the earlier books of the series (ticked, queued
 first); it blocks the submit when the library isn't writable and warns when the
 agent isn't ready. It always queues `{source: "auto", contribute: "local"}`
 (`GENERATE_PARAMS`): the player never contributes. `GenerateStatus` sits under the
-actions while a job is open or failed: the stage (`bridge.stage.*`), "12 of 40",
+actions while a job is open or failed: the stage (`bridge.stage.*`; Bridge Phase
+1d adds `chapter_detecting`, "Finding the chapters in the narration"), "12 of 40",
 the time left and Cancel; while parked, the park in the player's own words
-(`bridge.park.*`) and when it tries again by itself, "It carries on by itself" for
+(`bridge.park.*`, by `parkReason`; `chapters_not_detected` is "The Bridge
+couldn't find the chapters in the narration.") and when it tries again by itself, "It carries on by itself" for
 a book waiting for an ASR worker (`parkEndsByItself`), else "Open the console to
 fix it"; once failed, the error and Try again. `useBridgeJobs` polls the book's jobs
 every 10 seconds while one is claimed or running and every minute while one is
@@ -204,9 +206,15 @@ When the chapters answer says `chapters_source: "community"` (the server fitted 
 community recording's chapter list onto the audio; see
 [Community chapters](../server/community-chapters.md)) and the rows are real
 chapters, the list ends with a quiet caption, a globe icon and "Chapters from the
-AudioSilo community database" (`book.chapters.community`; `fromCommunity` on
-`BookChaptersTab`, `testID` `book-chapters-community`). Nothing else changes: the
-chapters have the same shape either way.
+AudioSilo community database" (`book.chapters.community`, `testID`
+`book-chapters-community`). For `chapters_source: "generated"` (Bridge Phase 1d:
+a Bridge found them in the narration of a book with no chapters of its own; see
+[Generated chapters](../server/community-chapters.md#generated-chapters)) the
+same rule gives "Chapters found in the narration on this server" with the
+server glyph in the caption's colour (`book.chapters.generated`, `testID`
+`book-chapters-generated`; both captions are `SOURCE_CAPTION` entries drawn by `SourceLine`). `BookChaptersTab` takes the
+answer's `source` only while the rows are chapters (`list.kind === 'chapters'`).
+Nothing else changes: the chapters have the same shape either way.
 
 "The whole book" is the player's `BookTimeline` for **any** book, with pins from
 `useBookAnnotations` (`pinsOf`). While the book is loaded its place follows the player

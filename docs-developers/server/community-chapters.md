@@ -1,6 +1,6 @@
 ---
 title: "Community chapters"
-description: "How audiosilo-server fits a community recording's chapter list onto a book's own audio: where the list comes from, when a book is checked, the anchored piecewise fit and its tolerances, pause snapping, the outcomes, and how a fitted list replaces the scan's chapters without touching the files."
+description: "How audiosilo-server fits a community recording's chapter list onto a book's own audio: where the list comes from, when a book is checked, the anchored piecewise fit and its tolerances, pause snapping, the outcomes, how a fitted list replaces the scan's chapters without touching the files, and the generated chapters a Bridge found in the narration (the source between the community's and the files')."
 ---
 
 The community metadata database holds a chapter list for most recordings
@@ -188,7 +188,8 @@ keeps it, and `moveBookState` moves it with the book. See
 [Data model](data-model.md#the-rebuildable-index).
 
 Three `books` columns (same migration) go with the `chapters` rows:
-`chapters_source` (`''` = the scan's own, `'community'`), `chapters_fit` (a hash
+`chapters_source` (`''` = the scan's own, `'community'`, and since Phase 1d
+`'generated'`, [below](#generated-chapters)), `chapters_fit` (a hash
 of the fit in the rows, so an unchanged one is not written again) and
 `scanned_chapters`: always the scan's own chapters as JSON with their scanned
 titles, written by every `UpsertBook`, as `books.scanned` keeps the scanned
@@ -208,6 +209,8 @@ check) calls `applyChapterSource`, the one statement of the rule:
 - the **community's** chapters when the check fitted, its `basis` is the
   book's current one, and either the admin chose them or there is no choice and
   the status is `fill`;
+- otherwise the **generated** ones a Bridge found in the narration, when they
+  apply ([below](#generated-chapters));
 - otherwise the **scan's** own (from `scanned_chapters`).
 
 A check whose `basis` is not the book's current one is **stale** and never
@@ -224,23 +227,66 @@ file and start) apply after the source, so renaming a community chapter works
 like any rename, and switching back restores the files' chapters with their
 own renames.
 
+## Generated chapters
+
+Bridge Phase 1d (`catalog/generatedchapters.go`): a book with no chapter markers
+can get a `chapters.json` in its `.audiosilo/` folder, the chapters a
+[Bridge found in the narration](../bridge/chapters.md), which the scan stores
+checked in `book_attachments.chapters` (migration `0051`; the format and its
+checks are in [the .audiosilo folder](../bridge/attachments.md#chaptersjson)). It
+is a chapter source **between the community's and the files'**:
+`applyChapterSource` uses it (`applyGenerated`) only when
+
+- **no source was chosen** (`chapter_choices` has no row for the book: an admin's
+  `files` or `community` keeps it out),
+- the **community's chapters don't apply** (no current fitted check that is
+  chosen or a `fill`),
+- the list's **files are the book's** (`sameChapterFiles`: as many, in the same
+  order, each the same path relative to the book's folder, a single-file book's
+  being its file name, and the same size), and
+- `chapteralign.Align` with **no `Prober`** (no snapping: the list is already
+  timed on this audio) answers **`fill`**, the fit's word for "the book has no
+  chapters of its own" (no file holding two); any other status leaves the scan's
+  own, so a book tagged with chapters since never shows the list.
+
+The rows are then the fit, `books.chapters_source = 'generated'`
+(`ChaptersFromGenerated`) and `chapters_fit` a hash of what it was fitted from
+(`generatedKey`: the stored list, the scan's own chapters and the files'
+book-relative paths, sizes and lengths), so a refresh of an unchanged book neither
+decodes nor fits the list again. Leaving it (the file gone, other audio, a
+community fill, a `files` choice) restores the scan's own. `useChapters` is the one
+write of a stand-in list for both sources: on a row from before the snapshot it
+records the rows as the snapshot, and when the book's community check was made of
+the book as it is now it re-stamps that check's basis, so the check stays current.
+
+`generated` is never a choice an admin makes: `PATCH .../book {chapter_source}`
+still takes `files`, `community` or `auto`. A `files` choice turns found chapters
+off; `auto` brings them back. Recording a changed `chapters.json` (the Bridge's
+attachments rescan, or a scan's backfill) re-resolves the book at once, so the
+players get the chapters without a re-index.
+
 ## On the wire
 
 All additive; an old client reads community chapters as ordinary chapters.
 
 - `GET /libraries/{id}/chapters` and the book JSON of `GET /libraries/{id}/item`
-  carry `chapters_source: "community"` when the chapters are community ones
-  (absent otherwise). See [`/chapters`](api/reference.md#get-apiv1librariesidchapters).
-- The admin book page gains `chapter_source`, `chapter_choice`,
-  `community_chapters` (the check's status and detail, not the fitted list) and
-  `community_checking`; `PATCH .../book` and
+  carry `chapters_source: "community"` when the chapters are community ones, or
+  `"generated"` when they were found in the narration (absent otherwise; an old
+  app shows either as ordinary chapters with no label). See [`/chapters`](api/reference.md#get-apiv1librariesidchapters).
+- The admin book page gains `chapter_source` (`generated` too),
+  `chapter_choice`, `community_chapters` (the check's status and detail, not the
+  fitted list), `community_checking` and `generated_chapters_fit` (a stored
+  `chapters.json` fits the files as they are now, so it stands in with no choice
+  when the community's don't apply); `PATCH .../book` and
   `POST /admin/books/bulk` take `chapter_source`; the check is
   [`POST .../book/community-chapters`](api/reference.md#post-apiv1adminlibrariesidbookcommunity-chapters).
-- `GET /admin/books` rows carry `chapters_source` and `chapters_check`, and
+- `GET /admin/books` rows carry `chapters_source`, `chapters_check` and
+  `chapter_choice` (omitted when automatic), and
   Health gains the `detailed_chapters` kind (a `refine` check with no choice
   made; see [Issues](scanner.md#issues)).
 
-The player shows a caption under community chapters and refreshes a downloaded
+The player shows a caption under community chapters (and another, "Chapters
+found in the narration on this server", under generated ones) and refreshes a downloaded
 book's saved chapters when they change (see
 [The book page](../frontend/book-page.md#the-chapters-tab) and
 [Offline](../frontend/offline.md#lifecycle)); the console's panel is described

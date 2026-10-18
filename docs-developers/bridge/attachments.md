@@ -1,21 +1,21 @@
 ---
 title: The .audiosilo folder
-description: "The Bridge's generated files in a book's hidden .audiosilo folder: where they go (and the single-file stem prefix), their formats (characters, recaps, the own-words description and the provenance), how the Bridge writes them, how the server finds, checks and stores them (signatures, the attachments refresh), the hidden-path rule, and how /meta serves them."
+description: "The Bridge's generated files in a book's hidden .audiosilo folder: where they go (and the single-file stem prefix), their formats (characters, recaps, the own-words description, the chapters found in the narration and the provenance), how the Bridge writes them, how the server finds, checks and stores them (signatures, the attachments refresh), the hidden-path rule, and how /meta serves them."
 ---
 
-A `sidecars.generate` job (and a `sidecars.describe` job, Phase 1c) leaves its results **with the book**, in a hidden
+A `sidecars.generate` job (and a `sidecars.describe` job, Phase 1c, and a `chapters.detect` job, Phase 1d) leaves its results **with the book**, in a hidden
 folder the server reads: the filesystem stays the source of truth, and the
 server's copy is a rebuildable index of it like everything else. The Bridge
-writes the files (`internal/generate/attach.go`, `describejob.go`); the server never writes into a
+writes the files (`internal/generate/attach.go`, `describejob.go`, `chapters.go`); the server never writes into a
 library and only reads them (`metadata/attachments.go`,
-`library/attachments.go`, `catalog/attachments.go`).
+`library/attachments.go`, `catalog/attachments.go`; `metadata/chapterlist.go` for the chapters).
 
 ## Where they go
 
 | Book | Folder | Names |
 |---|---|---|
-| a folder book (a folder that holds its audio), a joined disc set included | `<book folder>/.audiosilo/` (for a disc set, the joined book's folder, the one holding the discs) | `characters.json`, `recaps.json`, `description.json`, `bridge.json` |
-| a single-file book (a loose file at the library root, or a book in a `collection` folder) | `<the file's folder>/.audiosilo/` | `<stem>.characters.json`, `<stem>.recaps.json`, `<stem>.description.json`, `<stem>.bridge.json`, the stem being the file name without its last extension (`Book.m4b` -> `Book.characters.json`) |
+| a folder book (a folder that holds its audio), a joined disc set included | `<book folder>/.audiosilo/` (for a disc set, the joined book's folder, the one holding the discs) | `characters.json`, `recaps.json`, `description.json`, `chapters.json`, `bridge.json` |
+| a single-file book (a loose file at the library root, or a book in a `collection` folder) | `<the file's folder>/.audiosilo/` | `<stem>.characters.json`, `<stem>.recaps.json`, `<stem>.description.json`, `<stem>.chapters.json`, `<stem>.bridge.json`, the stem being the file name without its last extension (`Book.m4b` -> `Book.characters.json`) |
 
 The prefix keeps the books of one folder apart, since a collection folder's books
 share one `.audiosilo/`. Only these JSON names are ever written there or read
@@ -42,6 +42,8 @@ from there, and never any audio.
 }
 ```
 
+- **`chapters.json`** (Phase 1d) is the chapters the Bridge found in the
+  narration of a book with no chapter markers ([below](#chaptersjson)).
 - **`bridge.json`** is the provenance:
 
 ```json
@@ -87,6 +89,60 @@ book's existing `bridge.json`, keeping every other field (the characters' run, i
 `generated_at` included); with no `bridge.json` there (or not a regular file
 holding a JSON object) it writes a fresh one of its own `kind`.
 
+### `chapters.json`
+
+Phase 1d: the chapters a Bridge found in the narration of a book with no chapter
+markers (how: [Chapterless books](chapters.md)), on the **whole-book timeline**,
+the shape of a community recording's chapter list:
+
+```json
+{
+  "version": 1,
+  "generator": "audiosilo-bridge",
+  "generated_at": "2026-10-17T10:02:11Z",
+  "from": "narration",
+  "files": [{ "path": "A Long Lecture.mp3", "size": 9001234, "duration_ms": 9000032 }],
+  "chapters": [
+    { "title": "Introduction", "start_ms": 0, "length_ms": 412500 },
+    { "title": "Part One", "start_ms": 412500, "length_ms": 2105330 }
+  ]
+}
+```
+
+- `version` is `1`, the one version the server reads. `generator`, `generated_at`
+  (RFC 3339) and `from` (always `narration`) say what made it; the server cleans
+  them like a provenance value and never refuses the file over them.
+- `files` are the audio files the chapters were found on, in play order, each
+  with its `path` **relative to the book's folder**: a single-file book's is its
+  file name (the folder being the one its `.audiosilo` folder is in), a folder
+  book's its path inside its own folder. `size` is in bytes; `duration_ms` is the
+  file's length (the Bridge fills it for a one-file book). The server uses the list
+  only while the book's files are these (count, order, path and size), so a list
+  found on other audio never stands in.
+- `chapters` are the entries in order, `title` as spoken (or "Chapter N" when
+  none was heard), `start_ms` and `length_ms` on the whole book: the first starts
+  at 0, each where the one before ends, the last ends at the book's end. **Entry k
+  is logical chapter position k** (front matter folded into the first story
+  chapter, an unnumbered interior section into the chapter whose number it takes),
+  because the server and the players gate spoilers by ordinal: see
+  [the list](chapters.md#the-list-chapters_detectedjson).
+- 2 to 2000 chapters: a book of one chapter gets no file.
+
+Beside it, `bridge.json` carries an optional **`chapters`** object saying which
+job wrote it:
+
+```json
+"chapters": { "job_id": 21, "generated_at": "2026-10-17T10:02:11Z", "from": "narration", "chapters": 24 }
+```
+
+A `chapters.detect` job adds or replaces just this object in the book's existing
+`bridge.json`, keeping every other field, as a `sidecars.describe` job does with
+its `description` object. A generate run keeps it too, and its presence is how
+the Bridge knows a book's characters and recaps were positioned on chapters found
+in the narration: it never writes `chapters.json` beside characters and recaps made
+without them (their spoiler positions would move). The server doesn't read the
+object.
+
 ## How the Bridge writes them
 
 1. **Through the checked mapping only**: the book is located with
@@ -104,6 +160,9 @@ holding a JSON object) it writes a fresh one of its own `kind`.
    A file over 4 MiB fails the write (the server wouldn't read it).
    `description.json` follows in a **second save** once the description step has
    run (the characters and recaps never wait for it), only when the step got one.
+   `chapters.json` (Phase 1d) is saved **first**, as soon as the engine has found
+   the chapters of a book with no markers, before the characters and recaps exist,
+   then again with them at the finish.
 5. Then `POST /bridge/rescan {library_id, path, mode: "attachments"}`.
 
 The same content is never written twice in a run (a content hash), and a book
@@ -113,7 +172,8 @@ regenerate whose own description step got none leaves the earlier
 `description.json` in place, and its new `bridge.json` carries the existing
 `description` object over (only beside a `description.json` that is a regular
 file), so the kept file stays vouched for. A `sidecars.describe` job writes only
-`description.json` and `bridge.json`, through the same write rules (mapping
+`description.json` and `bridge.json`, and a `chapters.detect` job only
+`chapters.json` and `bridge.json`, through the same write rules (mapping
 re-checked, `book_not_writable` parks, the book's current path), then asks for the
 same attachments rescan.
 
@@ -125,11 +185,12 @@ ignore rules), it **lists it once, without going in**: it records the known
 regular files (a known name, alone or after a stem) with their sizes and
 modification times, by the folder holding it. A book's **signature** is its own
 part of that listing, `name:size:mtime_ns` for each of its known names present,
-in the order `characters.json`, `recaps.json`, `description.json`, `bridge.json`,
-joined by commas (`""` for none), its stem taken off. Adding `description.json`
-(Phase 1c) kept the other three in their order, so a book without one keeps the
-signature it had byte for byte; a book that has one was read before the name was
-known, so its signature changes and the next scan reads it again. It is stored on the book row
+in the order `characters.json`, `recaps.json`, `description.json`,
+`chapters.json`, `bridge.json`, joined by commas (`""` for none), its stem taken
+off. Adding `description.json` (Phase 1c) and `chapters.json` (Phase 1d) kept the
+others in their order, so a book without them keeps the signature it had byte for
+byte; a book that has one was read before the name was known, so its signature
+changes and the next scan reads it again. It is stored on the book row
 (`attachments_sig`) with the `indexed_at` it was read for
 (`attachments_indexed_at`).
 
@@ -160,8 +221,15 @@ the Bridge's call after writing, which a full re-index (ffprobe, tags, cover and
 fingerprint of every part) must not cost. It answers what is now indexed:
 
 ```json
-{ "path": "Author/Book", "attachments": { "characters": true, "recaps": true, "description": true, "bridge": true } }
+{ "path": "Author/Book", "attachments": { "characters": true, "recaps": true, "description": true, "chapters": false, "bridge": true } }
 ```
+
+Unlike the other files, `chapters.json` changes what the effective row holds (the
+book's chapters), so recording the attachments, from this refresh or a scan's
+backfill (`SetAttachments`), re-resolves the book (`refreshEffective`) and fires the
+scan's change listener when its stored `chapters` changed, or when its stored
+reading wasn't made for this index (an older server re-indexed the book, rebuilding
+its chapter rows without the list), and only then.
 
 `404 not_indexable` when no indexed book is there. The route is in
 [the reference](../server/api/reference.md#post-apiv1bridgerescan).
@@ -180,6 +248,7 @@ newer pipeline may add some) into the meta model types, then checked:
 | `recaps.json` | every recap has `text` and a `through.chapter` of 0 or more; at most 2000 recaps |
 | `description.json` | the `text`, trimmed (and stored trimmed), is 200 to 1500 code points (meta's `description.schema.json` bounds, which `TestDescriptionBoundsMatchTheSchema` reads from audiosilo-meta's embedded schemas) and holds no control character but a newline: the player shows it as it is (`metadata.ParseDescription`) |
 | all three | every string at most 20,000 bytes; `work` and `license` at most 200 bytes; at most 100 `sources` |
+| `chapters.json` | `version` 1; 2 to 2000 chapters, each title 1 to 200 bytes once trimmed (stored trimmed) with no control character, the first starting at 0, each after the one before and within a second of its end, every length above 0; 1 to 2000 files, each path relative (no backslash, no empty segment, none starting with a dot: no `..`, no hidden name), at most 4096 bytes, size and length 0 or more (`metadata.ParseChapterList`) |
 | `bridge.json` | only a file that isn't a JSON object of the format fails; each value is trimmed and dropped (not the file) when it is over 200 bytes or holds a control character; `generated_at` (and the `description` object's `generated_at`) is kept only as RFC 3339 (rewritten in UTC); a negative `job_id` is `0` |
 
 One entry failing fails the whole file: the pipeline validates its own output,
@@ -190,7 +259,7 @@ recaps and a blank summary, or a description with a blank text, counts as none.
 
 ## Storage
 
-Migrations `0048` and `0050`:
+Migrations `0048`, `0050` and `0051`:
 
 - `books.attachments_sig` (`TEXT NOT NULL DEFAULT ''`) and
   `books.attachments_indexed_at` (`TEXT`, `NULL` until read): the signature and
@@ -200,6 +269,9 @@ Migrations `0048` and `0050`:
   that isn't there or can't be used; `updated_at`): one row per book with any.
 - `book_attachments.description` (`0050`, `TEXT NOT NULL DEFAULT ''`): the checked
   `description.json`, the same way.
+- `book_attachments.chapters` (`0051`, `TEXT NOT NULL DEFAULT ''`): the checked
+  `chapters.json`, the same way. It is a chapter source, not content `/meta`
+  serves: see [Generated chapters](../server/community-chapters.md#generated-chapters).
 
 Both are derived from the files, so they are **rebuildable**: not durable state,
 never carried by a move (a moved book's folder takes its `.audiosilo/` along, and
@@ -208,7 +280,8 @@ the scan reads it at the new path). See
 
 **`Book.generated`** (`generated: true` on the wire, omitted otherwise) says a
 book's signature names a characters, recaps or description file (`sigParts`, an
-allow-list: `bridge.json` alone, or a name a later server adds, is none). It is
+allow-list: `bridge.json` or `chapters.json` alone, or a name a later server adds,
+is none: found chapters are the book's chapters, not generated content). It is
 read from the narrow column, so a list never joins `book_attachments`, and every
 book object carries it (lists, search, `item`, recent, the next book's `book`):
 the player uses it to ask `/meta` for a book with no ASIN or ISBN. Off the wire,

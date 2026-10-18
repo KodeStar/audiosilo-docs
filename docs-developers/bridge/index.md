@@ -148,6 +148,9 @@ the mark; see [generated content](../server/api/reference.md#generated-content))
 - [Characters and recaps](generating.md) - `sidecars.generate`: queueing, the
   estimate, the run, its progress, parks and result, the description step and
   `sidecars.describe`, budgets and the transcript retention.
+- [Chapterless books](chapters.md) - Phase 1d: the windows, the
+  `chapter_detecting` stage and its detector, `chapters.detect`, and how the
+  chapters reach the server.
 - [The .audiosilo folder](attachments.md) - where the results go, their formats,
   and how the server finds, checks and serves them.
 - [The agent container](agent-container.md) - where the AI agents run, and the

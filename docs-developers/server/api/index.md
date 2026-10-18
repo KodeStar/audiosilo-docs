@@ -227,9 +227,12 @@ Failures a person can fix also carry a machine-readable **`code`** next to
 | `has_members` | `409` | `PATCH /admin/users/{id}` assigning a person who has household members of their own |
 | `invalid_keep_members` | `400` | `DELETE /admin/users/{id}?keep_members=` with an entry that isn't one of that person's members |
 | `kind_unavailable` | `409` | `POST /admin/bridge/jobs` (or `GET /admin/bridge/estimate`) for a kind the paired Bridge doesn't run, or before any Bridge has reported |
-| `library_not_writable` | `409` | `POST /admin/bridge/jobs` for a kind that writes (`sidecars.generate`, `sidecars.describe`) in a library the Bridge's last heartbeat doesn't report mapped and writable |
+| `library_not_writable` | `409` | `POST /admin/bridge/jobs` for a kind that writes (`sidecars.generate`, `sidecars.describe`, `chapters.detect`) in a library the Bridge's last heartbeat doesn't report mapped and writable |
 | `cannot_contribute` | `409` | `POST /admin/bridge/jobs` for `sidecars.generate` with `contribute: "issue"` while the Bridge's last heartbeat doesn't say it can contribute (`estimates.sidecars.can_contribute`) |
-| `generate_open` | `409` | `POST /admin/bridge/jobs` for `sidecars.describe` while a `sidecars.generate` job is open for the book (it writes the description when it finishes) |
+| `generate_open` | `409` | `POST /admin/bridge/jobs` for `sidecars.describe` or `chapters.detect` while a `sidecars.generate` job is open for the book (it writes the description, and finds a chapterless book's chapters, itself) |
+| `detect_open` | `409` | `POST /admin/bridge/jobs` for `sidecars.generate` while a `chapters.detect` job is queued or working for the book (the generate job after it reuses its transcription), or for `sidecars.describe` while one is open |
+| `describe_open` | `409` | `POST /admin/bridge/jobs` for `chapters.detect` while a `sidecars.describe` job is open for the book |
+| `chapters_chosen` | `409` | `POST /admin/bridge/jobs` for `chapters.detect` for a book whose chapter source an admin chose (`files` or `community`): chapters found in the narration stand in only with no choice |
 | `finished` | `409` | `POST /admin/bridge/jobs/{id}/cancel` on a job that already ended |
 | `not_held` | `409` | the Bridge's `PATCH /bridge/jobs/{id}` from a claim that no longer holds the job (it ended, was cancelled, its lease ran out, or it no longer exists) |
 | `no_heartbeat` | `409` | the Bridge's `GET /bridge/jobs/next` before its first heartbeat |
@@ -438,7 +441,7 @@ the server:
 
 | Flag | Gates |
 |---|---|
-| `bridge` | anything that needs the [Bridge](reference.md#the-bridge). It is `true` only while a Bridge is paired and its last heartbeat is under two minutes old, so it turns off when the Bridge stops. While it is `true`, a top-level `bridge: {version, features}` object sits beside `capabilities`: `features` lists the job families the Bridge runs that the server knows (`bridge`, and `sidecars` for generating characters and recaps and, from a Phase 1c Bridge, descriptions; a list, never `null`). The server reuses the heartbeat it read for up to 5 seconds, so the flag can lag by that much. Check the flag **and** the feature you need: the player shows an admin **Generate characters and recaps** only with `bridge`, `sidecars` in `features` and `metadata` |
+| `bridge` | anything that needs the [Bridge](reference.md#the-bridge). It is `true` only while a Bridge is paired and its last heartbeat is under two minutes old, so it turns off when the Bridge stops. While it is `true`, a top-level `bridge: {version, features}` object sits beside `capabilities`: `features` lists the job families the Bridge runs that the server knows (`bridge`, `sidecars` for generating characters and recaps and, from a Phase 1c Bridge, descriptions, and `chapters` for finding a chapterless book's chapters, from a Phase 1d Bridge; a list, never `null`). The server reuses the heartbeat it read for up to 5 seconds, so the flag can lag by that much. Check the flag **and** the feature you need: the player shows an admin **Generate characters and recaps** only with `bridge`, `sidecars` in `features` and `metadata`, and the console's Health offers **Detect chapters** only with `chapters` in `features` |
 
 Gate on the flag rather than on the server version: an older server answers
 `size=` and `narrator=` by ignoring them (full art, the unfiltered list) and the

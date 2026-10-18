@@ -236,11 +236,14 @@ timeline); `GET .../chapters` returns `{ chapters, files, duration }`.
 cumulative `offsets` and overlays chapters by `book_offset`.
 
 The chapters may be a community recording's list fitted onto the audio instead of
-the files' own ([Community chapters](../server/community-chapters.md)); they keep
-this exact shape, so a player needs nothing to play them. `chapters_source:
-"community"` on `/chapters` and the `/item` book is the only additive marker
-(mirrored as `Book.chapters_source` / `ChaptersResponse.chapters_source`): the
-player's book page captions such chapters, and a downloaded book replaces its
+the files' own ([Community chapters](../server/community-chapters.md)), or the
+chapters a Bridge found in the narration of a book with none of its own (Bridge
+Phase 1d, [Generated chapters](../server/community-chapters.md#generated-chapters));
+they keep this exact shape, so a player needs nothing to play them.
+`chapters_source: "community"` or `"generated"` on `/chapters` and the `/item`
+book is the only additive marker (mirrored as `Book.chapters_source` /
+`ChaptersResponse.chapters_source`, the `ChaptersSource` union): the player's book
+page captions such chapters (an older app shows them as ordinary chapters), and a downloaded book replaces its
 saved chapters with a newer server answer while its audio files are unchanged
 (same paths, order and sizes; `startChapterRefresh`).
 
@@ -733,6 +736,21 @@ both repos, with a test on each side.
   estimate gains `can_describe` and `has.*.description`, the admin book detail
   `generated_description`, the attachments rescan answer `description`. Detail:
   [The description step](../bridge/generating.md#the-description-step).
+- **Chapterless books (Phase 1d):** a single file with no usable chapter markers
+  is transcribed in windows and its chapters found in the narration; the Bridge
+  writes them as `.audiosilo/chapters.json` (version 1, `files` named relative to
+  the book's folder with their sizes, `chapters` on the whole-book timeline,
+  contiguous, 2 to 2000, entry k being logical position k), which the server
+  stores checked (`book_attachments.chapters`, migration `0051`) and uses as a
+  chapter source between the community's and the files' (`chapters_source:
+  "generated"`; only with no admin choice and only on the files it was found on).
+  `chapters.detect` (feature `chapters`, params `{}`) does it without the agent
+  for Health's `no_chapters`; `409 generate_open`, `detect_open`,
+  `describe_open` and `chapters_chosen` keep it apart from the other kinds. The
+  rescan answer gains `attachments.chapters`, admin rows `chapter_choice`, the
+  admin book detail `generated_chapters_fit`. A change to the file touches the
+  Bridge's writer and the server's reader. Detail:
+  [Chapterless books](../bridge/chapters.md).
 - **The player (Phase 1a):** its first admin-only UI, gated on `user.role ===
   'admin'`, `capabilities.bridge`, `bridge.features` holding `sidecars` and
   `capabilities.metadata`; `Book.generated` makes it ask `/meta` for a book with no
