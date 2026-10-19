@@ -128,7 +128,7 @@ minutes** old (`bridge.OnlineWindow`). Then, and only then, `GET /server` says
 `capabilities.bridge: true`, with a top-level `bridge: {version, features}` beside
 `capabilities`. `features` are the job families the Bridge runs **that the server
 knows**: the part of each known kind before its dot, so `bridge.verify` gives
-`bridge`, `sidecars.generate` (or `sidecars.describe`) gives `sidecars` and `chapters.detect` gives `chapters` (a list, `[]` for none, never `null`). The server reuses the heartbeat it
+`bridge`, `sidecars.generate` (or `sidecars.describe`) gives `sidecars` and `chapters.detect` gives `chapters` (a list, `[]` for none, never `null`). It also holds `contribute` while the heartbeat's `estimates.sidecars.can_contribute` is true: the Bridge holds a GitHub token, which the server's `contributions` [module](../server/modules.md) needs. The server reuses the heartbeat it
 read for up to **5 seconds**, so `GET /server`, which every client calls often,
 rarely reads the database for it; a pairing or an unpair drops that copy at once. A
 client checks the flag **and** the feature it needs; a feature the Bridge doesn't

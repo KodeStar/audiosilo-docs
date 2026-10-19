@@ -306,7 +306,9 @@ version.
 `browse_people`, `cover_sizes`, `next_book` and the flags added after it (the
 latest: `household` and `cast`, which gate [§15](#15-listening-in-the-house-and-casting),
 `household_members`, which gates [§16](#16-household-members-profiles-and-kids-mode-stay-client-side),
-and `bridge`, which follows the Bridge's heartbeat, [§17](#17-the-bridge-a-third-client)), plus the
+and `bridge`, which follows the Bridge's heartbeat, [§17](#17-the-bridge-a-third-client)),
+one flag per [managed module](../server/modules.md) (`contributions`: the module's
+toggle **and** its Bridge requirement met, sent `false` while off), plus the
 server version
 (`api.Version`, stamped from the release tag via ldflags). `transcode` reflects
 ffmpeg availability; `web_player` reflects whether `/web` is populated; `api_keys`
@@ -329,7 +331,10 @@ false or `/server` hasn't answered.
 
 **A change requires:** adding a capability is a two-repo change - flip the flag as
 the feature lands server-side, and gate the new UI on it client-side. Never assume
-a capability is present.
+a capability is present. A module's flag is its id: the player's `CapabilityKey` is
+open (`keyof Capabilities | (string & {})`, read with `hasCapability`), so its module
+registry (`src/modules/registry.ts`, empty for now) can name flags `types.ts`
+doesn't.
 
 ## 9. The web player is served *by* the server at `/web`
 
@@ -685,7 +690,12 @@ both repos, with a test on each side.
   is under two minutes old, with `bridge: {version, features}` beside
   `capabilities` (`features` a list, never `null`; the server reuses a heartbeat
   it read for up to 5 s). Clients never assume it, and a feature the Bridge doesn't
-  advertise is off even when the flag is on.
+  advertise is off even when the flag is on. Besides the job families, `features`
+  holds `contribute` while the heartbeat's `estimates.sidecars.can_contribute` is
+  true (no heartbeat field was added for it), and a
+  [managed module](../server/modules.md) that needs a feature
+  (`contributions` needs `contribute`) has its flag `true` only while it is on and
+  the online Bridge offers it.
 - **The job model:** the server's `bridge_jobs` row is the intent and the lease
   (path-keyed, moved with its book, gone with its library); the Bridge's
   `server_jobs` row is the execution truth. Leases of 2 minutes, renewed by every

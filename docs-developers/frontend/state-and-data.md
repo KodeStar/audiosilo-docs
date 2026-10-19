@@ -276,6 +276,40 @@ up / Move down send `position` = the visible index (`moveIndex` in
 `collections-model.ts`, `moveItem` in `up-next-model.ts`), and an Undo re-adds at
 the old index. `useSetQueue` / `useSetCollectionItems` have no caller.
 
+### Player modules (`src/modules/`)
+
+A server's [managed modules](../server/modules.md) ship off; an admin turns one on in
+the console, and its capability flag (named after the module) reads `true` only while
+it is on **and** its Bridge requirement is met. The player's side is its own registry,
+`PLAYER_MODULES` in `src/modules/registry.ts` (not the repo-root `modules/`, which
+holds the native Expo modules). It is **empty** since Bridge Phase 2a: the slots are
+open and exercised only by tests, so the player renders exactly as before. The
+Contributions module's player part comes with it in a later release.
+
+- **A module** is a `PlayerModule`: `{id, homeRails?, youSections?, bookActions?}`,
+  `id` being its capability flag. `homeRails` renders on Home once, after Next in your
+  series (`ModuleRails`); `youSections` (`{key, label, render}`) are sections of the
+  You hub, after Account on a phone and after Journal in the wide sub-nav (a `key`
+  that names one of the hub's own sections is ignored, and `parseYouSection` opens
+  Stats for an off module's link); `bookActions` adds items to the book page's menu
+  (`HeroActions`, after Regenerate) for a book whose server has the flag. A slot
+  returns elements, so its hooks live in the components it returns; `bookActions` is
+  a plain function, never a hook.
+- **Which are on.** `useActiveModules(list)` keeps the modules some server of the
+  person listening has on (`anyCapability` over `useCapabilitiesAll`); `useModulesOn(cid,
+  list)` one server's, since a book's actions go to its own server. Each slot reads
+  them through `WithActiveModules` (`active-modules.tsx`), which asks nothing with an
+  empty list. Slots take an optional `modules` prop (default the registry), which the
+  tests fill with a fake.
+- **Capability keys are open.** `CapabilityKey` is `keyof Capabilities | (string &
+  {})`, accepted by `useCapability`, `cachedCapability`, `anyCapability`, the gated
+  query and mutation helpers and `CapabilityError`, so a module can name a flag
+  `types.ts` doesn't. Read a flag with `hasCapability(caps, flag)` (absent reads
+  `false`), never `caps[flag]`. `Capabilities.contributions` is typed already and
+  read by nothing yet; `ServerInfo.bridge.features` may hold `contribute`.
+- The book page's tabs (`BookTab`), the book menu's own keys (`BookActionKey`) and
+  Settings' sections (`SettingsSection`) stay closed until a module needs them.
+
 ### The listener's own state (player redesign Phase 1b)
 
 Phase 1b adds the listener's own state to the data layer the same way: typed

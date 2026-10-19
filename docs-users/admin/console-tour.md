@@ -193,8 +193,9 @@ use the arrow keys to move and Enter to open.
 - **Settings** - each [Server > Settings](server.md#settings) topic
   (**General**, **Network & HTTPS**, **Players & app links**, **Community
   metadata**, **Transcoding**, **Household**, **Demo mode**, **Backups**,
-  **Notifications**, **Import** and **Bridge**; typing "https", "proxy", "ffmpeg",
-  "restore", "webhook", "audiobookshelf" or "pair" finds the right one), **Scan schedules and skipped files** (opens
+  **Notifications**, **Import**, **Bridge** and **Modules**; typing "https",
+  "proxy", "ffmpeg", "restore", "webhook", "audiobookshelf", "pair" or
+  "plugins" finds the right one), **Scan schedules and skipped files** (opens
   Library > Libraries, where each library's
   [schedule and skipped files](libraries.md#scanning-on-a-schedule) are
   edited), the three themes and the console's languages.

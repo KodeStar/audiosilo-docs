@@ -1,6 +1,6 @@
 ---
 title: "Server settings, updates and logs"
-description: "The Server pages of the AudioSilo admin console: every setting you can change while the server runs (name, address, HTTPS, app links, community metadata and keeping a local copy of it, transcoding, household members, demo mode, backups, notifications, importing from Audiobookshelf), which ones wait for a restart, checking for new versions and what that sends, reading the server's log, and the audit log of what admins (and the people managing household members) changed."
+description: "The Server pages of the AudioSilo admin console: every setting you can change while the server runs (name, address, HTTPS, app links, community metadata and keeping a local copy of it, transcoding, household members, demo mode, backups, notifications, importing from Audiobookshelf, the Bridge, optional modules), which ones wait for a restart, checking for new versions and what that sends, reading the server's log, and the audit log of what admins (and the people managing household members) changed."
 ---
 
 The **Server** destination in the [admin console](console-tour.md) is where
@@ -23,7 +23,7 @@ space, backups - is on [Health > System](health.md#system).
 **Server > Settings** lists its topics down the left (across the top on a
 phone): **General**, **Network & HTTPS**, **Players & app links**,
 **Community metadata**, **Transcoding**, **Household**, **Demo mode**,
-**Backups**, **Notifications**, **Import** and **Bridge**. Each setting lives in exactly one of them.
+**Backups**, **Notifications**, **Import**, **Bridge** and **Modules**. Each setting lives in exactly one of them.
 Backups, Notifications, Import and Bridge have pages of their own:
 [Backups and restoring](backups.md),
 [Notifications and the bell](notifications.md),
@@ -355,6 +355,47 @@ The **Demo mode** card runs a public demo from this server (see
   (200).
 - **Remove idle guests after** - a length of time like `30m`, `2h` or `24h`;
   empty means 24 hours. Waits for a restart.
+
+### Modules
+
+![Server settings, Modules](/img/screenshots/admin/settings-modules.png)
+
+Modules are optional features you choose to turn on. Every module starts off,
+and nothing turns one on for you: pairing a Bridge doesn't either. **Modules**
+shows a card for each one, with what it does, **Learn more** (which opens this
+section) and its **Enable** switch. The switch saves the moment you flip it,
+and the module starts or stops at once, with no restart.
+
+Some modules need a [Bridge](bridge.md). Their card says where your Bridge
+stands, under the switch:
+
+- **Needs a Bridge** - no Bridge is paired, or it hasn't reported in the last
+  two minutes. **Bridge settings** takes you to pair one or see what is wrong.
+- What your Bridge is missing, like **Sign in to GitHub on your Bridge** - the
+  Bridge is online but can't do what this module needs yet. **Bridge settings**
+  is there too.
+- **Bridge ready** - the Bridge can do it.
+
+You can turn a module on before its Bridge is ready. Its card then says "On,
+but hidden from listeners until the Bridge is ready.": what the module adds
+stays out of sight until the Bridge can do it, and goes again if the Bridge
+goes offline, without you touching the switch.
+
+The modules today:
+
+- **Contributions** - sends your book corrections, and the characters and
+  recaps your Bridge generates, to the community metadata database, so every
+  AudioSilo server can use them. It needs a Bridge that has been given a GitHub
+  token (see
+  [Contributing to the community](../getting-started/running-a-bridge.md#contributing-to-the-community)).
+  It arrives in a later release: in this one, turning it on changes nothing
+  else yet. The generate dialog's **Also contribute to the community** works
+  as before, with the module on or off.
+
+The `AUDIOSILO_MODULES_<NAME>_ENABLED` variable sets a module's switch too
+(`AUDIOSILO_MODULES_CONTRIBUTIONS_ENABLED=true` turns Contributions on), and
+then locks it here, like any [setting set somewhere else](#settings-set-somewhere-else).
+Each change is in the [audit log](#audit-log) as a settings change.
 
 ## About and updates
 
