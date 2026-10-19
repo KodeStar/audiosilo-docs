@@ -1,6 +1,6 @@
 ---
 title: Testing the player
-description: "The jest-expo harness, the checks npm test runs before jest, the global mocks in jest.setup.ts (including FlashList's measurements), the conventions that keep logic testable, rendering covers and grids, the overlay and route-tree harnesses, the patterns for mocking fetch, reachability, and Platform.OS, and the native checks (the Android JVM tests, the iOS self-check, Android Auto on the Desktop Head Unit, CarPlay in the Simulator, on-device checks)."
+description: "The jest-expo harness, the checks npm test runs before jest, the global mocks in jest.setup.ts (including FlashList's measurements), the conventions that keep logic testable, rendering covers and grids, the overlay and route-tree harnesses, the patterns for mocking fetch, reachability, and Platform.OS, and the native checks (the Android JVM tests, an Android release build, the iOS self-check, Android Auto on the Desktop Head Unit, CarPlay in the Simulator, on-device checks)."
 ---
 
 Every piece of new logic in the frontend ships with a unit test. The harness is
@@ -323,7 +323,7 @@ Co-located suites exist for:
 | Playback | `src/playback/book-queue.test.ts`, `progress-sync.test.ts`, `store.test.ts`, `service.web.test.ts`, `sleep-timer.test.ts`, `auto-sleep.test.ts`, `auto-sleep-controller.test.ts`, `rate.test.ts`, `next-book.test.ts`, `prettify-title.test.ts`, `types.test.ts`, `transcode.test.ts` (the web negotiation rules), `up-next-resolver.test.ts` (what plays next), `up-next-sources.test.ts`, `jump-undo.test.ts`, `time-left.test.ts`, `drift.test.ts`, `drift-controller.test.ts`, `last-interaction.test.ts`, `use-shake-to-extend.test.ts` (the burst detector and sensitivity tunings), `place-reconcile.test.ts` (a loaded book picks up another device's place), `engine-ticks.test.ts` (`engineTicker`), `service.native.test.ts` (the native bridge: the newer events, `load`'s `book` only on a binary that takes it), `store-adopt.test.ts` (`adoptLoaded`: no engine reload, saves under the adopted book, the floor is the adopted place), `effects.test.ts` (where Smart speed and Voice boost apply), `time-saved.test.ts`, `book-source.test.ts` (where a book plays and resumes from), `store-race.test.ts` (the bridge created once however many callers race; a remote move while a book loads is ignored) |
 | Downloads | `src/downloads/store.test.ts`, `offline-meta.test.ts`, `offline-companion.test.tsx` (a downloaded book's community data end to end, offline), `keep-ahead.test.ts`, `keep-ahead-controller.test.ts`, `failure.test.ts`, `downloads-view.test.ts`, `use-download-controls.test.ts`; `src/components/downloads/downloads-screen.test.tsx` |
 | Car and widgets | `src/car/car-model.test.ts` (the snapshot, item ids, play specs), `car-artwork.test.ts`, `car-controller.test.ts` (writes, play requests, bookmarks, adopting), `car-task.test.ts`; `src/widgets/widget-model.test.ts`, `widget-sync.ios.test.ts`; `src/lib/bootstrap.test.ts` (the shared launch steps) |
-| Config plugins | `plugins/withCarPlay.test.ts` (the scene manifest, the AppDelegate rewrite over an SDK 56 fixture, the default-on entitlement and its `AUDIOSILO_CARPLAY=0` opt-out), `plugins/withCast.test.ts` (the Cast options, the Android expanded controller, both plugins in `app.json` order over the SDK 56 AppDelegate), `plugins/withWidgetsNoPush.test.ts` |
+| Config plugins | `plugins/withCarPlay.test.ts` (the scene manifest, the AppDelegate rewrite over an SDK 56 fixture, the default-on entitlement and its `AUDIOSILO_CARPLAY=0` opt-out), `plugins/withCast.test.ts` (the Cast options, the Android expanded controller, both plugins in `app.json` order over the SDK 56 AppDelegate), `plugins/withWidgetsNoPush.test.ts`, `plugins/build-properties.test.ts` (the `expo-build-properties` options: cleartext http and R8 on Android, React Native from source on iOS) |
 | Cast | `src/cast/cast-media.test.ts` (the pure casting rules), `cast-token.test.ts`, `cast-prepare.test.ts`, `cast-service.test.ts`, `routed-service.test.ts` (the route switch), `cast-session.test.ts`, `cast-store.test.ts`, `cast-button-model.test.ts`, `cast-button.test.tsx`, `driver.native.test.ts`, `driver.web.test.ts` (one tab owns a session), `sdk-shapes.test.ts`, `web-sender.test.ts` |
 | Listening in the house | `src/components/house/house-model.test.ts`, `house-row.test.tsx`, `in-the-house-card.test.tsx`, `house-sharing-row.test.tsx`; `src/components/series/portrait.test.tsx` (the avatar and its ring); `src/api/hooks-household.test.tsx` (gating and polling) |
 | Profiles | `src/stores/profiles.test.ts`, `src/lib/profile-pin.test.ts`, `sha256.test.ts`, `random.test.ts`; `src/components/profiles/profiles-model.test.ts`, `profiles-screen.test.tsx`, `pin-dialog.test.tsx`; `src/components/shell/auth-gate.test.tsx`, `profile-menu.test.tsx` |
@@ -379,6 +379,7 @@ Simulator. Jest and the web prove nothing about Swift or Kotlin.
 | Android Auto (the service, the browse tree, the `MediaItems` queue builder and extras, the car snapshot, the car JS) | [the DHU](#android-auto-on-the-desktop-head-unit) |
 | CarPlay, the UIScene life cycle (`withCarPlay.js`, the scene delegates) | [the CarPlay Simulator](#carplay-in-the-ios-simulator) |
 | Lock screens, the audio effects by ear, widgets, the Live Activity, the token store | [a device](#on-devices) |
+| A native dependency added or upgraded, `android.extraProguardRules` | [an Android release build](#an-android-release-build) |
 
 ### Android JVM tests
 
@@ -392,6 +393,22 @@ cd android
 ```
 
 Gradle needs JDK 17; point `JAVA_HOME` at it if the default is newer.
+
+### An Android release build
+
+Release builds run R8 (minify and resource shrinking, see
+[releasing](../contributing/releasing.md#the-app-store-track-ios--android)); debug builds
+don't, so only a release build shows a class or resource R8 stripped. `run:android` reuses
+an existing `android/` folder without applying `app.json` again, so prebuild first:
+
+```sh
+CI=1 npx expo prebuild -p android --no-install
+npx expo run:android --variant release   # signed with the debug keystore
+```
+
+Then exercise what the dependency does (playback, Cast, Android Auto) and watch
+`adb logcat` for a `ClassNotFoundException`, `NoSuchMethodError`, `NoSuchFieldError` or
+`Resources$NotFoundException`.
 
 ### The iOS self-check
 

@@ -190,11 +190,22 @@ meta repo at the workspace root). The honest summary:
   production).
 - **Android release builds are minified and resource-shrunk with R8**, enabled by
   the `expo-build-properties` plugin entry in `app.json` (`enableMinifyInReleaseBuilds`,
-  `enableShrinkResourcesInReleaseBuilds`). A release-only `ClassNotFoundException`
-  or `NoSuchMethodError` means R8 stripped something: add a keep rule to the same
-  plugin entry's `android.extraProguardRules`; never turn minify off. R8's mapping
-  file ships inside the `.aab`, so the Play Console deobfuscates crash traces
-  without a separate upload.
+  `enableShrinkResourcesInReleaseBuilds`). Debug builds and jest never run R8, so a
+  new or upgraded native dependency needs
+  [an Android release build](../frontend/testing.md#an-android-release-build) before
+  it ships. A release-only `ClassNotFoundException`, `NoSuchMethodError` or
+  `NoSuchFieldError` (or a field read by reflection arriving empty) means R8 stripped
+  code: add a keep rule to the same plugin entry's `android.extraProguardRules`, one
+  comment per rule saying what it keeps; never turn minify off. A release-only
+  `Resources$NotFoundException` is the resource shrinker instead, which a ProGuard
+  rule can't keep: the resource needs a `tools:keep` list in its own `res/raw/*.xml`,
+  written by a config plugin (React Native already generates `raw/keep.xml`, so not
+  that name). R8's mapping file ships inside the `.aab`, so the Play Console
+  deobfuscates crash traces without a separate upload. A `preview` build (internal
+  distribution) is an APK whose mapping is kept nowhere: to trace one, build it with
+  `EAS_LOCAL_BUILD_SKIP_CLEANUP=1 eas build --local` and keep
+  `android/app/build/outputs/mapping/release/mapping.txt` from the working directory
+  it leaves behind.
 - **The project is on the EAS free tier**, so the preferred path is
   **`eas build --local`** - it compiles on your own machine (no build-quota
   usage, no cloud queue) while still using EAS-managed signing credentials and
