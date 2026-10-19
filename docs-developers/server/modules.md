@@ -13,7 +13,8 @@ The framework landed in Bridge Phase 2a with one module, `contributions`, as an
 inert shell (no routes, no background work) so the console has a real card and the
 framework can be exercised; Phase 2b fills it. `transcode`, `metadata` and `bridge`
 are not modules: their keys, variables and flags shipped before the framework, and
-none is a plain runtime on/off.
+none is just a toggle (`transcode` follows ffmpeg, `metadata` needs its service built
+at start as well as its switch, `bridge` follows the heartbeat).
 
 ## What a module is (`internal/modules`)
 
@@ -62,8 +63,10 @@ a job family: see
 ## Routes: always mounted, gated on the toggle
 
 A module mounts its routes through the `Registrar` it is given: `Admin(pattern, h)`
-puts `h` behind `requireAdmin`, `User(pattern, h)` behind `requireAuth`, and both then
-behind `requireModule`, which answers **`404 module_off`** while the toggle is off. A
+puts `h` behind `requireAdmin`, `User(pattern, h)` behind `requireAuth`, and inside
+that check `requireModule`, which answers **`404 module_off`** while the toggle is off.
+The auth check runs first, so a caller it refuses gets its `401` or `403`, never
+`module_off`. A
 pattern must be `"METHOD /api/v1/..."`, so the global middleware and the auth
 wrappers apply; anything else panics when the server starts (`checkModulePattern`).
 
@@ -106,9 +109,11 @@ stands with the Bridge (shape in the
 from the locale files (`settings.module.<id>.*`). The card's parts are described with
 the rest of the console in [The web UI](web-ui.md).
 
-A settings page a module brings goes in `settings-model.ts`'s `MODULE_PAGES`;
-`visiblePages` lists it only while the module's toggle is on, and a `?topic=` for a
-hidden one opens General.
+A settings page a module brings is a `SETTINGS_PAGES` entry like any other (with its
+icon in `PAGE_ICONS` and its case in the page's `Topic`), mapped to the module's id in
+`settings-model.ts`'s `MODULE_PAGES`. `MODULE_PAGES` adds no page: `visiblePages`
+filters `SETTINGS_PAGES` through it, listing a module's page only while the module's
+toggle is on, and a `?topic=` for a hidden one opens General.
 
 ## The player: `src/modules/`
 
@@ -127,7 +132,8 @@ before. See [Player modules](../frontend/state-and-data.md#player-modules-srcmod
 2. Its entry in `internal/modules/builtin`, with `RequiresBridge` if it needs the
    Bridge, and its own package `internal/modules/<id>` for `Routes` and `Start`.
 3. Its console copy (`settings.module.<id>.name`, `.blurb`, `.needs`) in every
-   locale, and a `MODULE_PAGES` entry if it brings a settings page.
+   locale; if it brings a settings page, that page in `SETTINGS_PAGES` and mapped to
+   the module in `MODULE_PAGES`.
 4. If listeners see it, the flag on the player's `Capabilities` type and in its
    `ModuleFlag`, and its entry in `PLAYER_MODULES`.
 5. Docs: its flag in the [capability flags](api/index.md#capability-flags---gate-your-features)

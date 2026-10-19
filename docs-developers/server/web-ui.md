@@ -653,7 +653,7 @@ CSP-sensitive work against a real build served by Go. The console's own gate is
   topic list in `?topic=` (`general` is the default and has no param;
   `network`, `players`, `metadata`, `transcoding`, `household`, `demo`, `backups`,
   `notifications`, `import`, `bridge`, `modules`; `settings-model.ts` `SETTINGS_PAGES`,
-  plus a module's own page from `MODULE_PAGES` while its toggle is on). Each card is a `SettingsForm`
+  less a module's page, mapped in `MODULE_PAGES`, while its toggle is off: `visiblePages`). Each card is a `SettingsForm`
   (`settings-form.tsx`): a draft of its fields, Reset and Save changes, only
   the changed fields sent (`sectionPatch`); list settings are edited as one
   entry per line. A refusal's `field` puts the server's message under that
@@ -769,7 +769,8 @@ CSP-sensitive work against a real build served by Go. The console's own gate is
   (an `InstantSwitch` patching `{modules: {<id>: on}}`, disabled while locked), the
   Bridge state line (`settings.modules.bridge.<state>`; for `no_feature` the module's
   own `needs` line, with **Bridge settings** linking to `?topic=bridge` unless ready)
-  and, while enabled but not `active`, the "hidden from listeners" notice. The
+  and, while the toggle is on but the Bridge state isn't `ready`, the "hidden from
+  listeners" notice (worked out from the envelope's toggle, not the list's `active`). The
   switch reads the settings envelope (a save updates it at once) over the module
   list, which can lag it by a refetch. The command palette lists the topic (keywords
   include "plugins" and "contributions"); a settings page a module brings is in

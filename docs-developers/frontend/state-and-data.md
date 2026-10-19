@@ -282,7 +282,7 @@ A server's [managed modules](../server/modules.md) ship off; an admin turns one 
 the console, and its capability flag (named after the module) reads `true` only while
 it is on **and** its Bridge requirement is met. The player's side is its own registry,
 `PLAYER_MODULES` in `src/modules/registry.ts` (not the repo-root `modules/`, which
-holds the native Expo modules). It is **empty** since Bridge Phase 2a: the slots are
+holds the native Expo modules). It is **empty** in Bridge Phase 2a: the slots are
 open and exercised only by tests, so the player renders exactly as before. The
 Contributions module's player part comes with it in a later release.
 

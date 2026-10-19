@@ -308,7 +308,7 @@ latest: `household` and `cast`, which gate [§15](#15-listening-in-the-house-and
 `household_members`, which gates [§16](#16-household-members-profiles-and-kids-mode-stay-client-side),
 and `bridge`, which follows the Bridge's heartbeat, [§17](#17-the-bridge-a-third-client)),
 one flag per [managed module](../server/modules.md) (`contributions`: the module's
-toggle **and** its Bridge requirement met, sent `false` while off), plus the
+toggle **and** its Bridge requirement met, sent `false` otherwise), plus the
 server version
 (`api.Version`, stamped from the release tag via ldflags). `transcode` reflects
 ffmpeg availability; `web_player` reflects whether `/web` is populated; `api_keys`

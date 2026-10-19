@@ -111,7 +111,7 @@ It rejects when the book can't start, and the page toasts
 | Up next menu | `queue` | Play next (at position 0, with an Undo that puts it back where it was); Add to the end / Remove from Up next (`useQueueActions`) |
 | Favourite | - | ink, never pink |
 | Add to collection | `collections` | the book menu's dialog |
-| `BookActionsMenu` | its items' own | `omit={['play', 'queue', 'collect', 'download']}` leaves Mark as finished / not finished and More in this series; renders nothing when that leaves no item. For an admin whose book has generated characters or recaps it adds **Regenerate characters and recaps** (`extra`) |
+| `BookActionsMenu` | its items' own | `omit={['play', 'queue', 'collect', 'download']}` leaves Mark as finished / not finished and More in this series; renders nothing when that leaves no item. For an admin whose book has generated characters or recaps it adds **Regenerate characters and recaps** (`extra`), then each active [player module's](state-and-data.md#player-modules-srcmodules) `bookActions` (none yet) |
 | Generate characters and recaps | `useGenerate`'s `offer === 'generate'` | an outline button after the others (its own row when stacked), for an admin a Bridge can generate for (below) |
 
 **Generating characters and recaps** (Bridge Phase 1a, `src/components/bridge/`)

@@ -35,9 +35,9 @@ Most topics are made of cards. Change what you like in a card, then press
 **Save changes** at its foot (**Reset** puts the card back as it was). Only
 the values you changed are sent. If the server refuses one - an address
 without `https://`, a time like "2 days" - the reason shows under that field
-and nothing in the card is saved, so fix it and save again. The two switches
-(**Check for new versions** and **Look up community metadata**) save the
-moment you flip them.
+and nothing in the card is saved, so fix it and save again. The switches
+(**Check for new versions**, **Look up community metadata** and each
+module's **Enable** switch) save the moment you flip them.
 
 ### When a change takes effect
 
@@ -367,7 +367,7 @@ section) and its **Enable** switch. The switch saves the moment you flip it,
 and the module starts or stops at once, with no restart.
 
 Some modules need a [Bridge](bridge.md). Their card says where your Bridge
-stands, under the switch:
+stands, under the switch's name:
 
 - **Needs a Bridge** - no Bridge is paired, or it hasn't reported in the last
   two minutes.
@@ -385,14 +385,13 @@ as the Bridge comes and goes, without you touching the switch.
 
 The modules today:
 
-- **Contributions** - sends your book corrections, and the characters and
-  recaps your Bridge generates, to the community metadata database, so every
-  AudioSilo server can use them. It needs a Bridge that has been given a GitHub
-  token (see
+- **Contributions** - for now it does nothing: in a later release it will send
+  your book corrections, and the characters and recaps your Bridge generates, to
+  the community metadata database, so every AudioSilo server can use them. It
+  needs a Bridge that has been given a GitHub token (see
   [Contributing to the community](../getting-started/running-a-bridge.md#contributing-to-the-community)).
-  For now it does nothing: its features arrive in a later release. Its variable
-  is `AUDIOSILO_MODULES_CONTRIBUTIONS_ENABLED`. The generate dialog's **Also contribute to the community** works
-  as before, with the module on or off.
+  The generate dialog's **Also contribute to the community** works as before,
+  with the module on or off.
 
 A module's environment variable (`AUDIOSILO_MODULES_CONTRIBUTIONS_ENABLED=true`
 turns Contributions on) sets its switch too, and then locks it here, like any
