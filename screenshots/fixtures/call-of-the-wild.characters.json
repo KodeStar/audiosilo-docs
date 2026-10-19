@@ -1,0 +1,93 @@
+{
+  "work": "the-call-of-the-wild",
+  "characters": [
+    {
+      "id": "buck",
+      "name": "Buck",
+      "role": "protagonist",
+      "reveal": { "chapter": 1 },
+      "description": "A large St. Bernard and Scotch shepherd cross, raised as the comfortable favourite of a California estate, who is stolen and sold north to pull sleds in the Yukon."
+    },
+    {
+      "id": "judge-miller",
+      "name": "Judge Miller",
+      "role": "minor",
+      "reveal": { "chapter": 1 },
+      "description": "The owner of the sunny Santa Clara Valley estate where Buck spends his first four years."
+    },
+    {
+      "id": "manuel",
+      "name": "Manuel",
+      "role": "minor",
+      "reveal": { "chapter": 1 },
+      "description": "One of the Judge's gardeners, whose gambling debts lead him to sell Buck to strangers."
+    },
+    {
+      "id": "man-in-the-red-sweater",
+      "name": "The man in the red sweater",
+      "role": "minor",
+      "reveal": { "chapter": 1 },
+      "description": "A dog breaker in Seattle who teaches Buck, with a club, that a man with a weapon is to be obeyed."
+    },
+    {
+      "id": "perrault",
+      "name": "Perrault",
+      "aliases": ["the courier"],
+      "role": "supporting",
+      "reveal": { "chapter": 1 },
+      "description": "A French-Canadian courier for the Canadian government who buys Buck and drives the mail team at speed."
+    },
+    {
+      "id": "francois",
+      "name": "François",
+      "role": "supporting",
+      "reveal": { "chapter": 1 },
+      "description": "Perrault's partner and the team's driver, rough but fair with the dogs."
+    },
+    {
+      "id": "curly",
+      "name": "Curly",
+      "role": "minor",
+      "reveal": { "chapter": 2 },
+      "description": "A friendly Newfoundland bought with Buck, whose fate on the beach at Dyea shows Buck how hard the new world is."
+    },
+    {
+      "id": "spitz",
+      "name": "Spitz",
+      "role": "antagonist",
+      "reveal": { "chapter": 2 },
+      "description": "The team's lead dog, a cunning and quarrelsome husky who sees Buck as a rival from the start."
+    },
+    {
+      "id": "dave",
+      "name": "Dave",
+      "role": "supporting",
+      "reveal": { "chapter": 2 },
+      "description": "A withdrawn wheel dog who asks only to be left alone and to work in the traces."
+    },
+    {
+      "id": "sol-leks",
+      "name": "Sol-leks",
+      "aliases": ["the Angry One"],
+      "role": "minor",
+      "reveal": { "chapter": 2 },
+      "description": "An old one-eyed husky who wants nobody approaching his blind side."
+    },
+    {
+      "id": "hal",
+      "name": "Hal",
+      "role": "antagonist",
+      "reveal": { "chapter": 5 },
+      "description": "A young newcomer to the north who buys the worn-out team and drives it with more confidence than sense."
+    },
+    {
+      "id": "john-thornton",
+      "name": "John Thornton",
+      "role": "supporting",
+      "reveal": { "chapter": 5 },
+      "description": "A gold seeker resting a frozen foot by the White River, who treats his dogs as friends."
+    }
+  ],
+  "license": "CC-BY-SA-4.0",
+  "sources": [{ "type": "community" }]
+}

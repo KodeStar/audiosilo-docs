@@ -983,6 +983,7 @@ let bridgeToken = null;
 let bridgeStatus = null;
 // The later Bridge steps' shots: each needs the stand-in paired here first.
 const GENERATE_SHOTS = ['admin/book-generate.png', 'admin/generate-dialog.png'];
+const STORY_SHOTS = ['admin/book-story.png', 'admin/book-story-recaps.png'];
 const DETECT_SHOTS = ['admin/health-detect-chapters.png', 'admin/detect-chapters-dialog.png',
   'admin/book-chapters-generated.png'];
 // The stand-in's heartbeat. The server keeps a heartbeat it just saved as the
@@ -990,7 +991,7 @@ const DETECT_SHOTS = ['admin/health-detect-chapters.png', 'admin/detect-chapters
 const standInHeartbeat = (status) => api(bridgeToken, 'PUT', '/bridge/status', status, BRIDGE_CLIENT);
 await step('settings: bridge', async () => {
   if (!wanted('admin/settings-bridge.png', 'admin/bridge-pair.png', 'admin/settings-bridge-paired.png',
-    ...GENERATE_SHOTS, ...DETECT_SHOTS)) return;
+    ...GENERATE_SHOTS, ...STORY_SHOTS, ...DETECT_SHOTS)) return;
   const info = await api(null, 'GET', '/server');
   if (!info?.capabilities || !('bridge' in info.capabilities)) throw new Error('this server build has no Bridge');
   try {
@@ -1103,6 +1104,72 @@ await step('bridge: generate characters and recaps', async () => {
   await shoot(page, 'admin/generate-dialog.png');
   await page.keyboard.press('Escape');
   await sleep(400);
+});
+
+// ── Characters and recaps on the book page (Bridge Phase 1e) ─────────────────
+// The Call of the Wild has the characters and recaps run.sh seeds into its
+// .audiosilo folder, and no community match, so its Characters and recaps card
+// shows them with the Generated on this server mark and their date. A generate
+// job for it that contributed both (the stand-in can contribute) is run to done
+// first, as a Bridge would report it, so the card also links each dimension's
+// community issue, "Contributed, waiting for review". Nothing is written into the
+// library: the files are run.sh's. Then the Recaps tab with its first chapter
+// opened (the rest stay closed). The viewport is made as tall as the page.
+await step('book: characters and recaps', async () => {
+  if (!wanted(...STORY_SHOTS)) return;
+  if (!bridgeToken || !bridgeStatus) throw new Error('no stand-in Bridge was paired');
+  const list = await api(token, 'GET', `/admin/books?author=${encodeURIComponent('Jack London')}&limit=50`);
+  const book = (list?.books ?? []).find((b) => `${b.title} ${b.path}`.includes('Call of the Wild'));
+  if (!book) throw new Error('no seeded Call of the Wild');
+  await standInHeartbeat(bridgeStatus);
+  await api(token, 'POST', '/admin/bridge/jobs', {
+    kind: 'sidecars.generate', library_id: book.library_id, path: book.path,
+    params: {source: 'auto', contribute: 'issue'},
+  });
+  const job = await api(bridgeToken, 'GET', '/bridge/jobs/next?wait=5&kind=sidecars.generate', undefined, BRIDGE_CLIENT);
+  if (!job || job.path !== book.path) throw new Error('the generate job was not handed out');
+  await api(bridgeToken, 'PATCH', `/bridge/jobs/${job.id}`, {
+    attempt: job.attempts, state: 'running', progress: {step: 'transcribing', message: 'Transcribing'},
+  }, BRIDGE_CLIENT);
+  await api(bridgeToken, 'PATCH', `/bridge/jobs/${job.id}`, {
+    attempt: job.attempts,
+    state: 'done',
+    result: {
+      characters: 12, recaps: 7, description: true, cost_usd: 3.4,
+      contributed: {
+        characters: 'https://github.com/KodeStar/audiosilo-meta/issues/1207',
+        recaps: 'https://github.com/KodeStar/audiosilo-meta/issues/1208',
+      },
+    },
+  }, BRIDGE_CLIENT);
+
+  await page.setViewportSize({width: 1440, height: 1500});
+  try {
+    await open(page, bookRoute(book), (p) => p.getByRole('heading', {name: 'Details', exact: true}));
+    const card = page.locator('#characters-and-recaps');
+    await card.getByText('Contributed, waiting for review').waitFor({timeout: 15000});
+    await card.getByText('Generated on this server', {exact: true}).waitFor({timeout: 8000});
+    // As tall as the page, so the whole card (Show all included) is in the viewport.
+    const tall = async () => {
+      const height = await page.evaluate(() => document.documentElement.scrollHeight);
+      await page.setViewportSize({width: 1440, height: Math.min(Math.max(height, 1500), 4000)});
+      await sleep(800);
+    };
+    await tall();
+    await card.scrollIntoViewIfNeeded();
+    await shoot(page, 'admin/book-story.png', {clip: around([await card.boundingBox()])});
+
+    if (wanted('admin/book-story-recaps.png')) {
+      await card.getByRole('tab', {name: /^Recaps/}).click();
+      await card.getByRole('button', {name: 'Through chapter 1', exact: true}).click({timeout: 8000});
+      await card.getByText('Recaps give the story away.', {exact: false}).waitFor({timeout: 8000});
+      await tall();
+      await card.scrollIntoViewIfNeeded();
+      await shoot(page, 'admin/book-story-recaps.png', {clip: around([await card.boundingBox()])});
+    }
+  } finally {
+    await page.setViewportSize(DESKTOP_CONTEXT.viewport);
+  }
 });
 
 // ── Detect chapters (Bridge Phase 1d) ────────────────────────────────────────

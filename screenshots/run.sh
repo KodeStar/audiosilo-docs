@@ -112,30 +112,34 @@ if [ "${SKIP_SEED:-0}" != "1" ]; then
     christmas_carol_1111_librivox art_of_war_librivox
 fi
 
-# ── 2b. A generated description (Bridge Phase 1c) ──────────────────────────
-# One seeded book gets the files a Bridge leaves when it writes a description
-# (sidecars.describe): .audiosilo/description.json, an own-words, spoiler-free
-# model.Description (fixtures/), and the bridge.json such a job writes (dated
-# two days ago), for admin/book-description.png and
+# ── 2b. Generated content (Bridge Phases 1a, 1c and 1e) ────────────────────
+# One seeded book gets the files a Bridge leaves when it generates characters
+# and recaps (sidecars.generate, which writes a description too):
+# .audiosilo/characters.json and recaps.json (audiosilo-meta's model.Characters
+# and model.Recaps, own words, fixtures/), description.json (an own-words,
+# spoiler-free model.Description) and the bridge.json such a run writes (dated
+# two days ago), for admin/book-description.png, admin/book-story*.png and
 # web-player/book-about-generated.png. The Call of the Wild: no other shot shows
-# its About or its Community card, and its files describe nothing themselves, so
-# the player's About falls through to the generated one. Written on every run
-# (the cached library may predate it); the server only reads it.
+# its About, its Community card or its tabs, and its files describe nothing
+# themselves, so the player's About falls through to the generated one. Written
+# on every run (the cached library may predate it); the server only reads it.
 DESC_BOOK="$LIBRARY/Jack London/The Call of the Wild"
 if [ -d "$DESC_BOOK" ]; then
   mkdir -p "$DESC_BOOK/.audiosilo"
-  cp "$HERE/fixtures/call-of-the-wild.description.json" "$DESC_BOOK/.audiosilo/description.json"
+  for part in description characters recaps; do
+    cp "$HERE/fixtures/call-of-the-wild.$part.json" "$DESC_BOOK/.audiosilo/$part.json"
+  done
   node -e '
     const at = new Date(Date.now() - 2 * 86400e3).toISOString().replace(/\.\d+Z$/, "Z");
     const prov = {
-      generator: "audiosilo-bridge", version: "0.2.0", kind: "sidecars.describe", job_id: 7,
+      generator: "audiosilo-bridge", version: "0.2.0", kind: "sidecars.generate", job_id: 7,
       generated_at: at, source: "audio", work_id: "the-call-of-the-wild", inputs: [],
       description: {job_id: 7, generated_at: at, from: "opening_notes", chapters: 2, checked_against: "transcripts"},
     };
     require("node:fs").writeFileSync(process.argv[1], JSON.stringify(prov, null, 2) + "\n");
   ' "$DESC_BOOK/.audiosilo/bridge.json"
 else
-  echo "  ! no $DESC_BOOK: the generated description shots will fail"
+  echo "  ! no $DESC_BOOK: the generated content shots will fail"
 fi
 
 # ── 3. Servers ──────────────────────────────────────────────────────────────

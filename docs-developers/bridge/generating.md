@@ -42,10 +42,26 @@ the book page's Community card (`GenerateSection`), on each series card
 book. The player offers it on the book page's action row and in the companion's
 empty Who's who and Story so far; see
 [the book page](../frontend/book-page.md#the-primary-action-and-the-action-row).
-The action reads **Generate** while the book has no characters or recaps at all,
-**Regenerate** while some were generated here, and is hidden once the community
-has both (the console decides from the estimate's `has`, the player from the
-book's `/meta` work).
+Both UIs follow one offer rule (Phase 1e), since generated content only ever
+fills a dimension the community lacks
+([`/meta`'s per-dimension merge](../server/api/reference.md#generated-content)):
+
+| The community has | Generated here | Offered |
+|---|---|---|
+| both characters and recaps | either or none | no action: "The community already has characters and recaps for this book", with a link to them (`covered`) |
+| one of them, or neither | characters or recaps | **Regenerate** |
+| one of them, or neither | none | **Generate** |
+
+The console decides from the estimate's `has` (`generateAction`: `has.community`
+is the community's own coverage, `has.local` the generated files), the player
+from the book's `/meta` work (`generateOffer`: a dimension counts as the
+community's when it has entries and `work.generated` doesn't name it). The
+console's covered line links to the book page's Characters and recaps card; the
+player's, shown only to an admin `mayGenerate` allows, opens the book page's
+Characters tab. The companion's empty Who's who and Story so far never show the
+line: an empty panel means the community lacks that half. The other guards (a job
+open, a `chapters.detect` job open, the Bridge offline, the four gates above) are
+unchanged.
 
 ## Queueing it
 

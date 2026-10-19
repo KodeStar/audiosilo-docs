@@ -119,10 +119,18 @@ is the player's first admin-only UI. `mayGenerate(user, server)`
 (`bridge-model.ts`, pure and tested) allows it for an admin who isn't a demo
 account, a household member or a kid, on a server whose `capabilities.bridge` and
 `capabilities.metadata` are on and whose `bridge.features` holds `sidecars`.
-`useGenerate` gives the page `offer`: `generate` when the book has no characters or
-recaps at all (community or generated), `regenerate` when some were generated
-here, nothing until the book's `/meta` and its jobs are known (`metaAnswered`: a
-failed lookup is no answer) or while a job shows its status. `GenerateDialog`
+`useGenerate` gives the page `offer` from `generateOffer`, the one offer rule the
+console shares (Bridge Phase 1e; [the table](../bridge/generating.md#who-sees-the-action)):
+while the community lacks characters or recaps (`communityCoverage`: entries that
+`work.generated` doesn't name), `regenerate` when some were generated here, else
+`generate`; when the community has both, no offer and `covered` instead, which
+mounts `GenerateCovered` in the hero's footer: "The community already has
+characters and recaps for this book" with **See characters**, which selects the
+Characters tab and scrolls the page to the tabs (`openCharacters`, not animated
+under reduced motion). `generateOffer` never gives `covered` without
+`mayGenerate`, so a listener never sees the line. Neither shows
+until the book's `/meta` and its jobs are known (`metaAnswered`: a
+failed lookup is no answer), nor while a job shows its status. `GenerateDialog`
 reads [`GET /admin/bridge/estimate`](../server/api/reference.md#get-apiv1adminbridgeestimate)
 and shows what the run reads, the transcription and the agent cost (for every book
 it queues), "On this server" and the earlier books of the series (ticked, queued
@@ -155,7 +163,8 @@ Story so far mount `GenerateOffer`, the same button and status.
 When the hero is stacked (under 600 measured), the primary takes its own row and the
 rest stay on **one** row: the download control gets `short` ("Download", just "Cancel"
 while it runs, its words ending in "..." rather than wrapping), and the menu opens as a
-sheet. The footer holds `DownloadProgress` and `TranscodeNote`.
+sheet. The footer holds `DownloadProgress`, `GenerateStatus`, `GenerateCovered` (only while
+`covered`) and `TranscodeNote`.
 
 ## The tabs
 

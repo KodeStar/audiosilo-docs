@@ -138,6 +138,18 @@ default) and a first book the community has no characters and recaps for (a seed
 LibriVox book has no ASIN or ISBN, so it never matches); otherwise the step fails
 and the shots keep their previous images.
 
+The Characters and recaps shots (`admin/book-story.png`,
+`admin/book-story-recaps.png`, Bridge Phase 1e) follow, on **The Call of the
+Wild**, whose `.audiosilo/` folder `run.sh` seeds with characters and recaps
+(below), so its Characters and recaps card shows them as **Generated on this
+server**. First the admin queues a `sidecars.generate` job for the book that
+contributes (the stand-in can), and the stand-in claims it and reports it `done`
+with a result naming a community issue for each part, as a Bridge that filed them
+would, so the card also shows **Contributed, waiting for review**. Nothing is
+written into the library: the files are `run.sh`'s. The card is shot clipped on
+the Characters tab (12 characters, so **Show all** shows), then on the Recaps tab
+with **Through chapter 1** opened, each in a viewport as tall as the page.
+
 The Detect chapters shots (`admin/health-detect-chapters.png`,
 `admin/detect-chapters-dialog.png`, `admin/book-chapters-generated.png`, Bridge
 Phase 1d) are the last Bridge step. The stand-in's heartbeat is sent again with
@@ -153,12 +165,14 @@ with the found chapters in use. Nothing is written into the seeded library.
 
 The generated description shots (`admin/book-description.png`,
 `web-player/book-about-generated.png`, Bridge Phase 1c) need a book with a
-`description.json`. Before the servers start, `run.sh` writes one into **The Call
-of the Wild**'s `.audiosilo/` folder on every run (the fixture
-`fixtures/call-of-the-wild.description.json`, an own-words, spoiler-free
-`model.Description`, and the `bridge.json` a description job writes, dated two
-days ago); no other shot shows that book's About or Community card, and its files
-carry no description of their own. The console shot is taken before the stand-in
+`description.json`. Before the servers start, `run.sh` writes the files a
+generate run leaves into **The Call of the Wild**'s `.audiosilo/` folder on every
+run (the fixtures `fixtures/call-of-the-wild.description.json`, an own-words,
+spoiler-free `model.Description`, and `call-of-the-wild.characters.json` and
+`.recaps.json`, own-words `model.Characters` and `model.Recaps` for the shots
+above, and the `bridge.json` a generate job writes, dated two days ago); no other
+shot shows that book's About, Community card or tabs, and its files carry no
+description of their own. The console shot is taken before the stand-in
 Bridge is paired, so its card shows only the Description part; the web shot is the
 desktop About card on the book's page, reached through Library > Books.
 
