@@ -371,7 +371,7 @@ refreshes itself every 30 seconds.
 | **Backups** | The backups folder, when the last backup was made and when the next one runs. **Failed** (with the reason) when the last backup failed; **Off** when no backups are scheduled, marked as a problem if there isn't a single backup either. See [Backups and restoring](backups.md). |
 | ***Each library*** | The library's folder, and the space free on its disk. **Needs attention** when less than a tenth of the disk is free, or when the folder isn't reachable. |
 | **Web player** | Whether people can listen in a browser at `/web`: "Built into this server.", "Served from the player folder." or, marked **Off**, "Not available. The apps still work." |
-| **AudioSilo version** | The version you run: **Healthy** when it's the newest (or, for a build of your own, "A development build, so it isn't compared with releases."), **Update available** when a newer release exists, **Needs attention** when the last check failed, or **Off** when the update check is turned off. See [About and updates](server.md#about-and-updates). |
+| **AudioSilo version** | The version you run: **Healthy** when it's the newest (or, for a build of your own or the `:edge` image, "A development build, so it isn't compared with releases."), **Update available** when a newer release exists, **Needs attention** when the last check failed, or **Off** when the update check is turned off. See [About and updates](server.md#about-and-updates). |
 
 Two notices can appear above the list:
 

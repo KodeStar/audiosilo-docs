@@ -10,6 +10,9 @@ manager's desktop builds. The structural rule that ties them together:
 > binaries consume a pinned `audiosilo-web` image; building them before the web
 > image exists (or is current) bakes in the wrong player.
 
+Separately, every push to the server's `main` publishes an `:edge` server image
+for testing before a release ([section 2](#2-server-docker-image---audiosilo-servergithubworkflowsimageyml)).
+
 This page explains how the machinery fits together. The step-by-step operator
 runbook is [Releasing](../contributing/releasing.md).
 
@@ -27,7 +30,7 @@ flowchart TB
 
     subgraph srv["audiosilo-server"]
         imageyml["image.yml<br/>docker build"]
-        srvimg[("ghcr.io/kodestar/audiosilo-server<br/>:semver + :sha + :latest")]
+        srvimg[("ghcr.io/kodestar/audiosilo-server<br/>:semver + :latest<br/>(:edge + sha- tags from main)")]
         relyml["release.yml<br/>GoReleaser"]
         ghrel[("GitHub Release (draft)<br/>tar.gz / zip, deb / rpm,<br/>checksums.txt")]
         imageyml --> srvimg
@@ -63,8 +66,19 @@ handles that here, so `web.yml` needs no explicit lowercase step (the server's
 
 ## 2. Server Docker image - `audiosilo-server/.github/workflows/image.yml`
 
-Runs on `v*` tags (plus manual dispatch with a `web_version` input, default
-`latest`). The multi-stage `Dockerfile`:
+Runs on `v*` tags, on pushes to `main`, and on manual dispatch (with a
+`web_version` input, default `latest`). Tagging via `docker/metadata-action`:
+the semver version and `:latest` on `v*` tags (a `-rc` tag included, and no
+`sha-` tag: a release is pinned by its version); off a tag, `sha-<short>`, plus
+`:edge` on `main` (every push, and a dispatch on `main` that leaves
+`web_version` at `latest`). A top-level `concurrency` group per ref cancels a
+superseded build of the same ref. A build of a branch (edge, or a dispatch on
+any branch) stamps `VERSION` as `dev-<short sha>`, the same 7 characters as its
+`sha-` tag; a tag build, pushed or dispatched on the tag, stamps the semver. An
+edge image bakes whatever `audiosilo-web:latest` points at (frontend `main`),
+and is rebuilt only by a push to the server's `main` or a dispatch on it.
+
+The multi-stage `Dockerfile`:
 
 - builds the admin console in a `node:24-alpine` stage (`npm ci` + `npm run
   build` in `admin-ui/`, on the build host's platform since the output is plain
@@ -74,7 +88,8 @@ Runs on `v*` tags (plus manual dispatch with a `web_version` input, default
 - builds the CGO-free server binary (`CGO_ENABLED=0`, `-trimpath`), stamping the
   release version via
   `-ldflags "-X github.com/kodestar/audiosilo-server/internal/api.Version=${VERSION}"`
-  (`image.yml` passes the tag as the `VERSION` build-arg; the default is `dev`);
+  (`image.yml` passes the semver on a tag build, else `dev-<short sha>`, as the
+  `VERSION` build-arg; the default is `dev`);
 - pins the player: `FROM ${WEB_IMAGE} AS web` … `COPY --from=web /web /app/web`,
   with `ARG WEB_IMAGE=ghcr.io/kodestar/audiosilo-web:latest`;
 - final stage is `alpine:3.24` with **ffmpeg installed from apk** - the Docker

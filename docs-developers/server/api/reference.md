@@ -78,7 +78,7 @@ per-connection state (token, downloads, progress, cache) on `<server_id>.<user_i
 user on one server, so two people signed in to one server stay apart (see
 [Connection identity](../../frontend/state-and-data.md#connection-identity-server_iduser_id)). It is also returned by the
 pairing exchange (`POST /auth/exchange`) and login/demo responses, so a client has
-it the moment it pairs. `version` is stamped from the release tag (`"dev"` for local builds).
+it the moment it pairs. `version` is stamped from the release tag (`"dev"` for local builds, `"dev-<short sha>"` for an `:edge` image).
 `transcode` is true only when ffmpeg is configured; `web_player` only when the
 `/web` mount is populated; `upload` and `websocket` are reserved for future
 phases and currently always false. `api_keys` is true on servers that support
@@ -6547,7 +6547,7 @@ What the console's Health > System, Server > About and Server > Logs show. All
 | Field | Meaning |
 |---|---|
 | `name` | the display name (`"AudioSilo"` when unset) |
-| `version` | as in `GET /server`: stamped from the release tag (`"dev"` for a local build) |
+| `version` | as in `GET /server`: stamped from the release tag (`"dev"` for a local build, `"dev-<short sha>"` for an `:edge` image) |
 | `install` | `"docker"` (a container: `/.dockerenv` or `/run/.containerenv` exists), `"binary"` (a release build) or `"source"` (version `dev`); the console words its "how to update" on it |
 | `started_at` | when the server started |
 | `database` | `bytes`: pages in use × page size (the WAL isn't counted); `schema`: the newest applied migration |
@@ -6636,7 +6636,7 @@ present.
 | `current` | the running version (release builds report it without the tag's `v`) |
 | `latest` | the newest release the last successful check found, or `null` before one |
 | `update_available` | `latest` is newer than `current`; always false when `comparable` is false |
-| `comparable` | `current` is a release version (`MAJOR.MINOR.PATCH`, with or without a `v`, optionally `-prerelease`); false for a local build (`dev`) or a development image (`dev-<commit>`) |
+| `comparable` | `current` is a release version (`MAJOR.MINOR.PATCH`, with or without a `v`, optionally `-prerelease`); false for a local build (`dev`) or a development image (`dev-<short sha>`) |
 | `checked_at` | the last request, successful or not; `null` before the first |
 | `error` | why the last request failed: `"rate_limited"`, `"unreachable"`, `"bad_response"`, or `""` |
 | `install` | as in `GET /admin/system` |

@@ -16,7 +16,7 @@ step-by-step runbook. The maintainer notes it follows are
 | Artifact | Built by | Trigger | Where it lands |
 |---|---|---|---|
 | `ghcr.io/kodestar/audiosilo-web` | `audiosilo-frontend/.github/workflows/web.yml` | push to `main` (`:latest`); `v*` tags (semver) | GHCR - a tiny image holding only the static web export (`baseUrl=/web`) |
-| `ghcr.io/kodestar/audiosilo-server` | `audiosilo-server/.github/workflows/image.yml` | `v*` tags; manual dispatch | GHCR - the deployable image, web player baked in at `/app/web` |
+| `ghcr.io/kodestar/audiosilo-server` | `audiosilo-server/.github/workflows/image.yml` | `v*` tags; push to `main` (`:edge`); manual dispatch | GHCR - the deployable image, web player baked in at `/app/web` |
 | Native server binaries | `audiosilo-server/.github/workflows/release.yml` (GoReleaser) | `v*` tags; manual dispatch | **Draft** GitHub Release on `KodeStar/audiosilo-server` |
 | `lscr.io/linuxserver/audiosilo` | LinuxServer.io's CI ([linuxserver/docker-audiosilo](https://github.com/linuxserver/docker-audiosilo)) | publishing a server release (polled hourly) | Docker Hub / GHCR / lscr.io, and Unraid Community Applications |
 | iOS / Android apps | EAS Build (manual, outside CI) | on demand | App Store Connect / Google Play Console |
@@ -41,12 +41,16 @@ independent pipelines:
 Builds the multi-stage `Dockerfile`, baking the web player in at `/app/web` from
 the `WEB_IMAGE` build-arg (mechanism in the
 [release pipeline](../architecture/release-pipeline.md)), and pushes
-`ghcr.io/kodestar/audiosilo-server` tagged with the semver version, the commit
-sha, and `latest`.
+`ghcr.io/kodestar/audiosilo-server` tagged with the semver version and `latest`.
+A release carries no `sha-` tag: pin one by its version.
 
 - On a tag push, the baked-in web image is **`audiosilo-web:latest`**. To pin a
-  specific web version instead, run the workflow manually
-  (`workflow_dispatch`) and set its `web_version` input.
+  specific web version instead, run the workflow manually **on the tag** and set
+  its `web_version` input (`gh workflow run image.yml -R
+  KodeStar/audiosilo-server --ref v1.4.0 -f web_version=<web version>`).
+  Without `--ref` the dispatch runs on `main`: it publishes only a
+  `sha-<short>` tag with that player, and no release (a dispatch on `main` moves
+  `:edge` only when `web_version` is left at `latest`).
 - The release version is stamped into the binary via the `VERSION` build-arg
   (ldflags → `internal/api.Version`) and reported by `GET /api/v1/server`, the
   admin console, and the web player.
@@ -112,12 +116,16 @@ real console.)
   cross-repo version lockstep. GoReleaser does not mark a pre-release tag (for
   example `v2.1.0-rc1`) as a pre-release itself: tick **Set as a pre-release**
   when publishing one, or `releases/latest` moves to it and the LinuxServer.io
-  image ships it to every Unraid install. The server↔web pairing is by **image pinning**,
+  image ships it to every Unraid install. A pre-release tag also moves the server
+  image's `:latest` (`image.yml` publishes it on every `v*` tag). The server↔web pairing is by **image pinning**,
   not version numbers, and native apps negotiate against any server version via
   the `GET /server` capability flags.
 - The server version string comes from the release tag via ldflags
-  (`internal/api.Version`) in both the Docker and GoReleaser builds; untagged
-  builds report `dev`.
+  (`internal/api.Version`) in both the Docker and GoReleaser builds; a local
+  `go build` or `docker build` reports `dev` (a GoReleaser snapshot
+  `<next patch>-snapshot`), and an `image.yml` build of a branch (`:edge`, or a
+  dispatch on a branch) reports `dev-<short sha>`, the same 7 characters as its
+  `sha-` tag.
 - Frontend `v*` tags version the **web image**; the native app's marketing
   version is separate (`app.json` → `expo.version`, below).
 
@@ -139,6 +147,24 @@ The end-to-end smoke test from `RELEASING.md`:
 Worth checking at the same time: `GET /api/v1/server` reports the new version
 (and `web_player: true`), and the draft GitHub Release's artifacts and
 `checksums.txt` look right **before** you publish it.
+
+## Testing main before a release (`:edge`)
+
+Every push to `main` in audiosilo-server also runs `image.yml` and publishes
+**`:edge`** (plus `sha-<short>`, to pin one commit); `:latest` stays
+release-only. How the tags, `concurrency` and the `dev-<short sha>` version work is in
+the [release pipeline](../architecture/release-pipeline.md#2-server-docker-image---audiosilo-servergithubworkflowsimageyml).
+
+- A frontend-only change doesn't rebuild edge, so its baked player stays at
+  whatever `audiosilo-web:latest` was when edge was built. Once the frontend's
+  `web.yml` run has published, refresh it with
+  `gh workflow run image.yml -R KodeStar/audiosilo-server --ref main`.
+- Edge may run database migrations a release can't undo, so test it against a
+  **copy** of a data directory, never the live one.
+
+User-facing instructions (including why an LSIO install can't just switch tags)
+are in the User Guide's
+[Quick start with Docker](/users/getting-started/quickstart-docker#testing-unreleased-builds).
 
 ## The app-store track (iOS / Android)
 
