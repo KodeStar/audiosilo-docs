@@ -4,7 +4,8 @@ description: "How AudioSilo releases fit together: the web image feeds both the 
 ---
 
 AudioSilo ships from three pipelines that hang off the same `v*` tag, plus the
-manager's desktop builds. The structural rule that ties them together:
+manager's desktop builds (and an `:edge` server image from every push to the
+server's `main`, for testing before a release). The structural rule that ties them together:
 
 > **The web image publishes first.** Both the server Docker image and the native
 > binaries consume a pinned `audiosilo-web` image; building them before the web
@@ -27,7 +28,7 @@ flowchart TB
 
     subgraph srv["audiosilo-server"]
         imageyml["image.yml<br/>docker build"]
-        srvimg[("ghcr.io/kodestar/audiosilo-server<br/>:semver + :sha + :latest")]
+        srvimg[("ghcr.io/kodestar/audiosilo-server<br/>:semver + :sha + :latest<br/>(:edge from main)")]
         relyml["release.yml<br/>GoReleaser"]
         ghrel[("GitHub Release (draft)<br/>tar.gz / zip, deb / rpm,<br/>checksums.txt")]
         imageyml --> srvimg
@@ -63,8 +64,16 @@ handles that here, so `web.yml` needs no explicit lowercase step (the server's
 
 ## 2. Server Docker image - `audiosilo-server/.github/workflows/image.yml`
 
-Runs on `v*` tags (plus manual dispatch with a `web_version` input, default
-`latest`). The multi-stage `Dockerfile`:
+Runs on `v*` tags, on pushes to `main`, and on manual dispatch (with a
+`web_version` input, default `latest`). Tagging via `docker/metadata-action`:
+the semver version on `v*` tags, `:latest` **only** on `v*` tags, `:edge` on
+pushes to `main`, and a `sha-<short>` tag always. A top-level `concurrency` group
+per ref cancels a superseded `main` build. Builds off a tag (edge and dispatch)
+stamp `VERSION` as `dev-<sha>`; an edge image bakes whatever
+`audiosilo-web:latest` points at (frontend `main`), and is only rebuilt by a
+server push or a dispatch, not by a frontend push.
+
+The multi-stage `Dockerfile`:
 
 - builds the admin console in a `node:24-alpine` stage (`npm ci` + `npm run
   build` in `admin-ui/`, on the build host's platform since the output is plain

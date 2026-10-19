@@ -102,6 +102,33 @@ docker compose pull && docker compose up -d
 
 Your data directory and books are untouched by updates. To hear about new versions, look at **Server > About** in the admin console: the server asks GitHub once a day whether a newer release exists (you can turn that off; see [What the update check sends](../admin/server.md#what-the-update-check-sends)).
 
+### Testing unreleased builds
+
+:::warning Unstable - for testing only
+The **`:edge`** tag is rebuilt from the latest development code every time it changes. It has not been through a release, can break, and is not supported for everyday listening. Stay on `:latest` unless you want to try a fix or feature before it ships.
+:::
+
+To try it, point a **second** container at a **copy** of your data folder, never the original: an edge build may upgrade the database in a way a release can't undo.
+
+```bash
+cp -a ./data ./data-edge
+```
+
+Then use the edge image with the copy in its compose file (a different port, so it can run beside your normal server):
+
+```yaml
+    image: ghcr.io/kodestar/audiosilo-server:edge
+    ports:
+      - "8081:8080"
+    volumes:
+      - ./data-edge:/data
+      - /srv/audiobooks:/library:ro
+```
+
+Pull it again (`docker compose pull`) to get the newest build. The admin console shows its version as `dev-` followed by the commit it was built from, and the update check shows the latest release without offering it as an update. To go back, switch to `:latest` with your **original** data folder and delete the copy; don't run `:latest` on a data folder an edge build has used.
+
+This applies to the `ghcr.io/kodestar/audiosilo-server` image above. The LinuxServer.io image used on Unraid has its own tags and keeps its data in `/config`, so it isn't a matter of changing the tag there.
+
 :::note
 If your books live on a network share (SMB/NFS), mount the share on the Docker host and bind-mount the mounted path into the container. The server is deliberately careful here: if the share goes away, it will not wipe its index or your listening progress - books simply reappear when the share is back.
 :::

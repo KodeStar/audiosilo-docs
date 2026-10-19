@@ -16,7 +16,7 @@ step-by-step runbook. The maintainer notes it follows are
 | Artifact | Built by | Trigger | Where it lands |
 |---|---|---|---|
 | `ghcr.io/kodestar/audiosilo-web` | `audiosilo-frontend/.github/workflows/web.yml` | push to `main` (`:latest`); `v*` tags (semver) | GHCR - a tiny image holding only the static web export (`baseUrl=/web`) |
-| `ghcr.io/kodestar/audiosilo-server` | `audiosilo-server/.github/workflows/image.yml` | `v*` tags; manual dispatch | GHCR - the deployable image, web player baked in at `/app/web` |
+| `ghcr.io/kodestar/audiosilo-server` | `audiosilo-server/.github/workflows/image.yml` | `v*` tags; push to `main` (`:edge`); manual dispatch | GHCR - the deployable image, web player baked in at `/app/web` |
 | Native server binaries | `audiosilo-server/.github/workflows/release.yml` (GoReleaser) | `v*` tags; manual dispatch | **Draft** GitHub Release on `KodeStar/audiosilo-server` |
 | `lscr.io/linuxserver/audiosilo` | LinuxServer.io's CI ([linuxserver/docker-audiosilo](https://github.com/linuxserver/docker-audiosilo)) | publishing a server release (polled hourly) | Docker Hub / GHCR / lscr.io, and Unraid Community Applications |
 | iOS / Android apps | EAS Build (manual, outside CI) | on demand | App Store Connect / Google Play Console |
@@ -54,6 +54,30 @@ sha, and `latest`.
   owner themselves.
 - One-time setup: make both GHCR packages public after the first push, or
   `docker login ghcr.io` on the deploy host.
+
+#### Testing main before a release (`:edge`)
+
+`image.yml` also runs on every push to `main` in audiosilo-server, publishing
+**`:edge`** plus a `sha-<short>` tag for pinning one commit. `:latest` is never
+moved by these builds: it stays release-only. A newer push to `main` cancels an
+edge build still in progress (the workflow's `concurrency` group is per ref, so
+tag builds are unaffected).
+
+- An edge build stamps `VERSION` as `dev-<sha>`, which the admin console shows.
+  The update check treats it as a local build: it shows the latest release but
+  never offers it as an update.
+- The baked player is whatever `audiosilo-web:latest` pointed at when the edge
+  image was built (that is, frontend `main`). A frontend-only change doesn't
+  rebuild edge by itself; refresh it with
+  `gh workflow run image.yml -R KodeStar/audiosilo-server --ref main`.
+- Edge may run database migrations a release can't undo, so test it against a
+  **copy** of a data directory, never the live one.
+- It is the `ghcr.io` image (`/data`, `PUID`/`PGID`). The LinuxServer.io image
+  keeps its data in `/config`, so an LSIO install can't switch to edge by tag
+  alone.
+
+User-facing instructions are in the User Guide's
+[Quick start with Docker](/users/getting-started/quickstart-docker#testing-unreleased-builds).
 
 You can also build locally:
 
@@ -116,8 +140,9 @@ real console.)
   not version numbers, and native apps negotiate against any server version via
   the `GET /server` capability flags.
 - The server version string comes from the release tag via ldflags
-  (`internal/api.Version`) in both the Docker and GoReleaser builds; untagged
-  builds report `dev`.
+  (`internal/api.Version`) in both the Docker and GoReleaser builds; a local
+  build reports `dev`, and an `image.yml` build off a tag (`:edge` on a `main`
+  push, or a manual dispatch) reports `dev-<sha>`.
 - Frontend `v*` tags version the **web image**; the native app's marketing
   version is separate (`app.json` → `expo.version`, below).
 
