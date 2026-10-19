@@ -11,7 +11,10 @@ server to read it, after which `/meta` serves it to the players. Since Phase 1c
 the same run also writes an own-words, spoiler-free **description** of the book
 ([the description step](#the-description-step)), and `sidecars.describe` writes
 one alone for a book generated earlier
-([below](#a-description-on-its-own-sidecarsdescribe)). The job model it
+([below](#a-description-on-its-own-sidecarsdescribe)). Since Phase 1d a book with
+no chapter markers runs too: the engine finds its chapters in the narration first
+and the job writes them as `chapters.json` straight away
+([Chapterless books](chapters.md)). The job model it
 rides on (states, leases, attempts, cancel) is Phase 0's:
 [Pairing and jobs](pairing-and-jobs.md#the-job-model). Server code is
 `internal/bridge` (`jobs.go`, `estimate.go`, `status.go`),
@@ -164,7 +167,9 @@ or parked. One run:
    files, or one whose OPF doesn't parse, as a DRM-wrapped one doesn't). An engine
    book left by an earlier run at the same source path is deleted first, unless
    another open job follows it (the job fails: cancel that one first) or a stage
-   of it runs right now (the job fails: try again in a minute). The new book takes
+   of it stays busy through a few polls (the job fails: try again in a minute). A
+   `chapters.detect` run at the same path (finished, or stopped at its detection)
+   is **continued** instead, so its transcription is reused ([A generate job after a detect job](chapters.md#a-generate-job-after-a-detect-job)). The new book takes
    its identity from the server's facts (title, authors, narrators, series and
    position, ASIN, ISBN), its `work_id` from the params or else the server's
    metadata cache, its kind (audio or ebook) and the job's `contribute` as its
@@ -192,7 +197,7 @@ server stores it opaquely; at most 16 KiB):
 
 | Field | Meaning |
 |---|---|
-| `step` | always set: the engine state (`inspecting`, `asr`, `fact_pass`, `synthesizing`, `auditing`, `contributing`...), or the job's own `waiting` (the engine book is queued, or the job waits on the engine, the server or the mapping), `writing` (writing into `.audiosilo/`), `rescanning` (asking the server to read them) and, since Phase 1c, `describing` (the description step) |
+| `step` | always set: the engine state (`inspecting`, `asr`, `chapter_detecting` since Phase 1d, `fact_pass`, `synthesizing`, `auditing`, `contributing`...), or the job's own `waiting` (the engine book is queued, or the job waits on the engine, the server or the mapping), `writing` (writing into `.audiosilo/`), `rescanning` (asking the server to read them) and, since Phase 1c, `describing` (the description step) |
 | `message` | the step in words ("Transcribing (12 of 40)"; "Needs attention: ..." while parked, "Paused: ..." while paused) |
 | `done`, `total` | the current stage's counts, when it has some |
 | `stage` | the engine state |
@@ -202,8 +207,8 @@ server stores it opaquely; at most 16 KiB):
 | `park` | while parked only: `code`, `hint` (the Bridge's English advice) and `retry_at` (RFC 3339) when the park resumes by itself |
 
 The console and the player word the stages themselves (`bridge.stage.*` in both
-UIs; `describing` is "Writing the description") and show `done/total`, the time
-left and the cost.
+UIs; `describing` is "Writing the description", `chapter_detecting` "Finding the
+chapters in the narration") and show `done/total`, the time left and the cost.
 
 ### States
 
@@ -232,6 +237,7 @@ waiting on its own park look again now.
 | `agent_credential_refused` | the provider refused the CLI's credential (new in Phase 1a) | it looks again every 30 minutes, so it goes on once the credential is replaced |
 | `budget_exceeded` | the monthly cap (`retry_at` the 1st of next month, UTC) or the per-book cap was reached | the monthly one only |
 | `agent_validation_exhausted`, `qa_no_converge`, `spelling_gate_failure`, `fix_loop_exhausted`, `asr_decode_timeout`, `markers_not_confident`, `ebook_chapters_not_confident`, `supervisor_escalated`, `supervisor_budget` | an engine stage gave up after its bounded retries | no: **Retry** |
+| `chapters_not_detected` | a book with no chapter markers whose chapters couldn't be found in the narration with confidence (Phase 1d; the message says why: no headings heard, a chapter too long, numbers missing). See [Chapterless books](chapters.md#the-park-chapters_not_detected) | no: add chapter markers to the file, cancel and generate again |
 | `media_tools_unavailable`, `asr_unavailable` | ffmpeg/ffprobe is missing, or the Bridge's own speech recognition failed to set up | no |
 | `asr_worker_waiting` | no [ASR worker](workers.md) is connected and the fallback is `wait` (or the Bridge has no speech recognition of its own) (new in Phase 1b) | yes, as soon as a worker connects (or the fallback is `local` with a usable backend) |
 | `manifest_changed` | the book's audio changed since it was transcribed | no: cancel and generate again |
@@ -262,7 +268,8 @@ On `done` (at most 64 KiB):
 ```
 
 `files` are the names written into `.audiosilo/` (with the `<stem>.` prefix for a
-single-file book), `work_id` the resolved community work (or the pipeline's
+single-file book; `chapters.json` too for a book whose chapters were found in the
+narration), `work_id` the resolved community work (or the pipeline's
 placeholder slug), `contributed` only with `contribute: issue`, naming each
 dimension's intake issue. `description` (Phase 1c) says whether
 `description.json` was written; when it is `false`, `description_error` says why
@@ -281,13 +288,17 @@ last attempt, which fails the job), and `notify.BridgeJobEnded` records it:
 
 - into `done`: **`bridge_job_finished`** (`Characters and recaps ready: <title>`;
   for a `sidecars.describe` job `Description ready: <title>`, "Listeners see it
-  in the player's About when the book has no other description.");
+  in the player's About when the book has no other description."; for a
+  `chapters.detect` job `Chapters found: <title>`, "Listeners see them in the
+  player now." only when the book's `chapters_source` is `generated` once the
+  attachments rescan has run, else that they were saved but the book uses other
+  chapters);
 - into `failed`, or into `needs_attention` with a park that isn't transient:
   **`bridge_job_failed`**, with the park code. `agent_rate_limited`,
   `agent_unavailable` and `asr_worker_waiting` are never announced, whatever their `retry_at`; a park that
   changes its code in place is announced when the new code isn't transient. A
   failed job's title names its kind (`Characters and recaps failed: <title>`,
-  `Description failed: <title>`).
+  `Description failed: <title>`, `Chapters failed: <title>`).
 
 A report that leaves the state as it was (a keepalive, a parked job's progress)
 announces nothing. See [Notifications](../server/backups-and-notifications.md#events).
@@ -530,7 +541,9 @@ repair logs). It keeps what a sequel builds on (the facts in
 `knowledge-final.md`, the spelling ledger and rules, the series glossary), the
 fact notes a [`sidecars.describe`](#a-description-on-its-own-sidecarsdescribe)
 reads, the description step's `chapter_positions.json`, the manifest and the
-sidecars (`description.json` included). Each purge takes the engine's hold on
+sidecars (`description.json` included). Since Phase 1d it also removes
+`windows/` (a chapterless book's window transcripts and detection) and keeps
+`chapters_detected.json` (titles only, which `chapters.detect` reuses). Each purge takes the engine's hold on
 the book: the daily sweep leaves a held book (a description being written) for
 its next run.
 

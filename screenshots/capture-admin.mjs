@@ -978,12 +978,19 @@ await step('book: generated description', async () => {
 // written into a library. After the audit log shot, so the Bridge's audit entries
 // stay out of it.
 const BRIDGE_CLIENT = {'x-audiosilo-client': 'AudioSilo Bridge/0.2.0 (linux)'};
-// The stand-in's token and last heartbeat, for the generate step.
+// The stand-in's token and last heartbeat, for the later Bridge steps.
 let bridgeToken = null;
 let bridgeStatus = null;
+// The later Bridge steps' shots: each needs the stand-in paired here first.
+const GENERATE_SHOTS = ['admin/book-generate.png', 'admin/generate-dialog.png'];
+const DETECT_SHOTS = ['admin/health-detect-chapters.png', 'admin/detect-chapters-dialog.png',
+  'admin/book-chapters-generated.png'];
+// The stand-in's heartbeat. The server keeps a heartbeat it just saved as the
+// current one, so the next GET /server sees it at once.
+const standInHeartbeat = (status) => api(bridgeToken, 'PUT', '/bridge/status', status, BRIDGE_CLIENT);
 await step('settings: bridge', async () => {
   if (!wanted('admin/settings-bridge.png', 'admin/bridge-pair.png', 'admin/settings-bridge-paired.png',
-    'admin/book-generate.png', 'admin/generate-dialog.png')) return;
+    ...GENERATE_SHOTS, ...DETECT_SHOTS)) return;
   const info = await api(null, 'GET', '/server');
   if (!info?.capabilities || !('bridge' in info.capabilities)) throw new Error('this server build has no Bridge');
   try {
@@ -1075,11 +1082,10 @@ await step('settings: bridge', async () => {
 // the estimate the server costs from the heartbeat's figures. Nothing is queued:
 // the dialog is closed, never submitted.
 await step('bridge: generate characters and recaps', async () => {
-  if (!wanted('admin/book-generate.png', 'admin/generate-dialog.png')) return;
+  if (!wanted(...GENERATE_SHOTS)) return;
   if (!bridgeToken || !bridgeStatus) throw new Error('no stand-in Bridge was paired');
   if (!firstBook) throw new Error('no book was provisioned');
-  await api(bridgeToken, 'PUT', '/bridge/status', bridgeStatus, BRIDGE_CLIENT);
-  await sleep(6000); // GET /server reuses a heartbeat it read for up to 5 s
+  await standInHeartbeat(bridgeStatus);
   await open(page, bookRoute(firstBook), (p) => p.getByRole('heading', {name: 'Details', exact: true}));
   const action = page.getByRole('button', {name: /^(Generate characters and recaps|Regenerate)$/});
   await action.waitFor({timeout: 15000});
@@ -1097,6 +1103,105 @@ await step('bridge: generate characters and recaps', async () => {
   await shoot(page, 'admin/generate-dialog.png');
   await page.keyboard.press('Escape');
   await sleep(400);
+});
+
+// ── Detect chapters (Bridge Phase 1d) ────────────────────────────────────────
+// Detect chapters on the Inbox's A Long Lecture (2.5 h, no chapter marks), then
+// the stand-in runs the job as a Bridge would. The fixture's audio is silence, so
+// the chapters.json it writes is the fixture's own list, laid over the file the
+// server indexed. Last of the Bridge steps, so no other shot sees the Inbox
+// writable or the found chapters.
+const LECTURE_TITLES = ['Introduction', 'Part One: Keeping Time', 'Part Two: The Clockmakers',
+  'Part Three: Longitude', 'Part Four: Railway Time', 'Afterword'];
+// Each chapter's share of the file but the last, which runs to the end.
+const LECTURE_SHARES = [0.04, 0.22, 0.2, 0.24, 0.22];
+await step('bridge: detect chapters', async () => {
+  if (!wanted(...DETECT_SHOTS)) return;
+  if (!bridgeToken || !bridgeStatus) throw new Error('no stand-in Bridge was paired');
+  if (!inbox) throw new Error('the Inbox library was not provisioned');
+  const status = {
+    ...bridgeStatus,
+    kinds: [...bridgeStatus.kinds, 'chapters.detect'],
+    libraries: bridgeStatus.libraries.map((l) =>
+      l.library_id === inbox.id ? {...l, mapped: true, writable: true, checked_path: '', error: ''} : l),
+  };
+  await standInHeartbeat(status);
+
+  const lecture = (await api(token, 'GET', `/admin/books?library_id=${inbox.id}&issue=no_chapters&limit=50`))
+    ?.books?.find((b) => b.path.endsWith('A Long Lecture'));
+  if (!lecture) throw new Error('no A Long Lecture under Long books without chapters');
+  await open(page, '/health/issues?issue=no_chapters');
+  const list = page.getByRole('list', {name: 'Long books without chapters'});
+  // The lecture's own row, so the job queued is the one the stand-in writes for.
+  const detect = list.getByRole('listitem').filter({hasText: lecture.title || 'A Long Lecture'})
+    .getByRole('button', {name: 'Detect chapters'});
+  await detect.waitFor({timeout: 15000});
+  await sleep(800);
+  await shoot(page, 'admin/health-detect-chapters.png');
+
+  await detect.click();
+  const dialog = page.getByRole('dialog', {name: 'Detect chapters'});
+  await dialog.getByText('None: no agent is used').waitFor({timeout: 8000});
+  await dialog.getByText(/^About /).first().waitFor({timeout: 15000}); // the transcription time
+  await sleep(800);
+  await shoot(page, 'admin/detect-chapters-dialog.png');
+  await dialog.getByRole('button', {name: 'Detect chapters'}).click();
+  await dialog.waitFor({state: 'hidden', timeout: 15000});
+
+  // The stand-in's run.
+  const job = await api(bridgeToken, 'GET', '/bridge/jobs/next?wait=5&kind=chapters.detect', undefined, BRIDGE_CLIENT);
+  if (!job) throw new Error('the chapters.detect job was not handed out');
+  if (job.library_id !== inbox.id || job.path !== lecture.path) {
+    throw new Error(`the chapters.detect job is for ${job.path}, not ${lecture.path}`);
+  }
+  await api(bridgeToken, 'PATCH', `/bridge/jobs/${job.id}`, {
+    attempt: job.attempts, state: 'running',
+    progress: {step: 'chapter_detecting', stage: 'chapter_detecting', source: 'audio',
+      message: 'Finding the chapters in the narration', done: 0, total: 1},
+  }, BRIDGE_CLIENT);
+  const detail = await api(token, 'GET',
+    `/admin/libraries/${inbox.id}/book?path=${encodeURIComponent(lecture.path)}`);
+  const file = detail?.files?.[0];
+  if (!file || detail.files.length !== 1) throw new Error('A Long Lecture is not one file');
+  const total = Math.round((file.duration || detail.book.duration) * 1000);
+  const chapters = [];
+  let start = 0;
+  for (const [i, title] of LECTURE_TITLES.entries()) {
+    const length = i < LECTURE_SHARES.length ? Math.round(total * LECTURE_SHARES[i]) : total - start;
+    chapters.push({title, start_ms: start, length_ms: length});
+    start += length;
+  }
+  const at = new Date().toISOString().replace(/\.\d+Z$/, 'Z');
+  const folder = path.join(INBOX_DIR, lecture.path, '.audiosilo');
+  await mkdir(folder, {recursive: true});
+  const json = (v) => JSON.stringify(v, null, 2) + '\n';
+  await writeFile(path.join(folder, 'chapters.json'), json({
+    version: 1, generator: 'audiosilo-bridge', generated_at: at, from: 'narration',
+    files: [{path: path.posix.basename(file.path), size: file.size, duration_ms: total}],
+    chapters,
+  }));
+  await writeFile(path.join(folder, 'bridge.json'), json({
+    generator: 'audiosilo-bridge', version: '0.2.0', kind: 'chapters.detect', job_id: job.id,
+    generated_at: at, source: 'audio', work_id: '',
+    inputs: [{path: file.path, size: file.size, mod_time: Math.floor(Date.now() / 1000)}],
+    chapters: {job_id: job.id, generated_at: at, from: 'narration', chapters: chapters.length},
+  }));
+  const rescan = await api(bridgeToken, 'POST', '/bridge/rescan',
+    {library_id: inbox.id, path: lecture.path, mode: 'attachments'}, BRIDGE_CLIENT);
+  if (!rescan?.attachments?.chapters) throw new Error('the server did not take the chapters.json');
+  await api(bridgeToken, 'PATCH', `/bridge/jobs/${job.id}`, {
+    attempt: job.attempts, state: 'done',
+    progress: {step: 'done', stage: 'done', source: 'audio', message: 'Finished', done: 1, total: 1},
+    result: {library_id: inbox.id, path: lecture.path, chapters: chapters.length,
+      files: ['chapters.json', 'bridge.json'], source: 'audio'},
+  }, BRIDGE_CLIENT);
+
+  await open(page, bookRoute(lecture), (p) => p.getByRole('heading', {name: 'Details', exact: true}));
+  const card = page.locator('section[aria-labelledby="chapters-title"]');
+  await card.getByText('Found in the narration on this server.').waitFor({timeout: 15000});
+  await card.scrollIntoViewIfNeeded();
+  await sleep(800);
+  await shoot(page, 'admin/book-chapters-generated.png', {clip: around([await card.boundingBox()])});
 });
 
 await step('webhook deliveries', async () => {

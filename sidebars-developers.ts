@@ -80,6 +80,7 @@ const sidebars: SidebarsConfig = {
         'bridge/pairing-and-jobs',
         'bridge/mappings',
         'bridge/generating',
+        'bridge/chapters',
         'bridge/attachments',
         'bridge/agent-container',
         'bridge/workers',

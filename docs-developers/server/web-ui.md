@@ -444,7 +444,17 @@ CSP-sensitive work against a real build served by Go. The console's own gate is
   (`useAdminBook`) and the panel shows a spinner; when the check ends it
   refetches the book lists and the Health issues. With community chapters in
   use, a rename's toast and the revert hint name the community's title instead
-  of the file's.
+  of the file's. With chapters a Bridge found in the narration in use
+  (`chapter_source: "generated"`, Bridge Phase 1d), the card says "Found in the
+  narration on this server." and offers **Use the file's chapters**
+  (`PATCH {chapter_source: "files"}`). With a source chosen (unless the book is on
+  community chapters) it offers **Use automatic** (`auto`), with a note when a
+  `files` choice is keeping found chapters that fit out (`generated_chapters_fit`). That control
+  is `chapterSourceAction` in `book-model.ts`, never shown beside the community
+  panel's own action; a rename's hints then name the narration's title ("Found:
+  ..."). The card follows the book's `chapters.detect` job
+  (`useBookGenerateJob` with `KIND_DETECT`) and fetches the book again when it
+  ends.
 - **Library > Libraries** - library cards (`GET /admin/libraries` with
   `book_count`, `available`, `scan` and the scan settings, polled every second
   while any library scans or waits in the job queue, every minute otherwise),
@@ -514,7 +524,17 @@ CSP-sensitive work against a real build served by Go. The console's own gate is
   bulk bar uses too, in batches of 1000). A `no_chapters` row whose
   `chapters_check` is a failed check (`length_mismatch`, `structure_mismatch`,
   `crosses_files`, `no_match`, `unavailable`) adds a line saying why community
-  chapters weren't used (`chaptersCheckNote`). A
+  chapters weren't used (`chaptersCheckNote`). Since Bridge Phase 1d a
+  `no_chapters` row also offers **Detect chapters** (row and bulk; `fixFor` with
+  `detectAvailable`: the `bridge` capability and the `chapters` feature), except
+  for a book whose `chapter_choice` is set, which says why instead (`rowFix`,
+  `detectChosenNote`) and is left out of the bar's selection.
+  `health/detect-chapters-dialog.tsx` confirms with the transcription time from
+  the Bridge's status (`detectPlan`, one request for any selection) and "None: no
+  agent is used", and queues `chapters.detect` per book (`queueInOrder`), passing
+  over, and naming in its toast (`skipNotes`), a book refused `generate_open`,
+  `describe_open` or `chapters_chosen` or whose answer is its own parked detect
+  job; it stays open while it queues. A
   row's re-read or join runs once at a time: its fix button is disabled while
   it is in flight (`useIssueActions().fixing`). Rows select into a floating bulk bar, which acts only on
   the selected books still listed (one fixed or ignored on its own row has
@@ -734,7 +754,8 @@ CSP-sensitive work against a real build served by Go. The console's own gate is
   status card adds the heartbeat's `estimates.sidecars` as Agent (backend and
   Ready), Paid by, This month (spend against the cap) and Estimates from rows, and
   the job list words a `sidecars.generate` job (and, since Phase 1c, a
-  `sidecars.describe` job: `isBookKind`) with `GenerateStatus` (its stage,
+  `sidecars.describe` job, and since Phase 1d a `chapters.detect` job, "Chapters":
+  `isBookKind`) with `GenerateStatus` (its stage,
   counts, time left and cost; a park's reason with **Open in the Bridge**, a link
   to `<ui_url>#/jobs/<id>`; the counts and cost once done, and for a generate job
   whether its description came), its path linking to the book's page.
@@ -756,8 +777,13 @@ CSP-sensitive work against a real build served by Go. The console's own gate is
   failure. Each series card (`features/library/series/`) offers **Generate for the
   series** once its books are loaded: `SeriesGenerateDialog` asks every book's
   brief estimate, four at a time, and queues the books with no recaps and no open
-  job, earliest first, counting the ones it leaves out. See
-  [Characters and recaps](../bridge/generating.md).
+  job, earliest first, counting the ones it leaves out. A book refused
+  `detect_open` (its chapters are still being found) is passed over by name in the
+  series batch and the dialog (`GENERATE_SKIPS`) rather than stopping them, and
+  `GenerateSection` shows a queued or working detect job's status in place of
+  Generate (`generateBlocker`: the job list, else the estimate's `open_job`). See
+  [Characters and recaps](../bridge/generating.md) and
+  [Chapterless books](../bridge/chapters.md).
 - **A generated description** (Phase 1c, `features/bridge/describe-section.tsx`) -
   `DescribeSection` follows `GenerateSection` in the Community card: the admin
   book detail's `generated_description` with the "Generated on this server" mark
@@ -765,7 +791,8 @@ CSP-sensitive work against a real build served by Go. The console's own gate is
   more, and a note when the player's About shows another description instead
   (the book's own, or the community's); the book's describe job through
   `GenerateStatus`; and **Write a description**, which confirms (`DescribeDialog`)
-  and queues `sidecars.describe` when `describeOffered` allows it. See
+  and queues `sidecars.describe` when `describeOffered` allows it (never while a
+  `chapters.detect` job is open or parked for the book). See
   [A description on its own](../bridge/generating.md#a-description-on-its-own-sidecarsdescribe).
 - **The bell** (`components/shell/notifications-bell.tsx`) - `GET /admin/events`
   (`useServerEvents`: the newest 20, every minute), eight listed in a popover,

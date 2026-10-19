@@ -12,7 +12,9 @@ need one to use AudioSilo.
 
 Today the Bridge [generates characters and recaps](../admin/generating-characters-and-recaps.md)
 for books the community hasn't covered yet: it transcribes a book (or reads its
-ebook) and has an AI agent write them. It runs as **two containers**:
+ebook) and has an AI agent write them. It also
+[finds the chapters](../admin/generating-characters-and-recaps.md#books-without-chapters)
+of a book that has none, in its narration. It runs as **two containers**:
 
 - **the Bridge** itself, which sees your library folders and does the
   transcribing and the writing;

@@ -1137,7 +1137,10 @@ not the community-written `community_description` on
 
 `chapters_source` is `"community"` when the book's `chapters` are a community
 recording's chapter list fitted onto its audio rather than the files' own (see
-[Community chapters](../community-chapters.md)), and absent otherwise. It is
+[Community chapters](../community-chapters.md)), `"generated"` when they are the
+chapters a Bridge found in the narration of a book with none of its own (Bridge
+Phase 1d; see [Generated chapters](../community-chapters.md#generated-chapters)),
+and absent otherwise. It is
 additive: the chapters have the same shape either way, and only this
 single-book response (and [`/chapters`](#get-apiv1librariesidchapters)) carries
 it.
@@ -1207,10 +1210,13 @@ multi-file mp3 parts render identically.
 
 `chapters_source` - `"community"` when `chapters` are a community recording's
 list fitted onto the book's audio (an admin chose them, or the files have no
-chapters of their own); **absent** for the files' own chapters, and on servers
-before it. The chapters keep the same shape either way, so an old client plays
-community chapters as ordinary ones. See
-[Community chapters](../community-chapters.md).
+chapters of their own); `"generated"` (Bridge Phase 1d) when they are the
+chapters a Bridge found in the narration of a book with no chapters of its own
+(its `.audiosilo/chapters.json`); **absent** for the files' own chapters, and on
+servers before it. The chapters keep the same shape either way, so an old client
+plays community or generated chapters as ordinary ones. See
+[Community chapters](../community-chapters.md) and
+[Generated chapters](../community-chapters.md#generated-chapters).
 
 Same status codes as `/item`.
 
@@ -4192,8 +4198,8 @@ is a `400` too (`too many format or codec values`).
 ```
 
 - Every field is always present (empty string / `0` / `false` when unknown),
-  except `cover_color`, the four Health fields below and `chapters_check`, which
-  are omitted when empty or `0`.
+  except `cover_color`, the four Health fields below, `chapters_check` and
+  `chapter_choice`, which are omitted when empty or `0`.
   `path` is the book path (the player's `rel_path`).
 - `custom_cover` - an admin uploaded a cover; `has_cover` includes it.
 - `series_list` - every series the book is in, `[{"name", "position", "position_end"?}]`: its main
@@ -4225,7 +4231,13 @@ is a `400` too (`too many format or codec values`).
   that many separate books (see
   [Folders that may hold several books](../scanner.md#folders-that-may-hold-several-books)).
 - `chapters_source` - where the book's chapters come from now: `files` (the
-  scan's own) or `community` (a community chapter list fitted onto the audio).
+  scan's own), `community` (a community chapter list fitted onto the audio) or
+  `generated` (the chapters a Bridge found in the narration, Phase 1d).
+- `chapter_choice` - the admin's choice of chapter source on the book page,
+  `files` or `community`; omitted when it is automatic. Chapters found in the
+  narration stand in only with no choice, so the console's Health `no_chapters`
+  rows offer no **Detect chapters** for a book with one (and a `chapters.detect`
+  job for it is `409 chapters_chosen`).
 - `chapters_check` - the status of the book's last
   [community chapter check](../community-chapters.md): `fill`, `titles`,
   `refine`, `restructure`, `same`, `length_mismatch`, `structure_mismatch`,
@@ -4547,11 +4559,24 @@ book path).
   own folder, or the folder a single-file book sits in; `""` = the library root)
   and its folder-detection `override` (`"book"`, `"collection"` or `""`).
 - `chapter_source` - where `chapters` come from now: `"files"` (the scan's
-  own) or `"community"` (the community list below, fitted onto the audio).
+  own), `"community"` (the community list below, fitted onto the audio) or
+  `"generated"` (the chapters a Bridge found in the narration, its
+  `chapters.json`: Bridge Phase 1d, see
+  [Generated chapters](../community-chapters.md#generated-chapters)).
 - `chapter_choice` - the admin's choice of source: `"files"`, `"community"`,
   or `""` when it is automatic (the community's chapters are used only for a
-  `fill`: a book with no chapters of its own). It is not a metadata edit, so it
-  is not in `fields` and doesn't make the book `edited`.
+  `fill`: a book with no chapters of its own; chapters found in the narration
+  only with no choice, when the community's don't apply). It is never
+  `"generated"`. It is not a metadata edit, so it is not in `fields` and doesn't
+  make the book `edited`.
+- `generated_chapters_fit` - present and `true` when the book has a stored
+  `chapters.json` that fits its files as they are now, so it would stand in with
+  no choice whenever the community's don't apply: always while `chapter_source` is
+  `"generated"`; otherwise it is checked only while a choice is made (the
+  community's own fit is not weighed, so with a `community` choice it can be `true`
+  while removing the choice would keep the community's). Over a `files` choice the
+  console's Chapters card then offers **Use automatic** with a note that found
+  chapters are kept out. Omitted otherwise.
 - `community_chapters` - the book's last
   [community chapter check](../community-chapters.md), `null` when it has none
   (a book with no ASIN or ISBN is never checked):
@@ -4627,7 +4652,7 @@ one request is applied in one transaction.
 | `source` | string | `"edited"` (default) or `"community"` (accepted from a [match](#get-apiv1adminlibrariesidbookmatch)) - recorded on every field this request sets |
 | `chapters.set` | object | chapter index (as a string key) → new title; a title cannot be empty (revert it instead), at most 500 characters. The rename is stored against that chapter's file and start, not its index, so it stays on the same chapter if a rescan inserts or drops others |
 | `chapters.revert` | array | chapter indexes to put back to the scanned title |
-| `chapter_source` | string | where the book's chapters come from: `"community"` (the fitted community list, when the last check fitted), `"files"` (the scan's own) or `"auto"` (remove the choice: community only for a `fill`). Stored as a path-keyed `chapter_choices` row, so it survives rescans and moves with the book; switching back restores the files' chapters exactly, renames included |
+| `chapter_source` | string | where the book's chapters come from: `"community"` (the fitted community list, when the last check fitted), `"files"` (the scan's own) or `"auto"` (remove the choice: community only for a `fill`, else chapters a Bridge found in the narration when they fit). Stored as a path-keyed `chapter_choices` row, so it survives rescans and moves with the book; switching back restores the files' chapters exactly, renames included. `"generated"` is not a choice: `"files"` turns found chapters off and `"auto"` brings them back |
 
 ```json
 {
@@ -7116,7 +7141,8 @@ booleans):
 - `version` - the version the Bridge reported.
 - `features` - the job families the Bridge runs that this server knows: the part of
   each known kind before its dot (`bridge.verify` is `bridge`, `sidecars.generate`
-  and `sidecars.describe` are `sidecars`), sorted, each once;
+  and `sidecars.describe` are `sidecars`, `chapters.detect` is `chapters`), sorted,
+  each once;
   always a list (`[]` for none), never `null`. A kind the Bridge advertises that the
   server doesn't know adds nothing.
 
@@ -7267,10 +7293,11 @@ Every job route, the console's and the Bridge's, answers jobs in one shape:
   its library.
 - `params` - the kind's parameters as the server normalised them (`bridge.verify`
   stores a `hold_seconds` of 0 as `{}`; `sidecars.generate` stores every field with
-  its default; `sidecars.describe` stores `{}`); `progress` and `result` - JSON objects the Bridge reported (`{}`
+  its default; `sidecars.describe` and `chapters.detect` store `{}`); `progress` and `result` - JSON objects the Bridge reported (`{}`
   until it does; the server stores them as they are: `sidecars.generate`'s shapes
   are in [Characters and recaps](../../bridge/generating.md#progress), `sidecars.describe`'s in
-  [A description on its own](../../bridge/generating.md#a-description-on-its-own-sidecarsdescribe)); `error` -
+  [A description on its own](../../bridge/generating.md#a-description-on-its-own-sidecarsdescribe),
+  `chapters.detect`'s in [Chapterless books](../../bridge/chapters.md#goal-chapters-and-the-chaptersdetect-job)); `error` -
   why it failed or was parked (`""` otherwise).
 - `state` - `queued`, `claimed`, `running`, `done`, `failed`, `needs_attention` or
   `cancelled` (see [Job states](#job-states)).
@@ -7367,14 +7394,33 @@ The kinds:
   [Characters and recaps](../../bridge/generating.md). Queuing it while a
   `sidecars.describe` job is open for the book cancels that job (at once when it
   is queued or parked, else by asking the Bridge), since this run writes the
-  description too.
+  description too. It is refused while a `chapters.detect` job is queued or
+  working for the book (`detect_open`: cancelling it would throw its
+  transcription away, and a generate job queued after it reuses that), and cancels
+  a **parked** one in the same way, since this run finds the chapters itself.
 - **`sidecars.describe`** (Phase 1c) writes a book's own-words description from
   the notes the Bridge kept when it generated the book (no new speech
   recognition) into its `.audiosilo/` folder. It needs `library_id` **and** a book
   `path`, and takes `params` `{}` or none (any field is refused; stored as `{}`).
   It writes, so the same mapped-and-writable rule applies, and it is refused
-  while a `sidecars.generate` job is open for the book. See
+  while a `sidecars.generate` job (`generate_open`) or a `chapters.detect` job
+  (`detect_open`: both rewrite the book's `bridge.json`) is open for the book. See
   [A description on its own](../../bridge/generating.md#a-description-on-its-own-sidecarsdescribe).
+- **`chapters.detect`** (Phase 1d) finds the chapters of a book with no chapter
+  markers in its narration (speech recognition and detection only, no agent) and
+  writes them into its `.audiosilo/` folder as
+  [`chapters.json`](../../bridge/attachments.md#chaptersjson), which the server
+  then uses as the book's chapters. It needs `library_id` **and** a book `path`,
+  and takes `params` `{}` or none (any field is refused; stored as `{}`). It
+  writes, so the same mapped-and-writable rule applies. It is refused while a
+  `sidecars.generate` job is open for the book (`generate_open`: that run finds
+  them itself), while a `sidecars.describe` job is (`describe_open`), and for a
+  book whose chapter source an admin chose (`chapters_chosen`: the list would
+  never be used). See [Chapterless books](../../bridge/chapters.md).
+
+A job being cancelled (`cancel_requested`) refuses nothing (it ends without
+writing). Which open kind refuses, or gives way to, which is one table:
+[Kinds are allow-listed twice](../../bridge/pairing-and-jobs.md#kinds-are-allow-listed-twice).
 
 The Bridge may be offline: the job waits for it. Response `201` with the new job,
 or `200` with the open job already there for that kind, library and path (no
@@ -7388,7 +7434,7 @@ the console says so. A new job is audited as `bridge.job`.
 | `200` | the open job of that kind for that library and path |
 | `400` | `invalid request` (not JSON, an unknown field); or a check of the kind, each message starting `invalid: `: `unknown kind "…"`, `library_id is required`, `this kind takes no library or path`, `this kind takes no path`, `path is required`, `params too large`, or a params error (`hold_seconds must be 0-600`, `source must be auto, audio or ebook`, `contribute must be local or issue`, a `work_id` too long or with a control character, an unknown field) |
 | `404` | `library not found`; `code: "book_not_found"` - the path is not an indexed book |
-| `409` | `code: "kind_unavailable"` - no Bridge has reported, or the paired one doesn't run that kind (a Bridge from before Phase 1c doesn't run `sidecars.describe`); `code: "library_not_writable"` - a kind that writes, for a library the last heartbeat doesn't report mapped and writable; `code: "cannot_contribute"` - `sidecars.generate` with `contribute: "issue"` while the Bridge can't contribute; `code: "generate_open"` - `sidecars.describe` while a `sidecars.generate` job is open for the book ("a generate job is still open for this book; it writes the description when it finishes"). The last three are checked after the dedupe: an open job of the same kind for the book is still returned (`200`) |
+| `409` | `code: "kind_unavailable"` - no Bridge has reported, or the paired one doesn't run that kind (a Bridge from before Phase 1c doesn't run `sidecars.describe`, one from before Phase 1d `chapters.detect`); `code: "library_not_writable"` - a kind that writes, for a library the last heartbeat doesn't report mapped and writable; `code: "cannot_contribute"` - `sidecars.generate` with `contribute: "issue"` while the Bridge can't contribute; `code: "generate_open"` - `sidecars.describe` or `chapters.detect` while a `sidecars.generate` job is open for the book ("a generate job is still open for this book; it writes this itself when it finishes"); `code: "detect_open"` - `sidecars.generate` while a `chapters.detect` job is queued or working for the book, or `sidecars.describe` while one is open ("a chapter detection job is still open for this book; queue this once it has finished"); `code: "describe_open"` - `chapters.detect` while a `sidecars.describe` job is open for the book; `code: "chapters_chosen"` - `chapters.detect` for a book whose chapter source an admin chose (`files` or `community`), checked before the queue ("an admin chose this book's chapter source, so chapters found in the narration would never be used; set it back to automatic first"). `library_not_writable`, `cannot_contribute` and the open-job codes are checked after the dedupe: an open job of the same kind for the book is still returned (`200`) |
 
 ### `GET /api/v1/admin/bridge/jobs/{id}`
 
@@ -7464,7 +7510,7 @@ How each figure is worked out is in
 | `has.community_unknown` | `true` when the community couldn't be asked right now, so `has.community` is no answer (never read it as "none"); omitted otherwise |
 | `has.local` | what the book's indexed [`.audiosilo/` files](../../bridge/attachments.md) carry: `characters`, `recaps` and `description` |
 | `earlier` | the books of the same library before this one in its first numbered series (any spelling), with no recaps generated here and, metadata on, none in the community (a book the community couldn't be asked about is left out): the nearest 10, in reading order, each with its own `asr_hours` and `agent_cost_usd` (costed from its audio). `[]` for none, and with `brief=1` |
-| `open_job` | the book's open `sidecars.generate` [job](#the-job-object); omitted when there is none |
+| `open_job` | the book's open `sidecars.generate` [job](#the-job-object), else (Phase 1d) the open job of another kind that refuses a generate job now: a queued or working `chapters.detect` job, whose `kind` says so; omitted when there is neither |
 
 | Status | Meaning |
 |---|---|
@@ -7702,12 +7748,13 @@ this never indexes a path on demand.
   detection.
 - **`attachments`** re-reads only the book's
   [`.audiosilo/` files](../../bridge/attachments.md), never its audio: the
-  Bridge's call after writing characters, recaps or a description. The path is
-  the book's, or a path inside it. It answers what is now indexed (`description`
-  since Phase 1c):
+  Bridge's call after writing characters, recaps, a description or chapters. The
+  path is the book's, or a path inside it. A changed `chapters.json` re-resolves
+  the book's chapters at once. It answers what is now indexed (`description` since
+  Phase 1c, `chapters` since Phase 1d):
 
 ```json
-{ "path": "Andy Weir/Project Hail Mary", "attachments": { "characters": true, "recaps": true, "description": true, "bridge": true } }
+{ "path": "Andy Weir/Project Hail Mary", "attachments": { "characters": true, "recaps": true, "description": true, "chapters": false, "bridge": true } }
 ```
 
 The re-read runs detached from the request for up to 10 minutes, like the

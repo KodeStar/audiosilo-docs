@@ -403,16 +403,19 @@ library-relative audio file to stream - playback is purely path-based),
 chapter's start on the whole-book timeline). See
 [Scanner](scanner.md#chapter-normalization) for how these are built.
 
-While a book plays a community recording's chapter list instead of its own,
-the `chapters` rows hold the community's chapters and `books.chapters_source`
-says so (`''` = the scan's own, `'community'`; `chapters_fit` names the fit in
+While a book plays a community recording's chapter list instead of its own (or,
+since Bridge Phase 1d, the chapters a Bridge found in its narration), the
+`chapters` rows hold those chapters and `books.chapters_source` says so (`''` =
+the scan's own, `'community'`, `'generated'`; `chapters_fit` names the fit in
 the rows so an unchanged one is not rewritten). `books.scanned_chapters` always
 holds the scan's own chapters as JSON with their scanned titles (`UpsertBook`
 writes it, as it writes `scanned`). `refreshEffective` (`applyChapterSource`)
 puts the community's over the scan's in the same transaction when a current
 check fitted and either an admin chose them (`chapter_choices`, below) or, with
-no choice, the book has no chapters of its own. Chapter renames apply after,
-either way.
+no choice, the book has no chapters of its own; else, with no choice, a stored
+`chapters.json` that fits the book's files
+([Generated chapters](community-chapters.md#generated-chapters)). Chapter renames
+apply after, either way.
 
 **`community_chapters`** *(0035)* - PK `(library_id, path)` (FK to `libraries`
 `ON DELETE CASCADE` only, no FK to `books`): a book's last community chapter
@@ -456,13 +459,15 @@ the admin list's `genre` / `tag` filters (`catalog.labelFilters`, kept to the
 library by `library_id`) and the facet counts find a label in any case by an
 index seek.
 
-**`book_attachments`** *(0048; `description` in 0050)* - the Bridge's generated files for a book, checked:
+**`book_attachments`** *(0048; `description` in 0050; `chapters` in 0051)* - the Bridge's generated files for a book, checked:
 `book_id` (primary key, FK to `books` `ON DELETE CASCADE`), `characters`, `recaps`,
 `description` and `provenance` (JSON as checked against audiosilo-meta's formats, `''` for a
-file that isn't there or can't be used) and `updated_at`; a row only for a book
-with any. Derived from the book's `.audiosilo/` files like `abs_file`, so
-rebuildable and never carried by a move. `/meta` lays it into its answer per
-request; see [The .audiosilo folder](../bridge/attachments.md).
+file that isn't there or can't be used), `chapters` (the checked `chapters.json`,
+the chapters a Bridge found in the narration, a chapter source of its own) and
+`updated_at`; a row only for a book with any. Derived from the book's `.audiosilo/` files like `abs_file`, so
+rebuildable and never carried by a move. `/meta` lays the generated content (not
+`chapters`, which `refreshEffective` reads) into its answer per request; see
+[The .audiosilo folder](../bridge/attachments.md).
 
 **`books_fts`** *(0001)* - see [FTS design](#fts-design-books_fts) below.
 
@@ -1179,6 +1184,7 @@ The migration history so far:
 | 0048 | `book_attachments` | `books.attachments_sig` (`TEXT NOT NULL DEFAULT ''`), `books.attachments_indexed_at` (`TEXT`, `NULL` on every existing row) and `book_attachments`: the Bridge's `.audiosilo/` files. `NULL` reads as unchecked, so the next scan reads the attachments of every book that has some, without re-indexing it (`catalog.SetAttachments`) |
 | 0049 | `book_labels` | `books.subtitle`, `publisher`, `language`, `genres` and `tags` (`TEXT NOT NULL DEFAULT ''`), `books.abridged` (`INTEGER`, `NULL` = unknown), `books.genres_checked` (`INTEGER NOT NULL DEFAULT 0`) and `book_labels` (see [Labels](#labels-genres-and-tags)); recreates `books_fts` with `genres, tags` columns, every row copied over (no book has a label yet), and sets `books.abs_indexed_at` to `NULL` on every book with a `metadata.json` (`abs_sig <> ''`). The next scan then reads each of those files again and each book's genre tag once (`catalog.SetGenres`), without re-indexing |
 | 0050 | `book_attachments_description` | `book_attachments.description` (`TEXT NOT NULL DEFAULT ''`): the Bridge's checked `.audiosilo/description.json` (Phase 1c), derived like the rest of the row. No data moves: a book read before it had no `description.json` in its signature (the name was unknown then), so a book that has one now has a changed signature and the next scan reads it again, without re-indexing |
+| 0051 | `book_attachments_chapters` | `book_attachments.chapters` (`TEXT NOT NULL DEFAULT ''`): the Bridge's checked `.audiosilo/chapters.json` (Phase 1d), derived like the rest of the row and read by `applyChapterSource` as the generated chapter source ([Generated chapters](community-chapters.md#generated-chapters)). No data moves, for the same reason as 0050: a book that has one now has a changed signature, so the next scan reads it again |
 
 ## SQLite choices
 

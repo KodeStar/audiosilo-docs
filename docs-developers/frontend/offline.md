@@ -214,8 +214,8 @@ with no network.
 - **Changed chapters** (`startChapterRefresh`, started once from the root
   layout): a book's chapters can change on the server after it was downloaded
   (a rescan, a [community chapter list](../server/community-chapters.md)
-  fitted onto its audio, `chapters_source: "community"`, or an admin switching
-  it back). The listener subscribes to the query cache: every **server** answer
+  fitted onto its audio, `chapters_source: "community"`, the chapters a Bridge
+  found in the narration, `"generated"`, or an admin switching it back). The listener subscribes to the query cache: every **server** answer
   for a `chapters` query (a successful fetch, not the store's own
   `setQueryData` seeds) of a `downloaded` entry goes through
   `refreshedChapters(manifest, fresh)`, which replaces `manifest.chapters` only

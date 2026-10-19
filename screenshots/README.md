@@ -129,14 +129,27 @@ as tall as it is. Nothing is written into a library. It runs after the audit log
 shot, so the Bridge's audit entries stay out of it.
 
 The generate shots (`admin/book-generate.png`, `admin/generate-dialog.png`) come
-straight after, from the same stand-in (its heartbeat sent again so it is online,
-then 6 seconds for the server's cached heartbeat to expire): the first book's page,
+straight after, from the same stand-in (its heartbeat sent again so it is online):
+the first book's page,
 its Community metadata card clipped with **Generate characters and recaps**, then
 the confirmation the button opens, once its estimate has loaded. The dialog is
 closed, never submitted, so nothing is queued. They need community metadata on (the
 default) and a first book the community has no characters and recaps for (a seeded
 LibriVox book has no ASIN or ISBN, so it never matches); otherwise the step fails
 and the shots keep their previous images.
+
+The Detect chapters shots (`admin/health-detect-chapters.png`,
+`admin/detect-chapters-dialog.png`, `admin/book-chapters-generated.png`, Bridge
+Phase 1d) are the last Bridge step. The stand-in's heartbeat is sent again with
+`chapters.detect` among its kinds and the Inbox mapped and writable; Health >
+Issues `?issue=no_chapters` is shot with **Detect chapters** on the Inbox's **A
+Long Lecture** (so they need ffmpeg for that fixture), then its confirmation, which
+is submitted. The stand-in claims the `chapters.detect` job and runs it as a Bridge
+would: since the fixture's audio is silence, it writes a fixed six-chapter
+`chapters.json` (and the `bridge.json` beside it) into the book's `.audiosilo/`
+folder under the Inbox (`.cache/inbox`, rebuilt every run), asks for the attachments
+rescan and reports the job done. The book's Chapters card is then shot clipped,
+with the found chapters in use. Nothing is written into the seeded library.
 
 The generated description shots (`admin/book-description.png`,
 `web-player/book-about-generated.png`, Bridge Phase 1c) need a book with a

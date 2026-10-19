@@ -79,7 +79,8 @@ internal/
   -- Phase 1a --
   generate/   sidecars.generate: server job -> engine book, progress and parks, the
               .audiosilo/ write, the heartbeat's estimates, the transcript retention;
-              sidecars.describe (Phase 1c): a description from a finished run's notes
+              sidecars.describe (Phase 1c): a description from a finished run's notes;
+              chapters.detect and chapters.json (Phase 1d): chapters found in the narration
   agentproto/ the staging protocol both sides share (names, JSON, request validation,
               regular-file reads); a leaf
   agentbox/   the Bridge's side: an agent.Runner that stages, waits, harvests
@@ -89,11 +90,13 @@ internal/
   secrets/    sealed-file secrets keyed by AUDIOSILO_BRIDGE_SECRET_KEY or secret.key
   config/     config.yaml + AUDIOSILO_BRIDGE_* (bridge.go: the Bridge's own settings)
   store/      SQLite, append-only migrations (0001 the engine, 0002 server_jobs,
-              0003 generate_books, server_jobs.server_id, books.contrib_mode)
+              0003 generate_books, server_jobs.server_id, books.contrib_mode,
+              0004 workers, 0005 books.goal)
   auth/       the page's single password, hashed sessions, the login limiter
   -- the engine (from audiosilo-sidecars; wired by app/engine.go since Phase 1a) --
   toolfetch/ audio/ asr/ transcript/ ebook/ scratch/ qa/ spelling/ agent/ repair/
   pipeline/ contrib/ state/ eta/ scheduler/ supervisor/ metaops/ events/ pricing/ fsutil/
+  chapterdetect/ (Phase 1d: a chapterless book's chapters from its narration; pure)
 web/          the page: Vite + React 19 + TypeScript + Tailwind v4
 docker/       entrypoint.sh (owns /bridge-data, umask 022, drops to PUID:PGID)
 Dockerfile    the slim, full, cuda and agent targets
@@ -146,9 +149,10 @@ speech recognition, the monthly budget with this month's spend, the per-book cap
 and the transcript retention), **Libraries** (each server library, the folder the
 Bridge uses and its last check, with **Check now**), **Jobs** (the jobs it ran,
 with cancel, a `bridge.verify` result as a file table, and for a
-`sidecars.generate` or `sidecars.describe` job its stage, progress, cost, the park's code, hint and
+`sidecars.generate`, `sidecars.describe` or `chapters.detect` job its stage, progress, cost, the park's code, hint and
 retry time, and **Retry** while it is parked; once done, the files it saved and
-whether a description came, and for a describe job what its check measured against), **Settings** (its public address,
+whether a description came, for a describe job what its check measured against, and
+for a chapters job how many chapters it found), **Settings** (its public address,
 the check interval, the ASR fallback, the password), **Workers** (the [ASR workers](workers.md): add one, its token shown once in the commands to run, its state and figures, remove) and **Logs**
 (recent lines). It has no router: the tab rides the URL hash, and `#/jobs/<id>`
 opens one job (the server's console links a parked job there, by its server job

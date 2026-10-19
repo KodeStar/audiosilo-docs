@@ -106,7 +106,7 @@ pairing and after a mapping check finishes:
 | Field | What it carries |
 |---|---|
 | `version` | the Bridge's version |
-| `kinds` | the job kinds it runs (`bridge.verify`, `sidecars.generate` since Phase 1a, and `sidecars.describe` since Phase 1c) |
+| `kinds` | the job kinds it runs (`bridge.verify`, `sidecars.generate` since Phase 1a, `sidecars.describe` since Phase 1c, and `chapters.detect` since Phase 1d) |
 | `libraries` | its last [mapping check](mappings.md) of each library |
 | `workers` | its [ASR workers](workers.md) that have connected at least once: `name`, `version`, `platform` (the GOOS/GOARCH and the speech recognition in one line, e.g. `darwin/arm64, mlx-whisper (metal)`) and `last_seen` |
 | `ui_url` | its own page as the local network reaches it (its `public_url` setting), which the console links to |
@@ -128,7 +128,7 @@ minutes** old (`bridge.OnlineWindow`). Then, and only then, `GET /server` says
 `capabilities.bridge: true`, with a top-level `bridge: {version, features}` beside
 `capabilities`. `features` are the job families the Bridge runs **that the server
 knows**: the part of each known kind before its dot, so `bridge.verify` gives
-`bridge` and `sidecars.generate` (or `sidecars.describe`) gives `sidecars` (a list, `[]` for none, never `null`). The server reuses the heartbeat it
+`bridge`, `sidecars.generate` (or `sidecars.describe`) gives `sidecars` and `chapters.detect` gives `chapters` (a list, `[]` for none, never `null`). The server reuses the heartbeat it
 read for up to **5 seconds**, so `GET /server`, which every client calls often,
 rarely reads the database for it; a pairing or an unpair drops that copy at once. A
 client checks the flag **and** the feature it needs; a feature the Bridge doesn't
@@ -271,7 +271,7 @@ Bridge can't advertise a kind into existence, and the server can't queue one the
 Bridge doesn't have.
 
 The server's table also says whether a kind **writes** into the library. Such a
-kind (`sidecars.generate`, `sidecars.describe`) is queued only for a library the last heartbeat reports
+kind (`sidecars.generate`, `sidecars.describe`, `chapters.detect`) is queued only for a library the last heartbeat reports
 **mapped and writable**, else `409 library_not_writable`, after the dedupe (an open
 job is still returned). `bridge.verify` writes nothing and works on any library.
 
@@ -285,11 +285,30 @@ it is queued or parked, else `cancel_requested`, its error "a generate job for t
 book replaced it"). A generate job is never refused for an open describe job. See
 [A description on its own](generating.md#a-description-on-its-own-sidecarsdescribe).
 
+Phase 1d's `chapters.detect` joins them. `kindSpec`'s `refusedWhileOpen` and
+`cancelsOpen` are the one statement of which open kind refuses, or gives way to,
+which:
+
+| New job | Refused while open for the book | Cancels |
+|---|---|---|
+| `sidecars.generate` | `chapters.detect` queued, claimed or running (`409 detect_open`: cancelling it would throw its transcription away, and a generate job queued after it reuses it) | an open `sidecars.describe`; a **parked** `chapters.detect` ("it finds the chapters itself") |
+| `sidecars.describe` | `sidecars.generate` (`409 generate_open`), `chapters.detect` (`409 detect_open`: both rewrite the book's `bridge.json`) | nothing |
+| `chapters.detect` | `sidecars.generate` (`409 generate_open`), `sidecars.describe` (`409 describe_open`) | nothing |
+
+A job being cancelled (`cancel_requested`) refuses nothing, since it ends without
+writing (so a detect job queues behind a generate job being cancelled), and the
+blocker kinds are asked in name order, so the answer is stable.
+`Service.Blocker` names the open job that refuses a new job of a kind now (the
+estimate's `open_job` uses it). The api also refuses `chapters.detect` with `409
+chapters_chosen` for a book whose chapter source an admin chose (the catalog holds
+the choice), since a found list stands in only with no choice.
+
 On the Bridge, each kind has a handler and a **lane**: how many jobs of that lane
 run at once. `light` has room for 2 (`bridge.verify`); `pipeline` for 25
 (`sidecars.generate`, whose jobs mostly wait on the engine's own scheduler, which
-decides what actually runs, and `sidecars.describe`, which can wait a long time
-on an agent park).
+decides what actually runs, `sidecars.describe`, which can wait a long time
+on an agent park, and `chapters.detect`, which follows an engine book like
+generate).
 
 ### Notifications
 

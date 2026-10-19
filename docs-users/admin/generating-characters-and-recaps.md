@@ -1,6 +1,6 @@
 ---
 title: Generating characters and recaps
-description: "Have your Bridge write character sheets and chapter recaps for a book the community hasn't covered yet: who can, where the button is, the confirmation and its estimate, keeping them on your server or contributing them, following a run, what to do when one pauses, where the results appear, the spoiler-free description it writes too (and Write a description for an older book), costs and the monthly cap, and how long transcripts are kept."
+description: "Have your Bridge write character sheets and chapter recaps for a book the community hasn't covered yet: who can, where the button is, the confirmation and its estimate, keeping them on your server or contributing them, following a run, what to do when one pauses, where the results appear, the spoiler-free description it writes too (and Write a description for an older book), books without chapters (chapters found in the narration, and Detect chapters with no agent cost), costs and the monthly cap, and how long transcripts are kept."
 ---
 
 The community database at [meta.audiosilo.app](https://meta.audiosilo.app) gives
@@ -11,7 +11,9 @@ the people and the events, checks the result for mistakes and spoilers, and save
 it with the book. Some hours later the book's **Characters** and **Recaps** tabs
 appear in the player, with nothing else to do. It also writes a short,
 spoiler-free [description](#a-description-for-the-book) of the book, which the
-player shows when nothing else describes it.
+player shows when nothing else describes it. A book with no chapters gets its
+chapters first, found in the narration (see
+[Books without chapters](#books-without-chapters)).
 
 ## Who can, and what it needs
 
@@ -135,6 +137,7 @@ in the console (**Generating is paused** in the player) with the reason, and
 | The Bridge can't write to this book's folder | Give the Bridge's user write access to the book's folder. It checks again every minute. |
 | The community has no entry for this book yet | Only when contributing: add the book to the community database, or cancel and generate it again kept local. Your copy is already saved. |
 | The ebook couldn't be read | Cancel, then generate again: it reads the audio. |
+| The chapters couldn't be found in the narration | A book without chapter markers whose chapter headings couldn't be heard with confidence. See [When no chapters are found](#when-no-chapters-are-found). |
 | Anything else (the transcript checks didn't settle, the chapters couldn't be matched...) | Look at the job on the Bridge's page, then **Retry**. |
 
 When the job says when it tries again by itself, the console and the player show
@@ -147,7 +150,8 @@ reason shown; in the player, **Try again** queues it afresh.
 
 Two events in [Notifications](notifications.md#what-to-send) cover the Bridge's
 jobs: **A Bridge job finished** ("Characters and recaps ready" with the book's
-title, or "Description ready" for [Write a description](#writing-a-description-for-an-older-book))
+title, "Description ready" for [Write a description](#writing-a-description-for-an-older-book),
+or "Chapters found" for [Detect chapters](#detect-chapters-without-characters-and-recaps))
 and **A Bridge job failed or needs attention**. Pauses that end by
 themselves (the agent's usage limit, the agent container briefly away) aren't
 announced. Both show in the console's bell whether or not you send them anywhere.
@@ -172,7 +176,9 @@ the book's folder.
 
 The files live in a hidden **`.audiosilo`** folder inside the book's folder:
 `characters.json`, `recaps.json`, `description.json` (the
-[description](#a-description-for-the-book)) and `bridge.json` (what made them, and when).
+[description](#a-description-for-the-book)), `chapters.json` for a book whose
+chapters were [found in the narration](#books-without-chapters), and `bridge.json`
+(what made them, and when).
 For a book that is a single audio file, they sit in a `.audiosilo` folder beside
 it, named after the file (`The Book.characters.json`). The server never shows that
 folder as a book or plays anything from it, and its next scan picks up any change
@@ -255,6 +261,137 @@ It can fail with a reason that says what to do:
 - **The book has a single chapter**, so no description could leave out its ending.
 
 When it is done the event reads "Description ready" with the book's title.
+
+## Books without chapters
+
+Recaps and spoiler protection go by chapter: a recap covers the story up to a
+chapter, and a character is revealed at a chapter. So a book needs chapters before
+the Bridge can write them. For a book that is **one audio file with no chapter
+markers** (or with a single marker covering the whole file, which is really its
+title), the Bridge finds the chapters itself, **in the narration**: most narrators
+read each heading out after a pause ("Chapter One", "Prologue", "Part Two",
+"Stave Three"), and the Bridge listens for those.
+
+A book whose files are its chapters (a folder of one file per chapter) already
+has chapters, and isn't one of these.
+
+### Generating a book without chapters
+
+Press **Generate characters and recaps** as for any other book: there is nothing
+else to do. The run
+
+1. transcribes the book in parts of about 25 minutes, cut at pauses;
+2. finds the chapters in what it heard (**Finding the chapters in the
+   narration**), which takes moments once the book is transcribed;
+3. **saves the chapters with the book straight away**, so listeners get them in
+   the player hours before the characters and recaps are ready;
+4. then writes the characters, recaps and description on those chapters, like any
+   other book.
+
+So it takes about as long as any book of its length: the confirmation's
+**Transcription** line already covers it.
+
+### Detect chapters, without characters and recaps
+
+You can also give a book its chapters on their own. On the
+[Health](health.md#the-kinds-of-issue) page, **Long books without chapters**
+offers **Detect chapters** on each row, and on the bar at the bottom for the books
+you tick, while the Bridge is online and offers chapter detection.
+
+![Health > Long books without chapters, with Detect chapters on a book](/img/screenshots/admin/health-detect-chapters.png)
+
+It asks first, saying what it does, the book's **Length**, how long
+**Transcription** will take on your Bridge, and **Agent cost: None: no agent is
+used**. When the Bridge can't write to the book's library, it says so and nothing
+can be queued (check its mapping in [Settings > Bridge](bridge.md#libraries)). Finding chapters uses only
+speech recognition, which runs on the Bridge (or an
+[ASR worker](../getting-started/running-a-worker.md)) and costs nothing but time.
+It also says what happens when no headings can be heard.
+
+![The Detect chapters confirmation](/img/screenshots/admin/detect-chapters-dialog.png)
+
+Press **Detect chapters**. A toast says how many books it queued ("Finding the
+chapters of 3 books"); the Bridge works through them in turn, and you can follow
+them as **Chapters** jobs in [Settings > Bridge](bridge.md#jobs), which say "24
+chapters found" once done. The book's page shows the chapters as soon as its job
+ends.
+
+Some books are passed over, and the toast names them:
+
+- a book already being generated: that run finds its chapters too;
+- a book a description is being written for: try again once it has finished;
+- a book whose detection is already waiting for attention on the Bridge;
+- a book whose chapter source was chosen on its page. Its row says so ("Uses the
+  file's chapters by choice. Set it back to automatic on the book page to detect
+  chapters.") and offers no Detect chapters, since found chapters are only used
+  when no source was chosen.
+
+**Generating later reuses the work.** Generating characters and recaps for a book
+whose chapters were detected carries on from that transcription instead of
+transcribing again, as long as the Bridge still has it (it keeps
+[transcripts](#transcripts) for 30 days). While its chapters are still being
+found, the book's **Characters and recaps** part says so and waits: "The book's
+chapters are being found. Generate once that has finished: it reuses the
+transcription."
+
+When it is done, the event reads "Chapters found" with the book's title, and
+"Listeners see them in the player now." If the book uses other chapters by then
+(the community's, or a source you chose), it says they were saved but the book
+uses other chapters.
+
+### When no chapters are found
+
+The Bridge never guesses: a chapter in the wrong place would put recaps and
+spoiler protection in the wrong place too. When it can't find the chapters with
+confidence, the job **pauses** with **The chapters couldn't be found in the
+narration**, and a reason such as
+
+- "no chapter headings were heard in the narration" (the narrator doesn't read
+  them out, or reads them without a pause);
+- "chapter 12 runs 2 h 40 min, so headings were probably missed";
+- "the narration numbers chapters 1 to 30 but only 14 were heard".
+
+It doesn't carry on by itself. What you can do:
+
+- **Add chapter markers to the audio file** with your tagging tool, then cancel
+  the job. The server reads the markers at its next scan, and the book then has
+  chapters of its own: generating it works from those.
+- **Match the book to a community recording that has a chapter list** (see
+  [Community chapters](books.md#community-chapters)). That gives listeners
+  chapters, but not the Bridge: generating characters and recaps still needs
+  markers in the file.
+- Or cancel the job and leave the book as it is.
+
+A Detect chapters job can also fail straight away, saying why: the book already
+has chapters (its file carries chapter markers, or its chapters are its files),
+its file has one marker covering only part of it (remove it, then try again), its
+file doesn't say how long it is, the Bridge already generated the book's
+characters and recaps, or they were made without chapters found in the narration
+(new chapters would move their spoiler positions). In the last two cases, generate
+the book again instead: that run finds its chapters too.
+
+### Where found chapters show, and turning them off
+
+- **In the player**, they work like any other chapters, and the book's chapter
+  list ends with a quiet line: "Chapters found in the narration on this server".
+  An app version from before this feature shows them as ordinary chapters,
+  without the line.
+- **In the console**, the book's [Chapters card](books.md#chapters-found-in-the-narration)
+  shows them and turns them off or back on.
+
+**Which chapters win.** A book's own chapters always come first: found chapters
+are only ever used for a book with none. Next come the community's, when the book
+is matched and the community's chapter list fits it; then the found ones. A source
+you choose on the book's page overrides both. Found chapters also belong to the
+exact file they were found in: replace or re-encode the file and they are no
+longer used (and a long book shows under **Long books without chapters** again).
+
+They are saved in the book's `.audiosilo` folder as `chapters.json` (for a book
+that is a single audio file, as `The Book.chapters.json` in the `.audiosilo` folder
+beside it), like the characters and recaps, and nothing is written into your audio
+file. Moving a book's folder takes them along; moving or renaming a single audio
+file on its own leaves them behind, and the book has no found chapters until they
+are found again.
 
 ## Costs and the monthly cap
 

@@ -22,7 +22,10 @@ added [ASR workers](workers.md): the same binary run natively where speech
 recognition is fast (a Mac's Metal), taking the transcription off the Bridge.
 **Phase 1c** added own-words, spoiler-free [descriptions](generating.md#the-description-step):
 every generate run writes one too, and `sidecars.describe` writes one alone for a
-book generated earlier. Podcasts, read-along, Audible backups and file moves arrive in later phases.
+book generated earlier. **Phase 1d** added [chapterless books](chapters.md): a book
+with no chapter markers gets its chapters found in the narration, written as
+`chapters.json`, and `chapters.detect` finds them on their own, with no agent.
+Podcasts, read-along, Audible backups and file moves arrive in later phases.
 :::
 
 ## What it is for
@@ -148,6 +151,9 @@ the mark; see [generated content](../server/api/reference.md#generated-content))
 - [Characters and recaps](generating.md) - `sidecars.generate`: queueing, the
   estimate, the run, its progress, parks and result, the description step and
   `sidecars.describe`, budgets and the transcript retention.
+- [Chapterless books](chapters.md) - Phase 1d: the windows, the
+  `chapter_detecting` stage and its detector, `chapters.detect`, and how the
+  chapters reach the server.
 - [The .audiosilo folder](attachments.md) - where the results go, their formats,
   and how the server finds, checks and serves them.
 - [The agent container](agent-container.md) - where the AI agents run, and the

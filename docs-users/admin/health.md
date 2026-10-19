@@ -18,7 +18,10 @@ pages:
 Nothing on these pages changes your audio files. Fixes are saved in AudioSilo
 (a cover you upload, a match you accept, a folder detection choice, the
 community's chapters), and an
-issue you ignore is only hidden.
+issue you ignore is only hidden. **Detect chapters** is the one fix that writes
+into your library: the Bridge
+[saves the chapters it finds](generating-characters-and-recaps.md#where-found-chapters-show-and-turning-them-off)
+in the `.audiosilo` folder beside the book's audio.
 
 ## Library health
 
@@ -49,7 +52,7 @@ below.
 | **Missing covers** | No cover image in the book's folder and none inside its files. | **Upload a cover** opens the book's page, where **Change cover** adds one (see [Covers](books.md#covers)). |
 | **Not matched to community metadata** | The book has no ASIN or ISBN, so community metadata can't find it. Only shown while [community metadata](server.md#community-metadata) is on. | **Review match** opens the book's page with the match dialog open (see [Matching](books.md#matching-with-community-metadata)). To match the whole list at once, use **Match automatically** above it (see [Matching every book at once](#matching-every-book-at-once)). |
 | **Series spelled several ways** | Books of one series that spell its name differently, for example "He Who Fights With Monsters" on some books and "He Who Fights with Monsters" on others. AudioSilo already shows them as one series; this is only about every book saying the same. See [Series spelled several ways](#series-spelled-several-ways). | **Use this spelling** sets one spelling on every book of the series. |
-| **Long books without chapters** | Books over two hours long with no chapter marks (or a single chapter). Listeners can play them but can't jump between chapters. When the book was checked against the community's chapter lists and they couldn't be used, a second line says why, for example "Community chapters: for another edition" or "Community chapters: cross from one file into the next. Merging the files would let them fit" (see [Community chapters](books.md#community-chapters)). | None in the console. [Match](books.md#matching-with-community-metadata) the book so its community chapters can be used (a book with no chapters of its own gets them automatically once they fit), add chapters to the file with your tagging tool, or ignore it. |
+| **Long books without chapters** | Books over two hours long with no chapter marks (or a single chapter). Listeners can play them but can't jump between chapters. When the book was checked against the community's chapter lists and they couldn't be used, a second line says why, for example "Community chapters: for another edition" or "Community chapters: cross from one file into the next. Merging the files would let them fit" (see [Community chapters](books.md#community-chapters)). | **Detect chapters**, while your [Bridge](bridge.md) is online and offers it: the Bridge transcribes the book and finds the chapters in the narration, with no agent cost (see [Detect chapters](generating-characters-and-recaps.md#detect-chapters-without-characters-and-recaps)). A book whose chapter source was chosen on its page says so instead. Otherwise, [match](books.md#matching-with-community-metadata) the book so its community chapters can be used (a book with no chapters of its own gets them automatically once they fit), add chapters to the file with your tagging tool, or ignore it. |
 | **More detailed chapters available** | The book has chapters, and the community has finer ones that fit this copy ("Has 34 chapters; the community's finer ones fit this copy"). Nothing changes until you use them. | **Use detailed chapters** switches the book to the community's chapters. Using them on the book's page does the same. Once you have chosen, the book stays off this list, even if you later switch it back to the file's chapters. |
 | **Converted to play in browsers** | The audio format doesn't play in web browsers, so the server converts it while someone listens in the web player. The apps play it as it is. | None needed: it works. Re-encode the file if you'd rather the server didn't convert it, or ignore it. |
 
@@ -67,8 +70,9 @@ disk. Click the title or cover to open the book's page.
 - Tick the box on several rows (or **Select all**) to act on them together
   from the bar at the bottom: **Ignore** (or **Show again** in the ignored
   view), **Read again** in **Files that couldn't be read** (it reads two
-  books at a time, so a long selection takes a moment), and **Use detailed
-  chapters** in **More detailed chapters available**.
+  books at a time, so a long selection takes a moment), **Use detailed
+  chapters** in **More detailed chapters available**, and **Detect chapters**
+  in **Long books without chapters** (one confirmation for them all).
 - Long lists load 50 books at a time; **Show more** loads the next.
 
 When a list is empty it says **All clear** - the category you were working on
