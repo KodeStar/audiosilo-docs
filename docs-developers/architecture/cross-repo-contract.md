@@ -332,9 +332,8 @@ false or `/server` hasn't answered.
 **A change requires:** adding a capability is a two-repo change - flip the flag as
 the feature lands server-side, and gate the new UI on it client-side. Never assume
 a capability is present. A module's flag is its id, mirrored in `Capabilities`
-(`types.ts`) like any other flag and named in the player's `ModuleFlag` too, which
-types the ids of its module registry (`src/modules/registry.ts`, empty for now); the
-capability hooks keep their closed `keyof Capabilities` key.
+(`types.ts`) like any other flag and named in the player's `ModuleFlag` too (see
+[Player modules](../frontend/state-and-data.md#player-modules-srcmodules)).
 
 ## 9. The web player is served *by* the server at `/web`
 
@@ -690,12 +689,10 @@ both repos, with a test on each side.
   is under two minutes old, with `bridge: {version, features}` beside
   `capabilities` (`features` a list, never `null`; the server reuses a heartbeat
   it read for up to 5 s). Clients never assume it, and a feature the Bridge doesn't
-  advertise is off even when the flag is on. Besides the job families, `features`
-  holds `contribute` while the heartbeat's `estimates.sidecars.can_contribute` is
-  true (no heartbeat field was added for it), and a
-  [managed module](../server/modules.md) that needs a feature
-  (`contributions` needs `contribute`) has its flag `true` only while it is on and
-  the online Bridge offers it.
+  advertise is off even when the flag is on. `features` may also hold `contribute`
+  (the Bridge can file contributions; see
+  [the heartbeat](../bridge/pairing-and-jobs.md#the-heartbeat-and-the-capability)),
+  which the `contributions` module's flag needs ([§8](#8-capability-flags-get-apiv1server)).
 - **The job model:** the server's `bridge_jobs` row is the intent and the lease
   (path-keyed, moved with its book, gone with its library); the Bridge's
   `server_jobs` row is the execution truth. Leases of 2 minutes, renewed by every

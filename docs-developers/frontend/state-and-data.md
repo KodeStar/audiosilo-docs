@@ -286,17 +286,20 @@ holds the native Expo modules). It is **empty** since Bridge Phase 2a: the slots
 open and exercised only by tests, so the player renders exactly as before. The
 Contributions module's player part comes with it in a later release.
 
-- **A module** is a `PlayerModule`: `{id, homeRails?, youSections?, bookActions?}`.
-  `homeRails` renders on Home once, after Next in your series (`ModuleRails`);
-  `youSections` (`{key, label, render}`, a `YouModuleSection`) are sections of the You
-  hub, after Account on a phone and after Journal in the wide sub-nav: `label` is a
-  function of `t`, so it follows the language, and `render` a column the hub scrolls;
-  `bookActions` adds items to the book page's menu (`HeroActions`, after Regenerate) for
-  a book whose server has the flag, each keyed `<id>:<key>` so it never meets the menu's
-  own keys or another module's. A slot returns elements, so its hooks live in the
-  components it returns; the slots still call `homeRails` and `render` behind a
-  component of their own, so a hook reached through one stays that module's as the
-  active list changes. `bookActions` is a plain function, never a hook.
+- **A module** is a `PlayerModule`: `{id, homeRails?, youSections?, bookActions?}`,
+  each slot optional:
+  - `homeRails` renders once on Home, after Next in your series (`ModuleRails`).
+  - `youSections` (`{key, label, render}`, a `YouModuleSection`) are sections of the
+    You hub, after Account on a phone and after Journal in the wide sub-nav. `label`
+    is a function of `t`, so it follows the language; `render` returns a column the
+    hub scrolls.
+  - `bookActions` adds items to the book page's menu (`HeroActions`, after
+    Regenerate) for a book whose server has the flag, each keyed `<id>:<key>` so it
+    never meets the menu's own keys or another module's.
+  - Hooks: a slot returns elements, so its hooks live in the components it returns.
+    The slots call `homeRails` and `render` inside a component of their own, so a
+    hook stays with its module as the active list changes. `bookActions` is a plain
+    function, never a hook.
 - **The You hub's keys.** `youModuleSections(active)` maps the active modules' sections
   by key, in registry order: the first of a key wins, and a blank key or one of the
   hub's own (`CoreYouSection`) is ignored. `parseYouSection(raw, moduleKeys)` opens an

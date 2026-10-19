@@ -771,7 +771,9 @@ CSP-sensitive work against a real build served by Go. The console's own gate is
   own `needs` line, with **Bridge settings** linking to `?topic=bridge` unless ready)
   and, while enabled but not `active`, the "hidden from listeners" notice. The
   switch reads the settings envelope (a save updates it at once) over the module
-  list, which can lag it by a refetch.
+  list, which can lag it by a refetch. The command palette lists the topic (keywords
+  include "plugins" and "contributions"); a settings page a module brings is in
+  [Managed modules](modules.md#the-console-settings--modules).
 - **Generate characters and recaps** (`features/bridge/generate-*.tsx`,
   `use-generate.ts`, `series-generate-dialog.tsx`; the pure rules in
   `generate-model.ts`, tested) - offered while `generateAvailable` (`metadata`,

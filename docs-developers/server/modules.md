@@ -55,10 +55,9 @@ request to the next (the server reuses a heartbeat for up to 5 seconds). `GET
 /server` reads the Bridge once per request and uses it for the `bridge` flag, the
 `bridge` block and every module's flag.
 
-`contribute` is the first Bridge feature that is not a job family: the server adds it
-to `features` while the last heartbeat's `estimates.sidecars.can_contribute` is true
-(the Bridge holds a GitHub credential; `bridge.FeatureContribute`). No heartbeat
-field was added for it, so an older server still accepts a newer Bridge's heartbeat.
+The `contributions` module needs `contribute`, the Bridge's first feature that is not
+a job family: see
+[The heartbeat and the capability](../bridge/pairing-and-jobs.md#the-heartbeat-and-the-capability).
 
 ## Routes: always mounted, gated on the toggle
 
@@ -69,9 +68,9 @@ pattern must be `"METHOD /api/v1/..."`, so the global middleware and the auth
 wrappers apply; anything else panics when the server starts (`checkModulePattern`).
 
 The routes are mounted whether the module is on or off, so turning one on needs no
-restart. They gate on the **toggle only**: an action that needs the Bridge refuses
-on its own (with its own `409`, as the Bridge's job routes do), so a route doesn't
-come and go with the heartbeat's timing while the flag does.
+restart. They gate on the **toggle only**, so a route stays put while the flag follows
+the heartbeat. An action that needs the Bridge refuses on its own, with its own
+`409`, as the Bridge's job routes do.
 
 ## Background work
 
@@ -98,21 +97,14 @@ Nothing starts before `StartModules` or after `StopModules`.
 
 *Admin.* Every module in registry order, with its toggle, its flag and where it
 stands with the Bridge (shape in the
-[reference](api/reference.md#get-apiv1adminmodules)). Whether a toggle is locked is
-the settings envelope's `locked["modules.<id>"]`, not repeated here.
+[reference](api/reference.md#get-apiv1adminmodules)).
 
 ## The console: Settings > Modules
 
-`admin-ui`'s `features/settings/modules-topic.tsx` shows one card per module: its
-name and blurb from the locale files (`settings.module.<id>.*`, so the server sends
-ids only), a **Learn more** link to the User Guide's
-[Modules](/users/admin/server#modules) section, the **Enable** switch (an instant
-settings save, disabled while locked), the Bridge state line (`settings.modules.bridge.<state>`,
-or the module's own `needs` line for `no_feature`, with a link to Settings > Bridge
-unless ready) and, while enabled but not active, the "hidden from listeners" note.
-`useModules` polls `GET /admin/modules` every 15 seconds, like the Bridge's status,
-and refetches after every settings save. The command palette lists the topic
-(keywords include "plugins" and "contributions").
+`admin-ui`'s `features/settings/modules-topic.tsx` shows one card per module, over
+`GET /admin/modules`. The server sends ids only: the name, blurb and `needs` line come
+from the locale files (`settings.module.<id>.*`). The card's parts are described with
+the rest of the console in [The web UI](web-ui.md).
 
 A settings page a module brings goes in `settings-model.ts`'s `MODULE_PAGES`;
 `visiblePages` lists it only while the module's toggle is on, and a `?topic=` for a
@@ -120,12 +112,10 @@ hidden one opens General.
 
 ## The player: `src/modules/`
 
-The player keeps its own registry, `PLAYER_MODULES` in `src/modules/registry.ts`
-(not the repo-root `modules/`, which holds the native Expo modules). A
-`PlayerModule` is `{id, homeRails?, youSections?, bookActions?}`, its `id` being the
-capability flag, typed `ModuleFlag` (a key of the player's `Capabilities`). It is **empty** in Phase 2a, so the player renders exactly as
-before: the slots are open and tested with fake modules. See
-[Player modules](../frontend/state-and-data.md#player-modules-srcmodules).
+The player keeps its own registry, `PLAYER_MODULES` in `src/modules/registry.ts`,
+each entry's `id` being the module's capability flag. It is **empty** in Phase 2a:
+the slots are open and tested with fake modules, so the player renders exactly as
+before. See [Player modules](../frontend/state-and-data.md#player-modules-srcmodules).
 
 ## Adding a module
 
@@ -140,7 +130,10 @@ before: the slots are open and tested with fake modules. See
    locale, and a `MODULE_PAGES` entry if it brings a settings page.
 4. If listeners see it, the flag on the player's `Capabilities` type and in its
    `ModuleFlag`, and its entry in `PLAYER_MODULES`.
-5. Docs: its flag in the [capability flags](api/index.md#capability-flags---gate-your-features),
-   its routes in the [reference](api/reference.md), its key in
-   [Configuration](configuration.md#managed-modules-modules), and its card in the User
-   Guide's [Modules](/users/admin/server#modules).
+5. Docs: its flag in the [capability flags](api/index.md#capability-flags---gate-your-features)
+   table and the [`GET /server`](api/reference.md#get-apiv1server) module table, its
+   routes in the [reference](api/reference.md), its key in
+   [Configuration](configuration.md#managed-modules-modules) (the key, environment
+   variable and runtime settings tables), its card in the User Guide's
+   [Modules](/users/admin/server#modules), and the `admin/settings-modules.png`
+   screenshot.

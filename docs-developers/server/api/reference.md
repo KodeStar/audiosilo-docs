@@ -152,12 +152,11 @@ old, and only then does a top-level `bridge: {version, features}` object sit bes
 `capabilities`. An older server has neither. See
 [the `bridge` capability](#get-apiv1server-the-bridge-capability-and-block).
 
-Each [managed module](../modules.md) adds a flag named after it, absent on an older
-server. A module ships off; its flag is `true` only while an admin has it on (Settings
-> Modules, or its `AUDIOSILO_MODULES_<ID>_ENABLED` variable) **and**, for a module
-that needs the Bridge, an online Bridge offers the feature in `bridge.features` it
-needs. Off, it is sent as `false`. Like `bridge`, it can change from one request to
-the next.
+Each [managed module](../modules.md#the-toggle-and-the-capability-flag) adds a flag
+named after it: `true` only while an admin has it on **and**, for a module that needs
+the Bridge, an online Bridge lists the feature it needs in `bridge.features`; sent as
+`false` otherwise, absent on an older server. Like `bridge`, it can change from one
+request to the next.
 
 | Flag | Value | Gates |
 |---|---|---|
@@ -7202,9 +7201,9 @@ booleans):
   each known kind before its dot (`bridge.verify` is `bridge`, `sidecars.generate`
   and `sidecars.describe` are `sidecars`, `chapters.detect` is `chapters`), plus
   `contribute` while the last heartbeat's `estimates.sidecars.can_contribute` is
-  true (the Bridge holds a GitHub token and can file contributions; the
-  `contributions` [module](../modules.md) needs it); sorted, each once;
-  always a list (`[]` for none), never `null`. A kind the Bridge advertises that the
+  true (the Bridge holds a GitHub token and can file contributions, which the
+  `contributions` [module](../modules.md) needs). Sorted, each once, always a list
+  (`[]` for none), never `null`. A kind the Bridge advertises that the
   server doesn't know adds nothing.
 
 The server keeps the last heartbeat it read for up to 5 seconds, so `GET /server`,

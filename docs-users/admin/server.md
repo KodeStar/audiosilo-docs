@@ -360,8 +360,8 @@ The **Demo mode** card runs a public demo from this server (see
 
 ![Server settings, Modules](/img/screenshots/admin/settings-modules.png)
 
-Modules are optional features you choose to turn on. Every module starts off,
-and nothing turns one on for you: pairing a Bridge doesn't either. **Modules**
+Modules are optional features you choose to turn on. Every module starts off and
+stays off until you turn it on; pairing a Bridge doesn't turn one on. **Modules**
 shows a card for each one, with what it does, **Learn more** (which opens this
 section) and its **Enable** switch. The switch saves the moment you flip it,
 and the module starts or stops at once, with no restart.
@@ -370,16 +370,18 @@ Some modules need a [Bridge](bridge.md). Their card says where your Bridge
 stands, under the switch:
 
 - **Needs a Bridge** - no Bridge is paired, or it hasn't reported in the last
-  two minutes. **Bridge settings** takes you to pair one or see what is wrong.
+  two minutes.
 - What your Bridge is missing, like **Sign in to GitHub on your Bridge** - the
-  Bridge is online but can't do what this module needs yet. **Bridge settings**
-  is there too.
+  Bridge is online but can't do what this module needs yet.
 - **Bridge ready** - the Bridge can do it.
 
-You can turn a module on before its Bridge is ready. Its card then says "On,
-but hidden from listeners until the Bridge is ready.": what the module adds
-stays out of sight until the Bridge can do it, and goes again if the Bridge
-goes offline, without you touching the switch.
+Until the Bridge is ready, the card has a **Bridge settings** link to pair one or
+see what is wrong.
+
+You can turn a module on before its Bridge is ready. Its card then says **On,
+but hidden from listeners until the Bridge is ready.** Listeners see what the
+module adds only while the Bridge is ready: it appears and disappears on its own
+as the Bridge comes and goes, without you touching the switch.
 
 The modules today:
 
@@ -388,13 +390,13 @@ The modules today:
   AudioSilo server can use them. It needs a Bridge that has been given a GitHub
   token (see
   [Contributing to the community](../getting-started/running-a-bridge.md#contributing-to-the-community)).
-  It arrives in a later release: in this one, turning it on changes nothing
-  else yet. The generate dialog's **Also contribute to the community** works
+  For now it does nothing: its features arrive in a later release. Its variable
+  is `AUDIOSILO_MODULES_CONTRIBUTIONS_ENABLED`. The generate dialog's **Also contribute to the community** works
   as before, with the module on or off.
 
-The `AUDIOSILO_MODULES_<NAME>_ENABLED` variable sets a module's switch too
-(`AUDIOSILO_MODULES_CONTRIBUTIONS_ENABLED=true` turns Contributions on), and
-then locks it here, like any [setting set somewhere else](#settings-set-somewhere-else).
+A module's environment variable (`AUDIOSILO_MODULES_CONTRIBUTIONS_ENABLED=true`
+turns Contributions on) sets its switch too, and then locks it here, like any
+[setting set somewhere else](#settings-set-somewhere-else).
 Each change is in the [audit log](#audit-log) as a settings change.
 
 ## About and updates

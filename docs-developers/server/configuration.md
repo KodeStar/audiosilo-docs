@@ -453,7 +453,7 @@ applies at once and starts or stops its background work with no restart.
 
 | Key | Type / default | Meaning |
 |---|---|---|
-| `modules.contributions.enabled` | bool, `false` | The Contributions module: sending corrections and generated characters and recaps to the community database through the Bridge. Its `contributions` capability is this **and** an online Bridge offering the `contribute` feature. An inert shell for now (no routes, no background work); it arrives in a later release |
+| `modules.contributions.enabled` | bool, `false` | The Contributions module: sending corrections and generated characters and recaps to the community database through the Bridge (its flag needs the Bridge's `contribute` feature too). Does nothing yet (no routes, no background work); its features arrive in a later release |
 
 A module's own settings, when it has any, go under its key
 (`modules.<id>.<name>`). A `config.yaml` written before the section keeps every
@@ -465,7 +465,7 @@ The server has **no setting for the [Bridge](../bridge/index.md)**, and no
 environment variable: the pairing, the Bridge's token, its last heartbeat and its
 jobs live in the database (`bridge_status`, `bridge_jobs` and a `tokens` row; see
 [Data model](data-model.md#the-bridge)) and are managed from the console's
-**Settings > Bridge**. Existing settings touch it in four places:
+**Settings > Bridge**. Existing settings touch it in three places:
 
 - **The address the pairing dialog gives the Bridge** (`server_url` from
   [`POST /admin/bridge/pair`](api/reference.md#post-apiv1adminbridgepair)) is the
@@ -481,9 +481,6 @@ jobs live in the database (`bridge_status`, `bridge_jobs` and a `tokens` row; se
   ([`sidecars.generate`](../bridge/generating.md)): generated content reaches the
   players through `/meta`, which is `404` while metadata is off, so the console and
   the player offer the action only with it on.
-- **A [managed module](#managed-modules-modules)** that needs a Bridge feature
-  (`contributions` needs `contribute`) has its capability flag `true` only while
-  it is on **and** an online Bridge offers that feature.
 
 The Bridge's own settings are its business: see
 [Bridge configuration](../bridge/configuration.md).

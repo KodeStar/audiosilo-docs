@@ -295,7 +295,7 @@ flag and config key, the Bridge feature it needs, its routes and its background
 work), the `Registrar` its routes mount through, `Deps`, `Validate`, which the
 launcher runs before starting, `Module.BridgeState` and `Active` (the flag), and the
 `Runner` that starts and stops each module's background work. The registry is
-`internal/modules/builtin` (one module, `contributions`, an inert shell for now); the
+`internal/modules/builtin` (one module, `contributions`); the
 API mounts each module's routes behind its toggle (`404 module_off`), syncs the
 `Runner` after every settings save (the launcher stops it at shutdown), and
 advertises each module's flag (`api/modules.go`).
