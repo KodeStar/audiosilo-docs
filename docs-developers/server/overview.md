@@ -292,11 +292,13 @@ are read by the scanner (`library/attachments.go`), stored by the catalog
 
 The [managed modules](modules.md) framework: `Module` (an id that is its capability
 flag and config key, the Bridge feature it needs, its routes and its background
-work), the `Registrar` its routes mount through, `Deps` and `Validate`, which the
-launcher runs before starting. The registry is `modules/builtin` (one module,
-`contributions`, an inert shell for now); the API mounts each module's routes behind
-its toggle (`404 module_off`), starts and stops its background work as the toggle
-changes, and advertises its flag (`api/modules.go`).
+work), the `Registrar` its routes mount through, `Deps`, `Validate`, which the
+launcher runs before starting, `Module.BridgeState` and `Active` (the flag), and the
+`Runner` that starts and stops each module's background work. The registry is
+`internal/modules/builtin` (one module, `contributions`, an inert shell for now); the
+API mounts each module's routes behind its toggle (`404 module_off`), syncs the
+`Runner` after every settings save (the launcher stops it at shutdown), and
+advertises each module's flag (`api/modules.go`).
 
 ### `internal/importer`
 

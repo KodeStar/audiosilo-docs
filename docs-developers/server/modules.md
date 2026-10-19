@@ -26,9 +26,14 @@ A module is a `modules.Module` value:
 | `Routes(Registrar)` | registers the module's HTTP routes; `nil` for none. Called once, when the API builds its handler |
 | `Start(ctx, Deps)` | the module's background work while it is on, returning when `ctx` is cancelled; `nil` for none. `Deps` carries a logger tagged with the module's id, the catalog and the Bridge service |
 
-The registry is `modules/builtin.Modules()`, in the order the console lists them. It
-is a sub-package so a module's own package (`modules/<id>`) can import `modules`
-without a cycle. The launcher hands it to `API.SetModules`, which refuses to start
+Beside it, `Module.BridgeState(online, features)` says where the module stands with
+the feature it needs (`BridgeOffline`, `BridgeNoFeature`, `BridgeReady`, or `""` for
+a module that needs none), and `modules.Active(on, state)` is its capability flag;
+`GET /server` and `GET /admin/modules` both work it out through them.
+
+The registry is `Modules()` in `internal/modules/builtin`, in the order the console
+lists them. It is a sub-package so a module's own package (`internal/modules/<id>`)
+can import `modules` without a cycle. The launcher hands it to `API.SetModules`, which refuses to start
 the server on a `modules.Validate` error: an id must match `^[a-z][a-z0-9_]{0,31}$`,
 appear once, not be a core capability's name (`coreCapabilities`), and have its
 config row (`config.HasModule`).
@@ -42,8 +47,8 @@ settings envelope's `modules` section, variable `AUDIOSILO_MODULES_<ID>_ENABLED`
 applied at once. A save is audited as `settings.update`, and a variable locks it
 (`409 setting_locked`) like any other setting.
 
-The **capability flag** (`moduleActive`) is the toggle **and** the Bridge requirement
-met: for a module with a `RequiresBridge`, a Bridge whose last heartbeat is under two
+The **capability flag** (`modules.Active`, through the API's `moduleActive`) is the
+toggle **and** the Bridge requirement met: for a module with a `RequiresBridge`, a Bridge whose last heartbeat is under two
 minutes old and whose `features` hold it. It is `false`, never absent, while the
 module is off, and it follows the Bridge's heartbeat, so it can change from one
 request to the next (the server reuses a heartbeat for up to 5 seconds). `GET
@@ -70,16 +75,24 @@ come and go with the heartbeat's timing while the flag does.
 
 ## Background work
 
-`StartModules(ctx)` runs at launch, beside the chapter checks, and starts each module
-that is on. From then on, `handleUpdateSettings` calls `syncModules` right after the
-live config swap, under the settings mutex:
+A `modules.Runner` (`internal/modules/runner.go`) runs each module's `Start` while
+the module is on. The launcher calls the API's `StartModules(ctx)` once, beside the
+chapter checks (`Runner.Start`: each module that is on starts), and defers
+`StopModules()` (`Runner.Stop`), which cancels every run and waits for each to return,
+so a module is done before the database closes. In between, `handleUpdateSettings`
+calls `syncModules` (`Runner.Sync`) right after the live config swap of every save,
+under the settings mutex:
 
-- a module turned on starts `Start` in its own goroutine; a panic stops that module
-  only, never the server;
+- a module turned on starts `Start` in its own goroutine, its `Deps.Log` tagged with
+  its id; a panic ends that run only, never the server;
 - a module turned off has its context cancelled, and the save doesn't wait for it to
   return;
+- a module that is on but whose run has ended by itself (returned or panicked) starts
+  again at the next save;
 - a module turned back on while its last run is still stopping starts once that run
   has returned, so two runs of one module never overlap.
+
+Nothing starts before `StartModules` or after `StopModules`.
 
 ## `GET /api/v1/admin/modules`
 
@@ -110,7 +123,7 @@ hidden one opens General.
 The player keeps its own registry, `PLAYER_MODULES` in `src/modules/registry.ts`
 (not the repo-root `modules/`, which holds the native Expo modules). A
 `PlayerModule` is `{id, homeRails?, youSections?, bookActions?}`, its `id` being the
-capability flag. It is **empty** in Phase 2a, so the player renders exactly as
+capability flag, typed `ModuleFlag` (a key of the player's `Capabilities`). It is **empty** in Phase 2a, so the player renders exactly as
 before: the slots are open and tested with fake modules. See
 [Player modules](../frontend/state-and-data.md#player-modules-srcmodules).
 
@@ -121,12 +134,12 @@ before: the slots are open and tested with fake modules. See
    `modules.<id>`), a field on `ModulesConfig`, and the key in
    `config.example.yaml`. Its own settings, if any, are setting `<id>.<name>`, key
    `modules.<id>.<name>`.
-2. Its entry in `modules/builtin`, with `RequiresBridge` if it needs the Bridge, and
-   its own package `modules/<id>` for `Routes` and `Start`.
+2. Its entry in `internal/modules/builtin`, with `RequiresBridge` if it needs the
+   Bridge, and its own package `internal/modules/<id>` for `Routes` and `Start`.
 3. Its console copy (`settings.module.<id>.name`, `.blurb`, `.needs`) in every
    locale, and a `MODULE_PAGES` entry if it brings a settings page.
-4. If listeners see it, its entry in the player's `PLAYER_MODULES`, and the flag on
-   the player's `Capabilities` type.
+4. If listeners see it, the flag on the player's `Capabilities` type and in its
+   `ModuleFlag`, and its entry in `PLAYER_MODULES`.
 5. Docs: its flag in the [capability flags](api/index.md#capability-flags---gate-your-features),
    its routes in the [reference](api/reference.md), its key in
    [Configuration](configuration.md#managed-modules-modules), and its card in the User

@@ -331,10 +331,10 @@ false or `/server` hasn't answered.
 
 **A change requires:** adding a capability is a two-repo change - flip the flag as
 the feature lands server-side, and gate the new UI on it client-side. Never assume
-a capability is present. A module's flag is its id: the player's `CapabilityKey` is
-open (`keyof Capabilities | (string & {})`, read with `hasCapability`), so its module
-registry (`src/modules/registry.ts`, empty for now) can name flags `types.ts`
-doesn't.
+a capability is present. A module's flag is its id, mirrored in `Capabilities`
+(`types.ts`) like any other flag and named in the player's `ModuleFlag` too, which
+types the ids of its module registry (`src/modules/registry.ts`, empty for now); the
+capability hooks keep their closed `keyof Capabilities` key.
 
 ## 9. The web player is served *by* the server at `/web`
 
