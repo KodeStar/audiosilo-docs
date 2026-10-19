@@ -236,9 +236,10 @@ variants: `column` on desktop, `inline` on a tablet, `sheet` on a phone.
   composed here, and a dimension generated on this server gets the
   "Generated on this server" mark instead (`communityCredit`, `GeneratedMark`;
   Story so far places its chips by `recapMarks`, see
-  [Enriched book metadata](state-and-data.md#enriched-book-metadata): a generated
-  list's chip under the "Story so far" heading, and again over recaps revealed with
-  **Show anyway**). The companion never shows the Generate covered line.
+  [Enriched book metadata](state-and-data.md#enriched-book-metadata): one at its
+  head when every part shown was generated, else on the generated part alone, a
+  generated list's under the "Story so far" heading and again over recaps revealed
+  with **Show anyway**). The companion never shows the Generate covered line.
   For an admin, the empty Who's who and Story so far end with `GenerateOffer`
   ([Generating characters and recaps](book-page.md#the-primary-action-and-the-action-row)).
 

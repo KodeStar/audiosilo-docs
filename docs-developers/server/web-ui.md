@@ -806,7 +806,7 @@ CSP-sensitive work against a real build served by Go. The console's own gate is
   **Characters** and a **Recaps** tab, each with its count (the Recaps count
   includes the whole-book summary's row). Characters list the name, role
   (`roleKey`), aliases, description and "From chapter N" (or "From the start");
-  recaps one row per `through.chapter` in chapter order (`recapRows`; at chapter 0
+  recaps one row each in chapter order (`recapRows`; at chapter 0
   `recapHeading` reads "Previously, in earlier books" for a `series` scope and
   "Before this book" otherwise) plus "The whole book" for the `recap_summary`,
   each closed behind its own button until the admin opens it. Each list shows the
@@ -815,8 +815,9 @@ CSP-sensitive work against a real build served by Go. The console's own gate is
   `work.generated`): **Community** (the `ProvenanceMarker`) with the envelope's
   `attribution` credit and licence, or **Generated on this server** with
   `generated.generated_at`, plus "Contributed, waiting for review" linking the
-  community issue the book's newest finished `sidecars.generate` job filed for
-  that dimension (`contributedLinks` over the job's `result.contributed`).
+  community issue the book's newest `done` `sidecars.generate` job filed for
+  that dimension (`contributedLinks` over the job's `result.contributed`; a later
+  failed, cancelled or open job doesn't hide it).
   Whether the issue was reviewed doesn't reach the server yet (Bridge Phase 2b).
   The summary has a source of its own (`generated.recap_summary`), shown on its
   row only when it differs from the list's, so a community summary beside a

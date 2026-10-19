@@ -1164,7 +1164,9 @@ await step('book: characters and recaps', async () => {
     if (wanted('admin/book-story-recaps.png')) {
       await card.getByRole('tab', {name: /^Recaps/}).click();
       await card.getByRole('button', {name: 'Through chapter 1', exact: true}).click({timeout: 8000});
-      await card.getByText('Recaps give the story away.', {exact: false}).waitFor({timeout: 8000});
+      // Its text is in once the row reads expanded.
+      await card.getByRole('button', {name: 'Through chapter 1', exact: true, expanded: true})
+        .waitFor({timeout: 8000});
       await shootCard('admin/book-story-recaps.png');
     }
   } finally {

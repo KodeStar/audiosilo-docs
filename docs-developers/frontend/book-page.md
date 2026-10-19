@@ -119,10 +119,11 @@ is the player's first admin-only UI. `mayGenerate(user, server)`
 (`bridge-model.ts`, pure and tested) allows it for an admin who isn't a demo
 account, a household member or a kid, on a server whose `capabilities.bridge` and
 `capabilities.metadata` are on and whose `bridge.features` holds `sidecars`.
-`useGenerate` gives the page `offer` from `generateOffer`, the offer rule the
-console shares (Bridge Phase 1e; [the table](../bridge/generating.md#who-sees-the-action);
-`communityCoverage` says what the community has): `generate`, `regenerate`, or
-`covered` when the community has both. `covered` mounts `GenerateCovered` in the
+`useGenerate` reads `generateOffer`, the offer rule the console shares (Bridge
+Phase 1e; [the table](../bridge/generating.md#who-sees-the-action);
+`communityCoverage` says what the community has), and gives the page `offer`
+(`generate` or `regenerate`) or, when the community has both, `covered` (a boolean;
+`offer` is then `null`). `covered` mounts `GenerateCovered` in the
 hero's footer: "The community already has characters and recaps for this book"
 with **See characters**, which selects the Characters tab and scrolls the page to
 the tabs (`openCharacters`, not animated under reduced motion). `generateOffer`

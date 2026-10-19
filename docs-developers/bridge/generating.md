@@ -42,7 +42,8 @@ the book page's Community card (`GenerateSection`), on each series card
 book. The player offers it on the book page's action row and in the companion's
 empty Who's who and Story so far; see
 [the book page](../frontend/book-page.md#the-primary-action-and-the-action-row).
-Both UIs follow one offer rule (Phase 1e), since generated content only ever
+For a single book both UIs follow one offer rule (Phase 1e; a series batch has
+its own, [below](#queueing-it)), since generated content only ever
 fills a dimension the community lacks
 ([`/meta`'s per-dimension merge](../server/api/reference.md#generated-content)):
 
@@ -67,8 +68,10 @@ the player's, shown only to an admin `mayGenerate` allows, opens the book page's
 Characters tab. The companion's empty Who's who and Story so far never show the
 line: an empty panel means the community lacks that half.
 
-The other guards (a job open, a `chapters.detect` job open, the Bridge offline,
-the four gates above) are unchanged.
+The other guards (a job open, the Bridge offline, the four gates above) are
+unchanged. A `chapters.detect` job open still hides the console's action, while
+the player keeps its button and the confirmation holds back (see
+[the book page](../frontend/book-page.md#the-primary-action-and-the-action-row)).
 
 ## Queueing it
 

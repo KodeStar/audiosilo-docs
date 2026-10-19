@@ -52,7 +52,8 @@ or ISBN.
 
 ### Which books offer it
 
-The console and the player follow the same rule:
+For a single book, the console and the player follow the same rule (**Generate
+for the series** goes by recaps alone, as above):
 
 - **While the community lacks characters, recaps or both**, the button is
   there: **Generate**, or **Regenerate** once your Bridge has written some for the
@@ -70,9 +71,10 @@ The console and the player follow the same rule:
   before the community had them, since the community's are the ones shown.
 
 The button also stays away while the book's job is running (its progress shows
-instead), while the book's chapters are still being
-[found in the narration](#detect-chapters-without-characters-and-recaps), and while
-the Bridge is offline.
+instead) and while the Bridge is offline. While the book's chapters are still being
+[found in the narration](#detect-chapters-without-characters-and-recaps), the
+console leaves the button out until that has finished; the player keeps it, and its
+confirmation says so and holds back.
 
 ## The confirmation
 

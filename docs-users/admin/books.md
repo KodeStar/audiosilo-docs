@@ -416,7 +416,7 @@ the same ones the players show: from the community database, or written by your
 - **Where they came from** heads each tab, since characters and recaps can come
   from different places: **Community**, with the community's credit and licence,
   or **Generated on this server**, with the date your Bridge wrote them. When the
-  book's last generate job [offered them to the community](generating-characters-and-recaps.md#keeping-them-local-or-contributing-them),
+  book's last finished generate job [offered them to the community](generating-characters-and-recaps.md#keeping-them-local-or-contributing-them),
   **Contributed, waiting for review** links to the submission. The whole-book
   summary can come from somewhere else than the chapter recaps (the community's
   summary beside recaps your Bridge wrote): its row then shows its own source,
