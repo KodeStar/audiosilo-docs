@@ -26,8 +26,12 @@ The user-facing behaviour is in the User Guide:
 re-export of `YouHub` (`src/components/you/you-hub.tsx`). The rules are the pure
 `you-model.ts`:
 
-- `parseYouSection(raw)`: absent, unknown or repeated is `stats`.
-- `youSectionsFor(layout)`: a phone's segmented control offers all six sections (it has
+- `parseYouSection(raw, moduleKeys?)`: one of the hub's own sections, or an active
+  module's section key (`moduleKeys`, from `youModuleSections`; see
+  [Player modules](state-and-data.md#player-modules-srcmodules)); anything else
+  (absent, unknown, repeated, an off module's key) is `stats`.
+- `youSectionsFor(layout, moduleKeys?)`: an active module's sections follow the hub's
+  own on every form factor (none yet). A phone's segmented control offers all six sections (it has
   no top bar), Household between Settings and Account; tablet and desktop offer Stats,
   Year in listening and Journal, because Settings is the top bar's gear and Household
   and Account the profile menu (Household there is the pushed `/household` page). A link to `settings`, `household` or `account` still
@@ -51,7 +55,8 @@ The Me tab's destination in `TABS` (`src/components/shell/destinations.ts`) has
 cold-link cleanup keeps the hub's section and the Journal's tab. `TOP_BAR_TABS` includes it.
 
 **Opening the hub.** `youHref(section?, journalTab?)` (`src/lib/paths.ts`) builds the
-link; open it only through `openYou(section)` / `openJournal(tab)` (`src/lib/open.ts`,
+link (`section` is one of the hub's own, `CoreYouSection`; a module's key is no link
+target); open it only through `openYou(section)` / `openJournal(tab)` (`src/lib/open.ts`,
 also on `useOpen`), never `pushInShell`. They pop the Me tab to its root
 (`popTabToRoot`) rather than pushing a copy (see
 [the router rules](overview.md#routing-rules)). `/journal?tab=` (the array-group

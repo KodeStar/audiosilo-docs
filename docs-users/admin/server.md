@@ -1,6 +1,6 @@
 ---
 title: "Server settings, updates and logs"
-description: "The Server pages of the AudioSilo admin console: every setting you can change while the server runs (name, address, HTTPS, app links, community metadata and keeping a local copy of it, transcoding, household members, demo mode, backups, notifications, importing from Audiobookshelf), which ones wait for a restart, checking for new versions and what that sends, reading the server's log, and the audit log of what admins (and the people managing household members) changed."
+description: "The Server pages of the AudioSilo admin console: every setting you can change while the server runs (name, address, HTTPS, app links, community metadata and keeping a local copy of it, transcoding, household members, demo mode, backups, notifications, importing from Audiobookshelf, the Bridge, optional modules), which ones wait for a restart, checking for new versions and what that sends, reading the server's log, and the audit log of what admins (and the people managing household members) changed."
 ---
 
 The **Server** destination in the [admin console](console-tour.md) is where
@@ -23,7 +23,7 @@ space, backups - is on [Health > System](health.md#system).
 **Server > Settings** lists its topics down the left (across the top on a
 phone): **General**, **Network & HTTPS**, **Players & app links**,
 **Community metadata**, **Transcoding**, **Household**, **Demo mode**,
-**Backups**, **Notifications**, **Import** and **Bridge**. Each setting lives in exactly one of them.
+**Backups**, **Notifications**, **Import**, **Bridge** and **Modules**. Each setting lives in exactly one of them.
 Backups, Notifications, Import and Bridge have pages of their own:
 [Backups and restoring](backups.md),
 [Notifications and the bell](notifications.md),
@@ -35,9 +35,9 @@ Most topics are made of cards. Change what you like in a card, then press
 **Save changes** at its foot (**Reset** puts the card back as it was). Only
 the values you changed are sent. If the server refuses one - an address
 without `https://`, a time like "2 days" - the reason shows under that field
-and nothing in the card is saved, so fix it and save again. The two switches
-(**Check for new versions** and **Look up community metadata**) save the
-moment you flip them.
+and nothing in the card is saved, so fix it and save again. The switches
+(**Check for new versions**, **Look up community metadata** and each
+module's **Enable** switch) save the moment you flip them.
 
 ### When a change takes effect
 
@@ -355,6 +355,48 @@ The **Demo mode** card runs a public demo from this server (see
   (200).
 - **Remove idle guests after** - a length of time like `30m`, `2h` or `24h`;
   empty means 24 hours. Waits for a restart.
+
+### Modules
+
+![Server settings, Modules](/img/screenshots/admin/settings-modules.png)
+
+Modules are optional features you choose to turn on. Every module starts off and
+stays off until you turn it on; pairing a Bridge doesn't turn one on. **Modules**
+shows a card for each one, with what it does, **Learn more** (which opens this
+section) and its **Enable** switch. The switch saves the moment you flip it,
+and the module starts or stops at once, with no restart.
+
+Some modules need a [Bridge](bridge.md). Their card says where your Bridge
+stands, under the switch's name:
+
+- **Needs a Bridge** - no Bridge is paired, or it hasn't reported in the last
+  two minutes.
+- What your Bridge is missing, like **Sign in to GitHub on your Bridge** - the
+  Bridge is online but can't do what this module needs yet.
+- **Bridge ready** - the Bridge can do it.
+
+Until the Bridge is ready, the card has a **Bridge settings** link to pair one or
+see what is wrong.
+
+You can turn a module on before its Bridge is ready. Its card then says **On,
+but hidden from listeners until the Bridge is ready.** Listeners see what the
+module adds only while the Bridge is ready: it appears and disappears on its own
+as the Bridge comes and goes, without you touching the switch.
+
+The modules today:
+
+- **Contributions** - for now it does nothing: in a later release it will send
+  your book corrections, and the characters and recaps your Bridge generates, to
+  the community metadata database, so every AudioSilo server can use them. It
+  needs a Bridge that has been given a GitHub token (see
+  [Contributing to the community](../getting-started/running-a-bridge.md#contributing-to-the-community)).
+  The generate dialog's **Also contribute to the community** works as before,
+  with the module on or off.
+
+A module's environment variable (`AUDIOSILO_MODULES_CONTRIBUTIONS_ENABLED=true`
+turns Contributions on) sets its switch too, and then locks it here, like any
+[setting set somewhere else](#settings-set-somewhere-else).
+Each change is in the [audit log](#audit-log) as a settings change.
 
 ## About and updates
 

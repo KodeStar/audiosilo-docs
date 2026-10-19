@@ -245,7 +245,8 @@ repositories. Add it to the **bridge** service:
 
 with the token in your `.env` file, and restart the Bridge. It stores the token
 encrypted at its start (a new value replaces the one stored before). The console's
-generate dialog then offers **Also contribute to the community**.
+generate dialog then offers **Also contribute to the community**, and the
+[Contributions module](../admin/server.md#modules) counts your Bridge as ready.
 
 ### Costs and limits
 

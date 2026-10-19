@@ -276,6 +276,50 @@ up / Move down send `position` = the visible index (`moveIndex` in
 `collections-model.ts`, `moveItem` in `up-next-model.ts`), and an Undo re-adds at
 the old index. `useSetQueue` / `useSetCollectionItems` have no caller.
 
+### Player modules (`src/modules/`)
+
+A server's [managed modules](../server/modules.md) ship off; an admin turns one on in
+the console, and its capability flag (named after the module) reads `true` only while
+it is on **and** its Bridge requirement is met. The player's side is its own registry,
+`PLAYER_MODULES` in `src/modules/registry.ts` (not the repo-root `modules/`, which
+holds the native Expo modules). It is **empty** in Bridge Phase 2a: the slots are
+open and exercised only by tests, so the player renders exactly as before. The
+Contributions module's player part comes with it in a later release.
+
+- **A module** is a `PlayerModule`: `{id, homeRails?, youSections?, bookActions?}`,
+  each slot optional:
+  - `homeRails` renders once on Home, after Next in your series (`ModuleRails`).
+  - `youSections` (`{key, label, render}`, a `YouModuleSection`) are sections of the
+    You hub, after Account on a phone and after Journal in the wide sub-nav. `label`
+    is a function of `t`, so it follows the language; `render` returns a column the
+    hub scrolls.
+  - `bookActions` adds items to the book page's menu (`HeroActions`, after
+    Regenerate) for a book whose server has the flag, each keyed `<id>:<key>` so it
+    never meets the menu's own keys or another module's.
+  - Hooks: a slot returns elements, so its hooks live in the components it returns.
+    The slots call `homeRails` and `render` inside a component of their own, so a
+    hook stays with its module as the active list changes. `bookActions` is a plain
+    function, never a hook.
+- **The You hub's keys.** `youModuleSections(active)` maps the active modules' sections
+  by key, in registry order: the first of a key wins, and a blank key or one of the
+  hub's own (`CoreYouSection`) is ignored. `parseYouSection(raw, moduleKeys)` opens an
+  active module's key and Stats for an off module's link. A link (`youHref`, `openYou`)
+  takes the hub's own sections only.
+- **Which are on.** `useActiveModules(list)` keeps the modules some server of the
+  person listening has on (`anyCapability` over `useCapabilitiesAll`); `useModulesOn(cid,
+  list)` one server's, since a book's actions go to its own server. Each slot reads
+  them through `WithActiveModules` (`active-modules.tsx`), which asks nothing with an
+  empty list. Slots take an optional `modules` prop (default the registry), which the
+  tests fill with a fake.
+- **Module flags are mirrored.** A module's `id` is a `ModuleFlag` (`registry.ts`): a
+  flag added to `Capabilities` in `types.ts` like any other and named in `ModuleFlag`
+  too, never a core flag such as `queue` (the server refuses a module named after
+  one). The capability hooks keep their closed key (`keyof Capabilities`), so a typo
+  in a flag name stays a type error. `Capabilities.contributions` is typed already and
+  read by nothing yet; `ServerInfo.bridge.features` may hold `contribute`.
+- The book page's tabs (`BookTab`), the book menu's own keys (`BookActionKey`) and
+  Settings' sections (`SettingsSection`) stay closed until a module needs them.
+
 ### The listener's own state (player redesign Phase 1b)
 
 Phase 1b adds the listener's own state to the data layer the same way: typed

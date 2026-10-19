@@ -652,7 +652,8 @@ CSP-sensitive work against a real build served by Go. The console's own gate is
   [`GET`/`PATCH /admin/settings`](api/reference.md#admin-settings): an in-page
   topic list in `?topic=` (`general` is the default and has no param;
   `network`, `players`, `metadata`, `transcoding`, `household`, `demo`, `backups`,
-  `notifications`, `import`; `settings-model.ts` `SETTINGS_PAGES`). Each card is a `SettingsForm`
+  `notifications`, `import`, `bridge`, `modules`; `settings-model.ts` `SETTINGS_PAGES`,
+  less a module's page, mapped in `MODULE_PAGES`, while its toggle is off: `visiblePages`). Each card is a `SettingsForm`
   (`settings-form.tsx`): a draft of its fields, Reset and Save changes, only
   the changed fields sent (`sectionPatch`); list settings are edited as one
   entry per line. A refusal's `field` puts the server's message under that
@@ -759,6 +760,21 @@ CSP-sensitive work against a real build served by Go. The console's own gate is
   counts, time left and cost; a park's reason with **Open in the Bridge**, a link
   to `<ui_url>#/jobs/<id>`; the counts and cost once done, and for a generate job
   whether its description came), its path linking to the book's page.
+- **Settings > Modules** (`features/settings/modules-topic.tsx`, Bridge Phase 2a) -
+  over [`GET /admin/modules`](api/reference.md#get-apiv1adminmodules) (`useModules`,
+  every 15 seconds like the Bridge's status, and refetched after every settings
+  save): a card per [managed module](modules.md) with its name and blurb
+  (`settings.module.<id>.*`), **Learn more** (the User Guide's
+  [Modules](/users/admin/server#modules), `MODULES_DOCS_URL`), the **Enable** switch
+  (an `InstantSwitch` patching `{modules: {<id>: on}}`, disabled while locked), the
+  Bridge state line (`settings.modules.bridge.<state>`; for `no_feature` the module's
+  own `needs` line, with **Bridge settings** linking to `?topic=bridge` unless ready)
+  and, while the toggle is on but the Bridge state isn't `ready`, the "hidden from
+  listeners" notice (worked out from the envelope's toggle, not the list's `active`). The
+  switch reads the settings envelope (a save updates it at once) over the module
+  list, which can lag it by a refetch. The command palette lists the topic (keywords
+  include "plugins" and "contributions"); a settings page a module brings is in
+  [Managed modules](modules.md#the-console-settings--modules).
 - **Generate characters and recaps** (`features/bridge/generate-*.tsx`,
   `use-generate.ts`, `series-generate-dialog.tsx`; the pure rules in
   `generate-model.ts`, tested) - offered while `generateAvailable` (`metadata`,

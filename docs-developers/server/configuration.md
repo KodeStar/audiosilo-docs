@@ -445,6 +445,20 @@ Point `backups.dir` at another disk (a NAS mount, a second drive) so a backup
 outlives the disk the server runs from. The folder is created `0700` and each
 backup is written `0600`.
 
+### Managed modules (`modules.*`)
+
+Optional features that ship off (see [Managed modules](modules.md)). Each module has
+one toggle, read per request through the API's live config, so turning one on or off
+applies at once and starts or stops its background work with no restart.
+
+| Key | Type / default | Meaning |
+|---|---|---|
+| `modules.contributions.enabled` | bool, `false` | The Contributions module: sending corrections and generated characters and recaps to the community database through the Bridge (its flag needs the Bridge's `contribute` feature too). Does nothing yet (no routes, no background work); its features arrive in a later release |
+
+A module's own settings, when it has any, go under its key
+(`modules.<id>.<name>`). A `config.yaml` written before the section keeps every
+module off.
+
 ### The Bridge (no keys)
 
 The server has **no setting for the [Bridge](../bridge/index.md)**, and no
@@ -505,6 +519,7 @@ by the settings table in `internal/config/settings.go` (`fields`: each entry's
 | `AUDIOSILO_BACKUP_SCHEDULE` | `backups.schedule` | `""`, `daily:HH:MM` or `weekly:DAY:HH:MM` |
 | `AUDIOSILO_BACKUP_KEEP` | `backups.keep` | integer, 1-365 |
 | `AUDIOSILO_BACKUP_DIR` | `backups.dir` | absolute path |
+| `AUDIOSILO_MODULES_CONTRIBUTIONS_ENABLED` | `modules.contributions.enabled` | `strconv.ParseBool` (`true`/`1`/…); each module's toggle is `AUDIOSILO_MODULES_<ID>_ENABLED` |
 
 List values are split on commas with whitespace trimmed and empties dropped
 (`splitList`). Numeric/boolean variables that fail to parse are **silently
@@ -561,6 +576,7 @@ restart, and whether the console may change it at all:
 | `backups.schedule` | `backups.schedule` | `AUDIOSILO_BACKUP_SCHEDULE` | at once |
 | `backups.keep` | `backups.keep` | `AUDIOSILO_BACKUP_KEEP` | at once (pruning at the next scheduled backup) |
 | `backups.dir` | `backups.dir` | `AUDIOSILO_BACKUP_DIR` | restart; **read-only** in the console |
+| `modules.contributions` | `modules.contributions.enabled` | `AUDIOSILO_MODULES_CONTRIBUTIONS_ENABLED` | at once (the module's background work starts or stops) |
 
 Not in the console: `max_upload_bytes` (it has a variable but no setting),
 `tls.cache_dir`, `tls.cert_file`/`tls.key_file`, `server_id`, and `libraries`
@@ -586,7 +602,9 @@ while everything else applies to the next request: CORS and the trusted-proxy
 check (`liveConfig` parses both once per save, not per request), `public_url`
 in pairing and invite links, `lan_url` in the home and away addresses, the display name, the well-known app-link files,
 the metadata switch (`metadataOn`), the demo library and cap, the backup
-schedule and retention (the handler calls `backup.Service.SetSettings`). Things set up
+schedule and retention (the handler calls `backup.Service.SetSettings`), and each
+[managed module's](modules.md#background-work) toggle (the handler calls
+`syncModules` after the swap, which starts or stops the module's background work). Things set up
 once at start (the listener and TLS in `internal/server`, the `/web` mount and
 the site-root demo redirect in `Handler()`, the metadata service built in
 `api.New`, the metadata mirror the launcher builds in mirror mode, the demo reaper's TTL) are only built then, from the config the

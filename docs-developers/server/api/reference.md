@@ -61,7 +61,8 @@ else and gate features on the flags.
     "household": true,
     "cast": true,
     "household_members": true,
-    "bridge": false
+    "bridge": false,
+    "contributions": false
   },
   "auth": { "methods": ["auth_code", "password"] },
   "demo": { "enabled": false }
@@ -150,6 +151,16 @@ request to the next: it is `true` only while a [Bridge](#the-bridge) is paired a
 old, and only then does a top-level `bridge: {version, features}` object sit beside
 `capabilities`. An older server has neither. See
 [the `bridge` capability](#get-apiv1server-the-bridge-capability-and-block).
+
+Each [managed module](../modules.md#the-toggle-and-the-capability-flag) adds a flag
+named after it: `true` only while an admin has it on **and**, for a module that needs
+the Bridge, an online Bridge lists the feature it needs in `bridge.features`; sent as
+`false` otherwise, absent on an older server. Like `bridge`, it can change from one
+request to the next.
+
+| Flag | Value | Gates |
+|---|---|---|
+| `contributions` | the Contributions module on **and** a Bridge offering `contribute` | nothing yet: the module is a shell until a later release (no routes, no background work) |
 
 ### `GET /healthz` · `GET /api/v1/healthz`
 
@@ -6441,6 +6452,9 @@ and `AUDIOSILO_*` variable each one is, and whether it needs a restart (see
     "keep": 7,
     "dir": ""
   },
+  "modules": {
+    "contributions": false
+  },
   "locked": { "players.web_dir": "AUDIOSILO_WEB_DIR" },
   "restart_settings": [
     "network.bind", "network.tls_mode", "network.tls_home_http", "network.tls_hosts", "players.web_dir",
@@ -6473,6 +6487,7 @@ effect. Lists are never `null`.
 | `backups.schedule` | `""` (off), `daily:HH:MM` or `weekly:DAY:HH:MM` in the server's time zone; stored in canonical form (see [Backups](#admin-backups)) |
 | `backups.keep` | how many scheduled backups are kept, 1-365 (manual and before-restore backups stay until deleted) |
 | `backups.dir` | read-only: changed only in `config.yaml` or `AUDIOSILO_BACKUP_DIR`; `""` = `<data>/backups` (`GET /admin/backups`' `status.dir` has the folder in use) |
+| `modules.<id>` | each [managed module's](../modules.md) toggle, by module id (`false` by default; config key `modules.<id>.enabled`, variable `AUDIOSILO_MODULES_<ID>_ENABLED`). Applies at once, with no restart. [`GET /admin/modules`](#get-apiv1adminmodules) says more about each |
 | `locked` | setting id → why the console can't change it: the `AUDIOSILO_*` variable that set it, or `"launcher"` (a launcher override, the desktop manager's `bind`, `tls.mode` and `public_url`) |
 | `restart_settings` | the setting ids read only at start (fixed) |
 | `restart_pending` | restart settings whose saved value differs from the one the server started with |
@@ -6517,9 +6532,45 @@ server: it gates `GET /libraries/{id}/meta` and the `metadata` capability, so
 every connected player starts or stops showing the enriched-book section.
 Turning `general.update_check` off stops the [update check](#get-apiv1adminupdate)
 at once, and a new `backups.schedule` or `backups.keep` is handed to the backup
-service at once (the next scheduled backup is counted again). Every save is
+service at once (the next scheduled backup is counted again). Turning a
+`modules.<id>` on or off starts or stops that module's background work at once (the
+save doesn't wait for a stopping module), turns its routes on or off (`404
+module_off` while off) and changes its capability flag. Every save is
 recorded in the [audit log](#admin-audit-log) as `settings.update`, each
 changed setting with its old and new value.
+
+### `GET /api/v1/admin/modules`
+
+*Admin.* Every [managed module](../modules.md), in the order the console lists them,
+with where it stands. The console's Settings > Modules reads this (every 15 seconds,
+and after each settings save).
+
+```json
+{
+  "modules": [
+    {
+      "id": "contributions",
+      "enabled": true,
+      "active": false,
+      "requires_bridge": "contribute",
+      "bridge_state": "no_feature"
+    }
+  ]
+}
+```
+
+| Field | Meaning |
+|---|---|
+| `id` | the module's id: its capability flag on [`GET /server`](#get-apiv1server), its setting `modules.<id>` and the console's copy |
+| `enabled` | the toggle, as the server runs now |
+| `active` | the capability flag: `enabled` **and** the Bridge requirement met |
+| `requires_bridge` | the Bridge feature the module needs (one of `bridge.features`); omitted for a module that needs no Bridge |
+| `bridge_state` | omitted with `requires_bridge`. `offline`: no paired Bridge has sent a heartbeat in the last two minutes; `no_feature`: the online Bridge doesn't offer the feature (for `contribute`: it has no GitHub token); `ready`: it does |
+
+`modules` is `[]` on a server with none. Whether a toggle is locked is the settings
+envelope's `locked["modules.<id>"]`, not repeated here; a toggle is changed with
+[`PATCH /admin/settings`](#patch-apiv1adminsettings) (`{"modules": {"contributions":
+true}}`). A member's token gets `403`. An older server answers `404`.
 
 ## Admin: system, updates and logs
 
@@ -7148,9 +7199,11 @@ booleans):
 - `version` - the version the Bridge reported.
 - `features` - the job families the Bridge runs that this server knows: the part of
   each known kind before its dot (`bridge.verify` is `bridge`, `sidecars.generate`
-  and `sidecars.describe` are `sidecars`, `chapters.detect` is `chapters`), sorted,
-  each once;
-  always a list (`[]` for none), never `null`. A kind the Bridge advertises that the
+  and `sidecars.describe` are `sidecars`, `chapters.detect` is `chapters`), plus
+  `contribute` while the last heartbeat's `estimates.sidecars.can_contribute` is
+  true (the Bridge holds a GitHub token and can file contributions, which the
+  `contributions` [module](../modules.md) needs). Sorted, each once, always a list
+  (`[]` for none), never `null`. A kind the Bridge advertises that the
   server doesn't know adds nothing.
 
 The server keeps the last heartbeat it read for up to 5 seconds, so `GET /server`,
@@ -7211,6 +7264,8 @@ mapping of it. The console's Settings > Bridge reads this.
   capability). `heartbeat_at`, `version`, `kinds`, `features`, `workers` and
   `ui_url` are the last heartbeat's, present only while paired and after the first
   heartbeat (`kinds`, `features`, `workers` are `[]` before; the others absent).
+  `features` are worked out as on [`GET /server`](#get-apiv1server-the-bridge-capability-and-block),
+  `contribute` included.
 - `libraries` - every server library (`[]` with none), each with `mapping`: the
   Bridge's last check of it (the fields of the
   [heartbeat's](#put-apiv1bridgestatus) `libraries`), or `null` when it reported

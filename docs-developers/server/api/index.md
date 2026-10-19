@@ -184,6 +184,7 @@ Failures a person can fix also carry a machine-readable **`code`** next to
 | `folder_unreadable` | `404` | `GET /admin/fs/dirs` on a missing or unreadable folder |
 | `book_not_found` | `404` | an admin catalog call on a path that is not an indexed book (book page, edit, bulk edit, match, cover upload, community cover); an admin progress edit on a path with no progress and no indexed book; `POST /admin/bridge/jobs` and `GET /admin/bridge/estimate` on a path that is not an indexed book |
 | `invalid_override` | `400` | a metadata edit the server refuses; the body also carries a `field` key naming the offending field (`PATCH /admin/libraries/{id}/book`, `POST /admin/books/bulk`) |
+| `module_off` | `404` | any route a [managed module](../modules.md) mounts, while that module is off (Settings > Modules), for a caller the route's auth check admits (it runs first). The route exists either way, so turning the module on needs no restart. No module mounts a route yet |
 | `metadata_off` | `404` | a community match search, a `POST /admin/books/works` work-id batch, a community cover (`POST /admin/meta/covers`, `PUT /admin/libraries/{id}/cover/community`), or the metadata mirror (`GET /admin/meta/mirror`, `POST /admin/meta/mirror/check`) while community metadata is turned off |
 | `too_large` | `400` / `413` | a bulk edit or an issue ignore over 1000 books, a cover batch over 60, a community cover batch over 12, or a work-id batch over 100 (`400`); a custom cover upload over 5 MiB, or a community cover over 16 MiB or 40 megapixels (`413`) |
 | `unsupported_image` | `415` | a custom cover (uploaded or community) that is not a JPEG, PNG or WebP image |
@@ -371,7 +372,8 @@ single-shot with a `limit` and no pagination.
     "household": true,
     "cast": true,
     "household_members": true,
-    "bridge": false
+    "bridge": false,
+    "contributions": false
   },
   "auth": { "methods": ["auth_code", "password"] },
   "demo": { "enabled": false }
@@ -436,12 +438,22 @@ Phase 8b-1 added one more, always `true` on a server that has it:
 |---|---|
 | `household_members` | [Household members](reference.md#household-members): `/me/household/members/**`, `managed_by`, `member_kind` and (for a member) `display_name` on the `user` object, `member_sign_ins` on [`/me/devices`](reference.md#get-apiv1medevices) and its `?also_members=1`. Without it the player offers no "Add someone to your household". It never depends on the caller: whether this caller may add is the members list's `allowed` |
 
-The Bridge added one more, and it is the one flag that depends on something outside
-the server:
+The Bridge added one more, the first flag that depends on something outside the
+server (a [managed module's](../modules.md#the-toggle-and-the-capability-flag) flag, below, can too):
 
 | Flag | Gates |
 |---|---|
-| `bridge` | anything that needs the [Bridge](reference.md#the-bridge). It is `true` only while a Bridge is paired and its last heartbeat is under two minutes old, so it turns off when the Bridge stops. While it is `true`, a top-level `bridge: {version, features}` object sits beside `capabilities`: `features` lists the job families the Bridge runs that the server knows (`bridge`, `sidecars` for generating characters and recaps and, from a Phase 1c Bridge, descriptions, and `chapters` for finding a chapterless book's chapters, from a Phase 1d Bridge; a list, never `null`). The server reuses the heartbeat it read for up to 5 seconds, so the flag can lag by that much. Check the flag **and** the feature you need: the player shows an admin **Generate characters and recaps** only with `bridge`, `sidecars` in `features` and `metadata`, and the console's Health offers **Detect chapters** only with `chapters` in `features` |
+| `bridge` | anything that needs the [Bridge](reference.md#the-bridge). It is `true` only while a Bridge is paired and its last heartbeat is under two minutes old, so it turns off when the Bridge stops. While it is `true`, a top-level `bridge: {version, features}` object sits beside `capabilities`: `features` lists the job families the Bridge runs that the server knows (`bridge`, `sidecars` for generating characters and recaps and, from a Phase 1c Bridge, descriptions, and `chapters` for finding a chapterless book's chapters, from a Phase 1d Bridge), plus `contribute` while the Bridge can file contributions to the community database (it holds a GitHub token: its heartbeat's `estimates.sidecars.can_contribute`); a list, never `null`. The server reuses the heartbeat it read for up to 5 seconds, so the flag can lag by that much. Check the flag **and** the feature you need: the player shows an admin **Generate characters and recaps** only with `bridge`, `sidecars` in `features` and `metadata`, and the console's Health offers **Detect chapters** only with `chapters` in `features` |
+
+Then each [managed module](../modules.md) adds one flag, named after the module. A
+module ships off and an admin turns it on in the console's Settings > Modules, so the
+flag can change while the server runs. It is `true` only while the module is on
+**and**, for a module that needs the Bridge, an online Bridge offers the feature it
+needs; it is `false` (sent, not absent) otherwise. An older server omits it:
+
+| Flag | Gates |
+|---|---|
+| `contributions` | the Contributions module: sending corrections and generated characters and recaps to the community database through the Bridge. Needs the Bridge's `contribute` feature. Its player and console features arrive in a later release, so nothing reads it yet |
 
 Gate on the flag rather than on the server version: an older server answers
 `size=` and `narrator=` by ignoring them (full art, the unfiltered list) and the

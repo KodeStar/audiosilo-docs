@@ -932,6 +932,22 @@ await step('settings: import', async () => {
   await shoot(page, 'admin/settings-import.png');
 });
 
+await step('settings: modules', async () => {
+  // Before the stand-in Bridge pairs, so the card says it needs one; the
+  // module stays off (nothing here turns it on).
+  if (!wanted('admin/settings-modules.png')) return;
+  await page.setViewportSize({width: 1440, height: 1100});
+  try {
+    await open(page, '/server?topic=modules');
+    await page.getByRole('switch', {name: 'Enable Contributions'}).waitFor({timeout: 15000});
+    await page.getByText('Needs a Bridge', {exact: true}).waitFor({timeout: 8000});
+    await sleep(800);
+    await shoot(page, 'admin/settings-modules.png');
+  } finally {
+    await page.setViewportSize(DESKTOP_CONTEXT.viewport);
+  }
+});
+
 await step('the notifications bell', async () => {
   // New books (both libraries' first scans) and the listeners' sign-ins are in
   // the feed by now.

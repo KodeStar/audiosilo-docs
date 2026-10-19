@@ -288,6 +288,18 @@ are read by the scanner (`library/attachments.go`), stored by the catalog
 (`meta/generated.go`). Pairing and the bridge token are
 `auth/bridge.go`. See [Pairing and jobs](../bridge/pairing-and-jobs.md).
 
+### `internal/modules`
+
+The [managed modules](modules.md) framework: `Module` (an id that is its capability
+flag and config key, the Bridge feature it needs, its routes and its background
+work), the `Registrar` its routes mount through, `Deps`, `Validate`, which the
+launcher runs before starting, `Module.BridgeState` and `Active` (the flag), and the
+`Runner` that starts and stops each module's background work. The registry is
+`internal/modules/builtin` (one module, `contributions`); the
+API mounts each module's routes behind its toggle (`404 module_off`), syncs the
+`Runner` after every settings save (the launcher stops it at shutdown), and
+advertises each module's flag (`api/modules.go`).
+
 ### `internal/importer`
 
 Listening imports from Audiobookshelf (admin only in v1), so someone moving to

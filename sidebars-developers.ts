@@ -28,6 +28,7 @@ const sidebars: SidebarsConfig = {
         'server/web-ui',
         'server/configuration',
         'server/backups-and-notifications',
+        'server/modules',
         {
           type: 'category',
           label: 'HTTP API',
