@@ -102,6 +102,10 @@ docker compose pull && docker compose up -d
 
 Your data directory and books are untouched by updates. To hear about new versions, look at **Server > About** in the admin console: the server asks GitHub once a day whether a newer release exists (you can turn that off; see [What the update check sends](../admin/server.md#what-the-update-check-sends)).
 
+:::note
+If your books live on a network share (SMB/NFS), mount the share on the Docker host and bind-mount the mounted path into the container. The server is deliberately careful here: if the share goes away, it will not wipe its index or your listening progress - books simply reappear when the share is back.
+:::
+
 ### Testing unreleased builds
 
 :::warning Unstable - for testing only
@@ -125,10 +129,6 @@ Then use the edge image with the copy in its compose file (a different port, so 
       - /srv/audiobooks:/library:ro
 ```
 
-Pull it again (`docker compose pull`) to get the newest build. The admin console shows its version as `dev-` followed by the commit it was built from, and the update check shows the latest release without offering it as an update. To go back, switch to `:latest` with your **original** data folder and delete the copy; don't run `:latest` on a data folder an edge build has used.
+To get the newest build, run `docker compose pull && docker compose up -d` again. The admin console shows its version as `dev-` followed by the commit it was built from, and [Server > About](../admin/server.md#about-and-updates) calls it a development build. To go back, run `:latest` on your **original** data folder (never the copy) and delete the copy.
 
-This applies to the `ghcr.io/kodestar/audiosilo-server` image above. The LinuxServer.io image used on Unraid has its own tags and keeps its data in `/config`, so it isn't a matter of changing the tag there.
-
-:::note
-If your books live on a network share (SMB/NFS), mount the share on the Docker host and bind-mount the mounted path into the container. The server is deliberately careful here: if the share goes away, it will not wipe its index or your listening progress - books simply reappear when the share is back.
-:::
+This applies to the `ghcr.io/kodestar/audiosilo-server` image above. The LinuxServer.io image used on Unraid has its own tags and keeps its data in `/config` (see [Moving from the AudioSilo image](./install-unraid.md#moving-from-the-audiosilo-image)), so it isn't a matter of changing the tag there.

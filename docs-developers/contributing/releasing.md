@@ -55,30 +55,6 @@ sha, and `latest`.
 - One-time setup: make both GHCR packages public after the first push, or
   `docker login ghcr.io` on the deploy host.
 
-#### Testing main before a release (`:edge`)
-
-`image.yml` also runs on every push to `main` in audiosilo-server, publishing
-**`:edge`** plus a `sha-<short>` tag for pinning one commit. `:latest` is never
-moved by these builds: it stays release-only. A newer push to `main` cancels an
-edge build still in progress (the workflow's `concurrency` group is per ref, so
-tag builds are unaffected).
-
-- An edge build stamps `VERSION` as `dev-<sha>`, which the admin console shows.
-  The update check treats it as a local build: it shows the latest release but
-  never offers it as an update.
-- The baked player is whatever `audiosilo-web:latest` pointed at when the edge
-  image was built (that is, frontend `main`). A frontend-only change doesn't
-  rebuild edge by itself; refresh it with
-  `gh workflow run image.yml -R KodeStar/audiosilo-server --ref main`.
-- Edge may run database migrations a release can't undo, so test it against a
-  **copy** of a data directory, never the live one.
-- It is the `ghcr.io` image (`/data`, `PUID`/`PGID`). The LinuxServer.io image
-  keeps its data in `/config`, so an LSIO install can't switch to edge by tag
-  alone.
-
-User-facing instructions are in the User Guide's
-[Quick start with Docker](/users/getting-started/quickstart-docker#testing-unreleased-builds).
-
 You can also build locally:
 
 ```sh
@@ -141,8 +117,8 @@ real console.)
   the `GET /server` capability flags.
 - The server version string comes from the release tag via ldflags
   (`internal/api.Version`) in both the Docker and GoReleaser builds; a local
-  build reports `dev`, and an `image.yml` build off a tag (`:edge` on a `main`
-  push, or a manual dispatch) reports `dev-<sha>`.
+  build reports `dev`, and an untagged `image.yml` build (edge or dispatch)
+  reports `dev-<sha>`.
 - Frontend `v*` tags version the **web image**; the native app's marketing
   version is separate (`app.json` → `expo.version`, below).
 
@@ -164,6 +140,23 @@ The end-to-end smoke test from `RELEASING.md`:
 Worth checking at the same time: `GET /api/v1/server` reports the new version
 (and `web_player: true`), and the draft GitHub Release's artifacts and
 `checksums.txt` look right **before** you publish it.
+
+## Testing main before a release (`:edge`)
+
+Every push to `main` in audiosilo-server also runs `image.yml` and publishes
+**`:edge`** (plus `sha-<short>`, to pin one commit); `:latest` stays
+release-only. How the tags, `concurrency` and the `dev-<sha>` version work is in
+the [release pipeline](../architecture/release-pipeline.md#2-server-docker-image---audiosilo-servergithubworkflowsimageyml).
+
+- A frontend-only change doesn't rebuild edge, so its baked player stays at
+  whatever `audiosilo-web:latest` was when edge was built. Refresh it with
+  `gh workflow run image.yml -R KodeStar/audiosilo-server --ref main`.
+- Edge may run database migrations a release can't undo, so test it against a
+  **copy** of a data directory, never the live one.
+
+User-facing instructions (including why an LSIO install can't just switch tags)
+are in the User Guide's
+[Quick start with Docker](/users/getting-started/quickstart-docker#testing-unreleased-builds).
 
 ## The app-store track (iOS / Android)
 
