@@ -373,8 +373,9 @@ The **Demo mode** card runs a public demo from this server (see
     the release page, replace the program and start it again with the same data
     folder (see [Install the native binary](../getting-started/install-binary.md)).
   - **A local build**: pull the new tag and build again.
-- **This is a development build** - a build of your own can't be compared with
-  releases; the card names the newest release.
+- **This is a development build** - a build of your own, or the
+  [`:edge` image](../getting-started/quickstart-docker.md#testing-unreleased-builds),
+  can't be compared with releases; the card names the newest release.
 - **Couldn't check for updates** - GitHub limited requests from your address
   for now, couldn't be reached from the server (check its internet
   connection), or gave an answer that didn't make sense. The server tries

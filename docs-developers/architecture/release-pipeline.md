@@ -68,11 +68,14 @@ handles that here, so `web.yml` needs no explicit lowercase step (the server's
 
 Runs on `v*` tags, on pushes to `main`, and on manual dispatch (with a
 `web_version` input, default `latest`). Tagging via `docker/metadata-action`:
-the semver version and `:latest` on `v*` tags, `:edge` on pushes to `main`, and
-`sha-<short>` always. A top-level `concurrency` group per ref cancels a
-superseded `main` build. Untagged builds (edge and dispatch) stamp `VERSION` as
-`dev-<sha>`; an edge image bakes whatever `audiosilo-web:latest` points at
-(frontend `main`), and is rebuilt only by a server push or a dispatch.
+the semver version and `:latest` on `v*` tags (a `-rc` tag included), `:edge`
+on `main` (a push, or a dispatch on `main`), and `sha-<short>` always. A
+top-level `concurrency` group per ref cancels a superseded build of the same ref.
+A build of a branch (edge, or a dispatch on any branch) stamps `VERSION` as
+`dev-<sha>` (the full commit); a tag build, pushed or dispatched on the tag,
+stamps the semver. An edge image bakes whatever `audiosilo-web:latest` points at
+(frontend `main`) unless a dispatch sets `web_version`, and is rebuilt only by a
+push to the server's `main` or a dispatch on it.
 
 The multi-stage `Dockerfile`:
 
@@ -84,7 +87,8 @@ The multi-stage `Dockerfile`:
 - builds the CGO-free server binary (`CGO_ENABLED=0`, `-trimpath`), stamping the
   release version via
   `-ldflags "-X github.com/kodestar/audiosilo-server/internal/api.Version=${VERSION}"`
-  (`image.yml` passes the tag as the `VERSION` build-arg; the default is `dev`);
+  (`image.yml` passes the semver on a tag build, else `dev-<sha>`, as the
+  `VERSION` build-arg; the default is `dev`);
 - pins the player: `FROM ${WEB_IMAGE} AS web` … `COPY --from=web /web /app/web`,
   with `ARG WEB_IMAGE=ghcr.io/kodestar/audiosilo-web:latest`;
 - final stage is `alpine:3.24` with **ffmpeg installed from apk** - the Docker

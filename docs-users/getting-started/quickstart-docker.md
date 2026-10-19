@@ -109,26 +109,36 @@ If your books live on a network share (SMB/NFS), mount the share on the Docker h
 ### Testing unreleased builds
 
 :::warning Unstable - for testing only
-The **`:edge`** tag is rebuilt from the latest development code every time it changes. It has not been through a release, can break, and is not supported for everyday listening. Stay on `:latest` unless you want to try a fix or feature before it ships.
+The **`:edge`** tag is rebuilt from the server's latest development code every time it changes (the web player inside it can lag a little behind the player's own development code). It has not been through a release, can break, and is not supported for everyday listening. Stay on `:latest` unless you want to try a fix or feature before it ships.
 :::
 
-To try it, point a **second** container at a **copy** of your data folder, never the original: an edge build may upgrade the database in a way a release can't undo.
+To try it, run a **second** container on a **copy** of your data folder, never the original: an edge build may upgrade the database in a way a release can't undo. Stop your server while you copy, so the database is copied whole, and delete any older `./data-edge` first (use `sudo` if your user can't read every file in the folder):
 
 ```bash
+docker compose stop
 cp -a ./data ./data-edge
+docker compose start
 ```
 
-Then use the edge image with the copy in its compose file (a different port, so it can run beside your normal server):
+Then add the edge server as a second service in the same `docker-compose.yml`, under `services:`, on a different port so it runs beside your normal one:
 
 ```yaml
+  audiosilo-edge:
     image: ghcr.io/kodestar/audiosilo-server:edge
     ports:
       - "8081:8080"
     volumes:
       - ./data-edge:/data
       - /srv/audiobooks:/library:ro
+    environment:
+      PUID: "1000"                    # the same as your normal service
+      PGID: "1000"
 ```
 
-To get the newest build, run `docker compose pull && docker compose up -d` again. The admin console shows its version as `dev-` followed by the commit it was built from, and [Server > About](../admin/server.md#about-and-updates) calls it a development build. To go back, run `:latest` on your **original** data folder (never the copy) and delete the copy.
+Start it with `docker compose up -d audiosilo-edge`; to get the newest build, run `docker compose pull audiosilo-edge && docker compose up -d audiosilo-edge`. The admin console shows its version as `dev-` followed by the commit it was built from, and once it has checked for updates, [Server > About](../admin/server.md#about-and-updates) calls it a development build.
+
+The copy is the same server as far as your devices know: the same users and the same server identity. Try the edge server in a browser (`https://your-server:8081/web`) rather than pairing a phone app that is already connected to your normal server: the app would take it for that server and move its sign-in over to the copy. Notifications set up in the console may come from the edge server too.
+
+To stop testing, remove the edge container (`docker compose rm -sf audiosilo-edge`), then delete its block from the compose file and delete `./data-edge`. Your normal server, on the original data folder, is untouched.
 
 This applies to the `ghcr.io/kodestar/audiosilo-server` image above. The LinuxServer.io image used on Unraid has its own tags and keeps its data in `/config` (see [Moving from the AudioSilo image](./install-unraid.md#moving-from-the-audiosilo-image)), so it isn't a matter of changing the tag there.

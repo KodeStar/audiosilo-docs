@@ -45,8 +45,11 @@ the `WEB_IMAGE` build-arg (mechanism in the
 sha, and `latest`.
 
 - On a tag push, the baked-in web image is **`audiosilo-web:latest`**. To pin a
-  specific web version instead, run the workflow manually
-  (`workflow_dispatch`) and set its `web_version` input.
+  specific web version instead, run the workflow manually **on the tag** and set
+  its `web_version` input (`gh workflow run image.yml -R
+  KodeStar/audiosilo-server --ref v1.4.0 -f web_version=<web version>`).
+  Without `--ref` the dispatch runs on `main`: it republishes `:edge` with that
+  player and publishes no release.
 - The release version is stamped into the binary via the `VERSION` build-arg
   (ldflags → `internal/api.Version`) and reported by `GET /api/v1/server`, the
   admin console, and the web player.
@@ -112,13 +115,15 @@ real console.)
   cross-repo version lockstep. GoReleaser does not mark a pre-release tag (for
   example `v2.1.0-rc1`) as a pre-release itself: tick **Set as a pre-release**
   when publishing one, or `releases/latest` moves to it and the LinuxServer.io
-  image ships it to every Unraid install. The server↔web pairing is by **image pinning**,
+  image ships it to every Unraid install. A pre-release tag also moves the server
+  image's `:latest` (`image.yml` publishes it on every `v*` tag). The server↔web pairing is by **image pinning**,
   not version numbers, and native apps negotiate against any server version via
   the `GET /server` capability flags.
 - The server version string comes from the release tag via ldflags
   (`internal/api.Version`) in both the Docker and GoReleaser builds; a local
-  build reports `dev`, and an untagged `image.yml` build (edge or dispatch)
-  reports `dev-<sha>`.
+  `go build` or `docker build` reports `dev` (a GoReleaser snapshot
+  `<next patch>-snapshot`), and an `image.yml` build of a branch (`:edge`, or a
+  dispatch on a branch) reports `dev-<sha>`, the full commit.
 - Frontend `v*` tags version the **web image**; the native app's marketing
   version is separate (`app.json` → `expo.version`, below).
 
@@ -149,7 +154,8 @@ release-only. How the tags, `concurrency` and the `dev-<sha>` version work is in
 the [release pipeline](../architecture/release-pipeline.md#2-server-docker-image---audiosilo-servergithubworkflowsimageyml).
 
 - A frontend-only change doesn't rebuild edge, so its baked player stays at
-  whatever `audiosilo-web:latest` was when edge was built. Refresh it with
+  whatever `audiosilo-web:latest` was when edge was built. Once the frontend's
+  `web.yml` run has published, refresh it with
   `gh workflow run image.yml -R KodeStar/audiosilo-server --ref main`.
 - Edge may run database migrations a release can't undo, so test it against a
   **copy** of a data directory, never the live one.
