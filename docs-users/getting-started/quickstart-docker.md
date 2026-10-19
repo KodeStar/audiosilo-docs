@@ -135,7 +135,7 @@ Then add the edge server as a second service in the same `docker-compose.yml`, u
       PGID: "1000"
 ```
 
-Start it with `docker compose up -d audiosilo-edge`; to get the newest build, run `docker compose pull audiosilo-edge && docker compose up -d audiosilo-edge`. The admin console shows its version as `dev-` followed by the commit it was built from, and once it has checked for updates, [Server > About](../admin/server.md#about-and-updates) calls it a development build.
+Start it with `docker compose up -d audiosilo-edge`; to get the newest build, run `docker compose pull audiosilo-edge && docker compose up -d audiosilo-edge`. The admin console shows its version as `dev-` followed by the first 7 characters of the commit it was built from, and once it has checked for updates, [Server > About](../admin/server.md#about-and-updates) calls it a development build.
 
 The copy is the same server as far as your devices know: the same users and the same server identity. Try the edge server in a browser (`https://your-server:8081/web`) rather than pairing a phone app that is already connected to your normal server: the app would take it for that server and move its sign-in over to the copy. Notifications set up in the console may come from the edge server too.
 

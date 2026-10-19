@@ -664,7 +664,7 @@ console's Server > About and Health > System. `pkg/launcher` starts one
   request answers with that request's result instead of asking again.
 - Drafts, prereleases and a release whose page isn't on `github.com` are
   ignored (`bad_response`). A local build (`version` `"dev"`) or an `:edge`
-  image (`"dev-<sha>"`) isn't comparable, so it never reports an update.
+  image (`"dev-<short sha>"`) isn't comparable, so it never reports an update.
 - While off, no request is made at all, and a manual check is refused
   (`409 update_check_off`).
 

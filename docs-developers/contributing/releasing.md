@@ -41,15 +41,16 @@ independent pipelines:
 Builds the multi-stage `Dockerfile`, baking the web player in at `/app/web` from
 the `WEB_IMAGE` build-arg (mechanism in the
 [release pipeline](../architecture/release-pipeline.md)), and pushes
-`ghcr.io/kodestar/audiosilo-server` tagged with the semver version, the commit
-sha, and `latest`.
+`ghcr.io/kodestar/audiosilo-server` tagged with the semver version and `latest`.
+A release carries no `sha-` tag: pin one by its version.
 
 - On a tag push, the baked-in web image is **`audiosilo-web:latest`**. To pin a
   specific web version instead, run the workflow manually **on the tag** and set
   its `web_version` input (`gh workflow run image.yml -R
   KodeStar/audiosilo-server --ref v1.4.0 -f web_version=<web version>`).
-  Without `--ref` the dispatch runs on `main`: it republishes `:edge` with that
-  player and publishes no release.
+  Without `--ref` the dispatch runs on `main`: it publishes only a
+  `sha-<short>` tag with that player, and no release (a dispatch on `main` moves
+  `:edge` only when `web_version` is left at `latest`).
 - The release version is stamped into the binary via the `VERSION` build-arg
   (ldflags → `internal/api.Version`) and reported by `GET /api/v1/server`, the
   admin console, and the web player.
@@ -123,7 +124,8 @@ real console.)
   (`internal/api.Version`) in both the Docker and GoReleaser builds; a local
   `go build` or `docker build` reports `dev` (a GoReleaser snapshot
   `<next patch>-snapshot`), and an `image.yml` build of a branch (`:edge`, or a
-  dispatch on a branch) reports `dev-<sha>`, the full commit.
+  dispatch on a branch) reports `dev-<short sha>`, the same 7 characters as its
+  `sha-` tag.
 - Frontend `v*` tags version the **web image**; the native app's marketing
   version is separate (`app.json` → `expo.version`, below).
 
@@ -150,7 +152,7 @@ Worth checking at the same time: `GET /api/v1/server` reports the new version
 
 Every push to `main` in audiosilo-server also runs `image.yml` and publishes
 **`:edge`** (plus `sha-<short>`, to pin one commit); `:latest` stays
-release-only. How the tags, `concurrency` and the `dev-<sha>` version work is in
+release-only. How the tags, `concurrency` and the `dev-<short sha>` version work is in
 the [release pipeline](../architecture/release-pipeline.md#2-server-docker-image---audiosilo-servergithubworkflowsimageyml).
 
 - A frontend-only change doesn't rebuild edge, so its baked player stays at
