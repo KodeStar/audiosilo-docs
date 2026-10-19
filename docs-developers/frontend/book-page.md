@@ -121,8 +121,9 @@ account, a household member or a kid, on a server whose `capabilities.bridge` an
 `capabilities.metadata` are on and whose `bridge.features` holds `sidecars`.
 `useGenerate` gives the page `offer` from `generateOffer`, the one offer rule the
 console shares (Bridge Phase 1e; [the table](../bridge/generating.md#who-sees-the-action)):
-while the community lacks characters or recaps (`communityCoverage`: entries that
-`work.generated` doesn't name), `regenerate` when some were generated here, else
+while the community lacks characters or a recap list (`communityCoverage`: a list
+that `work.generated` doesn't name; a community summary alone isn't recaps, since
+generated recaps still fill the list beside it), `regenerate` when some were generated here, else
 `generate`; when the community has both, no offer and `covered` instead, which
 mounts `GenerateCovered` in the hero's footer: "The community already has
 characters and recaps for this book" with **See characters**, which selects the
@@ -201,7 +202,10 @@ Characters; the gate is `listeningProgressFor` over the corrected chapter starts
 `BookTabPanel` renders the active tab: `BookChaptersTab` (or five skeleton rows while
 the list is empty), the community tabs with their `Attribution` (`communityCredit`:
 none for a dimension generated on this server) and a `GeneratedMark` ("Generated on
-this server") at the head of a tab whose content came from the server's own files, `BookmarksSection` /
+this server") at the head of a tab whose content came from the server's own files
+(the Recaps tab marks its list and its summary apart, `recapMarks`: a chip per
+generated part when only one of them was generated, the credit while a community
+part shows), `BookmarksSection` /
 `NotesSection` (both `AnnotationSection`, see [Bookmarks and notes](annotations.md)),
 `HistorySection`, `BookMetaSeriesTab` and `BookDetailsTab`. It also builds the
 community cover resolver (`useCommunityCover`) and hands it to the Series, Recaps and

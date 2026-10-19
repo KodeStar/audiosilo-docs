@@ -399,13 +399,15 @@ the same ones the players show: from the community database, or written by your
 
 ![The Characters and recaps card with generated characters](/img/screenshots/admin/book-story.png)
 
-- **Characters** and **Recaps** are tabs, each with how many entries it has.
+- **Characters** and **Recaps** are tabs, each with how many entries it has
+  (the whole-book summary counts as one of the recaps).
   Each character shows its name, its role (**Protagonist**, **Antagonist**,
   **Supporting** or **Minor**), any other names ("Also known as ..."), a
   description and where it first appears ("From chapter 3", or "From the start").
 - **Recaps give the story away**, so each stays closed until you open it: one row
   per chapter ("Through chapter 4"), "Previously, in earlier books" for a recap of
-  the series so far, and **The whole book** for the short summary and the ending.
+  the series so far, "Before this book" for one about what comes before the first
+  chapter, and **The whole book** for the short summary and the ending.
   Click a row to read it, and again to close it. The card shows you everything,
   wherever you are in the book yourself: there is no spoiler protection here,
   only the closed rows.
@@ -415,7 +417,10 @@ the same ones the players show: from the community database, or written by your
   from different places: **Community**, with the community's credit and licence,
   or **Generated on this server**, with the date your Bridge wrote them. When the
   book's last generate job [offered them to the community](generating-characters-and-recaps.md#keeping-them-local-or-contributing-them),
-  **Contributed, waiting for review** links to the submission.
+  **Contributed, waiting for review** links to the submission. The whole-book
+  summary can come from somewhere else than the chapter recaps (the community's
+  summary beside recaps your Bridge wrote): its row then shows its own source,
+  with the community's credit.
 - A tab with nothing in it says "No characters yet." or "No recaps yet."
 
 ![The Recaps tab with one chapter opened](/img/screenshots/admin/book-story-recaps.png)

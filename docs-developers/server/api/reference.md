@@ -1690,19 +1690,27 @@ scan) are laid into the answer **per request**, after the shared cache and
 **per dimension**:
 
 - **A matched book.** When the community work has no characters,
-  `work.characters` are the generated ones; when it has no recaps,
+  `work.characters` are the generated ones; when it has no recap list,
   `work.recaps` are the generated recaps and, when it has no `recap_summary`
   either, `work.recap_summary` the generated `{in_short, ending}` (omitted when
-  both are blank); when it has no `community_description`,
+  both are blank; a community work with a summary but no list keeps its own
+  summary beside the generated list); when it has no `community_description`,
   `work.generated_description` is the generated description (below).
   `work.generated` then names what came from the files:
 
   ```json
-  "generated": { "characters": false, "recaps": true, "description": true, "generated_at": "2026-10-16T09:12:44Z" }
+  "generated": { "characters": false, "recaps": true, "recap_summary": true, "description": true,
+                 "generated_at": "2026-10-16T09:12:44Z" }
   ```
 
-  `recaps` covers the recap list and the summary alike; the three booleans are
-  always sent together (`description` since Phase 1c); `generated_at` is the
+  `recaps` is `true` when the recap list or the summary was generated (as before
+  `recap_summary` existed, so an older client reads it unchanged).
+  `recap_summary` (Bridge Phase 1e) is `true` only when `work.recap_summary`
+  itself came from the files: `false` beside a generated list means the summary
+  is the community's (a summary-only community work), so a client credits it to
+  the community. A client that finds `recap_summary` absent (an older server)
+  reads `recaps` for both. The four booleans are always sent together
+  (`description` since Phase 1c, `recap_summary` since Phase 1e); `generated_at` is the
   provenance's time (`bridge.json`'s `generated_at`, or its `description`
   object's when the description is all the object names, so a description
   written later by a `sidecars.describe` job shows its own time), omitted when
@@ -1716,7 +1724,7 @@ scan) are laid into the answer **per request**, after the shared cache and
   ```json
   { "matched": false, "work": { "id": "", "title": "The Book", "authors": [], "language": "",
     "characters": [ … ], "recaps": [ … ],
-    "generated": { "characters": true, "recaps": true, "description": false } } }
+    "generated": { "characters": true, "recaps": true, "recap_summary": false, "description": false } } }
   ```
 
   A book whose only generated file is its description answers just that:
@@ -1724,7 +1732,7 @@ scan) are laid into the answer **per request**, after the shared cache and
   ```json
   { "matched": false, "work": { "id": "", "title": "The Book", "authors": [], "language": "",
     "generated_description": { "text": "…" },
-    "generated": { "characters": false, "recaps": false, "description": true,
+    "generated": { "characters": false, "recaps": false, "recap_summary": false, "description": true,
                    "generated_at": "2026-10-16T09:31:02Z" } } }
   ```
 
@@ -7506,7 +7514,7 @@ How each figure is worked out is in
 | `figures` | the last heartbeat carried estimates. Without them every field above is a default, so a false `agent_ready` means "not known yet" |
 | `writable` | the Bridge last reported the library mapped and writable (else queueing is `409 library_not_writable`) |
 | `can_describe` | the Bridge is online and runs `sidecars.describe` (Phase 1c; a 1a or 1b Bridge doesn't). With `brief=1` too |
-| `has.community` | what the book's community work carries (metadata on and the book matched; `false` otherwise): `characters`, `recaps` and `description`, which is its `community_description` **or** its core `description` (the player shows either before a generated one, so a generated description would never be read) |
+| `has.community` | what the book's community work carries (metadata on and the book matched; `false` otherwise): `characters`, `recaps` (a recap list: a whole-book summary alone doesn't count, since generated recaps still fill the list beside it) and `description`, which is its `community_description` **or** its core `description` (the player shows either before a generated one, so a generated description would never be read) |
 | `has.community_unknown` | `true` when the community couldn't be asked right now, so `has.community` is no answer (never read it as "none"); omitted otherwise |
 | `has.local` | what the book's indexed [`.audiosilo/` files](../../bridge/attachments.md) carry: `characters`, `recaps` and `description` |
 | `earlier` | the books of the same library before this one in its first numbered series (any spelling), with no recaps generated here and, metadata on, none in the community (a book the community couldn't be asked about is left out): the nearest 10, in reading order, each with its own `asr_hours` and `agent_cost_usd` (costed from its audio). `[]` for none, and with `brief=1` |

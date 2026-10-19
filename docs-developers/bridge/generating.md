@@ -48,11 +48,14 @@ fills a dimension the community lacks
 
 | The community has | Generated here | Offered |
 |---|---|---|
-| both characters and recaps | either or none | no action: "The community already has characters and recaps for this book", with a link to them (`covered`) |
+| both characters and a recap list | either or none | no action: "The community already has characters and recaps for this book", with a link to them (`covered`) |
 | one of them, or neither | characters or recaps | **Regenerate** |
 | one of them, or neither | none | **Generate** |
 
-The console decides from the estimate's `has` (`generateAction`: `has.community`
+A whole-book summary alone isn't recaps here: a community work with only a
+`recap_summary` keeps it, and generated recaps fill the list beside it (the
+answer's `work.generated.recap_summary` then stays `false`, so the summary keeps
+the community's credit). The console decides from the estimate's `has` (`generateAction`: `has.community`
 is the community's own coverage, `has.local` the generated files), the player
 from the book's `/meta` work (`generateOffer`: a dimension counts as the
 community's when it has entries and `work.generated` doesn't name it). The

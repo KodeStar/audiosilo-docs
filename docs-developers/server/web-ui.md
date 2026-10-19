@@ -768,7 +768,8 @@ CSP-sensitive work against a real build served by Go. The console's own gate is
   jobs are asked while the server reports the `bridge` capability at all, so a job
   stays visible while the Bridge is away), and the action from the brief estimate
   (`generateAction`, the one offer rule the player follows too, Phase 1e: `covered`
-  when the estimate's `has.community` holds both characters and recaps, else
+  when the estimate's `has.community` holds both characters and recaps (a recap
+  list: a community summary alone doesn't count), else
   `regenerate` when `has.local` holds either, else `generate`). For `covered` the
   section shows "The community already has characters and recaps for this book."
   with **See them**, which scrolls to the Characters and recaps card
@@ -804,18 +805,24 @@ CSP-sensitive work against a real build served by Go. The console's own gate is
   the book page's aside (`BookAside`), shown while `metadata` is on, Bridge or
   not: the book's [`GET /libraries/{id}/meta`](api/reference.md#generated-content)
   (`useBookMeta`, the full work, not `?spoilers=hide`) read-only, in a
-  **Characters** and a **Recaps** tab, each with its count. Characters list the
-  name, role (`roleKey`), aliases, description and "From chapter N" (or "From the
-  start"); recaps one row per `through.chapter` in chapter order (`recapRows`,
-  chapter 0 "Previously, in earlier books" first) plus "The whole book" for the
-  `recap_summary`, each closed behind its own button until the admin opens it.
-  Each tab shows the first 10 rows, then "Show all N". Each tab is headed by where
-  its dimension came from (`storySources`, from `work.generated`): **Community**
-  with the envelope's `attribution` credit and licence, or **Generated on this
-  server** with `generated.generated_at`, plus "Contributed, waiting for review"
-  linking the community issue the book's newest finished `sidecars.generate` job
+  **Characters** and a **Recaps** tab, each with its count (the Recaps count
+  includes the whole-book summary's row). Characters list the name, role
+  (`roleKey`), aliases, description and "From chapter N" (or "From the start");
+  recaps one row per `through.chapter` in chapter order (`recapRows`; at chapter 0
+  `recapHeading` reads "Previously, in earlier books" for a `series` scope and
+  "Before this book" otherwise) plus "The whole book" for the `recap_summary`,
+  each closed behind its own button until the admin opens it. Each list shows the
+  first 10 rows, then "Show all N" (`ShowAllToggle`, shared with the Chapters
+  card). Each tab is headed by where its dimension came from (`storySources`, from
+  `work.generated`): **Community** (the `ProvenanceMarker`) with the envelope's
+  `attribution` credit and licence, or **Generated on this server** with
+  `generated.generated_at`, plus "Contributed, waiting for review" linking the
+  community issue the book's newest finished `sidecars.generate` job
   filed for that dimension (`contributedLinks` over the job's
-  `result.contributed`). Whether the issue was reviewed doesn't reach the server
+  `result.contributed`). The summary has a source of its own
+  (`generated.recap_summary`), shown on its row only when it differs from the
+  list's, so a community summary beside a generated list keeps its credit.
+  Whether the issue was reviewed doesn't reach the server
   yet (Bridge Phase 2b). "No characters yet." / "No recaps yet." for an empty
   dimension.
 - **The bell** (`components/shell/notifications-bell.tsx`) - `GET /admin/events`

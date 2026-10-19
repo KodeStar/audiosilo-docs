@@ -58,8 +58,11 @@ The console and the player follow the same rule:
   there: **Generate**, or **Regenerate** once your Bridge has written some for the
   book. Generated ones only ever fill what the community is missing (see
   [Where the results appear](#where-the-results-appear)), so a book the community
-  has characters for but no recaps still offers it.
-- **When the community already has both**, there is no button. In its place a
+  has characters for but no recaps still offers it. Recaps here means the
+  chapter-by-chapter ones: a book the community has only a whole-book summary for
+  still offers it, and keeps the community's summary beside your chapter recaps.
+- **When the community already has both** characters and chapter recaps, there is
+  no button. In its place a
   line says "The community already has characters and recaps for this book."
   In the console its **See them** link takes you down to the book's
   [Characters and recaps card](books.md#characters-and-recaps); in the player
@@ -193,7 +196,9 @@ work exactly like the community's, spoiler protection included (see
 differences:
 
 - A small **Generated on this server** mark heads each tab whose content your
-  Bridge wrote.
+  Bridge wrote. When the community has a book's whole-book summary but your Bridge
+  wrote its chapter recaps, the Recaps tab marks each part for where it came from,
+  and the community's summary keeps its credit line.
 - There is no community credit line under them: they aren't the community's.
 
 **The community's always comes first.** If the community database has characters
