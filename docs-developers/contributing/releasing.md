@@ -188,12 +188,13 @@ meta repo at the workspace root). The honest summary:
   release (Play Console > Advanced settings > Form factors), and Google reviews such
   releases against its car app quality guidelines (a failure blocks open testing and
   production).
-- **Android release builds are minified and resource-shrunk with R8**, switched on
-  in `app.json` through `expo-build-properties` (`enableMinifyInReleaseBuilds`,
-  `enableShrinkResourcesInReleaseBuilds`). When a release build crashes on a class
-  R8 stripped, add a keep rule to `android.extraProguardRules` there; never turn
-  minify off. R8's mapping file ships inside the `.aab`, so the Play Console
-  deobfuscates crash traces without a separate upload.
+- **Android release builds are minified and resource-shrunk with R8**, enabled by
+  the `expo-build-properties` plugin entry in `app.json` (`enableMinifyInReleaseBuilds`,
+  `enableShrinkResourcesInReleaseBuilds`). A release-only `ClassNotFoundException`
+  or `NoSuchMethodError` means R8 stripped something: add a keep rule to the same
+  plugin entry's `android.extraProguardRules`; never turn minify off. R8's mapping
+  file ships inside the `.aab`, so the Play Console deobfuscates crash traces
+  without a separate upload.
 - **The project is on the EAS free tier**, so the preferred path is
   **`eas build --local`** - it compiles on your own machine (no build-quota
   usage, no cloud queue) while still using EAS-managed signing credentials and
