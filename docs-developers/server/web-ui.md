@@ -767,15 +767,13 @@ CSP-sensitive work against a real build served by Go. The console's own gate is
   queued or working and every minute while it is parked (`generatePollMs`; the
   jobs are asked while the server reports the `bridge` capability at all, so a job
   stays visible while the Bridge is away), and the action from the brief estimate
-  (`generateAction`, the one offer rule the player follows too, Phase 1e: `covered`
-  when the estimate's `has.community` holds both characters and recaps (a recap
-  list: a community summary alone doesn't count), else
-  `regenerate` when `has.local` holds either, else `generate`). For `covered` the
+  (`generateAction`: `generate`, `regenerate` or `covered`, the offer rule the
+  player follows too, Phase 1e; see
+  [the table](../bridge/generating.md#who-sees-the-action)). For `covered` the
   section shows "The community already has characters and recaps for this book."
   with **See them**, which scrolls to the Characters and recaps card
-  (`STORY_CARD_ID`) and moves focus there, in place of the action; files generated
-  here before don't change that, since the community's mask them. `GenerateDialog` reads the full estimate: the
-  source, length, transcription and agent cost for every book it queues, where
+  (`STORY_CARD_ID`) and moves focus there, in place of the action.
+  `GenerateDialog` reads the full estimate: the source, length, transcription and agent cost for every book it queues, where
   the results go, a contribute switch only when `can_contribute`, the earlier
   books (ticked), and notices for an offline Bridge, an agent not ready or not
   reported, and a library it can't write (which blocks the submit). It queues the
@@ -817,14 +815,13 @@ CSP-sensitive work against a real build served by Go. The console's own gate is
   `work.generated`): **Community** (the `ProvenanceMarker`) with the envelope's
   `attribution` credit and licence, or **Generated on this server** with
   `generated.generated_at`, plus "Contributed, waiting for review" linking the
-  community issue the book's newest finished `sidecars.generate` job
-  filed for that dimension (`contributedLinks` over the job's
-  `result.contributed`). The summary has a source of its own
-  (`generated.recap_summary`), shown on its row only when it differs from the
-  list's, so a community summary beside a generated list keeps its credit.
-  Whether the issue was reviewed doesn't reach the server
-  yet (Bridge Phase 2b). "No characters yet." / "No recaps yet." for an empty
-  dimension.
+  community issue the book's newest finished `sidecars.generate` job filed for
+  that dimension (`contributedLinks` over the job's `result.contributed`).
+  Whether the issue was reviewed doesn't reach the server yet (Bridge Phase 2b).
+  The summary has a source of its own (`generated.recap_summary`), shown on its
+  row only when it differs from the list's, so a community summary beside a
+  generated list keeps its credit. "No characters yet." / "No recaps yet." for
+  an empty dimension.
 - **The bell** (`components/shell/notifications-bell.tsx`) - `GET /admin/events`
   (`useServerEvents`: the newest 20, every minute), eight listed in a popover,
   each worded by `lib/server-events.ts` `describeEvent` and linking to where it

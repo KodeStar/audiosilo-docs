@@ -235,8 +235,10 @@ variants: `column` on desktop, `inline` on a tablet, `sheet` on a phone.
   `attribution` under every community block; the credit is the server's, never
   composed here, and a dimension generated on this server gets the
   "Generated on this server" mark instead (`communityCredit`, `GeneratedMark`;
-  Story so far marks its recap list and summary apart, `recapMarks`). The
-  companion never shows the Generate covered line.
+  Story so far places its chips by `recapMarks`, see
+  [Enriched book metadata](state-and-data.md#enriched-book-metadata): a generated
+  list's chip under the "Story so far" heading, and again over recaps revealed with
+  **Show anyway**). The companion never shows the Generate covered line.
   For an admin, the empty Who's who and Story so far end with `GenerateOffer`
   ([Generating characters and recaps](book-page.md#the-primary-action-and-the-action-row)).
 

@@ -405,6 +405,20 @@ const open = async (p, route, ready = (pg) => pg.locator('h1.display').first(), 
   await sleep(1500);
 };
 const bookRoute = (b) => `/library/book?library=${b.library_id}&path=${encodeURIComponent(b.path)}`;
+// The seeded Call of the Wild, whose .audiosilo folder run.sh fills (section 2b).
+const callOfTheWild = async () => {
+  const list = await api(token, 'GET', `/admin/books?author=${encodeURIComponent('Jack London')}&limit=50`);
+  const book = (list?.books ?? []).find((b) => `${b.title} ${b.path}`.includes('Call of the Wild'));
+  if (!book) throw new Error('no seeded Call of the Wild');
+  return book;
+};
+// Makes the viewport as tall as the page (between min and max), so a long card
+// or every card is in the shot; the caller restores DESKTOP_CONTEXT.viewport.
+const fitViewportToPage = async (p, min, max, settle = 800) => {
+  const height = await p.evaluate(() => document.documentElement.scrollHeight);
+  await p.setViewportSize({width: 1440, height: Math.min(Math.max(height, min), max)});
+  await sleep(settle);
+};
 
 await step('sign-in page', async () => {
   await page.goto(`${ADMIN}/`, {waitUntil: 'networkidle', timeout: 45000});
@@ -947,15 +961,13 @@ await step('server: audit log', async () => {
 
 // ── A generated description (Bridge Phase 1c) ────────────────────────────────
 // run.sh seeds The Call of the Wild's .audiosilo folder with a description.json
-// and the bridge.json a description job writes, so its Community card shows the
+// and the bridge.json a generate job writes, so its Community card shows the
 // Description part with the description and its Generated on this server mark.
 // Before the stand-in Bridge is paired, so the card has no Characters and recaps
 // part beside it (and no Write a description offer: the book has one already).
 await step('book: generated description', async () => {
   if (!wanted('admin/book-description.png')) return;
-  const list = await api(token, 'GET', `/admin/books?author=${encodeURIComponent('Jack London')}&limit=50`);
-  const book = (list?.books ?? []).find((b) => `${b.title} ${b.path}`.includes('Call of the Wild'));
-  if (!book) throw new Error('no seeded Call of the Wild');
+  const book = await callOfTheWild();
   await open(page, bookRoute(book), (p) => p.getByRole('heading', {name: 'Details', exact: true}));
   const part = page.locator('section[aria-labelledby="describe-title"]');
   await part.getByText(/^Generated on this server/).waitFor({timeout: 15000});
@@ -1066,10 +1078,7 @@ await step('settings: bridge', async () => {
 
     await open(page, '/server?topic=bridge');
     await page.getByRole('list', {name: 'Jobs'}).getByText('Done', {exact: true}).waitFor({timeout: 15000});
-    // As tall as the page, so every card is in the shot.
-    const height = await page.evaluate(() => document.documentElement.scrollHeight);
-    await page.setViewportSize({width: 1440, height: Math.min(Math.max(height, 900), 2400)});
-    await sleep(1000);
+    await fitViewportToPage(page, 900, 2400, 1000);
     await shoot(page, 'admin/settings-bridge-paired.png');
   } finally {
     await page.setViewportSize(DESKTOP_CONTEXT.viewport);
@@ -1118,9 +1127,7 @@ await step('bridge: generate characters and recaps', async () => {
 await step('book: characters and recaps', async () => {
   if (!wanted(...STORY_SHOTS)) return;
   if (!bridgeToken || !bridgeStatus) throw new Error('no stand-in Bridge was paired');
-  const list = await api(token, 'GET', `/admin/books?author=${encodeURIComponent('Jack London')}&limit=50`);
-  const book = (list?.books ?? []).find((b) => `${b.title} ${b.path}`.includes('Call of the Wild'));
-  if (!book) throw new Error('no seeded Call of the Wild');
+  const book = await callOfTheWild();
   await standInHeartbeat(bridgeStatus);
   await api(token, 'POST', '/admin/bridge/jobs', {
     kind: 'sidecars.generate', library_id: book.library_id, path: book.path,
@@ -1128,9 +1135,7 @@ await step('book: characters and recaps', async () => {
   });
   const job = await api(bridgeToken, 'GET', '/bridge/jobs/next?wait=5&kind=sidecars.generate', undefined, BRIDGE_CLIENT);
   if (!job || job.path !== book.path) throw new Error('the generate job was not handed out');
-  await api(bridgeToken, 'PATCH', `/bridge/jobs/${job.id}`, {
-    attempt: job.attempts, state: 'running', progress: {step: 'transcribing', message: 'Transcribing'},
-  }, BRIDGE_CLIENT);
+  // A claimed job may report done straight away; no shot shows it running.
   await api(bridgeToken, 'PATCH', `/bridge/jobs/${job.id}`, {
     attempt: job.attempts,
     state: 'done',
@@ -1143,29 +1148,24 @@ await step('book: characters and recaps', async () => {
     },
   }, BRIDGE_CLIENT);
 
-  await page.setViewportSize({width: 1440, height: 1500});
   try {
     await open(page, bookRoute(book), (p) => p.getByRole('heading', {name: 'Details', exact: true}));
     const card = page.locator('#characters-and-recaps');
     await card.getByText('Contributed, waiting for review').waitFor({timeout: 15000});
     await card.getByText('Generated on this server', {exact: true}).waitFor({timeout: 8000});
     // As tall as the page, so the whole card (Show all included) is in the viewport.
-    const tall = async () => {
-      const height = await page.evaluate(() => document.documentElement.scrollHeight);
-      await page.setViewportSize({width: 1440, height: Math.min(Math.max(height, 1500), 4000)});
-      await sleep(800);
+    const shootCard = async (file) => {
+      await fitViewportToPage(page, 1500, 4000);
+      await card.scrollIntoViewIfNeeded();
+      await shoot(page, file, {clip: around([await card.boundingBox()])});
     };
-    await tall();
-    await card.scrollIntoViewIfNeeded();
-    await shoot(page, 'admin/book-story.png', {clip: around([await card.boundingBox()])});
+    await shootCard('admin/book-story.png');
 
     if (wanted('admin/book-story-recaps.png')) {
       await card.getByRole('tab', {name: /^Recaps/}).click();
       await card.getByRole('button', {name: 'Through chapter 1', exact: true}).click({timeout: 8000});
       await card.getByText('Recaps give the story away.', {exact: false}).waitFor({timeout: 8000});
-      await tall();
-      await card.scrollIntoViewIfNeeded();
-      await shoot(page, 'admin/book-story-recaps.png', {clip: around([await card.boundingBox()])});
+      await shootCard('admin/book-story-recaps.png');
     }
   } finally {
     await page.setViewportSize(DESKTOP_CONTEXT.viewport);

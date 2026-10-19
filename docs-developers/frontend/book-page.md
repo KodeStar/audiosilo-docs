@@ -119,18 +119,15 @@ is the player's first admin-only UI. `mayGenerate(user, server)`
 (`bridge-model.ts`, pure and tested) allows it for an admin who isn't a demo
 account, a household member or a kid, on a server whose `capabilities.bridge` and
 `capabilities.metadata` are on and whose `bridge.features` holds `sidecars`.
-`useGenerate` gives the page `offer` from `generateOffer`, the one offer rule the
-console shares (Bridge Phase 1e; [the table](../bridge/generating.md#who-sees-the-action)):
-while the community lacks characters or a recap list (`communityCoverage`: a list
-that `work.generated` doesn't name; a community summary alone isn't recaps, since
-generated recaps still fill the list beside it), `regenerate` when some were generated here, else
-`generate`; when the community has both, no offer and `covered` instead, which
-mounts `GenerateCovered` in the hero's footer: "The community already has
-characters and recaps for this book" with **See characters**, which selects the
-Characters tab and scrolls the page to the tabs (`openCharacters`, not animated
-under reduced motion). `generateOffer` never gives `covered` without
-`mayGenerate`, so a listener never sees the line. Neither shows
-until the book's `/meta` and its jobs are known (`metaAnswered`: a
+`useGenerate` gives the page `offer` from `generateOffer`, the offer rule the
+console shares (Bridge Phase 1e; [the table](../bridge/generating.md#who-sees-the-action);
+`communityCoverage` says what the community has): `generate`, `regenerate`, or
+`covered` when the community has both. `covered` mounts `GenerateCovered` in the
+hero's footer: "The community already has characters and recaps for this book"
+with **See characters**, which selects the Characters tab and scrolls the page to
+the tabs (`openCharacters`, not animated under reduced motion). `generateOffer`
+never gives `covered` without `mayGenerate`, so a listener never sees the line.
+No offer shows until the book's `/meta` and its jobs are known (`metaAnswered`: a
 failed lookup is no answer), nor while a job shows its status. `GenerateDialog`
 reads [`GET /admin/bridge/estimate`](../server/api/reference.md#get-apiv1adminbridgeestimate)
 and shows what the run reads, the transcription and the agent cost (for every book
@@ -203,9 +200,8 @@ Characters; the gate is `listeningProgressFor` over the corrected chapter starts
 the list is empty), the community tabs with their `Attribution` (`communityCredit`:
 none for a dimension generated on this server) and a `GeneratedMark` ("Generated on
 this server") at the head of a tab whose content came from the server's own files
-(the Recaps tab marks its list and its summary apart, `recapMarks`: a chip per
-generated part when only one of them was generated, the credit while a community
-part shows), `BookmarksSection` /
+(the Recaps tab places its chips and credit by `recapMarks`, see
+[Enriched book metadata](state-and-data.md#enriched-book-metadata)), `BookmarksSection` /
 `NotesSection` (both `AnnotationSection`, see [Bookmarks and notes](annotations.md)),
 `HistorySection`, `BookMetaSeriesTab` and `BookDetailsTab`. It also builds the
 community cover resolver (`useCommunityCover`) and hands it to the Series, Recaps and

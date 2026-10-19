@@ -165,14 +165,13 @@ with the found chapters in use. Nothing is written into the seeded library.
 
 The generated description shots (`admin/book-description.png`,
 `web-player/book-about-generated.png`, Bridge Phase 1c) need a book with a
-`description.json`. Before the servers start, `run.sh` writes the files a
-generate run leaves into **The Call of the Wild**'s `.audiosilo/` folder on every
-run (the fixtures `fixtures/call-of-the-wild.description.json`, an own-words,
-spoiler-free `model.Description`, and `call-of-the-wild.characters.json` and
-`.recaps.json`, own-words `model.Characters` and `model.Recaps` for the shots
-above, and the `bridge.json` a generate job writes, dated two days ago); no other
-shot shows that book's About, Community card or tabs, and its files carry no
-description of their own. The console shot is taken before the stand-in
+`description.json`. Before the servers start, on every run, `run.sh` writes the
+files a generate run leaves into **The Call of the Wild**'s `.audiosilo/` folder:
+the fixtures `fixtures/call-of-the-wild.{description,characters,recaps}.json`
+(own-words `model.Description`, `model.Characters` and `model.Recaps`; the
+description spoiler-free) and the `bridge.json` a generate job writes, dated two
+days ago. No other shot shows that book's About, Community card or tabs, and its
+files carry no description of their own. The console shot is taken before the stand-in
 Bridge is paired, so its card shows only the Description part; the web shot is the
 desktop About card on the book's page, reached through Library > Books.
 

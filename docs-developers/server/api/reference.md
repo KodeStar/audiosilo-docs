@@ -1693,25 +1693,24 @@ scan) are laid into the answer **per request**, after the shared cache and
   `work.characters` are the generated ones; when it has no recap list,
   `work.recaps` are the generated recaps and, when it has no `recap_summary`
   either, `work.recap_summary` the generated `{in_short, ending}` (omitted when
-  both are blank; a community work with a summary but no list keeps its own
-  summary beside the generated list); when it has no `community_description`,
-  `work.generated_description` is the generated description (below).
-  `work.generated` then names what came from the files:
+  both are blank); when it has no `community_description`,
+  `work.generated_description` is the generated description (below). A
+  community work with a summary but no list keeps its own summary beside the
+  generated list. `work.generated` then names what came from the files:
 
   ```json
   "generated": { "characters": false, "recaps": true, "recap_summary": true, "description": true,
                  "generated_at": "2026-10-16T09:12:44Z" }
   ```
 
-  `recaps` is `true` when the recap list or the summary was generated (as before
-  `recap_summary` existed, so an older client reads it unchanged).
-  `recap_summary` (Bridge Phase 1e) is `true` only when `work.recap_summary`
-  itself came from the files: `false` beside a generated list means the summary
-  is the community's (a summary-only community work), so a client credits it to
-  the community. A client that finds `recap_summary` absent (an older server)
-  reads `recaps` for both. The four booleans are always sent together
-  (`description` since Phase 1c, `recap_summary` since Phase 1e); `generated_at` is the
-  provenance's time (`bridge.json`'s `generated_at`, or its `description`
+  `recaps` is `true` when the recap list or the summary was generated, as before
+  Phase 1e, so an older client reads it unchanged. `recap_summary` (Bridge Phase
+  1e) is `true` only when `work.recap_summary` itself came from the files:
+  `false` beside a generated list means the summary is the community's, so a
+  client credits it to the community; a client that finds it absent (an older
+  server) reads `recaps` for both. The four booleans are always sent together
+  (`description` since Phase 1c, `recap_summary` since Phase 1e); `generated_at`
+  is the provenance's time (`bridge.json`'s `generated_at`, or its `description`
   object's when the description is all the object names, so a description
   written later by a `sidecars.describe` job shows its own time), omitted when
   unknown; the whole object is omitted when nothing was generated (or the

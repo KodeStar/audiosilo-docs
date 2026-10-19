@@ -123,11 +123,11 @@ fi
 # its About, its Community card or its tabs, and its files describe nothing
 # themselves, so the player's About falls through to the generated one. Written
 # on every run (the cached library may predate it); the server only reads it.
-DESC_BOOK="$LIBRARY/Jack London/The Call of the Wild"
-if [ -d "$DESC_BOOK" ]; then
-  mkdir -p "$DESC_BOOK/.audiosilo"
+GEN_BOOK="$LIBRARY/Jack London/The Call of the Wild"
+if [ -d "$GEN_BOOK" ]; then
+  mkdir -p "$GEN_BOOK/.audiosilo"
   for part in description characters recaps; do
-    cp "$HERE/fixtures/call-of-the-wild.$part.json" "$DESC_BOOK/.audiosilo/$part.json"
+    cp "$HERE/fixtures/call-of-the-wild.$part.json" "$GEN_BOOK/.audiosilo/$part.json"
   done
   node -e '
     const at = new Date(Date.now() - 2 * 86400e3).toISOString().replace(/\.\d+Z$/, "Z");
@@ -137,9 +137,9 @@ if [ -d "$DESC_BOOK" ]; then
       description: {job_id: 7, generated_at: at, from: "opening_notes", chapters: 2, checked_against: "transcripts"},
     };
     require("node:fs").writeFileSync(process.argv[1], JSON.stringify(prov, null, 2) + "\n");
-  ' "$DESC_BOOK/.audiosilo/bridge.json"
+  ' "$GEN_BOOK/.audiosilo/bridge.json"
 else
-  echo "  ! no $DESC_BOOK: the generated content shots will fail"
+  echo "  ! no $GEN_BOOK: the generated content shots will fail"
 fi
 
 # ── 3. Servers ──────────────────────────────────────────────────────────────

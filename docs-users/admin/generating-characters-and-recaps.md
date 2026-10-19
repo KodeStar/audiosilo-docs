@@ -62,14 +62,12 @@ The console and the player follow the same rule:
   chapter-by-chapter ones: a book the community has only a whole-book summary for
   still offers it, and keeps the community's summary beside your chapter recaps.
 - **When the community already has both** characters and chapter recaps, there is
-  no button. In its place a
-  line says "The community already has characters and recaps for this book."
-  In the console its **See them** link takes you down to the book's
-  [Characters and recaps card](books.md#characters-and-recaps); in the player
-  **See characters** opens the book's **Characters** tab. Only admins see the
-  line: listeners never do. It shows even for a book your Bridge wrote characters
-  and recaps for before the community had them, since the community's are the
-  ones shown.
+  no button. In its place a line says "The community already has characters and
+  recaps for this book." In the console its **See them** link takes you down to
+  the book's [Characters and recaps card](books.md#characters-and-recaps); in the
+  player **See characters** opens the book's **Characters** tab. Only admins see
+  the line. It shows even for a book your Bridge wrote characters and recaps for
+  before the community had them, since the community's are the ones shown.
 
 The button also stays away while the book's job is running (its progress shows
 instead), while the book's chapters are still being
@@ -204,8 +202,8 @@ differences:
 **The community's always comes first.** If the community database has characters
 but no recaps for a book, say, the player shows the community's characters and
 your generated recaps. Once the community has both, your generated ones are no
-longer shown (and neither the console nor the player offers the button: they say
-the community has them), though they stay in the book's folder.
+longer shown (see [Which books offer it](#which-books-offer-it)), though they
+stay in the book's folder.
 
 In the console, the book's page shows them too, in its
 [Characters and recaps card](books.md#characters-and-recaps), each tab marked

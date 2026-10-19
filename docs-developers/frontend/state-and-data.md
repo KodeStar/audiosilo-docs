@@ -461,15 +461,21 @@ description (Phase 1c) reaches About too. `metaEnabledFor` asks `/meta`
 for a book with an ASIN or ISBN **or** `generated: true`; an answer that is only
 generated content goes stale after 2 minutes (`META_GENERATED_ONLY_STALE_MS`)
 rather than the hour a community answer keeps. `work.generated` drives the
-`GeneratedMark` chip (and About's `GeneratedChip` for `generated.description`),
-and `communityCredit` drops the CC BY-SA credit from a generated dimension. The
-Recaps tab and Story so far mark their two parts apart (`recapMarks`, Bridge
+"Generated on this server" chip (`GeneratedChip`: `GeneratedMark` heads a
+Characters panel and the Previously On card's recap; About wears it for
+`generated.description`), and `communityCredit` drops the CC BY-SA credit from a
+generated dimension.
+
+The Recaps tab and Story so far mark their two parts apart (`recapMarks`, Bridge
 Phase 1e): the recap list by `generated.recaps`, the whole-book summary by
 `generated.recap_summary` (falling back to `generated.recaps` when an older server
 leaves it out), so a community summary kept beside a generated list keeps its
-credit: one chip heads the panel when every part shown was generated, a chip on
-each generated part when they differ, and the credit whenever a community part
-shows; `seriesRails(series, currentWorkId, picks)` builds
+credit. One chip heads the panel when every part shown was generated; when the
+parts differ, the generated one wears its own chip (the list's under its Story so
+far heading, and in Story so far again over the recaps **Show anyway** reveals);
+the credit ends the panel whenever a community part shows.
+
+`seriesRails(series, currentWorkId, picks)` builds
 one rail per family showing the picked reading order, drops the current work from
 it, and drops a rail only when **every** one of its orders is empty once the
 current work is removed (so switching order can never make the tab vanish).

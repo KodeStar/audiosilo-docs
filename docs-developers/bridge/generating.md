@@ -53,18 +53,22 @@ fills a dimension the community lacks
 | one of them, or neither | none | **Generate** |
 
 A whole-book summary alone isn't recaps here: a community work with only a
-`recap_summary` keeps it, and generated recaps fill the list beside it (the
-answer's `work.generated.recap_summary` then stays `false`, so the summary keeps
-the community's credit). The console decides from the estimate's `has` (`generateAction`: `has.community`
+`recap_summary` keeps it, and generated recaps fill the list beside it (see
+[generated content](../server/api/reference.md#generated-content) for how
+`work.generated.recap_summary` keeps the summary's credit).
+
+The console decides from the estimate's `has` (`generateAction`: `has.community`
 is the community's own coverage, `has.local` the generated files), the player
 from the book's `/meta` work (`generateOffer`: a dimension counts as the
-community's when it has entries and `work.generated` doesn't name it). The
-console's covered line links to the book page's Characters and recaps card; the
-player's, shown only to an admin `mayGenerate` allows, opens the book page's
+community's when it has entries and `work.generated` doesn't name it).
+
+The console's covered line links to the book page's Characters and recaps card;
+the player's, shown only to an admin `mayGenerate` allows, opens the book page's
 Characters tab. The companion's empty Who's who and Story so far never show the
-line: an empty panel means the community lacks that half. The other guards (a job
-open, a `chapters.detect` job open, the Bridge offline, the four gates above) are
-unchanged.
+line: an empty panel means the community lacks that half.
+
+The other guards (a job open, a `chapters.detect` job open, the Bridge offline,
+the four gates above) are unchanged.
 
 ## Queueing it
 
