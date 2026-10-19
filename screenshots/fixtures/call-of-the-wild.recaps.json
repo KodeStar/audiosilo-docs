@@ -1,0 +1,44 @@
+{
+  "work": "the-call-of-the-wild",
+  "recaps": [
+    {
+      "through": { "chapter": 1 },
+      "scope": "book",
+      "text": "Buck lives an easy life on Judge Miller's estate until Manuel, the gardener, sells him to pay his gambling debts. Shipped north in a crate, Buck rages at his captors until a man in a red sweater beats him into submission with a club. He learns the law of club and fang and is bought by Perrault and François for the Canadian mail."
+    },
+    {
+      "through": { "chapter": 2 },
+      "scope": "book",
+      "text": "At Dyea, Buck sees Curly killed by a pack of huskies and learns that a dog who goes down is finished. He is put in harness with Dave and Sol-leks, learns to sleep in the snow and to steal food, and his old instincts begin to wake. Spitz, the lead dog, watches him."
+    },
+    {
+      "through": { "chapter": 3 },
+      "scope": "book",
+      "text": "The rivalry between Buck and Spitz grows over the long trail to Dawson. Buck quietly undermines Spitz's authority until the team falls into disorder. When a rabbit chase brings them face to face, the two fight, and Buck wins and takes his place."
+    },
+    {
+      "through": { "chapter": 4 },
+      "scope": "book",
+      "text": "Buck forces François to make him lead dog and proves the best leader the team has had. The mail runs set records, but the team is sold to a Scotch half-breed driving a heavy mail sled. The work wears the dogs down, and Dave, sick but unwilling to leave the traces, is put out of his misery."
+    },
+    {
+      "through": { "chapter": 5 },
+      "scope": "book",
+      "text": "The exhausted team is sold to Hal, his sister Mercedes and her husband Charles, who know nothing of the trail. They overload the sled, overfeed and then starve the dogs, and quarrel constantly. At John Thornton's camp, Buck refuses to go on across the melting ice; Thornton cuts him free, and the others drive on without him."
+    },
+    {
+      "through": { "chapter": 6 },
+      "scope": "book",
+      "text": "Buck recovers in Thornton's care and comes to love him as he has loved no one. He saves Thornton from a fight in a bar and from drowning in the rapids, and wins him a large bet by breaking out and pulling a thousand-pound sled a hundred yards."
+    },
+    {
+      "through": { "chapter": 7 },
+      "scope": "book",
+      "text": "With the winnings, Thornton and his partners go east in search of a lost mine. Buck roams the forest for days at a time, running with a timber wolf and hunting alone, torn between the wild and his master. He returns from one long hunt to find the camp destroyed by the Yeehats, kills several of them, and answers the call at last."
+    }
+  ],
+  "in_short": "A pampered dog is stolen from California and sold into the hard life of a Klondike sled dog. He learns to survive, defeats the team's leader, passes through cruel and foolish hands, and finds devotion with John Thornton. When Thornton is killed, Buck joins a wolf pack and becomes a legend of the northern forest.",
+  "ending": "Buck runs at the head of a wolf pack, and the Yeehats tell of a Ghost Dog. Each summer he returns alone to the valley where Thornton died.",
+  "license": "CC-BY-SA-4.0",
+  "sources": [{ "type": "community" }]
+}

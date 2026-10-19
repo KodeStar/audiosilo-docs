@@ -390,6 +390,41 @@ uploaded one: stored in AudioSilo's database, with the book folder untouched,
 and **Remove the custom cover** goes back to the book's own art. A community
 cover larger than 5 MB is scaled down to fit within 1600 pixels first.
 
+### Characters and recaps
+
+When [community metadata](server.md#community-metadata) is on, the
+**Characters and recaps** card shows the book's characters and chapter recaps,
+the same ones the players show: from the community database, or written by your
+[Bridge](generating-characters-and-recaps.md). It is read-only.
+
+![The Characters and recaps card with generated characters](/img/screenshots/admin/book-story.png)
+
+- **Characters** and **Recaps** are tabs, each with how many entries it has
+  (the whole-book summary counts as one of the recaps).
+  Each character shows its name, its role (**Protagonist**, **Antagonist**,
+  **Supporting** or **Minor**), any other names ("Also known as ..."), a
+  description and where it first appears ("From chapter 3", or "From the start").
+- **Recaps give the story away**, so each stays closed until you open it: one row
+  per chapter ("Through chapter 4"), "Previously, in earlier books" for a recap of
+  the series so far, "Before this book" for one about what comes before the first
+  chapter, and **The whole book** for the short summary and the ending.
+  Click a row to read it, and again to close it. The card shows you everything,
+  wherever you are in the book yourself: there is no spoiler protection here,
+  only the closed rows.
+- The first 10 entries show; a button with the full count ("Show all 12
+  characters") shows the rest, and **Show fewer** puts them away.
+- **Where they came from** heads each tab, since characters and recaps can come
+  from different places: **Community**, with the community's credit and licence,
+  or **Generated on this server**, with the date your Bridge wrote them. When the
+  book's last finished generate job [offered them to the community](generating-characters-and-recaps.md#keeping-them-local-or-contributing-them),
+  **Contributed, waiting for review** links to the submission. The whole-book
+  summary can come from somewhere else than the chapter recaps (the community's
+  summary beside recaps your Bridge wrote): its row then shows its own source,
+  with the community's credit.
+- A tab with nothing in it says "No characters yet." or "No recaps yet."
+
+![The Recaps tab with one chapter opened](/img/screenshots/admin/book-story-recaps.png)
+
 ### Listeners and who can see the book
 
 - **Listeners** - everyone who has started the book, with their progress or
@@ -507,10 +542,13 @@ Library, for example). Only the image itself is asked for.
 
 With a [Bridge](bridge.md) paired that can write characters and recaps, the
 **Community metadata** card has a **Characters and recaps** part: **Generate
-characters and recaps** for a book the community hasn't covered (**Regenerate**
-once it has generated ones), and while the Bridge works on it, the job's step,
-progress, time left and cost so far, with **Cancel**. The book doesn't need to be
-matched. See [Generating characters and recaps](generating-characters-and-recaps.md).
+characters and recaps** while the community lacks characters, recaps or both
+(**Regenerate** once it has generated ones), and while the Bridge works on it, the
+job's step, progress, time left and cost so far, with **Cancel**. When the
+community already has both, the part says "The community already has characters
+and recaps for this book." instead, and **See them** takes you to the
+[Characters and recaps card](#characters-and-recaps). The book doesn't need to be
+matched. See [Generating characters and recaps](generating-characters-and-recaps.md#which-books-offer-it).
 
 Under it, a **Description** part shows the short, spoiler-free description the
 Bridge wrote for the book, if it has one, and offers **Write a description** for a

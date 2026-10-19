@@ -767,9 +767,13 @@ CSP-sensitive work against a real build served by Go. The console's own gate is
   queued or working and every minute while it is parked (`generatePollMs`; the
   jobs are asked while the server reports the `bridge` capability at all, so a job
   stays visible while the Bridge is away), and the action from the brief estimate
-  (`generateAction`: Generate, Regenerate when it has generated content, hidden
-  when the community has both). `GenerateDialog` reads the full estimate: the
-  source, length, transcription and agent cost for every book it queues, where
+  (`generateAction`: `generate`, `regenerate` or `covered`, the offer rule the
+  player follows too, Phase 1e; see
+  [the table](../bridge/generating.md#who-sees-the-action)). For `covered` the
+  section shows "The community already has characters and recaps for this book."
+  with **See them**, which scrolls to the Characters and recaps card
+  (`STORY_CARD_ID`) and moves focus there, in place of the action.
+  `GenerateDialog` reads the full estimate: the source, length, transcription and agent cost for every book it queues, where
   the results go, a contribute switch only when `can_contribute`, the earlier
   books (ticked), and notices for an offline Bridge, an agent not ready or not
   reported, and a library it can't write (which blocks the submit). It queues the
@@ -794,6 +798,31 @@ CSP-sensitive work against a real build served by Go. The console's own gate is
   and queues `sidecars.describe` when `describeOffered` allows it (never while a
   `chapters.detect` job is open or parked for the book). See
   [A description on its own](../bridge/generating.md#a-description-on-its-own-sidecarsdescribe).
+- **The Characters and recaps card** (Phase 1e, `features/book/story-card.tsx`,
+  the pure rules in `story-model.ts`) - `StoryCard`, after the Community card in
+  the book page's aside (`BookAside`), shown while `metadata` is on, Bridge or
+  not: the book's [`GET /libraries/{id}/meta`](api/reference.md#generated-content)
+  (`useBookMeta`, the full work, not `?spoilers=hide`) read-only, in a
+  **Characters** and a **Recaps** tab, each with its count (the Recaps count
+  includes the whole-book summary's row). Characters list the name, role
+  (`roleKey`), aliases, description and "From chapter N" (or "From the start");
+  recaps one row each in chapter order (`recapRows`; at chapter 0
+  `recapHeading` reads "Previously, in earlier books" for a `series` scope and
+  "Before this book" otherwise) plus "The whole book" for the `recap_summary`,
+  each closed behind its own button until the admin opens it. Each list shows the
+  first 10 rows, then "Show all N" (`ShowAllToggle`, shared with the Chapters
+  card). Each tab is headed by where its dimension came from (`storySources`, from
+  `work.generated`): **Community** (the `ProvenanceMarker`) with the envelope's
+  `attribution` credit and licence, or **Generated on this server** with
+  `generated.generated_at`, plus "Contributed, waiting for review" linking the
+  community issue the book's newest `done` `sidecars.generate` job filed for
+  that dimension (`contributedLinks` over the job's `result.contributed`; a later
+  failed, cancelled or open job doesn't hide it).
+  Whether the issue was reviewed doesn't reach the server yet (Bridge Phase 2b).
+  The summary has a source of its own (`generated.recap_summary`), shown on its
+  row only when it differs from the list's, so a community summary beside a
+  generated list keeps its credit. "No characters yet." / "No recaps yet." for
+  an empty dimension.
 - **The bell** (`components/shell/notifications-bell.tsx`) - `GET /admin/events`
   (`useServerEvents`: the newest 20, every minute), eight listed in a popover,
   each worded by `lib/server-events.ts` `describeEvent` and linking to where it

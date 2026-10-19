@@ -1,6 +1,6 @@
 ---
 title: Generating characters and recaps
-description: "Have your Bridge write character sheets and chapter recaps for a book the community hasn't covered yet: who can, where the button is, the confirmation and its estimate, keeping them on your server or contributing them, following a run, what to do when one pauses, where the results appear, the spoiler-free description it writes too (and Write a description for an older book), books without chapters (chapters found in the narration, and Detect chapters with no agent cost), costs and the monthly cap, and how long transcripts are kept."
+description: "Have your Bridge write character sheets and chapter recaps for a book the community hasn't covered yet: who can, where the button is and which books offer it, the confirmation and its estimate, keeping them on your server or contributing them, following a run, what to do when one pauses, where the results appear, the spoiler-free description it writes too (and Write a description for an older book), books without chapters (chapters found in the narration, and Detect chapters with no agent cost), costs and the monthly cap, and how long transcripts are kept."
 ---
 
 The community database at [meta.audiosilo.app](https://meta.audiosilo.app) gives
@@ -38,19 +38,43 @@ or ISBN.
 - **The console's book page.** The **Community metadata** card on a
   [book's page](books.md#a-books-page) has a **Characters and recaps** part with
   **Generate characters and recaps**. Once a book has generated ones, the button
-  reads **Regenerate**. A book the community already has both characters and
-  recaps for doesn't offer it.
+  reads **Regenerate**.
 - **A whole series.** On **Library > Series**, a series card has **Generate for
   the series**. It checks each book first and queues the ones without recaps, in
   reading order, the earliest first: books that already have recaps (from the
   community or generated here) are left out, and so are books already queued and
   any it couldn't check right now. The dialog says how many it leaves out and why.
 - **The player.** On a book's page in the app or the web player, an admin sees
-  **Generate characters and recaps** after the other buttons, for a book with no
-  characters or recaps at all. For a book with generated ones, **Regenerate
-  characters and recaps** is in the book's **⋯** menu. The
-  [companion](../listening/companion.md)'s empty **Who's who** and **Story so far**
-  offer the same button.
+  **Generate characters and recaps** after the other buttons. For a book with
+  generated ones, **Regenerate characters and recaps** is in the book's **⋯** menu
+  instead. The [companion](../listening/companion.md)'s empty **Who's who** and
+  **Story so far** offer the same button.
+
+### Which books offer it
+
+For a single book, the console and the player follow the same rule (**Generate
+for the series** goes by recaps alone, as above):
+
+- **While the community lacks characters, recaps or both**, the button is
+  there: **Generate**, or **Regenerate** once your Bridge has written some for the
+  book. Generated ones only ever fill what the community is missing (see
+  [Where the results appear](#where-the-results-appear)), so a book the community
+  has characters for but no recaps still offers it. Recaps here means the
+  chapter-by-chapter ones: a book the community has only a whole-book summary for
+  still offers it, and keeps the community's summary beside your chapter recaps.
+- **When the community already has both** characters and chapter recaps, there is
+  no button. In its place a line says "The community already has characters and
+  recaps for this book." In the console its **See them** link takes you down to
+  the book's [Characters and recaps card](books.md#characters-and-recaps); in the
+  player **See characters** opens the book's **Characters** tab. Only admins see
+  the line. It shows even for a book your Bridge wrote characters and recaps for
+  before the community had them, since the community's are the ones shown.
+
+The button also stays away while the book's job is running (its progress shows
+instead) and while the Bridge is offline. While the book's chapters are still being
+[found in the narration](#detect-chapters-without-characters-and-recaps), the
+console leaves the button out until that has finished; the player keeps it, and its
+confirmation says so and holds back.
 
 ## The confirmation
 
@@ -101,6 +125,13 @@ for review, so every other server gets them too once they are accepted. They are
 saved on your server either way. Contributing needs the book to have an entry in
 the community database already; when it doesn't, the job pauses saying so, with
 the results already saved locally. The player never offers to contribute.
+
+Once the job is done, the book's
+[Characters and recaps card](books.md#characters-and-recaps) shows **Contributed,
+waiting for review** beside each part it offered, linking to its submission.
+Whether it has been reviewed or accepted isn't shown there yet: follow the link
+to see. Once it is accepted and the community database has published it, the
+card shows the community's entries, marked **Community**, in place of yours.
 
 ## While it runs
 
@@ -165,14 +196,20 @@ work exactly like the community's, spoiler protection included (see
 differences:
 
 - A small **Generated on this server** mark heads each tab whose content your
-  Bridge wrote.
+  Bridge wrote. When the community has a book's whole-book summary but your Bridge
+  wrote its chapter recaps, the Recaps tab marks each part for where it came from,
+  and the community's summary keeps its credit line.
 - There is no community credit line under them: they aren't the community's.
 
 **The community's always comes first.** If the community database has characters
 but no recaps for a book, say, the player shows the community's characters and
 your generated recaps. Once the community has both, your generated ones are no
-longer shown (and the console no longer offers the button), though they stay in
-the book's folder.
+longer shown (see [Which books offer it](#which-books-offer-it)), though they
+stay in the book's folder.
+
+In the console, the book's page shows them too, in its
+[Characters and recaps card](books.md#characters-and-recaps), each tab marked
+**Community** or **Generated on this server** so you can see where it came from.
 
 The files live in a hidden **`.audiosilo`** folder inside the book's folder:
 `characters.json`, `recaps.json`, `description.json` (the
