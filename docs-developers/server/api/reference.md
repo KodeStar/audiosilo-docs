@@ -7473,7 +7473,10 @@ another page (the server reads one row past the page to know): pass it as
 | `kind` | the job kind: one the server knows **and** the paired Bridge advertised in its last heartbeat (kinds are allow-listed twice) |
 | `library_id` | the library, when the kind is about one (every kind needs it) |
 | `path` | an indexed book in that library (optional or required, per kind); the job is about the book's own path |
-| `params` | the kind's parameters, checked per kind (unknown fields refused) |
+| `params` | the kind's parameters, checked per kind (unknown fields refused), at most 16 KiB as sent (`meta.correct`: 128 KiB) |
+
+The request body is at most the largest params cap plus 4 KiB (`bridge.MaxParamsBytes`
++ 4 KiB); a longer one is `400 invalid request` before it is read whole.
 
 The kinds:
 
@@ -7545,9 +7548,15 @@ The kinds:
   `field` once from `title`, `author`, `narrator`, `series`, `series_index`,
   `more_series`, `published`, `isbn`; each value trimmed, one line, at most 500
   characters, no control characters, `corrected` set and different from
-  `current`; `evidence` at most 2000 characters; `recording_id` a community slug;
-  and, as for every kind, the params at most 16 KiB in all (`params too large`), so
-  a batch near every bound at once is refused. Each change must be an **edit made on this server**: the field's source is
+  `current`; `evidence` at most 2000 characters, not `_No response_` (the
+  community reads that as a blank field); `recording_id` a community slug; no
+  value and no evidence holding a bidirectional embedding, override or isolate
+  control (U+202A-U+202E, U+2066-U+2069; the joiners and marks right-to-left
+  scripts need are allowed), also when written as an HTML character reference
+  such as `&#x202E;`, which the community decodes (`… holds a bidirectional
+  override character`; a control character written that way is `… holds a
+  control character`); and the params at most 128 KiB in all (`params too
+  large`), this kind's own cap (every other kind's is 16 KiB). Each change must be an **edit made on this server**: the field's source is
   `edited` on the book and `corrected` is its value now, else `400 not_edited`.
   The server stores the book's own spelling of each value and stamps `source` as
   `audiosilo-server/<version>`, whatever was sent (a sent `source` must still be
@@ -7577,7 +7586,7 @@ the console says so. A new job is audited as `bridge.job`.
 |---|---|
 | `201` | the job, queued |
 | `200` | the open job of that kind for that library and path |
-| `400` | `invalid request` (not JSON, an unknown field); or a check of the kind, each message starting `invalid: `: `unknown kind "…"`, `library_id is required`, `this kind takes no library or path`, `this kind takes no path`, `path is required`, `params too large`, or a params error (`hold_seconds must be 0-600`, `source must be auto, audio or ebook`, `contribute must be local or issue`, a `work_id` too long or with a control character, an unknown field, a `dimensions` entry that isn't `characters` or `recaps` or is repeated, a `meta.correct` params error: no `work_id` or `evidence`, a field that can't be corrected or is listed twice, a change or the evidence past its bounds, a `recording_id` that isn't a community slug, an identifier too long); `code: "not_edited"` with `field` - a `meta.correct` change of a field that isn't an edit made on this server, or whose corrected value isn't the book's value now |
+| `400` | `invalid request` (not JSON, an unknown field, a body past the bound above); or a check of the kind, each message starting `invalid: `: `unknown kind "…"`, `library_id is required`, `this kind takes no library or path`, `this kind takes no path`, `path is required`, `params too large`, or a params error (`hold_seconds must be 0-600`, `source must be auto, audio or ebook`, `contribute must be local or issue`, a `work_id` too long or with a control character, an unknown field, a `dimensions` entry that isn't `characters` or `recaps` or is repeated, a `meta.correct` params error: no `work_id` or `evidence` (evidence of `_No response_` counts as none), a field that can't be corrected or is listed twice, a change or the evidence past its bounds, a value or the evidence holding a control or bidirectional override character (also as a character reference), a `recording_id` that isn't a community slug, an identifier too long); `code: "not_edited"` with `field` - a `meta.correct` change of a field that isn't an edit made on this server, or whose corrected value isn't the book's value now |
 | `404` | `library not found`; `code: "book_not_found"` - the path is not an indexed book; `code: "module_off"` - a job of the `contributions` module (`sidecars.contribute`, `meta.correct`, `sidecars.generate` with `contribute: "issue"`) while the module is off |
 | `409` | `code: "kind_unavailable"` - no Bridge has reported, or the paired one doesn't run that kind (a Bridge from before Phase 1c doesn't run `sidecars.describe`, one from before Phase 1d `chapters.detect`, one from before Phase 2b `sidecars.contribute` or `meta.correct`); `code: "library_not_writable"` - a kind that writes, for a library the last heartbeat doesn't report mapped and writable; `code: "cannot_contribute"` - `sidecars.generate` with `contribute: "issue"`, `sidecars.contribute` or `meta.correct` while the Bridge can't contribute; `code: "generate_open"` - `sidecars.describe`, `chapters.detect` or `sidecars.contribute` while a `sidecars.generate` job is open for the book ("a generate job is still open for this book; queue this once it has finished"); `code: "contribute_open"` - `sidecars.generate` while a `sidecars.contribute` job is queued or working for the book (a parked one, or a queued one held while the `contributions` module is off, is cancelled instead); `code: "detect_open"` - `sidecars.generate` while a `chapters.detect` job is queued or working for the book, or `sidecars.describe` while one is open ("a chapter detection job is still open for this book; queue this once it has finished"); `code: "describe_open"` - `chapters.detect` while a `sidecars.describe` job is open for the book; `code: "chapters_chosen"` - `chapters.detect` for a book whose chapter source an admin chose (`files` or `community`), checked before the queue ("an admin chose this book's chapter source, so chapters found in the narration would never be used; set it back to automatic first"). `library_not_writable`, `cannot_contribute` and the open-job codes are checked after the dedupe: an open job of the same kind for the book is still returned (`200`) |
 

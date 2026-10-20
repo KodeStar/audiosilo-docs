@@ -41,8 +41,8 @@ To sign in:
    old sign-in, that button is **Sign out**, which also forgets the old one).
 
 What the app may do: open issues on the community metadata repositories it is
-installed on, and create gists (characters or recaps too long for an issue are
-attached as one). It can't change code, read your private repositories or act anywhere else.
+installed on, and create secret gists (a characters or recaps file too long for
+an issue is attached as one). It can't change code, read your private repositories or act anywhere else.
 Your password never reaches the Bridge: GitHub gives it a token, which the Bridge
 keeps encrypted in its data folder and renews by itself.
 
@@ -83,7 +83,8 @@ takes:
 | `codex` | **OpenAI API key** (billed per use) |
 
 Paste the credential and press **Save** (**Replace** once one is set, **Remove**
-to delete it). It must be one line with no spaces. With both Claude fields set,
+to delete it). It must be one line with no spaces. Each field says **Set**, with
+how long ago that credential was saved, or **Not set**. With both Claude fields set,
 the subscription token is used. A ChatGPT subscription for Codex is signed in in
 the agent container instead (`agent-login codex`, see
 [Running a Bridge](running-a-bridge.md#7-the-agents-credential)).

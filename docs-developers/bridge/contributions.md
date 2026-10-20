@@ -102,7 +102,9 @@ credential back.**
 
 `agent`: `backend`, `kinds` (the kinds that backend takes, in the order it uses
 them: `claude_oauth_token`, `anthropic_api_key` for claude; `openai_api_key` for
-codex), `set` (kind to boolean), `set_at`, `available`, `detail`, `handoff` (the
+codex), `set` (kind to boolean), `set_at` (when the last one was saved),
+`set_at_by_kind` (Phase 2b, additive: when each kind held was saved, from its own
+row; a kind saved before the rows per kind is left out), `available`, `detail`, `handoff` (the
 runs get the Bridge's credential) and `container_credential` (the kind the
 container has of its own, which wins; `""` for none). A value must be one
 printable line without spaces, at most 2048 bytes (`ErrInvalidCredential`, said
@@ -111,6 +113,9 @@ without the value). Changing a credential re-admits the books parked
 
 The page's Accounts tab (`web/src/components/tabs/AccountsTab.tsx`,
 `web/src/lib/accounts.ts`) polls every 3 seconds only while a sign-in is pending.
+Each agent field says **Set** with that credential's own saved time
+(`set_at_by_kind`), and the GitHub card says the App opens issues, and a secret
+gist when a characters or recaps file is too long for an issue.
 
 ## Sharing later: `sidecars.contribute`
 
@@ -144,9 +149,15 @@ leniently (a later server's field ignored), then:
    reported. A dimension the community already has is `covered`. Each
    dimension's gist and issue are filed **at most once** across shares and the
    contributing stage's retries: a filing marker is recorded before each create
-   (`contrib.filing/<book id>/<kind>`), and the next submit adopts the gist or
-   issue the user made since (`GistsSince`, `IssuesSinceBy`), filing again only
-   when GitHub's list is complete and holds none.
+   (`contrib.filing/<book id>/<kind>`, times by GitHub's clock), and the next
+   submit adopts the gist or issue the user made since (`GistsSince`,
+   `IssuesSinceBy`, from the marker less `contrib.FilingSkew`), filing again only
+   when GitHub's list is complete and holds none (for an issue, also only once the
+   marker is a minute old, `filingSettle`: GitHub may still be making it). A
+   lookup it can't complete fails the share (`ErrFilingUnknown`) unless the marker
+   is over 24 hours old by GitHub's clock (`contrib.FilingStale`): then it still
+   looks, and when the lookup still can't complete it logs that and files again
+   (meta's intake catches a duplicate, and nothing on the page clears a marker).
 
 Result:
 
@@ -162,9 +173,9 @@ Failures, worded for the console: not signed in, GitHub refused the sign-in
 ("sign in again on the Bridge's Accounts tab, then share the book again"), nothing
 kept here ("it was not generated here, or they were removed"), a generate job
 still running, not matched, and an earlier share that stopped while filing when
-the Bridge can't yet tell whether GitHub made the issue ("share the book again
-later, and if this keeps happening, look for the issue on the community
-repository"). A finished job whose `contributed` is empty and
+the Bridge can't yet tell whether GitHub made the issue or the gist it links ("so
+it filed nothing more: share the book again in a few minutes, and if this keeps
+happening, look for the issue on the community repository"). A finished job whose `contributed` is empty and
 `covered` isn't is "Already in the community" in the server's notification
 (`bridge.Job.SharedNothing`).
 
@@ -197,7 +208,13 @@ and feature `meta`; a book `path` required; it writes nothing into the library.
 ```
 
 Beyond the reference: in the changes' values and the evidence a control character
-is `unicode.IsControl` (C1 included; the identifiers refuse C0 and DEL only);
+is `unicode.IsControl` (C1 included; the identifiers refuse C0 and DEL only), and
+both it and a bidirectional control (`isBidiControl`) are looked for in the text
+as the community's issue form reads it (`asRead`: each HTML character reference
+ending in `;` decoded, one naming whitespace read as a space; GitHub shows the
+evidence's decoded too), so `&#x202E;` is refused like the character itself; an
+`evidence` of exactly `_No response_` is the form's blank field, so "evidence is
+required"; a `corrected` value is compared with `current` as read the same way;
 `evidence` keeps its line breaks (CRLF stored as LF) and stays within 2000
 characters as the issue carries it (a line starting with `#` loses its indent and
 gains a backslash); `asin`, `isbn` and `region` (the marketplace the ASIN sells
@@ -261,8 +278,11 @@ and the client never resends a POST). A resumed run with a result returns it; on
 with only the marker lists the core repository's issues made since
 (`contrib.IssuesSince`: the list endpoint, not search, which lags) and adopts a
 `[corrections]` issue with the same body, files when the list is complete and has
-none, and otherwise fails asking the admin to look for a `[corrections]` issue
-first. A `401` fails "GitHub refused the Bridge's sign-in".
+none, and otherwise (a list it can't read whole, or a batch for the same record
+with another body) fails asking the admin to look for a `[corrections]` issue
+first, unless the marker is over 24 hours old by GitHub's clock
+(`contrib.FilingStale`): then it files again, and meta's intake catches a
+duplicate batch. A `401` fails "GitHub refused the Bridge's sign-in".
 
 Result:
 
@@ -290,8 +310,14 @@ corrections job, badges it **Applied automatically** or **Reviewed by a
 maintainer** (`handling`: a recording field is automatic only when the identifier
 names the recording, `correctionRecording`), requires the evidence (prefilled)
 and queues one `meta.correct`. The job's status and issue link show in the same
-card part. The server enforces the 25-change cap, and the 16 KiB cap on a job's
-params, which a batch of long values can pass (`params too large`).
+card part. The server enforces the 25-change cap, and the kind's 128 KiB cap on
+its params (every other kind's is 16 KiB), which a batch at every bound fits. The
+dialog flags a row whose value, either side, holds a bidirectional control
+(U+202A-U+202E, U+2066-U+2069): "Holds a hidden text-direction character the
+community refuses, so it can't be sent", unticked and not sendable (`sendable`),
+and evidence holding one ("Retype any text you pasted"): **Suggest**
+then sends nothing (`correctionProblem`: `evidenceBidi`). It checks the characters
+themselves; one written as a character reference is the server's `400`.
 
 ## Notifications
 

@@ -157,7 +157,9 @@ link to the tab of each step still to do, until every required step is done; pai
 the job kinds and lanes, where the secret key came from, and a **Characters and
 recaps** card: the agent container and each CLI's version and credential kind, the
 speech recognition, the monthly budget with this month's spend, the per-book cap
-and the transcript retention), **Libraries** (each server library, the folder the
+and the transcript retention, noting that the monthly budget is set on the
+**Settings** tab and applies straight away while the other two are `config.yaml`
+settings applied at the next start), **Libraries** (each server library, the folder the
 Bridge uses and its last check, with **Check now**), **Jobs** (the jobs it ran,
 with cancel, a `bridge.verify` result as a file table, and for a
 `sidecars.generate`, `sidecars.describe` or `chapters.detect` job its stage, progress, cost, the park's code, hint and

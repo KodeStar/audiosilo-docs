@@ -174,7 +174,7 @@ in the console (**Generating is paused** in the player) with the reason, and
 | The agent reached its usage limit | Nothing: it carries on once the limit resets. |
 | Waiting for an ASR worker | Nothing, or start the worker: the Bridge is set to wait for an [ASR worker](../getting-started/running-a-worker.md#when-the-worker-is-off) when none is connected, and the job carries on as soon as one connects. |
 | The agent's credential was refused | Replace it where the agent gets it: on the Bridge's Accounts tab, or in the agent container when it has one of its own (see [Running a Bridge](../getting-started/running-a-bridge.md#7-the-agents-credential)). The job carries on at once after a change on the Accounts tab, else it looks again by itself every 30 minutes. |
-| The job reached its spending limit | The monthly cap carries on by itself on the 1st of next month; raise the cap on the Bridge for sooner (below). |
+| The job reached its spending limit | The monthly cap carries on by itself on the 1st of next month, or at once when you raise it on the Bridge's **Settings** tab (below). For the per-book cap, raise it in the Bridge's settings, restart the Bridge and press **Retry**. |
 | The Bridge can't write to this book's folder | Give the Bridge's user write access to the book's folder. It checks again every minute. |
 | Contributing needs a GitHub token on the Bridge | Only when contributing: sign the Bridge in to GitHub on its Accounts tab (see [Bridge accounts](../getting-started/bridge-accounts.md#github)). The job carries on once it is signed in. |
 | The community has no entry for this book yet | Only when contributing: add the book to the community database, or cancel and generate it again kept local. Your copy is already saved. |
@@ -456,8 +456,11 @@ Two limits keep it in check, both set on the Bridge (see its
 
 - **A monthly cap**, **$100** by default, across every book. A job that reaches
   it pauses and carries on by itself on the 1st of the next month (the month is
-  counted in UTC). It can be raised, or turned off.
-- **A cap per book**, **$75** by default.
+  counted in UTC). It can be raised, or turned off, on the Bridge page's
+  **Settings** tab, which applies at once: a paused job carries on if the new cap
+  leaves room.
+- **A cap per book**, **$75** by default, set in the Bridge's settings (it
+  applies when the Bridge next starts).
 
 **Settings > Bridge** in the console shows the Bridge's agent and whether it is
 ready, whether it is **Paid by** a subscription or an API key, what **This
