@@ -281,10 +281,10 @@ removed: generate them first), when the book isn't matched to a community entry
 ("Match the book first"), or when an earlier share stopped while filing and the
 Bridge can't tell yet whether GitHub made the submission (share it again in a few
 minutes, and if that keeps happening, look for the issue on the community
-repository). The Bridge files each submission once: a share after an
-interrupted one finds what the earlier try made and uses it, and while the Bridge
-can't check, the share keeps failing. The one exception: when the interrupted try
-is over a day old and GitHub can no longer list that far back, the Bridge files
+repository). The Bridge guards against filing a submission twice: a share after
+an interrupted one looks for what the earlier try made and uses it, and fails as
+above while it can't check. When the interrupted try is over a day old and too
+far back for the Bridge to look through (many submissions made since), it files
 again (the community spots a duplicate).
 
 While a share is waiting or running, the console offers no way to generate the
@@ -324,9 +324,10 @@ value:
 
 - Each row is ticked, except one the book's last corrections job already
   suggested with the same value (**Suggested before**; not when that job failed
-  or was cancelled), one too long to send (over 500 characters) and one holding a
-  hidden text-direction character the community refuses (often pasted in with
-  the text): retype that value.
+  or was cancelled). A row can't be ticked when a value is too long to send (over
+  500 characters) or holds a hidden text-direction character the community
+  refuses: when your value holds one (often pasted in with the text), retype it;
+  when the community's does, that field can't be corrected from here.
 - A badge says who applies it: **Applied automatically** or **Reviewed by a
   maintainer** (below).
 - **Evidence** is required (up to 2,000 characters): say where the right values
@@ -356,13 +357,16 @@ suggest"). When a value changed since the dialog read it (edited or reset
 elsewhere, in another tab, say), queueing is refused ("One of these values isn't your edit any more"): close it and check the
 book's fields.
 
-The Bridge files a corrections job once. If it was stopped while filing and
-can't tell whether the submission went through, the job fails asking you to look
-for a `[corrections]` issue on the community database before suggesting them
-again. A submission for the same book with different values always stops the job
-for you to check. The one exception: when the Bridge picks the same job up again
-over a day after the interrupted try and still can't check, it files the
-corrections (the community spots a duplicate).
+The Bridge guards against filing a corrections job twice. If it was stopped
+while filing, it looks for the submission when it picks the job up again: when
+it can't tell whether the submission went through, or finds a different
+submission made since for the same community entry (by anyone, for any edition
+of the book), the job fails asking you to look for a `[corrections]` issue with
+your values on the community database before suggesting them again. Only when the interrupted try is over a day old and the
+Bridge still can't check does it file the corrections (the community spots a
+duplicate). A job that fails with "could not file the corrections" may still
+have filed them (when GitHub had a problem of its own, or its answer was lost),
+and suggesting them again files a new submission: look for the issue first.
 
 ## When the Contributions module is off
 

@@ -148,21 +148,24 @@ leniently (a later server's field ignored), then:
    when its row is `submitted`, `pr_open` or `merged` (a local export, a `covered`
    verdict or a closed issue is filed again); one already filed is kept and
    reported. A dimension the community already has is `covered`. Each
-   dimension's gist and issue are filed **once** across shares and the
-   contributing stage's retries. A filing marker is recorded before each create
-   (`contrib.filing/<book id>/<kind>`), timed by the clock learned from the `Date`
-   of GitHub's answers (`Client.StaleFiling`, so it is never stale before GitHub
-   has answered). The next submit then:
+   dimension's gist and issue are guarded against a second filing across shares
+   and the contributing stage's retries. A filing marker is recorded before each
+   create (`contrib.filing/<book id>/<kind>`), timed by `Client.Now`: GitHub's
+   clock, learned from the `Date` of its answers (the Bridge's own while GitHub
+   hasn't answered). A create GitHub refused, or one that never left
+   (`contrib.NothingFiled`), clears its time from the marker. The next submit
+   then:
    - adopts the gist or issue the user made since the marker, less
      `contrib.FilingSkew` (`GistsSince`, `IssuesSinceBy`);
    - files again when GitHub's list is complete and holds none (for an issue, also
      only once the marker is a minute old, `filingSettle`: GitHub may still be
-     making it);
+     making it; an issue edited since doesn't match, so it is filed again);
    - files again (`refileStale`, logged) when the list can't reach back to the
-     marker (`contrib.ErrListIncomplete`, which only grows, so no later lookup
-     settles it) and the marker is over 24 hours old (`contrib.FilingStale`):
-     meta's intake catches a duplicate it has applied, and nothing on the page
-     clears a marker;
+     marker (`contrib.ErrListIncomplete`: the list since the marker only grows, so
+     no later lookup settles it) and the marker is over 24 hours old by GitHub's
+     clock (`contrib.FilingStale`; `Client.StaleFiling` is false until GitHub has
+     answered that submit): meta's intake sends a member the work already has to
+     a maintainer, and nothing on the page clears a marker;
    - otherwise (a refusal, a rate limit, an outage, a cancel) fails the share
      (`ErrFilingUnknown`) with the marker kept, whatever its age.
 
@@ -182,9 +185,9 @@ kept here ("it was not generated here, or they were removed"), a generate job
 still running, not matched, and an earlier share that stopped while filing when
 the Bridge can't yet tell whether GitHub made the issue or the gist it links ("so
 it filed nothing more: share the book again in a few minutes, and if this keeps
-happening, look for the issue on the community repository"). A finished job whose
-`contributed` is empty and `covered` isn't is "Already in the community" in the server's notification
-(`bridge.Job.SharedNothing`).
+happening, look for the issue on the community repository"). A finished job
+whose `contributed` is empty and `covered` isn't is "Already in the community" in
+the server's notification (`bridge.Job.SharedNothing`).
 
 **The console** (`features/bridge/share-section.tsx`, `shareOffered`) offers it in
 the book's Community card only while the module's flag is on, an online Bridge
@@ -221,8 +224,11 @@ as the community's issue form reads it (`asRead`: each HTML character reference
 ending in `;` decoded, one naming whitespace read as a space; GitHub shows the
 evidence's decoded too), so `&#x202E;` is refused like the character itself; an
 `evidence` of exactly `_No response_` is the form's blank field, so "evidence is
-required"; a `corrected` value is compared with `current` as read the same way;
-`evidence` keeps its line breaks (CRLF stored as LF) and stays within 2000
+required"; a `corrected` value is read the same way before it is compared with
+`current`, which is taken as the record spells it (a corrected `Tom &amp; Jerry`
+reads `Tom & Jerry`: refused against a current `Tom & Jerry`, a correction of a
+current `Tom &amp; Jerry`); `evidence` keeps its line breaks (CRLF stored as LF)
+and tabs, and stays within 2000
 characters as the issue carries it (a line starting with `#` loses its indent and
 gains a backslash); `asin`, `isbn` and `region` (the marketplace the ASIN sells
 in) say how the book was found.
@@ -235,11 +241,11 @@ edits) requires each change's field to be **edited** on the book
 (`catalog.SourceEdited`: never a scanned, path, ABS or accepted-community value)
 with `corrected` equal to the book's value now (`MatchState.EditedValue`), else
 **`400 not_edited`** naming the `field`. It stores the book's own spelling of each
-value and stamps `source` as `audiosilo-server/<version>` whatever well-formed
-`source` was sent (at most 128 bytes, no control characters). Only the corrected
-values are bound to the book: `current` and the records the job names (`work_id`,
-`recording_id`, `asin`, `isbn`, `region`) are the caller's (the console sends the
-book's community match).
+corrected value and stamps `source` as `audiosilo-server/<version>` whatever
+well-formed `source` was sent (at most 128 bytes, no control characters). Only the
+corrected values are bound to the book: `current` and the records the job names
+(`work_id`, `recording_id`, `asin`, `isbn`, `region`) are the caller's (the console
+sends the book's community match).
 
 **The Bridge** (`internal/correct`, light lane; `ParseParams` strict, `work_id`
 required):
@@ -278,21 +284,30 @@ required):
    `AUDIOSILO_BRIDGE_GITHUB_TOKEN` or `gh` by an account that can't label there
    arrives without labels and waits for a maintainer.
 
-**Never twice.** A `filing <time>` marker goes into the Bridge's store
-(`meta.correct/<server id>/<job id>`) before `CreateIssue`, cleared only when
-GitHub answered a 4xx or a rate limit (a 5xx can come after the issue was made,
-and the client never resends a POST). A resumed run with a result returns it; one
-with only the marker lists the core repository's issues made since
-(`contrib.IssuesSince`: the list endpoint, not search, which lags) and adopts a
-`[corrections]` issue with the same body wherever it appears in the list, files
-when the list is complete and has none, and otherwise fails asking the admin to
-look for a `[corrections]` issue first. With no match, a batch for the same record
-with another body (`errOtherBatch`: the record moved since, or another admin's
-batch) always stops the job, whatever the marker's age. Unlike a share, any list
-it can't read, not only one it can't read back to the marker, files again once the
-marker is over 24 hours old by GitHub's clock (`contrib.FilingStale`,
-`Client.StaleFiling`); meta's intake catches a batch it has applied. A `401` fails
-"GitHub refused the Bridge's sign-in".
+**Guarded against filing twice.** A `filing <time>` marker (GitHub's time,
+`Client.Now`) goes into the Bridge's store (`meta.correct/<server id>/<job id>`)
+before `CreateIssue`, cleared only when nothing can have been filed
+(`contrib.NothingFiled`: a 4xx answer, a rate limit, or a request that never
+left). Any other failure (a 5xx, which can come after the issue was made, a
+timeout, a lost answer; the client never resends a POST) keeps the marker and
+fails the job ("could not file the corrections: ..."); the marker is the job's,
+so suggesting them again is a new job that files without looking. A resumed run
+(the same job run again after a restart) with a result returns it; one with only
+the marker lists the core repository's issues made since (`contrib.IssuesSince`:
+the list endpoint, not search, which lags) and adopts a `[corrections]` issue
+with the same body wherever it appears in the list, files when the list is
+complete and has none, and otherwise fails asking the admin to look for a
+`[corrections]` issue first (`errFiledBefore`). With no match, a batch with the
+same **Record** (the work's page) and another body (`errOtherBatch`: the record
+moved since, or another batch for the work, by anyone and for any edition)
+always stops the job, whatever the marker's age. Any
+other lookup failure (unlike a share's, also a list it can't read at all) files
+again once the marker is over 24 hours old by GitHub's clock
+(`contrib.FilingStale`; `Client.StaleFiling` is false until GitHub has answered
+that run). meta's intake labels a batch whose every change the record already
+holds `data:duplicate`; one with a field a maintainer applies reaches a
+maintainer again. A `401` on the create fails "GitHub refused the Bridge's
+sign-in" (one on a resumed run's lookup is a lookup failure like any other).
 
 Result:
 
@@ -322,13 +337,15 @@ names the recording, `correctionRecording`), requires the evidence (prefilled)
 and queues one `meta.correct`. The job's status and issue link show in the same
 card part. The server enforces the 25-change cap and the kind's params cap
 ([API reference](../server/api/reference.md#post-apiv1adminbridgejobs)), which a
-batch at every bound fits. The dialog leaves unticked (`sendable`) a row whose
-current or corrected value holds a bidirectional control (U+202A-U+202E,
-U+2066-U+2069), saying "Holds a hidden text-direction character the community
-refuses, so it can't be sent". Evidence holding one shows "Retype any text you
-pasted", and **Suggest** sends nothing (`correctionProblem`: `evidenceBidi`). The
-dialog checks only the characters themselves; one written as a character
-reference gets the server's `400`.
+batch at every bound fits. The dialog leaves unticked, its box disabled
+(`sendable`), a row whose current or corrected value is too long to send (over
+500 characters: "Too long to send") or holds a bidirectional control
+(U+202A-U+202E, U+2066-U+2069: "Holds a hidden text-direction character the
+community refuses, so it can't be sent"). Evidence over 2000 characters ("Keep
+the evidence under 2,000 characters") or holding one ("Retype any text you
+pasted") stops **Suggest N corrections** sending anything (`correctionProblem`:
+`evidenceTooLong`, `evidenceBidi`). The dialog checks only the characters
+themselves; one written as a character reference gets the server's `400`.
 
 ## Notifications
 

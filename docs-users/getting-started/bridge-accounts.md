@@ -20,7 +20,7 @@ shows these accounts read-only, as the Bridge last reported them, with **Open
 Accounts on the Bridge** to come here (see
 [The setup card](../admin/bridge.md#the-setup-card)). Nothing you
 enter on this tab is ever shown again: the page says only whether a credential
-is set, and when (for the agent, when its credentials last changed).
+is set, and since when.
 
 ### GitHub
 
@@ -41,9 +41,10 @@ To sign in:
    old sign-in, that button is **Sign out**, which also forgets the old one).
 
 What the app may do: open issues on the community metadata repositories it is
-installed on, and create secret gists (a characters or recaps file too long for
-an issue is attached as one). It can't change code, read your private
-repositories or act anywhere else.
+installed on, and read and write your gists. The Bridge uses that to attach a
+characters or recaps file too long for an issue as a secret gist, and to look
+through your recent gists for one an interrupted share already made. It can't
+change code, read your private repositories or act anywhere else.
 Your password never reaches the Bridge: GitHub gives it a token, which the Bridge
 keeps encrypted in its data folder and renews by itself.
 

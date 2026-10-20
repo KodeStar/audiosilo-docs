@@ -275,7 +275,7 @@ waiting on its own park look again now.
 | `agent_unavailable` | the agent container isn't answering, has no CLI or no credential, or didn't claim the job within `agent.claim_timeout_seconds` | yes, 10 minutes later when the container said why (`retry_at`) |
 | `agent_rate_limited` | the agent account hit its usage limit | yes, when it resets |
 | `agent_credential_refused` | the provider refused the CLI's credential (new in Phase 1a) | it looks again every 30 minutes, so it goes on once the credential is replaced |
-| `budget_exceeded` | the monthly cap (`retry_at` the 1st of next month, UTC) or the per-book cap was reached | the monthly one only: on the 1st, or at once on a **Settings** save that changes it; the per-book one after raising it, a restart and **Retry** (see [The budgets](#the-budgets)) |
+| `budget_exceeded` | the monthly cap (`retry_at` the 1st of next month, UTC) or the per-book cap was reached | the monthly one only: on the 1st, or at once on a **Settings** save that changes it (an engine book; a `sidecars.describe` job's park waits for its `retry_at` or **Retry**); the per-book one, or a cap the environment sets, after raising it, a restart and **Retry** (see [The budgets](#the-budgets)) |
 | `agent_validation_exhausted`, `qa_no_converge`, `spelling_gate_failure`, `fix_loop_exhausted`, `asr_decode_timeout`, `markers_not_confident`, `ebook_chapters_not_confident`, `supervisor_escalated`, `supervisor_budget` | an engine stage gave up after its bounded retries | no: **Retry** |
 | `chapters_not_detected` | a book with no chapter markers whose chapters couldn't be found in the narration with confidence (Phase 1d; the message says why: no headings heard, a chapter too long, numbers missing). See [Chapterless books](chapters.md#the-park-chapters_not_detected) | no: add chapter markers to the file, cancel and generate again |
 | `media_tools_unavailable`, `asr_unavailable` | ffmpeg/ffprobe is missing, or the Bridge's own speech recognition failed to set up | no |
@@ -567,9 +567,12 @@ Every agent run is preflighted against two caps (`pipeline.Executor`):
   the spend of engine books a regenerate deleted (kept in
   `deleted_stage_spend`), so regenerating doesn't reset the month. Past it the
   book parks `budget_exceeded` with `retry_at` the first of the next month. The
-  page's **Settings** tab edits it and it applies at once: a save that changes it
-  re-admits the books parked `budget_exceeded` (see
-  [Configuration](configuration.md)).
+  page's **Settings** tab edits it (locked when
+  `AUDIOSILO_BRIDGE_AGENT_MONTHLY_BUDGET_USD` sets it, which is read at the next
+  start) and it applies at once: a save that changes it re-admits the engine
+  books parked `budget_exceeded`, one still over it parking again (see
+  [Configuration](configuration.md)). A `sidecars.describe` job's own park isn't
+  re-admitted: it waits for its `retry_at` or **Retry**.
 
 With a subscription credential the costs are notional (what the same tokens would
 cost on an API key), so the caps still bound the usage.

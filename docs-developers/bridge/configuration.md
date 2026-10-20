@@ -81,8 +81,10 @@ The settings [`sidecars.generate`](generating.md) adds, or that matter most to i
 failover are **forced off**, whatever the file or the environment says: they would
 run an agent CLI inside the Bridge, which never does (decision 15). The Bridge's
 page shows the agent, the speech recognition, the budgets with this month's
-spend and the retention on its Status tab (`GET /api/engine`), and says they are
-set in `config.yaml`.
+spend and the retention on its Status tab (`GET /api/engine`), and says where
+each is set: the monthly budget on its Settings tab (or by its variable, read at
+the next start), the per-book cap and the retention in `config.yaml`, read at the
+next start.
 
 ## Contributing: GitHub
 
@@ -157,7 +159,8 @@ If the key changes (a different variable, a replaced key file), the stored serve
 token can't be opened and the Bridge refuses to start, saying so; a GitHub sign-in
 or an agent credential sealed with the old key reads as not set (sign in and set
 it again). The page's API never returns a secret: `GET /api/accounts` says which
-are set and when (for the agent, when its credentials last changed). Generate a key with,
+are set and when (for the agent, when its credentials last changed, `set_at`, and
+when each was saved, `set_at_by_kind`, which the page shows). Generate a key with,
 for example, `openssl rand -hex 32`. The startup log says where the key came from
 (`environment`, `key file` or `new key file`), never the key.
 

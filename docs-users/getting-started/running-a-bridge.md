@@ -300,7 +300,8 @@ month unless you change it. On the **Settings** tab, check **Monthly agent budge
 even when you keep the amount. A budget set with
 `AUDIOSILO_BRIDGE_AGENT_MONTHLY_BUDGET_USD` counts as reviewed too, and is then
 locked on the page. A new budget applies at once: a job paused at the old cap
-carries on if the new budget leaves room. See [Costs and limits](#costs-and-limits) for the rest.
+carries on if the new budget leaves room (a paused description needs **Retry**).
+See [Costs and limits](#costs-and-limits) for the rest.
 
 ### 9. GitHub, to share with the community (optional)
 
@@ -368,7 +369,7 @@ both: on Unraid, `chmod 777` it once.
   Bridge can't open what it stored, so it won't start while paired, and its
   GitHub sign-in and agent credentials have to be set again.
 - The Bridge's page never shows a stored credential again: it only says whether
-  one is set, and when (for the agent, when its credentials last changed).
+  one is set, and since when.
 - The agent container may have a credential of its own: a Codex login or a token
   file in its `agent-config` volume, or a token in its environment. A credential from
   the Accounts tab reaches it only as a file for one run, which it deletes before

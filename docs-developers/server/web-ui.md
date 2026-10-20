@@ -762,14 +762,14 @@ CSP-sensitive work against a real build served by Go. The console's own gate is
   whether its description came), its path linking to the book's page. Since Phase
   2b a **Setup** card ("Get set up" while a required step is still to do) lists the
   heartbeat's `setup` checklist (`setup-list.tsx`, the pure rules in
-  `setup-model.ts`: each step done, still to do or optional, a step still to do
-  with **Fix on the Bridge** linking to the tab that fixes it, and under it the
-  Bridge's `detail`, else the console's own hint, `bridge.setup.hint.<id>`), then
-  the GitHub
-  account, the agent credential and whether the Bridge can contribute, with
-  **Open Accounts on the Bridge**; and the job list words `sidecars.contribute`
-  ("Community share") and `meta.correct` ("Corrections") jobs with
-  `GenerateStatus` too (`isBookKind`).
+  `setup-model.ts`: each step done, still to do or optional, with the Bridge's
+  `detail` under it, else for a step not done the console's own hint,
+  `bridge.setup.hint.<id>`, and on a step not done, given the page's address,
+  **Fix on the Bridge** linking to the tab that fixes it, `paired` having none),
+  then the GitHub account, the agent credential and whether the Bridge can
+  contribute, with **Open Accounts on the Bridge**; and the job list words
+  `sidecars.contribute` ("Community share") and `meta.correct` ("Corrections")
+  jobs with `GenerateStatus` too (`isBookKind`).
 - **Settings > Modules** (`features/settings/modules-topic.tsx`, Bridge Phase 2a) -
   over [`GET /admin/modules`](api/reference.md#get-apiv1adminmodules) (`useModules`,
   every 15 seconds like the Bridge's status, and refetched after every settings
