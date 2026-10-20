@@ -12,7 +12,7 @@ so the screens show one person's at a time. Nothing about profiles is sent to a
 server: there is no wire change.
 
 A [household member](household.md) is a real account on the server, unlike a profile
-([the contract](../architecture/cross-repo-contract.md#16-household-members-profiles-and-kids-mode-stay-client-side));
+([the contract](../architecture/cross-repo-contract.md#15-household-members-profiles-and-kids-mode-stay-client-side));
 on the device it is just another connection in a profile of its own.
 
 The user-facing side is

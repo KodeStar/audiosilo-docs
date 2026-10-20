@@ -136,7 +136,7 @@ in-process:
   can't drift apart on what a release looks like on the wire.
 
 Being public, they follow the
-[cross-repo contract](../architecture/cross-repo-contract.md#14-community-metadata-a-three-repo-seam)'s
+[cross-repo contract](../architecture/cross-repo-contract.md#13-community-metadata-a-three-repo-seam)'s
 rules: the handler's responses change additively, and so does the artifact
 schema ([how its versions are gated](data-model.md#the-compiled-artifact-and-schema-versioning)).
 
@@ -291,7 +291,7 @@ flowchart LR
 ```
 
 The seam of record is
-[the cross-repo contract's community-metadata section](../architecture/cross-repo-contract.md#14-community-metadata-a-three-repo-seam) -
+[the cross-repo contract's community-metadata section](../architecture/cross-repo-contract.md#13-community-metadata-a-three-repo-seam) -
 what couples, which files sit on each side, and what a `metaserve` response-shape
 change ripples into. The consumer sides are documented on
 [server configuration](../server/configuration.md), the server's

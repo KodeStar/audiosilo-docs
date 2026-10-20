@@ -37,17 +37,9 @@ npx tsc --noEmit && npm run lint && npm run format && npm test
 rather than fixing them. Auto-fix locally with `npx prettier --write .` before
 committing.
 
-**audiosilo-manager** (two sides, both required)
-
-```sh
-cd ~/dev/audiosilo/audiosilo-manager
-go build ./... && go vet ./... && go test -race ./... && golangci-lint run   # Go side
-cd frontend && npx tsc --noEmit && npm run lint && npm run format && npm test  # UI side
-```
-
 ## What CI actually runs
 
-Every workflow across the three repos, verified against
+The workflows for the server, player and metadata repos, verified against
 `.github/workflows/`:
 
 ### audiosilo-server
@@ -64,13 +56,6 @@ Every workflow across the three repos, verified against
 |---|---|---|---|
 | `ci.yml` | `ci` | every PR; push to `main` | Job **check**: Node from `.nvmrc`, `npm ci`, `npx tsc --noEmit`, `npm run lint`, `npm run format` (prettier `--check`), `npm test -- --ci --coverage`. |
 | `web.yml` | `web image` | push to `main`; `v*` tags; manual dispatch | `npx expo export --platform web` (built with `baseUrl=/web`) and publishes the static export as `ghcr.io/<owner>/audiosilo-web` (`:latest` from `main`, semver from tags). |
-
-### audiosilo-manager
-
-| Workflow | Name | Triggers | What it does |
-|---|---|---|---|
-| `ci.yml` | `CI` | every PR; push to `main` | Job **go**: checks out `KodeStar/audiosilo-server@main` **as a sibling** (the `replace` directive needs it), then `go build ./...`, `go vet ./...`, `go test -race ./...`, plus `golangci-lint-action@v6`. Job **frontend**: `npm ci`, `npx tsc --noEmit`, `npm run lint`, `npm run format`, `npm test` in `frontend/`. |
-| `desktop.yml` | `Desktop build` | `v*` tags; manual dispatch | Native-runner matrix (macOS `darwin/universal`, Windows `windows/amd64`, Linux `linux/amd64` - a webview UI can't cross-compile): installs the Wails CLI, `wails build` with the version injected via ldflags, uploads `build/bin/*` as workflow artifacts. Signing/notarization steps are stubbed pending certificates. |
 
 ### audiosilo-meta
 
@@ -92,7 +77,7 @@ frontend change sails through both pipelines green. The
 
 ## The green-baseline lint policy
 
-All three Go repos - server, manager, and audiosilo-meta - run **golangci-lint
+The server and audiosilo-meta repos run **golangci-lint
 v2** in CI from a *green baseline*: the suppressions in each `.golangci.yml` are
 documented and intentional. The policy is simple -
 
@@ -150,13 +135,6 @@ the repo:
   `src/playback/progress-sync.ts`, `src/stores/*`). Keep logic out of
   `src/app/**` screens so it stays unit-testable. See
   [frontend testing](../frontend/testing.md).
-
-### Manager (Go + TypeScript)
-
-Same gate shape as the other two. Crypto/protocol surfaces - Audible
-signing/voucher handling, SFTP host-key TOFU, `transfer.SafeJoin` - get unit
-tests (allowed **and** denied, like the server's security paths). Live Audible
-logins/downloads and real VPS deploys are verified manually.
 
 ## Two gate gotchas
 

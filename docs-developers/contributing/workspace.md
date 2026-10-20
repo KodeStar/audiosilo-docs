@@ -21,7 +21,6 @@ it, gitignored by the meta repo:
 │   DISTRIBUTION.md, store/, ...                  (the integration contract lives here)
 ├── audiosilo-server/      github.com/KodeStar/audiosilo-server    (Go)
 ├── audiosilo-frontend/    github.com/KodeStar/audiosilo-frontend  (Expo / React Native)
-├── audiosilo-manager/     github.com/KodeStar/audiosilo-manager   (Wails desktop)
 ├── audiosilo-bridge/      github.com/KodeStar/audiosilo-bridge    (the Bridge; private)
 ├── audiosilo-meta/        github.com/KodeStar/audiosilo-meta      (community metadata DB)
 ├── audiosilo-sidecars/    github.com/KodeStar/audiosilo-sidecars  (contributor extraction tool)
@@ -37,39 +36,25 @@ git clone https://github.com/KodeStar/audiosilo-workspace.git ~/dev/audiosilo
 cd ~/dev/audiosilo && scripts/bootstrap.sh
 ```
 
-### Why one workspace (not three scattered checkouts)
+### Why one workspace
 
 - **Cross-repo work is the norm here.** Wire-format changes, pairing, media auth,
-  and capability flags all touch two or three repos in one logical change (see
+  and capability flags can touch several repos in one logical change (see
   [cross-repo changes](cross-repo-changes.md)). Opening your editor/agent at the
   workspace root puts every repo in scope at once and removes the cross-repo
   permission friction of working in a single repo.
-- **The manager literally won't build without a sibling server checkout.**
-  `audiosilo-manager/go.mod` contains
-  `replace github.com/kodestar/audiosilo-server => ../audiosilo-server` - it
-  compiles the server's public `pkg/launcher` and `pkg/match` straight from the
-  sibling directory. The manager's CI checks out both repos side by side for the
-  same reason.
 - **Helper scripts assume the layout.** For example
   `audiosilo-server/scripts/build-web.sh` defaults `FRONTEND_DIR` to
   `$HOME/dev/audiosilo/audiosilo-frontend`.
-
-:::caution Keep the server checkout fresh
-Because the manager compiles the server's packages via that `replace`, a **stale
-`audiosilo-server` checkout can break the manager build** (missing symbols the
-manager expects). If the manager suddenly fails to compile, `git -C
-../audiosilo-server pull` before debugging anything else.
-:::
 
 ## Toolchain matrix
 
 | Tool | Needed for | Install / notes |
 |---|---|---|
-| **Go 1.26+** | server, manager | Each `go.mod` sets the minimum `go` version and pins a `toolchain`; with the default `GOTOOLCHAIN=auto`, any Go 1.21+ fetches that toolchain on first use. |
-| **Node 24** | frontend, manager UI | `.nvmrc` pins `24.16.0` (in `audiosilo-frontend` and at the `audiosilo-manager` repo root) - run `nvm use` in each. **Older Node breaks Expo**: React Native 0.85 needs ≥ 20.19.4, and the Expo CLI's env-file loader uses `util.parseEnv` (Node ≥ 20.12), so an old system `node` crashes the moment a `.env` file exists. |
-| **golangci-lint v2** | server, manager lint gates | v2 has been required since Go 1.25. Config is each repo's `.golangci.yml`; both are adopted at a *green baseline* (see [gates and CI](gates-and-ci.md)). |
-| **Wails CLI** | manager builds / dev loop | `go install github.com/wailsapp/wails/v2/cmd/wails@latest`, then make sure `$(go env GOPATH)/bin` is on `PATH`. Linux also needs `libgtk-3-dev` and `libwebkit2gtk-4.1-dev`. |
-| **ffmpeg / ffprobe** | server scanner tests, transcoding, manager DRM-strip | Optional at runtime (the server degrades gracefully), but a few scanner tests `t.Skip` without ffprobe - install it so they actually run (CI installs it). The manager's Audible pipeline also shells out to ffmpeg. |
+| **Go 1.26+** | server | The server's `go.mod` sets the minimum `go` version and pins a `toolchain`; with the default `GOTOOLCHAIN=auto`, any Go 1.21+ fetches that toolchain on first use. |
+| **Node 24** | frontend | `.nvmrc` pins `24.16.0` in `audiosilo-frontend` - run `nvm use` there. **Older Node breaks Expo**: React Native 0.85 needs ≥ 20.19.4, and the Expo CLI's env-file loader uses `util.parseEnv` (Node ≥ 20.12), so an old system `node` crashes the moment a `.env` file exists. |
+| **golangci-lint v2** | server lint gate | v2 has been required since Go 1.25. Config is `.golangci.yml`, adopted at a *green baseline* (see [gates and CI](gates-and-ci.md)). |
+| **ffmpeg / ffprobe** | server scanner tests, transcoding | Optional at runtime (the server degrades gracefully), but a few scanner tests `t.Skip` without ffprobe - install it so they actually run (CI installs it). |
 | **Docker** | container images, `scripts/fetch-web-player.sh` | Only needed for image builds / release work, not day-to-day dev. |
 | **Playwright** | regenerating documentation screenshots | Only if you work on the docs screenshot pipeline (`audiosilo-docs/screenshots/`) or the marketing/store asset runbook (workspace `SCREENSHOTS.md`). See [documentation](documentation.md). |
 | **Xcode / Android Studio (JDK 17 + SDK)** | native frontend dev builds | Only for running the player on iOS/Android; web dev needs neither. |
@@ -143,15 +128,6 @@ npm test                    # jest-expo unit tests
 npx expo export -p web      # bundle smoke test
 ```
 
-**audiosilo-manager**
-
-```sh
-wails dev                   # hot-reload dev (Go + Vite)
-wails build                 # production app into build/bin/
-go test -race ./...         # Go-side tests
-cd frontend && npm test     # UI tests (vitest)
-```
-
 **audiosilo-bridge** (private; see [the Bridge's development page](../bridge/development.md))
 
 ```sh
@@ -176,8 +152,8 @@ The full pre-merge quality gate for each repo is on
 These are the ones that repeatedly bite new setups - each is documented in the
 repos' own guides and verified here:
 
-- **Use Node 24 via nvm, every shell.** The frontend and the manager both pin
-  `24.16.0` in `.nvmrc` (locations in the toolchain matrix above). A machine's
+- **Use Node 24 via nvm, every shell.** The frontend pins
+  `24.16.0` in `.nvmrc`. A machine's
   default `node` being too old fails in confusing ways (the Expo env loader
   crash above).
 - **Don't `cd` into `node_modules`.** Run tool commands from the repo root - in a

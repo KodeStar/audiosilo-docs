@@ -34,7 +34,7 @@ Node 24 (workspace convention; `.nvmrc` in the sibling repos).
 - **Accuracy over completeness**: verify behaviour in the sibling repos'
   source before documenting it; never document a route/flag/UI element you
   didn't find in code. Features that are designed-but-unshipped (WebSocket sync,
-  `POST /uploads`, manager installers) are explicitly marked "planned" - when
+  `POST /uploads`) are explicitly marked "planned" - when
   one ships, search the whole tree for it.
 - **Audience separation**: no Go/TS symbols or source paths in the User Guide;
   the Developer Docs reference symbols/paths as inline code (not links).
@@ -51,14 +51,14 @@ Node 24 (workspace convention; `.nvmrc` in the sibling repos).
 The sibling repos' CLAUDE.md files and the workspace CODE-HEALTH.md Definition
 of Done require that a behaviour/UI/config/wire change updates the affected
 pages here **in the same logical change**. When you finish a code change in
-`audiosilo-server`/`audiosilo-frontend`/`audiosilo-manager`, grep this repo for
+`audiosilo-server`/`audiosilo-frontend`, grep this repo for
 the symbols, flags, routes, and UI labels you touched.
 
 ## Layout
 
 ```
-docs-users/            User Guide pages (getting-started, admin, listening, manager, …)
-docs-developers/       Developer pages (architecture, server{,/api}, frontend, manager, contributing)
+docs-users/            User Guide pages (getting-started, admin, listening, community, …)
+docs-developers/       Developer pages (architecture, server{,/api}, frontend, bridge, meta, contributing)
 sidebars-*.ts          canonical page lists (hand-ordered)
 screenshots/           capture pipeline: manifest.mjs (source of truth), run.sh,
                        capture-web.mjs, capture-admin.mjs, placeholders.mjs, .cache/ (gitignored)

@@ -74,16 +74,6 @@ const sidebars: SidebarsConfig = {
     },
     {
       type: 'category',
-      label: 'Desktop manager',
-      items: [
-        'manager/index',
-        'manager/servers',
-        'manager/organizing',
-        'manager/audible-backup',
-      ],
-    },
-    {
-      type: 'category',
       label: 'Community metadata',
       items: ['community/meta-site', 'community/contributing-from-your-server'],
     },

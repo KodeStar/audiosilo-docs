@@ -1,6 +1,6 @@
 ---
 title: FAQ
-description: Frequently asked questions about AudioSilo - formats, ffmpeg, NAS storage, backups, users, offline listening, Audible backup, and hardware.
+description: Frequently asked questions about AudioSilo - formats, ffmpeg, NAS storage, backups, users, offline listening, and hardware.
 ---
 
 Quick answers to the questions that come up most. For symptom-based problem
@@ -21,8 +21,8 @@ chapter list.
 
 Audible's DRM formats (`.aax`/`.aaxc`) are deliberately **not** indexed - the
 server could never play them, since they're locked to your Audible account.
-The [desktop manager's Audible backup](./manager/audible-backup.md) converts
-them to plain `.m4b` before they enter a library.
+To add books, copy supported, DRM-free audio files into your library folder;
+see [Organizing your library](./getting-started/organizing-your-library.md).
 
 ### Do I need ffmpeg?
 
@@ -175,22 +175,6 @@ chooses: everything that person can listen to, or only the collections they
 share. See [Sharing](./admin/sharing.md) and
 [Household members](./admin/users-and-invites.md#household-members).
 
-## The desktop manager & Audible
-
-### Is the Audible backup legal?
-
-The manager's [Audible backup](./manager/audible-backup.md) is built for one
-thing: making **personal backup copies of audiobooks you bought** with your
-own Audible account. It signs in as you, downloads your own purchases using
-the decryption key Audible issues to your account, and converts them to
-standard `.m4b` files for your own library. There is nothing in it for
-accessing books you don't own.
-
-That said, laws on making personal copies of DRM-protected media differ from
-country to country, and this documentation isn't legal advice - it's your
-responsibility to know what's permitted where you live. Don't share the
-converted files; keep them for personal use.
-
 ## Running the server
 
 ### Why do I need a server at all? My files already sit in a folder.
@@ -227,15 +211,13 @@ See [Install the binary](./getting-started/install-binary.md) to get set up.
 
 ### Where does the project live?
 
-AudioSilo is developed in the open on GitHub, in three repositories plus this
-documentation:
+AudioSilo's server, player and documentation are developed in the open on
+GitHub:
 
 - [audiosilo-server](https://github.com/KodeStar/audiosilo-server) - the
   server (API, admin console, web player hosting)
 - [audiosilo-frontend](https://github.com/KodeStar/audiosilo-frontend) - the
   player app (web, iOS, Android)
-- [audiosilo-manager](https://github.com/KodeStar/audiosilo-manager) - the
-  desktop manager
 - [audiosilo-docs](https://github.com/KodeStar/audiosilo-docs) - this
   documentation
 

@@ -86,7 +86,7 @@ admin book page's `community_checking`. A book already being checked is not
 checked twice (`ErrBusy` for the background pass, a no-op for `Start`).
 
 Note that the scanner reads no ASIN from tags: a book gets its identifier from
-an admin edit, an accepted match, a bulk match or the manager's enrichment, and
+an admin edit, an accepted match, a bulk match or an enrichment write, and
 is checked from then on.
 
 ## The fit (`chapteralign.Align`)

@@ -667,7 +667,7 @@ are dropped while the player is offline, and carry no device.
 - **Only sessions with listening count.** The first save of a session only
   opens it, so the time before it (about 15 s) isn't counted, and a session with
   no listening recorded (`listened = 0`: a single save, such as a "mark
-  finished" or the manager's Audible sync) is left out of the live list, the
+  finished") is left out of the live list, the
   history and every total (`listenedSQL`). A session therefore appears from its
   second save.
 - **State.** `playing` with a save in the last 60 s, `paused` until 10 minutes,
@@ -948,8 +948,8 @@ mirror mode's local copy of the community database is a file in
   folder's detection when the scanner's heuristic gets it wrong: `book` forces
   folder-is-one-book, `collection` forces one book per file.
 - **`book_enrichment`** *(0012)* - PK `(library_id, path)`, `asin`, `isbn`,
-  `updated_at`. Attached by the manager when it matches an external source
-  (e.g. an Audible library) to an indexed book. Writing it never blanks a
+  `updated_at`. Stores external identifiers attached through
+  `PUT /admin/libraries/{id}/enrichment`. Writing it never blanks a
   stored field (a blank `asin` or `isbn` keeps the existing one). It survives
   rebuilds because it is layered onto the book row on every re-index (see
   below); an admin's own `asin`/`isbn` edit wins over it.

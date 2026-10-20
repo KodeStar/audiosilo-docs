@@ -1,10 +1,10 @@
 ---
 title: Cutting a release
-description: "The operator's runbook: web image first, then the server image and native binaries on a v* tag, plus the app-store and manager tracks."
+description: "The operator's runbook: web image first, then the server image and native binaries on a v* tag, plus the app-store track."
 ---
 
-AudioSilo ships several artifacts from three repos, and **order matters** for the
-first two: the server image and the native binaries both bake in a **pinned web
+AudioSilo ships several artifacts from the server and player repos, and **order
+matters**: the server image and the native binaries both bake in a **pinned web
 player build**, so the web image must exist before the server release that
 consumes it. The conceptual overview is in the
 [release pipeline](../architecture/release-pipeline.md); this page is the
@@ -20,7 +20,6 @@ step-by-step runbook. The maintainer notes it follows are
 | Native server binaries | `audiosilo-server/.github/workflows/release.yml` (GoReleaser) | `v*` tags; manual dispatch | **Draft** GitHub Release on `KodeStar/audiosilo-server` |
 | `lscr.io/linuxserver/audiosilo` | LinuxServer.io's CI ([linuxserver/docker-audiosilo](https://github.com/linuxserver/docker-audiosilo)) | publishing a server release (polled hourly) | Docker Hub / GHCR / lscr.io, and Unraid Community Applications |
 | iOS / Android apps | EAS Build (manual, outside CI) | on demand | App Store Connect / Google Play Console |
-| Manager desktop app | `audiosilo-manager/.github/workflows/desktop.yml` | `v*` tags; manual dispatch | Workflow artifacts (installers via GitHub Releases are **planned**) |
 
 ## Step 1 - publish the web player image (audiosilo-frontend)
 
@@ -207,22 +206,6 @@ meta repo at the workspace root). The honest summary:
   Review; the "reviewer needs a server" problem (guideline 2.1) is answered with
   the public demo server noted in `store/metadata/ios/review_notes.txt`, which
   must stay reachable throughout a review.
-
-## Manager distribution (planned installers)
-
-`audiosilo-manager/.github/workflows/desktop.yml` builds the Wails app on `v*`
-tags across a native-runner matrix (macOS `darwin/universal`, Windows
-`windows/amd64`, Linux `linux/amd64` - the webview UI can't cross-compile),
-checking out the server repo as a sibling for the `replace` directive and
-stamping the version via `-ldflags "-X main.version=<tag>"`.
-
-Today the outputs are **unsigned workflow artifacts**, not a published release.
-Per the workspace `DISTRIBUTION.md`, the plan is native installers on GitHub
-Releases - macOS `.dmg` with notarization, Windows NSIS `.exe`, Linux
-`AppImage` - but signing is credential-gated: it needs an Apple Developer ID
-certificate + notarization credentials and a Windows Authenticode certificate.
-Until those exist, the signing steps in `desktop.yml` are stubbed and unsigned
-builds hit Gatekeeper/SmartScreen warnings.
 
 :::tip When a release involves a wire change
 A cross-repo wire change only reaches users compatibly because the server image

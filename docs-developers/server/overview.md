@@ -64,18 +64,15 @@ testdata/library/     M4B test fixtures
 
 The binary entrypoint. It only parses flags (`--data`, `--ffprobe`, `--ffmpeg`,
 `--setup`) and delegates everything to `pkg/launcher.Run`. Keep it thin - any
-logic added here would be invisible to the desktop manager, which does not go
-through `main`.
+startup logic belongs in the shared run loop.
 
 ### `pkg/launcher` (public)
 
 The shared run loop: load config → open the store → wire services → first-run
 bootstrap (auto-admin banner, or the token-guarded `/setup` wizard in setup mode)
 → sync config-declared libraries → kick off the initial background scan → serve
-until the context is cancelled. It is public (under `pkg/`) **precisely so the
-audiosilo-manager desktop app can run the server in-process** via
-`launcher.Run`/`launcher.Options` - see
-[Manager server integration](../manager/server-integration.md). `Options` carries
+until the context is cancelled. Its public `launcher.Run`/`launcher.Options` API
+supports running the server in-process. `Options` carries
 embedding-friendly overrides (`Bind`, `TLSMode`, `PublicURL`, `Libraries`,
 `OnURL`) that are re-validated after being layered onto the loaded config.
 Before the database opens, `Run` applies a restore an admin asked for
@@ -90,9 +87,7 @@ next to the executable, `$PATH`, and only then a download via
 
 A fuzzy **same-book matcher** (`Best`, `CleanTitle`, `SeqFromTitle`,
 `Normalize`, `NormalizeSeries`, `Fold`) that identifies the same book across
-messy, inconsistently-tagged titles. Public because the manager uses it to match
-an Audible library against a server's index (which then feeds
-`book_enrichment` - see [Data model](data-model.md)); the server uses it too,
+messy, inconsistently-tagged titles. The server uses it
 for the admin catalog's author/narrator merge keys and the community match
 search's title cleaning and comparison, and the listening import's title
 tier (`internal/importer`). `Fold` is the Unicode-aware sibling of

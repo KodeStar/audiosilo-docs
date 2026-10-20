@@ -10,7 +10,6 @@
 //   'web'     - capture-web.mjs (web player via a warmed demo session)
 //   'admin'   - capture-admin.mjs (admin console + public pages)
 //   'meta'    - capture-meta.mjs (the meta.audiosilo.app site via a local metaserve)
-//   'manager' - capture-manager.mjs (Wails dev server; falls back to placeholder)
 
 export const SHOTS = [
   // ── Web player (desktop 1440x900, dark) ────────────────────────────────
@@ -149,15 +148,4 @@ export const SHOTS = [
   {file: 'meta/languages.png', capture: 'meta', title: 'Meta - Languages', hint: 'the header Languages selector open: every catalogue language with its book count'},
   {file: 'meta/language-prompt.png', capture: 'meta', title: 'Meta - Language suggestion', hint: 'a German browser with nothing stored: "Show only Deutsch audiobooks?" under the header'},
   {file: 'meta/language-search.png', capture: 'meta', title: 'Meta - Search (language filter)', hint: 'the search panel with "Only Deutsch" chosen: the filter line and Search all languages'},
-
-  // ── Desktop manager (Wails) ─────────────────────────────────────────────
-  {file: 'manager/servers.png', capture: 'manager', title: 'Manager - Servers', hint: 'server list home'},
-  {file: 'manager/server-detail.png', capture: 'manager', title: 'Manager - Server detail', hint: 'a connected server with its libraries'},
-  {file: 'manager/add-server.png', capture: 'manager', title: 'Manager - Add server', hint: 'add/connect server form'},
-  {file: 'manager/local-server.png', capture: 'manager', title: 'Manager - Local server', hint: 'create/run a local server panel'},
-  {file: 'manager/library.png', capture: 'manager', title: 'Manager - Library browser', hint: 'library file browser'},
-  {file: 'manager/import.png', capture: 'manager', title: 'Manager - Import', hint: 'import/organize books view'},
-  {file: 'manager/transfers.png', capture: 'manager', title: 'Manager - Transfers', hint: 'transfer queue/settings'},
-  {file: 'manager/audible.png', capture: 'manager', title: 'Manager - Audible backup', hint: 'Audible library backup view'},
-  {file: 'manager/settings.png', capture: 'manager', title: 'Manager - Settings', hint: 'manager settings form'},
 ];

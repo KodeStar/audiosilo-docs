@@ -62,8 +62,6 @@ A few things worth knowing about how the wizard is secured:
 - The secret token rides in the part of the URL after the `#`, which browsers never send to servers - so it can't leak into logs. The link only works with the token.
 - The wizard **shuts itself off the moment an admin account exists**. After setup - or on a server that was set up the normal way - `/setup` simply doesn't exist.
 
-The [desktop manager](../manager/index.md) uses this same wizard when it sets up a server for you.
-
 ### What lives in the data directory
 
 The `--data` directory (mounted at `/data` under Docker) is the server's home. After the first run it contains:

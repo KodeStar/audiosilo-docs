@@ -371,23 +371,6 @@ and pause steps always run, so a partial run stages its shots as a full one does
 4. Run `./run.sh` (or at minimum `node placeholders.mjs`) so the file exists -
    the Docusaurus build fails on missing images by design.
 
-## Desktop manager captures
-
-The Wails manager can't be captured headlessly in CI, and its screens need a
-signed-in Audible account and configured servers to look real. Capture it
-semi-manually instead:
-
-1. `cd ../../audiosilo-manager && wails dev` (or run a built app).
-2. Arrange each screen listed under `manager/` in `manifest.mjs`
-   (a dev/dummy server is fine; avoid real credentials/emails in frame).
-3. Screenshot the window (macOS: `⌘⇧4` + space, or
-   `screencapture -l <windowid>`) at ~1440×900, dark mode.
-4. Save over the placeholder in `../static/img/screenshots/manager/` using the
-   exact manifest filename.
-
-Anything not replaced stays a labelled placeholder - visible in the docs as
-"regenerate me", never a broken image.
-
 ## AudioSilo Meta site captures
 
 The `meta/` shots come from `capture-meta.mjs`, which drives the

@@ -1,7 +1,7 @@
 // Backfills a styled placeholder PNG for every manifest entry whose file is
 // missing, so the docs build (which hard-fails on missing images) always works.
-// Run capture scripts first; this fills whatever they couldn't reach (e.g. the
-// Wails manager on a headless box). Pass --force to regenerate all placeholders
+// Run capture scripts first; this fills whatever they couldn't reach.
+// Pass --force to regenerate all placeholders
 // listed for a capture group: node placeholders.mjs [--force] [group]
 import {chromium} from 'playwright';
 import {existsSync} from 'node:fs';
