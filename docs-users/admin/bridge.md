@@ -317,23 +317,31 @@ offered when:
   edits count: values from the files, the folders or an accepted match are
   never sent.
 
-Save or discard unsaved edits on the page first. The dialog asks the community for
-the book (by its ASIN, else its ISBN) and lists each edited field whose value
-differs from the community's: the community's value now, an arrow, and your
-value:
+Save or discard unsaved edits on the page first. The dialog's header names the
+book (a long title is cut to two lines; hover it to read the rest). It asks the
+community for the book (by its ASIN, else its ISBN) and lists each edited field
+whose value differs from the community's: the community's value now, an arrow,
+and your value:
 
 - Each row is ticked, except one the book's last corrections job already
   suggested with the same value (**Suggested before**; not when that job failed
-  or was cancelled). A row can't be ticked when a value is too long to send (over
-  500 characters) or holds a hidden text-direction character the community
-  refuses: when your value holds one (often pasted in with the text), retype it;
-  when the community's does, that field can't be corrected from here.
+  or was cancelled). A row can't be ticked, and says why, when a value is too
+  long to send (over 500 characters), holds a control character or a hidden
+  text-direction character the community refuses, or when your value changes
+  nothing as the community reads it. The community reads a character reference
+  such as `&amp;` or `&#x202E;` as the character it names, so the dialog does too:
+  a reference to a refused character is refused like the character, and a value
+  like `Tom &amp; Jerry` is the same as `Tom & Jerry`. When your value holds a
+  refused character (often pasted in with the text), retype it; when the
+  community's does, that field can't be corrected from here.
 - A badge says who applies it: **Applied automatically** or **Reviewed by a
   maintainer** (below).
-- **Evidence** is required (up to 2,000 characters): say where the right values
-  come from, such as a store or publisher page. It starts with a line saying the
-  values were corrected on an AudioSilo server. Evidence holding a hidden
-  text-direction character can't be sent: retype any text you pasted.
+- **Evidence** is required (up to 2,000 characters, a line starting with `#`
+  counting one more): say where the right values come from, such as a store or
+  publisher page. It starts with a line saying the values were corrected on an
+  AudioSilo server. Evidence holding a control character (line breaks and tabs
+  are fine) or a hidden text-direction character, or a character reference to
+  one, can't be sent: retype any text you pasted.
 
 **Suggest N corrections** queues a **Corrections** job. The Bridge files the ticked
 rows as one submission under its GitHub account, released into the public domain
@@ -357,18 +365,34 @@ suggest"). When a value changed since the dialog read it (edited or reset
 elsewhere, in another tab, say), queueing is refused ("One of these values isn't your edit any more"): close it and check the
 book's fields.
 
-The Bridge guards against filing a corrections job twice. If it was stopped
-while filing, it looks for the submission when it picks the job up again: it
-uses the one it finds, and files the corrections when it can tell they weren't
-filed. The job fails instead, asking you to look for a `[corrections]` issue with
-your values on the community database before suggesting them again, when it
-finds a different submission made since for the same community entry (by anyone,
-for any edition of the book), or can't tell whether the submission went through.
-When it still can't tell and the interrupted try is over a day old, it files the
-corrections (the community spots a duplicate). A job that fails with "could not
-file the corrections" may still have filed them (when GitHub had a problem of its
-own, or its answer was lost), and suggesting them again files a new submission:
-look for the issue first.
+The Bridge guards against filing the same corrections twice. Before it files, it
+notes the request (the same changes with the same evidence). If the filing is
+interrupted, or GitHub's answer is lost, the next try at the same request (the
+job resumed, or you pressing **Suggest corrections** again with the same rows and
+evidence) looks for the submission first and uses the one it finds, whatever the
+book or the community entry is called by then. Changing the evidence, or the set
+of corrections, makes it a new request, which is filed again. What the job says
+when it stops:
+
+- "GitHub didn't confirm the issue (no answer in time, or a server error). The
+  Bridge will check whether the corrections were filed before filing them again:
+  suggest them again in a minute." Suggesting the same corrections again is safe:
+  the Bridge looks before it files.
+- "These corrections were being filed moments ago, and GitHub may still be making
+  the issue: suggest them again in a minute."
+- "An earlier suggestion of these corrections stopped while filing them, and the
+  Bridge can't tell whether they were filed: look for a [corrections] issue on the
+  community database before suggesting them again." It says so when it finds a
+  different submission made since for the same community entry (another admin's,
+  or yours edited since), or can't tell whether the submission went through.
+  Once it has read GitHub's whole list and found the other submission, it says so
+  once: suggesting them again then files them. When it still can't tell and the
+  interrupted try is over a day old, it files the corrections (the community
+  spots a duplicate).
+- "GitHub refused the Bridge's sign-in: sign in again on the Bridge's Accounts
+  tab, then suggest the corrections again."
+- "GitHub's rate limit for the Bridge's sign-in is reached: suggest the
+  corrections again later."
 
 ## When the Contributions module is off
 

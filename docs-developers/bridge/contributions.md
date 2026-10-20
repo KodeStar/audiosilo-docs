@@ -110,7 +110,8 @@ kind's own save time; a kind saved before per-kind rows existed is left out),
 for none). A value must be one
 printable line without spaces, at most 2048 bytes (`ErrInvalidCredential`, said
 without the value). Changing a credential re-admits the books parked
-`agent_credential_refused` and `agent_unavailable`.
+`agent_credential_refused` and `agent_unavailable`, and wakes the
+`sidecars.describe` jobs parked on either.
 
 The page's Accounts tab (`web/src/components/tabs/AccountsTab.tsx`,
 `web/src/lib/accounts.ts`) polls every 3 seconds only while a sign-in is pending.
@@ -218,20 +219,27 @@ and feature `meta`; a book `path` required; it writes nothing into the library.
 ```
 
 Beyond the reference: in the changes' values and the evidence a control character
-is `unicode.IsControl` (C1 included; the identifiers refuse C0 and DEL only), and
-both it and a bidirectional control (`isBidiControl`) are looked for in the text
-as the community's issue form reads it (`asRead`: each HTML character reference
-ending in `;` decoded, one naming whitespace read as a space; GitHub shows the
-evidence's decoded too), so `&#x202E;` is refused like the character itself; an
-`evidence` of exactly `_No response_` is the form's blank field, so "evidence is
-required"; a `corrected` value is read the same way before it is compared with
-`current`, which is taken as the record spells it (a corrected `Tom &amp; Jerry`
-reads `Tom & Jerry`: refused against a current `Tom & Jerry`, a correction of a
-current `Tom &amp; Jerry`); `evidence` keeps its line breaks (CRLF stored as LF)
-and tabs, and stays within 2000
-characters as the issue carries it (a line starting with `#` loses its indent and
-gains a backslash); `asin`, `isbn` and `region` (the marketplace the ASIN sells
-in) say how the book was found.
+is `unicode.IsControl` (C1 included; the evidence keeps line breaks and tabs; the
+identifiers refuse C0 and DEL only), and both it and a bidirectional control
+(`isBidiControl`) are looked for in the text with its character references
+decoded the way the community's issue form reads them (`checkProse` on
+`decodeRefs`, mirroring audiosilo-meta's `issueform` `formValue`: each numeric or
+named HTML reference ending in `;` decoded, one naming whitespace read as a space,
+one that decodes to more than two characters left as written; GitHub shows the
+evidence's decoded too). A reference is ASCII, so this covers the characters as
+written as well, and `&#x202E;` is refused like the character itself. The text is
+checked untrimmed, so a U+0085 that a trim would drop before a trailing `&#32;` is
+refused too. A `corrected` value is then read as the community reads it, decoded
+and trimmed (`asRead`), and compared with `current`, which is taken as the record
+spells it: one that so reads as nothing or as `current` changes nothing and is
+refused (a corrected `Tom &amp; Jerry` reads `Tom & Jerry`: refused against a
+current `Tom & Jerry`, a correction of a current `Tom &amp; Jerry`). An `evidence`
+of exactly `_No response_` (the form's blank field), or one that reads as nothing,
+is "evidence is required". `evidence` keeps its line breaks (CRLF stored as LF)
+and tabs, and stays within 2000 characters both as written and as the issue
+carries it (`issueLength`: a line starting with `#` loses its indent and gains a
+backslash); `asin`, `isbn` and `region` (the marketplace
+the ASIN sells in) say how the book was found.
 
 What the Bridge would refuse when filing is a `400` here, except a `work_id` the
 community doesn't have: the server checks it only as text (at most 200 bytes, no
@@ -284,30 +292,67 @@ required):
    `AUDIOSILO_BRIDGE_GITHUB_TOKEN` or `gh` by an account that can't label there
    arrives without labels and waits for a maintainer.
 
-**Guarded against filing twice.** A `filing <time>` marker (GitHub's time,
-`Client.Now`) goes into the Bridge's store (`meta.correct/<server id>/<job id>`)
-before `CreateIssue`, cleared only when nothing can have been filed
-(`contrib.NothingFiled`: a 4xx answer, a rate limit, or a request that never
-left). Any other failure (a 5xx, which can come after the issue was made, a
-timeout, a lost answer; the client never resends a POST) keeps the marker and
-fails the job ("could not file the corrections: ..."); the marker is the job's,
-so suggesting them again is a new job that files without looking. A resumed run
-(the same job run again after a restart) with a result returns it; one with only
-the marker lists the core repository's issues made since (`contrib.IssuesSince`:
-the list endpoint, not search, which lags) and adopts a `[corrections]` issue
-with the same body wherever it appears in the list, files when the list is
-complete and has none, and otherwise fails asking the admin to look for a
-`[corrections]` issue first (`errFiledBefore`). With no match, a batch with the
-same **Record** (the work's page) and another body (`errOtherBatch`: the record
-moved since, or another batch for the work, by anyone and for any edition)
-always stops the job, whatever the marker's age. Any
-other lookup failure (unlike a share's, also a list it can't read at all) files
-again once the marker is over 24 hours old by GitHub's clock
-(`contrib.FilingStale`; `Client.StaleFiling` is false until GitHub has answered
-that run). meta's intake labels a batch whose every change the record already
-holds `data:duplicate`; one with a field a maintainer applies reaches a
-maintainer again. A `401` on the create fails "GitHub refused the Bridge's
-sign-in" (one on a resumed run's lookup is a lookup failure like any other).
+**Guarded against filing twice, per request.** A job's result is kept under
+`meta.correct/<server id>/<job id>`, so a resumed job (the same job run again
+after a restart) returns it. The filing itself is guarded per **request**, not per
+job or book: before `CreateIssue` a marker `{since, sum, job}` (`since` GitHub's
+time from `Client.Now`, `sum` the `contrib.IssueSum` of the title and body sent)
+goes into the Bridge's store under `meta.correct.filing/<server id>/<request>`,
+the request being the sha256 of the params less the server's `source` stamp. The
+same params are the same request: the job resumed, or a new job asking for the
+same corrections (the admin suggesting them again after a lost answer, whatever
+the book is called by then), finds the marker. Edited evidence, or another set of
+changes (the same ones in another order included), is a new request and files
+again. The marker is deleted only while it is still the one the run wrote or
+adopted (`clearFiling`): once the filed or adopted issue is recorded as the job's
+result (a failed result write keeps it, so the job resumed adopts the issue), when
+nothing can have been filed (`contrib.NothingFiled`: a 4xx answer, a rate limit,
+or a request that never left), or once a person has been told the Bridge can't
+tell (below). A 5xx, which can come after the issue was made, a timeout or a lost
+answer (the client never resends a POST) keeps it and fails the job "GitHub
+didn't confirm the issue (no answer in time, or a server error). The Bridge will
+check whether the corrections were filed before filing them again: suggest them
+again in a minute."
+
+A run that finds a marker lists the core repository's issues made since its time
+less `contrib.FilingSkew` (`contrib.IssuesSince`: the list endpoint, not search,
+which lags; the rows of pages read before one that failed count too) and:
+
+- adopts a `[corrections]` issue whose sum is the job's or the marker's, wherever
+  it is in the list. The marker's is the request as composed then: the title is
+  the work's live title, so a title correction meta's bot applied since (or a
+  recording that took the ASIN since) changes what the run composes now;
+- on a `401` (`contrib.Unauthorized`, even past a same-record batch on a page read
+  before) fails "GitHub refused the Bridge's sign-in: sign in again on the
+  Bridge's Accounts tab, then suggest the corrections again.", and on a rate limit
+  "GitHub's rate limit for the Bridge's sign-in is reached: suggest the
+  corrections again later.", the marker kept either way;
+- when it found nothing and the marker is under a minute old by GitHub's clock
+  (`contrib.FilingSettle`, `Client.Settling`: GitHub may still be making the
+  issue) fails "These corrections were being filed moments ago, and GitHub may
+  still be making the issue: suggest them again in a minute." (`errSettling`);
+- for a batch with the same **Record** (the work's page) and another body
+  (`otherBatch`: another admin's, or its own edited since) fails asking the admin
+  to look first (`errFiledBefore`: "An earlier suggestion of these corrections
+  stopped while filing them, and the Bridge can't tell whether they were filed:
+  look for a [corrections] issue on the community database before suggesting them
+  again."). That is said once: when the list was read back to the marker whole
+  and the marker has settled, the marker goes, so the next suggestion files. A
+  marker with no time to look from is told the same way, once, before anything is
+  read;
+- files when the list is complete back to the marker and holds none;
+- for any other lookup failure (unlike a share's, also a list it can't read at
+  all) fails `errFiledBefore` with the marker kept, until the marker is over 24
+  hours old by GitHub's clock (`contrib.FilingStale`; `Client.StaleFiling` is
+  false until GitHub has answered that run): then it files again.
+
+meta's intake labels a batch whose every change the record already holds
+`data:duplicate`; one with a field a maintainer applies reaches a maintainer
+again. On the create, a `401` and a rate limit fail with the same words as above
+and any other refusal "could not file the corrections: ...", the marker cleared
+(nothing was filed). Two duplicates stay possible, accepted: a new request (edited
+evidence, reordered changes) for corrections already filed, and a POST still in
+flight after the one-minute settle when the lookup finds nothing.
 
 Result:
 
@@ -337,16 +382,31 @@ names the recording, `correctionRecording`), requires the evidence (prefilled)
 and queues one `meta.correct`. The job's status and issue link show in the same
 card part. The server enforces the 25-change cap and the kind's params cap
 ([API reference](../server/api/reference.md#post-apiv1adminbridgejobs)), which a
-batch at every bound fits. The dialog leaves unticked, its box disabled
-(`sendable`), a row whose current or corrected value is too long to send (over
-500 characters: "Too long to send") or holds a bidirectional control
-(U+202A-U+202E, U+2066-U+2069: "Holds a hidden text-direction character the
-community refuses, so it can't be sent"). Evidence over 2000 characters ("Keep
-the evidence under 2,000 characters") or holding one ("The evidence holds a
-hidden text-direction character the community refuses. Retype any text you
-pasted") stops **Suggest N corrections** sending anything (`correctionProblem`:
-`evidenceTooLong`, `evidenceBidi`). The dialog checks only the characters
-themselves; one written as a character reference gets the server's `400`.
+batch at every bound fits. The dialog reads each value and the evidence as the
+server does, so it never sends what would get the `400`: `decodeRefs` mirrors the
+server's (numeric references as Go's `html` decodes them, named ones through the
+browser's own HTML parser, `&nLt;` and `&nGt;` left as written as Go leaves them)
+and `goTrim` trims as Go's `strings.TrimSpace` does. It leaves a row unticked, its
+box disabled (`sendable`; `refusal` names the first flag in the order `tooLong`,
+`control`, `bidi`, `noChange`, each shown as `book.corrections.<flag>`), when a
+value is over 500 characters ("Too long to send (over 500 characters)."), holds a
+control character, as written or as a character reference ("Holds a control
+character the community refuses (or a character reference to one), so it can't
+be sent."), holds a bidirectional control (U+202A-U+202E, U+2066-U+2069) the same
+way ("Holds a hidden text-direction character the community refuses (or a
+character reference to one), so it can't be sent."), or when the corrected value
+reads as the community's value or as nothing ("Read as the community reads it, this changes nothing (it
+decodes to the community's value or to nothing), so it can't be sent."). The
+evidence's problems stop **Suggest N corrections** sending anything
+(`correctionProblem`, each its own `book.corrections.<problem>` key): `noEvidence`
+(blank, `_No response_` or reading as nothing: "Say where the values come from.",
+shown once the field is touched), `evidenceTooLong` (over 2000 characters as
+written or as the issue carries it, `issueLength`: "Keep the evidence under 2,000
+characters (a line starting with # counts one more)."), `evidenceControl` (a
+control character but a line break or a tab, or a reference to one) and
+`evidenceBidi`. The dialog's header clamps the book's title to two lines
+(`line-clamp-2`, the whole title in its `title` attribute and read out), so a
+long title never squeezes the review on a phone.
 
 ## Notifications
 

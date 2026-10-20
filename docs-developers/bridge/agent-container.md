@@ -309,7 +309,7 @@ override.
   setup-token / agent-login codex), or remove it there and set one on the Bridge's
   Accounts tab"). A change on the Accounts
   tab re-admits the books parked `agent_credential_refused` and
-  `agent_unavailable` at once.
+  `agent_unavailable` at once, and wakes the description jobs parked on either.
 
 `request.json` and the protocol version are unchanged: an older Bridge never
 writes the file, and an older runner never sees one written for it.
