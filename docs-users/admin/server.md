@@ -385,13 +385,18 @@ as the Bridge comes and goes, without you touching the switch.
 
 The modules today:
 
-- **Contributions** - for now it does nothing: in a later release it will send
-  your book corrections, and the characters and recaps your Bridge generates, to
-  the community metadata database, so every AudioSilo server can use them. It
-  needs a Bridge that has been given a GitHub token (see
-  [Contributing to the community](../getting-started/running-a-bridge.md#contributing-to-the-community)).
-  The generate dialog's **Also contribute to the community** works as before,
-  with the module on or off.
+- **Contributions** - sends your book corrections, and the characters and recaps
+  your Bridge generates, to the community metadata database, so every AudioSilo
+  server can use them. It needs a Bridge signed in to GitHub (**Sign in to GitHub
+  on your Bridge** until it is: see
+  [Bridge accounts](../getting-started/bridge-accounts.md#github)). While it is
+  on and the Bridge is ready, the generate dialog offers **Also contribute to the
+  community** (on by default), and a book's page offers
+  [Share with the community](bridge.md#share-with-the-community) and
+  [Suggest corrections](bridge.md#suggest-corrections). Turned off, none of them
+  shows, and such a job already queued waits until it is on again. Listeners
+  see nothing of it. See
+  [Contributing from your server](../community/contributing-from-your-server.md).
 
 A module's environment variable (`AUDIOSILO_MODULES_CONTRIBUTIONS_ENABLED=true`
 turns Contributions on) sets its switch too, and then locks it here, like any

@@ -605,8 +605,10 @@ account [rate limit](#rate-limiting).
 sharing, can't make a pairing code of its own (`/auth/pair`), and shares collections only with
 its owner (**Visibility**, below). `POST
 /auth/password`, `POST /auth/tokens`, `POST /auth/pair`, `POST /auth/recovery`, `PUT
-/me/household` and `PUT /me/collections/{id}/shares` answer `403 kid_account` from one
-route wrapper (`api.notKid`, before the handler; wrap any new route a kid can't use).
+/me/household`, `PUT /me/collections/{id}/shares` and (Phase 2b) every user route a
+[managed module](modules.md#routes-always-mounted-gated-on-the-toggle) mounts answer
+`403 kid_account` from one route wrapper (`api.notKid`, before the handler; wrap
+any new route a kid can't use).
 The writes that mint a credential or share something refuse a kid again inside their
 own transaction (`auth.refuseKid` in `IssueAPIToken`, `GenerateRecoveryCode` and
 `IssueOwnPairingToken`; `catalog.SetHouseholdSharing` and

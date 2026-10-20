@@ -204,7 +204,7 @@ kind. A nil `*Service` does nothing, so callers don't check.
 | `invite_redeemed` | a pairing exchange whose token came from an invite code | `user` (whose invite), `device` |
 | `update_available` | `updates.Checker.OnAvailable` after a check that finds a newer release; announced **once per version** (`dedup_key` is the version) | `version`, `name`, `url` (the release page) |
 | `backup_failed` | `backup.Service.OnFailure` (scheduled or manual) | `trigger`, `error` (`disk_full`, `permission_denied`, `failed`) |
-| `bridge_job_finished` | `bridge.Service.OnTransition` (wired by `API.SetBridge`): a [Bridge](../bridge/index.md) job moved **into** `done` | `job_id`, `job_kind`, `state`, `library`, `library_id`, `path`, `title` (the book's title as indexed now, one plain line of at most 200 characters; `""` when it can't be read), and for a `chapters.detect` job (Phase 1d) `chapters_source` (where the book's chapters come from once the Bridge's attachments rescan has run: `generated`, `community` or `files`) |
+| `bridge_job_finished` | `bridge.Service.OnTransition` (wired by `API.SetBridge`): a [Bridge](../bridge/index.md) job moved **into** `done` | `job_id`, `job_kind`, `state`, `library`, `library_id`, `path`, `title` (the book's title as indexed now, one plain line of at most 200 characters; `""` when it can't be read), and for a `chapters.detect` job (Phase 1d) `chapters_source` (where the book's chapters come from once the Bridge's attachments rescan has run: `generated`, `community` or `files`), and for a `sidecars.contribute` job (Phase 2b) that filed nothing because the community already had everything, `shared_nothing: true` |
 | `bridge_job_failed` | the same hook: a job moved **into** `failed` (a Bridge's report, or a lease that ran out on the last attempt), or into `needs_attention` with a park that isn't transient (`bridge.Job.Notable`: never `agent_rate_limited`, `agent_unavailable` or `asr_worker_waiting`; a park changing its code in place counts when the new one isn't transient) | as `bridge_job_finished`, plus `code` (the park code, only for `needs_attention`) and `detail` (the job's `error`, the Bridge's own text, which can name a folder on its disk: **bell only**) |
 
 `notify.Kinds` lists them in this order, which is the order the console shows.
@@ -219,11 +219,19 @@ description."), and for a `chapters.detect` job (Phase 1d) `Chapters found:
 <title>` ("Listeners see them in the player now." only when its `chapters_source`
 is `generated`; else "The chapters were saved, but the book uses other chapters.
 Choose its chapter source on the book page.", and the console's bell says the
-same); `bridge_job_failed` reads `A Bridge job needs attention: <title>`
+same), and (Phase 2b) for a `sidecars.contribute` job `Shared with the community:
+<title>` ("What this server generated for the book went to the community for
+review. The book page links it."; `Already in the community: <title>` when it
+filed nothing) and for a `meta.correct` job `Corrections sent: <title>` ("The
+book's corrections went to the community for review. The book page links them.");
+`bridge_job_failed` reads `A Bridge job needs attention: <title>`
 (warning colour) or `<kind> failed: <title>` (`Characters and recaps`,
-`Description`, `Chapters`, `Bridge check`, else `Bridge job`; `notify.bridgeKindWords`), its text the park
-code in words (`book_not_writable`, `budget_exceeded`, `agent_credential_refused`,
-`core_needed`, `chapters_not_detected`; anything else "See the job in Settings > Bridge."). Both link to
+`Description`, `Chapters`, `Sharing with the community`, `Corrections`, `Bridge
+check`, else `Bridge job`; `notify.bridgeKindWords`), its text the park
+code in words (`book_not_writable`, `budget_exceeded`, `agent_credential_refused`
+(replace it where the Bridge gets it: its Accounts tab or the agent container),
+`contrib_unavailable` (sign in to GitHub on the Bridge), `core_needed`,
+`chapters_not_detected`; anything else "See the job in Settings > Bridge."). Both link to
 `/server?topic=bridge`. See [Characters and recaps](../bridge/generating.md#notifications).
 
 A failed scan's `detail` (and a failed Bridge job's) is the tool's or the

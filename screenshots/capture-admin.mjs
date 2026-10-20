@@ -1005,12 +1005,41 @@ await step('book: generated description', async () => {
 // shows the agent rows and the next step can shoot the generate action. Nothing is
 // written into a library. After the audit log shot, so the Bridge's audit entries
 // stay out of it.
+//
+// Phase 2b: it also offers sidecars.contribute and meta.correct, and once the
+// server's reply accepts a setup block it sends its setup checklist, as a Bridge
+// does: first with the budget not yet reviewed and no GitHub sign-in (the Setup
+// card's shot), then with both done, so it can contribute. The other library is
+// read-only for it, so the libraries step stays undone, as a real Bridge would
+// report it. Then the Contributions module is turned on (after the modules shot,
+// which shows it off), which the generate dialog's contribute switch and the
+// contributing generate job of the story step need.
 const BRIDGE_CLIENT = {'x-audiosilo-client': 'AudioSilo Bridge/0.2.0 (linux)'};
 // The stand-in's token and last heartbeat, for the later Bridge steps.
 let bridgeToken = null;
 let bridgeStatus = null;
 // The later Bridge steps' shots: each needs the stand-in paired here first.
 const GENERATE_SHOTS = ['admin/book-generate.png', 'admin/generate-dialog.png'];
+// The stand-in's GitHub account, once it is signed in.
+const BRIDGE_GITHUB_LOGIN = 'shelf-keeper';
+// The stand-in's setup checklist (Phase 2b), as the Bridge builds it.
+const standInSetup = (libraries, {budget, github}) => {
+  const missing = libraries.filter((l) => !(l.mapped && l.writable)).map((l) => l.library_id);
+  return {
+    items: [
+      {id: 'paired', done: true, required: true},
+      {id: 'libraries', done: libraries.length > 0 && missing.length === 0, required: true,
+        detail: `${libraries.length - missing.length} of ${libraries.length} libraries writable`,
+        ...(missing.length ? {library_ids: missing} : {})},
+      {id: 'asr', done: true, required: true, detail: 'worker'},
+      {id: 'agent', done: true, required: true, detail: 'claude'},
+      {id: 'budget', done: budget, required: true, detail: '$100 a month'},
+      {id: 'github', done: github, required: false, ...(github ? {detail: BRIDGE_GITHUB_LOGIN} : {})},
+    ],
+    can_contribute: github,
+    ...(github ? {github_login: BRIDGE_GITHUB_LOGIN} : {}),
+  };
+};
 const STORY_SHOTS = ['admin/book-story.png', 'admin/book-story-recaps.png'];
 const DETECT_SHOTS = ['admin/health-detect-chapters.png', 'admin/detect-chapters-dialog.png',
   'admin/book-chapters-generated.png'];
@@ -1018,8 +1047,8 @@ const DETECT_SHOTS = ['admin/health-detect-chapters.png', 'admin/detect-chapters
 // current one, so the next GET /server sees it at once.
 const standInHeartbeat = (status) => api(bridgeToken, 'PUT', '/bridge/status', status, BRIDGE_CLIENT);
 await step('settings: bridge', async () => {
-  if (!wanted('admin/settings-bridge.png', 'admin/bridge-pair.png', 'admin/settings-bridge-paired.png',
-    ...GENERATE_SHOTS, ...STORY_SHOTS, ...DETECT_SHOTS)) return;
+  if (!wanted('admin/settings-bridge.png', 'admin/bridge-pair.png', 'admin/bridge-setup.png',
+    'admin/settings-bridge-paired.png', ...GENERATE_SHOTS, ...STORY_SHOTS, ...DETECT_SHOTS)) return;
   const info = await api(null, 'GET', '/server');
   if (!info?.capabilities || !('bridge' in info.capabilities)) throw new Error('this server build has no Bridge');
   try {
@@ -1046,7 +1075,8 @@ await step('settings: bridge', async () => {
 
     // The first heartbeat's answer lists the libraries; the second reports them.
     const status = {
-      version: '0.2.0', kinds: ['bridge.verify', 'sidecars.generate'], libraries: [],
+      version: '0.2.0', kinds: ['bridge.verify', 'sidecars.generate', 'sidecars.contribute', 'meta.correct'],
+      libraries: [],
       // One ASR worker (Phase 1b): a Mac transcribing on Metal, heard from just now.
       workers: [{name: 'Mac Studio', version: '0.2.0', platform: 'darwin/arm64, mlx-whisper (metal)',
         last_seen: new Date(Date.now() - 20_000).toISOString()}],
@@ -1057,7 +1087,9 @@ await step('settings: bridge', async () => {
         monthly_budget_usd: 100, month_spent_usd: 23.4,
       }},
     };
-    const libs = (await api(bridge, 'PUT', '/bridge/status', status, BRIDGE_CLIENT)).libraries;
+    const first = await api(bridge, 'PUT', '/bridge/status', status, BRIDGE_CLIENT);
+    const libs = first.libraries;
+    const acceptsSetup = (first.accepts ?? []).includes('setup');
     const seeded = libs.find((l) => l.id === library?.id) ?? libs[0];
     if (!seeded) throw new Error('the server has no library');
     const sample = await api(bridge, 'GET', `/bridge/libraries/${seeded.id}/book`, undefined, BRIDGE_CLIENT);
@@ -1067,6 +1099,7 @@ await step('settings: bridge', async () => {
         : {library_id: l.id, mount_path: l.root, mapped: true, writable: false, checked_path: '',
            error: 'mapped, but not writable here: permission denied'},
     );
+    if (acceptsSetup) status.setup = standInSetup(status.libraries, {budget: false, github: false});
     await api(bridge, 'PUT', '/bridge/status', status, BRIDGE_CLIENT);
     bridgeToken = bridge;
     bridgeStatus = status;
@@ -1092,10 +1125,28 @@ await step('settings: bridge', async () => {
       },
     }, BRIDGE_CLIENT);
 
+    // The Setup card, at the top of the page while a required step is to do.
+    if (acceptsSetup && wanted('admin/bridge-setup.png')) {
+      await open(page, '/server?topic=bridge');
+      const setupCard = page.locator('[aria-labelledby="bridge-setup-title"]');
+      await setupCard.getByText('3 of 5 required steps done').waitFor({timeout: 15000});
+      await setupCard.scrollIntoViewIfNeeded();
+      await sleep(800);
+      await shoot(page, 'admin/bridge-setup.png', {clip: around([await setupCard.boundingBox()])});
+    }
+    // Budget reviewed and signed in to GitHub on the Bridge's page.
+    if (acceptsSetup) {
+      status.setup = standInSetup(status.libraries, {budget: true, github: true});
+      await api(bridge, 'PUT', '/bridge/status', status, BRIDGE_CLIENT);
+    }
+
     await open(page, '/server?topic=bridge');
     await page.getByRole('list', {name: 'Jobs'}).getByText('Done', {exact: true}).waitFor({timeout: 15000});
     await fitViewportToPage(page, 900, 2400, 1000);
     await shoot(page, 'admin/settings-bridge-paired.png');
+
+    // The Contributions module on, now that the Bridge can contribute.
+    await api(token, 'PATCH', '/admin/settings', {modules: {contributions: true}});
   } finally {
     await page.setViewportSize(DESKTOP_CONTEXT.viewport);
   }

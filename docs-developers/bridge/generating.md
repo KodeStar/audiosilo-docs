@@ -89,10 +89,17 @@ defaults filled in, so the Bridge reads one complete object:
 The kind **writes**, so on top of Phase 0's checks the server refuses it with
 `409 library_not_writable` unless the last heartbeat reports the library mapped
 **and** writable, and a `contribute: "issue"` with `409 cannot_contribute` unless
-the heartbeat's `estimates.sidecars.can_contribute` is true (no estimates count
-as false). Both checks come after the dedupe: an open job of the book is returned
-(`200`) whatever they would say. The player always sends
-`{source: "auto", contribute: "local"}`; only the console offers contributing.
+the Bridge can contribute (`Status.CanContribute()`: the heartbeat's `setup`
+block, else `estimates.sidecars.can_contribute`; none counts as false). Both checks
+come after the dedupe: an open job of the book is returned (`200`) whatever they
+would say. Since Phase 2b a `contribute: "issue"` job also needs the
+`contributions` module: `404 module_off` while it is off, and held in the queue
+meanwhile (see [Jobs of a managed module](pairing-and-jobs.md#jobs-of-a-managed-module)).
+A generate job is refused `409 contribute_open` while a `sidecars.contribute` job
+is queued or working for the book. The player always sends
+`{source: "auto", contribute: "local"}`; only the console offers contributing, and
+its dialog's switch (shown while the module's flag is on and the estimate's
+`can_contribute` is true) starts on `issue`.
 
 **A series batch** is the client queueing each book on its own, in reading
 order, earliest first. Job ids ascend and the claim takes the oldest queued job,
@@ -152,7 +159,7 @@ carries none):
 | `agent_usd_per_ebook` | the finished ebook books' average spend; `null` before the first |
 | `samples` | the finished books those come from |
 | `agent_backend`, `agent_ready`, `subscription` | the agent container's state ([runner.json](agent-container.md#runner-liveness)): the CLI the Bridge runs, whether it is available (a fresh heartbeat, the CLI present with a credential the provider hasn't refused) and whether that credential is a subscription login |
-| `can_contribute` | a GitHub token resolves (below) |
+| `can_contribute` | a GitHub token resolves and isn't refused (below); the `setup` block carries the same answer, which the server prefers |
 | `monthly_budget_usd`, `month_spent_usd` | `agent.monthly_budget_usd`, and this calendar month's (UTC) agent spend across every book |
 
 The server validates the block on its own: a number below 0 or past its (far)
@@ -176,7 +183,8 @@ or parked. One run:
    library and book (another server, or a reinstalled one, hands out ids an older
    mapping still holds; that run is stopped and this job starts its own).
 3. **Refuses an impossible contribution before any spend**: `contribute: issue`
-   on a Bridge with no GitHub token fails at once.
+   on a Bridge with no GitHub token fails at once ("sign in on the Bridge's
+   Accounts tab").
 4. **Prepares** (`prepare`): the library must be one the server listed, with a
    mapping check that found it mapped and writable at the mount the Bridge uses
    now (a new job fails otherwise; a resumed one parks `library_not_writable` and
@@ -524,13 +532,20 @@ taken again as the next attempt): see
 ## Contributing
 
 With `contribute: issue` the engine's `contributing` stage files the community
-intake issue, as audiosilo-sidecars did, with the Bridge's GitHub token (the
-sealed `github_pat`, which `AUDIOSILO_BRIDGE_GITHUB_TOKEN` sets at every start;
-see [Configuration](configuration.md#characters-and-recaps)). The local files are written
-before that stage can park: a book parked at `contributing` (`core_needed`, say)
-already has its `.audiosilo/` files, and the job writes them again only when the
-engine's sidecars change. `can_contribute` in the heartbeat is "a token
-resolves", which is all the server checks before it queues such a job.
+intake issues, as audiosilo-sidecars did, with the token `contrib.TokenSource`
+resolves (`AUDIOSILO_BRIDGE_GITHUB_TOKEN`, else the Accounts tab's GitHub sign-in,
+else `gh`; see [Configuration](configuration.md#contributing-github)). The local
+files are written before that stage can park: a book parked at `contributing`
+(`core_needed`, `contrib_unavailable`, say) already has its `.audiosilo/` files,
+and the job writes them again only when the engine's sidecars change. A sign-in
+on the Accounts tab re-admits the books parked `contrib_unavailable`.
+`can_contribute` in the heartbeat is "a token resolves and isn't refused", which is
+all the server checks before it queues such a job. An issue filed with the App's
+user token skips the labels check (`AppFiled`): GitHub drops the labels a
+non-collaborator sets, and meta's `route.yml` labels it.
+
+Contributing **later**, after a run kept local, is its own kind,
+`sidecars.contribute`: see [Contributions](contributions.md#sharing-later-sidecarscontribute).
 
 ## The budgets
 

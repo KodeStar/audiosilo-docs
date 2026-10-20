@@ -20,9 +20,13 @@ chapters first, found in the narration (see
 - **An admin.** Only admins see the button, in the console and in the player.
   Household members, kids' accounts and demo guests never do.
 - **A Bridge that is paired and online**, with its **agent container** set up
-  (see [Running a Bridge](../getting-started/running-a-bridge.md#3-the-agent-container)).
+  and a credential for it (see
+  [Running a Bridge](../getting-started/running-a-bridge.md#7-the-agents-credential)).
   While the Bridge is offline, or doesn't offer characters and recaps, the
-  button isn't there.
+  button isn't there. While its [setup checklist](bridge.md#the-setup-card) says
+  speech recognition, the agent's credential or the book's library is still to
+  do, the console says which in place of the button ("Generating needs the
+  Bridge's agent credential set first."), with a link to Settings > Bridge.
 - **Community metadata switched on** under **Server > Settings > Community
   metadata** (see [Server settings](server.md#community-metadata)): generated
   characters and recaps reach the players the same way the community's do.
@@ -117,14 +121,18 @@ within a few seconds.
 By default the characters and recaps stay **on this server only**: they are
 saved with the book and nobody else sees them.
 
-In the console, when the Bridge has been given a GitHub token (see
-[Running a Bridge](../getting-started/running-a-bridge.md#contributing-to-the-community)),
-the dialog also offers **Also contribute to the community**. Then, once they are
-written, the Bridge also offers them to the community database as a submission
-for review, so every other server gets them too once they are accepted. They are
-saved on your server either way. Contributing needs the book to have an entry in
-the community database already; when it doesn't, the job pauses saying so, with
-the results already saved locally. The player never offers to contribute.
+In the console, while the [Contributions module](server.md#modules) is on and
+the Bridge is [signed in to GitHub](../getting-started/bridge-accounts.md#github),
+the dialog also offers **Also contribute to the community**, switched **on** by
+default. Then, once they are written, the Bridge also offers them to the community
+database as a submission for review, so every other server gets them too once
+they are accepted. They are saved on your server either way. Switch it off to keep
+them on this server; you can still
+[share them later](bridge.md#share-with-the-community). Contributing needs the
+book to have an entry in the community database already; when it doesn't, the job
+pauses saying so, with the results already saved locally. The player never offers
+to contribute. See
+[Contributing from your server](../community/contributing-from-your-server.md).
 
 Once the job is done, the book's
 [Characters and recaps card](books.md#characters-and-recaps) shows **Contributed,
@@ -163,9 +171,10 @@ in the console (**Generating is paused** in the player) with the reason, and
 | The agent isn't available | Nothing: the job carries on once the agent container is running and signed in again. Check it if this lasts. |
 | The agent reached its usage limit | Nothing: it carries on once the limit resets. |
 | Waiting for an ASR worker | Nothing, or start the worker: the Bridge is set to wait for an [ASR worker](../getting-started/running-a-worker.md#when-the-worker-is-off) when none is connected, and the job carries on as soon as one connects. |
-| The agent's credential was refused | Give the agent container a new token or login (see [Running a Bridge](../getting-started/running-a-bridge.md#3-the-agent-container)). The job looks again by itself every 30 minutes. |
+| The agent's credential was refused | Replace it where the agent gets it: on the Bridge's Accounts tab, or in the agent container when it has one of its own (see [Running a Bridge](../getting-started/running-a-bridge.md#7-the-agents-credential)). The job carries on at once after a change on the Accounts tab, else it looks again by itself every 30 minutes. |
 | The job reached its spending limit | The monthly cap carries on by itself on the 1st of next month; raise the cap on the Bridge for sooner (below). |
 | The Bridge can't write to this book's folder | Give the Bridge's user write access to the book's folder. It checks again every minute. |
+| Contributing needs a GitHub token on the Bridge | Only when contributing: sign the Bridge in to GitHub on its Accounts tab (see [Bridge accounts](../getting-started/bridge-accounts.md#github)). The job carries on once it is signed in. |
 | The community has no entry for this book yet | Only when contributing: add the book to the community database, or cancel and generate it again kept local. Your copy is already saved. |
 | The ebook couldn't be read | Cancel, then generate again: it reads the audio. |
 | The chapters couldn't be found in the narration | A book without chapter markers whose chapter headings couldn't be heard with confidence. See [When no chapters are found](#when-no-chapters-are-found). |
@@ -436,7 +445,7 @@ The transcription runs on your Bridge's own computer (or on an
 [ASR worker](../getting-started/running-a-worker.md)) and costs nothing but time.
 The AI agent is the cost: it runs on the account the agent container is signed in
 with, the Bridge's own (see
-[Running a Bridge](../getting-started/running-a-bridge.md#3-the-agent-container)).
+[Running a Bridge](../getting-started/running-a-bridge.md#7-the-agents-credential)).
 With a subscription login the cost is notional (it counts against the
 subscription's usage limits); with an API key it is billed per use.
 

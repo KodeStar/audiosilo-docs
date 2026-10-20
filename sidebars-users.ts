@@ -17,6 +17,7 @@ const sidebars: SidebarsConfig = {
         'getting-started/organizing-your-library',
         'getting-started/remote-access',
         'getting-started/running-a-bridge',
+        'getting-started/bridge-accounts',
         'getting-started/running-a-worker',
       ],
     },
@@ -84,7 +85,7 @@ const sidebars: SidebarsConfig = {
     {
       type: 'category',
       label: 'Community metadata',
-      items: ['community/meta-site'],
+      items: ['community/meta-site', 'community/contributing-from-your-server'],
     },
     'demo',
     'troubleshooting',

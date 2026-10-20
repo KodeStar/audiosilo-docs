@@ -136,11 +136,14 @@ it queues), "On this server" and the earlier books of the series (ticked, queued
 first); it blocks the submit when the library isn't writable or, Bridge Phase 1d,
 the estimate's `open_job` is a `chapters.detect` job (the book's chapters are still
 being found, which the server refuses with `409 detect_open`;
-`bridge.generate.detectOpen`), and warns when the agent isn't ready
-(`blockedReason`). The console hides its action while a detect job is open; the
-player keeps the button and says why in the dialog, and a `409 detect_open` from
-the queue (a detection queued after the estimate) toasts the same words
-(`bridgeRefusalKey`). It always queues `{source: "auto", contribute: "local"}`
+`bridge.generate.detectOpen`) or, Bridge Phase 2b, a `sidecars.contribute` job (the
+console's "Share with the community" is filing the book's characters and recaps,
+`409 contribute_open`; `bridge.generate.contributeOpen`, kind `SIDECARS_CONTRIBUTE`
+in `src/lib/bridge-jobs.ts`), and warns when the agent isn't ready
+(`blockedReason`). The console hides its action while either job is open; the
+player keeps the button and says why in the dialog, and a `409 detect_open` or
+`409 contribute_open` from the queue (a job queued after the estimate) toasts the
+same words (`bridgeRefusalKey`). An older server sends neither. It always queues `{source: "auto", contribute: "local"}`
 (`GENERATE_PARAMS`): the player never contributes. `GenerateStatus` sits under the
 actions while a job is open or failed: the stage (`bridge.stage.*`; Bridge Phase
 1d adds `chapter_detecting`, "Finding the chapters in the narration"; the early
