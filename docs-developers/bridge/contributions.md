@@ -157,7 +157,8 @@ leniently (a later server's field ignored), then:
    (`contrib.NothingFiled`), clears its time from the marker. The next submit
    then:
    - adopts the gist or issue the user made since the marker, less
-     `contrib.FilingSkew` (`GistsSince`, `IssuesSinceBy`);
+     `contrib.FilingSkew` (`GistsSince`, `IssuesSinceBy`; the rows of pages read
+     before one that failed count too);
    - files again when GitHub's list is complete and holds none (for an issue, also
      only once the marker is a minute old, `contrib.FilingSettle` through
      `Client.Settling`: GitHub may still be making it; an issue edited since doesn't match, so it is filed again);
@@ -168,7 +169,8 @@ leniently (a later server's field ignored), then:
      answered that submit): meta's intake sends a member the work already has to
      a maintainer, and nothing on the page clears a marker;
    - otherwise (a refusal, a rate limit, an outage, a cancel) fails the share
-     (`ErrFilingUnknown`) with the marker kept, whatever its age.
+     (`ErrFilingUnknown`) with the marker kept, whatever its age; a `401` there
+     is worded as the refused sign-in (below).
 
 Result:
 
@@ -306,15 +308,19 @@ after a restart) returns it. The filing itself is guarded per **request**, not p
 job or book: before `CreateIssue` a marker `{since, sum, job}` (`since` GitHub's
 time from `Client.Now`, `sum` the `contrib.IssueSum` of the title and body sent)
 goes into the Bridge's store under `meta.correct.filing/<server id>/<request>`,
-the request being the sha256 of the params less the server's `source` stamp. The
-same params are the same request: the job resumed, or a new job asking for the
-same corrections (the admin suggesting them again after a lost answer, whatever
-the book is called by then), finds the marker. The dialog starts from its
-default evidence each time it opens (`book.corrections.evidencePrefill`, which
-names the server's version), so a suggestion is the same request only when the
-admin types the evidence exactly as before, on the same server version. Edited evidence, or another set of
-changes (the same ones in another order included), is a new request and files
-again. The marker is deleted only while it is still the one the run wrote or
+the request being what the admin asked to change (`filingKey`): the sha256 of the
+record (`work_id`, `recording_id`, the ASIN and the ISBN, normalized) and the
+changes as a set of `{field, corrected}`, sorted. The evidence, the server's
+`source` stamp, the region, each change's `current` value and the order of the
+changes don't count: the dialog starts from its default evidence each time it
+opens (`book.corrections.evidencePrefill`, which names the server's version, in
+the admin's language). So the job resumed, or a new job asking for the same
+changes (the admin suggesting them again after a lost answer, whatever the
+evidence says now and wherever the book is on disk), finds the marker. Another
+field, another corrected value (editing the book's title changes its row's), or
+a change added or dropped is a new request and files again. Markers written
+under the earlier key (the params less `source`) are never read again. The
+marker is deleted only while it is still the one the run wrote or
 adopted (`clearFiling`): once the filed or adopted issue is recorded as the job's
 result (a failed result write keeps it, so the job resumed adopts the issue), when
 nothing can have been filed (`contrib.NothingFiled`: a 4xx answer, a rate limit,
@@ -332,7 +338,8 @@ which lags; the rows of pages read before one that failed count too) and:
 - adopts a `[corrections]` issue whose sum is the job's or the marker's, wherever
   it is in the list. The marker's is the request as composed then: the title is
   the work's live title, so a title correction meta's bot applied since (or a
-  recording that took the ASIN since) changes what the run composes now;
+  recording that took the ASIN since) changes what the run composes now, and so
+  does other evidence or a new `source` stamp;
 - on a `401` (`contrib.Unauthorized`, even past a same-record batch on a page read
   before) fails `errRefused` (sign in again on the Accounts tab), and on a rate
   limit `errRateLimited`, the marker kept either way;
@@ -362,8 +369,9 @@ since nothing was filed: a `401` fails `errRefused`, a rate limit
 Duplicates stay possible, accepted, and meta's intake catches a batch already
 applied: the same corrections suggested again after they were filed (a confirmed
 filing clears its marker, and the console unticks only the rows of the book's
-last done job), a new request (edited evidence, reordered changes) for
-corrections already filed, a refile once the marker is over 24 hours old, the
+last done job), a new request (a change added, dropped or corrected
+differently) that repeats changes already filed, a refile once the marker is
+over 24 hours old, the
 next suggestion after an `otherBatch` that was the run's own issue edited since,
 and a POST still in flight after the one-minute settle when the lookup finds
 nothing.

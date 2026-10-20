@@ -198,7 +198,8 @@ mount may not deliver events):
 Any trouble the Bridge has with the staging dir itself (it can't write the job, or
 read back what the runner left) is the agent being unavailable, never a failed
 stage. A credential the provider refuses is reported as a refusal: the book parks
-`agent_credential_refused` (and looks again every 30 minutes); the Bridge's status
+`agent_credential_refused` (and looks again every 30 minutes, or at once when
+the Accounts tab's credential changes); the Bridge's status
 says the agent isn't ready until a run goes through or the runner reports a
 different credential (for a [hand-off](#the-credential-hand-off), until the
 Accounts tab's credential is replaced).

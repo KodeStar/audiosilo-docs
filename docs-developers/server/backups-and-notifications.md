@@ -224,14 +224,18 @@ same), and (Phase 2b) for a `sidecars.contribute` job `Shared with the community
 review. The book page links it."; `Already in the community: <title>` when it
 filed nothing because the community already had it: `contributed` empty, `covered`
 not) and for a `meta.correct` job `Corrections sent: <title>` ("The
-book's corrections went to the community for review. The book page links them.");
+book's corrections went to the community for review. The book page links them."),
+and any other kind `<kind> finished: <title>` ("The Bridge finished the job."; a
+`bridge.verify` job's is `Bridge check finished: <library>`, its book's title
+when it named one; the bell says "Bridge job finished");
 `bridge_job_failed` reads `A Bridge job needs attention: <title>`
 (warning colour) or `<kind> failed: <title>` (`Characters and recaps`,
 `Description`, `Chapters`, `Sharing with the community`, `Corrections`, `Bridge
 check`, else `Bridge job`; `notify.bridgeKindWords`), its text the park
 code in words (`book_not_writable`, `budget_exceeded`, `agent_credential_refused`
-(replace it where the Bridge gets it: its Accounts tab or the agent container),
-`contrib_unavailable` (sign in to GitHub on the Bridge), `core_needed`,
+(replace it where the Bridge gets it: its Accounts tab, which resumes the job, or
+the agent container, which the job tries again by itself), `contrib_unavailable`
+(sign in to GitHub on the Bridge's Accounts tab, which resumes the job), `core_needed`,
 `chapters_not_detected`; anything else "See the job in Settings > Bridge."). Both link to
 `/server?topic=bridge`. See [Characters and recaps](../bridge/generating.md#notifications).
 

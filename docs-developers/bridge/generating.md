@@ -275,18 +275,22 @@ books and [description jobs](#a-description-on-its-own-sidecarsdescribe) alike.
 For the agent's parks: a monthly budget saved on the **Settings** tab answers `budget_exceeded`, an agent
 credential changed on the **Accounts** tab `agent_credential_refused` and
 `agent_unavailable`. A cap set in `config.yaml` or the environment is read at the
-next start, which re-admits no engine book parked `budget_exceeded`: press
-**Retry** (a description job tries again at once when the restart resumes it).
+next start, and that start re-admits every job parked `budget_exceeded` once
+(engine books through the scheduler's `restartReadmitCodes`, a description job
+because the restart resumes it): no **Retry** is needed, and a book still over
+its cap parks again before it spends anything. The same start gives the
+availability parks (`agent_unavailable`, `agent_rate_limited`,
+`asr_unavailable`, `media_tools_unavailable`) one more try each.
 
 | Code | Means | Resumes by itself |
 |---|---|---|
 | `agent_unavailable` | the agent container isn't answering, has no CLI or no credential, or didn't claim the job within `agent.claim_timeout_seconds` | yes, 10 minutes later when the container said why (`retry_at`), or at once when the agent's credential changes on the Accounts tab |
 | `agent_rate_limited` | the agent account hit its usage limit | yes, when it resets |
 | `agent_credential_refused` | the provider refused the CLI's credential (new in Phase 1a) | it looks again every 30 minutes, or at once when the agent's credential changes on the Accounts tab |
-| `budget_exceeded` | the monthly cap (`retry_at` the 1st of next month, UTC) or the per-book cap was reached | the monthly one only: on the 1st, or at once on a **Settings** save that changes it; the per-book one, or a cap the environment sets, after raising it and a restart (and **Retry** for an engine book; see [The budgets](#the-budgets)) |
+| `budget_exceeded` | the monthly cap (`retry_at` the 1st of next month, UTC) or the per-book cap was reached | the monthly one on the 1st, or at once on a **Settings** save that changes it; the per-book one, or a cap the environment sets, once it is raised and the Bridge restarted, with no **Retry** (see [The budgets](#the-budgets)) |
 | `agent_validation_exhausted`, `qa_no_converge`, `spelling_gate_failure`, `fix_loop_exhausted`, `asr_decode_timeout`, `markers_not_confident`, `ebook_chapters_not_confident`, `supervisor_escalated`, `supervisor_budget` | an engine stage gave up after its bounded retries | no: **Retry** |
 | `chapters_not_detected` | a book with no chapter markers whose chapters couldn't be found in the narration with confidence (Phase 1d; the message says why: no headings heard, a chapter too long, numbers missing). See [Chapterless books](chapters.md#the-park-chapters_not_detected) | no: add chapter markers to the file, cancel and generate again |
-| `media_tools_unavailable`, `asr_unavailable` | ffmpeg/ffprobe is missing, or the Bridge's own speech recognition failed to set up | no |
+| `media_tools_unavailable`, `asr_unavailable` | ffmpeg/ffprobe is missing, or the Bridge's own speech recognition failed to set up | no, but the Bridge's next start tries once more (so fix it, then restart) |
 | `asr_worker_waiting` | no [ASR worker](workers.md) is connected and the fallback is `wait` (or the Bridge has no speech recognition of its own) (new in Phase 1b) | yes, as soon as a worker connects (or the fallback is `local` with a usable backend) |
 | `manifest_changed` | the book's audio changed since it was transcribed | no: cancel and generate again |
 | `ebook_unreadable`, `ebook_no_chapters` | the ebook can't be used | no: cancel and generate from the audio |
@@ -547,7 +551,8 @@ taken again as the next attempt): see
   of a run would.
 - **Moves**: the server carries an open job with its book when a scan sees the
   book move; the path in the answer to a report tells the Bridge, which follows
-  it (`followMove`) and records the new path, so a restart finds the same book.
+  it and records the new path in the job's mapping (`recordMove`), so a restart
+  finds the same book.
 
 ## Contributing
 
@@ -575,8 +580,8 @@ Every agent run is preflighted against two caps (`pipeline.Executor`):
 
 - **`agent.book_budget_usd`** (default 75): one book's spend; past it the book
   parks `budget_exceeded` until the cap is raised (in `config.yaml` or the
-  environment, read at the next start) and the book retried (a
-  `sidecars.describe` job tries again by itself when the restart resumes it).
+  environment, read at the next start) and the Bridge restarted: the start
+  re-admits the book, or resumes a `sidecars.describe` job, with no **Retry**.
 - **`agent.monthly_budget_usd`** (default 100, `0` = none; decision 7): this
   calendar month's (UTC) spend across every book, superseded runs included, and
   the spend of engine books a regenerate deleted (kept in
@@ -586,8 +591,8 @@ Every agent run is preflighted against two caps (`pipeline.Executor`):
   `AUDIOSILO_BRIDGE_AGENT_MONTHLY_BUDGET_USD` sets it) and it applies at once: a
   save that changes it resumes what is parked `budget_exceeded`, one still over it
   parking again ([Parks](#parks)), so nothing needs **Retry**. A cap the
-  environment sets is read at the next start, after which an engine book it
-  paused needs **Retry** and a `sidecars.describe` job tries again by itself.
+  environment sets is read at the next start, which carries on every job it
+  paused just the same.
 
 With a subscription credential the costs are notional (what the same tokens would
 cost on an API key), so the caps still bound the usage.
