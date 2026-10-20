@@ -810,9 +810,11 @@ CROSS-REPO.md is the listening-history feature):
 4. **Frontend client**: add/extend the method in `src/api/client.ts`.
 5. **Frontend hooks**: expose it via `src/api/hooks.ts`; consume it in a screen.
 6. **Frontend test**: `src/api/client.test.ts`.
-7. **Update `~/dev/audiosilo/CROSS-REPO.md`** - the seam catalog must describe the
+7. **The Bridge**, if it reads the changed shape (the `/bridge/*` routes): update
+   its `internal/link` + its tests ([§16](#16-the-bridge)).
+8. **Update `~/dev/audiosilo/CROSS-REPO.md`** - the seam catalog must describe the
    new reality (ideally edited first, as the design step).
-8. Run **each touched repo's full gate** ([gates and CI](../contributing/gates-and-ci.md))
+9. Run **each touched repo's full gate** ([gates and CI](../contributing/gates-and-ci.md))
    and land the PRs as a mentioned pair.
 
 The step-by-step contributor walkthrough is

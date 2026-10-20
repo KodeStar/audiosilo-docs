@@ -3,10 +3,11 @@ title: Landing a cross-repo change
 description: "The wire-change checklist, a worked example (listening history), the capability-flag pattern, and the drift pitfalls to avoid."
 ---
 
-The server defines the HTTP/JSON contract; the frontend mirrors it **by hand**.
-There is no codegen, so a wire change is never a one-repo change: both repos' CI
-can be green while the seam is broken. This page is the procedure for landing such a change safely. The full map
-of every seam is the [cross-repo contract](../architecture/cross-repo-contract.md)
+The server defines the HTTP/JSON contract; the frontend (and, for its
+`/bridge/*` routes, the Bridge's `internal/link`) mirrors it **by hand**.
+There is no codegen, so a wire change is never a one-repo change: each repo's CI
+can be green while the seam is broken. This page is the procedure for landing
+such a change safely. The full map of every seam is the [cross-repo contract](../architecture/cross-repo-contract.md)
 (normatively: the workspace `CROSS-REPO.md`).
 
 ## First: does your change cross the seam?
@@ -17,6 +18,9 @@ Decide which repo(s) a task belongs to before starting:
 - *Looks wrong, navigation, timeline math, offline* → **frontend**.
 - *Pairing, media auth, a new wire field, transcode, capabilities, path
   semantics* → **both** - read the contract first.
+- If the JSON shape you're changing is one the Bridge reads (the `/bridge/*`
+  routes: heartbeat, job claims and results) → **the Bridge too** (its
+  `internal/link` hand-mirrors those shapes under the same rule).
 
 ## The wire-change checklist
 
@@ -44,11 +48,13 @@ multi-repo edit.
    not the screen.
 8. **Frontend - test.** Add a `src/api/client.test.ts` case (and unit tests for
    any new pure logic).
-9. **Update `CROSS-REPO.md`** (workspace root) if the seam's behavior changed -
-   it is the normative contract and is updated first.
-10. **Update the docs** - this site's API and seam pages follow the contract; see
+9. **The Bridge (when applicable).** Mirror the shape in its `internal/link` and
+   test it there too.
+10. **Update `CROSS-REPO.md`** (workspace root) if the seam's behavior changed -
+    it is the normative contract and is updated first.
+11. **Update the docs** - this site's API and seam pages follow the contract; see
     [writing the docs](documentation.md).
-11. **Run every touched repo's full gate** ([gates and CI](gates-and-ci.md)),
+12. **Run every touched repo's full gate** ([gates and CI](gates-and-ci.md)),
     then ship.
 
 ## Worked example: listening history

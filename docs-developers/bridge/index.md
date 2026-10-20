@@ -30,7 +30,7 @@ with no chapter markers gets its chapters found in the narration, written as
 AudioSilo Contributions App, and the agent's credential handed to the agent
 container per run), `sidecars.contribute` and `meta.correct`, and the setup
 checklist the heartbeat carries to the console.
-Podcasts, read-along and file moves arrive in later phases.
+Podcasts, read-along, Audible backups and file moves arrive in later phases.
 :::
 
 ## What it is for
@@ -38,7 +38,8 @@ Podcasts, read-along and file moves arrive in later phases.
 The server never writes into a library: it reads the folders, indexes them and
 streams them. Anything that has to **change** files, or that is too heavy to run in
 the server (speech recognition, an AI agent), belongs to the Bridge. Its jobs are
-run from the server's admin console.
+started from the server's admin console (and, for generating, from the player's
+admin-only action).
 
 The engine came from **audiosilo-sidecars**: its packages (speech recognition, the
 agent pipeline, QA, spelling, contribution, the scheduler and supervisor) were

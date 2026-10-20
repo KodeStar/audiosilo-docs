@@ -51,9 +51,9 @@ cd ~/dev/audiosilo && scripts/bootstrap.sh
 
 | Tool | Needed for | Install / notes |
 |---|---|---|
-| **Go 1.26+** | server | The server's `go.mod` sets the minimum `go` version and pins a `toolchain`; with the default `GOTOOLCHAIN=auto`, any Go 1.21+ fetches that toolchain on first use. |
-| **Node 24** | frontend | `.nvmrc` pins `24.16.0` in `audiosilo-frontend` - run `nvm use` there. **Older Node breaks Expo**: React Native 0.85 needs ≥ 20.19.4, and the Expo CLI's env-file loader uses `util.parseEnv` (Node ≥ 20.12), so an old system `node` crashes the moment a `.env` file exists. |
-| **golangci-lint v2** | server lint gate | v2 has been required since Go 1.25. Config is `.golangci.yml`, adopted at a *green baseline* (see [gates and CI](gates-and-ci.md)). |
+| **Go 1.26+** | server, audiosilo-meta, the Bridge | Each `go.mod` sets the minimum `go` version (the server's also pins a `toolchain`); with the default `GOTOOLCHAIN=auto`, any Go 1.21+ fetches the toolchain it needs on first use. |
+| **Node 24** | frontend, the server's admin console, this docs site | `.nvmrc` pins `24.16.0` in `audiosilo-frontend` and in `audiosilo-server/admin-ui` - run `nvm use` in each. **Older Node breaks Expo**: React Native 0.85 needs ≥ 20.19.4, and the Expo CLI's env-file loader uses `util.parseEnv` (Node ≥ 20.12), so an old system `node` crashes the moment a `.env` file exists. |
+| **golangci-lint v2** | server and audiosilo-meta lint gates | v2 has been required since Go 1.25. Config is each repo's `.golangci.yml`, adopted at a *green baseline* (see [gates and CI](gates-and-ci.md)). |
 | **ffmpeg / ffprobe** | server scanner tests, transcoding | Optional at runtime (the server degrades gracefully), but a few scanner tests `t.Skip` without ffprobe - install it so they actually run (CI installs it). |
 | **Docker** | container images, `scripts/fetch-web-player.sh` | Only needed for image builds / release work, not day-to-day dev. |
 | **Playwright** | regenerating documentation screenshots | Only if you work on the docs screenshot pipeline (`audiosilo-docs/screenshots/`) or the marketing/store asset runbook (workspace `SCREENSHOTS.md`). See [documentation](documentation.md). |
@@ -152,8 +152,8 @@ The full pre-merge quality gate for each repo is on
 These are the ones that repeatedly bite new setups - each is documented in the
 repos' own guides and verified here:
 
-- **Use Node 24 via nvm, every shell.** The frontend pins
-  `24.16.0` in `.nvmrc`. A machine's
+- **Use Node 24 via nvm, every shell.** The frontend and the server's
+  `admin-ui` both pin `24.16.0` in `.nvmrc`. A machine's
   default `node` being too old fails in confusing ways (the Expo env loader
   crash above).
 - **Don't `cd` into `node_modules`.** Run tool commands from the repo root - in a

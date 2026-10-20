@@ -12,7 +12,9 @@ AudioSilo is a self-hosted audiobook platform. You point a small server at a fol
 
 ## The server and player
 
-AudioSilo combines a server with a player app.
+AudioSilo combines a server with a player app. You only *have* to run the
+server; an optional [Bridge](./getting-started/running-a-bridge.md) can run
+beside it for heavier jobs such as generating characters and recaps.
 
 ### The server
 

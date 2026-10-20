@@ -96,8 +96,9 @@ exchanges the pairing token for a device-scoped session (`POST /auth/exchange`),
 claiming one invite use per device - so each device being set up can scan the
 same QR.
 
-**File placement.** Copy supported audio files into a library folder, then
-request a non-destructive reindex (`POST /admin/libraries/{id}/scan`). See
+**File placement.** Files reach a library folder outside the server's API:
+copied in by hand, or written by the [Bridge](bridge/index.md). A
+non-destructive reindex (`POST /admin/libraries/{id}/scan`) picks them up. See
 [Organizing your library](/users/getting-started/organizing-your-library) for the
 folder conventions. A server-side `POST /uploads` endpoint is **planned**
 (Phase B), not shipped.
@@ -132,6 +133,11 @@ The server's priorities, in order - when they conflict, the earlier one wins:
   [the sleep timer](frontend/sleep-timer.md), [player UI](frontend/player-ui.md),
   [offline downloads](frontend/offline.md), [state and data](frontend/state-and-data.md),
   [i18n](frontend/i18n.md), [testing](frontend/testing.md).
+- **[The Bridge](bridge/index.md)** - `audiosilo-bridge`, the optional companion
+  that writes to a server's libraries and runs its heavy jobs:
+  [pairing and jobs](bridge/pairing-and-jobs.md), [mappings](bridge/mappings.md),
+  [generating characters and recaps](bridge/generating.md) and
+  [development](bridge/development.md).
 - **[Metadata database](meta/overview.md)** - `audiosilo-meta`, the
   community audiobook metadata database behind meta.audiosilo.app that the server
   and player enrich books from: the [data model](meta/data-model.md), the

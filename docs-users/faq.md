@@ -211,13 +211,15 @@ See [Install the binary](./getting-started/install-binary.md) to get set up.
 
 ### Where does the project live?
 
-AudioSilo's server, player and documentation are developed in the open on
-GitHub:
+AudioSilo's server, player, community metadata database and documentation are
+developed in the open on GitHub:
 
 - [audiosilo-server](https://github.com/KodeStar/audiosilo-server) - the
   server (API, admin console, web player hosting)
 - [audiosilo-frontend](https://github.com/KodeStar/audiosilo-frontend) - the
   player app (web, iOS, Android)
+- [audiosilo-meta](https://github.com/KodeStar/audiosilo-meta) - the
+  community metadata database behind meta.audiosilo.app
 - [audiosilo-docs](https://github.com/KodeStar/audiosilo-docs) - this
   documentation
 
