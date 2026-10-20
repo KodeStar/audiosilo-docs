@@ -288,8 +288,8 @@ changed cap could let through (engine books through the scheduler's
 checks the caps before spending): a park the caps would make again with the
 same reason (`budgetParkHolds`) stays paused, so an unchanged cap re-admits
 nothing. A raised cap re-admits the job even while it is still short of the
-spend (another reason), and the book parks again before it spends anything. No
-**Retry** is needed either way. The same start gives the
+spend (the park held for the old cap, not the new one), and the book parks again
+before it spends anything. No **Retry** is needed either way. The same start gives the
 availability parks (`agent_unavailable`, `agent_rate_limited`,
 `asr_unavailable`, `media_tools_unavailable`) one more try each.
 
@@ -305,7 +305,7 @@ availability parks (`agent_unavailable`, `agent_rate_limited`,
 | `asr_worker_waiting` | no [ASR worker](workers.md) is connected and the fallback is `wait` (or the Bridge has no speech recognition of its own) (new in Phase 1b) | yes, as soon as a worker connects (or the fallback is `local` with a usable backend) |
 | `manifest_changed` | the book's audio changed since it was transcribed | no: cancel and generate again |
 | `ebook_unreadable`, `ebook_no_chapters` | the ebook can't be used | no: cancel and generate from the audio |
-| `contrib_unavailable` | contributing has no GitHub token it can use (none resolves, GitHub refused it, or a signed-in token needed a refresh and GitHub couldn't be reached). The reason says which: "GitHub credential unavailable - sign in to GitHub on the Bridge's Accounts tab and the book carries on", or, signed in but unrefreshed (`pipeline.ContribUnrefreshedMsg`, same code), "the Bridge's GitHub sign-in couldn't be refreshed because GitHub couldn't be reached - Retry once it can" | yes, on a sign-in on the Accounts tab; when the Bridge was already signed in (GitHub unreachable for the refresh), no: a refresh that later succeeds re-admits nothing, so **Retry** once GitHub can be reached |
+| `contrib_unavailable` | contributing has no GitHub token it can use: none resolves, GitHub refused it, or a signed-in token needed a refresh and GitHub couldn't be reached (same code, its own reason: `pipeline.ContribUnrefreshedMsg`) | yes, on a sign-in on the Accounts tab; the unrefreshed one no (a refresh that later succeeds re-admits nothing): **Retry** once GitHub can be reached |
 | `core_needed` | contributing needs a community core record the book doesn't have | no (the local files are already written) |
 | `core_pending` | the book's core record waits for the next data release | yes |
 | `book_not_writable` | the Bridge can't write in the book's folder or its `.audiosilo/` (before the run, or when writing the results; the results wait in the engine's work folder) | it checks again every minute |
@@ -574,9 +574,8 @@ else `gh`; see [Configuration](configuration.md#contributing-github)). The local
 files are written before that stage can park: a book parked at `contributing`
 (`core_needed`, `contrib_unavailable`, say) already has its `.audiosilo/` files,
 and the job writes them again only when the engine's sidecars change. A sign-in
-on the Accounts tab re-admits the books parked `contrib_unavailable`; one parked
-because a signed-in token's refresh couldn't reach GitHub sees no sign-in change,
-so it needs **Retry** once GitHub can be reached.
+on the Accounts tab re-admits the books parked `contrib_unavailable` (not one
+parked because a signed-in token couldn't be refreshed: [Parks](#parks)).
 `can_contribute` in the heartbeat is "a token resolves and isn't refused", which,
 with the Contributions module on, is all the server checks of the Bridge's GitHub
 access before it queues such a job. An issue filed with the App's user token
@@ -593,9 +592,8 @@ Every agent run is preflighted against two caps (`pipeline.Executor`):
 
 - **`agent.book_budget_usd`** (default 75): one book's spend; past it the book
   parks `budget_exceeded` until the cap is raised (in `config.yaml` or the
-  environment, read at the next start) and the Bridge restarted: the start
-  re-admits the book, or resumes a `sidecars.describe` job, with no **Retry**
-  (an unchanged cap leaves it paused).
+  environment) and the Bridge restarted, with no **Retry** ([Parks](#parks) says
+  what that start re-admits).
 - **`agent.monthly_budget_usd`** (default 100, `0` = none; decision 7): this
   calendar month's (UTC) spend across every book, superseded runs included, and
   the spend of engine books a regenerate deleted (kept in
@@ -605,8 +603,7 @@ Every agent run is preflighted against two caps (`pipeline.Executor`):
   `AUDIOSILO_BRIDGE_AGENT_MONTHLY_BUDGET_USD` sets it) and it applies at once: a
   save that changes it resumes what is parked `budget_exceeded`, one still over it
   parking again ([Parks](#parks)), so nothing needs **Retry**. A cap the
-  environment sets is read at the next start, which carries on the jobs it
-  paused once it has changed (an unchanged cap leaves them paused).
+  environment sets is read at the next start, as the per-book one is.
 
 With a subscription credential the costs are notional (what the same tokens would
 cost on an API key), so the caps still bound the usage.

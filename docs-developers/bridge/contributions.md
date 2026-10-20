@@ -84,12 +84,11 @@ sees no change, so it waits for **Retry**.
 While the sign-in can't be refreshed nothing resolves, so the Bridge reports it
 as unable to share until a refresh succeeds (the next token request a minute
 later, the heartbeat's own included): the heartbeat's `can_contribute` (and the
-estimate's) is false, so the console's Setup card shows **GitHub signed in** still
-to do, **GitHub account** as **Not signed in** and **Contributing** as **Not
-ready**, and offers no share, no Suggest corrections and no contribute switch.
-The Accounts tab keeps its **Signed in** badge with **Sharing uses** "None: the
-Bridge can't share with the community". Neither says that GitHub is unreachable;
-only the job failures (below) and the `contrib_unavailable` park do.
+estimate's) is false, so the console's Setup card reads as not signed in and
+offers no share, no Suggest corrections and no contribute switch, while the
+Accounts tab keeps its **Signed in** badge (sharing uses "None"). Neither says
+that GitHub is unreachable; only the job failures (below) and the
+`contrib_unavailable` park do.
 
 The `accounts` table (migration `0006`) keeps only what the page shows, never a
 credential: `provider` (`github`, `agent`, or `agent/<kind>`, which keeps when that
@@ -206,10 +205,8 @@ Result:
 Failures, worded for the console: not signed in ("The Bridge isn't signed in to
 GitHub: sign in on the Bridge's Accounts tab, then share the book again."), signed
 in but the sign-in couldn't be refreshed ("The Bridge's GitHub sign-in couldn't be
-refreshed because GitHub couldn't be reached: share the book again once it can.";
-told apart before the share starts through `Options.ContribCredential`, and when
-filing parks `contrib_unavailable` from the park's `Cause`, the resolve error, so
-never from the reason's text), GitHub refused the sign-in
+refreshed because GitHub couldn't be reached: share the book again once it
+can."), GitHub refused the sign-in
 ("sign in again on the Bridge's Accounts tab, then share the book again"), nothing
 kept here ("it was not generated here, or they were removed"), a generate job
 still running, not matched, and an earlier share that stopped while filing when
@@ -217,7 +214,10 @@ the Bridge can't yet tell whether GitHub made the issue or the gist it links ("s
 it filed nothing more: share the book again in a few minutes, and if this keeps
 happening, look for the issue on the community repository"). A finished job
 whose `contributed` is empty and `covered` isn't is "Already in the community" in
-the server's notification (`bridge.Job.SharedNothing`).
+the server's notification (`bridge.Job.SharedNothing`). The unrefreshed sign-in
+is told apart before the share starts (`Options.ContribCredential`) and, when
+filing parks `contrib_unavailable`, from the park's `Cause` (the resolve error),
+never from the reason's text.
 
 **The console** (`features/bridge/share-section.tsx`, `shareOffered`) offers it in
 the book's Community card only while the module's flag is on, an online Bridge
@@ -356,9 +356,8 @@ corrected value (editing the book's title changes its row's), or a change added
 or dropped is a new request and files again. So is a retry after the community
 applied some of the rows between the lost answer and the retry: the console
 offers only the rows that still differ, so its change set shrinks (an accepted
-duplicate, below). The
-marker is deleted only while it is still the one the run wrote or
-adopted (`clearFiling`): once the filed or adopted issue is recorded as the job's
+duplicate, below). The marker is deleted only while it is still the one the run
+wrote or adopted (`clearFiling`): once the filed or adopted issue is recorded as the job's
 result (a failed result write keeps it, so the job resumed adopts the issue), when
 nothing can have been filed (`contrib.NothingFiled`: a 4xx answer, a rate limit,
 or a request that never left), or once a person has been told the Bridge can't
@@ -414,9 +413,8 @@ filing clears its marker, and the console unticks only the rows of the book's
 last done job), a new request (a change added, dropped or corrected
 differently) that repeats changes already filed, among them a retry after the
 community applied some of the rows since the lost answer (the console's change
-set shrinks), a refile once the marker is
-over 24 hours old, the
-next suggestion after an `otherBatch` that was the run's own issue edited since,
+set shrinks), a refile once the marker is over 24 hours old, the next suggestion
+after an `otherBatch` that was the run's own issue edited since,
 and a POST still in flight after the one-minute settle when the lookup finds
 nothing.
 
