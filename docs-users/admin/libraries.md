@@ -384,20 +384,28 @@ which entries of a series you already own, so the site can show you what you are
 missing and what is coming next.
 
 It is a plain list of books - title and subtitle, authors, narrators, series and
-position, publisher, language, abridged, genres, ASIN/ISBN, runtime and chapter
-count. Nothing about your server goes into it:
+position (and every other series a book is in, with its position there),
+publication date, publisher, language, abridged, genres, ASIN/ISBN, runtime and
+chapter count. Copies of the same book are listed once. Nothing about your
+server goes into it:
 **no file paths, no folder names, no file sizes or formats, not the library's
 folder, and not your tags** (your own notes such as "Owned" or "Read"). It is
 safe to hand to the site or keep as a record of what a library holds.
 
 ### Exporting with file paths and tags
 
-**⋯ > Export with file paths and tags...** makes the same list, but each book
-also carries its tags and the path of every copy of it, so your own scripts can
-tie a row back to the files. The console asks first: "This file is for you
-alone". The paths show how your folders are named and laid out and the tags are
-your own notes, so don't attach this file to a public issue or upload it to the
-community site. Use the plain **Export book list** for that.
+**⋯ > Export with file paths and tags...** makes the same list for your own
+scripts, with more in it: "Each copy of a book gets its own row, with its path,
+tags and description, so your own scripts can tie it back to the files." Where
+the plain export lists two copies of a book once, this one gives each copy its
+own row, with that copy's own folder, tags and details, so a script can move or
+rename one copy without asking the server about each book. The file name ends
+in `-private` so it is never taken for the one to share.
+
+The console asks first: "This file is for you alone". The paths show how your
+folders are named and laid out and the tags are your own notes, so don't attach
+this file to a public issue or upload it to the community site. Use the plain
+**Export book list** for that.
 
 :::note
 Export covers the **whole** library, not just the parts you have shared with a

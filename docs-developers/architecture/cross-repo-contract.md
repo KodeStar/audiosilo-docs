@@ -85,7 +85,10 @@ parser reads subtitle, publisher, language and abridged and ignores the rest);
 tags, the owner's own notes, ride only with `?include=tags`, and `?include=paths`
 adds `paths[]` per row (the envelope's `library.id` names the library), both for
 the admin's own scripts (`include=paths,tags` asks for both): the default export
-still carries no path and no tag. See the
+still carries no path and no tag. Later additive keys: `published` and
+`series_list` on every row, `description` with `?include=description`, and
+`?copies=separate` for one row per copy (the console's personal export asks for
+`include=paths,tags,description&copies=separate`). See the
 [reference](../server/api/reference.md#get-apiv1librariesidbooks) for the field
 sources and rules.
 
