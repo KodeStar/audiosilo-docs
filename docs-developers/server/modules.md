@@ -13,7 +13,9 @@ The framework landed in Bridge Phase 2a with one module, `contributions`, as an
 inert shell so the console had a real card. Phase 2b gave it its actions, which are
 Bridge jobs rather than routes of its own (see
 [Jobs a module owns](#jobs-a-module-owns)); it still has no routes and no
-background work. `transcode`, `metadata` and `bridge`
+background work. Phase 2c-1 adds `podcasts`, requiring the `podcast` Bridge
+feature, user actions and a poll scheduler (see [Podcasts](../bridge/podcasts.md)).
+`transcode`, `metadata` and `bridge`
 are not modules: their keys, variables and flags shipped before the framework, and
 none is just a toggle (`transcode` follows ffmpeg, `metadata` needs its service built
 at start as well as its switch, `bridge` follows the heartbeat).
@@ -83,6 +85,12 @@ the heartbeat. An action that needs the Bridge refuses on its own, with its own
 Every api test's `newTestEnv` mounts the builtin modules through the real
 `Handler()`, so a bad or clashing route pattern fails the tests, not a start.
 
+The podcast actions are mounted in `internal/api` with the same user wrapper,
+so `builtin` need not import `api`; the module's `Routes` remains nil. Only
+follow/unfollow/check use this gate. Authenticated podcast reads, including kids,
+are core, with the client gate and private-show scope still applied. The
+`podcasts` module needs `podcast`; `contributions` needs `contribute`.
+
 ## Jobs a module owns
 
 A module's action can be a Bridge job instead of a route: `bridge.kindSpec.module`
@@ -111,6 +119,11 @@ under the settings mutex:
   has returned, so two runs of one module never overlap.
 
 Nothing starts before `StartModules` or after `StopModules`.
+
+The `podcasts` module's `Start` runs `podcast.RunScheduler`: it folds ended
+subscribe/poll outcomes and queues due polls, waking on job completion and every
+60 seconds. Off stops that work and holds queued podcast jobs. Already claimed
+jobs may finish; reads and playback of present files remain core.
 
 ## `GET /api/v1/admin/modules`
 

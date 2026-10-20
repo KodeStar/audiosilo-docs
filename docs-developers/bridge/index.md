@@ -30,7 +30,10 @@ with no chapter markers gets its chapters found in the narration, written as
 AudioSilo Contributions App, and the agent's credential handed to the agent
 container per run), `sidecars.contribute` and `meta.correct`, and the setup
 checklist the heartbeat carries to the console.
-Podcasts, read-along, Audible backups and file moves arrive in later phases.
+**Phase 2c-1** adds [podcast shows](podcasts.md): subscribe/poll jobs, feed
+details and artwork, guarded HTTP and sealed private-feed credentials. Audio
+downloads and podcast player views, read-along, Audible backups and file moves
+arrive later.
 :::
 
 ## What it is for
@@ -83,15 +86,16 @@ flowchart LR
     admin -.->|"opens (link from the console)"| page
 ```
 
-- The server **stores intents and status**: the jobs admins ask for
-  (`bridge_jobs`) and the Bridge's last heartbeat (`bridge_status`). It never opens
-  a connection to the Bridge.
+- The server **stores intents and status**: console and podcast jobs in
+  `bridge_jobs`, follows and feed state in its catalog, and the Bridge's last
+  heartbeat in `bridge_status`. It never opens a connection to the Bridge.
 - The Bridge **pulls**: it sends a heartbeat every 30 seconds, long-polls for jobs,
   and reports progress, which renews each job's lease.
 - The console links to the Bridge's own page (the heartbeat's `ui_url`) for the
   admin's browser to open, nothing more.
-- **Removing the Bridge breaks nothing.** Its capability turns off two minutes
-  after its last heartbeat, and anything that needs it disappears from the UI.
+- **Saved content stays readable without the Bridge.** Its capability turns off
+  two minutes after its last heartbeat; feed polling and new Bridge work wait
+  for its return. Podcast reads still require a compatible client and scope.
 
 This keeps the server's surface unchanged: it needs no route to the Bridge, no
 credentials for it, and nothing about the Bridge's network.
@@ -117,12 +121,13 @@ workspace `CROSS-REPO.md`; this site's digest is
 
 A few rules hold across the seam:
 
-- **Bridge actions are admin-only.** Only an admin pairs a Bridge, queues its jobs
-  or cancels them, and the Bridge's token works only while the admin who paired it
-  is still an enabled admin.
+- **Console Bridge actions are admin-only.** Only an admin pairs a Bridge,
+  queues console jobs or cancels them, and the Bridge's token works only while
+  that admin is enabled. Podcast follow/unfollow/check are separate module user
+  actions for adults, not demo accounts; the server creates their jobs.
 - **One Bridge per server.** Pairing another revokes the first.
 - **Library mappings are checked, never assumed.** The Bridge proves it sees the
-  server's copy of a library (a known book's files, with the server's sizes) before
+  server's copy of a library (a known book's file sizes, or a podcast root marker) before
   anything may write there. See [Library mappings](mappings.md).
 - **Path is the identity**, as everywhere: a job is about `(library_id, rel_path)`,
   follows its book when it moves, and goes with its library.
@@ -164,6 +169,8 @@ the mark; see [generated content](../server/api/reference.md#generated-content))
   staging protocol, and the credential hand-off.
 - [Contributions](contributions.md) - Phase 2b: the Accounts tab (the GitHub
   sign-in, the agent credentials), `sidecars.contribute` and `meta.correct`.
+- [Podcasts](podcasts.md) - feed files, polling, private credentials and the HTTP guard.
+
 - [Configuration](configuration.md) - the Bridge's settings and environment, the
   images and the compose example.
 - [Development](development.md) - the gate, the layout and the Bridge's own page.

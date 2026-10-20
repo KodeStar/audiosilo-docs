@@ -8,7 +8,10 @@ The server only ever **reads** your books. The Bridge is the part that may **wri
 to your library folders and run heavy work, so the server can stay read-only and
 safe to put on the internet.
 
-You don't need one. Without a Bridge everything in AudioSilo works as before.
+A Bridge is optional for listening to your existing books.
+[Podcasts](podcasts.md) need one and the Podcasts module. Released player apps
+do not show podcasts yet; player views arrive in a later release. Only the
+admin console lists podcast libraries for now.
 
 :::info What it does today
 The Bridge is new. Today it
@@ -19,7 +22,9 @@ a book that has none, and you can ask it to **Verify** a library to check it is
 set up. With the [Contributions module](server.md#modules) on, it also
 [shares characters and recaps](#share-with-the-community) and
 [suggests your corrections](#suggest-corrections) to the community metadata
-database. Later versions add more jobs, such as podcasts.
+database. With the **Podcasts** module on, it also follows podcast feeds and
+keeps their show details and artwork up to date, without downloading episode
+audio in this release.
 :::
 
 To set one up, see [Running a Bridge](../getting-started/running-a-bridge.md). This
@@ -172,6 +177,8 @@ Each library shows its folder **On the server**, the folder **On the Bridge**, a
 the book it **Checked with**. The Bridge doesn't take a folder's word for it: it
 finds a book the server knows and checks that its files are there with exactly the
 same sizes, and only then tries writing a small test file (which it removes).
+For a podcast library it compares a marker read through both mounts instead.
+**Verify** below uses the book comparison and is for books libraries.
 
 When a library isn't **Ready**, the line under it says why. The usual reasons:
 
@@ -180,8 +187,10 @@ When a library isn't **Ready**, the line under it says why. The usual reasons:
   each library is on its own page.
 - **It's a different copy.** A file is missing or a different size: the folder the
   Bridge sees isn't the one the server reads.
-- **The library has no books yet.** With nothing to compare, the Bridge never calls
-  a library found. It checks again once the server has indexed a book there.
+- **A books library has no books yet.** With nothing to compare, the Bridge never
+  calls it found. It checks again once the server has indexed a book there.
+  A podcast library instead uses a small marker the Bridge writes and the server
+  reads back, so it can be empty and still become **Ready**.
 - **It can only read the folder** (**Can't write**): the folder is mounted
   read-only for the Bridge, or the Bridge runs as a user who can't write there.
   Mount it read-write and set the Bridge's `PUID`/`PGID` to the owner of your
@@ -249,6 +258,12 @@ shows the same way, and "Description written" once done, and so does a
 with "24 chapters found" once done. A **Community share** job
 ([Share with the community](#share-with-the-community)) and a **Corrections** job
 ([Suggest corrections](#suggest-corrections)) link what they filed once done.
+
+Podcast follow requests also appear here. They validate a feed and save the
+show's details and artwork; their displayed feed address is shortened so private
+credentials stay hidden. Routine podcast checks are left out of this default
+list, and neither kind sends a finished or failed notification. The console
+does not have a follow-by-URL screen yet. See [Podcasts](podcasts.md).
 
 **Cancel** stops a job. A job that is waiting is cancelled at once; one the Bridge
 is working on shows **Cancelling** until the Bridge stops it, within a few seconds.

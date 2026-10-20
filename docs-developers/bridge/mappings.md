@@ -1,6 +1,6 @@
 ---
 title: Library mappings
-description: "How the Bridge finds each server library on its own disk and proves it has the server's copy: the default mapping, the size comparison, the write probe, why a library with no book is never mapped, and how often it checks."
+description: "How the Bridge finds each server library on its own disk and proves it has the server's copy: the default mapping, the size comparison, the write probe, why a books library with no book is never mapped, the podcast marker, and how often it checks."
 ---
 
 The server and the Bridge usually run in different containers, so a library at
@@ -26,7 +26,7 @@ looks at:
 
 ## The check
 
-For each library, one at a time:
+For each **books** library, one at a time:
 
 1. **The folder.** The mount path must exist and be a folder.
 2. **A known book.** The Bridge asks the server for the library's **sample book**
@@ -50,10 +50,37 @@ empty mount point can sit at the right path. The research spike for the Bridge
 found that only comparing a known book's file sizes with the server's catches a
 stale copy of a library, so that is the test.
 
-**A library with no indexed book is never mapped.** With nothing to compare, a
+**A books library with no indexed book is never mapped.** With nothing to compare, a
 wrong mount would look right, and a later write job would land in the wrong
 folder. Such a library reports "the library has no indexed book to compare against
 yet" until the server has indexed one.
+
+## Podcast libraries: the marker
+
+Podcast libraries have no sample book. `internal/mapping/podcast.go` instead
+checks the shared root with `.audiosilo/library.json`:
+
+```json
+{"version":1,"library_id":3,"nonce":"a1b2c3d4e5f60718a1b2c3d4e5f60718"}
+```
+
+The Bridge creates a missing marker after probing writability, then calls
+`GET /api/v1/bridge/libraries/{id}/marker` and requires the same nonce before
+reporting `mapped`. It probes writing again for `writable`. A new marker is
+removed on a failed check, so a wrong mount is not left claiming that library.
+A marker of a removed library can be replaced; one naming another current
+library is refused.
+
+Both sides require version 1, a 32-character lowercase hex nonce, a regular file
+no larger than 4 KiB and a non-symlink `.audiosilo` directory. The server also
+checks the library id and answers only `{nonce}`; absent or invalid is
+`404 no_marker`. `checked_path` is `.audiosilo/library.json`. The library can be
+empty, but both mounts must see the marker. An older Bridge's sample-book lookup
+on a podcast library returns `404 no_book`, so it cannot map it as books.
+
+Marker lookup errors currently read as "this folder isn't the library the
+server sees" on the Bridge, including a failed server request. The normal
+mapping recheck interval applies. `bridge.verify` below remains a book check.
 
 ## What it reports
 
@@ -63,9 +90,9 @@ Each check becomes one entry of the heartbeat's `libraries`:
 |---|---|
 | `library_id` | the server's library |
 | `mount_path` | where the Bridge looked |
-| `mapped` | the sample book's files were all there with the server's sizes |
+| `mapped` | the sample book's file sizes matched, or the podcast marker matched |
 | `writable` | the probe file could be written and removed there |
-| `checked_path` | the sample book's path (once the server named one) |
+| `checked_path` | the sample book's path, or `.audiosilo/library.json` for podcasts |
 | `error` | why it isn't mapped or writable, `""` when it is both |
 
 The errors the Bridge writes:

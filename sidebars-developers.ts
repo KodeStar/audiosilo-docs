@@ -70,6 +70,7 @@ const sidebars: SidebarsConfig = {
         'bridge/index',
         'bridge/pairing-and-jobs',
         'bridge/mappings',
+        'bridge/podcasts',
         'bridge/generating',
         'bridge/chapters',
         'bridge/attachments',

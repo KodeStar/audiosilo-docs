@@ -49,6 +49,21 @@ The full and cuda images set `AUDIOSILO_BRIDGE_ASR_BACKEND=whisper-cpp` and
 `AUDIOSILO_BRIDGE_ASR_WHISPER_CLI_PATH=/opt/whisper/whisper-cli` for their bundled
 speech recognition.
 
+## Podcasts
+
+These settings are read at startup; restart after editing the file or environment.
+They apply to the guarded feed/artwork client, independently of speech recognition
+and the agent.
+
+| Setting | Environment | Default | What it is |
+|---|---|---|---|
+| `podcasts.allow_networks` | `AUDIOSILO_BRIDGE_PODCASTS_ALLOW_NETWORKS` | `[]` | CIDR list explicitly allowed for feed and artwork fetches; YAML array, comma-separated in the environment. Invalid CIDRs fail startup. Private, loopback and other non-public addresses are blocked unless allowed; grant only the ranges needed |
+| `podcasts.max_feed_mb` | `AUDIOSILO_BRIDGE_PODCASTS_MAX_FEED_MB` | `32` | feed response cap in MiB after decompression, 1 to 64; separate from the 24 MiB saved-file cap and fixed 10 MiB artwork cap |
+
+The server's toggle is `modules.podcasts.enabled`, environment
+`AUDIOSILO_MODULES_PODCASTS_ENABLED`, default `false`. It is not a Bridge setting.
+See [Podcasts](podcasts.md) for the HTTP guard, on-disk format and secrets.
+
 ## ASR workers
 
 | Setting | Environment | Default | What it is |
@@ -197,7 +212,7 @@ one Dockerfile with four targets:
 | Tag | Target | What's in it | Arch |
 |---|---|---|---|
 | `latest` | `full` (the default) | the Bridge, ffmpeg, and a CPU build of whisper.cpp for speech recognition | amd64, arm64 |
-| `latest-slim` | `slim` | the Bridge and ffmpeg only: for a Bridge that never transcribes (today's jobs, and podcasts later) | amd64, arm64 |
+| `latest-slim` | `slim` | the Bridge and ffmpeg only: for a Bridge that never transcribes (including podcast feed following and checks) | amd64, arm64 |
 | `latest-cuda` | `cuda` | speech recognition on an NVIDIA GPU (run with `--gpus all`) on the `nvidia/cuda` runtime base | amd64 |
 | `latest-agent` | `agent` | the [agent container](agent-container.md#the-image): the pinned native `claude` and `codex` CLIs and the Bridge binary as their runner (`audiosilo-bridge agent-runner`), on Debian bookworm-slim | amd64, arm64 |
 

@@ -228,7 +228,7 @@ Failures a person can fix also carry a machine-readable **`code`** next to
 | `has_members` | `409` | `PATCH /admin/users/{id}` assigning a person who has household members of their own |
 | `invalid_keep_members` | `400` | `DELETE /admin/users/{id}?keep_members=` with an entry that isn't one of that person's members |
 | `kind_unavailable` | `409` | `POST /admin/bridge/jobs` (or `GET /admin/bridge/estimate`) for a kind the paired Bridge doesn't run, or before any Bridge has reported |
-| `library_not_writable` | `409` | `POST /admin/bridge/jobs` for a kind that writes (`sidecars.generate`, `sidecars.describe`, `chapters.detect`) in a library the Bridge's last heartbeat doesn't report mapped and writable |
+| `library_not_writable` | `409` | podcast follow/check, or `POST /admin/bridge/jobs` for a kind that writes (`sidecars.generate`, `sidecars.describe`, `chapters.detect`) in a library the Bridge's last heartbeat doesn't report mapped and writable |
 | `cannot_contribute` | `409` | `POST /admin/bridge/jobs` for `sidecars.generate` with `contribute: "issue"`, `sidecars.contribute` or `meta.correct` while the Bridge's last heartbeat doesn't say it can contribute (its `setup.can_contribute`, else `estimates.sidecars.can_contribute`) |
 | `generate_open` | `409` | `POST /admin/bridge/jobs` for `sidecars.describe`, `chapters.detect` or `sidecars.contribute` while a `sidecars.generate` job is open for the book (it writes the description, finds a chapterless book's chapters, and replaces the characters and recaps a share would file, itself) |
 | `contribute_open` | `409` | `POST /admin/bridge/jobs` for `sidecars.generate` while a `sidecars.contribute` job is queued or working for the book (a parked one, or a queued one held while the `contributions` module is off, is cancelled instead) |
@@ -241,12 +241,21 @@ Failures a person can fix also carry a machine-readable **`code`** next to
 | `no_heartbeat` | `409` | the Bridge's `GET /bridge/jobs/next` before its first heartbeat |
 | `no_book` | `404` | the Bridge's `GET /bridge/libraries/{id}/book` with no indexed book at the path (or in the library) |
 
+Podcast actions add `invalid_request` and `invalid_feed_url` (`400`),
+`no_library_access` (`403`), `show_not_found` (`404`), `not_podcast_library`,
+`bridge_unavailable` and `library_not_writable` (`409`), and
+`too_many_requests` / `checked_recently` (`429`). Library kinds add
+`invalid_kind` / `kind_immutable` (`400`) and `root_overlaps` (`409`). An
+undownloaded episode streams as `404 not_downloaded`; authorized podcast
+library lists can be empty after privacy filtering. Full shapes and async
+feed failures: [Podcasts](reference.md#podcasts).
+
 **Branch on `code`, not on the English `error` text**, which is free to change.
 Errors without a `code` are ones a client can't help the person fix.
 
-The one exception is the media file-serving layer: `stream`/`transcode` 404s
-and transcode failures are plain-text `http.Error` responses, not this JSON
-envelope.
+The media file-serving layer is separate: missing-file and transcode failures
+from that layer use plain-text `http.Error` responses. Podcast `not_downloaded`
+is returned before file serving and uses the JSON envelope.
 
 Status mapping is consistent across handlers:
 
@@ -296,7 +305,8 @@ Two server-side guarantees apply to every `?path=`:
   the library root (400 `invalid path`).
 - **Scope authorization** - the path is checked against the caller's share
   scope (`authorizedPath`); a path outside any granting share is 403, even if it
-  exists. Admins bypass scoping.
+  exists. Admins bypass book share scoping; podcast client and private-show
+filters apply to admins too (see [Podcast visibility](../auth-and-security.md#podcast-visibility)).
 
 :::warning `books.id` is not an identity
 Book objects include an `id`, but it is a rebuildable index artifact - it
@@ -375,7 +385,8 @@ single-shot with a `limit` and no pagination.
     "cast": true,
     "household_members": true,
     "bridge": false,
-    "contributions": false
+    "contributions": false,
+    "podcasts": false
   },
   "auth": { "methods": ["auth_code", "password"] },
   "demo": { "enabled": false }
@@ -455,6 +466,7 @@ needs; it is `false` (sent, not absent) otherwise. An older server omits it:
 
 | Flag | Gates |
 |---|---|
+| `podcasts` | the Podcasts module: follow/unfollow/check and feed scheduling. Needs the `podcast` Bridge feature; false unless the toggle is on and that Bridge is online. Read routes are core, subject to the client gate and private-show scope. Released players remain excluded until a supported player release; see [Podcasts](reference.md#podcasts) |
 | `contributions` | the Contributions module: sending corrections and generated characters and recaps to the community database through the Bridge. Needs the Bridge's `contribute` feature. The console reads it (the generate dialog's contribute switch, Share with the community, Suggest corrections; with `meta` in `bridge.features` for corrections); the player never contributes and doesn't read it |
 
 Gate on the flag rather than on the server version: an older server answers

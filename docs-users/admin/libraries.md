@@ -3,10 +3,16 @@ title: "Libraries"
 description: "Adding, editing, ordering, rescanning, exporting and deleting libraries in the AudioSilo admin console, scan schedules and skipped files, whether book details come from tags or folder names, correcting folder detection, and what happens when a library's folder goes missing."
 ---
 
-A **library** is a folder on the server that AudioSilo reads for audiobooks.
+A **library** is a folder on the server that AudioSilo reads for audiobooks or
+podcasts. Each library has one **Kind**: **Books** or **Podcasts**.
 You can have several - for example one for fiction, one for kids - and control
 per person which ones (or which parts of them) are visible via
 [shares](sharing.md).
+
+[Podcasts](podcasts.md) need a Bridge and the Podcasts module. Released player
+apps do not show podcasts yet; player views arrive in a later release. Only the
+admin console lists podcast libraries for now. The book detection, book details
+and export tools described below apply to **Books** libraries.
 
 Libraries live under **Library > Libraries** in the
 [admin console](console-tour.md) ("Folders AudioSilo reads. Your files stay
@@ -40,11 +46,17 @@ menu with **Edit library...**, **Folder detection...**, **Export book list**,
 
 Click **Add library** (or choose **Add a library** in the
 [command palette](console-tour.md#search-and-commands)). The **Add a library**
-dialog asks for two things:
+dialog asks for:
 
+- **Kind** - **Books** (the default) or **Podcasts**. You cannot change it later.
 - **Name** - a display name, e.g. `Fiction`.
 - **Folder** - the folder on the server's own disk, e.g. `/srv/audiobooks`.
   Type it, or click **Browse** to pick it.
+
+A podcast library needs its own folder: it cannot share a root with, contain,
+or sit inside another library. Mount the same folder read-write in the Bridge;
+the server can keep reading it read-only. Its card has a **Podcasts** badge,
+and leaves out folder detection and book exports.
 
 Under them are two optional scan settings, **Scan automatically** and **Skip
 these files and folders** - see [Scanning on a schedule](#scanning-on-a-schedule)
@@ -70,8 +82,9 @@ the one you're in. A few details:
 - Very large folders show only their first 1,000 subfolders; type the path if
   yours isn't listed.
 
-There is no layout or structure to choose. As the dialog says, AudioSilo works
-out which folders are books by itself.
+For a **Books** library there is no layout or structure to choose. AudioSilo
+works out which folders are books by itself. A **Podcasts** library reads the
+show details the Bridge saves instead.
 
 Click **Add library and scan**. The library appears straight away and its
 first scan starts ("The first scan has started. Covers fill in as books are
@@ -95,6 +108,7 @@ point it at another folder, or change how it's scanned."
 
 ![Editing a library: the folder, the scan settings and where book details come from](/img/screenshots/admin/library-edit.png)
 
+- **Kind** is shown but cannot be changed.
 - **Name** and **Folder** (with the same **Browse** picker).
 - **Scan automatically** and **Time** - see
   [Scanning on a schedule](#scanning-on-a-schedule).
