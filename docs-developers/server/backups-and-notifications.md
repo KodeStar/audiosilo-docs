@@ -232,10 +232,14 @@ when it named one; the bell says "Bridge job finished");
 (warning colour) or `<kind> failed: <title>` (`Characters and recaps`,
 `Description`, `Chapters`, `Sharing with the community`, `Corrections`, `Bridge
 check`, else `Bridge job`; `notify.bridgeKindWords`), its text the park
-code in words (`book_not_writable`, `budget_exceeded`, `agent_credential_refused`
-(replace it where the Bridge gets it: its Accounts tab, which resumes the job, or
-the agent container, which the job tries again by itself), `contrib_unavailable`
-(sign in to GitHub on the Bridge's Accounts tab, which resumes the job), `core_needed`,
+code in words (`book_not_writable`, `budget_exceeded` (raise the cap on the
+Bridge, or wait for the monthly one to reset; a cap set in its `config.yaml` or
+environment needs a restart, which resumes the job), `agent_credential_refused`
+(replace it where the agent gets it: the agent container's own credential, which
+it uses first, or the Bridge's Accounts tab; the job then carries on by itself),
+`contrib_unavailable` (sign in to GitHub on the Bridge's Accounts tab and the job
+carries on; when the Bridge is signed in already, GitHub couldn't be reached to
+refresh its sign-in, so retry the job there once it can be), `core_needed`,
 `chapters_not_detected`; anything else "See the job in Settings > Bridge."). Both link to
 `/server?topic=bridge`. See [Characters and recaps](../bridge/generating.md#notifications).
 

@@ -83,7 +83,9 @@ page shows the agent, the speech recognition, the budgets with this month's
 spend and the retention on its Status tab (`GET /api/engine`), and says where
 each is set: the monthly budget on its Settings tab (or by its variable, read at
 the next start), the per-book cap and the retention in `config.yaml`, read at the
-next start.
+next start. That start re-admits only the jobs parked `budget_exceeded` a changed
+cap could let through; with the caps unchanged they stay paused
+([Parks](generating.md#parks)).
 
 ## Contributing: GitHub
 

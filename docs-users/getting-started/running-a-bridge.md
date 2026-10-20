@@ -302,7 +302,8 @@ even when you keep the amount. A budget set with
 locked on the page. A budget saved on the page applies at once: any job paused
 at the old cap carries on if the new budget leaves room. One set with the
 variable, or by hand in `config.yaml`, applies when the Bridge next starts, and a
-paused job then carries on by itself. See [Costs and limits](#costs-and-limits) for the rest.
+job paused at the old cap then carries on by itself (a restart with the cap
+unchanged leaves it paused). See [Costs and limits](#costs-and-limits) for the rest.
 
 ### 9. GitHub, to share with the community (optional)
 
@@ -321,7 +322,9 @@ Once every required step is done, open a book in the console and
 These are the Bridge's settings for characters and recaps. Set them in its
 `environment` (or in `config.yaml` in its data folder) and restart it. After a
 budget is raised, a job paused at the old cap carries on by itself once the
-Bridge is back, with no **Retry**. The monthly budget can also be changed on the
+Bridge is back, with no **Retry**, even when the new budget is still short of
+what it has spent (it then pauses again before spending anything). A restart
+with the budgets unchanged leaves paused jobs paused. The monthly budget can also be changed on the
 Bridge page's **Settings** tab, which applies at once:
 
 | Setting | Variable | Default | What it does |

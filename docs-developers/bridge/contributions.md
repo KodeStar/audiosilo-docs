@@ -69,6 +69,8 @@ which needs only the App's public client ID. The code is the Bridge's
 A sign-in that changes (signed in, signed out, refused) kicks a heartbeat, so the
 console's Setup card and the `contribute` feature follow within seconds, and
 re-admits the books parked `contrib_unavailable` once the Bridge can contribute.
+A book parked there while signed in (the sign-in's refresh couldn't reach GitHub)
+sees no change, so it waits for **Retry**.
 
 The `accounts` table (migration `0006`) keeps only what the page shows, never a
 credential: `provider` (`github`, `agent`, or `agent/<kind>`, which keeps when that
@@ -309,17 +311,21 @@ job or book: before `CreateIssue` a marker `{since, sum, job}` (`since` GitHub's
 time from `Client.Now`, `sum` the `contrib.IssueSum` of the title and body sent)
 goes into the Bridge's store under `meta.correct.filing/<server id>/<request>`,
 the request being what the admin asked to change (`filingKey`): the sha256 of the
-record (`work_id`, `recording_id`, the ASIN and the ISBN, normalized) and the
-changes as a set of `{field, corrected}`, sorted. The evidence, the server's
-`source` stamp, the region, each change's `current` value and the order of the
-changes don't count: the dialog starts from its default evidence each time it
-opens (`book.corrections.evidencePrefill`, which names the server's version, in
-the admin's language). So the job resumed, or a new job asking for the same
-changes (the admin suggesting them again after a lost answer, whatever the
-evidence says now and wherever the book is on disk), finds the marker. Another
-field, another corrected value (editing the book's title changes its row's), or
-a change added or dropped is a new request and files again. Markers written
-under the earlier key (the params less `source`) are never read again. The
+record and the changes as a set of `{field, corrected}`, sorted. The record is
+the `work_id` and the `recording_id` when there is one, else the ASIN, ISBN and
+region that pick the recording, in the forms `ParseParams` gives them (the ASIN
+upper case, the region lower case). The evidence, the server's `source` stamp,
+each change's `current` value and the order of the changes don't count: the
+dialog starts from its default evidence each time it opens
+(`book.corrections.evidencePrefill`, which names the server's version, in the
+admin's language). So the job resumed, or a new job asking for the same changes
+(the admin suggesting them again after a lost answer, whatever the evidence says
+now and wherever the book is on disk), finds the marker. Another field, another
+corrected value (editing the book's title changes its row's), or a change added
+or dropped is a new request and files again. So is a retry after the community
+applied some of the rows between the lost answer and the retry: the console
+offers only the rows that still differ, so its change set shrinks (an accepted
+duplicate, below). The
 marker is deleted only while it is still the one the run wrote or
 adopted (`clearFiling`): once the filed or adopted issue is recorded as the job's
 result (a failed result write keeps it, so the job resumed adopts the issue), when
@@ -339,7 +345,12 @@ which lags; the rows of pages read before one that failed count too) and:
   it is in the list. The marker's is the request as composed then: the title is
   the work's live title, so a title correction meta's bot applied since (or a
   recording that took the ASIN since) changes what the run composes now, and so
-  does other evidence or a new `source` stamp;
+  does other evidence or a new `source` stamp. The job that wrote the marker
+  (resumed) can always adopt the marker's sum; another job only while the marker
+  is under a day old by GitHub's clock (`contrib.FilingStale`). Later the same
+  changes suggested again are no retry of the lost answer (whose issue may be
+  closed by then): that issue reads as a same-record batch (below) and the
+  person is told once;
 - on a `401` (`contrib.Unauthorized`, even past a same-record batch on a page read
   before) fails `errRefused` (sign in again on the Accounts tab), and on a rate
   limit `errRateLimited`, the marker kept either way;
@@ -370,7 +381,9 @@ Duplicates stay possible, accepted, and meta's intake catches a batch already
 applied: the same corrections suggested again after they were filed (a confirmed
 filing clears its marker, and the console unticks only the rows of the book's
 last done job), a new request (a change added, dropped or corrected
-differently) that repeats changes already filed, a refile once the marker is
+differently) that repeats changes already filed, among them a retry after the
+community applied some of the rows since the lost answer (the console's change
+set shrinks), a refile once the marker is
 over 24 hours old, the
 next suggestion after an `otherBatch` that was the run's own issue edited since,
 and a POST still in flight after the one-minute settle when the lookup finds

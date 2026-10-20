@@ -173,10 +173,10 @@ in the console (**Generating is paused** in the player) with the reason, and
 | The agent isn't available | Nothing, or set the agent's credential on the Bridge's Accounts tab: the job carries on once the agent container is running and has a credential (at once after a change on the Accounts tab). Check it if this lasts. |
 | The agent reached its usage limit | Nothing: it carries on once the limit resets. |
 | Waiting for an ASR worker | Nothing, or start the worker: the Bridge is set to wait for an [ASR worker](../getting-started/running-a-worker.md#when-the-worker-is-off) when none is connected, and the job carries on as soon as one connects. |
-| The agent's credential was refused | Replace it where the agent gets it: on the Bridge's Accounts tab, or in the agent container when it has one of its own (see [Running a Bridge](../getting-started/running-a-bridge.md#7-the-agents-credential)). The job carries on at once after a change on the Accounts tab, else it looks again by itself every 30 minutes. |
-| The job reached its spending limit | The monthly cap carries on by itself on the 1st of next month, or at once when you raise it on the Bridge's **Settings** tab and the new cap leaves room. The per-book cap, or a cap set in the Bridge's environment, needs raising and a restart of the Bridge: the job then carries on by itself, with no **Retry** (see [Costs](#costs-and-the-monthly-cap)). |
+| The agent's credential was refused | Replace it where the agent gets it: in the agent container when it has one of its own (the agent uses that one first), else on the Bridge's Accounts tab (see [Running a Bridge](../getting-started/running-a-bridge.md#7-the-agents-credential)). The job carries on at once after a change on the Accounts tab, else it looks again by itself every 30 minutes. |
+| The job reached its spending limit | The monthly cap carries on by itself on the 1st of next month, or at once when you raise it on the Bridge's **Settings** tab and the new cap leaves room. The per-book cap, or a cap set in the Bridge's environment, needs raising and a restart of the Bridge: the job then carries on by itself, with no **Retry** (a restart with the cap unchanged leaves it paused; see [Costs](#costs-and-the-monthly-cap)). |
 | The Bridge can't write to this book's folder | Give the Bridge's user write access to the book's folder. It checks again every minute. |
-| Contributing needs a GitHub token on the Bridge | Only when contributing: sign the Bridge in to GitHub on its Accounts tab (see [Bridge accounts](../getting-started/bridge-accounts.md#github)). The job carries on once it is signed in. |
+| Contributing needs a GitHub token on the Bridge | Only when contributing: sign the Bridge in to GitHub on its Accounts tab (see [Bridge accounts](../getting-started/bridge-accounts.md#github)), and the job carries on. If the Bridge is signed in already, GitHub couldn't be reached to refresh its sign-in: **Retry** the job on the Bridge's page once GitHub can be reached. |
 | The community has no entry for this book yet | Only when contributing: add the book to the community database, or cancel and generate it again kept local. Your copy is already saved. |
 | The ebook couldn't be read | Cancel, then generate again: it reads the audio. |
 | The chapters couldn't be found in the narration | A book without chapter markers whose chapter headings couldn't be heard with confidence. See [When no chapters are found](#when-no-chapters-are-found). |
@@ -460,11 +460,12 @@ Two limits keep it in check, both set on the Bridge (see its
   **Settings** tab. The change applies at once: a paused job carries on if the new
   cap leaves room. When the Bridge's environment sets the cap, the tab shows it
   locked: change it there and restart the Bridge, and a paused job carries on
-  by itself.
+  by itself (a restart with the cap unchanged leaves it paused).
 - **A cap per book**, **$75** by default, set in the Bridge's environment or its
   `config.yaml`, not on the page: a change applies when the Bridge next starts,
   and a job paused at the old cap then carries on by itself (one still over the
-  new cap pauses again before spending anything).
+  new cap pauses again before spending anything). A restart with the cap
+  unchanged leaves it paused.
 
 **Settings > Bridge** in the console shows the Bridge's agent and whether it is
 ready, whether it is **Paid by** a subscription or an API key, what **This
