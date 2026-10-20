@@ -3779,7 +3779,7 @@ Advertised by the `export` [capability](#get-apiv1server).
 | Query param | Type | Default | Notes |
 |---|---|---|---|
 | `include` | string | - | A comma list, for the admin's own scripts: `paths` adds each row's `paths`, `tags` its `tags`, `description` its `description` (see below); `include=paths,tags,description` asks for all three, and repeating the param (`?include=paths&include=tags`) counts too. Any other value is `400` `include must be a comma list of "paths", "tags" and "description"`, so a typo never silently drops what was asked for |
-| `copies` | string | `merged` | How copies of the same book are written: `merged` collapses them into one row (see the per-book notes); `separate` writes one row per indexed book, never merged, so each row has its own path, tags and facts. Any other value is `400` `copies must be "merged" or "separate"` |
+| `copies` | string | `merged` | `merged` writes copies of the same book as one row (see the per-book notes); `separate` writes one row per copy (see below). Any other value is `400` `copies must be "merged" or "separate"` |
 
 Unlike every other endpoint this one answers with a file download rather than a
 plain JSON body:
@@ -3837,11 +3837,9 @@ library, so no row repeats it). With `?include=tags` each row carries its
   "paths": ["Lee Child/Jack Reacher/02 Die Trying", "Lee Child/Die Trying (MP3)"] }
 ```
 
-With `?include=description` each row carries its `description` (the effective
-one, as on the player's book). It is opt-in for size rather than privacy: a
-description is long and usually a publisher's blurb, so the file to share stays
-lean. It is not personal, so asking for it alone keeps the shareable filename.
-The whole library's descriptions are read in one query, never one per book.
+With `?include=description` each row carries its `description`. It is opt-in
+for size rather than privacy: a description is long and usually a publisher's
+blurb, so the file to share stays lean.
 
 With `?copies=separate` copies of the same book are not merged: each indexed
 book is its own row with its own facts, its own `tags` and a `paths` holding its
@@ -3876,9 +3874,9 @@ Per-book notes:
 - `series` / `series_position` are the book's main series. `series_list` is
   every series the book is in, main first, as `[{ "name", "position" }]`
   (`position` in the same string form, omitted when the book has none in that
-  series). It is present exactly when the player's `Book.series_list` is: when
-  the book is in a series beyond its main one, so a book in one series carries
-  only `series`:
+  series). Present exactly when the player's
+  [`Book.series_list`](#get-apiv1librariesidbooks) is, so a book in one series
+  carries only `series`:
 
   ```json
   { "title": "The Colour of Magic", "authors": ["Terry Pratchett"],
@@ -3887,22 +3885,21 @@ Per-book notes:
                      { "name": "Rincewind", "position": "1" } ],
     "published": "1983-11-24" }
   ```
-- `published` is the book's publication date, `YYYY`, `YYYY-MM` or
-  `YYYY-MM-DD` (the effective value, as on the player's book). Omitted when unknown.
 - `runtime_min` is the book's duration in whole minutes (rounded);
   `chapters` is the number of indexed chapters. Both are omitted when unknown.
 - `asin` / `isbn` come from the book's identifiers, including any attached via
   [`PUT …/enrichment`](#put-apiv1adminlibrariesidenrichment).
-- `subtitle`, `publisher`, `language`, `abridged`, `genres` and (with
-  `include=tags`) `tags` are the effective values, as on the player's
+- `subtitle`, `published` (`YYYY`, `YYYY-MM` or `YYYY-MM-DD`), `publisher`,
+  `language`, `abridged`, `genres`, (with `include=description`) `description`
+  and (with `include=tags`) `tags` are the effective values, as on the player's
   [`Book`](#get-apiv1librariesidbooks) (`abridged` absent while unknown). The
   metadata site's importer reads `subtitle`, `publisher`, `language` and
   `abridged` and ignores keys it doesn't know (`genres`, `series_list`,
   `published`, `description`, `tags`, `paths`), so the envelope's `version`
   stays `1`.
-- A multi-file (folder) book is **one** entry, and copies of the same book within
-  the library collapse to one entry - the same grouping search and
-  "recently added" de-duplicate on (unless `copies=separate`). The entry takes
+- A multi-file (folder) book is **one** entry. By default (`copies=merged`)
+  copies of the same book within the library also collapse to one entry - the
+  same grouping search and "recently added" de-duplicate on. The entry takes
   each fact (`published`, `description` and `series_list` included) from
   whichever copy has it, and holds every copy's paths and tags.
 
