@@ -576,7 +576,14 @@ writes and meta's `correctBatch` reads), and
 which routes an App-filed issue by its title prefix (`[work] `, `[corrections] `;
 `[characters] `, `[recaps] ` on the community repository) or holds it
 (`intake:held`). The title prefixes and the batch's `v: 1` block are the contract
-between the Bridge and meta.
+between the Bridge and meta. Two more couplings ride on the corrections: how
+meta's form reads a value (`issueform` `formValue`, character references
+decoded) is mirrored by the server's `meta.correct` checks and by the console's
+dialog, so a change there moves both
+([details](../bridge/contributions.md#corrections-metacorrect)); and the server's
+bounds on a batch (128 KiB of params, the value and evidence lengths) must stay
+within what the Bridge reads (64 KiB as stored, an unknown field refused) and
+what meta takes, so raising one starts with meta and the Bridge.
 
 **A change requires:** because the server consumes `metaserve`'s response shapes,
 a change to those shapes ripples audiosilo-meta -> the server's `internal/meta` ->

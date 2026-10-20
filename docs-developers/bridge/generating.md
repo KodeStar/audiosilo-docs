@@ -271,8 +271,8 @@ The engine's own park codes (its `state.ParkCode`) plus two of the Bridge's
 waiting on its own park look again now.
 
 A change on the page that answers a park resumes everything parked on it, engine
-books and [description jobs](#a-description-on-its-own-sidecarsdescribe) alike: a
-monthly budget saved on the **Settings** tab answers `budget_exceeded`, an agent
+books and [description jobs](#a-description-on-its-own-sidecarsdescribe) alike.
+For the agent's parks: a monthly budget saved on the **Settings** tab answers `budget_exceeded`, an agent
 credential changed on the **Accounts** tab `agent_credential_refused` and
 `agent_unavailable`. A cap set in `config.yaml` or the environment is read at the
 next start, which re-admits no engine book parked `budget_exceeded`: press
@@ -280,9 +280,9 @@ next start, which re-admits no engine book parked `budget_exceeded`: press
 
 | Code | Means | Resumes by itself |
 |---|---|---|
-| `agent_unavailable` | the agent container isn't answering, has no CLI or no credential, or didn't claim the job within `agent.claim_timeout_seconds` | yes, 10 minutes later when the container said why (`retry_at`), or on an Accounts tab change |
+| `agent_unavailable` | the agent container isn't answering, has no CLI or no credential, or didn't claim the job within `agent.claim_timeout_seconds` | yes, 10 minutes later when the container said why (`retry_at`), or at once when the agent's credential changes on the Accounts tab |
 | `agent_rate_limited` | the agent account hit its usage limit | yes, when it resets |
-| `agent_credential_refused` | the provider refused the CLI's credential (new in Phase 1a) | it looks again every 30 minutes, or at once on an Accounts tab change |
+| `agent_credential_refused` | the provider refused the CLI's credential (new in Phase 1a) | it looks again every 30 minutes, or at once when the agent's credential changes on the Accounts tab |
 | `budget_exceeded` | the monthly cap (`retry_at` the 1st of next month, UTC) or the per-book cap was reached | the monthly one only: on the 1st, or at once on a **Settings** save that changes it; the per-book one, or a cap the environment sets, after raising it and a restart (and **Retry** for an engine book; see [The budgets](#the-budgets)) |
 | `agent_validation_exhausted`, `qa_no_converge`, `spelling_gate_failure`, `fix_loop_exhausted`, `asr_decode_timeout`, `markers_not_confident`, `ebook_chapters_not_confident`, `supervisor_escalated`, `supervisor_budget` | an engine stage gave up after its bounded retries | no: **Retry** |
 | `chapters_not_detected` | a book with no chapter markers whose chapters couldn't be found in the narration with confidence (Phase 1d; the message says why: no headings heard, a chapter too long, numbers missing). See [Chapterless books](chapters.md#the-park-chapters_not_detected) | no: add chapter markers to the file, cancel and generate again |

@@ -159,8 +159,8 @@ leniently (a later server's field ignored), then:
    - adopts the gist or issue the user made since the marker, less
      `contrib.FilingSkew` (`GistsSince`, `IssuesSinceBy`);
    - files again when GitHub's list is complete and holds none (for an issue, also
-     only once the marker is a minute old, `filingSettle`: GitHub may still be
-     making it; an issue edited since doesn't match, so it is filed again);
+     only once the marker is a minute old, `contrib.FilingSettle` through
+     `Client.Settling`: GitHub may still be making it; an issue edited since doesn't match, so it is filed again);
    - files again (`refileStale`, logged) when the list can't reach back to the
      marker (`contrib.ErrListIncomplete`: the list since the marker only grows, so
      no later lookup settles it) and the marker is over 24 hours old by GitHub's
@@ -225,10 +225,16 @@ decoded the way the community's issue form reads them (`checkProse` on
 `decodeRefs`, mirroring audiosilo-meta's `issueform` `formValue`: each numeric or
 named HTML reference ending in `;` decoded, one naming whitespace read as a space,
 one that decodes to more than two characters left as written; GitHub shows the
-evidence's decoded too). A reference is ASCII, so this covers the characters as
-written as well, and `&#x202E;` is refused like the character itself. The text is
-checked untrimmed, so a U+0085 that a trim would drop before a trailing `&#32;` is
-refused too. A `corrected` value is then read as the community reads it, decoded
+evidence's decoded too). The server (and the console) also decode an upper-case
+`&#X...;`, which meta's form leaves as written, on purpose: GitHub shows it
+decoded, so re-aligning `decodeRefs` with `formValue` must keep `[xX]`. A
+reference is ASCII, so this covers the characters as written as well, and
+`&#x202E;` is refused like the character itself. Only references to the other
+C0 characters, DEL and the C1 points Windows-1252 leaves unmapped (0x81, 0x8D,
+0x8F, 0x90, 0x9D) count as control characters: one to whitespace reads as a
+space, `&#0;` as U+FFFD, and the rest of 0x80-0x9F as Windows-1252 characters. The lengths (500, 2000) count the text as written, trimmed,
+before decoding. The decoded text isn't trimmed again, so a U+0085 before a
+trailing `&#32;` (which a trim after decoding would drop) is refused. A `corrected` value is then read as the community reads it, decoded
 and trimmed (`asRead`), and compared with `current`, which is taken as the record
 spells it: one that so reads as nothing or as `current` changes nothing and is
 refused (a corrected `Tom &amp; Jerry` reads `Tom & Jerry`: refused against a
@@ -255,9 +261,10 @@ corrected values are bound to the book: `current` and the records the job names
 sends the book's community match).
 
 **The Bridge** (`internal/correct`, light lane; `ParseParams` strict, `work_id`
-required, the params at most 64 KiB as the server stores them, which a batch at
-every server bound fits: a server bound raised past that needs a Bridge that
-reads more, shipped first):
+required, an unknown field refused, the params at most 64 KiB as the server
+stores them, which a batch at every server bound fits; `MapCorrections` bounds
+the batch again as meta does: see the workspace CROSS-REPO.md §23 before raising
+a bound or adding a field):
 
 1. reads the work's live coverage (`metaops.FreshCoverageForWork`; `errMetaOff`
    when its `metadata.base_url` is off) and picks the recording: the job's
@@ -302,7 +309,10 @@ goes into the Bridge's store under `meta.correct.filing/<server id>/<request>`,
 the request being the sha256 of the params less the server's `source` stamp. The
 same params are the same request: the job resumed, or a new job asking for the
 same corrections (the admin suggesting them again after a lost answer, whatever
-the book is called by then), finds the marker. Edited evidence, or another set of
+the book is called by then), finds the marker. The dialog starts from its
+default evidence each time it opens (`book.corrections.evidencePrefill`, which
+names the server's version), so a suggestion is the same request only when the
+admin types the evidence exactly as before, on the same server version. Edited evidence, or another set of
 changes (the same ones in another order included), is a new request and files
 again. The marker is deleted only while it is still the one the run wrote or
 adopted (`clearFiling`): once the filed or adopted issue is recorded as the job's
@@ -312,8 +322,8 @@ or a request that never left), or once a person has been told the Bridge can't
 tell (below). A 5xx, which can come after the issue was made, a timeout or a lost
 answer (the client never resends a POST) keeps it and fails the job
 `errNoAnswer` ("GitHub didn't confirm the issue ... suggest them again in a
-minute"). The admin sees each of these failures word for word on
-[Suggest corrections](/users/admin/bridge#suggest-corrections).
+minute"). The user guide quotes these failures word for word
+([Suggest corrections](/users/admin/bridge#suggest-corrections)).
 
 A run that finds a marker lists the core repository's issues made since its time
 less `contrib.FilingSkew` (`contrib.IssuesSince`: the list endpoint, not search,
@@ -326,15 +336,18 @@ which lags; the rows of pages read before one that failed count too) and:
 - on a `401` (`contrib.Unauthorized`, even past a same-record batch on a page read
   before) fails `errRefused` (sign in again on the Accounts tab), and on a rate
   limit `errRateLimited`, the marker kept either way;
-- when it found nothing and the marker is under a minute old by GitHub's clock
-  (`contrib.FilingSettle`, `Client.Settling`: GitHub may still be making the
-  issue) fails `errSettling` ("suggest them again in a minute");
-- for a batch with the same **Record** (the work's page) and another body
-  (`otherBatch`: another admin's, or its own edited since) fails asking the admin
-  to look for a `[corrections]` issue first (`errFiledBefore`). That is said once: when the list was read back to the marker whole
-  and the marker has settled, the marker goes, so the next suggestion files. A
-  marker with no time to look from is told the same way, once, before anything is
-  read;
+- when the list is complete back to the marker and holds nothing, but the marker
+  is under a minute old by GitHub's clock (`contrib.FilingSettle`,
+  `Client.Settling`: GitHub may still be making the issue), fails `errSettling`
+  ("suggest them again in a minute");
+- for a batch with the same **Record** (the work's page, whatever the recording)
+  and another body (`otherBatch`: anyone's, filed by hand or from another server,
+  or its own edited since) fails asking the admin to look for a `[corrections]`
+  issue first (`errFiledBefore`), whatever the marker's age. It is said once only
+  when the list was read back to the marker whole and the marker has settled:
+  then the marker goes, so the next suggestion files. Otherwise the marker stays
+  and the next suggestion is told again. A marker with no time to look from is
+  told the same way, once, before anything is read;
 - files when the list is complete back to the marker and holds none;
 - for any other lookup failure (unlike a share's, also a list it can't read at
   all) fails `errFiledBefore` with the marker kept, until the marker is over 24
@@ -343,11 +356,17 @@ which lags; the rows of pages read before one that failed count too) and:
 
 meta's intake labels a batch whose every change the record already holds
 `data:duplicate`; one with a field a maintainer applies reaches a maintainer
-again. On the create, a `401` and a rate limit fail `errRefused` and
-`errRateLimited` as above, and any other refusal "could not file the corrections: ...", the marker cleared
-(nothing was filed). Two duplicates stay possible, accepted: a new request (edited
-evidence, reordered changes) for corrections already filed, and a POST still in
-flight after the one-minute settle when the lookup finds nothing.
+again. On the create, GitHub's refusal (a 4xx, a rate limit) clears the marker,
+since nothing was filed: a `401` fails `errRefused`, a rate limit
+`errRateLimited`, and any other refusal "could not file the corrections: ...".
+Duplicates stay possible, accepted, and meta's intake catches a batch already
+applied: the same corrections suggested again after they were filed (a confirmed
+filing clears its marker, and the console unticks only the rows of the book's
+last done job), a new request (edited evidence, reordered changes) for
+corrections already filed, a refile once the marker is over 24 hours old, the
+next suggestion after an `otherBatch` that was the run's own issue edited since,
+and a POST still in flight after the one-minute settle when the lookup finds
+nothing.
 
 Result:
 
@@ -387,14 +406,15 @@ leaves them) and `goTrim` trims as Go's `strings.TrimSpace` does.
   the order `tooLong`, `control`, `bidi`, `noChange` (`refusal`) shown as
   `book.corrections.<flag>`: a value over 500 characters, a control character or
   a bidirectional control (U+202A-U+202E, U+2066-U+2069) as written or as a
-  character reference, or a corrected value that reads as the community's value or
+  character reference that reads as one (above), or a corrected value that reads as the community's value or
   as nothing.
 - An evidence problem stops **Suggest N corrections** sending anything
   (`correctionProblem`, shown as `book.corrections.<problem>`): `noEvidence`
-  (blank, `_No response_` or reading as nothing; shown once the field is touched),
-  `evidenceTooLong` (over 2000 characters as written or as the issue carries it,
-  `issueLength`), `evidenceControl` (a control character but a line break or a
-  tab, or a reference to one) and `evidenceBidi`.
+  (blank, `_No response_` or reading as nothing; shown once **Suggest N
+  corrections** has been pressed), `evidenceTooLong` (over 2000 characters as
+  written or as the issue carries it, `issueLength`), `evidenceControl` (a
+  control character other than a line break or a tab, written or as a reference
+  that reads as one) and `evidenceBidi`.
 
 The dialog's header clamps the book's title to two lines (`line-clamp-2`, the
 whole title in its `title` attribute and read out), so a long title never

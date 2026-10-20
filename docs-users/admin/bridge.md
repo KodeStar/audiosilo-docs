@@ -328,7 +328,8 @@ and your value:
   or was cancelled). A row can't be ticked, and says why, when a value is too
   long to send (over 500 characters), holds a control character or a hidden
   text-direction character the community refuses (also when written as a code
-  such as `&#x202E;`), or when your value changes nothing as the community reads
+  such as `&#x202E;`; a code for a space, a line break or a tab reads as a
+  space), or when your value changes nothing as the community reads
   it (`Tom &amp; Jerry` reads as `Tom & Jerry`). When your value holds a
   refused character (often pasted in with the text), retype it; when the
   community's does, that field can't be corrected from here.
@@ -338,8 +339,8 @@ and your value:
   counting one more): say where the right values come from, such as a store or
   publisher page. It starts with a line saying the values were corrected on an
   AudioSilo server. Evidence holding a control character (line breaks and tabs
-  are fine) or a hidden text-direction character, or a character reference to
-  one, can't be sent: retype any text you pasted.
+  are fine) or a hidden text-direction character, or most character references
+  to one, can't be sent: retype any text you pasted.
 
 **Suggest N corrections** queues a **Corrections** job. The Bridge files the ticked
 rows as one submission under its GitHub account, released into the public domain
@@ -369,8 +370,11 @@ interrupted, or GitHub's answer is lost, the next try at the same request (the
 job resumed, or you pressing **Suggest corrections** again with the same rows and
 evidence) looks for the submission first and uses the one it finds, whatever the
 book or the community entry is called by then. Changing the evidence, or the set
-of corrections, makes it a new request, which is filed again. What the job says
-when it stops:
+of corrections, makes it a new request, which is filed again without looking.
+The dialog starts again from its default evidence each time it opens: type your
+evidence exactly as before when you suggest the same corrections again (after a
+server update the default line changes too, so look for the issue first). What
+the job says when it stops:
 
 - "GitHub didn't confirm the issue (no answer in time, or a server error). The
   Bridge will check whether the corrections were filed before filing them again:
@@ -380,16 +384,18 @@ when it stops:
 - "An earlier suggestion of these corrections stopped while filing them, and the
   Bridge can't tell whether they were filed: look for a [corrections] issue on the
   community database before suggesting them again." It says this when it finds a
-  different submission made since for the same community entry (another admin's,
-  or yours edited since), or can't tell whether yours went through. Look for the
-  issue first: when a different submission was found, the message comes only
-  once, so suggesting the same corrections again then files them. If it still
-  can't tell a day after the interrupted try, it files them anyway (the community
-  spots a duplicate).
+  different submission made since for the same community entry (anyone's, for
+  any edition, or yours edited since), or can't tell whether yours went through.
+  Look for the issue first; if yours isn't there, suggest them again. Once the
+  Bridge has read GitHub's list back to the interrupted try it stops asking, and
+  a day after the interrupted try it usually files them even when it can't tell
+  (the community spots a duplicate).
 - "GitHub refused the Bridge's sign-in: sign in again on the Bridge's Accounts
   tab, then suggest the corrections again."
 - "GitHub's rate limit for the Bridge's sign-in is reached: suggest the
   corrections again later."
+- "could not file the corrections: ..." with GitHub's reason: GitHub refused the
+  submission, so nothing was filed and suggesting them again is safe.
 
 ## When the Contributions module is off
 
