@@ -133,11 +133,14 @@ them on this server; you can still
 [share them later](bridge.md#share-with-the-community). Contributing needs the
 book to have an entry in the community database already; when it doesn't, the job
 pauses saying so, with the results already saved locally. The player never offers
-to contribute. If the Bridge can't contribute when the job reaches it, a job
+to contribute. If the Bridge can't contribute when it starts the job, a job
 asked to contribute fails at once, before the agent costs anything: either it
 isn't signed in to GitHub, or it is but GitHub couldn't be reached to refresh
 its sign-in ("...couldn't be refreshed because GitHub couldn't be reached:
-generate the book again once it can, or with contribute set to local"). See
+generate the book again once it can, or with contribute set to local"). If it
+stops being able to later in the run, even across a restart of the Bridge, the
+job pauses at the end instead, with the results already saved locally (see
+[When a job pauses](#when-a-job-pauses)). See
 [Contributing from your server](../community/contributing-from-your-server.md).
 
 Once the job is done, the book's
@@ -180,7 +183,7 @@ in the console (**Generating is paused** in the player) with the reason, and
 | The agent's credential was refused | Replace it where the agent gets it: in the agent container when it has one of its own (the agent uses that one first), else on the Bridge's Accounts tab (see [Running a Bridge](../getting-started/running-a-bridge.md#7-the-agents-credential)). The job carries on at once after a change on the Accounts tab, else it looks again by itself every 30 minutes. |
 | The job reached its spending limit | The monthly cap carries on by itself on the 1st of next month, or at once when you raise it on the Bridge's **Settings** tab and the new cap leaves room. The per-book cap, or a cap set in the Bridge's environment, needs raising and a restart of the Bridge, with no **Retry** (see [Costs](#costs-and-the-monthly-cap)). |
 | The Bridge can't write to this book's folder | Give the Bridge's user write access to the book's folder. It checks again every minute. |
-| Contributing needs a GitHub token on the Bridge | Only when contributing. Not signed in: sign the Bridge in to GitHub on its Accounts tab (see [Bridge accounts](../getting-started/bridge-accounts.md#github)), and the job carries on. Signed in already: GitHub couldn't be reached to refresh the sign-in, so press **Retry** on the Bridge's page once it can be. |
+| The Bridge can't share with the community | Only when contributing. Not signed in: sign the Bridge in to GitHub on its Accounts tab (see [Bridge accounts](../getting-started/bridge-accounts.md#github)), and the job carries on. Signed in already: GitHub couldn't be reached to refresh the sign-in, so press **Retry** on the Bridge's page once it can be. |
 | The community has no entry for this book yet | Only when contributing: add the book to the community database, or cancel and generate it again kept local. Your copy is already saved. |
 | The ebook couldn't be read | Cancel, then generate again: it reads the audio. |
 | The chapters couldn't be found in the narration | A book without chapter markers whose chapter headings couldn't be heard with confidence. See [When no chapters are found](#when-no-chapters-are-found). |

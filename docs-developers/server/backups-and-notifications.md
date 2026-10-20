@@ -227,7 +227,11 @@ not) and for a `meta.correct` job `Corrections sent: <title>` ("The
 book's corrections went to the community for review. The book page links them."),
 and any other kind `<kind> finished: <title>` ("The Bridge finished the job."; a
 `bridge.verify` job's is `Bridge check finished: <library>`, its book's title
-when it named one; the bell says "Bridge job finished");
+when it named one); in the bell only `sidecars.generate`, `sidecars.describe`
+and `chapters.detect` have titles of their own (`FINISHED_OWN` in
+`lib/server-events.ts`), and every other kind, `sidecars.contribute` and
+`meta.correct` included, reads `Bridge job finished: <name>` with the kind's
+name under it;
 `bridge_job_failed` reads `A Bridge job needs attention: <title>`
 (warning colour) or `<kind> failed: <title>` (`Characters and recaps`,
 `Description`, `Chapters`, `Sharing with the community`, `Corrections`, `Bridge

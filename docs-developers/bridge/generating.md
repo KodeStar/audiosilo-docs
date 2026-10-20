@@ -196,8 +196,9 @@ or parked. One run:
    (`contrib.ErrSignInUnrefreshed`: "...but the Bridge's GitHub sign-in couldn't
    be refreshed because GitHub couldn't be reached: generate the book again once
    it can, or with contribute set to local"). A resumed job is checked only when
-   it has to start a new engine book after all (its own was reused for another
-   job or is gone): that is a new spend.
+   it has to start a new engine book after all (its id maps to another book's
+   run, as in step 2, or its engine book is gone: deleted, or swept since it was
+   cancelled): that is a new spend.
 4. **Prepares** (`prepare`): the library must be one the server listed, with a
    mapping check that found it mapped and writable at the mount the Bridge uses
    now (a new job fails otherwise; a resumed one parks `library_not_writable` and
@@ -282,30 +283,33 @@ books and [description jobs](#a-description-on-its-own-sidecarsdescribe) alike.
 For the agent's parks: a monthly budget saved on the **Settings** tab answers `budget_exceeded`, an agent
 credential changed on the **Accounts** tab `agent_credential_refused` and
 `agent_unavailable`. A cap set in `config.yaml` or the environment is read at the
-next start, and that start re-admits, once, only the `budget_exceeded` parks a
-changed cap could let through (engine books through the scheduler's
-`restartReadmitCodes`, a description job because the restart resumes it and it
-checks the caps before spending): a park the caps would make again with the
-same reason (`budgetParkHolds`) stays paused, so an unchanged cap re-admits
-nothing. A raised cap re-admits the job even while it is still short of the
-spend (the park held for the old cap, not the new one), and the book parks again
-before it spends anything. No **Retry** is needed either way. The same start gives the
+next start, and that start re-admits, once, the `budget_exceeded` parks (engine
+books through the scheduler's `restartReadmitCodes`, a description job because
+the restart resumes it and it checks the caps before spending), except an engine
+book's park the caps would make again with the same reason, figures included
+(`budgetParkHolds` compares the text), which stays paused. So a changed cap,
+raised or lowered, re-admits the job even while it is still short of the spend,
+and an unchanged one re-admits a monthly park whose month's spend grew after it
+(a run already under way finished); a book still over a cap parks again before
+it spends anything. A raised cap needs no **Retry**. The same start gives the
 availability parks (`agent_unavailable`, `agent_rate_limited`,
-`asr_unavailable`, `media_tools_unavailable`) one more try each.
+`asr_unavailable`, `media_tools_unavailable`), and a `supervisor_escalated` park
+whose message names an authentication, rate or usage limit, credits or backend
+failure (`restartRecoverablePark`), one more try each.
 
 | Code | Means | Resumes by itself |
 |---|---|---|
 | `agent_unavailable` | the agent container isn't answering, has no CLI or no credential, or didn't claim the job within `agent.claim_timeout_seconds` | yes, 10 minutes later when the container said why (`retry_at`), or at once when the agent's credential changes on the Accounts tab |
 | `agent_rate_limited` | the agent account hit its usage limit | yes, when it resets |
 | `agent_credential_refused` | the provider refused the CLI's credential (new in Phase 1a) | it looks again every 30 minutes, or at once when the agent's credential changes on the Accounts tab |
-| `budget_exceeded` | the monthly cap (`retry_at` the 1st of next month, UTC) or the per-book cap was reached | the monthly one on the 1st, or at once on a **Settings** save that changes it; the per-book one, or a cap the environment sets, once it is changed and the Bridge restarted, with no **Retry** (an unchanged cap stays paused; see [The budgets](#the-budgets)) |
-| `agent_validation_exhausted`, `qa_no_converge`, `spelling_gate_failure`, `fix_loop_exhausted`, `asr_decode_timeout`, `markers_not_confident`, `ebook_chapters_not_confident`, `supervisor_escalated`, `supervisor_budget` | an engine stage gave up after its bounded retries | no: **Retry** |
+| `budget_exceeded` | the monthly cap (`retry_at` the 1st of next month, UTC) or the per-book cap was reached | the monthly one on the 1st, or at once on a **Settings** save that changes it; the per-book one, or a cap the environment sets, once it is changed and the Bridge restarted, with no **Retry** (with an unchanged cap it stays paused, or parks again before it spends anything; see above and [The budgets](#the-budgets)) |
+| `agent_validation_exhausted`, `qa_no_converge`, `spelling_gate_failure`, `fix_loop_exhausted`, `asr_decode_timeout`, `markers_not_confident`, `ebook_chapters_not_confident`, `supervisor_escalated`, `supervisor_budget` | an engine stage gave up after its bounded retries | the supervisor's automatic actions (on by default, [The engine wiring](#the-engine-wiring)) retry them by themselves, except `asr_decode_timeout`, `markers_not_confident` and `ebook_chapters_not_confident`, while a job follows the book: at most 3 times for the same problem (`supervisor.max_attempts`) and 3 automatic recoveries a day per book. After that, or for those three: **Retry** |
 | `chapters_not_detected` | a book with no chapter markers whose chapters couldn't be found in the narration with confidence (Phase 1d; the message says why: no headings heard, a chapter too long, numbers missing). See [Chapterless books](chapters.md#the-park-chapters_not_detected) | no: add chapter markers to the file, cancel and generate again |
-| `media_tools_unavailable`, `asr_unavailable` | ffmpeg/ffprobe is missing, or the Bridge's own speech recognition failed to set up | no, but the Bridge's next start tries once more (so fix it, then restart) |
+| `media_tools_unavailable`, `asr_unavailable` | ffmpeg/ffprobe is missing, or the Bridge's own speech recognition failed to set up | no: fix it, then **Retry** (the stage looks for ffmpeg/ffprobe again and sets the speech recognition up again); a fix in `config.yaml` or the environment, or the tools' download, needs a restart, and the Bridge's next start tries once more by itself |
 | `asr_worker_waiting` | no [ASR worker](workers.md) is connected and the fallback is `wait` (or the Bridge has no speech recognition of its own) (new in Phase 1b) | yes, as soon as a worker connects (or the fallback is `local` with a usable backend) |
 | `manifest_changed` | the book's audio changed since it was transcribed | no: cancel and generate again |
 | `ebook_unreadable`, `ebook_no_chapters` | the ebook can't be used | no: cancel and generate from the audio |
-| `contrib_unavailable` | contributing has no GitHub token it can use: none resolves, GitHub refused it, or a signed-in token needed a refresh and GitHub couldn't be reached (same code, its own reason: `pipeline.ContribUnrefreshedMsg`) | yes, on a sign-in on the Accounts tab; the unrefreshed one no (a refresh that later succeeds re-admits nothing): **Retry** once GitHub can be reached |
+| `contrib_unavailable` | contributing has no GitHub token it can use: none resolves, GitHub refused it, or a signed-in token needed a refresh and GitHub couldn't be reached (same code, its own reason: `pipeline.ContribUnrefreshedMsg`) | yes, on a sign-in on the Accounts tab (every book with this code, whatever its reason); the unrefreshed one not by itself, since the Bridge stays signed in and a refresh that later succeeds re-admits nothing: **Retry** once GitHub can be reached |
 | `core_needed` | contributing needs a community core record the book doesn't have | no (the local files are already written) |
 | `core_pending` | the book's core record waits for the next data release | yes |
 | `book_not_writable` | the Bridge can't write in the book's folder or its `.audiosilo/` (before the run, or when writing the results; the results wait in the engine's work folder) | it checks again every minute |
@@ -364,7 +368,11 @@ last attempt, which fails the job), and `notify.BridgeJobEnded` records it:
   `Description failed: <title>`, `Chapters failed: <title>`).
 
 A report that leaves the state as it was (a keepalive, a parked job's progress)
-announces nothing. See [Notifications](../server/backups-and-notifications.md#events).
+announces nothing. One known exception, a follow-up: a job that resumes parked
+after a Bridge restart first reports without its `park`, which the server reads
+as the park changing its code, so the job is announced again, once with no code
+and once more when its park comes back, unless that park is transient. See
+[Notifications](../server/backups-and-notifications.md#events).
 
 ## The description step
 
@@ -561,9 +569,12 @@ taken again as the next attempt): see
   with a cancel or a lost claim) releases its engine book (`Abandon`), as the end
   of a run would.
 - **Moves**: the server carries an open job with its book when a scan sees the
-  book move; the path in the answer to a report tells the Bridge, which follows
-  it and records the new path in the job's mapping (`recordMove`), so a restart
-  finds the same book.
+  book move, and the answers to the job's reports carry the new path. The Bridge
+  follows it at the job's next save (`adoptMove`), or when a restart resumes the
+  job, and records it in the job's mapping then (`recordMove`); a job resumed
+  under its claim finds the same book. Until a save records the move, a new
+  attempt (its lease lapsed) or a resume after a second move starts a new engine
+  book.
 
 ## Contributing
 
@@ -574,8 +585,11 @@ else `gh`; see [Configuration](configuration.md#contributing-github)). The local
 files are written before that stage can park: a book parked at `contributing`
 (`core_needed`, `contrib_unavailable`, say) already has its `.audiosilo/` files,
 and the job writes them again only when the engine's sidecars change. A sign-in
-on the Accounts tab re-admits the books parked `contrib_unavailable` (not one
-parked because a signed-in token couldn't be refreshed: [Parks](#parks)).
+on the Accounts tab re-admits every book parked `contrib_unavailable`, whatever
+its reason. One parked because a signed-in token couldn't be refreshed gets no
+sign-in: the page still shows the Bridge signed in, and a refresh that later
+succeeds re-admits nothing, so it waits for **Retry** once GitHub can be reached
+([Parks](#parks)); signing out and in again re-admits it too.
 `can_contribute` in the heartbeat is "a token resolves and isn't refused", which,
 with the Contributions module on, is all the server checks of the Bridge's GitHub
 access before it queues such a job. An issue filed with the App's user token

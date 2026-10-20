@@ -388,8 +388,10 @@ The modules today:
 - **Contributions** - sends your book corrections, and the characters and recaps
   your Bridge generates, to the community metadata database, so every AudioSilo
   server can use them. It needs a Bridge signed in to GitHub, or given a GitHub
-  token of your own (**Sign in to GitHub on your Bridge** until it is: see
-  [Bridge accounts](../getting-started/bridge-accounts.md#github)). While it is
+  token of your own (**Sign in to GitHub on your Bridge** until it is, and also
+  while a signed-in Bridge can't reach GitHub to renew its sign-in, which ends by
+  itself: see [Bridge accounts](../getting-started/bridge-accounts.md#github)).
+  While it is
   on and the Bridge is ready, the generate dialog offers **Also contribute to the
   community** (on by default), and a book's page offers
   [Share with the community](bridge.md#share-with-the-community) and

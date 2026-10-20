@@ -52,9 +52,9 @@ The card's states:
 
 | Badge | Means |
 |---|---|
-| **Signed in** | the sign-in works, as the user shown (the Bridge shares with it unless **Sharing uses** names another token) |
+| **Signed in** | the Bridge holds a sign-in GitHub hasn't refused, as the user shown (the Bridge shares with it unless **Sharing uses** names another token, or says none while the sign-in can't be renewed: see below) |
 | **Waiting for the code** | a sign-in is waiting for you to enter the code on GitHub |
-| **Sign in again** | GitHub stopped accepting the sign-in: you revoked it on GitHub, or it expired. Press **Sign in to GitHub** again |
+| **Sign in again** | GitHub stopped accepting the sign-in: you revoked it on GitHub, it expired, or GitHub took a renewal whose answer never reached the Bridge. Press **Sign in to GitHub** again |
 | **Not signed in** | no sign-in yet |
 
 **Sharing uses** says where the GitHub token for sharing comes from now: this
@@ -65,10 +65,14 @@ container), or none.
 The Bridge renews its sign-in with GitHub every few hours. If GitHub can't be
 reached to renew it before it runs out, the card still says **Signed in** but
 **Sharing uses** says "None: the Bridge can't share with the community" (and the
-console's Bridge card shows it as not signed in) until a renewal works, which the
-Bridge tries again by itself a minute later. You don't need to sign in again:
-shares and corrections suggested meanwhile fail saying GitHub couldn't be
-reached, and a generate job waiting to contribute needs **Retry** once it can.
+console's [Setup card](../admin/bridge.md#the-setup-card) shows it as not signed
+in) until a renewal works, which the Bridge tries again by itself a minute later.
+You usually don't need to sign in again. Meanwhile the console offers no **Share
+with the community**, no **Suggest corrections** and no **Also contribute to the
+community** switch. A share or corrections job queued as the sign-in ran out
+fails saying GitHub couldn't be reached, and a generate job waiting to contribute
+needs **Retry** once it can. If the card says **Sign in again** once GitHub can be
+reached (GitHub took a renewal whose answer never arrived), sign in again.
 
 **Signing out.** **Sign out** revokes the sign-in on GitHub and forgets it on the
 Bridge. If GitHub can't be reached to revoke it, the Bridge forgets it anyway and

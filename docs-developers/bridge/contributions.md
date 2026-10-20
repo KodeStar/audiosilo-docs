@@ -49,16 +49,22 @@ which needs only the App's public client ID. The code is the Bridge's
   secret). A refresh ends the old pair at once, so it is **single-flight**, the new
   pair is **persisted before it is used**, and the refresh is detached from its
   caller (a page request that goes away mid-refresh would otherwise lose the
-  rotated pair). **Any** error GitHub answers is `ErrBadRefresh` (a spent refresh
-  token answers `incorrect_client_credentials`) and refuses the sign-in; a refresh
-  GitHub didn't answer keeps the pair (the access token serves until it expires)
-  and is tried again a minute later. Once the access token has expired as well,
+  rotated pair). An answer carrying any OAuth `error` code, whatever its HTTP
+  status, is `ErrBadRefresh` (a spent refresh token answers
+  `incorrect_client_credentials`) and refuses the sign-in. Any other failure
+  counts as no answer (GitHub unreachable, a non-2xx without an OAuth error, an
+  answer that isn't JSON or carries no token): it keeps the pair (the access
+  token serves until it expires) and is tried again a minute later. A refresh
+  GitHub took whose answer was lost has spent the pair, so that next try refuses
+  the sign-in. Once the access token has expired as well,
   `Token` answers `accounts.ErrUnrefreshed` (wrapping the refresh's error), and
   `contrib.TokenSource.Resolve`, with no environment token or `gh` to fall back
   on, answers `contrib.ErrSignInUnrefreshed`. That is an `ErrNoCredential` for
   `errors.Is`, so a caller that only asks whether a token resolves treats it as
-  none, but each place a person reads it words it apart from "not signed in"
-  (below): waiting until GitHub can be reached ends it, not a new sign-in.
+  none. The job failures (below) and a park's reason on the Bridge's Jobs tab
+  word it apart from "not signed in": waiting until GitHub can be reached ends
+  it, not a new sign-in. The console's park line, the bell and the notification
+  go by the park code alone, so one sentence covers both causes.
 - **Refused and OK.** A `401` on the current device token marks the account
   refused (`refused_at`, `last_error`), which drops `can_contribute`. A 401 on a
   token a refresh has since replaced is ignored, and so is one on a token already
@@ -77,18 +83,28 @@ which needs only the App's public client ID. The code is the Bridge's
 
 A sign-in that changes (signed in, signed out, refused) kicks a heartbeat, so the
 console's Setup card and the `contribute` feature follow within seconds, and
-re-admits the books parked `contrib_unavailable` once the Bridge can contribute.
-A book parked there while signed in (the sign-in's refresh couldn't reach GitHub)
-sees no change, so it waits for **Retry**.
+re-admits every book parked `contrib_unavailable`, whatever its reason, once the
+Bridge can contribute and its engine has started. A Bridge start never re-admits
+them, so a sign-in that lands while the engine is still starting (a first native
+start downloading ffmpeg) leaves them for **Retry**. A book parked there while
+signed in (the sign-in's refresh couldn't reach GitHub) sees no change, and a
+refresh that later succeeds re-admits nothing, so it waits for **Retry**.
 
-While the sign-in can't be refreshed nothing resolves, so the Bridge reports it
-as unable to share until a refresh succeeds (the next token request a minute
-later, the heartbeat's own included): the heartbeat's `can_contribute` (and the
-estimate's) is false, so the console's Setup card reads as not signed in and
-offers no share, no Suggest corrections and no contribute switch, while the
-Accounts tab keeps its **Signed in** badge (sharing uses "None"). Neither says
-that GitHub is unreachable; only the job failures (below) and the
-`contrib_unavailable` park do.
+While the sign-in's expired access token can't be refreshed and there is no
+environment token or `gh` to fall back on, nothing resolves, so the Bridge
+reports it as unable to share until a refresh succeeds (the next token request a
+minute later, the heartbeat's own included): the heartbeat's `can_contribute`
+(and the estimate's) is false, so the server drops the `contribute` feature (the
+`contributions` module flag is false, and the console's Modules card says "Sign
+in to GitHub on your Bridge"), the console's Setup card reads as not signed in,
+and the console offers no share, no Suggest corrections and no contribute
+switch, while the Accounts tab keeps its **Signed in** badge (sharing uses
+"None"). A job queued from a page loaded before then is refused
+`409 cannot_contribute`. None of these says that GitHub is unreachable; only the
+job failures (below: a job queued before the heartbeat told the server), the
+park's reason (`pipeline.ContribUnrefreshedMsg`) on the Bridge's Jobs tab and a
+warning in the Bridge's log at each failed refresh do. The console's park line,
+the bell and the notification read the same for both causes.
 
 The `accounts` table (migration `0006`) keeps only what the page shows, never a
 credential: `provider` (`github`, `agent`, or `agent/<kind>`, which keeps when that
@@ -206,8 +222,9 @@ Failures, worded for the console: not signed in ("The Bridge isn't signed in to
 GitHub: sign in on the Bridge's Accounts tab, then share the book again."), signed
 in but the sign-in couldn't be refreshed ("The Bridge's GitHub sign-in couldn't be
 refreshed because GitHub couldn't be reached: share the book again once it
-can."), GitHub refused the sign-in
-("sign in again on the Bridge's Accounts tab, then share the book again"), nothing
+can."), GitHub refused the sign-in during the share (a `401`: "sign in again on
+the Bridge's Accounts tab, then share the book again"; a sign-in GitHub had
+already refused resolves no credential, so it reads as not signed in), nothing
 kept here ("it was not generated here, or they were removed"), a generate job
 still running, not matched, and an earlier share that stopped while filing when
 the Bridge can't yet tell whether GitHub made the issue or the gist it links ("so
@@ -295,7 +312,10 @@ stores them, which a batch at every server bound fits; `MapCorrections` bounds
 the batch again as meta does: see the workspace CROSS-REPO.md §23 before raising
 a bound or adding a field):
 
-1. resolves the GitHub credential before reading anything: none fails `errNoCredential` ("The
+1. resolves the GitHub credential before reading the work's community record or
+   GitHub's issues (only a resumed job's kept result, a marker with no time to
+   look from (below) and the Bridge's community metadata being off,
+   `errMetaOff`, come first): none fails `errNoCredential` ("The
    Bridge isn't signed in to GitHub: sign in on the Bridge's Accounts tab, then
    suggest the corrections again."), a sign-in that couldn't be refreshed
    (`contrib.ErrSignInUnrefreshed`) fails `errUnrefreshed` ("The Bridge's GitHub
@@ -377,10 +397,12 @@ which lags; the rows of pages read before one that failed count too) and:
   recording that took the ASIN since) changes what the run composes now, and so
   does other evidence or a new `source` stamp. The job that wrote the marker
   (resumed) can always adopt the marker's sum; another job only while the marker
-  is under a day old by GitHub's clock (`contrib.FilingStale`). Later the same
-  changes suggested again are no retry of the lost answer (whose issue may be
-  closed by then): that issue reads as a same-record batch (below) and the
-  person is told once;
+  is under a day old by GitHub's clock (`contrib.FilingStale`), unless the new
+  job composes it exactly (the same evidence and `source` stamp, with the work's
+  title and the recording unchanged): its own sum adopts the issue at any age,
+  open or closed. Otherwise the same changes suggested again later are no retry
+  of the lost answer (whose issue may be closed by then): that issue reads as a
+  same-record batch (below) and the person is told once;
 - on a `401` (`contrib.Unauthorized`, even past a same-record batch on a page read
   before) fails `errRefused` (sign in again on the Accounts tab), and on a rate
   limit `errRateLimited`, the marker kept either way;
@@ -395,7 +417,8 @@ which lags; the rows of pages read before one that failed count too) and:
   when the list was read back to the marker whole and the marker has settled:
   then the marker goes, so the next suggestion files. Otherwise the marker stays
   and the next suggestion is told again. A marker with no time to look from is
-  told the same way, once, before anything is read;
+  told the same way, once, before the credential is resolved or anything is
+  read from meta or GitHub;
 - files when the list is complete back to the marker and holds none;
 - for any other lookup failure (unlike a share's, also a list it can't read at
   all) fails `errFiledBefore` with the marker kept, until the marker is over 24
@@ -409,14 +432,19 @@ since nothing was filed: a `401` fails `errRefused`, a rate limit
 `errRateLimited`, and any other refusal "could not file the corrections: ...".
 Duplicates stay possible, accepted, and meta's intake catches a batch already
 applied: the same corrections suggested again after they were filed (a confirmed
-filing clears its marker, and the console unticks only the rows of the book's
-last done job), a new request (a change added, dropped or corrected
+filing clears its marker, and the console unticks only the rows the book's
+newest corrections job suggested with the same value, and none when that job
+failed or was cancelled), a new request (a change added, dropped or corrected
 differently) that repeats changes already filed, among them a retry after the
 community applied some of the rows since the lost answer (the console's change
-set shrinks), a refile once the marker is over 24 hours old, the next suggestion
-after an `otherBatch` that was the run's own issue edited since,
-and a POST still in flight after the one-minute settle when the lookup finds
-nothing.
+set shrinks) and a retry after the community changed which recording or work
+the book's ASIN or ISBN names (the console resolves the record from a live
+lookup each time the dialog opens, so the key changes), a refile once the marker
+is over 24 hours old, the next suggestion after an `otherBatch` that was the
+run's own issue edited since or, for another job once the marker is over a day
+old, the lost filing's issue unedited (the job composes another: other
+evidence, a new `source` stamp, a retitled work), and a POST still in flight
+after the one-minute settle when the lookup finds nothing.
 
 Result:
 
