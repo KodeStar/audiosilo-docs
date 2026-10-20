@@ -102,7 +102,8 @@ credential back.**
 
 `agent`: `backend`, `kinds` (the kinds that backend takes, in the order it uses
 them: `claude_oauth_token`, `anthropic_api_key` for claude; `openai_api_key` for
-codex), `set` (kind to boolean), `set_at` (when the last one was saved),
+codex), `set` (kind to boolean), `set_at` (when they last changed: a save, or a removal
+that left others),
 `set_at_by_kind` (Phase 2b, additive: when each kind held was saved, from its own
 row; a kind saved before the rows per kind is left out), `available`, `detail`, `handoff` (the
 runs get the Bridge's credential) and `container_credential` (the kind the
@@ -147,17 +148,22 @@ leniently (a later server's field ignored), then:
    when its row is `submitted`, `pr_open` or `merged` (a local export, a `covered`
    verdict or a closed issue is filed again); one already filed is kept and
    reported. A dimension the community already has is `covered`. Each
-   dimension's gist and issue are filed **at most once** across shares and the
+   dimension's gist and issue are filed **once** across shares and the
    contributing stage's retries: a filing marker is recorded before each create
    (`contrib.filing/<book id>/<kind>`, times by GitHub's clock), and the next
    submit adopts the gist or issue the user made since (`GistsSince`,
    `IssuesSinceBy`, from the marker less `contrib.FilingSkew`), filing again only
    when GitHub's list is complete and holds none (for an issue, also only once the
    marker is a minute old, `filingSettle`: GitHub may still be making it). A
-   lookup it can't complete fails the share (`ErrFilingUnknown`) unless the marker
-   is over 24 hours old by GitHub's clock (`contrib.FilingStale`): then it still
-   looks, and when the lookup still can't complete it logs that and files again
-   (meta's intake catches a duplicate, and nothing on the page clears a marker).
+   lookup it can't complete fails the share (`ErrFilingUnknown`) with the marker
+   kept. The one exception (`refileStale`): when GitHub's list can't reach back to
+   the marker (`contrib.ErrListIncomplete`, which only grows, so no later lookup
+   settles it) and the marker is over 24 hours old (`contrib.FilingStale`), it logs
+   that and files again (meta's intake catches a duplicate it has applied, and
+   nothing on the page clears a marker). Any other lookup failure (a refusal, a
+   rate limit, an outage, a cancel) keeps the marker and fails, whatever its age.
+   The age is measured only on the clock learned from the `Date` of GitHub's
+   answers (`Client.StaleFiling`), so it is never stale before GitHub has answered.
 
 Result:
 
@@ -277,12 +283,14 @@ GitHub answered a 4xx or a rate limit (a 5xx can come after the issue was made,
 and the client never resends a POST). A resumed run with a result returns it; one
 with only the marker lists the core repository's issues made since
 (`contrib.IssuesSince`: the list endpoint, not search, which lags) and adopts a
-`[corrections]` issue with the same body, files when the list is complete and has
-none, and otherwise (a list it can't read whole, or a batch for the same record
-with another body) fails asking the admin to look for a `[corrections]` issue
-first, unless the marker is over 24 hours old by GitHub's clock
-(`contrib.FilingStale`): then it files again, and meta's intake catches a
-duplicate batch. A `401` fails "GitHub refused the Bridge's sign-in".
+`[corrections]` issue with the same body wherever it appears in the list, files
+when the list is complete and has none, and otherwise fails asking the admin to
+look for a `[corrections]` issue first. With no match, a batch for the same record
+with another body (`errOtherBatch`: the record moved since, or another admin's
+batch) always stops the job, whatever the marker's age; a list it can't read, or
+can't read back to the marker, files again once the marker is over 24 hours old by
+the clock learned from GitHub's answers (`contrib.FilingStale`,
+`Client.StaleFiling`), and meta's intake catches a batch it has applied. A `401` fails "GitHub refused the Bridge's sign-in".
 
 Result:
 

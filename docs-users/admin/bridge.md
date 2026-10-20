@@ -281,9 +281,11 @@ removed: generate them first), when the book isn't matched to a community entry
 ("Match the book first"), or when an earlier share stopped while filing and the
 Bridge can't tell yet whether GitHub made the submission (share it again in a few
 minutes, and if that keeps happening, look for the issue on the community
-repository). The Bridge files each submission at most once: a share after an
-interrupted one finds what the earlier try made and uses it. After a day it
-stops waiting to be sure and files again (the community spots a duplicate).
+repository). The Bridge files each submission once: a share after an
+interrupted one finds what the earlier try made and uses it. Only when GitHub
+can no longer list back as far as an interrupted try over a day old does it file
+again (the community spots a duplicate); any other problem looking keeps the
+share failing until it can look.
 
 While a share is waiting or running, the console offers no way to generate the
 book again ("The characters and recaps are being shared with the community.
@@ -357,8 +359,10 @@ book's fields.
 The Bridge never files a corrections job twice. If it was stopped while filing
 and can't tell whether the submission went through, the job fails asking you to
 look for a `[corrections]` issue on the community database before suggesting
-them again. When the Bridge picks the same job up again over a day after the
-interrupted try, it files them instead (the community spots a duplicate).
+them again. A submission for the same book with different values always stops
+the job for you to check. Otherwise, when the Bridge picks the same job up again
+over a day after the interrupted try and still can't look back that far, it
+files them (the community spots a duplicate).
 
 ## When the Contributions module is off
 
