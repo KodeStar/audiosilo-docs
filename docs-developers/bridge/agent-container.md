@@ -24,7 +24,9 @@ separate container holds on stock Docker seccomp:
 
 - it mounts only **`/staging`** (shared with the Bridge) and **`/agent`** (its
   own config volume: the credentials and codex's login). Never a library,
-  `/bridge-data` or the Bridge's secrets;
+  `/bridge-data` or the Bridge's secrets (the one exception since Phase 2b: an
+  agent credential set on the Accounts tab, which each run receives, see
+  [The credential hand-off](#the-credential-hand-off));
 - it runs as a fixed uid (`10002:10002`), with `cap_drop: [ALL]`,
   `no-new-privileges`, a read-only root, a tmpfs `/tmp`, and **its own network**
   (the internet only: it can't reach the Bridge or the server);
@@ -126,8 +128,8 @@ or replace the Bridge's):
 1. `work/`: a copy of the engine's staged dir, inputs `0444`, dirs `0755`, and
    `work/out/` `0777` (with its files `0666`: a validation retry patches the
    previous attempt's files there);
-2. `prompt.txt` (`0444`);
-3. only for a [hand-off](#the-credential-hand-off): `credential/credential.json`;
+2. only for a [hand-off](#the-credential-hand-off): `credential/credential.json`;
+3. `prompt.txt` (`0444`);
 4. `request.json.tmp`, renamed to `request.json`, the ready signal:
 
 ```json
@@ -198,7 +200,8 @@ read back what the runner left) is the agent being unavailable, never a failed
 stage. A credential the provider refuses is reported as a refusal: the book parks
 `agent_credential_refused` (and looks again every 30 minutes); the Bridge's status
 says the agent isn't ready until a run goes through or the runner reports a
-different credential.
+different credential (for a [hand-off](#the-credential-hand-off), until the
+Accounts tab's credential is replaced).
 
 **Leftovers.** At its start the Bridge removes job dirs older than a day and
 withdraws any other (one Bridge per staging dir, and nothing waits for them any
@@ -244,7 +247,9 @@ The runner reads each credential from its own environment, else from
 `/agent/secrets/<lowercase name>` (for example
 `/agent/secrets/claude_code_oauth_token`, `0600`). A subscription credential wins
 over an API key for the same CLI, and a run gets exactly the kind `runner.json`
-reports, so what the Bridge's page shows is what is billed. Credentials never
+reports (or, for a [hand-off](#the-credential-hand-off), the handed kind, which the
+status then reports in its place), so what the Bridge's page shows is what is
+billed. Credentials never
 appear in argv, a log, or any file the Bridge can read.
 
 **Signing in** (`audiosilo-bridge agent-login`, run inside the container):
@@ -261,10 +266,11 @@ subscription, with the monthly budget on.
 
 ## The credential hand-off
 
-Phase 2b (decision 19, plan D10): the admin can set the agent's credential on the
+Phase 2b (decision 19): the admin can set the agent's credential on the
 Bridge page's **Accounts** tab instead of in the container. The Bridge seals it in
 its vault (`claude_oauth_token`, `anthropic_api_key` or `openai_api_key`;
-`internal/accounts`) and hands it to **one run at a time**. The container's own
+`internal/accounts`) and hands it to **each run, for that run only** (runs at
+the same time each get their own copy). The container's own
 credential always wins: its environment and secrets files stay the headless
 override.
 
@@ -275,7 +281,8 @@ override.
   credential for that CLI. Its status then counts the agent available, billed as
   that kind, the credential's set time standing in for `credential_since` (so
   replacing it on the Accounts tab ends a refusal). A runner without `handoff`
-  (an older agent image) gets nothing, and the status says "the container is too
+  (an older agent image) gets nothing; when it has no credential of its own for
+  the CLI and the Accounts tab holds one, the status says "the container is too
   old to take the one on the Accounts tab: update the agent image to this
   Bridge's version".
 - **How.** Before `request.json`, the Bridge writes
@@ -298,8 +305,9 @@ override.
   `OPENAI_API_KEY` and `CODEX_API_KEY`).
 - **Refusals.** A provider refusing the handed credential parks the book
   `agent_credential_refused` as before; the status says to replace it "on the
-  Bridge's Accounts tab" (the container's own: "in the agent container, or remove
-  it there and set one on the Bridge's Accounts tab"). A change on the Accounts
+  Bridge's Accounts tab" (the container's own: "in the agent container (claude
+  setup-token / agent-login codex), or remove it there and set one on the Bridge's
+  Accounts tab"). A change on the Accounts
   tab re-admits the books parked `agent_credential_refused` and
   `agent_unavailable` at once.
 

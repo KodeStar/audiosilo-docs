@@ -161,7 +161,7 @@ request to the next.
 
 | Flag | Value | Gates |
 |---|---|---|
-| `contributions` | the Contributions module on **and** a Bridge offering `contribute` | nothing yet: the module is a shell until a later release (no routes, no background work) |
+| `contributions` | the Contributions module on **and** a Bridge offering `contribute` | the console's contributing actions: the generate dialog's contribute switch, Share with the community and Suggest corrections (which also needs `meta` in `bridge.features`); the player doesn't read it. The module has no routes or background work of its own: its actions are [Bridge jobs it owns](#post-apiv1adminbridgejobs) (`404 module_off` while it is off) |
 
 ### `GET /healthz` · `GET /api/v1/healthz`
 
@@ -6536,7 +6536,8 @@ at once, and a new `backups.schedule` or `backups.keep` is handed to the backup
 service at once (the next scheduled backup is counted again). Turning a
 `modules.<id>` on or off starts or stops that module's background work at once (the
 save doesn't wait for a stopping module), turns its routes on or off (`404
-module_off` while off) and changes its capability flag. Every save is
+module_off` while off), gates the [Bridge jobs it owns](#post-apiv1adminbridgejobs)
+and changes its capability flag. Every save is
 recorded in the [audit log](#admin-audit-log) as `settings.update`, each
 changed setting with its old and new value.
 
@@ -6566,7 +6567,7 @@ and after each settings save).
 | `enabled` | the toggle, as the server runs now |
 | `active` | the capability flag: `enabled` **and** the Bridge requirement met |
 | `requires_bridge` | the Bridge feature the module needs (one of `bridge.features`); omitted for a module that needs no Bridge |
-| `bridge_state` | omitted with `requires_bridge`. `offline`: no paired Bridge has sent a heartbeat in the last two minutes; `no_feature`: the online Bridge doesn't offer the feature (for `contribute`: it can't contribute, not signed in to GitHub); `ready`: it does |
+| `bridge_state` | omitted with `requires_bridge`. `offline`: no paired Bridge has sent a heartbeat in the last two minutes; `no_feature`: the online Bridge doesn't offer the feature (for `contribute`: it can't contribute, having no GitHub token GitHub accepts, whether its Accounts sign-in, `AUDIOSILO_BRIDGE_GITHUB_TOKEN` or `gh`); `ready`: it does |
 
 `modules` is `[]` on a server with none. Whether a toggle is locked is the settings
 envelope's `locked["modules.<id>"]`, not repeated here; a toggle is changed with
@@ -7204,7 +7205,7 @@ that read the block, ask with their token.
 
 - `version` - the version the Bridge reported.
 - `features` - the job families the Bridge runs that this server knows: the part of
-  each known kind before its dot (`bridge.verify` is `bridge`, `sidecars.generate`
+  each known kind before its dot (`bridge.verify` is `bridge`, `sidecars.generate`,
   `sidecars.describe` and `sidecars.contribute` are `sidecars`, `chapters.detect`
   is `chapters`, `meta.correct` is `meta`), plus `contribute` while the Bridge can
   file contributions (the last heartbeat's `setup.can_contribute`, else its
@@ -7238,7 +7239,7 @@ mapping of it. The console's Settings > Bridge reads this.
   "heartbeat_at": "2026-10-15T12:40:37Z",
   "version": "0.1.0",
   "kinds": ["bridge.verify"],
-  "features": ["bridge"],
+  "features": ["bridge", "contribute"],
   "libraries": [
     {
       "id": 1, "name": "Audiobooks", "root": "/audiobooks",
@@ -7247,7 +7248,13 @@ mapping of it. The console's Settings > Bridge reads this.
         "checked_path": "Andy Weir/Project Hail Mary", "error": ""
       }
     },
-    { "id": 2, "name": "Kids", "root": "/kids", "mapping": null }
+    {
+      "id": 2, "name": "Kids", "root": "/kids",
+      "mapping": {
+        "library_id": 2, "mount_path": "/kids", "mapped": false, "writable": false,
+        "checked_path": "", "error": "the library has no indexed book to compare against yet"
+      }
+    }
   ],
   "workers": [],
   "ui_url": "http://192.168.1.10:8091",
@@ -7255,7 +7262,7 @@ mapping of it. The console's Settings > Bridge reads this.
     "sidecars": {
       "asr_seconds_per_audio_hour": 900, "agent_usd_per_audio_hour": 1.6,
       "agent_usd_per_ebook": null, "samples": 3, "agent_backend": "claude",
-      "agent_ready": true, "subscription": true, "can_contribute": false,
+      "agent_ready": true, "subscription": true, "can_contribute": true,
       "monthly_budget_usd": 100, "month_spent_usd": 12.3
     }
   },
@@ -7300,10 +7307,11 @@ mapping of it. The console's Settings > Bridge reads this.
 - `setup` - Phase 2b: the last heartbeat's [setup checklist](#put-apiv1bridgestatus)
   as the server kept it (`items` in the Bridge's order, each `id`, `done`,
   `required`, `detail` when there is one and `library_ids` for the libraries
-  still to fix; `can_contribute`; `github_login`, the GitHub account the Bridge
-  files as, admins only: `GET /server` never carries it). Omitted when the Bridge
-  sent none (an older Bridge, or a server it hasn't been told accepts it yet). The
-  console's Setup card reads it.
+  still to fix; `can_contribute`; `github_login`, the GitHub account signed in on
+  the Bridge's Accounts tab, absent while it files with a token from its
+  environment or `gh`; admins only: `GET /server` never carries it). Omitted when
+  the Bridge sent none (an older Bridge, or a server it hasn't been told accepts it
+  yet) or the block didn't decode. The console's Setup card reads it.
 
 ### `POST /api/v1/admin/bridge/pair`
 
@@ -7389,7 +7397,9 @@ Every job route, the console's and the Bridge's, answers jobs in one shape:
   are in [Characters and recaps](../../bridge/generating.md#progress), `sidecars.describe`'s in
   [A description on its own](../../bridge/generating.md#a-description-on-its-own-sidecarsdescribe),
   `chapters.detect`'s in [Chapterless books](../../bridge/chapters.md#goal-chapters-and-the-chaptersdetect-job),
-  `sidecars.contribute`'s and `meta.correct`'s in [Contributions](../../bridge/contributions.md)); `error` -
+  `sidecars.contribute`'s and `meta.correct`'s results in [Contributions](../../bridge/contributions.md),
+  their progress a `{step, message, done, total}` with the steps `sharing` and
+  `done`, or `checking`, `filing` and `done`); `error` -
   why it failed or was parked (`""` otherwise).
 - `state` - `queued`, `claimed`, `running`, `done`, `failed`, `needs_attention` or
   `cancelled` (see [Job states](#job-states)).
@@ -7493,7 +7503,8 @@ The kinds:
   a **parked** one in the same way, since this run finds the chapters itself. Since
   Phase 2b it is likewise refused while a `sidecars.contribute` job is queued or
   working for the book (`contribute_open`: it would replace what is being filed),
-  and cancels a parked one.
+  and cancels a parked one, or a queued one held while the `contributions` module
+  is off (no claim hands it out).
 - **`sidecars.describe`** (Phase 1c) writes a book's own-words description from
   the notes the Bridge kept when it generated the book (no new speech
   recognition) into its `.audiosilo/` folder. It needs `library_id` **and** a book
@@ -7514,7 +7525,8 @@ The kinds:
   book whose chapter source an admin chose (`chapters_chosen`: the list would
   never be used). See [Chapterless books](../../bridge/chapters.md).
 - **`sidecars.contribute`** (Phase 2b) files the characters and recaps the Bridge
-  generated for the book earlier, kept on this server, to the community metadata
+  generated for the book earlier on this server and kept (its own copy, not the
+  book's `.audiosilo/` files), to the community metadata
   database as intake issues ("Share with the community"). It needs `library_id`
   **and** a book `path`, and takes `params` `{ "work_id": "…", "dimensions":
   ["characters", "recaps"] }`, both optional (`dimensions` from those two, each
@@ -7533,18 +7545,22 @@ The kinds:
   `field` once from `title`, `author`, `narrator`, `series`, `series_index`,
   `more_series`, `published`, `isbn`; each value trimmed, one line, at most 500
   characters, no control characters, `corrected` set and different from
-  `current`; `evidence` at most 2000 characters; `recording_id` a community slug.
-  Each change must be an **edit made on this server**: the field's source is
+  `current`; `evidence` at most 2000 characters; `recording_id` a community slug;
+  and, as for every kind, the params at most 16 KiB in all (`params too large`), so
+  a batch near every bound at once is refused. Each change must be an **edit made on this server**: the field's source is
   `edited` on the book and `corrected` is its value now, else `400 not_edited`.
   The server stores the book's own spelling of each value and stamps `source` as
-  `audiosilo-server/<version>`, whatever was sent. It writes nothing into the
+  `audiosilo-server/<version>`, whatever was sent (a sent `source` must still be
+  at most 128 bytes, with no control characters). It writes nothing into the
   library. Result: `{issue_url, issue_number, changes, auto: [fields], maintainer:
   [fields]}`. See [Contributions](../../bridge/contributions.md#corrections-metacorrect).
 
 `sidecars.contribute`, `meta.correct` and a `sidecars.generate` job with
 `contribute: "issue"` belong to the `contributions` [module](../../bridge/pairing-and-jobs.md#jobs-of-a-managed-module):
 while it is off they are `404 module_off` (checked first, before the book), and one
-already queued is held (the Bridge isn't given it) until the module is on again;
+already queued is held (the Bridge isn't given it) until the module is on again,
+though a new `sidecars.generate` job for the book cancels a held
+`sidecars.contribute` one;
 while it is on they are `409 cannot_contribute` unless the Bridge can contribute.
 
 A job being cancelled (`cancel_requested`) refuses nothing (it ends without
@@ -7561,9 +7577,9 @@ the console says so. A new job is audited as `bridge.job`.
 |---|---|
 | `201` | the job, queued |
 | `200` | the open job of that kind for that library and path |
-| `400` | `invalid request` (not JSON, an unknown field); or a check of the kind, each message starting `invalid: `: `unknown kind "…"`, `library_id is required`, `this kind takes no library or path`, `this kind takes no path`, `path is required`, `params too large`, or a params error (`hold_seconds must be 0-600`, `source must be auto, audio or ebook`, `contribute must be local or issue`, a `work_id` too long or with a control character, an unknown field, a `dimensions` entry that isn't `characters` or `recaps` or is repeated, a `meta.correct` change past its bounds); `code: "not_edited"` with `field` - a `meta.correct` change of a field that isn't an edit made on this server, or whose corrected value isn't the book's value now |
+| `400` | `invalid request` (not JSON, an unknown field); or a check of the kind, each message starting `invalid: `: `unknown kind "…"`, `library_id is required`, `this kind takes no library or path`, `this kind takes no path`, `path is required`, `params too large`, or a params error (`hold_seconds must be 0-600`, `source must be auto, audio or ebook`, `contribute must be local or issue`, a `work_id` too long or with a control character, an unknown field, a `dimensions` entry that isn't `characters` or `recaps` or is repeated, a `meta.correct` params error: no `work_id` or `evidence`, a field that can't be corrected or is listed twice, a change or the evidence past its bounds, a `recording_id` that isn't a community slug, an identifier too long); `code: "not_edited"` with `field` - a `meta.correct` change of a field that isn't an edit made on this server, or whose corrected value isn't the book's value now |
 | `404` | `library not found`; `code: "book_not_found"` - the path is not an indexed book; `code: "module_off"` - a job of the `contributions` module (`sidecars.contribute`, `meta.correct`, `sidecars.generate` with `contribute: "issue"`) while the module is off |
-| `409` | `code: "kind_unavailable"` - no Bridge has reported, or the paired one doesn't run that kind (a Bridge from before Phase 1c doesn't run `sidecars.describe`, one from before Phase 1d `chapters.detect`); `code: "library_not_writable"` - a kind that writes, for a library the last heartbeat doesn't report mapped and writable; `code: "cannot_contribute"` - `sidecars.generate` with `contribute: "issue"`, `sidecars.contribute` or `meta.correct` while the Bridge can't contribute; `code: "generate_open"` - `sidecars.describe`, `chapters.detect` or `sidecars.contribute` while a `sidecars.generate` job is open for the book ("a generate job is still open for this book; queue this once it has finished"); `code: "contribute_open"` - `sidecars.generate` while a `sidecars.contribute` job is queued or working for the book; `code: "detect_open"` - `sidecars.generate` while a `chapters.detect` job is queued or working for the book, or `sidecars.describe` while one is open ("a chapter detection job is still open for this book; queue this once it has finished"); `code: "describe_open"` - `chapters.detect` while a `sidecars.describe` job is open for the book; `code: "chapters_chosen"` - `chapters.detect` for a book whose chapter source an admin chose (`files` or `community`), checked before the queue ("an admin chose this book's chapter source, so chapters found in the narration would never be used; set it back to automatic first"). `library_not_writable`, `cannot_contribute` and the open-job codes are checked after the dedupe: an open job of the same kind for the book is still returned (`200`) |
+| `409` | `code: "kind_unavailable"` - no Bridge has reported, or the paired one doesn't run that kind (a Bridge from before Phase 1c doesn't run `sidecars.describe`, one from before Phase 1d `chapters.detect`, one from before Phase 2b `sidecars.contribute` or `meta.correct`); `code: "library_not_writable"` - a kind that writes, for a library the last heartbeat doesn't report mapped and writable; `code: "cannot_contribute"` - `sidecars.generate` with `contribute: "issue"`, `sidecars.contribute` or `meta.correct` while the Bridge can't contribute; `code: "generate_open"` - `sidecars.describe`, `chapters.detect` or `sidecars.contribute` while a `sidecars.generate` job is open for the book ("a generate job is still open for this book; queue this once it has finished"); `code: "contribute_open"` - `sidecars.generate` while a `sidecars.contribute` job is queued or working for the book (a parked one, or a queued one held while the `contributions` module is off, is cancelled instead); `code: "detect_open"` - `sidecars.generate` while a `chapters.detect` job is queued or working for the book, or `sidecars.describe` while one is open ("a chapter detection job is still open for this book; queue this once it has finished"); `code: "describe_open"` - `chapters.detect` while a `sidecars.describe` job is open for the book; `code: "chapters_chosen"` - `chapters.detect` for a book whose chapter source an admin chose (`files` or `community`), checked before the queue ("an admin chose this book's chapter source, so chapters found in the narration would never be used; set it back to automatic first"). `library_not_writable`, `cannot_contribute` and the open-job codes are checked after the dedupe: an open job of the same kind for the book is still returned (`200`) |
 
 ### `GET /api/v1/admin/bridge/jobs/{id}`
 
@@ -7632,14 +7648,14 @@ How each figure is worked out is in
 | `asr_hours` | expected transcription wall time: `duration_seconds / 3600 * asr_seconds_per_audio_hour / 3600`, rounded to hundredths; `0` for an ebook, without figures, or for audio of unknown length |
 | `agent_cost_usd` | expected agent spend, rounded to cents: the length times `agent_usd_per_audio_hour`, or `agent_usd_per_ebook`; `null` when the Bridge has no history for that source yet (or sent no figures): no estimate, never a free run |
 | `subscription`, `agent_ready`, `can_contribute` | the Bridge's: its agent credential is a subscription (the cost is notional), the agent container is ready, and it can offer results to the community (`contribute: "issue"`; the heartbeat's `setup.can_contribute`, else its estimates'). `can_contribute` is `false` while the `contributions` module is off |
-| `figures` | the last heartbeat carried estimates. Without them every field above is a default, so a false `agent_ready` means "not known yet" |
+| `figures` | the last heartbeat carried estimates. Without them every field above but `can_contribute` is a default, so a false `agent_ready` means "not known yet" |
 | `writable` | the Bridge last reported the library mapped and writable (else queueing is `409 library_not_writable`) |
 | `can_describe` | the Bridge is online and runs `sidecars.describe` (Phase 1c; a 1a or 1b Bridge doesn't). With `brief=1` too |
 | `has.community` | what the book's community work carries (metadata on and the book matched; `false` otherwise): `characters`, `recaps` (a recap list: a whole-book summary alone doesn't count, since generated recaps still fill the list beside it) and `description`, which is its `community_description` **or** its core `description` (the player shows either before a generated one, so a generated description would never be read) |
 | `has.community_unknown` | `true` when the community couldn't be asked right now, so `has.community` is no answer (never read it as "none"); omitted otherwise |
 | `has.local` | what the book's indexed [`.audiosilo/` files](../../bridge/attachments.md) carry: `characters`, `recaps` and `description` |
 | `earlier` | the books of the same library before this one in its first numbered series (any spelling), with no recaps generated here and, metadata on, none in the community (a book the community couldn't be asked about is left out): the nearest 10, in reading order, each with its own `asr_hours` and `agent_cost_usd` (costed from its audio). `[]` for none, and with `brief=1` |
-| `open_job` | the book's open `sidecars.generate` [job](#the-job-object), else (Phase 1d) the open job of another kind that refuses a generate job now: a queued or working `chapters.detect` job or (Phase 2b) `sidecars.contribute` job, whose `kind` says so; omitted when there is neither |
+| `open_job` | the book's open `sidecars.generate` [job](#the-job-object), else (Phase 1d) the open job of another kind that refuses a generate job now: a queued or working `chapters.detect` job or (Phase 2b) `sidecars.contribute` job (not a queued one held while the `contributions` module is off), whose `kind` says so; omitted when there is neither |
 
 | Status | Meaning |
 |---|---|
@@ -7722,7 +7738,7 @@ found. The server keeps the last one only (one row, never a history).
 | `libraries` | its last check of each library it has checked (at most 512, each `library_id` once and above 0): `mount_path` where it looked, `mapped` (a known book's files were there with the server's sizes), `writable` (a probe file could be written and removed there), `checked_path` (the book it compared), `error` (why it isn't mapped or writable, `""` when it is); the three texts at most 1 KiB each |
 | `workers` | the transcription workers connected to it (at most 64; `name`, `version`, `platform`, `last_seen`, at most 128 bytes each; `[]` today) |
 | `ui_url` | its own page on the local network: an absolute `http(s)` URL without credentials, or `""` |
-| `setup` | optional, Phase 2b, sent only after a reply listed it in `accepts`: the Bridge's setup checklist, `{ items: [{ id, done, required, detail?, library_ids? }], can_contribute, github_login? }`. Read leniently like `estimates` (an unknown key ignored, a block that doesn't decode dropped, never refused) and bounded: at most 16 items; an item whose `id` doesn't match `^[a-z][a-z0-9_]{0,31}$`, or repeats one, is left out (an unknown id is kept); `detail` cleaned to 256 bytes; `library_ids` positive, each once; a `github_login` that isn't GitHub's shape dropped. Its `can_contribute` wins over the estimates'. The ids a Phase 2b Bridge sends, their order and meaning: [The setup checklist](../../bridge/pairing-and-jobs.md#the-setup-checklist) |
+| `setup` | optional, Phase 2b, sent only after a reply listed it in `accepts`: the Bridge's setup checklist, `{ items: [{ id, done, required, detail?, library_ids? }], can_contribute, github_login? }`. Read leniently like `estimates` (an unknown key ignored, a block that doesn't decode dropped, never refused) and bounded: the first 16 items kept (the rest left out); an item whose `id` doesn't match `^[a-z][a-z0-9_]{0,31}$`, or repeats one, is left out (an unknown id is kept); `detail` cleaned to 256 bytes; in `library_ids` a zero, negative or repeated id left out (at most 512 kept); a `github_login` that isn't GitHub's shape dropped. Its `can_contribute` wins over the estimates'. The ids a Phase 2b Bridge sends, their order and meaning: [The setup checklist](../../bridge/pairing-and-jobs.md#the-setup-checklist) |
 | `estimates` | optional: its figures for costing a job before it is queued, one block per job family. `sidecars`: `asr_seconds_per_audio_hour` (ASR wall time per hour of audio, learned or a seed), `agent_usd_per_audio_hour` and `agent_usd_per_ebook` (agent spend from finished books, `null` before any), `samples` (the finished books they come from), `agent_backend` (`""` when none), `agent_ready` (the agent container answers and has a credential), `subscription` (that credential is a subscription login), `can_contribute` (it can file community intake issues), `monthly_budget_usd` (`0` = no cap) and `month_spent_usd`. Read leniently: an unknown key is ignored, and a block that doesn't decode, or holds a number below 0 or past its bound, is **dropped**, never refused (`agent_backend` is cleaned like the other text) |
 
 The structure is checked and refused when wrong: a malformed kind, a repeated

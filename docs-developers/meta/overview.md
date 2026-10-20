@@ -87,7 +87,7 @@ internal/serve      metaserve: serves pkg/query's handler (behind CORS + gzip), 
                     the GitHub-release poller (over pkg/release), webhook, OpenAPI, HTML pages, sitemaps
 internal/httpx      the response helpers pkg/query and internal/serve share
 Dockerfile     image: the site build + the metaserve binary - no baked data; the catalogue is fetched from the newest data release at boot (see below)
-.github/       issue forms + CI workflows (check, release, image, intake, ai-verify)
+.github/       issue forms + CI workflows (check, release, image, intake, route, ai-verify)
 ```
 
 Dependency direction mirrors the server's "transport is logic-free" rule:

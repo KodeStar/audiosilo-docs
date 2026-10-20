@@ -1125,28 +1125,46 @@ await step('settings: bridge', async () => {
       },
     }, BRIDGE_CLIENT);
 
+    // A shot that fails below must not skip what the later steps need (the
+    // second setup heartbeat, the Contributions module on): its error is thrown
+    // once those are done, so the step still reports it and that shot keeps its
+    // previous image.
+    let shotError = null;
+    const tryShot = async (fn) => {
+      try {
+        await fn();
+      } catch (e) {
+        shotError ??= e;
+      }
+    };
+
     if (acceptsSetup) {
       // The Setup card, at the top of the page while a required step is to do.
       if (wanted('admin/bridge-setup.png')) {
-        await open(page, '/server?topic=bridge');
-        const setupCard = page.locator('[aria-labelledby="bridge-setup-title"]');
-        await setupCard.getByText('3 of 5 required steps done').waitFor({timeout: 15000});
-        await setupCard.scrollIntoViewIfNeeded();
-        await sleep(800);
-        await shoot(page, 'admin/bridge-setup.png', {clip: around([await setupCard.boundingBox()])});
+        await tryShot(async () => {
+          await open(page, '/server?topic=bridge');
+          const setupCard = page.locator('[aria-labelledby="bridge-setup-title"]');
+          await setupCard.getByText('3 of 5 required steps done').waitFor({timeout: 15000});
+          await setupCard.scrollIntoViewIfNeeded();
+          await sleep(800);
+          await shoot(page, 'admin/bridge-setup.png', {clip: around([await setupCard.boundingBox()])});
+        });
       }
       // Budget reviewed and signed in to GitHub on the Bridge's page.
       status.setup = standInSetup(status.libraries, {budget: true, github: true});
       await api(bridge, 'PUT', '/bridge/status', status, BRIDGE_CLIENT);
     }
 
-    await open(page, '/server?topic=bridge');
-    await page.getByRole('list', {name: 'Jobs'}).getByText('Done', {exact: true}).waitFor({timeout: 15000});
-    await fitViewportToPage(page, 900, 2400, 1000);
-    await shoot(page, 'admin/settings-bridge-paired.png');
+    await tryShot(async () => {
+      await open(page, '/server?topic=bridge');
+      await page.getByRole('list', {name: 'Jobs'}).getByText('Done', {exact: true}).waitFor({timeout: 15000});
+      await fitViewportToPage(page, 900, 2400, 1000);
+      await shoot(page, 'admin/settings-bridge-paired.png');
+    });
 
     // The Contributions module on, now that the Bridge can contribute.
     await api(token, 'PATCH', '/admin/settings', {modules: {contributions: true}});
+    if (shotError) throw shotError;
   } finally {
     await page.setViewportSize(DESKTOP_CONTEXT.viewport);
   }

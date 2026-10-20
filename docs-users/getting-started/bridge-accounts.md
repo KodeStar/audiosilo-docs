@@ -19,8 +19,8 @@ connects to the Bridge, so the console's **Server > Settings > Bridge** only
 shows these accounts read-only, as the Bridge last reported them, with **Open
 Accounts on the Bridge** to come here (see
 [The setup card](../admin/bridge.md#the-setup-card)). Nothing you
-enter on this tab is ever shown again: the page says whether a credential is set,
-and since when.
+enter on this tab is ever shown again: the page says only whether a credential
+is set, and when (for the agent, when its credentials last changed).
 
 ### GitHub
 
@@ -37,11 +37,12 @@ To sign in:
    enter the code and authorize **AudioSilo Contributions**.
 3. Back on the Bridge's page, the card says **Signed in**, with your GitHub user
    name, on its own within a few seconds. **Cancel** stops a sign-in that is still
-   waiting for its code.
+   waiting for its code (when you sign in again after GitHub stopped accepting the
+   old sign-in, that button is **Sign out**, which also forgets the old one).
 
 What the app may do: open issues on the community metadata repositories it is
-installed on, and create gists (a recap too long for an issue is attached as
-one). It can't change code, read your private repositories or act anywhere else.
+installed on, and create gists (characters or recaps too long for an issue are
+attached as one). It can't change code, read your private repositories or act anywhere else.
 Your password never reaches the Bridge: GitHub gives it a token, which the Bridge
 keeps encrypted in its data folder and renews by itself.
 
@@ -49,7 +50,7 @@ The card's states:
 
 | Badge | Means |
 |---|---|
-| **Signed in** | the Bridge can share, as the user shown |
+| **Signed in** | the sign-in works, as the user shown (the Bridge shares with it unless **Sharing uses** names another token) |
 | **Waiting for the code** | a sign-in is waiting for you to enter the code on GitHub |
 | **Sign in again** | GitHub stopped accepting the sign-in: you revoked it on GitHub, or it expired. Press **Sign in to GitHub** again |
 | **Not signed in** | no sign-in yet |
@@ -61,9 +62,10 @@ container), or none.
 
 **Signing out.** **Sign out** revokes the sign-in on GitHub and forgets it on the
 Bridge. If GitHub can't be reached to revoke it, the Bridge forgets it anyway and
-says so: then open **Review access on GitHub** (your GitHub settings'
-**Authorized GitHub Apps**) and revoke **AudioSilo Contributions** there. That page
-is also where you can revoke the Bridge's access at any time without the Bridge.
+says so: then revoke **AudioSilo Contributions** yourself in your GitHub settings,
+under **Applications > Authorized GitHub Apps** (while you are signed in, the
+card's **Review access on GitHub** opens that page). That page is also where you
+can revoke the Bridge's access at any time without the Bridge.
 
 Once signed in, turn on the [Contributions module](../admin/server.md#modules) in
 the console to share. What is shared, and how the community reviews it, is in
@@ -97,15 +99,18 @@ its image.
 
 ### Settings that take precedence
 
-Credentials set outside the page win over the ones set here, so a Bridge set up
-from its compose file keeps working as before:
+Two credentials set outside the page win over the ones set here, so a Bridge set
+up from its compose file keeps working as before:
 
 - **`AUDIOSILO_BRIDGE_GITHUB_TOKEN`** in the Bridge's `environment`: a GitHub token
-  of your own (how earlier versions were set up). While it is set, the Bridge
-  shares with it rather than the sign-in, and the GitHub card says so. It is read
-  from the environment only: remove it and restart the Bridge to use the sign-in.
+  of your own (how earlier versions were set up: a fine-grained token that can open
+  issues on the community metadata repositories, and create gists for characters
+  or recaps too long for an issue). While it is set, the Bridge shares with it
+  rather than the sign-in (unless GitHub refuses it: then the sign-in is used), and
+  the GitHub card says so. It is read from the environment only: remove it and
+  restart the Bridge to use the sign-in.
   (Earlier versions kept an encrypted copy of it; this one deletes that copy.)
 - **A credential in the agent container**: `CLAUDE_CODE_OAUTH_TOKEN`,
-  `ANTHROPIC_API_KEY` or `OPENAI_API_KEY` in its environment, the matching file in
+  `ANTHROPIC_API_KEY`, `OPENAI_API_KEY` or `CODEX_API_KEY` in its environment, the matching file in
   `/agent/secrets/`, or a Codex sign-in. While the container has one for the tool
   it runs, it uses its own, and the Agent card says so.

@@ -4,8 +4,9 @@ description: "Bridge Phase 2b end to end: the Accounts tab (the AudioSilo Contri
 ---
 
 Phase 2b lets a server send what it knows back to the community metadata
-database, always through the Bridge (decision 17: the server never holds a GitHub
-credential, and never calls the Bridge). Three parts:
+database, always through the Bridge (decisions 18 and 19: every write to meta goes
+through the Bridge, which holds the GitHub credential; decision 8: the server never
+calls the Bridge). Three parts:
 
 - **Accounts** on the Bridge's page: a GitHub sign-in to file as, and the agent's
   credential (handed to the agent container per run, see
@@ -57,11 +58,13 @@ which needs only the App's public client ID. The code is the Bridge's
   replaced is ignored), which drops `can_contribute`. A REST call that works moves
   `last_ok_at` (`contrib.NewClientFor` wires both hooks); it never ends a refusal,
   only a new sign-in does.
-- **Signing out** (`DELETE /api/accounts/github`, `SignOut`):
-  `POST https://api.github.com/credentials/revoke` with both tokens and no auth
-  (`202`), then the local delete, which happens **even when the revoke failed**:
-  the answer's `revoke_error` says so and the page shows it, beside the manage link
-  (`https://github.com/settings/apps/authorizations`).
+- **Signing out** (`DELETE /api/accounts/github`, `SignOut`): ends a flow in
+  progress and deletes the sign-in here first (the vault value and the accounts
+  row), then `POST https://api.github.com/credentials/revoke` with both tokens and
+  no auth (`202`), best effort: a revoke that fails leaves the sign-in deleted, and
+  the answer's `revoke_error` says so for the page to show as a warning. The page's
+  manage link (`manage_url`, `https://github.com/settings/apps/authorizations`)
+  shows only while signed in.
 
 A sign-in that changes (signed in, signed out, refused) kicks a heartbeat, so the
 console's Setup card and the `contribute` feature follow within seconds, and
@@ -89,11 +92,13 @@ credential back.**
 | `PUT /api/accounts/agent` | `{kind, value}`: seals one agent credential; answers the accounts |
 | `DELETE /api/accounts/agent?kind=` | removes one kind (`""` for all); answers the accounts |
 
-`github`: `available` (a client ID is configured), `signed_in`, `refused`,
+`github`: `available` (a client ID is configured: always, as an empty
+`github.client_id` falls back to the built-in one), `signed_in`, `refused`,
 `login`, `signed_in_at`, `last_ok_at`, `last_error`, `pending` (the code above, or
 `null`), `flow_error` (why the last flow ended without a sign-in), `env_token`
-(`AUDIOSILO_BRIDGE_GITHUB_TOKEN` is set and wins), `from` (`env`, `device`, `gh`
-or `""`), `can_contribute`, `manage_url`.
+(`AUDIOSILO_BRIDGE_GITHUB_TOKEN` is set; it wins unless GitHub refused it), `from`
+(the token used now: `env`, `device`, `gh` or `""`), `can_contribute`,
+`manage_url`.
 
 `agent`: `backend`, `kinds` (the kinds that backend takes, in the order it uses
 them: `claude_oauth_token`, `anthropic_api_key` for claude; `openai_api_key` for
@@ -105,11 +110,11 @@ without the value). Changing a credential re-admits the books parked
 `agent_credential_refused` and `agent_unavailable`.
 
 The page's Accounts tab (`web/src/components/tabs/AccountsTab.tsx`,
-`src/lib/accounts.ts`) polls every 3 seconds only while a sign-in is pending.
+`web/src/lib/accounts.ts`) polls every 3 seconds only while a sign-in is pending.
 
 ## Sharing later: `sidecars.contribute`
 
-"Share with the community" after a run kept on the server (plan D2). Family
+"Share with the community" after a run kept on the server (decision 17). Family
 `sidecars`; a book `path` required; it **writes nothing** into the library.
 
 **The server** (`bridge/contribute.go`) takes params strictly:
@@ -117,7 +122,9 @@ The page's Accounts tab (`web/src/components/tabs/AccountsTab.tsx`,
 stored in that order (absent or empty means both); a `work_id` at most 200 bytes,
 no control characters. It is refused `409 generate_open` while a
 `sidecars.generate` job is open for the book, and a new generate job is refused
-`409 contribute_open` while a contribute job is queued or working.
+`409 contribute_open` while a contribute job is queued or working; it cancels a
+parked one, or a queued one held while the `contributions` module is off ("a
+generate job for the book replaced what it was sharing").
 
 **The Bridge** (`generate/contributejob.go`, light lane) reads its params
 leniently (a later server's field ignored), then:
@@ -129,11 +136,17 @@ leniently (a later server's field ignored), then:
 3. `pipeline.Executor.Share` files them the way the contributing stage does in
    issue mode, with no agent and no spend. The work is the job's `work_id` (a
    retired slug followed to its survivor and recorded on the book), else the
-   book's match, else its exact identifiers; an unmatched book fails ("Match the
-   book first"): a share never proposes a new work. A dimension counts as filed
-   only when its row is `submitted`, `pr_open` or `merged` (a local export, a
-   `covered` verdict or a closed issue is filed again); one already filed is kept
-   and reported. A dimension the community already has is `covered`.
+   Bridge's own match for the engine book (the console sends no `work_id`), else
+   the engine book's exact identifiers; an unmatched book fails ("Match the book
+   first"): a share never proposes a new work. A dimension counts as filed only
+   when its row is `submitted`, `pr_open` or `merged` (a local export, a `covered`
+   verdict or a closed issue is filed again); one already filed is kept and
+   reported. A dimension the community already has is `covered`. Each
+   dimension's gist and issue are filed **at most once** across shares and the
+   contributing stage's retries: a filing marker is recorded before each create
+   (`contrib.filing/<book id>/<kind>`), and the next submit adopts the gist or
+   issue the user made since (`GistsSince`, `IssuesSinceBy`), filing again only
+   when GitHub's list is complete and holds none.
 
 Result:
 
@@ -148,7 +161,10 @@ Result:
 Failures, worded for the console: not signed in, GitHub refused the sign-in
 ("sign in again on the Bridge's Accounts tab, then share the book again"), nothing
 kept here ("it was not generated here, or they were removed"), a generate job
-still running, not matched. A finished job whose `contributed` is empty and
+still running, not matched, and an earlier share that stopped while filing when
+the Bridge can't yet tell whether GitHub made the issue ("share the book again
+later, and if this keeps happening, look for the issue on the community
+repository"). A finished job whose `contributed` is empty and
 `covered` isn't is "Already in the community" in the server's notification
 (`bridge.Job.SharedNothing`).
 
@@ -180,20 +196,24 @@ and feature `meta`; a book `path` required; it writes nothing into the library.
 }
 ```
 
-Beyond the reference: a control character is `unicode.IsControl` (C1 included);
+Beyond the reference: in the changes' values and the evidence a control character
+is `unicode.IsControl` (C1 included; the identifiers refuse C0 and DEL only);
 `evidence` keeps its line breaks (CRLF stored as LF) and stays within 2000
 characters as the issue carries it (a line starting with `#` loses its indent and
 gains a backslash); `asin`, `isbn` and `region` (the marketplace the ASIN sells
 in) say how the book was found.
 
-What the Bridge would refuse when filing is a `400` here. Then the handler's
+What the Bridge would refuse when filing is a `400` here, except a `work_id` the
+community doesn't have: the server checks it only as text (at most 200 bytes, no
+control characters), and such a job fails on the Bridge. Then the handler's
 `checkCorrections` (security-relevant: the server files only an admin's own
 edits) requires each change's field to be **edited** on the book
 (`catalog.SourceEdited`: never a scanned, path, ABS or accepted-community value)
 with `corrected` equal to the book's value now (`MatchState.EditedValue`), else
 **`400 not_edited`** naming the `field`. It stores the book's own spelling of each
-value and stamps `source` as `audiosilo-server/<version>` whatever was sent. Only
-the values are bound to the book: the records the job names (`work_id`,
+value and stamps `source` as `audiosilo-server/<version>` whatever well-formed
+`source` was sent (at most 128 bytes, no control characters). Only the corrected
+values are bound to the book: `current` and the records the job names (`work_id`,
 `recording_id`, `asin`, `isbn`, `region`) are the caller's (the console sends the
 book's community match).
 
@@ -215,8 +235,10 @@ required):
    | `isbn` | recording `isbn` (added) | meta's bot |
    | `narrator` | recording `narrators` | a maintainer |
 
-   A recording field with **no recording** is addressed to the work, and meta
-   hands it to a maintainer (who finds the recording). Anything else (an unknown
+   The series fields go to the work, which meta's batch form takes, not to the
+   series record's `works[]` entry the spike drew (section 5). A recording field
+   with **no recording** is addressed to the work, and meta hands it to a
+   maintainer (who finds the recording). Anything else (an unknown
    field, a duplicate field (two distinct ISBNs excepted), a value past the
    bounds) is `ErrInvalidCorrection` for the whole issue;
 3. composes the issue (`contrib.CorrectionBatchIssue`, meta's form rendered
@@ -227,8 +249,10 @@ required):
    every change naming its record), **Evidence / source** and the ticked CC0
    dedication;
 4. files **one** issue on the core repository (audiosilo-meta) with the GitHub
-   token. A device token skips the labels check (`AppFiled`): meta's `route.yml`
-   labels the issue.
+   token, and reads no labels back: an issue filed with the Accounts sign-in (the
+   App's token) is labelled by meta's `route.yml`, while one filed with
+   `AUDIOSILO_BRIDGE_GITHUB_TOKEN` or `gh` by an account that can't label there
+   arrives without labels and waits for a maintainer.
 
 **Never twice.** A `filing <time>` marker goes into the Bridge's store
 (`meta.correct/<server id>/<job id>`) before `CreateIssue`, cleared only when
@@ -248,24 +272,26 @@ Result:
 ```
 
 `auto` and `maintainer` are as known at filing. The Bridge doesn't follow the
-issue, so a batch meta applies only in part isn't reported back (plan D8,
-deferred).
+issue, so a batch meta applies only in part isn't reported back (deferred).
 
 **The console** (`features/book/corrections-dialog.tsx`, `corrections-model.ts`)
 offers **Suggest corrections** in the Community card (`correctionsOffered`) while
 the module's flag and `capabilities.metadata` are on, the online Bridge lists the
 `meta` feature, the book is matched with an ASIN or ISBN, and an edited
 correction field holds a value (`isbn` only beside an ASIN: without one the ISBN
-is how the community finds the book). The dialog looks the book up by ASIN, else
+is how the community finds the book); `CorrectionsSection` also holds the offer
+back while a corrections job for the book is open, showing its status instead. The dialog looks the book up by ASIN, else
 ISBN (`matchBook`), takes the candidate the identifier resolved, diffs the edited
 values against the community's (`communityValues` for that recording;
-`published` against the recording's release date, an ISBN the recording already
-lists is no change), ticks each sendable row not suggested by the book's last
+`published` against the recording's release date, and no change when it is the
+same as, or less precise than, that date or the work's first publication; an
+ISBN the recording already lists is no change), ticks each sendable row not suggested by the book's last
 corrections job, badges it **Applied automatically** or **Reviewed by a
 maintainer** (`handling`: a recording field is automatic only when the identifier
 names the recording, `correctionRecording`), requires the evidence (prefilled)
 and queues one `meta.correct`. The job's status and issue link show in the same
-card part. The server enforces the 25-change cap.
+card part. The server enforces the 25-change cap, and the 16 KiB cap on a job's
+params, which a batch of long values can pass (`params too large`).
 
 ## Notifications
 

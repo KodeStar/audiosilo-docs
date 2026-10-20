@@ -558,7 +558,7 @@ book generated before descriptions existed. See
 ![The Community metadata card with Generate characters and recaps](/img/screenshots/admin/book-generate.png)
 
 With the [Contributions module](server.md#modules) on and the Bridge signed in to
-GitHub, the card can have two more parts:
+GitHub (or given a GitHub token of your own), the card can have two more parts:
 
 - **Corrections**, on a matched book whose details you edited differently from the
   community: **Suggest corrections** sends your values for review. See

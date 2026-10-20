@@ -309,9 +309,9 @@ and files it. You need a free GitHub account to submit one.
 There are forms to add a book or a narration, to write a book's characters or its
 story-so-far recaps, to send in a correction (or several corrections to one book
 at once), and to submit a whole library at once. If you run an AudioSilo server
-with a Bridge, it can file these for you: see
-[Contributing from your server](contributing-from-your-server.md). The import page above turns each new book it finds into a one-click "add
-this book" link.
+with a Bridge, it can file characters, recaps and corrections for you: see
+[Contributing from your server](contributing-from-your-server.md). The import
+page above turns each new book it finds into a one-click "add this book" link.
 
 To submit a whole library, drag your exported JSON file into the library form's
 **Export file** box; GitHub uploads it and puts a link in its place. Files up to

@@ -42,7 +42,9 @@ for 15 minutes, and a paired Bridge ignores it. Remove it after pairing.
 The engine's settings (`tools`, `asr`, `agent`, `supervisor`, `contribution`,
 `metadata`, with `AUDIOSILO_BRIDGE_TOOLS_*`, `_ASR_*`, `_AGENT_*` and so on) came
 over from audiosilo-sidecars and apply since Phase 1a, when the engine started
-running behind `sidecars.generate`; they are read at the start (restart to apply).
+running behind `sidecars.generate`; they are read at the start (restart to apply),
+except `asr.worker_fallback` and `agent.monthly_budget_usd`, which the page edits
+and which apply live (below).
 The full and cuda images set `AUDIOSILO_BRIDGE_ASR_BACKEND=whisper-cpp` and
 `AUDIOSILO_BRIDGE_ASR_WHISPER_CLI_PATH=/opt/whisper/whisper-cli` for their bundled
 speech recognition.
@@ -69,7 +71,7 @@ The settings [`sidecars.generate`](generating.md) adds, or that matter most to i
 | `agent.backend` | `AUDIOSILO_BRIDGE_AGENT_BACKEND` | `claude` (empty is claude) | the CLI the [agent container](agent-container.md) runs for this Bridge: `claude` or `codex` |
 | `agent.staging_dir` | `AUDIOSILO_BRIDGE_AGENT_STAGING_DIR` | `<data>/staging` | the folder shared with the agent container (absolute). The compose example mounts a volume at `/staging`, outside `/bridge-data`, whose first-start ownership fix would otherwise reach it |
 | `agent.claim_timeout_seconds` | `AUDIOSILO_BRIDGE_AGENT_CLAIM_TIMEOUT_SECONDS` | `120` | how long an agent job waits for the container to claim it before the book parks `agent_unavailable` (10 to 3600) |
-| `agent.monthly_budget_usd` | `AUDIOSILO_BRIDGE_AGENT_MONTHLY_BUDGET_USD` | `100` | the monthly agent spend cap across every book, the calendar month in UTC (decision 7); `0` = no cap. Since Phase 2b the page's **Settings** tab edits it (locked when the environment sets it) and it applies **live**: the engine reads it per run (`pipeline.Config.MonthlyBudget` is a func), and a save re-admits the books parked `budget_exceeded` |
+| `agent.monthly_budget_usd` | `AUDIOSILO_BRIDGE_AGENT_MONTHLY_BUDGET_USD` | `100` | the monthly agent spend cap across every book, the calendar month in UTC (decision 7); `0` = no cap. Since Phase 2b the page's **Settings** tab edits it (locked when the environment sets it) and it applies **live**: the engine reads it per run (`pipeline.Config.MonthlyBudget` is a func), and a save that changes it re-admits the books parked `budget_exceeded` (one still over the new cap parks again until the next month) |
 | `agent.budget_reviewed_at` | | | when an admin last saved the monthly budget on the page (RFC 3339, `""` for never; written by the save, not meant to be set by hand). The setup checklist's `budget` item is done when it is set **or** the environment sets the budget (`Config.BudgetReviewed`) |
 | `agent.book_budget_usd` | `AUDIOSILO_BRIDGE_AGENT_BOOK_BUDGET_USD` | `75` | one book's agent spend cap |
 | `transcripts.retention_days` | `AUDIOSILO_BRIDGE_TRANSCRIPTS_RETENTION_DAYS` | `30` | days a finished book's transcripts are kept after its job ends (0 to 3650; `0` = deleted when it ends; decision 5) |
@@ -86,11 +88,15 @@ set in `config.yaml`.
 
 Phase 2b's contributions (`contribute: issue`, `sidecars.contribute`,
 `meta.correct`) file issues on the community repositories with a GitHub token.
-`contrib.TokenSource` resolves one per use, in this order, and `From()` says which
-(the page's `from`):
+`contrib.TokenSource.Resolve` picks one per use, in this order, and returns which
+as `from` (`env`, `device` or `gh`: the page's `from`), passing over a token GitHub
+refused (an environment or `gh` token until it changes, the sign-in until a new
+one):
 
 1. **`AUDIOSILO_BRIDGE_GITHUB_TOKEN`** (`env`): a token of the admin's own (a
-   fine-grained one that can open issues on the community repos). Read **live**
+   fine-grained one that can open issues on the community repos and create gists,
+   since a body too long for an issue goes in a gist made with the same token).
+   Read **live**
    from the environment at each use and never sealed. Before Phase 2b a start
    sealed it as `github_pat`; a start now deletes that copy once
    (`forgetSealedGitHubPAT`, best effort: a copy sealed with another key, or a
@@ -107,7 +113,7 @@ token resolves and GitHub hasn't refused it".
 
 | Setting | Environment | Default | What it is |
 |---|---|---|---|
-| | `AUDIOSILO_BRIDGE_GITHUB_TOKEN` | | a GitHub token that wins over the sign-in (above). Never logged, never sealed |
+| | `AUDIOSILO_BRIDGE_GITHUB_TOKEN` | | a GitHub token that wins over the sign-in while GitHub accepts it (above). Never logged, never sealed |
 | `github.client_id` | `AUDIOSILO_BRIDGE_GITHUB_CLIENT_ID` | the App's (`ghauth.DefaultClientID`, `Iv23likw0zS13hG4spdo`) | the GitHub App the Accounts tab signs in to: letters, digits, `.`, `_`, `-`, at most 64. Empty uses the built-in one at use, so a saved `config.yaml` never pins it. Only for a fork running its own App |
 | `github.web_base_url` | `AUDIOSILO_BRIDGE_GITHUB_WEB_BASE_URL` | `https://github.com` | where the device-code and token endpoints live (an absolute `http(s)` URL), for a test against a fake GitHub |
 | `contribution.api_base_url` | `AUDIOSILO_BRIDGE_CONTRIBUTION_API_BASE_URL` | `https://api.github.com` | the GitHub REST API root the issues, the user lookup and the revoke go to |
@@ -116,7 +122,8 @@ The App itself: id `5387686`, slug `audiosilo-contributions`, public (a private 
 can be authorized by its owner only), device flow on, user tokens **expiring**;
 permissions Issues read and write and Metadata read on the repositories it is
 installed on (audiosilo-meta and audiosilo-meta-community), and Gists read and
-write on the account (an oversized recap goes in a gist); webhook inactive. Its
+write on the account (a characters or recaps file too long for an issue goes in a
+secret gist); webhook inactive. Its
 client ID ships in the Bridge (no client secret exists or is needed). Meta routes
 on the App's id: see
 [Contributing data](../meta/contributing-data.md#issues-filed-through-the-audiosilo-app).
@@ -146,9 +153,11 @@ master key seals them all:
   open the secrets.
 - Otherwise `<data>/secret.key`, created (`0600`) on the first start.
 
-If the key changes (a different variable, a replaced key file), the stored token
-can't be opened and the Bridge refuses to start, saying so. The page's API never
-returns a secret: `GET /api/accounts` says which are set and since when. Generate a key with,
+If the key changes (a different variable, a replaced key file), the stored server
+token can't be opened and the Bridge refuses to start, saying so; a GitHub sign-in
+or an agent credential sealed with the old key reads as not set (sign in and set
+it again). The page's API never returns a secret: `GET /api/accounts` says which
+are set and when (for the agent, when its credentials last changed). Generate a key with,
 for example, `openssl rand -hex 32`. The startup log says where the key came from
 (`environment`, `key file` or `new key file`), never the key.
 
@@ -203,8 +212,7 @@ version.
 ## Running it beside a server
 
 `compose.example.yaml` in the Bridge's repository runs the server, the Bridge and
-its agent container together (its header comment, which says the same as this
-page, left out):
+its agent container together (its header comment left out):
 
 ```yaml
 name: audiosilo
@@ -246,8 +254,8 @@ services:
       # AUDIOSILO_BRIDGE_AGENT_BACKEND: codex
       # A GitHub token (a fine-grained one that can open issues on the community
       # repos) lets a job contribute its characters and recaps (contribute: issue).
-      # Optional since Phase 2b (sign in on the page's Accounts tab instead); when
-      # set it wins over that sign-in. Read live, never stored.
+      # Read live and never stored; while set it is used instead of the Accounts
+      # tab's GitHub sign-in.
       # AUDIOSILO_BRIDGE_GITHUB_TOKEN: ${AUDIOSILO_BRIDGE_GITHUB_TOKEN}
     ports:
       - "8091:8091"
@@ -265,8 +273,6 @@ services:
     environment:
       # By name only: the value comes from your shell or .env and is never
       # written here. Set the one you use; the runner reports which it found.
-      # Optional since Phase 2b: unset, the runs use the credential set on the
-      # Bridge's Accounts tab. One set here wins.
       - CLAUDE_CODE_OAUTH_TOKEN
       # - ANTHROPIC_API_KEY
       # - OPENAI_API_KEY

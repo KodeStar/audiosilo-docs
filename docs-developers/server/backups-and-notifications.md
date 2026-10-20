@@ -222,7 +222,8 @@ Choose its chapter source on the book page.", and the console's bell says the
 same), and (Phase 2b) for a `sidecars.contribute` job `Shared with the community:
 <title>` ("What this server generated for the book went to the community for
 review. The book page links it."; `Already in the community: <title>` when it
-filed nothing) and for a `meta.correct` job `Corrections sent: <title>` ("The
+filed nothing because the community already had it: `contributed` empty, `covered`
+not) and for a `meta.correct` job `Corrections sent: <title>` ("The
 book's corrections went to the community for review. The book page links them.");
 `bridge_job_failed` reads `A Bridge job needs attention: <title>`
 (warning colour) or `<kind> failed: <title>` (`Characters and recaps`,

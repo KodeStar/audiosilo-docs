@@ -69,8 +69,10 @@ Characters tab. The companion's empty Who's who and Story so far never show the
 line: an empty panel means the community lacks that half.
 
 The other guards (a job open, the Bridge offline, the four gates above) are
-unchanged. A `chapters.detect` job open still hides the console's action, while
-the player keeps its button and the confirmation holds back (see
+unchanged. A `chapters.detect` or (Phase 2b) `sidecars.contribute` job queued or
+working still hides the console's action (not a share held while the
+`contributions` module is off, which a generate job cancels), while the player
+keeps its button and the confirmation holds back (see
 [the book page](../frontend/book-page.md#the-primary-action-and-the-action-row)).
 
 ## Queueing it
@@ -96,7 +98,8 @@ would say. Since Phase 2b a `contribute: "issue"` job also needs the
 `contributions` module: `404 module_off` while it is off, and held in the queue
 meanwhile (see [Jobs of a managed module](pairing-and-jobs.md#jobs-of-a-managed-module)).
 A generate job is refused `409 contribute_open` while a `sidecars.contribute` job
-is queued or working for the book. The player always sends
+is queued or working for the book, and cancels a parked one, or a queued one held
+while the module is off. The player always sends
 `{source: "auto", contribute: "local"}`; only the console offers contributing, and
 its dialog's switch (shown while the module's flag is on and the estimate's
 `can_contribute` is true) starts on `issue`.
@@ -139,7 +142,10 @@ The server costs the run from the figures in the Bridge's last heartbeat
   community couldn't be asked about is left out, never offered on a guess): the
   nearest 10, among at most the nearest 30 checked, in reading order, each with
   its own `asr_hours` and `agent_cost_usd` from its audio.
-- **`open_job`** is the book's open `sidecars.generate` job, if any.
+- **`open_job`** is the book's open `sidecars.generate` job, else the open job of
+  another kind that refuses one now (`Service.Blocker`): a queued or working
+  `chapters.detect` job (Phase 1d) or `sidecars.contribute` job (Phase 2b; not a
+  queued one held while the `contributions` module is off); omitted for neither.
 
 `brief=1` is the cheap answer for a label or a batch: the same shape without the
 look into the book's folder (`source` audio, no `ebook`) and without the series
@@ -276,7 +282,7 @@ waiting on its own park look again now.
 | `asr_worker_waiting` | no [ASR worker](workers.md) is connected and the fallback is `wait` (or the Bridge has no speech recognition of its own) (new in Phase 1b) | yes, as soon as a worker connects (or the fallback is `local` with a usable backend) |
 | `manifest_changed` | the book's audio changed since it was transcribed | no: cancel and generate again |
 | `ebook_unreadable`, `ebook_no_chapters` | the ebook can't be used | no: cancel and generate from the audio |
-| `contrib_unavailable` | contributing couldn't reach GitHub, or has no token | no |
+| `contrib_unavailable` | contributing has no GitHub token it can use (none resolves, or GitHub refused it) | yes, once the Bridge can contribute again (a sign-in on the Accounts tab, say) |
 | `core_needed` | contributing needs a community core record the book doesn't have | no (the local files are already written) |
 | `core_pending` | the book's core record waits for the next data release | yes |
 | `book_not_writable` | the Bridge can't write in the book's folder or its `.audiosilo/` (before the run, or when writing the results; the results wait in the engine's work folder) | it checks again every minute |
@@ -539,10 +545,12 @@ files are written before that stage can park: a book parked at `contributing`
 (`core_needed`, `contrib_unavailable`, say) already has its `.audiosilo/` files,
 and the job writes them again only when the engine's sidecars change. A sign-in
 on the Accounts tab re-admits the books parked `contrib_unavailable`.
-`can_contribute` in the heartbeat is "a token resolves and isn't refused", which is
-all the server checks before it queues such a job. An issue filed with the App's
-user token skips the labels check (`AppFiled`): GitHub drops the labels a
-non-collaborator sets, and meta's `route.yml` labels it.
+`can_contribute` in the heartbeat is "a token resolves and isn't refused", which,
+with the Contributions module on, is all the server checks of the Bridge's GitHub
+access before it queues such a job. An issue filed with the App's user token
+skips the labels check (`AppFiled`): GitHub drops the labels a non-collaborator
+sets, and the community repository's `route.yml` (audiosilo-meta-community) labels
+it.
 
 Contributing **later**, after a run kept local, is its own kind,
 `sidecars.contribute`: see [Contributions](contributions.md#sharing-later-sidecarscontribute).

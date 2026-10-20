@@ -14,14 +14,18 @@ Today the Bridge [generates characters and recaps](../admin/generating-character
 for books the community hasn't covered yet: it transcribes a book (or reads its
 ebook) and has an AI agent write them. It also
 [finds the chapters](../admin/generating-characters-and-recaps.md#books-without-chapters)
-of a book that has none, in its narration. It runs as **two containers**:
+of a book that has none, in its narration, and it can
+[contribute](../community/contributing-from-your-server.md) the characters and
+recaps it generates, and your corrections to a book's details, to the community
+metadata database. It runs as **two containers**:
 
 - **the Bridge** itself, which sees your library folders and does the
   transcribing and the writing;
 - **the agent container**, which runs the AI agent (Anthropic's Claude Code or
   OpenAI's Codex). It sees only a shared work folder and its own settings: never
-  your library, the Bridge's data or its secrets, and it can't reach the server
-  or the Bridge. Each job hands it just the text it needs.
+  your library, the Bridge's data or its secrets (apart from the agent's own
+  credential, when you set it on the Bridge, which each run receives), and it
+  can't reach the server or the Bridge. Each job hands it just the text it needs.
 
 :::info Early days
 The Bridge is new and still being built, and its images aren't open to everyone
@@ -163,8 +167,10 @@ even on the same machine. It won't open over the internet, through a reverse pro
 or over a VPN address like Tailscale's, and isn't meant to.
 
 Until the Bridge is set up, its **Status** tab starts with a **Get set up** card:
-the steps below, in the same order, each ticked once done, with a word on what is
-missing and an **Open** link to the tab where you do it. The card goes away once
+the steps below, in the same order, each ticked once done, with a word on where
+it stands and, while it is still to do, an **Open** link to the tab where you do
+it (**Open Libraries**, **Open Settings** or **Open Accounts**; pairing is done on
+the Status tab itself). The card goes away once
 every required step is done. Once the Bridge is paired, the server's console
 shows the same list on [Settings > Bridge](../admin/bridge.md#the-setup-card).
 
@@ -195,8 +201,9 @@ means is in [The Bridge](../admin/bridge.md).
 ### 5. Check the libraries
 
 After pairing, the Bridge looks for each of the server's libraries and checks it
-can write there. Within a few seconds each library shows **Ready** on the Bridge's
-**Libraries** tab and in the console. A library that isn't ready says why: see
+can write there. Within a few seconds each library shows **Mapped** and
+**Writable** on the Bridge's **Libraries** tab, and **Ready** in the console. A
+library that isn't ready says why: see
 [Libraries](../admin/bridge.md#libraries). With the same folders mounted at the
 same paths (step 1) there is usually nothing to do. If you mounted a library
 somewhere else, tell the Bridge where it is on the **Libraries** tab.
@@ -224,7 +231,7 @@ connected.
 
 ### 7. The agent's credential
 
-The agent container needs to be signed in to an AI account. It runs **Claude
+The agent needs a credential for an AI account. It runs **Claude
 Code** unless you tell the Bridge otherwise (below). There are two places to put
 the credential:
 
@@ -252,8 +259,8 @@ Instead of the `.env` file you can put the token in the agent's settings volume,
 in the file `/agent/secrets/claude_code_oauth_token`. Or use an Anthropic API key
 instead of a subscription (billed per use): the **Anthropic API key** field on the
 Accounts tab, or `ANTHROPIC_API_KEY` in place of `CLAUDE_CODE_OAUTH_TOKEN`.
-`docker compose exec agent audiosilo-bridge agent-login claude` prints these
-steps.
+`docker compose exec agent audiosilo-bridge agent-login claude` prints the agent
+container's ways (the variable or the file).
 
 **With a ChatGPT subscription** (Codex):
 
@@ -289,11 +296,11 @@ and it never appears in a log.
 
 The Bridge stops the agent from spending more than a monthly budget: **$100** a
 month unless you change it. On the **Settings** tab, check **Monthly agent budget
-(dollars)** (`0` means no cap) and press **Save**: saving counts as reviewing it,
+(dollars)** (`0` means no cap) and press **Save settings**: saving counts as reviewing it,
 even when you keep the amount. A budget set with
 `AUDIOSILO_BRIDGE_AGENT_MONTHLY_BUDGET_USD` counts as reviewed too, and is then
-locked on the page. A new budget applies at once, and a job paused at the old cap
-carries on. See [Costs and limits](#costs-and-limits) for the rest.
+locked on the page. A new budget applies at once: a job paused at the old cap
+carries on if the new budget leaves room. See [Costs and limits](#costs-and-limits) for the rest.
 
 ### 9. GitHub, to share with the community (optional)
 
@@ -358,11 +365,12 @@ both: on Unraid, `chmod 777` it once.
   Accounts tab, each stored encrypted with a key kept in that folder. To keep the
   key separately, set `AUDIOSILO_BRIDGE_SECRET_KEY` to 64 hex characters (for
   example from `openssl rand -hex 32`) and keep it safe: without the same key the
-  Bridge can't open its stored token and won't start.
+  Bridge can't open what it stored, so it won't start while paired, and its
+  GitHub sign-in and agent credentials have to be set again.
 - The Bridge's page never shows a stored credential again: it only says whether
-  one is set, and since when.
-- The agent container keeps a sign-in of its own (a Codex login, a token in its
-  environment or settings volume) in its `agent-config` volume. A credential from
+  one is set, and when (for the agent, when its credentials last changed).
+- The agent container may have a credential of its own: a Codex login or a token
+  file in its `agent-config` volume, or a token in its environment. A credential from
   the Accounts tab reaches it only as a file for one run, which it deletes before
   the AI tool starts. It can reach the internet (the AI service needs it) but not
   your library, the server or the Bridge.

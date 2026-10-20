@@ -307,6 +307,11 @@ Three fences keep a demo session from becoming a durable login:
   and is never anyone's owner or member: the admin's Assign refuses both
   (`409 owner_is_demo`, `409 member_is_demo`).
 - Every demo refusal carries `code: "demo_account"` (`nonDemoAccount`).
+- Since Phase 2b a demo account can't use a
+  [managed module](modules.md#routes-always-mounted-gated-on-the-toggle)'s user
+  routes (`api.notDemo` in the module's route wrapper, `403 demo_account`), and
+  `GET /server` leaves out the `bridge` block for it (only a signed-in, non-demo
+  caller gets one; `API.signedIn`).
 - A demo account can't share its listening with the house (`PUT /me/household`
   is `403`, `nonDemoAccount`), and demo accounts never appear in anyone's
   `GET /household/listening`, so a public demo never shows up in a household. It

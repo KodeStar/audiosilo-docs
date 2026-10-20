@@ -1,6 +1,6 @@
 ---
 title: Contributing data to Meta
-description: "How metadata enters audiosilo-meta: the GitHub issue forms (four in the core repository, two in audiosilo-meta-community) and the intake automation that turns them into validated bot pull requests, the advisory ai-verify layer, the OpenAudible/Libation importers, metascan, the in-browser site tools, and the authoring rules."
+description: "How metadata enters audiosilo-meta: the GitHub issue forms (five in the core repository, two in audiosilo-meta-community) and the intake automation that turns them into validated bot pull requests, the advisory ai-verify layer, the OpenAudible/Libation importers, metascan, the in-browser site tools, and the authoring rules."
 ---
 
 ## The rules that govern everything
@@ -145,7 +145,9 @@ Seven behaviors are worth knowing:
   drops labels on issues opened by non-collaborators (the sibling
   `audiosilo-sidecars` contributor tool creates intake issues over the API), so
   such an issue arrives label-less and is admitted when a maintainer applies the
-  routing label later - a `labeled` event. The job gate excludes the workflow's
+  routing label later - a `labeled` event. (An issue filed through the AudioSilo
+  App comes in by a third door, `workflow_call` from `route.yml`:
+  [below](#issues-filed-through-the-audiosilo-app).) The job gate excludes the workflow's
   own outcome labels (`data:invalid` / `data:needs-human` / `data:duplicate`) so
   outcome-labeling can't re-fire intake. Each run posts its non-ok verdict as a
   comment, so an edit always gets an answer.
@@ -249,18 +251,24 @@ fields are applied by the bot:
 
 A recording field addressed to the **work** isn't a mapping bug: the filer didn't
 know the recording, so it goes to a maintainer, who finds it. One structurally
-invalid change (an unknown field, a field on the wrong kind of record, a value over
-500 characters, more than 25 changes, a stated change twice, a bidirectional
-embedding, override or isolate control, U+202A to U+202E or U+2066 to U+2069, in a
-value or the evidence; a zero-width joiner or non-joiner is allowed) refuses the
-**whole** issue, naming every bad change: a batch is machine-written, so one bad
-change makes its siblings suspect. The valid ones then run one at a time through
-the single-field form's own path (`applyCorrection`: applied, unchanged,
-needs-human or invalid), and the verdict is:
+invalid change (an unknown field, a work field addressed to a recording, no record
+or no corrected value, a value over 500 characters or holding a control character,
+the same field of the same record stated twice (two different ISBNs are two
+facts), a bidirectional embedding, override or isolate control, U+202A to U+202E
+or U+2066 to U+2069, in a value; a zero-width joiner or non-joiner is allowed)
+refuses the **whole** issue, naming every bad change: a batch is machine-written,
+so one bad change makes its siblings suspect. So does a Changes block that can't
+be read (not version 1, an unknown or repeated key, no changes or more than 25),
+missing evidence, evidence over 2,000 characters or holding a bidirectional
+control, or an unticked dedication. The valid changes are then decided one at a
+time: a maintainer's field, a recording field addressed to the work, or a record
+it can't resolve is `needs-human`; a bot-applied field runs through the single-field form's own path
+(`applyCorrection`: applied, unchanged, needs-human or invalid). The verdict is:
 
 - `ok` when at least one change applied: ONE pull request with the applied part,
-  which **references** the issue without closing it, and once it is open the
-  workflow comments the rest (`needs_human`) on the issue and labels it
+  which closes the issue on merge when nothing is left for a maintainer, else
+  **references** it without closing it ("Applies part of #N"), and once it is open
+  the workflow comments the rest (`needs_human`) on the issue and labels it
   `data:needs-human`;
 - `needs-human` when nothing applied and something needs a maintainer;
 - `duplicate` when every change already matches the record;
@@ -269,11 +277,14 @@ needs-human or invalid), and the verdict is:
 
 ## Issues filed through the AudioSilo App
 
-A Bridge files its issues (characters and recaps on the community repository; new
-works and correction batches here) **under the server admin's own GitHub account**,
-through the public **AudioSilo Contributions** GitHub App (id `5387686`, slug
-`audiosilo-contributions`; see [Contributions](../bridge/contributions.md)). Such an
-issue arrives **without labels** (GitHub drops the labels a non-collaborator sets,
+A Bridge files its issues (characters and recaps on the community repository;
+correction batches here) **under the server admin's own GitHub account**, through
+the public **AudioSilo Contributions** GitHub App (id `5387686`, slug
+`audiosilo-contributions`; see [Contributions](../bridge/contributions.md)) when it
+files with its Accounts sign-in. With a token from its environment or `gh` it files
+a plain issue, which this workflow leaves alone: its routing labels stick only for
+an account with write access to the repository (their `labeled` event admits it),
+else a maintainer routes it. An App-filed issue arrives **without labels** (GitHub drops the labels a non-collaborator sets,
 and an issue form's labels never apply to an API-filed issue), so intake's
 `labeled` door would never open. `.github/workflows/route.yml` (one copy in each
 repository) routes it instead, on `issues: opened`:
@@ -283,7 +294,8 @@ repository) routes it instead, on `issues: opened`:
    id proves only which App's token filed the issue, which **anyone** can obtain
    (the App is public and its device flow needs no secret), so it is a routing
    hint, never trust: intake validates the body exactly as for a hand-filed form,
-   and a maintainer reviews every pull request.
+   and every pull request is still reviewed before it merges (by a maintainer or
+   the maintainer's [steward](steward.md)).
 2. The template comes from the **title prefix**, an allowlist: `[work] ` is
    `data:add-work` and `[corrections] ` `data:correction-batch` here;
    `[characters] ` and `[recaps] ` on the community repository. Any other prefix is
@@ -311,7 +323,8 @@ interaction limits are the stronger tools. The labels `data:correction-batch` an
 `intake:held` must exist in the repository (a label the workflow can't apply holds
 the issue). The untrusted title, body and login reach `run:` only through
 environment variables and are only compared; nothing is checked out;
-`permissions: {}` at the top with the least each job needs, and a timeout per job.
+`permissions: {}` at the top with the least each job needs, and a timeout on the
+route job (the called intake job keeps its own).
 
 ## Two validation layers on a pull request
 

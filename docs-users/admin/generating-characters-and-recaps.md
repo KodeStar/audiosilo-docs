@@ -78,7 +78,9 @@ The button also stays away while the book's job is running (its progress shows
 instead) and while the Bridge is offline. While the book's chapters are still being
 [found in the narration](#detect-chapters-without-characters-and-recaps), the
 console leaves the button out until that has finished; the player keeps it, and its
-confirmation says so and holds back.
+confirmation says so and holds back. Both do the same while the book's characters
+and recaps are being
+[shared with the community](bridge.md#share-with-the-community).
 
 ## The confirmation
 
@@ -118,12 +120,12 @@ within a few seconds.
 
 ## Keeping them local, or contributing them
 
-By default the characters and recaps stay **on this server only**: they are
-saved with the book and nobody else sees them.
+Unless you contribute them, the characters and recaps stay **on this server
+only**: they are saved with the book and nobody else sees them.
 
 In the console, while the [Contributions module](server.md#modules) is on and
-the Bridge is [signed in to GitHub](../getting-started/bridge-accounts.md#github),
-the dialog also offers **Also contribute to the community**, switched **on** by
+the Bridge is [signed in to GitHub](../getting-started/bridge-accounts.md#github)
+(or given a GitHub token of your own), the dialog also offers **Also contribute to the community**, switched **on** by
 default. Then, once they are written, the Bridge also offers them to the community
 database as a submission for review, so every other server gets them too once
 they are accepted. They are saved on your server either way. Switch it off to keep
@@ -168,7 +170,7 @@ in the console (**Generating is paused** in the player) with the reason, and
 
 | Reason | What to do |
 |---|---|
-| The agent isn't available | Nothing: the job carries on once the agent container is running and signed in again. Check it if this lasts. |
+| The agent isn't available | Nothing, or set the agent's credential on the Bridge's Accounts tab: the job carries on once the agent container is running and has a credential (at once after a change on the Accounts tab). Check it if this lasts. |
 | The agent reached its usage limit | Nothing: it carries on once the limit resets. |
 | Waiting for an ASR worker | Nothing, or start the worker: the Bridge is set to wait for an [ASR worker](../getting-started/running-a-worker.md#when-the-worker-is-off) when none is connected, and the job carries on as soon as one connects. |
 | The agent's credential was refused | Replace it where the agent gets it: on the Bridge's Accounts tab, or in the agent container when it has one of its own (see [Running a Bridge](../getting-started/running-a-bridge.md#7-the-agents-credential)). The job carries on at once after a change on the Accounts tab, else it looks again by itself every 30 minutes. |
@@ -443,8 +445,8 @@ are found again.
 
 The transcription runs on your Bridge's own computer (or on an
 [ASR worker](../getting-started/running-a-worker.md)) and costs nothing but time.
-The AI agent is the cost: it runs on the account the agent container is signed in
-with, the Bridge's own (see
+The AI agent is the cost: it runs on the agent's credential, the one set on the
+Bridge's Accounts tab or the agent container's own (see
 [Running a Bridge](../getting-started/running-a-bridge.md#7-the-agents-credential)).
 With a subscription login the cost is notional (it counts against the
 subscription's usage limits); with an API key it is billed per use.

@@ -80,7 +80,8 @@ internal/
   generate/   sidecars.generate: server job -> engine book, progress and parks, the
               .audiosilo/ write, the heartbeat's estimates, the transcript retention;
               sidecars.describe (Phase 1c): a description from a finished run's notes;
-              chapters.detect and chapters.json (Phase 1d): chapters found in the narration
+              chapters.detect and chapters.json (Phase 1d): chapters found in the narration;
+              sidecars.contribute (Phase 2b): a share of a run's kept results
   agentproto/ the staging protocol both sides share (names, JSON, request validation,
               regular-file reads); a leaf
   agentbox/   the Bridge's side: an agent.Runner that stages, waits, harvests
@@ -151,8 +152,8 @@ Conventions that carry the design:
 
 The Bridge serves its own page and a small JSON API under `/api` on its `listen`
 address (`:8091`). The page has seven tabs: **Status** (led by a **Get set up** card,
-the [setup checklist](pairing-and-jobs.md#the-setup-checklist) with a link to each
-step's tab, until every required step is done; pairing, the last heartbeat,
+the [setup checklist](pairing-and-jobs.md#the-setup-checklist) with an **Open**
+link to the tab of each step still to do, until every required step is done; pairing, the last heartbeat,
 the job kinds and lanes, where the secret key came from, and a **Characters and
 recaps** card: the agent container and each CLI's version and credential kind, the
 speech recognition, the monthly budget with this month's spend, the per-book cap

@@ -24,14 +24,18 @@ book always stays on your server.
 1. A [Bridge](../getting-started/running-a-bridge.md) paired with your server and
    online.
 2. The Bridge **signed in to GitHub**, on its Accounts tab (see
-   [Bridge accounts](../getting-started/bridge-accounts.md#github)). What you send
-   is filed under your GitHub account, so other people can see who sent it.
+   [Bridge accounts](../getting-started/bridge-accounts.md#github)), or given a
+   GitHub token of your own (see
+   [Settings that take precedence](../getting-started/bridge-accounts.md#settings-that-take-precedence)).
+   What you send is filed under your GitHub account, so other people can see who
+   sent it.
 3. The **Contributions** [module](../admin/server.md#modules) turned on, in
    **Server > Settings > Modules**, and
    [community metadata](../admin/server.md#community-metadata) on.
 
 While the module is off, the console offers none of the actions below. One you
-queued earlier waits, untouched, until the module is on again (see
+queued earlier waits until the module is on again, except a share, which is
+cancelled if the book's characters and recaps are generated again meanwhile (see
 [When the Contributions module is off](../admin/bridge.md#when-the-contributions-module-is-off)).
 
 ### Sharing characters and recaps
@@ -70,24 +74,37 @@ the community's book details.
 ### What happens next
 
 Each submission becomes an **issue** on GitHub, in the community repositories
-([audiosilo-meta](https://github.com/KodeStar/audiosilo-meta) for corrections and
-new books, [audiosilo-meta-community](https://github.com/KodeStar/audiosilo-meta-community)
-for characters and recaps). The community's intake bot reads it, checks it like
-any other submission and opens a pull request. **A maintainer reviews every pull
-request** before it is merged. Once it is merged, the next release of the database
-carries it, and every server gets it.
+([audiosilo-meta](https://github.com/KodeStar/audiosilo-meta) for corrections,
+[audiosilo-meta-community](https://github.com/KodeStar/audiosilo-meta-community)
+for characters and recaps). The community's intake bot reads it and checks it like
+any other submission: it opens a pull request with what it can apply, and says on
+the issue what it can't (a change only a maintainer can make, something the
+database already has, or a problem with the submission). **Every pull request is
+reviewed** before it is merged. Once it is merged, the next release of the
+database carries it, and every server gets it.
 
-The book's page in the console links the issue ("See the issue"). Whether it has
-been reviewed or merged isn't shown there yet: follow the link to see.
+The intake bot picks up on its own what the Bridge files with its Accounts
+sign-in (GitHub marks those issues as filed through the AudioSilo Contributions
+app). Filed with a GitHub token of your own instead, an issue waits for a
+maintainer to send it to the intake bot, unless your account has write access
+to that repository.
+
+The book's page in the console links each issue: "See issue #12" for corrections,
+"See the community issue for the characters" (or the recaps) for a share, and
+the book's characters and recaps say "Contributed, waiting for review" until the
+community has them. Whether an issue has been reviewed or merged isn't shown
+there yet: follow the link to see.
 
 ### Limits that hold a submission
 
-To keep the review queue fair, a few things hold a submission for a maintainer
-instead of sending it on to the intake bot:
+To keep the review queue fair, a few things hold a submission filed with the
+Bridge's Accounts sign-in for a maintainer instead of sending it on to the intake
+bot:
 
 - a GitHub account **younger than 30 days**;
-- **more than 25** open submissions from one account on audiosilo-meta (corrections,
-  new books), or **more than 50** on audiosilo-meta-community (characters, recaps);
+- **more than 25** open submissions from one account on audiosilo-meta
+  (corrections), or **more than 50** on audiosilo-meta-community (characters,
+  recaps);
 - an account a maintainer has blocked from automatic intake.
 
 A held submission is labelled **intake:held** on GitHub, with a comment saying
@@ -97,10 +114,11 @@ it by hand, or explains.
 ### What is sent
 
 - **Characters and recaps**: what the Bridge generated, with the book's community
-  entry it belongs to.
+  entry it belongs to and the edition they were made from (its ASIN or ISBN, when
+  the Bridge knows one).
 - **Corrections**: the book's community entry (and its recording, when the book's
   ASIN or ISBN names one), the fields you ticked with the community's value and
-  yours, and your evidence.
+  yours, your evidence, and your server's version.
 - Your GitHub user name, which shows on the issue.
 
 Nothing about your server's listeners, your library or your other books is sent.

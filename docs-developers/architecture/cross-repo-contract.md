@@ -565,7 +565,10 @@ Two couplings follow, both now part of this seam:
 **Contributing back (Bridge Phase 2b).** The server never writes to the community
 repositories: what an admin shares or corrects is a Bridge job
 ([§17](#17-the-bridge-a-third-client)) the Bridge files as a GitHub issue under the
-admin's own account, through the AudioSilo Contributions App. Two meta-side pieces
+admin's own account, through the AudioSilo Contributions App when it uses its
+Accounts sign-in (a token from its environment or `gh` files a plain issue, which
+`route.yml` leaves to the routing labels the Bridge set, when they stuck, or to a
+maintainer). Two meta-side pieces
 make that a seam: the [correction-batch form](../meta/contributing-data.md#the-correction-batch-form)
 (`[corrections] ` issues with a fenced, versioned `changes` block, which the Bridge
 writes and meta's `correctBatch` reads), and
@@ -788,7 +791,8 @@ both repos, with a test on each side.
   off, and held in the queue meanwhile:
   [jobs of a managed module](../bridge/pairing-and-jobs.md#jobs-of-a-managed-module)):
   `sidecars.contribute` (params `{work_id?, dimensions?}`; writes nothing; `409
-  generate_open`, and a new generate job meets `409 contribute_open`) and
+  generate_open`, and a new generate job meets `409 contribute_open` while one is
+  queued or working, and cancels a parked or held one) and
   `meta.correct` (params `{work_id, recording_id?, asin?, isbn?, region?, changes,
   evidence, source?}`; the server refuses `400 not_edited` for a change that isn't
   the book's admin edit). The Bridge files both on GitHub
@@ -796,9 +800,12 @@ both repos, with a test on each side.
   agent credential it hands to the agent container live on its own page and never
   cross to the server. Detail: [Contributions](../bridge/contributions.md).
 - **The player (Phase 1a):** its first admin-only UI, gated on `user.role ===
-  'admin'`, `capabilities.bridge`, `bridge.features` holding `sidecars` and
-  `capabilities.metadata`; `Book.generated` makes it ask `/meta` for a book with no
-  ASIN or ISBN. Its `types.ts` mirrors the job, the estimate,
+  'admin'` (never a demo account, a household member or a kid's account),
+  `capabilities.bridge`, `bridge.features` holding `sidecars` and
+  `capabilities.metadata`; its confirmation holds Generate back while the
+  estimate's `open_job` is a `chapters.detect` (Phase 1d) or `sidecars.contribute`
+  (Phase 2b) job. `Book.generated` makes it ask `/meta` for a book with no ASIN or
+  ISBN. Its `types.ts` mirrors the job, the estimate,
   `BookMetaWork.generated` and (Phase 1c) `BookMetaWork.generated_description` by
   hand.
 
