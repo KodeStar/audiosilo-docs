@@ -80,14 +80,14 @@ a label, and its book page shows the `subtitle` under the title and the labels a
 chips in the About card (`openLabelBooks`) only when they are sent. The player
 mirrors the fields in `types.ts` `Book` and the params in `client.ts`
 `BookListQuery`. The library export (`GET /admin/libraries/{id}/export`, consumed
-by the meta site) gains five of them with its `version` still `1` (the site's
-parser reads subtitle, publisher, language and abridged and ignores the rest);
-tags, the owner's own notes, ride only with `?include=tags`, and `?include=paths`
-adds `paths[]` per row (the envelope's `library.id` names the library), both for
-the admin's own scripts (`include=paths,tags` asks for both): the default export
-still carries no path and no tag. See the
-[reference](../server/api/reference.md#get-apiv1librariesidbooks) for the field
-sources and rules.
+by the meta site) gains five of them, plus `published` and `series_list`, with
+its `version` still `1` (the site's parser reads subtitle, publisher, language and
+abridged and ignores the rest). The default export still carries no path and no
+tag: `?include=paths,tags,description` and `?copies=separate` (one row per copy
+instead of one per book) are opt-in, for the admin's own scripts. See the
+[export reference](../server/api/reference.md#get-apiv1adminlibrariesidexport)
+for the options and the [book reference](../server/api/reference.md#get-apiv1librariesidbooks)
+for the field sources and rules.
 
 **Player-redesign data API (Phase 1a).** Additive shapes the frontend mirrors in
 `types.ts`/`client.ts`/`hooks.ts`, each behind a capability flag (seam 8), read by

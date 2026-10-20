@@ -3778,7 +3778,8 @@ Advertised by the `export` [capability](#get-apiv1server).
 
 | Query param | Type | Default | Notes |
 |---|---|---|---|
-| `include` | string | - | A comma list, for the admin's own scripts: `paths` adds each row's `paths`, `tags` its `tags` (see below); `include=paths,tags` asks for both. Any other value is `400` `include must be a comma list of "paths" and "tags"`, so a typo never silently drops what was asked for |
+| `include` | string | - | A comma list, for the admin's own scripts: `paths` adds each row's `paths`, `tags` its `tags`, `description` its `description` (see below); `include=paths,tags,description` asks for all three, and repeating the param (`?include=paths&include=tags`) counts too. Any other value is `400` `include must be a comma list of "paths", "tags" and "description"`, so a typo never silently drops what was asked for |
+| `copies` | string | `merged` | `merged` writes copies of the same book as one row (see the per-book notes); `separate` writes one row per copy (see below). Any other value is `400` `copies must be "merged" or "separate"` |
 
 Unlike every other endpoint this one answers with a file download rather than a
 plain JSON body:
@@ -3786,7 +3787,7 @@ plain JSON body:
 | Header | Value |
 |---|---|
 | `Content-Type` | `application/json; charset=utf-8` |
-| `Content-Disposition` | `attachment; filename="audiosilo-<library-slug>-<YYYY-MM-DD>.json"` |
+| `Content-Disposition` | `attachment; filename="audiosilo-<library-slug>-<YYYY-MM-DD>.json"`, with `-private` before `.json` when the export holds paths or tags (`include=description` alone keeps the shareable name) |
 
 ```json
 {
@@ -3804,6 +3805,7 @@ plain JSON body:
       "narrators": ["Dick Hill"],
       "series": "Jack Reacher",
       "series_position": "2",
+      "published": "1998-07-13",
       "publisher": "Brilliance Audio",
       "language": "English",
       "abridged": false,
@@ -3835,10 +3837,30 @@ library, so no row repeats it). With `?include=tags` each row carries its
   "paths": ["Lee Child/Jack Reacher/02 Die Trying", "Lee Child/Die Trying (MP3)"] }
 ```
 
+With `?include=description` each row carries its `description`. It is opt-in
+for size rather than privacy: a description is long and usually a publisher's
+blurb, so the file to share stays lean.
+
+With `?copies=separate` copies of the same book are not merged: each indexed
+book is its own row with its own facts and (with `include=tags` /
+`include=paths`) its own `tags` and a `paths` holding its own path alone, so a
+script can act on one copy (move it, rewrite its tags) without the item
+endpoint. A server from before `copies` ignores the param and answers merged
+rows (it refuses `include=description` with a `400`, though), so a script that
+needs one copy per row checks that each row's `paths` holds one path:
+
+```json
+{ "title": "Die Trying", "…": "this copy's facts", "tags": ["Owned"],
+  "paths": ["Lee Child/Jack Reacher/02 Die Trying"] }
+{ "title": "Die Trying", "…": "that copy's facts", "tags": ["To check"],
+  "paths": ["Lee Child/Die Trying (MP3)"] }
+```
+
 The paths describe the server's folders (people's names, a share's layout) and
-the tags are personal, so such a file is for the admin alone: the console's
-**Export with file paths and tags...** asks for both (`include=paths,tags`) and
-warns not to attach it to a public issue or upload it to the community site.
+the tags are personal, so such a file is for the admin alone (hence the
+`-private` filename): the console's **Export with file paths and tags...** asks
+for `include=paths,tags,description&copies=separate` and warns not to attach it
+to a public issue or upload it to the community site.
 
 Per-book notes:
 
@@ -3852,20 +3874,41 @@ Per-book notes:
 - `series_position` is a string so half-positions survive: `2` for book two,
   `2.5` for a novella between books, `1-3` for an omnibus numbered as a range
   (the metadata site's importer reads it as one). Omitted when there is no position.
+- `series` / `series_position` are the book's main series. `series_list` is
+  every series the book is in, the main one first when it has one, as
+  `[{ "name", "position" }]` (`position` in the same string form, omitted when
+  the book has none in that series). Present exactly when the player's
+  [`Book.series_list`](#get-apiv1librariesidbooks) is, so a book in only its
+  main series carries just `series`. In a merged row the main series and its
+  position come from one copy (a later copy only fills a missing position in the
+  same series), and `series_list` is every series any copy lists, the main one
+  first, each once:
+
+  ```json
+  { "title": "The Colour of Magic", "authors": ["Terry Pratchett"],
+    "series": "Discworld", "series_position": "1",
+    "series_list": [ { "name": "Discworld", "position": "1" },
+                     { "name": "Rincewind", "position": "1" } ],
+    "published": "1983-11-24" }
+  ```
 - `runtime_min` is the book's duration in whole minutes (rounded);
   `chapters` is the number of indexed chapters. Both are omitted when unknown.
 - `asin` / `isbn` come from the book's identifiers, including any attached via
   [`PUT …/enrichment`](#put-apiv1adminlibrariesidenrichment).
-- `subtitle`, `publisher`, `language`, `abridged`, `genres` and (with
-  `include=tags`) `tags` are the effective values, as on the player's
-  [`Book`](#get-apiv1librariesidbooks) (`abridged` absent while unknown). The
+- `subtitle`, `published` (`YYYY`, `YYYY-MM` or `YYYY-MM-DD`), `publisher`,
+  `language`, `abridged`, `genres`, (with `include=description`) `description`
+  and (with `include=tags`) `tags` are the effective values, as on the player's
+  [`Book`](#get-apiv1librariesidbooks) (`abridged` absent while unknown;
+  `description` as [`/item`](#get-apiv1librariesiditem) sends it). The
   metadata site's importer reads `subtitle`, `publisher`, `language` and
-  `abridged` and ignores keys it doesn't know (`genres`, `tags`, `paths`), so the
-  envelope's `version` stays `1`.
-- A multi-file (folder) book is **one** entry, and copies of the same book within
-  the library collapse to one entry - the same grouping search and
-  "recently added" de-duplicate on. The entry takes each fact from whichever
-  copy has it.
+  `abridged` and ignores keys it doesn't know (`genres`, `series_list`,
+  `published`, `description`, `tags`, `paths`), so the envelope's `version`
+  stays `1`.
+- A multi-file (folder) book is **one** entry. By default (`copies=merged`)
+  copies of the same book within the library also collapse to one entry - the
+  same grouping search and "recently added" de-duplicate on. The entry takes
+  each fact (`published`, `description` and `series_list` included) from
+  whichever copy has it, and holds every copy's paths and tags.
 
 `404 { "error": "library not found" }` for an unknown library; `403` for a
 non-admin caller; `401` unauthenticated. The bearer token must be sent in the
@@ -3874,6 +3917,10 @@ non-admin caller; `401` unauthenticated. The bearer token must be sent in the
 ```sh
 curl -OJ -H "Authorization: Bearer $TOKEN" \
   https://books.example.com/api/v1/admin/libraries/1/export
+
+# For your own scripts: one row per copy, with paths, tags and descriptions
+curl -OJ -H "Authorization: Bearer $TOKEN" \
+  "https://books.example.com/api/v1/admin/libraries/1/export?include=paths,tags,description&copies=separate"
 ```
 
 ### `POST /api/v1/admin/libraries/{id}/scan`
