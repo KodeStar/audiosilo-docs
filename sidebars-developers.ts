@@ -65,16 +65,6 @@ const sidebars: SidebarsConfig = {
     },
     {
       type: 'category',
-      label: 'Desktop manager (audiosilo-manager)',
-      items: [
-        'manager/overview',
-        'manager/server-integration',
-        'manager/audible',
-        'manager/transfers',
-      ],
-    },
-    {
-      type: 'category',
       label: 'The Bridge (audiosilo-bridge)',
       items: [
         'bridge/index',

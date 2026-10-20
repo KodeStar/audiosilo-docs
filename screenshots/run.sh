@@ -9,8 +9,7 @@
 #      metaserve (port 8795) for the meta.audiosilo.app site captures,
 #   5. runs the Playwright captures (web player + admin console + public pages
 #      + the meta site),
-#   6. backfills placeholders for anything not captured (e.g. the desktop
-#      manager on a headless run - see README.md for manager captures).
+#   6. backfills placeholders for anything not captured.
 #
 # Prereqs: Go 1.26+, Node 24, ffmpeg/ffprobe, sqlite3, openssl, `npm install` +
 # `npx playwright install chromium` in this directory. The web export at

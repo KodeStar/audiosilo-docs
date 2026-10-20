@@ -9,7 +9,7 @@ household members they added on their servers, and
 [Listening in the house](listening-in-the-house.md). A **household member** is a real
 account on the server (capability `household_members`), so what it may do is the
 server's to decide (the
-[cross-repo contract](../architecture/cross-repo-contract.md#16-household-members-profiles-and-kids-mode-stay-client-side));
+[cross-repo contract](../architecture/cross-repo-contract.md#15-household-members-profiles-and-kids-mode-stay-client-side));
 the wire is [Household members](../server/api/reference.md#household-members) and its
 client side [State and data](state-and-data.md#household-members). On the device a
 member is just another connection in a profile of its own.

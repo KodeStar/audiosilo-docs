@@ -3,9 +3,10 @@ title: Invariants
 description: "The golden rules every AudioSilo change must preserve - path is identity, filesystem is truth, stream the file, hand-mirrored wire format, secure by default - and why each one holds."
 ---
 
-These are the cross-cutting rules that shape all three repos. Each exists because
-violating it broke something real (or would, predictably). For every rule: what it
-is, why it holds, what breaks if you violate it, and where it's enforced.
+These are the cross-cutting rules that shape the server and player. Each exists
+because violating it broke something real (or would, predictably). For every
+rule: what it is, why it holds, what breaks if you violate it, and where it's
+enforced.
 
 :::tip
 When a proposed change fights one of these rules, the rule wins. If you genuinely
@@ -51,8 +52,6 @@ could cascade-delete a user's entire listening history.
   `Scanner.detectMoves` + `catalog.MoveDurableState` for moves.
 - Frontend: every content call in `src/api/client.ts` passes `?path=`; client
   state persists keyed by `(library_id, path)`; helpers in `src/lib/paths.ts`.
-- Manager: `internal/serverapi` addresses content the same way; its enrichment
-  write (`book_enrichment`) is path-keyed and FK-free for the same reason.
 
 ## 2. The filesystem is the truth; the database is a rebuildable index
 
@@ -83,9 +82,6 @@ two sources of truth that drift.
   does **not** prune when a library root is missing/unreadable or suspiciously
   empty - protecting the index (and everything users associate with it) when an
   SMB/NFS mount drops.
-- The manager respects it from the other side: it writes **files**, then triggers
-  `POST /admin/libraries/{id}/scan` (a non-destructive reindex) rather than
-  writing catalog rows.
 
 ## 3. Stream the file, never the book
 
@@ -120,15 +116,13 @@ work, hiding the bug.
 
 **The rule.** There is **no codegen**. The Go handlers
 (`internal/api/handlers_*.go`) define the JSON; the frontend re-declares the same
-shapes in `src/api/types.ts` and unwraps them in `src/api/client.ts`; the manager
-hand-mirrors the subset it reads in `internal/serverapi`. Any change to the wire
-format - a field rename, a new envelope, changed semantics - is made in **all
-affected repos in one logical change**, with tests on each side.
+shapes in `src/api/types.ts` and unwraps them in `src/api/client.ts`. Any change
+to the wire format - a field rename, a new envelope, changed semantics - is made
+in **all affected repos in one logical change**, with tests on each side.
 
 **Why.** Codegen was deliberately rejected: the surface is small, and hand-written
-types stay idiomatic on each side (Go structs vs. TypeScript unions vs. the
-manager's narrow client). The cost is that nothing *mechanical* catches drift - a
-renamed Go JSON tag compiles fine in both repos and fails only at runtime as an
+types stay idiomatic on each side (Go structs vs. TypeScript unions). The cost is
+that nothing *mechanical* catches drift - a renamed Go JSON tag compiles fine in both repos and fails only at runtime as an
 `undefined` field. So the discipline is procedural: paired changes, paired tests,
 and the seam catalog in the workspace `CROSS-REPO.md`.
 
@@ -143,7 +137,7 @@ chapters").
   [Cross-repo contract](cross-repo-contract.md#the-wire-change-checklist) and the
   workspace `CODE-HEALTH.md` Definition of Done.
 - By tests: `internal/api/*_test.go` on the server, `src/api/client.test.ts` on
-  the frontend, and the manager's `serverapi` tests - a shape change without a
+  the frontend - a shape change without a
   matching test update fails the corresponding CI.
 
 ## 5. Secure by default
@@ -198,7 +192,7 @@ audiobooks" into "remote file read on your NAS".
 - Did anything new address content by a DB id? (Rule 1 - stop.)
 - Would this survive deleting the database? (Rule 2.)
 - Can any code path hand a folder path to a playback engine? (Rule 3.)
-- Did the JSON change? Then did `types.ts`/`client.ts` (and `serverapi`, if it
-  reads that shape) change too, with tests on each side? (Rule 4.)
+- Did the JSON change? Then did `types.ts`/`client.ts` change too, with tests on
+  each side? (Rule 4.)
 - Did a secret touch a log, a query string, or plaintext storage? Does new
   user-derived path handling go through `SafeJoin`? (Rule 5.)

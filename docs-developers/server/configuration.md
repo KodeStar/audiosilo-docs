@@ -378,14 +378,13 @@ against 170-350 ms from meta.audiosilo.app.
 answers; the console flags it (`schema_newer`) and says to update the server,
 and any query that breaks on it is a 5xx that falls back to `base_url` (why that
 works: the
-[cross-repo contract](../architecture/cross-repo-contract.md#14-community-metadata-a-three-repo-seam)).
+[cross-repo contract](../architecture/cross-repo-contract.md#13-community-metadata-a-three-repo-seam)).
 
 **Switching back.** A server started in remote mode (with a metadata service)
 deletes `<data>/meta-mirror/` if it exists, and logs that it did. A server with
 no metadata service (an empty or invalid `base_url`) builds no mirror in either
 mode. If the folder can't be prepared, the server logs it and lookups go to
-`base_url`: a metadata problem never stops the server. The desktop manager runs
-the same launcher, so its embedded server honours the mode too.
+`base_url`: a metadata problem never stops the server.
 
 #### The persistent cache
 
@@ -588,9 +587,9 @@ topic only shows what was found.
 **Locked settings.** A setting is locked when an `AUDIOSILO_*` variable set it
 (see [Environment variables](#environment-variables)) or a launcher override
 pinned it (`Config.Pin`, called by `applyOverrides` for `bind`, `tls.mode` and
-`public_url` - the desktop manager's). `Config.Locked` maps each locked setting
-id to the variable's name or `"launcher"`; the console says "Set by
-`AUDIOSILO_…`" or "Managed by the desktop app" and disables the field.
+`public_url`). `Config.Locked` maps each locked setting id to the variable's
+name or `"launcher"`; the console disables locked fields and shows why they
+can't be changed.
 
 **Live versus restart.** `api.API` keeps `boot`, the config the server
 started with (never changed), and `live`, an `atomic.Pointer[liveConfig]` that
@@ -661,7 +660,7 @@ every key the environment set (as above) and every key a launcher pinned
 (`bind`, `tls.mode`, `public_url` and the launcher's library list). The one
 exception is the save that creates `config.yaml` (first run), which records the
 pinned values; later saves leave them as the file has them. So a console save
-never writes an environment variable's or the desktop app's override into the
+never writes an environment variable's or a launcher's override into the
 file.
 
 ## Update check
@@ -713,10 +712,8 @@ feed into.
 
 ## Launcher `Options` (for embedders)
 
-`pkg/launcher.Run(ctx, opts)` is the shared run loop used by both the
-headless `audiosilo` command and the desktop manager, which runs the server
-in-process (see
-[Manager server integration](../manager/server-integration.md)). The full
+`pkg/launcher.Run(ctx, opts)` is the run loop used by the headless `audiosilo`
+command and is also available for running the server in-process. The full
 `Options` surface:
 
 | Field | Type | Meaning |
@@ -736,8 +733,8 @@ headless command - which sets none - gets the file's configuration verbatim.
 Overrides are layered on top of the loaded `config.yaml`, then the config is
 **re-validated** (a malformed override fails startup rather than baking an
 unbootable file). Each override is also pinned (`Config.Pin`, `libraries`
-included), so the console shows `bind`, `tls.mode` and `public_url` as "Managed
-by the desktop app" rather than offering a change the next start would undo.
+included), so the console disables `bind`, `tls.mode` and `public_url` rather
+than offering a change the next start would undo.
 On first run, the config **including overrides** is what gets persisted to
 `config.yaml`; on later runs overrides apply in memory only, and a settings save
 from the admin console keeps the file's own values for the pinned keys (see

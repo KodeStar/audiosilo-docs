@@ -1,29 +1,25 @@
 ---
 title: The system at a glance
-description: "One product, three repos: the Go server that owns the data, the Expo player that reads it, and the Wails desktop manager that writes it."
+description: "How AudioSilo's Go server and Expo player fit together, with an optional Bridge for library jobs and a community metadata database."
 slug: /
 ---
 
-AudioSilo is a self-hosted audiobook platform built as **one product across three
-repositories**. The server owns the data and the HTTP/JSON contract; the player is
-a thin, fully-typed read side over that contract; the manager is the desktop
-write/management side. Everything else in these docs hangs off that split.
+AudioSilo is a self-hosted audiobook platform built around a **server and player**.
+The server owns the data and the HTTP/JSON contract; the player is a thin,
+fully-typed read side over that contract.
 
 | Repo | Role | Stack |
 |---|---|---|
 | `audiosilo-server` | The **server** - source of truth for content and the API. JSON API + baked-in admin/connect UI; serves the web player at `/web`. Safe to expose to the internet. | Go 1.26, SQLite (modernc, pure Go), FTS5 |
 | `audiosilo-frontend` | The **player** - one codebase shipping to web PWA + iOS + Android. Read side of the product; its web export is served *by* the server at `/web`. | Expo SDK 56, React Native 0.85 (new architecture), React 19, Expo Router, Uniwind (Tailwind v4) |
-| `audiosilo-manager` | The desktop **manager** - the write/management side: set up or connect to servers, organize and transfer books (SFTP or local copy), back up an owned Audible library. Consumes the server API read-only. | Wails v2 (Go 1.26 + React/Vite/TypeScript) |
 
-An optional fourth piece is being built beside them: the **[Bridge](bridge/index.md)**
-(`audiosilo-bridge`, private for now), a companion that pairs with a server,
-writes to its libraries and runs the heavy jobs, so the server stays read-only. It
-always calls the server, never the reverse. Its first real job generates a book's
+The optional **[Bridge](bridge/index.md)** (`audiosilo-bridge`, private for now)
+pairs with a server, writes to its libraries and runs the heavy jobs, so the
+server stays read-only. It always calls the server, never the reverse. Its first real job generates a book's
 [characters and recaps](bridge/generating.md) into the book's folder, with its AI
-agents in a separate [agent container](bridge/agent-container.md); it is meant to
-take over the manager's write side in later phases.
+agents in a separate [agent container](bridge/agent-container.md).
 
-The three code repos (plus this docs site) live side by side in a single
+The code repos (plus this docs site) live side by side in a single
 workspace folder (`~/dev/audiosilo`), whose root is itself the small
 `audiosilo-workspace` meta repo holding the cross-repo glue (the integration
 contract, code-health checklist, release runbooks); see
@@ -50,36 +46,28 @@ flowchart LR
         api --- files
     end
 
-    subgraph mgr["audiosilo-manager - desktop (write side)"]
-        wails["Wails app"]
-        launcher["embedded server<br/>via pkg/launcher"]
-    end
-
     bridge["audiosilo-bridge<br/>(optional companion)"]
 
     ios -->|"JSON API + media streams"| api
     droid -->|"JSON API + media streams"| api
     pwa -->|"JSON API + media streams"| api
     webmount -.->|"serves the web build"| pwa
-    wails -->|"API, read-only<br/>(+ metadata enrichment, progress sync)"| api
-    wails -->|"file placement:<br/>SFTP / local copy"| files
     bridge -->|"pulls: heartbeat, jobs"| api
     bridge -->|"writes (checked mappings)"| files
 ```
 
 Three structural facts to internalize before reading anything else:
 
-- **The server is the only writer of the API contract.** The frontend (and the
-  manager's `internal/serverapi`) mirror its JSON shapes **by hand** - there is no
-  codegen, so a wire change is always a multi-repo change. See
+- **The server is the only writer of the API contract.** The frontend mirrors
+  its JSON shapes **by hand** - there is no codegen, so a wire change is always
+  a multi-repo change. See
   [Cross-repo contract](architecture/cross-repo-contract.md).
 - **The filesystem is the source of truth; the database is a rebuildable index.**
   Content is addressed by `(library_id, rel_path)`, never by a database id. See
   [Invariants](architecture/invariants.md).
-- **The manager never writes content over the network.** All file writes happen
-  client-side (SFTP or a local/mounted copy); the server stays read-only for
-  content over the wire. For the local-server flow, the manager runs the server
-  *in-process* via the server's public `pkg/launcher`.
+- **The server's content API is read-only.** Files change on disk, copied in by
+  hand or written by the [Bridge](bridge/index.md) through its checked mappings,
+  and a scan updates the index.
 
 ## The data flows
 
@@ -108,14 +96,12 @@ exchanges the pairing token for a device-scoped session (`POST /auth/exchange`),
 claiming one invite use per device - so each device being set up can scan the
 same QR.
 
-**File placement.** The manager places files itself - over SFTP or into a
-local/mounted copy of the library - then asks the server for a non-destructive
-reindex (`POST /admin/libraries/{id}/scan`). Its server-side writes are
-path-keyed metadata enrichment (`PUT /admin/libraries/{id}/enrichment?path=`,
-ASIN/ISBN) and, for the Audible listening-position sync, per-user progress
-(`PUT /libraries/{id}/progress?path=`) - the same progress call the player
-makes. Neither touches a file. A server-side `POST /uploads` endpoint is
-**planned** (Phase B), not shipped.
+**File placement.** Files reach a library folder outside the server's API:
+copied in by hand, or written by the [Bridge](bridge/index.md). A
+non-destructive reindex (`POST /admin/libraries/{id}/scan`) picks them up. See
+[Organizing your library](/users/getting-started/organizing-your-library) for the
+folder conventions. A server-side `POST /uploads` endpoint is **planned**
+(Phase B), not shipped.
 
 ## Design priorities
 
@@ -147,9 +133,11 @@ The server's priorities, in order - when they conflict, the earlier one wins:
   [the sleep timer](frontend/sleep-timer.md), [player UI](frontend/player-ui.md),
   [offline downloads](frontend/offline.md), [state and data](frontend/state-and-data.md),
   [i18n](frontend/i18n.md), [testing](frontend/testing.md).
-- **[Desktop manager](manager/overview.md)** - the Wails app:
-  [server integration](manager/server-integration.md), the
-  [Audible backup pipeline](manager/audible.md), and [transfers](manager/transfers.md).
+- **[The Bridge](bridge/index.md)** - `audiosilo-bridge`, the optional companion
+  that writes to a server's libraries and runs its heavy jobs:
+  [pairing and jobs](bridge/pairing-and-jobs.md), [mappings](bridge/mappings.md),
+  [generating characters and recaps](bridge/generating.md) and
+  [development](bridge/development.md).
 - **[Metadata database](meta/overview.md)** - `audiosilo-meta`, the
   community audiobook metadata database behind meta.audiosilo.app that the server
   and player enrich books from: the [data model](meta/data-model.md), the

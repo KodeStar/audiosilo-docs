@@ -171,8 +171,8 @@ way. It never changes an ASIN from your tags, or one you typed.
 **Fill in matched books** looks up every book that already has an ASIN or
 ISBN, by that alone, and offers the community's details for it: title, series,
 narrator, description and cover. Use it for books that got an ASIN or ISBN
-without their details (from the AudioSilo manager, or a run applied with
-**ASIN and ISBN only**), and to clean up books an earlier match gave too many
+without their details (for example, from a run applied with **ASIN and ISBN
+only**), and to clean up books an earlier match gave too many
 series. Review and apply it as above, choosing **Fill in what's missing** or
 **Use community values** (the ASIN and ISBN stay as they are, so **ASIN and
 ISBN only** isn't offered). Books that are already up to date aren't listed.

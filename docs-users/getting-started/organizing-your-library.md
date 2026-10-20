@@ -65,7 +65,7 @@ AudioSilo recognizes these audio file types (upper or lower case):
 Anything else in your folders - `.jpg` covers, `.nfo` files, `.pdf` companions - is simply ignored and hidden from browsing, so everything you can click in the player is playable.
 
 :::note Audible files (.aax / .aaxc)
-Audible's DRM-protected files are deliberately **not** indexed: the server can never play them, since they need per-account decryption. The [desktop manager's Audible backup](../manager/audible-backup.md) converts books you own to ordinary M4B files first, and those go in your library.
+Audible's DRM-protected files are deliberately **not** indexed: the server can never play them, since they need per-account decryption. Add supported, DRM-free audio files to your library folder instead.
 :::
 
 ### Where titles, authors and series come from

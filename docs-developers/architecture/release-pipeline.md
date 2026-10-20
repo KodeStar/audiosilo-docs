@@ -3,8 +3,8 @@ title: Release pipeline
 description: "How AudioSilo releases fit together: the web image feeds both the server Docker image and the embedded-player native binaries, and why the ordering matters."
 ---
 
-AudioSilo ships from three pipelines that hang off the same `v*` tag, plus the
-manager's desktop builds. The structural rule that ties them together:
+AudioSilo ships from three pipelines that hang off the same `v*` tag. The
+structural rule that ties them together:
 
 > **The web image publishes first.** Both the server Docker image and the native
 > binaries consume a pinned `audiosilo-web` image; building them before the web
@@ -37,16 +37,9 @@ flowchart TB
         relyml --> ghrel
     end
 
-    subgraph mgr["audiosilo-manager"]
-        desktopyml["desktop.yml<br/>wails build (per-OS runners)"]
-        artifacts[("CI artifacts<br/>(unsigned; installers planned)")]
-        desktopyml --> artifacts
-    end
-
     tag --> webyml
     tag --> imageyml
     tag --> relyml
-    tag --> desktopyml
     webimg -->|"Dockerfile: FROM $WEB_IMAGE AS web, COPY --from=web /web /app/web"| imageyml
     webimg -->|"scripts/fetch-web-player.sh → -tags embedplayer"| relyml
 ```
@@ -177,25 +170,6 @@ installs `audiosilo_<version>_linux_{amd64,arm64}.tar.gz` from the published rel
 onto Alpine. Their CI polls `releases/latest` hourly, so publishing the draft is
 what triggers a new `<tag>-ls<N>` image. The full list is in
 `audiosilo-server/RELEASING.md` section 2c.
-
-## 4. Manager desktop builds - `audiosilo-manager/.github/workflows/desktop.yml`
-
-The Wails UI can't cross-compile, so `desktop.yml` runs a per-OS matrix on `v*`
-tags: `darwin/universal` on macOS, `windows/amd64` on Windows, `linux/amd64` on
-Ubuntu. Each job checks out **both** repos as siblings (the manager depends on the
-server module via a local `replace`, for `pkg/launcher` and `pkg/match`), runs
-`wails build -platform <os>/<arch>` and stamps the version with
-`-ldflags "-X main.version=<tag>"`.
-
-:::caution Installers are planned, not shipped
-Today the workflow uploads the build outputs as **unsigned CI artifacts** - it
-does not publish a GitHub Release. The signed installers described in the
-workspace `DISTRIBUTION.md` (macOS `.dmg` + notarization, Windows NSIS `.exe`,
-Linux AppImage) are **planned**: the signing/notarization steps are stubbed in
-`desktop.yml` pending an Apple Developer ID certificate and a Windows
-Authenticode certificate. Until then, downloaded artifacts trigger
-Gatekeeper/SmartScreen warnings.
-:::
 
 ## Ordering and compatibility, in one place
 

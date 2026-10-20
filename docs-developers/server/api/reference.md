@@ -1348,7 +1348,7 @@ by the `metadata` [capability](#get-apiv1server): when it is false the route
 returns 404, so a client that honours the flag never calls this.
 
 The server resolves the book's `asin`/`isbn` (the effective fields on the
-indexed book: backfilled by the manager into `book_enrichment`, or set by an
+indexed book: stored in `book_enrichment`, or set by an
 admin edit, which wins), looks the recording up
 upstream, and folds the matched recording plus up to three series rails (one per
 reading-order family - see [Reading-order families](#reading-order-families)) into
@@ -3756,8 +3756,7 @@ Response `200`: `{ "status": "override cleared", "path": "…" }`.
 
 ### `PUT /api/v1/admin/libraries/{id}/enrichment`
 
-Attaches durable, path-keyed external identifiers to a book (used by the
-desktop manager after matching a book against Audible/ISBN sources). Survives
+Attaches durable, path-keyed external identifiers to a book. Survives
 rescans (every re-index of the book layers it back on); modifies no file on
 disk. `?path=` required. An admin's own edit of `asin`/`isbn`
 ([`PATCH …/book`](#patch-apiv1adminlibrariesidbook)) wins over the enrichment
@@ -4938,9 +4937,7 @@ Accepting a candidate takes up to two existing writes: the fields you take
 from it, the ASIN and ISBN included, with
 [`PATCH …/book`](#patch-apiv1adminlibrariesidbook) and `source: "community"`,
 and, when the cover is taken too, keeping it as the book's custom cover with
-[`PUT …/cover/community`](#put-apiv1adminlibrariesidcovercommunity). (The
-manager attaches an ASIN/ISBN with
-[`PUT …/enrichment`](#put-apiv1adminlibrariesidenrichment) instead.) To match
+[`PUT …/cover/community`](#put-apiv1adminlibrariesidcovercommunity). To match
 many books at once, see [Bulk community matching](#bulk-community-matching).
 
 | Status | Meaning |
@@ -4968,7 +4965,7 @@ every change is reversible. Admin only; every endpoint answers `404 code:
 A run is a `match` run (the books with no ASIN or ISBN: the Health page's
 "Not matched", less those ignored there), a `repick` run (the books whose
 ASIN is a **community** override, never one from the tags, an admin's edit or
-the manager's enrichment: each is looked up, and when its recording now sells
+an enrichment write: each is looked up, and when its recording now sells
 in the preferred marketplace under another ASIN, that is offered) or a
 `refresh` run (every book with an ASIN or ISBN, whoever set it: each is looked
 up by its own identifier alone, the ISBN when the ASIN finds nothing, and the
@@ -4976,7 +4973,7 @@ record it names is the book, `auto` whatever its score unless its recording's
 length is more than 10% from the book's, which makes it `review`; an identifier the
 community doesn't know is `none` with `detail: "identifier_unknown"`, never a
 fuzzy match by title). A refresh fills in, or with `overwrite` replaces, the
-details an identifier alone didn't bring (the manager's enrichment, an `ids`
+details an identifier alone didn't bring (an enrichment write, an `ids`
 apply), and cleans up the series an earlier match wrote (see the `overwrite`
 scope below); it never changes the identifier itself. Only books a scope would
 change are recorded (a book already up to date leaves no item, as a repick
@@ -5194,8 +5191,8 @@ library; without it, every library. In one transaction it removes every
 every community cover (one kept from the match dialog or by a run), rebuilds
 each book's effective metadata and cover, and removes the match runs with their
 reviews: every run, or for one library its runs and its books' items in runs
-over every library. An admin's own edits and uploaded covers, the tags and an
-identifier the desktop manager attached all stay, so a book whose tags carry an
+over every library. An admin's own edits and uploaded covers, the tags and
+identifiers stored in `book_enrichment` all stay, so a book whose tags carry an
 ASIN or ISBN is still matched afterwards. It sends nothing out, so it works
 with community metadata off (and with no service configured).
 
@@ -6536,7 +6533,7 @@ effect. Lists are never `null`.
 | `backups.keep` | how many scheduled backups are kept, 1-365 (manual and before-restore backups stay until deleted) |
 | `backups.dir` | read-only: changed only in `config.yaml` or `AUDIOSILO_BACKUP_DIR`; `""` = `<data>/backups` (`GET /admin/backups`' `status.dir` has the folder in use) |
 | `modules.<id>` | each [managed module's](../modules.md) toggle, by module id (`false` by default; config key `modules.<id>.enabled`, variable `AUDIOSILO_MODULES_<ID>_ENABLED`). Applies at once, with no restart. [`GET /admin/modules`](#get-apiv1adminmodules) says more about each |
-| `locked` | setting id → why the console can't change it: the `AUDIOSILO_*` variable that set it, or `"launcher"` (a launcher override, the desktop manager's `bind`, `tls.mode` and `public_url`) |
+| `locked` | setting id → why the console can't change it: the `AUDIOSILO_*` variable that set it, or `"launcher"` (a launcher override for `bind`, `tls.mode` or `public_url`) |
 | `restart_settings` | the setting ids read only at start (fixed) |
 | `restart_pending` | restart settings whose saved value differs from the one the server started with |
 

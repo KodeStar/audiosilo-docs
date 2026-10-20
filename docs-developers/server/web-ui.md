@@ -169,9 +169,6 @@ chunk (`import.meta.glob` in `src/i18n/index.ts`), loaded when it is chosen.
   **Dockerfile** has a `node:24-alpine` stage that builds the console and
   copies `dist` in before `go build`; **GoReleaser** runs the script as a
   before-hook. The build fails on any CSP violation (a Vite plugin).
-- The **desktop manager** embeds the server, so its `desktop.yml` runs the
-  script from the sibling checkout before `wails build` (see
-  [Manager server integration](../manager/server-integration.md)).
 - `go.mod` carries `ignore ./admin-ui/node_modules`: some npm packages ship
   Go source, which `./...` would otherwise build, vet, test and lint.
 
@@ -658,8 +655,8 @@ CSP-sensitive work against a real build served by Go. The console's own gate is
   (`settings-form.tsx`): a draft of its fields, Reset and Save changes, only
   the changed fields sent (`sectionPatch`); list settings are edited as one
   entry per line. A refusal's `field` puts the server's message under that
-  field. `SettingBadges` reads the envelope: "Set by `AUDIOSILO_…`" or
-  "Managed by the desktop app" from `locked` (the field is disabled), "Restart
+  field. `SettingBadges` reads the envelope: the source of an environment or
+  launcher override from `locked` (the field is disabled), "Restart
   to apply" from `restart_settings`, "Waiting for a restart" from
   `restart_pending`, which also drives the notice at the top of every topic.
   The Network & HTTPS cards pass `confirmRestart`, so saving a restart setting
@@ -1132,10 +1129,8 @@ wizard still closes (an admin now exists) and the admin finishes in the
 console - intentionally fail-safe.
 
 The launcher prints the token-carrying URL in a startup banner and also
-reports it through `Options.OnURL`, which is how the desktop manager (running
-the server in-process) knows what to open in a browser - see
-[Configuration](configuration.md) and
-[Manager server integration](../manager/server-integration.md).
+reports it through `Options.OnURL`, so an in-process caller can open it in a
+browser - see [Configuration](configuration.md#launcher-options-for-embedders).
 
 ## Well-known app-association files
 

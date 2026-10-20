@@ -37,10 +37,9 @@ Podcasts, read-along, Audible backups and file moves arrive in later phases.
 
 The server never writes into a library: it reads the folders, indexes them and
 streams them. Anything that has to **change** files, or that is too heavy to run in
-the server (speech recognition, an AI agent), belongs to the Bridge. Today that is
-the desktop manager's job and the contributor tool's (`audiosilo-sidecars`); the Bridge
-is where those jobs move, run from the server's admin console rather than from a
-desktop app.
+the server (speech recognition, an AI agent), belongs to the Bridge. Its jobs are
+started from the server's admin console (and, for generating, from the player's
+admin-only action).
 
 The engine came from **audiosilo-sidecars**: its packages (speech recognition, the
 agent pipeline, QA, spelling, contribution, the scheduler and supervisor) were
@@ -99,13 +98,13 @@ credentials for it, and nothing about the Bridge's network.
 
 ## How it relates to the server
 
-The Bridge is a **third client** of the server's wire format, after the player and
-the desktop manager, and the rule is the same: the server defines the contract and
-the Bridge mirrors it **by hand** (its `internal/link`; there is no codegen). A
+The Bridge is a client of the server's wire format alongside the player. The
+server defines the contract and the Bridge mirrors it **by hand** (its
+`internal/link`; there is no codegen). A
 change to the server's `internal/bridge` or `handlers_bridge.go` is a change in
 `audiosilo-bridge` too, with a test on each side. The seam is section 23 of the
 workspace `CROSS-REPO.md`; this site's digest is
-[the cross-repo contract](../architecture/cross-repo-contract.md#17-the-bridge-a-third-client).
+[the cross-repo contract](../architecture/cross-repo-contract.md#16-the-bridge).
 
 | | Server (`audiosilo-server`) | Bridge (`audiosilo-bridge`) |
 |---|---|---|

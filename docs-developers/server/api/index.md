@@ -505,8 +505,8 @@ For local player development against a dev server, set
 ## The contract is hand-mirrored
 
 There is no OpenAPI spec and no codegen. The player mirrors these JSON shapes by
-hand in `audiosilo-frontend/src/api/types.ts` (the manager in its
-`internal/serverapi`, and the Bridge in its `internal/link`), so **any wire change is a multi-repo change** - handler,
+hand in `audiosilo-frontend/src/api/types.ts`, and the Bridge mirrors them in its
+`internal/link`, so **any wire change is a multi-repo change** - handler,
 mirrored types, and tests on both sides move together. See the
 [cross-repo contract](../../architecture/cross-repo-contract.md) before touching
 a payload.

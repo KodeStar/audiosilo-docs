@@ -3,7 +3,7 @@ title: Cross-repo contract
 description: "Every seam where changing one AudioSilo repo forces a change in another - a readable digest of the workspace CROSS-REPO.md."
 ---
 
-The server defines the JSON/HTTP contract; the frontend, the manager and the
+The server defines the JSON/HTTP contract; the frontend and the
 [Bridge](../bridge/index.md) mirror it **by hand** (no codegen). This page is a tour of every seam - every place where a
 change in one repo forces a change (or a deliberate decision) in another.
 
@@ -19,7 +19,6 @@ Canonical reference points on each side of the main seam:
 - Server route table: `internal/api/api.go`
 - Frontend client (mirrors it 1:1): `src/api/client.ts`
 - Frontend wire types: `src/api/types.ts`
-- Manager's mirrored subset: `internal/serverapi` (in audiosilo-manager)
 - The Bridge's mirrored routes: `internal/link` (in audiosilo-bridge, private)
 
 ## 1. Path is the identity - `(library_id, rel_path)`
@@ -55,7 +54,7 @@ unwraps the envelopes (errors become `ApiError(status, error)`); `src/api/hooks.
 exposes React Query hooks.
 
 **A change requires:** the full [wire-change checklist](#the-wire-change-checklist)
-- a field rename is a two-repo edit (three, if the manager reads that shape).
+- a field rename touches the server and every client that reads that shape.
 
 **Admin metadata edits don't move the player wire.** The book JSON's metadata
 fields carry the *effective* values (scan, then enrichment, then any admin
@@ -163,12 +162,12 @@ URL. Clients add the book's `cover_version` as `v=` purely as a cache buster:
 route: `GET /libraries/{id}/meta/cover?path=&url=&size=160|320|640` is a JPEG
 thumbnail of a community `cover_url` that the server fetched, so the web player,
 whose CSP stays `img-src 'self' data: blob:`, never contacts a cover host. Details
-in [§14](#14-community-metadata-a-three-repo-seam).
+in [§13](#13-community-metadata-a-three-repo-seam).
 
 **Cast tokens** (capability `cast`) ride the same `?token=`, on a book's cover and
 stream only: a player casting to a Chromecast mints one for the book
 (`POST /cast/token`) and builds the receiver's URLs with it, never with its session
-token. Details in [§15](#15-listening-in-the-house-and-casting).
+token. Details in [§14](#14-listening-in-the-house-and-casting).
 
 **A change requires:** do **not** "tighten" the server to reject query-param
 tokens on media routes without first removing the web player's dependency on
@@ -304,9 +303,9 @@ version.
 **Server:** `handleServerInfo` advertises `admin_ui`, `web_player`, `upload`,
 `transcode`, `websocket`, `api_keys`, `export`, `metadata`, `meta_bundle`,
 `browse_people`, `cover_sizes`, `next_book` and the flags added after it (the
-latest: `household` and `cast`, which gate [§15](#15-listening-in-the-house-and-casting),
-`household_members`, which gates [§16](#16-household-members-profiles-and-kids-mode-stay-client-side),
-and `bridge`, which follows the Bridge's heartbeat, [§17](#17-the-bridge-a-third-client)),
+latest: `household` and `cast`, which gate [§14](#14-listening-in-the-house-and-casting),
+`household_members`, which gates [§15](#15-household-members-profiles-and-kids-mode-stay-client-side),
+and `bridge`, which follows the Bridge's heartbeat, [§16](#16-the-bridge)),
 one flag per [managed module](../server/modules.md) (`contributions`: the module's
 toggle **and** its Bridge requirement met, sent `false` otherwise; the console reads
 it to offer contributing, the player doesn't), plus the
@@ -409,44 +408,10 @@ custom request header (see
 server default) needs trusting in the browser, or use `AUDIOSILO_TLS_MODE=off`
 for plain-HTTP local dev.
 
-## 13. The manager ↔ server seam
-
-**What couples:** `audiosilo-manager` is the write/management side, but its
-*network* relationship with the server is read-only for content - all file writes
-happen client-side (SFTP or a local/mounted copy).
-
-**What the manager consumes** (via its `internal/serverapi`):
-
-- pairing/auth: `POST /auth/redeem` → `POST /auth/exchange` (session token stored
-  in the OS keychain, never the registry file);
-- `GET /server`, `GET /admin/libraries`, `GET /libraries/{id}/fs`,
-  `GET /libraries/{id}/books` + `GET /search` (series-sibling detection,
-  existence-by-ASIN), `GET /libraries/{id}/item`;
-- `GET /me/progress` + `PUT /libraries/{id}/progress` (the same write the player
-  makes) for stats sync;
-- `POST /admin/libraries/{id}/scan` - a non-destructive reindex after placement;
-- its **one enrichment write**: `PUT /admin/libraries/{id}/enrichment?path=`
-  (`{asin, isbn}`) - a durable, path-keyed `book_enrichment` row, layered back
-  onto the book by every re-index (`catalog.UpsertBook`); it modifies no file.
-
-**Shared code, not just shared wire:** the fuzzy book matcher lives in the
-server's public `pkg/match` (`Best`, `CleanTitle`, `SeqFromTitle`) and the manager
-imports it. The "create a local server" flow runs the server **in-process** via
-the server's public `pkg/launcher` (`Run`/`Options`). The manager depends on the
-server module via a local `replace ../audiosilo-server`, so CI checks out both
-repos as siblings.
-
-**A change requires:** the manager hand-mirrors the server shapes it reads, same
-rule as the frontend - a wire change to any endpoint above touches the server
-handler **and** `serverapi`, with tests on both. Changes to `pkg/match` or
-`pkg/launcher` are public-API changes consumed by another repo: build the manager
-against them before calling it done. See
-[manager server integration](../manager/server-integration.md).
-
-## 14. Community metadata: a three-repo seam
+## 13. Community metadata: a three-repo seam
 
 **What couples:** enriched book metadata (description, characters, recaps, "more
-in this series") originates in a fourth repo, `audiosilo-meta`, and flows through
+in this series") originates in `audiosilo-meta`, and flows through
 the server to the player.
 
 **Upstream (`audiosilo-meta`):** `metaserve` serves the community metadata
@@ -564,7 +529,7 @@ Two couplings follow, both now part of this seam:
 
 **Contributing back (Bridge Phase 2b).** The server never writes to the community
 repositories: what an admin shares or corrects is a Bridge job
-([§17](#17-the-bridge-a-third-client)) the Bridge files as a GitHub issue under the
+([§16](#16-the-bridge)) the Bridge files as a GitHub issue under the
 admin's own account, through the AudioSilo Contributions App when it uses its
 Accounts sign-in (a token from its environment or `gh` files a plain issue, which
 `route.yml` leaves to the routing labels the Bridge set, when they stuck, or to a
@@ -589,10 +554,9 @@ what meta takes, so raising one starts with meta and the Bridge.
 a change to those shapes ripples audiosilo-meta -> the server's `internal/meta` ->
 the player (only if the server's outward `/meta` envelope changes). Keep it
 additive, same as every other seam here. A change to `pkg/query` or
-`pkg/release`'s exported API reaches the server through its `go.mod` (and the
-desktop manager, which builds the server).
+`pkg/release`'s exported API reaches the server through its `go.mod`.
 
-## 15. Listening in the house and casting
+## 14. Listening in the house and casting
 
 The player redesign's Phase 8, two additive features each behind its own flag
 (seam 8), mirrored in `types.ts` (`HouseholdSettings`, `HouseListeningRow`,
@@ -620,7 +584,7 @@ address the receiver's URLs use: [Chromecast](../frontend/chromecast.md).
 must never filter someone in); any widening of where a cast token is accepted is a
 security-critical change with allowed and denied tests on the server.
 
-## 16. Household members (profiles and kids mode stay client-side)
+## 15. Household members (profiles and kids mode stay client-side)
 
 **Profiles and kids mode are client-side; household members are server-side.** A
 profile (a person on this device), its PIN and its kids mode never reach a server
@@ -671,10 +635,10 @@ household" and profiles and kids mode work as before.
 denied tests on the server); a new member field is the usual wire change in both
 repos, gated on the flag.
 
-## 17. The Bridge: a third client
+## 16. The Bridge
 
 **What couples:** the [Bridge](../bridge/index.md) (`audiosilo-bridge`, private) is
-a third client of the server's wire format, after the player and the manager. The
+a companion client of the server's wire format, alongside the player. The
 server defines the contract and the Bridge mirrors it by hand in `internal/link`;
 a change to the server's `internal/bridge` or `handlers_bridge.go` is a change in
 both repos, with a test on each side.
@@ -803,7 +767,7 @@ both repos, with a test on each side.
   `meta.correct` (params `{work_id, recording_id?, asin?, isbn?, region?, changes,
   evidence, source?}`; the server refuses `400 not_edited` for a change that isn't
   the book's admin edit). The Bridge files both on GitHub
-  ([§14](#14-community-metadata-a-three-repo-seam)); its GitHub sign-in and the
+  ([§13](#13-community-metadata-a-three-repo-seam)); its GitHub sign-in and the
   agent credential it hands to the agent container live on its own page and never
   cross to the server. Detail: [Contributions](../bridge/contributions.md).
 - **The player (Phase 1a):** its first admin-only UI, gated on `user.role ===
@@ -846,8 +810,8 @@ CROSS-REPO.md is the listening-history feature):
 4. **Frontend client**: add/extend the method in `src/api/client.ts`.
 5. **Frontend hooks**: expose it via `src/api/hooks.ts`; consume it in a screen.
 6. **Frontend test**: `src/api/client.test.ts`.
-7. **Manager**, if it reads the changed shape: update `internal/serverapi` + its
-   tests.
+7. **The Bridge**, if it reads the changed shape (the `/bridge/*` routes): update
+   its `internal/link` + its tests ([§16](#16-the-bridge)).
 8. **Update `~/dev/audiosilo/CROSS-REPO.md`** - the seam catalog must describe the
    new reality (ideally edited first, as the design step).
 9. Run **each touched repo's full gate** ([gates and CI](../contributing/gates-and-ci.md))

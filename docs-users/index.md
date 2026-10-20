@@ -1,7 +1,7 @@
 ---
 slug: /
 title: What is AudioSilo?
-description: "AudioSilo is a self-hosted audiobook platform: a server that streams your own files, a player app for web, iOS and Android, and a desktop manager for organizing your collection."
+description: "AudioSilo is a self-hosted audiobook platform: a server that streams your own files and a player app for web, iOS and Android."
 ---
 
 ## What is AudioSilo?
@@ -10,9 +10,11 @@ AudioSilo is a self-hosted audiobook platform. You point a small server at a fol
 
 ![The AudioSilo web player home screen](/img/screenshots/web-player/home.png)
 
-## The three parts
+## The server and player
 
-AudioSilo is made of three pieces that work together. You only *have* to run the first one.
+AudioSilo combines a server with a player app. You only *have* to run the
+server; an optional [Bridge](./getting-started/running-a-bridge.md) can run
+beside it for heavier jobs such as generating characters and recaps.
 
 ### The server
 
@@ -23,12 +25,6 @@ Install it with [Docker](./getting-started/quickstart-docker.md), from [Unraid's
 ### The player app
 
 Where you actually listen. One app ships as a web player (served by your own server, installable as a PWA) and as native iOS and Android apps. It handles chapters, playback speed, sleep timers, favourites, offline downloads and background playback, and the native apps add more device integration (see [The mobile apps](./listening/mobile-apps.md)). See [Connecting to a server](./listening/connecting.md) to get started.
-
-### The desktop manager
-
-An optional desktop app for the "librarian" side of things: setting up and connecting to servers, organizing and renaming books, transferring files onto a server over SFTP or a local copy, and backing up an Audible library you own (download, remove the DRM with your own account credentials, convert to M4B, transfer). The server itself never modifies your files over the network - the manager is where changes happen. See the [manager guide](./manager/index.md).
-
-![The desktop manager's servers screen](/img/screenshots/manager/servers.png)
 
 ## What makes it a good home for your audiobooks
 
@@ -41,7 +37,6 @@ An optional desktop app for the "librarian" side of things: setting up and conne
 - **[Getting started](./getting-started/quickstart-docker.md)** - install the server with [Docker](./getting-started/quickstart-docker.md), [on Unraid](./getting-started/install-unraid.md) or as a [native binary](./getting-started/install-binary.md), understand the [first run](./getting-started/first-run.md), lay out [your library folders](./getting-started/organizing-your-library.md), and set up [remote access](./getting-started/remote-access.md).
 - **[Server administration](./admin/console-tour.md)** - the admin console: [libraries](./admin/libraries.md), [people and invites](./admin/users-and-invites.md), and [sharing parts of a library](./admin/sharing.md).
 - **[Listening](./listening/connecting.md)** - connecting a device, [browsing](./listening/browsing.md), [playing a book](./listening/playback.md), [the full player](./listening/full-player.md), [the companion](./listening/companion.md), the [sleep timer](./listening/sleep-timer.md), [Up next](./listening/up-next.md), [the end of a book](./listening/end-of-book.md), [offline downloads](./listening/offline-downloads.md), [your listening stats](./listening/you.md) and [year in listening](./listening/year-in-listening.md), [settings](./listening/settings.md), [your account](./listening/account.md), the [mobile apps](./listening/mobile-apps.md) and [keyboard shortcuts](./listening/keyboard-shortcuts.md).
-- **[Desktop manager](./manager/index.md)** - [managing servers](./manager/servers.md), [organizing and transferring books](./manager/organizing.md), and [backing up an Audible library](./manager/audible-backup.md).
 - **[Demo](./demo.md)** - try AudioSilo without installing anything.
 - **[Troubleshooting](./troubleshooting.md)** and the **[FAQ](./faq.md)**.
 

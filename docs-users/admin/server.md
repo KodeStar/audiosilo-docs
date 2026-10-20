@@ -71,17 +71,12 @@ again.
 
 ### Settings set somewhere else
 
-Some settings can't be changed here, and say why:
-
-- **Set by AUDIOSILO_...** - an environment variable sets it (common with
-  Docker, where `docker-compose.yml` passes them). An environment variable wins
-  over this page and over `config.yaml`, so change it where it is set and
-  recreate the container. The console never copies its value into
-  `config.yaml`, so removing the variable later brings back the file's own
-  value.
-- **Managed by the desktop app** - the
-  [desktop manager](../manager/index.md) runs this server and sets its listen
-  address, HTTPS mode and public address itself. Change those in the manager.
+Settings marked **Set by AUDIOSILO_...** can't be changed here: an environment
+variable sets them (common with Docker, where `docker-compose.yml` passes
+them). An environment variable wins over this page and over `config.yaml`, so
+change it where it is set and recreate the container. The console never copies
+its value into `config.yaml`, so removing the variable later brings back the
+file's own value.
 
 ### General
 

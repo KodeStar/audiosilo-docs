@@ -19,8 +19,7 @@ function Hero() {
         <p className={styles.heroSubtitle}>{siteConfig.tagline}</p>
         <p className={styles.heroBlurb}>
           AudioSilo is a self-hosted audiobook platform: a fast, internet-safe Go
-          server; a player app for web, iOS and Android; and a desktop manager for
-          organizing your library and backing up your Audible collection.
+          server and a player app for web, iOS and Android.
         </p>
       </div>
     </header>
@@ -41,7 +40,7 @@ const tracks = [
     to: '/developers',
     description:
       'Architecture, the cross-repo contract, the HTTP API, playback internals, ' +
-      'and how to contribute changes across the three repositories.',
+      'and how to contribute changes across the repositories.',
     cta: 'Dive in',
   },
 ];
@@ -70,7 +69,7 @@ function Tracks() {
 
 export default function Home(): ReactNode {
   return (
-    <Layout description="Documentation for AudioSilo - the self-hosted audiobook server, player app, and desktop manager.">
+    <Layout description="Documentation for AudioSilo - the self-hosted audiobook server and player app.">
       <Hero />
       <Tracks />
     </Layout>

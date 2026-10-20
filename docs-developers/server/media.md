@@ -99,8 +99,7 @@ extension is in `metadata.AudioExtensions` (checked via `metadata.IsAudio`):
 **deliberately excluded**: the server can never stream them (they need
 per-account decryption), and indexing an `.aax` sitting next to its converted
 `.m4b` would lump both into one book with duplicated chapters and an
-unplayable track. The [manager](../manager/audible.md) converts `.aax`/`.aaxc`
-to `.m4b` **before** content enters a library.
+unplayable track.
 
 (`audioContentType` knows a slightly broader set - e.g. `.aax`, `.wav` - so a
 correct type is served even for files the scanner would not index.)
