@@ -760,7 +760,17 @@ CSP-sensitive work against a real build served by Go. The console's own gate is
   `isBookKind`) with `GenerateStatus` (its stage,
   counts, time left and cost; a park's reason with **Open in the Bridge**, a link
   to `<ui_url>#/jobs/<id>`; the counts and cost once done, and for a generate job
-  whether its description came), its path linking to the book's page.
+  whether its description came), its path linking to the book's page. Since Phase
+  2b a **Setup** card ("Get set up" while a required step is still to do) lists the
+  heartbeat's `setup` checklist (`setup-list.tsx`, the pure rules in
+  `setup-model.ts`: each step done, still to do or optional, with the Bridge's
+  `detail` under it, else for a step not done the console's own hint,
+  `bridge.setup.hint.<id>`, and on a step not done, given the page's address,
+  **Fix on the Bridge** linking to the tab that fixes it, `paired` having none),
+  then the GitHub account, the agent credential and whether the Bridge can
+  contribute, with **Open Accounts on the Bridge**; and the job list words
+  `sidecars.contribute` ("Community share") and `meta.correct` ("Corrections")
+  jobs with `GenerateStatus` too (`isBookKind`).
 - **Settings > Modules** (`features/settings/modules-topic.tsx`, Bridge Phase 2a) -
   over [`GET /admin/modules`](api/reference.md#get-apiv1adminmodules) (`useModules`,
   every 15 seconds like the Bridge's status, and refetched after every settings
@@ -791,7 +801,9 @@ CSP-sensitive work against a real build served by Go. The console's own gate is
   with **See them**, which scrolls to the Characters and recaps card
   (`STORY_CARD_ID`) and moves focus there, in place of the action.
   `GenerateDialog` reads the full estimate: the source, length, transcription and agent cost for every book it queues, where
-  the results go, a contribute switch only when `can_contribute`, the earlier
+  the results go, a contribute switch (on by default) only while the
+  `contributions` flag is on and the estimate's `can_contribute`
+  (`contributeOffered`), the earlier
   books (ticked), and notices for an offline Bridge, an agent not ready or not
   reported, and a library it can't write (which blocks the submit). It queues the
   books one by one in reading order (`queueInOrder`) and reports a partial
@@ -799,12 +811,31 @@ CSP-sensitive work against a real build served by Go. The console's own gate is
   series** once its books are loaded: `SeriesGenerateDialog` asks every book's
   brief estimate, four at a time, and queues the books with no recaps and no open
   job, earliest first, counting the ones it leaves out. A book refused
-  `detect_open` (its chapters are still being found) is passed over by name in the
-  series batch and the dialog (`GENERATE_SKIPS`) rather than stopping them, and
-  `GenerateSection` shows a queued or working detect job's status in place of
-  Generate (`generateBlocker`: the job list, else the estimate's `open_job`). See
+  `detect_open` (its chapters are still being found) or, Phase 2b,
+  `contribute_open` (its characters and recaps are being shared) is passed over by
+  name in the series batch and the dialog (`GENERATE_SKIPS`) rather than stopping
+  them, and `GenerateSection` shows a queued or working detect job's status, or a
+  note for a queued or working share ("The characters and recaps are being shared
+  with the community..."), in place of Generate (`generateBlocker`,
+  `blocksGenerate`: the job list, else the estimate's `open_job`; a queued share
+  counts only while the `contributions` toggle is on, read from the settings
+  envelope (`useSettings`, counted on until it arrives) rather than the flag, as
+  the server lets a generate job cancel a held one). See
   [Characters and recaps](../bridge/generating.md) and
   [Chapterless books](../bridge/chapters.md).
+- **Share with the community** and **Suggest corrections** (Phase 2b,
+  `features/bridge/share-section.tsx`, `features/book/corrections-dialog.tsx` and
+  `corrections-model.ts`) - in the Community card after the generate parts, offered
+  only while the `contributions` flag is on (a job that exists shows with its
+  Cancel either way). `ShareSection` offers Share for each dimension generated here
+  that the community lacks and no finished job has filed (`shareOffered`: the
+  estimate's `can_contribute`, a community answer, no generate or share job open)
+  and queues `sidecars.contribute` with those `dimensions` (`shareRequest`).
+  `CorrectionsSection` offers Suggest corrections for a matched book with an ASIN
+  or ISBN and an edited correctable field, while the Bridge offers the `meta`
+  feature (`correctionsOffered`), and its dialog queues `meta.correct` (the rows
+  it leaves unticked and the evidence it won't send:
+  [Contributions](../bridge/contributions.md#corrections-metacorrect)).
 - **A generated description** (Phase 1c, `features/bridge/describe-section.tsx`) -
   `DescribeSection` follows `GenerateSection` in the Community card: the admin
   book detail's `generated_description` with the "Generated on this server" mark
@@ -832,9 +863,10 @@ CSP-sensitive work against a real build served by Go. The console's own gate is
   `work.generated`): **Community** (the `ProvenanceMarker`) with the envelope's
   `attribution` credit and licence, or **Generated on this server** with
   `generated.generated_at`, plus "Contributed, waiting for review" linking the
-  community issue the book's newest `done` `sidecars.generate` job filed for
-  that dimension (`contributedLinks` over the job's `result.contributed`; a later
-  failed, cancelled or open job doesn't hide it).
+  community issue the book's newest `done` `sidecars.generate` job, or a `done`
+  `sidecars.contribute` job since, filed for that dimension (`contributedLinks`
+  over the jobs' `result.contributed`; a later failed, cancelled or open job
+  doesn't hide it).
   Whether the issue was reviewed doesn't reach the server yet (Bridge Phase 2b).
   The summary has a source of its own (`generated.recap_summary`), shown on its
   row only when it differs from the list's, so a community summary beside a

@@ -80,7 +80,8 @@ internal/
   generate/   sidecars.generate: server job -> engine book, progress and parks, the
               .audiosilo/ write, the heartbeat's estimates, the transcript retention;
               sidecars.describe (Phase 1c): a description from a finished run's notes;
-              chapters.detect and chapters.json (Phase 1d): chapters found in the narration
+              chapters.detect and chapters.json (Phase 1d): chapters found in the narration;
+              sidecars.contribute (Phase 2b): a share of a run's kept results
   agentproto/ the staging protocol both sides share (names, JSON, request validation,
               regular-file reads); a leaf
   agentbox/   the Bridge's side: an agent.Runner that stages, waits, harvests
@@ -91,7 +92,12 @@ internal/
   config/     config.yaml + AUDIOSILO_BRIDGE_* (bridge.go: the Bridge's own settings)
   store/      SQLite, append-only migrations (0001 the engine, 0002 server_jobs,
               0003 generate_books, server_jobs.server_id, books.contrib_mode,
-              0004 workers, 0005 books.goal)
+              0004 workers, 0005 books.goal, 0006 accounts)
+  -- Phase 2b --
+  ghauth/     the GitHub App's device flow, refresh, revoke and /user; a leaf
+  accounts/   the Accounts tab: the GitHub sign-in and the agent credentials (vault-sealed)
+  setup/      the setup checklist the heartbeat and the Status tab show; pure
+  correct/    meta.correct: an admin's corrections as one correction-batch issue
   auth/       the page's single password, hashed sessions, the login limiter
   -- the engine (from audiosilo-sidecars; wired by app/engine.go since Phase 1a) --
   toolfetch/ audio/ asr/ transcript/ ebook/ scratch/ qa/ spelling/ agent/ repair/
@@ -107,6 +113,8 @@ compose.example.yaml  the server, the Bridge and the agent container
 only the Backend interface `app` implements (it imports the other packages for
 their types); `verify -> {jobs, link, mapping}`; `jobs -> {link, store}`;
 `mapping -> link`; `generate -> {jobs, link, mapping, store, engine}`;
+`accounts -> {agentproto, ghauth, secrets, store}`; `correct -> {contrib, jobs,
+metaops}`; `setup -> link`;
 `agentbox -> {agent, agentproto}`, `agentrun -> agentproto`; `link` and
 `agentproto` are leaves. The engine keeps the directions it had in
 audiosilo-sidecars (`PACKAGES.md`).
@@ -121,8 +129,9 @@ Conventions that carry the design:
   sends on every call, `AudioSilo Bridge/<version> (<os>)`, must parse with the
   server's `auth.ParseClient`; a test holds the server's pattern.
 - **Secrets are never logged or echoed.** The page's password is printed once at the
-  first start (to standard error, never through the logger), the server token is
-  sealed, and the log ring redacts attributes whose key looks like a secret
+  first start (to standard error, never through the logger), the server token, the
+  GitHub sign-in and the Accounts tab's agent credentials are sealed (the page API
+  says only whether one is set), and the log ring redacts attributes whose key looks like a secret
   (`token`, `password`, `code`, `key`, `secret`, `cookie`, `authorization`).
 - **Every feature ships with a test**, and the security-critical code (the
   local-network guard, the page's auth, `SafeJoin`, the secrets, the claim and
@@ -142,18 +151,26 @@ Conventions that carry the design:
 ## The page and its API
 
 The Bridge serves its own page and a small JSON API under `/api` on its `listen`
-address (`:8091`). The page has six tabs: **Status** (pairing, the last heartbeat,
+address (`:8091`). The page has seven tabs: **Status** (led by a **Get set up** card,
+the [setup checklist](pairing-and-jobs.md#the-setup-checklist) with an **Open**
+link to the tab of each step still to do, until every required step is done; pairing, the last heartbeat,
 the job kinds and lanes, where the secret key came from, and a **Characters and
 recaps** card: the agent container and each CLI's version and credential kind, the
 speech recognition, the monthly budget with this month's spend, the per-book cap
-and the transcript retention), **Libraries** (each server library, the folder the
+and the transcript retention, noting that the monthly budget is set on the
+**Settings** tab and applies straight away (when
+`AUDIOSILO_BRIDGE_AGENT_MONTHLY_BUDGET_USD` sets it, that applies at the next
+start) while the per-book cap and the retention are `config.yaml` settings
+applied at the next start), **Libraries** (each server library, the folder the
 Bridge uses and its last check, with **Check now**), **Jobs** (the jobs it ran,
 with cancel, a `bridge.verify` result as a file table, and for a
 `sidecars.generate`, `sidecars.describe` or `chapters.detect` job its stage, progress, cost, the park's code, hint and
 retry time, and **Retry** while it is parked; once done, the files it saved and
 whether a description came, for a describe job what its check measured against, and
 for a chapters job how many chapters it found), **Settings** (its public address,
-the check interval, the ASR fallback, the password), **Workers** (the [ASR workers](workers.md): add one, its token shown once in the commands to run, its state and figures, remove) and **Logs**
+the check interval, the ASR fallback, the monthly agent budget, the password),
+**Accounts** (Phase 2b: the GitHub sign-in and the agent's credentials; see
+[Contributions](contributions.md#the-pages-routes)), **Workers** (the [ASR workers](workers.md): add one, its token shown once in the commands to run, its state and figures, remove) and **Logs**
 (recent lines). It has no router: the tab rides the URL hash, and `#/jobs/<id>`
 opens one job (the server's console links a parked job there, by its server job
 id).
@@ -164,13 +181,14 @@ id).
 | `POST /api/login` | `{ password }` -> `{ token }`; rate limited per address |
 | `POST /api/logout` | ends the session |
 | `POST /api/password` | `{ current, new }`; at least 8 characters. A wrong current password is `403`, not `401` (a `401` signs the page out) |
-| `GET /api/status` | the Bridge's state: version, pairing (with the reason when the server refuses its token), online, last heartbeat and error, kinds, lanes, the secret key's source, `public_url`, the server address the pairing form starts with |
+| `GET /api/status` | the Bridge's state: version, pairing (with the reason when the server refuses its token), online, last heartbeat and error, kinds, lanes, the secret key's source, `public_url`, the server address the pairing form starts with, and (Phase 2b) `setup` and `setup_complete` |
 | `POST /api/pair` | `{ server_url, code }`: pair with a server. `400` for an address that isn't an absolute `http(s)` URL; `422` when the server refused the code, is too old for a Bridge (`404`/`405`), refused the pairing otherwise, or has a certificate the Bridge can't verify (the message says to use its `http://` address); `502` for a server it can't reach; `409` when already paired |
 | `POST /api/unpair` | forget the token here |
 | `GET /api/libraries` | the server's libraries with the Bridge's folder, whether it is configured, and the last check |
 | `PUT /api/libraries/{id}` | `{ mount_path }` (absolute; `""` goes back to the server's path), then re-checks that library; `409 locked` when `AUDIOSILO_BRIDGE_LIBRARIES` sets the mappings |
 | `POST /api/libraries/check` | check the mappings now (`202`) |
-| `GET` / `PUT /api/settings` | `public_url`, `mapping_check_minutes`, `asr_worker_fallback` (`local` or `wait`; empty on a save keeps it), and which settings the environment locks (a locked one is never written to `config.yaml`) |
+| `GET` / `PUT /api/settings` | `public_url`, `mapping_check_minutes`, `asr_worker_fallback` (`local` or `wait`; empty on a save keeps it), `monthly_budget_usd` (Phase 2b: `0` or more, applied live; a save records `agent.budget_reviewed_at`, and a value the environment locks can't change; absent on a save keeps it) with `budget_reviewed`, and which settings the environment locks (a locked one is never written to `config.yaml`) |
+| `GET /api/accounts`, `POST /api/accounts/github/device`, `DELETE /api/accounts/github`, `PUT` / `DELETE /api/accounts/agent` | Phase 2b's Accounts tab: see [Contributions](contributions.md#the-pages-routes). No route answers a credential back |
 | `GET /api/jobs` | the jobs it ran, newest first (`before`, `limit` up to 200) |
 | `GET /api/jobs/{id}` | one job (`404` when the Bridge has no such job) |
 | `POST /api/jobs/{id}/cancel` | stop a job it is running (`202`; `404` when it isn't running here) |

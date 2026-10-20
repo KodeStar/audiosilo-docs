@@ -308,10 +308,14 @@ latest: `household` and `cast`, which gate [§15](#15-listening-in-the-house-and
 `household_members`, which gates [§16](#16-household-members-profiles-and-kids-mode-stay-client-side),
 and `bridge`, which follows the Bridge's heartbeat, [§17](#17-the-bridge-a-third-client)),
 one flag per [managed module](../server/modules.md) (`contributions`: the module's
-toggle **and** its Bridge requirement met, sent `false` otherwise), plus the
+toggle **and** its Bridge requirement met, sent `false` otherwise; the console reads
+it to offer contributing, the player doesn't), plus the
 server version
 (`api.Version`, stamped from the release tag via ldflags). `transcode` reflects
-ffmpeg availability; `web_player` reflects whether `/web` is populated; `api_keys`
+ffmpeg availability; `web_player` reflects whether `/web` is populated; the
+`bridge: {version, features}` block beside `capabilities` is sent to a signed-in
+caller only (a session or API key of any role, not a demo account), while the
+`bridge` flag itself stays public; `api_keys`
 reflects that the server accepts user-minted API keys; `metadata`,
 `meta_bundle` and `meta_covers` follow the runtime metadata switch; `browse_people`, `cover_sizes`,
 `next_book` and every flag after it are always true on a server that has them (the
@@ -558,6 +562,29 @@ Two couplings follow, both now part of this seam:
   A server picks up `pkg/query` changes only when its `go.mod` moves to a new
   audiosilo-meta tag.
 
+**Contributing back (Bridge Phase 2b).** The server never writes to the community
+repositories: what an admin shares or corrects is a Bridge job
+([§17](#17-the-bridge-a-third-client)) the Bridge files as a GitHub issue under the
+admin's own account, through the AudioSilo Contributions App when it uses its
+Accounts sign-in (a token from its environment or `gh` files a plain issue, which
+`route.yml` leaves to the routing labels the Bridge set, when they stuck, or to a
+maintainer). Two meta-side pieces
+make that a seam: the [correction-batch form](../meta/contributing-data.md#the-correction-batch-form)
+(`[corrections] ` issues with a fenced, versioned `changes` block, which the Bridge
+writes and meta's `correctBatch` reads), and
+[`route.yml`](../meta/contributing-data.md#issues-filed-through-the-audiosilo-app),
+which routes an App-filed issue by its title prefix (`[work] `, `[corrections] `;
+`[characters] `, `[recaps] ` on the community repository) or holds it
+(`intake:held`). The title prefixes and the batch's `v: 1` block are the contract
+between the Bridge and meta. Two more couplings ride on the corrections: how
+meta's form reads a value (`issueform` `formValue`, character references
+decoded) is mirrored by the server's `meta.correct` checks and by the console's
+dialog, so a change there moves both
+([details](../bridge/contributions.md#corrections-metacorrect)); and the server's
+bounds on a batch (128 KiB of params, the value and evidence lengths) must stay
+within what the Bridge reads (64 KiB as stored, an unknown field refused) and
+what meta takes, so raising one starts with meta and the Bridge.
+
 **A change requires:** because the server consumes `metaserve`'s response shapes,
 a change to those shapes ripples audiosilo-meta -> the server's `internal/meta` ->
 the player (only if the server's outward `/meta` envelope changes). Keep it
@@ -669,7 +696,7 @@ both repos, with a test on each side.
   the token is a `503`, which the Bridge simply retries. The console's pairing code
   comes with the server's home address when there is one.
 - **The routes it calls:** `PUT /bridge/status` (the heartbeat, every 30 s; the
-  answer lists the libraries), `GET /bridge/jobs/next?wait=&kind=` (a long-poll
+  answer lists the libraries and, since Phase 2b, `accepts`), `GET /bridge/jobs/next?wait=&kind=` (a long-poll
   claim, at most 25 s, narrowed to the kinds with a free lane; `204` for none),
   `PATCH /bridge/jobs/{id}` (`{attempt, state?, progress?, result?, error?}`; the
   answer's `cancel_requested` asks it to stop; `409 not_held` when its claim no
@@ -683,7 +710,9 @@ both repos, with a test on each side.
   optionally carrying a Bridge-made move's durable state from `from`, or
   `attachments`: only the book's `.audiosilo/` files). The heartbeat carries an
   additive `estimates` block the server reads leniently (an unknown key ignored,
-  a bad block dropped, never the heartbeat). Shapes:
+  a bad block dropped, never the heartbeat), and since Phase 2b a `setup` block
+  read the same way, which the Bridge sends only once a reply's `accepts` lists
+  `setup` (an older server refuses an unknown heartbeat field). Shapes:
   [the reference](../server/api/reference.md#the-bridge).
 - **The capability:** `capabilities.bridge` is true only while the last heartbeat
   is under two minutes old, with `bridge: {version, features}` beside
@@ -692,7 +721,9 @@ both repos, with a test on each side.
   advertise is off even when the flag is on. `features` may also hold `contribute`
   (the Bridge can file contributions; see
   [the heartbeat](../bridge/pairing-and-jobs.md#the-heartbeat-and-the-capability)),
-  which the `contributions` module's flag needs ([§8](#8-capability-flags-get-apiv1server)).
+  which the `contributions` module's flag needs ([§8](#8-capability-flags-get-apiv1server)),
+  and `meta` (the Bridge files corrections). Since Phase 2b the `bridge` block goes
+  to signed-in callers only; the flag stays public.
 - **The job model:** the server's `bridge_jobs` row is the intent and the lease
   (path-keyed, moved with its book, gone with its library); the Bridge's
   `server_jobs` row is the execution truth. Leases of 2 minutes, renewed by every
@@ -758,10 +789,30 @@ both repos, with a test on each side.
   admin book detail `generated_chapters_fit`. A change to the file touches the
   Bridge's writer and the server's reader. Detail:
   [Chapterless books](../bridge/chapters.md).
+- **Setup and contributions (Phase 2b):** the heartbeat's `setup` block (the
+  Bridge's onboarding checklist: `paired`, `libraries`, `asr`, `agent`, `budget`,
+  `github`, plus `can_contribute` and `github_login`) reaches the console only, as
+  `setup` on `GET /admin/bridge`
+  ([the checklist](../bridge/pairing-and-jobs.md#the-setup-checklist)). Two new
+  kinds, both owned by the `contributions` module (`404 module_off` while it is
+  off, and held in the queue meanwhile:
+  [jobs of a managed module](../bridge/pairing-and-jobs.md#jobs-of-a-managed-module)):
+  `sidecars.contribute` (params `{work_id?, dimensions?}`; writes nothing; `409
+  generate_open`, and a new generate job meets `409 contribute_open` while one is
+  queued or working, and cancels a parked or held one) and
+  `meta.correct` (params `{work_id, recording_id?, asin?, isbn?, region?, changes,
+  evidence, source?}`; the server refuses `400 not_edited` for a change that isn't
+  the book's admin edit). The Bridge files both on GitHub
+  ([§14](#14-community-metadata-a-three-repo-seam)); its GitHub sign-in and the
+  agent credential it hands to the agent container live on its own page and never
+  cross to the server. Detail: [Contributions](../bridge/contributions.md).
 - **The player (Phase 1a):** its first admin-only UI, gated on `user.role ===
-  'admin'`, `capabilities.bridge`, `bridge.features` holding `sidecars` and
-  `capabilities.metadata`; `Book.generated` makes it ask `/meta` for a book with no
-  ASIN or ISBN. Its `types.ts` mirrors the job, the estimate,
+  'admin'` (never a demo account, a household member or a kid's account),
+  `capabilities.bridge`, `bridge.features` holding `sidecars` and
+  `capabilities.metadata`; its confirmation holds Generate back while the
+  estimate's `open_job` is a `chapters.detect` (Phase 1d) or `sidecars.contribute`
+  (Phase 2b) job. `Book.generated` makes it ask `/meta` for a book with no ASIN or
+  ISBN. Its `types.ts` mirrors the job, the estimate,
   `BookMetaWork.generated` and (Phase 1c) `BookMetaWork.generated_description` by
   hand.
 
@@ -770,13 +821,15 @@ Bridge's pairing gets a `404` and says the server is too old) and no `bridge` fl
 shipped players never see either. A shipped player ignores a `work` beside
 `matched: false`, and shows a matched book's merged work without the
 `generated` mark (the owner kept that as built); it ignores
-`generated_description` entirely. The Bridge sends `X-AudioSilo-Client:
+`generated_description` entirely. Phase 2b's are additive too: an older server
+sends no `accepts`, so a newer Bridge sends it no `setup`; an older Bridge doesn't
+advertise the new kinds; a signed-in player still gets the `bridge` block. The Bridge sends `X-AudioSilo-Client:
 AudioSilo Bridge/<version> (<os>)` on every call.
 
 **A change requires:** the server handler and its test, the mirrored type in the
 Bridge's `internal/link` and its test (and, for the generate action, the console's
-`admin-ui` and the player's `types.ts`/`client.ts`/hooks with theirs), and
-CROSS-REPO.md §23. The token's rules are
+`admin-ui` and the player's `types.ts`/`client.ts`/hooks with theirs; for a new
+optional heartbeat block, both `accepts` lists), and CROSS-REPO.md §23. The token's rules are
 security-critical: allowed and denied tests on the server.
 
 ## The wire-change checklist

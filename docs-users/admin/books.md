@@ -557,6 +557,16 @@ book generated before descriptions existed. See
 
 ![The Community metadata card with Generate characters and recaps](/img/screenshots/admin/book-generate.png)
 
+With the [Contributions module](server.md#modules) on and the Bridge signed in to
+GitHub (or given a GitHub token of your own), the card can have two more parts:
+
+- **Corrections**, on a matched book whose details you edited differently from the
+  community: **Suggest corrections** sends your values for review. See
+  [Suggest corrections](bridge.md#suggest-corrections).
+- **Share with the community**, for characters and recaps generated with the
+  results kept on this server: sends them for review without generating again.
+  See [Share with the community](bridge.md#share-with-the-community).
+
 ## Authors and narrators
 
 **Library > Authors** lists every author with how many books they have and

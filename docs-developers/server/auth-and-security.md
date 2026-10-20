@@ -307,6 +307,11 @@ Three fences keep a demo session from becoming a durable login:
   and is never anyone's owner or member: the admin's Assign refuses both
   (`409 owner_is_demo`, `409 member_is_demo`).
 - Every demo refusal carries `code: "demo_account"` (`nonDemoAccount`).
+- Since Phase 2b a demo account can't use a
+  [managed module](modules.md#routes-always-mounted-gated-on-the-toggle)'s user
+  routes (`api.notDemo` in the module's route wrapper, `403 demo_account`), and
+  `GET /server` leaves out the `bridge` block for it (only a signed-in, non-demo
+  caller gets one; `API.signedIn`).
 - A demo account can't share its listening with the house (`PUT /me/household`
   is `403`, `nonDemoAccount`), and demo accounts never appear in anyone's
   `GET /household/listening`, so a public demo never shows up in a household. It
@@ -605,8 +610,10 @@ account [rate limit](#rate-limiting).
 sharing, can't make a pairing code of its own (`/auth/pair`), and shares collections only with
 its owner (**Visibility**, below). `POST
 /auth/password`, `POST /auth/tokens`, `POST /auth/pair`, `POST /auth/recovery`, `PUT
-/me/household` and `PUT /me/collections/{id}/shares` answer `403 kid_account` from one
-route wrapper (`api.notKid`, before the handler; wrap any new route a kid can't use).
+/me/household`, `PUT /me/collections/{id}/shares` and (Phase 2b) every user route a
+[managed module](modules.md#routes-always-mounted-gated-on-the-toggle) mounts answer
+`403 kid_account` from one route wrapper (`api.notKid`, before the handler; wrap
+any new route a kid can't use).
 The writes that mint a credential or share something refuse a kid again inside their
 own transaction (`auth.refuseKid` in `IssueAPIToken`, `GenerateRecoveryCode` and
 `IssueOwnPairingToken`; `catalog.SetHouseholdSharing` and

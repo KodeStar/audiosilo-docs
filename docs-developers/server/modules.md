@@ -1,6 +1,6 @@
 ---
 title: "Managed modules"
-description: "The server's managed modules framework (Bridge Phase 2a): optional features that ship off and that an admin turns on in the console without a restart. What a module is, its toggle and capability flag, how its routes are gated, its background work, GET /admin/modules, the console's Settings > Modules, the player's module registry, and the steps for adding a module."
+description: "The server's managed modules framework (Bridge Phase 2a): optional features that ship off and that an admin turns on in the console without a restart. What a module is, its toggle and capability flag, how its routes are gated (kids and demo accounts refused on user routes), the Bridge jobs a module owns, its background work, GET /admin/modules, the console's Settings > Modules, the player's module registry, and the steps for adding a module."
 ---
 
 A **managed module** is an optional feature that ships **off**. An admin turns it
@@ -10,8 +10,10 @@ nothing turns one on by itself (pairing a Bridge doesn't). A module may need a
 stays `false` until an online Bridge offers that feature.
 
 The framework landed in Bridge Phase 2a with one module, `contributions`, as an
-inert shell (no routes, no background work) so the console has a real card and the
-framework can be exercised; Phase 2b fills it. `transcode`, `metadata` and `bridge`
+inert shell so the console had a real card. Phase 2b gave it its actions, which are
+Bridge jobs rather than routes of its own (see
+[Jobs a module owns](#jobs-a-module-owns)); it still has no routes and no
+background work. `transcode`, `metadata` and `bridge`
 are not modules: their keys, variables and flags shipped before the framework, and
 none is just a toggle (`transcode` follows ffmpeg, `metadata` needs its service built
 at start as well as its switch, `bridge` follows the heartbeat).
@@ -63,10 +65,13 @@ a job family: see
 ## Routes: always mounted, gated on the toggle
 
 A module mounts its routes through the `Registrar` it is given: `Admin(pattern, h)`
-puts `h` behind `requireAdmin`, `User(pattern, h)` behind `requireAuth`, and inside
-that check `requireModule`, which answers **`404 module_off`** while the toggle is off.
-The auth check runs first, so a caller it refuses gets its `401` or `403`, never
-`module_off`. A
+puts `h` behind `requireAdmin`; `User(pattern, h)` behind `requireAuth`, then (Phase
+2b) `notKid` (**`403 kid_account`**) and `notDemo` (**`403 demo_account`**), since a
+module's actions (contributing to the community, first of all) are a grown-up's
+own: the token's lookup loads `is_demo` and the kid flag, so neither reads the
+account again. Inside those checks `requireModule` answers **`404 module_off`**
+while the toggle is off. The auth checks run first, so a caller they refuse gets
+its `401` or `403`, never `module_off`. A
 pattern must be `"METHOD /api/v1/..."`, so the global middleware and the auth
 wrappers apply; anything else panics when the server starts (`checkModulePattern`).
 
@@ -74,6 +79,17 @@ The routes are mounted whether the module is on or off, so turning one on needs 
 restart. They gate on the **toggle only**, so a route stays put while the flag follows
 the heartbeat. An action that needs the Bridge refuses on its own, with its own
 `409`, as the Bridge's job routes do.
+
+Every api test's `newTestEnv` mounts the builtin modules through the real
+`Handler()`, so a bad or clashing route pattern fails the tests, not a start.
+
+## Jobs a module owns
+
+A module's action can be a Bridge job instead of a route: `bridge.kindSpec.module`
+names the module a kind needs and `bridge.ModuleFor(kind, params)` answers it. Such
+a job gets the same toggle gate (`404 module_off` through `writeModuleOff`), and a
+queued one is held while the toggle is off: see
+[Jobs of a managed module](../bridge/pairing-and-jobs.md#jobs-of-a-managed-module).
 
 ## Background work
 
@@ -118,9 +134,9 @@ toggle is on, and a `?topic=` for a hidden one opens General.
 ## The player: `src/modules/`
 
 The player keeps its own registry, `PLAYER_MODULES` in `src/modules/registry.ts`,
-each entry's `id` being the module's capability flag. It is **empty** in Phase 2a:
-the slots are open and tested with fake modules, so the player renders exactly as
-before. See [Player modules](../frontend/state-and-data.md#player-modules-srcmodules).
+each entry's `id` being the module's capability flag. It is still **empty** after
+Phase 2b (the player never contributes): the slots are open and tested with fake
+modules, so the player renders exactly as before. See [Player modules](../frontend/state-and-data.md#player-modules-srcmodules).
 
 ## Adding a module
 

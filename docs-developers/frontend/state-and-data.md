@@ -26,7 +26,9 @@ themselves.
   message (the server's English, never shown): the code when it is one the app
   knows (the `API_ERROR_CODES` list: `member_limit`, `username_taken`,
   `invalid_name`, `invalid_collections`, `feature_off`, `not_allowed`,
-  `member_cannot_manage`, `member_disabled`, `kid_account`, `demo_account`), else
+  `member_cannot_manage`, `member_disabled`, `kid_account`, `demo_account`, and
+  the Bridge's `library_not_writable`, `kind_unavailable`, `detect_open` and
+  `contribute_open`), else
   the status's kind (`too_many` 429, `not_found` 404, `forbidden` 403, `invalid`
   400, `conflict` 409, `failed` for anything else or no answer), so an older
   server without codes still reads sensibly. A new code needs a case in the list
@@ -282,9 +284,9 @@ A server's [managed modules](../server/modules.md) ship off; an admin turns one 
 the console, and its capability flag (named after the module) reads `true` only while
 it is on **and** its Bridge requirement is met. The player's side is its own registry,
 `PLAYER_MODULES` in `src/modules/registry.ts` (not the repo-root `modules/`, which
-holds the native Expo modules). It is **empty** in Bridge Phase 2a: the slots are
-open and exercised only by tests, so the player renders exactly as before. The
-Contributions module's player part comes with it in a later release.
+holds the native Expo modules). It is **empty** through Bridge Phase 2b: the slots
+are open and exercised only by tests, so the player renders exactly as before. The
+Contributions module's actions are the console's: the player never contributes.
 
 - **A module** is a `PlayerModule`: `{id, homeRails?, youSections?, bookActions?}`,
   each slot optional:

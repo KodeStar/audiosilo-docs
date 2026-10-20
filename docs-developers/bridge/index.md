@@ -25,6 +25,11 @@ every generate run writes one too, and `sidecars.describe` writes one alone for 
 book generated earlier. **Phase 1d** added [chapterless books](chapters.md): a book
 with no chapter markers gets its chapters found in the narration, written as
 `chapters.json`, and `chapters.detect` finds them on their own, with no agent.
+**Phase 2a** added the server's managed modules, and **Phase 2b**
+[contributions](contributions.md): an Accounts tab (a GitHub sign-in through the
+AudioSilo Contributions App, and the agent's credential handed to the agent
+container per run), `sidecars.contribute` and `meta.correct`, and the setup
+checklist the heartbeat carries to the console.
 Podcasts, read-along, Audible backups and file moves arrive in later phases.
 :::
 
@@ -143,8 +148,8 @@ the mark; see [generated content](../server/api/reference.md#generated-content))
 
 ## In these pages
 
-- [Pairing and jobs](pairing-and-jobs.md) - the token, the heartbeat and the
-  capability, the job model (states, leases, attempts, cancel, resume after a
+- [Pairing and jobs](pairing-and-jobs.md) - the token, the heartbeat (its
+  `accepts` negotiation and the setup checklist) and the capability, the job model (states, leases, attempts, cancel, resume after a
   restart) and `bridge.verify`.
 - [Library mappings](mappings.md) - how the Bridge finds each library and proves it
   has the right one.
@@ -156,8 +161,10 @@ the mark; see [generated content](../server/api/reference.md#generated-content))
   chapters reach the server.
 - [The .audiosilo folder](attachments.md) - where the results go, their formats,
   and how the server finds, checks and serves them.
-- [The agent container](agent-container.md) - where the AI agents run, and the
-  staging protocol.
+- [The agent container](agent-container.md) - where the AI agents run, the
+  staging protocol, and the credential hand-off.
+- [Contributions](contributions.md) - Phase 2b: the Accounts tab (the GitHub
+  sign-in, the agent credentials), `sidecars.contribute` and `meta.correct`.
 - [Configuration](configuration.md) - the Bridge's settings and environment, the
   images and the compose example.
 - [Development](development.md) - the gate, the layout and the Bridge's own page.

@@ -106,11 +106,12 @@ pairing and after a mapping check finishes:
 | Field | What it carries |
 |---|---|
 | `version` | the Bridge's version |
-| `kinds` | the job kinds it runs (`bridge.verify`, `sidecars.generate` since Phase 1a, `sidecars.describe` since Phase 1c, and `chapters.detect` since Phase 1d) |
+| `kinds` | the job kinds it runs (`bridge.verify`, `sidecars.generate` since Phase 1a, `sidecars.describe` since Phase 1c, `chapters.detect` since Phase 1d, and `sidecars.contribute` and `meta.correct` since Phase 2b) |
 | `libraries` | its last [mapping check](mappings.md) of each library |
 | `workers` | its [ASR workers](workers.md) that have connected at least once: `name`, `version`, `platform` (the GOOS/GOARCH and the speech recognition in one line, e.g. `darwin/arm64, mlx-whisper (metal)`) and `last_seen` |
 | `ui_url` | its own page as the local network reaches it (its `public_url` setting), which the console links to |
 | `estimates` | its figures for costing a job before it is queued, one block per family (`sidecars`: [the Bridge's figures](generating.md#the-bridges-figures)); absent until its engine has started |
+| `setup` | Phase 2b, **only once the server accepts it** (below): the setup checklist (`items`), `can_contribute` and `github_login` |
 
 The server checks its structure and refuses it when that is wrong (kinds of the
 form `family.name`, listed once; library ids above 0, listed once; `ui_url` an
@@ -121,14 +122,77 @@ of it comes from the outside world (a file name, an OS error), and a refused
 heartbeat would leave the Bridge offline. The server keeps **only the last one**,
 in `bridge_status`. Its answer lists the
 server's libraries (`id`, `name`, `root`), which is how the Bridge learns which
-libraries to map.
+libraries to map, and since Phase 2b `accepts`.
+
+### Optional blocks: `accepts`
+
+The server decodes the heartbeat **strictly** (an unknown field is a `400`), so a
+newer Bridge can't simply add a field. Phase 2b negotiates instead: the reply
+carries `accepts`, the optional top-level blocks this server reads
+(`bridge.HeartbeatAccepts`, `["setup"]` today; an older server sends none). The
+Bridge (`link.StatusReply.Accepting`, `internal/app`):
+
+- sends `setup` only after a reply listed it, per pairing and in memory, and
+  kicks a second beat at once when it first appears, so the console doesn't wait
+  30 seconds for the checklist;
+- on a `400` to a beat that carried an optional block (the server was downgraded),
+  drops them all, resends once without them, and ignores `accepts` for an hour;
+- forgets all of it on every pair and unpair, and when the server refuses its
+  token or takes it again.
+
+So a Phase 2b Bridge works with an older server (no checklist in the console) and
+an older Bridge with a Phase 2b server (no `setup` sent, none shown).
+
+### The setup checklist
+
+`setup` is the Bridge's onboarding checklist (FIRST-RUN-PLAN F2), built by the
+Bridge's pure `setup.Checklist` from what the app already knows, in a fixed order:
+
+| `id` | `required` | `done` when | `detail` |
+|---|---|---|---|
+| `paired` | yes | the Bridge is paired | |
+| `libraries` | yes | the Bridge has checked libraries and every one is mapped and writable (a library counts once it has been checked) | "1 of 2 libraries writable" (or "the server has no libraries yet", also before the first check); `library_ids` lists the ones still to fix |
+| `asr` | yes | the engine has started and something can transcribe now, not waiting for a worker | `local`, `worker`, "waiting for an ASR worker", "the engine is starting", or why it isn't available |
+| `agent` | yes | the agent container is available (with its own or a handed-over credential) | the backend, or why it isn't ready |
+| `budget` | yes | the monthly budget was saved on the page or is set by the environment (`Config.BudgetReviewed`) | "$100 a month" or "no monthly cap" |
+| `github` | no | a GitHub token resolves and isn't refused | the login, "a token from the environment" or "the gh CLI's token" |
+
+```json
+"setup": {
+  "items": [
+    {"id": "paired", "done": true, "required": true},
+    {"id": "libraries", "done": false, "required": true, "detail": "1 of 2 libraries writable", "library_ids": [3]},
+    {"id": "asr", "done": true, "required": true, "detail": "local"},
+    {"id": "agent", "done": false, "required": true, "detail": "claude has no credential: set one on the Bridge's Accounts tab (a `claude setup-token` value or an Anthropic API key), or give one to the agent container"},
+    {"id": "budget", "done": true, "required": true, "detail": "$100 a month"},
+    {"id": "github", "done": false, "required": false}
+  ],
+  "can_contribute": false
+}
+```
+
+The Bridge collapses each detail's whitespace and cuts it to 200 bytes (ending
+"..."). The server reads the block
+**leniently**, like `estimates` (`bridge/setup.go`; a block that doesn't decode is
+dropped, never the heartbeat), within the bounds in the
+[heartbeat reference](../server/api/reference.md#put-apiv1bridgestatus). An
+**unknown id is kept**: the Bridge owns the list, and the console words the ids it
+knows and shows the rest with a capital first letter, `_`, `.` and `-` read as
+spaces (`ebook_reader` is "Ebook reader"). [`GET /admin/bridge`](../server/api/reference.md#get-apiv1adminbridge)
+carries it (with the login, admins only); `GET /server` never does.
+
+`can_contribute` here **wins** over `estimates.sidecars.can_contribute`
+(`Status.CanContribute()`: the setup block's when one was sent and kept, else the
+estimates'). The Bridge keeps sending both, so an older server still reads the
+estimates' copy. The Bridge's page shows the same checklist as its Status tab's
+"Get set up" card until every required item is done.
 
 The server counts the Bridge **online** while the last heartbeat is under **two
 minutes** old (`bridge.OnlineWindow`). Then, and only then, `GET /server` says
 `capabilities.bridge: true`, with a top-level `bridge: {version, features}` beside
 `capabilities`. `features` are the job families the Bridge runs **that the server
 knows**: the part of each known kind before its dot, so `bridge.verify` gives
-`bridge`, `sidecars.generate` (or `sidecars.describe`) gives `sidecars` and `chapters.detect` gives `chapters` (a list, `[]` for none, never `null`). `features` also lists `contribute` while the heartbeat's `estimates.sidecars.can_contribute` is true (the Bridge has a GitHub token; `bridge.FeatureContribute`), the first feature that is not a job family. No heartbeat field was added for it, so an older server still accepts a newer Bridge's heartbeat. The server's `contributions` [module](../server/modules.md) needs that feature. The server reuses the heartbeat it
+`bridge`, `sidecars.generate` (or `sidecars.describe`, `sidecars.contribute`) gives `sidecars`, `chapters.detect` gives `chapters` and `meta.correct` gives `meta` (a list, `[]` for none, never `null`). `features` also lists `contribute` while the Bridge can contribute (`Status.CanContribute()`, above; `bridge.FeatureContribute`), the first feature that is not a job family. The server's `contributions` [module](../server/modules.md) needs that feature. **The `bridge` block goes only to a signed-in caller** (Phase 2b): a session or an API key of any role, not a demo account's (`api.signedIn` over `auth.Peek`, which records nothing on the token); an anonymous, refused, demo or bridge token sees the flag alone. The capability flags stay public. The server reuses the heartbeat it
 read for up to **5 seconds**, so `GET /server`, which every client calls often,
 rarely reads the database for it; a pairing or an unpair drops that copy at once. A
 client checks the flag **and** the feature it needs; a feature the Bridge doesn't
@@ -273,7 +337,8 @@ Bridge doesn't have.
 The server's table also says whether a kind **writes** into the library. Such a
 kind (`sidecars.generate`, `sidecars.describe`, `chapters.detect`) is queued only for a library the last heartbeat reports
 **mapped and writable**, else `409 library_not_writable`, after the dedupe (an open
-job is still returned). `bridge.verify` writes nothing and works on any library.
+job is still returned). `bridge.verify`, `sidecars.contribute` and `meta.correct`
+write nothing and work on any library.
 
 Two kinds write the same book's files, so the server keeps them apart
 (`bridge.Service.Enqueue`, inside its transaction, after the dedupe): a
@@ -291,9 +356,11 @@ which:
 
 | New job | Refused while open for the book | Cancels |
 |---|---|---|
-| `sidecars.generate` | `chapters.detect` queued, claimed or running (`409 detect_open`: cancelling it would throw its transcription away, and a generate job queued after it reuses it) | an open `sidecars.describe`; a **parked** `chapters.detect` ("it finds the chapters itself") |
+| `sidecars.generate` | `chapters.detect` queued, claimed or running (`409 detect_open`: cancelling it would throw its transcription away, and a generate job queued after it reuses it); `sidecars.contribute` queued or working (`409 contribute_open`, `ErrContributeOpen`: it would replace the characters and recaps being filed), but not a queued one held while the `contributions` module is off (`Service.givesWay`, `Service.held`) | an open `sidecars.describe`; a **parked** `chapters.detect` ("it finds the chapters itself"); a **parked** or **held** `sidecars.contribute` ("a generate job for the book replaced what it was sharing") |
 | `sidecars.describe` | `sidecars.generate` (`409 generate_open`), `chapters.detect` (`409 detect_open`: both rewrite the book's `bridge.json`) | nothing |
 | `chapters.detect` | `sidecars.generate` (`409 generate_open`), `sidecars.describe` (`409 describe_open`) | nothing |
+| `sidecars.contribute` | `sidecars.generate` (`409 generate_open`: that run replaces what it would file) | nothing |
+| `meta.correct` | nothing | nothing |
 
 A job being cancelled (`cancel_requested`) refuses nothing, since it ends without
 writing (so a detect job queues behind a generate job being cancelled), and the
@@ -303,8 +370,29 @@ estimate's `open_job` uses it). The api also refuses `chapters.detect` with `409
 chapters_chosen` for a book whose chapter source an admin chose (the catalog holds
 the choice), since a found list stands in only with no choice.
 
+### Jobs of a managed module
+
+Phase 2b's community jobs belong to the `contributions`
+[module](../server/modules.md): `kindSpec.module` names it for `sidecars.contribute`
+and `meta.correct`, and `bridge.ModuleFor(kind, params)` also names it for a
+`sidecars.generate` job with `contribute: "issue"`. For such a job:
+
+- `POST /admin/bridge/jobs` answers **`404 module_off`** while the module's toggle
+  is off, before anything else about the job is checked (as the module's own
+  routes would);
+- `Enqueue` refuses it **`409 cannot_contribute`** unless `Status.CanContribute()`;
+- while the toggle is off, a **queued** one is **held**: `nextQueued` passes over
+  it (`bridge.Service.ModuleOn`, wired by `SetBridge`), so turning the module off
+  leaves its queued jobs at rest, a requeued one included, until it is on again;
+  a held `sidecars.contribute` job still gives way to a new `sidecars.generate`
+  job for the book like a parked one (no `409 contribute_open`, not the estimate's
+  `open_job`, cancelled). "Off" is the toggle alone: with it on, a queued share
+  refuses a generate job even while the Bridge can't contribute. A job the Bridge
+  already holds (claimed, running or parked) carries on.
+
 On the Bridge, each kind has a handler and a **lane**: how many jobs of that lane
-run at once. `light` has room for 2 (`bridge.verify`); `pipeline` for 25
+run at once. `light` has room for 2 (`bridge.verify`, and Phase 2b's
+`sidecars.contribute` and `meta.correct`, a few reads and HTTP calls each); `pipeline` for 25
 (`sidecars.generate`, whose jobs mostly wait on the engine's own scheduler, which
 decides what actually runs, `sidecars.describe`, which can wait a long time
 on an agent park, and `chapters.detect`, which follows an engine book like

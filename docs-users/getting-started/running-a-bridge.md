@@ -1,6 +1,6 @@
 ---
 title: Running a Bridge
-description: "Run the optional AudioSilo Bridge and its agent container beside your server with Docker Compose: the same library folders mounted read-write, PUID/PGID, signing the agent in with a Claude token or a ChatGPT login, a GitHub token for contributing, costs and limits, Unraid, its own page on port 8091 and pairing it with your server."
+description: "Run the optional AudioSilo Bridge and its agent container beside your server with Docker Compose, then follow its setup checklist: pair it with your server, check its libraries, speech recognition, the agent's credential (on its Accounts tab or in the agent container), the monthly budget, and an optional GitHub sign-in for contributing. Also costs and limits, Unraid and keeping it safe."
 ---
 
 ## Running a Bridge
@@ -14,14 +14,18 @@ Today the Bridge [generates characters and recaps](../admin/generating-character
 for books the community hasn't covered yet: it transcribes a book (or reads its
 ebook) and has an AI agent write them. It also
 [finds the chapters](../admin/generating-characters-and-recaps.md#books-without-chapters)
-of a book that has none, in its narration. It runs as **two containers**:
+of a book that has none, in its narration, and it can
+[contribute](../community/contributing-from-your-server.md) the characters and
+recaps it generates, and your corrections to a book's details, to the community
+metadata database. It runs as **two containers**:
 
 - **the Bridge** itself, which sees your library folders and does the
   transcribing and the writing;
 - **the agent container**, which runs the AI agent (Anthropic's Claude Code or
   OpenAI's Codex). It sees only a shared work folder and its own settings: never
-  your library, the Bridge's data or its secrets, and it can't reach the server
-  or the Bridge. Each job hands it just the text it needs.
+  your library, the Bridge's data or its secrets (apart from the agent's own
+  credential, when you set it on the Bridge, which each run receives), and it
+  can't reach the server or the Bridge. Each job hands it just the text it needs.
 
 :::info Early days
 The Bridge is new and still being built, and its images aren't open to everyone
@@ -85,7 +89,8 @@ services:
     restart: unless-stopped
     user: "10002:10002"
     environment:
-      # Named only: the value comes from a .env file beside this one (step 3).
+      # Named only: the value comes from a .env file beside this one (step 7).
+      # Leave it unset to use the credential set on the Bridge's Accounts tab.
       - CLAUDE_CODE_OAUTH_TOKEN
     volumes:
       - staging:/staging                  # the only folder it shares
@@ -151,70 +156,34 @@ log:
 
 Copy it now. You can change it later on the page's **Settings** tab.
 
-### 3. The agent container
-
-The agent container needs to be signed in to an AI account. It runs **Claude
-Code** unless you tell the Bridge otherwise.
-
-**With a Claude subscription** (the default):
-
-1. On any computer with Claude Code installed, run `claude setup-token` and sign
-   in with the Bridge's Claude account. It prints a long-lived token.
-2. Put it in a file named `.env` beside your compose file:
-
-   ```
-   CLAUDE_CODE_OAUTH_TOKEN=<the token>
-   ```
-
-3. `docker compose up -d agent` to start the agent with it.
-
-Instead of the `.env` file you can put the token in the agent's settings volume,
-in the file `/agent/secrets/claude_code_oauth_token`. Or use an Anthropic API key
-instead of a subscription: `ANTHROPIC_API_KEY` in place of
-`CLAUDE_CODE_OAUTH_TOKEN` (billed per use).
-`docker compose exec agent audiosilo-bridge agent-login claude` prints these
-steps.
-
-**With a ChatGPT subscription** (Codex):
-
-1. Sign the agent in once:
-
-   ```bash
-   docker compose exec agent audiosilo-bridge agent-login codex
-   ```
-
-   It prints an address and a code: open the address in a browser, sign in with
-   the Bridge's ChatGPT account and enter the code. The sign-in is kept in the
-   agent's settings volume.
-2. Tell the Bridge to use Codex: add `AUDIOSILO_BRIDGE_AGENT_BACKEND: codex` to
-   the **bridge** service's `environment`, then `docker compose up -d bridge`.
-
-Or use an OpenAI API key instead: `OPENAI_API_KEY` in the agent's environment
-(billed per use).
-
-Within about 15 seconds the **Characters and recaps** card on the Bridge page's
-**Status** tab says the agent is **Ready**, with the version of each tool and
-which kind of sign-in it has (never the token itself). If it says the agent isn't
-ready, the line under it says why: the container isn't running, it has no
-sign-in, or the Bridge is set to the other tool. The console's
-[Settings > Bridge](../admin/bridge.md#online-offline-and-its-details) shows the
-same.
-
-A token or key you give the agent is only ever handed to the run that needs it:
-the Bridge never sees it, and it never appears in a log.
-
-### 4. Open the Bridge's page
+### 3. Open the Bridge's page
 
 Open `http://<your machine>:8091` and sign in with that password. The page has tabs
-for its **Status**, **Libraries**, **Jobs**, **Settings**, **Workers** and **Logs**.
-**Workers** is where you add an [ASR worker](running-a-worker.md): a faster
-computer, such as a Mac with Apple Silicon, that does the transcribing.
+for its **Status**, **Libraries**, **Jobs**, **Settings**, **Accounts**, **Workers**
+and **Logs**.
 
 It only answers from your **local network**, and it always asks for the password,
 even on the same machine. It won't open over the internet, through a reverse proxy
 or over a VPN address like Tailscale's, and isn't meant to.
 
-### 5. Pair it with your server
+Until the Bridge is set up, its **Status** tab starts with a **Get set up** card:
+the steps below, in the same order, each ticked once done, with a word on where
+it stands and, while it is still to do, an **Open** link to the tab where you do
+it (**Open Libraries**, **Open Settings** or **Open Accounts**; pairing is done on
+the Status tab itself). The card goes away once
+every required step is done. Once the Bridge is paired, the server's console
+shows the same list on [Settings > Bridge](../admin/bridge.md#the-setup-card).
+
+| Step | Required | Where you do it |
+|---|---|---|
+| Pair with a server | yes | the **Status** tab (step 4) |
+| Map the libraries | yes | the **Libraries** tab (step 5) |
+| Speech recognition | yes | the **Settings** tab, or an ASR worker (step 6) |
+| Set the agent's credential | yes | the **Accounts** tab, or the agent container (step 7) |
+| Review the monthly budget | yes | the **Settings** tab (step 8) |
+| Sign in to GitHub | no: only to share with the community | the **Accounts** tab (step 9) |
+
+### 4. Pair it with your server
 
 1. In the server's admin console, open **Server > Settings > Bridge** and press
    **Connect a bridge**. Copy the code.
@@ -226,32 +195,138 @@ The code works once, for 15 minutes. Instead of pasting, you can add
 `AUDIOSILO_BRIDGE_PAIR_CODE: <the code>` to the Bridge's `environment` before its
 first start; remove it again afterwards.
 
-Back in the console the Bridge shows as **Online**, and after a few seconds each
-library shows whether the Bridge found it and can write there. Press **Verify** on a
-library to check it end to end. What everything on that page means is in
-[The Bridge](../admin/bridge.md). Then open a book in the console and
+Back in the console the Bridge shows as **Online**. What everything on that page
+means is in [The Bridge](../admin/bridge.md).
+
+### 5. Check the libraries
+
+After pairing, the Bridge looks for each of the server's libraries and checks it
+can write there. Within a few seconds each library shows **Mapped** and
+**Writable** on the Bridge's **Libraries** tab, and **Ready** in the console. A
+library that isn't ready says why: see
+[Libraries](../admin/bridge.md#libraries). With the same folders mounted at the
+same paths (step 1) there is usually nothing to do. If you mounted a library
+somewhere else, tell the Bridge where it is on the **Libraries** tab.
+
+This step is done when **every** library is ready, since the Bridge saves what it
+makes in each book's folder. Press **Verify** on a library in the console to check
+it end to end.
+
+### 6. Speech recognition
+
+Before writing characters and recaps from a book's audio, the Bridge transcribes
+it. The `:latest` image does that itself, on the processor (slow on a typical NAS:
+hours for a long book). Two ways to make it faster, or to give a `:latest-slim`
+Bridge (which has no speech recognition of its own) a way to transcribe at all:
+
+- an [ASR worker](running-a-worker.md) on a faster computer, such as a Mac with
+  Apple Silicon, added on the Bridge's **Workers** tab;
+- the `:latest-cuda` image, on a computer with an NVIDIA graphics card.
+
+The **Settings** tab's **When no ASR worker is connected** says what happens while
+no worker is connected: **Transcribe on the Bridge**, or **Wait for a worker**.
+This step is done while something can transcribe now: the Bridge itself, or a
+connected worker. It isn't while the Bridge is set to wait and no worker is
+connected.
+
+### 7. The agent's credential
+
+The agent needs a credential for an AI account. It runs **Claude
+Code** unless you tell the Bridge otherwise (below). There are two places to put
+the credential:
+
+- **The Bridge's Accounts tab** (the easier one). The Bridge keeps it encrypted
+  and hands it to the agent container for each run only. See
+  [Bridge accounts](bridge-accounts.md#the-agents-credential).
+- **The agent container itself**, as before: an environment variable or a file in
+  its settings volume. This one wins when both are set.
+
+**With a Claude subscription** (the default):
+
+1. On any computer with Claude Code installed, run `claude setup-token` and sign
+   in with the Bridge's Claude account. It prints a long-lived token.
+2. Either paste it on the Bridge's **Accounts** tab, as the **Claude subscription
+   token**, and press **Save**; or put it in a file named `.env` beside your
+   compose file:
+
+   ```
+   CLAUDE_CODE_OAUTH_TOKEN=<the token>
+   ```
+
+   and `docker compose up -d agent` to start the agent with it.
+
+Instead of the `.env` file you can put the token in the agent's settings volume,
+in the file `/agent/secrets/claude_code_oauth_token`. Or use an Anthropic API key
+instead of a subscription (billed per use): the **Anthropic API key** field on the
+Accounts tab, or `ANTHROPIC_API_KEY` in place of `CLAUDE_CODE_OAUTH_TOKEN`.
+`docker compose exec agent audiosilo-bridge agent-login claude` prints the agent
+container's ways (the variable or the file).
+
+**With a ChatGPT subscription** (Codex):
+
+1. Sign the agent in once:
+
+   ```bash
+   docker compose exec agent audiosilo-bridge agent-login codex
+   ```
+
+   It prints an address and a code: open the address in a browser, sign in with
+   the Bridge's ChatGPT account and enter the code. The sign-in is kept in the
+   agent's settings volume. (A ChatGPT sign-in is made in the agent container
+   only; the Accounts tab takes an OpenAI API key instead.)
+2. Tell the Bridge to use Codex: add `AUDIOSILO_BRIDGE_AGENT_BACKEND: codex` to
+   the **bridge** service's `environment`, then `docker compose up -d bridge`.
+
+Or use an OpenAI API key instead (billed per use): the **OpenAI API key** field on
+the Accounts tab with the Bridge set to Codex, or `OPENAI_API_KEY` in the agent's
+environment.
+
+Within about 15 seconds the **Characters and recaps** card on the Bridge page's
+**Status** tab says the agent is **Ready**, with the version of each tool and
+which kind of sign-in it has (never the token itself). If it says the agent isn't
+ready, the line under it says why: the container isn't running, it has no
+sign-in, or the Bridge is set to the other tool. The console's
+[Settings > Bridge](../admin/bridge.md#online-offline-and-its-details) shows the
+same.
+
+A token or key you give the agent is only ever handed to the run that needs it,
+and it never appears in a log.
+
+### 8. Review the monthly budget
+
+The Bridge stops the agent from spending more than a monthly budget: **$100** a
+month unless you change it. On the **Settings** tab, check **Monthly agent budget
+(dollars)** (`0` means no cap) and press **Save settings**: saving counts as reviewing it,
+even when you keep the amount. A budget set with
+`AUDIOSILO_BRIDGE_AGENT_MONTHLY_BUDGET_USD` counts as reviewed too, and is then
+locked on the page. A budget saved on the page applies at once: any job paused
+at the old cap carries on if the new budget leaves room. One set with the
+variable, or by hand in `config.yaml`, applies when the Bridge next starts (see
+[Costs and limits](#costs-and-limits) for that and the rest). After a hand edit,
+restart the Bridge before you press **Save settings**: until then the page shows
+the old amount, and saving writes it back over your edit.
+
+### 9. GitHub, to share with the community (optional)
+
+Characters and recaps the Bridge writes, and corrections you make to a book's
+details, stay on your server unless you choose to send them to the community
+database. To be able to, sign the Bridge in to GitHub on its **Accounts** tab:
+see [Bridge accounts](bridge-accounts.md#github). Then turn on the
+[Contributions module](../admin/server.md#modules) in the console, and see
+[Contributing from your server](../community/contributing-from-your-server.md).
+
+Once every required step is done, open a book in the console and
 [generate its characters and recaps](../admin/generating-characters-and-recaps.md).
-
-### Contributing to the community
-
-Generated characters and recaps stay on your server unless you choose to offer
-them to the community database. To be able to, give the Bridge a **GitHub
-token**: a fine-grained token that can open issues on the community metadata
-repositories. Add it to the **bridge** service:
-
-```yaml
-      AUDIOSILO_BRIDGE_GITHUB_TOKEN: ${AUDIOSILO_BRIDGE_GITHUB_TOKEN}
-```
-
-with the token in your `.env` file, and restart the Bridge. It stores the token
-encrypted at its start (a new value replaces the one stored before). The console's
-generate dialog then offers **Also contribute to the community**, and the
-[Contributions module](../admin/server.md#modules) counts your Bridge as ready.
 
 ### Costs and limits
 
 These are the Bridge's settings for characters and recaps. Set them in its
-`environment` (or in `config.yaml` in its data folder) and restart it:
+`environment` (or in `config.yaml` in its data folder) and restart it. After a
+budget is raised and the Bridge restarted, a job paused at the old cap carries on
+by itself, with no **Retry**, if the new budget leaves room (else it pauses again
+before spending anything). A restart with the budgets unchanged leaves it
+paused. The monthly budget can also be changed on the Bridge page's
+**Settings** tab, which applies at once:
 
 | Setting | Variable | Default | What it does |
 |---|---|---|---|
@@ -279,8 +354,9 @@ with **Add Container**:
   the Bridge's appdata folder.
 - **The agent** (`ghcr.io/kodestar/audiosilo-bridge:latest-agent`): the **same**
   work folder mapped to `/staging`, another appdata folder mapped to `/agent`,
-  and `CLAUDE_CODE_OAUTH_TOKEN` as a variable (or sign Codex in from its console
-  with `audiosilo-bridge agent-login codex`). Under **Extra Parameters**, add
+  and `CLAUDE_CODE_OAUTH_TOKEN` as a variable (or set the credential on the
+  Bridge's Accounts tab instead, or sign Codex in from its console with
+  `audiosilo-bridge agent-login codex`). Under **Extra Parameters**, add
   `--user 10002:10002 --cap-drop=ALL --security-opt=no-new-privileges:true --read-only --tmpfs /tmp`,
   and give it a Docker network of its own rather than the one your server is on.
   No library share, and no port.
@@ -291,14 +367,20 @@ both: on Unraid, `chmod 777` it once.
 ### Keeping it safe
 
 - The Bridge keeps its data in `./bridge-data`: its settings, its own small
-  database, the transcripts it keeps for a while, and the token it got from the
-  server, stored encrypted with a key kept in that folder. To keep the key
-  separately, set `AUDIOSILO_BRIDGE_SECRET_KEY` to 64 hex characters (for example
-  from `openssl rand -hex 32`) and keep it safe: without the same key the Bridge
-  can't open its stored token and won't start.
-- The agent container holds the AI sign-in, in its `agent-config` volume. It can
-  reach the internet (the AI service needs it) but not your library, the server
-  or the Bridge.
+  database, the transcripts it keeps for a while, and its secrets: the token it
+  got from the server, its GitHub sign-in and any agent credential set on its
+  Accounts tab, each stored encrypted with a key kept in that folder. To keep the
+  key separately, set `AUDIOSILO_BRIDGE_SECRET_KEY` to 64 hex characters (for
+  example from `openssl rand -hex 32`) and keep it safe: without the same key the
+  Bridge can't open what it stored, so it won't start while paired, and its
+  GitHub sign-in and agent credentials have to be set again.
+- The Bridge's page never shows a stored credential again: it only says whether
+  one is set, and since when.
+- The agent container may have a credential of its own: a Codex login or a token
+  file in its `agent-config` volume, or a token in its environment. A credential from
+  the Accounts tab reaches it only as a file for one run, which it deletes before
+  the AI tool starts. It can reach the internet (the AI service needs it) but not
+  your library, the server or the Bridge.
 - Unpairing in the console (**Unpair...**) stops the Bridge at its next call.
   Removing the containers breaks nothing: the server carries on without them.
 
@@ -318,8 +400,14 @@ both: on Unraid, `chmod 777` it once.
 - **The agent isn't ready.** The line under it on the Bridge's **Status** tab says
   why. "Isn't running" or "hasn't written its status": check the agent container
   is up and that both containers mount the same work folder at `/staging`. "Has
-  no credential": sign it in (step 3). "Is signed in: set agent.backend": the
-  agent is signed in to the other tool, so set `AUDIOSILO_BRIDGE_AGENT_BACKEND`.
+  no credential": set one (step 7). "Is signed in: set agent.backend": the agent
+  is signed in to the other tool, so set `AUDIOSILO_BRIDGE_AGENT_BACKEND`. "The
+  container is too old to take the one on the Accounts tab": update the agent
+  image to the Bridge's version, or give the container a credential of its own.
+- **The agent's credential was refused.** Replace it where the agent gets it: on
+  the Accounts tab, or in the agent container when it has one of its own (that one
+  wins). A job paused for it carries on once it is replaced: at once after a
+  change on the Accounts tab, else when it next looks (every 30 minutes).
 - **Pairing says the server doesn't know about a Bridge.** The server is too old:
   update it first.
 - **Pairing says the server's certificate isn't trusted.** Your server uses its own

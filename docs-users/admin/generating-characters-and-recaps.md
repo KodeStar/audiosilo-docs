@@ -20,9 +20,13 @@ chapters first, found in the narration (see
 - **An admin.** Only admins see the button, in the console and in the player.
   Household members, kids' accounts and demo guests never do.
 - **A Bridge that is paired and online**, with its **agent container** set up
-  (see [Running a Bridge](../getting-started/running-a-bridge.md#3-the-agent-container)).
+  and a credential for it (see
+  [Running a Bridge](../getting-started/running-a-bridge.md#7-the-agents-credential)).
   While the Bridge is offline, or doesn't offer characters and recaps, the
-  button isn't there.
+  button isn't there. While its [setup checklist](bridge.md#the-setup-card) says
+  speech recognition, the agent's credential or the book's library is still to
+  do, the console says which in place of the button ("Generating needs the
+  Bridge's agent credential set first."), with a link to Settings > Bridge.
 - **Community metadata switched on** under **Server > Settings > Community
   metadata** (see [Server settings](server.md#community-metadata)): generated
   characters and recaps reach the players the same way the community's do.
@@ -74,7 +78,9 @@ The button also stays away while the book's job is running (its progress shows
 instead) and while the Bridge is offline. While the book's chapters are still being
 [found in the narration](#detect-chapters-without-characters-and-recaps), the
 console leaves the button out until that has finished; the player keeps it, and its
-confirmation says so and holds back.
+confirmation says so and holds back. Both do the same while the book's characters
+and recaps are being
+[shared with the community](bridge.md#share-with-the-community).
 
 ## The confirmation
 
@@ -114,17 +120,28 @@ within a few seconds.
 
 ## Keeping them local, or contributing them
 
-By default the characters and recaps stay **on this server only**: they are
-saved with the book and nobody else sees them.
+Unless you contribute them, the characters and recaps stay **on this server
+only**: they are saved with the book and nobody else sees them.
 
-In the console, when the Bridge has been given a GitHub token (see
-[Running a Bridge](../getting-started/running-a-bridge.md#contributing-to-the-community)),
-the dialog also offers **Also contribute to the community**. Then, once they are
-written, the Bridge also offers them to the community database as a submission
-for review, so every other server gets them too once they are accepted. They are
-saved on your server either way. Contributing needs the book to have an entry in
-the community database already; when it doesn't, the job pauses saying so, with
-the results already saved locally. The player never offers to contribute.
+In the console, while the [Contributions module](server.md#modules) is on and
+the Bridge is [signed in to GitHub](../getting-started/bridge-accounts.md#github)
+(or given a GitHub token of your own), the dialog also offers **Also contribute to the community**, switched **on** by
+default. Then, once they are written, the Bridge also offers them to the community
+database as a submission for review, so every other server gets them too once
+they are accepted. They are saved on your server either way. Switch it off to keep
+them on this server; you can still
+[share them later](bridge.md#share-with-the-community). Contributing needs the
+book to have an entry in the community database already; when it doesn't, the job
+pauses saying so, with the results already saved locally. The player never offers
+to contribute. If the Bridge can't contribute when it starts the job, a job
+asked to contribute fails at once, before the agent costs anything: either it
+isn't signed in to GitHub, or it is but GitHub couldn't be reached to refresh
+its sign-in ("...couldn't be refreshed because GitHub couldn't be reached:
+generate the book again once it can, or with contribute set to local"). If it
+stops being able to later in the run, even across a restart of the Bridge, the
+job pauses at the end instead, with the results already saved locally (see
+[When a job pauses](#when-a-job-pauses)). See
+[Contributing from your server](../community/contributing-from-your-server.md).
 
 Once the job is done, the book's
 [Characters and recaps card](books.md#characters-and-recaps) shows **Contributed,
@@ -160,12 +177,13 @@ in the console (**Generating is paused** in the player) with the reason, and
 
 | Reason | What to do |
 |---|---|
-| The agent isn't available | Nothing: the job carries on once the agent container is running and signed in again. Check it if this lasts. |
+| The agent isn't available | Nothing, or set the agent's credential on the Bridge's Accounts tab: the job carries on once the agent container is running and has a credential (at once after a change on the Accounts tab). Check it if this lasts. |
 | The agent reached its usage limit | Nothing: it carries on once the limit resets. |
 | Waiting for an ASR worker | Nothing, or start the worker: the Bridge is set to wait for an [ASR worker](../getting-started/running-a-worker.md#when-the-worker-is-off) when none is connected, and the job carries on as soon as one connects. |
-| The agent's credential was refused | Give the agent container a new token or login (see [Running a Bridge](../getting-started/running-a-bridge.md#3-the-agent-container)). The job looks again by itself every 30 minutes. |
-| The job reached its spending limit | The monthly cap carries on by itself on the 1st of next month; raise the cap on the Bridge for sooner (below). |
+| The agent's credential was refused | Replace it where the agent gets it: in the agent container when it has one of its own (the agent uses that one first), else on the Bridge's Accounts tab (see [Running a Bridge](../getting-started/running-a-bridge.md#7-the-agents-credential)). The job carries on at once after a change on the Accounts tab, else it looks again by itself every 30 minutes. |
+| The job reached its spending limit | The monthly cap carries on by itself on the 1st of next month, or at once when you raise it on the Bridge's **Settings** tab and the new cap leaves room. The per-book cap, or a cap set in the Bridge's environment, needs raising and a restart of the Bridge, with no **Retry** (see [Costs](#costs-and-the-monthly-cap)). |
 | The Bridge can't write to this book's folder | Give the Bridge's user write access to the book's folder. It checks again every minute. |
+| The Bridge can't share with the community | Only when contributing. Not signed in: sign the Bridge in to GitHub on its Accounts tab (see [Bridge accounts](../getting-started/bridge-accounts.md#github)), and the job carries on. Signed in already: GitHub couldn't be reached to refresh the sign-in, so press **Retry** on the Bridge's page once it can be. |
 | The community has no entry for this book yet | Only when contributing: add the book to the community database, or cancel and generate it again kept local. Your copy is already saved. |
 | The ebook couldn't be read | Cancel, then generate again: it reads the audio. |
 | The chapters couldn't be found in the narration | A book without chapter markers whose chapter headings couldn't be heard with confidence. See [When no chapters are found](#when-no-chapters-are-found). |
@@ -434,9 +452,9 @@ are found again.
 
 The transcription runs on your Bridge's own computer (or on an
 [ASR worker](../getting-started/running-a-worker.md)) and costs nothing but time.
-The AI agent is the cost: it runs on the account the agent container is signed in
-with, the Bridge's own (see
-[Running a Bridge](../getting-started/running-a-bridge.md#3-the-agent-container)).
+The AI agent is the cost: it runs on the agent's credential, the one set on the
+Bridge's Accounts tab or the agent container's own (see
+[Running a Bridge](../getting-started/running-a-bridge.md#7-the-agents-credential)).
 With a subscription login the cost is notional (it counts against the
 subscription's usage limits); with an API key it is billed per use.
 
@@ -445,8 +463,16 @@ Two limits keep it in check, both set on the Bridge (see its
 
 - **A monthly cap**, **$100** by default, across every book. A job that reaches
   it pauses and carries on by itself on the 1st of the next month (the month is
-  counted in UTC). It can be raised, or turned off.
-- **A cap per book**, **$75** by default.
+  counted in UTC). You can raise it or turn it off on the Bridge page's
+  **Settings** tab. The change applies at once: a paused job carries on if the new
+  cap leaves room. When the Bridge's environment sets the cap, the tab shows it
+  locked: change it there and restart the Bridge.
+- **A cap per book**, **$75** by default, set in the Bridge's environment or its
+  `config.yaml`, not on the page: a change applies when the Bridge next starts.
+
+After a restart that changed a cap, a job paused at the old cap carries on by
+itself, with no **Retry** (one still over the new cap pauses again before
+spending anything). A restart with the caps unchanged leaves it paused.
 
 **Settings > Bridge** in the console shows the Bridge's agent and whether it is
 ready, whether it is **Paid by** a subscription or an API key, what **This

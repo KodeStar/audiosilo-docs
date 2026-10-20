@@ -1,6 +1,6 @@
 ---
 title: Contributing data to Meta
-description: "How metadata enters audiosilo-meta: the GitHub issue forms (four in the core repository, two in audiosilo-meta-community) and the intake automation that turns them into validated bot pull requests, the advisory ai-verify layer, the OpenAudible/Libation importers, metascan, the in-browser site tools, and the authoring rules."
+description: "How metadata enters audiosilo-meta: the GitHub issue forms (five in the core repository, two in audiosilo-meta-community) and the intake automation that turns them into validated bot pull requests, the advisory ai-verify layer, the OpenAudible/Libation importers, metascan, the in-browser site tools, and the authoring rules."
 ---
 
 ## The rules that govern everything
@@ -27,13 +27,14 @@ editing `data/**`, or an issue form that the intake automation turns into one.
 `.github/ISSUE_TEMPLATE/*.yml` are structured forms (machine-parseable field ids)
 so a non-programmer can contribute without touching JSON. Each carries a
 `data:<kind>` routing label that the intake workflow branches on. The core
-repository, `audiosilo-meta`, holds the four forms for the CC0 factual core:
+repository, `audiosilo-meta`, holds the five forms for the CC0 factual core:
 
 | Form | Template | Routing label | For |
 |---|---|---|---|
 | Add a work (book) and its first recording | `add-work.yml` | `data:add-work` | a new book plus its first narration |
 | Add a recording (narration) | `add-recording.yml` | `data:add-recording` | another narration of a work already in the database |
 | Correct data | `correct-data.yml` | `data:correction` | a single-field fix to an existing record |
+| Correct several fields (batch) | `correction-batch.yml` | `data:correction-batch` | up to 25 corrections to one book with one shared source, as a JSON list; usually filed by an AudioSilo Bridge ([below](#the-correction-batch-form)) |
 | Import a library export | `import-library.yml` | `data:import` | an OpenAudible / Libation / Audiobookshelf / metascan export to bulk-import |
 
 The CC BY-SA sidecars live in their own repository,
@@ -144,7 +145,9 @@ Seven behaviors are worth knowing:
   drops labels on issues opened by non-collaborators (the sibling
   `audiosilo-sidecars` contributor tool creates intake issues over the API), so
   such an issue arrives label-less and is admitted when a maintainer applies the
-  routing label later - a `labeled` event. The job gate excludes the workflow's
+  routing label later - a `labeled` event. (An issue filed through the AudioSilo
+  App comes in by a third door, `workflow_call` from `route.yml`:
+  [below](#issues-filed-through-the-audiosilo-app).) The job gate excludes the workflow's
   own outcome labels (`data:invalid` / `data:needs-human` / `data:duplicate`) so
   outcome-labeling can't re-fire intake. Each run posts its non-ok verdict as a
   comment, so an edit always gets an answer.
@@ -214,6 +217,114 @@ export's timeout on a dead link. The security
 posture is deliberate - see [gates and CI](../contributing/gates-and-ci.md) for
 the workspace-wide CI rules.
 :::
+
+## The correction-batch form
+
+`correction-batch.yml` (title prefix `[corrections] `, labels `data` and
+`data:correction-batch`) carries several corrections to **one** book with one
+shared evidence text. A Bridge files it for a server admin's edits
+([`meta.correct`](../bridge/contributions.md#corrections-metacorrect)); by hand the
+single-field form is easier. Its sections:
+
+- **Record** - the book's page on meta.audiosilo.app, the record a change applies
+  to when it names none.
+- **Changes** - fenced JSON, version 1:
+
+  ```json
+  {"v": 1, "source": "audiosilo-server/2.5.0", "changes": [
+    {"record": "https://meta.audiosilo.app/works/the-hobbit", "field": "title", "current": "The Hobit", "corrected": "The Hobbit"},
+    {"record": "data/works/the-hobbit/recordings/andy-serkis-2020", "field": "release_date", "current": "2021", "corrected": "2020-09-17"}
+  ]}
+  ```
+
+- **Evidence / source** (required, at most 2,000 characters) and the ticked CC0
+  dedication.
+
+`metaissue` (`internal/issueform`, `correctBatch`) checks **every** change before
+applying any. The field vocabulary is closed, per record kind, and only three
+fields are applied by the bot:
+
+| Record | Applied by the bot | Packaged for a maintainer |
+|---|---|---|
+| work | `title` | `authors`, `series`, `series_index`, `more_series` |
+| recording | `release_date`, `isbn` (added) | `narrators` |
+
+A recording field addressed to the **work** isn't a mapping bug: the filer didn't
+know the recording, so it goes to a maintainer, who finds it. One structurally
+invalid change (an unknown field, a work field addressed to a recording, no record
+or no corrected value, a value over 500 characters or holding a control character,
+the same field of the same record stated twice (two different ISBNs are two
+facts), a bidirectional embedding, override or isolate control, U+202A to U+202E
+or U+2066 to U+2069, in a value; a zero-width joiner or non-joiner is allowed)
+refuses the **whole** issue, naming every bad change: a batch is machine-written,
+so one bad change makes its siblings suspect. So does a Changes block that can't
+be read (not version 1, an unknown or repeated key, no changes or more than 25),
+missing evidence, evidence over 2,000 characters or holding a bidirectional
+control, or an unticked dedication. The valid changes are then decided one at a
+time: a maintainer's field, a recording field addressed to the work, or a record
+it can't resolve is `needs-human`; a bot-applied field runs through the single-field form's own path
+(`applyCorrection`: applied, unchanged, needs-human or invalid). The verdict is:
+
+- `ok` when at least one change applied: ONE pull request with the applied part,
+  which closes the issue on merge when nothing is left for a maintainer, else
+  **references** it without closing it ("Applies part of #N"), and once it is open
+  the workflow comments the rest (`needs_human`) on the issue and labels it
+  `data:needs-human`;
+- `needs-human` when nothing applied and something needs a maintainer;
+- `duplicate` when every change already matches the record;
+- `invalid` when any change is invalid, including one only applying it could find
+  (a malformed date), and then nothing is written.
+
+## Issues filed through the AudioSilo App
+
+A Bridge files its issues (characters and recaps on the community repository;
+correction batches here) **under the server admin's own GitHub account**, through
+the public **AudioSilo Contributions** GitHub App (id `5387686`, slug
+`audiosilo-contributions`; see [Contributions](../bridge/contributions.md)) when it
+files with its Accounts sign-in. With a token from its environment or `gh` it files
+a plain issue, which this workflow leaves alone: its routing labels stick only for
+an account with write access to the repository (their `labeled` event admits it),
+else a maintainer routes it. An App-filed issue arrives **without labels** (GitHub drops the labels a non-collaborator sets,
+and an issue form's labels never apply to an API-filed issue), so intake's
+`labeled` door would never open. `.github/workflows/route.yml` (one copy in each
+repository) routes it instead, on `issues: opened`:
+
+1. It runs only for an App-filed issue (`performed_via_github_app.id > 0`) with no
+   `data:` label, and compares the id with its `APP_ID` constant in the step. The
+   id proves only which App's token filed the issue, which **anyone** can obtain
+   (the App is public and its device flow needs no secret), so it is a routing
+   hint, never trust: intake validates the body exactly as for a hand-filed form,
+   and every pull request is still reviewed before it merges (by a maintainer or
+   the maintainer's [steward](steward.md)).
+2. The template comes from the **title prefix**, an allowlist: `[work] ` is
+   `data:add-work` and `[corrections] ` `data:correction-batch` here;
+   `[characters] ` and `[recaps] ` on the community repository. Any other prefix is
+   left for a maintainer.
+3. **Abuse bounds** hold the issue for a maintainer (label `intake:held` and a
+   comment saying why) instead of routing it: a GitHub account younger than **30
+   days** (`gh api users/<login>`'s `created_at`); **more than 25** open App-filed
+   issues from that account here, this one included (**50** on the community
+   repository; counted with the issues list endpoint filtered by creator); a
+   numeric user id listed in `.github/intake-denylist` (one per line, `#`
+   comments; read through the contents API, a missing file listing nobody); or any
+   of these checks failing to read. A routing label the workflow couldn't apply
+   holds the issue too, since nothing re-runs this workflow.
+4. Under the bounds, it labels the issue `data` and the template's label with
+   `GITHUB_TOKEN`, which starts **no** workflow (GitHub's recursion guard), and
+   calls `intake.yml` as a **reusable workflow** in the same run
+   (`workflow_call` with `issue_number` and `template`; the `INTAKE_PAT` secret
+   passed on, so the bot's pull request still triggers CI). A called run is
+   admitted only for the issue that started its caller, and routes on the
+   `template` input.
+
+A maintainer releases a held issue by applying its routing label by hand, which
+intake's ordinary `labeled` trigger admits; blocking the account or setting
+interaction limits are the stronger tools. The labels `data:correction-batch` and
+`intake:held` must exist in the repository (a label the workflow can't apply holds
+the issue). The untrusted title, body and login reach `run:` only through
+environment variables and are only compared; nothing is checked out;
+`permissions: {}` at the top with the least each job needs, and a timeout on the
+route job (the called intake job keeps its own).
 
 ## Two validation layers on a pull request
 

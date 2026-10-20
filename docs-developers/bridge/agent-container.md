@@ -1,6 +1,6 @@
 ---
 title: The agent container
-description: "Why the AI agents run in a separate container (decision 15), its image and hardening, and the staging protocol between it and the Bridge: runner.json, the job dir and its files, claim, heartbeat, cancel and done, the environment allow-list and the credentials, the harvest's limits, and the failure modes."
+description: "Why the AI agents run in a separate container (decision 15), its image and hardening, and the staging protocol between it and the Bridge: runner.json, the job dir and its files, claim, heartbeat, cancel and done, the environment allow-list and the credentials, the harvest's limits, the credential hand-off from the Bridge's Accounts tab, and the failure modes."
 ---
 
 The Bridge never runs an AI agent CLI itself. Every agent invocation of the
@@ -24,7 +24,9 @@ separate container holds on stock Docker seccomp:
 
 - it mounts only **`/staging`** (shared with the Bridge) and **`/agent`** (its
   own config volume: the credentials and codex's login). Never a library,
-  `/bridge-data` or the Bridge's secrets;
+  `/bridge-data` or the Bridge's secrets (the one exception since Phase 2b: an
+  agent credential set on the Accounts tab, which each run receives, see
+  [The credential hand-off](#the-credential-hand-off));
 - it runs as a fixed uid (`10002:10002`), with `cap_drop: [ALL]`,
   `no-new-privileges`, a read-only root, a tmpfs `/tmp`, and **its own network**
   (the internet only: it can't reach the Bridge or the server);
@@ -66,6 +68,8 @@ creates it.
     work/                  the staged copy of the engine's dir (inputs 0444, dirs 0755)
       out/                 the agent's only writable place (0777, files 0666)
     prompt.txt             0444
+    credential/            0777, not sticky (Phase 2b, only for a hand-off)
+      credential.json      0444: the Bridge's credential for this run; the runner deletes it
     request.json           renamed from request.json.tmp: the ready signal
     claim/                 the runner's atomic claim (mkdir)
     heartbeat              touched every 5 s while the CLI runs
@@ -85,6 +89,7 @@ The runner rewrites `<staging>/runner.json` every **15 seconds**
   "version": "0.2.0",
   "heartbeat_at": "2026-10-16T09:12:44Z",
   "slots": 1,
+  "handoff": true,
   "clis": {
     "claude": { "version": "2.1.300", "credential": "oauth_token", "credential_since": "2026-10-16T08:00:01Z" },
     "codex":  { "version": "0.162.1", "credential": "" }
@@ -99,6 +104,9 @@ the credential is replaced (the runner compares an in-memory fingerprint), which
 is how the Bridge knows a credential the provider refused may work again. The
 runner looks for the CLIs at its start and every 10 minutes after (or at once when
 a run finds its CLI missing).
+
+`handoff` (Phase 2b, omitted by an older runner) says the runner takes the
+Bridge's credential for a run: see [The credential hand-off](#the-credential-hand-off).
 
 The Bridge counts the container **available** when `heartbeat_at` is under **30
 seconds** old (`RunnerFreshFor`, two intervals), the protocol matches, and the CLI
@@ -120,8 +128,9 @@ or replace the Bridge's):
 1. `work/`: a copy of the engine's staged dir, inputs `0444`, dirs `0755`, and
    `work/out/` `0777` (with its files `0666`: a validation retry patches the
    previous attempt's files there);
-2. `prompt.txt` (`0444`);
-3. `request.json.tmp`, renamed to `request.json`, the ready signal:
+2. only for a [hand-off](#the-credential-hand-off): `credential/credential.json`;
+3. `prompt.txt` (`0444`);
+4. `request.json.tmp`, renamed to `request.json`, the ready signal:
 
 ```json
 { "protocol": 1, "cli": "claude", "model": "", "effort": "", "web": false,
@@ -143,8 +152,12 @@ The runner (`agentrun`), listing the staging dir every second:
 
 1. **claims** a ready job (a `request.json`, no `claim`, no `done`; oldest first,
    while a slot is free) with `mkdir claim`, which is atomic;
-2. checks the CLI is there and has a credential (else it finishes the job as
-   *unavailable*, below), and that `prompt.txt` is a regular file under 32 MiB;
+2. checks the CLI is there, **takes and deletes** a handed-over
+   `credential/credential.json` (a failed delete refuses the job, so the CLI can
+   never find it on disk), checks the CLI then has a credential, its own or the
+   handed one (else it finishes the job as *unavailable*, below, saying "set one
+   on the Bridge's Accounts tab, or give one to the agent container"), and that
+   `prompt.txt` is a regular file under 32 MiB;
 3. **runs the CLI** in `work/`, the prompt on stdin, in its own process group,
    with the [allow-listed environment](#the-environment-and-the-credentials),
    writing `stdout.txt` (at most 64 MiB kept) and `stderr.txt` (8 MiB) as it
@@ -185,9 +198,11 @@ mount may not deliver events):
 Any trouble the Bridge has with the staging dir itself (it can't write the job, or
 read back what the runner left) is the agent being unavailable, never a failed
 stage. A credential the provider refuses is reported as a refusal: the book parks
-`agent_credential_refused` (and looks again every 30 minutes); the Bridge's status
+`agent_credential_refused` (and looks again every 30 minutes, or at once when
+the Accounts tab's credential changes); the Bridge's status
 says the agent isn't ready until a run goes through or the runner reports a
-different credential.
+different credential (for a [hand-off](#the-credential-hand-off), until the
+Accounts tab's credential is replaced).
 
 **Leftovers.** At its start the Bridge removes job dirs older than a day and
 withdraws any other (one Bridge per staging dir, and nothing waits for them any
@@ -233,7 +248,9 @@ The runner reads each credential from its own environment, else from
 `/agent/secrets/<lowercase name>` (for example
 `/agent/secrets/claude_code_oauth_token`, `0600`). A subscription credential wins
 over an API key for the same CLI, and a run gets exactly the kind `runner.json`
-reports, so what the Bridge's page shows is what is billed. Credentials never
+reports (or, for a [hand-off](#the-credential-hand-off), the handed kind, which the
+status then reports in its place), so what the Bridge's page shows is what is
+billed. Credentials never
 appear in argv, a log, or any file the Bridge can read.
 
 **Signing in** (`audiosilo-bridge agent-login`, run inside the container):
@@ -247,6 +264,60 @@ appear in argv, a log, or any file the Bridge can read.
 
 Decision 7: the Bridge uses **its own** agent account or API key, never a shared
 subscription, with the monthly budget on.
+
+## The credential hand-off
+
+Phase 2b (decision 19): the admin can set the agent's credential on the
+Bridge page's **Accounts** tab instead of in the container. The Bridge seals it in
+its vault (`claude_oauth_token`, `anthropic_api_key` or `openai_api_key`;
+`internal/accounts`) and hands it to **each run, for that run only** (runs at
+the same time each get their own copy). The container's own
+credential always wins: its environment and secrets files stay the headless
+override.
+
+- **When.** `agentbox` hands the vault's credential for the backend's CLI
+  (`accounts.Agent.Credential`: claude takes the subscription token, else the
+  Anthropic API key; codex an OpenAI API key; a ChatGPT login stays a container
+  sign-in) only when `runner.json` says `handoff: true` **and** reports no
+  credential for that CLI. Its status then counts the agent available, billed as
+  that kind, the credential's set time standing in for `credential_since` (so
+  replacing it on the Accounts tab ends a refusal). A runner without `handoff`
+  (an older agent image) gets nothing; when it has no credential of its own for
+  the CLI and the Accounts tab holds one, the status says "the container is too
+  old to take the one on the Accounts tab: update the agent image to this
+  Bridge's version".
+- **How.** Before `request.json`, the Bridge writes
+  `credential/credential.json` (`0444`, synced) in a directory of its own
+  (`0777`, **not** sticky, unlike the job dir, so the runner, another uid, can
+  delete the Bridge's file):
+
+  ```json
+  { "cli": "claude", "kind": "oauth_token", "value": "..." }
+  ```
+
+- **The runner** reads it with `agentproto.DecodeCredential`, strictly: at most
+  4 KiB, unknown fields and trailing data refused, `cli` the request's CLI, a
+  `kind` that CLI takes (`oauth_token` or `api_key` for claude, `api_key` for
+  codex), and a value of one printable line without spaces, at most 2048 bytes.
+  The value never appears in an error. It deletes the file **before** anything
+  else runs, then ignores it when the container has a credential of its own for
+  the CLI. The handed value reaches the CLI's environment exactly as the
+  container's own would (`CLAUDE_CODE_OAUTH_TOKEN` or `ANTHROPIC_API_KEY`;
+  `OPENAI_API_KEY` and `CODEX_API_KEY`).
+- **Refusals.** A provider refusing the handed credential parks the book
+  `agent_credential_refused` as before; the status says to replace it "on the
+  Bridge's Accounts tab" (the container's own: "in the agent container (claude
+  setup-token / agent-login codex), or remove it there and set one on the Bridge's
+  Accounts tab"). A change on the Accounts
+  tab resumes the books and description jobs parked `agent_credential_refused`
+  and `agent_unavailable` at once ([Parks](generating.md#parks)).
+
+`request.json` and the protocol version are unchanged: an older Bridge never
+writes the file, and an older runner never sees one written for it.
+
+Accepted for Phase 2b: the file sits `0444` in a world-writable directory between
+the Bridge writing it and the runner deleting it (before the CLI starts). A later
+change can share a group between the two uids and make it `0440`.
 
 ## Testing it locally
 

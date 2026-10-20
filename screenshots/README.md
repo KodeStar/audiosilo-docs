@@ -111,22 +111,32 @@ wait is most of an admin run's length; a smaller value is fine for checking the
 script.
 
 The Bridge shots (`admin/settings-bridge.png`, `admin/bridge-pair.png`,
-`admin/settings-bridge-paired.png`) need a server built with the Bridge (its
+`admin/bridge-setup.png`, `admin/settings-bridge-paired.png`) need a server built
+with the Bridge (its
 `GET /server` lists a `bridge` capability; an older build fails the step and the
 shots keep their previous images). The Bridge itself is a separate program, so a
 stand-in plays its part through the server's own Bridge routes: Settings > Bridge
 is shot unpaired, then **Connect a bridge** is pressed and the dialog shot with its
 fresh code, which the stand-in reads from the dialog's environment-variable block
 and exchanges (`POST /bridge/pair`, naming itself `AudioSilo Bridge/0.2.0 (linux)`).
-It sends a heartbeat that offers `bridge.verify` and `sidecars.generate`, reports the
+It sends a heartbeat that offers `bridge.verify`, `sidecars.generate`,
+`sidecars.contribute` and `meta.correct`, reports the
 seeded library mapped and writable at its own root path (the default mapping), any
 other library (the Inbox) mapped but read-only, a page address on a private LAN
 address, and the `estimates.sidecars` figures of a Bridge whose claude agent is
 signed in on a subscription and can contribute; the admin queues a `bridge.verify` for
 the seeded library through the API, and the stand-in claims it and reports it
-`done` with the sizes the server gave for the sample book. The paired page is shot
-as tall as it is. Nothing is written into a library. It runs after the audit log
-shot, so the Bridge's audit entries stay out of it.
+`done` with the sizes the server gave for the sample book. When the server's first
+reply `accepts` a `setup` block (Bridge Phase 2b), the heartbeat also carries a
+setup checklist built as a Bridge builds it: first with the budget not reviewed and
+no GitHub sign-in, when the Setup card is shot clipped (`admin/bridge-setup.png`,
+"3 of 5 required steps done"), then with both done, so the stand-in can
+contribute. The paired page is shot as tall as it is, and then the Contributions
+module is turned on (`PATCH /admin/settings`; the modules shot before shows it
+off), which the generate dialog's contribute switch and the story step's
+contributing job need. A shot that fails here still lets the module be turned on.
+Nothing is written into a library. It runs after the audit log shot, so the
+Bridge's audit entries stay out of it.
 
 The generate shots (`admin/book-generate.png`, `admin/generate-dialog.png`) come
 straight after, from the same stand-in (its heartbeat sent again so it is online):
@@ -143,7 +153,8 @@ The Characters and recaps shots (`admin/book-story.png`,
 Wild**, whose `.audiosilo/` folder `run.sh` seeds with characters and recaps
 (below), so its Characters and recaps card shows them as **Generated on this
 server**. First the admin queues a `sidecars.generate` job for the book that
-contributes (the stand-in can), and the stand-in claims it and reports it `done`
+contributes (the stand-in can, and the Contributions module is on), and the
+stand-in claims it and reports it `done`
 with a result naming a community issue for each part, as a Bridge that filed them
 would, so the card also shows **Contributed, waiting for review**. Nothing is
 written into the library: the files are `run.sh`'s. The card is shot clipped on
