@@ -52,10 +52,19 @@ which needs only the App's public client ID. The code is the Bridge's
   rotated pair). **Any** error GitHub answers is `ErrBadRefresh` (a spent refresh
   token answers `incorrect_client_credentials`) and refuses the sign-in; a refresh
   GitHub didn't answer keeps the pair (the access token serves until it expires)
-  and is tried again a minute later.
+  and is tried again a minute later. Once the access token has expired as well,
+  `Token` answers `accounts.ErrUnrefreshed` (wrapping the refresh's error), and
+  `contrib.TokenSource.Resolve`, with no environment token or `gh` to fall back
+  on, answers `contrib.ErrSignInUnrefreshed`. That is an `ErrNoCredential` for
+  `errors.Is`, so a caller that only asks whether a token resolves treats it as
+  none, but each place a person reads it words it apart from "not signed in"
+  (below): waiting until GitHub can be reached ends it, not a new sign-in.
 - **Refused and OK.** A `401` on the current device token marks the account
-  refused (`refused_at`, `last_error`; a 401 on a token a refresh has since
-  replaced is ignored), which drops `can_contribute`. A REST call that works moves
+  refused (`refused_at`, `last_error`), which drops `can_contribute`. A 401 on a
+  token a refresh has since replaced is ignored, and so is one on a token already
+  past its own expiry (served while GitHub couldn't be reached to refresh it): the
+  refresh decides then, and a revoked sign-in is still refused through it
+  (`ErrBadRefresh`). A REST call that works moves
   `last_ok_at` (`contrib.NewClientFor` wires both hooks); it never ends a refusal,
   only a new sign-in does.
 - **Signing out** (`DELETE /api/accounts/github`, `SignOut`): ends a flow in
@@ -71,6 +80,16 @@ console's Setup card and the `contribute` feature follow within seconds, and
 re-admits the books parked `contrib_unavailable` once the Bridge can contribute.
 A book parked there while signed in (the sign-in's refresh couldn't reach GitHub)
 sees no change, so it waits for **Retry**.
+
+While the sign-in can't be refreshed nothing resolves, so the Bridge reports it
+as unable to share until a refresh succeeds (the next token request a minute
+later, the heartbeat's own included): the heartbeat's `can_contribute` (and the
+estimate's) is false, so the console's Setup card shows **GitHub signed in** still
+to do, **GitHub account** as **Not signed in** and **Contributing** as **Not
+ready**, and offers no share, no Suggest corrections and no contribute switch.
+The Accounts tab keeps its **Signed in** badge with **Sharing uses** "None: the
+Bridge can't share with the community". Neither says that GitHub is unreachable;
+only the job failures (below) and the `contrib_unavailable` park do.
 
 The `accounts` table (migration `0006`) keeps only what the page shows, never a
 credential: `provider` (`github`, `agent`, or `agent/<kind>`, which keeps when that
@@ -184,7 +203,13 @@ Result:
 }
 ```
 
-Failures, worded for the console: not signed in, GitHub refused the sign-in
+Failures, worded for the console: not signed in ("The Bridge isn't signed in to
+GitHub: sign in on the Bridge's Accounts tab, then share the book again."), signed
+in but the sign-in couldn't be refreshed ("The Bridge's GitHub sign-in couldn't be
+refreshed because GitHub couldn't be reached: share the book again once it can.";
+told apart before the share starts through `Options.ContribCredential`, and when
+filing parks `contrib_unavailable` from the park's `Cause`, the resolve error, so
+never from the reason's text), GitHub refused the sign-in
 ("sign in again on the Bridge's Accounts tab, then share the book again"), nothing
 kept here ("it was not generated here, or they were removed"), a generate job
 still running, not matched, and an earlier share that stopped while filing when
@@ -270,11 +295,17 @@ stores them, which a batch at every server bound fits; `MapCorrections` bounds
 the batch again as meta does: see the workspace CROSS-REPO.md §23 before raising
 a bound or adding a field):
 
-1. reads the work's live coverage (`metaops.FreshCoverageForWork`; `errMetaOff`
+1. resolves the GitHub credential before reading anything: none fails `errNoCredential` ("The
+   Bridge isn't signed in to GitHub: sign in on the Bridge's Accounts tab, then
+   suggest the corrections again."), a sign-in that couldn't be refreshed
+   (`contrib.ErrSignInUnrefreshed`) fails `errUnrefreshed` ("The Bridge's GitHub
+   sign-in couldn't be refreshed because GitHub couldn't be reached: suggest the
+   corrections again once it can.");
+2. reads the work's live coverage (`metaops.FreshCoverageForWork`; `errMetaOff`
    when its `metadata.base_url` is off) and picks the recording: the job's
    `recording_id`, else the one recording that lists the job's ASIN (in its
    `region`, when given) or ISBN; none, or several, is no recording;
-2. maps the changes onto meta's batch vocabulary (`contrib.MapCorrections`):
+3. maps the changes onto meta's batch vocabulary (`contrib.MapCorrections`):
 
    | Server field | Meta record and field | Applied by |
    |---|---|---|
@@ -291,14 +322,14 @@ a bound or adding a field):
    maintainer (who finds the recording). Anything else (an unknown
    field, a duplicate field (two distinct ISBNs excepted), a value past the
    bounds) is `ErrInvalidCorrection` for the whole issue;
-3. composes the issue (`contrib.CorrectionBatchIssue`, meta's form rendered
+4. composes the issue (`contrib.CorrectionBatchIssue`, meta's form rendered
    verbatim): title `[corrections] <work title>`, labels `data` and
    `data:correction-batch`, sections **Record** (the work's page on
    meta.audiosilo.app), **Changes** (fenced JSON
    `{"v": 1, "source": "...", "changes": [{record, field, current, corrected}]}`,
    every change naming its record), **Evidence / source** and the ticked CC0
    dedication;
-4. files **one** issue on the core repository (audiosilo-meta) with the GitHub
+5. files **one** issue on the core repository (audiosilo-meta) with the GitHub
    token, and reads no labels back: an issue filed with the Accounts sign-in (the
    App's token) is labelled by meta's `route.yml`, while one filed with
    `AUDIOSILO_BRIDGE_GITHUB_TOKEN` or `gh` by an account that can't label there

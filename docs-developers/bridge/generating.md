@@ -189,8 +189,15 @@ or parked. One run:
    library and book (another server, or a reinstalled one, hands out ids an older
    mapping still holds; that run is stopped and this job starts its own).
 3. **Refuses an impossible contribution before any spend**: `contribute: issue`
-   on a Bridge with no GitHub token fails at once ("sign in on the Bridge's
-   Accounts tab").
+   on a Bridge with no GitHub token fails at once (`Options.ContribCredential`),
+   worded for why: not signed in ("...but the Bridge isn't signed in to GitHub:
+   sign in on the Bridge's Accounts tab, or generate the book with contribute set
+   to local"), or signed in but the sign-in couldn't be refreshed
+   (`contrib.ErrSignInUnrefreshed`: "...but the Bridge's GitHub sign-in couldn't
+   be refreshed because GitHub couldn't be reached: generate the book again once
+   it can, or with contribute set to local"). A resumed job is checked only when
+   it has to start a new engine book after all (its own was reused for another
+   job or is gone): that is a new spend.
 4. **Prepares** (`prepare`): the library must be one the server listed, with a
    mapping check that found it mapped and writable at the mount the Bridge uses
    now (a new job fails otherwise; a resumed one parks `library_not_writable` and
@@ -298,7 +305,7 @@ availability parks (`agent_unavailable`, `agent_rate_limited`,
 | `asr_worker_waiting` | no [ASR worker](workers.md) is connected and the fallback is `wait` (or the Bridge has no speech recognition of its own) (new in Phase 1b) | yes, as soon as a worker connects (or the fallback is `local` with a usable backend) |
 | `manifest_changed` | the book's audio changed since it was transcribed | no: cancel and generate again |
 | `ebook_unreadable`, `ebook_no_chapters` | the ebook can't be used | no: cancel and generate from the audio |
-| `contrib_unavailable` | contributing has no GitHub token it can use (none resolves, GitHub refused it, or a signed-in token needed a refresh and GitHub couldn't be reached) | yes, on a sign-in on the Accounts tab; when the Bridge was already signed in (GitHub unreachable for the refresh), no: **Retry** once GitHub can be reached |
+| `contrib_unavailable` | contributing has no GitHub token it can use (none resolves, GitHub refused it, or a signed-in token needed a refresh and GitHub couldn't be reached). The reason says which: "GitHub credential unavailable - sign in to GitHub on the Bridge's Accounts tab and the book carries on", or, signed in but unrefreshed (`pipeline.ContribUnrefreshedMsg`, same code), "the Bridge's GitHub sign-in couldn't be refreshed because GitHub couldn't be reached - Retry once it can" | yes, on a sign-in on the Accounts tab; when the Bridge was already signed in (GitHub unreachable for the refresh), no: a refresh that later succeeds re-admits nothing, so **Retry** once GitHub can be reached |
 | `core_needed` | contributing needs a community core record the book doesn't have | no (the local files are already written) |
 | `core_pending` | the book's core record waits for the next data release | yes |
 | `book_not_writable` | the Bridge can't write in the book's folder or its `.audiosilo/` (before the run, or when writing the results; the results wait in the engine's work folder) | it checks again every minute |

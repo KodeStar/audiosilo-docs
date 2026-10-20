@@ -62,6 +62,14 @@ sign-in, the `AUDIOSILO_BRIDGE_GITHUB_TOKEN` environment variable (see below), t
 `gh` command's own sign-in on the Bridge's computer (for a Bridge run outside a
 container), or none.
 
+The Bridge renews its sign-in with GitHub every few hours. If GitHub can't be
+reached to renew it before it runs out, the card still says **Signed in** but
+**Sharing uses** says "None: the Bridge can't share with the community" (and the
+console's Bridge card shows it as not signed in) until a renewal works, which the
+Bridge tries again by itself a minute later. You don't need to sign in again:
+shares and corrections suggested meanwhile fail saying GitHub couldn't be
+reached, and a generate job waiting to contribute needs **Retry** once it can.
+
 **Signing out.** **Sign out** revokes the sign-in on GitHub and forgets it on the
 Bridge. If GitHub can't be reached to revoke it, the Bridge forgets it anyway and
 says so: then revoke **AudioSilo Contributions** yourself in your GitHub settings,
