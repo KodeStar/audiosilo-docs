@@ -399,7 +399,8 @@ scripts, with more in it. Where the plain export lists two copies of a book
 once, this one gives each copy its own row, with its path, tags and
 description, so a script can tie a row back to its files and move or rename one
 copy without asking the server about each book. The file name ends in
-`-private` so it is never taken for the one to share.
+`-private.json` (e.g. `audiosilo-fiction-2026-09-21-private.json`) so it is
+never taken for the one to share.
 
 The console asks first: "This file is for you alone". The paths show how your
 folders are named and laid out and the tags are your own notes, so don't attach
