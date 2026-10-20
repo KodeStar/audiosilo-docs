@@ -764,9 +764,8 @@ CSP-sensitive work against a real build served by Go. The console's own gate is
   heartbeat's `setup` checklist (`setup-list.tsx`, the pure rules in
   `setup-model.ts`: each step done, still to do or optional, a step still to do
   with **Fix on the Bridge** linking to the tab that fixes it, and under it the
-  Bridge's `detail`, else the console's own hint, `bridge.setup.hint.<id>`: the
-  agent's names a Claude subscription token, an Anthropic API key or an OpenAI
-  API key on the Bridge's Accounts tab), then the GitHub
+  Bridge's `detail`, else the console's own hint, `bridge.setup.hint.<id>`), then
+  the GitHub
   account, the agent credential and whether the Bridge can contribute, with
   **Open Accounts on the Bridge**; and the job list words `sidecars.contribute`
   ("Community share") and `meta.correct` ("Corrections") jobs with
@@ -833,10 +832,9 @@ CSP-sensitive work against a real build served by Go. The console's own gate is
   and queues `sidecars.contribute` with those `dimensions` (`shareRequest`).
   `CorrectionsSection` offers Suggest corrections for a matched book with an ASIN
   or ISBN and an edited correctable field, while the Bridge offers the `meta`
-  feature (`correctionsOffered`), and its dialog queues `meta.correct`, leaving
-  unticked a row too long to send or holding a bidirectional control
-  (`sendable`) and sending nothing while the evidence holds one
-  (`correctionProblem`). See [Contributions](../bridge/contributions.md#corrections-metacorrect).
+  feature (`correctionsOffered`), and its dialog queues `meta.correct` (the rows
+  it leaves unticked and the evidence it won't send:
+  [Contributions](../bridge/contributions.md#corrections-metacorrect)).
 - **A generated description** (Phase 1c, `features/bridge/describe-section.tsx`) -
   `DescribeSection` follows `GenerateSection` in the Community card: the admin
   book detail's `generated_description` with the "Generated on this server" mark

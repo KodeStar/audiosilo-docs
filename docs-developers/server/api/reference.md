@@ -7475,8 +7475,9 @@ another page (the server reads one row past the page to know): pass it as
 | `path` | an indexed book in that library (optional or required, per kind); the job is about the book's own path |
 | `params` | the kind's parameters, checked per kind (unknown fields refused), at most 16 KiB as sent (`meta.correct`: 128 KiB) |
 
-The request body is at most the largest params cap plus 4 KiB (`bridge.MaxParamsBytes`
-+ 4 KiB); a longer one is `400 invalid request` before it is read whole.
+The request body is at most 132 KiB (the largest params cap,
+`bridge.MaxParamsBytes`, plus 4 KiB); a longer one is `400 invalid request` before
+it is read whole.
 
 The kinds:
 
@@ -7549,14 +7550,14 @@ The kinds:
   `more_series`, `published`, `isbn`; each value trimmed, one line, at most 500
   characters, no control characters, `corrected` set and different from
   `current`; `evidence` at most 2000 characters, not `_No response_` (the
-  community reads that as a blank field); `recording_id` a community slug; no
-  value and no evidence holding a bidirectional embedding, override or isolate
-  control (U+202A-U+202E, U+2066-U+2069; the joiners and marks right-to-left
-  scripts need are allowed), also when written as an HTML character reference
-  such as `&#x202E;`, which the community decodes (`… holds a bidirectional
-  override character`; a control character written that way is `… holds a
-  control character`); and the params at most 128 KiB in all (`params too
-  large`), this kind's own cap (every other kind's is 16 KiB). Each change must be an **edit made on this server**: the field's source is
+  community reads that as a blank field); `recording_id` a community slug; and
+  the params within this kind's 128 KiB cap (`params too large`). No value or
+  evidence may hold a bidirectional embedding, override or isolate control
+  (U+202A-U+202E, U+2066-U+2069; the joiners and marks right-to-left scripts
+  need are allowed), including one written as an HTML character reference such
+  as `&#x202E;`, which the community decodes: `… holds a bidirectional override
+  character`, or `… holds a control character` for a control character written
+  that way. Each change must be an **edit made on this server**: the field's source is
   `edited` on the book and `corrected` is its value now, else `400 not_edited`.
   The server stores the book's own spelling of each value and stamps `source` as
   `audiosilo-server/<version>`, whatever was sent (a sent `source` must still be

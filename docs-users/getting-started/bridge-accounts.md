@@ -42,7 +42,8 @@ To sign in:
 
 What the app may do: open issues on the community metadata repositories it is
 installed on, and create secret gists (a characters or recaps file too long for
-an issue is attached as one). It can't change code, read your private repositories or act anywhere else.
+an issue is attached as one). It can't change code, read your private
+repositories or act anywhere else.
 Your password never reaches the Bridge: GitHub gives it a token, which the Bridge
 keeps encrypted in its data folder and renews by itself.
 

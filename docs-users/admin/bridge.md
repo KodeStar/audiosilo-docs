@@ -282,10 +282,10 @@ removed: generate them first), when the book isn't matched to a community entry
 Bridge can't tell yet whether GitHub made the submission (share it again in a few
 minutes, and if that keeps happening, look for the issue on the community
 repository). The Bridge files each submission once: a share after an
-interrupted one finds what the earlier try made and uses it. Only when GitHub
-can no longer list back as far as an interrupted try over a day old does it file
-again (the community spots a duplicate); any other problem looking keeps the
-share failing until it can look.
+interrupted one finds what the earlier try made and uses it, and while the Bridge
+can't check, the share keeps failing. The one exception: when the interrupted try
+is over a day old and GitHub can no longer list that far back, the Bridge files
+again (the community spots a duplicate).
 
 While a share is waiting or running, the console offers no way to generate the
 book again ("The characters and recaps are being shared with the community.
@@ -356,13 +356,13 @@ suggest"). When a value changed since the dialog read it (edited or reset
 elsewhere, in another tab, say), queueing is refused ("One of these values isn't your edit any more"): close it and check the
 book's fields.
 
-The Bridge never files a corrections job twice. If it was stopped while filing
-and can't tell whether the submission went through, the job fails asking you to
-look for a `[corrections]` issue on the community database before suggesting
-them again. A submission for the same book with different values always stops
-the job for you to check. Otherwise, when the Bridge picks the same job up again
-over a day after the interrupted try and still can't look back that far, it
-files them (the community spots a duplicate).
+The Bridge files a corrections job once. If it was stopped while filing and
+can't tell whether the submission went through, the job fails asking you to look
+for a `[corrections]` issue on the community database before suggesting them
+again. A submission for the same book with different values always stops the job
+for you to check. The one exception: when the Bridge picks the same job up again
+over a day after the interrupted try and still can't check, it files the
+corrections (the community spots a duplicate).
 
 ## When the Contributions module is off
 

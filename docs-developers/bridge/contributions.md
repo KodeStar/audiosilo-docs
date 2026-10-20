@@ -102,12 +102,12 @@ credential back.**
 
 `agent`: `backend`, `kinds` (the kinds that backend takes, in the order it uses
 them: `claude_oauth_token`, `anthropic_api_key` for claude; `openai_api_key` for
-codex), `set` (kind to boolean), `set_at` (when they last changed: a save, or a removal
-that left others),
-`set_at_by_kind` (Phase 2b, additive: when each kind held was saved, from its own
-row; a kind saved before the rows per kind is left out), `available`, `detail`, `handoff` (the
-runs get the Bridge's credential) and `container_credential` (the kind the
-container has of its own, which wins; `""` for none). A value must be one
+codex), `set` (kind to boolean), `set_at` (when the set last changed: a save, or
+a removal that left others), `set_at_by_kind` (Phase 2b, additive: each held
+kind's own save time; a kind saved before per-kind rows existed is left out),
+`available`, `detail`, `handoff` (the runs get the Bridge's credential) and
+`container_credential` (the kind the container has of its own, which wins; `""`
+for none). A value must be one
 printable line without spaces, at most 2048 bytes (`ErrInvalidCredential`, said
 without the value). Changing a credential re-admits the books parked
 `agent_credential_refused` and `agent_unavailable`.
@@ -115,7 +115,7 @@ without the value). Changing a credential re-admits the books parked
 The page's Accounts tab (`web/src/components/tabs/AccountsTab.tsx`,
 `web/src/lib/accounts.ts`) polls every 3 seconds only while a sign-in is pending.
 Each agent field says **Set** with that credential's own saved time
-(`set_at_by_kind`), and the GitHub card says the App opens issues, and a secret
+(`set_at_by_kind`), and the GitHub card says the App opens issues, plus a secret
 gist when a characters or recaps file is too long for an issue.
 
 ## Sharing later: `sidecars.contribute`
@@ -149,21 +149,22 @@ leniently (a later server's field ignored), then:
    verdict or a closed issue is filed again); one already filed is kept and
    reported. A dimension the community already has is `covered`. Each
    dimension's gist and issue are filed **once** across shares and the
-   contributing stage's retries: a filing marker is recorded before each create
-   (`contrib.filing/<book id>/<kind>`, times by GitHub's clock), and the next
-   submit adopts the gist or issue the user made since (`GistsSince`,
-   `IssuesSinceBy`, from the marker less `contrib.FilingSkew`), filing again only
-   when GitHub's list is complete and holds none (for an issue, also only once the
-   marker is a minute old, `filingSettle`: GitHub may still be making it). A
-   lookup it can't complete fails the share (`ErrFilingUnknown`) with the marker
-   kept. The one exception (`refileStale`): when GitHub's list can't reach back to
-   the marker (`contrib.ErrListIncomplete`, which only grows, so no later lookup
-   settles it) and the marker is over 24 hours old (`contrib.FilingStale`), it logs
-   that and files again (meta's intake catches a duplicate it has applied, and
-   nothing on the page clears a marker). Any other lookup failure (a refusal, a
-   rate limit, an outage, a cancel) keeps the marker and fails, whatever its age.
-   The age is measured only on the clock learned from the `Date` of GitHub's
-   answers (`Client.StaleFiling`), so it is never stale before GitHub has answered.
+   contributing stage's retries. A filing marker is recorded before each create
+   (`contrib.filing/<book id>/<kind>`), timed by the clock learned from the `Date`
+   of GitHub's answers (`Client.StaleFiling`, so it is never stale before GitHub
+   has answered). The next submit then:
+   - adopts the gist or issue the user made since the marker, less
+     `contrib.FilingSkew` (`GistsSince`, `IssuesSinceBy`);
+   - files again when GitHub's list is complete and holds none (for an issue, also
+     only once the marker is a minute old, `filingSettle`: GitHub may still be
+     making it);
+   - files again (`refileStale`, logged) when the list can't reach back to the
+     marker (`contrib.ErrListIncomplete`, which only grows, so no later lookup
+     settles it) and the marker is over 24 hours old (`contrib.FilingStale`):
+     meta's intake catches a duplicate it has applied, and nothing on the page
+     clears a marker;
+   - otherwise (a refusal, a rate limit, an outage, a cancel) fails the share
+     (`ErrFilingUnknown`) with the marker kept, whatever its age.
 
 Result:
 
@@ -181,8 +182,8 @@ kept here ("it was not generated here, or they were removed"), a generate job
 still running, not matched, and an earlier share that stopped while filing when
 the Bridge can't yet tell whether GitHub made the issue or the gist it links ("so
 it filed nothing more: share the book again in a few minutes, and if this keeps
-happening, look for the issue on the community repository"). A finished job whose `contributed` is empty and
-`covered` isn't is "Already in the community" in the server's notification
+happening, look for the issue on the community repository"). A finished job whose
+`contributed` is empty and `covered` isn't is "Already in the community" in the server's notification
 (`bridge.Job.SharedNothing`).
 
 **The console** (`features/bridge/share-section.tsx`, `shareOffered`) offers it in
@@ -287,10 +288,11 @@ with only the marker lists the core repository's issues made since
 when the list is complete and has none, and otherwise fails asking the admin to
 look for a `[corrections]` issue first. With no match, a batch for the same record
 with another body (`errOtherBatch`: the record moved since, or another admin's
-batch) always stops the job, whatever the marker's age; a list it can't read, or
-can't read back to the marker, files again once the marker is over 24 hours old by
-the clock learned from GitHub's answers (`contrib.FilingStale`,
-`Client.StaleFiling`), and meta's intake catches a batch it has applied. A `401` fails "GitHub refused the Bridge's sign-in".
+batch) always stops the job, whatever the marker's age. Unlike a share, any list
+it can't read, not only one it can't read back to the marker, files again once the
+marker is over 24 hours old by GitHub's clock (`contrib.FilingStale`,
+`Client.StaleFiling`); meta's intake catches a batch it has applied. A `401` fails
+"GitHub refused the Bridge's sign-in".
 
 Result:
 
@@ -318,14 +320,15 @@ corrections job, badges it **Applied automatically** or **Reviewed by a
 maintainer** (`handling`: a recording field is automatic only when the identifier
 names the recording, `correctionRecording`), requires the evidence (prefilled)
 and queues one `meta.correct`. The job's status and issue link show in the same
-card part. The server enforces the 25-change cap, and the kind's 128 KiB cap on
-its params (every other kind's is 16 KiB), which a batch at every bound fits. The
-dialog flags a row whose value, either side, holds a bidirectional control
-(U+202A-U+202E, U+2066-U+2069): "Holds a hidden text-direction character the
-community refuses, so it can't be sent", unticked and not sendable (`sendable`),
-and evidence holding one ("Retype any text you pasted"): **Suggest**
-then sends nothing (`correctionProblem`: `evidenceBidi`). It checks the characters
-themselves; one written as a character reference is the server's `400`.
+card part. The server enforces the 25-change cap and the kind's params cap
+([API reference](../server/api/reference.md#post-apiv1adminbridgejobs)), which a
+batch at every bound fits. The dialog leaves unticked (`sendable`) a row whose
+current or corrected value holds a bidirectional control (U+202A-U+202E,
+U+2066-U+2069), saying "Holds a hidden text-direction character the community
+refuses, so it can't be sent". Evidence holding one shows "Retype any text you
+pasted", and **Suggest** sends nothing (`correctionProblem`: `evidenceBidi`). The
+dialog checks only the characters themselves; one written as a character
+reference gets the server's `400`.
 
 ## Notifications
 
