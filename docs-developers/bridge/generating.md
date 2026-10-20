@@ -270,12 +270,20 @@ The engine's own park codes (its `state.ParkCode`) plus two of the Bridge's
 (`POST /api/jobs/{id}/retry`), which re-admits the engine book, or makes a job
 waiting on its own park look again now.
 
+A change on the page that answers a park resumes everything parked on it, engine
+books and [description jobs](#a-description-on-its-own-sidecarsdescribe) alike: a
+monthly budget saved on the **Settings** tab answers `budget_exceeded`, an agent
+credential changed on the **Accounts** tab `agent_credential_refused` and
+`agent_unavailable`. A cap set in `config.yaml` or the environment is read at the
+next start, which re-admits no engine book parked `budget_exceeded`: press
+**Retry** (a description job tries again at once when the restart resumes it).
+
 | Code | Means | Resumes by itself |
 |---|---|---|
-| `agent_unavailable` | the agent container isn't answering, has no CLI or no credential, or didn't claim the job within `agent.claim_timeout_seconds` | yes, 10 minutes later when the container said why (`retry_at`), or at once when the agent's credential changes on the Accounts tab |
+| `agent_unavailable` | the agent container isn't answering, has no CLI or no credential, or didn't claim the job within `agent.claim_timeout_seconds` | yes, 10 minutes later when the container said why (`retry_at`), or on an Accounts tab change |
 | `agent_rate_limited` | the agent account hit its usage limit | yes, when it resets |
-| `agent_credential_refused` | the provider refused the CLI's credential (new in Phase 1a) | it looks again every 30 minutes, so it goes on once the credential is replaced; at once when it is replaced on the Accounts tab |
-| `budget_exceeded` | the monthly cap (`retry_at` the 1st of next month, UTC) or the per-book cap was reached | the monthly one only: on the 1st, or at once on a **Settings** save that changes it (an engine book, and a `sidecars.describe` job parked on it); the per-book one, or a cap the environment sets, after raising it, a restart and **Retry** (see [The budgets](#the-budgets)) |
+| `agent_credential_refused` | the provider refused the CLI's credential (new in Phase 1a) | it looks again every 30 minutes, or at once on an Accounts tab change |
+| `budget_exceeded` | the monthly cap (`retry_at` the 1st of next month, UTC) or the per-book cap was reached | the monthly one only: on the 1st, or at once on a **Settings** save that changes it; the per-book one, or a cap the environment sets, after raising it and a restart (and **Retry** for an engine book; see [The budgets](#the-budgets)) |
 | `agent_validation_exhausted`, `qa_no_converge`, `spelling_gate_failure`, `fix_loop_exhausted`, `asr_decode_timeout`, `markers_not_confident`, `ebook_chapters_not_confident`, `supervisor_escalated`, `supervisor_budget` | an engine stage gave up after its bounded retries | no: **Retry** |
 | `chapters_not_detected` | a book with no chapter markers whose chapters couldn't be found in the narration with confidence (Phase 1d; the message says why: no headings heard, a chapter too long, numbers missing). See [Chapterless books](chapters.md#the-park-chapters_not_detected) | no: add chapter markers to the file, cancel and generate again |
 | `media_tools_unavailable`, `asr_unavailable` | ffmpeg/ffprobe is missing, or the Bridge's own speech recognition failed to set up | no |
@@ -484,14 +492,13 @@ while that job ran), else the run the book's own `bridge.json` names (a book tha
 moved after). It runs the description step until it writes one; the agent's parks
 (rate limit, budget, credential, unavailable) are the job's park
 (`needs_attention`, with `code`, `hint` and `retry_at`), tried again at
-`retry_at`, on **Retry**, or at once when a change answers it: a monthly budget
-saved on the page wakes the jobs parked `budget_exceeded`, an agent credential
-changed on the Accounts tab the ones parked `agent_credential_refused` or
-`agent_unavailable` (`Handler.WakeParked`: these jobs wait in their own loop, not
-as engine books, so the engine's re-admit doesn't reach them). Each wake is
+`retry_at`, on **Retry**, or at once when a change on the page answers it
+([Parks](#parks); `Handler.WakeParked`: these jobs wait in their own loop, not as
+engine books, so the engine's re-admit doesn't reach them). Each wake is
 numbered, so a try that parks on a code woken while it ran tries again at once
-instead of losing the wake. A cap the environment sets still needs a restart and
-**Retry**. Then it saves `description.json` and `bridge.json`
+instead of losing the wake. A parked job is still running on the Bridge, so a
+restart resumes it and it tries again at once: a cap raised in `config.yaml` or
+the environment needs only the restart. Then it saves `description.json` and `bridge.json`
 ([how](attachments.md#how-the-bridge-writes-them)) and asks for the attachments
 rescan. It fails, with a sentence the console shows as it is, when:
 
@@ -568,19 +575,19 @@ Every agent run is preflighted against two caps (`pipeline.Executor`):
 
 - **`agent.book_budget_usd`** (default 75): one book's spend; past it the book
   parks `budget_exceeded` until the cap is raised (in `config.yaml` or the
-  environment, read at the next start) and the book retried.
+  environment, read at the next start) and the book retried (a
+  `sidecars.describe` job tries again by itself when the restart resumes it).
 - **`agent.monthly_budget_usd`** (default 100, `0` = none; decision 7): this
   calendar month's (UTC) spend across every book, superseded runs included, and
   the spend of engine books a regenerate deleted (kept in
   `deleted_stage_spend`), so regenerating doesn't reset the month. Past it the
   book parks `budget_exceeded` with `retry_at` the first of the next month. The
   page's **Settings** tab edits it (locked when
-  `AUDIOSILO_BRIDGE_AGENT_MONTHLY_BUDGET_USD` sets it, which is read at the next
-  start) and it applies at once: a save that changes it re-admits the engine
-  books parked `budget_exceeded`, one still over it parking again (see
-  [Configuration](configuration.md)), and wakes the `sidecars.describe` jobs
-  parked on it (`WakeParked`), so neither needs **Retry**. A cap the environment
-  sets is read at the next start, and a job it paused then needs **Retry**.
+  `AUDIOSILO_BRIDGE_AGENT_MONTHLY_BUDGET_USD` sets it) and it applies at once: a
+  save that changes it resumes what is parked `budget_exceeded`, one still over it
+  parking again ([Parks](#parks)), so nothing needs **Retry**. A cap the
+  environment sets is read at the next start, after which an engine book it
+  paused needs **Retry** and a `sidecars.describe` job tries again by itself.
 
 With a subscription credential the costs are notional (what the same tokens would
 cost on an API key), so the caps still bound the usage.

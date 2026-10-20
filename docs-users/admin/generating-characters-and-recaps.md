@@ -174,7 +174,7 @@ in the console (**Generating is paused** in the player) with the reason, and
 | The agent reached its usage limit | Nothing: it carries on once the limit resets. |
 | Waiting for an ASR worker | Nothing, or start the worker: the Bridge is set to wait for an [ASR worker](../getting-started/running-a-worker.md#when-the-worker-is-off) when none is connected, and the job carries on as soon as one connects. |
 | The agent's credential was refused | Replace it where the agent gets it: on the Bridge's Accounts tab, or in the agent container when it has one of its own (see [Running a Bridge](../getting-started/running-a-bridge.md#7-the-agents-credential)). The job carries on at once after a change on the Accounts tab, else it looks again by itself every 30 minutes. |
-| The job reached its spending limit | The monthly cap carries on by itself on the 1st of next month, or at once when you raise it on the Bridge's **Settings** tab. The per-book cap, or a cap set in the Bridge's environment, needs raising, a restart of the Bridge and **Retry** (see [Costs](#costs-and-the-monthly-cap)). |
+| The job reached its spending limit | The monthly cap carries on by itself on the 1st of next month, or at once when you raise it on the Bridge's **Settings** tab. The per-book cap, or a cap set in the Bridge's environment, needs raising and a restart of the Bridge, then **Retry** on a job still paused (see [Costs](#costs-and-the-monthly-cap)). |
 | The Bridge can't write to this book's folder | Give the Bridge's user write access to the book's folder. It checks again every minute. |
 | Contributing needs a GitHub token on the Bridge | Only when contributing: sign the Bridge in to GitHub on its Accounts tab (see [Bridge accounts](../getting-started/bridge-accounts.md#github)). The job carries on once it is signed in. |
 | The community has no entry for this book yet | Only when contributing: add the book to the community database, or cancel and generate it again kept local. Your copy is already saved. |
@@ -296,8 +296,7 @@ uses a little agent time, far less than generating (counted against the same
 caps). Those notes are kept after the transcripts are deleted, so this works for a
 book generated months ago. The job's progress shows in the same part, and it
 pauses like a generate job (the agent's usage limit, the spending cap...) and
-carries on the same way: a cap raised on the Bridge's **Settings** tab, or a new
-agent credential on its **Accounts** tab, wakes it at once.
+carries on the same way.
 
 It can fail with a reason that says what to do:
 
@@ -459,12 +458,12 @@ Two limits keep it in check, both set on the Bridge (see its
   it pauses and carries on by itself on the 1st of the next month (the month is
   counted in UTC). You can raise it or turn it off on the Bridge page's
   **Settings** tab. The change applies at once: a paused job carries on if the new
-  cap leaves room, descriptions included. When the Bridge's
-  environment sets the cap, the tab shows it locked: change it there, restart the
-  Bridge and press **Retry** on a paused job.
+  cap leaves room. When the Bridge's environment sets the cap, the tab shows it
+  locked: change it there, restart the Bridge and press **Retry** on a job still
+  paused.
 - **A cap per book**, **$75** by default, set in the Bridge's environment or its
-  `config.yaml`, not on the page: a change applies when the Bridge next starts,
-  and a job it paused then needs **Retry**.
+  `config.yaml`, not on the page: a change applies when the Bridge next starts;
+  then press **Retry** on a job still paused.
 
 **Settings > Bridge** in the console shows the Bridge's agent and whether it is
 ready, whether it is **Paid by** a subscription or an API key, what **This

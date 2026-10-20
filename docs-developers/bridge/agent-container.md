@@ -308,8 +308,8 @@ override.
   Bridge's Accounts tab" (the container's own: "in the agent container (claude
   setup-token / agent-login codex), or remove it there and set one on the Bridge's
   Accounts tab"). A change on the Accounts
-  tab re-admits the books parked `agent_credential_refused` and
-  `agent_unavailable` at once, and wakes the description jobs parked on either.
+  tab resumes the books and description jobs parked `agent_credential_refused`
+  and `agent_unavailable` at once ([Parks](generating.md#parks)).
 
 `request.json` and the protocol version are unchanged: an older Bridge never
 writes the file, and an older runner never sees one written for it.

@@ -109,9 +109,9 @@ kind's own save time; a kind saved before per-kind rows existed is left out),
 `container_credential` (the kind the container has of its own, which wins; `""`
 for none). A value must be one
 printable line without spaces, at most 2048 bytes (`ErrInvalidCredential`, said
-without the value). Changing a credential re-admits the books parked
-`agent_credential_refused` and `agent_unavailable`, and wakes the
-`sidecars.describe` jobs parked on either.
+without the value). Changing a credential resumes the books and description
+jobs parked `agent_credential_refused` and `agent_unavailable`
+([Parks](generating.md#parks)).
 
 The page's Accounts tab (`web/src/components/tabs/AccountsTab.tsx`,
 `web/src/lib/accounts.ts`) polls every 3 seconds only while a sign-in is pending.
@@ -219,8 +219,7 @@ and feature `meta`; a book `path` required; it writes nothing into the library.
 ```
 
 Beyond the reference: in the changes' values and the evidence a control character
-is `unicode.IsControl` (C1 included; the evidence keeps line breaks and tabs; the
-identifiers refuse C0 and DEL only), and both it and a bidirectional control
+is `unicode.IsControl` (C1 included; the identifiers refuse C0 and DEL only), and both it and a bidirectional control
 (`isBidiControl`) are looked for in the text with its character references
 decoded the way the community's issue form reads them (`checkProse` on
 `decodeRefs`, mirroring audiosilo-meta's `issueform` `formValue`: each numeric or
@@ -238,8 +237,8 @@ of exactly `_No response_` (the form's blank field), or one that reads as nothin
 is "evidence is required". `evidence` keeps its line breaks (CRLF stored as LF)
 and tabs, and stays within 2000 characters both as written and as the issue
 carries it (`issueLength`: a line starting with `#` loses its indent and gains a
-backslash); `asin`, `isbn` and `region` (the marketplace
-the ASIN sells in) say how the book was found.
+backslash); `asin`, `isbn` and `region` (the marketplace the ASIN sells in) say
+how the book was found.
 
 What the Bridge would refuse when filing is a `400` here, except a `work_id` the
 community doesn't have: the server checks it only as text (at most 200 bytes, no
@@ -256,7 +255,9 @@ corrected values are bound to the book: `current` and the records the job names
 sends the book's community match).
 
 **The Bridge** (`internal/correct`, light lane; `ParseParams` strict, `work_id`
-required):
+required, the params at most 64 KiB as the server stores them, which a batch at
+every server bound fits: a server bound raised past that needs a Bridge that
+reads more, shipped first):
 
 1. reads the work's live coverage (`metaops.FreshCoverageForWork`; `errMetaOff`
    when its `metadata.base_url` is off) and picks the recording: the job's
@@ -309,10 +310,10 @@ result (a failed result write keeps it, so the job resumed adopts the issue), wh
 nothing can have been filed (`contrib.NothingFiled`: a 4xx answer, a rate limit,
 or a request that never left), or once a person has been told the Bridge can't
 tell (below). A 5xx, which can come after the issue was made, a timeout or a lost
-answer (the client never resends a POST) keeps it and fails the job "GitHub
-didn't confirm the issue (no answer in time, or a server error). The Bridge will
-check whether the corrections were filed before filing them again: suggest them
-again in a minute."
+answer (the client never resends a POST) keeps it and fails the job
+`errNoAnswer` ("GitHub didn't confirm the issue ... suggest them again in a
+minute"). The admin sees each of these failures word for word on
+[Suggest corrections](/users/admin/bridge#suggest-corrections).
 
 A run that finds a marker lists the core repository's issues made since its time
 less `contrib.FilingSkew` (`contrib.IssuesSince`: the list endpoint, not search,
@@ -323,20 +324,14 @@ which lags; the rows of pages read before one that failed count too) and:
   the work's live title, so a title correction meta's bot applied since (or a
   recording that took the ASIN since) changes what the run composes now;
 - on a `401` (`contrib.Unauthorized`, even past a same-record batch on a page read
-  before) fails "GitHub refused the Bridge's sign-in: sign in again on the
-  Bridge's Accounts tab, then suggest the corrections again.", and on a rate limit
-  "GitHub's rate limit for the Bridge's sign-in is reached: suggest the
-  corrections again later.", the marker kept either way;
+  before) fails `errRefused` (sign in again on the Accounts tab), and on a rate
+  limit `errRateLimited`, the marker kept either way;
 - when it found nothing and the marker is under a minute old by GitHub's clock
   (`contrib.FilingSettle`, `Client.Settling`: GitHub may still be making the
-  issue) fails "These corrections were being filed moments ago, and GitHub may
-  still be making the issue: suggest them again in a minute." (`errSettling`);
+  issue) fails `errSettling` ("suggest them again in a minute");
 - for a batch with the same **Record** (the work's page) and another body
   (`otherBatch`: another admin's, or its own edited since) fails asking the admin
-  to look first (`errFiledBefore`: "An earlier suggestion of these corrections
-  stopped while filing them, and the Bridge can't tell whether they were filed:
-  look for a [corrections] issue on the community database before suggesting them
-  again."). That is said once: when the list was read back to the marker whole
+  to look for a `[corrections]` issue first (`errFiledBefore`). That is said once: when the list was read back to the marker whole
   and the marker has settled, the marker goes, so the next suggestion files. A
   marker with no time to look from is told the same way, once, before anything is
   read;
@@ -348,8 +343,8 @@ which lags; the rows of pages read before one that failed count too) and:
 
 meta's intake labels a batch whose every change the record already holds
 `data:duplicate`; one with a field a maintainer applies reaches a maintainer
-again. On the create, a `401` and a rate limit fail with the same words as above
-and any other refusal "could not file the corrections: ...", the marker cleared
+again. On the create, a `401` and a rate limit fail `errRefused` and
+`errRateLimited` as above, and any other refusal "could not file the corrections: ...", the marker cleared
 (nothing was filed). Two duplicates stay possible, accepted: a new request (edited
 evidence, reordered changes) for corrections already filed, and a POST still in
 flight after the one-minute settle when the lookup finds nothing.
@@ -382,31 +377,28 @@ names the recording, `correctionRecording`), requires the evidence (prefilled)
 and queues one `meta.correct`. The job's status and issue link show in the same
 card part. The server enforces the 25-change cap and the kind's params cap
 ([API reference](../server/api/reference.md#post-apiv1adminbridgejobs)), which a
-batch at every bound fits. The dialog reads each value and the evidence as the
-server does, so it never sends what would get the `400`: `decodeRefs` mirrors the
-server's (numeric references as Go's `html` decodes them, named ones through the
-browser's own HTML parser, `&nLt;` and `&nGt;` left as written as Go leaves them)
-and `goTrim` trims as Go's `strings.TrimSpace` does. It leaves a row unticked, its
-box disabled (`sendable`; `refusal` names the first flag in the order `tooLong`,
-`control`, `bidi`, `noChange`, each shown as `book.corrections.<flag>`), when a
-value is over 500 characters ("Too long to send (over 500 characters)."), holds a
-control character, as written or as a character reference ("Holds a control
-character the community refuses (or a character reference to one), so it can't
-be sent."), holds a bidirectional control (U+202A-U+202E, U+2066-U+2069) the same
-way ("Holds a hidden text-direction character the community refuses (or a
-character reference to one), so it can't be sent."), or when the corrected value
-reads as the community's value or as nothing ("Read as the community reads it, this changes nothing (it
-decodes to the community's value or to nothing), so it can't be sent."). The
-evidence's problems stop **Suggest N corrections** sending anything
-(`correctionProblem`, each its own `book.corrections.<problem>` key): `noEvidence`
-(blank, `_No response_` or reading as nothing: "Say where the values come from.",
-shown once the field is touched), `evidenceTooLong` (over 2000 characters as
-written or as the issue carries it, `issueLength`: "Keep the evidence under 2,000
-characters (a line starting with # counts one more)."), `evidenceControl` (a
-control character but a line break or a tab, or a reference to one) and
-`evidenceBidi`. The dialog's header clamps the book's title to two lines
-(`line-clamp-2`, the whole title in its `title` attribute and read out), so a
-long title never squeezes the review on a phone.
+batch at every bound fits. The dialog runs the server's checks (above) on each
+value and the evidence, so it never sends what would get the `400`: `decodeRefs`
+mirrors the server's (numeric references as Go's `html` decodes them, named ones
+through the browser's own HTML parser, `&nLt;` and `&nGt;` left as written as Go
+leaves them) and `goTrim` trims as Go's `strings.TrimSpace` does.
+
+- A row is left unticked, its box disabled (`sendable`), with the first flag in
+  the order `tooLong`, `control`, `bidi`, `noChange` (`refusal`) shown as
+  `book.corrections.<flag>`: a value over 500 characters, a control character or
+  a bidirectional control (U+202A-U+202E, U+2066-U+2069) as written or as a
+  character reference, or a corrected value that reads as the community's value or
+  as nothing.
+- An evidence problem stops **Suggest N corrections** sending anything
+  (`correctionProblem`, shown as `book.corrections.<problem>`): `noEvidence`
+  (blank, `_No response_` or reading as nothing; shown once the field is touched),
+  `evidenceTooLong` (over 2000 characters as written or as the issue carries it,
+  `issueLength`), `evidenceControl` (a control character but a line break or a
+  tab, or a reference to one) and `evidenceBidi`.
+
+The dialog's header clamps the book's title to two lines (`line-clamp-2`, the
+whole title in its `title` attribute and read out), so a long title never
+squeezes the review on a phone.
 
 ## Notifications
 

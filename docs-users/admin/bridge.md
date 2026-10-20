@@ -327,11 +327,9 @@ and your value:
   suggested with the same value (**Suggested before**; not when that job failed
   or was cancelled). A row can't be ticked, and says why, when a value is too
   long to send (over 500 characters), holds a control character or a hidden
-  text-direction character the community refuses, or when your value changes
-  nothing as the community reads it. The community reads a character reference
-  such as `&amp;` or `&#x202E;` as the character it names, so the dialog does too:
-  a reference to a refused character is refused like the character, and a value
-  like `Tom &amp; Jerry` is the same as `Tom & Jerry`. When your value holds a
+  text-direction character the community refuses (also when written as a code
+  such as `&#x202E;`), or when your value changes nothing as the community reads
+  it (`Tom &amp; Jerry` reads as `Tom & Jerry`). When your value holds a
   refused character (often pasted in with the text), retype it; when the
   community's does, that field can't be corrected from here.
 - A badge says who applies it: **Applied automatically** or **Reviewed by a
@@ -362,8 +360,8 @@ The dialog says so when the community has no record for the book ("It wasn't
 found by its ASIN or ISBN, so there's nothing to correct": match it again with
 **Compare fields**) and when it already has your values ("There's nothing to
 suggest"). When a value changed since the dialog read it (edited or reset
-elsewhere, in another tab, say), queueing is refused ("One of these values isn't your edit any more"): close it and check the
-book's fields.
+elsewhere, in another tab, say), queueing is refused ("One of these values isn't
+your edit any more"): close it and check the book's fields.
 
 The Bridge guards against filing the same corrections twice. Before it files, it
 notes the request (the same changes with the same evidence). If the filing is
@@ -376,18 +374,17 @@ when it stops:
 
 - "GitHub didn't confirm the issue (no answer in time, or a server error). The
   Bridge will check whether the corrections were filed before filing them again:
-  suggest them again in a minute." Suggesting the same corrections again is safe:
-  the Bridge looks before it files.
+  suggest them again in a minute."
 - "These corrections were being filed moments ago, and GitHub may still be making
   the issue: suggest them again in a minute."
 - "An earlier suggestion of these corrections stopped while filing them, and the
   Bridge can't tell whether they were filed: look for a [corrections] issue on the
-  community database before suggesting them again." It says so when it finds a
+  community database before suggesting them again." It says this when it finds a
   different submission made since for the same community entry (another admin's,
-  or yours edited since), or can't tell whether the submission went through.
-  Once it has read GitHub's whole list and found the other submission, it says so
-  once: suggesting them again then files them. When it still can't tell and the
-  interrupted try is over a day old, it files the corrections (the community
+  or yours edited since), or can't tell whether yours went through. Look for the
+  issue first: when a different submission was found, the message comes only
+  once, so suggesting the same corrections again then files them. If it still
+  can't tell a day after the interrupted try, it files them anyway (the community
   spots a duplicate).
 - "GitHub refused the Bridge's sign-in: sign in again on the Bridge's Accounts
   tab, then suggest the corrections again."

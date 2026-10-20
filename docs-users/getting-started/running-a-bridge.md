@@ -299,10 +299,10 @@ month unless you change it. On the **Settings** tab, check **Monthly agent budge
 (dollars)** (`0` means no cap) and press **Save settings**: saving counts as reviewing it,
 even when you keep the amount. A budget set with
 `AUDIOSILO_BRIDGE_AGENT_MONTHLY_BUDGET_USD` counts as reviewed too, and is then
-locked on the page. A budget saved on the page applies at once: a job paused at
-the old cap carries on if the new budget leaves room, a description job too. One
-set with the variable applies when the Bridge next starts, and a job it paused
-then needs **Retry**. See [Costs and limits](#costs-and-limits) for the rest.
+locked on the page. A budget saved on the page applies at once: any job paused
+at the old cap carries on if the new budget leaves room. One set with the
+variable applies when the Bridge next starts; then press **Retry** on a job still
+paused. See [Costs and limits](#costs-and-limits) for the rest.
 
 ### 9. GitHub, to share with the community (optional)
 
