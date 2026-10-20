@@ -3879,10 +3879,10 @@ Per-book notes:
   `[{ "name", "position" }]` (`position` in the same string form, omitted when
   the book has none in that series). Present exactly when the player's
   [`Book.series_list`](#get-apiv1librariesidbooks) is, so a book in only its
-  main series carries just `series`. In a merged row each of `series`,
-  `series_position` and `series_list` comes from the first copy that has it, so
-  copies that disagree on their series can leave a list that doesn't start at
-  `series`:
+  main series carries just `series`. In a merged row the main series and its
+  position come from one copy (a later copy only fills a missing position in the
+  same series), and `series_list` is every series any copy lists, the main one
+  first, each once:
 
   ```json
   { "title": "The Colour of Magic", "authors": ["Terry Pratchett"],
