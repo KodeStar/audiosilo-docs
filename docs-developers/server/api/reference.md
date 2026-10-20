@@ -7548,8 +7548,9 @@ The kinds:
   "…" }` (`work_id`, `changes` and `evidence` required): 1 to 25 changes, each
   `field` once from `title`, `author`, `narrator`, `series`, `series_index`,
   `more_series`, `published`, `isbn`; each value trimmed, one line, at most 500
-  characters, no control characters, `corrected` set and different from
-  `current`; `evidence` at most 2000 characters (line breaks and tabs kept), not
+  characters, no control characters, `corrected` (as the community reads it,
+  below) set and different from `current` as sent; `evidence` at most 2000
+  characters (line breaks and tabs kept), not
   `_No response_` (the community reads that as a blank field); `recording_id` a
   community slug; and the params within this kind's 128 KiB cap
   (`params too large`). The values and the evidence are checked as the community

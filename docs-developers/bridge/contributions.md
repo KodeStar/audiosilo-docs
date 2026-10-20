@@ -342,7 +342,8 @@ batch at every bound fits. The dialog leaves unticked, its box disabled
 500 characters: "Too long to send") or holds a bidirectional control
 (U+202A-U+202E, U+2066-U+2069: "Holds a hidden text-direction character the
 community refuses, so it can't be sent"). Evidence over 2000 characters ("Keep
-the evidence under 2,000 characters") or holding one ("Retype any text you
+the evidence under 2,000 characters") or holding one ("The evidence holds a
+hidden text-direction character the community refuses. Retype any text you
 pasted") stops **Suggest N corrections** sending anything (`correctionProblem`:
 `evidenceTooLong`, `evidenceBidi`). The dialog checks only the characters
 themselves; one written as a character reference gets the server's `400`.

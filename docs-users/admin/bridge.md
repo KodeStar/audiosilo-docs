@@ -358,15 +358,17 @@ elsewhere, in another tab, say), queueing is refused ("One of these values isn't
 book's fields.
 
 The Bridge guards against filing a corrections job twice. If it was stopped
-while filing, it looks for the submission when it picks the job up again: when
-it can't tell whether the submission went through, or finds a different
-submission made since for the same community entry (by anyone, for any edition
-of the book), the job fails asking you to look for a `[corrections]` issue with
-your values on the community database before suggesting them again. Only when the interrupted try is over a day old and the
-Bridge still can't check does it file the corrections (the community spots a
-duplicate). A job that fails with "could not file the corrections" may still
-have filed them (when GitHub had a problem of its own, or its answer was lost),
-and suggesting them again files a new submission: look for the issue first.
+while filing, it looks for the submission when it picks the job up again: it
+uses the one it finds, and files the corrections when it can tell they weren't
+filed. The job fails instead, asking you to look for a `[corrections]` issue with
+your values on the community database before suggesting them again, when it
+finds a different submission made since for the same community entry (by anyone,
+for any edition of the book), or can't tell whether the submission went through.
+When it still can't tell and the interrupted try is over a day old, it files the
+corrections (the community spots a duplicate). A job that fails with "could not
+file the corrections" may still have filed them (when GitHub had a problem of its
+own, or its answer was lost), and suggesting them again files a new submission:
+look for the issue first.
 
 ## When the Contributions module is off
 
