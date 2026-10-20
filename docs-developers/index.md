@@ -14,9 +14,8 @@ fully-typed read side over that contract.
 | `audiosilo-frontend` | The **player** - one codebase shipping to web PWA + iOS + Android. Read side of the product; its web export is served *by* the server at `/web`. | Expo SDK 56, React Native 0.85 (new architecture), React 19, Expo Router, Uniwind (Tailwind v4) |
 
 The optional **[Bridge](bridge/index.md)** (`audiosilo-bridge`, private for now)
-pairs with a server,
-writes to its libraries and runs the heavy jobs, so the server stays read-only. It
-always calls the server, never the reverse. Its first real job generates a book's
+pairs with a server, writes to its libraries and runs the heavy jobs, so the
+server stays read-only. It always calls the server, never the reverse. Its first real job generates a book's
 [characters and recaps](bridge/generating.md) into the book's folder, with its AI
 agents in a separate [agent container](bridge/agent-container.md).
 
@@ -66,8 +65,9 @@ Three structural facts to internalize before reading anything else:
 - **The filesystem is the source of truth; the database is a rebuildable index.**
   Content is addressed by `(library_id, rel_path)`, never by a database id. See
   [Invariants](architecture/invariants.md).
-- **The server's content API is read-only.** Books live in library folders;
-  adding or moving audio files happens on disk, and a scan updates the index.
+- **The server's content API is read-only.** Files change on disk, copied in by
+  hand or written by the [Bridge](bridge/index.md) through its checked mappings,
+  and a scan updates the index.
 
 ## The data flows
 

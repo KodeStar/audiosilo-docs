@@ -5,8 +5,7 @@ description: "The wire-change checklist, a worked example (listening history), t
 
 The server defines the HTTP/JSON contract; the frontend mirrors it **by hand**.
 There is no codegen, so a wire change is never a one-repo change: both repos' CI
-can be green while the seam is
-broken. This page is the procedure for landing such a change safely. The full map
+can be green while the seam is broken. This page is the procedure for landing such a change safely. The full map
 of every seam is the [cross-repo contract](../architecture/cross-repo-contract.md)
 (normatively: the workspace `CROSS-REPO.md`).
 

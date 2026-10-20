@@ -12,7 +12,7 @@ AudioSilo is a self-hosted audiobook platform. You point a small server at a fol
 
 ## The server and player
 
-AudioSilo combines a server with a player app. The server includes the web player, so you can listen in a browser without installing a separate app.
+AudioSilo combines a server with a player app.
 
 ### The server
 

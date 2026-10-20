@@ -10,8 +10,8 @@ for the docs themselves.
 
 ## Where things live
 
-The docs are their own repo, `audiosilo-docs`, a sibling of the three code
-repos inside the `~/dev/audiosilo` workspace:
+The docs are their own repo, `audiosilo-docs`, a sibling of the code repos
+inside the `~/dev/audiosilo` workspace:
 
 ```
 audiosilo-docs/

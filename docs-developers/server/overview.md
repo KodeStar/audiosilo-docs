@@ -64,16 +64,16 @@ testdata/library/     M4B test fixtures
 
 The binary entrypoint. It only parses flags (`--data`, `--ffprobe`, `--ffmpeg`,
 `--setup`) and delegates everything to `pkg/launcher.Run`. Keep it thin - any
-startup logic belongs in the shared run loop.
+startup logic belongs in `pkg/launcher`.
 
 ### `pkg/launcher` (public)
 
-The shared run loop: load config → open the store → wire services → first-run
+The run loop: load config → open the store → wire services → first-run
 bootstrap (auto-admin banner, or the token-guarded `/setup` wizard in setup mode)
 → sync config-declared libraries → kick off the initial background scan → serve
-until the context is cancelled. Its public `launcher.Run`/`launcher.Options` API
-supports running the server in-process. `Options` carries
-embedding-friendly overrides (`Bind`, `TLSMode`, `PublicURL`, `Libraries`,
+until the context is cancelled. It is public so the server can also run
+in-process (see [Configuration](configuration.md#launcher-options-for-embedders));
+`Options` carries embedding-friendly overrides (`Bind`, `TLSMode`, `PublicURL`, `Libraries`,
 `OnURL`) that are re-validated after being layered onto the loaded config.
 Before the database opens, `Run` applies a restore an admin asked for
 (`backup.ApplyPendingRestore`); it then starts the backup schedule, the

@@ -121,9 +121,8 @@ to the wire format - a field rename, a new envelope, changed semantics - is made
 in **all affected repos in one logical change**, with tests on each side.
 
 **Why.** Codegen was deliberately rejected: the surface is small, and hand-written
-types stay idiomatic on each side (Go structs vs. TypeScript unions).
-The cost is that nothing *mechanical* catches drift - a
-renamed Go JSON tag compiles fine in both repos and fails only at runtime as an
+types stay idiomatic on each side (Go structs vs. TypeScript unions). The cost is
+that nothing *mechanical* catches drift - a renamed Go JSON tag compiles fine in both repos and fails only at runtime as an
 `undefined` field. So the discipline is procedural: paired changes, paired tests,
 and the seam catalog in the workspace `CROSS-REPO.md`.
 
