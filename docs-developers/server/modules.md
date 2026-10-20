@@ -80,23 +80,16 @@ restart. They gate on the **toggle only**, so a route stays put while the flag f
 the heartbeat. An action that needs the Bridge refuses on its own, with its own
 `409`, as the Bridge's job routes do.
 
-## Jobs a module owns
-
-A module's action can be a [Bridge job](../bridge/pairing-and-jobs.md#jobs-of-a-managed-module)
-instead of a route. `bridge.kindSpec.module` names the module a kind needs, and
-`bridge.ModuleFor(kind, params)` answers it (for `contributions`:
-`sidecars.contribute`, `meta.correct`, and `sidecars.generate` with
-`contribute: "issue"`). Such a job gets the same gate as a route: `POST
-/admin/bridge/jobs` answers `404 module_off` while the toggle is off, before
-anything else about it, through the same `writeModuleOff`. And while the toggle is
-off a queued one is **held**: `SetBridge` wires `bridge.Service.ModuleOn` to the
-API's `moduleOn`, and the claim passes over it, so turning a module off leaves its
-queued jobs at rest until it is on again. A job the Bridge already holds carries
-on. The gate is the toggle only; the Bridge's ability is the job's own `409
-cannot_contribute`.
-
 Every api test's `newTestEnv` mounts the builtin modules through the real
 `Handler()`, so a bad or clashing route pattern fails the tests, not a start.
+
+## Jobs a module owns
+
+A module's action can be a Bridge job instead of a route: `bridge.kindSpec.module`
+names the module a kind needs and `bridge.ModuleFor(kind, params)` answers it. Such
+a job gets the same toggle gate (`404 module_off` through `writeModuleOff`), and a
+queued one is held while the toggle is off: see
+[Jobs of a managed module](../bridge/pairing-and-jobs.md#jobs-of-a-managed-module).
 
 ## Background work
 

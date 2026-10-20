@@ -172,13 +172,11 @@ Bridge's pure `setup.Checklist` from what the app already knows, in a fixed orde
 ```
 
 The Bridge cuts each detail to 200 characters. The server reads the block
-**leniently**, like `estimates` (`bridge/setup.go`): an unknown key is ignored, a
-block that doesn't decode is dropped (never the heartbeat), and it is bounded: at
-most 16 items, an item with an id not matching `^[a-z][a-z0-9_]{0,31}$` or listed
-twice left out, an **unknown id kept** (the Bridge owns the list; the console
-words the ids it knows and title-cases the rest), `detail` cleaned to 256 bytes,
-`library_ids` positive and listed once, and a `github_login` that isn't GitHub's
-shape dropped. [`GET /admin/bridge`](../server/api/reference.md#get-apiv1adminbridge)
+**leniently**, like `estimates` (`bridge/setup.go`; a block that doesn't decode is
+dropped, never the heartbeat), within the bounds in the
+[heartbeat reference](../server/api/reference.md#put-apiv1bridgestatus). An
+**unknown id is kept**: the Bridge owns the list, and the console words the ids it
+knows and title-cases the rest. [`GET /admin/bridge`](../server/api/reference.md#get-apiv1adminbridge)
 carries it (with the login, admins only); `GET /server` never does.
 
 `can_contribute` here **wins** over `estimates.sidecars.can_contribute`
@@ -356,17 +354,11 @@ which:
 
 | New job | Refused while open for the book | Cancels |
 |---|---|---|
-| `sidecars.generate` | `chapters.detect` queued, claimed or running (`409 detect_open`: cancelling it would throw its transcription away, and a generate job queued after it reuses it) | an open `sidecars.describe`; a **parked** `chapters.detect` ("it finds the chapters itself") |
+| `sidecars.generate` | `chapters.detect` queued, claimed or running (`409 detect_open`: cancelling it would throw its transcription away, and a generate job queued after it reuses it); `sidecars.contribute` queued or working (`409 contribute_open`, `ErrContributeOpen`: it would replace the characters and recaps being filed) | an open `sidecars.describe`; a **parked** `chapters.detect` ("it finds the chapters itself"); a **parked** `sidecars.contribute` ("a generate job for the book replaced what it was sharing") |
 | `sidecars.describe` | `sidecars.generate` (`409 generate_open`), `chapters.detect` (`409 detect_open`: both rewrite the book's `bridge.json`) | nothing |
 | `chapters.detect` | `sidecars.generate` (`409 generate_open`), `sidecars.describe` (`409 describe_open`) | nothing |
 | `sidecars.contribute` | `sidecars.generate` (`409 generate_open`: that run replaces what it would file) | nothing |
 | `meta.correct` | nothing | nothing |
-
-Phase 2b adds `sidecars.contribute` to `sidecars.generate`'s row: a generate job is
-refused while a contribute job is **queued or working** for the book (`409
-contribute_open`, `ErrContributeOpen`: it would replace the characters and recaps
-being filed), and cancels a **parked** one ("a generate job for the book replaced
-what it was sharing").
 
 A job being cancelled (`cancel_requested`) refuses nothing, since it ends without
 writing (so a detect job queues behind a generate job being cancelled), and the

@@ -15,8 +15,10 @@ holds the two outside accounts the Bridge uses:
   recaps.
 
 You sign in here, on the Bridge's own page, and nowhere else: the server never
-connects to the Bridge, so the console can only show what the Bridge last
-reported (see [The setup card](../admin/bridge.md#the-setup-card)). Nothing you
+connects to the Bridge, so the console's **Server > Settings > Bridge** only
+shows these accounts read-only, as the Bridge last reported them, with **Open
+Accounts on the Bridge** to come here (see
+[The setup card](../admin/bridge.md#the-setup-card)). Nothing you
 enter on this tab is ever shown again: the page says whether a credential is set,
 and since when.
 
@@ -107,11 +109,3 @@ from its compose file keeps working as before:
   `ANTHROPIC_API_KEY` or `OPENAI_API_KEY` in its environment, the matching file in
   `/agent/secrets/`, or a Codex sign-in. While the container has one for the tool
   it runs, it uses its own, and the Agent card says so.
-
-### In the console
-
-The console's **Server > Settings > Bridge** shows these accounts read-only, as the
-Bridge last reported them: the GitHub account it is signed in as (or **Not signed
-in**), whether the agent credential is set, and whether it can contribute.
-**Open Accounts on the Bridge** opens this tab. See
-[The setup card](../admin/bridge.md#the-setup-card).

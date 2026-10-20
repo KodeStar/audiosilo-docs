@@ -165,7 +165,9 @@ flag says.
 "Suggest corrections" (decision 18, CORRECTIONS-SPIKE sections 4.1 and 5). Family
 and feature `meta`; a book `path` required; it writes nothing into the library.
 
-**Params** (strict, `bridge.CheckCorrect`):
+**Params** (strict, `bridge.CheckCorrect`; the bounds are in the
+[API reference](../server/api/reference.md#post-apiv1adminbridgejobs), the field list is
+`bridge.CorrectionFields`):
 
 ```json
 {
@@ -178,16 +180,11 @@ and feature `meta`; a book `path` required; it writes nothing into the library.
 }
 ```
 
-- 1 to 25 `changes`, each `field` once, from `title`, `author`, `narrator`,
-  `series`, `series_index`, `more_series`, `published`, `isbn`
-  (`bridge.CorrectionFields`); values trimmed, one line, at most 500 characters,
-  `corrected` set and different from `current`; no control character
-  (`unicode.IsControl`, C1 included) in any value;
-- `evidence` required, at most 2000 characters, line breaks kept (CRLF stored as
-  LF), and at most 2000 as the issue carries it (a line starting with `#` loses
-  its indent and gains a backslash);
-- `recording_id`, when given, a community slug; `asin`, `isbn` and `region` (the
-  marketplace the ASIN sells in) say how the book was found.
+Beyond the reference: a control character is `unicode.IsControl` (C1 included);
+`evidence` keeps its line breaks (CRLF stored as LF) and stays within 2000
+characters as the issue carries it (a line starting with `#` loses its indent and
+gains a backslash); `asin`, `isbn` and `region` (the marketplace the ASIN sells
+in) say how the book was found.
 
 What the Bridge would refuse when filing is a `400` here. Then the handler's
 `checkCorrections` (security-relevant: the server files only an admin's own
@@ -272,10 +269,6 @@ card part. The server enforces the 25-change cap.
 
 ## Notifications
 
-The server words the new kinds itself (`internal/notify`): `sidecars.contribute`
-done is "Shared with the community" (or "Already in the community" when it filed
-nothing, the event's `shared_nothing`), failed "Sharing with the community
-failed"; `meta.correct` done is "Corrections sent", failed "Corrections failed".
-The `contrib_unavailable` park says to sign in to GitHub on the Bridge, and
-`agent_credential_refused` to replace the credential where the Bridge gets it (its
-Accounts tab or the agent container).
+The server words the new kinds itself (`internal/notify`, `bridge_job_finished`
+with `shared_nothing`, and the `contrib_unavailable` park): see
+[Notifications](../server/backups-and-notifications.md#events).

@@ -50,8 +50,7 @@ Two ways, both on the book's page in the console:
   [Share with the community](../admin/bridge.md#share-with-the-community).
 
 The book needs an entry in the community database (a match). Characters and
-recaps the community already has are never sent again: the result says "The
-community already had the recaps, so nothing was filed for them", say.
+recaps the community already has are never sent again, and the result says so.
 
 Characters and recaps are shared under the **CC BY-SA 4.0** licence, like the rest
 of the community's characters and recaps, which credit the people who wrote them.

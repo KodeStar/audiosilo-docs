@@ -1125,17 +1125,17 @@ await step('settings: bridge', async () => {
       },
     }, BRIDGE_CLIENT);
 
-    // The Setup card, at the top of the page while a required step is to do.
-    if (acceptsSetup && wanted('admin/bridge-setup.png')) {
-      await open(page, '/server?topic=bridge');
-      const setupCard = page.locator('[aria-labelledby="bridge-setup-title"]');
-      await setupCard.getByText('3 of 5 required steps done').waitFor({timeout: 15000});
-      await setupCard.scrollIntoViewIfNeeded();
-      await sleep(800);
-      await shoot(page, 'admin/bridge-setup.png', {clip: around([await setupCard.boundingBox()])});
-    }
-    // Budget reviewed and signed in to GitHub on the Bridge's page.
     if (acceptsSetup) {
+      // The Setup card, at the top of the page while a required step is to do.
+      if (wanted('admin/bridge-setup.png')) {
+        await open(page, '/server?topic=bridge');
+        const setupCard = page.locator('[aria-labelledby="bridge-setup-title"]');
+        await setupCard.getByText('3 of 5 required steps done').waitFor({timeout: 15000});
+        await setupCard.scrollIntoViewIfNeeded();
+        await sleep(800);
+        await shoot(page, 'admin/bridge-setup.png', {clip: around([await setupCard.boundingBox()])});
+      }
+      // Budget reviewed and signed in to GitHub on the Bridge's page.
       status.setup = standInSetup(status.libraries, {budget: true, github: true});
       await api(bridge, 'PUT', '/bridge/status', status, BRIDGE_CLIENT);
     }

@@ -136,10 +136,9 @@ reported 2 hours ago"), stays below the status card, and leaves out
 **Contributing**. An older Bridge that doesn't report a checklist shows no Setup
 card.
 
-On a book's page, while a step that generating needs is still to do (speech
-recognition, the agent's credential, or the book's library), the **Characters and
-recaps** part says which ("Generating needs the Bridge's agent credential set
-first.") with a link here, in place of **Generate characters and recaps**.
+On a book's page, a step that generating needs and that is still to do is named
+in place of **Generate characters and recaps** (see
+[Who can, and what it needs](generating-characters-and-recaps.md#who-can-and-what-it-needs)).
 
 ## Libraries
 

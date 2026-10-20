@@ -7483,8 +7483,7 @@ The kinds:
   into the library, so it is queued only for a library the last heartbeat reports
   mapped and writable, and `contribute: "issue"` only while the Bridge can
   contribute (the heartbeat's `setup.can_contribute`, else
-  `estimates.sidecars.can_contribute`) and, since Phase 2b, only while the
-  `contributions` module is on (`404 module_off` otherwise). See
+  `estimates.sidecars.can_contribute`). See
   [Characters and recaps](../../bridge/generating.md). Queuing it while a
   `sidecars.describe` job is open for the book cancels that job (at once when it
   is queued or parked, else by asking the Bridge), since this run writes the
@@ -7543,7 +7542,7 @@ The kinds:
   [fields]}`. See [Contributions](../../bridge/contributions.md#corrections-metacorrect).
 
 `sidecars.contribute`, `meta.correct` and a `sidecars.generate` job with
-`contribute: "issue"` belong to the `contributions` [module](../modules.md#jobs-a-module-owns):
+`contribute: "issue"` belong to the `contributions` [module](../../bridge/pairing-and-jobs.md#jobs-of-a-managed-module):
 while it is off they are `404 module_off` (checked first, before the book), and one
 already queued is held (the Bridge isn't given it) until the module is on again;
 while it is on they are `409 cannot_contribute` unless the Bridge can contribute.
