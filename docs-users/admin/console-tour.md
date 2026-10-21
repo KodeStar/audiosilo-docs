@@ -29,7 +29,9 @@ just want the console, go straight to `/admin`.
 Sign in on the **Admin sign in** card with an **administrator account** - the
 username and password created when you first set up the server (see
 [First run](../getting-started/first-run.md) if you haven't done that yet, or
-don't have the credentials to hand).
+don't have the credentials to hand). On a new server, signing in opens the
+[Set up your server](../getting-started/first-run.md#set-up-your-server) flow
+first, once per browser session until it's finished.
 
 A few things worth knowing:
 
@@ -146,6 +148,13 @@ to keep.) See
 
 A brand-new server with no libraries shows a welcome card instead, with an
 **Add your first library** button.
+
+After the first-run [Set up your server](../getting-started/first-run.md#set-up-your-server)
+flow, a **Finish setting up** card at the top of the side column lists the
+steps you skipped, each a link back into that step, until an admin presses
+**Dismiss**:
+
+![The Finish setting up card](/img/screenshots/setup/finish-card.png)
 
 ### The support card
 

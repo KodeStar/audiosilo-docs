@@ -1,6 +1,6 @@
 ---
 title: Quick start with Docker
-description: "Run the AudioSilo server with Docker Compose: the image, the volumes, first-run credentials, and your first library."
+description: "Run the AudioSilo server with Docker Compose: the image, the volumes, first-run credentials, and setting up your first library in the console."
 ---
 
 ## Quick start with Docker
@@ -88,11 +88,11 @@ Your browser will warn about the certificate the first time - that's expected wi
 - **`/admin`** - the admin console. Log in as `admin` with the printed password.
 - **`/web`** - the web player, bundled with the image.
 
-### 4. Add your first library
+### 4. Set up your server
 
-In the admin console, click **Add your first library** and point it at the path **inside the container** - `/library` with the compose file above (the **Browse** button lists the container's folders). The library is browsable immediately; the scanner fills in metadata, covers and durations in the background. See [Libraries](../admin/libraries.md) for the details.
+The first time you sign in to the admin console, it opens **Set up your server**: eight short steps, each one skippable. Its first step asks for your books folder: type the path **inside the container** - `/library` with the compose file above (mounted folders are offered as buttons) - and press **Check folder** to see what it finds. The next steps choose how your books are named (tags or folder names, with a side-by-side preview), community metadata, the server's addresses and backups, and end with a QR code that signs your phone in. The library is browsable as soon as it's added; the scanner fills in metadata, covers and durations in the background. [First run](./first-run.md#set-up-your-server) walks through every step.
 
-Then connect a phone or browser and start listening - see [Connecting to a server](../listening/connecting.md).
+Skipped the folder? Add the library later from the console's **Add your first library** button - see [Libraries](../admin/libraries.md). Then connect a phone or browser and start listening - see [Connecting to a server](../listening/connecting.md).
 
 ### Updating
 

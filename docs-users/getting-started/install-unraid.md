@@ -43,7 +43,7 @@ Click the AudioSilo icon and choose **WebUI**. By default the server speaks HTTP
 - **`/admin`** - the admin console. Log in as `admin` with the printed password.
 - **`/web`** - the web player.
 
-In the admin console, click **Add your first library** and point it at **`/audiobooks`** (the path inside the container, not the `/mnt/user/...` share). See [Libraries](../admin/libraries.md) for the details, then [connect a phone or browser](../listening/connecting.md).
+The first time you sign in to the admin console, it opens **Set up your server**. Its first step asks for your books folder: type **`/audiobooks`** (the path inside the container, not the `/mnt/user/...` share) and press **Check folder**. The steps after it choose how your books are named, community metadata, the server's addresses and backups, and end with a QR code for your phone - [First run](./first-run.md#set-up-your-server) walks through each. Skipped the folder? Add it later from **Add your first library**; see [Libraries](../admin/libraries.md). Then [connect a phone or browser](../listening/connecting.md).
 
 ### HTTPS and reverse proxies
 
