@@ -13,6 +13,8 @@ The image is **`ghcr.io/kodestar/audiosilo-server`**.
 Install from Community Applications instead - see [Install on Unraid](./install-unraid.md).
 :::
 
+For an HTTPS setup with a reverse proxy from the start, follow the illustrated [Caddy](https://audiosilo.app/blog/audiosilo-with-caddy/), [SWAG](https://audiosilo.app/blog/audiosilo-with-swag/), or [Traefik](https://audiosilo.app/blog/audiosilo-with-traefik/) walkthrough instead. Their Compose files include both AudioSilo and the proxy.
+
 ### What you need
 
 - Docker with the Compose plugin (`docker compose`).
@@ -81,8 +83,6 @@ https://your-server:8080
 ```
 
 Your browser will warn about the certificate the first time - that's expected with the default setup; accept it to continue. The phone apps can't accept that warning, so at home they connect over plain HTTP instead, which the server offers to devices on your home network ([plain HTTP at home](./remote-access.md#plain-http-at-home-how-the-phone-apps-connect), including a note on Docker Desktop). [Remote access](./remote-access.md) covers getting a proper certificate or running behind a reverse proxy.
-
-For an HTTPS setup with a reverse proxy from the start, follow the illustrated [Caddy](https://audiosilo.app/blog/audiosilo-with-caddy/), [SWAG](https://audiosilo.app/blog/audiosilo-with-swag/), or [Traefik](https://audiosilo.app/blog/audiosilo-with-traefik/) walkthrough instead. Their Compose files include both AudioSilo and the proxy.
 
 - **`/`** - the connect page, where a listener enters an auth code to pair a device.
 - **`/admin`** - the admin console. Log in as `admin` with the printed password.
