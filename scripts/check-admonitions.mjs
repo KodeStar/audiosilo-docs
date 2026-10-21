@@ -6,28 +6,15 @@
 // parses is `:::note[Title]`. Lines inside fenced code blocks are skipped, so a
 // page may still show the old syntax as an example.
 //
-// Usage: node scripts/check-admonitions.mjs [dir ...]
-// (defaults to docs-users and docs-developers; runs as the npm `prebuild`).
+// Usage: node scripts/check-admonitions.mjs (runs as the npm `prebuild`).
 
-import {readdirSync, readFileSync, statSync} from 'node:fs';
-import {join, relative} from 'node:path';
+import {globSync, readFileSync} from 'node:fs';
 
 const TYPES = 'note|tip|info|warning|danger|caution|important|success|secondary';
 // An opener with a type followed by whitespace and more text (the old title).
 // Leading whitespace and blockquote markers are allowed (lists, quotes).
 const OLD_OPENER = new RegExp(`^[\\s>]*:{3,}\\s*(${TYPES})[ \\t]+\\S`);
 const FENCE = /^[\s>]*(`{3,}|~{3,})/;
-
-function* walk(dir) {
-  for (const name of readdirSync(dir)) {
-    const path = join(dir, name);
-    if (statSync(path).isDirectory()) {
-      if (name !== 'node_modules') yield* walk(path);
-    } else if (/\.mdx?$/.test(name)) {
-      yield path;
-    }
-  }
-}
 
 function findOldOpeners(text) {
   const hits = [];
@@ -50,15 +37,11 @@ function findOldOpeners(text) {
   return hits;
 }
 
-const dirs = process.argv.slice(2);
-const roots = dirs.length > 0 ? dirs : ['docs-users', 'docs-developers'];
 let failures = 0;
-for (const root of roots) {
-  for (const file of walk(root)) {
-    for (const hit of findOldOpeners(readFileSync(file, 'utf8'))) {
-      failures++;
-      console.error(`${relative(process.cwd(), file)}:${hit.line}: ${hit.text}`);
-    }
+for (const file of globSync('{docs-users,docs-developers}/**/*.{md,mdx}')) {
+  for (const hit of findOldOpeners(readFileSync(file, 'utf8'))) {
+    failures++;
+    console.error(`${file}:${hit.line}: ${hit.text}`);
   }
 }
 

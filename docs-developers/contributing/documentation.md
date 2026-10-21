@@ -41,9 +41,8 @@ npm run build      # the docs gate - MUST pass before a change is done
 `npm run build` is deliberately strict: broken internal links, broken anchors,
 and missing embedded images all **fail the build**. That is the mechanical
 check that pages and screenshots stay consistent - treat it exactly like the
-code repos' gates. Before Docusaurus runs, the `prebuild` script
-(`scripts/check-admonitions.mjs`) fails the build on an admonition written in
-the old title syntax (see Writing style below) and prints its `file:line`.
+code repos' gates. A `prebuild` check (`scripts/check-admonitions.mjs`) also
+rejects old-style admonition titles (see Writing style below).
 
 ## When a code change needs a docs change
 
