@@ -122,9 +122,10 @@
 
 /* 3. Infima mapping. The rules are theme-independent: the tokens flip, so one
    block serves both modes. Primary = brand-ink so Infima's links and active
-   states use the readable pink, never the bright brand fill. */
+   states use the readable pink, never the bright brand fill. The dark selector
+   must match Infima's own `html[data-theme='dark']` block, or its greys win. */
 :root,
-[data-theme='dark'] {
+html[data-theme='dark'] {
   --ifm-color-primary: var(--brand-ink);
   --ifm-color-primary-dark: color-mix(in oklab, var(--brand-ink) 90%, var(--foreground));
   --ifm-color-primary-darker: color-mix(in oklab, var(--brand-ink) 85%, var(--foreground));
@@ -153,12 +154,8 @@
 
   --ifm-background-color: var(--background);
   --ifm-background-surface-color: var(--card);
-  --ifm-font-color-base: var(--foreground);
-  --ifm-heading-color: var(--foreground);
   --ifm-color-content: var(--foreground);
   --ifm-color-content-secondary: var(--muted-foreground);
-  --ifm-link-color: var(--brand-ink);
-  --ifm-link-hover-color: var(--brand-ink);
   --ifm-hr-background-color: var(--border);
   --ifm-toc-border-color: var(--border);
 
@@ -172,7 +169,9 @@
   --ifm-global-shadow-lw: none;
   --ifm-card-border-radius: 16px;
   --ifm-button-border-radius: 10px;
+  --ifm-button-font-weight: 600;
   --ifm-pagination-nav-border-radius: 16px;
+  --ifm-pagination-nav-color-hover: var(--border-strong);
 
   --ifm-navbar-height: 64px;
   --ifm-navbar-background-color: transparent;
@@ -187,17 +186,17 @@
   --ifm-dropdown-link-color: var(--foreground);
   --ifm-dropdown-hover-background-color: var(--accent);
 
-  --ifm-menu-color: var(--muted-foreground);
   --ifm-menu-color-active: var(--foreground);
   --ifm-menu-color-background-hover: var(--accent);
   --ifm-menu-color-background-active: var(--card);
   --ifm-menu-link-padding-vertical: 6px;
   --ifm-menu-link-padding-horizontal: 10px;
 
+  --ifm-breadcrumb-border-radius: 8px;
   --ifm-breadcrumb-item-background-active: var(--accent);
   --ifm-breadcrumb-color-active: var(--foreground);
 
-  --ifm-table-border-color: var(--border);
+  --ifm-table-head-font-weight: 600;
   --ifm-table-head-background: var(--muted);
   --ifm-table-stripe-background: color-mix(in oklab, var(--muted) 45%, transparent);
 
@@ -207,7 +206,6 @@
 
   --ifm-footer-background-color: var(--background);
   --ifm-footer-title-color: var(--foreground);
-  --ifm-footer-link-color: var(--muted-foreground);
   --ifm-footer-link-hover-color: var(--foreground);
   --ifm-footer-color: var(--muted-foreground);
 
@@ -227,10 +225,9 @@
   --search-local-spacing: 8px;
 }
 
-/* 4. Base */
+/* 4. Base. Infima's html rule already paints --ifm-background-color and sets
+   -webkit-font-smoothing. */
 body {
-  background: var(--background);
-  -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
 }
 
@@ -304,15 +301,8 @@ mark {
 }
 
 /* Nav items as 36px pills; the active one is a card with a hairline. Below
-   997px Infima hides them (they move into the drawer), so only lay them out
-   above it. */
-@media (min-width: 997px) {
-  .navbar__item.navbar__link {
-    display: inline-flex;
-    align-items: center;
-  }
-}
-
+   997px Infima hides them (they move into the drawer), so the flex layout is
+   in the 997px block after the search input. */
 .navbar__item.navbar__link {
   height: 36px;
   margin: 0 1px;
@@ -354,6 +344,11 @@ mark {
 }
 
 @media (min-width: 997px) {
+  .navbar__item.navbar__link {
+    display: inline-flex;
+    align-items: center;
+  }
+
   .navbar__search-input {
     width: 240px;
   }
@@ -377,10 +372,10 @@ mark {
   text-align: center;
 }
 
-/* Results: flat rows on a popover, active row on the accent fill. The extra
-   `html` outranks the theme's own `.hitWrapper mark` rule. */
-html .navbar__search mark {
-  color: var(--brand-ink);
+/* Results: flat rows on a popover, active row on the accent fill. The hit
+   highlight reads the same variable as that fill, so set it on <mark> alone. */
+.navbar__search mark {
+  --search-local-highlight-color: var(--brand-ink);
 }
 
 .navbar__search [role='option'] {
@@ -431,8 +426,7 @@ html .navbar__search mark {
   --ifm-h3-font-size: 1.25rem;
 }
 
-.markdown h1,
-.markdown header h1 {
+.markdown h1 {
   font-weight: 700;
   letter-spacing: -0.03em;
   line-height: 1.05;
@@ -449,7 +443,6 @@ html .navbar__search mark {
 }
 
 .markdown table thead th {
-  font-weight: 600;
   text-align: left;
 }
 
@@ -465,10 +458,6 @@ html .navbar__search mark {
   max-width: 320px;
 }
 
-.breadcrumbs__link {
-  border-radius: 8px;
-}
-
 /* 8. Buttons + cards. "One pink thing per view": primary buttons are ink. */
 .button--primary {
   --ifm-button-background-color: var(--primary);
@@ -481,22 +470,11 @@ html .navbar__search mark {
   --ifm-button-border-color: color-mix(in oklab, var(--primary) 88%, var(--background));
 }
 
-.button {
-  font-weight: 600;
-}
-
 .pagination-nav__link {
-  border: 1px solid var(--border);
   background: var(--card);
-  transition: border-color var(--dur-1) var(--ease-out);
-}
-
-.pagination-nav__link:hover {
-  border-color: var(--border-strong);
 }
 
 .pagination-nav__sublabel {
-  color: var(--muted-foreground);
   font-weight: 500;
 }
 
@@ -506,11 +484,11 @@ html .navbar__search mark {
   --ifm-alert-background-color: var(--card);
   --ifm-alert-border-color: color-mix(in oklab, var(--status) 30%, var(--border));
   --ifm-alert-foreground-color: var(--status);
+  --ifm-alert-border-width: 1px;
   --ifm-alert-border-left-width: 1px;
   --ifm-alert-border-radius: 16px;
   --ifm-alert-padding-horizontal: 18px;
   --ifm-alert-padding-vertical: 14px;
-  border: 1px solid var(--ifm-alert-border-color);
 }
 
 .theme-admonition > :first-child {
@@ -525,7 +503,6 @@ html .navbar__search mark {
 }
 
 .theme-admonition a {
-  color: var(--ifm-link-color);
   text-decoration-color: currentColor;
 }
 
@@ -545,10 +522,9 @@ html .navbar__search mark {
   --status: var(--destructive);
 }
 
-/* 10. Code blocks on the muted surface with a hairline. The Prism theme sets
-   its background inline as a variable, hence the !important. */
+/* 10. Code blocks on the muted surface with a hairline. The muted background
+   itself comes from the Prism themes in docusaurus.config.ts. */
 .theme-code-block {
-  --prism-background-color: var(--muted) !important;
   --ifm-code-border-radius: 12px;
   border: 1px solid var(--border);
 }

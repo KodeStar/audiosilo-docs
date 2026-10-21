@@ -1,9 +1,16 @@
-import {themes as prismThemes} from 'prism-react-renderer';
+import {themes as prismThemes, type PrismTheme} from 'prism-react-renderer';
 import type {Config} from '@docusaurus/types';
 import type * as Preset from '@docusaurus/preset-classic';
 import type {PluginOptions} from '@easyops-cn/docusaurus-search-local';
 
 // This runs in Node.js - Don't use client-side code here (browser APIs, JSX...)
+
+// Code blocks sit on the shared muted surface (src/css/custom.css), so the
+// Prism themes keep their token colours but take the page token as background.
+const withMutedBackground = (theme: PrismTheme): PrismTheme => ({
+  ...theme,
+  plain: {...theme.plain, backgroundColor: 'var(--muted)'},
+});
 
 const config: Config = {
   title: 'AudioSilo',
@@ -179,8 +186,8 @@ const config: Config = {
       copyright: `Copyright © ${new Date().getFullYear()} AudioSilo. Built with Docusaurus.`,
     },
     prism: {
-      theme: prismThemes.jettwaveLight,
-      darkTheme: prismThemes.jettwaveDark,
+      theme: withMutedBackground(prismThemes.jettwaveLight),
+      darkTheme: withMutedBackground(prismThemes.jettwaveDark),
       additionalLanguages: ['bash', 'go', 'yaml', 'json', 'diff', 'docker'],
     },
   } satisfies Preset.ThemeConfig,
