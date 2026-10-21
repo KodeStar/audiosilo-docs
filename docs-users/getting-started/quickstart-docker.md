@@ -13,6 +13,8 @@ The image is **`ghcr.io/kodestar/audiosilo-server`**.
 Install from Community Applications instead - see [Install on Unraid](./install-unraid.md).
 :::
 
+For an HTTPS setup with a reverse proxy from the start, follow the illustrated [Caddy](https://audiosilo.app/blog/audiosilo-with-caddy/), [SWAG](https://audiosilo.app/blog/audiosilo-with-swag/), or [Traefik](https://audiosilo.app/blog/audiosilo-with-traefik/) walkthrough instead. Their Compose files include both AudioSilo and the proxy.
+
 ### What you need
 
 - Docker with the Compose plugin (`docker compose`).
