@@ -158,7 +158,7 @@ This step counts as done only once you've opened the import; otherwise it's reco
 
 ![Step 7: a pairing QR code for your phone](/img/screenshots/setup/phone.png)
 
-Scan the code with your phone's camera: it opens the AudioSilo app, or the web player, signed in as you. The code works once, for ten minutes; **New code** makes another. **Open the web player** opens the player in a new tab, signed in as you. See [Connecting to a server](../listening/connecting.md).
+Scan the code with your phone's camera: it opens the AudioSilo app, or the web player, signed in as you. The code works once, for ten minutes; **New code** makes another. **Open the web player** opens it in a new tab, also signed in. See [Connecting to a server](../listening/connecting.md).
 
 Below them:
 

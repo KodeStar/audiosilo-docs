@@ -21,11 +21,13 @@
 // step (no Bridge, so "Skip and finish"), which leaves the Overview card two
 // steps to list. Run once per fresh --setup server: the account it makes
 // closes the wizard.
-import {spawnSync} from 'node:child_process';
 import {mkdir, rm} from 'node:fs/promises';
 import path from 'node:path';
 import {chromium} from 'playwright';
-import {CACHE, DESKTOP_CONTEXT, around, shoot, sleep, step, wanted} from './lib.mjs';
+import {
+  CACHE, DESKTOP_CONTEXT, around, fitViewportToPage, shoot, silence, sleep, step, submitSignIn, wanted,
+} from './lib.mjs';
+import {SHOTS as MANIFEST} from './manifest.mjs';
 
 const SETUP_URL = process.env.SETUP_URL || '';
 const BOOKS = path.resolve(process.env.SETUP_BOOKS || path.join(CACHE, 'setup', 'Audiobooks'));
@@ -35,13 +37,7 @@ if (!SETUP_URL) {
   console.error('capture-setup: SETUP_URL is required (run.sh starts the --setup server)');
   process.exit(1);
 }
-const SHOTS = [
-  'server/setup-wizard.png', 'server/setup-wizard-done.png',
-  'setup/folder.png', 'setup/naming.png', 'setup/metadata.png', 'setup/reach.png',
-  'setup/abs.png', 'setup/backups.png', 'setup/phone.png', 'setup/bridge.png',
-  'setup/finish-card.png',
-];
-if (!wanted(...SHOTS)) {
+if (!wanted(...MANIFEST.filter((s) => s.capture === 'setup').map((s) => s.file))) {
   console.log('capture-setup: no setup shots wanted, skipped.');
   process.exit(0);
 }
@@ -49,17 +45,8 @@ if (!wanted(...SHOTS)) {
 // The wizard's URL with the browser's name for the server.
 const wizard = new URL(SETUP_URL);
 wizard.hostname = HOST;
-const ORIGIN = wizard.origin;
 
 // ── The books folder ────────────────────────────────────────────────────────
-const ffmpeg = (args) =>
-  spawnSync('ffmpeg', ['-hide_banner', '-loglevel', 'error', '-y', ...args], {stdio: 'ignore'}).status === 0;
-const silence = (file, meta) =>
-  ffmpeg([
-    '-f', 'lavfi', '-i', 'anullsrc=r=8000:cl=mono', '-t', '4',
-    ...Object.entries(meta).flatMap(([k, v]) => ['-metadata', `${k}=${v}`]),
-    '-c:a', 'libmp3lame', '-b:a', '8k', file,
-  ]);
 // Each book: its folder under BOOKS and the tags its two files carry.
 const FIXTURE = [
   // Tagged well, apart from the series the folders know.
@@ -79,7 +66,7 @@ await step('build the setup books folder', async () => {
   for (const b of FIXTURE) {
     const folder = path.join(BOOKS, ...b.dir);
     await mkdir(folder, {recursive: true});
-    for (const n of [1, 2]) ok = silence(path.join(folder, `0${n}.mp3`), b.tags) && ok;
+    for (const n of [1, 2]) ok = silence(path.join(folder, `0${n}.mp3`), 4, b.tags) && ok;
   }
   if (!ok) throw new Error('ffmpeg missing or failed: the folder and naming steps will find nothing');
   console.log(`  ✓ books folder (${FIXTURE.length} books) at ${BOOKS}`);
@@ -92,12 +79,9 @@ const page = await ctx.newPage();
 
 // Makes the viewport as tall as the page (between min and max) for one shot.
 const tall = async (file, min = 900, max = 2400) => {
-  const height = await page.evaluate(() => document.documentElement.scrollHeight);
-  await page.setViewportSize({width: 1440, height: Math.min(Math.max(height, min), max)});
-  await sleep(600);
+  await fitViewportToPage(page, min, max, 600);
   await shoot(page, file);
   await page.setViewportSize(DESKTOP_CONTEXT.viewport);
-  await sleep(300);
 };
 const heading = (name) => page.getByRole('heading', {level: 1, name, exact: true});
 const button = (name) => page.getByRole('button', {name, exact: true});
@@ -124,9 +108,7 @@ await step('the --setup page', async () => {
 // The flow from here on: each step needs the one before it.
 await step('the console flow', async () => {
   await page.getByRole('link', {name: 'Continue setup', exact: true}).click();
-  await page.getByLabel('Username', {exact: true}).fill('admin');
-  await page.getByLabel('Password', {exact: true}).fill(PASSWORD);
-  await page.getByRole('button', {name: 'Sign in', exact: true}).click();
+  await submitSignIn(page, PASSWORD);
   // The console sends a server that hasn't finished setting up to the flow.
   await heading('Where are your books?').waitFor({timeout: 20000});
 

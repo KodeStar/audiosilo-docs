@@ -150,11 +150,9 @@ A brand-new server with no libraries shows a welcome card instead, with an
 **Add your first library** button.
 
 After the first-run [Set up your server](../getting-started/first-run.md#set-up-your-server)
-flow, a **Finish setting up** card at the top of the side column lists the
-steps you skipped, each a link back into that step, until an admin presses
-**Dismiss**:
-
-![The Finish setting up card](/img/screenshots/setup/finish-card.png)
+flow, a [Finish setting up](../getting-started/first-run.md#the-finish-setting-up-card)
+card at the top of the side column lists the steps you skipped until an admin
+presses **Dismiss**.
 
 ### The support card
 

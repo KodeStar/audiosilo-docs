@@ -90,7 +90,7 @@ Your browser will warn about the certificate the first time - that's expected wi
 
 ### 4. Set up your server
 
-The first time you sign in to the admin console, it opens **Set up your server**: eight short steps, each one skippable. Its first step asks for your books folder: type the path **inside the container** - `/library` with the compose file above (mounted folders are offered as buttons) - and press **Check folder** to see what it finds. The next steps choose how your books are named (tags or folder names, with a side-by-side preview), community metadata, the server's addresses and backups, and end with a QR code that signs your phone in. The library is browsable as soon as it's added; the scanner fills in metadata, covers and durations in the background. [First run](./first-run.md#set-up-your-server) walks through every step.
+The first time you sign in to the admin console, it opens **Set up your server**: eight short steps, each one skippable. Its first step asks for your books folder: type the path **inside the container** - `/library` with the compose file above (mounted folders are offered as buttons) - and press **Check folder** to see what it finds. The library is browsable as soon as it's added; the scanner fills in metadata, covers and durations in the background. [First run](./first-run.md#set-up-your-server) walks through every step.
 
 Skipped the folder? Add the library later from the console's **Add your first library** button - see [Libraries](../admin/libraries.md). Then connect a phone or browser and start listening - see [Connecting to a server](../listening/connecting.md).
 

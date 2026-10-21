@@ -39,25 +39,13 @@ to the previous image or a placeholder).
 
 The first-run setup shots (`server/setup-wizard*.png` and `setup/*.png`)
 come from `capture-setup.mjs`, which `run.sh` runs after `capture-admin.mjs`
-against the `--setup` instance (a fresh data dir, no admin yet). It opens the
-wizard's one-time link, shoots the account form, creates the admin, shoots the
-"Your account is ready" hand-over, follows **Continue setup** into the console
-and signs in, where the console sends a server that hasn't finished setting up
-to its "Set up your server" flow. It then runs all eight steps through their
-real UI, a shot per step, and ends on the Overview's **Finish setting up**
-card. The books folder it adds is built fresh under `.cache/setup/Audiobooks`
-(`SETUP_BOOKS` overrides): four tiny books of generated silence (**ffmpeg** on
-PATH) in `Author / Series / N - Title` folders whose tags are poor or missing,
-so the naming step shows tags and folders disagreeing and suggests the
-folders. The browser reaches that server as `audiosilo.local` (`SETUP_HOST`;
-mapped to 127.0.0.1 inside Chromium only), so the address step treats it as a
-home-network address and offers it as the home address. The Audiobookshelf
-step is continued without opening the import and the Bridge step ends with
-**Skip and finish**, which leaves the card two skipped steps to list. A
-`--setup` server's wizard closes once its admin exists, so the script runs
-once per server: `run.sh` starts it on a fresh data dir every run. On a macOS
-host the folder step shows no mounted-folder suggestions (they are read on
-Linux only).
+against the `--setup` instance (a fresh data dir, no admin yet, started only
+when a setup shot is wanted). It creates the admin on the `--setup` page, then
+runs the console's eight steps through their real UI and ends on the Overview's
+**Finish setting up** card; its header comment has the details (the generated
+books folder, `SETUP_BOOKS`, `SETUP_HOST`). It needs **ffmpeg** on PATH, and on
+a macOS host the folder step shows no mounted-folder suggestions (they are read
+on Linux only).
 
 Because a fresh server sends its admin to that flow on the first console visit
 of every browser session, `capture-admin.mjs` marks the demo server (and the

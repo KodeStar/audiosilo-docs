@@ -1029,8 +1029,7 @@ every admin). The welcome card with **Add your first library** (no libraries
 at all) is separate and stays.
 
 Strings are the `setup.*` i18n group, in all six locales. A server upgraded
-from a release without the flow never sees it: migration `0053` marks one that
-already has a library or a second account finished and dismissed (see
+from a release without the flow never sees it (migration `0053`, see
 [Data model](data-model.md#server-state)).
 
 ### Charts

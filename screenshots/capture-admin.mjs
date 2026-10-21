@@ -44,11 +44,14 @@ import {
   addHousehold,
   apiClient,
   around,
+  fitViewportToPage,
   isoAgo,
   pathQuery,
+  silence,
   sleep,
   shoot,
   step,
+  submitSignIn,
   wanted,
   DESKTOP_CONTEXT,
 } from './lib.mjs';
@@ -421,14 +424,6 @@ const callOfTheWild = async () => {
   if (!book) throw new Error('no seeded Call of the Wild');
   return book;
 };
-// Makes the viewport as tall as the page (between min and max), so a long card
-// or every card is in the shot; the caller restores DESKTOP_CONTEXT.viewport.
-const fitViewportToPage = async (p, min, max, settle = 800) => {
-  const height = await p.evaluate(() => document.documentElement.scrollHeight);
-  await p.setViewportSize({width: 1440, height: Math.min(Math.max(height, min), max)});
-  await sleep(settle);
-};
-
 await step('sign-in page', async () => {
   await page.goto(`${ADMIN}/`, {waitUntil: 'networkidle', timeout: 45000});
   await page.getByRole('heading', {name: 'Admin sign in'}).waitFor({timeout: 15000});
@@ -438,9 +433,7 @@ await step('sign-in page', async () => {
 
 // Signs in as admin from the console's sign-in form (already open on `p`).
 const signIn = async (p, password) => {
-  await p.getByLabel('Username', {exact: true}).fill('admin');
-  await p.getByLabel('Password', {exact: true}).fill(password);
-  await p.getByRole('button', {name: 'Sign in', exact: true}).click();
+  await submitSignIn(p, password);
   await p.locator('h1.display').first().waitFor({timeout: 15000});
 };
 
@@ -679,15 +672,6 @@ await step('overview on a phone', async () => {
 // library. Everything lands under INBOX_DIR (gitignored .cache); the seeded
 // library is only read (copy-on-write clones where the filesystem supports it).
 let inbox = null;
-const ffmpeg = (args) =>
-  spawnSync('ffmpeg', ['-hide_banner', '-loglevel', 'error', '-y', ...args], {stdio: 'ignore'}).status === 0;
-// Silent mono audio: cheap to encode even when it is hours long.
-const silence = (file, seconds, meta = {}, codec = ['-c:a', 'libmp3lame', '-b:a', '8k']) =>
-  ffmpeg([
-    '-f', 'lavfi', '-i', 'anullsrc=r=8000:cl=mono', '-t', String(seconds),
-    ...Object.entries(meta).flatMap(([k, v]) => ['-metadata', `${k}=${v}`]),
-    ...codec, file,
-  ]);
 
 await step('provision an Inbox library with issues', async () => {
   await rm(INBOX_DIR, {recursive: true, force: true});

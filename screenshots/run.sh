@@ -197,7 +197,16 @@ MAIN_PID=$!
 
 # The --setup instance serves capture-setup.mjs: the --setup page, then the
 # console's first-run flow (with the web player, so its phone step offers it).
-if [ "${SKIP_ADMIN:-0}" != "1" ]; then
+# It starts only when a setup shot is wanted.
+WANT_SETUP=0
+if [ "${SKIP_ADMIN:-0}" != "1" ] && (cd "$HERE" && node --input-type=module -e '
+  import {SHOTS} from "./manifest.mjs";
+  import {wanted} from "./lib.mjs";
+  process.exit(wanted(...SHOTS.filter((s) => s.capture === "setup").map((s) => s.file)) ? 0 : 1);
+'); then
+  WANT_SETUP=1
+fi
+if [ "$WANT_SETUP" = 1 ]; then
   echo "==> starting --setup server on :$SETUP_PORT"
   rm -rf "$SETUP_DATA" && mkdir -p "$SETUP_DATA"
   AUDIOSILO_BIND="127.0.0.1:$SETUP_PORT" AUDIOSILO_TLS_MODE=off \
@@ -216,7 +225,7 @@ if [ -z "$ADMIN_PASSWORD" ]; then
   echo "could not parse admin password from $CACHE/server.log"; exit 1
 fi
 SETUP_URL=""
-if [ "${SKIP_ADMIN:-0}" != "1" ]; then
+if [ "$WANT_SETUP" = 1 ]; then
   SETUP_URL="$(grep -o "http://[^ ]*/setup#token=[^ ]*" "$CACHE/setup.log" | head -1 || true)"
 fi
 
@@ -300,7 +309,9 @@ if [ "${SKIP_ADMIN:-0}" != "1" ]; then
     MIRROR_PASSWORD="${MIRROR_PASSWORD:-}" node capture-admin.mjs
 
   echo "==> capturing the first-run setup flow"
-  if [ -n "$SETUP_URL" ]; then
+  if [ "$WANT_SETUP" != 1 ]; then
+    echo "  no setup shots wanted, skipped."
+  elif [ -n "$SETUP_URL" ]; then
     SETUP_URL="$SETUP_URL" node capture-setup.mjs
   else
     echo "  ! no setup URL in $CACHE/setup.log: the setup shots keep their previous images"

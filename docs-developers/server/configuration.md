@@ -39,8 +39,8 @@ not suppress the credentials banner or the setup page.
 
 The console's first-run setup flow is keyed off the database too: the
 `server_state` key `setup_state` (no row = a fresh server, flow not finished;
-migration `0053` marks an upgraded server with a library or a second account
-finished and dismissed). A library declared in `config.yaml` or the
+an upgraded server is marked finished, see
+[Data model](data-model.md#server-state)). A library declared in `config.yaml` or the
 environment doesn't finish it: the flow lists it as already added
 (`GET /admin/setup`'s `config_libraries`) and its naming step can still switch
 that library's `metadata_source`, which survives restarts (the config sync
