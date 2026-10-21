@@ -33,7 +33,7 @@ and for password-less accounts, so response timing doesn't leak account
 existence.
 
 :::danger[Never log or persist a plaintext secret]
-The first-run banner (and the setup wizard URL) is the **only** place a
+The first-run banner (and the setup page URL) is the **only** place a
 plaintext credential ever appears, exactly once. Handlers return freshly-minted
 codes/tokens in the response body and store only the hash.
 :::

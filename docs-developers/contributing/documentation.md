@@ -87,6 +87,7 @@ mappings:
 | Listening in the house (`src/components/house/`, the household hooks; server `catalog/household.go`) | [frontend/listening-in-the-house.md](../frontend/listening-in-the-house.md) + the [reference](../server/api/reference.md#listening-in-the-house) + [auth-and-security.md](../server/auth-and-security.md#listening-in-the-house-what-other-people-see) + `/users/listening/in-the-house`, `/users/admin/activity` (what the server records) |
 | Chromecast (`src/cast/`, `plugins/withCast.js`; server `auth/cast.go`, `handlers_cast.go`, the web CSP) | [frontend/chromecast.md](../frontend/chromecast.md) + the [reference](../server/api/reference.md#casting) + [auth-and-security.md](../server/auth-and-security.md#cast-tokens) + [server/web-ui.md](../server/web-ui.md#per-document-csp-htmlcsp) for the web CSP (`castSenderScripts`, the policy `TestHTMLCSPCastSender` pins) + `/users/listening/chromecast`, `/users/listening/playback` (other speakers), `/users/getting-started/remote-access` (the certificate note) |
 | Downloads / PWA, the offline companion (`offline-meta.ts`) | [frontend/offline.md](../frontend/offline.md) + `/users/listening/offline-downloads` |
+| First-run setup: the `/setup` page (`handlers_setup.go`, `assets/setup.*`), the console's Set up your server flow and Overview card (`features/setup/`, `finish-setup-card.tsx`), `catalog/setup.go`, `library/preview.go`, `library/mounts.go`, `handlers_admin_setup.go` | `/users/getting-started/first-run` (a section and shot per step) + the quickstarts' setup step (`/users/getting-started/quickstart-docker`, `install-unraid`, `install-binary`) + `/users/admin/console-tour` (the card) + [web-ui.md](../server/web-ui.md#the-first-run-setup-flow) (the flow and the `/setup` page) + the [reference](../server/api/reference.md#admin-first-run-setup) (and `POST /setup`) + [api/index.md](../server/api/index.md#error-envelope-and-status-conventions) (the codes) + [data-model.md](../server/data-model.md#server-state) (`setup_state`, `0053`) + [configuration.md](../server/configuration.md) (`--setup`) + [backups-and-notifications.md](../server/backups-and-notifications.md#audit-log) (`settings.setup`) + the `server/setup-wizard*.png` and `setup/*.png` screenshots (`capture-setup.mjs`: `SHOTS_ONLY=setup/,server/setup-wizard screenshots/run.sh`) |
 | Scanner, detection, metadata | [server/scanner.md](../server/scanner.md) + `/users/getting-started/organizing-your-library` |
 | Community chapters (`internal/chapteralign`, `internal/chaptercheck`, `catalog/communitychapters.go`, the Chapters card's panel) | [server/community-chapters.md](../server/community-chapters.md) + the Community chapters section of `/users/admin/books` (and `/users/admin/health` for the Health rows) |
 | Auth, invites, shares | [server/auth-and-security.md](../server/auth-and-security.md) + `/users/admin/users-and-invites`, `/users/admin/sharing` |
@@ -114,9 +115,9 @@ the feature name - several pages deliberately mark these as not-yet-shipped.
 Every embedded image is listed in `screenshots/manifest.mjs` and lives under
 `static/img/screenshots/`. The pipeline (`screenshots/run.sh`) rebuilds the
 server, seeds a small public-domain LibriVox library, runs a demo-mode server,
-and captures the web player, admin console, connect page, and setup wizard
-with Playwright. Anything it can't reach gets a labelled placeholder so the
-build never breaks.
+and captures the web player, admin console, connect page, and the first-run
+setup page and console flow (on a second, `--setup` server) with Playwright.
+Anything it can't reach gets a labelled placeholder so the build never breaks.
 
 Rules that keep this maintainable:
 

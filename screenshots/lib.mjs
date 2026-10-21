@@ -38,6 +38,33 @@ export const DESKTOP_CONTEXT = {
   reducedMotion: 'reduce',
 };
 
+// Makes the viewport as tall as the page (between min and max, at the desktop
+// width), so a long card or every card is in the shot; the caller restores
+// DESKTOP_CONTEXT.viewport.
+export const fitViewportToPage = async (p, min, max, settle = 800) => {
+  const height = await p.evaluate(() => document.documentElement.scrollHeight);
+  await p.setViewportSize({width: DESKTOP_CONTEXT.viewport.width, height: Math.min(Math.max(height, min), max)});
+  await sleep(settle);
+};
+
+// Fills the console's sign-in form (already open on `p`) as admin and submits it.
+export const submitSignIn = async (p, password) => {
+  await p.getByLabel('Username', {exact: true}).fill('admin');
+  await p.getByLabel('Password', {exact: true}).fill(password);
+  await p.getByRole('button', {name: 'Sign in', exact: true}).click();
+};
+
+// Fixture audio: ffmpeg(args) is true when ffmpeg ran and succeeded, and
+// silence() writes silent mono audio, cheap to encode even when it is hours long.
+export const ffmpeg = (args) =>
+  spawnSync('ffmpeg', ['-hide_banner', '-loglevel', 'error', '-y', ...args], {stdio: 'ignore'}).status === 0;
+export const silence = (file, seconds, meta = {}, codec = ['-c:a', 'libmp3lame', '-b:a', '8k']) =>
+  ffmpeg([
+    '-f', 'lavfi', '-i', 'anullsrc=r=8000:cl=mono', '-t', String(seconds),
+    ...Object.entries(meta).flatMap(([k, v]) => ['-metadata', `${k}=${v}`]),
+    ...codec, file,
+  ]);
+
 // A JSON client for a server's /api/v1: api(token, method, path, body?, headers?)
 // returns the parsed body (null when empty or not JSON) and throws on a non-2xx.
 export const apiClient = (origin) => async (token, method, p, body, headers = {}) => {

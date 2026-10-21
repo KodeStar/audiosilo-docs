@@ -9,6 +9,7 @@
 // `capture` says which script produces it:
 //   'web'     - capture-web.mjs (web player via a warmed demo session)
 //   'admin'   - capture-admin.mjs (admin console + public pages)
+//   'setup'   - capture-setup.mjs (the --setup page and the console's first-run flow)
 //   'meta'    - capture-meta.mjs (the meta.audiosilo.app site via a local metaserve)
 
 export const SHOTS = [
@@ -133,7 +134,19 @@ export const SHOTS = [
   {file: 'admin/activity-sessions.png', capture: 'admin', title: 'Admin - Sessions', hint: 'Activity > Sessions: the session table, newest first'},
   {file: 'admin/activity-year.png', capture: 'admin', title: 'Admin - Year in listening', hint: 'Activity > Year in listening: this year\'s story and calendar (1440x1100)'},
   {file: 'server/connect-page.png', capture: 'admin', title: 'Connect page', hint: 'public connect page (auth-code box / QR)'},
-  {file: 'server/setup-wizard.png', capture: 'admin', title: 'Setup wizard', hint: 'first-run --setup wizard page'},
+
+  // ── First-run setup (capture-setup.mjs: a fresh --setup server; desktop 1440 wide, dark) ──
+  {file: 'server/setup-wizard.png', capture: 'setup', title: 'Setup page', hint: "the --setup page: Welcome - let's set up your server, the admin username and password, Create account"},
+  {file: 'server/setup-wizard-done.png', capture: 'setup', title: 'Setup page - account ready', hint: 'the --setup page after Create account: Your account is ready, and Continue setup into the console'},
+  {file: 'setup/folder.png', capture: 'setup', title: 'Setup - Books folder', hint: 'step 1 of the console\'s Set up your server flow: the typed books folder checked (Found 8 audio files, 4 book folders) and the library name'},
+  {file: 'setup/naming.png', capture: 'setup', title: 'Setup - Book names', hint: 'step 2: four sample books named from tags and from folders side by side (the disagreeing rows marked), Folder names first preselected as Suggested (as tall as the page)'},
+  {file: 'setup/metadata.png', capture: 'setup', title: 'Setup - Community metadata', hint: 'step 3: community metadata on, the region, the service or a local copy, and the line saying Continue adds the library'},
+  {file: 'setup/reach.png', capture: 'setup', title: 'Setup - Addresses', hint: 'step 4, the library\'s scan done above it: the address the browser uses (a .local name) with Use as the home / public address, the two address fields, HTTPS: Off set by the config'},
+  {file: 'setup/abs.png', capture: 'setup', title: 'Setup - Audiobookshelf', hint: 'step 5: what the Audiobookshelf import brings across, metadata.json read as it is, Open the import'},
+  {file: 'setup/backups.png', capture: 'setup', title: 'Setup - Backups and updates', hint: 'step 6: the backup schedule (daily at 03:00), how many to keep (7), the backup folder (shown, set in config) and the update check'},
+  {file: 'setup/phone.png', capture: 'setup', title: 'Setup - Connect a phone', hint: 'step 7: the pairing QR code, New code, Open the web player, the ffmpeg line and the household note'},
+  {file: 'setup/bridge.png', capture: 'setup', title: 'Setup - Add a Bridge', hint: 'step 8 with no Bridge paired: what a Bridge does, the compose snippet, Connect a bridge, Skip and finish (as tall as the page)'},
+  {file: 'setup/finish-card.png', capture: 'setup', title: 'Setup - Finish setting up card', hint: "the Overview's Finish setting up card (clipped) after the flow finished with the Audiobookshelf and Bridge steps skipped"},
 
   // ── AudioSilo Meta site (meta.audiosilo.app; desktop 1440x900, dark) ────
   {file: 'meta/home.png', capture: 'meta', title: 'Meta - Home', hint: 'search hero, live stats band, latest additions grid'},
