@@ -1248,9 +1248,8 @@ only logged.
 The launcher prints the token-carrying URL in a startup banner and also
 reports it through `Options.OnURL`, so an in-process caller can open it in a
 browser - see [Configuration](configuration.md#launcher-options-for-embedders).
-The banner's last line still reads "You'll choose an admin password and your
-books folder." (`setupBanner` in `pkg/launcher`), though the folder is now
-chosen in the console.
+The banner's last line reads "You'll choose an admin password, then the console
+walks you through the rest." (`setupBanner` in `pkg/launcher`).
 
 ## Well-known app-association files
 

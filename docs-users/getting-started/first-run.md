@@ -51,7 +51,7 @@ Start the binary with `--setup` and the server skips creating an admin. Instead 
  Open this URL in your browser to finish setting up:
    https://localhost:8080/setup#token=...
 --------------------------------------------------------
- You'll choose an admin password and your books folder.
+ You'll choose an admin password, then the console walks you through the rest.
 ========================================================
 ```
 
