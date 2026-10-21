@@ -4,7 +4,14 @@ The documentation site for the AudioSilo product (Docusaurus 3, TypeScript
 config). Two independent docs instances: `docs-users/` (User Guide, `/users`,
 audience = non-programmer self-hoster) and `docs-developers/` (Developer Docs,
 `/developers`, audience = contributor). Landing page in `src/pages/index.tsx`;
-theme (pink `#db2777`, dark-first, matching the product) in `src/css/custom.css`.
+theme in `src/css/custom.css`: the shared Shelf tokens copied from
+`audiosilo-server/admin-ui/src/styles/globals.css` (section 2) mapped onto
+Infima, following the system colour scheme. Search is
+`@easyops-cn/docusaurus-search-local`, scoped per section (User Guide /
+Developer Docs); its index is a postBuild step, so search works only on a built
+site (`npm run build && npm run serve`), not `npm start`. A postinstall
+script (`scripts/patch-search-link.mjs`) fixes the theme's "See all results"
+URL for `trailingSlash: false`.
 
 ## The gate
 
@@ -14,7 +21,9 @@ npm run build     # MUST pass before a change is done
 
 The build **fails on** broken internal links, broken anchors, and missing
 embedded images (`onBrokenLinks/onBrokenAnchors: 'throw'`) - that's the
-mechanical consistency check. `npm start` for the live dev loop.
+mechanical consistency check. Its `prebuild` step
+(`scripts/check-admonitions.mjs`) also fails on the old `:::note Title`
+admonition syntax: write `:::note[Title]`. `npm start` for the live dev loop.
 Node 24 (workspace convention; `.nvmrc` in the sibling repos).
 
 ## Rules

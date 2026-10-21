@@ -351,7 +351,7 @@ pull request comment), and **the cycle log is the artifact** - every tool
 invocation, its output and every watcher decision goes to
 `<DATA_DIR>/logs/<date>.log` and to stdout.
 
-:::note The kill switch
+:::note[The kill switch]
 Revoke the bot's PAT, or stop its container. It has no other way into
 audiosilo-meta, and nothing in the catalogue depends on it running.
 :::

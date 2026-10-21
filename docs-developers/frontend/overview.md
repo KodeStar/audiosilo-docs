@@ -667,7 +667,7 @@ ones a contributor trips over first.
 
 ## Environment gotchas
 
-:::warning Read this before running anything
+:::warning[Read this before running anything]
 These are the four failure modes that cost the most time on a fresh checkout.
 :::
 

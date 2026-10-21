@@ -527,7 +527,7 @@ frozen `npm ci` - keep `package-lock.json` committed in sync after dependency
 changes. See [Gates and CI](../contributing/gates-and-ci.md) for the
 workspace-wide picture.
 
-:::caution Green gates ≠ verified
+:::caution[Green gates ≠ verified]
 The gates run on Node with full `Intl` and no device: they cannot see
 Hermes-runtime crashes (see [the Intl caveat](i18n.md#the-hermes-intl-caveat)),
 native-module behavior, CSS/layout regressions, or live-API integration. For

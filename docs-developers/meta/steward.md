@@ -217,7 +217,7 @@ loopback.
 With `SYNC_STEWARD` off none of these are read, and nothing of the steward
 exists: no goroutine, no clone, no state file, no `/status` section.
 
-:::note The kill switch
+:::note[The kill switch]
 Set `SYNC_STEWARD=off` (or revoke the token, or stop the container). The sync
 bot keeps running exactly as before.
 :::

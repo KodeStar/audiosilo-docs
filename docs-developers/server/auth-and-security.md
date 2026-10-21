@@ -32,7 +32,7 @@ Timing hygiene: `auth.Authenticate` runs a dummy argon2id verification (against
 and for password-less accounts, so response timing doesn't leak account
 existence.
 
-:::danger Never log or persist a plaintext secret
+:::danger[Never log or persist a plaintext secret]
 The first-run banner (and the setup page URL) is the **only** place a
 plaintext credential ever appears, exactly once. Handlers return freshly-minted
 codes/tokens in the response body and store only the hash.
@@ -279,7 +279,7 @@ password-less user who saved a recovery code can re-pair on any device via the
 normal connect screen, with no admin involved. `GenerateRecoveryCode`
 atomically replaces any existing recovery code for the user.
 
-:::note Client UI retired
+:::note[Client UI retired]
 The frontend player no longer mints or reads recovery codes - it nudges users to
 set a password and uses the reconnect flow (see
 [Frontend overview](../frontend/overview.md)) instead. The server keeps `POST

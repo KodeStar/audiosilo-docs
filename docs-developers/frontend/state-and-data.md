@@ -1087,7 +1087,7 @@ The offline-safe write path for listening progress:
   An `onConnectionRemoved` handler drops a removed connection's mirror
   records and queued saves.
 
-:::note No realtime sync
+:::note[No realtime sync]
 Progress sync is REST-only. The server advertises a `websocket` capability flag
 for a future realtime channel, but no WebSocket client exists in the frontend -
 don't document or rely on one.

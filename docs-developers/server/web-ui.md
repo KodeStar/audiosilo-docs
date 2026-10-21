@@ -120,7 +120,7 @@ lookup falls back to the OS registry, which on some Windows hosts maps `.js` to
 aren't valid `fs` paths (`..` segments) never resolve to a file. `HEAD`, `Range`
 and `If-Modified-Since` go through `http.ServeContent`.
 
-:::note Behaviour change for `/web`
+:::note[Behaviour change for `/web`]
 Before the shared handler, the player 404'd **any** missing path with a
 non-`.html` extension. Now only a missing **top-level** file with an extension,
 or a missing file under `_expo/` or `assets/`, 404s; a deeper missing path

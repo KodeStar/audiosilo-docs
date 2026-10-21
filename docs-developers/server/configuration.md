@@ -111,7 +111,7 @@ and where it appears: [Home and away addresses](api/reference.md#home-and-away-a
   upstream, not an address a device can use.
 - A `home` equal to the `away` is dropped.
 
-:::caution Reverse proxies and the derived home address
+:::caution[Reverse proxies and the derived home address]
 Behind a reverse proxy the server derives no home address at all, because the request's
 `Host` is the proxy's upstream (a container name such as `audiosilo:8080`, a bridge IP,
 plain `http` behind TLS). Set `lan_url` to give the apps a home address; a configured
@@ -167,7 +167,7 @@ self-signed, and no CSP carries `upgrade-insecure-requests`, so the console and 
 player also work over http on the LAN (without the secure-context features: the service
 worker, the clipboard API).
 
-:::note Gateways and the source address
+:::note[Gateways and the source address]
 Docker Desktop (Mac/Windows), rootless Docker, Docker's userland proxy (e.g. for IPv6
 connections to a published port) and routers that rewrite a forwarded port's source hand
 the server connections from a private address, such as `172.17.0.1`, whoever made them.

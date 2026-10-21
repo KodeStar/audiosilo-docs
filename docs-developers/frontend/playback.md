@@ -349,7 +349,7 @@ order:
    order (durations estimated from the largest chapter `end` per file);
 3. else the book's own `rel_path` as a single file.
 
-:::danger Stream the file, never the book
+:::danger[Stream the file, never the book]
 A track URL must be a real audio *file* (a chapter's `file_path` or a
 `BookFile.rel_path`) - never a folder/book path. Streaming a folder path is what
 produced the iOS MediaToolbox `-12864` failures. This is invariant
@@ -708,7 +708,7 @@ byte ranges and no length the `<audio>` element can know (`duration` reads
   explicit `setPositionState` with the track-absolute position and known duration,
   cleared again once a direct track plays.
 
-:::info Why the offset keeps positions track-absolute
+:::info[Why the offset keeps positions track-absolute]
 Everything above the engine assumes `snapshot.position` is the position **in the
 file**: `selectBookPosition` (`toBookPosition(offsets, trackIndex, position)`),
 chapter detection, the `resumeFloor` save guard, progress saves, the sleep timer's

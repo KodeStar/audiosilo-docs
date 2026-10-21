@@ -21,7 +21,7 @@ audiosilo-docs/
   sidebars-developers.ts
   screenshots/         the capture pipeline (manifest.mjs, run.sh, capture-*.mjs)
   static/img/screenshots/   the generated images the pages embed
-  src/                 landing page + theme (pink #db2777, dark-first)
+  src/                 landing page + theme (shared Shelf tokens, follows the system colour scheme)
 ```
 
 It's a standard [Docusaurus](https://docusaurus.io) site with **two docs
@@ -41,7 +41,17 @@ npm run build      # the docs gate - MUST pass before a change is done
 `npm run build` is deliberately strict: broken internal links, broken anchors,
 and missing embedded images all **fail the build**. That is the mechanical
 check that pages and screenshots stay consistent - treat it exactly like the
-code repos' gates.
+code repos' gates. A `prebuild` check (`scripts/check-admonitions.mjs`) also
+rejects old-style admonition titles (see Writing style below).
+
+Search (the `@easyops-cn/docusaurus-search-local` theme) builds its index
+during `npm run build`, so the search box returns nothing under `npm start`.
+To try a search, or to check how a page ranks, use the built site:
+`npm run build && npm run serve`. A postinstall script,
+`scripts/patch-search-link.mjs`, makes the theme's "See all results" link
+point at `/search?q=` (the theme ignores `trailingSlash: false`); it fails
+the install if a theme upgrade changes that line, so check the link still
+keeps its query and then update or remove the script.
 
 ## When a code change needs a docs change
 
@@ -92,6 +102,7 @@ mappings:
 | meta.audiosilo.app site UI | `/users/community/meta-site` + the `meta/` screenshots (+ [meta/overview.md](../meta/overview.md) when it is a site-architecture change) |
 | Build / release / distribution | [release-pipeline.md](../architecture/release-pipeline.md) + [releasing.md](./releasing.md) (+ `/users/getting-started/install-unraid` when the native archives or the LinuxServer.io image's template, paths or defaults change) |
 | A capability flag | [server/api/index.md](../server/api/index.md) + the feature's user page |
+| The shared design tokens (`audiosilo-server/admin-ui/src/styles/globals.css`: colours, font stacks, shadows, motion) | Section 2 (shared tokens) of this site's `src/css/custom.css`, copied across verbatim (the dark block stays inside its `@media screen` wrapper), then a look at the built site in light and dark |
 
 :::tip
 When you flip something from "planned" to "shipped" (WebSocket sync or
@@ -119,7 +130,8 @@ Rules that keep this maintainable:
 ## Adding a page
 
 1. Create the `.md` file under `docs-users/` or `docs-developers/` with
-   `title:` and `description:` frontmatter (body starts at `##`).
+   `title:` and `description:` frontmatter (body starts at `##`; the
+   `title:` already renders as the page heading, so do not repeat it).
 2. Add its id to the matching `sidebars-*.ts` - sidebars are hand-written so
    reading order stays deliberate; the build fails if the ids drift.
 3. Link related pages with relative `.md` links (validated at build time).
@@ -134,6 +146,12 @@ Rules that keep this maintainable:
   match the source, em dashes included (no current output contains one).
 - Cross-referenced headings should use a colon or rephrase rather than a dash,
   so the auto-generated anchor stays clean and stable.
+- **Admonition titles go in brackets.** Write `:::note[Title]` (also `tip`,
+  `info`, `warning`, `danger`, `caution`), then the body, then a closing `:::`.
+  The old `:::note Title` form no longer parses on this site (`future.v4`
+  turns off `markdown.mdx1Compat.admonitions`) and shows up as literal
+  `:::note Title` text, so the build rejects it. A bare `:::note` without a
+  title is fine.
 
 ## Deployment
 

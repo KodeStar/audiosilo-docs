@@ -480,7 +480,7 @@ Response: `204 No Content`.
 
 ### `POST /api/v1/auth/recovery`
 
-:::caution Legacy - being retired
+:::caution[Legacy - being retired]
 The frontend player no longer offers recovery codes; it nudges users to set a
 password and relies on the reconnect flow instead. This endpoint (and the two
 recovery revoke routes below) is kept only so older app builds keep working, and
@@ -721,7 +721,7 @@ On a server with `addresses`, the answer and its `pairing` also carry `addresses
 | `500` | configured `demo.library` doesn't exist |
 | `503` | demo is at capacity |
 
-:::note Demo root redirect
+:::note[Demo root redirect]
 When demo mode is enabled **and** the web player is mounted, `GET /` (the exact
 site root only) responds `302 Found` → `/web/demo`, landing visitors on the
 player's instant-demo screen. All other static routes (`/connect`, `/admin`, …)
@@ -3869,7 +3869,7 @@ library is re-resolved from what the last scan stored, in the edit's own
 transaction, before the response is sent, so no reader sees the new setting
 with the old values. Admin edits and accepted community values stay on top.
 
-:::note Behaviour change
+:::note[Behaviour change]
 Before admin console Phase 3, every `PATCH` rescanned the library, a rename
 included.
 :::
@@ -8432,7 +8432,7 @@ console flow's `folder` step as done (its `naming` step stays open):
 
 ---
 
-:::note Static UI routes
+:::note[Static UI routes]
 `internal/api/api.go` also mounts the baked-in static UI via `web.Register`:
 `GET /` (connect page), `/connect`, `/admin`, `/assets/…`, `/favicon.ico`,
 `/sw.js`, `/manifest.webmanifest`, and the web player at `/web/…` (when
