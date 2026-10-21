@@ -79,8 +79,7 @@ force a recognised private feed to be public.
 Only people who follow a private show can see it in a player, admins included.
 Someone else must supply the same private URL to follow it; guessing its folder
 name does not grant access. A library containing only private shows you do not
-follow appears empty. The admin console still lists the library and everything
-in it.
+follow appears empty. The admin console still lists the library itself.
 
 The Bridge keeps the private feed URL encrypted in its data folder. It is left
 out of the saved feed details and listener responses, and job lists show a

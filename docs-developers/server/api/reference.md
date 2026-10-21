@@ -1197,10 +1197,10 @@ within 60 seconds of the last one.
 
 | Status/code | Meaning |
 |---|---|
-| `400 invalid_request` | missing/invalid library, both or neither path and URL, private with path, bad path or unknown body fields |
+| `400 invalid_request` | missing/invalid library, both or neither path and URL, private with path, an invalid unfollow/check show path, or unknown body fields |
 | `400 invalid_feed_url` | malformed, non-HTTP(S), hostless or over-2,048-byte feed URL |
 | `403 no_library_access` | no accessible library, or URL follow without a whole-library grant |
-| `404 show_not_found` | missing/hidden show, or check without following |
+| `404 show_not_found` | missing, hidden or invalid show on follow by path, or check without following |
 | `409 not_podcast_library` | a books library |
 | `409 bridge_unavailable` | no online Bridge offering the action's podcast kind |
 | `409 library_not_writable` | Bridge mapping is not writable |
@@ -7678,8 +7678,8 @@ reads; a private feed URL appears only in the Bridge's claim answer. See
 *Admin.* Queues a job. `podcast.subscribe` and `podcast.poll` are server-internal
 and refused here with `400` (no code): use listener follow/check instead.
 Book-writing kinds on a podcast library return `409 not_book_library`;
-podcast kinds require a podcast library (`409 not_podcast_library` when queued
-internally against the wrong kind).
+podcast kinds are only ever queued for a podcast library (follow and check answer
+`409 not_podcast_library` for a books library before queuing).
 
 ```json
 { "kind": "bridge.verify", "library_id": 1, "path": "Andy Weir/Project Hail Mary", "params": { "hold_seconds": 0 } }

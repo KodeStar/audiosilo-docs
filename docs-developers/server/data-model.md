@@ -936,8 +936,9 @@ continues to use `(library_id, rel_path)`, never an episode/book id. Follows
 cascade with the user/library; feed state cascades with the library, not the
 rebuildable show. Private show URLs are empty in the index; only their hashes
 and safe host remain. `bridge_jobs.feed_redacted` keeps a safe display label
-for a subscribe request, whose stored params never hold a private URL. Partial
-indexes support per-user subscribe requests and ended-job recovery. Recovery
+for a subscribe request, whose stored params never hold a private URL. A partial
+index serves per-user subscribe requests and a `(kind, finished_at)` index
+ended-job recovery. Recovery
 behaviour (the `secret_missing` latch, `request_expired`) is in
 [Podcasts](../bridge/podcasts.md#private-urls-and-recovery).
 

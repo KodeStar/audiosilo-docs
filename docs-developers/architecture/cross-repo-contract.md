@@ -815,8 +815,8 @@ See [Podcasts](../bridge/podcasts.md) and the
   Off gates actions, stops the scheduler and holds queued jobs; reads stay core.
 - **Visibility:** `auth.SeesPodcasts(Credential.Client)` feeds `catalog.Caller.Podcasts`.
   `AudioSilo Admin` qualifies; `AudioSilo` version `dev` qualifies. The released
-  minimum remains empty, so released players, unidentified clients, the manager
-  and API tools without a recognized client do not qualify, admins included.
+  minimum remains empty, so released players, unidentified clients and API
+  tools without a recognized client do not qualify, admins included.
   Media tokens inherit the stored client when no valid request header exists.
   Private-show scopes apply after grants, only for followers matching the
   show's id; the admin catalog remains separate. An authorized library with

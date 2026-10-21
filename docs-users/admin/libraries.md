@@ -56,7 +56,7 @@ dialog asks for:
 A podcast library needs its own folder: it cannot share a root with, contain,
 or sit inside another library. Mount the same folder read-write in the Bridge;
 the server can keep reading it read-only. Its card has a **Podcasts** badge,
-and leaves out folder detection and book exports.
+and its menu greys out folder detection and book exports.
 
 Under them are two optional scan settings, **Scan automatically** and **Skip
 these files and folders** - see [Scanning on a schedule](#scanning-on-a-schedule)

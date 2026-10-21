@@ -432,7 +432,7 @@ Podcast scope adds two checks after authentication:
    minimum, `auth.PodcastPlayerMinVersion`, is still `""`, so no released player
    qualifies. Once set, a numeric `X.Y.Z` at least that minimum qualifies
    (suffixes after `-`/`+` ignored). Missing/malformed/other apps, API tools
-   without a recognized client, the Bridge and the manager fail the gate.
+   without a recognized client and the Bridge fail the gate.
    `callerByID` and background user scopes set it false. Admin role grants no
    exception. `CallerScope`, `CallerScopes` and `CallerLibraries` apply it before
    any admin shortcut. It hides libraries, their content, `/me/*` state and

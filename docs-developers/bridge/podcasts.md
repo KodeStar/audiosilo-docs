@@ -109,7 +109,7 @@ list; neither route tries on-demand audio indexing.
 ## Names and identity
 
 The Bridge assigns a show folder once from its title: NFC normalization;
-control, bidi-control and replacement characters removed; `/ \\ : * ? " < > |`
+control, bidi-control and replacement characters removed; `/ \ : * ? " < > |`
 replaced by spaces; whitespace collapsed; 100-byte rune-safe cap; leading and
 trailing spaces/dots trimmed. Empty becomes `Podcast`; Windows reserved names
 get ` (podcast)`. Case-folded NFC clashes with any root entry get ` (2)`,
@@ -275,9 +275,10 @@ its path, so replacing a private show at the same path does not inherit follows.
 
 ## Spike results: extensions and MP3 chapters
 
-**Spike 5:** all 15 sampled feeds retained their Podcast Namespace attributes
-in `gofeed.Extensions`. GUIDs appeared in 6 feeds, chapter links in 13 and
-transcripts in 12; every sample used the `podcast` prefix. The implementation
+**Spike 5:** all 15 sampled feed URLs (14 distinct feeds; two URLs serve the
+same show) retained their Podcast Namespace attributes in `gofeed.Extensions`.
+Counted per URL, GUIDs appeared in 6, chapter links in 13 and transcripts in
+12; every sample used the `podcast` prefix. The implementation
 uses extension data from gofeed and resolves prefixes by the namespace URI,
 `https://podcastindex.org/namespace/1.0`. It scans XML declarations for that
 mapping rather than maintaining a second parser for extension values.
