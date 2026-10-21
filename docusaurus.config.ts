@@ -61,12 +61,12 @@ const config: Config = {
         language: ['en'],
         highlightSearchTermsOnTargetPage: true,
         searchBarShortcutHint: true,
-        // Keep Mermaid diagram source out of the index.
-        ignoreCssSelectors: ['.docusaurus-mermaid-container'],
         // Per-section search: a User Guide page searches the User Guide
-        // index, a developer page the Developer Docs one. "See all results"
-        // on the search page still reaches both, and pages outside either
-        // section (the homepage, /search) search everything.
+        // index, a developer page the Developer Docs one. The dropdown's
+        // footer link opens /search within that section (or everywhere when
+        // the section has no hits); there the context selector switches to
+        // the other section or "Everywhere". Pages outside either section
+        // (the homepage, /search with no context) search everything.
         searchContextByPaths: [
           {label: 'User Guide', path: 'users'},
           {label: 'Developer Docs', path: 'developers'},

@@ -5,11 +5,12 @@
  * 1. Fonts          5. Navbar + search    9. Admonitions
  * 2. Shared tokens  6. Sidebar + TOC     10. Code
  * 3. Infima mapping 7. Content           11. Footer
- * 4. Base           8. Buttons + cards
+ * 4. Base           8. Buttons + cards     12. Print
  *
  * Section 2 is copied hex-for-hex from audiosilo-server/admin-ui/src/styles/
- * globals.css (names included); keep it in sync with that file, never invent
- * a colour here. Everything below it only reads those tokens.
+ * globals.css (names included; only the dark block's `@media screen` wrapper
+ * is local); keep it in sync with that file, never invent a colour here.
+ * Everything below it only reads those tokens.
  */
 
 /* 1. Fonts: self-hosted from npm like the console and site (no font CDN).
@@ -86,38 +87,42 @@
   --dur-1: 120ms;
 }
 
-[data-theme='dark'] {
-  --background: #0a0f1e;
-  --foreground: #e7ebf4;
-  --card: #10172b;
-  --popover: #131b31;
-  --primary: #eef1f8;
-  --primary-foreground: #0a0f1e;
-  --secondary: #1a2340;
-  --muted: #151d34;
-  --muted-foreground: #8f9ab3;
-  --subtle-foreground: #66718b;
-  --accent: #1a2340;
-  --border: #1d2640;
-  --border-strong: #2a3555;
-  --ring: #ec4f95;
+/* The dark values apply on screen only: paper is white, so a dark-mode page
+   prints with the light tokens (the wrapper is the only local addition). */
+@media screen {
+  [data-theme='dark'] {
+    --background: #0a0f1e;
+    --foreground: #e7ebf4;
+    --card: #10172b;
+    --popover: #131b31;
+    --primary: #eef1f8;
+    --primary-foreground: #0a0f1e;
+    --secondary: #1a2340;
+    --muted: #151d34;
+    --muted-foreground: #8f9ab3;
+    --subtle-foreground: #66718b;
+    --accent: #1a2340;
+    --border: #1d2640;
+    --border-strong: #2a3555;
+    --ring: #ec4f95;
 
-  --brand: #ec4f95;
-  --brand-soft: #3a1530;
-  --brand-ink: #f78bbb;
+    --brand: #ec4f95;
+    --brand-soft: #3a1530;
+    --brand-ink: #f78bbb;
 
-  --success: #3cc994;
-  --success-soft: #0f2e26;
-  --warning: #f0b04d;
-  --warning-soft: #33260f;
-  --info: #7d9bf2;
-  --info-soft: #17234a;
-  --destructive: #f0606e;
-  --destructive-soft: #3a1720;
+    --success: #3cc994;
+    --success-soft: #0f2e26;
+    --warning: #f0b04d;
+    --warning-soft: #33260f;
+    --info: #7d9bf2;
+    --info-soft: #17234a;
+    --destructive: #f0606e;
+    --destructive-soft: #3a1720;
 
-  --topbar: rgb(10 15 30 / 0.78);
-  --topbar-border: #182038;
-  --shadow-overlay: 0 30px 80px -10px rgb(0 0 0 / 0.7), 0 0 0 1px rgb(255 255 255 / 0.04);
+    --topbar: rgb(10 15 30 / 0.78);
+    --topbar-border: #182038;
+    --shadow-overlay: 0 30px 80px -10px rgb(0 0 0 / 0.7), 0 0 0 1px rgb(255 255 255 / 0.04);
+  }
 }
 
 /* 3. Infima mapping. The rules are theme-independent: the tokens flip, so one
@@ -339,7 +344,6 @@ mark {
   height: 38px;
   border: 1px solid var(--border);
   border-radius: 12px;
-  font-size: 13.5px;
   transition: border-color var(--dur-1) var(--ease-out);
 }
 
@@ -349,8 +353,10 @@ mark {
     align-items: center;
   }
 
+  /* Desktop only: iOS Safari zooms the page into an input under 16px. */
   .navbar__search-input {
     width: 240px;
+    font-size: 13.5px;
   }
 }
 
@@ -373,22 +379,25 @@ mark {
 }
 
 /* Results: flat rows on a popover, active row on the accent fill. The hit
-   highlight reads the same variable as that fill, so set it on <mark> alone. */
+   highlight reads the same variable as that fill, so set it on <mark> alone.
+   The search theme's CSS loads after this file and its row rule is
+   `.searchBar .dropdownMenu .suggestion`, so the row selector must outrank it. */
 .navbar__search mark {
   --search-local-highlight-color: var(--brand-ink);
 }
 
-.navbar__search [role='option'] {
+.navbar__search [role='listbox'] div[role='option'] {
   border-radius: 10px;
 }
 
 /* The /search page: result titles in ink ("one pink thing per view") on
-   hairline rows. CSS modules hash the class names, hence the prefix match. */
-[class*='searchResultItem_'] {
+   hairline rows. CSS modules hash the class names, hence the prefix match;
+   the element type outranks the theme's own later `.searchResultItem` rule. */
+article[class*='searchResultItem_'] {
   border-bottom-color: var(--border);
 }
 
-[class*='searchResultItem_'] > h2 > a {
+article[class*='searchResultItem_'] > h2 > a {
   color: var(--foreground);
 }
 
@@ -542,4 +551,13 @@ mark {
 .footer__copyright {
   color: var(--subtle-foreground);
   font-size: 13px;
+}
+
+/* 12. Print: section 2's dark tokens are screen-only, but a dark-mode code
+   block keeps the dark Prism theme's light token colours (inline styles), so
+   print them in ink. */
+@media print {
+  html[data-theme='dark'] .theme-code-block :is(pre, pre *) {
+    color: var(--foreground) !important;
+  }
 }
