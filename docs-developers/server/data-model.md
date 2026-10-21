@@ -934,13 +934,12 @@ Migration `0052_podcasts` adds the library kind and these tables:
 An episode's normal Book row is indexed even with no file. Durable progress
 continues to use `(library_id, rel_path)`, never an episode/book id. Follows
 cascade with the user/library; feed state cascades with the library, not the
-rebuildable show. The `secret_missing` latch survives later poll errors until a
-successful feed job, so the original URL can still repair the vault.
-Private show URLs are empty in the index; only their hashes and safe host remain.
-`bridge_jobs.feed_redacted` keeps a safe display label after a volatile URL is
-lost; private subscribe params have an empty `feed_url`, with the actual URL
-held only in service memory until injected into a claim. Partial indexes support
-per-user subscribe requests and ended-job recovery. See [Podcasts](../bridge/podcasts.md).
+rebuildable show. Private show URLs are empty in the index; only their hashes
+and safe host remain. `bridge_jobs.feed_redacted` keeps a safe display label
+for a subscribe request, whose stored params never hold a private URL. Partial
+indexes support per-user subscribe requests and ended-job recovery. Recovery
+behaviour (the `secret_missing` latch, `request_expired`) is in
+[Podcasts](../bridge/podcasts.md#private-urls-and-recovery).
 
 ### Community metadata cache
 

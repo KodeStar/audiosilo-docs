@@ -29,10 +29,10 @@ metadata database. It runs as **two containers**:
 
 :::info Early days
 The Bridge is new and still being built, and its images aren't open to everyone
-yet. [Podcasts](../admin/podcasts.md) now have feed following and checks, with
-the Podcasts module enabled. Released player apps do not show podcasts yet;
-player views arrive in a later release. Only the admin console lists podcast
-libraries for now. Read-along and more jobs come in later versions.
+yet. With the Podcasts module on, the Bridge can follow
+[podcast feeds](../admin/podcasts.md); released player apps
+[do not show podcasts yet](../admin/podcasts.md#what-is-available-now).
+Read-along and more jobs come in later versions.
 :::
 
 ### What you need
@@ -222,9 +222,11 @@ settings folder and asks the server to read it back. It does not need a book
 to compare. Leave the marker in place. **Verify** uses a sample book and is for
 books libraries.
 
-Podcast feed jobs do not use speech recognition or an AI agent. Steps 6 through
-9 set up the book-generation and contribution features; the Bridge's setup
-checklist may still list those steps when you only want podcasts.
+Podcast feed jobs do not use speech recognition or an AI agent. The steps below
+set up the book-generation and contribution features; the Bridge's setup
+checklist may still list them when you only want podcasts.
+
+#### Feeds on your local network
 
 Public feeds work without an extra network setting. To read a feed on a trusted
 local network, explicitly allow its address range in the Bridge's configuration:

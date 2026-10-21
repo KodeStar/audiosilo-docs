@@ -169,8 +169,8 @@ the mark; see [generated content](../server/api/reference.md#generated-content))
   staging protocol, and the credential hand-off.
 - [Contributions](contributions.md) - Phase 2b: the Accounts tab (the GitHub
   sign-in, the agent credentials), `sidecars.contribute` and `meta.correct`.
-- [Podcasts](podcasts.md) - feed files, polling, private credentials and the HTTP guard.
-
+- [Podcasts](podcasts.md) - Phase 2c-1: feed files, polling, private
+  credentials and the HTTP guard.
 - [Configuration](configuration.md) - the Bridge's settings and environment, the
   images and the compose example.
 - [Development](development.md) - the gate, the layout and the Bridge's own page.

@@ -411,7 +411,6 @@ Heartbeat replies always include library `kind`; the Bridge treats a missing
 kind as `books`. Private subscribe URLs are injected only into the claim
 response, sealed before local claim recording, and redacted on other reads.
 Default admin job lists omit polls unless `kind=podcast.poll` is requested.
-Neither podcast kind is `Job.Notable`, so it sends no job notification.
 
 [Podcasts](podcasts.md) describes job params/results, scheduling, privacy and
 file ownership; the [reference](../server/api/reference.md#podcasts) lists the
@@ -420,7 +419,8 @@ listener routes.
 ### Notifications
 
 The server tells admins about notable jobs itself (the Bridge has no route for
-it). Podcast jobs are excluded. When a notable job moves into `done` it records `bridge_job_finished`, and into `failed`, or into
+it); neither podcast kind is `Job.Notable`. When a notable job moves into `done`
+it records `bridge_job_finished`, and into `failed`, or into
 `needs_attention` with a park that isn't transient, `bridge_job_failed`, once per
 move and only after the move has committed. That covers the Bridge's reports and a
 lease that runs out on the last attempt alike. A report that leaves the state as it

@@ -10,9 +10,9 @@ per person which ones (or which parts of them) are visible via
 [shares](sharing.md).
 
 [Podcasts](podcasts.md) need a Bridge and the Podcasts module. Released player
-apps do not show podcasts yet; player views arrive in a later release. Only the
-admin console lists podcast libraries for now. The book detection, book details
-and export tools described below apply to **Books** libraries.
+apps [do not show podcasts yet](podcasts.md#what-is-available-now). The book
+detection, book details and export tools described below apply to **Books**
+libraries.
 
 Libraries live under **Library > Libraries** in the
 [admin console](console-tour.md) ("Folders AudioSilo reads. Your files stay

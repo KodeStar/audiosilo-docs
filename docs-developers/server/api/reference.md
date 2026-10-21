@@ -1091,7 +1091,6 @@ clients are the console's `AudioSilo Admin` or the player's `AudioSilo` with
 version `dev`, through `X-AudioSilo-Client`; the released-player minimum is still
 empty. A missing, other or released client is denied podcast content even for
 an admin. See [visibility](../auth-and-security.md#podcast-visibility).
-The console lists podcast libraries but has no follow-by-URL screen.
 
 ### Podcast read routes
 
@@ -6774,8 +6773,7 @@ and after each settings save).
 | `bridge_state` | omitted with `requires_bridge`. `offline`: no paired Bridge has sent a heartbeat in the last two minutes; `no_feature`: the online Bridge doesn't offer the feature (for `contribute`: it can't contribute, having no GitHub token GitHub accepts, whether its Accounts sign-in, `AUDIOSILO_BRIDGE_GITHUB_TOKEN` or `gh`); `ready`: it does |
 
 The registry also includes `podcasts`, with `requires_bridge: "podcast"`;
-both modules ship disabled. `capabilities.podcasts` follows its toggle and
-Bridge readiness, while podcast reads remain core. Setting it uses
+both modules ship disabled. Setting it uses
 `{"modules":{"podcasts":true}}` on `PATCH /admin/settings`.
 
 `modules` is `[]` on a server with none. Whether a toggle is locked is the settings
@@ -7423,11 +7421,6 @@ that read the block, ask with their token.
   [module](../modules.md) needs. Sorted, each once, always a list
   (`[]` for none), never `null`. A kind the Bridge advertises that the
   server doesn't know adds nothing.
-
-`capabilities.podcasts` is the `podcasts` module's toggle and an online Bridge
-with the `podcast` feature; it is sent `false` otherwise. This gates podcast
-actions and scheduling, not core reads. Released player visibility has a
-separate client gate; see [Podcasts](#podcasts).
 
 The server keeps the last heartbeat it read for up to 5 seconds, so `GET /server`,
 which every client calls often, rarely reads the database for it. A pairing or an

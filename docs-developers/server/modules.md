@@ -123,7 +123,7 @@ Nothing starts before `StartModules` or after `StopModules`.
 The `podcasts` module's `Start` runs `podcast.RunScheduler`: it folds ended
 subscribe/poll outcomes and queues due polls, waking on job completion and every
 60 seconds. Off stops that work and holds queued podcast jobs. Already claimed
-jobs may finish; reads and playback of present files remain core.
+jobs may finish.
 
 ## `GET /api/v1/admin/modules`
 

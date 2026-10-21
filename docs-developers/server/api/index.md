@@ -157,6 +157,9 @@ Who sends it:
 - **The admin console** - always (it is same-origin).
 - Anything else may send it; nothing requires it.
 
+The header also decides whether a client sees podcast libraries at all: see
+[Podcast visibility](../auth-and-security.md#podcast-visibility).
+
 ## Error envelope and status conventions
 
 Every error is a JSON object with an `error` message:
@@ -246,8 +249,7 @@ Podcast actions add `invalid_request` and `invalid_feed_url` (`400`),
 `bridge_unavailable` and `library_not_writable` (`409`), and
 `too_many_requests` / `checked_recently` (`429`). Library kinds add
 `invalid_kind` / `kind_immutable` (`400`) and `root_overlaps` (`409`). An
-undownloaded episode streams as `404 not_downloaded`; authorized podcast
-library lists can be empty after privacy filtering. Full shapes and async
+undownloaded episode streams as `404 not_downloaded`. Full shapes and async
 feed failures: [Podcasts](reference.md#podcasts).
 
 **Branch on `code`, not on the English `error` text**, which is free to change.

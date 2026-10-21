@@ -144,7 +144,8 @@ writes use hidden temporary files, fsync and atomic rename.
 ## Job wire format
 
 Both kinds are server-internal, module-owned and non-notable. The admin enqueue
-route refuses them; follow/check and the scheduler create them. Subscribe has
+route refuses them, and default admin job lists omit `podcast.poll` unless
+explicitly filtered; follow/check and the scheduler create them. Subscribe has
 `library_id`, null `path`, priority 10 and the listener's `requested_by`.
 Its dedupe key is `podcast.subscribe|<library_id>||<feed_url_sha256>|<user_id>`.
 Stored params are strict, server-built JSON:
@@ -157,7 +158,8 @@ Stored params are strict, server-built JSON:
 }
 ```
 
-A private request stores `feed_url: ""`; only its claim receives the secret.
+A private request stores `feed_url: ""` (see
+[Private URLs](#private-urls-and-recovery)).
 `show_path` names an existing show when restoring a missing credential. Poll's
 `path` is one clean non-hidden show segment. Its params are optional `etag`
 and `last_modified`, each at most 512 bytes. The Bridge drops URL-bearing or
@@ -206,8 +208,7 @@ Failures update status and back off from 30 minutes exponentially to 24 hours,
 or use `retry_after_seconds` clamped to 60 seconds through 24 hours. `gone`
 (HTTP 410) stops automatic polls. Unwritable libraries are deferred. Turning
 the module off stops scheduling and folding and holds queued podcast jobs;
-already claimed jobs can finish. Podcast jobs are never notable notifications,
-and default admin job lists omit `podcast.poll` unless explicitly filtered.
+already claimed jobs can finish.
 
 Permanent 301/308 redirect chains and `itunes:new-feed-url` can move a feed.
 The Bridge keeps previous hashes for dedupe; it rejects an HTTPS-to-HTTP

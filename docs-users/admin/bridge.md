@@ -10,8 +10,7 @@ safe to put on the internet.
 
 A Bridge is optional for listening to your existing books.
 [Podcasts](podcasts.md) need one and the Podcasts module. Released player apps
-do not show podcasts yet; player views arrive in a later release. Only the
-admin console lists podcast libraries for now.
+[do not show podcasts yet](podcasts.md#what-is-available-now).
 
 :::info What it does today
 The Bridge is new. Today it
@@ -177,7 +176,6 @@ Each library shows its folder **On the server**, the folder **On the Bridge**, a
 the book it **Checked with**. The Bridge doesn't take a folder's word for it: it
 finds a book the server knows and checks that its files are there with exactly the
 same sizes, and only then tries writing a small test file (which it removes).
-For a podcast library it compares a marker read through both mounts instead.
 **Verify** below uses the book comparison and is for books libraries.
 
 When a library isn't **Ready**, the line under it says why. The usual reasons:

@@ -45,8 +45,7 @@ Episodes without files remain indexed, have empty chapter lists and stream as
 `404 not_downloaded`. The server reads reserved `fetch.duration_ms` only when
 the file is present, otherwise falling back to feed duration or zero.
 
-Follows and listening state survive show pruning as path-keyed state, but a
-follow's `show_id` must still match before it grants private access. The
+Follows and listening state survive show pruning as path-keyed state. The
 unavailable-root guard preserves the index on an unreadable root, or an empty
 root that previously held shows. A partial scan suppresses pruning. Do not
 rename show folders manually: feed episode paths include them. See

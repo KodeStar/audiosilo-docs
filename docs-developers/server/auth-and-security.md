@@ -422,10 +422,10 @@ lists, as described below.
 
 ## Podcast visibility
 
-Podcast scope has two checks after authentication. Client support uses
-`auth.SeesPodcasts`, in `internal/auth/podcastgate.go`:
+Podcast scope adds two checks after authentication:
 
-1. **Client support.** `api.callerOf` uses `Credential.Client`: this request's
+1. **Client support** (`auth.SeesPodcasts`, `internal/auth/podcastgate.go`).
+   `api.callerOf` uses `Credential.Client`: this request's
    valid `X-AudioSilo-Client`, otherwise the token's stored client (including
    media `?token=`). `catalog.Caller.Podcasts` is true for `AudioSilo Admin`
    with any/no version and `AudioSilo` with version `dev`. The released-player
@@ -460,13 +460,11 @@ and manual check use the module user wrapper (no kids, no demo accounts;
 scope, are not module-gated. **The client header is compatibility negotiation,
 not a substitute for authentication or grants.**
 
-Private URLs are credentials: the server keeps pending private subscribe URLs
-only in memory and injects them only into Bridge claim responses. A restart
-before claim fails the request as `request_expired`; follow again. The Bridge
-seals the URL before recording a claim and retains a show's credential in its
-vault, never plain job rows or `feed.json`. Job displays, errors and results
-redact URL text. See [Podcasts](../bridge/podcasts.md#private-urls-and-recovery)
-for detection, storage and recovery details.
+Private URLs are credentials: the server never persists a pending private
+subscribe URL (it injects it only into the Bridge's claim response), the Bridge
+keeps it only in its vault, and job displays, errors and results redact URL
+text. See [Podcasts](../bridge/podcasts.md#private-urls-and-recovery) for
+detection, storage and recovery.
 
 ## The listener's own state (`/me/*`)
 
