@@ -2,7 +2,6 @@
 // Requires a running server (run.sh) and env:
 //   AS_ORIGIN       server origin (default http://127.0.0.1:8790)
 //   ADMIN_PASSWORD  the first-run admin password (parsed from the log by run.sh)
-//   SETUP_URL       optional: a second --setup server's wizard URL (with #token)
 //   MIRROR_ORIGIN   optional: a third server in metadata mirror mode with a seeded
 //                   local copy (run.sh starts it when it built the meta artifact)
 //   MIRROR_PASSWORD that server's first-run admin password
@@ -57,7 +56,6 @@ import {
 const ORIGIN = (process.env.AS_ORIGIN || 'http://127.0.0.1:8790').replace(/\/$/, '');
 const ADMIN = `${ORIGIN}/admin`;
 const PASSWORD = process.env.ADMIN_PASSWORD;
-const SETUP_URL = process.env.SETUP_URL || '';
 const MIRROR_ORIGIN = (process.env.MIRROR_ORIGIN || '').replace(/\/$/, '');
 const MIRROR_PASSWORD = process.env.MIRROR_PASSWORD || '';
 const INBOX_DIR = path.resolve(process.env.INBOX_DIR || path.join(CACHE, 'inbox'));
@@ -90,6 +88,17 @@ let firstBook = null; // the first book of GET /admin/books ({library_id, path, 
 const login = await api(null, 'POST', '/auth/login', {username: 'admin', password: PASSWORD, device_name: 'Kitchen tablet'});
 const token = login.token;
 console.log('  ✓ admin login');
+
+// A fresh server sends its admin to the first-run flow on the first console
+// visit of every browser session; the flow has shots of its own
+// (capture-setup.mjs), so this server is marked set up. Finished and dismissed,
+// as an upgraded server is, so the Overview shows no "Finish setting up" card.
+// (A server from before the flow has no such route.)
+const markSetUp = (client, tok) =>
+  client(tok, 'PUT', '/admin/setup', {finished: true, dismissed: true}).catch((e) =>
+    console.log(`  ! first-run setup not marked done: ${e.message}`),
+  );
+await markSetUp(api, token);
 
 await step('provision listener + share', async () => {
   const libs = await api(token, 'GET', '/admin/libraries');
@@ -845,6 +854,7 @@ await step('health: system in mirror mode', async () => {
   // run.sh's dead proxy fails): stop at once, with its metadata switched off.
   const mapi = apiClient(MIRROR_ORIGIN);
   const {token: mtoken} = await mapi(null, 'POST', '/auth/login', {username: 'admin', password: MIRROR_PASSWORD});
+  await markSetUp(mapi, mtoken);
   for (const until = Date.now() + 30000; ; await sleep(500)) {
     const m = await mapi(mtoken, 'GET', '/admin/meta/mirror');
     if (m.state === 'ready') break;
@@ -1522,15 +1532,6 @@ await step('connect page', async () => {
   await sleep(2500); // fragment codes auto-redeem into the QR + buttons view
   await shoot(p2, 'server/connect-page.png');
   await p2.close();
-});
-
-await step('setup wizard', async () => {
-  if (!SETUP_URL) throw new Error('SETUP_URL not set (run.sh starts the --setup instance)');
-  const p3 = await ctx.newPage();
-  await p3.goto(SETUP_URL, {waitUntil: 'networkidle', timeout: 45000});
-  await sleep(1500);
-  await shoot(p3, 'server/setup-wizard.png');
-  await p3.close();
 });
 
 await ctx.close();

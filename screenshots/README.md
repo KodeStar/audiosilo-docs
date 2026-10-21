@@ -17,8 +17,8 @@ npm install && npx playwright install chromium   # first time only
 `run.sh` builds the sibling `audiosilo-server`, seeds a small public-domain
 LibriVox library (cached in `.cache/library`; `MAX_FILES=3` chapter files per
 book keeps it ~100 MB), starts a demo-mode server on `:8790` serving the
-frontend's web export (plus a `--setup` instance on `:8791` for the wizard
-shot), builds the `audiosilo-meta` data artifact (composed with
+frontend's web export (plus a `--setup` instance on `:8791` for the first-run
+setup shots), builds the `audiosilo-meta` data artifact (composed with
 `audiosilo-meta-community`) + site and starts a `metaserve` on `:8795` for the
 meta-site shots, then runs the Playwright captures and backfills placeholders.
 `SKIP_META=1` skips the meta stack (for a web/admin-only run).
@@ -36,6 +36,34 @@ that use the exact English labels from the server's
 `admin-ui/src/i18n/locales/en.json`, so a renamed button or field there needs
 the same rename in the script (a failed step is logged and its shot falls back
 to the previous image or a placeholder).
+
+The first-run setup shots (`server/setup-wizard*.png` and `setup/*.png`)
+come from `capture-setup.mjs`, which `run.sh` runs after `capture-admin.mjs`
+against the `--setup` instance (a fresh data dir, no admin yet). It opens the
+wizard's one-time link, shoots the account form, creates the admin, shoots the
+"Your account is ready" hand-over, follows **Continue setup** into the console
+and signs in, where the console sends a server that hasn't finished setting up
+to its "Set up your server" flow. It then runs all eight steps through their
+real UI, a shot per step, and ends on the Overview's **Finish setting up**
+card. The books folder it adds is built fresh under `.cache/setup/Audiobooks`
+(`SETUP_BOOKS` overrides): four tiny books of generated silence (**ffmpeg** on
+PATH) in `Author / Series / N - Title` folders whose tags are poor or missing,
+so the naming step shows tags and folders disagreeing and suggests the
+folders. The browser reaches that server as `audiosilo.local` (`SETUP_HOST`;
+mapped to 127.0.0.1 inside Chromium only), so the address step treats it as a
+home-network address and offers it as the home address. The Audiobookshelf
+step is continued without opening the import and the Bridge step ends with
+**Skip and finish**, which leaves the card two skipped steps to list. A
+`--setup` server's wizard closes once its admin exists, so the script runs
+once per server: `run.sh` starts it on a fresh data dir every run. On a macOS
+host the folder step shows no mounted-folder suggestions (they are read on
+Linux only).
+
+Because a fresh server sends its admin to that flow on the first console visit
+of every browser session, `capture-admin.mjs` marks the demo server (and the
+mirror-mode one) set up (`PUT /admin/setup`, finished and dismissed) before it
+opens a browser, so its shots never land on the flow and the Overview shows no
+setup card.
 
 Two admin shots depend on the server's community metadata lookup, which the
 demo server leaves at its default (`https://meta.audiosilo.app`, so it needs
