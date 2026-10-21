@@ -538,6 +538,15 @@ article[class*='searchResultItem_'] > h2 > a {
   border: 1px solid var(--border);
 }
 
+/* JetBrains Mono joins `===`, `!==`, `=>` into ligatures (through `calt`);
+   code should show the characters as typed. */
+code,
+kbd,
+pre,
+samp {
+  font-variant-ligatures: none;
+}
+
 /* 11. Footer: the page background under a hairline, not Infima's grey block. */
 .footer {
   border-top: 1px solid var(--border);

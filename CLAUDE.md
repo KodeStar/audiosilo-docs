@@ -9,7 +9,9 @@ theme in `src/css/custom.css`: the shared Shelf tokens copied from
 Infima, following the system colour scheme. Search is
 `@easyops-cn/docusaurus-search-local`, scoped per section (User Guide /
 Developer Docs); its index is a postBuild step, so search works only on a built
-site (`npm run build && npm run serve`), not `npm start`.
+site (`npm run build && npm run serve`), not `npm start`. A postinstall
+script (`scripts/patch-search-link.mjs`) fixes the theme's "See all results"
+URL for `trailingSlash: false`.
 
 ## The gate
 
