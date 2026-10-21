@@ -7,7 +7,7 @@ The **Library** destination of the [admin console](console-tour.md) is where
 you see every book on your server and tidy up what players show about it:
 titles, authors, narrators, series, genres and tags, covers and chapter names.
 
-:::info Your files are never changed
+:::info[Your files are never changed]
 Every edit you make here is stored in AudioSilo's own database as an
 **override**, and it is **locked**: a rescan reads the file again but keeps
 your edit. Nothing is ever written to your audio files or book folders, and
@@ -278,7 +278,7 @@ ISBN) against the chapter list of the exact recording it is matched to, and
 the **Community chapters** panel at the top of the Chapters card says what it
 found.
 
-:::note Match the book first
+:::note[Match the book first]
 AudioSilo doesn't read an ASIN from the files' tags, so a book is only checked
 once it is matched: with **Match with community metadata** on its page, or
 [Match automatically](health.md#matching-every-book-at-once) for many books at
@@ -523,7 +523,7 @@ couldn't be fetched.
 If the catalogue can't be reached, or is too busy to answer in time, the
 dialog says "meta.audiosilo.app isn't answering" - try again in a minute.
 
-:::note What matching sends
+:::note[What matching sends]
 Opening the match dialog sends the book's tagged title, author and series, its
 length, its ASIN or ISBN, anything you type, and up to three of its folder
 names (the top folder, the folder holding the book, and the book's own folder

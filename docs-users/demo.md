@@ -71,7 +71,7 @@ With demo mode on, visiting the server's front page takes visitors straight to t
 demo landing screen, and each visit provisions a throwaway account granted that
 one library. Idle accounts are cleaned up automatically in the background.
 
-:::warning Use a dedicated library
+:::warning[Use a dedicated library]
 Demo visitors get full listening access to the library you name. Point demo mode
 at a library of **public-domain audiobooks**, not your personal collection.
 :::

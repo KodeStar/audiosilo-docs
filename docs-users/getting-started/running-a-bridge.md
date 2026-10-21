@@ -27,7 +27,7 @@ metadata database. It runs as **two containers**:
   credential, when you set it on the Bridge, which each run receives), and it
   can't reach the server or the Bridge. Each job hands it just the text it needs.
 
-:::info Early days
+:::info[Early days]
 The Bridge is new and still being built, and its images aren't open to everyone
 yet. With the Podcasts module on, the Bridge can follow
 [podcast feeds](../admin/podcasts.md); released player apps

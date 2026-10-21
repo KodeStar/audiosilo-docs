@@ -79,7 +79,7 @@ as long as it has devices left and hasn't expired, so each of their devices can
 use the same link - see [Connecting](../listening/connecting.md) for what that
 looks like on their end.
 
-:::note The code is shown once and never reaches the server's logs
+:::note[The code is shown once and never reaches the server's logs]
 "This is the only time the code is shown." The server keeps only a fingerprint
 of it, so it can check codes but never display them again - to send a fresh one
 later, [rotate](#rotating-and-revoking) the invite. The link carries the code

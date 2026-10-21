@@ -9,7 +9,7 @@ Docker is the recommended way to run AudioSilo on a NAS, home server or VPS. The
 
 The image is **`ghcr.io/kodestar/audiosilo-server`**.
 
-:::tip On Unraid?
+:::tip[On Unraid?]
 Install from Community Applications instead - see [Install on Unraid](./install-unraid.md).
 :::
 
@@ -110,7 +110,7 @@ If your books live on a network share (SMB/NFS), mount the share on the Docker h
 
 ### Testing unreleased builds
 
-:::warning Unstable - for testing only
+:::warning[Unstable - for testing only]
 The **`:edge`** tag is rebuilt from the server's latest development code every time it changes (the web player inside it can lag a little behind the player's own development code). It has not been through a release, can break, and is not supported for everyday listening. Stay on `:latest` unless you want to try a fix or feature before it ships.
 :::
 

@@ -58,7 +58,7 @@ The **Schedule** card:
 Press **Save changes** to apply a new schedule. It takes effect at once, no
 restart needed. The line under the list says when the next backup runs.
 
-:::tip Keep a copy somewhere else
+:::tip[Keep a copy somewhere else]
 A backup on the same disk as the server is lost with it. Point the folder at
 another disk (a NAS share, a second drive) in `config.yaml`, or download a
 backup now and then and keep it somewhere else. Either way, keep it private: a
