@@ -5,7 +5,7 @@
 // serve` 301s to /search without it, and GitHub Pages has no search/index.html.
 // The theme's own useSearchQuery already builds `search?`; this makes the
 // SearchBar match it. Drop the script once upstream fixes it.
-import {readFileSync, rmSync, writeFileSync} from 'node:fs';
+import {existsSync, readFileSync, rmSync, writeFileSync} from 'node:fs';
 import {fileURLToPath} from 'node:url';
 
 const file = fileURLToPath(
@@ -17,9 +17,9 @@ const file = fileURLToPath(
 const broken = '`${baseUrl}search/?${params.toString()}`';
 const fixed = '`${baseUrl}search?${params.toString()}`';
 
-const source = readFileSync(file, 'utf8');
+const source = existsSync(file) ? readFileSync(file, 'utf8') : '';
 if (source.includes(broken)) {
-  writeFileSync(file, source.replace(broken, fixed));
+  writeFileSync(file, source.replace(broken, () => fixed));
   // The bundler's persistent cache does not notice an edited dependency.
   rmSync(fileURLToPath(new URL('../node_modules/.cache', import.meta.url)), {
     recursive: true,

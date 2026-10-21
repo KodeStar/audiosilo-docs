@@ -46,7 +46,11 @@ code repos' gates.
 Search (the `@easyops-cn/docusaurus-search-local` theme) builds its index
 during `npm run build`, so the search box returns nothing under `npm start`.
 To try a search, or to check how a page ranks, use the built site:
-`npm run build && npm run serve`.
+`npm run build && npm run serve`. A postinstall script,
+`scripts/patch-search-link.mjs`, makes the theme's "See all results" link
+point at `/search?q=` (the theme ignores `trailingSlash: false`); it fails
+the install if a theme upgrade changes that line, so check the link still
+keeps its query and then update or remove the script.
 
 ## When a code change needs a docs change
 
