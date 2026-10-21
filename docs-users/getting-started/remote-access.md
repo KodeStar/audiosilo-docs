@@ -61,6 +61,14 @@ For issuance to work, Let's Encrypt must be able to reach your server on **port 
 
 ### Behind a reverse proxy
 
+For a complete Docker Compose walkthrough with screenshots, choose the proxy you use:
+
+- [Set up AudioSilo with Caddy](https://audiosilo.app/blog/audiosilo-with-caddy/).
+- [Set up AudioSilo with SWAG](https://audiosilo.app/blog/audiosilo-with-swag/).
+- [Set up AudioSilo with Traefik](https://audiosilo.app/blog/audiosilo-with-traefik/).
+
+Each guide includes downloadable configuration files, setting up HTTPS, adding your library, pairing a phone, and troubleshooting. The examples use a dedicated Docker network with a known proxy address, so you can copy the trusted-proxy setting without finding your network's address range.
+
 Already running Caddy, nginx or Traefik with HTTPS for other services? Let the proxy terminate TLS and run AudioSilo as plain HTTP behind it:
 
 ```yaml

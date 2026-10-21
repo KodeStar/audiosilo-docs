@@ -41,6 +41,8 @@ device.
 
 If you have the **AudioSilo app** installed, the surest way to sign *it* in with a QR is to scan from inside the app: on the app's connect screen, tap **Scan a QR code** and point the camera at the pairing QR. (This button is in the iOS and Android apps only - a web browser can't scan.) The connect page's **Open in app** button does the same job without a camera.
 
+The QR on the admin console's **invite card** opens an invite web page. Scan that one with your phone's normal camera, or open the invite link in a browser first. The connect page then displays the **pairing QR** the AudioSilo app's scanner accepts. If the app says the QR is not an AudioSilo pairing code, check which of these two codes you are scanning. You can pair an admin account too; a separate listener account is optional.
+
 ## Connecting from the app
 
 When the app (or the web player) isn't connected to anything yet, it opens on the connect screen: *"Your audiobooks, from your own server."*
