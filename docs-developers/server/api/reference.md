@@ -62,7 +62,8 @@ else and gate features on the flags.
     "cast": true,
     "household_members": true,
     "bridge": false,
-    "contributions": false
+    "contributions": false,
+    "podcasts": false
   },
   "auth": { "methods": ["auth_code", "password"] },
   "demo": { "enabled": false }
@@ -740,6 +741,7 @@ are untouched.
     {
       "id": 1,
       "name": "Audiobooks",
+      "kind": "books",
       "root": "/srv/audiobooks",
       "default_view": "hybrid",
       "sort_order": 0
@@ -748,12 +750,22 @@ are untouched.
 }
 ```
 
+`kind` is always sent: `books` or `podcasts`. Podcast libraries are omitted
+unless the authenticated request passes the
+[podcast client gate](../auth-and-security.md#podcast-visibility), including
+for admins. Library membership does not require a visible show, so a granted
+podcast library containing only unfollowed private shows still appears here.
+
 ### `GET /api/v1/libraries/{id}/fs`
 
 *Session.* The filtered filesystem view - the real directory tree, scoped to
 the caller's share rules, requiring no prior indexing. Lists **audio files and
 directories only** (covers/NFOs are filtered out so every entry is actionable),
 with indexed-book metadata attached where available. Offset-paginated.
+For podcast libraries this is an index view instead: show folders at the root,
+episode titles inside, serial shows oldest first and episodic shows newest
+first. Episodes appear even without files; feed/artwork files never appear.
+The podcast branch caps a page at 2,000 entries and applies private scope.
 
 | Query param | Type | Default | Notes |
 |---|---|---|---|
@@ -1039,7 +1051,8 @@ rules apply as on `/books`.
 
 *Session.* Full-text search (FTS5 over title/author/series/narrator/genres/tags) across
 every library the caller can reach, scoped per-library to their share rules.
-Results are relevance-ranked and de-duplicated across libraries. De-dup keeps
+Results are relevance-ranked and de-duplicated across books libraries. Podcast
+libraries are excluded even for podcast-capable callers. De-dup keeps
 the best copy of a book: format tier first (M4B/AAC over MP3 over anything
 else), then single-file over multipart, then higher bitrate, then library
 order (`internal/catalog/dedup.go`).
@@ -1060,7 +1073,7 @@ de-duplication annotations:
 
 ### `GET /api/v1/books/recent`
 
-*Session.* Most recently added books across **all** accessible libraries,
+*Session.* Most recently added books across accessible **books** libraries,
 merged and de-duplicated (same annotations as `/search`), newest `added_at`
 first - one call for a "recently added" shelf.
 
@@ -1069,6 +1082,140 @@ first - one call for a "recently added" shelf.
 | `limit` | int | `50` | ≤ 0 or > 200 falls back to 50 |
 
 Response `200`: `{ "books": [ … ] }`.
+
+## Podcasts
+
+Phase 2c-1 exposes feed following and indexed show/episode reads. There is no
+episode download action or released podcast player UI yet. The recognized
+clients are the console's `AudioSilo Admin` or the player's `AudioSilo` with
+version `dev`, through `X-AudioSilo-Client`; the released-player minimum is still
+empty. A missing, other or released client is denied podcast content even for
+an admin. See [visibility](../auth-and-security.md#podcast-visibility).
+
+### Podcast read routes
+
+*Session.* Core routes, not module-gated; kids may read within their scope.
+Library routes require a podcast library (`409 not_podcast_library` on books).
+Normal library access errors apply. An authorized library with every show
+filtered out returns **empty lists**, not `403`. A hidden individual show is
+`404 show_not_found` on the dedicated episode endpoint.
+
+| Route | Response |
+|---|---|
+| `GET /api/v1/libraries/{id}/podcasts` | `200 {shows: [Show]}`; visible shows in title order, cap 2,000 |
+| `GET /api/v1/libraries/{id}/podcasts/episodes` | `200 {episodes: [Episode], next_cursor: string \| null}` |
+| `GET /api/v1/me/podcasts` | `200 {shows: [Show], requests: [Request]}`; followed visible shows plus the caller's open subscribe requests and those ended within seven days, in accessible podcast libraries |
+
+Episodes require `show=<show path>`. `order` is `newest` (default) or `oldest`;
+`limit` defaults to 50 and must be 1 through 200 (`400 invalid_request` otherwise).
+Pagination uses an opaque `cursor` with a published/path keyset; it is bound
+to show and order. Invalid order/cursor gives `400 invalid cursor`.
+Per-episode grants are applied before pagination.
+
+A **Show**:
+
+```json
+{
+  "library_id": 3, "path": "Example Show", "title": "Example Show",
+  "author": "Example", "description": "Plain text", "link": "https://example.com/",
+  "language": "en", "type": "episodic", "explicit": false, "private": false,
+  "feed_url": "https://example.com/feed.xml", "feed_host": "example.com",
+  "podcast_guid": "", "episode_count": 1,
+  "latest_published": "2026-10-19T21:00:00Z", "cover_version": "9f2c1a",
+  "following": true,
+  "status": {"last_checked": null, "last_success": null, "next_check": null, "error": null}
+}
+```
+
+Private shows have `feed_url: null` and `link: ""`. Only their followers see
+them, including player-facing admins; following by URL proves access through
+the current or previous normalized URL hash. Unknown times and
+`latest_published` are `null`. A status error is `{code, message}`.
+Artwork is `GET /api/v1/libraries/{id}/cover?path=<show>[&size=160|320|640]`;
+episode covers use the same show artwork.
+
+An **Episode**:
+
+```json
+{
+  "path": "Example Show/2026-10-19-3fa94c0b1d.mp3", "title": "An episode",
+  "published": "2026-10-19T21:00:00Z", "duration": 1720, "duration_source": "feed",
+  "season": null, "episode": null, "episode_type": "full", "explicit": false,
+  "description": "Plain text", "downloaded": false, "size": 0, "removed": false
+}
+```
+
+`duration` is seconds; `duration_source` is `file` (present file and positive
+`fetch.duration_ms`), `feed` or `none` (zero duration). `published`, `season`
+and `episode` may be `null`; `episode_type` is `full`, `trailer` or `bonus`.
+`removed` means the episode disappeared from the feed, independently of whether
+its audio is present. `GET /libraries/{id}/item?path=<episode>` adds `episode`
+to the normal Book JSON, with `show_path`, `published`, `season`, `episode`,
+`episode_type`, `explicit`, `downloaded`, `duration_source` and `removed`.
+That object is omitted for books. An episode without a file streams as
+`404 {"error":"episode not downloaded","code":"not_downloaded"}` and has
+`{"chapters":[]}`; neither route indexes podcast audio on demand.
+
+A **Request**:
+
+```json
+{
+  "id": 81, "library_id": 3, "state": "failed", "feed": "https://example.com/...",
+  "private": true, "show_path": null,
+  "error": {"code": "request_expired", "message": "The follow request expired. Follow the feed again."},
+  "created_at": "2026-10-20T08:00:00Z", "updated_at": "2026-10-20T08:01:00Z"
+}
+```
+
+`feed` is a redacted display address. `library_id` and `show_path` may be
+`null`; `error` is `null` unless failed. Follow requests use the Bridge job states.
+
+### Podcast actions
+
+*Session, adult, not demo; Podcasts module.* The common module user wrapper
+checks auth, `notKid` (`403 kid_account`), `notDemo` (`403 demo_account`), then
+the toggle (`404 module_off`). The capability flag needs an online Bridge too;
+the route gate checks the toggle and handlers check Bridge availability when
+queuing work. POST bodies are strict JSON, at most 8 KiB. Feed URLs go in the
+body, never in query strings.
+
+| Route | Body/query | Success |
+|---|---|---|
+| `POST /api/v1/podcasts/follow` | `{library_id, path}` **or** `{library_id, feed_url, private?}` | `200 {state:"following", show:Show}` for an existing show; `202 {state:"subscribing", request:Request}` when queued |
+| `DELETE /api/v1/podcasts/follow` | `?library_id=3&path=<show>` | `204`, also when already unfollowed |
+| `POST /api/v1/podcasts/check` | `{library_id, path}` | `202 {request:{id,state}}`, returning an open poll when one exists |
+
+Follow by path requires a visible show. Follow by URL needs a grant on the
+whole library and matches current/previous URL hashes before queuing; knowing
+a private URL supplies proof to follow that show. An existing follow is
+idempotent. A missing private credential queues a restoring subscribe when
+the URL is supplied. `private:true` forces privacy; `false` cannot override
+automatic detection. Each user can have five open subscribe requests; a second
+request for their same library/hash returns the open one. Manual check requires
+the caller to follow a visible show and, without an open poll, refuses a check
+within 60 seconds of the last one.
+
+| Status/code | Meaning |
+|---|---|
+| `400 invalid_request` | missing/invalid library, both or neither path and URL, private with path, an invalid unfollow/check show path, or unknown body fields |
+| `400 invalid_feed_url` | malformed, non-HTTP(S), hostless or over-2,048-byte feed URL |
+| `403 no_library_access` | no accessible library, or URL follow without a whole-library grant |
+| `404 show_not_found` | missing, hidden or invalid show on follow by path, or check without following |
+| `409 not_podcast_library` | a books library |
+| `409 bridge_unavailable` | no online Bridge offering the action's podcast kind |
+| `409 library_not_writable` | Bridge mapping is not writable |
+| `429 too_many_requests` | five open subscribe requests |
+| `429 checked_recently` | last check under 60 seconds ago |
+
+Async failures appear on Request/Show status, rather than as the follow
+response's HTTP status. Codes include `invalid_feed_url`, `blocked_address`,
+`dns`, `timeout`, `tls`, `network`, `http_<status>`, `gone` (410), `too_large`,
+`not_a_feed`, `not_a_podcast`, `not_podcast_library`, `library_not_writable`,
+`feed_secret_missing`, `request_expired`, `write_failed`, and server-only
+`bridge_lost`. A private request lost before claim on a server restart is
+`request_expired`; follow again. Lost Bridge credentials are
+`feed_secret_missing`; follow the URL again to restore them. No podcast job
+sends a finished/failed notification. See [the Bridge implementation](../../bridge/podcasts.md).
 
 ## Books & content
 
@@ -3615,7 +3762,7 @@ admin-only fields:
 {
   "libraries": [
     { "id": 1, "name": "Audiobooks", "root": "/srv/audiobooks",
-      "default_view": "hybrid", "sort_order": 0,
+      "kind": "books", "default_view": "hybrid", "sort_order": 0,
       "book_count": 812, "available": true,
       "scan": { "running": false, "total": 812, "done": 812, "indexed": 3,
                 "added": 1, "updated": 2, "moved": 0, "removed": 1 },
@@ -3670,6 +3817,7 @@ works immediately; the index fills in behind).
 |---|---|---|---|
 | `name` | string | yes | unique |
 | `root` | string | yes | **server-local** filesystem path (mount network shares first) |
+| `kind` | string | no | `books` (default) or `podcasts`; fixed after create |
 | `default_view` | string | no | defaults to `"hybrid"` |
 | `scan_schedule` | string | no | `""` (default), `every:<N>h` or `daily:HH:MM` - see `GET /admin/libraries`. Stored in canonical form (`every:06h` is saved as `every:6h`) |
 | `ignore_patterns` | string array | no | ignore rules, one pattern per entry (an entry with line breaks is split into one pattern per line); lines are trimmed and blank ones dropped. At most 100 patterns of 200 bytes |
@@ -3683,6 +3831,13 @@ settings are not echoed - read them from
 |---|---|
 | `400` | `name and root are required`; `invalid request`; `code: "invalid_schedule"` (a schedule that isn't one of the forms above); `code: "invalid_pattern"` (too many patterns, one too long, one that matches nothing, or a malformed wildcard - the message names the line); `code: "invalid_metadata_source"` (a `metadata_source` other than `"tags"` or `"path"`) |
 | `409` | `name already taken` (`code: "name_taken"`) |
+
+Invalid `kind` is `400 invalid_kind`. If either library is a podcast library,
+equal, ancestor or descendant roots conflict (`409 root_overlaps`), using
+cleaned absolute paths. This also applies when moving a books root over a
+podcast root. Podcast libraries stay in this admin list regardless of the
+player gate; book detection/export and admin book tools require books libraries
+(`409 not_book_library` where applicable).
 
 ### `PUT /api/v1/admin/libraries/order`
 
@@ -3702,6 +3857,10 @@ Edits `name`, `root`, `default_view`, `scan_schedule`, `ignore_patterns` and/or
 `root` or `default_view` keeps its current value; an omitted `scan_schedule`,
 `ignore_patterns` or `metadata_source` keeps it too, while `""` / `[]` clears a
 schedule or the ignore rules (`sort_order` is managed via `/order`).
+
+Sending the existing `kind` is accepted; a different kind is
+`400 kind_immutable`. Root changes enforce the same `409 root_overlaps` rule
+as create.
 
 A rescan is queued (trigger `change`) **only** when the root or the ignore rules
 change, since those make the index stale. A rename, a new default view or a new
@@ -6613,6 +6772,10 @@ and after each settings save).
 | `requires_bridge` | the Bridge feature the module needs (one of `bridge.features`); omitted for a module that needs no Bridge |
 | `bridge_state` | omitted with `requires_bridge`. `offline`: no paired Bridge has sent a heartbeat in the last two minutes; `no_feature`: the online Bridge doesn't offer the feature (for `contribute`: it can't contribute, having no GitHub token GitHub accepts, whether its Accounts sign-in, `AUDIOSILO_BRIDGE_GITHUB_TOKEN` or `gh`); `ready`: it does |
 
+The registry also includes `podcasts`, with `requires_bridge: "podcast"`;
+both modules ship disabled. Setting it uses
+`{"modules":{"podcasts":true}}` on `PATCH /admin/settings`.
+
 `modules` is `[]` on a server with none. Whether a toggle is locked is the settings
 envelope's `locked["modules.<id>"]`, not repeated here; a toggle is changed with
 [`PATCH /admin/settings`](#patch-apiv1adminsettings) (`{"modules": {"contributions":
@@ -7251,7 +7414,8 @@ that read the block, ask with their token.
 - `features` - the job families the Bridge runs that this server knows: the part of
   each known kind before its dot (`bridge.verify` is `bridge`, `sidecars.generate`,
   `sidecars.describe` and `sidecars.contribute` are `sidecars`, `chapters.detect`
-  is `chapters`, `meta.correct` is `meta`), plus `contribute` while the Bridge can
+  is `chapters`, `meta.correct` is `meta`, and the podcast kinds give `podcast`),
+  plus `contribute` while the Bridge can
   file contributions (the last heartbeat's `setup.can_contribute`, else its
   `estimates.sidecars.can_contribute`), which the `contributions`
   [module](../modules.md) needs. Sorted, each once, always a list
@@ -7493,6 +7657,7 @@ runs out.
 | `library_id` | only this library's jobs (a positive integer, else `400 invalid library_id`) |
 | `path` | only jobs about this book path |
 | `state` | only jobs in this state |
+| `kind` | only this job kind; without it `podcast.poll` is omitted; `kind=podcast.poll` explicitly includes routine checks |
 | `before` | the previous page's `next_before` (a positive integer, else `400 invalid before`) |
 | `limit` | page size, 1 to 200 (anything outside that: 50) |
 
@@ -7504,9 +7669,17 @@ runs out.
 another page (the server reads one row past the page to know): pass it as
 `before`.
 
+Subscribe job params, errors and results are redacted in listings and detail
+reads; a private feed URL appears only in the Bridge's claim answer. See
+[Podcast jobs](../../bridge/podcasts.md#job-wire-format).
+
 ### `POST /api/v1/admin/bridge/jobs`
 
-*Admin.* Queues a job.
+*Admin.* Queues a job. `podcast.subscribe` and `podcast.poll` are server-internal
+and refused here with `400` (no code): use listener follow/check instead.
+Book-writing kinds on a podcast library return `409 not_book_library`;
+podcast kinds are only ever queued for a podcast library (follow and check answer
+`409 not_podcast_library` for a books library before queuing).
 
 ```json
 { "kind": "bridge.verify", "library_id": 1, "path": "Andy Weir/Project Hail Mary", "params": { "hold_seconds": 0 } }
@@ -7814,10 +7987,15 @@ optional top-level heartbeat blocks this server reads:
 ```json
 {
   "server_time": "2026-10-15T12:40:37Z",
-  "libraries": [ { "id": 1, "name": "Audiobooks", "root": "/audiobooks" } ],
+  "libraries": [ { "id": 1, "name": "Audiobooks", "root": "/audiobooks", "kind": "books" } ],
   "accepts": ["setup"]
 }
 ```
+
+Every library in the reply includes `kind: "books"|"podcasts"`; the Bridge
+treats a missing kind from an older server as books. Podcast support adds
+`podcast.subscribe` and `podcast.poll` to the existing `kinds` list without a
+new heartbeat request field.
 
 The heartbeat itself is decoded strictly (an unknown field is a `400`), so a
 Bridge sends an optional block only after a reply listed it, and drops them all and
@@ -7890,6 +8068,16 @@ A field left out keeps its value. A `claimed` or `running` job's lease is renewe
 | `400` | `invalid job id`; `invalid update` (not JSON, over 128 KiB, an unknown field); or a check, each message starting `invalid: `: `progress must be a JSON object` (or `result`), `progress too large` (or `result`), or a state it can't report (`state "queued" from "running"`) |
 | `409` | `code: "not_held"` - this claim no longer holds the job: it ended, was cancelled, its lease ran out and it was queued or claimed again, or it no longer exists (gone with its library). The Bridge drops it. This route never answers `finished` (only the console's cancel does) |
 
+### `GET /api/v1/bridge/libraries/{id}/marker`
+
+*Bridge token.* Reads the mapping marker for an empty or populated podcast
+library (the route accepts either kind). Response `200 {"nonce":"<32 lowercase hex>"}`
+requires `<root>/.audiosilo/library.json` to be a regular file no larger than
+4 KiB, with version `1`, matching `library_id`, and a valid nonce; the marker
+folder cannot be a symlink. The server reads only and never creates it.
+Missing/invalid marker is `404 no_marker`, missing library `404 library_not_found`.
+See [Library mappings](../../bridge/mappings.md#podcast-libraries-the-marker).
+
 ### `GET /api/v1/bridge/libraries/{id}/book`
 
 *Bridge token.* One **indexed** book's files with the size and modification time
@@ -7935,6 +8123,9 @@ this never indexes a path on demand.
 | `400` | `invalid library id` |
 | `404` | `library not found`; `code: "no_book"` - no indexed book at that path (or none in the library) |
 
+Without a path, a podcast library always returns `404 no_book`, so an older
+Bridge cannot map it through a sample episode. Use the marker route above.
+
 ### `POST /api/v1/bridge/rescan`
 
 *Bridge token.* Reads one path again now, after the Bridge changed files there.
@@ -7968,6 +8159,13 @@ this never indexes a path on demand.
 ```json
 { "path": "Andy Weir/Project Hail Mary", "attachments": { "characters": true, "recaps": true, "description": true, "chapters": false, "bridge": true } }
 ```
+
+For a podcast library, `path` names a show folder or an already indexed
+episode whose show is refreshed from `feed.json`. Response is
+`200 {"path":"<show>","episodes":N}`; missing/invalid feed is
+`404 not_indexable`. `mode:"attachments"` and any supplied `from` are `400`.
+No arbitrary audio is indexed. Podcast feed details and artwork are read
+without probing audio.
 
 The re-read runs detached from the request for up to 10 minutes, like the
 console's [rescan of one book](#post-apiv1adminlibrariesidbookrescan). A path

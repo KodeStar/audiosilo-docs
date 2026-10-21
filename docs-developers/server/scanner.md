@@ -18,6 +18,39 @@ The two meet in the API layer: browsing works immediately from the raw tree,
 and entries get index metadata overlaid as the scan (or on-demand indexing)
 catches up.
 
+## Podcast libraries
+
+`Scanner.Scan` branches on `libraries.kind` before book detection. A podcast
+scan lists real, non-hidden top-level show directories, reads only each
+`feed.json` (regular file, up to 32 MiB, version 1), and indexes its episodes
+with or without audio files. Unsupported versions are skipped and logged;
+invalid episode entries are skipped individually. Audio is never probed for
+podcast metadata, and loose audio outside `feed.json` is not discovered as a
+book. No book tag/path precedence, Audiobookshelf import, community enrichment,
+book health analysis or book move detection runs for this branch.
+
+The show file's size/mtime signature skips unchanged shows. A changed file
+causes one directory listing to observe file presence, sizes and artwork,
+and an atomic show/episode index update. A targeted
+`POST /bridge/rescan` forces that refresh for a show path or an indexed episode
+path belonging to it, returning `{path:<show>, episodes:N}`. It refuses
+`attachments` mode and `from`; nothing indexable gives `404 not_indexable`.
+
+`BrowsePodcasts` serves `/fs` from the index: shows at the root, episode titles
+inside a show, serial shows oldest first and episodic shows newest first.
+`feed.json` and artwork are never browse entries. Private-show scope applies
+before pagination; a granted library with no visible shows gives an empty
+listing. `/item`, `/chapters` and `/stream` never index podcast audio on demand.
+Episodes without files remain indexed, have empty chapter lists and stream as
+`404 not_downloaded`. The server reads reserved `fetch.duration_ms` only when
+the file is present, otherwise falling back to feed duration or zero.
+
+Follows and listening state survive show pruning as path-keyed state. The
+unavailable-root guard preserves the index on an unreadable root, or an empty
+root that previously held shows. A partial scan suppresses pruning. Do not
+rename show folders manually: feed episode paths include them. See
+[Podcasts](../bridge/podcasts.md#files-on-disk-feedjson-v1) for the file contract.
+
 ## The filesystem view (`BrowseFS`)
 
 `library.BrowseFS(root, relPath, offset, limit, allow, ignore)` lists one directory:

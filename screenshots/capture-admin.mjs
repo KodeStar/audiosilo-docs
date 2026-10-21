@@ -940,7 +940,9 @@ await step('settings: modules', async () => {
   try {
     await open(page, '/server?topic=modules');
     await page.getByRole('switch', {name: 'Enable Contributions'}).waitFor({timeout: 15000});
-    await page.getByText('Needs a Bridge', {exact: true}).waitFor({timeout: 8000});
+    await page.getByRole('switch', {name: 'Enable Podcasts'}).waitFor({timeout: 8000});
+    // Each module card (Contributions, Podcasts) says it needs one.
+    await page.getByText('Needs a Bridge', {exact: true}).first().waitFor({timeout: 8000});
     await sleep(800);
     await shoot(page, 'admin/settings-modules.png');
   } finally {

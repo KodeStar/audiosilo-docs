@@ -4,7 +4,7 @@ description: "The SQLite schema behind audiosilo-server: the rebuildable index v
 ---
 
 The schema lives in `internal/store/migrations/` as numbered SQL files
-(`0001_init.sql` … `0044_household_members.sql`), embedded into the binary and
+(`0001_init.sql` … `0052_podcasts.sql`), embedded into the binary and
 applied by `store.Open` at startup. This page documents the **resulting current
 schema**, noting which migration added what.
 
@@ -215,9 +215,12 @@ lifecycle (supersede-on-mint, rotate, atomic claim).
 
 **`libraries`** *(0001; `layout` **dropped** in 0007; `sort_order` added in
 0011; `scan_schedule` and `ignore_patterns` in 0017; `metadata_source` in
-0032)* - `id`, `name` (UNIQUE), `root` (an absolute local path),
+0032; `kind` in 0052)* - `id`, `name` (UNIQUE), `root` (an absolute local path),
 `default_view`, `sort_order`, `scan_schedule`, `ignore_patterns`,
-`metadata_source`, `created_at`. `scan_schedule` is `""` (no
+`metadata_source`, `kind`, `created_at`. `kind` is `books` (the default) or
+`podcasts`, immutable after creation and always sent in library JSON. Podcast
+roots must not equal, contain or sit inside another library root; creation and
+root changes check both kinds. `scan_schedule` is `""` (no
 scheduled scans), `every:<N>h` or `daily:HH:MM` (see
 [Scheduled scans](scanner.md#scheduled-scans)); `ignore_patterns` holds the
 library's [ignore rules](scanner.md#ignore-rules), one pattern per line (`""` =
@@ -915,6 +918,30 @@ report; the Bridge's own record of running them lives on its side.
   code's hash; the token is the `tokens` row. Pairing a new Bridge clears the
   status; unpairing deletes the row.
 
+### Podcasts
+
+Migration `0052_podcasts` adds the library kind and these tables:
+
+| Table | Ownership and key |
+|---|---|
+| `podcast_shows` | rebuildable show metadata from `feed.json`, keyed by `(library_id, show_path)`; show id, title/author/description/link/language/type/explicit/private, public feed URL and host/hash, podcast GUID, cover path, episode count/latest publication, signature and index time |
+| `podcast_feed_hashes` | current/previous URL hashes; `(library_id, sha256, show_path)`; cascades with its indexed show |
+| `podcast_episodes` | rebuildable one-to-one row for `books.id` with cascade; library/show path, episode id/GUID, publication, season/episode/type/explicit, feed duration, file `present`, generation, removed time and duration source |
+| `podcast_follows` | durable `(user_id, library_id, show_path)`, created time and the followed `show_id`; no FK to the show or `books`, so pruning keeps it, but a different show at the same path does not inherit private access |
+| `podcast_feed_state` | server-owned `(library_id, show_path)` validators, last check/success/status, error code/text, `secret_missing`, failure count and next poll; not written to disk per poll |
+| `podcast_folded` | `job_id` primary key and fold time `at`, making ended-job follow/status effects idempotent |
+
+An episode's normal Book row is indexed even with no file. Durable progress
+continues to use `(library_id, rel_path)`, never an episode/book id. Follows
+cascade with the user/library; feed state cascades with the library, not the
+rebuildable show. Private show URLs are empty in the index; only their hashes
+and safe host remain. `bridge_jobs.feed_redacted` keeps a safe display label
+for a subscribe request, whose stored params never hold a private URL. A partial
+index serves per-user subscribe requests and a `(kind, finished_at)` index
+ended-job recovery. Recovery
+behaviour (the `secret_missing` latch, `request_expired`) is in
+[Podcasts](../bridge/podcasts.md#private-urls-and-recovery).
+
 ### Community metadata cache
 
 **`meta_cache`** *(0024)* - the persistent second level of the community
@@ -1185,6 +1212,7 @@ The migration history so far:
 | 0049 | `book_labels` | `books.subtitle`, `publisher`, `language`, `genres` and `tags` (`TEXT NOT NULL DEFAULT ''`), `books.abridged` (`INTEGER`, `NULL` = unknown), `books.genres_checked` (`INTEGER NOT NULL DEFAULT 0`) and `book_labels` (see [Labels](#labels-genres-and-tags)); recreates `books_fts` with `genres, tags` columns, every row copied over (no book has a label yet), and sets `books.abs_indexed_at` to `NULL` on every book with a `metadata.json` (`abs_sig <> ''`). The next scan then reads each of those files again and each book's genre tag once (`catalog.SetGenres`), without re-indexing |
 | 0050 | `book_attachments_description` | `book_attachments.description` (`TEXT NOT NULL DEFAULT ''`): the Bridge's checked `.audiosilo/description.json` (Phase 1c), derived like the rest of the row. No data moves: a book read before it had no `description.json` in its signature (the name was unknown then), so a book that has one now has a changed signature and the next scan reads it again, without re-indexing |
 | 0051 | `book_attachments_chapters` | `book_attachments.chapters` (`TEXT NOT NULL DEFAULT ''`): the Bridge's checked `.audiosilo/chapters.json` (Phase 1d), derived like the rest of the row and read by `applyChapterSource` as the generated chapter source ([Generated chapters](community-chapters.md#generated-chapters)). No data moves, for the same reason as 0050: a book that has one now has a changed signature, so the next scan reads it again |
+| 0052 | `podcasts` | `libraries.kind`, show/hash/episode indexes, durable follows (bound to `show_id`), server feed state including the missing-secret latch, idempotent folded-job markers, and `bridge_jobs.feed_redacted` plus subscribe/recovery indexes; see [Podcasts](#podcasts) |
 
 ## SQLite choices
 

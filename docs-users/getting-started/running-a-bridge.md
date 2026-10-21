@@ -29,7 +29,10 @@ metadata database. It runs as **two containers**:
 
 :::info Early days
 The Bridge is new and still being built, and its images aren't open to everyone
-yet. More jobs (podcasts, read-along and more) come in later versions.
+yet. With the Podcasts module on, the Bridge can follow
+[podcast feeds](../admin/podcasts.md); released player apps
+[do not show podcasts yet](../admin/podcasts.md#what-is-available-now).
+Read-along and more jobs come in later versions.
 :::
 
 ### What you need
@@ -212,6 +215,33 @@ This step is done when **every** library is ready, since the Bridge saves what i
 makes in each book's folder. Press **Verify** on a library in the console to check
 it end to end.
 
+For a **podcast** library, mount its own folder in both containers, read-only
+for the server and read-write for the Bridge, just as for books. An empty
+podcast library can be ready: the Bridge writes a small marker in its hidden
+settings folder and asks the server to read it back. It does not need a book
+to compare. Leave the marker in place. **Verify** uses a sample book and is for
+books libraries.
+
+Podcast feed jobs do not use speech recognition or an AI agent. The steps below
+set up the book-generation and contribution features; the Bridge's setup
+checklist may still list them when you only want podcasts.
+
+#### Feeds on your local network
+
+Public feeds work without an extra network setting. To read a feed on a trusted
+local network, explicitly allow its address range in the Bridge's configuration:
+
+```yaml
+podcasts:
+  allow_networks: ["192.168.1.20/32"]
+```
+
+Or set `AUDIOSILO_BRIDGE_PODCASTS_ALLOW_NETWORKS: "192.168.1.20/32"` in the
+Bridge's environment (comma-separated for several ranges), then restart it.
+The default allows no private network ranges. Use only the ranges you need:
+the allowance applies to feed **and artwork** requests. See
+[Podcasts](../admin/podcasts.md) for module setup and private feeds.
+
 ### 6. Speech recognition
 
 Before writing characters and recaps from a book's audio, the Bridge transcribes
@@ -382,7 +412,8 @@ both: on Unraid, `chmod 777` it once.
   the AI tool starts. It can reach the internet (the AI service needs it) but not
   your library, the server or the Bridge.
 - Unpairing in the console (**Unpair...**) stops the Bridge at its next call.
-  Removing the containers breaks nothing: the server carries on without them.
+  Removing the containers leaves your saved content in place; podcast feed
+  checks and other Bridge work stop until a Bridge is back.
 
 ### Something not working?
 

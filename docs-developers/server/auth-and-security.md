@@ -393,7 +393,7 @@ for a household member, what their owner gives them: [the member rule](#househol
 with a `""` rule exists and grants it.
 
 At request time the rules are compiled into a `catalog.Scope` per library -
-`AllowAll` (admins always; or any `""` rule; or a member on `all` whose owner is an
+`AllowAll` (admins for books; or any `""` rule; or a member on `all` whose owner is an
 admin) or a list of granted `Paths`. The
 scope is then enforced through **three functions, each matched to a different
 query shape**:
@@ -415,8 +415,56 @@ require `Scope.Allows(book.RelPath)`, and `Scanner.IndexPathWithin` checks it
 before reading anything (`library.ErrNotAllowed`). A share granting only one
 disc folder or one file of a book gets the same `403 no access to this path`
 as a path outside the share, so the answer reveals nothing about the book; the
-files it does grant still stream (`stream` is scoped on the file path). A non-admin whose scope is empty gets 403 from
-`libraryScope` before any content is touched.
+files it does grant still stream (`stream` is scoped on the file path). A non-admin without a library grant gets 403 from
+`libraryScope` before any content is touched. A granted podcast library whose
+scope becomes empty through private-show filtering remains readable as empty
+lists, as described below.
+
+## Podcast visibility
+
+Podcast scope adds two checks after authentication:
+
+1. **Client support** (`auth.SeesPodcasts`, `internal/auth/podcastgate.go`).
+   `api.callerOf` uses `Credential.Client`: this request's
+   valid `X-AudioSilo-Client`, otherwise the token's stored client (including
+   media `?token=`). `catalog.Caller.Podcasts` is true for `AudioSilo Admin`
+   with any/no version and `AudioSilo` with version `dev`. The released-player
+   minimum, `auth.PodcastPlayerMinVersion`, is still `""`, so no released player
+   qualifies. Once set, a numeric `X.Y.Z` at least that minimum qualifies
+   (suffixes after `-`/`+` ignored). Missing/malformed/other apps, API tools
+   without a recognized client and the Bridge fail the gate.
+   `callerByID` and background user scopes set it false. Admin role grants no
+   exception. `CallerScope`, `CallerScopes` and `CallerLibraries` apply it before
+   any admin shortcut. It hides libraries, their content, `/me/*` state and
+   household listening; cast tokens do not expose podcasts in this phase.
+2. **Private shows.** After computing shares/household grants, `CallerScope`
+   and `CallerScopes` remove private shows the user does not follow. A
+   whole-library grant expands into the remaining indexed show paths; a scoped
+   grant inside a denied show is dropped. Admin player-facing scopes follow the
+   same rule. A follow must match both path and `show_id`: replacing a show at
+   the same path cannot transfer a previous follower's private access.
+
+`CallerLibraries` deliberately lists a granted library even if all its shows
+are private and unfollowed. `scopedLibrary` preserves that distinction too:
+listing shows, `/fs` and `/books` returns empty lists, rather than `403`, when
+privacy removed every show. Requests for a hidden episode/show still fail their
+path/show checks. A caller without a library grant or passing client remains
+denied. The admin catalog is the separate administrative view of the disk and
+can still see private show contents.
+
+Following a private URL uses its normalized current/previous SHA-256 hash as
+proof, before private-show filtering, and requires a grant on the whole library.
+Following by path cannot reveal an unfollowed private show. Follow, unfollow
+and manual check use the module user wrapper (no kids, no demo accounts;
+`404 module_off` when disabled); authenticated reads, including kids within
+scope, are not module-gated. **The client header is compatibility negotiation,
+not a substitute for authentication or grants.**
+
+Private URLs are credentials: the server never persists a pending private
+subscribe URL (it injects it only into the Bridge's claim response), the Bridge
+keeps it only in its vault, and job displays, errors and results redact URL
+text. See [Podcasts](../bridge/podcasts.md#private-urls-and-recovery) for
+detection, storage and recovery.
 
 ## The listener's own state (`/me/*`)
 

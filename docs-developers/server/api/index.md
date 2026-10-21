@@ -157,6 +157,9 @@ Who sends it:
 - **The admin console** - always (it is same-origin).
 - Anything else may send it; nothing requires it.
 
+The header also decides whether a client sees podcast libraries at all: see
+[Podcast visibility](../auth-and-security.md#podcast-visibility).
+
 ## Error envelope and status conventions
 
 Every error is a JSON object with an `error` message:
@@ -184,7 +187,7 @@ Failures a person can fix also carry a machine-readable **`code`** next to
 | `folder_unreadable` | `404` | `GET /admin/fs/dirs` on a missing or unreadable folder |
 | `book_not_found` | `404` | an admin catalog call on a path that is not an indexed book (book page, edit, bulk edit, match, cover upload, community cover); an admin progress edit on a path with no progress and no indexed book; `POST /admin/bridge/jobs` and `GET /admin/bridge/estimate` on a path that is not an indexed book |
 | `invalid_override` | `400` | a metadata edit the server refuses; the body also carries a `field` key naming the offending field (`PATCH /admin/libraries/{id}/book`, `POST /admin/books/bulk`) |
-| `module_off` | `404` | any route a [managed module](../modules.md) mounts, while that module is off (Settings > Modules), for a caller the route's auth check admits (it runs first). The route exists either way, so turning the module on needs no restart. No module mounts a route yet. Also `POST /admin/bridge/jobs` for a job the module owns (Phase 2b: `sidecars.contribute`, `meta.correct`, `sidecars.generate` with `contribute: "issue"`, the `contributions` module), checked before anything else about the job |
+| `module_off` | `404` | any route a [managed module](../modules.md) mounts, while that module is off (Settings > Modules), for a caller the route's auth check admits (it runs first). The route exists either way, so turning the module on needs no restart. The `podcasts` module mounts `POST`/`DELETE /podcasts/follow` and `POST /podcasts/check`. Also `POST /admin/bridge/jobs` for a job the module owns (Phase 2b: `sidecars.contribute`, `meta.correct`, `sidecars.generate` with `contribute: "issue"`, the `contributions` module), checked before anything else about the job |
 | `metadata_off` | `404` | a community match search, a `POST /admin/books/works` work-id batch, a community cover (`POST /admin/meta/covers`, `PUT /admin/libraries/{id}/cover/community`), or the metadata mirror (`GET /admin/meta/mirror`, `POST /admin/meta/mirror/check`) while community metadata is turned off |
 | `too_large` | `400` / `413` | a bulk edit or an issue ignore over 1000 books, a cover batch over 60, a community cover batch over 12, or a work-id batch over 100 (`400`); a custom cover upload over 5 MiB, or a community cover over 16 MiB or 40 megapixels (`413`) |
 | `unsupported_image` | `415` | a custom cover (uploaded or community) that is not a JPEG, PNG or WebP image |
@@ -228,7 +231,7 @@ Failures a person can fix also carry a machine-readable **`code`** next to
 | `has_members` | `409` | `PATCH /admin/users/{id}` assigning a person who has household members of their own |
 | `invalid_keep_members` | `400` | `DELETE /admin/users/{id}?keep_members=` with an entry that isn't one of that person's members |
 | `kind_unavailable` | `409` | `POST /admin/bridge/jobs` (or `GET /admin/bridge/estimate`) for a kind the paired Bridge doesn't run, or before any Bridge has reported |
-| `library_not_writable` | `409` | `POST /admin/bridge/jobs` for a kind that writes (`sidecars.generate`, `sidecars.describe`, `chapters.detect`) in a library the Bridge's last heartbeat doesn't report mapped and writable |
+| `library_not_writable` | `409` | podcast follow/check, or `POST /admin/bridge/jobs` for a kind that writes (`sidecars.generate`, `sidecars.describe`, `chapters.detect`) in a library the Bridge's last heartbeat doesn't report mapped and writable |
 | `cannot_contribute` | `409` | `POST /admin/bridge/jobs` for `sidecars.generate` with `contribute: "issue"`, `sidecars.contribute` or `meta.correct` while the Bridge's last heartbeat doesn't say it can contribute (its `setup.can_contribute`, else `estimates.sidecars.can_contribute`) |
 | `generate_open` | `409` | `POST /admin/bridge/jobs` for `sidecars.describe`, `chapters.detect` or `sidecars.contribute` while a `sidecars.generate` job is open for the book (it writes the description, finds a chapterless book's chapters, and replaces the characters and recaps a share would file, itself) |
 | `contribute_open` | `409` | `POST /admin/bridge/jobs` for `sidecars.generate` while a `sidecars.contribute` job is queued or working for the book (a parked one, or a queued one held while the `contributions` module is off, is cancelled instead) |
@@ -241,12 +244,20 @@ Failures a person can fix also carry a machine-readable **`code`** next to
 | `no_heartbeat` | `409` | the Bridge's `GET /bridge/jobs/next` before its first heartbeat |
 | `no_book` | `404` | the Bridge's `GET /bridge/libraries/{id}/book` with no indexed book at the path (or in the library) |
 
+Podcast actions add `invalid_request` and `invalid_feed_url` (`400`),
+`no_library_access` (`403`), `show_not_found` (`404`), `not_podcast_library`,
+`bridge_unavailable` and `library_not_writable` (`409`), and
+`too_many_requests` / `checked_recently` (`429`). Library kinds add
+`invalid_kind` / `kind_immutable` (`400`) and `root_overlaps` (`409`). An
+undownloaded episode streams as `404 not_downloaded`. Full shapes and async
+feed failures: [Podcasts](reference.md#podcasts).
+
 **Branch on `code`, not on the English `error` text**, which is free to change.
 Errors without a `code` are ones a client can't help the person fix.
 
-The one exception is the media file-serving layer: `stream`/`transcode` 404s
-and transcode failures are plain-text `http.Error` responses, not this JSON
-envelope.
+The media file-serving layer is separate: missing-file and transcode failures
+from that layer use plain-text `http.Error` responses. Podcast `not_downloaded`
+is returned before file serving and uses the JSON envelope.
 
 Status mapping is consistent across handlers:
 
@@ -296,7 +307,8 @@ Two server-side guarantees apply to every `?path=`:
   the library root (400 `invalid path`).
 - **Scope authorization** - the path is checked against the caller's share
   scope (`authorizedPath`); a path outside any granting share is 403, even if it
-  exists. Admins bypass scoping.
+  exists. Admins bypass book share scoping; podcast client and private-show
+filters apply to admins too (see [Podcast visibility](../auth-and-security.md#podcast-visibility)).
 
 :::warning `books.id` is not an identity
 Book objects include an `id`, but it is a rebuildable index artifact - it
@@ -375,7 +387,8 @@ single-shot with a `limit` and no pagination.
     "cast": true,
     "household_members": true,
     "bridge": false,
-    "contributions": false
+    "contributions": false,
+    "podcasts": false
   },
   "auth": { "methods": ["auth_code", "password"] },
   "demo": { "enabled": false }
@@ -455,6 +468,7 @@ needs; it is `false` (sent, not absent) otherwise. An older server omits it:
 
 | Flag | Gates |
 |---|---|
+| `podcasts` | the Podcasts module: follow/unfollow/check and feed scheduling. Needs the `podcast` Bridge feature; false unless the toggle is on and that Bridge is online. Read routes are core, subject to the client gate and private-show scope. Released players remain excluded until a supported player release; see [Podcasts](reference.md#podcasts) |
 | `contributions` | the Contributions module: sending corrections and generated characters and recaps to the community database through the Bridge. Needs the Bridge's `contribute` feature. The console reads it (the generate dialog's contribute switch, Share with the community, Suggest corrections; with `meta` in `bridge.features` for corrections); the player never contributes and doesn't read it |
 
 Gate on the flag rather than on the server version: an older server answers

@@ -192,7 +192,7 @@ minutes** old (`bridge.OnlineWindow`). Then, and only then, `GET /server` says
 `capabilities.bridge: true`, with a top-level `bridge: {version, features}` beside
 `capabilities`. `features` are the job families the Bridge runs **that the server
 knows**: the part of each known kind before its dot, so `bridge.verify` gives
-`bridge`, `sidecars.generate` (or `sidecars.describe`, `sidecars.contribute`) gives `sidecars`, `chapters.detect` gives `chapters` and `meta.correct` gives `meta` (a list, `[]` for none, never `null`). `features` also lists `contribute` while the Bridge can contribute (`Status.CanContribute()`, above; `bridge.FeatureContribute`), the first feature that is not a job family. The server's `contributions` [module](../server/modules.md) needs that feature. **The `bridge` block goes only to a signed-in caller** (Phase 2b): a session or an API key of any role, not a demo account's (`api.signedIn` over `auth.Peek`, which records nothing on the token); an anonymous, refused, demo or bridge token sees the flag alone. The capability flags stay public. The server reuses the heartbeat it
+`bridge`, `sidecars.generate` (or `sidecars.describe`, `sidecars.contribute`) gives `sidecars`, `chapters.detect` gives `chapters` and `meta.correct` gives `meta`; `podcast.subscribe` and `podcast.poll` give `podcast` (a list, `[]` for none, never `null`). `features` also lists `contribute` while the Bridge can contribute (`Status.CanContribute()`, above; `bridge.FeatureContribute`), the first feature that is not a job family. The server's `contributions` [module](../server/modules.md) needs that feature. **The `bridge` block goes only to a signed-in caller** (Phase 2b): a session or an API key of any role, not a demo account's (`api.signedIn` over `auth.Peek`, which records nothing on the token); an anonymous, refused, demo or bridge token sees the flag alone. The capability flags stay public. The server reuses the heartbeat it
 read for up to **5 seconds**, so `GET /server`, which every client calls often,
 rarely reads the database for it; a pairing or an unpair drops that copy at once. A
 client checks the flag **and** the feature it needs; a feature the Bridge doesn't
@@ -335,10 +335,12 @@ Bridge can't advertise a kind into existence, and the server can't queue one the
 Bridge doesn't have.
 
 The server's table also says whether a kind **writes** into the library. Such a
-kind (`sidecars.generate`, `sidecars.describe`, `chapters.detect`) is queued only for a library the last heartbeat reports
+kind (`sidecars.generate`, `sidecars.describe`, `chapters.detect`, `podcast.subscribe`,
+`podcast.poll`) is queued only for a library the last heartbeat reports
 **mapped and writable**, else `409 library_not_writable`, after the dedupe (an open
 job is still returned). `bridge.verify`, `sidecars.contribute` and `meta.correct`
-write nothing and work on any library.
+write nothing. Book-writing jobs refuse a podcast library with
+`409 not_book_library`; podcast jobs require a podcast library.
 
 Two kinds write the same book's files, so the server keeps them apart
 (`bridge.Service.Enqueue`, inside its transaction, after the dedupe): a
@@ -398,10 +400,27 @@ decides what actually runs, `sidecars.describe`, which can wait a long time
 on an agent park, and `chapters.detect`, which follows an engine book like
 generate).
 
+### Podcast jobs
+
+`podcast.subscribe` and `podcast.poll` belong to `podcasts`, require a mapped,
+writable library, and run in `light` alongside the other short HTTP jobs.
+The server creates them from listener actions and its scheduler;
+`POST /admin/bridge/jobs` refuses these internal kinds with `400`.
+The module's toggle holds queued jobs while off, as for contributions.
+Heartbeat replies always include library `kind`; the Bridge treats a missing
+kind as `books`. Private subscribe URLs are injected only into the claim
+response, sealed before local claim recording, and redacted on other reads.
+Default admin job lists omit polls unless `kind=podcast.poll` is requested.
+
+[Podcasts](podcasts.md) describes job params/results, scheduling, privacy and
+file ownership; the [reference](../server/api/reference.md#podcasts) lists the
+listener routes.
+
 ### Notifications
 
-The server tells admins about jobs itself (the Bridge has no route for it): when a
-job moves into `done` it records `bridge_job_finished`, and into `failed`, or into
+The server tells admins about notable jobs itself (the Bridge has no route for
+it); neither podcast kind is `Job.Notable`. When a notable job moves into `done`
+it records `bridge_job_finished`, and into `failed`, or into
 `needs_attention` with a park that isn't transient, `bridge_job_failed`, once per
 move and only after the move has committed. That covers the Bridge's reports and a
 lease that runs out on the last attempt alike. A report that leaves the state as it

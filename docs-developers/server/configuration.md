@@ -200,6 +200,12 @@ config-declared library's `root` and default view, so those settings survive
 restarts. See [Scheduled scans](scanner.md#scheduled-scans) and
 [Ignore rules](scanner.md#ignore-rules).
 
+Library `kind` is a database/API setting, fixed at create (`books` by default,
+`podcasts` explicitly through the admin API/console). It has no YAML library
+key. Podcast roots cannot overlap any other library. The Bridge owns feed
+network limits and allowlists, in its
+[configuration](../bridge/configuration.md#podcasts), not this file.
+
 ### Demo mode (`demo.*`)
 
 | Key | Type / default | Meaning |
@@ -453,6 +459,7 @@ when it has any, and gates the module's routes and Bridge jobs.
 
 | Key | Type / default | Meaning |
 |---|---|---|
+| `modules.podcasts.enabled` | bool, `false` | Follow/unfollow/check and feed scheduling; needs an online Bridge offering `podcast` for the capability flag. Reads stay core. Toggle applies at once, starts/stops the scheduler and holds queued podcast jobs while off. See [Podcasts](../bridge/podcasts.md) |
 | `modules.contributions.enabled` | bool, `false` | The Contributions module: sending corrections and generated characters and recaps to the community database through the Bridge (its flag needs the Bridge's `contribute` feature too). No routes or background work of its own: while it is off, the Bridge jobs it owns (`sidecars.contribute`, `meta.correct`, and a `sidecars.generate` with `contribute: "issue"`) are refused `404 module_off` and queued ones held (see [Managed modules](modules.md)) |
 
 A module's own settings, when it has any, go under its key
@@ -519,6 +526,7 @@ by the settings table in `internal/config/settings.go` (`fields`: each entry's
 | `AUDIOSILO_BACKUP_SCHEDULE` | `backups.schedule` | `""`, `daily:HH:MM` or `weekly:DAY:HH:MM` |
 | `AUDIOSILO_BACKUP_KEEP` | `backups.keep` | integer, 1-365 |
 | `AUDIOSILO_BACKUP_DIR` | `backups.dir` | absolute path |
+| `AUDIOSILO_MODULES_PODCASTS_ENABLED` | `modules.podcasts.enabled` | `strconv.ParseBool` (`true`/`1`/…); locks the console toggle when set |
 | `AUDIOSILO_MODULES_CONTRIBUTIONS_ENABLED` | `modules.contributions.enabled` | `strconv.ParseBool` (`true`/`1`/…); each module's toggle is `AUDIOSILO_MODULES_<ID>_ENABLED` |
 
 List values are split on commas with whitespace trimmed and empties dropped
@@ -576,6 +584,7 @@ restart, and whether the console may change it at all:
 | `backups.schedule` | `backups.schedule` | `AUDIOSILO_BACKUP_SCHEDULE` | at once |
 | `backups.keep` | `backups.keep` | `AUDIOSILO_BACKUP_KEEP` | at once (pruning at the next scheduled backup) |
 | `backups.dir` | `backups.dir` | `AUDIOSILO_BACKUP_DIR` | restart; **read-only** in the console |
+| `modules.podcasts` | `modules.podcasts.enabled` | `AUDIOSILO_MODULES_PODCASTS_ENABLED` | at once; starts/stops the poll scheduler and gates actions; reads stay core |
 | `modules.contributions` | `modules.contributions.enabled` | `AUDIOSILO_MODULES_CONTRIBUTIONS_ENABLED` | at once (the Bridge jobs it owns are refused or held while it is off) |
 
 Not in the console: `max_upload_bytes` (it has a variable but no setting),

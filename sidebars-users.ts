@@ -27,6 +27,7 @@ const sidebars: SidebarsConfig = {
       items: [
         'admin/console-tour',
         'admin/libraries',
+        'admin/podcasts',
         'admin/books',
         'admin/health',
         'admin/users-and-invites',

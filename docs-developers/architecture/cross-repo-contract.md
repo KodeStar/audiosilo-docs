@@ -306,9 +306,10 @@ version.
 latest: `household` and `cast`, which gate [§14](#14-listening-in-the-house-and-casting),
 `household_members`, which gates [§15](#15-household-members-profiles-and-kids-mode-stay-client-side),
 and `bridge`, which follows the Bridge's heartbeat, [§16](#16-the-bridge)),
-one flag per [managed module](../server/modules.md) (`contributions`: the module's
+one flag per [managed module](../server/modules.md) (`contributions` and `podcasts`: the module's
 toggle **and** its Bridge requirement met, sent `false` otherwise; the console reads
-it to offer contributing, the player doesn't), plus the
+it to offer contributing; `podcasts` needs `podcast` and gates actions, while
+reads stay core and released players are still excluded), plus the
 server version
 (`api.Version`, stamped from the release tag via ldflags). `transcode` reflects
 ffmpeg availability; `web_player` reflects whether `/web` is populated; the
@@ -696,7 +697,9 @@ both repos, with a test on each side.
   [Pairing and jobs](../bridge/pairing-and-jobs.md).
 - **Library mappings are checked, never assumed:** the Bridge compares a known
   indexed book's file sizes through its mount with the server's before it calls a
-  library mapped, then probes writing. It checks after pairing, when the server's
+  books library mapped, then probes writing. Podcast libraries instead use a
+  shared root marker read back through the server, even when empty. It checks
+  after pairing, when the server's
   libraries change, every `mapping.check_minutes` (default 10) and on demand; each
   heartbeat carries the last results. See [Library mappings](../bridge/mappings.md).
 - **Hidden folders:** no content route reaches a path through a dot-folder by name
@@ -795,6 +798,61 @@ Bridge's `internal/link` and its test (and, for the generate action, the console
 `admin-ui` and the player's `types.ts`/`client.ts`/hooks with theirs; for a new
 optional heartbeat block, both `accepts` lists), and CROSS-REPO.md §23. The token's rules are
 security-critical: allowed and denied tests on the server.
+
+## 17. Podcast shows, feeds and client visibility
+
+Phase 2c-1 crosses the server/Bridge seam; released player views arrive later.
+See [Podcasts](../bridge/podcasts.md) and the
+[API reference](../server/api/reference.md#podcasts) for exact fields.
+
+- **Kind:** every library JSON and heartbeat reply includes `kind: books|podcasts`;
+  create defaults to books (unknown values give `400 invalid_kind`); PATCH cannot change
+  it (`400 kind_immutable`). Podcast roots cannot overlap any library
+  (`409 root_overlaps`), including when a books root is created or moved.
+- **Capability:** `capabilities.podcasts` is always sent, false unless
+  `modules.podcasts.enabled` and an online Bridge offers `podcast` from its
+  `podcast.subscribe`/`podcast.poll` kinds. It needs no heartbeat request field.
+  Off gates actions, stops the scheduler and holds queued jobs; reads stay core.
+- **Visibility:** `auth.SeesPodcasts(Credential.Client)` feeds `catalog.Caller.Podcasts`.
+  `AudioSilo Admin` qualifies; `AudioSilo` version `dev` qualifies. The released
+  minimum remains empty, so released players, unidentified clients and API
+  tools without a recognized client do not qualify, admins included.
+  Media tokens inherit the stored client when no valid request header exists.
+  Private-show scopes apply after grants, only for followers matching the
+  show's id; the admin catalog remains separate. An authorized library with
+  no visible shows returns empty lists. Cast tokens do not expose podcasts.
+- **Books stay separate:** podcast libraries are excluded from cross-library
+  book search/recent, author/series aggregates, book stats and admin book tools.
+  Podcast `/fs` reads titles from the index, not loose disk audio.
+- **Actions:** adults may follow by URL (whole-library grant) or visible path,
+  unfollow and check, behind the module user wrapper (no kids/demo). The server
+  creates the podcast jobs; the admin enqueue route refuses these kinds.
+  A private URL's normalized current/previous hash proves the follow. Five open
+  subscribe requests per user; manual checks limited to one per 60 seconds when
+  no poll is already open.
+- **Pull and schedule:** the server schedules; the Bridge returns adaptive
+  `next_poll_seconds`, clamped by the server to 15 minutes through 24 hours.
+  HTTP validators/status live on the server. Ended jobs are folded idempotently
+  with a completion wake and a 60-second recovery tick. `gone` stops automatic
+  checks; other failures back off. Polls are omitted from default admin job
+  lists unless filtered explicitly. Podcast jobs never notify.
+- **Files:** Bridge-owned `feed.json` v1 is the shared format; server indexes
+  episodes even without audio. Paths are assigned once; reserved `fetch` data
+  anticipates later downloads. Unknown fields are ignored; breaking format
+  changes bump the version. At the cap, removed never-fetched episodes may be
+  dropped oldest-removed first. Manually renaming a show folder breaks paths.
+- **Mapping/rescan:** `.audiosilo/library.json` v1 holds `{library_id,nonce}`;
+  `GET /bridge/libraries/{id}/marker` returns the matching nonce, regular file
+  only, at most 4 KiB, no marker-directory symlink. Podcast sample-book lookup
+  without a path is `404 no_book`. Podcast `POST /bridge/rescan` indexes a show
+  or the show of an indexed episode; attachments mode and `from` are refused.
+- **Secrets/HTTP:** feed URLs stay out of private files, persisted job params,
+  listings and logs. The server holds the pending credential in memory and
+  injects it into the claim only; restart before claim is `request_expired`.
+  The Bridge seals it before local claim storage and keeps the show credential
+  in its vault. `feed_secret_missing` is repaired by following the URL again.
+  Feed/artwork HTTP checks all DNS results and every dial/redirect, with no
+  proxy; private networks require explicit Bridge `podcasts.allow_networks`.
 
 ## The wire-change checklist
 

@@ -380,6 +380,11 @@ as the Bridge comes and goes, without you touching the switch.
 
 The modules today:
 
+- **Podcasts** - follows shows by feed URL and keeps their feed details and
+  artwork up to date. It needs an online Bridge that supports podcasts.
+  Released player apps
+  [do not show podcasts yet](podcasts.md#what-is-available-now). Turning the
+  module off stops follows and feed checks, keeping the indexed shows and files.
 - **Contributions** - sends your book corrections, and the characters and recaps
   your Bridge generates, to the community metadata database, so every AudioSilo
   server can use them. It needs a Bridge signed in to GitHub, or given a GitHub
