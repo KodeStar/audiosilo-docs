@@ -4,7 +4,12 @@ The documentation site for the AudioSilo product (Docusaurus 3, TypeScript
 config). Two independent docs instances: `docs-users/` (User Guide, `/users`,
 audience = non-programmer self-hoster) and `docs-developers/` (Developer Docs,
 `/developers`, audience = contributor). Landing page in `src/pages/index.tsx`;
-theme (pink `#db2777`, dark-first, matching the product) in `src/css/custom.css`.
+theme in `src/css/custom.css`: the shared Shelf tokens copied from
+`audiosilo-server/admin-ui/src/styles/globals.css` (section 2) mapped onto
+Infima, following the system colour scheme. Search is
+`@easyops-cn/docusaurus-search-local`, scoped per section (User Guide /
+Developer Docs); its index is a postBuild step, so search works only on a built
+site (`npm run build && npm run serve`), not `npm start`.
 
 ## The gate
 

@@ -56,6 +56,15 @@ const config: Config = {
         searchBarShortcutHint: true,
         // Keep Mermaid diagram source out of the index.
         ignoreCssSelectors: ['.docusaurus-mermaid-container'],
+        // Per-section search: a User Guide page searches the User Guide
+        // index, a developer page the Developer Docs one. "See all results"
+        // on the search page still reaches both, and pages outside either
+        // section (the homepage, /search) search everything.
+        searchContextByPaths: [
+          {label: 'User Guide', path: 'users'},
+          {label: 'Developer Docs', path: 'developers'},
+        ],
+        useAllContextsWithNoSearchContext: true,
       } satisfies PluginOptions,
     ],
   ],
