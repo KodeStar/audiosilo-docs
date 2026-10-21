@@ -539,11 +539,9 @@ article[class*='searchResultItem_'] > h2 > a {
 }
 
 /* JetBrains Mono joins `===`, `!==`, `=>` into ligatures (through `calt`);
-   code should show the characters as typed. */
-code,
-kbd,
-pre,
-samp {
+   code should show the characters as typed. Prism blocks are pre > code, so
+   `code` covers inline and block code. */
+code {
   font-variant-ligatures: none;
 }
 
