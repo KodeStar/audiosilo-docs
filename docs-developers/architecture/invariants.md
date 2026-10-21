@@ -160,13 +160,13 @@ audiobooks" into "remote file read on your NAS".
 
 - **No default creds**: first run either prints admin credentials + an auth code
   **once** (the banner is the only place plaintext secrets ever appear) or, with
-  `--setup`, enables a one-time-token setup wizard at `/setup`
+  `--setup`, enables a one-time-token setup page at `/setup`
   (`internal/api/handlers_setup.go`) that self-closes the moment an admin exists.
 - **Hashed secrets**: tokens and auth codes are stored only as SHA-256 hashes;
   passwords use argon2id (`internal/auth/hash.go`). `auth.ResolveRequest` resolves
   opaque bearer tokens against the hashes.
 - **Fragment-carried codes**: invite links are `<base>/connect#code=…` and the
-  setup wizard is `/setup#token=…` - fragments never reach the server or its
+  setup page is `/setup#token=…` - fragments never reach the server or its
   access logs. The setup POST verifies its token in constant time.
 - **Path safety**: `library.SafeJoin` rejects traversal outside the library root;
   every filesystem access derived from user input goes through it. Share scoping

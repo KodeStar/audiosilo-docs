@@ -35,7 +35,16 @@ Most keys can also be changed while the server runs, from the admin console's
 :::note
 First-run **admin bootstrap** is keyed off the database (does an admin
 exist?), not off config-file existence - pre-supplying a `config.yaml` does
-not suppress the credentials banner or the setup wizard.
+not suppress the credentials banner or the setup page.
+
+The console's first-run setup flow is keyed off the database too: the
+`server_state` key `setup_state` (no row = a fresh server, flow not finished;
+migration `0053` marks an upgraded server with a library or a second account
+finished and dismissed). A library declared in `config.yaml` or the
+environment doesn't finish it: the flow lists it as already added
+(`GET /admin/setup`'s `config_libraries`) and its naming step can still switch
+that library's `metadata_source`, which survives restarts (the config sync
+updates only a declared library's root and default view).
 :::
 
 ## CLI flags (`cmd/audiosilo`)
@@ -45,7 +54,7 @@ not suppress the credentials banner or the setup wizard.
 | `--data` | `./data` | Data directory: config, SQLite database, generated certs, downloaded tools |
 | `--ffprobe` | `ffprobe` | Path to ffprobe (durations, chapters, codec detection). **`""` disables it** - the scanner degrades to path-derived metadata and `direct_playable` defaults to true |
 | `--ffmpeg` | `ffmpeg` | Path to ffmpeg for on-the-fly transcoding. **`""` disables it** - `?transcode=1` returns 503 and the `transcode` capability reports false |
-| `--setup` | `false` | First-run **web setup wizard**: instead of auto-creating the admin and printing credentials once, mint a one-time token and enable the guarded `/setup` page (see [Built-in web UI](web-ui.md)) |
+| `--setup` | `false` | First-run **setup page**: instead of auto-creating the admin and printing credentials once, mint a one-time token and enable the guarded `/setup` page, where the admin's username and password are chosen in the browser (see [Built-in web UI](web-ui.md#first-run-setup-page-setup)). Either way the admin console's [first-run setup flow](web-ui.md#the-first-run-setup-flow) then adds the books folder and the rest on the first `/admin` visit |
 
 A bare tool name (no path separator) is resolved **next to the server
 executable first**, then on `$PATH`; an explicit path is used as-is. If a tool
@@ -714,7 +723,7 @@ overrides). It rejects:
 
 Secure-by-default choices baked into `Default()` and first-run: TLS on
 (`selfsigned`) out of the box, no default passwords (credentials are minted
-and printed once, or set via the guarded setup wizard), config written
+and printed once, or set via the guarded setup page), config written
 `0600`, no trusted proxies and no CORS grants until configured. See
 [Auth & security](auth-and-security.md) for the app-layer hardening these
 feed into.
@@ -730,7 +739,7 @@ command and is also available for running the server in-process. The full
 | `DataDir` | string | Config/database/certs directory (as `--data`) |
 | `FFprobePath` / `FFmpegPath` | string | Tool paths; `""` disables the tool (as the flags) |
 | `Log` | `*slog.Logger` | Logger; nil → default stderr text logger |
-| `Setup` | bool | Select the first-run flow: `false` = auto-admin + printed banner; `true` = token-guarded `/setup` wizard |
+| `Setup` | bool | Select the first-run flow: `false` = auto-admin + printed banner; `true` = token-guarded `/setup` page (the admin account only; the console's setup flow follows) |
 | `OnURL` | `func(url string)` | Called once at startup with the URL to open: the token-carrying `/setup#token=…` while first-run setup is pending, else `<base>/web` when a player is available, else `<base>/admin`. A GUI launcher uses it to open a browser |
 | `Bind` | string | Config override for `bind` (e.g. `"127.0.0.1:8080"`) |
 | `TLSMode` | string | Config override for `tls.mode` (`"off"`/`"selfsigned"`/`"autocert"`) |

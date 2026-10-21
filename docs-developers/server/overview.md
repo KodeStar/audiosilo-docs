@@ -69,7 +69,7 @@ startup logic belongs in `pkg/launcher`.
 ### `pkg/launcher` (public)
 
 The run loop: load config → open the store → wire services → first-run
-bootstrap (auto-admin banner, or the token-guarded `/setup` wizard in setup mode)
+bootstrap (auto-admin banner, or the token-guarded `/setup` page in setup mode; the console's first-run flow takes it from there)
 → sync config-declared libraries → kick off the initial background scan → serve
 until the context is cancelled. It is public so the server can also run
 in-process (see [Configuration](configuration.md#launcher-options-for-embedders));

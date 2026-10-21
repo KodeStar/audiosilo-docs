@@ -19,7 +19,7 @@ A few routes deliberately live *outside* the prefix:
 | Route | Why |
 |---|---|
 | `GET /healthz` (also served at `GET /api/v1/healthz`) | container/orchestrator healthchecks expect a root-level probe |
-| `GET /setup`, `POST /setup` | the first-run setup wizard is a browser page, not an API surface (and is off unless the launcher enables it) |
+| `GET /setup`, `POST /setup` | the first-run setup page is a browser page, not an API surface (and is off unless the launcher enables it); the console's first-run flow uses `/api/v1/admin/setup` |
 | `GET /.well-known/apple-app-site-association`, `GET /.well-known/assetlinks.json` | the well-known location is mandated by iOS/Android |
 | `/`, `/connect`, `/admin`, `/assets/…`, `/web/…` | the baked-in admin/connect UI and the web player - static pages over the API, not part of it (see [Web UI](../web-ui.md)) |
 
@@ -183,8 +183,9 @@ Failures a person can fix also carry a machine-readable **`code`** next to
 | `admin_needs_password` | `400` | an admin without a password (creating one, promoting a password-less account, or clearing an admin's password) |
 | `password_too_short` | `400` | a password under the minimum length |
 | `cannot_delete_self` | `400` | an admin deleting their own account |
-| `path_not_absolute` | `400` | `GET /admin/fs/dirs` with a relative `path` |
-| `folder_unreadable` | `404` | `GET /admin/fs/dirs` on a missing or unreadable folder |
+| `path_not_absolute` | `400` | `GET /admin/fs/dirs` or `POST /admin/setup/preview` with a relative path |
+| `folder_unreadable` | `404` | `GET /admin/fs/dirs` or `POST /admin/setup/preview` on a missing or unreadable folder |
+| `invalid_setup_step` | `400` | `PUT /admin/setup` naming a step id the flow doesn't have, or an outcome other than `done` / `skipped` |
 | `book_not_found` | `404` | an admin catalog call on a path that is not an indexed book (book page, edit, bulk edit, match, cover upload, community cover); an admin progress edit on a path with no progress and no indexed book; `POST /admin/bridge/jobs` and `GET /admin/bridge/estimate` on a path that is not an indexed book |
 | `invalid_override` | `400` | a metadata edit the server refuses; the body also carries a `field` key naming the offending field (`PATCH /admin/libraries/{id}/book`, `POST /admin/books/bulk`) |
 | `module_off` | `404` | any route a [managed module](../modules.md) mounts, while that module is off (Settings > Modules), for a caller the route's auth check admits (it runs first). The route exists either way, so turning the module on needs no restart. The `podcasts` module mounts `POST`/`DELETE /podcasts/follow` and `POST /podcasts/check`. Also `POST /admin/bridge/jobs` for a job the module owns (Phase 2b: `sidecars.contribute`, `meta.correct`, `sidecars.generate` with `contribute: "issue"`, the `contributions` module), checked before anything else about the job |
@@ -248,7 +249,7 @@ Podcast actions add `invalid_request` and `invalid_feed_url` (`400`),
 `no_library_access` (`403`), `show_not_found` (`404`), `not_podcast_library`,
 `bridge_unavailable` and `library_not_writable` (`409`), and
 `too_many_requests` / `checked_recently` (`429`). Library kinds add
-`invalid_kind` / `kind_immutable` (`400`) and `root_overlaps` (`409`). An
+`invalid_kind` / `kind_immutable` (`400`) and `root_overlaps` (`409`, also from `POST /admin/setup/preview`). An
 undownloaded episode streams as `404 not_downloaded`. Full shapes and async
 feed failures: [Podcasts](reference.md#podcasts).
 
