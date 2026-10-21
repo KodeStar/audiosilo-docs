@@ -33,7 +33,7 @@ A few routes deliberately live *outside* the prefix:
 - Path parameters like the library `id` must be integers; anything else is a 400.
 - Timestamps on the wire are RFC 3339 strings (e.g. `2026-07-01T19:42:07Z`).
 
-:::caution Empty lists can be `null`
+:::caution[Empty lists can be `null`]
 List-valued response fields are Go slices; when a result is empty the field
 serializes as JSON `null`, not `[]` (e.g. `{"books": null}`). Treat `null` and
 `[]` as equivalent.
@@ -310,7 +310,7 @@ Two server-side guarantees apply to every `?path=`:
   exists. Admins bypass book share scoping; podcast client and private-show
 filters apply to admins too (see [Podcast visibility](../auth-and-security.md#podcast-visibility)).
 
-:::warning `books.id` is not an identity
+:::warning[`books.id` is not an identity]
 Book objects include an `id`, but it is a rebuildable index artifact - it
 changes on rescans and must never be persisted or used to address content.
 Always use `(library_id, rel_path)`. See

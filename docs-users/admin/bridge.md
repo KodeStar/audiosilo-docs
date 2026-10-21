@@ -12,7 +12,7 @@ A Bridge is optional for listening to your existing books.
 [Podcasts](podcasts.md) need one and the Podcasts module. Released player apps
 [do not show podcasts yet](podcasts.md#what-is-available-now).
 
-:::info What it does today
+:::info[What it does today]
 The Bridge is new. Today it
 [generates characters and recaps](generating-characters-and-recaps.md) for books
 the community hasn't covered, saving them with the book,

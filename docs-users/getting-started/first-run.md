@@ -29,7 +29,7 @@ Save these now:
 
 The banner is shown once by design: the server stores only scrambled (hashed) versions of secrets, so it *cannot* show them again later. Under Docker, `docker compose logs` shows it until the container is recreated.
 
-:::warning Missed the banner?
+:::warning[Missed the banner?]
 If you lost the credentials before setting anything up, the simplest fix is to start over: stop the server, delete the data directory, and start it again - a fresh first run prints a fresh banner. Only do this before you've added users or listening progress you care about, because the data directory is where those live.
 :::
 

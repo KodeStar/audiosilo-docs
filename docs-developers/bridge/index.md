@@ -9,7 +9,7 @@ stay read-only and safe to expose to the internet. It is a separate program in i
 own repository, `audiosilo-bridge`, and runs beside the server, usually as a second
 container.
 
-:::info Private repository, built in phases
+:::info[Private repository, built in phases]
 The `audiosilo-bridge` repository (and its images, `ghcr.io/kodestar/audiosilo-bridge`)
 is **private** for now, and the Bridge is being built in phases. **Phase 0** laid
 the foundations: pairing, the heartbeat and the capability, the job queue with

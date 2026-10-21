@@ -4,8 +4,6 @@ title: What is AudioSilo?
 description: "AudioSilo is a self-hosted audiobook platform: a server that streams your own files and a player app for web, iOS and Android."
 ---
 
-## What is AudioSilo?
-
 AudioSilo is a self-hosted audiobook platform. You point a small server at a folder of audiobook files on a machine you own - a home server, a NAS, or a cheap VPS - and listen from anywhere: in a browser, or with the AudioSilo app on your phone. Your books never leave your hardware, there is no subscription, and your files stay exactly as they are on disk. Progress, bookmarks and your listening history sync across every device you use.
 
 ![The AudioSilo web player home screen](/img/screenshots/web-player/home.png)

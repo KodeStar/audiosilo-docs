@@ -204,7 +204,7 @@ Seven behaviors are worth knowing:
     never a reason to refuse it - correcting a misfiled member's language is
     how a series-level language clash gets fixed.
 
-:::note Intake runs on `issues`, not fork code
+:::note[Intake runs on `issues`, not fork code]
 `intake.yml` triggers on the `issues` event, so there is **no fork code
 execution**. The only untrusted input is the issue body and any attachment: it is
 written to a file via an environment variable (never interpolated into a shell

@@ -22,7 +22,7 @@ and sends the text back. It needs no access to your library and no folders set u
 the Bridge sends it the audio. While a worker is connected, every book's
 transcription goes to it; the rest of the work stays on the Bridge.
 
-:::info Docker on a Mac can't use the graphics chip
+:::info[Docker on a Mac can't use the graphics chip]
 If your Bridge runs in Docker on a Mac, its own transcription runs on the processor
 only, because Docker on macOS can't reach the graphics chip. Run a worker on the
 same Mac to get the fast speech recognition.

@@ -41,7 +41,8 @@ npm run build      # the docs gate - MUST pass before a change is done
 `npm run build` is deliberately strict: broken internal links, broken anchors,
 and missing embedded images all **fail the build**. That is the mechanical
 check that pages and screenshots stay consistent - treat it exactly like the
-code repos' gates.
+code repos' gates. A `prebuild` check (`scripts/check-admonitions.mjs`) also
+rejects old-style admonition titles (see Writing style below).
 
 ## When a code change needs a docs change
 
@@ -118,7 +119,8 @@ Rules that keep this maintainable:
 ## Adding a page
 
 1. Create the `.md` file under `docs-users/` or `docs-developers/` with
-   `title:` and `description:` frontmatter (body starts at `##`).
+   `title:` and `description:` frontmatter (body starts at `##`; the
+   `title:` already renders as the page heading, so do not repeat it).
 2. Add its id to the matching `sidebars-*.ts` - sidebars are hand-written so
    reading order stays deliberate; the build fails if the ids drift.
 3. Link related pages with relative `.md` links (validated at build time).
@@ -133,6 +135,12 @@ Rules that keep this maintainable:
   match the source, em dashes included (no current output contains one).
 - Cross-referenced headings should use a colon or rephrase rather than a dash,
   so the auto-generated anchor stays clean and stable.
+- **Admonition titles go in brackets.** Write `:::note[Title]` (also `tip`,
+  `info`, `warning`, `danger`, `caution`), then the body, then a closing `:::`.
+  The old `:::note Title` form no longer parses on this site (`future.v4`
+  turns off `markdown.mdx1Compat.admonitions`) and shows up as literal
+  `:::note Title` text, so the build rejects it. A bare `:::note` without a
+  title is fine.
 
 ## Deployment
 

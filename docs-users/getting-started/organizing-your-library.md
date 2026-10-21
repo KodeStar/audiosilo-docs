@@ -64,7 +64,7 @@ AudioSilo recognizes these audio file types (upper or lower case):
 
 Anything else in your folders - `.jpg` covers, `.nfo` files, `.pdf` companions - is simply ignored and hidden from browsing, so everything you can click in the player is playable.
 
-:::note Audible files (.aax / .aaxc)
+:::note[Audible files (.aax / .aaxc)]
 Audible's DRM-protected files are deliberately **not** indexed: the server can never play them, since they need per-account decryption. Add supported, DRM-free audio files to your library folder instead.
 :::
 
@@ -111,6 +111,6 @@ Your listening progress, bookmarks and notes belong to the *file*, not to a data
 
 Reorganize freely - the whole design assumes your library will keep evolving.
 
-:::note Books on a network share
+:::note[Books on a network share]
 Library folders must be paths the server machine can read directly - mount an SMB/NFS share on the host first, then point the library at the mounted path. If the share is unmounted while the server runs, AudioSilo refuses to treat the missing files as deleted, so nothing is pruned and your progress is safe; the books reappear when the share is back.
 :::
