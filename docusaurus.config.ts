@@ -1,6 +1,7 @@
 import {themes as prismThemes} from 'prism-react-renderer';
 import type {Config} from '@docusaurus/types';
 import type * as Preset from '@docusaurus/preset-classic';
+import type {PluginOptions} from '@easyops-cn/docusaurus-search-local';
 
 // This runs in Node.js - Don't use client-side code here (browser APIs, JSX...)
 
@@ -34,7 +35,30 @@ const config: Config = {
   markdown: {
     mermaid: true,
   },
-  themes: ['@docusaurus/theme-mermaid'],
+  themes: [
+    '@docusaurus/theme-mermaid',
+    // Offline full-text search: the index is built at `docusaurus build` time,
+    // so search only works on a built site (`npm run build && npm run serve`),
+    // never under `npm start`.
+    [
+      '@easyops-cn/docusaurus-search-local',
+      {
+        hashed: true,
+        indexDocs: true,
+        indexBlog: false,
+        indexPages: false,
+        docsRouteBasePath: ['users', 'developers'],
+        docsDir: ['docs-users', 'docs-developers'],
+        // Required: neither docs instance has the id 'default'.
+        docsPluginIdForPreferredVersion: 'users',
+        language: ['en'],
+        highlightSearchTermsOnTargetPage: true,
+        searchBarShortcutHint: true,
+        // Keep Mermaid diagram source out of the index.
+        ignoreCssSelectors: ['.docusaurus-mermaid-container'],
+      } satisfies PluginOptions,
+    ],
+  ],
 
   presets: [
     [
@@ -78,7 +102,7 @@ const config: Config = {
     image: 'img/social-card.png',
     colorMode: {
       defaultMode: 'dark',
-      respectPrefersColorScheme: false,
+      respectPrefersColorScheme: true,
     },
     navbar: {
       title: 'AudioSilo',
@@ -103,6 +127,8 @@ const config: Config = {
           position: 'left',
           label: 'Developer Docs',
         },
+        // Search first on the right, before GitHub and the theme toggle.
+        {type: 'search', position: 'right'},
         {
           type: 'dropdown',
           label: 'GitHub',
@@ -117,7 +143,6 @@ const config: Config = {
       ],
     },
     footer: {
-      style: 'dark',
       links: [
         {
           title: 'Documentation',
@@ -145,8 +170,8 @@ const config: Config = {
       copyright: `Copyright © ${new Date().getFullYear()} AudioSilo. Built with Docusaurus.`,
     },
     prism: {
-      theme: prismThemes.github,
-      darkTheme: prismThemes.dracula,
+      theme: prismThemes.jettwaveLight,
+      darkTheme: prismThemes.jettwaveDark,
       additionalLanguages: ['bash', 'go', 'yaml', 'json', 'diff', 'docker'],
     },
   } satisfies Preset.ThemeConfig,

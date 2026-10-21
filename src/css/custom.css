@@ -1,41 +1,559 @@
 /**
- * AudioSilo docs theme - matches the product's pink-accented, dark-first look
- * (accent #db2777, same as the player and admin console).
+ * AudioSilo docs theme: the Shelf design language shared by the admin console,
+ * the player and audiosilo.app, applied to Docusaurus/Infima.
+ *
+ * 1. Fonts          5. Navbar + search    9. Admonitions
+ * 2. Shared tokens  6. Sidebar + TOC     10. Code
+ * 3. Infima mapping 7. Content           11. Footer
+ * 4. Base           8. Buttons + cards
+ *
+ * Section 2 is copied hex-for-hex from audiosilo-server/admin-ui/src/styles/
+ * globals.css (names included); keep it in sync with that file, never invent
+ * a colour here. Everything below it only reads those tokens.
  */
 
+/* 1. Fonts: self-hosted from npm like the console and site (no font CDN).
+   Latin subset only: the packages' index.css declares every subset, and the
+   bundler inlines the small ones as base64, which added ~95 KB gzipped to the
+   render-blocking stylesheet. Other scripts fall back to the system font. */
+@import '@fontsource/jetbrains-mono/latin-400.css';
+@import '@fontsource/jetbrains-mono/latin-600.css';
+
+@font-face {
+  font-family: 'Bricolage Grotesque Variable';
+  font-style: normal;
+  font-display: swap;
+  font-weight: 200 800;
+  src: url('@fontsource-variable/bricolage-grotesque/files/bricolage-grotesque-latin-wght-normal.woff2')
+    format('woff2-variations');
+  unicode-range:
+    U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308,
+    U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
+
+@font-face {
+  font-family: 'Figtree Variable';
+  font-style: normal;
+  font-display: swap;
+  font-weight: 300 900;
+  src: url('@fontsource-variable/figtree/files/figtree-latin-wght-normal.woff2')
+    format('woff2-variations');
+  unicode-range:
+    U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308,
+    U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
+
+/* 2. Shared tokens */
 :root {
-  --ifm-color-primary: #db2777;
-  --ifm-color-primary-dark: #c62169;
-  --ifm-color-primary-darker: #bb1f63;
-  --ifm-color-primary-darkest: #9a1a52;
-  --ifm-color-primary-light: #e13a85;
-  --ifm-color-primary-lighter: #e2468c;
-  --ifm-color-primary-lightest: #e86ba2;
-  --ifm-code-font-size: 95%;
-  --docusaurus-highlighted-code-line-bg: rgba(0, 0, 0, 0.1);
+  --background: #f5f7fa;
+  --foreground: #121c36;
+  --card: #ffffff;
+  --popover: #ffffff;
+  --primary: #15203d;
+  --primary-foreground: #f5f7fa;
+  --secondary: #eaedf3;
+  --muted: #eef1f5;
+  --muted-foreground: #5b6680;
+  --subtle-foreground: #8590a6;
+  --accent: #e8ecf3;
+  --border: #e0e5ed;
+  --border-strong: #cdd4df;
+  --ring: #db2777;
+
+  --brand: #db2777;
+  --brand-soft: #fce7f1;
+  --brand-ink: #a3195a;
+
+  --success: #0d7f5a;
+  --success-soft: #e1f5ec;
+  --warning: #a86206;
+  --warning-soft: #fdf1dc;
+  --info: #2c56c9;
+  --info-soft: #e6edfd;
+  --destructive: #c42b3c;
+  --destructive-soft: #fde8ea;
+
+  --topbar: rgb(245 247 250 / 0.82);
+  --topbar-border: #e3e7ee;
+  --shadow-overlay: 0 24px 64px -16px rgb(14 22 48 / 0.3), 0 2px 6px rgb(14 22 48 / 0.08);
+
+  --font-display:
+    'Bricolage Grotesque Variable', 'Figtree Variable', ui-sans-serif, system-ui, sans-serif;
+  --font-sans: 'Figtree Variable', ui-sans-serif, system-ui, -apple-system, 'Segoe UI', sans-serif;
+  --font-mono: 'JetBrains Mono', ui-monospace, 'SF Mono', Menlo, monospace;
+
+  --ease-out: cubic-bezier(0.2, 0.8, 0.2, 1);
+  --dur-1: 120ms;
 }
 
-/* Dark mode is the product default; use a lighter pink for contrast. */
 [data-theme='dark'] {
-  --ifm-color-primary: #ec4899;
-  --ifm-color-primary-dark: #e92c8b;
-  --ifm-color-primary-darker: #e11d84;
-  --ifm-color-primary-darkest: #b9186d;
-  --ifm-color-primary-light: #ef64a7;
-  --ifm-color-primary-lighter: #f172ae;
-  --ifm-color-primary-lightest: #f59cc4;
-  --docusaurus-highlighted-code-line-bg: rgba(0, 0, 0, 0.3);
+  --background: #0a0f1e;
+  --foreground: #e7ebf4;
+  --card: #10172b;
+  --popover: #131b31;
+  --primary: #eef1f8;
+  --primary-foreground: #0a0f1e;
+  --secondary: #1a2340;
+  --muted: #151d34;
+  --muted-foreground: #8f9ab3;
+  --subtle-foreground: #66718b;
+  --accent: #1a2340;
+  --border: #1d2640;
+  --border-strong: #2a3555;
+  --ring: #ec4f95;
+
+  --brand: #ec4f95;
+  --brand-soft: #3a1530;
+  --brand-ink: #f78bbb;
+
+  --success: #3cc994;
+  --success-soft: #0f2e26;
+  --warning: #f0b04d;
+  --warning-soft: #33260f;
+  --info: #7d9bf2;
+  --info-soft: #17234a;
+  --destructive: #f0606e;
+  --destructive-soft: #3a1720;
+
+  --topbar: rgb(10 15 30 / 0.78);
+  --topbar-border: #182038;
+  --shadow-overlay: 0 30px 80px -10px rgb(0 0 0 / 0.7), 0 0 0 1px rgb(255 255 255 / 0.04);
 }
 
-/* Screenshots: frame them like UI, not inline images. */
-.markdown img[src*='/img/screenshots/'] {
-  border: 1px solid var(--ifm-color-emphasis-300);
+/* 3. Infima mapping. The rules are theme-independent: the tokens flip, so one
+   block serves both modes. Primary = brand-ink so Infima's links and active
+   states use the readable pink, never the bright brand fill. */
+:root,
+[data-theme='dark'] {
+  --ifm-color-primary: var(--brand-ink);
+  --ifm-color-primary-dark: color-mix(in oklab, var(--brand-ink) 90%, var(--foreground));
+  --ifm-color-primary-darker: color-mix(in oklab, var(--brand-ink) 85%, var(--foreground));
+  --ifm-color-primary-darkest: color-mix(in oklab, var(--brand-ink) 70%, var(--foreground));
+  --ifm-color-primary-light: color-mix(in oklab, var(--brand-ink) 90%, var(--background));
+  --ifm-color-primary-lighter: color-mix(in oklab, var(--brand-ink) 85%, var(--background));
+  --ifm-color-primary-lightest: color-mix(in oklab, var(--brand-ink) 70%, var(--background));
+
+  --ifm-color-success: var(--success);
+  --ifm-color-info: var(--info);
+  --ifm-color-warning: var(--warning);
+  --ifm-color-danger: var(--destructive);
+
+  /* Infima's grey ramp, rebuilt from the ink palette. */
+  --ifm-color-emphasis-0: var(--card);
+  --ifm-color-emphasis-100: var(--muted);
+  --ifm-color-emphasis-200: var(--accent);
+  --ifm-color-emphasis-300: var(--border);
+  --ifm-color-emphasis-400: var(--border-strong);
+  --ifm-color-emphasis-500: var(--subtle-foreground);
+  --ifm-color-emphasis-600: var(--subtle-foreground);
+  --ifm-color-emphasis-700: var(--muted-foreground);
+  --ifm-color-emphasis-800: color-mix(in oklab, var(--foreground) 85%, var(--muted-foreground));
+  --ifm-color-emphasis-900: var(--foreground);
+  --ifm-color-emphasis-1000: var(--foreground);
+
+  --ifm-background-color: var(--background);
+  --ifm-background-surface-color: var(--card);
+  --ifm-font-color-base: var(--foreground);
+  --ifm-heading-color: var(--foreground);
+  --ifm-color-content: var(--foreground);
+  --ifm-color-content-secondary: var(--muted-foreground);
+  --ifm-link-color: var(--brand-ink);
+  --ifm-link-hover-color: var(--brand-ink);
+  --ifm-hr-background-color: var(--border);
+  --ifm-toc-border-color: var(--border);
+
+  --ifm-font-family-base: var(--font-sans);
+  --ifm-heading-font-family: var(--font-display);
+  --ifm-font-family-monospace: var(--font-mono);
+  --ifm-heading-font-weight: 650;
+  --ifm-heading-line-height: 1.15;
+
+  --ifm-global-radius: 10px;
+  --ifm-global-shadow-lw: none;
+  --ifm-card-border-radius: 16px;
+  --ifm-button-border-radius: 10px;
+  --ifm-pagination-nav-border-radius: 16px;
+
+  --ifm-navbar-height: 64px;
+  --ifm-navbar-background-color: transparent;
+  --ifm-navbar-shadow: none;
+  --ifm-navbar-link-color: var(--muted-foreground);
+  --ifm-navbar-link-hover-color: var(--foreground);
+  --ifm-navbar-link-active-color: var(--foreground);
+  --ifm-navbar-search-input-background-color: var(--card);
+  --ifm-navbar-search-input-color: var(--foreground);
+  --ifm-navbar-search-input-placeholder-color: var(--muted-foreground);
+  --ifm-dropdown-background-color: var(--popover);
+  --ifm-dropdown-link-color: var(--foreground);
+  --ifm-dropdown-hover-background-color: var(--accent);
+
+  --ifm-menu-color: var(--muted-foreground);
+  --ifm-menu-color-active: var(--foreground);
+  --ifm-menu-color-background-hover: var(--accent);
+  --ifm-menu-color-background-active: var(--card);
+  --ifm-menu-link-padding-vertical: 6px;
+  --ifm-menu-link-padding-horizontal: 10px;
+
+  --ifm-breadcrumb-item-background-active: var(--accent);
+  --ifm-breadcrumb-color-active: var(--foreground);
+
+  --ifm-table-border-color: var(--border);
+  --ifm-table-head-background: var(--muted);
+  --ifm-table-stripe-background: color-mix(in oklab, var(--muted) 45%, transparent);
+
+  --ifm-code-background: var(--muted);
+  --ifm-code-font-size: 90%;
+  --ifm-code-border-radius: 6px;
+
+  --ifm-footer-background-color: var(--background);
+  --ifm-footer-title-color: var(--foreground);
+  --ifm-footer-link-color: var(--muted-foreground);
+  --ifm-footer-link-hover-color: var(--foreground);
+  --ifm-footer-color: var(--muted-foreground);
+
+  --docusaurus-highlighted-code-line-bg: color-mix(in oklab, var(--brand) 12%, transparent);
+
+  /* The search theme's own variables. Its hit highlight and the active-row
+     fill share one variable, so <mark> is recoloured in section 5. */
+  --search-local-modal-background: var(--popover);
+  --search-local-modal-shadow: var(--shadow-overlay);
+  --search-local-hit-background: transparent;
+  --search-local-hit-shadow: none;
+  --search-local-hit-color: var(--foreground);
+  --search-local-hit-active-color: var(--foreground);
+  --search-local-highlight-color: var(--accent);
+  --search-local-muted-color: var(--muted-foreground);
+  --search-local-input-active-border-color: var(--ring);
+  --search-local-spacing: 8px;
+}
+
+/* 4. Base */
+body {
+  background: var(--background);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+h1,
+h2,
+h3,
+h4 {
+  letter-spacing: -0.015em;
+}
+
+/* Search-term highlights (search page, target page): brand tint, not yellow. */
+mark {
+  border-radius: 3px;
+  background: color-mix(in oklab, var(--brand) 22%, transparent);
+  color: inherit;
+}
+
+::selection {
+  background: color-mix(in oklab, var(--brand) 25%, transparent);
+}
+
+:focus-visible {
+  outline: 2px solid var(--ring);
+  outline-offset: 2px;
+}
+
+/* 5. Navbar + search: the console's translucent top bar. The blur sits on a
+   pseudo-element because backdrop-filter on .navbar itself would become the
+   containing block for the fixed mobile drawer and clip it to the bar. */
+.navbar {
+  border-bottom: 1px solid var(--topbar-border);
+}
+
+.navbar::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  background: var(--topbar);
+  backdrop-filter: blur(16px) saturate(1.6);
+}
+
+/* The mobile drawer reads the (now transparent) navbar background. */
+.navbar-sidebar {
+  background-color: var(--background);
+}
+
+/* Logo lockup: the pink mark on a 30px ink tile + the Bricolage wordmark. */
+.navbar__logo {
+  display: grid;
+  place-items: center;
+  flex: none;
+  width: 30px;
+  height: 30px;
+  margin-right: 10px;
+  border-radius: 9px;
+  background: var(--primary);
+}
+
+.navbar__logo img {
+  width: 20px;
+  height: 20px;
+}
+
+.navbar__title {
+  font-family: var(--font-display);
+  font-size: 16px;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  color: var(--foreground);
+}
+
+/* Nav items as 36px pills; the active one is a card with a hairline. Below
+   997px Infima hides them (they move into the drawer), so only lay them out
+   above it. */
+@media (min-width: 997px) {
+  .navbar__item.navbar__link {
+    display: inline-flex;
+    align-items: center;
+  }
+}
+
+.navbar__item.navbar__link {
+  height: 36px;
+  margin: 0 1px;
+  padding: 0 12px;
   border-radius: 10px;
-  box-shadow: 0 4px 24px rgba(0, 0, 0, 0.25);
+  font-weight: 550;
+  transition:
+    background-color var(--dur-1) var(--ease-out),
+    color var(--dur-1) var(--ease-out);
+}
+
+.navbar__item.navbar__link:hover {
+  background: var(--accent);
+}
+
+.navbar__link--active {
+  background: var(--card);
+  box-shadow: inset 0 0 0 1px var(--border);
+}
+
+.dropdown__menu {
+  padding: 6px;
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  box-shadow: var(--shadow-overlay);
+}
+
+.dropdown__link {
+  border-radius: 8px;
+}
+
+/* Search: the console's 38px card pill with a hairline and the Cmd+K hint. */
+.navbar__search-input {
+  height: 38px;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  font-size: 13.5px;
+  transition: border-color var(--dur-1) var(--ease-out);
+}
+
+@media (min-width: 997px) {
+  .navbar__search-input {
+    width: 240px;
+  }
+}
+
+.navbar__search-input:hover {
+  border-color: var(--border-strong);
+}
+
+.navbar__search kbd {
+  min-width: 20px;
+  padding: 0 5px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: var(--muted);
+  box-shadow: none;
+  color: var(--muted-foreground);
+  font-family: var(--font-mono);
+  font-size: 11px;
+  line-height: 18px;
+  text-align: center;
+}
+
+/* Results: flat rows on a popover, active row on the accent fill. The extra
+   `html` outranks the theme's own `.hitWrapper mark` rule. */
+html .navbar__search mark {
+  color: var(--brand-ink);
+}
+
+.navbar__search [role='option'] {
+  border-radius: 10px;
+}
+
+/* 6. Sidebar + TOC */
+.menu__link {
+  border-radius: 10px;
+  transition:
+    background-color var(--dur-1) var(--ease-out),
+    color var(--dur-1) var(--ease-out);
+}
+
+/* The current page is a card pill; an open parent category is just bold ink. */
+.menu__link--active {
+  font-weight: 600;
+}
+
+.menu__link--active:not(.menu__link--sublist) {
+  box-shadow: inset 0 0 0 1px var(--border);
+}
+
+.menu__caret::before,
+.menu__link--sublist-caret::after {
+  opacity: 0.6;
+}
+
+.table-of-contents__link--active {
+  color: var(--foreground);
+  font-weight: 600;
+}
+
+/* 7. Content */
+.markdown {
+  --ifm-h1-font-size: 2.25rem;
+  --ifm-h2-font-size: 1.6rem;
+  --ifm-h3-font-size: 1.25rem;
+}
+
+.markdown h1,
+.markdown header h1 {
+  font-weight: 700;
+  letter-spacing: -0.03em;
+  line-height: 1.05;
+}
+
+.markdown a {
+  text-underline-offset: 2px;
+}
+
+/* Inline code: a muted chip with a hairline, not Infima's translucent grey. */
+:not(pre) > code {
+  border: 1px solid var(--border);
+  background: var(--muted);
+}
+
+.markdown table thead th {
+  font-weight: 600;
+  text-align: left;
+}
+
+/* Screenshots: framed like the product's own flat cards. */
+.markdown img[src*='/img/screenshots/'] {
   margin: 0.5rem 0 1rem;
+  border: 1px solid var(--border);
+  border-radius: 12px;
 }
 
 /* Phone-sized screenshots shouldn't span the full content column. */
 .markdown img[src*='/phone-'] {
   max-width: 320px;
+}
+
+.breadcrumbs__link {
+  border-radius: 8px;
+}
+
+/* 8. Buttons + cards. "One pink thing per view": primary buttons are ink. */
+.button--primary {
+  --ifm-button-background-color: var(--primary);
+  --ifm-button-border-color: var(--primary);
+  --ifm-button-color: var(--primary-foreground);
+}
+
+.button--primary:hover {
+  --ifm-button-background-color: color-mix(in oklab, var(--primary) 88%, var(--background));
+  --ifm-button-border-color: color-mix(in oklab, var(--primary) 88%, var(--background));
+}
+
+.button {
+  font-weight: 600;
+}
+
+.pagination-nav__link {
+  border: 1px solid var(--border);
+  background: var(--card);
+  transition: border-color var(--dur-1) var(--ease-out);
+}
+
+.pagination-nav__link:hover {
+  border-color: var(--border-strong);
+}
+
+.pagination-nav__sublabel {
+  color: var(--muted-foreground);
+  font-weight: 500;
+}
+
+/* 9. Admonitions: the console's Notice, a flat radius-16 card whose border
+   and heading take the status colour. --status is set per type below. */
+.theme-admonition {
+  --ifm-alert-background-color: var(--card);
+  --ifm-alert-border-color: color-mix(in oklab, var(--status) 30%, var(--border));
+  --ifm-alert-foreground-color: var(--status);
+  --ifm-alert-border-left-width: 1px;
+  --ifm-alert-border-radius: 16px;
+  --ifm-alert-padding-horizontal: 18px;
+  --ifm-alert-padding-vertical: 14px;
+  border: 1px solid var(--ifm-alert-border-color);
+}
+
+.theme-admonition > :first-child {
+  font-family: var(--font-sans);
+  font-size: 12px;
+  font-weight: 650;
+  letter-spacing: 0.06em;
+}
+
+.theme-admonition > :last-child {
+  color: var(--foreground);
+}
+
+.theme-admonition a {
+  color: var(--ifm-link-color);
+  text-decoration-color: currentColor;
+}
+
+.alert--secondary {
+  --status: var(--muted-foreground);
+}
+.alert--info {
+  --status: var(--info);
+}
+.alert--success {
+  --status: var(--success);
+}
+.alert--warning {
+  --status: var(--warning);
+}
+.alert--danger {
+  --status: var(--destructive);
+}
+
+/* 10. Code blocks on the muted surface with a hairline. The Prism theme sets
+   its background inline as a variable, hence the !important. */
+.theme-code-block {
+  --prism-background-color: var(--muted) !important;
+  --ifm-code-border-radius: 12px;
+  border: 1px solid var(--border);
+}
+
+/* 11. Footer: the page background under a hairline, not Infima's grey block. */
+.footer {
+  border-top: 1px solid var(--border);
+}
+
+.footer__title {
+  font-family: var(--font-display);
+  font-weight: 650;
+}
+
+.footer__copyright {
+  color: var(--subtle-foreground);
+  font-size: 13px;
 }

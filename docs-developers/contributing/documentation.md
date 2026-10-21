@@ -43,6 +43,11 @@ and missing embedded images all **fail the build**. That is the mechanical
 check that pages and screenshots stay consistent - treat it exactly like the
 code repos' gates.
 
+Search (the `@easyops-cn/docusaurus-search-local` theme) builds its index
+during `npm run build`, so the search box returns nothing under `npm start`.
+To try a search, or to check how a page ranks, use the built site:
+`npm run build && npm run serve`.
+
 ## When a code change needs a docs change
 
 Grep these docs for the symbol, flag, route, or UI label you changed -
