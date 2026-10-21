@@ -138,8 +138,9 @@ Rules that keep this maintainable:
 - **Admonition titles go in brackets.** Write `:::note[Title]` (also `tip`,
   `info`, `warning`, `danger`, `caution`), then the body, then a closing `:::`.
   The old `:::note Title` form no longer parses on this site (`future.v4`
-  turns on MDX directives) and shows up as literal `:::note Title` text, so
-  the build rejects it. A bare `:::note` without a title is fine.
+  turns off `markdown.mdx1Compat.admonitions`) and shows up as literal
+  `:::note Title` text, so the build rejects it. A bare `:::note` without a
+  title is fine.
 
 ## Deployment
 

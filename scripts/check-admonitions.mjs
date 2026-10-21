@@ -1,20 +1,24 @@
 #!/usr/bin/env node
 // Fails when a docs page uses the old admonition title syntax.
 //
-// With `future.v4` (MDX directives), `:::note Title` no longer parses as an
-// admonition: the page shows the literal ":::note Title" text. The form that
-// parses is `:::note[Title]`. Lines inside fenced code blocks are skipped, so a
-// page may still show the old syntax as an example.
+// `future.v4` turns off `markdown.mdx1Compat.admonitions`, so `:::note Title`
+// no longer parses as an admonition: the page shows the literal ":::note Title"
+// text. The form that parses is `:::note[Title]`. Lines inside fenced code
+// blocks are skipped, so a page may still show the old syntax as an example.
 //
 // Usage: node scripts/check-admonitions.mjs (runs as the npm `prebuild`).
 
 import {globSync, readFileSync} from 'node:fs';
+import {join} from 'node:path';
+import {fileURLToPath} from 'node:url';
+
+const ROOT = fileURLToPath(new URL('..', import.meta.url));
 
 const TYPES = 'note|tip|info|warning|danger|caution|important|success|secondary';
 // An opener with a type followed by whitespace and more text (the old title).
 // Leading whitespace and blockquote markers are allowed (lists, quotes).
 const OLD_OPENER = new RegExp(`^[\\s>]*:{3,}\\s*(${TYPES})[ \\t]+\\S`);
-const FENCE = /^[\s>]*(`{3,}|~{3,})/;
+const FENCE = /^[\s>]*(`{3,}|~{3,})(.*)$/;
 
 function findOldOpeners(text) {
   const hits = [];
@@ -25,7 +29,11 @@ function findOldOpeners(text) {
       const marker = m[1];
       if (fence === null) {
         fence = marker;
-      } else if (marker[0] === fence[0] && marker.length >= fence.length) {
+      } else if (
+        marker[0] === fence[0] &&
+        marker.length >= fence.length &&
+        m[2].trim() === '' // a closing fence carries no info string
+      ) {
         fence = null;
       }
       return;
@@ -37,9 +45,15 @@ function findOldOpeners(text) {
   return hits;
 }
 
+const files = globSync('{docs-users,docs-developers}/**/*.{md,mdx}', {cwd: ROOT});
+if (files.length === 0) {
+  console.error(`check-admonitions: no docs pages found under ${ROOT}`);
+  process.exit(1);
+}
+
 let failures = 0;
-for (const file of globSync('{docs-users,docs-developers}/**/*.{md,mdx}')) {
-  for (const hit of findOldOpeners(readFileSync(file, 'utf8'))) {
+for (const file of files) {
+  for (const hit of findOldOpeners(readFileSync(join(ROOT, file), 'utf8'))) {
     failures++;
     console.error(`${file}:${hit.line}: ${hit.text}`);
   }
