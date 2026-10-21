@@ -33,13 +33,13 @@ const SETUP_URL = process.env.SETUP_URL || '';
 const BOOKS = path.resolve(process.env.SETUP_BOOKS || path.join(CACHE, 'setup', 'Audiobooks'));
 const HOST = process.env.SETUP_HOST || 'audiosilo.local';
 const PASSWORD = 'hearthside-setup';
-if (!SETUP_URL) {
-  console.error('capture-setup: SETUP_URL is required (run.sh starts the --setup server)');
-  process.exit(1);
-}
 if (!wanted(...MANIFEST.filter((s) => s.capture === 'setup').map((s) => s.file))) {
   console.log('capture-setup: no setup shots wanted, skipped.');
   process.exit(0);
+}
+if (!SETUP_URL) {
+  console.error('capture-setup: SETUP_URL is required (run.sh starts the --setup server)');
+  process.exit(1);
 }
 
 // The wizard's URL with the browser's name for the server.

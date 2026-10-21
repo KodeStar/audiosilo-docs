@@ -966,7 +966,7 @@ step reopened from the card goes on to the next step still skipped
 (`nextStep`), then back to Overview.
 
 **The steps** (ids in order: `folder naming metadata reach abs backups phone
-bridge`, `SETUP_STEPS`), each with Back and Skip (`StepFooter`):
+bridge`, `SETUP_STEPS`), each with Skip and, after the first, Back (`StepFooter`):
 
 1. **folder** - a typed path (no folder picker, no new listing route) checked
    by `POST /admin/setup/preview`: the counts, `same_root` as a warning, and

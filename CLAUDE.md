@@ -61,7 +61,8 @@ docs-users/            User Guide pages (getting-started, admin, listening, comm
 docs-developers/       Developer pages (architecture, server{,/api}, frontend, bridge, meta, contributing)
 sidebars-*.ts          canonical page lists (hand-ordered)
 screenshots/           capture pipeline: manifest.mjs (source of truth), run.sh,
-                       capture-web.mjs, capture-admin.mjs, placeholders.mjs, .cache/ (gitignored)
+                       capture-web.mjs, capture-admin.mjs, capture-setup.mjs, capture-meta.mjs,
+                       placeholders.mjs, .cache/ (gitignored)
 static/img/screenshots/  generated images (committed)
 src/pages/index.tsx    landing page; src/css/custom.css theme
 .github/workflows/     ci.yml (build gate), deploy.yml (GitHub Pages on main)

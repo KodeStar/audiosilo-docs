@@ -136,8 +136,8 @@ export const SHOTS = [
   {file: 'server/connect-page.png', capture: 'admin', title: 'Connect page', hint: 'public connect page (auth-code box / QR)'},
 
   // ── First-run setup (capture-setup.mjs: a fresh --setup server; desktop 1440 wide, dark) ──
-  {file: 'server/setup-wizard.png', capture: 'setup', title: 'Setup wizard', hint: "the --setup page: Welcome - let's set up your server, the admin username and password, Create account"},
-  {file: 'server/setup-wizard-done.png', capture: 'setup', title: 'Setup wizard - account ready', hint: 'the --setup page after Create account: Your account is ready, and Continue setup into the console'},
+  {file: 'server/setup-wizard.png', capture: 'setup', title: 'Setup page', hint: "the --setup page: Welcome - let's set up your server, the admin username and password, Create account"},
+  {file: 'server/setup-wizard-done.png', capture: 'setup', title: 'Setup page - account ready', hint: 'the --setup page after Create account: Your account is ready, and Continue setup into the console'},
   {file: 'setup/folder.png', capture: 'setup', title: 'Setup - Books folder', hint: 'step 1 of the console\'s Set up your server flow: the typed books folder checked (Found 8 audio files, 4 book folders) and the library name'},
   {file: 'setup/naming.png', capture: 'setup', title: 'Setup - Book names', hint: 'step 2: four sample books named from tags and from folders side by side (the disagreeing rows marked), Folder names first preselected as Suggested (as tall as the page)'},
   {file: 'setup/metadata.png', capture: 'setup', title: 'Setup - Community metadata', hint: 'step 3: community metadata on, the region, the service or a local copy, and the line saying Continue adds the library'},

@@ -78,7 +78,7 @@ The first time you open the admin console (`/admin`) on a new server, it takes y
 
 How it works:
 
-- **Every step has Back and Skip.** Nothing is required; a skipped step is waiting for you later on the Overview (see [Finish setting up](#the-finish-setting-up-card)).
+- **Every step has Skip, and every step after the first has Back.** Nothing is required; a skipped step is waiting for you later on the Overview (see [Finish setting up](#the-finish-setting-up-card)).
 - **The list on the left** marks each step done (a tick) or skipped (a dashed circle), and any step is a click away.
 - **Finish later**, at the top, takes you to the console. The flow opens again the next time you open the console in a new browser session, until you finish it, and it picks up at the first step you haven't answered.
 - **Everything you choose is an ordinary setting.** Each step saves to the same place as [Server > Settings](../admin/server.md#settings) and [Libraries](../admin/libraries.md), so you can change any of it there later.
@@ -112,7 +112,7 @@ Book details - title, author, narrator, series and number - can come from the fi
 
 This choice decides every book's names, and changing it later re-reads the whole library, so it's worth a look now. [Organizing your library](./organizing-your-library.md#where-titles-authors-and-series-come-from) explains the two in more detail; the same setting is **Book details come from** on each [library](../admin/libraries.md#where-book-details-come-from).
 
-For a library from your config that has already been scanned, the step shows its current choice. Choosing the other re-reads its books' details straight away (your own edits stay).
+For a library the server already has (one from your config, say), the step shows its current choice. Choosing the other re-reads its books' details straight away (your own edits stay).
 
 ### Step 3: Community metadata
 

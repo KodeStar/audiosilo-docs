@@ -105,8 +105,8 @@ Every embedded image is listed in `screenshots/manifest.mjs` and lives under
 `static/img/screenshots/`. The pipeline (`screenshots/run.sh`) rebuilds the
 server, seeds a small public-domain LibriVox library, runs a demo-mode server,
 and captures the web player, admin console, connect page, and the first-run
-setup page and console flow (on a second, `--setup` server) with Playwright. Anything it can't reach gets a labelled placeholder so the
-build never breaks.
+setup page and console flow (on a second, `--setup` server) with Playwright.
+Anything it can't reach gets a labelled placeholder so the build never breaks.
 
 Rules that keep this maintainable:
 

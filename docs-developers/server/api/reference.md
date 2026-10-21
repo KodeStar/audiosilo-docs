@@ -7395,7 +7395,7 @@ server and this request:
     "peer_trusted": false
   },
   "config_libraries": ["Audiobooks"],
-  "mount_hints": ["/audiobooks", "/data"]
+  "mount_hints": ["/audiobooks", "/podcasts"]
 }
 ```
 
@@ -7418,7 +7418,9 @@ server and this request:
   environment declares (re-added at every start).
 - `mount_hints` are folders mounted into the server that may hold books, read
   from `/proc/self/mountinfo` on Linux: folders that exist, not system paths
-  (`/`, `/proc`, `/sys`, `/dev…`, `/etc/…`, `/run…`, `/tmp`), not pseudo
+  (`/`, `/proc`, `/sys`, `/tmp`, `/dev`, `/run`, `/boot`, `/snap` and anything
+  under them or under `/etc`, by whole path segments, so `/devices` is
+  offered), not pseudo
   filesystems, not the server's data folder, sorted, at most 20. `[]` on other
   systems, when the table can't be read, and once the flow is finished (only
   its folder step offers them).
@@ -8426,7 +8428,7 @@ console flow's `folder` step as done (its `naming` step stays open):
 |---|---|
 | `400` | validation (only one of the library fields, the folder doesn't exist, password rules) |
 | `403` | invalid setup token |
-| `409` | setup not available (already completed or never enabled) |
+| `409` | setup not available (already completed or never enabled); with the library fields, also a library create refusal (`name_taken`, `root_overlaps`) after the admin was made, which then exists |
 
 ---
 
