@@ -31,18 +31,11 @@ the episode filename's last extension. It uses the version-1
 are `{title,start_ms,length_ms}` on the episode timeline. No ASR, agent,
 `bridge.json` or `Book.generated` flag is involved.
 
-The Bridge reads bounded ID3v2.3/v2.4 CHAP, sorts chronologically, uses
-`Chapter N` for missing titles, skips APIC images and ignores CTOC ordering.
-Invalid lists, zero or one chapter produce no sidecar while valid audio still
-installs. The [Spike 6 decisions](podcasts.md#spike-results-extensions-and-mp3-chapters)
-give timing, text and size limits.
-
-The podcast scanner uses `metadata.ParseChapterList`, then requires
-`from:id3_chap`, matching basename/size/duration and the current Fetch timestamp.
-It consumes times directly, bypassing book generated-chapter filling and
-alignment. The chapters/files response uses optional
-`chapters_source:"id3_chap"`. Present audio without a usable list gets a
-whole-file chapter; absent audio gets empty chapters/files.
+The Bridge reads the episode's ID3 CHAP frames; invalid lists, zero or one
+chapter produce no sidecar while valid audio still installs. The
+[Spike 6 decisions](podcasts.md#spike-results-extensions-and-mp3-chapters)
+give ordering, title, timing and size rules. How the server checks and
+consumes the file is in [the scanner](../server/scanner.md#podcast-libraries).
 
 `<stem>.publish.json` is a transient install/delete journal and a server
 indexing/media barrier, at most 4 MiB. Podcast publication commits

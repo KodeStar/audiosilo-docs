@@ -472,13 +472,12 @@ and private-show scope before opening any episode; missing audio is
 
 The two Bridge retention routes accept only the paired Bridge bearer token,
 never session/API/cast tokens or query tokens. They return `no-store`
-aggregates, not individual follower names, ids or positions. Eligibility uses
-enabled non-demo followers with current show identity and access. Missing or
+aggregates, not individual follower names, ids or positions. Missing or
 unfinished progress, invalid times, zero followers or any aggregate error
-cannot authorize deletion. Active direct/download/transcode requests are
-marked before opening and released on every exit. The Bridge verifies local
-hash/size and a complete fresh aggregate immediately before deletion; the
-five-second age uses its monotonic request clock. Publication journals block
+cannot authorize deletion, and the Bridge rechecks a fresh aggregate and the
+local hash/size immediately before deleting (full rules in
+[retention](../bridge/podcasts.md#retention-policy-and-deletion-authority)).
+Publication journals block
 indexing/media, and an opened validated descriptor pins each served generation.
 See [retention routes](api/reference.md#bridge-podcast-retention).
 

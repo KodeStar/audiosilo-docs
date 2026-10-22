@@ -956,10 +956,9 @@ collision) and invalidates poll/fetch caches. Manual folder renames remain
 unsupported because feed episode paths include the assigned folder.
 
 Migration 0054 rebuilds feed state with its identity triple, backfilling only
-currently known show ids and dropping unbound cache. Poll params/results bind
-the expected id; old unbound or replaced-show outcomes cannot recreate status.
-Fetch/retain folds do not mutate poll validators or secret flags. Terminal
-fetch rows can be pruned after folding while the separate summary survives.
+currently known show ids and dropping unbound cache. How poll, fetch and retain
+outcomes fold into these tables is in
+[Podcasts](../bridge/podcasts.md#polling-and-outcomes).
 
 Audio and CHAP remain filesystem truth, with generation/hash/tombstones in
 `feed.json`. The show transaction derives presence, file duration/codec and
@@ -968,12 +967,6 @@ publication journal. Single-file episodes synthesize `files` from their Book
 row instead of storing duplicate `book_files`. Eviction clears derived
 presence/chapters but leaves episode/listener state. Progress, favourites,
 queues and bookmarks remain path-keyed through generation changes.
-
-Migration filenames are applied lexically and skipped by their exact recorded
-`schema_migrations.name`, not a highest-version watermark. A gap at 0053 is
-valid: that independent migration can arrive after recorded 0054. No placeholder
-or edits to applied 0052 are needed. Restore validation checks migration names;
-an older binary refusing unknown migrations is a separate compatibility limit.
 
 ### Community metadata cache
 
@@ -1246,7 +1239,7 @@ The migration history so far:
 | 0050 | `book_attachments_description` | `book_attachments.description` (`TEXT NOT NULL DEFAULT ''`): the Bridge's checked `.audiosilo/description.json` (Phase 1c), derived like the rest of the row. No data moves: a book read before it had no `description.json` in its signature (the name was unknown then), so a book that has one now has a changed signature and the next scan reads it again, without re-indexing |
 | 0051 | `book_attachments_chapters` | `book_attachments.chapters` (`TEXT NOT NULL DEFAULT ''`): the Bridge's checked `.audiosilo/chapters.json` (Phase 1d), derived like the rest of the row and read by `applyChapterSource` as the generated chapter source ([Generated chapters](community-chapters.md#generated-chapters)). No data moves, for the same reason as 0050: a book that has one now has a changed signature, so the next scan reads it again |
 | 0052 | `podcasts` | `libraries.kind`, show/hash/episode indexes, durable follows (bound to `show_id`), server feed state including the missing-secret latch, idempotent folded-job markers, and `bridge_jobs.feed_redacted` plus subscribe/recovery indexes; see [Podcasts](#podcasts) |
-| 0054 | `podcast_fetch` | identity-bound feed state, durable `podcast_policies`, separate `podcast_fetch_state`, and derived episode hash/timeline/Fetch/signature columns; see [Podcasts](#podcasts). 0053 belongs to independent work and need not already be applied |
+| 0054 | `podcast_fetch` | identity-bound feed state, durable `podcast_policies`, separate `podcast_fetch_state`, and derived episode hash/timeline/Fetch/signature columns; see [Podcasts](#podcasts) |
 
 ## SQLite choices
 

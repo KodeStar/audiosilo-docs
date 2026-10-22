@@ -203,12 +203,9 @@ restarts. See [Scheduled scans](scanner.md#scheduled-scans) and
 Library `kind` is a database/API setting, fixed at create (`books` by default,
 `podcasts` explicitly through the admin API/console). It has no YAML library
 key. Podcast roots cannot overlap any other library. Per-show retention is
-also a database/API preference, not YAML: default Keep 3, seven days after
-every follower finishes, with protection rules and no hard disk quota. Only an
-admin can change it through the [storage API](api/reference.md#podcast-storage-admin).
-The Bridge owns feed/audio network limits and allowlists, including the
-1024 MiB per-episode cap (`podcasts.max_episode_mb`,
-`AUDIOSILO_BRIDGE_PODCASTS_MAX_EPISODE_MB`, 1..4096, next start), in its
+also a database/API preference, not YAML; an admin changes it through the
+[storage API](api/reference.md#podcast-storage-admin). The Bridge owns
+feed/audio network limits, allowlists and the per-episode size cap in its
 [configuration](../bridge/configuration.md#podcasts), not this file.
 
 ### Demo mode (`demo.*`)

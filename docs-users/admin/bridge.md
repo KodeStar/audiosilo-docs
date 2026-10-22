@@ -23,9 +23,9 @@ set up. With the [Contributions module](server.md#modules) on, it also
 [suggests your corrections](#suggest-corrections) to the community metadata
 database. With the **Podcasts** module on, it also follows podcast feeds and
 keeps their show details and artwork up to date, downloads episodes and removes
-eligible older downloads according to an admin's per-show retention policy.
-The default is Keep 3 with seven days' grace after every follower finishes;
-see [Podcasts](podcasts.md#downloads-and-retention) for the protections and API calls.
+eligible older downloads according to an admin's per-show retention policy
+(see [Podcasts](podcasts.md#downloads-and-retention) for the default,
+protections and API calls).
 :::
 
 To set one up, see [Running a Bridge](../getting-started/running-a-bridge.md). This

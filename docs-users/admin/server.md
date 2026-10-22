@@ -382,8 +382,7 @@ The modules today:
 
 - **Podcasts** - follows shows by feed URL, keeps their details and artwork up
   to date, downloads episodes and checks retention. An admin sets retention
-  per show [through the API](podcasts.md#downloads-and-retention) for now;
-  the default is Keep 3 with seven days after every follower finishes.
+  per show [through the API](podcasts.md#downloads-and-retention) for now.
   It needs an online Bridge that supports podcasts.
   Released player apps
   [do not show podcasts yet](podcasts.md#what-is-available-now). Turning the

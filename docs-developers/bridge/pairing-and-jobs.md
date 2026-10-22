@@ -412,12 +412,10 @@ Heartbeat replies always include library `kind`; the Bridge treats a missing
 kind as `books`. Private subscribe URLs are injected only into the claim
 response, sealed before local claim recording, and redacted on other reads.
 Default admin job lists omit poll/fetch/retain unless their `kind` is requested.
-All podcast kinds are quiet and send no notifications. Fetch params bind
-show/episode ids; retain params bind show id. Fetch dedupe is by exact
-library/path, with replacement identities settled before reuse. Scheduled
-fetch priority is `-10`, admin fetch `20`, retain housekeeping `-20`.
-Fetch/retain outcomes never update feed polling state. A valid present pin is
-reused; there is no player-triggered fetch or fetch-status protocol yet.
+All podcast kinds are quiet and send no notifications. Fetch/retain outcomes
+never update feed polling state, and there is no player-triggered fetch or
+fetch-status protocol yet; params, dedupe and priorities are in
+[fetch and retain jobs](podcasts.md#fetch-and-retain-jobs).
 
 [Podcasts](podcasts.md) describes job params/results, scheduling, privacy and
 file ownership; the [reference](../server/api/reference.md#podcasts) lists the

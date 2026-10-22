@@ -57,7 +57,8 @@ descriptor through serving/transcode without hashing during requests.
 `metadata.ParseChapterList`, with `from:id3_chap`, current Fetch timestamp and
 matching single basename/size/duration required. Times are consumed directly,
 without book generated-chapter filling or alignment. Usable CHAP sets
-`chapters_source:id3_chap`; present audio without it gets a whole-file chapter.
+`chapters_source:id3_chap`; present audio without it gets a whole-file chapter
+and absent audio gets empty chapters/files.
 Bad sidecars log safely and fall back. Single-file episode files are synthesized
 from the Book row, with no redundant `book_files` rows. Eviction clears derived
 presence/files/chapters while retaining the episode and durable state; a full

@@ -58,17 +58,16 @@ A podcast library needs its own folder: it cannot share a root with, contain,
 or sit inside another library. Mount the same folder read-write in the Bridge;
 the server can keep reading it read-only. Its card has a **Podcasts** badge,
 and its menu greys out folder detection and book exports. Its form asks for a
-podcast name and folder, hides **Book details come from** and **Skip these files
-and folders**, and keeps the rescan schedule. Feed checks run separately from
-that schedule. See [Podcasts](podcasts.md) for downloads, retention and space.
+podcast name and folder and hides the book-only settings below. See
+[Podcasts](podcasts.md) for downloads, retention and space.
 
-For a Books library, under them are two optional scan settings, **Scan
-automatically** and **Skip these files and folders** - see
+Under them are two optional scan settings, **Scan automatically** and **Skip
+these files and folders** - see
 [Scanning on a schedule](#scanning-on-a-schedule)
 and [Skipping files and folders](#skipping-files-and-folders) - and **Book
 details come from** (see
-[Where book details come from](#where-book-details-come-from)). You can leave
-them all as they are and set them later.
+[Where book details come from](#where-book-details-come-from)). The last two are
+for books only. You can leave them all as they are and set them later.
 
 ![Adding a library with the folder picker open](/img/screenshots/admin/library-add.png)
 
@@ -96,8 +95,7 @@ first scan starts ("The first scan has started. Covers fill in as books are
 found."). Listeners don't have to wait: the folder view works immediately, and
 books are indexed as the scan progresses (or on demand when someone opens one).
 For a podcast library the message instead says "Shows and episodes appear as
-they are indexed." It indexes the Bridge's saved show files; it does not
-fetch feeds or episodes itself.
+they are indexed."
 
 :::warning Library folders must be on the server
 The folder must be one the **server itself** can read directly. If your

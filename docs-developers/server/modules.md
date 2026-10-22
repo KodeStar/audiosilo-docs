@@ -128,9 +128,8 @@ Nothing starts before `StartModules` or after `StopModules`.
 The `podcasts` module's `Start` runs `podcast.RunScheduler`: it folds ended
 subscribe/poll/fetch/retain outcomes and queues due polls, policy-selected
 downloads and retention checks. It wakes at start, on committed job completion,
-follow/policy changes and every 60 seconds. Per pass it admits at most ten
-fetches (two per show, rotating for fairness) and ten retains (at most hourly
-per show with followers and present files). Off stops that work and holds
+follow/policy changes and every 60 seconds, within per-pass limits described
+in [Podcasts](../bridge/podcasts.md#polling-and-outcomes). Off stops that work and holds
 queued podcast jobs. Already claimed jobs may finish; committed playback and
 core read/Bridge aggregate routes stay available. No player on-demand/status
 protocol is enabled in this release.

@@ -531,13 +531,5 @@ using ffprobe's chapter titles/order. The Spike 6 decisions are:
   chapter also produces none; valid audio still installs. Unknown ends use the
   next start or probed end; known times are preserved.
 
-The output is version-1 `<show>/.audiosilo/<stem>.chapters.json`, stripping
-only the audio's final extension. It has `generator:"audiosilo-bridge"`,
-`generated_at:Fetch.fetched_at`, `from:"id3_chap"`, one `files` entry with
-basename/Fetch bytes/duration_ms, and `{title,start_ms,length_ms}` chapters.
-No ASR, agent, `bridge.json`, generated-content flag or chapter alignment runs.
-The server uses `metadata.ParseChapterList`, checks the source and matching
-file/Fetch, and consumes times directly. The existing chapters/files envelope
-adds optional `chapters_source:"id3_chap"`; a present file without usable CHAP
-gets one whole-file chapter, an absent file gets empty chapters/files.
-See [attachments](attachments.md#podcast-chap-attachments).
+The output file and how the server consumes it are in
+[Podcast CHAP attachments](attachments.md#podcast-chap-attachments).

@@ -1267,14 +1267,11 @@ oldest first and never deletes. On demand schedules none; admin fetch works.
 No followers means no automatic downloads/deletions. Removed feed entries
 are not auto-fetched, but explicit fetch can try the saved enclosure.
 
-Keep deletes only outside its window; On demand has no window requirement.
-Both require every current accessible follower finished, elapsed
-`max(all_finished_at,fetch.fetched_at)+days*86400` grace and no episode
-favourite, queue entry, active direct/download/transcode request or open fetch.
-Zero followers/invalid finish times deny deletion. A show-folder favourite
-does not pin all episodes. Keep N is not a disk limit; an unfinished follower
-can keep files indefinitely. Deletion keeps Fetch as a tombstone, listings,
-artwork and listening state. Details: [retention](../../bridge/podcasts.md#retention-policy-and-deletion-authority).
+Keep deletes only outside its window; On demand has no window requirement;
+both wait for every follower to finish plus the grace days, and favourites,
+queues, active streams and open fetches protect an episode. Keep N is not a
+disk limit. The full rules are in
+[retention](../../bridge/podcasts.md#retention-policy-and-deletion-authority).
 
 Fetch uses priority 20 and the admin's requester id, returns the existing open
 job's actual state, and bypasses terminal failure cooldown. It never replaces
@@ -1292,12 +1289,10 @@ No player fetch/status endpoint ships in this release; missing media remains
 | `409 bridge_unavailable` / `library_not_writable` | no online Bridge offering the needed kind, or no writable mapping |
 | `409 identity_changed` | the indexed identity changed during the operation |
 
-Unexpected failures use sanitized 500 responses. Async fetch failures use a
-failed job with safe `{code,message,retry_after_seconds?}` result, including
-guard codes and `episode_not_found`, `enclosure_missing`, `identity_changed`,
-`invalid_audio`, `probe_unavailable`, `unsupported_encoding`, `index_failed`.
-See [jobs](../../bridge/podcasts.md#fetch-and-retain-jobs) for params/results,
-backoff, progress and recovery.
+Unexpected failures use sanitized 500 responses. Async fetch failures are a
+failed job with a safe `{code,message,retry_after_seconds?}` result; see
+[jobs](../../bridge/podcasts.md#fetch-and-retain-jobs) for the codes,
+params/results, backoff, progress and recovery.
 
 ## Books & content
 

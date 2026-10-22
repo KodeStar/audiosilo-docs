@@ -55,11 +55,6 @@ Leave those folder names alone: episode addresses include the show folder, so
 renaming one by hand breaks the saved paths. Podcasts stay out of book search,
 recently added books, author and series lists, and the console's book tools.
 
-The library folder should support hard links. If it does not, the Bridge falls
-back to a rename that refuses to replace an existing file. Downloads are staged
-inside the show folder, so leave free space on that filesystem for downloads
-in progress as well as saved episodes.
-
 ## Downloads and retention
 
 **An admin sets retention per show through the API for now.** There is no
@@ -74,7 +69,7 @@ an episode again gives it a fresh grace period.
 | Policy | Downloads | Deletes |
 |---|---|---|
 | **Keep N** (`keep`) | The newest N episodes still listed in the feed | Only outside that window, after everyone finishes and the grace period ends |
-| **On demand** (`on_demand`) | No automatic downloads; an admin can request individual episodes through the API in this release | After everyone finishes and the grace period ends |
+| **On demand** (`on_demand`) | No automatic downloads; an admin can request one | After everyone finishes and the grace period ends |
 | **Archive** (`archive`) | All episodes still listed in the feed, oldest first | Never |
 
 Automatic downloads and retention checks require at least one current follower
@@ -85,14 +80,13 @@ an admin can still request a download.
 listens can keep files indefinitely. An episode is also protected while anyone
 has made that episode a favourite, has it in their queue, is playing or
 downloading it from the server, or while its Bridge download job is open.
-Making the show folder a favourite does not protect every episode. Archive
-never deletes files, even after everyone finishes.
+Making the show folder a favourite does not protect every episode.
 
-Deletion removes the managed audio and its chapter file, keeping the episode
+Deleting removes the episode's audio and its chapter file, keeping the episode
 listing, artwork, follows, listening progress and bookmarks. An episode removed
 from the publisher's feed is not downloaded automatically, but a saved copy
-remains playable by a compatible client. The Bridge keeps a present downloaded
-copy even if the publisher changes its audio. If a later download has different
+remains playable by a compatible client. Once downloaded, an episode is not
+replaced if the publisher changes its audio. If a later download has different
 audio, saved listening positions stay unchanged and may no longer line up.
 
 ### Set a show's policy
@@ -145,13 +139,12 @@ The Bridge caps each episode at **1024 MiB** by default, separately from feed
 sizes. Set `podcasts.max_episode_mb` in its configuration or
 `AUDIOSILO_BRIDGE_PODCASTS_MAX_EPISODE_MB` in its environment to an integer
 from 1 to 4096 MiB, then restart the Bridge. An oversized or invalid download
-does not become a saved episode. Plan space for protected episodes and the
-whole back catalogue when choosing Archive.
+does not become a saved episode.
 
-Saved episodes remain readable by a compatible client when the Bridge is
-offline or the module is off. Absent episodes stay unavailable until a Bridge
-download completes. Released player apps still have no podcast views or
-podcast offline-download controls.
+Downloads are staged inside the show folder, so leave free space on the
+library's filesystem for downloads in progress as well as saved episodes.
+Plan space for protected episodes, and for the whole back catalogue when
+choosing Archive.
 
 ## Following and feed checks
 
@@ -190,9 +183,9 @@ The Bridge keeps the private feed URL encrypted in its data folder. It is left
 out of the saved feed details and listener responses, and job lists show a
 shortened address. Keep the Bridge's data and secret key in your backups.
 Private episode addresses are resolved from the feed when needed and are not
-written into the saved feed details or download checkpoints. The downloaded
-audio itself is an ordinary file: anyone who can read the library folder can
-read it. The private-show access rule protects access through AudioSilo.
+written into the saved feed details. The downloaded audio itself is an
+ordinary file: AudioSilo hides private shows from other users, but anyone who
+can read the library folder can read the files.
 
 If the server restarts before the Bridge picks up a new private follow request,
 that request expires: follow the URL again. If the Bridge loses a private

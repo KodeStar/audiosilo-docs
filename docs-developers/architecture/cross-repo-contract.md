@@ -844,12 +844,10 @@ See [Podcasts](../bridge/podcasts.md) and the
   an existing/open job state, priority 20; no forced pin replacement.
 - **Retention:** Keep downloads newest N listed episodes; Archive all listed
   oldest first and never deletes; On demand has no scheduled downloads yet.
-  No followers means no automatic work. Deletion needs every current enabled,
-  non-demo accessible follower finished, grace from
-  `max(all_finished_at,fetch.fetched_at)+days*86400`, no exact favourite, queue,
-  active stream/download/transcode or open fetch, and outside Keep's window.
-  Zero followers/errors deny. Keep is a window, not a disk quota.
-  Bridge-only policy/aggregate routes expose all
+  No followers means no automatic work. Deletion eligibility (followers
+  finished plus grace, protections, Keep's window) is in
+  [retention](../bridge/podcasts.md#retention-policy-and-deletion-authority);
+  Keep is a window, not a disk quota. Bridge-only policy/aggregate routes expose all
   [aggregate fields](../server/api/reference.md#bridge-podcast-retention), no
   names/ids/positions; mismatched generation/hash/size is 409 identity_changed.
   Bridge verifies local bytes and five-second request age on its own clock
@@ -869,9 +867,9 @@ See [Podcasts](../bridge/podcasts.md) and the
   admin job lists unless filtered explicitly. Podcast jobs never notify.
   New poll params/results and feed status bind show id; late/unbound results
   cannot recreate replacement status. Fetch backoff is separate from feed
-  state, 30 minutes doubling to 24 hours. Scheduler limits are ten fetches
-  per pass/two per show, rotating Archive fairly, and ten retains/hourly per
-  show. Fetch/retain never mutate poll validators/secret flags.
+  state, 30 minutes doubling to 24 hours; per-pass limits are in
+  [polling](../bridge/podcasts.md#polling-and-outcomes). Fetch/retain never
+  mutate poll validators/secret flags.
 - **Files:** Bridge-owned `feed.json` v1 is the shared format; server indexes
   episodes even without audio. Paths are assigned once; `fetch` records a
   committed generation or tombstone, with optional codec. Unknown fields are ignored; breaking format
@@ -879,16 +877,15 @@ See [Podcasts](../bridge/podcasts.md) and the
   dropped oldest-removed first. Manually renaming a show folder breaks paths.
 - **Publication/media:** journal/audio/CHAP/Fetch commit order keeps new bytes
   behind `<stem>.publish.json` until complete; recovery reuses the same
-  generation. Hard-link install has a no-replace rename fallback. First fetch
+  generation. First fetch
   is g1; identical refetch keeps g, changed hash increments and latches
   `timeline_changed`. Episode/Book.episode expose optional generation/hash/flag
   even after deletion; progress and bookmarks stay unchanged. One validated
   descriptor serves each request. Direct ETag is
   `"podcast-g<generation>-<sha256>"`, private revalidation and byte ranges;
   transformed output has no source ETag. Absent stream stays 404 not_downloaded.
-- **CHAP:** bounded ID3v2.3/v2.4 reader uses chronological start order, missing
-  title `Chapter N`, no APIC images/CTOC order. Version-1 stem-prefixed
-  `chapters.json` uses `from:id3_chap`, Fetch timestamp and one matching
+- **CHAP:** the [sidecar](../bridge/attachments.md#podcast-chap-attachments)
+  is a version-1 stem-prefixed `chapters.json` using `from:id3_chap`, Fetch timestamp and one matching
   basename/size/duration. No ASR/agent/generated flag; server consumes valid
   times directly and returns optional `chapters_source:id3_chap`. Invalid/0/1
   lists install audio without CHAP. Shared `publish-v1.json` fixes journal/list.
