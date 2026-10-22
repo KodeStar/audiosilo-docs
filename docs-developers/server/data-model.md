@@ -4,7 +4,7 @@ description: "The SQLite schema behind audiosilo-server: the rebuildable index v
 ---
 
 The schema lives in `internal/store/migrations/` as numbered SQL files
-(`0001_init.sql` … `0053_setup_state.sql`), embedded into the binary and
+(`0001_init.sql` … `0054_podcast_fetch.sql`), embedded into the binary and
 applied by `store.Open` at startup. This page documents the **resulting current
 schema**, noting which migration added what.
 
@@ -410,7 +410,9 @@ While a book plays a community recording's chapter list instead of its own (or,
 since Bridge Phase 1d, the chapters a Bridge found in its narration), the
 `chapters` rows hold those chapters and `books.chapters_source` says so (`''` =
 the scan's own, `'community'`, `'generated'`; `chapters_fit` names the fit in
-the rows so an unchanged one is not rewritten). `books.scanned_chapters` always
+the rows so an unchanged one is not rewritten). Podcast episodes use
+`'id3_chap'` for their validated CHAP attachment, without the book source-choice
+pipeline (see [Podcasts](#podcasts)). `books.scanned_chapters` always
 holds the scan's own chapters as JSON with their scanned titles (`UpsertBook`
 writes it, as it writes `scanned`). `refreshEffective` (`applyChapterSource`)
 puts the community's over the scan's in the same transaction when a current
@@ -928,15 +930,19 @@ report; the Bridge's own record of running them lives on its side.
 
 ### Podcasts
 
-Migration `0052_podcasts` adds the library kind and these tables:
+Migration `0052_podcasts` adds the library kind and initial tables;
+`0054_podcast_fetch` adds policies/fetch state and binds poll state to show id.
+The current tables are:
 
 | Table | Ownership and key |
 |---|---|
 | `podcast_shows` | rebuildable show metadata from `feed.json`, keyed by `(library_id, show_path)`; show id, title/author/description/link/language/type/explicit/private, public feed URL and host/hash, podcast GUID, cover path, episode count/latest publication, signature and index time |
 | `podcast_feed_hashes` | current/previous URL hashes; `(library_id, sha256, show_path)`; cascades with its indexed show |
-| `podcast_episodes` | rebuildable one-to-one row for `books.id` with cascade; library/show path, episode id/GUID, publication, season/episode/type/explicit, feed duration, file `present`, generation, removed time and duration source |
+| `podcast_episodes` | rebuildable one-to-one row for `books.id` with cascade; library/show path, episode id/GUID, publication, season/episode/type/explicit, feed duration, file `present`, generation, removed time and duration source; 0054 adds `sha256`, `timeline_changed`, `fetch_json` and `feed_sig` |
 | `podcast_follows` | durable `(user_id, library_id, show_path)`, created time and the followed `show_id`; no FK to the show or `books`, so pruning keeps it, but a different show at the same path does not inherit private access |
-| `podcast_feed_state` | server-owned `(library_id, show_path)` validators, last check/success/status, error code/text, `secret_missing`, failure count and next poll; not written to disk per poll |
+| `podcast_feed_state` | server-owned `(library_id, show_path, show_id)` validators, last check/success/status, error code/text, `secret_missing`, failure count and next poll; not written to disk per poll |
+| `podcast_policies` | durable `(library_id, show_path, show_id)` policy: `mode` (`keep`, `on_demand`, `archive`), `keep` (1..1000), `days` (0..365), `updated_at`; no override means Keep 3/days 7 |
+| `podcast_fetch_state` | server-owned `(library_id, rel_path, show_id)` summary: nullable `last_job_id`, failures, next attempt, safe error code/text; separate from poll status, no FK to jobs or the episode index |
 | `podcast_folded` | `job_id` primary key and fold time `at`, making ended-job follow/status effects idempotent |
 
 An episode's normal Book row is indexed even with no file. Durable progress
@@ -949,6 +955,26 @@ index serves per-user subscribe requests and a `(kind, finished_at)` index
 ended-job recovery. Recovery
 behaviour (the `secret_missing` latch, `request_expired`) is in
 [Podcasts](../bridge/podcasts.md#private-urls-and-recovery).
+
+Policies and fetch state cascade with the library, not the rebuildable index;
+policy preferences survive rescans, index-only rebuilds and backups. A new
+show id at the same path cannot inherit an old policy/status. Moving show state
+through catalog operations carries policies (newer `updated_at` wins a target
+collision) and invalidates poll/fetch caches. Manual folder renames remain
+unsupported because feed episode paths include the assigned folder.
+
+Migration 0054 rebuilds feed state with its identity triple, backfilling only
+currently known show ids and dropping unbound cache. How poll, fetch and retain
+outcomes fold into these tables is in
+[Podcasts](../bridge/podcasts.md#polling-and-outcomes).
+
+Audio and CHAP remain filesystem truth, with generation/hash/tombstones in
+`feed.json`. The show transaction derives presence, file duration/codec and
+chapters from committed Fetch/audio/CHAP, suppressing any episode with a
+publication journal. Single-file episodes synthesize `files` from their Book
+row instead of storing duplicate `book_files`. Eviction clears derived
+presence/chapters but leaves episode/listener state. Progress, favourites,
+queues and bookmarks remain path-keyed through generation changes.
 
 ### Community metadata cache
 
@@ -1222,6 +1248,7 @@ The migration history so far:
 | 0051 | `book_attachments_chapters` | `book_attachments.chapters` (`TEXT NOT NULL DEFAULT ''`): the Bridge's checked `.audiosilo/chapters.json` (Phase 1d), derived like the rest of the row and read by `applyChapterSource` as the generated chapter source ([Generated chapters](community-chapters.md#generated-chapters)). No data moves, for the same reason as 0050: a book that has one now has a changed signature, so the next scan reads it again |
 | 0052 | `podcasts` | `libraries.kind`, show/hash/episode indexes, durable follows (bound to `show_id`), server feed state including the missing-secret latch, idempotent folded-job markers, and `bridge_jobs.feed_redacted` plus subscribe/recovery indexes; see [Podcasts](#podcasts) |
 | 0053 | `setup_state` | the `server_state` row `setup_state` (see [Server state](#server-state)), inserted (`INSERT OR IGNORE`) finished and dismissed with no steps when the server already holds a library of any kind or more than one account that isn't a demo account or a household member (`is_demo = 0 AND managed_by IS NULL`), so an upgraded server never shows the first-run flow or its Overview card. A fresh database has neither when it runs (the first admin is made after the migrations), so it gets no row |
+| 0054 | `podcast_fetch` | identity-bound feed state, durable `podcast_policies`, separate `podcast_fetch_state`, and derived episode hash/timeline/Fetch/signature columns; see [Podcasts](#podcasts) |
 
 ## SQLite choices
 

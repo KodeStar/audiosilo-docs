@@ -31,8 +31,10 @@ AudioSilo Contributions App, and the agent's credential handed to the agent
 container per run), `sidecars.contribute` and `meta.correct`, and the setup
 checklist the heartbeat carries to the console.
 **Phase 2c-1** adds [podcast shows](podcasts.md): subscribe/poll jobs, feed
-details and artwork, guarded HTTP and sealed private-feed credentials. Audio
-downloads and podcast player views, read-along, Audible backups and file moves
+details and artwork, guarded HTTP and sealed private-feed credentials.
+**Phase 2c-2a** adds episode downloads, per-show API retention, pinned audio
+generations and MP3 CHAP attachments. On-demand play and podcast player views,
+read-along, Audible backups and file moves
 arrive later.
 :::
 
@@ -169,8 +171,8 @@ the mark; see [generated content](../server/api/reference.md#generated-content))
   staging protocol, and the credential hand-off.
 - [Contributions](contributions.md) - Phase 2b: the Accounts tab (the GitHub
   sign-in, the agent credentials), `sidecars.contribute` and `meta.correct`.
-- [Podcasts](podcasts.md) - Phase 2c-1: feed files, polling, private
-  credentials and the HTTP guard.
+- [Podcasts](podcasts.md) - feed files, polling, downloads, retention,
+  generation/publication recovery, CHAP, private credentials and the HTTP guard.
 - [Configuration](configuration.md) - the Bridge's settings and environment, the
   images and the compose example.
 - [Development](development.md) - the gate, the layout and the Bridge's own page.

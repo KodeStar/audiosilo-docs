@@ -52,13 +52,21 @@ speech recognition.
 ## Podcasts
 
 These settings are read at startup; restart after editing the file or environment.
-They apply to the guarded feed/artwork client, independently of speech recognition
+They apply to guarded feed, artwork and audio requests, independently of speech recognition
 and the agent.
 
 | Setting | Environment | Default | What it is |
 |---|---|---|---|
-| `podcasts.allow_networks` | `AUDIOSILO_BRIDGE_PODCASTS_ALLOW_NETWORKS` | `[]` | CIDR list explicitly allowed for feed and artwork fetches; YAML array, comma-separated in the environment. Invalid CIDRs fail startup. Private, loopback and other non-public addresses are blocked unless allowed; grant only the ranges needed |
+| `podcasts.allow_networks` | `AUDIOSILO_BRIDGE_PODCASTS_ALLOW_NETWORKS` | `[]` | CIDR list explicitly allowed for feed, artwork and episode audio fetches; YAML array, comma-separated in the environment. Invalid CIDRs fail startup. Private, loopback and other non-public addresses are blocked unless allowed; grant only the ranges needed |
 | `podcasts.max_feed_mb` | `AUDIOSILO_BRIDGE_PODCASTS_MAX_FEED_MB` | `32` | feed response cap in MiB after decompression, 1 to 64; separate from the 24 MiB saved-file cap and fixed 10 MiB artwork cap |
+| `podcasts.max_episode_mb` | `AUDIOSILO_BRIDGE_PODCASTS_MAX_EPISODE_MB` | `1024` | whole episode cap in MiB, integer 1 to 4096; checked against GET length/resume total and received bytes, separately from feed/artwork limits. Does not use the feed's size estimate |
+
+Audio staging is on the show filesystem, not an agent work volume. It should
+support hard links; unsupported filesystems use a no-replace rename fallback.
+Keep space for staged downloads and retained protected episodes. The server's
+per-show retention policy is an API/database preference, not a Bridge config
+key or disk quota; default Keep 3 with seven days' grace. See
+[retention](podcasts.md#retention-policy-and-deletion-authority).
 
 The server's toggle is `modules.podcasts.enabled`, environment
 `AUDIOSILO_MODULES_PODCASTS_ENABLED`, default `false`. It is not a Bridge setting.

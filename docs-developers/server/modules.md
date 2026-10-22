@@ -14,7 +14,8 @@ inert shell so the console had a real card. Phase 2b gave it its actions, which 
 Bridge jobs rather than routes of its own (see
 [Jobs a module owns](#jobs-a-module-owns)); it still has no routes and no
 background work. Phase 2c-1 adds `podcasts`, requiring the `podcast` Bridge
-feature, user actions and a poll scheduler (see [Podcasts](../bridge/podcasts.md)).
+feature, user actions and a scheduler. Phase 2c-2a extends it with episode
+fetch/retention jobs and admin storage actions (see [Podcasts](../bridge/podcasts.md)).
 `transcode`, `metadata` and `bridge`
 are not modules: their keys, variables and flags shipped before the framework, and
 none is just a toggle (`transcode` follows ffmpeg, `metadata` needs its service built
@@ -87,8 +88,12 @@ Every api test's `newTestEnv` mounts the builtin modules through the real
 
 The podcast actions are mounted in `internal/api` with the same user wrapper,
 so `builtin` need not import `api`; the module's `Routes` remains nil. Only
-follow/unfollow/check use this gate. Authenticated podcast reads, including kids,
-are core, with the client gate and private-show scope still applied. The
+follow/unfollow/check use this user gate. Admin retention PUT/DELETE and new
+episode fetches use admin/not-demo auth and the same toggle plus the exact
+Bridge kind and writable mapping; a valid present pin returns 200 before
+those storage checks. Retention GET is also core and uses the admin catalog.
+Authenticated podcast reads, including kids, are core with the client gate
+and private-show scope still applied. The
 `podcasts` module needs `podcast`; `contributions` needs `contribute`.
 
 ## Jobs a module owns
@@ -121,9 +126,13 @@ under the settings mutex:
 Nothing starts before `StartModules` or after `StopModules`.
 
 The `podcasts` module's `Start` runs `podcast.RunScheduler`: it folds ended
-subscribe/poll outcomes and queues due polls, waking on job completion and every
-60 seconds. Off stops that work and holds queued podcast jobs. Already claimed
-jobs may finish.
+subscribe/poll/fetch/retain outcomes and queues due polls, policy-selected
+downloads and retention checks. It wakes at start, on committed job completion,
+follow/policy changes and every 60 seconds, within per-pass limits described
+in [Podcasts](../bridge/podcasts.md#polling-and-outcomes). Off stops that work and holds
+queued podcast jobs. Already claimed jobs may finish; committed playback and
+core read/Bridge aggregate routes stay available. No player on-demand/status
+protocol is enabled in this release.
 
 ## `GET /api/v1/admin/modules`
 

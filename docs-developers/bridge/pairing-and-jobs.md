@@ -336,7 +336,7 @@ Bridge doesn't have.
 
 The server's table also says whether a kind **writes** into the library. Such a
 kind (`sidecars.generate`, `sidecars.describe`, `chapters.detect`, `podcast.subscribe`,
-`podcast.poll`) is queued only for a library the last heartbeat reports
+`podcast.poll`, `podcast.fetch`, `podcast.retain`) is queued only for a library the last heartbeat reports
 **mapped and writable**, else `409 library_not_writable`, after the dedupe (an open
 job is still returned). `bridge.verify`, `sidecars.contribute` and `meta.correct`
 write nothing. Book-writing jobs refuse a podcast library with
@@ -402,15 +402,21 @@ generate).
 
 ### Podcast jobs
 
-`podcast.subscribe` and `podcast.poll` belong to `podcasts`, require a mapped,
-writable library, and run in `light` alongside the other short HTTP jobs.
-The server creates them from listener actions and its scheduler;
+`podcast.subscribe`, `podcast.poll`, `podcast.fetch` and `podcast.retain` belong
+to `podcasts` and require a mapped, writable podcast library. Fetch runs in the
+separate `download` lane (2 concurrent); the others run in `light` (2).
+The server creates them from dedicated actions and its scheduler;
 `POST /admin/bridge/jobs` refuses these internal kinds with `400`.
 The module's toggle holds queued jobs while off, as for contributions.
 Heartbeat replies always include library `kind`; the Bridge treats a missing
 kind as `books`. Private subscribe URLs are injected only into the claim
 response, sealed before local claim recording, and redacted on other reads.
-Default admin job lists omit polls unless `kind=podcast.poll` is requested.
+Default admin job lists omit polls unless `kind=podcast.poll` is requested;
+fetch and retain jobs are listed.
+All podcast kinds are quiet and send no notifications. Fetch/retain outcomes
+never update feed polling state, and there is no player-triggered fetch or
+fetch-status protocol yet; params, dedupe and priorities are in
+[fetch and retain jobs](podcasts.md#fetch-and-retain-jobs).
 
 [Podcasts](podcasts.md) describes job params/results, scheduling, privacy and
 file ownership; the [reference](../server/api/reference.md#podcasts) lists the

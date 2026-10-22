@@ -1,25 +1,29 @@
 ---
 title: "Podcasts"
-description: "Podcast subscribe and poll jobs, feed.json v1, stable show and episode paths, server scheduling, guarded HTTP, private feed secrets, and the feed-extension and ID3 chapter spike results."
+description: "Podcast jobs, feed.json v1 and pinned audio generations, guarded downloads and resume, retention aggregates, publication recovery, ID3 CHAP attachments, and private feed secrets."
 ---
 
 ## Scope and ownership
 
-Bridge Phase 2c-1 adds `podcast.subscribe` and `podcast.poll`, both writing jobs
-in the Bridge's `light` lane. They need a mapped, writable podcast library and
-the server's `podcasts` module (`RequiresBridge: "podcast"`). The module ships
+Bridge Phase 2c-2a adds `podcast.fetch` (the `download` lane, concurrency 2) and
+`podcast.retain` (`light`), alongside `podcast.subscribe` and `podcast.poll`
+in `light`. All four are writing jobs needing a mapped, writable podcast
+library and the server's `podcasts` module (`RequiresBridge: "podcast"`). The module ships
 off. `capabilities.podcasts` is always present and is true only with the toggle
 on and an online Bridge advertising the `podcast` feature.
 
 The server holds follows, feed status, HTTP validators, schedules and job
-intents. The Bridge fetches and parses feeds, owns `feed.json`, artwork and
-private credentials, then asks the server to index the show. The server never
+intents, per-show retention policies and aggregate deletion eligibility. The
+Bridge owns `feed.json`, artwork, audio, CHAP attachments and private
+credentials, then asks the server to index the show. The server never
 writes into the library. Implementations are the Bridge's `internal/podcast`,
 `internal/podcastjob` and `internal/netguard`, and the server's
 `internal/podcast`, `internal/catalog/podcasts.go` and `internal/library/podcasts.go`.
 
-There is no `podcast.fetch`, audio download, retention policy, OPML, discovery,
-podcast chapter/transcript playback or podcast player UI in this phase.
+Downloads are scheduled by policy or explicitly requested by an admin.
+On-demand play, fetch-status routes, OPML, discovery, external chapters,
+transcripts and podcast player UI arrive later. Absent episodes still answer
+`404 not_downloaded`; a stream request never queues work in this release.
 Released players do not see podcast libraries; only the admin console lists
 them for now. Read routes are core and stay available without the module or
 Bridge, subject to the [client gate and private scope](../server/auth-and-security.md#podcast-visibility).
@@ -46,7 +50,12 @@ nonce returned by `GET /api/v1/bridge/libraries/{id}/marker`. See
   .audiosilo/library.json
   <Show Folder>/feed.json
   <Show Folder>/cover.jpg       (or cover.png, when fetched)
-  <Show Folder>/2026-10-19-3fa94c0b1d.mp3  (reserved audio path; no download yet)
+  <Show Folder>/2026-10-19-3fa94c0b1d.mp3
+  <Show Folder>/.audiosilo/2026-10-19-3fa94c0b1d.chapters.json
+  <Show Folder>/.audiosilo/2026-10-19-3fa94c0b1d.publish.json  (transient barrier)
+  <Show Folder>/.audiosilo-tmp-<random>                      (staged audio)
+  <Show Folder>/.audiosilo-trash/podcasts/<transaction>/     (owned deletion)
+<Bridge data>/podcast-fetch/<pairing hash>/<checkpoint>.json
 ```
 
 The file is a rebuildable show/episode index input, written by the Bridge and
@@ -74,6 +83,12 @@ Top-level fields:
 An image is `{file, source_sha256, fetched_at}`: only the image URL's hash is
 saved. Artwork uses the same guarded HTTP client as feeds, is sniffed as JPEG
 or PNG, and is capped at **10 MiB**. Artwork failure does not fail the feed job.
+Failures back off from one hour to 24 hours in the Bridge's durable
+`podcast_artwork_state`, keyed by server/library/show id with an image-URL hash
+identifying the current source.
+A changed image hash retries; success clears the failure. Existing artwork
+survives failures; a `304` fetches no artwork and writes no feed file. An
+artwork failure alone does not change the feed timestamp.
 Show and episode descriptions become plain text; byte clipping keeps valid UTF-8.
 
 An episode has:
@@ -89,14 +104,22 @@ An episode has:
 | `enclosure` | `{url, type, length}`; private shows save `url: ""` |
 | `chapters_url`, `transcripts` | Podcast Namespace chapter URL and up to eight `{url,type,language}` transcripts; private shows save `""` and `[]` |
 | `first_seen`, `removed_at` | first observation; `""` until absent from a later feed |
-| `fetch` | `null` in this phase; reserved file-generation information below |
+| `fetch` | `null` until a download is committed; otherwise the pinned generation below, including after deletion |
 
-The reserved `fetch` object is
-`{generation, sha256, bytes, duration_ms, content_type, fetched_at, deleted_at, timeline_changed}`.
-The server already reads it: a present file with positive `duration_ms` gives
-`duration_source: "file"`; otherwise a positive feed duration gives `"feed"`,
-else `"none"` with duration zero. Presence is observed by listing the show
-directory, without probing audio. Progress stays keyed by `(library_id, path)`.
+```json
+{"generation":2,"sha256":"7be5836ba147da1215098df9f7a34f33b157d07fd92dd801928c9caef17e6d2b","bytes":16493,"duration_ms":4056,"content_type":"audio/mpeg","fetched_at":"2026-10-21T08:00:00Z","deleted_at":"","timeline_changed":true,"codec":"mp3"}
+```
+
+Generation must be at least 1, SHA-256 64 lowercase hex, bytes and duration
+positive, and timestamps RFC 3339 (`deleted_at` may be empty). `codec` is
+optional for older files; absence uses conservative codec handling. An invalid
+Fetch keeps the episode listed but grants no presence, ETag or deletion authority.
+Polls and deletion preserve the known Fetch fields. A committed regular audio
+file of the expected size, with no deletion timestamp or publication barrier,
+gives `duration_source: "file"` and the probed duration/codec. Otherwise the
+server uses a positive feed duration (`"feed"`) or zero (`"none"`), with size 0.
+The server does not probe or hash podcast audio. Progress stays keyed by
+`(library_id, path)`.
 
 The server validates episode paths as `<show>/<audio filename>`, one level,
 clean, non-hidden, unique and supported by `metadata.IsAudio`. Bad entries are
@@ -143,9 +166,10 @@ writes use hidden temporary files, fsync and atomic rename.
 
 ## Job wire format
 
-Both kinds are server-internal, module-owned and non-notable. The admin enqueue
-route refuses them, and default admin job lists omit `podcast.poll` unless
-explicitly filtered; follow/check and the scheduler create them. Subscribe has
+All four kinds are server-internal, module-owned and non-notable. The admin
+enqueue route refuses them, and default admin job lists omit `podcast.poll`
+unless explicitly filtered (fetch and retain jobs are listed); dedicated
+actions and the scheduler create them. Subscribe has
 `library_id`, null `path`, priority 10 and the listener's `requested_by`.
 Its dedupe key is `podcast.subscribe|<library_id>||<feed_url_sha256>|<user_id>`.
 Stored params are strict, server-built JSON:
@@ -160,9 +184,11 @@ Stored params are strict, server-built JSON:
 
 A private request stores `feed_url: ""` (see
 [Private URLs](#private-urls-and-recovery)).
-`show_path` names an existing show when restoring a missing credential. Poll's
-`path` is one clean non-hidden show segment. Its params are optional `etag`
-and `last_modified`, each at most 512 bytes. The Bridge drops URL-bearing or
+`show_path` names an existing show when restoring a missing credential; new
+repair subscribes also carry optional expected `show_id`. Poll's
+`path` is one clean non-hidden show segment. Its params are optional `show_id`,
+`etag` and `last_modified`, the validators each at most 512 bytes. New work
+binds the expected show id; the Bridge checks it before writing. It drops URL-bearing or
 overlong validator values before returning them to the server.
 
 Progress uses `step` and `message`, with steps `fetching`, `parsing`, `writing`
@@ -172,7 +198,7 @@ Successful results:
 | Kind | Result fields |
 |---|---|
 | `podcast.subscribe` | `library_id`, `show_path`, `show_id`, `created`, `private`, `episodes`, `skipped`, `status`, `etag`, `last_modified`, `next_poll_seconds` |
-| `podcast.poll` | `library_id`, `show_path`, `status`, `changed`, `new_episodes`, `episodes`, `skipped`, `moved`, `etag`, `last_modified`, `next_poll_seconds` |
+| `podcast.poll` | `library_id`, `show_path`, `show_id`, `status`, `changed`, `new_episodes`, `episodes`, `skipped`, `moved`, `etag`, `last_modified`, `next_poll_seconds` |
 
 Validators are `""` when absent. `episodes` counts retained entries, including
 removed ones; `skipped` counts unsupported items in the current feed. Failed
@@ -180,11 +206,155 @@ jobs carry a safe message in `error` and result
 `{code, message, retry_after_seconds?}`. Codes and listener response shapes
 are in the [API reference](../server/api/reference.md#podcast-actions).
 
+### Fetch and retain jobs
+
+`podcast.fetch` requires `library_id`, an exact indexed episode `path` and
+strict params `{"show_id":"a1b2c3d4e5f60718","episode_id":"1cc306d831645e2b"}`.
+No URL, credential, policy or book id travels in params. Dedupe is
+`podcast.fetch|<library_id>|<path>`. A replacement identity cannot adopt an old
+open job: the server settles that intent first. Both sides recheck identities
+before work and publication. Admin fetches use priority `20`; scheduled ones
+use `-10`.
+
+Progress steps are `resolving`, `fetching`, `probing`, `writing`, `indexing`.
+Byte counts are int64 `Progress.Extra` fields, including any proven prefix;
+they may reset after a restart from zero. Unknown total is `null`:
+
+```json
+{"step":"fetching","bytes_received":1048576,"bytes_total":314572800,"message":"Fetching episode"}
+```
+
+Reports/keepalives occur at least every ten seconds. Success is
+`{library_id,path,show_id,episode_id,fetch:Fetch,chapters:3,reused:false}`.
+`reused:true` means a valid pin or recovered completed installation needed no
+new enclosure GET. Failure is a failed job with safe `error` and
+`{code,message,retry_after_seconds?}` result. Alongside guard codes, failures
+include `episode_not_found`, `enclosure_missing`, `identity_changed`,
+`invalid_audio`, `probe_unavailable`, `unsupported_encoding`, `index_failed`,
+`library_not_writable`, `feed_secret_missing` (a private show's vault entry) and
+`write_failed` (a disk failure, or an unverified file at the assigned path or an
+invalid saved Fetch that needs administrator repair).
+Results never include upstream bodies, URLs, headers or probe stderr.
+
+`podcast.retain` requires the show `path` and `{"show_id":"<16 lowercase hex>"}`,
+priority `-20`, no requester, dedupe by kind/library/path. Progress is
+`{step:"retaining",message:"Checking retained episodes"}`. Success is
+`{library_id,show_path,show_id,deleted:2,skipped:1}`. Protected, busy and stale
+candidates count as skipped; mapping/feed/identity failures fail the job.
+
+## Retention policy and deletion authority
+
+An admin sets one shared policy per show through the
+[storage API](../server/api/reference.md#podcast-storage-admin); there is no
+retention UI. The default is `{"mode":"keep","keep":3,"days":7}`.
+All keys are required on PUT, including unused ones: `mode` is
+`keep|on_demand|archive`, `keep` 1..1000, `days` 0..365.
+Policies are durable server state keyed by library/path/show id, not feed data.
+A replacement show at the same path starts with the default.
+
+- Keep downloads the newest N currently listed entries, publication descending
+  then path descending, undated last. Deletion additionally requires being
+  outside this window.
+- Archive downloads every currently listed entry oldest first, path ascending,
+  undated last, and never deletes.
+- On demand schedules no feed-wide downloads; individual admin fetches work.
+  Its deletion rule has no Keep window. Player-triggered fetches arrive later.
+
+Removed feed entries are never auto-fetched, but their saved bytes remain
+playable and an admin fetch can try their saved enclosure. Without followers
+there is no automatic download or deletion. Keep N is a window, not a disk
+limit: an unfinished follower can keep files indefinitely.
+
+Before deleting, the Bridge reads the policy and requests a
+[retention aggregate](../server/api/reference.md#bridge-podcast-retention) for
+the exact committed generation/hash/size. The server reads policy, follows,
+progress, exact episode favourites, queues and open fetch jobs in one DB
+snapshot, then adds the live stream mark. It returns a follower count and
+booleans/times, never user ids, names or positions.
+
+Followers count only while enabled, non-demo, bound to the current show id and
+still granted the episode, with podcast access explicitly enabled for this
+internal scope resolution. Missing progress, unfinished state or invalid
+finish time denies deletion. Zero followers never means everyone finished.
+A new follower blocks; unfollowing or losing access removes that follower.
+An exact episode favourite protects conservatively even after access is
+revoked; a show-folder favourite does not. Any exact queue entry, active
+direct/download/transcode request or open fetch also protects.
+
+`delete_after = max(all_finished_at, fetch.fetched_at) + days * 86400 seconds`.
+Eligibility requires elapsed grace, every follower finished, no protection,
+non-Archive policy and, for Keep, being outside its window. Refetching resets
+grace. The Bridge rereads identities and verifies local audio hash/length
+under the show mutation lock, then obtains a fresh aggregate immediately
+before deletion. It rejects missing, stale, invalid or failed answers.
+The five-second freshness bound uses elapsed time from request dispatch on
+the Bridge's monotonic clock, including a final check at the rename boundary;
+the server's `checked_at` remains on the wire but is not the freshness clock.
+This is a snapshot, not a lock against later follows.
+
+Deletion journals and renames only owned audio/CHAP into
+`.audiosilo-trash/podcasts/<episode_id>-g<generation>-<nonce>/`, saves
+`Fetch.deleted_at` without losing other Fetch fields, removes the barrier,
+rescans the show and then unlinks trash. Entries, artwork and listener state
+remain. Windows refusing an open-file rename skips that candidate. A delete
+journal whose audio never moved is aborted during recovery; once it moved,
+recovery finishes the tombstone before another fetch.
+
+## Publication, generations and serving
+
+A valid present pin is never replaced. First commit uses generation 1 and
+`timeline_changed:false`. After deletion, the same hash keeps its generation;
+a different hash increments it and latches `timeline_changed:true`, even with
+the same duration. Later equal hashes retain that warning. Saved progress,
+finished state, bookmarks, annotations and queues are never rescaled or reset.
+
+Per-episode process/filesystem locks prevent overlapping reclaimed writers.
+The short show mutation lock is shared by subscribe/poll/fetch/retain and never
+spans an audio GET. A writer recovers journals, confirms its lease, checks
+mapping and identities, and rereads the latest feed before committing, keeping
+concurrent poll metadata changes.
+
+Publication order is staged hash/probe, durable journal, audio installation,
+atomic CHAP write/removal, atomic Fetch merge into `feed.json`, directory sync,
+journal removal, then targeted `POST /bridge/rescan {library_id,path:<episode>}`.
+Audio installation first tries an exclusive hard link, falling back on
+unsupported filesystems to a no-replace rename. It stays on the show filesystem
+and refuses foreign files at the assigned path; manual audio is a repair
+conflict, never adopted or overwritten. Final files are `0644`, folders `0755`,
+partials/checkpoints `0600`; symlinked show/audio/attachment/journal paths fail.
+
+`<show>/.audiosilo/<stem>.publish.json` is a version-1, at most 4 MiB journal:
+
+```text
+{version:1, op:"install"|"delete", show_id, episode_id, path,
+ audio_temp, trash_dir, fetch:Fetch, chapters:ChapterList|null}
+```
+
+Unused temp/trash fields are empty strings. Names are validated within the same
+show, with no secrets or URLs. Its existence blocks indexing/serving that
+episode; even a malformed or symlinked journal fails closed. Recovery verifies
+owned staged/installed bytes and completes chapters/Fetch without incrementing
+the generation again. Missing or corrupt candidates require repair. A new
+generation without CHAP removes its old CHAP file. Failed rescan after disk
+commit yields `index_failed`; a retry repairs indexing with `reused:true` and
+no publisher GET. The shared `publish-v1.json` fixture fixes the exact shape.
+
+The server opens a regular descriptor, checks current feed signature/identity,
+expected size, named-file identity and absence of a journal, with a bounded
+retry on change. That descriptor serves the whole request, including transcode;
+the path is never reopened after validation. Direct streams and downloads use
+strong `ETag: "podcast-g<generation>-<sha256>"`, `Cache-Control: private, no-cache`
+and byte ranges. Matching `If-Range` gives 206; an old validator gives a full
+200 of the current generation. Changed bytes change the ETag even at equal
+size/mtime. Transformed output has no source strong ETag or byte seeking.
+An already-open descriptor can finish across deletion where the OS permits.
+
 ## Polling and outcomes
 
 The module's `Start` runs the server scheduler. It wakes on a committed ended
 job and every **60 seconds**, folds outcomes idempotently through
-`podcast_folded(job_id)`, and recovers ended podcast jobs from the last 24 hours.
+`podcast_folded(job_id)`, and recovers ended subscribe/poll jobs from the last
+24 hours. Unfolded fetch/retain outcomes have no age cutoff.
 It queues up to ten due shows per pass while an online Bridge offers
 `podcast.poll`; only shows with a follower qualify, and open polls are deduped.
 Scheduled polls have priority `-10`, manual checks `0`, subscribes `10`.
@@ -210,6 +380,22 @@ or use `retry_after_seconds` clamped to 60 seconds through 24 hours. `gone`
 the module off stops scheduling and folding and holds queued podcast jobs;
 already claimed jobs can finish.
 
+The same scheduler considers downloads and retention at startup, every minute,
+and after follow/policy changes and committed podcast outcomes, including an
+unchanged poll. It admits at most ten new fetches per pass, two per show, with
+a rotating show cursor for Archive fairness; existing open jobs do not spend
+new quota. At most ten retains start per pass, no more than one per show per
+hour by latest retain creation, requiring followers and present files.
+
+Feed status is bound to `(library_id,show_path,show_id)`; late outcomes for a
+replaced show and unbound pre-upgrade polls cannot restore its status or
+validators. Fetch outcomes use separate `podcast_fetch_state`, backing off
+from 30 minutes exponentially to 24 hours (a larger Retry-After also caps at
+24 hours); success clears it. Cancellation/identity replacement is not a
+failure. Fetch/retain never update poll validators or secret flags. When new
+work is admitted, older terminal fetch/retain rows are pruned only after
+folding, preserving the newest row and the separate summary.
+
 Permanent 301/308 redirect chains and `itunes:new-feed-url` can move a feed.
 The Bridge keeps previous hashes for dedupe; it rejects an HTTPS-to-HTTP
 `new-feed-url` and avoids cycling back to a previous hash. A feed may become
@@ -217,7 +403,7 @@ private on a move and never becomes public again automatically.
 
 ## HTTP guard
 
-`internal/netguard` handles feeds and artwork. Only HTTP(S) is accepted.
+`internal/netguard` handles feeds, artwork and episode audio. Only HTTP(S) is accepted.
 Environment proxies are disabled. Every resolved address must be public or
 explicitly allowed; IPv4-mapped addresses are unwrapped and NAT64 addresses
 checked against their embedded IPv4 address. Loopback, private, link-local,
@@ -226,7 +412,7 @@ The dialer connects to the addresses it checked and checks again immediately
 before connect; redirects use the same guard, with at most ten redirects.
 
 Limits: 10-second connect and TLS handshake, 15-second response headers,
-30-second body stall and a three-minute fetch ceiling. Gzip is decoded under
+30-second body stall and, for feeds/artwork, a three-minute fetch ceiling. Gzip is decoded under
 the response size cap. The default feed cap is **32 MiB**, configurable from
 1 to 64 MiB. Transient network failures and retryable HTTP responses get at
 most two retries with jittered 1- and 4-second delays; a Retry-After above ten
@@ -235,8 +421,45 @@ Errors use bounded messages without remote URL text.
 
 For feeds on a trusted local network, explicitly configure
 `podcasts.allow_networks` (empty by default); it grants the named CIDRs to
-**feeds and artwork**, so use the narrowest range needed. See
+**feeds, artwork and audio**, so use the narrowest range needed. See
 [Configuration](configuration.md#podcasts) for exact keys and environment names.
+
+### Episode downloads and proven resume
+
+Audio uses a plain GET, never HEAD, `Accept-Encoding: identity`, no environment
+proxy, and the same DNS/dial/redirect guard. Pairing credentials and cookies are
+never sent upstream; source credentials are stripped on cross-origin redirects.
+Non-identity audio encoding is refused, never decompressed. The default cap is
+1024 MiB (`podcasts.max_episode_mb`, 1..4096), enforced against GET length or
+resume total before writing, and against received bytes when unknown. Feed
+length is not admission evidence. Two retries at jittered 1/4 seconds allow
+at most three GET attempts, including fresh-GET resume fallback. Retry-After
+above ten seconds returns to the scheduler.
+
+The absolute download/probe/publication ceiling is
+`5 min + 3 * ceil(B / 262144) seconds + 6 seconds`, using known whole-file
+GET total or the configured cap. It starts before GET and can only tighten;
+retries never reset it. A 300 MiB file gets 65 minutes 6 seconds. Mapping/lock
+waits precede that budget. Complete nonempty bytes are hashed and locally
+probed within 60 seconds for finite positive duration and a supported audio
+stream. Detected codec/MIME and duration are recorded; tags never replace feed
+metadata. Probe inputs cannot open network/playlist resources.
+
+Resume needs matching pairing/library/show/episode identity, exact partial
+size N, known total T within cap and a strong quoted ETag sealed in the vault.
+The checkpoint stores owned temp name, offset/total and validator reference,
+never a URL. Restart rehashes the prefix. Requests use `Range: bytes=N-` and
+`If-Range`. Append requires 206 with the same strong ETag, exact
+`Content-Range: bytes N-(T-1)/T`, matching length when supplied, identity
+encoding and exactly T final bytes. A 200-on-Range starts from zero, never
+appends. Weak/missing/changed tags, bad ranges, 416 and encoded resumes discard
+the partial and try fresh within the attempt budget. Last-Modified, URL and
+size alone prove nothing. A fresh unsolicited 206 is rejected.
+
+Only a resumable stop with a proven partial may keep it. Terminal cancellation,
+identity/pairing/mapping loss, cap/probe failure or exhausted work cleans owned
+partials/validators when safe. Recovery cleans only owned records older than
+24 hours with no live job, under mapping checks and locks.
 
 ## Private URLs and recovery
 
@@ -260,6 +483,12 @@ again. The Bridge seals the URL **before** recording its local claim, under
 `podcast_job_<id>_<attempt>`, then keeps the show's URL as
 `podcast_feed_<show_id>`. The temporary credential is removed when the job ends.
 The Bridge database and page responses never persist or expose the raw secret.
+
+A private episode fetch resolves the saved vault feed with an unconditional
+bounded feed GET. It matches assigned episode id/GUID, then a unique title/date
+fallback, never list position; ambiguity is `enclosure_missing`. This does not
+merge or poll the feed. The enclosure URL remains in memory for the job's GET
+attempts and never enters the checkpoint or validator record in plaintext.
 
 Private `feed.json` files omit feed/enclosure/chapter/transcript URLs and the
 show link. URL-bearing text is redacted and URL-bearing GUIDs hashed. Job
@@ -292,8 +521,18 @@ variants exposed gaps: without TIT2 the title became the frame id `chp0`;
 chapter APIC images were absent from the server model; reversed ordered CTOC
 children did not change timestamp/physical CHAP order.
 
-The probe covers ordinary titled chronological chapters, not full CHAP
-fidelity. A Bridge CHAP reader and `.audiosilo/<stem>.chapters.json` output with
-a new `from` value remain a later-phase follow-up, with explicit decisions
-needed for missing titles, images and CTOC order. This phase changes no chapter
-behavior.
+Phase 2c-2a implements a bounded Bridge ID3v2.3/v2.4 CHAP reader rather than
+using ffprobe's chapter titles/order. The Spike 6 decisions are:
+
+- Missing or blank TIT2 becomes `Chapter N` after chronological sorting, never
+  a frame id. Latin-1, UTF-8 and UTF-16 titles are cleaned and capped at 200 bytes.
+- Playback follows start times, regardless of physical CHAP or ordered CTOC
+  order. APIC pictures and URLs are skipped, with no extracted files or requests.
+- At most a 16 MiB tag and 2000 CHAP frames are read. Duplicate ids/starts,
+  invalid/out-of-duration timing, a nonzero first start, gaps/overlaps over
+  1000 ms, or a malformed list produce no optional attachment. Zero or one
+  chapter also produces none; valid audio still installs. Unknown ends use the
+  next start or probed end; known times are preserved.
+
+The output file and how the server consumes it are in
+[Podcast CHAP attachments](attachments.md#podcast-chap-attachments).

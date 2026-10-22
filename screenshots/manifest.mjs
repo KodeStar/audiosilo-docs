@@ -78,6 +78,7 @@ export const SHOTS = [
   {file: 'admin/overview-phone.png', capture: 'admin', title: 'Admin - Phone', hint: 'overview at phone width (400x860) with the bottom tab bar (light)'},
   {file: 'admin/libraries.png', capture: 'admin', title: 'Admin - Libraries', hint: 'Library > Libraries: library cards with covers, status, folder, book count'},
   {file: 'admin/library-add.png', capture: 'admin', title: 'Admin - Add library', hint: 'the Add library dialog: the Kind choice (Books, with the line that Podcasts need a Bridge and the Podcasts module) and the server folder picker open (Browse)'},
+  {file: 'admin/library-add-podcasts.png', capture: 'admin', title: 'Admin - Add a podcast library', hint: 'the Add library dialog with Kind set to Podcasts: the podcast folder hint and placeholders (e.g. Podcasts, /mnt/podcasts), Scan automatically with its separate-feed-check line, and no book-only fields (skip rules, book details source)'},
   {file: 'admin/detection.png', capture: 'admin', title: 'Admin - Folder detection', hint: 'a library\'s Folder detection dialog (Automatic / Always one book / Separate books)'},
   {file: 'admin/books.png', capture: 'admin', title: 'Admin - Books', hint: 'Library > Books: Recently added + Continue curating shelves over the cover grid'},
   {file: 'admin/books-table.png', capture: 'admin', title: 'Admin - Books table', hint: 'Library > Books in the Table view (?view=table)'},

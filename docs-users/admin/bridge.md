@@ -22,8 +22,10 @@ set up. With the [Contributions module](server.md#modules) on, it also
 [shares characters and recaps](#share-with-the-community) and
 [suggests your corrections](#suggest-corrections) to the community metadata
 database. With the **Podcasts** module on, it also follows podcast feeds and
-keeps their show details and artwork up to date, without downloading episode
-audio in this release.
+keeps their show details and artwork up to date, downloads episodes and removes
+eligible older downloads according to an admin's per-show retention policy
+(see [Podcasts](podcasts.md#downloads-and-retention) for the default,
+protections and API calls).
 :::
 
 To set one up, see [Running a Bridge](../getting-started/running-a-bridge.md). This
@@ -259,9 +261,10 @@ with "24 chapters found" once done. A **Community share** job
 
 Podcast follow requests also appear here. They validate a feed and save the
 show's details and artwork; their displayed feed address is shortened so private
-credentials stay hidden. Routine podcast checks are left out of this default
-list, and neither kind sends a finished or failed notification. The console
-does not have a follow-by-URL screen yet. See [Podcasts](podcasts.md).
+credentials stay hidden. Episode downloads and retention checks are listed
+too; routine podcast checks are left out of this default list. Podcast jobs send no finished or
+failed notifications. The console has no follow-by-URL screen or retention
+controls yet. See [Podcasts](podcasts.md).
 
 **Cancel** stops a job. A job that is waiting is cancelled at once; one the Bridge
 is working on shows **Cancelling** until the Bridge stops it, within a few seconds.

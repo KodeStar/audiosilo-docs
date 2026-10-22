@@ -433,7 +433,8 @@ Podcast scope adds two checks after authentication:
    qualifies. Once set, a numeric `X.Y.Z` at least that minimum qualifies
    (suffixes after `-`/`+` ignored). Missing/malformed/other apps, API tools
    without a recognized client and the Bridge fail the gate.
-   `callerByID` and background user scopes set it false. Admin role grants no
+   `callerByID` defaults it false; internal podcast scheduling/retention
+   explicitly enables it before resolving actual follower grants. Admin role grants no
    exception. `CallerScope`, `CallerScopes` and `CallerLibraries` apply it before
    any admin shortcut. It hides libraries, their content, `/me/*` state and
    household listening; cast tokens do not expose podcasts in this phase.
@@ -460,10 +461,35 @@ and manual check use the module user wrapper (no kids, no demo accounts;
 scope, are not module-gated. **The client header is compatibility negotiation,
 not a substitute for authentication or grants.**
 
+Admin storage routes require admin and non-demo authentication; they use the
+administrative catalog rather than player private-show scope. Retention GET
+stays core; policy writes and a new episode fetch additionally require the
+module, exact online Bridge kind and writable mapping. A valid present fetch
+returns success before those checks. Kids/listeners cannot set policy or
+request admin downloads. Player media still checks the stored/request client
+and private-show scope before opening any episode; missing audio is
+`404 not_downloaded` and queues nothing.
+
+The two Bridge retention routes accept only the paired Bridge bearer token,
+never session/API/cast tokens or query tokens. They return `no-store`
+aggregates, not individual follower names, ids or positions. Missing or
+unfinished progress, invalid times, zero followers or any aggregate error
+cannot authorize deletion, and the Bridge rechecks a fresh aggregate and the
+local hash/size immediately before deleting (full rules in
+[retention](../bridge/podcasts.md#retention-policy-and-deletion-authority)).
+Publication journals block
+indexing/media, and an opened validated descriptor pins each served generation.
+See [retention routes](api/reference.md#bridge-podcast-retention).
+
 Private URLs are credentials: the server never persists a pending private
 subscribe URL (it injects it only into the Bridge's claim response), the Bridge
 keeps it only in its vault, and job displays, errors and results redact URL
-text. See [Podcasts](../bridge/podcasts.md#private-urls-and-recovery) for
+text. Episode resolution uses a fresh bounded private feed read and keeps
+enclosure URLs only in memory. Checkpoints omit URLs and seal strong validators
+in the vault; feed/artwork/audio requests share the network guard and strip
+source credentials across origins. Saved audio itself is an ordinary library
+file, so filesystem access is outside the player privacy boundary.
+See [Podcasts](../bridge/podcasts.md#private-urls-and-recovery) for
 detection, storage and recovery.
 
 ## The listener's own state (`/me/*`)

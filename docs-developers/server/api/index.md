@@ -250,7 +250,13 @@ Podcast actions add `invalid_request` and `invalid_feed_url` (`400`),
 `bridge_unavailable` and `library_not_writable` (`409`), and
 `too_many_requests` / `checked_recently` (`429`). Library kinds add
 `invalid_kind` / `kind_immutable` (`400`) and `root_overlaps` (`409`, also from `POST /admin/setup/preview`). An
-undownloaded episode streams as `404 not_downloaded`. Full shapes and async
+undownloaded episode streams as `404 not_downloaded`, without queuing a fetch.
+Admin storage adds `episode_not_found` (`404`) and `identity_changed` (`409`),
+and policy writes/new downloads use `module_off` (`404`) and the exact
+Bridge-kind/writable-mapping checks. A valid present pin returns 200 before
+those storage checks. The paired-Bridge-only retention reads use the same
+identity code and `Cache-Control: no-store`, never per-user listening data.
+Full shapes and async
 feed failures: [Podcasts](reference.md#podcasts).
 
 **Branch on `code`, not on the English `error` text**, which is free to change.
@@ -469,7 +475,7 @@ needs; it is `false` (sent, not absent) otherwise. An older server omits it:
 
 | Flag | Gates |
 |---|---|
-| `podcasts` | the Podcasts module: follow/unfollow/check and feed scheduling. Needs the `podcast` Bridge feature; false unless the toggle is on and that Bridge is online. Read routes are core, subject to the client gate and private-show scope. Released players remain excluded until a supported player release; see [Podcasts](reference.md#podcasts) |
+| `podcasts` | the Podcasts module: follow/unfollow/check, new downloads, retention writes and feed/download/retention scheduling. Needs the `podcast` Bridge feature; false unless the toggle is on and that Bridge is online. Reads and valid present-pin reuse stay core, with client/private scope on player content. Released players remain excluded; see [Podcasts](reference.md#podcasts) |
 | `contributions` | the Contributions module: sending corrections and generated characters and recaps to the community database through the Bridge. Needs the Bridge's `contribute` feature. The console reads it (the generate dialog's contribute switch, Share with the community, Suggest corrections; with `meta` in `bridge.features` for corrections); the player never contributes and doesn't read it |
 
 Gate on the flag rather than on the server version: an older server answers
