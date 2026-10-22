@@ -260,12 +260,14 @@ with "24 chapters found" once done. A **Community share** job
 ([Share with the community](#share-with-the-community)) and a **Corrections** job
 ([Suggest corrections](#suggest-corrections)) link what they filed once done.
 
-Podcast follow requests also appear here. They validate a feed and save the
-show's details and artwork; their displayed feed address is shortened so private
+Podcast follow requests also appear here, including those an
+[OPML import](podcasts.md#importing-and-exporting-opml) starts. They validate a
+feed and save the show's details and artwork; their displayed feed address is shortened so private
 credentials stay hidden. Episode downloads and retention checks are listed
 too; routine podcast checks are left out of this default list. Podcast jobs send no finished or
-failed notifications. The console has no follow-by-URL screen or retention
-controls yet. See [Podcasts](podcasts.md).
+failed notifications. The console has no follow-by-URL, search, import or
+retention controls yet. See [Podcasts](podcasts.md). Podcast search runs on
+the server, not the Bridge, and the Bridge needs no directory key.
 
 The Bridge also fetches a missing episode when a compatible client asks to
 play it, ahead of waiting downloads. Released player apps do not show this

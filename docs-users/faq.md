@@ -143,6 +143,11 @@ What it costs in disk space and downloads is in
 [Keeping a local copy](./admin/server.md#keeping-a-local-copy). Or switch the
 community metadata off entirely, and the server contacts neither.
 
+Podcasts are separate: when someone searches for a podcast, the directory
+searched (Apple Podcasts, or Podcast Index if your admin set it up) receives
+the search text and sees your server's address; see
+[Searching podcast directories](./admin/podcasts.md#searching-podcast-directories).
+
 Separately, the server asks GitHub once a day whether a newer AudioSilo
 version exists (it can be turned off); see
 [What the update check sends](./admin/server.md#what-the-update-check-sends).

@@ -383,7 +383,9 @@ The modules today:
 - **Podcasts** - follows shows by feed URL, keeps their details and artwork up
   to date, downloads episodes and checks retention. An admin sets retention
   per show [through the API](podcasts.md#downloads-and-retention) for now.
-  It needs an online Bridge that supports podcasts.
+  It needs an online Bridge that supports podcasts. With it on, the server can
+  also [search podcast directories and import or export OPML](podcasts.md#finding-shows-and-moving-subscriptions)
+  through the API.
   Released player apps
   [do not show podcasts yet](podcasts.md#what-is-available-now). Turning the
   module off stops follows and feed/download/retention scheduling, keeping the
