@@ -1284,10 +1284,11 @@ No player fetch/status endpoint ships in this release; missing media remains
 |---|---|
 | `400 invalid_request` | missing/invalid show or episode path, unknown fields, incomplete/out-of-bounds policy |
 | `404 library_not_found` / `show_not_found` / `episode_not_found` | missing library/show/episode |
+| `403 demo_account` | a demo account (other non-admin callers get `403` without a code) |
 | `404 module_off` | a storage-changing action while the module is off |
 | `409 not_podcast_library` | a books library |
 | `409 bridge_unavailable` / `library_not_writable` | no online Bridge offering the needed kind, or no writable mapping |
-| `409 identity_changed` | the indexed identity changed during the operation |
+| `409 identity_changed` | the indexed identity changed during the operation, or a fetch for a replaced episode at the same path is still running |
 
 Unexpected failures use sanitized 500 responses. Async fetch failures are a
 failed job with a safe `{code,message,retry_after_seconds?}` result; see
@@ -7735,7 +7736,7 @@ runs out.
 | `library_id` | only this library's jobs (a positive integer, else `400 invalid library_id`) |
 | `path` | only jobs about this book path |
 | `state` | only jobs in this state |
-| `kind` | only this job kind; without it `podcast.poll`, `podcast.fetch` and `podcast.retain` are omitted; filter explicitly to include one of them |
+| `kind` | only this job kind; without it `podcast.poll` is omitted (`kind=podcast.poll` explicitly includes routine checks); `podcast.fetch` and `podcast.retain` are listed by default |
 | `before` | the previous page's `next_before` (a positive integer, else `400 invalid before`) |
 | `limit` | page size, 1 to 200 (anything outside that: 50) |
 
@@ -8164,8 +8165,10 @@ are refused, including an admin's token. These are core reads and return
 `Cache-Control: no-store`; they expose no per-user listening data.
 
 `GET /api/v1/bridge/libraries/{id}/podcasts/retention?path=<show>&show_id=<id>`
-returns `200 {retention:Policy}`. Missing show is `404 show_not_found`;
-a different current show id is `409 identity_changed`.
+returns `200 {retention:Policy}`. A missing/invalid `path` or `show_id` is
+`400 invalid_request`, missing library `404 library_not_found`, books library
+`409 not_podcast_library`, missing show `404 show_not_found`, and a different
+current show id `409 identity_changed`.
 
 `POST /api/v1/bridge/libraries/{id}/podcasts/retention/check` is a read-only
 check with strict JSON, capped at 4 KiB:

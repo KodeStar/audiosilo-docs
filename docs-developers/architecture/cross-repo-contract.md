@@ -863,8 +863,8 @@ See [Podcasts](../bridge/podcasts.md) and the
   `next_poll_seconds`, clamped by the server to 15 minutes through 24 hours.
   HTTP validators/status live on the server. Ended jobs are folded idempotently
   with a completion wake and a 60-second recovery tick. `gone` stops automatic
-  checks; other failures back off. Poll/fetch/retain are omitted from default
-  admin job lists unless filtered explicitly. Podcast jobs never notify.
+  checks; other failures back off. Polls are omitted from default admin job
+  lists unless filtered explicitly; fetch/retain are listed. Podcast jobs never notify.
   New poll params/results and feed status bind show id; late/unbound results
   cannot recreate replacement status. Fetch backoff is separate from feed
   state, 30 minutes doubling to 24 hours; per-pass limits are in

@@ -167,8 +167,8 @@ writes use hidden temporary files, fsync and atomic rename.
 ## Job wire format
 
 All four kinds are server-internal, module-owned and non-notable. The admin
-enqueue route refuses them, and default admin job lists omit `podcast.poll`,
-`podcast.fetch` and `podcast.retain` unless explicitly filtered; dedicated
+enqueue route refuses them, and default admin job lists omit `podcast.poll`
+unless explicitly filtered (fetch and retain jobs are listed); dedicated
 actions and the scheduler create them. Subscribe has
 `library_id`, null `path`, priority 10 and the listener's `requested_by`.
 Its dedupe key is `podcast.subscribe|<library_id>||<feed_url_sha256>|<user_id>`.
@@ -230,7 +230,10 @@ Reports/keepalives occur at least every ten seconds. Success is
 new enclosure GET. Failure is a failed job with safe `error` and
 `{code,message,retry_after_seconds?}` result. Alongside guard codes, failures
 include `episode_not_found`, `enclosure_missing`, `identity_changed`,
-`invalid_audio`, `probe_unavailable`, `unsupported_encoding` and `index_failed`.
+`invalid_audio`, `probe_unavailable`, `unsupported_encoding`, `index_failed`,
+`library_not_writable`, `feed_secret_missing` (a private show's vault entry) and
+`write_failed` (a disk failure, or an unverified file at the assigned path or an
+invalid saved Fetch that needs administrator repair).
 Results never include upstream bodies, URLs, headers or probe stderr.
 
 `podcast.retain` requires the show `path` and `{"show_id":"<16 lowercase hex>"}`,

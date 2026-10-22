@@ -261,8 +261,8 @@ with "24 chapters found" once done. A **Community share** job
 
 Podcast follow requests also appear here. They validate a feed and save the
 show's details and artwork; their displayed feed address is shortened so private
-credentials stay hidden. Routine podcast checks, episode fetches and retention
-checks are left out of this default list. Podcast jobs send no finished or
+credentials stay hidden. Episode downloads and retention checks are listed
+too; routine podcast checks are left out of this default list. Podcast jobs send no finished or
 failed notifications. The console has no follow-by-URL screen or retention
 controls yet. See [Podcasts](podcasts.md).
 

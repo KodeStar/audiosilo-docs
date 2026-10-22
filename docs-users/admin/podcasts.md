@@ -119,7 +119,10 @@ Changes are saved immediately; downloads and deletions happen in background
 jobs. Saving or resetting a policy needs the module on and an online Bridge
 with a writable mapping. Reading it does not.
 
-To request one episode, use its full path from the episode listing:
+To request one episode, use its full path: the show folder, a slash and the
+episode's file name, as each episode's `path` in the show folder's `feed.json`.
+(The API's episode listing hides podcasts from tools that don't identify as a
+supported client, so a plain `curl` call there does not show them.)
 
 ```bash
 curl -X POST "$SERVER/api/v1/admin/libraries/3/podcasts/fetch" \

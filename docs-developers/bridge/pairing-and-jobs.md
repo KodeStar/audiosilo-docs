@@ -411,7 +411,8 @@ The module's toggle holds queued jobs while off, as for contributions.
 Heartbeat replies always include library `kind`; the Bridge treats a missing
 kind as `books`. Private subscribe URLs are injected only into the claim
 response, sealed before local claim recording, and redacted on other reads.
-Default admin job lists omit poll/fetch/retain unless their `kind` is requested.
+Default admin job lists omit polls unless `kind=podcast.poll` is requested;
+fetch and retain jobs are listed.
 All podcast kinds are quiet and send no notifications. Fetch/retain outcomes
 never update feed polling state, and there is no player-triggered fetch or
 fetch-status protocol yet; params, dedupe and priorities are in
