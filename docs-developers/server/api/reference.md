@@ -64,7 +64,9 @@ else and gate features on the flags.
     "bridge": false,
     "contributions": false,
     "podcasts": false,
-    "podcast_fetch": true
+    "podcast_fetch": true,
+    "podcast_discovery": false,
+    "podcast_opml": true
   },
   "auth": { "methods": ["auth_code", "password"] },
   "demo": { "enabled": false }
@@ -152,6 +154,17 @@ Phase 2c-2b adds another core flag, `podcast_fetch:true` (absent on older
 servers), for [on-demand fetch/status/Retry](#podcast-fetch-status-and-retry)
 and optional `fetch:Status` on episodes and `Book.episode`. It stays true
 independently of module/Bridge availability.
+
+Phase 2c-3 adds two more, both absent on older servers (treat absent as
+unsupported):
+
+| Flag | Value | Gates |
+|---|---|---|
+| `podcast_discovery` | `podcasts.discovery.enabled` at start **and** the Podcasts module's toggle on; sent `false` otherwise. It does not depend on the Bridge or on a directory key | [directory search](#podcast-discovery) (check `providers` for Podcast Index) |
+| `podcast_opml` | always `true` | the [OPML import and export](#opml-import-and-export) protocol, even offline or module-off; the import still needs the module (`404 module_off`), the export does not |
+
+Both describe the server's configuration, not the caller's permissions: a kid,
+demo account or unrecognized client is still refused by the routes.
 
 `bridge` follows the Bridge rather than a setting, so it can change from one
 request to the next: it is `true` only while a [Bridge](#the-bridge) is paired and its last heartbeat is under two minutes
@@ -1098,6 +1111,8 @@ Response `200`: `{ "books": [ … ] }`.
 
 Phase 2c-2 exposes feed following, indexed show/episode reads, scheduled and
 admin-requested downloads, retention, CHAP chapters and on-demand fetch/status/Retry.
+Phase 2c-3 adds [directory search](#podcast-discovery) and
+[OPML import and export](#opml-import-and-export), API only.
 Released podcast player UI arrives later. The recognized
 clients are the console's `AudioSilo Admin` or the player's `AudioSilo` with
 version `dev`, through `X-AudioSilo-Client`; the released-player minimum is still
@@ -1355,19 +1370,22 @@ a private URL supplies proof to follow that show. An existing follow is
 idempotent. A missing private credential queues a restoring subscribe when
 the URL is supplied. `private:true` forces privacy; `false` cannot override
 automatic detection. Each user can have five open subscribe requests; a second
-request for their same library/hash returns the open one. Manual check requires
+request for their same library/hash and the same privacy returns the open one.
+Since Phase 2c-3 the follow by URL and every [OPML import](#opml-import-and-export)
+row share one implementation, so the two answer the same way. Manual check requires
 the caller to follow a visible show and, without an open poll, refuses a check
 within 60 seconds of the last one.
 
 | Status/code | Meaning |
 |---|---|
 | `400 invalid_request` | missing/invalid library, both or neither path and URL, private with path, an invalid unfollow/check show path, or unknown body fields |
-| `400 invalid_feed_url` | malformed, non-HTTP(S), hostless or over-2,048-byte feed URL |
+| `400 invalid_feed_url` | malformed, non-HTTP(S), hostless or over-2,048-byte feed URL, or one whose normalized form changes when normalized again |
 | `403 no_library_access` | no accessible library, or URL follow without a whole-library grant |
 | `404 show_not_found` | missing, hidden or invalid show on follow by path, or check without following |
 | `409 not_podcast_library` | a books library |
 | `409 bridge_unavailable` | no online Bridge offering the action's podcast kind |
 | `409 library_not_writable` | Bridge mapping is not writable |
+| `409 privacy_conflict` | the caller already has an open subscribe request for this feed with the other privacy (a public request never joins a private one, and a private URL is never attached to a public one); wait for it to end, then follow again |
 | `429 too_many_requests` | five open subscribe requests |
 | `429 checked_recently` | last check under 60 seconds ago |
 
@@ -1380,6 +1398,354 @@ response's HTTP status. Codes include `invalid_feed_url`, `blocked_address`,
 `request_expired`; follow again. Lost Bridge credentials are
 `feed_secret_missing`; follow the URL again to restore them. No podcast job
 sends a finished/failed notification. See [the Bridge implementation](../../bridge/podcasts.md).
+
+### Podcast discovery
+
+*Session, adult, not demo; Podcasts module.* Directory search finds public
+shows by name; following one is the ordinary
+[`POST /podcasts/follow`](#podcast-actions) with `{library_id, feed_url}`
+(there is no provider-id follow and no new follow field). Nothing in the
+console or a released player calls these routes yet.
+
+| Route | Query | Success |
+|---|---|---|
+| `GET /api/v1/podcasts/discovery/providers` | none | `200 {providers:[{id, available}]}` |
+| `GET /api/v1/podcasts/discovery/search` | `q`, optional `provider`, `limit`, `country` | `200 PodcastDiscoverySearch` |
+| `GET /api/v1/podcasts/discovery/artwork` | `id` (and a media `token`) | `200` `image/jpeg` |
+
+The checks run in this order, and a refused request has no other effect:
+authentication (`401`), `403 kid_account`, `403 demo_account`,
+`404 module_off`, then the [client gate](../auth-and-security.md#podcast-visibility)
+(`403 no_library_access`, no admin exception), then `404 discovery_off` while
+`podcasts.discovery.enabled` was off at start
+([configuration](../configuration.md#podcast-discovery-podcastsdiscovery)).
+Search needs no library grant: it reads only public directory data and
+reveals nothing about the server's libraries. An unknown or repeated query
+parameter is `400 invalid_request`. JSON answers carry
+`Cache-Control: no-store`. `HEAD` on these routes (and on the export below)
+answers `405 method_not_allowed` with `Allow: GET` before anything else runs,
+so it never starts a fetch. The artwork route is *Session (media)*: it also
+takes a session or API key as `?token=` (for an `<img>`), uses the media rate
+limit, and refuses cast, pairing and Bridge tokens (`401`).
+
+**Providers.** Always two entries, in this order:
+
+```json
+{"providers":[{"id":"itunes","available":true},{"id":"podcast_index","available":false}]}
+```
+
+`itunes` (Apple's iTunes Search API) is always available. `podcast_index` is
+available when the server holds a valid Podcast Index key pair from its
+environment; nothing probes the service, so `available` says only that the
+pair is configured. A search uses exactly the provider it names: there is no
+automatic fallback and no merged ranking.
+
+**Search parameters.**
+
+| Param | Rule | Error |
+|---|---|---|
+| `q` | required; valid UTF-8 with no control characters, then trimmed and runs of whitespace collapsed to one space, letter case kept; 2 to 200 characters and at most 800 bytes after that | `400 invalid_query` |
+| `provider` | `itunes` (default) or `podcast_index` | `400 invalid_provider` |
+| `limit` | a decimal integer 1 to 50, default 20 | `400 invalid_limit` |
+| `country` | iTunes only: an ISO 3166-1 alpha-2 code, any case, default `US` (never taken from `metadata.region`); refused with `podcast_index` | `400 invalid_country` |
+
+There is no pagination. A `podcast_index` search while that provider is not
+configured is `409 provider_unavailable`.
+
+```json
+{
+  "provider": "itunes",
+  "query": "fixture show",
+  "country": "US",
+  "results": [
+    {
+      "title": "Fixture One",
+      "author": "A & B",
+      "feed_url": "https://feeds.example.org/one.xml",
+      "artwork_url": "/api/v1/podcasts/discovery/artwork?id=4745a0c5c9b5a0a81f9d9396ab9abcc27c981462c6fdcbb7ab8f117de612d0e6",
+      "provider_ids": {"itunes": "12345", "podcast_index": null},
+      "episode_count": 12,
+      "provider_url": "https://podcasts.apple.com/us/podcast/fixture-one/id12345"
+    },
+    {
+      "title": "Fixture Two",
+      "author": "",
+      "feed_url": "https://feeds.example.org/two.xml",
+      "artwork_url": null,
+      "provider_ids": {"itunes": "9007199254740993", "podcast_index": null},
+      "episode_count": 0,
+      "provider_url": null
+    }
+  ]
+}
+```
+
+Every key is always present; `results` is `[]` when nothing matched.
+`query` echoes the cleaned search text and `country` is `null` for Podcast
+Index. In each result:
+
+- `title` and `author` are plain text (controls stripped, at most 500
+  characters; `author` is `""` when the directory gave none). Never HTML. A
+  row without a title is dropped.
+- `feed_url` is the normalized public feed URL, the value to follow. Rows
+  whose feed looks private (a query, user info, a token-like path, a
+  private-feed host), points at a literal non-public address, `localhost` or
+  `.local`, is not HTTP(S), is over 2,048 bytes or does not normalize stably are
+  dropped. The server does not fetch or validate the feed at search time; the
+  Bridge's subscribe job does that when someone follows it. Results are
+  deduplicated by `feed_url`, the first row winning, in the directory's order.
+- `artwork_url` is `null` or a **relative** link to this server's artwork
+  proxy; the directory's own image URL is never returned.
+- `provider_ids` holds each directory's numeric id as a decimal **string**
+  (ids can exceed 2^53, so never parse them as a float), `null` when unknown.
+- `episode_count` is an integer or `null` when the directory gave none or an
+  invalid one; `0` is a real zero.
+- `provider_url` is the show's page on the directory (`podcasts.apple.com` or
+  `itunes.apple.com` over HTTPS for iTunes, `https://podcastindex.org/podcast/<id>`
+  for Podcast Index), or `null`.
+
+No result says anything about the server's own state (whether a show is
+already in a library or followed).
+
+**What the directory receives.** One GET per search the cache cannot answer,
+with no retry and no redirect followed, to a fixed HTTPS origin:
+`https://itunes.apple.com/search` with `term`, `limit`, `country` and fixed
+`media=podcast&entity=podcast&version=2`, or
+`https://api.podcastindex.org/api/1.0/search/byterm` with `q` and `max`.
+Podcast Index requests also carry `X-Auth-Key`, `X-Auth-Date` (Unix seconds)
+and `Authorization` (the lowercase hex SHA-1 of key, secret and that time,
+joined with nothing); the secret itself is never sent. Both send
+`User-Agent: AudioSilo/<version>`. The directory sees the search text and the
+server's IP address; no user, library or device information is sent.
+
+**Budgets.** All in memory, reset by a restart.
+
+| Budget | Policy |
+|---|---|
+| Per user (across their tokens and both providers) | 10 searches/minute, burst 3, cache hits included, admins too |
+| iTunes directory fetches | 20/minute, burst 1, server-wide (a conservative local policy) |
+| Podcast Index directory fetches | 30/minute, burst 2, server-wide |
+| Concurrent directory fetches | 2 server-wide; identical searches in flight share one fetch |
+| Result cache | provider + cleaned `q` (case kept) + country + limit; 15 minutes, at most 256 entries and 8 MiB |
+| Failure cache | a failed search is answered again for 15 seconds without asking the directory |
+| Upstream `429` | the provider cools down for its `Retry-After` (seconds or a date), clamped to 1 to 300 seconds, 60 by default |
+
+A directory fetch has five seconds end to end, bodies are capped at 2 MiB
+decoded and must be exactly one JSON document. Turning the Podcasts module off
+cancels fetches in flight (their waiters get `404 module_off`) and empties
+every cache, so turning it back on starts empty.
+
+| Status/code | Retry-After | When |
+|---|---|---|
+| `409 provider_unavailable` | - | `provider=podcast_index` without a valid key pair |
+| `429 discovery_rate_limited` | seconds until the next token | the caller's own search (or artwork) budget is spent |
+| `429 provider_rate_limited` | seconds | the server's directory or image budget is spent, or the directory is cooling down after its own `429` |
+| `503 discovery_busy` | `1` | both fetch slots are busy, or the per-user budget table is full |
+| `504 discovery_timeout` | - | the directory did not answer within the budget |
+| `502 provider_rejected` | - | Podcast Index refused the key pair (`401`/`403`) |
+| `502 discovery_unavailable` | - | any other directory failure: another status, network or TLS failure, a refused address or redirect, malformed or oversize JSON |
+
+Error messages are safe text; they never carry a directory's body, headers,
+URL or the credentials. Logs name the provider and a short reason only.
+
+**Artwork.** `id` is 64 lowercase hex characters naming an image URL a recent
+search result registered (its SHA-256). The caller can never name a URL: an id
+of the wrong shape, unknown, expired or evicted is `404 artwork_not_found` and
+fetches nothing. The server fetches the image itself (public addresses only,
+checked at connect time, at most three redirects and never from HTTPS down to
+HTTP, no credentials, cookies or caller headers, five seconds, at most 2 MiB)
+and re-encodes it as a JPEG of at most 320 px. SVG, HTML and anything that does
+not decode as an image fail. Success is `image/jpeg` with
+`X-Content-Type-Options: nosniff` and `Cache-Control: private, max-age=300`.
+A failed fetch is `502 artwork_unavailable`, answered again for a minute
+without refetching. Registrations last 15 minutes (at most 4,096; eviction can
+404 an id before its search expires), images are cached up to 32 MiB. Budgets:
+120 artwork requests/minute per user (burst 20, hits included), 60 image
+fetches/minute server-wide (burst 4) and four at once, refused with the same
+`429`/`503` codes as search. Show a placeholder when the artwork 404s or
+fails.
+
+### OPML import and export
+
+OPML is how podcast apps move subscription lists. The import follows each feed
+of an uploaded list as the caller; the export writes the caller's followed
+public shows. Both are API only for now.
+
+#### `POST /api/v1/podcasts/opml/import`
+
+*Session, adult, not demo; Podcasts module.* `?library_id=<id>` names one
+podcast library the caller holds **whole** (no other parameter; a user can
+only import for themselves). The body is the raw OPML document: no JSON,
+multipart, remote URL or compression.
+
+```bash
+curl -X POST "$SERVER/api/v1/podcasts/opml/import?library_id=7" \
+  -H "Authorization: Bearer $TOKEN" -H "X-AudioSilo-Client: AudioSilo/dev" \
+  -H "Content-Type: text/x-opml" --data-binary @subscriptions.opml
+```
+
+(`--data-binary @-` reads it from standard input.) The checks before the
+body is read, in order: authentication, `403 kid_account`, `403 demo_account`,
+`404 module_off`, the client gate (`403 no_library_access`), unknown or
+repeated parameters (`400 invalid_request`), a missing or non-positive
+`library_id` (`400 invalid_request`), `404 library_not_found`, no whole-library
+grant (`403 no_library_access`, checked before the kind so an ungranted
+library's kind is not revealed), `409 not_podcast_library`, then the content
+type: `application/xml`, `text/xml`, `text/x-opml` or `application/x-opml+xml`,
+with no parameter but `charset=utf-8` and no `Content-Encoding` but `identity`,
+else `415 unsupported_opml_type`. Then the caller's import budget (2/minute,
+burst 1: `429 opml_rate_limited` with `Retry-After`), the body (read whole,
+at most 1 MiB), and one of two server-wide import slots (`503 opml_busy`,
+`Retry-After: 1`).
+
+The whole document is validated before any row acts, so a refused document
+changes nothing:
+
+| Status/code | When |
+|---|---|
+| `413 opml_limit` | over 1,048,576 bytes (whatever `Content-Length` says), over 1,000 outlines (categories included), outlines nested over 16 deep, XML depth over 32, over 5,000 elements, over 32 attributes on one element, or one decoded attribute value over 8,192 bytes |
+| `400 invalid_opml` | not well-formed; a DOCTYPE, DTD or other directive (even unused); a processing instruction other than the initial XML declaration; an encoding other than UTF-8; an unknown entity; a duplicated attribute (including `xmlUrl` in another letter case); not exactly one unnamespaced `<opml>` root with `version` `1.0` or `2.0`, with at most one `<head>` and exactly one `<body>`; content after the root |
+
+A leading UTF-8 byte order mark is accepted. Entities, includes and linked
+OPML are never fetched. Titles, groups and `htmlUrl` are ignored: only the
+`<body>` outline tree is read, flattened in document order. An outline with an
+`xmlUrl` attribute (any letter case) is a subscription, whatever its `type`;
+one whose `xmlUrl` is blank, or a `type="rss"` outline without one, is a row
+with `missing_feed_url` (`htmlUrl` or `url` is never used instead); any other
+outline is a category and produces no row (but counts in `outline_index`).
+Within an upload the first outline with a given normalized URL wins.
+
+`200` answers the decisions, not completion:
+
+```ts
+type OpmlRowStatus = 'followed' | 'already_following' | 'queued' |
+  'already_queued' | 'duplicate' | 'invalid' | 'limited' | 'unavailable' | 'error';
+interface OpmlImportRow {
+  outline_index: number; // 1-based among ALL outlines, categories included
+  status: OpmlRowStatus;
+  feed: string | null;   // a redacted label (scheme and host, "/..." for the rest)
+  private: boolean;
+  path: string | null;
+  request_id: number | null;
+  duplicate_of: number | null;
+  error: { code: string; message: string } | null;
+}
+interface OpmlImportResult { library_id: number; rows: OpmlImportRow[] }
+```
+
+Every key is always present and `rows` is `[]` for a list with no
+subscriptions. For example, a list whose first outline is a category:
+
+```json
+{
+  "library_id": 7,
+  "rows": [
+    {"outline_index": 2, "status": "already_following", "feed": "https://feeds.example.org/...", "private": false, "path": "Fixture One", "request_id": null, "duplicate_of": null, "error": null},
+    {"outline_index": 3, "status": "duplicate", "feed": "https://feeds.example.org/...", "private": false, "path": null, "request_id": null, "duplicate_of": 2, "error": null},
+    {"outline_index": 5, "status": "queued", "feed": "https://feeds.example.org/...", "private": true, "path": null, "request_id": 81, "duplicate_of": null, "error": null},
+    {"outline_index": 6, "status": "invalid", "feed": null, "private": true, "path": null, "request_id": null, "duplicate_of": null, "error": {"code": "invalid_feed_url", "message": "Invalid feed URL."}}
+  ]
+}
+```
+
+| `status` | Meaning | Set fields |
+|---|---|---|
+| `followed` | a show already in the library, now followed | `path` |
+| `already_following` | the caller already follows it (a previous URL of the show counts too) | `path` |
+| `queued` | a new `podcast.subscribe` request (or a secret repair) was queued | `request_id`; `path` for a repair |
+| `already_queued` | the caller's open subscribe request for this feed was reused (a parked one too) | `request_id`; `path` when it repairs a known show |
+| `duplicate` | the same normalized URL appeared earlier in this upload (even if that row failed) | `duplicate_of` (the earlier `outline_index`) |
+| `invalid` | `error.code` `missing_feed_url` or `invalid_feed_url` | `error` |
+| `limited` | `error.code` `too_many_requests`: the wave is full (below) | `error` |
+| `unavailable` | `error.code` `bridge_unavailable`, `library_not_writable` or `module_off` | `error` |
+| `error` | `error.code` `privacy_conflict`, `no_library_access` or `subscribe_failed` | `error` |
+
+`feed` is the redacted label even for public URLs, and `null` for an
+invalid or missing URL; `private` follows the usual automatic detection, a
+matched private show's flag, and is `true` for a row whose URL could not be
+classified. An import cannot force a public-looking URL private: use the
+single follow's `private:true` for a member feed without a recognizable secret.
+Errors never echo the document, a title or a raw URL.
+
+Each row acts as the caller through the same follow-by-URL service as
+`POST /podcasts/follow`: the whole-library grant and the module are rechecked
+per row (a module switched off midway turns the remaining rows into
+`unavailable`/`module_off`, a revoked grant into `error`/`no_library_access`),
+a known show (current or previous URL) is followed at once, even with the
+Bridge offline, and only a new feed or a secret repair needs an online Bridge
+running `podcast.subscribe` and a writable mapping. Each row commits on its
+own: a later failure never undoes an earlier row.
+
+**Waves.** One upload creates at most **five new** subscribe requests, and the
+caller can never have more than five open subscribe requests at once (single
+follows and imports together, admins included). Following known shows and
+reusing open requests spend neither. Rows past either limit answer `limited`
+with `too_many_requests`; nothing is kept for later. Uploading the same
+document again is the retry: rows already done answer `already_following` or
+`already_queued`, and once earlier requests finish (poll
+[`GET /me/podcasts`](#podcast-read-routes)'s `requests`), the next five
+`limited` rows are admitted. A private URL lives only in the server's memory
+until the Bridge claims its request; a restart before that ends the request as
+`request_expired`, and re-uploading recovers it.
+
+The import runs under the server's 30-second request timeout. If that or a
+dropped connection ends it, rows already committed stay and the rest are not
+attempted; a re-upload continues safely.
+
+#### `GET /api/v1/podcasts/opml/export`
+
+*Session, not demo.* A core read, not module-gated: it works with the module
+off, the Bridge offline or unpaired, discovery off or no directory key. Kids
+may export within their scope. The client gate applies (`403 no_library_access`),
+there are no parameters (`400 invalid_request`), and the per-user budget is
+6/minute, burst 2 (`429 opml_rate_limited` with `Retry-After`).
+
+```bash
+curl -OJ "$SERVER/api/v1/podcasts/opml/export" \
+  -H "Authorization: Bearer $TOKEN" -H "X-AudioSilo-Client: AudioSilo/dev"
+```
+
+It writes the shows the caller follows now, across every podcast library their
+current scopes show them (no admin or other-user bypass; a follow of a show
+since replaced at its path, pruned or hidden counts for nothing). No follows is
+a valid, empty document. The body is deterministic OPML 2.0:
+
+```xml
+<?xml version="1.0" encoding="UTF-8"?>
+<opml version="2.0">
+  <head><title>AudioSilo subscriptions</title></head>
+  <body>
+    <outline type="rss" text="Fixture One" title="Fixture One" xmlUrl="https://feeds.example.org/one.xml"></outline>
+  </body>
+</opml>
+```
+
+UTF-8, LF line endings, two-space indent, flat outlines with `type`, `text`,
+`title` and `xmlUrl` in that order (titles control-stripped, at most 500
+characters, `Podcast` when empty), sorted by URL bytes. A public URL followed
+in several libraries is written once, titled from the lowest library id then
+show path. No date, user or server name is written, and nothing but the
+subscription: no progress, policies, pending requests or files.
+
+**Private shows are never exported**, whoever asks, admins included, and
+there is no option to include them: the server keeps no recoverable copy of a
+private URL. A public show whose URL is missing or no longer normalizes is
+left out as unavailable, and one whose URL now looks private as private.
+
+| Header | Value |
+|---|---|
+| `Content-Type` | `text/x-opml; charset=utf-8` |
+| `Content-Disposition` | `attachment; filename="audiosilo-subscriptions.opml"` |
+| `Cache-Control` | `no-store` |
+| `X-Content-Type-Options` | `nosniff` |
+| `X-OPML-Exported` | the number of outlines written (unique public URLs) |
+| `X-OPML-Omitted-Private` | followed, visible shows left out as private |
+| `X-OPML-Omitted-Unavailable` | followed, visible shows left out with no usable public URL |
+
+The omission counts count follows before duplicate URLs are merged. More than
+10,000 matching follows, or an export over 4 MiB, is `413 opml_export_limit`
+(never a truncated list). Fetch it with the `Authorization` header; there is no
+`?token=` download link.
 
 ### Podcast storage (admin)
 

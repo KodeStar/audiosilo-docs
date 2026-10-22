@@ -508,6 +508,56 @@ file, so filesystem access is outside the player privacy boundary.
 See [Podcasts](../bridge/podcasts.md#private-urls-and-recovery) for
 detection, storage and recovery.
 
+### Podcast discovery and OPML
+
+Phase 2c-3's routes keep the same boundaries
+([reference](api/reference.md#podcast-discovery)):
+
+- **Who.** Search, its providers and artwork, and the OPML import are module
+  user routes: a session or API key of an adult, non-demo account
+  (`403 kid_account`, `403 demo_account`), the module on, then the client gate
+  with no admin exception. Search needs no library grant: it returns only
+  public directory data and no local state. The import needs a whole-library
+  grant on its one target library (checked before the library's kind, so an
+  ungranted library's kind stays hidden) and always acts as the caller. The
+  OPML export is a core read for any non-demo account that passes the client
+  gate, kids included, module off or not, and covers only the caller's own
+  current follows through their current scopes and private narrowing, with no
+  admin or other-user view. A refused request has no effects; `HEAD` on the
+  new GETs is `405` before any work.
+- **Tokens.** Only the artwork route takes a `?token=` (a session or API key,
+  for an `<img>`); every other new route ignores query tokens. Cast, pairing
+  and Bridge tokens are refused on all of them.
+- **Outbound requests.** Directory searches go only to the fixed HTTPS origins
+  (`itunes.apple.com`, `api.podcastindex.org`) on port 443, with no proxy, no
+  cookies and no redirects. Artwork fetches go only to URLs a search result
+  registered (a caller can name an id, never a URL), at most three redirects,
+  never HTTPS to HTTP. Both check the address actually dialled
+  (`internal/netguard`, shared with community covers): loopback, private,
+  link-local, carrier-grade NAT and other reserved addresses are refused (an
+  IPv4-mapped or NAT64 address is judged by the IPv4 address it carries), not
+  just a DNS answer checked beforehand. Search never fetches a returned
+  feed; the Bridge's subscribe job remains the guard for a feed that resolves
+  to a private address. Search results drop feed URLs that look private or
+  name a literal non-public host.
+- **OPML parsing.** The import reads at most 1 MiB, refuses any DOCTYPE, DTD,
+  directive or stray processing instruction, never expands or fetches an
+  entity, include or linked OPML, refuses duplicated attributes, and bounds
+  outlines, nesting, depth, elements and attributes. The whole document is
+  validated before any row acts.
+- **Secrets.** The Podcast Index key and secret come only from the
+  environment and are never persisted, shown, logged or sent anywhere but the
+  signed Podcast Index request (the secret itself never leaves the server: only
+  the SHA-1 signature does). A private feed URL in an import is handled exactly
+  as a private single follow: memory only until the Bridge's claim, never in
+  `bridge_jobs`, row results show only a redacted label. The export never
+  writes a private show, for anyone: there is no stored copy of its URL to
+  write.
+- **Memory only.** Search results, artwork, quotas and uploaded documents are
+  held in bounded memory and dropped on restart or when the module is turned
+  off; nothing about a search is stored, so searches do not become a household
+  history.
+
 ## The listener's own state (`/me/*`)
 
 The player redesign's Phase 1b routes (up next, collections, ratings, progress

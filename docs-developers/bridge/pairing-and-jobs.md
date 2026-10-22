@@ -449,6 +449,10 @@ kind as `books`. Private subscribe URLs are injected only into the claim
 response, sealed before local claim recording, and redacted on other reads.
 Default admin job lists omit polls unless `kind=podcast.poll` is requested;
 fetch and retain jobs are listed.
+Phase 2c-3's OPML import queues the same `podcast.subscribe` jobs as a single
+follow (at most five new per upload, within the same five-open cap per
+person), so the Bridge sees no new kind or params; directory search runs on
+the server ([Discovery and OPML](podcasts.md#discovery-and-opml-transfer)).
 All podcast kinds are quiet and send no notifications. Fetch/retain outcomes
 never update feed polling state. Triggers share one fetch intent per episode;
 params, dedupe, priorities and promotion are in

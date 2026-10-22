@@ -188,7 +188,7 @@ Failures a person can fix also carry a machine-readable **`code`** next to
 | `invalid_setup_step` | `400` | `PUT /admin/setup` naming a step id the flow doesn't have, or an outcome other than `done` / `skipped` |
 | `book_not_found` | `404` | an admin catalog call on a path that is not an indexed book (book page, edit, bulk edit, match, cover upload, community cover); an admin progress edit on a path with no progress and no indexed book; `POST /admin/bridge/jobs` and `GET /admin/bridge/estimate` on a path that is not an indexed book |
 | `invalid_override` | `400` | a metadata edit the server refuses; the body also carries a `field` key naming the offending field (`PATCH /admin/libraries/{id}/book`, `POST /admin/books/bulk`) |
-| `module_off` | `404` | any route a [managed module](../modules.md) mounts, while that module is off (Settings > Modules), for a caller the route's auth check admits (it runs first). The route exists either way, so turning the module on needs no restart. The `podcasts` module mounts `POST`/`DELETE /podcasts/follow` and `POST /podcasts/check`. Also `POST /admin/bridge/jobs` for a job the module owns (Phase 2b: `sidecars.contribute`, `meta.correct`, `sidecars.generate` with `contribute: "issue"`, the `contributions` module), checked before anything else about the job |
+| `module_off` | `404` | any route a [managed module](../modules.md) mounts, while that module is off (Settings > Modules), for a caller the route's auth check admits (it runs first). The route exists either way, so turning the module on needs no restart. The `podcasts` module mounts `POST`/`DELETE /podcasts/follow`, `POST /podcasts/check`, the `/podcasts/discovery/*` routes and `POST /podcasts/opml/import`. Also `POST /admin/bridge/jobs` for a job the module owns (Phase 2b: `sidecars.contribute`, `meta.correct`, `sidecars.generate` with `contribute: "issue"`, the `contributions` module), checked before anything else about the job |
 | `metadata_off` | `404` | a community match search, a `POST /admin/books/works` work-id batch, a community cover (`POST /admin/meta/covers`, `PUT /admin/libraries/{id}/cover/community`), or the metadata mirror (`GET /admin/meta/mirror`, `POST /admin/meta/mirror/check`) while community metadata is turned off |
 | `too_large` | `400` / `413` | a bulk edit or an issue ignore over 1000 books, a cover batch over 60, a community cover batch over 12, or a work-id batch over 100 (`400`); a custom cover upload over 5 MiB, or a community cover over 16 MiB or 40 megapixels (`413`) |
 | `unsupported_image` | `415` | a custom cover (uploaded or community) that is not a JPEG, PNG or WebP image |
@@ -262,6 +262,21 @@ those storage checks. The paired-Bridge-only retention reads use the same
 identity code and `Cache-Control: no-store`, never per-user listening data.
 Full shapes and async
 feed failures: [Podcasts](reference.md#podcasts).
+
+A follow by URL (or an OPML import row) for a feed the caller already has an
+open request for with the other privacy is `409 privacy_conflict`.
+[Podcast discovery](reference.md#podcast-discovery) adds `invalid_query`,
+`invalid_provider`, `invalid_limit` and `invalid_country` (`400`),
+`discovery_off` and `artwork_not_found` (`404`), `provider_unavailable`
+(`409`), `discovery_rate_limited` and `provider_rate_limited` (`429`, with
+`Retry-After`), `provider_rejected`, `discovery_unavailable` and
+`artwork_unavailable` (`502`), `discovery_busy` (`503`, `Retry-After: 1`) and
+`discovery_timeout` (`504`). [OPML](reference.md#opml-import-and-export) adds
+`invalid_opml` (`400`), `opml_limit` and `opml_export_limit` (`413`),
+`unsupported_opml_type` (`415`), `opml_rate_limited` (`429`, with
+`Retry-After`) and `opml_busy` (`503`, `Retry-After: 1`); an import's
+per-row results carry their own codes in a `200`. `HEAD` on the new GET routes
+is `405 method_not_allowed`.
 
 **Branch on `code`, not on the English `error` text**, which is free to change.
 Errors without a `code` are ones a client can't help the person fix.
@@ -400,7 +415,9 @@ single-shot with a `limit` and no pagination.
     "bridge": false,
     "contributions": false,
     "podcasts": false,
-    "podcast_fetch": true
+    "podcast_fetch": true,
+    "podcast_discovery": false,
+    "podcast_opml": true
   },
   "auth": { "methods": ["auth_code", "password"] },
   "demo": { "enabled": false }
@@ -480,6 +497,18 @@ and status reads stay core; client/private scope still applies, including to
 admins, and released players remain hidden. Episode lists and `Book.episode`
 may include optional `fetch:Status`; tolerate its absence on older servers.
 
+Phase 2c-3 adds two more optional core flags (absent on older servers, so
+treat absent as unsupported). `podcast_discovery` is true when directory
+search was enabled at start (`podcasts.discovery.enabled`) **and** the
+Podcasts module is on, whatever the Bridge's state or a directory key; it is
+sent `false` otherwise. `podcast_opml` is always `true`: the server speaks the
+OPML import/export protocol, even offline or module-off (the import still
+needs the module, the export does not). Neither is a module flag, and neither
+describes the caller: grants, kid and demo refusals and the client gate are
+still answered by the routes. See
+[Podcast discovery](reference.md#podcast-discovery) and
+[OPML import and export](reference.md#opml-import-and-export).
+
 Then each [managed module](../modules.md) adds one flag, named after the module. A
 module ships off and an admin turns it on in the console's Settings > Modules, so the
 flag can change while the server runs. It is `true` only while the module is on
@@ -514,6 +543,12 @@ with an error envelope.
 | Demo cap | `POST /demo/session` | at most 5 demo sessions per IP per 15 min, metered at admission (failures count too) |
 | Account mutations | `POST /auth/password`, `POST /auth/recovery`, `/auth/tokens` (create/list/revoke) | at most 10 attempts per IP per 15 min, metered at admission |
 
+Podcast discovery and OPML transfer add their own per-user budgets on top
+(search 10/minute, artwork 120/minute, import 2/minute, export 6/minute, each
+with a small burst), answered `429` with a `code` and `Retry-After`; see
+[Podcast discovery](reference.md#podcast-discovery) and
+[OPML import and export](reference.md#opml-import-and-export).
+
 **Client IP resolution:** `X-Forwarded-For` is honored only when the direct
 peer is inside a `trusted_proxies` CIDR (config); otherwise the TCP peer address
 is used, so clients cannot spoof their way out of a lockout. See
@@ -535,6 +570,11 @@ CORS is a strict allow-list driven by `cors_origins` in the server config:
 
 For local player development against a dev server, set
 `cors_origins: ["http://localhost:8081"]`.
+
+No `Access-Control-Expose-Headers` is sent, so a cross-origin page cannot read
+response headers such as `Retry-After` or the OPML export's `X-OPML-*` counts
+(the `/web` player and native apps are unaffected).
+
 
 ## The contract is hand-mirrored
 
