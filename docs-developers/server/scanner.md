@@ -21,7 +21,7 @@ catches up.
 ## Podcast libraries
 
 `Scanner.Scan` branches on `libraries.kind` before book detection. A podcast
-scan lists real, non-hidden top-level show directories, reads only each
+scan lists real, non-hidden top-level show directories, reads each
 `feed.json` (regular file, up to 32 MiB, version 1), and indexes its episodes
 with or without audio files. Unsupported versions are skipped and logged;
 invalid episode entries are skipped individually. Audio is never probed for
@@ -29,9 +29,11 @@ podcast metadata, and loose audio outside `feed.json` is not discovered as a
 book. No book tag/path precedence, Audiobookshelf import, community enrichment,
 book health analysis or book move detection runs for this branch.
 
-The show file's size/mtime signature skips unchanged shows. A changed file
-causes one directory listing to observe file presence, sizes and artwork,
-and an atomic show/episode index update. A targeted
+The show signature combines the feed's size/mtime with show and `.audiosilo`
+listings, including audio, CHAP and publication journals. Changes to those
+files are noticed even with unchanged feed stat. Refresh observes regular file
+presence, sizes, artwork, barriers and matching CHAP, then atomically updates
+the show/episode index. A targeted
 `POST /bridge/rescan` forces that refresh for a show path or an indexed episode
 path belonging to it, returning `{path:<show>, episodes:N}`. It refuses
 `attachments` mode and `from`; nothing indexable gives `404 not_indexable`.
@@ -42,10 +44,27 @@ inside a show, serial shows oldest first and episodic shows newest first.
 before pagination; a granted library with no visible shows gives an empty
 listing. `/item`, `/chapters` and `/stream` never index podcast audio on demand.
 Episodes without files remain indexed, have empty chapter lists and stream as
-`404 not_downloaded`. The server reads reserved `fetch.duration_ms` only when
-the file is present, otherwise falling back to feed duration or zero.
+`404 not_downloaded`, with no queued download. Presence requires valid Fetch,
+regular audio of its expected size, empty `deleted_at` and no
+`<stem>.publish.json` barrier. Invalid Fetch leaves an episode unready, and a
+symlinked or malformed journal also blocks it. The server never adopts loose
+manual audio. Present files use Fetch's probed duration/codec, otherwise feed
+duration or zero and size zero. `OpenPodcast` additionally checks the current
+feed/identity/size and opened-versus-named file identity, retaining that
+descriptor through serving/transcode without hashing during requests.
 
-Follows and listening state survive show pruning as path-keyed state. The
+`<show>/.audiosilo/<stem>.chapters.json` goes through
+`metadata.ParseChapterList`, with `from:id3_chap`, current Fetch timestamp and
+matching single basename/size/duration required. Times are consumed directly,
+without book generated-chapter filling or alignment. Usable CHAP sets
+`chapters_source:id3_chap`; present audio without it gets a whole-file chapter.
+Bad sidecars log safely and fall back. Single-file episode files are synthesized
+from the Book row, with no redundant `book_files` rows. Eviction clears derived
+presence/files/chapters while retaining the episode and durable state; a full
+index rebuild reconstructs them from feed, committed audio and CHAP.
+
+Follows, per-show retention policies and listening state survive show pruning
+and index rebuilds as durable state. The
 unavailable-root guard preserves the index on an unreadable root, or an empty
 root that previously held shows. A partial scan suppresses pruning. Do not
 rename show folders manually: feed episode paths include them. See

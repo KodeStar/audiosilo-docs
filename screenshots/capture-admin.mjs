@@ -560,6 +560,21 @@ await step('add library with the folder picker', async () => {
   await sleep(600);
 });
 
+await step('add a podcast library', async () => {
+  if (!wanted('admin/library-add-podcasts.png')) return;
+  await page.getByRole('button', {name: 'Add library', exact: true}).click({timeout: 8000});
+  const dialog = page.getByRole('dialog', {name: 'Add a library'});
+  await dialog.waitFor({timeout: 8000});
+  // Kind = Podcasts swaps the copy and placeholders and hides the book-only fields.
+  await dialog.getByLabel('Kind', {exact: true}).selectOption('podcasts');
+  // The dialog opens with focus on its close button; click the title so no focus ring shows.
+  await dialog.getByRole('heading', {name: 'Add a library'}).click();
+  await sleep(800);
+  await shoot(page, 'admin/library-add-podcasts.png');
+  await page.keyboard.press('Escape');
+  await sleep(600);
+});
+
 await step('folder detection', async () => {
   const name = library?.name || 'Books';
   await page.getByRole('button', {name: `Actions for ${name}`}).click({timeout: 8000});

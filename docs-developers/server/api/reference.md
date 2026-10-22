@@ -1085,8 +1085,9 @@ Response `200`: `{ "books": [ … ] }`.
 
 ## Podcasts
 
-Phase 2c-1 exposes feed following and indexed show/episode reads. There is no
-episode download action or released podcast player UI yet. The recognized
+Phase 2c-2a exposes feed following, indexed show/episode reads, scheduled and
+admin-requested downloads, retention and CHAP chapters. Released podcast
+player UI and on-demand playback arrive later. The recognized
 clients are the console's `AudioSilo Admin` or the player's `AudioSilo` with
 version `dev`, through `X-AudioSilo-Client`; the released-player minimum is still
 empty. A missing, other or released client is denied podcast content even for
@@ -1122,7 +1123,7 @@ A **Show**:
   "feed_url": "https://example.com/feed.xml", "feed_host": "example.com",
   "podcast_guid": "", "episode_count": 1,
   "latest_published": "2026-10-19T21:00:00Z", "cover_version": "9f2c1a",
-  "following": true,
+  "following": true, "retention": {"mode":"keep","keep":3,"days":7},
   "status": {"last_checked": null, "last_success": null, "next_check": null, "error": null}
 }
 ```
@@ -1133,6 +1134,8 @@ the current or previous normalized URL hash. Unknown times and
 `latest_published` are `null`. A status error is `{code, message}`.
 Artwork is `GET /api/v1/libraries/{id}/cover?path=<show>[&size=160|320|640]`;
 episode covers use the same show artwork.
+`retention` is additive policy data on both show-list routes; older clients
+must tolerate it. The server supplies the default when there is no override.
 
 An **Episode**:
 
@@ -1152,9 +1155,28 @@ and `episode` may be `null`; `episode_type` is `full`, `trailer` or `bonus`.
 its audio is present. `GET /libraries/{id}/item?path=<episode>` adds `episode`
 to the normal Book JSON, with `show_path`, `published`, `season`, `episode`,
 `episode_type`, `explicit`, `downloaded`, `duration_source` and `removed`.
-That object is omitted for books. An episode without a file streams as
+That object is omitted for books. Both the episode list and `Book.episode`
+add optional `generation` (integer), `sha256` (string) and `timeline_changed`
+(boolean) when a valid Fetch exists, including a deleted generation. The flag
+is explicitly false for an unchanged first generation and latches true after
+different bytes are fetched. It does not rescale/reset saved progress or
+bookmarks. `downloaded` needs committed regular audio of the expected size,
+with no deletion timestamp or publication barrier; absent size is zero.
+An episode without a file streams as
 `404 {"error":"episode not downloaded","code":"not_downloaded"}` and has
-`{"chapters":[]}`; neither route indexes podcast audio on demand.
+empty `chapters` and `files`; neither route indexes or fetches podcast audio
+on demand. Present episodes use probed duration/codec. Valid MP3 CHAP is served
+through the existing chapters/files envelope with optional
+`chapters_source:"id3_chap"`; without usable CHAP a present file gets one
+whole-file chapter.
+
+Direct podcast streams/downloads use
+`ETag: "podcast-g<generation>-<sha256>"`, `Cache-Control: private, no-cache` and
+byte ranges. Matching `If-Range` permits 206; an old validator gets the full
+current generation as 200. Changed hash/generation changes the ETag even at
+equal size/mtime. Each request keeps its validated opened descriptor through
+serving/transcode; transformed output does not advertise the source strong
+ETag or byte seeking. Ready files remain core when the module/Bridge is off.
 
 A **Request**:
 
@@ -1216,6 +1238,66 @@ response's HTTP status. Codes include `invalid_feed_url`, `blocked_address`,
 `request_expired`; follow again. Lost Bridge credentials are
 `feed_secret_missing`; follow the URL again to restore them. No podcast job
 sends a finished/failed notification. See [the Bridge implementation](../../bridge/podcasts.md).
+
+### Podcast storage (admin)
+
+*Admin, not demo.* These routes use the separate admin catalog, not the player
+client/private-show gate. Retention GET is core. PUT/DELETE and a new fetch
+need the Podcasts module on, an online Bridge advertising the exact job kind
+(`podcast.retain` or `podcast.fetch`) and a mapped, writable podcast library.
+Non-admin callers get 403. Request JSON is strict and capped at 4 KiB.
+
+| Route | Query/body | Success |
+|---|---|---|
+| `GET /api/v1/admin/libraries/{id}/podcasts/retention` | `?path=<show>` | `200 {retention:Policy}` |
+| `PUT /api/v1/admin/libraries/{id}/podcasts/retention` | `?path=<show>`, body Policy | `200 {retention:Policy}` after durable save |
+| `DELETE /api/v1/admin/libraries/{id}/podcasts/retention` | `?path=<show>` | `204`, resets to default |
+| `POST /api/v1/admin/libraries/{id}/podcasts/fetch` | `{"path":"<show>/<episode.mp3>"}` | `202 {request:{id:81,state:"queued"}}`, or `200 {downloaded:true}` for a valid present pin |
+
+Policy is `{"mode":"keep","keep":3,"days":7}` by default. All three fields
+are required on PUT and returned, including unused values: mode
+`keep|on_demand|archive`, keep integer 1..1000, days integer 0..365. Overrides
+are shared per library/show path/show id and survive index rebuilds; replacing
+a show at the same path starts with the default. PUT/DELETE wake scheduling
+and do not wait for disk changes. There is no retention UI yet.
+
+Keep downloads the newest N currently listed episodes (published/path
+descending, undated last); Archive downloads all currently listed episodes
+oldest first and never deletes. On demand schedules none; admin fetch works.
+No followers means no automatic downloads/deletions. Removed feed entries
+are not auto-fetched, but explicit fetch can try the saved enclosure.
+
+Keep deletes only outside its window; On demand has no window requirement.
+Both require every current accessible follower finished, elapsed
+`max(all_finished_at,fetch.fetched_at)+days*86400` grace and no episode
+favourite, queue entry, active direct/download/transcode request or open fetch.
+Zero followers/invalid finish times deny deletion. A show-folder favourite
+does not pin all episodes. Keep N is not a disk limit; an unfinished follower
+can keep files indefinitely. Deletion keeps Fetch as a tombstone, listings,
+artwork and listening state. Details: [retention](../../bridge/podcasts.md#retention-policy-and-deletion-authority).
+
+Fetch uses priority 20 and the admin's requester id, returns the existing open
+job's actual state, and bypasses terminal failure cooldown. It never replaces
+a valid present pin or creates duplicate open work. The present-pin 200 check
+runs before module/Bridge/mapping checks, so it works offline or module-off.
+No player fetch/status endpoint ships in this release; missing media remains
+`404 not_downloaded`.
+
+| Status/code | Meaning |
+|---|---|
+| `400 invalid_request` | missing/invalid show or episode path, unknown fields, incomplete/out-of-bounds policy |
+| `404 library_not_found` / `show_not_found` / `episode_not_found` | missing library/show/episode |
+| `404 module_off` | a storage-changing action while the module is off |
+| `409 not_podcast_library` | a books library |
+| `409 bridge_unavailable` / `library_not_writable` | no online Bridge offering the needed kind, or no writable mapping |
+| `409 identity_changed` | the indexed identity changed during the operation |
+
+Unexpected failures use sanitized 500 responses. Async fetch failures use a
+failed job with safe `{code,message,retry_after_seconds?}` result, including
+guard codes and `episode_not_found`, `enclosure_missing`, `identity_changed`,
+`invalid_audio`, `probe_unavailable`, `unsupported_encoding`, `index_failed`.
+See [jobs](../../bridge/podcasts.md#fetch-and-retain-jobs) for params/results,
+backoff, progress and recovery.
 
 ## Books & content
 
@@ -1299,7 +1381,7 @@ recording's chapter list fitted onto its audio rather than the files' own (see
 [Community chapters](../community-chapters.md)), `"generated"` when they are the
 chapters a Bridge found in the narration of a book with none of its own (Bridge
 Phase 1d; see [Generated chapters](../community-chapters.md#generated-chapters)),
-and absent otherwise. It is
+`"id3_chap"` for a podcast's validated MP3 CHAP attachment, and absent otherwise. It is
 additive: the chapters have the same shape either way, and only this
 single-book response (and [`/chapters`](#get-apiv1librariesidchapters)) carries
 it.
@@ -1371,7 +1453,8 @@ multi-file mp3 parts render identically.
 list fitted onto the book's audio (an admin chose them, or the files have no
 chapters of their own); `"generated"` (Bridge Phase 1d) when they are the
 chapters a Bridge found in the narration of a book with no chapters of its own
-(its `.audiosilo/chapters.json`); **absent** for the files' own chapters, and on
+(its `.audiosilo/chapters.json`); `"id3_chap"` for a podcast's validated MP3
+CHAP attachment; **absent** for other files' own chapters, and on
 servers before it. The chapters keep the same shape either way, so an old client
 plays community or generated chapters as ordinary ones. See
 [Community chapters](../community-chapters.md) and
@@ -7657,7 +7740,7 @@ runs out.
 | `library_id` | only this library's jobs (a positive integer, else `400 invalid library_id`) |
 | `path` | only jobs about this book path |
 | `state` | only jobs in this state |
-| `kind` | only this job kind; without it `podcast.poll` is omitted; `kind=podcast.poll` explicitly includes routine checks |
+| `kind` | only this job kind; without it `podcast.poll`, `podcast.fetch` and `podcast.retain` are omitted; filter explicitly to include one of them |
 | `before` | the previous page's `next_before` (a positive integer, else `400 invalid before`) |
 | `limit` | page size, 1 to 200 (anything outside that: 50) |
 
@@ -7675,8 +7758,9 @@ reads; a private feed URL appears only in the Bridge's claim answer. See
 
 ### `POST /api/v1/admin/bridge/jobs`
 
-*Admin.* Queues a job. `podcast.subscribe` and `podcast.poll` are server-internal
-and refused here with `400` (no code): use listener follow/check instead.
+*Admin.* Queues a job. `podcast.subscribe`, `podcast.poll`, `podcast.fetch` and
+`podcast.retain` are server-internal and refused here with `400` (no code): use
+listener follow/check, the admin storage routes or the scheduler instead.
 Book-writing kinds on a podcast library return `409 not_book_library`;
 podcast kinds are only ever queued for a podcast library (follow and check answer
 `409 not_podcast_library` for a books library before queuing).
@@ -7994,7 +8078,7 @@ optional top-level heartbeat blocks this server reads:
 
 Every library in the reply includes `kind: "books"|"podcasts"`; the Bridge
 treats a missing kind from an older server as books. Podcast support adds
-`podcast.subscribe` and `podcast.poll` to the existing `kinds` list without a
+`podcast.subscribe`, `podcast.poll`, `podcast.fetch` and `podcast.retain` to the existing `kinds` list without a
 new heartbeat request field.
 
 The heartbeat itself is decoded strictly (an unknown field is a `400`), so a
@@ -8077,6 +8161,49 @@ requires `<root>/.audiosilo/library.json` to be a regular file no larger than
 folder cannot be a symlink. The server reads only and never creates it.
 Missing/invalid marker is `404 no_marker`, missing library `404 library_not_found`.
 See [Library mappings](../../bridge/mappings.md#podcast-libraries-the-marker).
+
+### Bridge podcast retention
+
+*Paired Bridge bearer token only.* Session/API/cast tokens and query tokens
+are refused, including an admin's token. These are core reads and return
+`Cache-Control: no-store`; they expose no per-user listening data.
+
+`GET /api/v1/bridge/libraries/{id}/podcasts/retention?path=<show>&show_id=<id>`
+returns `200 {retention:Policy}`. Missing show is `404 show_not_found`;
+a different current show id is `409 identity_changed`.
+
+`POST /api/v1/bridge/libraries/{id}/podcasts/retention/check` is a read-only
+check with strict JSON, capped at 4 KiB:
+
+```json
+{"show_id":"a1b2c3d4e5f60718","path":"Fixture Show/2026-10-19-1cc306d831.mp3","generation":2,"sha256":"7be5836ba147da1215098df9f7a34f33b157d07fd92dd801928c9caef17e6d2b","bytes":16493}
+```
+
+Generation must be positive, SHA-256 64 lowercase hex and bytes a positive
+int64. The indexed present generation/hash/size and show id must match.
+Missing episode is `404 episode_not_found`, mismatch `409 identity_changed`;
+bad input is `400 invalid_request`, books library `409 not_podcast_library`,
+missing library `404 library_not_found`. Success includes **all** these keys:
+
+```json
+{
+  "library_id":3,"show_path":"Fixture Show","show_id":"a1b2c3d4e5f60718",
+  "path":"Fixture Show/2026-10-19-1cc306d831.mp3","generation":2,
+  "sha256":"7be5836ba147da1215098df9f7a34f33b157d07fd92dd801928c9caef17e6d2b","bytes":16493,
+  "checked_at":"2026-10-21T08:00:00Z","policy":{"mode":"keep","keep":3,"days":7},
+  "followers":2,"all_finished":true,"all_finished_at":"2026-10-12T08:00:00Z",
+  "starred":false,"queued":false,"active_stream":false,"fetch_open":false,
+  "outside_keep_window":true,"delete_after":"2026-10-28T08:00:00Z","eligible":false
+}
+```
+
+`all_finished_at` and `delete_after` are RFC 3339 strings or `null`; other
+flags are booleans, followers an integer. The server combines one consistent
+DB snapshot with live stream marks; no names, user ids or positions leave it.
+The Bridge requires complete valid fields and a matching local hash/size,
+rechecks just before deletion and denies on error. Freshness is at most five
+seconds measured from request dispatch by its own monotonic clock, independent
+of the server's `checked_at`. See [aggregate rules](../../bridge/podcasts.md#retention-policy-and-deletion-authority).
 
 ### `GET /api/v1/bridge/libraries/{id}/book`
 
@@ -8164,8 +8291,9 @@ For a podcast library, `path` names a show folder or an already indexed
 episode whose show is refreshed from `feed.json`. Response is
 `200 {"path":"<show>","episodes":N}`; missing/invalid feed is
 `404 not_indexable`. `mode:"attachments"` and any supplied `from` are `400`.
-No arbitrary audio is indexed. Podcast feed details and artwork are read
-without probing audio.
+No arbitrary audio is indexed. Podcast feed details, committed audio presence,
+publication barriers and matching CHAP attachments are read without probing or
+hashing audio. A pending journal leaves its episode unready.
 
 The re-read runs detached from the request for up to 10 minutes, like the
 console's [rescan of one book](#post-apiv1adminlibrariesidbookrescan). A path

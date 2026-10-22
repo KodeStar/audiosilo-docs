@@ -17,8 +17,8 @@ libraries.
 Libraries live under **Library > Libraries** in the
 [admin console](console-tour.md) ("Folders AudioSilo reads. Your files stay
 where they are."). Each library is a card with a few of its newest covers, its
-name, its status, its folder and its book count - and, when it is scanned on a
-schedule, the schedule and when the next scan is due ("Every 6 hours · next in
+name, its status, its folder and its book or episode count - and, when it is
+scanned on a schedule, the schedule and when the next scan is due ("Every 6 hours · next in
 5 hr"). A library that takes its book details from folder names says "Details
 from folder names" (see
 [Where book details come from](#where-book-details-come-from)).
@@ -30,7 +30,8 @@ The status next to the name is one of:
 - **Online** - the folder is readable and nothing is running.
 - **Scanning** - a scan is running; a progress bar under the card counts
   "*X* of *Y* books checked" (or "Looking for books..." while it is still
-  finding them). A running scan wins over the other states: a **Retry** on an
+  finding them). Podcast libraries count "episodes checked" and say "Looking
+  for podcast episodes...". A running scan wins over the other states: a **Retry** on an
   unavailable library shows **Scanning** while it runs.
 - **Waiting** - a scan is queued behind another library's. Scans run one at a
   time; the **Rescan** button reads **Queued** until this one starts. See
@@ -56,10 +57,14 @@ dialog asks for:
 A podcast library needs its own folder: it cannot share a root with, contain,
 or sit inside another library. Mount the same folder read-write in the Bridge;
 the server can keep reading it read-only. Its card has a **Podcasts** badge,
-and its menu greys out folder detection and book exports.
+and its menu greys out folder detection and book exports. Its form asks for a
+podcast name and folder, hides **Book details come from** and **Skip these files
+and folders**, and keeps the rescan schedule. Feed checks run separately from
+that schedule. See [Podcasts](podcasts.md) for downloads, retention and space.
 
-Under them are two optional scan settings, **Scan automatically** and **Skip
-these files and folders** - see [Scanning on a schedule](#scanning-on-a-schedule)
+For a Books library, under them are two optional scan settings, **Scan
+automatically** and **Skip these files and folders** - see
+[Scanning on a schedule](#scanning-on-a-schedule)
 and [Skipping files and folders](#skipping-files-and-folders) - and **Book
 details come from** (see
 [Where book details come from](#where-book-details-come-from)). You can leave
@@ -90,6 +95,9 @@ Click **Add library and scan**. The library appears straight away and its
 first scan starts ("The first scan has started. Covers fill in as books are
 found."). Listeners don't have to wait: the folder view works immediately, and
 books are indexed as the scan progresses (or on demand when someone opens one).
+For a podcast library the message instead says "Shows and episodes appear as
+they are indexed." It indexes the Bridge's saved show files; it does not
+fetch feeds or episodes itself.
 
 :::warning Library folders must be on the server
 The folder must be one the **server itself** can read directly. If your
@@ -113,9 +121,9 @@ point it at another folder, or change how it's scanned."
 - **Scan automatically** and **Time** - see
   [Scanning on a schedule](#scanning-on-a-schedule).
 - **Skip these files and folders** - see
-  [Skipping files and folders](#skipping-files-and-folders).
+  [Skipping files and folders](#skipping-files-and-folders). Books only.
 - **Book details come from** - see
-  [Where book details come from](#where-book-details-come-from).
+  [Where book details come from](#where-book-details-come-from). Books only.
 
 Click **Save changes**. Changing the **folder** or the **skipped files**
 rescans the library ("AudioSilo is rescanning it now."); renaming it or
@@ -175,6 +183,10 @@ itself: **⋯ > Edit library...**, then **Scan automatically**:
 The library's card then shows the schedule and the next scan ("Daily at 03:00
 · next in 7 hr"), and **Health > Jobs** lists every schedule. A scheduled scan
 waits its turn like any other.
+
+For a podcast library this schedule re-indexes the files the Bridge has saved.
+It does not set how often feeds are checked or change the
+[per-show retention policy](podcasts.md#downloads-and-retention).
 
 ## Skipping files and folders
 

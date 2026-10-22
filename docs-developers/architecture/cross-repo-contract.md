@@ -244,7 +244,9 @@ book is the only additive marker (mirrored as `Book.chapters_source` /
 `ChaptersResponse.chapters_source`, the `ChaptersSource` union): the player's book
 page captions such chapters (an older app shows them as ordinary chapters), and a downloaded book replaces its
 saved chapters with a newer server answer while its audio files are unchanged
-(same paths, order and sizes; `startChapterRefresh`).
+(same paths, order and sizes; `startChapterRefresh`). Podcasts additionally
+return `id3_chap` from the server's CHAP attachments; player type/UI support is
+deferred with podcast player views. See [podcasts](#17-podcast-shows-feeds-and-client-visibility).
 
 **A change requires:** any change to chapter normalization changes the queue
 builder and the timeline math with it. And always: **stream the file, not the
@@ -801,7 +803,8 @@ security-critical: allowed and denied tests on the server.
 
 ## 17. Podcast shows, feeds and client visibility
 
-Phase 2c-1 crosses the server/Bridge seam; released player views arrive later.
+Phase 2c-2a extends the server/Bridge seam with episodes on disk and retention;
+released player views and on-demand play arrive later.
 See [Podcasts](../bridge/podcasts.md) and the
 [API reference](../server/api/reference.md#podcasts) for exact fields.
 
@@ -811,7 +814,8 @@ See [Podcasts](../bridge/podcasts.md) and the
   (`409 root_overlaps`), including when a books root is created or moved.
 - **Capability:** `capabilities.podcasts` is always sent, false unless
   `modules.podcasts.enabled` and an online Bridge offers `podcast` from its
-  `podcast.subscribe`/`podcast.poll` kinds. It needs no heartbeat request field.
+  podcast kinds. The Bridge advertises subscribe/poll/fetch/retain in `kinds`,
+  with no new heartbeat request field or on-demand capability.
   Off gates actions, stops the scheduler and holds queued jobs; reads stay core.
 - **Visibility:** `auth.SeesPodcasts(Credential.Client)` feeds `catalog.Caller.Podcasts`.
   `AudioSilo Admin` qualifies; `AudioSilo` version `dev` qualifies. The released
@@ -830,17 +834,64 @@ See [Podcasts](../bridge/podcasts.md) and the
   A private URL's normalized current/previous hash proves the follow. Five open
   subscribe requests per user; manual checks limited to one per 60 seconds when
   no poll is already open.
+- **Storage API:** admin/not-demo retention GET/PUT/DELETE and episode fetch
+  are [dedicated routes](../server/api/reference.md#podcast-storage-admin).
+  Policy defaults to `{mode:"keep",keep:3,days:7}`, keyed by
+  library/show path/show id, durable across index rebuilds. PUT requires all
+  fields: mode `keep|on_demand|archive`, keep 1..1000, days 0..365. Writes need
+  the module, exact online Bridge kind and writable mapping. GET stays core;
+  valid present fetch returns 200 before storage checks. New fetch is 202 with
+  an existing/open job state, priority 20; no forced pin replacement.
+- **Retention:** Keep downloads newest N listed episodes; Archive all listed
+  oldest first and never deletes; On demand has no scheduled downloads yet.
+  No followers means no automatic work. Deletion needs every current enabled,
+  non-demo accessible follower finished, grace from
+  `max(all_finished_at,fetch.fetched_at)+days*86400`, no exact favourite, queue,
+  active stream/download/transcode or open fetch, and outside Keep's window.
+  Zero followers/errors deny. Keep is a window, not a disk quota.
+  Bridge-only policy/aggregate routes expose all
+  [aggregate fields](../server/api/reference.md#bridge-podcast-retention), no
+  names/ids/positions; mismatched generation/hash/size is 409 identity_changed.
+  Bridge verifies local bytes and five-second request age on its own clock
+  immediately before a journaled move to owned trash, tombstone and rescan.
+- **Jobs:** fetch binds `{show_id,episode_id}` and an indexed episode path,
+  dedupe `podcast.fetch|<library_id>|<path>`, with no URL/credentials. Retain
+  binds show path/id, priority -20. Fetch uses the Bridge's download lane (2),
+  retain light (2); both internal/writing/quiet. Replacements settle old work.
+  Fetch byte progress is int64 with nullable total; successful results include
+  Fetch/chapters/reused. [Job shapes](../bridge/podcasts.md#fetch-and-retain-jobs)
+  and shared `wire-2a.json` fix the contract.
 - **Pull and schedule:** the server schedules; the Bridge returns adaptive
   `next_poll_seconds`, clamped by the server to 15 minutes through 24 hours.
   HTTP validators/status live on the server. Ended jobs are folded idempotently
   with a completion wake and a 60-second recovery tick. `gone` stops automatic
-  checks; other failures back off. Polls are omitted from default admin job
-  lists unless filtered explicitly. Podcast jobs never notify.
+  checks; other failures back off. Poll/fetch/retain are omitted from default
+  admin job lists unless filtered explicitly. Podcast jobs never notify.
+  New poll params/results and feed status bind show id; late/unbound results
+  cannot recreate replacement status. Fetch backoff is separate from feed
+  state, 30 minutes doubling to 24 hours. Scheduler limits are ten fetches
+  per pass/two per show, rotating Archive fairly, and ten retains/hourly per
+  show. Fetch/retain never mutate poll validators/secret flags.
 - **Files:** Bridge-owned `feed.json` v1 is the shared format; server indexes
-  episodes even without audio. Paths are assigned once; reserved `fetch` data
-  anticipates later downloads. Unknown fields are ignored; breaking format
+  episodes even without audio. Paths are assigned once; `fetch` records a
+  committed generation or tombstone, with optional codec. Unknown fields are ignored; breaking format
   changes bump the version. At the cap, removed never-fetched episodes may be
   dropped oldest-removed first. Manually renaming a show folder breaks paths.
+- **Publication/media:** journal/audio/CHAP/Fetch commit order keeps new bytes
+  behind `<stem>.publish.json` until complete; recovery reuses the same
+  generation. Hard-link install has a no-replace rename fallback. First fetch
+  is g1; identical refetch keeps g, changed hash increments and latches
+  `timeline_changed`. Episode/Book.episode expose optional generation/hash/flag
+  even after deletion; progress and bookmarks stay unchanged. One validated
+  descriptor serves each request. Direct ETag is
+  `"podcast-g<generation>-<sha256>"`, private revalidation and byte ranges;
+  transformed output has no source ETag. Absent stream stays 404 not_downloaded.
+- **CHAP:** bounded ID3v2.3/v2.4 reader uses chronological start order, missing
+  title `Chapter N`, no APIC images/CTOC order. Version-1 stem-prefixed
+  `chapters.json` uses `from:id3_chap`, Fetch timestamp and one matching
+  basename/size/duration. No ASR/agent/generated flag; server consumes valid
+  times directly and returns optional `chapters_source:id3_chap`. Invalid/0/1
+  lists install audio without CHAP. Shared `publish-v1.json` fixes journal/list.
 - **Mapping/rescan:** `.audiosilo/library.json` v1 holds `{library_id,nonce}`;
   `GET /bridge/libraries/{id}/marker` returns the matching nonce, regular file
   only, at most 4 KiB, no marker-directory symlink. Podcast sample-book lookup
@@ -851,8 +902,13 @@ See [Podcasts](../bridge/podcasts.md) and the
   injects it into the claim only; restart before claim is `request_expired`.
   The Bridge seals it before local claim storage and keeps the show credential
   in its vault. `feed_secret_missing` is repaired by following the URL again.
-  Feed/artwork HTTP checks all DNS results and every dial/redirect, with no
-  proxy; private networks require explicit Bridge `podcasts.allow_networks`.
+  Feed/artwork/audio HTTP checks all DNS results and every dial/redirect, with no
+  proxy and cross-origin source credential stripping; private networks require
+  explicit Bridge `podcasts.allow_networks`. Audio uses identity GET/no HEAD,
+  independent 1024 MiB cap (1..4096) and at most three attempts. Proven resume
+  requires exact 206 range/total/strong ETag; 200 restarts from zero. Checkpoints
+  omit URLs and seal validators. Private enclosure resolution is a fresh
+  bounded feed read, no merge; URLs stay in memory.
 
 ## The wire-change checklist
 

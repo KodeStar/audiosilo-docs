@@ -18,8 +18,38 @@ library and only reads them (`metadata/attachments.go`,
 | a single-file book (a loose file at the library root, or a book in a `collection` folder) | `<the file's folder>/.audiosilo/` | `<stem>.characters.json`, `<stem>.recaps.json`, `<stem>.description.json`, `<stem>.chapters.json`, `<stem>.bridge.json`, the stem being the file name without its last extension (`Book.m4b` -> `Book.characters.json`) |
 
 The prefix keeps the books of one folder apart, since a collection folder's books
-share one `.audiosilo/`. Only these JSON names are ever written there or read
-from there, and never any audio.
+share one `.audiosilo/`. These are the book attachment names; podcast-specific
+files are described below. Audio is never stored in `.audiosilo/`.
+
+### Podcast CHAP attachments
+
+`podcast.fetch` writes `<show>/.audiosilo/<stem>.chapters.json`, stripping only
+the episode filename's last extension. It uses the version-1
+[chapter-list shape](#chaptersjson) with `from:"id3_chap"`,
+`generator:"audiosilo-bridge"`, `generated_at:Fetch.fetched_at` and exactly one
+`files` entry: audio basename, Fetch bytes and probed `duration_ms`. Chapters
+are `{title,start_ms,length_ms}` on the episode timeline. No ASR, agent,
+`bridge.json` or `Book.generated` flag is involved.
+
+The Bridge reads bounded ID3v2.3/v2.4 CHAP, sorts chronologically, uses
+`Chapter N` for missing titles, skips APIC images and ignores CTOC ordering.
+Invalid lists, zero or one chapter produce no sidecar while valid audio still
+installs. The [Spike 6 decisions](podcasts.md#spike-results-extensions-and-mp3-chapters)
+give timing, text and size limits.
+
+The podcast scanner uses `metadata.ParseChapterList`, then requires
+`from:id3_chap`, matching basename/size/duration and the current Fetch timestamp.
+It consumes times directly, bypassing book generated-chapter filling and
+alignment. The chapters/files response uses optional
+`chapters_source:"id3_chap"`. Present audio without a usable list gets a
+whole-file chapter; absent audio gets empty chapters/files.
+
+`<stem>.publish.json` is a transient install/delete journal and a server
+indexing/media barrier, at most 4 MiB. Podcast publication commits
+audio/chapters/Fetch before removing it, then uses targeted `POST /bridge/rescan`
+without `mode:"attachments"` or `from`. A generation without CHAP removes its
+old sidecar. Retention moves owned audio/CHAP to same-filesystem trash and
+keeps Fetch as a tombstone. See [publication](podcasts.md#publication-generations-and-serving).
 
 ## The formats
 
@@ -110,7 +140,7 @@ the shape of a community recording's chapter list:
 ```
 
 - `version` is `1`, the one version the server reads. `generator`, `generated_at`
-  (RFC 3339) and `from` (always `narration`) say what made it; the server cleans
+  (RFC 3339) and `from` (`narration` for book detection, `id3_chap` for podcasts) say what made it; the shared parser cleans
   them like a provenance value and never refuses the file over them.
 - `files` are the audio files the chapters were found on, in play order, each
   with its `path` **relative to the book's folder**: a single-file book's is its
@@ -167,7 +197,7 @@ object.
 
 The same content is never written twice in a run (a content hash), and a book
 the server moved since the job began is written where it is now.
-**Regenerate** writes over the files. Nothing deletes into a library yet, so a
+**Regenerate** writes over book attachments. Book generation does not delete old content, so a
 regenerate whose own description step got none leaves the earlier
 `description.json` in place, and its new `bridge.json` carries the existing
 `description` object over (only beside a `description.json` that is a regular

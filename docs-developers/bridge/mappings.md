@@ -78,9 +78,20 @@ checks the library id and answers only `{nonce}`; absent or invalid is
 empty, but both mounts must see the marker. An older Bridge's sample-book lookup
 on a podcast library returns `404 no_book`, so it cannot map it as books.
 
-Marker lookup errors currently read as "this folder isn't the library the
-server sees" on the Bridge, including a failed server request. The normal
-mapping recheck interval applies. `bridge.verify` below remains a book check.
+`no_marker` or a nonce mismatch means "this folder isn't the library the server
+sees". `library_not_found` means "the library was removed from the server".
+Network errors, timeouts, 401 and unexpected responses mean "could not verify
+this folder with the server", with both mapped/writable false and no raw
+server error. A pre-existing marker survives a transient failure; cleanup
+removes only artifacts created by that failed check. The normal mapping
+recheck interval applies. `bridge.verify` below remains a book check.
+
+Fetch and retention jobs recheck the mapping before mutations, including
+recovery. Staging, publication and deletion stay on that show's filesystem;
+regular files and real show/attachment directories are required. Audio install
+tries an exclusive hard link, with a no-replace rename fallback where links
+are unsupported. A present file is never overwritten or adopted merely
+because it has the assigned name.
 
 ## What it reports
 

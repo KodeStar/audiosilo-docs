@@ -17,7 +17,15 @@ ebook) and has an AI agent write them. It also
 of a book that has none, in its narration, and it can
 [contribute](../community/contributing-from-your-server.md) the characters and
 recaps it generates, and your corrections to a book's details, to the community
-metadata database. It runs as **two containers**:
+metadata database.
+
+With the Podcasts module on, it also downloads podcast episodes and checks
+retention. An admin sets the shared policy per show through the API for now:
+the default is Keep 3 and seven days after every follower finishes. See
+[Podcasts](../admin/podcasts.md#downloads-and-retention) for setup, protections
+and the API calls. Released player apps do not show podcasts yet.
+
+The book-generation setup uses **two containers**:
 
 - **the Bridge** itself, which sees your library folders and does the
   transcribing and the writing;
@@ -222,7 +230,14 @@ settings folder and asks the server to read it back. It does not need a book
 to compare. Leave the marker in place. **Verify** uses a sample book and is for
 books libraries.
 
-Podcast feed jobs do not use speech recognition or an AI agent. The steps below
+The podcast folder should support hard links; the Bridge falls back to a
+rename that refuses to replace existing files when links are unsupported.
+Keep space available there for staged and protected episodes. The default
+per-episode cap is 1024 MiB; set `podcasts.max_episode_mb` or
+`AUDIOSILO_BRIDGE_PODCASTS_MAX_EPISODE_MB` to 1 through 4096 MiB and restart the
+Bridge to change it. Retention is a download window, not a disk limit.
+
+Podcast feed, download and retention jobs do not use speech recognition or an AI agent. The steps below
 set up the book-generation and contribution features; the Bridge's setup
 checklist may still list them when you only want podcasts.
 
@@ -239,7 +254,7 @@ podcasts:
 Or set `AUDIOSILO_BRIDGE_PODCASTS_ALLOW_NETWORKS: "192.168.1.20/32"` in the
 Bridge's environment (comma-separated for several ranges), then restart it.
 The default allows no private network ranges. Use only the ranges you need:
-the allowance applies to feed **and artwork** requests. See
+the allowance applies to feed, artwork **and episode audio** requests. See
 [Podcasts](../admin/podcasts.md) for module setup and private feeds.
 
 ### 6. Speech recognition
