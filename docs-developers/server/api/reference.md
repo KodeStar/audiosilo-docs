@@ -1594,9 +1594,10 @@ library's kind is not revealed), `409 not_podcast_library`, then the content
 type: `application/xml`, `text/xml`, `text/x-opml` or `application/x-opml+xml`,
 with no parameter but `charset=utf-8` and no `Content-Encoding` but `identity`,
 else `415 unsupported_opml_type`. Then the caller's import budget (2/minute,
-burst 1: `429 opml_rate_limited` with `Retry-After`), the body (read whole,
-at most 1 MiB), and one of two server-wide import slots (`503 opml_busy`,
-`Retry-After: 1`).
+burst 1: `429 opml_rate_limited` with `Retry-After`, or `503 opml_busy` with
+`Retry-After: 1` while the server's per-user budget table is full), the body
+(read whole, at most 1 MiB), and one of two server-wide import slots
+(`503 opml_busy`, `Retry-After: 1`).
 
 The whole document is validated before any row acts, so a refused document
 changes nothing:
@@ -1698,7 +1699,8 @@ attempted; a re-upload continues safely.
 off, the Bridge offline or unpaired, discovery off or no directory key. Kids
 may export within their scope. The client gate applies (`403 no_library_access`),
 there are no parameters (`400 invalid_request`), and the per-user budget is
-6/minute, burst 2 (`429 opml_rate_limited` with `Retry-After`).
+6/minute, burst 2 (`429 opml_rate_limited` with `Retry-After`; `503 opml_busy`
+with `Retry-After: 1` while the per-user budget table is full).
 
 ```bash
 curl -OJ -D - "$SERVER/api/v1/podcasts/opml/export" \

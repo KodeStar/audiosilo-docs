@@ -221,7 +221,7 @@ text (and, for Apple, the country), and sees your server's IP address. Nothing
 about who searched, your libraries or your devices is sent. Results come back
 through your server, and the server fetches each result's artwork itself, so
 the artwork's host also sees only the server's address. Searches are not
-saved: results are kept in memory for a few minutes and forgotten on a
+saved: results are kept in memory for up to 15 minutes and forgotten on a
 restart. Each person can search about ten times a minute.
 
 To turn search off entirely, set `podcasts.discovery.enabled: false` in the

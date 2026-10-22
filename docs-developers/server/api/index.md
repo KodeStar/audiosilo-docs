@@ -272,7 +272,8 @@ feed failures: [Podcasts](reference.md#podcasts).
 `Retry-After`), `provider_rejected`, `discovery_unavailable` and
 `artwork_unavailable` (`502`), `discovery_busy` (`503`, `Retry-After: 1`) and
 `discovery_timeout` (`504`). [OPML](reference.md#opml-import-and-export) adds
-`invalid_opml` (`400`), `opml_limit` and `opml_export_limit` (`413`),
+`invalid_opml` (`400`), `library_not_found` (`404`, an import's
+`library_id` names no library), `opml_limit` and `opml_export_limit` (`413`),
 `unsupported_opml_type` (`415`), `opml_rate_limited` (`429`, with
 `Retry-After`) and `opml_busy` (`503`, `Retry-After: 1`); an import's
 per-row results carry their own codes in a `200`. `HEAD` on the new GET routes
