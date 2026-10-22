@@ -968,6 +968,13 @@ currently known show ids and dropping unbound cache. How poll, fetch and retain
 outcomes fold into these tables is in
 [Podcasts](../bridge/podcasts.md#polling-and-outcomes).
 
+Phase 2c-3 (directory search, OPML import and export) adds **no migration**
+and no table. Search results, artwork, quotas and uploaded OPML documents live
+only in bounded memory; an import's rows are ordinary follows and
+`podcast.subscribe` jobs, and the export is a query over `podcast_follows`,
+`podcast_shows` and the caller's scopes (at most 10,000 rows, never truncated).
+The Podcast Index key pair is never stored.
+
 Audio and CHAP remain filesystem truth, with generation/hash/tombstones in
 `feed.json`. The show transaction derives presence, file duration/codec and
 chapters from committed Fetch/audio/CHAP, suppressing any episode with a

@@ -477,6 +477,50 @@ A module's own settings, when it has any, go under its key
 (`modules.<id>.<name>`). A `config.yaml` written before the section keeps every
 module off.
 
+### Podcast discovery (`podcasts.discovery.*`)
+
+[Podcast directory search](api/reference.md#podcast-discovery) (Bridge Phase
+2c-3), separate from `metadata.*`: the audiobook metadata settings (lookup,
+mirror, marketplace region) never affect it.
+
+| Key | Type / default | Meaning |
+|---|---|---|
+| `podcasts.discovery.enabled` | bool, `true` | Builds the discovery service at start. Off: the discovery routes answer `404 discovery_off` and `podcast_discovery` is `false`. Read at start only, with **no console setting**; the Podcasts module (`modules.podcasts.enabled`) stays the live switch, so search is still off until that module is on. OPML import/export and feed fetching do not depend on it |
+
+The default directory is Apple's iTunes Search API, which needs no key. Podcast
+Index search additionally needs its key pair, which comes **only from the
+environment**, read once at start:
+
+| Variable | Meaning |
+|---|---|
+| `AUDIOSILO_PODCAST_INDEX_KEY` | the Podcast Index API key |
+| `AUDIOSILO_PODCAST_INDEX_SECRET` | the Podcast Index API secret |
+
+Set both, each 1 to 256 printable ASCII characters without spaces (kept byte
+for byte). Neither set: Podcast Index is simply not configured
+(`available: false`). One missing or malformed: Podcast Index is off and the
+server logs one warning naming the variable and the reason (never the value);
+the server and iTunes search start normally. There is no startup probe and no
+bundled key, and the pair never appears in `config.yaml`, Settings, the audit
+log, the support bundle, logs, jobs or caches. Rotating or
+removing it needs a restart. This is a deliberate exception to keeping
+third-party credentials on the Bridge: the server makes these searches itself,
+and the Bridge has no Podcast Index setting.
+
+```yaml
+podcasts:
+  discovery:
+    enabled: true # [AUDIOSILO_PODCAST_DISCOVERY_ENABLED]
+```
+
+:::warning[Test builds only]
+A binary built with the `podcastdiscoverytest` tag honours
+`AUDIOSILO_TEST_PODCAST_DISCOVERY_ORIGIN=http://127.0.0.1:<port>`, sending
+every directory search and that origin's artwork to a local fixture server
+instead of the real directories. It exists for the test harness. Never deploy
+a tagged binary; an ordinary build ignores the variable.
+:::
+
 ### The Bridge (no keys)
 
 The server has **no setting for the [Bridge](../bridge/index.md)**, and no
@@ -539,6 +583,11 @@ by the settings table in `internal/config/settings.go` (`fields`: each entry's
 | `AUDIOSILO_BACKUP_DIR` | `backups.dir` | absolute path |
 | `AUDIOSILO_MODULES_PODCASTS_ENABLED` | `modules.podcasts.enabled` | `strconv.ParseBool` (`true`/`1`/…); locks the console toggle when set |
 | `AUDIOSILO_MODULES_CONTRIBUTIONS_ENABLED` | `modules.contributions.enabled` | `strconv.ParseBool` (`true`/`1`/…); each module's toggle is `AUDIOSILO_MODULES_<ID>_ENABLED` |
+| `AUDIOSILO_PODCAST_DISCOVERY_ENABLED` | `podcasts.discovery.enabled` | `strconv.ParseBool` (`false`/`0`/… turns it off); read at start |
+
+`AUDIOSILO_PODCAST_INDEX_KEY` and `AUDIOSILO_PODCAST_INDEX_SECRET` override
+no key, so they are not in this table (see
+[Podcast discovery](#podcast-discovery-podcastsdiscovery)).
 
 List values are split on commas with whitespace trimmed and empties dropped
 (`splitList`). Numeric/boolean variables that fail to parse are **silently
@@ -597,6 +646,9 @@ restart, and whether the console may change it at all:
 | `backups.dir` | `backups.dir` | `AUDIOSILO_BACKUP_DIR` | restart; **read-only** in the console |
 | `modules.podcasts` | `modules.podcasts.enabled` | `AUDIOSILO_MODULES_PODCASTS_ENABLED` | at once; starts/stops feed/download/retention scheduling and gates writes; reads and present-pin reuse stay core |
 | `modules.contributions` | `modules.contributions.enabled` | `AUDIOSILO_MODULES_CONTRIBUTIONS_ENABLED` | at once (the Bridge jobs it owns are refused or held while it is off) |
+
+`podcasts.discovery.enabled` has no setting id: it is read at start from the
+file or its variable and never offered in the console.
 
 Not in the console: `max_upload_bytes` (it has a variable but no setting),
 `tls.cache_dir`, `tls.cert_file`/`tls.key_file`, `server_id`, and `libraries`

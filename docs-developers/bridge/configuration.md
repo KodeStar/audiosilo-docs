@@ -70,6 +70,10 @@ key or disk quota; default Keep 3 with seven days' grace. See
 
 The server's toggle is `modules.podcasts.enabled`, environment
 `AUDIOSILO_MODULES_PODCASTS_ENABLED`, default `false`. It is not a Bridge setting.
+Neither is podcast directory search: it runs on the server, and the Podcast
+Index key pair is a server environment variable
+([server configuration](../server/configuration.md#podcast-discovery-podcastsdiscovery)).
+The Bridge has no directory credential.
 See [Podcasts](podcasts.md) for the HTTP guard, on-disk format and secrets.
 
 On-demand fetching adds no configuration key: the reserved `interactive`

@@ -1,6 +1,6 @@
 ---
 title: "Podcasts"
-description: "Podcast libraries, episode downloads and per-show retention through the admin API, storage limits, private feeds, and why released player apps do not show podcasts yet."
+description: "Podcast libraries, episode downloads and per-show retention through the admin API, podcast search and OPML import/export, storage limits, private feeds, and why released player apps do not show podcasts yet."
 ---
 
 ## What is available now
@@ -14,17 +14,19 @@ reads what the Bridge saves.
 Released player apps, including current store builds, **do not show podcasts
 yet**, even when you sign in as an admin. Podcast player views arrive in a later
 release. **Only the admin console lists podcast libraries for now.** There is
-no follow-by-URL screen in the released apps or the console yet; following and
-checking feeds are available through the
+no follow-by-URL, search or import screen in the released apps or the console
+yet; following, checking feeds, searching podcast directories and OPML import
+and export are available through the
 [developer API](/developers/server/api/reference#podcasts).
 :::
 
 This release downloads episodes according to each show's retention policy,
 when an admin requests one through the API, or when a compatible client asks
 to play an episode whose audio is missing. It also saves supported MP3 chapter
-markers. Discovery, OPML import, external chapter files and transcripts arrive
-later. The server supports on-demand fetching now; the player does not show
-this yet.
+markers, and it can
+[search podcast directories and import or export OPML subscription lists](#finding-shows-and-moving-subscriptions).
+External chapter files and transcripts arrive later. The player does not show
+on-demand fetching, search or OPML yet.
 
 ## Set up a podcast library
 
@@ -196,6 +198,63 @@ automatic feed checks, downloads and retention scheduling. Work the Bridge
 already holds may finish. It leaves the indexed shows and files in place; reading
 them through a compatible client does not need the module or an online Bridge.
 
+## Finding shows and moving subscriptions
+
+The server can search public podcast directories and read or write OPML, the
+file podcast apps use to move a list of subscriptions. Both are available
+through the [developer API](/developers/server/api/reference#podcast-discovery)
+for now; no screen in the console or the released apps uses them yet. Kids and
+demo accounts cannot search or import.
+
+### Searching podcast directories
+
+Search is on once the **Podcasts** module is on. Search works without a
+Bridge; following a show that is new to the library still needs one. It
+searches **Apple Podcasts** by default. **Podcast Index** is optional: set
+`AUDIOSILO_PODCAST_INDEX_KEY` and `AUDIOSILO_PODCAST_INDEX_SECRET` in the
+server's environment (not the configuration file) and restart. If either is
+missing or malformed, Podcast Index stays off and the server log says which
+variable is wrong.
+
+**What the directory receives.** The directory you search receives the search
+text (and, for Apple, the country), and sees your server's IP address. Nothing
+about who searched, your libraries or your devices is sent. Results come back
+through your server, and the server fetches each result's artwork itself, so
+the artwork's host also sees only the server's address. Searches are not
+saved: results are kept in memory for up to 15 minutes and forgotten on a
+restart. Each person can search about ten times a minute.
+
+To turn search off entirely, set `podcasts.discovery.enabled: false` in the
+server's configuration file (or `AUDIOSILO_PODCAST_DISCOVERY_ENABLED=false`)
+and restart. There is no console switch for it. Turning it off leaves following,
+downloads and OPML working.
+
+### Importing and exporting OPML
+
+Importing reads an OPML file exported from another podcast app and follows
+each feed in it for the person importing, in one podcast library they have
+full access to. The whole file is checked first: a damaged, oversized
+(over 1 MiB or 1,000 entries) or unsafe file is refused without following
+anything. Folders in the file are flattened; titles are ignored.
+
+**Imports work in waves of five.** One import starts at most five new follow
+requests, and each person can have at most five open at once. Shows already in
+the library are followed straight away and do not count. The rest of the list
+is reported as waiting: import the same file again once those requests finish,
+and the next five go ahead. Entries already followed are reported as such, so
+importing again is safe. Private feeds in the file are recognised
+[as when following by URL](#private-feeds), but an import cannot mark any
+other feed private: follow such a members-only feed by URL through the API
+with `private` set.
+
+Exporting writes every public show the person follows, across their podcast
+libraries, as an OPML file another app can import. It works while the module is
+off or the Bridge is offline. **Private feeds are never exported**, for anyone,
+admins included: their addresses are credentials, and the server keeps no copy
+it could write out. The export says how many shows it left out. It holds only
+the subscriptions: no listening progress, downloaded files, retention policies
+or pending requests.
+
 ## Private feeds
 
 A private feed URL is a credential, much like a password. AudioSilo recognises
@@ -217,7 +276,7 @@ ordinary file: AudioSilo hides private shows from other users, but anyone who
 can read the library folder can read the files.
 
 If the server restarts before the Bridge picks up a new private follow request,
-that request expires: follow the URL again. If the Bridge loses a private
+that request expires: follow the URL (or import the file) again. If the Bridge loses a private
 show's saved credential, follow the URL again to restore it. Unfollowing hides
 the private show from you; it does not delete its folder or other people's
 follows.

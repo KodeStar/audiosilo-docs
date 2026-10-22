@@ -105,6 +105,17 @@ new intents. The core `podcast_fetch:true` capability advertises protocol
 support independently of the live module flag. The
 `podcasts` module needs `podcast`; `contributions` needs `contribute`.
 
+Phase 2c-3's directory search (`/podcasts/discovery/*`) and OPML import use
+the same adult user wrapper plus the client gate; the OPML export is core
+(`requireAuth` + `notDemo`), so it works with the module off. Search needs no
+Bridge, so it is advertised by the core `podcast_discovery` flag, not the
+module flag ([flags](api/index.md#capability-flags---gate-your-features)).
+Turning the module off
+(`syncModules`) or shutting down calls the discovery service's `Reset`: fetches
+in flight are cancelled and every result, artwork and image cache emptied,
+so turning it back on starts empty. See
+[Podcast discovery](api/reference.md#podcast-discovery).
+
 ## Jobs a module owns
 
 A module's action can be a Bridge job instead of a route: `bridge.kindSpec.module`

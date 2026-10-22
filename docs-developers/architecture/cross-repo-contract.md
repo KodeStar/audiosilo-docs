@@ -313,7 +313,10 @@ toggle **and** its Bridge requirement met, sent `false` otherwise; the console r
 it to offer contributing; `podcasts` needs `podcast` and gates actions, while
 reads stay core and released players are still excluded), the independent
 `podcast_fetch:true` protocol flag (even offline/module-off; older servers omit
-it, [§17](#17-podcast-shows-feeds-and-client-visibility)), plus the
+it, [§17](#17-podcast-shows-feeds-and-client-visibility)), the Phase 2c-3 core
+flags `podcast_discovery` (boot-only `podcasts.discovery.enabled` **and** the
+module toggle, independent of the Bridge, sent `false` otherwise) and
+`podcast_opml` (always true), plus the
 server version
 (`api.Version`, stamped from the release tag via ldflags). `transcode` reflects
 ffmpeg availability; `web_player` reflects whether `/web` is populated; the
@@ -941,6 +944,24 @@ See [Podcasts](../bridge/podcasts.md) and the
   poll only queued/fetching every two seconds, explicit Retry for terminal
   failure, refresh item/list/chapters at ready. Preserve generation warnings
   without rescaling state and recognize `chapters_source:id3_chap`.
+- **Discovery and OPML (Phase 2c-3):** server and docs only; the Bridge and
+  the player are unchanged. `GET /podcasts/discovery/providers|search|artwork`
+  (adult, non-demo, module, client gate; artwork takes a media `?token=`) search
+  iTunes by default or Podcast Index when picked and configured (server env
+  key pair only, no fallback, no merged ranking); results are public data with
+  relative proxied artwork, followed through the existing
+  `POST /podcasts/follow {library_id, feed_url}`.
+  `POST /podcasts/opml/import?library_id=` takes the raw XML, validates the whole
+  document before any effect and answers per-row decisions; at most five new
+  subscribe requests per upload within the five-open cap, the rest `limited`
+  for a re-upload wave. `GET /podcasts/opml/export` is core (module off too),
+  writes only the caller's followed public shows, never a private one, and
+  counts omissions in `X-OPML-Exported` / `X-OPML-Omitted-Private` /
+  `X-OPML-Omitted-Unavailable`. An open subscribe is reused only at the same
+  privacy (`409 privacy_conflict`). Optional flags `podcast_discovery` and
+  `podcast_opml`; exact shapes and the player rules are in the
+  [2d handoff](../bridge/podcasts.md#player-handoff-discovery-and-opml-phase-2d-not-implemented)
+  and the [reference](../server/api/reference.md#podcast-discovery).
 - **CHAP:** the [sidecar](../bridge/attachments.md#podcast-chap-attachments)
   is a version-1 stem-prefixed `chapters.json` using `from:id3_chap`, Fetch timestamp and one matching
   basename/size/duration. No ASR/agent/generated flag; server consumes valid

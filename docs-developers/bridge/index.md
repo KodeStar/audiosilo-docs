@@ -35,7 +35,9 @@ details and artwork, guarded HTTP and sealed private-feed credentials.
 **Phase 2c-2a** adds episode downloads, per-show API retention, pinned audio
 generations and MP3 CHAP attachments. **Phase 2c-2b** adds on-demand episode
 fetching on play, fetch status/Retry, one-ahead queue preparation and a
-reserved download slot for play requests. Podcast player views, read-along,
+reserved download slot for play requests. **Phase 2c-3** adds server-side
+podcast [directory search and OPML import/export](podcasts.md#discovery-and-opml-transfer)
+with no Bridge change. Podcast player views, read-along,
 Audible backups and file moves arrive later.
 :::
 
