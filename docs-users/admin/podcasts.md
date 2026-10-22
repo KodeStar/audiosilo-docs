@@ -23,10 +23,10 @@ and export are available through the
 This release downloads episodes according to each show's retention policy,
 when an admin requests one through the API, or when a compatible client asks
 to play an episode whose audio is missing. It also saves supported MP3 chapter
-markers. The server can also
+markers, and it can
 [search podcast directories and import or export OPML subscription lists](#finding-shows-and-moving-subscriptions).
-External chapter files and transcripts arrive later. The server supports
-on-demand fetching, search and OPML now; the player does not show them yet.
+External chapter files and transcripts arrive later. The player does not show
+on-demand fetching, search or OPML yet.
 
 ## Set up a podcast library
 
@@ -208,15 +208,13 @@ demo accounts cannot search or import.
 
 ### Searching podcast directories
 
-Search is on once the **Podcasts** module is on. It does not need the Bridge;
-following a show you found does, when the show is new to the library. It
-searches **Apple Podcasts** by default. **Podcast Index** is optional: set its
-key and secret on the server, in `AUDIOSILO_PODCAST_INDEX_KEY` and
-`AUDIOSILO_PODCAST_INDEX_SECRET`, and restart. They are read from the
-environment only, never saved in the configuration file or shown in the
-console. If only one is set, or one is malformed, the server starts normally
-with Podcast Index off and logs which variable is wrong. The two directories
-are never mixed: a search asks the one chosen.
+Search is on once the **Podcasts** module is on. Search works without a
+Bridge; following a show that is new to the library still needs one. It
+searches **Apple Podcasts** by default. **Podcast Index** is optional: set
+`AUDIOSILO_PODCAST_INDEX_KEY` and `AUDIOSILO_PODCAST_INDEX_SECRET` in the
+server's environment (not the configuration file) and restart. If either is
+missing or malformed, Podcast Index stays off and the server log says which
+variable is wrong.
 
 **What the directory receives.** The directory you search receives the search
 text (and, for Apple, the country), and sees your server's IP address. Nothing
@@ -244,12 +242,10 @@ requests, and each person can have at most five open at once. Shows already in
 the library are followed straight away and do not count. The rest of the list
 is reported as waiting: import the same file again once those requests finish,
 and the next five go ahead. Entries already followed are reported as such, so
-importing again is safe. Private feeds in the file are recognised the same way
-as when following one by URL: an address with sign-in details, a query or a
-long token, or a known private-feed host. An import cannot mark any other feed
-private, so follow a members-only feed without such an address by URL through
-the API, marking it private, instead. If the server restarts before the Bridge picks up a
-private feed's request, import the file again.
+importing again is safe. Private feeds in the file are recognised
+[as when following by URL](#private-feeds), but an import cannot mark any
+other feed private: follow such a members-only feed by URL through the API
+with `private` set.
 
 Exporting writes every public show the person follows, across their podcast
 libraries, as an OPML file another app can import. It works while the module is
@@ -280,7 +276,7 @@ ordinary file: AudioSilo hides private shows from other users, but anyone who
 can read the library folder can read the files.
 
 If the server restarts before the Bridge picks up a new private follow request,
-that request expires: follow the URL again. If the Bridge loses a private
+that request expires: follow the URL (or import the file) again. If the Bridge loses a private
 show's saved credential, follow the URL again to restore it. Unfollowing hides
 the private show from you; it does not delete its folder or other people's
 follows.

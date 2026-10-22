@@ -1371,8 +1371,8 @@ idempotent. A missing private credential queues a restoring subscribe when
 the URL is supplied. `private:true` forces privacy; `false` cannot override
 automatic detection. Each user can have five open subscribe requests; a second
 request for their same library/hash and the same privacy returns the open one.
-Since Phase 2c-3 the follow by URL and every [OPML import](#opml-import-and-export)
-row share one implementation, so the two answer the same way. Manual check requires
+An [OPML import](#opml-import-and-export) row answers the same way as a
+follow by URL. Manual check requires
 the caller to follow a visible show and, without an open poll, refuses a check
 within 60 seconds of the last one.
 
@@ -1701,10 +1701,11 @@ there are no parameters (`400 invalid_request`), and the per-user budget is
 6/minute, burst 2 (`429 opml_rate_limited` with `Retry-After`).
 
 ```bash
-curl -OJ "$SERVER/api/v1/podcasts/opml/export" \
+curl -OJ -D - "$SERVER/api/v1/podcasts/opml/export" \
   -H "Authorization: Bearer $TOKEN" -H "X-AudioSilo-Client: AudioSilo/dev"
 ```
 
+(`-D -` prints the response headers, so the `X-OPML-*` counts below show.)
 It writes the shows the caller follows now, across every podcast library their
 current scopes show them (no admin or other-user bypass; a follow of a show
 since replaced at its path, pruned or hidden counts for nothing). No follows is

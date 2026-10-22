@@ -108,9 +108,9 @@ support independently of the live module flag. The
 Phase 2c-3's directory search (`/podcasts/discovery/*`) and OPML import use
 the same adult user wrapper plus the client gate; the OPML export is core
 (`requireAuth` + `notDemo`), so it works with the module off. Search needs no
-Bridge: the core `podcast_discovery` flag is the toggle **and** the boot-only
-`podcasts.discovery.enabled`, not the module flag (which also needs the
-Bridge), and `podcast_opml` is always true. Turning the module off
+Bridge, so it is advertised by the core `podcast_discovery` flag, not the
+module flag ([flags](api/index.md#capability-flags---gate-your-features)).
+Turning the module off
 (`syncModules`) or shutting down calls the discovery service's `Reset`: fetches
 in flight are cancelled and every result, artwork and image cache emptied,
 so turning it back on starts empty. See

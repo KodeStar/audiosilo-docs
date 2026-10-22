@@ -247,7 +247,9 @@ Failures a person can fix also carry a machine-readable **`code`** next to
 
 Podcast actions add `invalid_request` and `invalid_feed_url` (`400`),
 `no_library_access` (`403`), `show_not_found` (`404`), `not_podcast_library`,
-`bridge_unavailable` and `library_not_writable` (`409`), and
+`bridge_unavailable`, `library_not_writable` and `privacy_conflict` (`409`;
+the last when the caller has an open request for the feed with the other
+privacy), and
 `too_many_requests` / `checked_recently` (`429`). Library kinds add
 `invalid_kind` / `kind_immutable` (`400`) and `root_overlaps` (`409`, also from `POST /admin/setup/preview`).
 Missing podcast media answers `503 podcast_fetching`,
@@ -263,8 +265,6 @@ identity code and `Cache-Control: no-store`, never per-user listening data.
 Full shapes and async
 feed failures: [Podcasts](reference.md#podcasts).
 
-A follow by URL (or an OPML import row) for a feed the caller already has an
-open request for with the other privacy is `409 privacy_conflict`.
 [Podcast discovery](reference.md#podcast-discovery) adds `invalid_query`,
 `invalid_provider`, `invalid_limit` and `invalid_country` (`400`),
 `discovery_off` and `artwork_not_found` (`404`), `provider_unavailable`
@@ -543,9 +543,8 @@ with an error envelope.
 | Demo cap | `POST /demo/session` | at most 5 demo sessions per IP per 15 min, metered at admission (failures count too) |
 | Account mutations | `POST /auth/password`, `POST /auth/recovery`, `/auth/tokens` (create/list/revoke) | at most 10 attempts per IP per 15 min, metered at admission |
 
-Podcast discovery and OPML transfer add their own per-user budgets on top
-(search 10/minute, artwork 120/minute, import 2/minute, export 6/minute, each
-with a small burst), answered `429` with a `code` and `Retry-After`; see
+Podcast discovery and OPML transfer add their own per-user budgets on top,
+answered `429` with a `code` and `Retry-After`; see
 [Podcast discovery](reference.md#podcast-discovery) and
 [OPML import and export](reference.md#opml-import-and-export).
 
@@ -574,7 +573,6 @@ For local player development against a dev server, set
 No `Access-Control-Expose-Headers` is sent, so a cross-origin page cannot read
 response headers such as `Retry-After` or the OPML export's `X-OPML-*` counts
 (the `/web` player and native apps are unaffected).
-
 
 ## The contract is hand-mirrored
 

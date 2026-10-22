@@ -500,10 +500,9 @@ Set both, each 1 to 256 printable ASCII characters without spaces (kept byte
 for byte). Neither set: Podcast Index is simply not configured
 (`available: false`). One missing or malformed: Podcast Index is off and the
 server logs one warning naming the variable and the reason (never the value);
-the server and iTunes search start normally. There is no startup probe, no
-bundled key and no file or console entry: the pair is never written to
-`config.yaml`, never shown or changeable in Settings, and never appears in the
-settings envelope, audit log, support bundle, logs, jobs or caches. Rotating or
+the server and iTunes search start normally. There is no startup probe and no
+bundled key, and the pair never appears in `config.yaml`, Settings, the audit
+log, the support bundle, logs, jobs or caches. Rotating or
 removing it needs a restart. This is a deliberate exception to keeping
 third-party credentials on the Bridge: the server makes these searches itself,
 and the Bridge has no Podcast Index setting.
@@ -586,9 +585,8 @@ by the settings table in `internal/config/settings.go` (`fields`: each entry's
 | `AUDIOSILO_MODULES_CONTRIBUTIONS_ENABLED` | `modules.contributions.enabled` | `strconv.ParseBool` (`true`/`1`/…); each module's toggle is `AUDIOSILO_MODULES_<ID>_ENABLED` |
 | `AUDIOSILO_PODCAST_DISCOVERY_ENABLED` | `podcasts.discovery.enabled` | `strconv.ParseBool` (`false`/`0`/… turns it off); read at start |
 
-`AUDIOSILO_PODCAST_INDEX_KEY` and `AUDIOSILO_PODCAST_INDEX_SECRET` are not in
-this table because they override no key: they are environment-only
-credentials with no YAML or console counterpart (see
+`AUDIOSILO_PODCAST_INDEX_KEY` and `AUDIOSILO_PODCAST_INDEX_SECRET` override
+no key, so they are not in this table (see
 [Podcast discovery](#podcast-discovery-podcastsdiscovery)).
 
 List values are split on commas with whitespace trimmed and empties dropped

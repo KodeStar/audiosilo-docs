@@ -514,19 +514,18 @@ Phase 2c-3's routes keep the same boundaries
 ([reference](api/reference.md#podcast-discovery)):
 
 - **Who.** Search, its providers and artwork, and the OPML import are module
-  user routes: a session or API key of an adult, non-demo account
-  (`403 kid_account`, `403 demo_account`), the module on, then the client gate
-  with no admin exception. Search needs no library grant: it returns only
-  public directory data and no local state. The import needs a whole-library
-  grant on its one target library (checked before the library's kind, so an
-  ungranted library's kind stays hidden) and always acts as the caller. The
-  OPML export is a core read for any non-demo account that passes the client
-  gate, kids included, module off or not, and covers only the caller's own
+  user routes for adult, non-demo accounts, behind the client gate with no
+  admin exception (the check order is in the reference). Search needs no
+  library grant: it returns only public directory data and no local state. The
+  import needs a whole-library grant on its one target library (checked before
+  the library's kind, so an ungranted library's kind stays hidden) and always
+  acts as the caller. The OPML export is a core read for any non-demo account
+  that passes the client gate, kids included, and covers only the caller's own
   current follows through their current scopes and private narrowing, with no
-  admin or other-user view. A refused request has no effects; `HEAD` on the
-  new GETs is `405` before any work.
+  admin or other-user view. A refused request has no effects.
 - **Tokens.** Only the artwork route takes a `?token=` (a session or API key,
-  for an `<img>`); every other new route ignores query tokens. Cast, pairing
+  for an `<img>`); every other new route refuses a `token` query parameter
+  (`400 invalid_request`) and needs the `Authorization` header. Cast, pairing
   and Bridge tokens are refused on all of them.
 - **Outbound requests.** Directory searches go only to the fixed HTTPS origins
   (`itunes.apple.com`, `api.podcastindex.org`) on port 443, with no proxy, no
@@ -549,8 +548,9 @@ Phase 2c-3's routes keep the same boundaries
   environment and are never persisted, shown, logged or sent anywhere but the
   signed Podcast Index request (the secret itself never leaves the server: only
   the SHA-1 signature does). A private feed URL in an import is handled exactly
-  as a private single follow: memory only until the Bridge's claim, never in
-  `bridge_jobs`, row results show only a redacted label. The export never
+  as a private single follow
+  ([Private URLs](../bridge/podcasts.md#private-urls-and-recovery)); row
+  results show only a redacted label. The export never
   writes a private show, for anyone: there is no stored copy of its URL to
   write.
 - **Memory only.** Search results, artwork, quotas and uploaded documents are

@@ -456,18 +456,15 @@ shapes and error codes are in the
   hash finds a known show (followed at once, offline too), and only a new feed
   or a secret repair queues the same `podcast.subscribe` job as before (priority
   10, quiet, internal). No new job kind, params, migration or heartbeat field.
-- **Caps are unchanged and shared.** The five open subscribe requests per
-  person (admins too) cover single follows and imports together; an import
-  additionally creates at most five new requests per upload. An open request
-  is reused only at the same privacy: the other privacy is
+- **Caps are unchanged and shared.** Single follows and imports share the
+  five-open subscribe cap ([waves](../server/api/reference.md#post-apiv1podcastsopmlimport)). An open
+  request is reused only at the same privacy: the other privacy is
   `409 privacy_conflict` (an `error` row in an import), checked inside the
   dedupe transaction, so a private URL is never attached to a public job.
-- **Private URLs are unchanged.** An imported private feed is held in server
-  memory for the claim exactly like a single private follow, never in
-  `bridge_jobs`; a server restart before the claim ends it as
-  `request_expired`, and re-uploading recovers it. The export never writes a
-  private show (there is no stored copy of its URL); it reports how many it
-  left out in `X-OPML-Omitted-Private`.
+- **Private URLs are unchanged.** An imported private feed is handled exactly
+  like a single private follow ([Private URLs and recovery](#private-urls-and-recovery)).
+  The export never writes a private show (there is no stored copy of its URL);
+  it reports how many it left out in `X-OPML-Omitted-Private`.
 - **Admission.** A URL must normalize to the same value when normalized again
   (`feed.NormalizeStable`), else `invalid_feed_url` (`400` on the single
   follow, an `invalid` row in an import), before anything is queued. The
@@ -502,19 +499,6 @@ interface PodcastDiscoverySearch {
   country: string | null; // null for podcast_index
   results: PodcastDiscoveryResult[];
 }
-type OpmlRowStatus = 'followed' | 'already_following' | 'queued' |
-  'already_queued' | 'duplicate' | 'invalid' | 'limited' | 'unavailable' | 'error';
-interface OpmlImportRow {
-  outline_index: number; // 1-based among ALL outlines, categories included
-  status: OpmlRowStatus;
-  feed: string | null;   // redacted label, never the raw URL
-  private: boolean;
-  path: string | null;
-  request_id: number | null;
-  duplicate_of: number | null;
-  error: { code: string; message: string } | null;
-}
-interface OpmlImportResult { library_id: number; rows: OpmlImportRow[] }
 type PodcastTransferCapabilities = {
   podcast_discovery?: boolean;
   podcast_opml?: boolean;
@@ -523,15 +507,17 @@ type PodcastTransferCapabilities = {
 // not ModuleFlag entries.
 ```
 
+Mirror `OpmlRowStatus`, `OpmlImportRow` and `OpmlImportResult` from the
+[import reference](../server/api/reference.md#post-apiv1podcastsopmlimport), which is their one
+written copy.
+
 What 2d has to get right:
 
 - **Capability flags.** Treat an absent `podcast_discovery` or `podcast_opml`
-  as unsupported. `podcast_discovery` is the boot switch AND the module
-  toggle, independent of the Bridge and of any directory key; `podcast_opml`
-  is always true on a 2c-3 server, the import still needs the module
-  (`404 module_off`), the export does not. Neither says the caller may use
-  them: handle `403 kid_account`, `403 demo_account`, `403 no_library_access`
-  and `404 module_off` / `discovery_off` from the routes.
+  as unsupported ([what they mean](../server/api/index.md#capability-flags---gate-your-features)).
+  Neither says the caller may use them: handle `403 kid_account`,
+  `403 demo_account`, `403 no_library_access` and `404 module_off` /
+  `discovery_off` from the routes.
 - **Provider selection.** Read `GET /podcasts/discovery/providers` and let the
   person pick; send `provider=podcast_index` only when it is `available`
   (otherwise `409 provider_unavailable`). There is no fallback and no merged
@@ -543,12 +529,17 @@ What 2d has to get right:
 - **Artwork.** `artwork_url` is relative to the server. Load it through the
   normal media-token helper (the route takes a session or API key as
   `?token=`, nothing else), use a placeholder for `null`, a `404
-  artwork_not_found` (ids expire after 15 minutes) or a `502`. The existing
-  CSP needs no change: images come only from the server.
-- **Rate limits.** Search is 10/minute per person (burst 3) and the server
-  limits directory fetches; debounce typing and honour `Retry-After` on `429`
-  and `503`. Cross-origin web dev cannot read `Retry-After` (no
-  `Access-Control-Expose-Headers`): fall back to a fixed wait.
+  artwork_not_found` (ids expire) or a `502`. The server fetches uncached
+  images only a few at a time, so a full results grid can get `429`/`503`
+  for some: load artwork lazily and retry those later rather than keeping the
+  placeholder. The existing CSP needs no change: images come only from the
+  server.
+- **Rate limits.** The per-person search budget is small
+  ([budgets](../server/api/reference.md#podcast-discovery)): search on submit, not while typing, and
+  reuse the held results when the query, provider, country and limit are
+  unchanged. Honour `Retry-After` on `429` and `503`; cross-origin web dev
+  cannot read it ([CORS](../server/api/index.md#cors)), so fall back to a
+  fixed wait.
 - **Following a result.** `POST /podcasts/follow` with `{library_id,
   feed_url}`: `200 following` for a show the library has, `202 subscribing`
   with a Request otherwise. The library must be one the person holds whole
@@ -557,20 +548,17 @@ What 2d has to get right:
   `Content-Type: text/x-opml` (or `application/xml`), no compression, to
   `POST /podcasts/opml/import?library_id=`. Keep the uploaded bytes locally
   for the screen's life: the server keeps nothing. A `200` holds one row per
-  subscription; show them by `outline_index`. At most **five** new subscribe
-  requests are created per upload and at most five may be open per person,
-  so a long list answers `limited` (`too_many_requests`) for the rest. The
-  player may re-submit the same bytes automatically: poll
-  [`GET /me/podcasts`](../server/api/reference.md#podcast-read-routes) until the
-  queued requests end, then upload again; done rows come back
-  `already_following` / `already_queued`, and the next five `limited` rows are
-  admitted. Stop when no row is `limited`, or when a wave admits nothing new
-  (offer a manual retry). Treat `unavailable` rows (`bridge_unavailable`,
-  `library_not_writable`, `module_off`) as needing the person or admin, not an
-  automatic loop. Import budget is 2/minute per person (burst 1) and two
-  imports server-wide (`429 opml_rate_limited` / `503 opml_busy`, both with
-  `Retry-After`). A `503 request timed out` or a dropped connection may leave
-  earlier rows committed: re-uploading is safe.
+  subscription; show them by `outline_index`. A long list answers `limited`
+  past the [wave](../server/api/reference.md#post-apiv1podcastsopmlimport). The player may re-submit
+  the same bytes automatically: poll
+  [`GET /me/podcasts`](../server/api/reference.md#podcast-read-routes) every few seconds only while a
+  row's request is still open, then upload again once those end and the import
+  budget allows (about one upload every 30 seconds; `429 opml_rate_limited`
+  and `503 opml_busy` carry `Retry-After`). Stop when no row is `limited`, or
+  when a wave admits nothing new (offer a manual retry). Treat `unavailable`
+  rows (`bridge_unavailable`, `library_not_writable`, `module_off`) as needing
+  the person or admin, not an automatic loop. A `503 request timed out` or a
+  dropped connection may leave earlier rows committed: re-uploading is safe.
 - **Per-row retry.** A `limited` or `unavailable` row is retried by a later
   upload, a row in `error` with `privacy_conflict` after its open request
   ends; `invalid` and `duplicate` rows never succeed by retrying. A queued
@@ -582,8 +570,9 @@ What 2d has to get right:
   `X-OPML-Omitted-Private` and `X-OPML-Omitted-Unavailable` and tell the person
   when shows were left out: **private feeds are never exported**, for anyone,
   and there is no option to include them. Cross-origin web dev cannot read
-  these headers (see CORS); the served `/web` player and native apps can.
-  `413 opml_export_limit` above 10,000 follows or 4 MiB.
+  these headers ([CORS](../server/api/index.md#cors)); the served `/web`
+  player and native apps can. A list too large to export is
+  `413 opml_export_limit`, never a truncated file.
 
 Copy the shared goldens into the player's tests when 2d starts: the server
 keeps them byte-identical in `internal/podcast/testdata/phase2c3/`
