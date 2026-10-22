@@ -33,9 +33,10 @@ checklist the heartbeat carries to the console.
 **Phase 2c-1** adds [podcast shows](podcasts.md): subscribe/poll jobs, feed
 details and artwork, guarded HTTP and sealed private-feed credentials.
 **Phase 2c-2a** adds episode downloads, per-show API retention, pinned audio
-generations and MP3 CHAP attachments. On-demand play and podcast player views,
-read-along, Audible backups and file moves
-arrive later.
+generations and MP3 CHAP attachments. **Phase 2c-2b** adds on-demand episode
+fetching on play, fetch status/Retry, one-ahead queue preparation and a
+reserved download slot for play requests. Podcast player views, read-along,
+Audible backups and file moves arrive later.
 :::
 
 ## What it is for

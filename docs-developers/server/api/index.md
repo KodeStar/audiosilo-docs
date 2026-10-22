@@ -250,9 +250,10 @@ Podcast actions add `invalid_request` and `invalid_feed_url` (`400`),
 `bridge_unavailable` and `library_not_writable` (`409`), and
 `too_many_requests` / `checked_recently` (`429`). Library kinds add
 `invalid_kind` / `kind_immutable` (`400`) and `root_overlaps` (`409`, also from `POST /admin/setup/preview`).
-Missing podcast media answers the retryable `503 podcast_fetching`,
+Missing podcast media answers `503 podcast_fetching`,
 `podcast_fetch_unavailable` or `podcast_fetch_failed` (with a fetch Status and
-`Retry-After: 2`), and listener Retry adds `409 fetch_limit`; see
+`Retry-After: 2`; only queued/fetching is worth repeating, a terminal failure
+needs explicit Retry), and listener Retry adds `409 fetch_limit`; see
 [status and Retry](reference.md#podcast-fetch-status-and-retry).
 Admin storage adds `episode_not_found` (`404`) and `identity_changed` (`409`),
 and policy writes/new downloads use `module_off` (`404`) and the exact

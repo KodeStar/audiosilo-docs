@@ -74,9 +74,9 @@ an episode again gives it a fresh grace period.
 | **Archive** (`archive`) | All episodes still listed in the feed, oldest first | Never |
 
 Policy-selected downloads and retention checks require at least one current
-follower with access. With no followers, files stay in place and policy
-scheduling stops; play requests, queue preparation and admin downloads still
-work through the API.
+follower with access. With no followers, files stay in place and the
+policy's automatic downloads stop. Playing an episode, preparing the next one
+in a listener's queue and admin downloads through the API still work.
 
 **Keep N is a download window, not a disk limit.** One follower who never
 listens can keep files indefinitely. An episode is also protected while anyone
@@ -144,7 +144,8 @@ When a compatible client asks to play an episode whose audio is missing, the
 Bridge fetches it. Requests for the same episode share one download, and
 closing a request does not cancel it. Until the audio is saved, the client is
 told to try again shortly. Playback requests go ahead of waiting admin and
-scheduled downloads, and the Bridge keeps one download slot free for them.
+scheduled downloads, and an up-to-date Bridge keeps one download slot free
+for them.
 
 The server can also prepare the next podcast episode in that listener's queue.
 This does not download the rest of an On demand show's feed. Each non-admin
@@ -153,8 +154,10 @@ queue preparation; admins are exempt. Joining a fetch someone else started
 does not count. This is separate from the five follow requests.
 
 A new fetch needs the module on, an online Bridge and a writable mapping. When
-one is missing, or a download fails, the client is told why. A failed download
-waits before trying again on its own; an explicit Retry can try sooner. See
+one is missing, or a download fails, the client is told why. After a failed
+download, playing the episode again does not start a new download for a while
+(30 minutes at first, longer after repeated failures), and policy downloads
+try again only after that wait. An explicit Retry can try sooner. See
 [the API reference](/developers/server/api/reference#podcast-fetch-status-and-retry)
 for the details. A saved episode stays playable through a compatible client
 while the Bridge is offline or the module is off.

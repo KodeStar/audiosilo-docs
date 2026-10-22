@@ -45,7 +45,7 @@ before pagination; a granted library with no visible shows gives an empty
 listing. `/item`, `/chapters` and `/stream` never index podcast audio on demand.
 Episodes without files remain indexed and have empty chapter lists. A scoped
 stream request shares a Bridge fetch and waits at most two seconds for a
-committed file, otherwise returning a retryable 503 with fetch status; see
+committed file, otherwise returning a 503 with fetch status; see
 [on-demand play](../bridge/podcasts.md#on-demand-play-and-shared-intents).
 Presence requires valid Fetch,
 regular audio of its expected size, empty `deleted_at` and no
