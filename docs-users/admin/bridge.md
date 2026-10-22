@@ -267,12 +267,10 @@ too; routine podcast checks are left out of this default list. Podcast jobs send
 failed notifications. The console has no follow-by-URL screen or retention
 controls yet. See [Podcasts](podcasts.md).
 
-Requests to play the same missing episode share a download. They take priority
-over waiting admin and scheduled downloads; the Bridge keeps one download
-slot for playback requests and one for ordinary downloads. It can also prepare
-one next podcast episode from the listener's queue. Released player apps do
-not show this yet. See [Space and availability](podcasts.md#space-and-availability)
-for the per-listener limit and what happens while audio is being fetched.
+The Bridge also fetches a missing episode when a compatible client asks to
+play it, ahead of waiting downloads. Released player apps do not show this
+yet. See
+[Playing an episode that isn't downloaded](podcasts.md#playing-an-episode-that-isnt-downloaded).
 
 **Cancel** stops a job. A job that is waiting is cancelled at once; one the Bridge
 is working on shows **Cancelling** until the Bridge stops it, within a few seconds.

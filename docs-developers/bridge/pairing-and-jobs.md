@@ -450,9 +450,8 @@ response, sealed before local claim recording, and redacted on other reads.
 Default admin job lists omit polls unless `kind=podcast.poll` is requested;
 fetch and retain jobs are listed.
 All podcast kinds are quiet and send no notifications. Fetch/retain outcomes
-never update feed polling state. Play, Range, download, transcode and Retry
-share fetch intents at priority 100, admin 20, prefetch 10 and scheduled -10;
-retain stays -20. Params, dedupe and promotion are in
+never update feed polling state. Triggers share one fetch intent per episode;
+params, dedupe, priorities and promotion are in
 [fetch and retain jobs](podcasts.md#fetch-and-retain-jobs).
 
 [Podcasts](podcasts.md) describes job params/results, scheduling, privacy and

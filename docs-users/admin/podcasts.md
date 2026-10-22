@@ -138,29 +138,28 @@ Bridge and a writable mapping. See the
 [API reference](/developers/server/api/reference#podcast-storage-admin) for the
 full contract.
 
+### Playing an episode that isn't downloaded
+
+When a compatible client asks to play an episode whose audio is missing, the
+Bridge fetches it. Requests for the same episode share one download, and
+closing a request does not cancel it. Until the audio is saved, the client is
+told to try again shortly. Playback requests go ahead of waiting admin and
+scheduled downloads, and the Bridge keeps one download slot free for them.
+
+The server can also prepare the next podcast episode in that listener's queue.
+This does not download the rest of an On demand show's feed. Each non-admin
+listener can have at most five open episode fetches they started, including
+queue preparation; admins are exempt. Joining a fetch someone else started
+does not count. This is separate from the five follow requests.
+
+A new fetch needs the module on, an online Bridge and a writable mapping. When
+one is missing, or a download fails, the client is told why. A failed download
+waits before trying again on its own; an explicit Retry can try sooner. See
+[the API reference](/developers/server/api/reference#podcast-fetch-status-and-retry)
+for the details. A saved episode stays playable through a compatible client
+while the Bridge is offline or the module is off.
+
 ### Space and availability
-
-When a compatible client asks for missing audio, requests for the same episode
-share one download. The server waits up to two seconds for a complete saved
-copy, then asks the client to try again in two seconds if it is still fetching.
-Closing a request does not cancel the shared download. Playback requests take
-priority over waiting admin and scheduled downloads, and the Bridge reserves
-one download slot for them. Work already running keeps its slot.
-
-The server can also prepare one next visible podcast episode from that
-listener's queue. It skips books and shares downloads across listeners. This
-does not download the rest of an On demand show's feed. Each non-admin
-listener can have at most five open episode fetches they created, including
-queue preparation; admins are exempt. Joining an existing fetch does not use
-another slot in that limit. This is separate from the five follow requests.
-
-A new fetch needs the module on, an online Bridge with on-demand support and a
-writable mapping. When one is unavailable, or a download fails, the API
-returns a status explaining why. A failed download waits before automatic
-retry; an explicit Retry request can try sooner. These are
-[API behaviors](/developers/server/api/reference#podcast-fetch-status-and-retry),
-with player controls still to come. A complete saved episode remains playable
-through a compatible client while the Bridge is offline or the module is off.
 
 The Bridge caps each episode at **1024 MiB** by default, separately from feed
 sizes. Set `podcasts.max_episode_mb` in its configuration or

@@ -1194,11 +1194,10 @@ ETag or byte seeking. Ready files remain core when the module/Bridge is off.
 
 ### Podcast fetch status and Retry
 
-`GET /api/v1/server` adds optional `capabilities.podcast_fetch:true`. It means
-this fetch/status protocol is supported, including when the Bridge is offline
-or the module is off. It is independent of `capabilities.podcasts`, which
-still means the module is on and its online Bridge requirement is met. Neither
-flag bypasses the client gate, private-show scope or authentication.
+The core [`podcast_fetch`](#get-apiv1server) flag advertises this protocol,
+independently of `capabilities.podcasts` (the module on with its online Bridge
+requirement met). Neither flag bypasses the client gate, private-show scope or
+authentication.
 
 *Session with episode read scope; kids allowed.* GET is core observation only.
 POST also requires not-demo auth (`403 demo_account`), but does not use the
@@ -1290,8 +1289,9 @@ transition (queued while already fetching). Disconnect/timeout never cancels
 household work. There is no publisher pass-through or partial playback.
 
 Every trigger shares one open intent per library/path and current identity.
-Priorities are play/Retry 100, admin 20, prefetch 10 and scheduled -10;
-retain stays -20. Promotion never demotes or resets requester/attempts/progress.
+Play and Retry use priority 100; the other triggers' priorities are in
+[fetch and retain jobs](../../bridge/podcasts.md#fetch-and-retain-jobs).
+Promotion never demotes or resets requester/attempts/progress.
 A non-admin may create five open fetch intents, counting prefetch and parked
 jobs across libraries. Admins are exempt; joining/promoting existing work
 does not spend or transfer quota. At the cap, a stream returns unavailable
@@ -1311,9 +1311,9 @@ returns `409 fetch_limit` with the ordinary error envelope.
 
 Unexpected faults remain sanitized 500s. GET reports availability/failure in
 Status, not as a scheduling error. Ordinary stream retries honor terminal
-cooldown; GET never retries a failed job. Clients poll every two seconds only
-while queued/fetching and retry pending media no sooner than Retry-After.
-Stop at ready/failed/unavailable; failure needs explicit POST Retry or a later
+cooldown; GET never retries a failed job. Clients repeat one request (GET
+status, or the media request) no sooner than every two seconds, and only
+while queued/fetching. Stop at ready/failed/unavailable; failure needs explicit POST Retry or a later
 scheduled attempt. An unavailable retry interval is not permission for a POST
 loop. Optional player mirrors, hooks, cache refresh and generation/CHAP rules
 are in the [Phase 2d handoff](../../bridge/podcasts.md#player-handoff-phase-2d-not-implemented).

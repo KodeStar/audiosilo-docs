@@ -683,6 +683,13 @@ both repos, with a test on each side.
   read the same way, which the Bridge sends only once a reply's `accepts` lists
   `setup` (an older server refuses an unknown heartbeat field). Shapes:
   [the reference](../server/api/reference.md#the-bridge).
+- **Claim floor (Phase 2c-2b):** `accepts` may also list `claim_min_priority`,
+  which permits an optional signed int32 `min_priority` on the claim (filtered
+  inside the claim transaction; malformed is `400 invalid_request`; omitted
+  keeps ordinary behavior). A change in the Bridge's eligible kinds, pairing or
+  capacity cancels and immediately reissues its outstanding claim. A lease whose
+  reply was never delivered is released without spending an attempt. Detail:
+  [claims and leases](../bridge/pairing-and-jobs.md#claims-and-leases).
 - **The capability:** `capabilities.bridge` is true only while the last heartbeat
   is under two minutes old, with `bridge: {version, features}` beside
   `capabilities` (`features` a list, never `null`; the server reuses a heartbeat
@@ -908,38 +915,26 @@ See [Podcasts](../bridge/podcasts.md) and the
   still promote. Ordinary streams honor failure cooldown; POST bypasses it,
   never dedupe or a present pin. Identity races remain `409 identity_changed`.
 - **Status extension:** episode lists and `Book.episode` add optional
-  `fetch:Status`, batched per page. Every Status key is required:
-  `{state,request_id,bytes_received,bytes_total,retry_after_seconds,error}`.
-  States are absent/queued/fetching/ready/failed/unavailable; id/total nullable,
-  byte counts nonnegative int64, error null or safe `{code,message}`. Queued/
-  fetching/unavailable retry 2; other states 0. Ready wins stale jobs and has
-  id null/both counts equal Fetch.bytes. Module-off overlays unavailable even
-  on running jobs that may finish. No requester/params/raw progress text.
+  `fetch:Status`, batched per page. Every key inside a Status is required
+  (nullable ones included); no requester, params or raw progress text.
   [Exact shapes](../server/api/reference.md#podcast-fetch-status-and-retry) and
   shared `wire-2b.json` fix the protocol.
-- **Listener cap:** five open fetch intents per non-admin creator, counting
-  prefetch/parked work across libraries. Admins/server-scheduled work exempt.
-  Dedupe/promotion precedes the cap and preserves its owner. Refused stream
-  creation uses `503 podcast_fetch_unavailable`, nested `fetch.error.code`
-  `fetch_limit`; POST Retry uses `409 fetch_limit`. No new intent is created.
+- **Listener cap:** five open fetch intents per non-admin creator. Refused
+  stream creation is `503 podcast_fetch_unavailable` with
+  `fetch.error.code:"fetch_limit"`; POST Retry is `409 fetch_limit`.
+  [Rules](../server/api/reference.md#podcast-fetch-status-and-retry).
 - **Prefetch:** at most one next visible podcast from the actual caller's
   queue per user/current item, skipping books; if current is absent from queue,
   first visible podcast other than current. Play-fetch/ready-stream starts a
   bounded background look; successful queue mutations can reconsider during
   current stream/fetch. Global dedupe shares work; removal never cancels it.
   New prefetch is priority 10, later play promotes the same row to 100.
-- **Claim/capacity:** heartbeat `accepts` adds `claim_min_priority` beside
-  `setup`; no new request block. After negotiation the reserved dispatcher
-  requests `kind=podcast.fetch&min_priority=100&wait=25`. A single signed int32
-  floor is filtered inside the claim transaction before leasing; invalid is
-  `400 invalid_request`, omitted keeps ordinary behavior. One opted-in
-  interactive worker never borrows background work; ordinary download is 1
-  and total enclosure concurrency 2 (`light:2`, `pipeline:25`). Older servers
-  use ordinary download 2 with no reserved claim. Eligibility changes cancel,
-  join and immediately reissue claims; unchanged progress/heartbeat does not.
-  Cancellation-race jobs are owned. Undelivered untouched leases release
-  without spending an attempt; delivered replies survive later shutdown/
-  deadline. Recovered jobs use ordinary admission because rows lack priority.
+- **Claim/capacity:** after the [claim floor](#16-the-bridge) is negotiated,
+  the Bridge's reserved interactive slot claims
+  `kind=podcast.fetch&min_priority=100&wait=25` and never takes background
+  work; the ordinary download lane drops to 1, keeping two enclosure downloads
+  in total. An older server gets two ordinary download slots and no reserved
+  claim.
 - **Player handoff:** no player/cast/screens ship and the released-player gate
   remains unset. Carry the [optional types, client/hook signatures and polling
   rules](../bridge/podcasts.md#player-handoff-phase-2d-not-implemented) into 2d:

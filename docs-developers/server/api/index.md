@@ -250,15 +250,10 @@ Podcast actions add `invalid_request` and `invalid_feed_url` (`400`),
 `bridge_unavailable` and `library_not_writable` (`409`), and
 `too_many_requests` / `checked_recently` (`429`). Library kinds add
 `invalid_kind` / `kind_immutable` (`400`) and `root_overlaps` (`409`, also from `POST /admin/setup/preview`).
-Missing podcast media shares a fetch and waits at most two seconds, then
-answers `503 podcast_fetching`, `podcast_fetch_unavailable` or
-`podcast_fetch_failed` with `{error,code,fetch:Status}`, `Retry-After: 2` and
-`Cache-Control: no-store`. These are retryable protocol responses, not ordinary
-missing-file errors. A non-admin creator is limited to five open fetches;
-stream refusal nests `fetch_limit` in `fetch.error.code`, while listener POST
-Retry uses `409 fetch_limit`. Dedupe/promotion succeeds at the cap; admins are
-exempt. GET status is observation only and terminal failure needs explicit
-Retry or a later scheduled attempt, not repeated POSTs from polling.
+Missing podcast media answers the retryable `503 podcast_fetching`,
+`podcast_fetch_unavailable` or `podcast_fetch_failed` (with a fetch Status and
+`Retry-After: 2`), and listener Retry adds `409 fetch_limit`; see
+[status and Retry](reference.md#podcast-fetch-status-and-retry).
 Admin storage adds `episode_not_found` (`404`) and `identity_changed` (`409`),
 and policy writes/new downloads use `module_off` (`404`) and the exact
 Bridge-kind/writable-mapping checks. A valid present pin returns 200 before

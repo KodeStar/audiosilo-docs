@@ -72,13 +72,9 @@ The server's toggle is `modules.podcasts.enabled`, environment
 `AUDIOSILO_MODULES_PODCASTS_ENABLED`, default `false`. It is not a Bridge setting.
 See [Podcasts](podcasts.md) for the HTTP guard, on-disk format and secrets.
 
-On-demand fetching adds no configuration key. The runner's defaults are one
-ordinary `download` slot and one reserved `interactive` slot; only opted-in
-handlers at priority at least 100 enter the reserve (`podcast.fetch` today).
-Total concurrent enclosure downloads stay at two. `light` stays at two and
-`pipeline` at 25. Without negotiated `claim_min_priority` support, the reserve
-folds back into two ordinary download slots. These are runner capacities, not
-YAML/environment settings. See [claims and leases](pairing-and-jobs.md#claims-and-leases).
+On-demand fetching adds no configuration key: the reserved `interactive`
+download slot is a fixed runner capacity, described in
+[claims and leases](pairing-and-jobs.md#claims-and-leases).
 
 ## ASR workers
 

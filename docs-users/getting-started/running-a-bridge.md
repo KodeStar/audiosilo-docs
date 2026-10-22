@@ -229,12 +229,9 @@ books libraries.
 
 Give the podcast folder room for downloads; see
 [Space and availability](../admin/podcasts.md#space-and-availability) for the
-per-episode size cap. With an on-demand-capable server, the Bridge keeps one
-download slot for playback requests and one for ordinary downloads, so waiting
-scheduled work cannot occupy both. With an older server it uses two ordinary
-download slots instead. A new on-demand fetch needs the module on, an online
-Bridge and a writable mapping; complete saved episodes remain readable when
-the Bridge is offline.
+per-episode size cap, and
+[Playing an episode that isn't downloaded](../admin/podcasts.md#playing-an-episode-that-isnt-downloaded)
+for fetching episodes on play.
 
 Podcast feed, download and retention jobs do not use speech recognition or an AI agent. The steps below
 set up the book-generation and contribution features; the Bridge's setup

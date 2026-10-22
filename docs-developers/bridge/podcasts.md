@@ -129,7 +129,7 @@ clean, non-hidden, unique and supported by `metadata.IsAudio`. Bad entries are
 skipped and logged. It indexes episodes even when files are absent. `/fs` uses
 the index and displays titles, with serial shows oldest first and episodic
 shows newest first. Loose audio and the feed/artwork files do not become entries.
-An undownloaded episode has an empty chapter list. Its stream request now
+An undownloaded episode has an empty chapter list. Its stream request
 triggers a shared fetch; the Bridge publishes and rescans before any bytes
 can be served. The server still does no on-demand audio indexing itself.
 
@@ -413,16 +413,19 @@ declare function useRetryPodcastFetch(connectionId?: string):
 
 Unwrap `fetch` in the hooks. Gate new calls on `podcast_fetch === true` and use
 the optional connection client so a removed connection disables reads. Do not
-gate ready reads/status solely on the live `podcasts` flag. Poll GET every
-two seconds while queued/fetching; repeat a pending media request no sooner
-than `Retry-After: 2`. Stop polling at ready, failed or unavailable; absent
+gate ready reads/status solely on the live `podcasts` flag. Episode-list
+rows read the list's batched `fetch`; the per-path hook is for the item being
+played or retried. After a media 503, poll GET every two seconds while
+queued/fetching instead of repeating the media request, and request media
+again at ready. Pause polling while the app is in the background. Stop polling at ready, failed or unavailable; absent
 GET is also observation only. A terminal failure needs explicit POST Retry
 or a later server-scheduled attempt, never a poll-triggered POST loop.
 An unavailable status still has retry 2; that alone does not justify an
 automatic Retry loop. Treat `409 fetch_limit` as a refusal to create work.
 
 Seed/update the status cache from a media 503 and Retry response. At ready,
-refresh the item, episode list and chapters/files before retrying media;
+refresh the item and its chapters/files before retrying media, and mark the
+episode list stale rather than refetching it at once;
 at failed/unavailable retain the safe error code for localized controls.
 Cancel polling when the connection/path or consumer changes, without a
 server job cancellation. `wire-2b.json` fixes fetching/ready/failed examples
