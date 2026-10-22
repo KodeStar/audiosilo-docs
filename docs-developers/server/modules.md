@@ -16,6 +16,8 @@ Bridge jobs rather than routes of its own (see
 background work. Phase 2c-1 adds `podcasts`, requiring the `podcast` Bridge
 feature, user actions and a scheduler. Phase 2c-2a extends it with episode
 fetch/retention jobs and admin storage actions (see [Podcasts](../bridge/podcasts.md)).
+Phase 2c-2b adds on-demand fetches, status/Retry and queue prefetch; player
+views remain deferred.
 `transcode`, `metadata` and `bridge`
 are not modules: their keys, variables and flags shipped before the framework, and
 none is just a toggle (`transcode` follows ffmpeg, `metadata` needs its service built
@@ -93,7 +95,14 @@ episode fetches use admin/not-demo auth and the same toggle plus the exact
 Bridge kind and writable mapping; a valid present pin returns 200 before
 those storage checks. Retention GET is also core and uses the admin catalog.
 Authenticated podcast reads, including kids, are core with the client gate
-and private-show scope still applied. The
+and private-show scope still applied. This includes GET fetch status and ready
+media. Missing media can automatically request a fetch; POST listener Retry
+requires read scope and not-demo auth, allowing kids too. These routes do not
+use the adult-only module wrapper. New intents check the module, exact online
+Bridge kind and writable mapping in `EnsurePodcastFetch`; existing intents can
+be returned/promoted and valid ready files reused. Demo streams cannot create
+new intents. The core `podcast_fetch:true` capability advertises protocol
+support independently of the live module flag. The
 `podcasts` module needs `podcast`; `contributions` needs `contribute`.
 
 ## Jobs a module owns
@@ -131,8 +140,11 @@ downloads and retention checks. It wakes at start, on committed job completion,
 follow/policy changes and every 60 seconds, within per-pass limits described
 in [Podcasts](../bridge/podcasts.md#polling-and-outcomes). Off stops that work and holds
 queued podcast jobs. Already claimed jobs may finish; committed playback and
-core read/Bridge aggregate routes stay available. No player on-demand/status
-protocol is enabled in this release.
+core read/Bridge aggregate routes stay available. Fetch status reports
+unavailable while the module is off, even for claimed/running work that may
+finish; ready status wins. The one-ahead prefetch hook uses the same intent
+checks and starts no new module-off work. See
+[on-demand play](../bridge/podcasts.md#on-demand-play-and-shared-intents).
 
 ## `GET /api/v1/admin/modules`
 

@@ -128,8 +128,10 @@ libraries to map, and since Phase 2b `accepts`.
 
 The server decodes the heartbeat **strictly** (an unknown field is a `400`), so a
 newer Bridge can't simply add a field. Phase 2b negotiates instead: the reply
-carries `accepts`, the optional top-level blocks this server reads
-(`bridge.HeartbeatAccepts`, `["setup"]` today; an older server sends none). The
+carries `accepts`, the optional protocol features this server reads
+(`bridge.HeartbeatAccepts`, `["setup", "claim_min_priority"]` today; an older
+server sends none). `setup` names a heartbeat block; `claim_min_priority`
+permits a claim query option, not a new heartbeat request field. The
 Bridge (`link.StatusReply.Accepting`, `internal/app`):
 
 - sends `setup` only after a reply listed it, per pairing and in memory, and
@@ -142,6 +144,8 @@ Bridge (`link.StatusReply.Accepting`, `internal/app`):
 
 So a Phase 2b Bridge works with an older server (no checklist in the console) and
 an older Bridge with a Phase 2b server (no `setup` sent, none shown).
+The link separately remembers `claim_min_priority` for that pairing. Without
+it, the runner makes ordinary claims and uses two ordinary download slots.
 
 ### The setup checklist
 
@@ -259,6 +263,37 @@ queued meanwhile (or a lease that runs out) wakes it; with no kind left after th
 narrowing it answers `204` at once, and a server that is stopping ends the wait
 with `204`. Before the first heartbeat a claim is `409 no_heartbeat`, and a claim
 whose token a pairing or an unpair revoked during the wait is `401`.
+
+After `accepts` lists `claim_min_priority`, the reserved dispatcher uses
+`GET /bridge/jobs/next?kind=podcast.fetch&min_priority=100&wait=25`.
+The optional floor is one signed base-10 int32; malformed, empty, repeated or
+out-of-range values are `400 invalid_request`. Omission keeps ordinary claim
+behavior. Filtering happens inside the claim transaction before lease or
+attempt mutation, alongside kind/module/token checks; priority descending
+then id ascending still decides order. A request deadline answers 503.
+
+The Bridge's `internal/jobs` runner has one ordinary and one reserved
+dispatcher, reserving lane admission before claiming. Defaults are `light:2`,
+`download:1`, `interactive:1`, `pipeline:25`. The reserve only accepts opted-in
+handlers at priority at least 100 (`InteractiveHandler`, `podcast.fetch`
+today), never background work. Ordinary slots can take interactive jobs too;
+total enclosure concurrency stays at two. Without negotiated support,
+`interactive` becomes zero and `download` two, so an older server ignoring an
+unknown query cannot fill the reserve with background jobs.
+
+A change to eligible kinds, pairing, negotiated reserve or capacities cancels
+and joins the outstanding claim, then reissues immediately without cancellation
+backoff. Unchanged heartbeats/progress do not restart the long poll. Admission
+is kept until that call returns, so a job racing cancellation is still owned
+and handled. Jobs recovered after restart or stranded by re-pairing resume
+through ordinary admission because persisted execution rows have no priority.
+
+If the claim committed a lease but the reply was not delivered (including
+write/flush failure or Bridge disconnect), the server releases that untouched
+claim without spending an attempt. State, attempt and lease must still match;
+a reported/renewed claim is left alone. A successfully flushed reply is not
+released merely because shutdown or a deadline follows it. Lost replies that
+cannot be released still use normal lease recovery.
 
 Every report (`PATCH /bridge/jobs/{id}`) renews the lease. A job's handler only
 records its progress; a reporting loop beside it sends each new step at once, other
@@ -404,7 +439,8 @@ generate).
 
 `podcast.subscribe`, `podcast.poll`, `podcast.fetch` and `podcast.retain` belong
 to `podcasts` and require a mapped, writable podcast library. Fetch runs in the
-separate `download` lane (2 concurrent); the others run in `light` (2).
+`download` lane (1 ordinary slot), with an additional reserved `interactive`
+slot for priority 100 work after negotiation; the others run in `light` (2).
 The server creates them from dedicated actions and its scheduler;
 `POST /admin/bridge/jobs` refuses these internal kinds with `400`.
 The module's toggle holds queued jobs while off, as for contributions.
@@ -414,8 +450,9 @@ response, sealed before local claim recording, and redacted on other reads.
 Default admin job lists omit polls unless `kind=podcast.poll` is requested;
 fetch and retain jobs are listed.
 All podcast kinds are quiet and send no notifications. Fetch/retain outcomes
-never update feed polling state, and there is no player-triggered fetch or
-fetch-status protocol yet; params, dedupe and priorities are in
+never update feed polling state. Play, Range, download, transcode and Retry
+share fetch intents at priority 100, admin 20, prefetch 10 and scheduled -10;
+retain stays -20. Params, dedupe and promotion are in
 [fetch and retain jobs](podcasts.md#fetch-and-retain-jobs).
 
 [Podcasts](podcasts.md) describes job params/results, scheduling, privacy and

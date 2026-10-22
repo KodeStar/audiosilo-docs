@@ -466,9 +466,25 @@ administrative catalog rather than player private-show scope. Retention GET
 stays core; policy writes and a new episode fetch additionally require the
 module, exact online Bridge kind and writable mapping. A valid present fetch
 returns success before those checks. Kids/listeners cannot set policy or
-request admin downloads. Player media still checks the stored/request client
-and private-show scope before opening any episode; missing audio is
-`404 not_downloaded` and queues nothing.
+request admin downloads. Player media checks the stored/request client,
+private-show scope and exact indexed path before opening or queueing an
+episode; unknown/hidden paths queue nothing. Missing audio shares an on-demand
+fetch, waiting at most two seconds before a status-bearing 503. Kids with read
+access may trigger it or use listener Retry without gaining policy/arbitrary
+job control. GET fetch status is authenticated observation only; POST Retry
+requires read scope and not-demo auth, strict `{path}` and server-chosen
+priority/identity. See [status and Retry](api/reference.md#podcast-fetch-status-and-retry).
+
+New fetches need the module, online exact Bridge kind and writable mapping.
+Non-admin creators are capped at five open fetch intents, including parked
+jobs and prefetch; admins are exempt. Dedupe/promotion precede the cap and do
+not transfer requester ownership. Demo streams cannot create new work, though
+they can promote an existing shared intent; demo POST Retry is refused.
+Ready files/status remain readable offline/module-off. Status exposes only
+safe state/id/byte counters/retry/error, never raw job params, requester,
+progress message or enclosure URL. Queue prefetch uses only that caller's
+visible queue and scopes, prepares at most one candidate per current episode
+and never reads another user's queue.
 
 The two Bridge retention routes accept only the paired Bridge bearer token,
 never session/API/cast tokens or query tokens. They return `no-store`

@@ -63,7 +63,8 @@ else and gate features on the flags.
     "household_members": true,
     "bridge": false,
     "contributions": false,
-    "podcasts": false
+    "podcasts": false,
+    "podcast_fetch": true
   },
   "auth": { "methods": ["auth_code", "password"] },
   "demo": { "enabled": false }
@@ -147,6 +148,11 @@ Phase 8b-1 adds one more, always `true` on a server that has it and absent on an
 The flag never depends on the caller or on the admin's switches: whether **this**
 caller may add a member is the members list's `allowed`.
 
+Phase 2c-2b adds another core flag, `podcast_fetch:true` (absent on older
+servers), for [on-demand fetch/status/Retry](#podcast-fetch-status-and-retry)
+and optional `fetch:Status` on episodes and `Book.episode`. It stays true
+independently of module/Bridge availability.
+
 `bridge` follows the Bridge rather than a setting, so it can change from one
 request to the next: it is `true` only while a [Bridge](#the-bridge) is paired and its last heartbeat is under two minutes
 old, and only then, **for a signed-in caller**, does a top-level
@@ -163,6 +169,11 @@ request to the next.
 | Flag | Value | Gates |
 |---|---|---|
 | `contributions` | the Contributions module on **and** a Bridge offering `contribute` | the console's contributing actions: the generate dialog's contribute switch, Share with the community and Suggest corrections (which also needs `meta` in `bridge.features`); the player doesn't read it. The module has no routes or background work of its own: its actions are [Bridge jobs it owns](#post-apiv1adminbridgejobs) (`404 module_off` while it is off) |
+
+`podcasts` is the other module flag: true only with its toggle on and an online
+Bridge offering `podcast`. It gates follow/check, new fetches, policy writes
+and scheduling. [Core reads and ready media](#podcasts) remain available
+offline/module-off; `podcast_fetch` advertises protocol support separately.
 
 ### `GET /healthz` · `GET /api/v1/healthz`
 
@@ -1085,9 +1096,9 @@ Response `200`: `{ "books": [ … ] }`.
 
 ## Podcasts
 
-Phase 2c-2a exposes feed following, indexed show/episode reads, scheduled and
-admin-requested downloads, retention and CHAP chapters. Released podcast
-player UI and on-demand playback arrive later. The recognized
+Phase 2c-2 exposes feed following, indexed show/episode reads, scheduled and
+admin-requested downloads, retention, CHAP chapters and on-demand fetch/status/Retry.
+Released podcast player UI arrives later. The recognized
 clients are the console's `AudioSilo Admin` or the player's `AudioSilo` with
 version `dev`, through `X-AudioSilo-Client`; the released-player minimum is still
 empty. A missing, other or released client is denied podcast content even for
@@ -1162,10 +1173,13 @@ is explicitly false for an unchanged first generation and latches true after
 different bytes are fetched. It does not rescale/reset saved progress or
 bookmarks. `downloaded` needs committed regular audio of the expected size,
 with no deletion timestamp or publication barrier; absent size is zero.
-An episode without a file streams as
-`404 {"error":"episode not downloaded","code":"not_downloaded"}` and has
-empty `chapters` and `files`; neither route indexes or fetches podcast audio
-on demand. Present episodes use probed duration/codec. Valid MP3 CHAP is served
+Both also add optional `fetch:Status`, independently of those generation fields,
+from one batched status query per page. Older servers omit it. This public
+summary differs from the on-disk Fetch pin; see [status and Retry](#podcast-fetch-status-and-retry).
+An episode without a file has empty `chapters` and `files`; a stream request
+triggers shared work and waits up to two seconds before a status-bearing 503.
+The server never indexes podcast audio on demand itself. Present episodes
+use probed duration/codec. Valid MP3 CHAP is served
 through the existing chapters/files envelope with optional
 `chapters_source:"id3_chap"`; without usable CHAP a present file gets one
 whole-file chapter.
@@ -1177,6 +1191,134 @@ current generation as 200. Changed hash/generation changes the ETag even at
 equal size/mtime. Each request keeps its validated opened descriptor through
 serving/transcode; transformed output does not advertise the source strong
 ETag or byte seeking. Ready files remain core when the module/Bridge is off.
+
+### Podcast fetch status and Retry
+
+`GET /api/v1/server` adds optional `capabilities.podcast_fetch:true`. It means
+this fetch/status protocol is supported, including when the Bridge is offline
+or the module is off. It is independent of `capabilities.podcasts`, which
+still means the module is on and its online Bridge requirement is met. Neither
+flag bypasses the client gate, private-show scope or authentication.
+
+*Session with episode read scope; kids allowed.* GET is core observation only.
+POST also requires not-demo auth (`403 demo_account`), but does not use the
+adult follow/check wrapper. The canonical non-hidden path must name an exact
+indexed episode in a podcast library. POST JSON is strict, at most 4 KiB;
+only `path` is accepted, never URL, priority, kind or identity.
+
+| Route | Query/body | Success |
+|---|---|---|
+| `GET /api/v1/libraries/{id}/podcasts/fetch` | `?path=<show>/<episode.mp3>` | `200 {fetch:Status}`, never queues work |
+| `POST /api/v1/libraries/{id}/podcasts/fetch` | `{"path":"<show>/<episode.mp3>"}` | `202 {fetch:Status}` for shared/new work, `200` if ready |
+
+Both routes set `Cache-Control: no-store`. New POST work needs the module on,
+an online Bridge offering `podcast.fetch` and a writable mapping. It bypasses
+terminal failure cooldown, shares/promotes any open intent to 100 and never
+replaces a valid present pin. Ready returns 200 before those storage checks;
+existing work can still be returned/promoted when new work would be refused.
+POST also starts one-ahead queue preparation. Unlike the
+[admin fetch route](#podcast-storage-admin), its response is a fetch summary,
+not a job request.
+
+Every **Status** key is present:
+
+| Field | Type | Meaning |
+|---|---|---|
+| `state` | string | `absent`, `queued`, `fetching`, `ready`, `failed` or `unavailable` |
+| `request_id` | integer or null | matching fetch job id, if available |
+| `bytes_received` | int64, nonnegative | safe byte count, possibly a proven resumed prefix; may reset |
+| `bytes_total` | int64 or null | nonnegative known total; not a feed estimate |
+| `retry_after_seconds` | integer | 2 for queued/fetching/unavailable, 0 for absent/ready/failed |
+| `error` | null or `{code,message}` | sanitized server-owned reason; no raw job text/URL |
+
+Absent is id/total null, received 0, retry 0, error null. Queued has an id,
+received 0, total null and error null. Claimed/running/parked work is fetching,
+with sanitized progress counters (received is clamped to a known total).
+Ready has id null, both counts equal the committed Fetch bytes, retry 0 and
+error null; it wins over stale job state. Failed retains a safe reason and
+the latest failed id when available (null after pruning). Unavailable overlays
+a refusal with retry 2, retaining an existing id/counters if any. Reasons
+include `module_off`, `bridge_unavailable`, `library_not_writable`,
+`demo_account` and, on a refused stream creation, `fetch_limit`.
+Module-off status is unavailable even for claimed/running work that may finish.
+List summaries use indexed presence; these GET/POST routes verify a committed
+descriptor opens before answering ready. Status never includes requester,
+params or progress messages.
+
+The shared `wire-2b.json` examples are:
+
+```json
+{
+  "fetch": {
+    "state": "fetching", "request_id": 81,
+    "bytes_received": 100, "bytes_total": 1000,
+    "retry_after_seconds": 2, "error": null
+  }
+}
+```
+
+```json
+{"state":"ready","request_id":null,"bytes_received":16493,"bytes_total":16493,"retry_after_seconds":0,"error":null}
+```
+
+```json
+{"state":"failed","request_id":82,"bytes_received":0,"bytes_total":null,"retry_after_seconds":0,"error":{"code":"too_large","message":"The episode exceeds the size limit."}}
+```
+
+Missing-audio `/stream` (including Range, `download=1` and transcode) shares the
+same intent at priority 100. After access/exact-path checks, the absent-file
+fetch branch spends at most **two seconds** on enqueue/promotion/DB reads/wait,
+with a final presence check. A ready descriptor serves normal media; otherwise
+the response is `503`, `Retry-After: 2`, `Cache-Control: no-store` and JSON:
+
+```json
+{
+  "error": "Episode is being fetched.", "code": "podcast_fetching",
+  "fetch": {
+    "state": "fetching", "request_id": 81,
+    "bytes_received": 100, "bytes_total": 1000,
+    "retry_after_seconds": 2, "error": null
+  }
+}
+```
+
+Unavailable uses `code:"podcast_fetch_unavailable"` and
+`error:"The episode cannot be fetched right now."`; terminal failure uses
+`code:"podcast_fetch_failed"` and `error:"The episode could not be fetched."`,
+with the same headers and their Status. The final deadline summary can lag a
+transition (queued while already fetching). Disconnect/timeout never cancels
+household work. There is no publisher pass-through or partial playback.
+
+Every trigger shares one open intent per library/path and current identity.
+Priorities are play/Retry 100, admin 20, prefetch 10 and scheduled -10;
+retain stays -20. Promotion never demotes or resets requester/attempts/progress.
+A non-admin may create five open fetch intents, counting prefetch and parked
+jobs across libraries. Admins are exempt; joining/promoting existing work
+does not spend or transfer quota. At the cap, a stream returns unavailable
+with nested `fetch.error.code:"fetch_limit"` and no new id. POST Retry instead
+returns `409 fetch_limit` with the ordinary error envelope.
+
+| Status/code | GET/POST refusal |
+|---|---|
+| `400 invalid_request` | invalid/missing episode path, malformed or unknown POST fields |
+| `403` / `404` | normal scope/client/private-path denial; queues nothing |
+| `404 episode_not_found` | episode missing from the index |
+| `409 not_podcast_library` | books library |
+| `404 module_off` | POST would create work with the module off |
+| `409 bridge_unavailable` / `library_not_writable` | POST would create work without the needed Bridge/mapping |
+| `409 fetch_limit` | POST would exceed the non-admin creator cap |
+| `409 identity_changed` | identity changed, or replacement work is still held; can also interrupt a stream trigger |
+
+Unexpected faults remain sanitized 500s. GET reports availability/failure in
+Status, not as a scheduling error. Ordinary stream retries honor terminal
+cooldown; GET never retries a failed job. Clients poll every two seconds only
+while queued/fetching and retry pending media no sooner than Retry-After.
+Stop at ready/failed/unavailable; failure needs explicit POST Retry or a later
+scheduled attempt. An unavailable retry interval is not permission for a POST
+loop. Optional player mirrors, hooks, cache refresh and generation/CHAP rules
+are in the [Phase 2d handoff](../../bridge/podcasts.md#player-handoff-phase-2d-not-implemented).
+
+### Podcast follow requests
 
 A **Request**:
 
@@ -1263,9 +1405,11 @@ and do not wait for disk changes. There is no retention UI yet.
 
 Keep downloads the newest N currently listed episodes (published/path
 descending, undated last); Archive downloads all currently listed episodes
-oldest first and never deletes. On demand schedules none; admin fetch works.
-No followers means no automatic downloads/deletions. Removed feed entries
-are not auto-fetched, but explicit fetch can try the saved enclosure.
+oldest first and never deletes. On demand schedules no feed-wide downloads;
+play, one-ahead queue preparation and admin fetch work.
+No followers means no policy-scheduled downloads/deletions; authorized
+play/Retry and queue preparation still work. Removed feed entries are not
+auto-fetched, but explicit fetch can try the saved enclosure.
 
 Keep deletes only outside its window; On demand has no window requirement;
 both wait for every follower to finish plus the grace days, and favourites,
@@ -1277,8 +1421,8 @@ Fetch uses priority 20 and the admin's requester id, returns the existing open
 job's actual state, and bypasses terminal failure cooldown. It never replaces
 a valid present pin or creates duplicate open work. The present-pin 200 check
 runs before module/Bridge/mapping checks, so it works offline or module-off.
-No player fetch/status endpoint ships in this release; missing media remains
-`404 not_downloaded`.
+Player-facing fetch/status routes use a different envelope and read scope;
+see [status and Retry](#podcast-fetch-status-and-retry).
 
 | Status/code | Meaning |
 |---|---|
@@ -8230,13 +8374,13 @@ a space, and the text is cut to its limit. Much of it comes from the outside wor
 (a file's name, an OS error), and a refused heartbeat would leave the Bridge
 offline. The body is at most 64 KiB. The answer lists the server's libraries, so
 the Bridge can map the ones it hasn't checked yet, and (Phase 2b) `accepts`, the
-optional top-level heartbeat blocks this server reads:
+optional protocol features this server accepts:
 
 ```json
 {
   "server_time": "2026-10-15T12:40:37Z",
   "libraries": [ { "id": 1, "name": "Audiobooks", "root": "/audiobooks", "kind": "books" } ],
-  "accepts": ["setup"]
+  "accepts": ["setup", "claim_min_priority"]
 }
 ```
 
@@ -8244,6 +8388,7 @@ Every library in the reply includes `kind: "books"|"podcasts"`; the Bridge
 treats a missing kind from an older server as books. Podcast support adds
 `podcast.subscribe`, `podcast.poll`, `podcast.fetch` and `podcast.retain` to the existing `kinds` list without a
 new heartbeat request field.
+`claim_min_priority` negotiates a claim query option, not a heartbeat block.
 
 The heartbeat itself is decoded strictly (an unknown field is a `400`), so a
 Bridge sends an optional block only after a reply listed it, and drops them all and
@@ -8265,6 +8410,7 @@ resends once on a `400` (an older server answers no `accepts`). See
 |---|---|
 | `wait` | seconds to wait for a job when none is queued, 0 to 25 (more is 25; default 0) |
 | `kind` | repeatable: only these kinds (the ones the Bridge has a free lane for) |
+| `min_priority` | optional single signed base-10 int32 floor; only send after heartbeat `accepts` lists `claim_min_priority`. Invalid/empty/repeated/out-of-range is `400 invalid_request`; omitted means no floor |
 
 The server picks from the kinds the last heartbeat named **and** the server knows,
 narrowed to the `kind` values when there are any. It hands out the highest
@@ -8276,13 +8422,24 @@ it) and then answers `204`; when no kind is left after the narrowing it answers
 token is checked again with every claim, so a Bridge that a pairing or an unpair
 replaced during its long poll gets `401`, never a job.
 
+The priority floor is applied in the claim transaction before lease/attempt
+mutation, alongside kinds, module and token checks. The reserved Bridge
+dispatcher requests `kind=podcast.fetch&min_priority=100&wait=25`; ordinary
+claims omit the floor. An undelivered untouched claim is released without
+spending an attempt on write/flush failure or Bridge disconnect. A delivered
+reply is retained across subsequent shutdown/deadline. See
+[claims and leases](../../bridge/pairing-and-jobs.md#claims-and-leases) for
+admission, capacity fallback and immediate cancel/join/reissue on eligibility
+changes.
+
 | Status | Meaning |
 |---|---|
 | `200` | the job, now `claimed` |
 | `204` | no job |
+| `400` | `code: "invalid_request"` for invalid `min_priority` |
 | `409` | `code: "no_heartbeat"` - send a heartbeat first |
 | `401` | no bridge token or a refused one (also when it was revoked during the wait) |
-| `503` | the token couldn't be checked |
+| `503` | the token couldn't be checked, or the request deadline expired |
 
 ### `PATCH /api/v1/bridge/jobs/{id}`
 

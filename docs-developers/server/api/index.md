@@ -249,8 +249,16 @@ Podcast actions add `invalid_request` and `invalid_feed_url` (`400`),
 `no_library_access` (`403`), `show_not_found` (`404`), `not_podcast_library`,
 `bridge_unavailable` and `library_not_writable` (`409`), and
 `too_many_requests` / `checked_recently` (`429`). Library kinds add
-`invalid_kind` / `kind_immutable` (`400`) and `root_overlaps` (`409`, also from `POST /admin/setup/preview`). An
-undownloaded episode streams as `404 not_downloaded`, without queuing a fetch.
+`invalid_kind` / `kind_immutable` (`400`) and `root_overlaps` (`409`, also from `POST /admin/setup/preview`).
+Missing podcast media shares a fetch and waits at most two seconds, then
+answers `503 podcast_fetching`, `podcast_fetch_unavailable` or
+`podcast_fetch_failed` with `{error,code,fetch:Status}`, `Retry-After: 2` and
+`Cache-Control: no-store`. These are retryable protocol responses, not ordinary
+missing-file errors. A non-admin creator is limited to five open fetches;
+stream refusal nests `fetch_limit` in `fetch.error.code`, while listener POST
+Retry uses `409 fetch_limit`. Dedupe/promotion succeeds at the cap; admins are
+exempt. GET status is observation only and terminal failure needs explicit
+Retry or a later scheduled attempt, not repeated POSTs from polling.
 Admin storage adds `episode_not_found` (`404`) and `identity_changed` (`409`),
 and policy writes/new downloads use `module_off` (`404`) and the exact
 Bridge-kind/writable-mapping checks. A valid present pin returns 200 before
@@ -263,8 +271,8 @@ feed failures: [Podcasts](reference.md#podcasts).
 Errors without a `code` are ones a client can't help the person fix.
 
 The media file-serving layer is separate: missing-file and transcode failures
-from that layer use plain-text `http.Error` responses. Podcast `not_downloaded`
-is returned before file serving and uses the JSON envelope.
+from that layer use plain-text `http.Error` responses. Podcast fetch 503s
+are returned before file serving and include the fetch summary in JSON.
 
 Status mapping is consistent across handlers:
 
@@ -395,7 +403,8 @@ single-shot with a `limit` and no pagination.
     "household_members": true,
     "bridge": false,
     "contributions": false,
-    "podcasts": false
+    "podcasts": false,
+    "podcast_fetch": true
   },
   "auth": { "methods": ["auth_code", "password"] },
   "demo": { "enabled": false }
@@ -466,6 +475,14 @@ server (a [managed module's](../modules.md#the-toggle-and-the-capability-flag) f
 | Flag | Gates |
 |---|---|
 | `bridge` | anything that needs the [Bridge](reference.md#the-bridge). It is `true` only while a Bridge is paired and its last heartbeat is under two minutes old, so it turns off when the Bridge stops. While it is `true`, a top-level `bridge: {version, features}` object sits beside `capabilities`: `features` lists the job families the Bridge runs that the server knows (`bridge`, `sidecars` for generating characters and recaps and, from a Phase 1c Bridge, descriptions, and `chapters` for finding a chapterless book's chapters, from a Phase 1d Bridge, and `meta` for filing corrections, from a Phase 2b Bridge), plus `contribute` while the Bridge can file contributions to the community database (it has a GitHub token GitHub accepts, from its Accounts sign-in, its environment or `gh`: its heartbeat's `setup.can_contribute`, else `estimates.sidecars.can_contribute`); a list, never `null`. Since Phase 2b the block goes only to a **signed-in** caller (a session or API key of any role, not a demo account's); an anonymous caller gets the flag alone. The server reuses the heartbeat it read for up to 5 seconds, so the flag can lag by that much. Check the flag **and** the feature you need: the player shows an admin **Generate characters and recaps** only with `bridge`, `sidecars` in `features` and `metadata`, and the console's Health offers **Detect chapters** only with `chapters` in `features` |
+
+`podcast_fetch` is an optional core flag: true means the server supports the
+[on-demand/status/Retry protocol](reference.md#podcast-fetch-status-and-retry),
+even when the module is off or the Bridge is offline. An older server omits
+it. Keep it separate from the live `podcasts` module flag below. Ready media
+and status reads stay core; client/private scope still applies, including to
+admins, and released players remain hidden. Episode lists and `Book.episode`
+may include optional `fetch:Status`; tolerate its absence on older servers.
 
 Then each [managed module](../modules.md) adds one flag, named after the module. A
 module ships off and an admin turns it on in the console's Settings > Modules, so the

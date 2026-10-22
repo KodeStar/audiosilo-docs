@@ -311,7 +311,9 @@ and `bridge`, which follows the Bridge's heartbeat, [§16](#16-the-bridge)),
 one flag per [managed module](../server/modules.md) (`contributions` and `podcasts`: the module's
 toggle **and** its Bridge requirement met, sent `false` otherwise; the console reads
 it to offer contributing; `podcasts` needs `podcast` and gates actions, while
-reads stay core and released players are still excluded), plus the
+reads stay core and released players are still excluded), the independent
+`podcast_fetch:true` protocol flag (even offline/module-off; older servers omit
+it, [§17](#17-podcast-shows-feeds-and-client-visibility)), plus the
 server version
 (`api.Version`, stamped from the release tag via ldflags). `transcode` reflects
 ffmpeg availability; `web_player` reflects whether `/web` is populated; the
@@ -803,8 +805,8 @@ security-critical: allowed and denied tests on the server.
 
 ## 17. Podcast shows, feeds and client visibility
 
-Phase 2c-2a extends the server/Bridge seam with episodes on disk and retention;
-released player views and on-demand play arrive later.
+Phase 2c-2 extends the server/Bridge seam with episodes on disk, retention
+and on-demand fetching/status/Retry. Released player views arrive later.
 See [Podcasts](../bridge/podcasts.md) and the
 [API reference](../server/api/reference.md#podcasts) for exact fields.
 
@@ -815,7 +817,9 @@ See [Podcasts](../bridge/podcasts.md) and the
 - **Capability:** `capabilities.podcasts` is always sent, false unless
   `modules.podcasts.enabled` and an online Bridge offers `podcast` from its
   podcast kinds. The Bridge advertises subscribe/poll/fetch/retain in `kinds`,
-  with no new heartbeat request field or on-demand capability.
+  with no new heartbeat request field. Independent optional core
+  `capabilities.podcast_fetch:true` advertises on-demand/status support even
+  offline/module-off; older servers omit it.
   Off gates actions, stops the scheduler and holds queued jobs; reads stay core.
 - **Visibility:** `auth.SeesPodcasts(Credential.Client)` feeds `catalog.Caller.Podcasts`.
   `AudioSilo Admin` qualifies; `AudioSilo` version `dev` qualifies. The released
@@ -843,8 +847,10 @@ See [Podcasts](../bridge/podcasts.md) and the
   valid present fetch returns 200 before storage checks. New fetch is 202 with
   an existing/open job state, priority 20; no forced pin replacement.
 - **Retention:** Keep downloads newest N listed episodes; Archive all listed
-  oldest first and never deletes; On demand has no scheduled downloads yet.
-  No followers means no automatic work. Deletion eligibility (followers
+  oldest first and never deletes; On demand fetches on play with one-ahead
+  queue preparation and no feed-wide scheduled downloads.
+  No followers means no policy-scheduled work; authorized play/Retry and queue
+  preparation still work. Deletion eligibility (followers
   finished plus grace, protections, Keep's window) is in
   [retention](../bridge/podcasts.md#retention-policy-and-deletion-authority);
   Keep is a window, not a disk quota. Bridge-only policy/aggregate routes expose all
@@ -854,8 +860,12 @@ See [Podcasts](../bridge/podcasts.md) and the
   immediately before a journaled move to owned trash, tombstone and rescan.
 - **Jobs:** fetch binds `{show_id,episode_id}` and an indexed episode path,
   dedupe `podcast.fetch|<library_id>|<path>`, with no URL/credentials. Retain
-  binds show path/id, priority -20. Fetch uses the Bridge's download lane (2),
-  retain light (2); both internal/writing/quiet. Replacements settle old work.
+  binds show path/id, priority -20. All triggers share one fetch intent:
+  play/Range/download/transcode/Retry 100, admin 20, prefetch 10, scheduled -10.
+  Promotion takes the maximum, preserving requester, attempts and progress;
+  running jobs keep their pool. Fetch has one ordinary download slot and one
+  reserved interactive slot, retain light (2); both internal/writing/quiet.
+  Replacements settle old work.
   Fetch byte progress is int64 with nullable total; successful results include
   Fetch/chapters/reused. [Job shapes](../bridge/podcasts.md#fetch-and-retain-jobs)
   and shared `wire-2a.json` fix the contract.
@@ -883,7 +893,59 @@ See [Podcasts](../bridge/podcasts.md) and the
   even after deletion; progress and bookmarks stay unchanged. One validated
   descriptor serves each request. Direct ETag is
   `"podcast-g<generation>-<sha256>"`, private revalidation and byte ranges;
-  transformed output has no source ETag. Absent stream stays 404 not_downloaded.
+  transformed output has no source ETag. Missing media triggers shared work,
+  never publisher pass-through or partial playback.
+- **On-demand/status/Retry:** after auth, client/private scope and exact-path
+  checks, the absent-file stream branch has at most two seconds for DB/enqueue/
+  promotion/wait. Ready serves normal media; otherwise `503` with
+  `Retry-After: 2`, `Cache-Control: no-store`, `{error,code,fetch:Status}`.
+  Codes: `podcast_fetching`, `podcast_fetch_unavailable`, `podcast_fetch_failed`.
+  Disconnect/timeout never cancels shared work. Core authenticated
+  `GET /libraries/{id}/podcasts/fetch?path=` observes only; not-demo POST
+  `{path}` is explicit Retry, 202 with the same `{fetch:Status}`, 200 if ready.
+  Kids with read scope qualify. New work needs module/exact online kind/
+  writable mapping; ready files work offline/module-off. Existing intents may
+  still promote. Ordinary streams honor failure cooldown; POST bypasses it,
+  never dedupe or a present pin. Identity races remain `409 identity_changed`.
+- **Status extension:** episode lists and `Book.episode` add optional
+  `fetch:Status`, batched per page. Every Status key is required:
+  `{state,request_id,bytes_received,bytes_total,retry_after_seconds,error}`.
+  States are absent/queued/fetching/ready/failed/unavailable; id/total nullable,
+  byte counts nonnegative int64, error null or safe `{code,message}`. Queued/
+  fetching/unavailable retry 2; other states 0. Ready wins stale jobs and has
+  id null/both counts equal Fetch.bytes. Module-off overlays unavailable even
+  on running jobs that may finish. No requester/params/raw progress text.
+  [Exact shapes](../server/api/reference.md#podcast-fetch-status-and-retry) and
+  shared `wire-2b.json` fix the protocol.
+- **Listener cap:** five open fetch intents per non-admin creator, counting
+  prefetch/parked work across libraries. Admins/server-scheduled work exempt.
+  Dedupe/promotion precedes the cap and preserves its owner. Refused stream
+  creation uses `503 podcast_fetch_unavailable`, nested `fetch.error.code`
+  `fetch_limit`; POST Retry uses `409 fetch_limit`. No new intent is created.
+- **Prefetch:** at most one next visible podcast from the actual caller's
+  queue per user/current item, skipping books; if current is absent from queue,
+  first visible podcast other than current. Play-fetch/ready-stream starts a
+  bounded background look; successful queue mutations can reconsider during
+  current stream/fetch. Global dedupe shares work; removal never cancels it.
+  New prefetch is priority 10, later play promotes the same row to 100.
+- **Claim/capacity:** heartbeat `accepts` adds `claim_min_priority` beside
+  `setup`; no new request block. After negotiation the reserved dispatcher
+  requests `kind=podcast.fetch&min_priority=100&wait=25`. A single signed int32
+  floor is filtered inside the claim transaction before leasing; invalid is
+  `400 invalid_request`, omitted keeps ordinary behavior. One opted-in
+  interactive worker never borrows background work; ordinary download is 1
+  and total enclosure concurrency 2 (`light:2`, `pipeline:25`). Older servers
+  use ordinary download 2 with no reserved claim. Eligibility changes cancel,
+  join and immediately reissue claims; unchanged progress/heartbeat does not.
+  Cancellation-race jobs are owned. Undelivered untouched leases release
+  without spending an attempt; delivered replies survive later shutdown/
+  deadline. Recovered jobs use ordinary admission because rows lack priority.
+- **Player handoff:** no player/cast/screens ship and the released-player gate
+  remains unset. Carry the [optional types, client/hook signatures and polling
+  rules](../bridge/podcasts.md#player-handoff-phase-2d-not-implemented) into 2d:
+  poll only queued/fetching every two seconds, explicit Retry for terminal
+  failure, refresh item/list/chapters at ready. Preserve generation warnings
+  without rescaling state and recognize `chapters_source:id3_chap`.
 - **CHAP:** the [sidecar](../bridge/attachments.md#podcast-chap-attachments)
   is a version-1 stem-prefixed `chapters.json` using `from:id3_chap`, Fetch timestamp and one matching
   basename/size/duration. No ASR/agent/generated flag; server consumes valid

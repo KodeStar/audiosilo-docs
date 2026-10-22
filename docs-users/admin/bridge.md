@@ -22,7 +22,8 @@ set up. With the [Contributions module](server.md#modules) on, it also
 [shares characters and recaps](#share-with-the-community) and
 [suggests your corrections](#suggest-corrections) to the community metadata
 database. With the **Podcasts** module on, it also follows podcast feeds and
-keeps their show details and artwork up to date, downloads episodes and removes
+keeps their show details and artwork up to date, fetches missing episodes on
+play through a compatible client, downloads episodes selected by policy and removes
 eligible older downloads according to an admin's per-show retention policy
 (see [Podcasts](podcasts.md#downloads-and-retention) for the default,
 protections and API calls).
@@ -265,6 +266,13 @@ credentials stay hidden. Episode downloads and retention checks are listed
 too; routine podcast checks are left out of this default list. Podcast jobs send no finished or
 failed notifications. The console has no follow-by-URL screen or retention
 controls yet. See [Podcasts](podcasts.md).
+
+Requests to play the same missing episode share a download. They take priority
+over waiting admin and scheduled downloads; the Bridge keeps one download
+slot for playback requests and one for ordinary downloads. It can also prepare
+one next podcast episode from the listener's queue. Released player apps do
+not show this yet. See [Space and availability](podcasts.md#space-and-availability)
+for the per-listener limit and what happens while audio is being fetched.
 
 **Cancel** stops a job. A job that is waiting is cancelled at once; one the Bridge
 is working on shows **Cancelling** until the Bridge stops it, within a few seconds.
