@@ -1,16 +1,19 @@
 ---
 title: "Podcasts"
-description: "Podcast jobs, feed.json v1 and pinned audio generations, guarded downloads and resume, retention aggregates, publication recovery, ID3 CHAP attachments, and private feed secrets."
+description: "Podcast jobs, on-demand fetch/status/Retry and the player handoff, queue prefetch, pinned generations, guarded downloads, retention, publication recovery, CHAP attachments and private feed secrets."
 ---
 
 ## Scope and ownership
 
-Bridge Phase 2c-2a adds `podcast.fetch` (the `download` lane, concurrency 2) and
+Bridge Phase 2c-2 adds `podcast.fetch` (ordinary `download` plus a reserved
+`interactive` slot, two downloads total) and
 `podcast.retain` (`light`), alongside `podcast.subscribe` and `podcast.poll`
 in `light`. All four are writing jobs needing a mapped, writable podcast
 library and the server's `podcasts` module (`RequiresBridge: "podcast"`). The module ships
 off. `capabilities.podcasts` is always present and is true only with the toggle
 on and an online Bridge advertising the `podcast` feature.
+The independent core flag `capabilities.podcast_fetch:true` advertises the
+on-demand/status protocol even offline or module-off; older servers omit it.
 
 The server holds follows, feed status, HTTP validators, schedules and job
 intents, per-show retention policies and aggregate deletion eligibility. The
@@ -20,10 +23,10 @@ writes into the library. Implementations are the Bridge's `internal/podcast`,
 `internal/podcastjob` and `internal/netguard`, and the server's
 `internal/podcast`, `internal/catalog/podcasts.go` and `internal/library/podcasts.go`.
 
-Downloads are scheduled by policy or explicitly requested by an admin.
-On-demand play, fetch-status routes, OPML, discovery, external chapters,
-transcripts and podcast player UI arrive later. Absent episodes still answer
-`404 not_downloaded`; a stream request never queues work in this release.
+Downloads are scheduled by policy, requested by an admin, or triggered by
+on-demand play and one-ahead queue preparation. Phase 2c-2b adds shared fetch
+intents, status/Retry routes and a bounded stream wait. OPML, discovery,
+external chapters, transcripts and podcast player UI arrive later.
 Released players do not see podcast libraries; only the admin console lists
 them for now. Read routes are core and stay available without the module or
 Bridge, subject to the [client gate and private scope](../server/auth-and-security.md#podcast-visibility).
@@ -126,8 +129,9 @@ clean, non-hidden, unique and supported by `metadata.IsAudio`. Bad entries are
 skipped and logged. It indexes episodes even when files are absent. `/fs` uses
 the index and displays titles, with serial shows oldest first and episodic
 shows newest first. Loose audio and the feed/artwork files do not become entries.
-An undownloaded episode streams as `404 not_downloaded` and has an empty chapter
-list; neither route tries on-demand audio indexing.
+An undownloaded episode has an empty chapter list. Its stream request
+triggers a shared fetch; the Bridge publishes and rescans before any bytes
+can be served. The server still does no on-demand audio indexing itself.
 
 ## Names and identity
 
@@ -213,8 +217,22 @@ strict params `{"show_id":"a1b2c3d4e5f60718","episode_id":"1cc306d831645e2b"}`.
 No URL, credential, policy or book id travels in params. Dedupe is
 `podcast.fetch|<library_id>|<path>`. A replacement identity cannot adopt an old
 open job: the server settles that intent first. Both sides recheck identities
-before work and publication. Admin fetches use priority `20`; scheduled ones
-use `-10`.
+before work and publication. Fetch triggers use `bridge.EnsurePodcastFetch`;
+retention has a lower housekeeping priority:
+
+| Trigger | Priority |
+|---|---|
+| Play, Range, download, transcode or explicit listener Retry | `100` |
+| Admin fetch | `20` |
+| One-ahead queue prefetch | `10` |
+| Policy-selected scheduled fetch | `-10` |
+| Retention housekeeping (`podcast.retain`) | `-20` |
+
+An existing queued, claimed, running or parked (`needs_attention`) intent is
+shared and promoted with the maximum priority, never demoted. Promotion wakes
+claims after commit without resetting requester, attempts, lease or progress;
+it does not move a running job into another pool. Admin/listener Retry bypasses
+terminal failure cooldown, but never open dedupe or a valid present pin.
 
 Progress steps are `resolving`, `fetching`, `probing`, `writing`, `indexing`.
 Byte counts are int64 `Progress.Extra` fields, including any proven prefix;
@@ -242,6 +260,178 @@ priority `-20`, no requester, dedupe by kind/library/path. Progress is
 `{library_id,show_path,show_id,deleted:2,skipped:1}`. Protected, busy and stale
 candidates count as skipped; mapping/feed/identity failures fail the job.
 
+## On-demand play and shared intents
+
+After authentication, client/private scope and exact indexed-path checks,
+`/stream` uses `podcast.Demand.Fetch` for missing audio in every Range,
+`download=1` and transcode branch. Unknown or hidden paths queue nothing.
+It never passes through publisher bytes or serves a partial. A valid committed
+descriptor can still play offline or module-off.
+
+The absent-file fetch branch has one **two-second** budget for pin lookup,
+enqueue/promotion, status reads and waiting. It registers a per-path broadcast
+before rechecking presence, wakes on job/rescan changes and checks presence
+once more before returning. Ready within the budget serves normal media;
+otherwise it answers `503` with `Retry-After: 2`, `Cache-Control: no-store`
+and `{error,code,fetch:Status}`. Codes are `podcast_fetching`,
+`podcast_fetch_unavailable` or `podcast_fetch_failed`; exact shapes and
+exceptions are in [status and Retry](../server/api/reference.md#podcast-fetch-status-and-retry).
+Disconnect releases the waiter, never the shared household fetch. The final
+budget-limited summary can still say queued after the job has started.
+
+New work needs the module on, an online Bridge offering `podcast.fetch` and a
+writable mapping. Existing work can still be returned/promoted when these
+checks would refuse a new intent. Status overlays those refusals as
+`unavailable`, including claimed/running work while module-off; those jobs may
+finish. Ordinary stream retries respect terminal cooldown (30 minutes doubling
+to 24 hours); observation never queues. Explicit listener/admin Retry bypasses
+cooldown and still shares any open intent. Identity replacement can return
+`409 identity_changed` rather than a retryable media 503.
+
+Each non-admin creator has a cap of **five open `podcast.fetch` intents** across
+libraries, including prefetch and parked work. The insert transaction checks
+it after dedupe, so joining/promoting work succeeds at the cap and does not
+transfer its requester or quota ownership. Admins and server-scheduled work
+are exempt. A refused new stream fetch is `503 podcast_fetch_unavailable`
+with `fetch.error.code: "fetch_limit"`; listener POST Retry uses
+`409 fetch_limit`. This is independent of the subscribe-request cap.
+
+### One-ahead queue preparation
+
+`podcast.Prefetcher` starts a bounded background look after a play-fetch
+request or ready stream start, without extending the stream wait. It uses the
+actual caller's scoped `up_next`, including private-show proof, skipping book
+entries. It selects at most the next visible podcast after the current item;
+if current is not queued, the first visible podcast other than current wins.
+Ready, fetching, failed/cooling or unavailable candidates create no new work;
+an absent candidate can create priority 10 work and a queued candidate can
+promote its existing row. Removed feed entries create no automatic fetch.
+
+A successful queue mutation reconsiders while that user's current podcast
+has a stream or open fetch, until one candidate is chosen. The bound is one
+chosen candidate per user/current item, with global intent dedupe across users.
+Removing it from the queue does not cancel shared work. Later play promotes
+that same intent to 100. On demand permits this preparation, without
+feed-wide scheduled downloads. Demo requests start neither fetch nor prefetch;
+an existing shared fetch can still be promoted by a demo stream.
+
+### Player handoff (Phase 2d, not implemented)
+
+The server protocol is implemented; **the player does not show this yet**.
+`auth.PodcastPlayerMinVersion` remains empty and released players stay hidden.
+The following are proposed additions to `src/api/{types,client,hooks}.ts`,
+mirroring the reviewed wire rather than describing shipped player exports.
+Keep response extensions optional for older servers. Every key *inside* a
+returned Status is required, including nulls:
+
+```ts
+type PodcastFetchStatus = {
+  state: 'absent' | 'queued' | 'fetching' | 'ready' | 'failed' | 'unavailable';
+  request_id: number | null;
+  bytes_received: number;
+  bytes_total: number | null;
+  retry_after_seconds: number;
+  error: { code: string; message: string } | null;
+};
+type PodcastFetchResponse = { fetch: PodcastFetchStatus };
+type PodcastFetchPending = PodcastFetchResponse & {
+  error: string;
+  code: 'podcast_fetching' | 'podcast_fetch_unavailable' | 'podcast_fetch_failed';
+};
+type PodcastGeneration = {
+  fetch?: PodcastFetchStatus;
+  generation?: number;
+  sha256?: string;
+  timeline_changed?: boolean;
+};
+type PodcastEpisodeInfo = PodcastGeneration & {
+  show_path: string;
+  published: string | null;
+  season: number | null;
+  episode: number | null;
+  episode_type: 'full' | 'trailer' | 'bonus';
+  explicit: boolean;
+  downloaded: boolean;
+  duration_source: 'file' | 'feed' | 'none';
+  removed: boolean;
+};
+type PodcastEpisode = PodcastGeneration & {
+  path: string;
+  title: string;
+  published: string | null;
+  duration: number;
+  duration_source: 'file' | 'feed' | 'none';
+  season: number | null;
+  episode: number | null;
+  episode_type: 'full' | 'trailer' | 'bonus';
+  explicit: boolean;
+  description: string;
+  downloaded: boolean;
+  size: number;
+  removed: boolean;
+};
+type PodcastCapabilities = { podcast_fetch?: boolean };
+type PodcastBookFields = { episode?: PodcastEpisodeInfo };
+// Merge these optional fields into Capabilities and Book.
+```
+
+Do not confuse public `fetch:PodcastFetchStatus` with the on-disk `fetch:Fetch`
+pin. `generation`/`sha256`/`timeline_changed` are absent before a valid pin,
+but may remain after deletion. Preserve an explicit false flag. A true flag
+warns of changed bytes/timeline without resetting or rescaling progress,
+bookmarks or finished state. Extend the open chapter source union with
+`'id3_chap'` on both Book and ChaptersResponse; it is embedded MP3 metadata,
+not generated/ASR chapters. Absence retains existing chapter-source behavior.
+
+Proposed client methods keep the server envelope and the existing optional
+abort signal convention:
+
+```ts
+interface PodcastFetchClient {
+  podcastFetchStatus(libraryId: number, path: string,
+    signal?: AbortSignal): Promise<PodcastFetchResponse>;
+  retryPodcastFetch(libraryId: number, path: string,
+    signal?: AbortSignal): Promise<PodcastFetchResponse>;
+}
+```
+
+The first uses GET with encoded `path`; the second POSTs only `{path}` to
+`/libraries/{id}/podcasts/fetch`. Preserve `fetch` and `Retry-After` when
+decoding the stream 503; today's `ApiError(status,message,code?)` discards them.
+Suggested hooks follow `useBook`'s connection selection:
+
+```ts
+declare function usePodcastFetchStatus(
+  libraryId: number, path: string, connectionId?: string,
+  options?: { enabled?: boolean },
+): UseQueryResult<PodcastFetchStatus, Error>;
+declare function useRetryPodcastFetch(connectionId?: string):
+  UseMutationResult<PodcastFetchStatus, Error, BookRef>;
+// BookRef is { library_id: number; path: string }.
+// Query key: ['podcastFetch', cid, libraryId, path].
+```
+
+Unwrap `fetch` in the hooks. Gate new calls on `podcast_fetch === true` and use
+the optional connection client so a removed connection disables reads. Do not
+gate ready reads/status solely on the live `podcasts` flag. Episode-list
+rows read the list's batched `fetch`; the per-path hook is for the item being
+played or retried. After a media 503, poll GET every two seconds while
+queued/fetching instead of repeating the media request, and request media
+again at ready. Pause polling while the app is in the background. Stop polling at ready, failed or unavailable; absent
+GET is also observation only. A terminal failure needs explicit POST Retry
+or a later server-scheduled attempt, never a poll-triggered POST loop.
+An unavailable status still has retry 2; that alone does not justify an
+automatic Retry loop. Treat `409 fetch_limit` as a refusal to create work.
+
+Seed/update the status cache from a media 503 and Retry response. At ready,
+refresh the item and its chapters/files before retrying media, and mark the
+episode list stale rather than refetching it at once;
+at failed/unavailable retain the safe error code for localized controls.
+Cancel polling when the connection/path or consumer changes, without a
+server job cancellation. `wire-2b.json` fixes fetching/ready/failed examples
+and the 503 envelope; missing optional fields must leave existing books and
+older-server behavior intact. No player, cast or screen changes ship here.
+
 ## Retention policy and deletion authority
 
 An admin sets one shared policy per show through the
@@ -257,13 +447,15 @@ A replacement show at the same path starts with the default.
   outside this window.
 - Archive downloads every currently listed entry oldest first, path ascending,
   undated last, and never deletes.
-- On demand schedules no feed-wide downloads; individual admin fetches work.
-  Its deletion rule has no Keep window. Player-triggered fetches arrive later.
+- On demand fetches on play and permits one-ahead queue preparation, with no
+  feed-wide scheduled downloads. Individual admin fetches work too. Its
+  deletion rule has no Keep window.
 
 Removed feed entries are never auto-fetched, but their saved bytes remain
 playable and an admin fetch can try their saved enclosure. Without followers
-there is no automatic download or deletion. Keep N is a window, not a disk
-limit: an unfinished follower can keep files indefinitely.
+there is no policy-scheduled download or deletion; authorized play/Retry and
+queue preparation still work. Keep N is a window, not a disk limit: an
+unfinished follower can keep files indefinitely.
 
 Before deleting, the Bridge reads the policy and requests a
 [retention aggregate](../server/api/reference.md#bridge-podcast-retention) for

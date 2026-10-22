@@ -19,11 +19,12 @@ checking feeds are available through the
 [developer API](/developers/server/api/reference#podcasts).
 :::
 
-This release downloads episodes according to each show's retention policy, or
-when an admin requests one through the API. It also saves supported MP3 chapter
+This release downloads episodes according to each show's retention policy,
+when an admin requests one through the API, or when a compatible client asks
+to play an episode whose audio is missing. It also saves supported MP3 chapter
 markers. Discovery, OPML import, external chapter files and transcripts arrive
-later. An episode can be listed before its audio exists on the server; asking
-to play an absent episode does not download it yet.
+later. The server supports on-demand fetching now; the player does not show
+this yet.
 
 ## Set up a podcast library
 
@@ -69,12 +70,13 @@ an episode again gives it a fresh grace period.
 | Policy | Downloads | Deletes |
 |---|---|---|
 | **Keep N** (`keep`) | The newest N episodes still listed in the feed | Only outside that window, after everyone finishes and the grace period ends |
-| **On demand** (`on_demand`) | No automatic downloads; an admin can request one | After everyone finishes and the grace period ends |
+| **On demand** (`on_demand`) | Fetches on play, with at most one queued episode prepared ahead; an admin can also request one | After everyone finishes and the grace period ends |
 | **Archive** (`archive`) | All episodes still listed in the feed, oldest first | Never |
 
-Automatic downloads and retention checks require at least one current follower
-with access. With no followers, files stay in place and automatic work stops;
-an admin can still request a download.
+Policy-selected downloads and retention checks require at least one current
+follower with access. With no followers, files stay in place and the
+policy's automatic downloads stop. Playing an episode, preparing the next one
+in a listener's queue and admin downloads through the API still work.
 
 **Keep N is a download window, not a disk limit.** One follower who never
 listens can keep files indefinitely. An episode is also protected while anyone
@@ -135,6 +137,30 @@ a valid saved copy already exists. A new download needs the module, an online
 Bridge and a writable mapping. See the
 [API reference](/developers/server/api/reference#podcast-storage-admin) for the
 full contract.
+
+### Playing an episode that isn't downloaded
+
+When a compatible client asks to play an episode whose audio is missing, the
+Bridge fetches it. Requests for the same episode share one download, and
+closing a request does not cancel it. Until the audio is saved, the client is
+told to try again shortly. Playback requests go ahead of waiting admin and
+scheduled downloads, and an up-to-date Bridge keeps one download slot free
+for them.
+
+The server can also prepare the next podcast episode in that listener's queue.
+This does not download the rest of an On demand show's feed. Each non-admin
+listener can have at most five open episode fetches they started, including
+queue preparation; admins are exempt. Joining a fetch someone else started
+does not count. This is separate from the five follow requests.
+
+A new fetch needs the module on, an online Bridge and a writable mapping. When
+one is missing, or a download fails, the client is told why. After a failed
+download, playing the episode again does not start a new download for a while
+(30 minutes at first, longer after repeated failures), and policy downloads
+try again only after that wait. An explicit Retry can try sooner. See
+[the API reference](/developers/server/api/reference#podcast-fetch-status-and-retry)
+for the details. A saved episode stays playable through a compatible client
+while the Bridge is offline or the module is off.
 
 ### Space and availability
 

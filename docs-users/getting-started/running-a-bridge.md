@@ -19,7 +19,8 @@ of a book that has none, in its narration, and it can
 recaps it generates, and your corrections to a book's details, to the community
 metadata database.
 
-With the Podcasts module on, it also downloads podcast episodes and checks
+With the Podcasts module on, it also fetches missing podcast episodes on play
+through a compatible client, downloads episodes selected by policy and checks
 retention by a per-show policy an admin sets through the API for now. See
 [Podcasts](../admin/podcasts.md#downloads-and-retention) for the default,
 protections and the API calls. Released player apps do not show podcasts yet.
@@ -228,7 +229,9 @@ books libraries.
 
 Give the podcast folder room for downloads; see
 [Space and availability](../admin/podcasts.md#space-and-availability) for the
-per-episode size cap.
+per-episode size cap, and
+[Playing an episode that isn't downloaded](../admin/podcasts.md#playing-an-episode-that-isnt-downloaded)
+for fetching episodes on play.
 
 Podcast feed, download and retention jobs do not use speech recognition or an AI agent. The steps below
 set up the book-generation and contribution features; the Bridge's setup

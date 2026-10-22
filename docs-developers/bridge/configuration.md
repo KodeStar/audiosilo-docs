@@ -72,6 +72,10 @@ The server's toggle is `modules.podcasts.enabled`, environment
 `AUDIOSILO_MODULES_PODCASTS_ENABLED`, default `false`. It is not a Bridge setting.
 See [Podcasts](podcasts.md) for the HTTP guard, on-disk format and secrets.
 
+On-demand fetching adds no configuration key: the reserved `interactive`
+download slot is a fixed runner capacity, described in
+[claims and leases](pairing-and-jobs.md#claims-and-leases).
+
 ## ASR workers
 
 | Setting | Environment | Default | What it is |
