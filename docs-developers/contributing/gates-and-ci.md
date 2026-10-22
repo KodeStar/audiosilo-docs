@@ -69,7 +69,7 @@ The workflows for the server, player and metadata repos, verified against
 | `ai-verify.yml` | `ai-verify` | PR touching `data/**`; manual dispatch | Advisory, non-blocking AI review of a data pull request's records, reading an entry-level change summary from `metadiff` rather than the raw diff. A rebase that leaves that summary unchanged reuses the last verdict without a model call; a manual dispatch or a re-run always judges afresh. |
 | `workflows.yml` | `workflows` | PR/push touching `.github/workflows/**` or `.github/scripts/**` | Lints the workflows themselves (actionlint) and the shell scripts they call out to (shellcheck); paths-filtered, so it is not a required check. |
 
-:::note CI can't see cross-repo drift
+:::note[CI can't see cross-repo drift]
 Each repo's CI is independent, so a server-side wire change with no matching
 frontend change sails through both pipelines green. The
 [cross-repo checklist](cross-repo-changes.md) is what covers that gap.
@@ -192,7 +192,7 @@ drift; read it before adding code. The digest:
   `run:android`) and verified the behavior - a Metro reload does not pick up
   native changes, and Jest and the web prove nothing about Swift or Kotlin.
 
-:::caution Green gates ≠ verified
+:::caution[Green gates ≠ verified]
 The gates all run on Node/CI engines with full `Intl` and no real device - a
 change can pass every gate and still crash on the Hermes runtime or misbehave
 against a live server. Don't claim something *works* from green checks alone;

@@ -12,7 +12,9 @@ function Hero() {
   return (
     <header className={styles.hero}>
       <div className="container">
-        <img src={useBaseUrl('/img/logo.svg')} alt="" className={styles.heroLogo} />
+        <span className={styles.heroTile}>
+          <img src={useBaseUrl('/img/logo.svg')} alt="" className={styles.heroLogo} />
+        </span>
         <Heading as="h1" className={styles.heroTitle}>
           {siteConfig.title} Documentation
         </Heading>
@@ -29,6 +31,7 @@ function Hero() {
 const tracks = [
   {
     title: 'User Guide',
+    eyebrow: 'For self-hosters and listeners',
     to: '/users',
     description:
       'Install the server, organize your audiobooks, invite your household, ' +
@@ -37,6 +40,7 @@ const tracks = [
   },
   {
     title: 'Developer Docs',
+    eyebrow: 'For contributors',
     to: '/developers',
     description:
       'Architecture, the cross-repo contract, the HTTP API, playback internals, ' +
@@ -53,7 +57,10 @@ function Tracks() {
           {tracks.map((t) => (
             <div key={t.to} className="col col--6">
               <div className={styles.trackCard}>
-                <Heading as="h2">{t.title}</Heading>
+                <span className={styles.eyebrow}>{t.eyebrow}</span>
+                <Heading as="h2" className={styles.trackTitle}>
+                  {t.title}
+                </Heading>
                 <p>{t.description}</p>
                 <Link className="button button--primary button--lg" to={t.to}>
                   {t.cta}

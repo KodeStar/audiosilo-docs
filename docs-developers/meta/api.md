@@ -47,7 +47,7 @@ up as an ageing timestamp:
 { "status": "ok", "built_at": "2026-07-15T...", "works": 1234 }
 ```
 
-:::warning Readiness probe yes, liveness probe no
+:::warning[Readiness probe yes, liveness probe no]
 Wire `/healthz` as the **readiness/startup probe** so an orchestrator holds traffic
 back until the catalogue is in. Do **not** wire it as a liveness probe: that
 restart-loops a server that is patiently waiting out a GitHub outage. The degraded
@@ -701,7 +701,7 @@ refresh path as polling, never trusting or installing data from the request body
 The endpoint is not registered when the secret is absent, and a missed delivery
 is non-fatal - the fallback poller still discovers the release.
 
-:::warning History: the payload was malformed until 2026-09-24
+:::warning[History: the payload was malformed until 2026-09-24]
 From the webhook's introduction until 2026-09-24, the notification body was
 composed with a shell `printf` inside single quotes, so its backslash escapes
 were sent as literal characters instead of JSON escapes. The body was therefore
@@ -750,7 +750,7 @@ request (the release webhook answers 202 and refreshes in the background):
 | `WriteTimeout` | 2m | the handler plus the response transfer, sized so the largest body (a 50,000-URL sitemap shard) still reaches a slow client |
 | `IdleTimeout` | 3m | how long a keep-alive connection waits for its next request |
 
-:::warning Keep the proxy's upstream idle timeout below 3 minutes
+:::warning[Keep the proxy's upstream idle timeout below 3 minutes]
 When metaserve closes an idle keep-alive connection at the moment a reverse proxy
 reuses it, the proxy answers **502**. The proxy has to be the side that gives up
 first, so its upstream idle timeout must stay shorter than metaserve's 3 minutes.

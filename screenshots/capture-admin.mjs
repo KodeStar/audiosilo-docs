@@ -2,7 +2,6 @@
 // Requires a running server (run.sh) and env:
 //   AS_ORIGIN       server origin (default http://127.0.0.1:8790)
 //   ADMIN_PASSWORD  the first-run admin password (parsed from the log by run.sh)
-//   SETUP_URL       optional: a second --setup server's wizard URL (with #token)
 //   MIRROR_ORIGIN   optional: a third server in metadata mirror mode with a seeded
 //                   local copy (run.sh starts it when it built the meta artifact)
 //   MIRROR_PASSWORD that server's first-run admin password
@@ -45,11 +44,14 @@ import {
   addHousehold,
   apiClient,
   around,
+  fitViewportToPage,
   isoAgo,
   pathQuery,
+  silence,
   sleep,
   shoot,
   step,
+  submitSignIn,
   wanted,
   DESKTOP_CONTEXT,
 } from './lib.mjs';
@@ -57,7 +59,6 @@ import {
 const ORIGIN = (process.env.AS_ORIGIN || 'http://127.0.0.1:8790').replace(/\/$/, '');
 const ADMIN = `${ORIGIN}/admin`;
 const PASSWORD = process.env.ADMIN_PASSWORD;
-const SETUP_URL = process.env.SETUP_URL || '';
 const MIRROR_ORIGIN = (process.env.MIRROR_ORIGIN || '').replace(/\/$/, '');
 const MIRROR_PASSWORD = process.env.MIRROR_PASSWORD || '';
 const INBOX_DIR = path.resolve(process.env.INBOX_DIR || path.join(CACHE, 'inbox'));
@@ -90,6 +91,17 @@ let firstBook = null; // the first book of GET /admin/books ({library_id, path, 
 const login = await api(null, 'POST', '/auth/login', {username: 'admin', password: PASSWORD, device_name: 'Kitchen tablet'});
 const token = login.token;
 console.log('  ✓ admin login');
+
+// A fresh server sends its admin to the first-run flow on the first console
+// visit of every browser session; the flow has shots of its own
+// (capture-setup.mjs), so this server is marked set up. Finished and dismissed,
+// as an upgraded server is, so the Overview shows no "Finish setting up" card.
+// (A server from before the flow has no such route.)
+const markSetUp = (client, tok) =>
+  client(tok, 'PUT', '/admin/setup', {finished: true, dismissed: true}).catch((e) =>
+    console.log(`  ! first-run setup not marked done: ${e.message}`),
+  );
+await markSetUp(api, token);
 
 await step('provision listener + share', async () => {
   const libs = await api(token, 'GET', '/admin/libraries');
@@ -412,14 +424,6 @@ const callOfTheWild = async () => {
   if (!book) throw new Error('no seeded Call of the Wild');
   return book;
 };
-// Makes the viewport as tall as the page (between min and max), so a long card
-// or every card is in the shot; the caller restores DESKTOP_CONTEXT.viewport.
-const fitViewportToPage = async (p, min, max, settle = 800) => {
-  const height = await p.evaluate(() => document.documentElement.scrollHeight);
-  await p.setViewportSize({width: 1440, height: Math.min(Math.max(height, min), max)});
-  await sleep(settle);
-};
-
 await step('sign-in page', async () => {
   await page.goto(`${ADMIN}/`, {waitUntil: 'networkidle', timeout: 45000});
   await page.getByRole('heading', {name: 'Admin sign in'}).waitFor({timeout: 15000});
@@ -429,9 +433,7 @@ await step('sign-in page', async () => {
 
 // Signs in as admin from the console's sign-in form (already open on `p`).
 const signIn = async (p, password) => {
-  await p.getByLabel('Username', {exact: true}).fill('admin');
-  await p.getByLabel('Password', {exact: true}).fill(password);
-  await p.getByRole('button', {name: 'Sign in', exact: true}).click();
+  await submitSignIn(p, password);
   await p.locator('h1.display').first().waitFor({timeout: 15000});
 };
 
@@ -685,15 +687,6 @@ await step('overview on a phone', async () => {
 // library. Everything lands under INBOX_DIR (gitignored .cache); the seeded
 // library is only read (copy-on-write clones where the filesystem supports it).
 let inbox = null;
-const ffmpeg = (args) =>
-  spawnSync('ffmpeg', ['-hide_banner', '-loglevel', 'error', '-y', ...args], {stdio: 'ignore'}).status === 0;
-// Silent mono audio: cheap to encode even when it is hours long.
-const silence = (file, seconds, meta = {}, codec = ['-c:a', 'libmp3lame', '-b:a', '8k']) =>
-  ffmpeg([
-    '-f', 'lavfi', '-i', 'anullsrc=r=8000:cl=mono', '-t', String(seconds),
-    ...Object.entries(meta).flatMap(([k, v]) => ['-metadata', `${k}=${v}`]),
-    ...codec, file,
-  ]);
 
 await step('provision an Inbox library with issues', async () => {
   await rm(INBOX_DIR, {recursive: true, force: true});
@@ -860,6 +853,7 @@ await step('health: system in mirror mode', async () => {
   // run.sh's dead proxy fails): stop at once, with its metadata switched off.
   const mapi = apiClient(MIRROR_ORIGIN);
   const {token: mtoken} = await mapi(null, 'POST', '/auth/login', {username: 'admin', password: MIRROR_PASSWORD});
+  await markSetUp(mapi, mtoken);
   for (const until = Date.now() + 30000; ; await sleep(500)) {
     const m = await mapi(mtoken, 'GET', '/admin/meta/mirror');
     if (m.state === 'ready') break;
@@ -1537,15 +1531,6 @@ await step('connect page', async () => {
   await sleep(2500); // fragment codes auto-redeem into the QR + buttons view
   await shoot(p2, 'server/connect-page.png');
   await p2.close();
-});
-
-await step('setup wizard', async () => {
-  if (!SETUP_URL) throw new Error('SETUP_URL not set (run.sh starts the --setup instance)');
-  const p3 = await ctx.newPage();
-  await p3.goto(SETUP_URL, {waitUntil: 'networkidle', timeout: 45000});
-  await sleep(1500);
-  await shoot(p3, 'server/setup-wizard.png');
-  await p3.close();
 });
 
 await ctx.close();

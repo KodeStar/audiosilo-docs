@@ -884,6 +884,14 @@ Its keys:
   before the listener; a failure stops the start, as a failed migration does, since
   every series filter reads only the keys (see `books.series_key` and
   `book_more_series` in [The rebuildable index](#the-rebuildable-index)).
+- `setup_state`: the admin console's
+  [first-run setup flow](web-ui.md#the-first-run-setup-flow),
+  `{"finished":false,"dismissed":false,"steps":{"folder":"done","naming":"skipped"}}`
+  (each step id in `catalog.SetupSteps`, `done` or `skipped`; an absent id is a
+  step not yet seen). No row means a fresh server: not finished, the flow opens
+  on the first console visit. `catalog.UpdateSetupState` merges a change into
+  it in one writer transaction; migration `0053` writes it finished and
+  dismissed on an upgraded server.
 
 ### The Bridge
 
@@ -1239,6 +1247,7 @@ The migration history so far:
 | 0050 | `book_attachments_description` | `book_attachments.description` (`TEXT NOT NULL DEFAULT ''`): the Bridge's checked `.audiosilo/description.json` (Phase 1c), derived like the rest of the row. No data moves: a book read before it had no `description.json` in its signature (the name was unknown then), so a book that has one now has a changed signature and the next scan reads it again, without re-indexing |
 | 0051 | `book_attachments_chapters` | `book_attachments.chapters` (`TEXT NOT NULL DEFAULT ''`): the Bridge's checked `.audiosilo/chapters.json` (Phase 1d), derived like the rest of the row and read by `applyChapterSource` as the generated chapter source ([Generated chapters](community-chapters.md#generated-chapters)). No data moves, for the same reason as 0050: a book that has one now has a changed signature, so the next scan reads it again |
 | 0052 | `podcasts` | `libraries.kind`, show/hash/episode indexes, durable follows (bound to `show_id`), server feed state including the missing-secret latch, idempotent folded-job markers, and `bridge_jobs.feed_redacted` plus subscribe/recovery indexes; see [Podcasts](#podcasts) |
+| 0053 | `setup_state` | the `server_state` row `setup_state` (see [Server state](#server-state)), inserted (`INSERT OR IGNORE`) finished and dismissed with no steps when the server already holds a library of any kind or more than one account that isn't a demo account or a household member (`is_demo = 0 AND managed_by IS NULL`), so an upgraded server never shows the first-run flow or its Overview card. A fresh database has neither when it runs (the first admin is made after the migrations), so it gets no row |
 | 0054 | `podcast_fetch` | identity-bound feed state, durable `podcast_policies`, separate `podcast_fetch_state`, and derived episode hash/timeline/Fetch/signature columns; see [Podcasts](#podcasts) |
 
 ## SQLite choices

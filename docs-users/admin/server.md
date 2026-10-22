@@ -61,7 +61,7 @@ The console can't restart the server for you. Restart it the way you started
 it: `docker compose restart` (or `docker restart` with your container's name),
 restarting the service, or quitting and starting the program again.
 
-:::warning If the server won't start after a change
+:::warning[If the server won't start after a change]
 A listen address whose port something else uses, or a Let's Encrypt name that
 doesn't point at the server, can keep it from starting. Open `config.yaml` in
 the server's data folder, put the old value back (the keys are listed in the

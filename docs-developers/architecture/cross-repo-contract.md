@@ -7,7 +7,7 @@ The server defines the JSON/HTTP contract; the frontend and the
 [Bridge](../bridge/index.md) mirror it **by hand** (no codegen). This page is a tour of every seam - every place where a
 change in one repo forces a change (or a deliberate decision) in another.
 
-:::info This page is the tour, not the source
+:::info[This page is the tour, not the source]
 The **normative** contract is `~/dev/audiosilo/CROSS-REPO.md` in the workspace
 root. When a seam changes, **update CROSS-REPO.md first**, in the same logical
 change as the code - then bring this page in line. If this page and CROSS-REPO.md

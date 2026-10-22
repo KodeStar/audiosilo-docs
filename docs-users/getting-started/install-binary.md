@@ -35,22 +35,22 @@ In short: on the common path there is nothing to install, and if the download ca
 ./audiosilo --data ./data
 ```
 
-The very first start creates an admin account and prints the credentials **once** - save them. Then open `https://localhost:8080` (the default is HTTPS with a self-signed certificate, so expect a browser warning). See [First run](./first-run.md) for the full walkthrough.
+The very first start creates an admin account and prints the credentials **once** - save them. Then open `https://localhost:8080` (the default is HTTPS with a self-signed certificate, so expect a browser warning). Sign in to the admin console at `/admin` and it walks you through setting up the server. See [First run](./first-run.md) for the full walkthrough.
 
-Prefer a guided setup in the browser instead of a printed password? Start with the setup wizard:
+Prefer to choose the admin password in the browser instead of a printed one? Start with `--setup`:
 
 ```bash
 ./audiosilo --data ./data --setup
 ```
 
-Instead of creating an admin for you, the server prints a one-time link to a browser wizard where you choose the admin password and point it at your books folder. Details in [First run](./first-run.md).
+Instead of creating an admin for you, the server prints a one-time link to a page where you choose the admin username and password. Either way, the admin console then walks you through the rest - your books folder, how books are named, connecting a phone - the first time you sign in. Details in [First run](./first-run.md).
 
 Useful flags:
 
 | Flag | What it does |
 | --- | --- |
 | `--data <dir>` | Where config, database and certificates live (default `./data`). |
-| `--setup` | First run opens a browser setup wizard instead of printing generated credentials. |
+| `--setup` | First run prints a one-time link to choose the admin password in the browser, instead of printing generated credentials. |
 | `--ffmpeg <path>` | Explicit path to ffmpeg; `""` disables transcoding. |
 | `--ffprobe <path>` | Explicit path to ffprobe; `""` disables duration/chapter extraction. |
 

@@ -21,7 +21,7 @@ audiosilo-docs/
   sidebars-developers.ts
   screenshots/         the capture pipeline (manifest.mjs, run.sh, capture-*.mjs)
   static/img/screenshots/   the generated images the pages embed
-  src/                 landing page + theme (pink #db2777, dark-first)
+  src/                 landing page + theme (shared Shelf tokens, follows the system colour scheme)
 ```
 
 It's a standard [Docusaurus](https://docusaurus.io) site with **two docs
@@ -41,7 +41,17 @@ npm run build      # the docs gate - MUST pass before a change is done
 `npm run build` is deliberately strict: broken internal links, broken anchors,
 and missing embedded images all **fail the build**. That is the mechanical
 check that pages and screenshots stay consistent - treat it exactly like the
-code repos' gates.
+code repos' gates. A `prebuild` check (`scripts/check-admonitions.mjs`) also
+rejects old-style admonition titles (see Writing style below).
+
+Search (the `@easyops-cn/docusaurus-search-local` theme) builds its index
+during `npm run build`, so the search box returns nothing under `npm start`.
+To try a search, or to check how a page ranks, use the built site:
+`npm run build && npm run serve`. A postinstall script,
+`scripts/patch-search-link.mjs`, makes the theme's "See all results" link
+point at `/search?q=` (the theme ignores `trailingSlash: false`); it fails
+the install if a theme upgrade changes that line, so check the link still
+keeps its query and then update or remove the script.
 
 ## When a code change needs a docs change
 
@@ -77,6 +87,7 @@ mappings:
 | Listening in the house (`src/components/house/`, the household hooks; server `catalog/household.go`) | [frontend/listening-in-the-house.md](../frontend/listening-in-the-house.md) + the [reference](../server/api/reference.md#listening-in-the-house) + [auth-and-security.md](../server/auth-and-security.md#listening-in-the-house-what-other-people-see) + `/users/listening/in-the-house`, `/users/admin/activity` (what the server records) |
 | Chromecast (`src/cast/`, `plugins/withCast.js`; server `auth/cast.go`, `handlers_cast.go`, the web CSP) | [frontend/chromecast.md](../frontend/chromecast.md) + the [reference](../server/api/reference.md#casting) + [auth-and-security.md](../server/auth-and-security.md#cast-tokens) + [server/web-ui.md](../server/web-ui.md#per-document-csp-htmlcsp) for the web CSP (`castSenderScripts`, the policy `TestHTMLCSPCastSender` pins) + `/users/listening/chromecast`, `/users/listening/playback` (other speakers), `/users/getting-started/remote-access` (the certificate note) |
 | Downloads / PWA, the offline companion (`offline-meta.ts`) | [frontend/offline.md](../frontend/offline.md) + `/users/listening/offline-downloads` |
+| First-run setup: the `/setup` page (`handlers_setup.go`, `assets/setup.*`), the console's Set up your server flow and Overview card (`features/setup/`, `finish-setup-card.tsx`), `catalog/setup.go`, `library/preview.go`, `library/mounts.go`, `handlers_admin_setup.go` | `/users/getting-started/first-run` (a section and shot per step) + the quickstarts' setup step (`/users/getting-started/quickstart-docker`, `install-unraid`, `install-binary`) + `/users/admin/console-tour` (the card) + [web-ui.md](../server/web-ui.md#the-first-run-setup-flow) (the flow and the `/setup` page) + the [reference](../server/api/reference.md#admin-first-run-setup) (and `POST /setup`) + [api/index.md](../server/api/index.md#error-envelope-and-status-conventions) (the codes) + [data-model.md](../server/data-model.md#server-state) (`setup_state`, `0053`) + [configuration.md](../server/configuration.md) (`--setup`) + [backups-and-notifications.md](../server/backups-and-notifications.md#audit-log) (`settings.setup`) + the `server/setup-wizard*.png` and `setup/*.png` screenshots (`capture-setup.mjs`: `SHOTS_ONLY=setup/,server/setup-wizard screenshots/run.sh`) |
 | Scanner, detection, metadata | [server/scanner.md](../server/scanner.md) + `/users/getting-started/organizing-your-library` |
 | Community chapters (`internal/chapteralign`, `internal/chaptercheck`, `catalog/communitychapters.go`, the Chapters card's panel) | [server/community-chapters.md](../server/community-chapters.md) + the Community chapters section of `/users/admin/books` (and `/users/admin/health` for the Health rows) |
 | Auth, invites, shares | [server/auth-and-security.md](../server/auth-and-security.md) + `/users/admin/users-and-invites`, `/users/admin/sharing` |
@@ -91,6 +102,7 @@ mappings:
 | meta.audiosilo.app site UI | `/users/community/meta-site` + the `meta/` screenshots (+ [meta/overview.md](../meta/overview.md) when it is a site-architecture change) |
 | Build / release / distribution | [release-pipeline.md](../architecture/release-pipeline.md) + [releasing.md](./releasing.md) (+ `/users/getting-started/install-unraid` when the native archives or the LinuxServer.io image's template, paths or defaults change) |
 | A capability flag | [server/api/index.md](../server/api/index.md) + the feature's user page |
+| The shared design tokens (`audiosilo-server/admin-ui/src/styles/globals.css`: colours, font stacks, shadows, motion) | Section 2 (shared tokens) of this site's `src/css/custom.css`, copied across verbatim (the dark block stays inside its `@media screen` wrapper), then a look at the built site in light and dark |
 
 :::tip
 When you flip something from "planned" to "shipped" (WebSocket sync or
@@ -103,9 +115,9 @@ the feature name - several pages deliberately mark these as not-yet-shipped.
 Every embedded image is listed in `screenshots/manifest.mjs` and lives under
 `static/img/screenshots/`. The pipeline (`screenshots/run.sh`) rebuilds the
 server, seeds a small public-domain LibriVox library, runs a demo-mode server,
-and captures the web player, admin console, connect page, and setup wizard
-with Playwright. Anything it can't reach gets a labelled placeholder so the
-build never breaks.
+and captures the web player, admin console, connect page, and the first-run
+setup page and console flow (on a second, `--setup` server) with Playwright.
+Anything it can't reach gets a labelled placeholder so the build never breaks.
 
 Rules that keep this maintainable:
 
@@ -118,7 +130,8 @@ Rules that keep this maintainable:
 ## Adding a page
 
 1. Create the `.md` file under `docs-users/` or `docs-developers/` with
-   `title:` and `description:` frontmatter (body starts at `##`).
+   `title:` and `description:` frontmatter (body starts at `##`; the
+   `title:` already renders as the page heading, so do not repeat it).
 2. Add its id to the matching `sidebars-*.ts` - sidebars are hand-written so
    reading order stays deliberate; the build fails if the ids drift.
 3. Link related pages with relative `.md` links (validated at build time).
@@ -133,6 +146,12 @@ Rules that keep this maintainable:
   match the source, em dashes included (no current output contains one).
 - Cross-referenced headings should use a colon or rephrase rather than a dash,
   so the auto-generated anchor stays clean and stable.
+- **Admonition titles go in brackets.** Write `:::note[Title]` (also `tip`,
+  `info`, `warning`, `danger`, `caution`), then the body, then a closing `:::`.
+  The old `:::note Title` form no longer parses on this site (`future.v4`
+  turns off `markdown.mdx1Compat.admonitions`) and shows up as literal
+  `:::note Title` text, so the build rejects it. A bare `:::note` without a
+  title is fine.
 
 ## Deployment
 

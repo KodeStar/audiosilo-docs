@@ -10,7 +10,7 @@ Podcasts need a [Bridge](bridge.md) and the **Podcasts** module, enabled in
 artwork, downloads episodes and removes eligible older downloads. The server
 reads what the Bridge saves.
 
-:::info Player views arrive later
+:::info[Player views arrive later]
 Released player apps, including current store builds, **do not show podcasts
 yet**, even when you sign in as an admin. Podcast player views arrive in a later
 release. **Only the admin console lists podcast libraries for now.** There is

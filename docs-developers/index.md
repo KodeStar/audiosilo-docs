@@ -151,7 +151,7 @@ The server's priorities, in order - when they conflict, the earlier one wins:
 If you just want to *run* AudioSilo rather than hack on it, the
 [user guide](/users/getting-started/first-run) covers installation and everyday use.
 
-:::info The normative contract lives in the workspace
+:::info[The normative contract lives in the workspace]
 `~/dev/audiosilo/CROSS-REPO.md` (checked into the workspace root, alongside
 `CLAUDE.md` and `CODE-HEALTH.md`) is the **normative** integration contract
 between the repos. These docs are a readable tour of the same material - when a

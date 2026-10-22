@@ -207,7 +207,7 @@ meta repo at the workspace root). The honest summary:
   the public demo server noted in `store/metadata/ios/review_notes.txt`, which
   must stay reachable throughout a review.
 
-:::tip When a release involves a wire change
+:::tip[When a release involves a wire change]
 A cross-repo wire change only reaches users compatibly because the server image
 pins its web build. Land the change per the
 [cross-repo checklist](cross-repo-changes.md) first, then release web → server in

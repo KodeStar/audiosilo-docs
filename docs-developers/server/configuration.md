@@ -35,7 +35,16 @@ Most keys can also be changed while the server runs, from the admin console's
 :::note
 First-run **admin bootstrap** is keyed off the database (does an admin
 exist?), not off config-file existence - pre-supplying a `config.yaml` does
-not suppress the credentials banner or the setup wizard.
+not suppress the credentials banner or the setup page.
+
+The console's first-run setup flow is keyed off the database too: the
+`server_state` key `setup_state` (no row = a fresh server, flow not finished;
+an upgraded server is marked finished, see
+[Data model](data-model.md#server-state)). A library declared in `config.yaml` or the
+environment doesn't finish it: the flow lists it as already added
+(`GET /admin/setup`'s `config_libraries`) and its naming step can still switch
+that library's `metadata_source`, which survives restarts (the config sync
+updates only a declared library's root and default view).
 :::
 
 ## CLI flags (`cmd/audiosilo`)
@@ -45,7 +54,7 @@ not suppress the credentials banner or the setup wizard.
 | `--data` | `./data` | Data directory: config, SQLite database, generated certs, downloaded tools |
 | `--ffprobe` | `ffprobe` | Path to ffprobe (durations, chapters, codec detection). **`""` disables it** - the scanner degrades to path-derived metadata and `direct_playable` defaults to true |
 | `--ffmpeg` | `ffmpeg` | Path to ffmpeg for on-the-fly transcoding. **`""` disables it** - `?transcode=1` returns 503 and the `transcode` capability reports false |
-| `--setup` | `false` | First-run **web setup wizard**: instead of auto-creating the admin and printing credentials once, mint a one-time token and enable the guarded `/setup` page (see [Built-in web UI](web-ui.md)) |
+| `--setup` | `false` | First-run **setup page**: instead of auto-creating the admin and printing credentials once, mint a one-time token and enable the guarded `/setup` page, where the admin's username and password are chosen in the browser (see [Built-in web UI](web-ui.md#first-run-setup-page-setup)). Either way the admin console's [first-run setup flow](web-ui.md#the-first-run-setup-flow) then adds the books folder and the rest on the first `/admin` visit |
 
 A bare tool name (no path separator) is resolved **next to the server
 executable first**, then on `$PATH`; an explicit path is used as-is. If a tool
@@ -102,7 +111,7 @@ and where it appears: [Home and away addresses](api/reference.md#home-and-away-a
   upstream, not an address a device can use.
 - A `home` equal to the `away` is dropped.
 
-:::caution Reverse proxies and the derived home address
+:::caution[Reverse proxies and the derived home address]
 Behind a reverse proxy the server derives no home address at all, because the request's
 `Host` is the proxy's upstream (a container name such as `audiosilo:8080`, a bridge IP,
 plain `http` behind TLS). Set `lan_url` to give the apps a home address; a configured
@@ -158,7 +167,7 @@ self-signed, and no CSP carries `upgrade-insecure-requests`, so the console and 
 player also work over http on the LAN (without the secure-context features: the service
 worker, the clipboard API).
 
-:::note Gateways and the source address
+:::note[Gateways and the source address]
 Docker Desktop (Mac/Windows), rootless Docker, Docker's userland proxy (e.g. for IPv6
 connections to a published port) and routers that rewrite a forwarded port's source hand
 the server connections from a private address, such as `172.17.0.1`, whoever made them.
@@ -716,7 +725,7 @@ overrides). It rejects:
 
 Secure-by-default choices baked into `Default()` and first-run: TLS on
 (`selfsigned`) out of the box, no default passwords (credentials are minted
-and printed once, or set via the guarded setup wizard), config written
+and printed once, or set via the guarded setup page), config written
 `0600`, no trusted proxies and no CORS grants until configured. See
 [Auth & security](auth-and-security.md) for the app-layer hardening these
 feed into.
@@ -732,7 +741,7 @@ command and is also available for running the server in-process. The full
 | `DataDir` | string | Config/database/certs directory (as `--data`) |
 | `FFprobePath` / `FFmpegPath` | string | Tool paths; `""` disables the tool (as the flags) |
 | `Log` | `*slog.Logger` | Logger; nil → default stderr text logger |
-| `Setup` | bool | Select the first-run flow: `false` = auto-admin + printed banner; `true` = token-guarded `/setup` wizard |
+| `Setup` | bool | Select the first-run flow: `false` = auto-admin + printed banner; `true` = token-guarded `/setup` page (the admin account only; the console's setup flow follows) |
 | `OnURL` | `func(url string)` | Called once at startup with the URL to open: the token-carrying `/setup#token=…` while first-run setup is pending, else `<base>/web` when a player is available, else `<base>/admin`. A GUI launcher uses it to open a browser |
 | `Bind` | string | Config override for `bind` (e.g. `"127.0.0.1:8080"`) |
 | `TLSMode` | string | Config override for `tls.mode` (`"off"`/`"selfsigned"`/`"autocert"`) |

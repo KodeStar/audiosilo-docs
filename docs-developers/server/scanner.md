@@ -114,7 +114,7 @@ A scan of a library runs when:
 |---|---|---|
 | Server startup (every library, once) | `startup` | `Scanner.EnqueueAll` from `launcher.Run`, after `Scanner.Start` |
 | The library's scan schedule says it's due | `schedule` | the scheduler goroutine (see [Scheduled scans](#scheduled-scans)) |
-| Admin "Rescan" (and the setup wizard's first scan, and a newly created library) | `manual` | `POST /admin/libraries/{id}/scan`, `POST /admin/libraries`, `POST /setup` |
+| Admin "Rescan" (and a newly created library, including the one the console's first-run flow adds, and the one an old-style `POST /setup` with library fields adds) | `manual` | `POST /admin/libraries/{id}/scan`, `POST /admin/libraries`, `POST /setup` |
 | Admin "rescan every library" | `manual` | `POST /admin/scan` (`Scanner.EnqueueAll`) |
 | A library's root or ignore rules changed | `change` | `handleUpdateLibrary` |
 | A folder override set or cleared | `change` | `handleSetFolderOverride` / `handleDeleteFolderOverride` |
@@ -993,7 +993,7 @@ unavailable", from two signals:
 
 Every admin request that starts a scan (`POST …/scan`, `POST /admin/scan`, creating a library,
 an edit that changes the root or the ignore rules, setting or clearing a folder
-override, the setup wizard) goes through the API's `startScan`, which calls
+override) goes through the API's `startScan`, which calls
 `Scanner.Enqueue` with the requesting admin as `started_by`. The library reads
 as queued (or running) before the request returns, so the first status poll
 sees the scan even when a small library would otherwise finish between the two

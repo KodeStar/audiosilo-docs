@@ -115,7 +115,7 @@ npm --prefix admin-ui run dev                # admin console dev server (proxies
 ```
 
 Useful flags: `--data` (config/db/certs dir), `--ffprobe`/`--ffmpeg` (`""`
-disables), `--setup` (first-run browser wizard instead of the printed creds).
+disables), `--setup` (choose the first admin's password on a browser page instead of the printed creds; the console's setup flow follows either way).
 
 **audiosilo-frontend**
 

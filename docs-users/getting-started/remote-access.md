@@ -34,13 +34,13 @@ You don't have to set anything up on the server. Connect the app while your phon
 
 To turn plain HTTP off, set `tls.home_http: false` (`AUDIOSILO_TLS_HOME_HTTP=false`, or switch off **Plain HTTP at home** under the console's Server > Settings > Network & HTTPS; it takes effect at the next restart). The phone apps then can't connect to a self-signed server.
 
-:::caution What plain HTTP at home means
+:::caution[What plain HTTP at home means]
 - Plain HTTP isn't encrypted: anyone on your home network who can watch its traffic could see sign-ins and what you listen to. That is the usual trade-off on a trusted home Wi-Fi; on a shared or untrusted network, turn it off and use a trusted certificate instead.
 - The server treats a connection as "at home" when it comes from a home-network address and uses the server's home address (its LAN IP, or a name like `nas.local`). Visitors from the internet use your public name or address, so they are always sent to `https://`, even through setups (Docker Desktop, rootless Docker, some routers) that make every connection look like it comes from inside your network.
 - Plain HTTP at home is off when you give the server your own certificate (`tls.cert_file`): if your devices trust that certificate, they keep using `https://`.
 :::
 
-:::note Casting needs a certificate the Cast device trusts
+:::note[Casting needs a certificate the Cast device trusts]
 To [cast](../listening/chromecast.md), your server's address must work for the Cast device, which can't click through a certificate warning. The default self-signed certificate won't work. Use HTTPS with a trusted certificate (one of the two options below), or, from the iPhone and Android apps, plain HTTP on your home network as the [home address](#tell-the-server-its-home-address) (the default self-signed setup offers it [by itself](#plain-http-at-home-how-the-phone-apps-connect)): behind a [reverse proxy](#behind-a-reverse-proxy), that's AudioSilo's own port (for example `http://192.168.1.20:8080`), not the proxy's. The web player casts only from an HTTPS page, so it needs the trusted certificate.
 :::
 
@@ -113,7 +113,7 @@ The apps learn it with the public address when they connect (and from the server
 
 You can often leave it empty. The server then offers the address a device connected with when that address is a home-network one: a private IP address such as `192.168.1.20` or `10.0.0.5`, or a local name such as `nas.local`, `nas.internal` or `audiosilo`. An IPv6 address is written in square brackets. With the default self-signed certificate and [plain HTTP at home](#plain-http-at-home-how-the-phone-apps-connect) on, that address is offered as `http://`, even to a device that connected over `https://`, on the same port. A home address you set is offered exactly as you wrote it. A device that connected through the public address learns no home address that way, so set it when you want every device to switch.
 
-:::note Behind a reverse proxy
+:::note[Behind a reverse proxy]
 A request that reaches AudioSilo through a reverse proxy never gives the server a home address to offer, because the address it sees is the proxy's own internal one. The apps keep using the public address and just never switch to your home network. Set `lan_url` to the server's home address to fix it.
 :::
 
@@ -121,7 +121,7 @@ A request that reaches AudioSilo through a reverse proxy never gives the server 
 
 Being internet-facing for non-experts is the server's first design priority, and the protections are always on - there is nothing to remember to enable:
 
-- **No default passwords.** The admin credential is randomly generated on first run (or chosen by you in the setup wizard); there is no factory password to forget to change.
+- **No default passwords.** The admin credential is randomly generated on first run (or chosen by you on the one-time `--setup` page); there is no factory password to forget to change.
 - **No sign-ups.** Nobody can sign themselves up. Accounts are created by the admin, and devices join via short-lived invite codes (by default good for 5 uses and one day). See [People and invites](../admin/users-and-invites.md). Someone who already has an account can also add the kids and grown-ups they live with as [household members](../listening/household.md), signed in by them and never through a public page, within limits [the admin sets](../admin/users-and-invites.md#household-members).
 - **Rate limiting and lockout.** Requests are rate-limited per visitor address (covers and audio per signed-in device instead, so browsing a large library is never throttled), and repeated failed logins or invite-code guesses trigger a brute-force lockout.
 - **Secrets are stored scrambled.** Passwords use modern, deliberately slow hashing (argon2id); sign-in tokens and invite codes are stored only as hashes, and every token can be revoked.

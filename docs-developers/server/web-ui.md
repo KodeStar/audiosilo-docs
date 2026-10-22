@@ -1,6 +1,6 @@
 ---
 title: Built-in web UI
-description: "internal/web: the baked-in connect and setup pages, the admin console (admin-ui, embedded via internal/web/adminui), the shared SPA handler (internal/web/spa) that serves the console and the /web player, per-document CSP, the embedplayer build tag, the first-run setup wizard, and the well-known app-association files."
+description: "internal/web: the baked-in connect and setup pages, the admin console (admin-ui, embedded via internal/web/adminui), the shared SPA handler (internal/web/spa) that serves the console and the /web player, per-document CSP, the embedplayer build tag, the first-run setup page and the console's first-run setup flow, and the well-known app-association files."
 ---
 
 The server ships three web surfaces from `internal/web`:
@@ -42,7 +42,7 @@ There is no classic console any more: `/admin/classic` is just another client
 route, which the console answers with its "There's nothing here" page.
 
 Two related routes live in `internal/api`, not `internal/web`: the setup
-wizard (`GET`/`POST /setup`, below) and - in demo mode with a player present -
+page (`GET`/`POST /setup`, below) and - in demo mode with a player present -
 a `GET /{$}` redirect that sends the exact site root to `/web/demo`
 (`webDemoPath` in `api.go`) so a demo instance lands visitors straight on the
 instant-demo flow.
@@ -120,7 +120,7 @@ lookup falls back to the OS registry, which on some Windows hosts maps `.js` to
 aren't valid `fs` paths (`..` segments) never resolve to a file. `HEAD`, `Range`
 and `If-Modified-Since` go through `http.ServeContent`.
 
-:::note Behaviour change for `/web`
+:::note[Behaviour change for `/web`]
 Before the shared handler, the player 404'd **any** missing path with a
 non-`.html` extension. Now only a missing **top-level** file with an extension,
 or a missing file under `_expo/` or `assets/`, 404s; a deeper missing path
@@ -348,7 +348,9 @@ CSP-sensitive work against a real build served by Go. The console's own gate is
   attention" card: up to six categories with something to fix, each linking to
   its Health queue). "Recent listening" is the stats' progress feed minus the
   user/book pairs that are live (`splitListening` in
-  `features/overview/overview-model.ts`). The side column ends with the
+  `features/overview/overview-model.ts`). The side column starts with the
+  [Finish setting up card](#the-first-run-setup-flow) while a first-run step
+  is still skipped, and ends with the
   [support card](#the-support-card) when `GET /admin/support` says it shows.
 - **Library > Books** - the cover grid (virtualized) or table over
   `GET /admin/books` (keyset pages loaded as you scroll), the "Recently added"
@@ -929,6 +931,107 @@ support card", with `choice` worded as the button.
 The same sponsor line closes every GitHub Release's notes (the GoReleaser
 `release.footer`; see [Releasing](../contributing/releasing.md)).
 
+### The first-run setup flow
+
+"Set up your server" (`features/setup/`, FIRST-RUN-PLAN.md Phase F1) is the
+console's first-run flow: eight steps that take a new admin from the first
+sign-in to a named, matched library and a paired phone. The account itself
+still comes from the first-run banner or the [`/setup` page](#first-run-setup-page-setup).
+It is console-only and admin-only: no capability flag, and the player never
+asks.
+
+**Where it shows.** The console route `/setup` (so `/admin/setup`) renders as
+a page of its own, outside `AppShell`: `Root` signs the admin in, then
+`SignedIn` renders the bare `<Outlet/>` on the setup path and the shell
+everywhere else. `useSetupRedirect` sends a signed-in admin there (with
+`replace`) while `GET /admin/setup` reports `finished: false`, **once per
+browser session** (`sessionStorage` key `audiosilo.setup.redirected`, set also
+when the admin opens the flow some other way; a module variable stands in when
+storage is blocked), so **Finish later** (a link to Overview) or any link out
+stays where it goes. `?step=<id>` deep-links one step; without it
+`resumeStep` opens the first step with no mark (the last when all have one),
+except that the folder step is asked again when its draft is gone and the
+server still has no library.
+
+**State.** The server keeps only the flow's progress (`state`: `finished`,
+`dismissed`, `steps` with each id `done` or `skipped`; an absent id is unseen)
+and answers the folder preview; every step writes through the ordinary admin
+APIs (`PATCH /admin/settings`, `POST /admin/libraries` with `kind: "books"`,
+`PATCH /admin/libraries/{id}`) and then marks itself with
+`PUT /admin/setup` (`saveSetup`). See the
+[API reference](api/reference.md#admin-first-run-setup). Leaving the last step
+sends `finished: true` with `finishMarks`: every step still without a mark goes
+down as `skipped`, so the Overview card lists what is left. Once finished, a
+step reopened from the card goes on to the next step still skipped
+(`nextStep`), then back to Overview.
+
+**The steps** (ids in order: `folder naming metadata reach abs backups phone
+bridge`, `SETUP_STEPS`), each with Skip and, after the first, Back (`StepFooter`):
+
+1. **folder** - a typed path (no folder picker, no new listing route) checked
+   by `POST /admin/setup/preview`: the counts, `same_root` as a warning, and
+   `path_not_absolute`, `folder_unreadable` (worded for the Docker host-path
+   mistake) and `root_overlaps` in plain words (`folderErrorKey`). The
+   envelope's `mount_hints` show as chips. Libraries the server has are listed
+   as already added, those named in `config_libraries` marked "From your
+   config". The library is **not** created here: the folder and name become a
+   draft, kept in `localStorage` (`audiosilo.setup.draft`, `parseDraft`) until
+   step 3.
+2. **naming** - the preview's samples as a two-column table per book (tags,
+   folders), rows that differ highlighted (`compareField`, `disagreements`),
+   and the `metadata_source` pick (`RadioCards`) with the preview's
+   `suggested` side preselected and badged for the draft. A books library that
+   exists already (a config library, or one an older `/setup` made) keeps its
+   own source preselected with the suggestion as a hint; choosing the other
+   PATCHes it, which re-resolves its books (the same toast as Libraries).
+3. **metadata** - `metadata.enabled`, `region` and `mode` (mirror's size said
+   up front; `mode` restart-only), then the draft becomes the library
+   (`useCreateDraftLibrary`: `POST /admin/libraries` with the draft's source),
+   and its scan starts. Skip keeps the settings but still creates the library.
+   From this step on `ScanStatus` shows every library scanning or queued (and
+   the one the flow made, once done), from `useLibraries`' `scan`;
+   `useScanWatcher` runs on the page since the shell isn't mounted.
+4. **reach** - the browser's `location.origin` offered as `lan_url` and/or
+   `public_url` (`reachOffers`: a home-network host by the server's own rule,
+   `isHomeHost`, suits the home address first; loopback neither), the two
+   address fields, a reverse proxy offered for `trusted_proxies` when
+   `request.proxied` and the peer isn't trusted (`proxyToTrust`), a note when
+   the server saw another address than the browser's (`addressMismatch`), and
+   the TLS mode with what it means for phones plus `tls_home_http` in
+   self-signed mode (restart settings, badged).
+5. **abs** - points to Settings > Import (new tab) and says ABS
+   `metadata.json` files are read. Continue records `done` only once the
+   import was opened, else `skipped`.
+6. **backups** - `backups.schedule` and `keep` (1-365), the backup folder
+   shown read-only (`backups.dir` is restart-only and read-only in the
+   settings API), and `general.update_check`.
+7. **phone** - an `api.pairSelf()` QR (single use, ten minutes; New code
+   refetches), the web player in a new tab with its own token
+   (`usePlayerTab`, only with the `web_player` capability), the ffmpeg line
+   from `useSystem().tools` and the household note.
+8. **bridge** - what a Bridge is, a compose snippet (`bridgeCompose`, from
+   audiosilo-bridge's `compose.example.yaml`, mounting the first books
+   library's root at the same path) and the existing pairing dialog
+   (`usePairCode`, `PairDialog`). Once `useBridge()` reports a paired Bridge it
+   shows `BridgeSetupList` from the heartbeat's `setup` block instead.
+   Continue records `done` only with a Bridge paired.
+
+Every settings write goes through `unlockedPatch`, which leaves out any
+setting the envelope's `locked` names (the server would refuse it with
+`setting_locked`); such a setting shows a lock and "Set by your config" and is
+disabled.
+
+**The Overview card.** `features/overview/finish-setup-card.tsx` ("Finish
+setting up") shows when `finished && !dismissed` and at least one step is
+`skipped` (`showFinishCard`). It lists the skipped steps, each a link to
+`/setup?step=<id>`, and **Dismiss** sends `dismissed: true` (server-wide, for
+every admin). The welcome card with **Add your first library** (no libraries
+at all) is separate and stays.
+
+Strings are the `setup.*` i18n group, in all six locales. A server upgraded
+from a release without the flow never sees it (migration `0053`, see
+[Data model](data-model.md#server-state)).
+
 ### Charts
 
 The Activity charts use **Recharts** through `src/components/ui/chart.tsx`,
@@ -1098,39 +1201,54 @@ Native single-binary releases bake the player in so `/web` works with no
   (the `.gitkeep` satisfies the embed) but exposes no player: there is no
   `index.html`, so `HasPlayer` is false - exactly like an empty `web_dir`.
 
-## First-run setup wizard (`/setup`)
+## First-run setup page (`/setup`)
 
-The wizard is the `--setup` alternative to the headless first-run banner: a
-browser page where a non-technical user sets the admin credentials and picks
-the books folder. The page (`assets/setup.html` + `setup.js`) lives in
-`internal/web`'s embedded assets, but the handlers live in
-`internal/api/handlers_setup.go` because the flow creates the admin account.
+The page is the `--setup` alternative to the headless first-run banner: a
+browser page where a non-technical user chooses the admin's username and
+password. It asks for **the account only** and then hands over to the admin
+console's [first-run setup flow](#the-first-run-setup-flow), which adds the
+books folder and everything else (FIRST-RUN-PLAN.md Phase F1). The page
+(`assets/setup.html` + `setup.js`) lives in `internal/web`'s embedded assets,
+but the handlers live in `internal/api/handlers_setup.go` because the page
+creates the admin account.
 
 It is locked down three ways, so it is safe even on an exposed port:
 
-1. **Off unless enabled**: the wizard only responds when the launcher called
+1. **Off unless enabled**: the page only responds when the launcher called
    `API.EnableSetup(token)` with a freshly minted one-time token (18 random
    bytes, `pkg/launcher`). Never enabled → `GET /setup` is a plain 404, so a
    normal deployment exposes no setup surface at all.
 2. **Self-closes the moment an admin exists** (`setupAvailable`): with a
    token set but an admin already present, `GET /setup` redirects to
    `/admin` and `POST /setup` answers `409`. Any error resolving admin state
-   also closes the wizard.
+   also closes it.
 3. **Constant-time token check**: the token rides in the URL **fragment**
    (`/setup#token=…`), so it never appears in server or proxy logs;
    `setup.js` reads it client-side and includes it in the POST body, where
    the handler compares it with `crypto/subtle.ConstantTimeCompare`.
 
-A successful `POST /setup` creates the admin (username defaults to `admin`;
-`auth.CreateUser` enforces that admins have a password), validates that the
-library folder exists on the server, creates the library, and kicks off a
-background scan. If library creation fails after the admin was created, the
-wizard still closes (an admin now exists) and the admin finishes in the
-console - intentionally fail-safe.
+`setup.js` posts `{token, username, password}`. A successful `POST /setup`
+creates the admin (username defaults to `admin`; `auth.CreateUser` enforces
+that admins have a password) and answers `201 {user}`; the page then shows
+"Your account is ready" with a **Continue setup** link to `/admin`, whose first
+visit opens the console's flow.
+
+`POST /setup` still accepts the old library fields, so a caller that scripts
+it (an older page, the desktop manager) keeps working: with both
+`library_name` and `library_root` it checks the folder exists **before** making
+the admin, then creates the library with the defaults, enqueues a manual scan,
+records the flow's `folder` step as done (its `naming` step stays open, so the
+admin still picks the library's source) and answers `201 {user, library}`. One
+of the two alone is `400`. If library creation fails after the admin was
+created, the page still closes (an admin now exists) and the admin finishes in
+the console - intentionally fail-safe; failing to record the `folder` step is
+only logged.
 
 The launcher prints the token-carrying URL in a startup banner and also
 reports it through `Options.OnURL`, so an in-process caller can open it in a
 browser - see [Configuration](configuration.md#launcher-options-for-embedders).
+The banner's last line reads "You'll choose an admin password, then the console
+walks you through the rest." (`setupBanner` in `pkg/launcher`).
 
 ## Well-known app-association files
 

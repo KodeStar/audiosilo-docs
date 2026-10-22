@@ -1,6 +1,6 @@
 ---
 title: Quick start with Docker
-description: "Run the AudioSilo server with Docker Compose: the image, the volumes, first-run credentials, and your first library."
+description: "Run the AudioSilo server with Docker Compose: the image, the volumes, first-run credentials, and setting up your first library in the console."
 ---
 
 ## Quick start with Docker
@@ -9,7 +9,7 @@ Docker is the recommended way to run AudioSilo on a NAS, home server or VPS. The
 
 The image is **`ghcr.io/kodestar/audiosilo-server`**.
 
-:::tip On Unraid?
+:::tip[On Unraid?]
 Install from Community Applications instead - see [Install on Unraid](./install-unraid.md).
 :::
 
@@ -88,11 +88,11 @@ Your browser will warn about the certificate the first time - that's expected wi
 - **`/admin`** - the admin console. Log in as `admin` with the printed password.
 - **`/web`** - the web player, bundled with the image.
 
-### 4. Add your first library
+### 4. Set up your server
 
-In the admin console, click **Add your first library** and point it at the path **inside the container** - `/library` with the compose file above (the **Browse** button lists the container's folders). The library is browsable immediately; the scanner fills in metadata, covers and durations in the background. See [Libraries](../admin/libraries.md) for the details.
+The first time you sign in to the admin console, it opens **Set up your server**: eight short steps, each one skippable. Its first step asks for your books folder: type the path **inside the container** - `/library` with the compose file above (mounted folders are offered as buttons) - and press **Check folder** to see what it finds. The library is browsable as soon as it's added; the scanner fills in metadata, covers and durations in the background. [First run](./first-run.md#set-up-your-server) walks through every step.
 
-Then connect a phone or browser and start listening - see [Connecting to a server](../listening/connecting.md).
+Skipped the folder? Add the library later from the console's **Add your first library** button - see [Libraries](../admin/libraries.md). Then connect a phone or browser and start listening - see [Connecting to a server](../listening/connecting.md).
 
 ### Updating
 
@@ -110,7 +110,7 @@ If your books live on a network share (SMB/NFS), mount the share on the Docker h
 
 ### Testing unreleased builds
 
-:::warning Unstable - for testing only
+:::warning[Unstable - for testing only]
 The **`:edge`** tag is rebuilt from the server's latest development code every time it changes (the web player inside it can lag a little behind the player's own development code). It has not been through a release, can break, and is not supported for everyday listening. Stay on `:latest` unless you want to try a fix or feature before it ships.
 :::
 

@@ -21,7 +21,7 @@ On a server too old to offer API keys, the section says it isn't available there
 2. Give the key a **name** that reminds you what it's for, for example *Home dashboard* (up to 100 characters), and tap **Create API key** again.
 3. The key appears **once**, in a pop-up. Copy it straight away and paste it into the app you're setting up.
 
-:::warning Shown once - copy it now
+:::warning[Shown once - copy it now]
 The key is displayed only at the moment you create it. AudioSilo stores only a scrambled version and can never show it to you again. If you lose it, just revoke it and create a new one. Treat a key like a password: anyone who has it can use your account.
 :::
 

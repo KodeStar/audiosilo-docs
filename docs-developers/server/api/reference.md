@@ -480,7 +480,7 @@ Response: `204 No Content`.
 
 ### `POST /api/v1/auth/recovery`
 
-:::caution Legacy - being retired
+:::caution[Legacy - being retired]
 The frontend player no longer offers recovery codes; it nudges users to set a
 password and relies on the reconnect flow instead. This endpoint (and the two
 recovery revoke routes below) is kept only so older app builds keep working, and
@@ -721,7 +721,7 @@ On a server with `addresses`, the answer and its `pairing` also carry `addresses
 | `500` | configured `demo.library` doesn't exist |
 | `503` | demo is at capacity |
 
-:::note Demo root redirect
+:::note[Demo root redirect]
 When demo mode is enabled **and** the web player is mounted, `GET /` (the exact
 site root only) responds `302 Found` → `/web/demo`, landing visitors on the
 player's instant-demo screen. All other static routes (`/connect`, `/admin`, …)
@@ -3948,7 +3948,7 @@ library is re-resolved from what the last scan stored, in the edit's own
 transaction, before the response is sent, so no reader sees the new setting
 with the old values. Admin edits and accepted community values stay on top.
 
-:::note Behaviour change
+:::note[Behaviour change]
 Before admin console Phase 3, every `PATCH` rescanned the library, a rename
 included.
 :::
@@ -4208,7 +4208,7 @@ Progress of the library's (possibly running) scan:
 
 A scan an admin request queues - `POST …/scan`, creating a library, an edit
 that changes the root or ignore rules, setting or clearing a folder override,
-or the setup wizard - reads as `queued` (or `running`) before that request
+or a `POST /setup` that sends library fields - reads as `queued` (or `running`) before that request
 returns, so a status poll made right after it sees the scan.
 
 ### `GET /api/v1/admin/fs/dirs`
@@ -7440,6 +7440,174 @@ recorded in the [audit log](#admin-audit-log) as `settings.support`, with
 | `401` | no valid session or API key |
 | `403` | not an admin |
 
+## Admin: first-run setup
+
+The admin console's "Set up your server" flow (FIRST-RUN-PLAN.md Phase F1;
+`catalog/setup.go`, `library/preview.go`, `library/mounts.go`,
+`api/handlers_admin_setup.go`). The flow writes every setting through the
+ordinary admin routes ([settings](#admin-settings), [library
+create and edit](#admin-libraries--shares)); these routes keep only its
+progress and answer a read-only preview of a books folder. Only the console
+asks: the player never sees them, and there is no capability flag. All three
+are *Admin*: `401` without a valid session or API key, `403` for a non-admin.
+What the console does with them is in
+[The admin console](../web-ui.md#the-first-run-setup-flow). A server from
+before the flow answers `404`.
+
+### `GET /api/v1/admin/setup`
+
+*Admin.* The flow's progress, and what its steps need to know about this
+server and this request:
+
+```json
+{
+  "state": {
+    "finished": false,
+    "dismissed": false,
+    "steps": { "folder": "done", "naming": "skipped" }
+  },
+  "request": {
+    "host": "nas:8080",
+    "scheme": "http",
+    "proxied": true,
+    "peer": "172.18.0.5",
+    "peer_trusted": false
+  },
+  "config_libraries": ["Audiobooks"],
+  "mount_hints": ["/audiobooks", "/podcasts"]
+}
+```
+
+- `state` is server-wide (the `server_state` key `setup_state`; see
+  [Data model](../data-model.md#server-state)). The step ids, in the console's
+  order, are `folder`, `naming`, `metadata`, `reach`, `abs`, `backups`,
+  `phone` and `bridge`, each `"done"` or `"skipped"`; an absent id is a step
+  not yet seen. A server with no row (a fresh one) answers `finished: false`,
+  `dismissed: false`, `steps: {}`; migration `0053` stored an upgraded server
+  as finished and dismissed.
+- `request` is this request as the server saw it. The server never trusts
+  `X-Forwarded-Host` or `X-Forwarded-Proto`, so `host` (the `Host` header) and
+  `scheme` (`https` only for a TLS connection to the server itself) are the
+  direct connection's; the console compares them with the address the browser
+  uses. `proxied` is true when the request carried any forwarding header, and
+  only then is `peer` sent: the address that connected (the proxy), for
+  `network.trusted_proxies`. `peer_trusted` says whether that address is
+  already trusted.
+- `config_libraries` are the names of the libraries `config.yaml` or the
+  environment declares (re-added at every start).
+- `mount_hints` are folders mounted into the server that may hold books, read
+  from `/proc/self/mountinfo` on Linux: folders that exist, not system paths
+  (`/`, `/proc`, `/sys`, `/tmp`, `/dev`, `/run`, `/boot`, `/snap` and anything
+  under them or under `/etc`, by whole path segments, so `/devices` is
+  offered), not pseudo
+  filesystems, not the server's data folder, sorted, at most 20. `[]` on other
+  systems, when the table can't be read, and once the flow is finished (only
+  its folder step offers them).
+
+| Status | Meaning |
+|---|---|
+| `200` | the envelope |
+| `401` / `403` | anonymous / non-admin |
+
+### `PUT /api/v1/admin/setup`
+
+*Admin.* Records the flow's progress. Every field is optional and only the
+fields sent change; `steps` merges (an id it names takes the new outcome, the
+others keep theirs), in one writer transaction.
+
+```json
+{ "finished": true, "steps": { "bridge": "skipped" } }
+```
+
+Answers `200` with the whole `state` as `GET` returns it:
+
+```json
+{ "finished": true, "dismissed": false, "steps": { "folder": "done", "bridge": "skipped" } }
+```
+
+Each request is recorded in the [audit log](#admin-audit-log) as
+`settings.setup`, its details the fields it sent. Sending `dismissed: true`
+hides the Overview's "Finish setting up" card for every admin.
+
+| Status | Meaning |
+|---|---|
+| `200` | saved; the state |
+| `400` | `invalid request` (no body, not JSON, or a field other than `finished`, `dismissed` and `steps`), or `invalid_setup_step` (a step id the flow doesn't have, or an outcome other than `"done"` / `"skipped"`; nothing is saved) |
+| `401` / `403` | anonymous / non-admin |
+
+### `POST /api/v1/admin/setup/preview`
+
+*Admin.* What a books library at a folder would hold, and a sample of its
+books named both ways (from the files' tags and from the folder names), so
+the flow can suggest the library's `metadata_source` before the library
+exists. Read-only: it writes nothing to the index, returns names and counts
+only (never a file's contents) and is not audited.
+
+```json
+{ "root": "/audiobooks", "ignore_patterns": ["Extras/"] }
+```
+
+`ignore_patterns` is optional and checked as a library's skip rules are.
+
+```json
+{
+  "root": "/audiobooks",
+  "counts": { "audio_files": 812, "folder_books": 64, "file_books": 3, "capped": false },
+  "same_root": null,
+  "samples": [
+    {
+      "rel_path": "Arthur Conan Doyle/Sherlock Holmes/2 - The Sign of the Four",
+      "tags": { "title": "The Sign of Four (Unabridged)", "author": "Doyle, Arthur Conan",
+                "narrator": "David Clarke", "series": "Sherlock Holmes", "position": "2" },
+      "path": { "title": "The Sign of the Four", "author": "Arthur Conan Doyle",
+                "narrator": "David Clarke", "series": "Sherlock Holmes", "position": "2" },
+      "abs": false
+    }
+  ],
+  "blanks": { "tags": 4, "path": 1 },
+  "suggested": "path"
+}
+```
+
+- **The folder** is checked as the add-library folder picker checks it: an
+  absolute path the server can open and list. `root` comes back cleaned.
+- **The root** is checked against the other libraries as library create checks
+  it, so a folder inside, or containing, a podcast library's folder is refused
+  with `409 root_overlaps`. Two books libraries at one folder are allowed, so
+  `same_root` names a library already at exactly this folder (a warning for
+  the console to show), else `null`.
+- **The walk** discovers books as a scan does (folder books and single-file
+  books, the same detection, no folder overrides), bounded at 5,000 folders or
+  10 seconds. `counts.capped` is true when the walk stopped early, so there are
+  more than it counted; it says nothing else.
+- **The samples** are up to 8 books spread evenly over the books found in path
+  order, read four at a time as a scan reads names (the primary file's tags,
+  the folder's Audiobookshelf `metadata.json`; no fingerprint, chapters or
+  covers), all under the preview's overall limit of 15 seconds. A sample read
+  still running then is ended and left out, so the answer has **fewer
+  samples**; that never sets `capped`.
+- `tags` and `path` are the names a library whose `metadata_source` is `"tags"`
+  or `"path"` would show for the book (the same resolution the index uses, so
+  the preview and the library never disagree): each side falls back to the
+  other for what it leaves empty. `position` is a series position as text
+  (`"2"`, `"1-3"` for a range). `abs` is true when the book's folder has a
+  `metadata.json`, which goes over both.
+- `blanks` counts, over the samples, the names each source leaves empty **on
+  its own** (before any fallback): an empty title, author or series, and a
+  missing position beside a series. The tags count a generic title ("Track
+  01") as none; the narrator is never counted, since both modes take it from
+  the tags.
+- `suggested` is the source with fewer blanks, `"tags"` on a tie (also when
+  there are no samples).
+
+| Status | Meaning |
+|---|---|
+| `200` | the preview |
+| `400` | `invalid request` (no body, not JSON, an unknown field), `root is required`, `path_not_absolute` (a relative `root`) or `invalid_pattern` (a skip rule the server refuses) |
+| `401` / `403` | anonymous / non-admin |
+| `404` | `folder_unreadable` - missing, not a folder, or unreadable by the server (the OS error is not echoed) |
+| `409` | `root_overlaps` - overlaps a podcast library's folder |
+
 ## The Bridge
 
 Capability `bridge`. The **Bridge** is an optional companion program that writes to
@@ -8347,43 +8515,50 @@ Android App Links. Served when `app_links.android_package` **and**
 ]
 ```
 
-## First-run setup wizard
+## First-run setup page
 
 Only active when the launcher enabled it (`--setup` / `pkg/launcher`); a normal
-headless deployment never exposes this surface. The wizard self-closes the
+headless deployment never exposes this surface. The page self-closes the
 moment an admin exists. The one-time setup token rides in the page URL
 **fragment** (`/setup#token=…`) so it never reaches server logs; the POST
-verifies it in constant time. See [Web UI](../web-ui.md).
+verifies it in constant time. The page asks only for the account; the admin
+console's [first-run setup flow](#admin-first-run-setup) does the rest. See
+[Web UI](../web-ui.md#first-run-setup-page-setup).
 
 ### `GET /setup`
 
-*Public (gated).* Serves the wizard HTML. `404` when the wizard was never
-enabled; `303 See Other` → `/admin` when enabled but an admin already exists.
+*Public (gated).* Serves the setup page. `404` when it was never enabled;
+`303 See Other` → `/admin` when enabled but an admin already exists.
 
 ### `POST /setup`
 
-*Public (token-guarded).* Creates the first admin and the first library, then
-starts a background scan.
+*Public (token-guarded).* Creates the first admin. The page sends only the
+token and the account; the library fields are still accepted so a caller that
+scripts this route (an older page, the desktop manager) keeps working.
 
 | Body field | Type | Required | Notes |
 |---|---|---|---|
 | `token` | string | yes | the one-time setup token |
 | `username` | string | no | defaults to `"admin"` |
 | `password` | string | yes | admins must have a password |
-| `library_name` | string | yes | |
-| `library_root` | string | yes | must be an existing directory on the server |
+| `library_name` | string | with `library_root` | optional; send both or neither |
+| `library_root` | string | with `library_name` | must be an existing directory on the server |
 
-Response `201`: `{ "user": { … }, "library": { … } }`.
+Without the library fields it creates only the admin: `201 { "user": { … } }`.
+With both, it checks the folder exists before making the admin, then creates
+the library with the defaults, starts its background scan and records the
+console flow's `folder` step as done (its `naming` step stays open):
+`201 { "user": { … }, "library": { … } }`.
 
 | Status | Meaning |
 |---|---|
-| `400` | validation (missing library fields, folder doesn't exist, password rules) |
+| `400` | validation (only one of the library fields, the folder doesn't exist, password rules) |
 | `403` | invalid setup token |
-| `409` | setup not available (already completed or never enabled) |
+| `409` | setup not available (already completed or never enabled); with the library fields, also a library create refusal (`name_taken`, `root_overlaps`) after the admin was made, which then exists |
 
 ---
 
-:::note Static UI routes
+:::note[Static UI routes]
 `internal/api/api.go` also mounts the baked-in static UI via `web.Register`:
 `GET /` (connect page), `/connect`, `/admin`, `/assets/…`, `/favicon.ico`,
 `/sw.js`, `/manifest.webmanifest`, and the web player at `/web/…` (when

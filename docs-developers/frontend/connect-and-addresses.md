@@ -174,7 +174,7 @@ Pure and tested:
   `home` **only when it answers with this connection's `server_id`**. Otherwise use
   `away`, else `serverUrl` (`chooseAddress`, `pickAddress`).
 
-:::danger Never send a token to an unverified home address
+:::danger[Never send a token to an unverified home address]
 A home address is a private IP or a local name, and another network can have a
 different machine at the same address. A connection's token goes to its home address
 only after a tokenless probe there answered with that connection's `server_id`, and a

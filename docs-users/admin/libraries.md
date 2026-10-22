@@ -97,7 +97,7 @@ books are indexed as the scan progresses (or on demand when someone opens one).
 For a podcast library the message instead says "Shows and episodes appear as
 they are indexed."
 
-:::warning Library folders must be on the server
+:::warning[Library folders must be on the server]
 The folder must be one the **server itself** can read directly. If your
 audiobooks live on a NAS or network share (SMB/NFS), mount the share on the
 server machine first and point the library at the mount point - you can't
@@ -443,7 +443,7 @@ says exactly what goes: it "removes the library and its books from AudioSilo,
 with everyone's progress, bookmarks and notes in it. The folder and its files
 are not touched."
 
-:::warning Everyone's progress in the library goes too
+:::warning[Everyone's progress in the library goes too]
 Deleting a library removes what AudioSilo knows *about* it for every person:
 their listening progress, bookmarks, notes and listening history for books in
 that library, its folder detection settings, and any of its folders you had

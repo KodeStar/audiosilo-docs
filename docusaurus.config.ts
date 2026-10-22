@@ -1,8 +1,16 @@
-import {themes as prismThemes} from 'prism-react-renderer';
+import {themes as prismThemes, type PrismTheme} from 'prism-react-renderer';
 import type {Config} from '@docusaurus/types';
 import type * as Preset from '@docusaurus/preset-classic';
+import type {PluginOptions} from '@easyops-cn/docusaurus-search-local';
 
 // This runs in Node.js - Don't use client-side code here (browser APIs, JSX...)
+
+// Code blocks sit on the shared muted surface (src/css/custom.css), so the
+// Prism themes keep their token colours but take the page token as background.
+const withMutedBackground = (theme: PrismTheme): PrismTheme => ({
+  ...theme,
+  plain: {...theme.plain, backgroundColor: 'var(--muted)'},
+});
 
 const config: Config = {
   title: 'AudioSilo',
@@ -34,7 +42,39 @@ const config: Config = {
   markdown: {
     mermaid: true,
   },
-  themes: ['@docusaurus/theme-mermaid'],
+  themes: [
+    '@docusaurus/theme-mermaid',
+    // Offline full-text search: the index is built at `docusaurus build` time,
+    // so search only works on a built site (`npm run build && npm run serve`),
+    // never under `npm start`.
+    [
+      '@easyops-cn/docusaurus-search-local',
+      {
+        hashed: true,
+        indexDocs: true,
+        indexBlog: false,
+        indexPages: false,
+        docsRouteBasePath: ['users', 'developers'],
+        docsDir: ['docs-users', 'docs-developers'],
+        // Required: neither docs instance has the id 'default'.
+        docsPluginIdForPreferredVersion: 'users',
+        language: ['en'],
+        highlightSearchTermsOnTargetPage: true,
+        searchBarShortcutHint: true,
+        // Per-section search: a User Guide page searches the User Guide
+        // index, a developer page the Developer Docs one. The dropdown's
+        // footer link opens /search within that section (or everywhere when
+        // the section has no hits); there the context selector switches to
+        // the other section or "Everywhere". Pages outside either section
+        // (the homepage, /search with no context) search everything.
+        searchContextByPaths: [
+          {label: 'User Guide', path: 'users'},
+          {label: 'Developer Docs', path: 'developers'},
+        ],
+        useAllContextsWithNoSearchContext: true,
+      } satisfies PluginOptions,
+    ],
+  ],
 
   presets: [
     [
@@ -78,7 +118,7 @@ const config: Config = {
     image: 'img/social-card.png',
     colorMode: {
       defaultMode: 'dark',
-      respectPrefersColorScheme: false,
+      respectPrefersColorScheme: true,
     },
     navbar: {
       title: 'AudioSilo',
@@ -103,6 +143,8 @@ const config: Config = {
           position: 'left',
           label: 'Developer Docs',
         },
+        // Search first on the right, before GitHub and the theme toggle.
+        {type: 'search', position: 'right'},
         {
           type: 'dropdown',
           label: 'GitHub',
@@ -117,7 +159,6 @@ const config: Config = {
       ],
     },
     footer: {
-      style: 'dark',
       links: [
         {
           title: 'Documentation',
@@ -145,8 +186,8 @@ const config: Config = {
       copyright: `Copyright © ${new Date().getFullYear()} AudioSilo. Built with Docusaurus.`,
     },
     prism: {
-      theme: prismThemes.github,
-      darkTheme: prismThemes.dracula,
+      theme: withMutedBackground(prismThemes.jettwaveLight),
+      darkTheme: withMutedBackground(prismThemes.jettwaveDark),
       additionalLanguages: ['bash', 'go', 'yaml', 'json', 'diff', 'docker'],
     },
   } satisfies Preset.ThemeConfig,

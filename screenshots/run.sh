@@ -4,11 +4,12 @@
 #   1. builds the AudioSilo server from the sibling repo,
 #   2. seeds a small public-domain library (LibriVox; cached in .cache/library),
 #   3. starts a demo-mode server (port 8790) serving the frontend's web export,
-#      plus a second --setup instance (port 8791) for the wizard shot,
+#      plus a second --setup instance (port 8791) for the first-run setup shots
+#      (the --setup page and the console's "Set up your server" flow),
 #   4. builds the AudioSilo Meta data artifact + site and starts a local
 #      metaserve (port 8795) for the meta.audiosilo.app site captures,
 #   5. runs the Playwright captures (web player + admin console + public pages
-#      + the meta site),
+#      + the first-run setup flow + the meta site),
 #   6. backfills placeholders for anything not captured.
 #
 # Prereqs: Go 1.26+, Node 24, ffmpeg/ffprobe, sqlite3, openssl, `npm install` +
@@ -194,11 +195,22 @@ AUDIOSILO_WEB_DIR="$FRONTEND/dist" "$SERVER_BIN" --data "$DATA" \
   > "$CACHE/server.log" 2>&1 &
 MAIN_PID=$!
 
-# The --setup instance only serves the admin captures' wizard shot.
-if [ "${SKIP_ADMIN:-0}" != "1" ]; then
+# The --setup instance serves capture-setup.mjs: the --setup page, then the
+# console's first-run flow (with the web player, so its phone step offers it).
+# It starts only when a setup shot is wanted.
+WANT_SETUP=0
+if [ "${SKIP_ADMIN:-0}" != "1" ] && (cd "$HERE" && node --input-type=module -e '
+  import {SHOTS} from "./manifest.mjs";
+  import {wanted} from "./lib.mjs";
+  process.exit(wanted(...SHOTS.filter((s) => s.capture === "setup").map((s) => s.file)) ? 0 : 1);
+'); then
+  WANT_SETUP=1
+fi
+if [ "$WANT_SETUP" = 1 ]; then
   echo "==> starting --setup server on :$SETUP_PORT"
   rm -rf "$SETUP_DATA" && mkdir -p "$SETUP_DATA"
   AUDIOSILO_BIND="127.0.0.1:$SETUP_PORT" AUDIOSILO_TLS_MODE=off \
+    AUDIOSILO_WEB_DIR="$FRONTEND/dist" \
     "$SERVER_BIN" --setup --data "$SETUP_DATA" \
     > "$CACHE/setup.log" 2>&1 &
   SETUP_PID=$!
@@ -213,7 +225,7 @@ if [ -z "$ADMIN_PASSWORD" ]; then
   echo "could not parse admin password from $CACHE/server.log"; exit 1
 fi
 SETUP_URL=""
-if [ "${SKIP_ADMIN:-0}" != "1" ]; then
+if [ "$WANT_SETUP" = 1 ]; then
   SETUP_URL="$(grep -o "http://[^ ]*/setup#token=[^ ]*" "$CACHE/setup.log" | head -1 || true)"
 fi
 
@@ -293,9 +305,17 @@ AS_BASE="http://127.0.0.1:$PORT/web/" ADMIN_PASSWORD="$ADMIN_PASSWORD" node capt
 if [ "${SKIP_ADMIN:-0}" != "1" ]; then
   echo "==> capturing admin console + public pages"
   AS_ORIGIN="http://127.0.0.1:$PORT" ADMIN_PASSWORD="$ADMIN_PASSWORD" \
-    SETUP_URL="$SETUP_URL" \
     MIRROR_ORIGIN="${MIRROR_PASSWORD:+http://127.0.0.1:$MIRROR_PORT}" \
     MIRROR_PASSWORD="${MIRROR_PASSWORD:-}" node capture-admin.mjs
+
+  echo "==> capturing the first-run setup flow"
+  if [ "$WANT_SETUP" != 1 ]; then
+    echo "  no setup shots wanted, skipped."
+  elif [ -n "$SETUP_URL" ]; then
+    SETUP_URL="$SETUP_URL" node capture-setup.mjs
+  else
+    echo "  ! no setup URL in $CACHE/setup.log: the setup shots keep their previous images"
+  fi
 fi
 
 if [ "${SKIP_META:-0}" != "1" ]; then
