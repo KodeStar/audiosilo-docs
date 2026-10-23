@@ -47,6 +47,7 @@ import {
   fitViewportToPage,
   isoAgo,
   pathQuery,
+  showDockerPaths,
   silence,
   sleep,
   shoot,
@@ -63,6 +64,23 @@ const PASSWORD = process.env.ADMIN_PASSWORD;
 const MIRROR_ORIGIN = (process.env.MIRROR_ORIGIN || '').replace(/\/$/, '');
 const MIRROR_PASSWORD = process.env.MIRROR_PASSWORD || '';
 const INBOX_DIR = path.resolve(process.env.INBOX_DIR || path.join(CACHE, 'inbox'));
+const WEB_DIR = process.env.WEB_DIR ? path.resolve(process.env.WEB_DIR) : '';
+// The console shows this machine's folders as a Docker install has them (lib.mjs
+// showDockerPaths); anything else under .cache reads as under /srv.
+const SHOWN = [
+  [path.join(CACHE, 'library'), '/library'],
+  [path.join(CACHE, 'podcasts'), '/podcasts'],
+  [INBOX_DIR, '/inbox'],
+  [path.join(CACHE, 'data'), '/data'],
+  [path.join(CACHE, 'mirror-data'), '/data'],
+  ...(WEB_DIR ? [[WEB_DIR, '/app/web']] : []),
+  [CACHE, '/srv'],
+];
+const SHOWN_HOST = [['"os":"darwin"', '"os":"linux"'], ['"arch":"arm64"', '"arch":"amd64"']];
+const shownPath = (real) => {
+  const hit = SHOWN.find(([r]) => real === r || real.startsWith(`${r}/`));
+  return hit ? hit[1] + real.slice(hit[0].length) : real;
+};
 if (!PASSWORD) {
   console.error('capture-admin: ADMIN_PASSWORD is required');
   process.exit(1);
@@ -396,6 +414,7 @@ await step('provision listening sessions', async () => {
 // ── Capture ────────────────────────────────────────────────────────────────
 const browser = await chromium.launch();
 const ctx = await browser.newContext(DESKTOP_CONTEXT);
+await showDockerPaths(ctx, SHOWN, SHOWN_HOST);
 const page = await ctx.newPage();
 
 // Opens a console route and waits for it to render: by default its page
@@ -543,7 +562,7 @@ await step('add library with the folder picker', async () => {
   await dialog.waitFor({timeout: 8000});
   // Start the picker in the seeded library's folder, so it lists its author
   // folders rather than the capture machine's filesystem root.
-  if (library?.root) await dialog.getByLabel('Folder', {exact: true}).fill(library.root);
+  if (library?.root) await dialog.getByLabel('Folder', {exact: true}).fill(shownPath(library.root));
   await dialog.getByRole('button', {name: 'Browse', exact: true}).click();
   await dialog.getByRole('list', {name: 'Folders on the server'}).waitFor({timeout: 8000});
   // Choosing a folder fills the empty Name field from the folder's name.
@@ -855,6 +874,7 @@ await step('health: system in mirror mode', async () => {
     }
   }
   const mctx = await browser.newContext(DESKTOP_CONTEXT);
+  await showDockerPaths(mctx, SHOWN, SHOWN_HOST);
   try {
     const mp = await mctx.newPage();
     await open(mp, '/', (pg) => pg.getByLabel('Username', {exact: true}), MIRROR_ORIGIN);

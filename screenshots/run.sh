@@ -349,13 +349,13 @@ if [ "${SKIP_ADMIN:-0}" != "1" ]; then
   echo "==> capturing admin console + public pages"
   AS_ORIGIN="http://127.0.0.1:$PORT" ADMIN_PASSWORD="$ADMIN_PASSWORD" \
     MIRROR_ORIGIN="${MIRROR_PASSWORD:+http://127.0.0.1:$MIRROR_PORT}" \
-    MIRROR_PASSWORD="${MIRROR_PASSWORD:-}" node capture-admin.mjs
+    MIRROR_PASSWORD="${MIRROR_PASSWORD:-}" WEB_DIR="$FRONTEND/dist" node capture-admin.mjs
 
   echo "==> capturing the first-run setup flow"
   if [ "$WANT_SETUP" != 1 ]; then
     echo "  no setup shots wanted, skipped."
   elif [ -n "$SETUP_URL" ]; then
-    SETUP_URL="$SETUP_URL" node capture-setup.mjs
+    SETUP_URL="$SETUP_URL" WEB_DIR="$FRONTEND/dist" node capture-setup.mjs
   else
     echo "  ! no setup URL in $CACHE/setup.log: the setup shots keep their previous images"
   fi

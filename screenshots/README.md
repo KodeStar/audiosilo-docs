@@ -37,6 +37,17 @@ that use the exact English labels from the server's
 the same rename in the script (a failed step is logged and its shot falls back
 to the previous image or a placeholder).
 
+No shot shows this machine's folders. `capture-admin.mjs` and
+`capture-setup.mjs` route every `/api/` answer through `showDockerPaths` in
+`lib.mjs`, which swaps the capture paths for the ones a Docker install has:
+the seeded books at `/library`, the Inbox at `/inbox`, podcasts at
+`/podcasts`, the data folder at `/data`, the web player at `/app/web` (from
+`WEB_DIR`, which `run.sh` passes) and anything else under `.cache` at `/srv`.
+It also reports the host as `linux/amd64`. A folder the scripts type, or the
+console sends, in its shown spelling goes to the server as the real path, so
+the folder pickers and checks still work. A new capture path needs a pair in
+that script's `SHOWN` list.
+
 The first-run setup shots (`server/setup-wizard*.png` and `setup/*.png`)
 come from `capture-setup.mjs`, which `run.sh` runs after `capture-admin.mjs`
 against the `--setup` instance (a fresh data dir, no admin yet, started only

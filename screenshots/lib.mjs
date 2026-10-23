@@ -88,6 +88,59 @@ export const fitted = async (p, fit, shot) => {
   }
 };
 
+// Shows this machine's paths in a browser context (`ctx`) as a Docker install has them
+// (the seeded library at /library, the data folder at /data, ...), so no shot names the
+// capture machine's folders. `pairs` is [[real path, shown path], ...]. Every /api/
+// answer that is JSON or text has each real path replaced by its shown one; a request's
+// query values and JSON body strings that start with a shown path go to the server as
+// the real one, so a folder typed or picked in its shown spelling still works. Range
+// requests (audio) pass untouched. `text` is further [from, to] swaps made on answers
+// only (the host's OS and architecture, say). `resolve` maps a host name the browser
+// resolves itself (--host-resolver-rules) to the address the fetch, made from node,
+// must use.
+export async function showDockerPaths(ctx, pairs, text = [], resolve = {}) {
+  const byReal = [...pairs].sort((a, b) => b[0].length - a[0].length);
+  const byShown = [...pairs].sort((a, b) => b[1].length - a[1].length);
+  const swaps = [...byReal, ...text];
+  const toShown = (body) => swaps.reduce((t, [from, to]) => t.replaceAll(from, to), body);
+  const toReal = (v) => {
+    for (const [real, shown] of byShown) if (v === shown || v.startsWith(`${shown}/`)) return real + v.slice(shown.length);
+    return v;
+  };
+  const deep = (v) => {
+    if (typeof v === 'string') return toReal(v);
+    if (Array.isArray(v)) return v.map(deep);
+    if (v && typeof v === 'object') return Object.fromEntries(Object.entries(v).map(([k, x]) => [k, deep(x)]));
+    return v;
+  };
+  await ctx.route(
+    (url) => url.pathname.startsWith('/api/'),
+    async (route) => {
+      const req = route.request();
+      if (req.headers().range) return route.continue();
+      const url = new URL(req.url());
+      for (const [k, v] of [...url.searchParams]) url.searchParams.set(k, toReal(v));
+      const overrides = {};
+      if (resolve[url.hostname]) {
+        overrides.headers = {...req.headers(), host: url.host};
+        url.hostname = resolve[url.hostname];
+      }
+      overrides.url = url.toString();
+      const body = req.postData();
+      if (body && (req.headers()['content-type'] ?? '').includes('json')) {
+        try {
+          overrides.postData = JSON.stringify(deep(JSON.parse(body)));
+        } catch {
+          /* not JSON after all: sent as it is */
+        }
+      }
+      const res = await route.fetch(overrides);
+      if (!/json|text/.test(res.headers()['content-type'] ?? '')) return route.fulfill({response: res});
+      return route.fulfill({response: res, body: toShown(await res.text())});
+    },
+  );
+}
+
 // Fills the console's sign-in form (already open on `p`) as admin and submits it.
 export const submitSignIn = async (p, password) => {
   await p.getByLabel('Username', {exact: true}).fill('admin');

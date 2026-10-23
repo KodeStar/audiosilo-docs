@@ -1388,6 +1388,8 @@ async function findShowsStand(pod) {
   });
   const slow = pod.shows.find((s) => s.folder === seededResult(pod).folder);
   const lantern = pod.shows.find((s) => s.folder === PODCAST_SHOW);
+  // outline_index counts every outline in FIND_OPML from 1, categories too: entry 1
+  // is the "Food" category, so the list rightly starts at Entry 2.
   const importRows = [
     row(2, 'followed', {feed: feedLabel(slow.feed.feed_url), path: slow.folder}),
     row(3, 'already_following', {feed: feedLabel(lantern.feed.feed_url), path: lantern.folder}),
