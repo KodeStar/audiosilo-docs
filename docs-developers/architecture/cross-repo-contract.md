@@ -246,7 +246,9 @@ book is the only additive marker (mirrored as `Book.chapters_source` /
 `ChaptersResponse.chapters_source`, the `ChaptersSource` union): the player's book
 page captions such chapters (an older app shows them as ordinary chapters), and a downloaded book replaces its
 saved chapters with a newer server answer while its audio files are unchanged
-(same paths, order and sizes; `startChapterRefresh`). Podcasts additionally
+(same paths, order and sizes; `startChapterRefresh`). The same files in a new
+order (the server's natural file order, 2.4.0) are taken only by a start that
+loads them that way (`adoptStartedChapters`), never from a background answer. Podcasts additionally
 return `id3_chap` from the server's CHAP attachments; the player (2.2.0 and
 later, first released in 2.4.0) captions it "Chapters from the episode file". See [podcasts](#17-podcast-shows-feeds-and-client-visibility).
 
