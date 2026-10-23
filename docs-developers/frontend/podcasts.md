@@ -258,6 +258,9 @@ in `src/lib/open.ts`; `/find-shows` is in `BROWSE_PATHS`). `FindShowsScreen`
   `artwork-retry.ts`), title, author, episode count, `View on {{provider}}`
   (`provider_url`, opened outside the app) and **Follow**, which becomes
   **Adding** (a `202` request) or **Following** with **Open show** (a `200`).
+  An Adding result reads its request live (`useFollowRequests`, `requestEnd`
+  in `find-shows-model.ts`): ended `done` with a show it turns Following with
+  Open show, ended otherwise it shows **Couldn't add** beside Follow again.
   The country is `deviceCountry()` (`discovery-country.ts`).
 - **Feed address** (`follow-by-url.tsx`): the address field with a hint, a
   **Private feed** switch ("For a feed made just for you, like a paid or
@@ -281,11 +284,21 @@ in `src/lib/open.ts`; `/find-shows` is in `BROWSE_PATHS`). `FindShowsScreen`
   `importProgress`: duplicate and invalid rows
   don't count), the status line (a countdown to the next batch, ticking with
   `useNow` while the import runs), **Stop** while it runs, **Try again** once
-  it stopped, stalled or failed, and one row per subscription by
+  it stopped, stalled or failed, or ended `done` with `unavailable` rows
+  (`canRetryImport`), and one row per subscription by
   `outline_index` (`Entry {{index}}`, `importRowKey`: Following, Already
   following, Being added, In the list twice, No usable feed address, Waiting
-  for the next batch, Can't be added right now, Couldn't add). A file over
-  1 MiB or one that can't be read is a line of its own, and nothing is sent.
+  for the next batch, Can't be added right now, Couldn't add). The rows are
+  read live against the follow requests (`liveImportRows`): a queued row whose
+  request ended `done` reads Following, one that ended otherwise Couldn't
+  add. A `done` import's line is "The last shows are still being added."
+  while a row is still queued (`stillAdding`), then
+  `{{count}} shows can't be added right now. Try again later, or ask the person who runs your server.`
+  when `unavailable` rows remain (`unavailableRows`), else "All done.". A
+  row's Private feed badge shows only when it has a usable feed (not
+  `invalid` or `duplicate`, `feed` set), and a row with no label shows only
+  its entry and status. A file over 1 MiB or one that can't be read is a line
+  of its own, and nothing is sent.
 
 ### Entry points
 

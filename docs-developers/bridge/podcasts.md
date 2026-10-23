@@ -640,7 +640,10 @@ OPML codes (`opml_rate_limited`, `opml_busy`, `opml_limit`, `invalid_opml`,
   `already_queued` rows' `request_id`) is no longer open in
   `GET /me/podcasts` (absent counts as ended; read every 5 s), fewer than five
   of the caller's requests are open, and 30 seconds have passed since the last
-  upload. `unavailable` rows never start a wave. A wave that moves no row out
+  upload. `unavailable` rows never start a wave: a `done` import with some
+  left offers a manual Try again (`canRetryImport`), which uploads once more.
+  The panel reads each queued row's request live, so the import reads done
+  ("All done.") only once none is still being added. A wave that moves no row out
   of `limited` stops as `stalled` (Try again). `429 opml_rate_limited` and
   `503 opml_busy` wait their `Retry-After` (else 30 s and 2 s); five such
   answers in a row stop it. Any other refusal stops as `failed` with its code,

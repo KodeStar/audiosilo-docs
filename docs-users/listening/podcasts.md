@@ -122,7 +122,9 @@ search. The list says where its results came from, and each result has:
 - **View on Apple Podcasts** (or **View on Podcast Index**), which opens the show's page on the
   directory;
 - **Follow**. It turns into **Following** with **Open show** when the library already has the
-  show, or **Adding** when the server is fetching it.
+  show, or **Adding** when the server is fetching it. Once the server is done, **Adding**
+  turns into **Following** with **Open show**, or into **Couldn't add** with **Follow** back
+  to try again ([Shows being added](#shows-being-added) says why).
 
 Searching the same words again shows the same results without asking the directory again. Each
 person can search about ten times a minute: after that the page says *"You've searched a lot
@@ -197,7 +199,7 @@ per show in the list, by its place in the file (**Entry 4**, say):
 |---|---|
 | **Following** | The library had the show, so you follow it now. |
 | **Already following** | You followed it already. |
-| **Being added** | The server is fetching it (see [Shows being added](#shows-being-added)). |
+| **Being added** | The server is fetching it (see [Shows being added](#shows-being-added)). It turns into **Following** once added, or **Couldn't add**. |
 | **Waiting for the next batch** | Still to come (see below). |
 | **In the list twice** | The same feed appears earlier in the file (its entry number is in brackets). |
 | **No usable feed address** | The entry has no address the server can use. |
@@ -207,8 +209,14 @@ per show in the list, by its place in the file (**Entry 4**, say):
 **Long lists go in batches of five.** Your server adds at most five new shows for you at a time,
 so the rest of a long list waits. The player sends the next batch by itself once the shows
 being added are done and at least half a minute has passed: the page says *"Waiting for the
-shows being added before the next batch."* or *"Next batch in 12 s."*, and **All done.** at the
-end. Shows the library already has don't wait for a batch.
+shows being added before the next batch."* or *"Next batch in 12 s."* Once the last batch is
+sent it says *"The last shows are still being added."* until they're in, then **All done.**
+Shows the library already has don't wait for a batch.
+
+When some entries **Can't be added right now** (the part of your server that fetches podcasts
+is offline, say), the import doesn't keep retrying them by itself: the page says *"2 shows can't
+be added right now. Try again later, or ask the person who runs your server."* with **Try
+again**, which sends the list once more.
 
 - Keep the page open while it works (you can switch between its sections). Leaving the page,
   or the app going to the background, pauses or ends the import; shows already added stay. To
@@ -216,8 +224,8 @@ end. Shows the library already has don't wait for a batch.
 - **Stop** ends it (*"Stopped. Shows already added stay."*). **Try again** starts it again after
   it stopped, for instance after *"The next batch couldn't start. Try again in a while."* or
   *"Your server stayed busy. Try again later."*
-- Private feeds in the file are recognised as when you follow an address, but an import can't
-  mark any other feed private: follow that one by its address with **Private feed** on.
+- Private feeds in the file are recognised as when you follow an address (such an entry has a
+  **Private feed** badge), but an import can't mark any other feed private: follow that one by its address with **Private feed** on.
 - *"That file isn't an OPML list."* means the file isn't one; *"That file is over 1 MB."* means
   it's too big to send.
 
