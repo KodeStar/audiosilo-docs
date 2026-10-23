@@ -15,17 +15,15 @@ import {createHash} from 'node:crypto';
 import {spawnSync} from 'node:child_process';
 import {existsSync, mkdirSync, readFileSync, rmSync, statSync, writeFileSync} from 'node:fs';
 import path from 'node:path';
-import {fileURLToPath} from 'node:url';
 
-import {DAY, HOUR, ffmpeg, silence} from './lib.mjs';
+import {DAY, FIXTURES, HOUR, ffmpeg, silence} from './lib.mjs';
 
-const here = path.dirname(fileURLToPath(import.meta.url));
 const root = process.argv[2];
 if (!root) {
   console.error('usage: node seed-podcasts.mjs <root>');
   process.exit(1);
 }
-const {shows} = JSON.parse(readFileSync(path.join(here, 'fixtures', 'podcasts.json'), 'utf8'));
+const {shows} = JSON.parse(readFileSync(path.join(FIXTURES, 'podcasts.json'), 'utf8'));
 
 const sha256 = (data) => createHash('sha256').update(data).digest('hex');
 const slug = (s) => s.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');

@@ -25,11 +25,11 @@ import https from 'node:https';
 import {mkdir} from 'node:fs/promises';
 import {existsSync, readFileSync, statSync} from 'node:fs';
 import {execFileSync} from 'node:child_process';
-import {fileURLToPath} from 'node:url';
 import {
   CACHE,
   DAY,
   DESKTOP_CONTEXT,
+  FIXTURES,
   HOUR,
   MIN,
   addHousehold,
@@ -147,15 +147,21 @@ const PRIMARY_PLAY = /^(start listening|resume( chapter \d+)?|listen again|liste
 // a bare web export, so it isn't read from there).
 const FELL_ASLEEP_NOTE = 'Fell asleep';
 
-// The demo user's token (the web player keeps it in localStorage under
-// audiosilo.token.<connection id>), for provisioning through the API.
-async function demoToken(page) {
-  const token = await page.evaluate(() => {
-    const key = Object.keys(localStorage).find((k) => k.startsWith('audiosilo.token.'));
-    return key ? localStorage.getItem(key) : null;
+// The signed-in player's connection id and token (the web player keeps the token in
+// localStorage under audiosilo.token.<connection id>), for provisioning through the API.
+async function playerSession(page) {
+  const session = await page.evaluate(() => {
+    const prefix = 'audiosilo.token.';
+    const key = Object.keys(localStorage).find((k) => k.startsWith(prefix));
+    return key ? {cid: key.slice(prefix.length), token: localStorage.getItem(key)} : null;
   });
-  if (!token) throw new Error('no demo token in localStorage');
-  return token;
+  if (!session?.token) throw new Error('no player token in localStorage');
+  return session;
+}
+
+// The demo user's token.
+async function demoToken(page) {
+  return (await playerSession(page)).token;
 }
 
 // The seeded library and a finder for its books by title substring.
@@ -1000,7 +1006,7 @@ const PHONE = {width: 430, height: 932};
 
 // The fixture's shows, each with its feed.json as run.sh wrote it.
 function podcastFixture() {
-  const {shows} = JSON.parse(readFileSync(path.join(path.dirname(fileURLToPath(import.meta.url)), 'fixtures', 'podcasts.json'), 'utf8'));
+  const {shows} = JSON.parse(readFileSync(path.join(FIXTURES, 'podcasts.json'), 'utf8'));
   return shows.map((s) => ({...s, feed: JSON.parse(readFileSync(path.join(PODCASTS_DIR, s.folder, 'feed.json'), 'utf8'))}));
 }
 
@@ -1061,10 +1067,7 @@ async function routeEpisodeFetch(page, libraryId, relPath) {
     received = Math.min(Math.round(total * 0.72), received + 1_572_864);
     return {state: 'fetching', request_id: 81, bytes_received: received, bytes_total: total, retry_after_seconds: 2, error: null};
   };
-  const forEpisode = (route) => {
-    const url = new URL(route.request().url());
-    return url.searchParams.get('path') === relPath ? url : null;
-  };
+  const forEpisode = (route) => new URL(route.request().url()).searchParams.get('path') === relPath;
   const stream = new RegExp(`/api/v1/libraries/${libraryId}/stream\\?`);
   const fetchStatus = new RegExp(`/api/v1/libraries/${libraryId}/podcasts/fetch\\?`);
   const onStream = (route) => {
@@ -1098,25 +1101,30 @@ async function capturePodcasts(pod) {
     await probeServer(page, origin);
     await signInWithPassword(page, 'admin', ADMIN_PASSWORD);
     await tid(page, 'ready-screen').waitFor({timeout: 15000});
-    session = await demoToken(page);
+    const player = await playerSession(page);
+    session = player.token;
+    const {cid} = player;
     await firstVisible(page.getByRole('button', {name: 'Start listening'})).click({timeout: 8000});
     await tid(page, 'top-bar-(home)').waitFor({timeout: 15000});
-    const cid = await page.evaluate(() =>
-      Object.keys(localStorage).find((k) => k.startsWith('audiosilo.token.'))?.slice('audiosilo.token.'.length),
-    );
-    if (!cid) throw new Error('no connection in the player');
+    // The episode the fetching shot starts (not on the server; also the newest on Home).
+    const fetchEpisode = pod.shows.find((s) => s.folder === PODCAST_FETCH_SHOW)?.feed.episodes.find((e) => !e.fetch);
+    if (!fetchEpisode) throw new Error(`no episode of ${PODCAST_FETCH_SHOW} that is not on the server`);
+    // Let the covers settle, then shoot `file` with the pointer out of the way.
+    const settleShoot = async (p, file, ms = 1500) => {
+      await sleep(ms);
+      await p.mouse.move(0, 0);
+      await shoot(p, file);
+    };
 
     if (wanted(PODCAST_SHOTS.home)) {
       await step('podcasts: home', async () => {
         await tid(page, 'top-bar-(home)').click({timeout: 8000});
         const heading = firstVisible(page.getByText('New episodes', {exact: true}));
         await heading.waitFor({timeout: 30000});
-        await firstVisible(page.getByText('The wren on the gatepost')).waitFor({timeout: 15000});
+        await firstVisible(page.getByText(fetchEpisode.title)).waitFor({timeout: 15000});
         await heading.evaluate((el) => el.scrollIntoView({block: 'start'}));
         await page.mouse.wheel(0, -120);
-        await sleep(1500); // the covers
-        await page.mouse.move(0, 0);
-        await shoot(page, PODCAST_SHOTS.home);
+        await settleShoot(page, PODCAST_SHOTS.home);
       });
     }
 
@@ -1127,23 +1135,19 @@ async function capturePodcasts(pod) {
         await firstVisible(page.getByRole('combobox', {name: 'Library'}).or(page.getByRole('button', {name: 'Library'}))).click({timeout: 8000});
         await firstVisible(page.getByRole('option', {name: PODCAST_LIBRARY})).click({timeout: 8000});
         await firstVisible(page.getByTestId('show-tile')).waitFor({timeout: 15000});
-        await sleep(1500);
-        await page.mouse.move(0, 0);
-        await shoot(page, PODCAST_SHOTS.shows);
+        await settleShoot(page, PODCAST_SHOTS.shows);
         if (!wanted(PODCAST_SHOTS.show)) return;
         await firstVisible(page.getByTestId('show-tile').filter({hasText: PODCAST_SHOW})).click({timeout: 8000});
         await tid(page, 'podcast-show-hero').waitFor({timeout: 15000});
         await tid(page, 'podcast-following-badge').waitFor({timeout: 15000});
         await firstVisible(page.getByTestId('episode-row')).waitFor({timeout: 15000});
-        await sleep(1500);
-        await page.mouse.move(0, 0);
-        await shoot(page, PODCAST_SHOTS.show);
+        await settleShoot(page, PODCAST_SHOTS.show);
       });
     }
 
     // The phone shots, on this browser's storage (the same signed-in player).
     if (wanted(PODCAST_SHOTS.phoneShow, PODCAST_SHOTS.fetching)) {
-      const phone = await newCaptureContext({viewport: PHONE, storageState: await ctx.storageState()});
+      const phone = await sameDevice(ctx, {viewport: PHONE});
       try {
         const p = await phone.newPage();
         const showUrl = (folder) =>
@@ -1153,28 +1157,21 @@ async function capturePodcasts(pod) {
             await p.goto(showUrl(PODCAST_SHOW), {waitUntil: 'networkidle', timeout: 45000});
             await tid(p, 'podcast-following-badge').waitFor({timeout: 15000});
             await firstVisible(p.getByTestId('episode-row')).waitFor({timeout: 15000});
-            await sleep(1500);
-            await p.mouse.move(0, 0);
-            await shoot(p, PODCAST_SHOTS.phoneShow);
+            await settleShoot(p, PODCAST_SHOTS.phoneShow);
           });
         }
         if (wanted(PODCAST_SHOTS.fetching)) {
           await step('podcasts: episode fetching', async () => {
-            const show = pod.shows.find((s) => s.folder === PODCAST_FETCH_SHOW);
-            const episode = show?.feed.episodes.find((e) => !e.fetch);
-            if (!episode) throw new Error(`no episode of ${PODCAST_FETCH_SHOW} that is not on the server`);
-            const unroute = await routeEpisodeFetch(p, pod.library.id, episode.path);
+            const unroute = await routeEpisodeFetch(p, pod.library.id, fetchEpisode.path);
             try {
               await p.goto(showUrl(PODCAST_FETCH_SHOW), {waitUntil: 'networkidle', timeout: 45000});
-              await firstVisible(p.getByRole('button', {name: new RegExp(`^${escapeRe(episode.title)}`)})).click({timeout: 15000});
+              await firstVisible(p.getByRole('button', {name: new RegExp(`^${escapeRe(fetchEpisode.title)}`)})).click({timeout: 15000});
               await tid(p, 'episode-page').waitFor({timeout: 15000});
               await sleep(SETTLE_MS);
               await tid(p, 'episode-page-play').click({timeout: 8000});
               await tid(p, 'episode-fetch-panel').waitFor({timeout: 15000});
               await firstVisible(p.getByTestId('episode-fetch-line').getByText(/ of /)).waitFor({timeout: 15000});
-              await sleep(2500); // a status read or two, and the cover
-              await p.mouse.move(0, 0);
-              await shoot(p, PODCAST_SHOTS.fetching);
+              await settleShoot(p, PODCAST_SHOTS.fetching, 2500); // a status read or two, and the cover
               await tid(p, 'episode-fetch-cancel').click({timeout: 8000}).catch(() => {});
             } finally {
               await unroute();

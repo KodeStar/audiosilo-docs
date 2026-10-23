@@ -215,21 +215,14 @@ it locally.
 An episode marked **Plays on demand** isn't on your server yet: pressing
 **Play** asks the server to download it first, and the player shows **Getting
 this episode** until it's ready. A long episode can take a minute or two. If it
-stops with a message instead:
+stops with a message instead, [Playing an episode](./listening/podcasts.md#playing-an-episode)
+says what each one means. For **This episode can't be fetched now**, ask your
+admin to check that **Podcasts** is on in **Server > Settings > Modules** and
+that the [Bridge](./admin/bridge.md) is online and can write to the podcast
+library.
 
-- **Couldn't get this episode**: the show's host didn't deliver the file. Press
-  **Try again**; if it keeps failing, the feed may be broken, so try later.
-- **This episode can't be fetched now**: the server can't download episodes at
-  the moment. Ask your admin to check that **Podcasts** is on in **Server >
-  Settings > Modules** and that the [Bridge](./admin/bridge.md) is online and
-  can write to the podcast library.
-- **Five episodes are already on their way**: wait for one of them to finish
-  downloading. Cancelling in the player doesn't stop a download on the server,
-  so it doesn't free a place.
-
-Episodes already marked **Ready on your server** play even while the Bridge is
-offline. And if you don't see your server's podcasts at all, your app is older
-than 2.2.0: update it. See [Podcasts](./listening/podcasts.md#playing-an-episode).
+If you don't see your server's podcasts at all, your app is older than 2.2.0:
+update it.
 
 ### My book restarted from the beginning
 

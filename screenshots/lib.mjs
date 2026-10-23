@@ -9,6 +9,8 @@ const here = path.dirname(fileURLToPath(import.meta.url));
 // All captures land directly in the docs static dir.
 export const OUT_ROOT = path.resolve(here, '../static/img/screenshots');
 export const CACHE = path.resolve(here, '.cache');
+// Fixture files the capture and seed scripts read (fixtures/*.json).
+export const FIXTURES = path.resolve(here, 'fixtures');
 
 export const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 

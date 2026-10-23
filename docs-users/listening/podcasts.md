@@ -144,8 +144,7 @@ starts; otherwise playback stops. An episode never plays on into a series or fol
 
 Some shows are members-only: their feed address works like a password. A **Private feed** badge
 marks them. Only the people who follow a private show can see it, admins included, so a library
-can look empty to you while other people have shows in it. Unfollowing a private show hides it
-from you until you follow its address again.
+can look empty to you while other people have shows in it.
 
 ## Kids
 
