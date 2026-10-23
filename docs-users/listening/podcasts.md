@@ -31,7 +31,7 @@ between **All** shows and the ones you're **Following**, with a count on each.
 Above the grid are **Add shows** (see [Adding shows](#adding-shows)) and a **...** menu with
 [Export my shows](#exporting-your-shows); on a computer or tablet they sit at the end of the
 row with Shows and Folders. While shows you asked for are still being added, a line such as
-**Adding 2 shows** sits there too; tap it to see how they're getting on.
+**Adding 2 shows** sits above the grid; tap it to see how they're getting on.
 
 A library with no shows says **No shows yet**, with an **Add shows** button when you can add
 them (otherwise shows appear once someone follows them on your server). Tap a show to open its
@@ -113,7 +113,7 @@ be fetched by your server first, which takes a moment: you see it in
 
 ![Add shows on Search: results for "kitchen" from Apple Podcasts, one followed and one being added](/img/screenshots/web-player/find-shows-search.png)
 
-Type a show's name (at least two letters) and press **Search**. The player searches only when
+Type a show's name (at least two characters) and press **Search**. The player searches only when
 you press Search, not while you type. Results come from **Apple Podcasts**; when your admin
 has set up **Podcast Index** too, a switch above the field lets you pick which directory to
 search. The list says where its results came from, and each result has:
@@ -159,7 +159,7 @@ When it can't follow the address, the page says why:
 |---|---|
 | **That feed address can't be used. Check it and try again.** | The server can't use the address as it is. |
 | **Five shows are already being added. Try again once one is done.** | Each person can have five shows being added at once. |
-| **This feed is already being added with the other privacy setting.** | You asked for the same feed with Private feed the other way a moment ago. Wait for that one to finish. |
+| **This feed is already being added with the other privacy setting. Wait for it to finish, then try again.** | You asked for the same feed with Private feed the other way a moment ago, and that one is still on its way. |
 | **Your server can't add new shows right now. Try again later.** | The part of your server that fetches podcasts is offline. Shows the library already has can still be followed. |
 | **Your server can't save shows to this library.** | Ask your admin. |
 

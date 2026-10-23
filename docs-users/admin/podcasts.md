@@ -260,7 +260,7 @@ is open). Entries already followed are reported as such, so importing again is
 safe. Private feeds in the file are recognised
 [as when following by URL](#private-feeds), but an import cannot mark any
 other feed private: follow such a members-only feed by its address with the
-player's **Private feed** switch on (or through the API with `private` set).
+player's **Private feed** switch on (or through the developer API, marking it private).
 
 Exporting writes every public show the person follows, across their podcast
 libraries, as an OPML file another app can import. It works while the module is

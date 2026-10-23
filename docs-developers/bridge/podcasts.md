@@ -559,7 +559,7 @@ their one written copy.
 | `discoveryArtworkUrl(rel)` | no request: the artwork route rebuilt from the result's 64-hex `id` with the media token (`?id=&token=`); `null`, an absolute URL, another route or a bad id gives `null` (the placeholder) |
 | `followPodcastByUrl(libraryId, feedUrl, {private})` | `POST /podcasts/follow` with exactly `{library_id, feed_url}`, plus `private: true` only when set |
 | `checkPodcast(libraryId, path)` | `POST /podcasts/check` with exactly `{library_id, path}` |
-| `importOpml(libraryId, body)` | `POST /podcasts/opml/import?library_id=` with the raw bytes (a `Blob` on the web, a `Uint8Array` on a device; `send()`'s `raw` body), always `Content-Type: text/x-opml`, no compression, a 45 s timeout (the server's import budget is 30 s) |
+| `importOpml(libraryId, body)` | `POST /podcasts/opml/import?library_id=` with the raw bytes (a `Blob` on the web, a `Uint8Array` on a device; `send()`'s `raw` body), always `Content-Type: text/x-opml`, no compression, a timeout of at least 45 s (the client's own when longer; the server's import budget is 30 s) |
 | `exportOpml()` | `GET /podcasts/opml/export` with the `Authorization` header (no `?token=` link exists); the counts read through `Headers.get`, so Go's `X-Opml-*` spelling matches, and a missing or non-numeric one is `null` |
 
 `ApiError` gains an optional `retryAfterSeconds`: `Retry-After` when it

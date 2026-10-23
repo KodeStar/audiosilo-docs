@@ -236,8 +236,8 @@ in `src/lib/open.ts`; `/find-shows` is in `BROWSE_PATHS`). `FindShowsScreen`
   the page ("Ask a grown-up to add shows.", "The demo can't add shows.",
   "Adding shows isn't available right now").
 - **Sections** come from the flags (`availableSections` in
-  `find-shows-model.ts`): Search with `podcast_discovery`, Import a list with
-  `podcast_opml`, Feed address always, in that order. `resolveSection` takes
+  `find-shows-model.ts`, in `FIND_SHOWS_SECTIONS` order): Search with
+  `podcast_discovery`, Feed address always, Import a list with `podcast_opml`. `resolveSection` takes
   the link's `section` when offered, else the first; a `SegmentedControl`
   (shown when more than one is offered) writes `?section=`.
 - The import (`useOpmlImport`) is held at page level, so it carries on while

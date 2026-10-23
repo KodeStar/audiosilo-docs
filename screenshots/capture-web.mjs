@@ -1284,7 +1284,8 @@ async function routeFindShows(ctx, pod, stand) {
     return route.fulfill({response: res, json: {...mine, requests: stand.requests}});
   });
   await ctx.route(at('/podcasts/opml/import'), (route) => {
-    stand.requests.unshift(...stand.importRequests);
+    // Once only, however often the page uploads (a repeat would list each request twice).
+    if (!stand.requests.includes(stand.importRequests[0])) stand.requests.unshift(...stand.importRequests);
     return json(route, 200, {library_id: pod.library.id, rows: stand.importRows});
   });
 }
@@ -1371,6 +1372,11 @@ async function captureFindShows(ctx, pod, cid) {
     }
     if (wanted(FIND_SHOTS.address)) {
       await step('podcasts: find shows address', async () => {
+        // The queued request the search shot's follow adds, when that shot didn't run.
+        if (!stand.requests.some((r) => r.state === 'queued')) {
+          const feed = feedLabel(stand.directory.results.find((r) => r.title === newResult(pod).title).feed_url);
+          stand.requests.unshift(stand.request(stand.nextId++, 'queued', feed, 0));
+        }
         await p.goto(findUrl('address'), {waitUntil: 'networkidle', timeout: 45000});
         await tid(p, 'follow-requests').waitFor({timeout: 15000});
         await tid(p, 'feed-address').fill('https://members.example.net/rss/8f3a2c');
