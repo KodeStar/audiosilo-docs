@@ -358,7 +358,11 @@ fi
 
 # The Bridge's own page: a real Bridge, built with its page embedded, on a fresh
 # data dir, paired with the demo server by capture-bridge.mjs (see its header).
-if [ "${SKIP_BRIDGE:-0}" != "1" ] && shot_wanted bridge/; then
+if [ "${SKIP_BRIDGE:-0}" != "1" ] && (cd "$HERE" && node --input-type=module -e '
+  import {SHOTS} from "./manifest.mjs";
+  import {wanted} from "./lib.mjs";
+  process.exit(wanted(...SHOTS.filter((s) => s.capture === "bridge").map((s) => s.file)) ? 0 : 1);
+'); then
   echo "==> capturing the Bridge's page"
   if [ ! -x "$BRIDGE/scripts/build-web.sh" ]; then
     echo "  ! no audiosilo-bridge checkout at $BRIDGE: the Bridge shots keep their previous images"
