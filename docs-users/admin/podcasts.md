@@ -1,6 +1,6 @@
 ---
 title: "Podcasts"
-description: "Podcast libraries, episode downloads and per-show retention through the admin API, podcast search and OPML import/export (in the player and the API), storage limits, private feeds, and which player apps show podcasts (2.2.0 and later)."
+description: "Podcast libraries, episode downloads and per-show retention through the admin API, podcast search and OPML import/export (in the player and the API), storage limits, private feeds, and which player apps show podcasts (2.4.0 and later)."
 ---
 
 ## What is available now
@@ -10,8 +10,8 @@ Podcasts need a [Bridge](bridge.md) and the **Podcasts** module, enabled in
 artwork, downloads episodes and removes eligible older downloads. The server
 reads what the Bridge saves.
 
-:::info[Players 2.2.0 and later show podcasts]
-The player shows podcast libraries from **version 2.2.0**: the shows, each
+:::info[Players 2.4.0 and later show podcasts]
+The AudioSilo app shows podcast libraries from **version 2.4.0**: the shows, each
 show's episodes, following, a New episodes shelf on Home and playing episodes,
 including ones the Bridge downloads when someone presses Play. Listeners can
 also add shows themselves (directory search, a feed address, an OPML list from
@@ -35,13 +35,24 @@ External chapter files and transcripts arrive later.
 
 ## Set up a podcast library
 
-1. [Run and pair a Bridge](../getting-started/running-a-bridge.md).
+1. [Run and pair a Bridge](../getting-started/running-a-bridge.md), version
+   0.3.0 or later ([which Bridge version](../getting-started/running-a-bridge.md#which-bridge-version)).
 2. In **Library > Libraries**, press **Add library**. Choose **Podcasts** under
-   **Kind**, give it a name and a folder, then add it.
-3. Mount that same folder read-write in the Bridge. The server can keep its
+   **Kind** and give it a name and a folder. The hint under **Kind** says what
+   podcasts still need on your server (the Podcasts module, a Bridge that
+   supports podcasts, or both), or that they are ready.
+3. Leave **Give everyone access** ticked (it is by default) so every listener
+   on the server can follow shows in the new library, then add it. Untick it
+   to choose who gets it yourself, later, in **People**: until then only
+   admins see the library. It gives access to each listener's own account;
+   household members get it through their owner, and the demo account is left
+   out. If it can't give someone access, a message says so ("Couldn't give 2
+   people access") and the library is still added: give them access from
+   their page in [People](users-and-invites.md#access).
+4. Mount that same folder read-write in the Bridge. The server can keep its
    read-only mount. Check that the library becomes **Ready** on
    **Server > Settings > Bridge**.
-4. Turn on **Podcasts** in **Server > Settings > Modules**. It starts off, and
+5. Turn on **Podcasts** in **Server > Settings > Modules**. It starts off, and
    pairing a Bridge does not turn it on. Its card needs an online Bridge that
    supports podcasts.
 
@@ -147,7 +158,7 @@ full contract.
 
 ### Playing an episode that isn't downloaded
 
-When a compatible client (the player from 2.2.0) asks to play an episode whose
+When a compatible client (the player from 2.4.0) asks to play an episode whose
 audio is missing, the Bridge fetches it and the player shows **Getting this
 episode** until it is ready. Requests for the same episode share one download, and
 closing a request does not cancel it. Until the audio is saved, the client is
@@ -187,7 +198,7 @@ choosing Archive.
 
 An adult with access to the whole podcast library can follow a feed by its
 URL, in the player's **Add shows** page or through the API. In the player
-(2.2.0 and later), anyone but a kid's account or the demo can follow a show
+(2.4.0 and later), anyone but a kid's account or the demo can follow a show
 already in the library from its page, add shows and press **Check for new
 episodes** on a show they follow, while the module is on and the Bridge is
 online. Following a visible show already in the library is immediate;

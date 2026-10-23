@@ -73,7 +73,7 @@ The **Library** tab is everything on your server, sorted the way you want to loo
 
 ![The Library's Books section: the sections and controls along the top, and the cover grid with progress bars](/img/screenshots/web-player/library.png)
 
-A **podcast library** has just two sections, **Shows** and **Folders**: see [Podcasts](podcasts.md#shows-in-the-library). It appears in the app from version 2.2.0, with a microphone beside its name in the picker.
+A **podcast library** has just two sections, **Shows** and **Folders**: see [Podcasts](podcasts.md#shows-in-the-library). It appears in the app from version 2.4.0, with a microphone beside its name in the picker.
 
 Every section except Folders shows **one library at a time**. If you have more than one library (or more than one server), a **Library** picker sits with the controls, with your libraries grouped under each server's name; with a single library there's nothing to pick, so it doesn't appear. Your choice is remembered on that device.
 

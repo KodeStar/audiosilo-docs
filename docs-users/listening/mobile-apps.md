@@ -11,15 +11,15 @@ AudioSilo has native apps for **iOS** and **Android**. They're the same player y
 
 - **iOS**: the app is on the **[App Store](https://apps.apple.com/us/app/audiosilo/id6783431375)** - search for AudioSilo, or follow the link.
 - **Android**: the app is on **[Google Play](https://play.google.com/store/apps/details?id=app.audiosilo)** - search for AudioSilo, or follow the link.
-- **CarPlay**: Apple has approved AudioSilo for CarPlay audio, but the App Store version (2.0.0) doesn't include it yet; it arrives with a later update. Until then, AudioSilo doesn't appear in CarPlay.
+- **CarPlay**: built into the iPhone app from **version 2.4.0**; see [In the car](in-the-car.md#carplay). An older version doesn't appear in CarPlay, so update the app if you don't see it.
 - **Android Auto**: built into the Android app; see [In the car](in-the-car.md#android-auto) for getting it onto the car's screen.
-- **iPhone widgets and the sleep timer Live Activity**: not in the App Store version yet; they arrive with a later update.
-- **Podcasts**: need **version 2.2.0** or later of the app. An older version doesn't show your server's podcast libraries at all, so update it if your server has podcasts and you don't see them. See [Podcasts](podcasts.md).
+- **iPhone widgets and the sleep timer Live Activity**: in the iPhone app from **version 2.4.0**; see [Widgets on iPhone](#widgets-on-iphone).
+- **Podcasts**: need **version 2.4.0** or later of the app. An older version doesn't show your server's podcast libraries at all, so update it if your server has podcasts and you don't see them. See [Podcasts](podcasts.md).
 
 And you don't need the app to listen on your phone: the **web player works great on mobile** and can be [installed to your home screen](offline-downloads.md), downloads included.
 
 :::note
-This page describes availability at the time of writing; features marked "later update" arrive through the normal store updates.
+This page describes availability at the time of writing. New features reach the apps through the normal store updates, so keep the app up to date.
 :::
 
 ## Connecting the app

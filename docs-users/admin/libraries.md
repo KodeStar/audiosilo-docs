@@ -10,7 +10,7 @@ per person which ones (or which parts of them) are visible via
 [shares](sharing.md).
 
 [Podcasts](podcasts.md) need a Bridge and the Podcasts module. Player apps
-from 2.2.0 [show podcasts](podcasts.md#what-is-available-now); older ones
+from 2.4.0 [show podcasts](podcasts.md#what-is-available-now); older ones
 don't. The book
 detection, book details and export tools described below apply to **Books**
 libraries.
@@ -59,8 +59,15 @@ A podcast library needs its own folder: it cannot share a root with, contain,
 or sit inside another library. Mount the same folder read-write in the Bridge;
 the server can keep reading it read-only. Its card has a **Podcasts** badge,
 and its menu greys out folder detection and book exports. Its form asks for a
-podcast name and folder and hides the book-only settings below. See
+podcast name and folder and hides the book-only settings below. It also has
+**Give everyone access**, ticked by default, which gives every listener on the
+server access to the new library as it is added (see
+[Set up a podcast library](podcasts.md#set-up-a-podcast-library)). See
 [Podcasts](podcasts.md) for downloads, retention and space.
+
+Each library needs a name of its own. A name already in use is refused under
+the **Name** field ("That name is already in use. Pick another one."), and so
+is the name of a library your `config.yaml` declares, with another folder.
 
 Under them are two optional scan settings, **Scan automatically** and **Skip
 these files and folders** - see
@@ -123,6 +130,14 @@ point it at another folder, or change how it's scanned."
   [Skipping files and folders](#skipping-files-and-folders). Books only.
 - **Book details come from** - see
   [Where book details come from](#where-book-details-come-from). Books only.
+
+A library declared in the server's `config.yaml` (or by the app that runs the
+server) has a **From your config** badge on its card. Its **Name** and
+**Folder** are shown but can't be changed here, and the dialog says why: "From
+your config: this library's name and folder are set in config.yaml (or by the
+app that runs the server). Change them there and restart." Every start reads
+those libraries from the config again, so a name changed in the console would
+come back as a second library. Its other settings can be changed as usual.
 
 Click **Save changes**. Changing the **folder** or the **skipped files**
 rescans the library ("AudioSilo is rescanning it now."); renaming it or

@@ -48,7 +48,7 @@ below.
 | **Files that couldn't be read** | A scan couldn't read one of the book's files: it couldn't be opened (for example a permissions problem), it is empty (0 bytes), or ffprobe couldn't read it (a damaged or incomplete file). The row names the file and the reason. Every scan checks the file again, so once you fix the permissions or the share is back, the book leaves the list by itself. | **Read again** reads the book's files again straight away. A toast says "*title* reads fine now", or "*title* still can't be read" with the reason. |
 | **Folder may hold several books** | AudioSilo reads a folder with audio in it as one book. These folders look like they hold several: at least two parts, every part an hour or longer, with different titles. | **Choose detection** opens [Library > Folders](libraries.md#the-folders-page) on that folder: **Separate books** splits it, and **Always one book** tells AudioSilo it really is one book, which also clears it from this list. |
 | **One book split into disc folders** | A book ripped from CDs sits in one folder per disc (`CD1`, `CD2`, ...), so each disc reads as its own book. The row is the first disc, and says "*folder* reads as one book per disc folder". | **Join into one book** sets the folder holding the discs to **Always one book** ("Joining the discs of *folder*"). The library rescans, then they play as one book, with listening progress carried over. See [Books split into disc folders](libraries.md#books-split-into-disc-folders). |
-| **Likely duplicates** | Copies of one book in the same library. See [Duplicates](#duplicates). | A side-by-side comparison. |
+| **Likely duplicates** | Copies of one book in the same library (and, when you ask, in other libraries). See [Duplicates](#duplicates). | A side-by-side comparison. |
 | **Missing covers** | No cover image in the book's folder and none inside its files. | **Upload a cover** opens the book's page, where **Change cover** adds one (see [Covers](books.md#covers)). |
 | **Not matched to community metadata** | The book has no ASIN or ISBN, so community metadata can't find it. Only shown while [community metadata](server.md#community-metadata) is on. | **Review match** opens the book's page with the match dialog open (see [Matching](books.md#matching-with-community-metadata)). To match the whole list at once, use **Match automatically** above it (see [Matching every book at once](#matching-every-book-at-once)). |
 | **Series spelled several ways** | Books of one series that spell its name differently, for example "He Who Fights With Monsters" on some books and "He Who Fights with Monsters" on others. AudioSilo already shows them as one series; this is only about every book saying the same. See [Series spelled several ways](#series-spelled-several-ways). | **Use this spelling** sets one spelling on every book of the series. |
@@ -119,8 +119,11 @@ what it found and apply it.
    Alice in Wonderland #2"), and the ASIN with its store. A match to the wrong
    book of a series, or to another series altogether, shows at a glance.
 5. **Confident** matches are ticked; untick any you don't want. **To review**
-   lists matches that scored lower, or only just ahead of another work: tick
-   the ones that are right, or click **Match by hand** to open that book's
+   lists matches that scored lower, or only just ahead of another work, and
+   matches whose recording is another length than the book, however well they
+   scored. Those say so in both lengths ("Held for review: the book is 10h 34m
+   long, this recording 7h 2m"), as the closest recording can be
+   another edition. Tick the ones that are right, or click **Match by hand** to open that book's
    match dialog over the review. When you accept a match there, you're back on
    the review where you left it, and the book reads **Matched since this run**.
    To look closer first, or to listen to it, the icon beside **Match by hand**
@@ -164,7 +167,8 @@ Once a marketplace is set, the card also offers **Use *country* ASINs**. It
 looks again at the books matched earlier, by hand or in bulk, and offers to
 switch each one to its recording's ASIN in your store, where the community
 catalogue now has one (it gains them over time). Review and apply it the same
-way. It never changes an ASIN from your tags, or one you typed.
+way. It never changes an ASIN from your tags, or one you typed, and a book
+matched again by hand since the run looked keeps that match.
 
 #### Filling in books that are already matched
 
@@ -222,9 +226,15 @@ shows the copy's **Path**, **Format**, **Length**, **Size**, **Chapters**,
 whether it is **Matched**, how many **Listeners** have progress on it, and
 when it was **Added**. **Open book** opens a copy's page.
 
-- Only copies **in the same library** are compared. The same book in two
-  libraries is deliberate (a kids' library, say), and players already show it
-  once.
+- Only copies **in the same library** are compared, unless you turn on
+  **Include other libraries** above the list (it shows when the server has
+  more than one books library): "Also group copies of a book that are in
+  different libraries." Each copy in a group that spans libraries then names
+  its **Library**. The same book in two libraries is often deliberate (a kids'
+  library, say), and players already show it once, so those groups never count
+  towards the number on the **Likely duplicates** card or the Health count,
+  which stay per library. **They're different books** and **Show ignored**
+  work on them as on any group.
 - The discs of a book split into disc folders look alike but aren't copies, so
   they are listed under **One book split into disc folders** instead, never
   here.
@@ -370,7 +380,7 @@ refreshes itself every 30 seconds.
 | **ffmpeg** | Found (with its version), so formats browsers can't play are converted while someone listens, and [community chapters](books.md#community-chapters) start on the pause in the audio; "Downloaded into the data folder" when the server fetched its own copy. **Missing**: those formats won't play in the web player, and community chapter starts may be a few seconds off. |
 | **ffprobe** | Found, so lengths, chapters and codecs are read from the files. **Missing**: lengths and chapters come only from tags. |
 | **Community metadata** | **Healthy** with how fast the service answered, **Needs attention** when it isn't responding, or **Off** (switched off, or no service address set). The server only asks the service while the lookup is on, at most once a minute. A server that keeps a [local copy](server.md#keeping-a-local-copy) shows the copy here instead: see [below](#the-local-copy-of-community-metadata). |
-| **HTTPS certificate** | **Healthy** with the days left and who issued it, **Needs attention** when it expires within two weeks, has expired or its file can't be read, **Waiting** while Let's Encrypt hasn't issued it yet, or **Off** with plain HTTP (a reverse proxy in front handles HTTPS). |
+| **HTTPS certificate** | **Healthy** with the days left and who issued it, **Needs attention** when it expires within two weeks, has expired or its file can't be read, **Waiting** while Let's Encrypt hasn't issued it yet, or **Off** with plain HTTP ("For HTTPS, put a reverse proxy in front or switch to Let's Encrypt"). |
 | **Database** | Its schema number. The book index can be rebuilt from your folders; accounts and progress can't, which is why the server makes [backups](backups.md) of it. |
 | **Backups** | The backups folder, when the last backup was made and when the next one runs. **Failed** (with the reason) when the last backup failed; **Off** when no backups are scheduled, marked as a problem if there isn't a single backup either. See [Backups and restoring](backups.md). |
 | ***Each library*** | The library's folder, and the space free on its disk. **Needs attention** when less than a tenth of the disk is free, or when the folder isn't reachable. |

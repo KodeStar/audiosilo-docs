@@ -54,8 +54,11 @@ metadata is looked up (its **Source**), turning demo mode on or off, how long id
 - The toast says "Saved. Some of it takes effect when the server restarts."
 - A notice at the top of every Settings topic, "Restart AudioSilo to finish
   applying your changes", names the settings waiting, and each carries a
-  **Waiting for a restart** badge. Until you restart, the server keeps using
-  its current values.
+  **Waiting for a restart** badge. The [Overview](console-tour.md#the-overview) shows the
+  same notice, with **Open Settings**, so a choice made in the
+  [setup flow](../getting-started/first-run.md#set-up-your-server) isn't left
+  waiting unnoticed. Until you restart, the server keeps using its current
+  values.
 
 The console can't restart the server for you. Restart it the way you started
 it: `docker compose restart` (or `docker restart` with your container's name),
@@ -376,7 +379,9 @@ see what is wrong.
 You can turn a module on before its Bridge is ready. Its card then says **On,
 but hidden from listeners until the Bridge is ready.** Listeners see what the
 module adds only while the Bridge is ready: it appears and disappears on its own
-as the Bridge comes and goes, without you touching the switch.
+as the Bridge comes and goes, without you touching the switch. Contributions,
+which listeners never see, says **On, but nothing is sent until the Bridge is
+ready.** instead.
 
 The modules today:
 
@@ -387,7 +392,7 @@ The modules today:
   also [search podcast directories (no Bridge needed) and import OPML](podcasts.md#finding-shows-and-moving-subscriptions),
   which listeners use from the player's Add shows page; exporting OPML works
   with the module on or off.
-  Player apps from 2.2.0
+  Player apps from 2.4.0
   [show podcasts](podcasts.md#what-is-available-now); older ones don't. Turning the
   module off stops follows and feed/download/retention scheduling, keeping the
   indexed shows and files. Work already held by the Bridge may finish; a

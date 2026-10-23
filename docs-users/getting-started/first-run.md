@@ -26,8 +26,16 @@ Started normally (including under Docker), the server creates the admin account 
   Admin password : <generated password>
   Auth code      : <generated code>
   Config file    : <data dir>/config.yaml
+--------------------------------------------------------
+ Finish setting up: open https://localhost:8080/admin and sign in as admin.
+ Connect a device: open https://localhost:8080/ and enter the auth code.
+ (API: POST /api/v1/auth/redeem or /api/v1/auth/login.)
 ========================================================
 ```
+
+The two addresses at the bottom use the server's public address once one is
+set; on a new server they are `localhost` with the server's port (`http://`
+when HTTPS is off).
 
 Save these now:
 
@@ -82,7 +90,7 @@ How it works:
 - **The list on the left** marks each step done (a tick) or skipped (a dashed circle), and any step is a click away.
 - **Finish later**, at the top, takes you to the console. The flow opens again the next time you open the console in a new browser session, until you finish it, and it picks up at the first step you haven't answered.
 - **Everything you choose is an ordinary setting.** Each step saves to the same place as [Server > Settings](../admin/server.md#settings) and [Libraries](../admin/libraries.md), so you can change any of it there later.
-- **Set by your config.** A setting fixed by an `AUDIOSILO_*` environment variable (or by the desktop app) shows a lock and **Set by your config**, and can't be changed here.
+- **Set somewhere else.** A setting fixed by an `AUDIOSILO_*` environment variable shows a lock and which variable sets it ("Set by AUDIOSILO_PUBLIC_URL"), as in Settings; one the desktop app sets says **Managed by the desktop app**. Either can't be changed here.
 
 A server that was already in use before this flow existed (it had a library, or more than one account) never shows it.
 
@@ -133,7 +141,7 @@ For a library the server already has (one from your config, say), the step shows
 Invite links and pairing QR codes are built from the server's addresses, so a wrong one is the usual reason a phone can't connect.
 
 - **This browser reaches the server at** shows the address you're using now, with buttons to use it as the **home address** (an address on your home network, like `http://192.168.1.20:8080`) or the **public address** (one that works from anywhere). An address only this computer can use (`localhost`) is offered as neither.
-- **Public address** and **Home address** can also be typed. See [Tell the server its public address](./remote-access.md#tell-the-server-its-public-address) and [its home address](./remote-access.md#tell-the-server-its-home-address).
+- **Public address** and **Home address** can also be typed. An address without `http://` or `https://` gets one added when you continue (`https://` for the public address, `http://` for the home address, as the examples show). One that still isn't a plain web address is marked under its own field ("Enter a full address, like http://192.168.1.20:8080"), and so is one the server refuses, so you can see which of the two to fix. See [Tell the server its public address](./remote-access.md#tell-the-server-its-public-address) and [its home address](./remote-access.md#tell-the-server-its-home-address).
 - **A reverse proxy is in front of the server** appears when your requests arrive through one the server doesn't trust yet; **Trust** adds its address to the trusted proxies, so sessions and devices show each person's real address. See [Behind a reverse proxy](./remote-access.md#behind-a-reverse-proxy).
 - **HTTPS** shows the server's mode and what it means for phones. With the default self-signed certificate, the **plain HTTP at home** switch is here too ([why the apps need it](./remote-access.md#plain-http-at-home-how-the-phone-apps-connect)). These apply after a restart; **Change HTTPS in Settings** opens the rest.
 
@@ -143,7 +151,7 @@ Invite links and pairing QR codes are built from the server's addresses, so a wr
 
 If you're moving from Audiobookshelf, AudioSilo can bring each person's listening progress across, so nobody starts their books again. **Open the import** opens [the import](../admin/import.md) in a new tab, leaving the flow where it is. Audiobookshelf's `metadata.json` files in your book folders are read as they are, so their titles, authors, series and descriptions come across with the books.
 
-This step counts as done only once you've opened the import; otherwise it's recorded as skipped, so it waits on the Overview for later.
+There is nothing to set here: **Continue** records the step as done, whether or not you opened the import (someone who never used Audiobookshelf has nothing left to do). **Skip** records it as skipped, so it waits on the Overview for later.
 
 ### Step 6: Backups and updates
 
@@ -160,6 +168,8 @@ This step counts as done only once you've opened the import; otherwise it's reco
 
 Scan the code with your phone's camera: it opens the AudioSilo app, or the web player, signed in as you. The code works once, for ten minutes; **New code** makes another. **Open the web player** opens it in a new tab, also signed in. See [Connecting to a server](../listening/connecting.md).
 
+If you opened the console on the server itself (at `localhost` or `127.0.0.1`), a phone can't use that address. The code then sends your phone to the server's home address instead, and says so ("This page is open on the server itself, so the code sends your phone to the home address, ..."). With no home or public address set, it warns **A phone can't reach 127.0.0.1:8080** (or whichever address you used) instead: **Set the server's address** takes you back to [step 4](#step-4-how-will-people-reach-the-server); add the address there, then make a new code.
+
 Below them:
 
 - whether **ffmpeg** is ready: with it, books in formats a browser can't play are converted as they stream; without it, those books won't play in the web player.
@@ -169,15 +179,15 @@ Below them:
 
 ![Step 8: adding a Bridge, with the compose snippet](/img/screenshots/setup/bridge.png)
 
-Optional. A **Bridge** is a companion container that does the work the server won't: it writes to your library folders and runs heavy jobs like generated character sheets and recaps, so the server itself stays read-only. The step shows the lines to add to the compose file that runs your server (**Copy snippet**), and **Connect a bridge** shows the pairing code to enter on the Bridge's page. Once a Bridge is paired, this step shows its setup checklist instead. [Running a Bridge](./running-a-bridge.md) has the whole story.
+Optional. A **Bridge** is a companion container that does the work the server won't: it writes to your library folders and runs heavy jobs like generated character sheets and recaps, and it downloads podcasts, so the server itself stays read-only. The step shows the lines to add to the compose file that runs your server (**Copy snippet**). They mount each of your libraries in the Bridge, one volume per library, at the same folder the server uses, and give the Bridge the server's address in the compose file, `http://audiosilo:8080`. Replace each `/path/to/...` with that library's folder on your computer or NAS. For characters and recaps you also add the agent container: the **Running a Bridge** link opens [Running a Bridge](./running-a-bridge.md), which has it and the rest of the options. **Connect a Bridge** shows the pairing code to enter on the Bridge's page. Once a Bridge is paired, this step shows its setup checklist instead. The same snippet is on **Server > Settings > Bridge** while no Bridge is paired.
 
-**Finish setup** (or **Skip and finish**) ends the flow and takes you to the Overview. Any step you never reached counts as skipped.
+**Finish setup** (or **Skip and finish**) ends the flow and takes you to the Overview. Any step you never reached counts as skipped, except the books folder once the server has a books library. If something you chose applies only after a restart (a local copy of community metadata, or an HTTPS setting), the message as you finish names it ("Restart AudioSilo to finish applying ..."), and the Overview keeps a **Restart AudioSilo to finish applying your changes** notice, with **Open Settings**, until the server restarts.
 
 ## The Finish setting up card
 
 ![The Overview's Finish setting up card, listing two skipped steps](/img/screenshots/setup/finish-card.png)
 
-When you finish with steps skipped, the Overview shows a **Finish setting up** card listing them. Each one opens that step again; once you've been through what's left, you're back on the Overview. **Dismiss** hides the card for good, for every admin of the server. The settings themselves stay where they always are, under [Server > Settings](../admin/server.md#settings) and [Libraries](../admin/libraries.md).
+When you finish with steps skipped, the Overview shows a **Finish setting up** card listing them. Each one opens that step again; once you've been through what's left, you're back on the Overview. A skipped books folder step isn't listed once the server has a books library. The card shows too while you haven't finished the flow (you left it with **Finish later**): "You haven't finished setting up this server yet", with **Continue setting up**. **Dismiss** hides the card for good, for every admin of the server. The settings themselves stay where they always are, under [Server > Settings](../admin/server.md#settings) and [Libraries](../admin/libraries.md).
 
 ## What lives in the data directory
 

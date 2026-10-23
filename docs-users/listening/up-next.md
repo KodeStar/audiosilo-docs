@@ -5,7 +5,7 @@ description: "Lining up the books you want to hear next: opening Up next on a co
 
 **Up next** is your queue: the books you'd like to hear after the one you're on, in the order you want them. It's kept on your server, so the same list follows you to every device you listen on.
 
-[Podcast episodes](podcasts.md) can go in Up next too, from an episode's **...** menu. An app older than 2.2.0 doesn't show them in the list, but changing the list there keeps them on it.
+[Podcast episodes](podcasts.md) can go in Up next too, from an episode's **...** menu. An app older than 2.4.0 doesn't show them in the list, but changing the list there keeps them on it.
 
 :::note
 Up next needs a recent AudioSilo server. On an older server the Up next buttons don't appear at all, and everything else works as before.
@@ -38,6 +38,8 @@ Up next shows **one server's queue**: the server of the book you're playing, or 
 - **Continue the series and more** underneath: the next book in the series you're playing, books you're partway through on this server, and, when the community database knows the next book in a series but your server doesn't have it, a pale "ghost" for it with **See the series**. Tap **+** to add a suggestion to the queue.
 - **Play the next book automatically** at the bottom: when a book ends, start the first book in Up next, or the next in the series. This is the same switch as **Automatically play next book** in [Settings](settings.md#up-next-and-downloads) - see [The end of a book](end-of-book.md#playing-on-automatically).
 
+While a [podcast episode](podcasts.md#when-an-episode-ends) is playing, the suggestions offer the show's next episode, marked **Next episode**, and the switch reads **Play Up next automatically**: after an episode, only the first item in Up next plays, never the next episode unless you've queued it.
+
 ## Adding books
 
 - Open any book's [menu](browsing.md#the-book-menu) (its **...** button in a list, or press and hold its cover) and choose **Add to Up next** (or **Remove from Up next** if it's already there).
@@ -60,4 +62,4 @@ A short note confirms each change with **Undo**, in case you tapped the wrong bo
 
 ## When a book ends
 
-The first book in your queue is what plays next; see [What plays next](end-of-book.md#what-plays-next). A book leaves the queue when you play it from Up next, when it starts as the next book at the end of another, and when it finishes or you use **Mark as Finished** in the full player. Started some other way, or marked finished from its book menu, it stays in the queue until you remove it. With **Keep the next books ready** on, AudioSilo also [downloads the top of your queue](offline-downloads.md#keep-the-next-books-ready) ahead of time.
+The first book in your queue is what plays next; see [What plays next](end-of-book.md#what-plays-next). A book leaves the queue as soon as it starts playing, wherever you start it: from Up next, its page, a list, the car, or as the next book at the end of another. It also leaves when it finishes or you use **Mark as Finished** in the full player. Marked finished from its book menu, it stays in the queue until you remove it. With **Keep the next books ready** on, AudioSilo also [downloads the top of your queue](offline-downloads.md#keep-the-next-books-ready) ahead of time.
