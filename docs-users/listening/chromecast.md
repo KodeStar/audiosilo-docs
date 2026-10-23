@@ -22,6 +22,8 @@ It only appears while a book is loaded, and only when that book's server runs an
 
 On an iPhone, if AudioSilo hasn't asked before, the first tap brings up a request to use your **local network**: that's how it finds Cast devices. Allow it, or the app can't see any.
 
+Podcast episodes don't cast yet: the Cast button isn't shown while an [episode](podcasts.md) plays.
+
 ## What you need
 
 - **A Cast device on the same network** as your phone or computer.

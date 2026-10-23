@@ -37,7 +37,9 @@ generations and MP3 CHAP attachments. **Phase 2c-2b** adds on-demand episode
 fetching on play, fetch status/Retry, one-ahead queue preparation and a
 reserved download slot for play requests. **Phase 2c-3** adds server-side
 podcast [directory search and OPML import/export](podcasts.md#discovery-and-opml-transfer)
-with no Bridge change. Podcast player views, read-along,
+with no Bridge change. **Phase 2d-1** adds the player's
+[podcast views](podcasts.md#player-phase-2d-1) (players from 2.2.0), again
+with no Bridge change. Discovery and OPML in the player (Phase 2d-2), read-along,
 Audible backups and file moves arrive later.
 :::
 

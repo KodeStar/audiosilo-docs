@@ -709,7 +709,8 @@ The rule is the pure `communityCoverSource` (`community-cover.ts`), unit-tested:
 ### Home
 
 Home (`src/components/home/`) aggregates every connection and keeps its rules
-pure:
+pure (the podcast "New episodes" rail, `use-new-episodes.ts` and
+`new-episodes-model.ts`, is in [Podcasts](podcasts.md#homes-new-episodes)):
 
 - `home-model.ts`: `pickNowBook` (the loaded book, else the most recently played
   in progress), `syncPill` (told as it is: a save still in the offline queue, or an
@@ -767,6 +768,16 @@ once (the most recently played book's entry) and is not counted again for anothe
 book that hasn't reached it. The counted remainder is the `hidden` number behind
 "2 more matches after your place in the book". The result carries the CC BY-SA
 `attributions` of the books its hits come from, rendered beside the group.
+
+### Podcasts
+
+Podcast reads (`usePodcastShows`, `usePodcastEpisodes`, `myPodcastsQuery`,
+`latestEpisodesQuery`) are core and asked only for a library whose `kind` is
+`podcasts`; Follow and Unfollow are `useCapabilityMutation('podcasts', ...)`;
+`usePodcastFetchStatus` is a `podcast_fetch` capability query the
+episode-fetch controller seeds and is the only one to poll. Keys and shapes:
+[Bridge podcasts](../bridge/podcasts.md#player-phase-2d-1); screens and the
+controller: [Podcasts](podcasts.md).
 
 ## Zustand stores
 

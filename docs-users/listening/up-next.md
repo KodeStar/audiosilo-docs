@@ -5,6 +5,8 @@ description: "Lining up the books you want to hear next: opening Up next on a co
 
 **Up next** is your queue: the books you'd like to hear after the one you're on, in the order you want them. It's kept on your server, so the same list follows you to every device you listen on.
 
+[Podcast episodes](podcasts.md) can go in Up next too, from an episode's **...** menu. An app older than 2.2.0 doesn't show them in the list, but changing the list there keeps them on it.
+
 :::note
 Up next needs a recent AudioSilo server. On an older server the Up next buttons don't appear at all, and everything else works as before.
 :::

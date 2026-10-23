@@ -49,6 +49,7 @@ const sidebars: SidebarsConfig = {
         'frontend/sleep-timer',
         'frontend/player-ui',
         'frontend/book-page',
+        'frontend/podcasts',
         'frontend/annotations',
         'frontend/journal',
         'frontend/you-and-settings',

@@ -23,7 +23,8 @@ With the Podcasts module on, it also fetches missing podcast episodes on play
 through a compatible client, downloads episodes selected by policy and checks
 retention by a per-show policy an admin sets through the API for now. See
 [Podcasts](../admin/podcasts.md#downloads-and-retention) for the default,
-protections and the API calls. Released player apps do not show podcasts yet.
+protections and the API calls. Player apps from 2.2.0 show podcasts; older
+ones don't (see [Podcasts](../listening/podcasts.md)).
 
 The book-generation setup uses **two containers**:
 

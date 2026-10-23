@@ -122,6 +122,11 @@ Implementation notes worth knowing before touching it:
 
 ## The registry store (`src/downloads/store.ts`)
 
+Podcast episodes are never downloaded (Bridge Phase 2d-1, decision 6.1): the
+store answers `unsupported` for a `book.episode`, and auto-download and
+keep-ahead skip episodes (keep-ahead by the entry's library kind). See
+[Podcasts](podcasts.md#what-episodes-never-do).
+
 `useDownloads` (Zustand) keeps a `Registry` of `DownloadEntry` keyed by
 `downloadKey(connectionId, libraryId, path)`
 (`"<connectionId>:<libraryId>:<path>"`), persisted as JSON under

@@ -1113,11 +1113,12 @@ Phase 2c-2 exposes feed following, indexed show/episode reads, scheduled and
 admin-requested downloads, retention, CHAP chapters and on-demand fetch/status/Retry.
 Phase 2c-3 adds [directory search](#podcast-discovery) and
 [OPML import and export](#opml-import-and-export), API only.
-Released podcast player UI arrives later. The recognized
-clients are the console's `AudioSilo Admin` or the player's `AudioSilo` with
-version `dev`, through `X-AudioSilo-Client`; the released-player minimum is still
-empty. A missing, other or released client is denied podcast content even for
-an admin. See [visibility](../auth-and-security.md#podcast-visibility).
+Phase 2d-1 adds the [player](../../bridge/podcasts.md#player-phase-2d-1)
+(no new route). The recognized clients, through `X-AudioSilo-Client`, are the
+console's `AudioSilo Admin`, the player's `AudioSilo` with version `dev`, and
+released players from **`AudioSilo/2.2.0`** (`auth.PodcastPlayerMinVersion`). A
+missing or other client, or a player older than 2.2.0, is denied podcast
+content even for an admin. See [visibility](../auth-and-security.md#podcast-visibility).
 
 ### Podcast read routes
 
@@ -1330,8 +1331,8 @@ cooldown; GET never retries a failed job. Clients repeat one request (GET
 status, or the media request) no sooner than every two seconds, and only
 while queued/fetching. Stop at ready/failed/unavailable; failure needs explicit POST Retry or a later
 scheduled attempt. An unavailable retry interval is not permission for a POST
-loop. Optional player mirrors, hooks, cache refresh and generation/CHAP rules
-are in the [Phase 2d handoff](../../bridge/podcasts.md#player-handoff-phase-2d-not-implemented).
+loop. The player's mirrors, hooks, cache refresh and generation/CHAP rules
+are in [Player (Phase 2d-1)](../../bridge/podcasts.md#player-phase-2d-1).
 
 ### Podcast follow requests
 
@@ -1405,7 +1406,8 @@ sends a finished/failed notification. See [the Bridge implementation](../../brid
 shows by name; following one is the ordinary
 [`POST /podcasts/follow`](#podcast-actions) with `{library_id, feed_url}`
 (there is no provider-id follow and no new follow field). Nothing in the
-console or a released player calls these routes yet.
+console or a released player calls these routes yet (the player's screens are
+[Phase 2d-2](../../bridge/podcasts.md#player-handoff-discovery-and-opml-phase-2d-2-not-implemented)).
 
 | Route | Query | Success |
 |---|---|---|
@@ -3239,7 +3241,16 @@ picker, `ratings` for ratings. Rules shared by every route in this section:
   caller's current access. Any other entry is **skipped**, not an error, and the
   response is the stored result, so a client reconciles with what it gets back.
   Duplicates collapse (the first wins). It is a whole replace: every stored row
-  not in the list is deleted, **including** rows the caller can't currently see.
+  not in the list is deleted, **including** rows the caller can't currently see,
+  with one exception. **A caller the [podcast client gate](../auth-and-security.md#podcast-visibility)
+  hides podcasts from** (a 2.1.x or older player) keeps the stored podcast
+  episodes it could see if it passed the gate: each stays just after the listed
+  entry it followed, or all go after the new list, in their stored order, when
+  the new order would shuffle them. They count toward the list's cap (the
+  oldest of them go when the list and they together exceed it). Episodes hidden
+  for another reason (a revoked share, an unfollowed private show) are deleted as
+  before, and a replace from a podcast-seeing client deletes every unlisted row.
+  So an old device reordering Up next can't drop a newer player's episodes.
   A whole-list body may be up to 4 MiB (other bodies keep the default limit).
 - **Removing one entry is never scoped.** `DELETE …?library_id=&path=` removes
   only the caller's own row, so it needs no access check and a revoked path can
@@ -3300,7 +3311,9 @@ picker, `ratings` for ratings. Rules shared by every route in this section:
 Entries follow the [replace rules](#up-next-collections-and-ratings): duplicates
 collapse, entries that aren't an indexed book in the caller's access are
 skipped. Every stored row not in the list is deleted, **including** rows the
-caller can't currently see. Response `200`: the queue, as `GET`.
+caller can't currently see, except the podcast episodes a gated (pre-2.2.0)
+player keeps (see the [replace rules](#up-next-collections-and-ratings)).
+Response `200`: the queue, as `GET`.
 
 | Status | Meaning |
 |---|---|
@@ -3437,7 +3450,8 @@ collection is untouched. `204 No Content`; `404` for anyone else.
 *Session.* Replaces the collection's items with this order (owner only), body
 `{ "items": [ { "library_id": 1, "path": "…" } ] }`, by the
 [replace rules](#up-next-collections-and-ratings) of up next (a whole replace:
-rows the owner can't currently see are deleted too). Response `200`: the
+rows the owner can't currently see are deleted too, except the podcast episodes
+a gated, pre-2.2.0 player keeps). Response `200`: the
 collection and its items, as `GET /me/collections/{id}`. Ownership is checked
 before the size and the entries, so a stranger gets `404` (and a viewer `403`)
 rather than `too many items`; only a malformed body or a missing `items` is

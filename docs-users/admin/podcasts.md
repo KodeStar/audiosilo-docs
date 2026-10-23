@@ -1,6 +1,6 @@
 ---
 title: "Podcasts"
-description: "Podcast libraries, episode downloads and per-show retention through the admin API, podcast search and OPML import/export, storage limits, private feeds, and why released player apps do not show podcasts yet."
+description: "Podcast libraries, episode downloads and per-show retention through the admin API, podcast search and OPML import/export, storage limits, private feeds, and which player apps show podcasts (2.2.0 and later)."
 ---
 
 ## What is available now
@@ -10,13 +10,18 @@ Podcasts need a [Bridge](bridge.md) and the **Podcasts** module, enabled in
 artwork, downloads episodes and removes eligible older downloads. The server
 reads what the Bridge saves.
 
-:::info[Player views arrive later]
-Released player apps, including current store builds, **do not show podcasts
-yet**, even when you sign in as an admin. Podcast player views arrive in a later
-release. **Only the admin console lists podcast libraries for now.** There is
-no follow-by-URL, search or import screen in the released apps or the console
-yet; following, checking feeds, searching podcast directories and OPML import
-and export are available through the
+:::info[Players 2.2.0 and later show podcasts]
+The player shows podcast libraries from **version 2.2.0**: the shows, each
+show's episodes, following, a New episodes shelf on Home and playing episodes,
+including ones the Bridge downloads when someone presses Play (see
+[Podcasts](../listening/podcasts.md) in the listening guide). **Older app
+builds don't show podcasts at all**, even to an admin: update the app. The web
+player your server serves is the one built into it, so it shows podcasts once
+the server is up to date.
+
+There is no follow-by-URL, search or import screen in the player or the console
+yet; following a new feed, checking feeds, searching podcast directories and
+OPML import and export are available through the
 [developer API](/developers/server/api/reference#podcasts).
 :::
 
@@ -25,8 +30,8 @@ when an admin requests one through the API, or when a compatible client asks
 to play an episode whose audio is missing. It also saves supported MP3 chapter
 markers, and it can
 [search podcast directories and import or export OPML subscription lists](#finding-shows-and-moving-subscriptions).
-External chapter files and transcripts arrive later. The player does not show
-on-demand fetching, search or OPML yet.
+External chapter files and transcripts arrive later. The player shows
+on-demand fetching; it does not offer search or OPML yet.
 
 ## Set up a podcast library
 
@@ -142,8 +147,9 @@ full contract.
 
 ### Playing an episode that isn't downloaded
 
-When a compatible client asks to play an episode whose audio is missing, the
-Bridge fetches it. Requests for the same episode share one download, and
+When a compatible client (the player from 2.2.0) asks to play an episode whose
+audio is missing, the Bridge fetches it and the player shows **Getting this
+episode** until it is ready. Requests for the same episode share one download, and
 closing a request does not cancel it. Until the audio is saved, the client is
 told to try again shortly. Playback requests go ahead of waiting admin and
 scheduled downloads, and an up-to-date Bridge keeps one download slot free
@@ -180,7 +186,9 @@ choosing Archive.
 ## Following and feed checks
 
 Through the API, an adult with access to the whole podcast library can follow
-a feed by its URL. Following a visible show already in the library is immediate;
+a feed by its URL. In the player (2.2.0 and later), anyone but a kid's account
+or the demo can follow a show already in the library from its page, while the
+module is on and the Bridge is online. Following a visible show already in the library is immediate;
 a new feed waits for the Bridge to validate and save it. Following also lets
 the server schedule downloads selected by the show's policy. Each person can have
 at most five follow requests open at once. Kids and demo accounts cannot
@@ -197,6 +205,8 @@ Turning the Podcasts module off stops following, unfollowing and checking,
 automatic feed checks, downloads and retention scheduling. Work the Bridge
 already holds may finish. It leaves the indexed shows and files in place; reading
 them through a compatible client does not need the module or an online Bridge.
+In the player, the Follow button disappears (a followed show keeps a Following
+badge) and episodes already on the server still play.
 
 ## Finding shows and moving subscriptions
 

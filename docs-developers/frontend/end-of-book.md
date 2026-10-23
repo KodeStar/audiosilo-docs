@@ -11,6 +11,13 @@ When the last track finishes the engine reports `ended`, and the store
 (`snapshot.state === 'ended'`) exposes it; the final `haltAndPersist` on that
 transition records `finished: true`.
 
+A podcast episode (`FinishedBook.episode`) never opens the end credits:
+`BookEndedListener`'s `endEpisode` drops it from Up next and, with auto-play on
+and the sleep timer not running, starts Up next's head only
+(`resolveUpNext(..., {queueOnly: true})`); otherwise playback stops and a full
+player left open on it closes once the app is active. See
+[Podcasts](podcasts.md#what-episodes-never-do).
+
 - **`finishBook()` (`store.ts`)** is the single "this book is done" action, used
   both by the natural end and the player's *Mark as Finished* menu item. It
   captures a `FinishedBook` identity (connection/library/path/title/author/cover),
