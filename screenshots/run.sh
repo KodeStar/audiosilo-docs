@@ -3,6 +3,10 @@
 # Regenerates the documentation screenshots end-to-end:
 #   1. builds the AudioSilo server from the sibling repo,
 #   2. seeds a small public-domain library (LibriVox; cached in .cache/library),
+#      the generated files of one book (2b) and three made-up podcast shows
+#      (2c, .cache/podcasts: feed.json, cover and short silent episodes, two
+#      of them left off the server; capture-web.mjs adds it as a podcast
+#      library for its podcast shots and removes it again),
 #   3. starts a demo-mode server (port 8790) serving the frontend's web export,
 #      plus a second --setup instance (port 8791) for the first-run setup shots
 #      (the --setup page and the console's "Set up your server" flow),
@@ -141,6 +145,24 @@ if [ -d "$GEN_BOOK" ]; then
 else
   echo "  ! no $GEN_BOOK: the generated content shots will fail"
 fi
+
+# ── 2c. Podcast shows (Bridge Phase 2d-1) ─────────────────────────────────
+# The web player's podcast shots (web-player/library-shows.png, podcast-show.png,
+# home-new-episodes.png, episode-fetching.png, phone-podcast-show.png) need a
+# podcast library, which is only ever written by a Bridge. No Bridge runs here:
+# seed-podcasts.mjs writes what one leaves in a podcast library root from
+# fixtures/podcasts.json (own words, made-up shows): per show a feed.json (v1),
+# a cover.jpg and a short silent mp3 per episode with its fetch pin read from
+# that file, dated back from now (so the newest episodes are always within
+# Home's 14 days). Two episodes (the serial's newest and the daily show's) have
+# no file and no pin, so they are not on the server and playing one asks for a
+# fetch. Rebuilt on every run (ffmpeg/ffprobe); the server only reads it.
+# capture-web.mjs adds it as a podcast library through the admin API (and
+# deletes it again before any other shot could show it).
+PODCASTS="$CACHE/podcasts"
+echo "==> seeding podcast shows into $PODCASTS"
+(cd "$HERE" && node seed-podcasts.mjs "$PODCASTS") \
+  || echo "  ! the podcast seed failed: the podcast shots will fail"
 
 # ── 3. Servers ──────────────────────────────────────────────────────────────
 cleanup() {
@@ -300,7 +322,8 @@ fi
 # ── 5. Captures ─────────────────────────────────────────────────────────────
 cd "$HERE"
 echo "==> capturing web player"
-AS_BASE="http://127.0.0.1:$PORT/web/" ADMIN_PASSWORD="$ADMIN_PASSWORD" node capture-web.mjs
+AS_BASE="http://127.0.0.1:$PORT/web/" ADMIN_PASSWORD="$ADMIN_PASSWORD" PODCASTS_DIR="$PODCASTS" \
+  node capture-web.mjs
 
 if [ "${SKIP_ADMIN:-0}" != "1" ]; then
   echo "==> capturing admin console + public pages"

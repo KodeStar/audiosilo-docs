@@ -1,0 +1,54 @@
+{
+  "_comment": "Made-up podcast shows for the podcast shots (run.sh section 2c, seed-podcasts.mjs). Each becomes <root>/<folder>/feed.json (feed.json v1) plus cover.jpg; every episode with a file gets a short silent mp3 and a fetch pin computed from it. `days_ago` is counted back from the run, `minutes` is the audio's length, `absent` leaves the file out (no fetch pin: not on the server), `follow` is followed by the listener in capture-web.mjs. All names and words here are invented.",
+  "shows": [
+    {
+      "folder": "The Lantern Archive",
+      "title": "The Lantern Archive",
+      "author": "Saltmarsh Audio Theatre",
+      "description": "A new keeper inherits a lighthouse full of reel-to-reel tapes that nobody admits to recording. An audio mystery in weekly parts, best heard in order.",
+      "type": "serial",
+      "colors": ["0x16323f", "0x2f6f73"],
+      "follow": true,
+      "episodes": [
+        {"title": "Trailer: Before the Light", "episode_type": "trailer", "days_ago": 41, "minutes": 2, "description": "Two minutes from the keeper's first night, and a voice on a tape that should be blank."},
+        {"title": "The Inventory", "season": 1, "episode": 1, "days_ago": 34, "minutes": 24, "description": "Mara counts the tapes, the lamps and the logbooks, and finds one more of each than the handover list says."},
+        {"title": "Reel Seventeen", "season": 1, "episode": 2, "days_ago": 27, "minutes": 27, "description": "A reel labelled with next week's date plays a storm that hasn't happened yet."},
+        {"title": "Fog Signal", "season": 1, "episode": 3, "days_ago": 13, "minutes": 26, "description": "The horn sounds on a clear night, and a fishing boat answers in a code nobody has used for fifty years."},
+        {"title": "The Keeper's Hand", "season": 1, "episode": 4, "days_ago": 6, "minutes": 29, "absent": true, "description": "The handwriting in the oldest logbook is Mara's own."}
+      ]
+    },
+    {
+      "folder": "Field Notes at Dawn",
+      "title": "Field Notes at Dawn",
+      "author": "Hedgerow Radio",
+      "description": "Five quiet minutes from the countryside every morning: the weather, the birds, and one small thing worth noticing on the walk.",
+      "type": "episodic",
+      "colors": ["0x6b4a12", "0xd19a3a"],
+      "follow": true,
+      "episodes": [
+        {"title": "The wren on the gatepost", "days_ago": 0.3, "minutes": 6, "absent": true, "description": "A very small bird with a very loud song, and why it sings hardest in the cold."},
+        {"title": "Frost on the cabbages", "days_ago": 1.3, "minutes": 5, "description": "The first hard frost, and the allotment holders who were ready for it."},
+        {"title": "A heron at the weir", "days_ago": 2.3, "minutes": 7, "description": "Patience, as practised by a grey heron standing very still in fast water."},
+        {"title": "Rooks going home", "days_ago": 3.3, "minutes": 5, "description": "Hundreds of rooks crossing the valley at dusk, all talking at once."},
+        {"title": "The last swallows", "days_ago": 4.3, "minutes": 6, "description": "The wires by the barn are empty this morning. Where they go, and how they find their way back."},
+        {"title": "Fairy rings", "days_ago": 5.3, "minutes": 5, "description": "A circle of mushrooms on the cricket pitch, and the fungus under it that is older than the club."},
+        {"title": "The beekeeper's last check", "days_ago": 6.3, "minutes": 6, "description": "Closing the hives for winter with a beekeeper who talks to every colony."},
+        {"title": "Wind in the poplars", "days_ago": 7.3, "minutes": 5, "description": "Why one row of trees sounds like rain when there isn't a cloud in the sky."}
+      ]
+    },
+    {
+      "folder": "The Slow Kitchen",
+      "title": "The Slow Kitchen",
+      "author": "Larder & Lamp",
+      "description": "Long recipes for short evenings: one dish a week that mostly cooks itself, and what to do while it does.",
+      "type": "episodic",
+      "colors": ["0x5a1f24", "0xb5523b"],
+      "follow": false,
+      "episodes": [
+        {"title": "A stew for the first cold week", "days_ago": 9, "minutes": 18, "description": "Beans, a ham hock and four hours of not lifting the lid."},
+        {"title": "Bread that waits for you", "days_ago": 16, "minutes": 21, "description": "An overnight loaf, mixed in five minutes before bed."},
+        {"title": "The patience of onions", "days_ago": 23, "minutes": 16, "description": "Caramelising slowly, properly, and the soup it becomes."}
+      ]
+    }
+  ]
+}
