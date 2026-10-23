@@ -35,7 +35,8 @@ start, and keeps progress, bookmarks and Up next entries like a book. Only
 next, Continue listening, history) leave it out. A framework-free reader tells
 an episode by its library instead: `isPodcastLibrary(l)` (`library-kind.ts`;
 an absent or unknown `kind` is books), `cachedPodcastLibrary(cid, libraryId)`
-over the cached library list, and the `useIsPodcastLibrary` hook.
+over the cached library list, `podcastLibraryIds(libraries)` (a set of ids
+for a whole list), and the `useIsPodcastLibrary` hook.
 `episodeAsBook(ep, show)` (`podcast-model.ts`) turns an episode row into the
 `Book` a start, the action menu and the fetch take.
 
@@ -99,8 +100,12 @@ browser tab and renders:
 `episodeLabel`'s `S2 E5` / `E5`), Trailer / Bonus / Explicit marks, progress or
 Finished, and the state line from `episodeRowState(ep, pending, canFetch)`:
 Ready on your server, Plays on demand, Getting it (with a percentage when the
-size is known), Couldn't get it, Not available now. The player's own fetch of
-that episode (`pending`) wins over the list's batched `fetch`. The one button
+size is known), Couldn't get it, Not available now. The two stopped states
+carry the server's `code`, and `rowStateReasonKey(state)` turns it into the
+reason line under them (`fetchReasonKey`; a server without `podcast_fetch`
+reads as `bridge_unavailable`, "Your server can't download episodes right
+now."). The player's own fetch of that episode (`pending`) wins over the
+list's batched `fetch`. The one button
 is Play (Resume once started) through `usePlayBook`, or Try again after a
 failure (`requestEpisodeFetch(..., {retry: true})`). Its menu is
 `BookActionsButton` with Add to Up next and Mark as finished, never Download.
@@ -113,10 +118,21 @@ Tapping the row opens `bookHref`.
 It has a hero with cover, title, a link to the show, date, duration and marks;
 the primary Resume / Play / Try again; the description; the chapters through
 `BookChaptersTab` (whose `id3_chap` caption reads "Chapters from the episode
-file"); and `usePodcastFetchStatus` while the episode is not downloaded. When
+file"); and `usePodcastFetchStatus` while the episode is not downloaded. A
+stopped state's reason (`rowStateReasonKey`) sits beside the disabled primary
+button. When
 `timeline_changed === true` and the listener has a position, a Notice says the
 audio changed and the place is kept: nothing is rescaled. There is no Generate,
-community metadata, rating, series or Download.
+community metadata, rating, series or Download, and the player's companion
+chips and tabs are off for an episode (`useCompanionData` reads `book.episode`
+as `off`).
+
+### Wording in the player and on Home
+
+The full player's progress reads `player.full.percentOfEpisode`
+(`{{percent}}% of the episode`) for an episode, and the Now card `home.now.throughEpisode`
+("through the episode", with `scaleLabelEpisode` for its scale). The Now card
+skips the "Chapter 1 of 1" line for an episode with no chapters.
 
 ### Home's New episodes
 
@@ -204,7 +220,17 @@ Cancel or another start since then wins. A start that fails stops as `failed`.
   folder next; otherwise playback stops and a full player left open on it
   closes once the app is in the foreground. See [End of book](end-of-book.md).
 - **Kids mode.** `kidsLibraries` drops podcast libraries from kids mode and
-  its library picker (decision 6.2).
+  its library picker, and `kidsCollectionSections` leaves out any item of a
+  podcast library (or with `episode`) in a shared collection (decision 6.2).
+  Since a collection's items carry no `episode`, collections mode waits for
+  the library list and, when it can't be read, falls back as an unreadable
+  shelf does (downloads, else the error), on the kids screen and in the car.
+- **Join Home's book shelves.** `bookRowTest(groups)` (`home-model.ts`) tells
+  a progress row's kind by its library: Next in your series (and the `/next`
+  questions behind it), the smart shelves and Recently finished hold books
+  only, and a server whose list is still loading counts as no books yet (one
+  whose list failed counts as books). The Now card, Continue listening and
+  Favourites show episodes like books; New episodes is their own rail.
 
 Listener copy never says "Bridge" and never shows the server's English:
 refusals read through `fetchReasonKey` and the follow error keys, in all six

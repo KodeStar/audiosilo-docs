@@ -51,14 +51,18 @@ Each episode row has:
 - a progress bar once you've started it, or **Finished**;
 - where its audio is: **Ready on your server**, **Plays on demand** (the server downloads it
   when you play it, see [below](#playing-an-episode)), **Getting it** with how far it has got,
-  **Couldn't get it**, or **Not available now**;
+  **Couldn't get it**, or **Not available now**. The last two add a line saying why, such as
+  *"Your server can't download episodes right now."* (the same reasons as the
+  [table below](#playing-an-episode));
 - one button: **Play** (or **Resume** once you've started), or **Try again** after the server
-  couldn't get it;
+  couldn't get it. While an episode isn't available, **Play** is greyed out;
 - a **...** menu with **Add to Up next** and **Mark as finished**.
 
 Tap the row itself to open the episode's own page: its cover, title, the show (tap it to go back
 to the show), date, length and badges, the play button, its description and, when the episode
-file has them, its chapters (**Chapters from the episode file**).
+file has them, its chapters (**Chapters from the episode file**). When the episode can't be
+played right now, the reason sits beside the greyed-out button. An episode page has no Who's who
+or Story so far: those are for books.
 
 An episode that has left the show's feed stays listed while its file is still on the server,
 marked **No longer in the feed**. Once the file is gone, the episode isn't listed any more.
@@ -90,8 +94,10 @@ long ago under each. It leaves out trailers, episodes gone from the feed, and an
 already started (those are in **Continue listening**) or finished. **All shows** opens the
 Library's Shows. If you follow nothing, or nothing new came out, the shelf isn't shown.
 
-Podcasts stay off your book shelves: they never appear in **Recently added**, book search or the
-author and series pages.
+Podcasts stay off your book shelves: episodes never appear in **Next in your series**, **Recently
+finished**, the smart shelves, **Recently added**, book search or the author and series pages. An
+episode you're listening to does lead Home like a book: in the card for what you're on (*"40%
+through the episode"*), in **Continue listening**, and in **Favourites** if you add it there.
 
 ## Playing an episode
 
@@ -103,7 +109,8 @@ downloads it first: the player shows **Getting this episode** with the episode's
 server is downloading it. It starts as soon as it's ready."*; once the download is under way that
 line shows how much has arrived (*"12 MB of 40 MB"*, or *"12 MB so far"* while the full size
 isn't known). **Waiting for its turn** in its place means it is queued behind other downloads.
-When the episode is ready it starts by itself.
+When the episode is ready it starts by itself. In the player, how far you are reads *"40% of the
+episode"*.
 
 ![The full player while the server gets an episode: Getting this episode, with the download's progress](/img/screenshots/web-player/episode-fetching.png)
 
@@ -111,6 +118,7 @@ When the episode is ready it starts by itself.
   a computer (or a wide tablet), and in the mini player on a phone.
   **Whatever you were listening to keeps playing** until the episode is ready; then the episode
   takes over.
+- If the server can't get it, the strip shows the reason in place of the progress.
 - **Cancel** stops waiting in the player. The server keeps downloading, so the episode will be
   **Ready on your server** next time.
 - Playing something else while you wait also stops waiting for it.
@@ -121,7 +129,7 @@ If the server can't get the episode, the player says why, with **Try again**:
 | Message | What it means |
 |---|---|
 | **Couldn't get this episode** | The download failed (the show's host didn't answer, for instance). **Try again** asks the server to download it again. |
-| **This episode can't be fetched now** | The server can't download episodes right now: podcasts are turned off, the part of your server that downloads them is offline, or it can't save to this library. Ask your admin. |
+| **This episode can't be fetched now** | The server can't download episodes right now, and the line under it says which: *"Podcasts are turned off on this server."*, *"Your server can't download episodes right now."* (the part of your server that downloads them is offline, or the server is too old to fetch episodes on demand), or *"Your server can't save episodes to this library."* Ask your admin. |
 | **Five episodes are already on their way. Try again once one is ready.** | Each person can have at most five episodes downloading at once. Wait for one to finish. |
 | **This episode is too large for your server to keep.** | The file is over the server's size limit. |
 | **This episode changed in its feed. Open the show to find it again.** | The show replaced the episode; open the show's page for the new one. |
@@ -150,7 +158,8 @@ can look empty to you while other people have shows in it.
 
 ## Kids
 
-Kids mode doesn't show podcast libraries, and a kid's account can't follow shows. See
+Kids mode doesn't show podcasts at all: no podcast libraries, and no episodes, even ones in a
+collection you share with a child. A kid's account can't follow shows. See
 [Kids mode](kids-mode.md).
 
 ## Not for episodes yet

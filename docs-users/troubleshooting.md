@@ -219,7 +219,9 @@ stops with a message instead, [Playing an episode](./listening/podcasts.md#playi
 says what each one means. For **This episode can't be fetched now**, ask your
 admin to check that **Podcasts** is on in **Server > Settings > Modules** and
 that the [Bridge](./admin/bridge.md) is online and can write to the podcast
-library.
+library. The same reason shows beside a greyed-out **Play** on the episode's
+row and page before you press it: *"Your server can't download episodes right
+now."* also appears when the server is too old to fetch episodes on demand.
 
 If you don't see your server's podcasts at all, check your app's version first:
 an app older than 2.2.0 shows no podcasts, so update it. If it is up to date,
