@@ -58,6 +58,7 @@ The home screen is built around what *you* are doing, not just what's on the ser
 - **This week** - a ring for the books you've finished this year against your yearly goal (or just how many you've finished, if you haven't set one), the hours you've listened in the last seven days, your listening streak, and a small bar for each of the last seven days.
 - **Continue listening** - the other books you've started, most recent first, each showing how much is left. Tap one to open it, or open its [book menu](#the-book-menu) to resume, mark it finished, and more. **All in progress** opens the Library with just those books.
 - **Next in your series** - what comes after the books you're on, or just finished, with a line saying why ("After The Way of Kings, which you're 40% into"). It includes the next book even when you don't have it yet: those show as a pale "ghost" cover marked **Not in your library**, and tapping one opens the series page.
+- **New episodes** - recent episodes from the podcasts you follow, newest first, when your server has a podcast library. An episode you're listening to shows in the card for what you're on and in Continue listening, but never in the book shelves (Next in your series, the smart shelves, Recently finished). See [Podcasts](podcasts.md#new-episodes-on-home).
 - **Listening in the house** - when you and others on your server share what you're listening to, what they're on right now or listened to in the last 24 hours. It's off by default; see [Listening in the house](in-the-house.md).
 - **Smart shelves** - saved filters that keep themselves up to date: **Finish what you started**, **Short listens** (under 5 hours), **"Name" reads** for the narrator you've listened to most lately, and **Added this week**. Tap one to open the Library with that filter on (the narrator's shelf opens their page). They appear once there are at least two worth showing.
 - **Recently added**, **Favourites** (once you have some) and **Recently finished**, each with a **See all** link.
@@ -71,6 +72,8 @@ If you're connected to more than one server, Home combines all of them. A book t
 The **Library** tab is everything on your server, sorted the way you want to look at it. Across the top are its sections: **Books**, **Authors**, **Series**, **Narrators**, **Collections** and **Folders**. On a tablet or computer they sit in the slim row under the top bar, with the page's controls at its right-hand end; on a phone they're a row you can swipe sideways, under the big **Library** title.
 
 ![The Library's Books section: the sections and controls along the top, and the cover grid with progress bars](/img/screenshots/web-player/library.png)
+
+A **podcast library** has just two sections, **Shows** and **Folders**: see [Podcasts](podcasts.md#shows-in-the-library). It appears in the app from version 2.2.0, with a microphone beside its name in the picker.
 
 Every section except Folders shows **one library at a time**. If you have more than one library (or more than one server), a **Library** picker sits with the controls, with your libraries grouped under each server's name; with a single library there's nothing to pick, so it doesn't appear. Your choice is remembered on that device.
 

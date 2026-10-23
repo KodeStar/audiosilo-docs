@@ -26,7 +26,7 @@ Kids mode also works for a child who signs in with an account the server's admin
 
 Under the child's name on the Household page, with **Kids mode** on, pick:
 
-- **Library**: the one library kids mode shows, when the child's account can see more than one. Left alone, it's the first one the account lists. For a kid in your household it's only there while you share no collections with them (*"Shown when Adam shares no collections"*): while you do, those collections are the shelf.
+- **Library**: the one library kids mode shows, when the child's account can see more than one. Podcast libraries aren't offered: kids mode doesn't show podcasts. Left alone, it's the first one the account lists. For a kid in your household it's only there while you share no collections with them (*"Shown when Adam shares no collections"*): while you do, those collections are the shelf.
 - **Bedtime**: when bedtime starts, **7:30 PM** unless you change it (times are written the way the app's language writes them: 7:30 PM in English, 19:30 in the other languages).
 
 If you turn kids mode on while the child is the one listening, the app goes straight into kids mode. To pick the library and bedtime then, hold **Grown-ups**, choose yourself and open the Household page.
@@ -42,7 +42,7 @@ It's a good idea to give the grown-ups' profiles a [PIN](profiles.md#a-pin-for-a
 - **"Hi Leo"** at the top, with the **Grown-ups** button.
 - **The bedtime card**: *"Bedtime is at 7:30 PM"*, and what happens then. At bedtime it says *"It's bedtime"*, and while the sleep timer runs, how many minutes it has left.
 - **The story playing now**, in a big player: the cover, the title, the chapter and the minutes left in it, a line showing how far through the chapter they are, and four big buttons: **previous chapter**, **go back 30 seconds**, **play/pause** and **next chapter**. No speed, no sleep menu, no bookmarks. Stories start at normal speed (1×), whatever the device's **Default speed** is, so a grown-up's faster speed never carries over to a child (a story that already has a speed saved for the child keeps it).
-- **Your stories**: big cover tiles, the stories they're part-way through first, then every other book, finished ones too (children listen again). Tap one and it plays right there. For a kid in your household, the stories are the books in the collections you share with them, grouped under each collection's name when there are several; while those collections have no stories yet, it says *"Ask a grown-up to add stories."* Anyone else, and a kid you haven't shared a collection with yet, sees the one library chosen for them (if their account can see one).
+- **Your stories**: big cover tiles, the stories they're part-way through first, then every other book, finished ones too (children listen again). Tap one and it plays right there. For a kid in your household, the stories are the books in the collections you share with them, grouped under each collection's name when there are several (podcast episodes in a shared collection are left out); while those collections have no stories yet, it says *"Ask a grown-up to add stories."* Anyone else, and a kid you haven't shared a collection with yet, sees the one library chosen for them (if their account can see one).
 
 ![Kids mode on a phone: the bedtime card, the four big player buttons and the story tiles in two columns](/img/screenshots/web-player/phone-kids.png)
 

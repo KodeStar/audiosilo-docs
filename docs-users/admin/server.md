@@ -386,8 +386,8 @@ The modules today:
   It needs an online Bridge that supports podcasts. With it on, the server can
   also [search podcast directories (no Bridge needed) and import OPML](podcasts.md#finding-shows-and-moving-subscriptions)
   through the API; exporting OPML works with the module on or off.
-  Released player apps
-  [do not show podcasts yet](podcasts.md#what-is-available-now). Turning the
+  Player apps from 2.2.0
+  [show podcasts](podcasts.md#what-is-available-now); older ones don't. Turning the
   module off stops follows and feed/download/retention scheduling, keeping the
   indexed shows and files. Work already held by the Bridge may finish; a
   compatible client can still read saved episodes without it.

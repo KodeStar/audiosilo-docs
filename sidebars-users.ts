@@ -57,6 +57,7 @@ const sidebars: SidebarsConfig = {
         'listening/sleep-timer',
         'listening/up-next',
         'listening/end-of-book',
+        'listening/podcasts',
         'listening/offline-downloads',
         'listening/mobile-apps',
         'listening/in-the-car',

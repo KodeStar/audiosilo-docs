@@ -9,6 +9,9 @@
 //      records (a place, a finish and rating, bookmarks, notes, history, a
 //      sleep-timer drift-off) through the API,
 //   2. capture desktop, tablet and phone profiles into static/img/screenshots/web-player/,
+//   2b. podcasts: run.sh's seeded shows added as a podcast library through the admin API
+//      (the Podcasts module on, two shows followed by path), shot as the admin in a fresh
+//      browser (the episode fetch stood in for by routes), then removed again,
 //   3. the household: three accounts made through the admin API (ADMIN_PASSWORD), and,
 //      as one of them, a collection and the kid household member through the player's
 //      own API (the grown-up member through the add dialog, or the API when only the
@@ -26,6 +29,7 @@ import {
   CACHE,
   DAY,
   DESKTOP_CONTEXT,
+  FIXTURES,
   HOUR,
   MIN,
   addHousehold,
@@ -143,15 +147,21 @@ const PRIMARY_PLAY = /^(start listening|resume( chapter \d+)?|listen again|liste
 // a bare web export, so it isn't read from there).
 const FELL_ASLEEP_NOTE = 'Fell asleep';
 
-// The demo user's token (the web player keeps it in localStorage under
-// audiosilo.token.<connection id>), for provisioning through the API.
-async function demoToken(page) {
-  const token = await page.evaluate(() => {
-    const key = Object.keys(localStorage).find((k) => k.startsWith('audiosilo.token.'));
-    return key ? localStorage.getItem(key) : null;
+// The signed-in player's connection id and token (the web player keeps the token in
+// localStorage under audiosilo.token.<connection id>), for provisioning through the API.
+async function playerSession(page) {
+  const session = await page.evaluate(() => {
+    const prefix = 'audiosilo.token.';
+    const key = Object.keys(localStorage).find((k) => k.startsWith(prefix));
+    return key ? {cid: key.slice(prefix.length), token: localStorage.getItem(key)} : null;
   });
-  if (!token) throw new Error('no demo token in localStorage');
-  return token;
+  if (!session?.token) throw new Error('no player token in localStorage');
+  return session;
+}
+
+// The demo user's token.
+async function demoToken(page) {
+  return (await playerSession(page)).token;
 }
 
 // The seeded library and a finder for its books by title substring.
@@ -965,6 +975,230 @@ await capturePhone('phone', {width: 430, height: 932}, {
   youStats: 'web-player/phone-you-stats.png',
   settings: 'web-player/phone-settings.png',
 });
+
+// ── Podcasts: Shows, a show page, New episodes, an episode being fetched ────
+// A podcast library is only written by a Bridge, and the demo account sees only the
+// demo library, so this pass has its own state (README.md, the podcast shots): run.sh
+// seeds three made-up shows into PODCASTS_DIR (feed.json, cover and silent episodes, two
+// of them not on the server); here the admin turns the Podcasts module on (a follow by
+// path needs only that, no Bridge), adds the folder as a podcast library, follows the
+// fixture's `follow` shows and signs in to a fresh browser by password. The player sees
+// a podcast library only as 2.2.0 or later (`X-AudioSilo-Client`, which the served
+// player sends), and so does every API call here. Afterwards the library is deleted,
+// the module turned off and this pass's audit and event rows taken out again (sqlite3),
+// so no later shot (the connect shots, the admin console's) shows any of it.
+const PODCAST_SHOTS = {
+  shows: 'web-player/library-shows.png',
+  show: 'web-player/podcast-show.png',
+  home: 'web-player/home-new-episodes.png',
+  fetching: 'web-player/episode-fetching.png',
+  phoneShow: 'web-player/phone-podcast-show.png',
+};
+const PODCASTS_DIR = path.resolve(process.env.PODCASTS_DIR || path.join(CACHE, 'podcasts'));
+const PODCAST_LIBRARY = 'Podcasts';
+// A player that sees podcast libraries (the server's PodcastPlayerMinVersion).
+const PODCAST_CLIENT = {'x-audiosilo-client': 'AudioSilo/2.2.0 (web)'};
+// The show on the show page shots (a serial, so oldest first with its trailer) and the
+// show whose newest episode (not on the server) the fetching shot starts.
+const PODCAST_SHOW = 'The Lantern Archive';
+const PODCAST_FETCH_SHOW = 'Field Notes at Dawn';
+const PHONE = {width: 430, height: 932};
+
+// The fixture's shows, each with its feed.json as run.sh wrote it.
+function podcastFixture() {
+  const {shows} = JSON.parse(readFileSync(path.join(FIXTURES, 'podcasts.json'), 'utf8'));
+  return shows.map((s) => ({...s, feed: JSON.parse(readFileSync(path.join(PODCASTS_DIR, s.folder, 'feed.json'), 'utf8'))}));
+}
+
+// The newest id in a server feed table (sqlite3), so teardown removes only this pass's rows.
+const lastId = (table) => Number(sqlite(`SELECT COALESCE(MAX(id), 0) FROM ${table};`).trim() || 0);
+
+async function provisionPodcasts(pod) {
+  if (!ADMIN_PASSWORD) throw new Error('ADMIN_PASSWORD not set: no podcast library to add');
+  if (!existsSync(PODCASTS_DIR)) throw new Error(`no seeded shows at ${PODCASTS_DIR} (run.sh section 2c)`);
+  pod.shows = podcastFixture();
+  pod.marks = {audit: lastId('audit_events'), events: lastId('server_events')};
+  const {token} = await api(null, 'POST', '/auth/login', {username: 'admin', password: ADMIN_PASSWORD}, PODCAST_CLIENT);
+  pod.admin = token;
+  const call = (method, p, body) => api(token, method, p, body, PODCAST_CLIENT);
+  await call('PATCH', '/admin/settings', {modules: {podcasts: true}});
+  pod.moduleOn = true;
+  const created = await call('POST', '/admin/libraries', {name: PODCAST_LIBRARY, root: PODCASTS_DIR, kind: 'podcasts'});
+  pod.library = created?.library ?? created;
+  // The scan the create starts: done once the shows are listed.
+  const until = Date.now() + 60000;
+  let shows = [];
+  while (Date.now() < until) {
+    const libs = (await call('GET', '/admin/libraries'))?.libraries ?? [];
+    const lib = libs.find((l) => l.id === pod.library.id);
+    shows = (await call('GET', `/libraries/${pod.library.id}/podcasts`))?.shows ?? [];
+    if (!lib?.scan?.running && !lib?.scan?.queued && shows.length >= pod.shows.length) break;
+    await sleep(500);
+  }
+  if (shows.length < pod.shows.length) throw new Error(`the podcast scan listed ${shows.length} of ${pod.shows.length} shows`);
+  for (const s of pod.shows.filter((x) => x.follow)) {
+    await call('POST', '/podcasts/follow', {library_id: pod.library.id, path: s.folder});
+  }
+  console.log(`  ✓ podcast library "${PODCAST_LIBRARY}": ${shows.length} shows, following ${pod.shows.filter((x) => x.follow).map((x) => x.title).join(' and ')}`);
+}
+
+async function unprovisionPodcasts(pod) {
+  const call = (method, p, body) => api(pod.admin, method, p, body, PODCAST_CLIENT);
+  if (pod.library) await call('DELETE', `/admin/libraries/${pod.library.id}`).catch((e) => console.log(`  ! podcast library left: ${e.message}`));
+  if (pod.moduleOn) await call('PATCH', '/admin/settings', {modules: {podcasts: false}}).catch((e) => console.log(`  ! Podcasts module left on: ${e.message}`));
+  await api(pod.admin, 'POST', '/auth/logout').catch(() => {});
+  try {
+    sqlite(`DELETE FROM audit_events WHERE id > ${pod.marks.audit};\nDELETE FROM server_events WHERE id > ${pod.marks.events};`);
+  } catch (e) {
+    console.log(`  ! this pass's audit and event rows left in the server's feeds: ${e.message}`);
+  }
+  console.log('  ✓ podcast library removed again');
+}
+
+// The fetching shot's answers for `relPath` (the server's own 503 and status shapes,
+// internal/podcast/testdata/phase2c2/wire-2b.json, with a real-looking size): the stream
+// probe gets the 503 the server sends while a Bridge fetches, and every status read a
+// fetch a little further on, never finished, so the panel stays on its way. Routed on this
+// page only, and only for that episode; undone by the returned function.
+async function routeEpisodeFetch(page, libraryId, relPath) {
+  const total = 41_873_408;
+  let received = 13_107_200;
+  const status = () => {
+    received = Math.min(Math.round(total * 0.72), received + 1_572_864);
+    return {state: 'fetching', request_id: 81, bytes_received: received, bytes_total: total, retry_after_seconds: 2, error: null};
+  };
+  const forEpisode = (route) => new URL(route.request().url()).searchParams.get('path') === relPath;
+  const stream = new RegExp(`/api/v1/libraries/${libraryId}/stream\\?`);
+  const fetchStatus = new RegExp(`/api/v1/libraries/${libraryId}/podcasts/fetch\\?`);
+  const onStream = (route) => {
+    if (!forEpisode(route)) return route.continue();
+    return route.fulfill({
+      status: 503,
+      headers: {'retry-after': '2', 'cache-control': 'no-store'},
+      contentType: 'application/json',
+      body: JSON.stringify({error: 'Episode is being fetched.', code: 'podcast_fetching', fetch: status()}),
+    });
+  };
+  const onStatus = (route) => {
+    if (!forEpisode(route) || route.request().method() !== 'GET') return route.continue();
+    return route.fulfill({status: 200, contentType: 'application/json', body: JSON.stringify({fetch: status()})});
+  };
+  await page.route(stream, onStream);
+  await page.route(fetchStatus, onStatus);
+  return async () => {
+    await page.unroute(stream, onStream);
+    await page.unroute(fetchStatus, onStatus);
+  };
+}
+
+async function capturePodcasts(pod) {
+  const origin = new URL(BASE).origin;
+  const ctx = await newCaptureContext();
+  let session = null;
+  try {
+    const page = await ctx.newPage();
+    await page.goto(BASE + 'connect', {waitUntil: 'networkidle', timeout: 45000});
+    await probeServer(page, origin);
+    await signInWithPassword(page, 'admin', ADMIN_PASSWORD);
+    await tid(page, 'ready-screen').waitFor({timeout: 15000});
+    const player = await playerSession(page);
+    session = player.token;
+    const {cid} = player;
+    await firstVisible(page.getByRole('button', {name: 'Start listening'})).click({timeout: 8000});
+    await tid(page, 'top-bar-(home)').waitFor({timeout: 15000});
+    // The episode the fetching shot starts (not on the server; also the newest on Home).
+    const fetchEpisode = pod.shows.find((s) => s.folder === PODCAST_FETCH_SHOW)?.feed.episodes.find((e) => !e.fetch);
+    if (!fetchEpisode) throw new Error(`no episode of ${PODCAST_FETCH_SHOW} that is not on the server`);
+    // Let the covers settle, then shoot `file` with the pointer out of the way.
+    const settleShoot = async (p, file, ms = 1500) => {
+      await sleep(ms);
+      await p.mouse.move(0, 0);
+      await shoot(p, file);
+    };
+
+    if (wanted(PODCAST_SHOTS.home)) {
+      await step('podcasts: home', async () => {
+        await tid(page, 'top-bar-(home)').click({timeout: 8000});
+        const heading = firstVisible(page.getByText('New episodes', {exact: true}));
+        await heading.waitFor({timeout: 30000});
+        await firstVisible(page.getByText(fetchEpisode.title)).waitFor({timeout: 15000});
+        await heading.evaluate((el) => el.scrollIntoView({block: 'start'}));
+        await page.mouse.wheel(0, -120);
+        await settleShoot(page, PODCAST_SHOTS.home);
+      });
+    }
+
+    if (wanted(PODCAST_SHOTS.shows, PODCAST_SHOTS.show)) {
+      await step('podcasts: shows', async () => {
+        await tid(page, 'top-bar-(library)').click({timeout: 8000});
+        await sleep(1500);
+        await firstVisible(page.getByRole('combobox', {name: 'Library'}).or(page.getByRole('button', {name: 'Library'}))).click({timeout: 8000});
+        await firstVisible(page.getByRole('option', {name: PODCAST_LIBRARY})).click({timeout: 8000});
+        await firstVisible(page.getByTestId('show-tile')).waitFor({timeout: 15000});
+        await settleShoot(page, PODCAST_SHOTS.shows);
+        if (!wanted(PODCAST_SHOTS.show)) return;
+        await firstVisible(page.getByTestId('show-tile').filter({hasText: PODCAST_SHOW})).click({timeout: 8000});
+        await tid(page, 'podcast-show-hero').waitFor({timeout: 15000});
+        await tid(page, 'podcast-following-badge').waitFor({timeout: 15000});
+        await firstVisible(page.getByTestId('episode-row')).waitFor({timeout: 15000});
+        await settleShoot(page, PODCAST_SHOTS.show);
+      });
+    }
+
+    // The phone shots, on this browser's storage (the same signed-in player).
+    if (wanted(PODCAST_SHOTS.phoneShow, PODCAST_SHOTS.fetching)) {
+      const phone = await sameDevice(ctx, {viewport: PHONE});
+      try {
+        const p = await phone.newPage();
+        const showUrl = (folder) =>
+          `${BASE}podcast?connection=${encodeURIComponent(cid)}&library=${pod.library.id}&show=${encodeURIComponent(folder)}`;
+        if (wanted(PODCAST_SHOTS.phoneShow)) {
+          await step('podcasts: phone show', async () => {
+            await p.goto(showUrl(PODCAST_SHOW), {waitUntil: 'networkidle', timeout: 45000});
+            await tid(p, 'podcast-following-badge').waitFor({timeout: 15000});
+            await firstVisible(p.getByTestId('episode-row')).waitFor({timeout: 15000});
+            await settleShoot(p, PODCAST_SHOTS.phoneShow);
+          });
+        }
+        if (wanted(PODCAST_SHOTS.fetching)) {
+          await step('podcasts: episode fetching', async () => {
+            const unroute = await routeEpisodeFetch(p, pod.library.id, fetchEpisode.path);
+            try {
+              await p.goto(showUrl(PODCAST_FETCH_SHOW), {waitUntil: 'networkidle', timeout: 45000});
+              await firstVisible(p.getByRole('button', {name: new RegExp(`^${escapeRe(fetchEpisode.title)}`)})).click({timeout: 15000});
+              await tid(p, 'episode-page').waitFor({timeout: 15000});
+              await sleep(SETTLE_MS);
+              await tid(p, 'episode-page-play').click({timeout: 8000});
+              await tid(p, 'episode-fetch-panel').waitFor({timeout: 15000});
+              await firstVisible(p.getByTestId('episode-fetch-line').getByText(/ of /)).waitFor({timeout: 15000});
+              await settleShoot(p, PODCAST_SHOTS.fetching, 2500); // a status read or two, and the cover
+              await tid(p, 'episode-fetch-cancel').click({timeout: 8000}).catch(() => {});
+            } finally {
+              await unroute();
+            }
+          });
+        }
+      } finally {
+        await phone.close();
+      }
+    }
+  } finally {
+    // Sign this player session out again, whatever happened above.
+    if (session) await api(session, 'POST', '/auth/logout').catch(() => {});
+    await ctx.close();
+  }
+}
+
+if (wanted(...Object.values(PODCAST_SHOTS))) {
+  console.log('== podcasts ==');
+  const pod = {admin: null, library: null, moduleOn: false, shows: [], marks: null};
+  try {
+    await step('provision podcasts', () => provisionPodcasts(pod));
+    if (pod.library) await step('podcasts', () => capturePodcasts(pod));
+  } finally {
+    if (pod.admin) await step('remove podcasts', () => unprovisionPodcasts(pod));
+  }
+}
 
 // The connect start screen, done once the probe card shows what it found. A served
 // player that asks its own server on open has no address field; one that has the field

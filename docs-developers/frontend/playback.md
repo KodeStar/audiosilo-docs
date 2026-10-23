@@ -737,6 +737,10 @@ under the stats ("AC-3 audio is converted to MP3 for this browser"), under exact
 
 - [The end of a book](end-of-book.md): finishing a book, what plays next, the
   automatic download of the book you start.
+- [Podcasts](podcasts.md): an episode not on its server yet starts through the
+  episode-fetch controller (`src/playback/episode-fetch.ts`), never `playBook`;
+  `NowPlaying.episode` (a view field from `nowPlayingOf`) marks an episode for
+  the cast, credits and download rules.
 - [The sleep timer](sleep-timer.md): the timer, drift-offs, the grace card.
 - [Player UI](player-ui.md): jump undo, time left, the companion, the controls,
   sheets, and the compact and full players.

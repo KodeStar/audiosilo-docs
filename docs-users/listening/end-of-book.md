@@ -20,6 +20,8 @@ When a book reaches its end, AudioSilo marks it **finished** (it leaves your *Co
 
 You can open the end credits early from the full player's [three-dot menu](full-player.md#the-three-dot-menu) (**View end credits**, or **Mark as Finished**). Opened early with **View end credits**, the book keeps playing, and nothing starts by itself until it really ends. **Play now** there starts the next book straight away; the book you were in keeps your place, stays unfinished and keeps its download. Only a book that has actually ended (or that you marked finished) is finished when the next one starts.
 
+A [podcast episode](podcasts.md#when-an-episode-ends) never opens the end credits: it leaves Up next, and with auto-play on the next item in Up next starts.
+
 ## What plays next
 
 AudioSilo picks the next book the same way everywhere:

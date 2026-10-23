@@ -9,8 +9,9 @@ You can have several - for example one for fiction, one for kids - and control
 per person which ones (or which parts of them) are visible via
 [shares](sharing.md).
 
-[Podcasts](podcasts.md) need a Bridge and the Podcasts module. Released player
-apps [do not show podcasts yet](podcasts.md#what-is-available-now). The book
+[Podcasts](podcasts.md) need a Bridge and the Podcasts module. Player apps
+from 2.2.0 [show podcasts](podcasts.md#what-is-available-now); older ones
+don't. The book
 detection, book details and export tools described below apply to **Books**
 libraries.
 

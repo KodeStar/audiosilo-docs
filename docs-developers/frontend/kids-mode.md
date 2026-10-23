@@ -84,6 +84,12 @@ the `kids` namespace.
 
 The rules are pure in `kids-model.ts`, read through `useKidsStories()`:
 
+- **No podcasts** (`kidsLibraries`, `src/lib/library-kind.ts`): podcast libraries
+  are never a kids library, in the screen or the library picker, and a shared
+  collection's podcast items are left out (`kidsCollectionSections` with the
+  account's libraries; Bridge Phase 2d-1, decision 6.2). Collections mode waits
+  for the library list, and falls back to downloads or the error when it can't
+  be read, here and in the car (`car-controller.ts`).
 - **The connection** (`kidsConnectionId`): the picked library's connection while the
   profile still holds it, else the profile's first.
 - **The collections** (`kidsCollections`): for an account with

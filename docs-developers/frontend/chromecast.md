@@ -167,7 +167,9 @@ and in the docked player (only when the dock has room for all its actions,
 `dockLayout`'s `allActions`). It shows only while a book is loaded, on a device that can cast, and when
 the playing book's server has `cast` (an older server, or flags not known yet: no
 button); while a session is connected it shows whatever the book, so a cast can
-always be stopped. Native renders the SDK's own `CastButton` in a 44 pt frame; the
+always be stopped. It is not offered for a podcast episode (`episode` in the
+model, from `NowPlaying.episode`): a cast token never covers podcasts, and the
+server answers `403` to `POST /cast/token` for one. Native renders the SDK's own `CastButton` in a 44 pt frame; the
 web draws our own, which opens Chrome's Cast chooser. When `castBlockReason` blocks
 the book, the button explains why instead (a toast) rather than casting. Strings are
 in the `cast` namespace.

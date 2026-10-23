@@ -9,8 +9,8 @@ to your library folders and run heavy work, so the server can stay read-only and
 safe to put on the internet.
 
 A Bridge is optional for listening to your existing books.
-[Podcasts](podcasts.md) need one and the Podcasts module. Released player apps
-[do not show podcasts yet](podcasts.md#what-is-available-now).
+[Podcasts](podcasts.md) need one and the Podcasts module. Player apps from
+2.2.0 [show podcasts](podcasts.md#what-is-available-now); older ones don't.
 
 :::info[What it does today]
 The Bridge is new. Today it
@@ -270,8 +270,8 @@ no podcast follow, search, import or retention controls yet; see
 [Podcasts](podcasts.md).
 
 The Bridge also fetches a missing episode when a compatible client asks to
-play it, ahead of waiting downloads. Released player apps do not show this
-yet. See
+play it, ahead of waiting downloads. The player (2.2.0 and later) shows
+**Getting this episode** meanwhile. See
 [Playing an episode that isn't downloaded](podcasts.md#playing-an-episode-that-isnt-downloaded).
 
 **Cancel** stops a job. A job that is waiting is cancelled at once; one the Bridge

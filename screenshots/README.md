@@ -329,6 +329,34 @@ signs in there, her book is loaded and paused, and the shot is clipped to the fu
 player's transport and action row. Nothing leaves the machine except the Cast sender
 script the button loads from `www.gstatic.com` (offline, the button still shows).
 
+The podcast shots (`web-player/library-shows.png`, `podcast-show.png`,
+`home-new-episodes.png`, `episode-fetching.png`, `phone-podcast-show.png`) need a
+podcast library, which only a Bridge writes, and the demo account sees only the demo
+library. No Bridge runs: `run.sh` (section 2c) has `seed-podcasts.mjs` write what a
+Bridge leaves in a podcast library root into `.cache/podcasts`, rebuilt every run from
+`fixtures/podcasts.json` (three made-up shows in own words: The Lantern Archive, a
+serial with a trailer and S1 E1-E4; Field Notes at Dawn, a daily show of eight
+episodes; The Slow Kitchen, weekly): per show a `feed.json` (v1) dated back from the
+run, so the newest episodes are always within Home's 14 days, a `cover.jpg` (an ffmpeg
+gradient with the name) and a short silent mp3 per episode, its fetch pin (generation
+1, sha256, bytes, duration) read from that file. The serial's newest episode and the
+daily show's have no file and no pin, so they are not on the server. Before the
+household, `capture-web.mjs` turns the Podcasts module on (`PATCH /admin/settings`), adds
+the folder as a `podcasts` library through the admin API, waits for its scan and, as the
+admin, follows the two shows marked `follow` by path (a follow by path needs only the
+module, not a Bridge), every call naming a 2.2.0 player in `X-AudioSilo-Client` (older
+players never see a podcast library). The admin then signs in to a fresh browser by
+password: Home scrolled to New episodes, Library > Shows chosen in the library picker,
+The Lantern Archive's page (a read-only Following badge: the Follow button needs an
+online Bridge), the same page at phone width, and, at phone width, Play on the daily
+show's newest episode. Its fetch is the one thing stood in for: that page's requests for
+that episode only are routed (Playwright), the stream probe answering the server's own
+503 `podcast_fetching` and every status read a fetch a little further on, never finished,
+so the full player shows Getting this episode with its progress. Cancel ends it. Then the
+library is deleted, the module turned off, the player session signed out and this pass's
+audit log and event feed rows deleted (sqlite3), so neither the connect shots nor the
+admin console's show any of it.
+
 The connect shots run last, in a fresh browser with nothing stored:
 `web-player/connect.png` types the server's own address and presses Continue (the probe
 card), then the run signs in as the **admin** with a username and password (a real

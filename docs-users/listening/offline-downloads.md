@@ -17,6 +17,10 @@ If a download stops (the connection dropped, the phone slept at the wrong moment
 Audiobooks are big - often hundreds of megabytes each. Download on Wi‑Fi when you can, and keep an eye on the storage card on the Downloads page.
 :::
 
+### Podcast episodes
+
+[Podcast episodes](podcasts.md) can't be downloaded to your device yet: they stream from your server, and there's no download button for them. **Download automatically** and **Keep the next books ready** skip them too.
+
 ## The Downloads page
 
 The **Downloads** tab is everything stored on the device you're using:

@@ -428,10 +428,14 @@ Podcast scope adds two checks after authentication:
    `api.callerOf` uses `Credential.Client`: this request's
    valid `X-AudioSilo-Client`, otherwise the token's stored client (including
    media `?token=`). `catalog.Caller.Podcasts` is true for `AudioSilo Admin`
-   with any/no version and `AudioSilo` with version `dev`. The released-player
-   minimum, `auth.PodcastPlayerMinVersion`, is still `""`, so no released player
-   qualifies. Once set, a numeric `X.Y.Z` at least that minimum qualifies
-   (suffixes after `-`/`+` ignored). Missing/malformed/other apps, API tools
+   with any/no version and `AudioSilo` with version `dev`. A released player
+   qualifies from `auth.PodcastPlayerMinVersion`, **`"2.2.0"`** (Bridge Phase
+   2d-1, the first player with podcast views): a numeric `X.Y.Z` at least that
+   minimum, suffixes after `-`/`+` ignored (so `2.2.0-rc.1` counts as 2.2.0;
+   `2.2` and an empty version fail). `AudioSilo/2.1.x` and older stay hidden;
+   an empty minimum would hide every released player. The served `/web`
+   export sends its `app.json` version same-origin, so a `/web` build from
+   2.2.0 passes and an older web image does not. Missing/malformed/other apps, API tools
    without a recognized client and the Bridge fail the gate.
    `callerByID` defaults it false; internal podcast scheduling/retention
    explicitly enables it before resolving actual follower grants. Admin role grants no
@@ -452,6 +456,18 @@ privacy removed every show. Requests for a hidden episode/show still fail their
 path/show checks. A caller without a library grant or passing client remains
 denied. The admin catalog is the separate administrative view of the disk and
 can still see private show contents.
+
+**A gated caller's whole-list replace keeps what the gate hides.** Up next and
+collection items are path-keyed lists that can hold episodes. An add's
+position already counts only the rows the caller sees. A whole-list replace (`PUT /me/queue`,
+`PUT /me/collections/{id}/items`) from such a caller would otherwise delete the
+episodes it was never shown, so `catalog.GatedScopes` passes the caller's
+podcast scopes, as a podcast-seeing client would get them, as `keep`: the
+stored entries those allow stay, each after the listed entry it followed, or
+all after the new list in stored order when the new order would shuffle them.
+They count toward the list's cap (the oldest kept rows go first). Entries
+hidden for any other reason (a revoked share, an unfollowed private show) and
+every replace from a podcast-seeing caller keep the ordinary delete rule.
 
 Following a private URL uses its normalized current/previous SHA-256 hash as
 proof, before private-show filtering, and requires a grant on the whole library.

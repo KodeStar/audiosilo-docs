@@ -153,11 +153,15 @@ Who sends it:
   **same-origin** with the page: a custom header makes a cross-origin request
   non-simple, so the browser sends a CORS preflight, and servers released before
   the header don't allow it (see [CORS](#cors)). The embedded `/web` player is
-  same-origin, so it identifies itself.
+  same-origin, so it identifies itself, with the version of the web build the
+  server bakes in (`AudioSilo/2.2.0 (web)` from Phase 2d-1). A development
+  build opts in cross-origin with `EXPO_PUBLIC_IDENTIFY_CROSS_ORIGIN=1`.
 - **The admin console** - always (it is same-origin).
 - Anything else may send it; nothing requires it.
 
-The header also decides whether a client sees podcast libraries at all: see
+The header also decides whether a client sees podcast libraries at all: the
+console, `AudioSilo/dev` and players from **2.2.0** do, older players and
+anything unidentified do not. See
 [Podcast visibility](../auth-and-security.md#podcast-visibility).
 
 ## Error envelope and status conventions
@@ -495,7 +499,7 @@ server (a [managed module's](../modules.md#the-toggle-and-the-capability-flag) f
 even when the module is off or the Bridge is offline. An older server omits
 it. Keep it separate from the live `podcasts` module flag below. Ready media
 and status reads stay core; client/private scope still applies, including to
-admins, and released players remain hidden. Episode lists and `Book.episode`
+admins, and players older than 2.2.0 remain hidden. Episode lists and `Book.episode`
 may include optional `fetch:Status`; tolerate its absence on older servers.
 
 Phase 2c-3 adds two more optional core flags (absent on older servers, so
@@ -518,7 +522,7 @@ needs; it is `false` (sent, not absent) otherwise. An older server omits it:
 
 | Flag | Gates |
 |---|---|
-| `podcasts` | the Podcasts module: follow/unfollow/check, new downloads, retention writes and feed/download/retention scheduling. Needs the `podcast` Bridge feature; false unless the toggle is on and that Bridge is online. Reads and valid present-pin reuse stay core, with client/private scope on player content. Released players remain excluded; see [Podcasts](reference.md#podcasts) |
+| `podcasts` | the Podcasts module: follow/unfollow/check, new downloads, retention writes and feed/download/retention scheduling. Needs the `podcast` Bridge feature; false unless the toggle is on and that Bridge is online. Reads and valid present-pin reuse stay core, with client/private scope on player content. Players older than 2.2.0 remain excluded; the player shows Follow only while it is `true`; see [Podcasts](reference.md#podcasts) |
 | `contributions` | the Contributions module: sending corrections and generated characters and recaps to the community database through the Bridge. Needs the Bridge's `contribute` feature. The console reads it (the generate dialog's contribute switch, Share with the community, Suggest corrections; with `meta` in `bridge.features` for corrections); the player never contributes and doesn't read it |
 
 Gate on the flag rather than on the server version: an older server answers
@@ -573,7 +577,13 @@ For local player development against a dev server, set
 
 No `Access-Control-Expose-Headers` is sent, so a cross-origin page cannot read
 response headers such as `Retry-After` or the OPML export's `X-OPML-*` counts
-(the `/web` player and native apps are unaffected).
+(the `/web` player and native apps are unaffected). The player falls back to
+the status's `retry_after_seconds` for `Retry-After`. Its episode probe sends
+`Range: bytes=0-0` with its token in `Authorization`, so cross-origin it is
+always preflighted. Browsers that safelist a single byte range leave `Range`
+out of the preflight's `Access-Control-Request-Headers`, so it passes;
+`Allow-Headers` does not list `Range` yet (planned with Phase 2d-2's CORS
+change), so a browser that doesn't safelist it fails the probe there.
 
 ## The contract is hand-mirrored
 

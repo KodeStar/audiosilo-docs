@@ -1,6 +1,6 @@
 ---
 title: "Podcasts"
-description: "Podcast jobs, on-demand fetch/status/Retry, discovery and OPML, the player handoffs, queue prefetch, pinned generations, guarded downloads, retention, publication recovery, CHAP attachments and private feed secrets."
+description: "Podcast jobs, on-demand fetch/status/Retry, discovery and OPML, the player (2d-1) and its discovery handoff (2d-2), queue prefetch, pinned generations, guarded downloads, retention, publication recovery, CHAP attachments and private feed secrets."
 ---
 
 ## Scope and ownership
@@ -27,10 +27,14 @@ Downloads are scheduled by policy, requested by an admin, or triggered by
 on-demand play and one-ahead queue preparation. Phase 2c-2b adds shared fetch
 intents, status/Retry routes and a bounded stream wait. Phase 2c-3 adds
 server-side [directory search and OPML import/export](#discovery-and-opml-transfer)
-with no Bridge change. External chapters, transcripts and podcast player UI
-arrive later.
-Released players do not see podcast libraries; only the admin console lists
-them for now. Read routes are core and stay available without the module or
+with no Bridge change. Phase 2d-1 adds the [player](#player-phase-2d-1)
+(shows, show and episode pages, following, Home's New episodes, on-demand
+play) with no Bridge change; discovery, follow by URL and OPML in the player
+are [Phase 2d-2](#player-handoff-discovery-and-opml-phase-2d-2-not-implemented).
+External chapters and transcripts arrive later.
+Players from **2.2.0** (`auth.PodcastPlayerMinVersion`), the admin console
+and `AudioSilo/dev` see podcast libraries; 2.1.x and older players, the
+manager, API keys and requests with no client header do not. Read routes are core and stay available without the module or
 Bridge, subject to the [client gate and private scope](../server/auth-and-security.md#podcast-visibility).
 Follow, unfollow and manual check are module actions for authenticated adults,
 not demo accounts. See the [API reference](../server/api/reference.md#podcasts).
@@ -317,18 +321,31 @@ that same intent to 100. On demand permits this preparation, without
 feed-wide scheduled downloads. Demo requests start neither fetch nor prefetch;
 an existing shared fetch can still be promoted by a demo stream.
 
-### Player handoff (Phase 2d, not implemented)
+### Player (Phase 2d-1)
 
-The server protocol is implemented; **the player does not show this yet**.
-`auth.PodcastPlayerMinVersion` remains empty and released players stay hidden.
-The following are proposed additions to `src/api/{types,client,hooks}.ts`,
-mirroring the reviewed wire rather than describing shipped player exports.
-Keep response extensions optional for older servers. Every key *inside* a
-returned Status is required, including nulls:
+Phase 2d-1 ships the player side of this protocol and sets
+`auth.PodcastPlayerMinVersion` to `"2.2.0"`: players from 2.2.0 (`app.json`
+`expo.version`, sent as `X-AudioSilo-Client: AudioSilo/2.2.0 (<os>)`) see
+podcast libraries; 2.1.x and older stay hidden
+([client gate](../server/auth-and-security.md#podcast-visibility)). The
+player-side walkthrough (screens, routes, the controller's wiring) is
+[Frontend podcasts](../frontend/podcasts.md); this section is the wire and the
+rules the player keeps.
+
+**Types** (`src/api/types.ts`). Every new field on an existing type is
+optional, so an older server leaves books as they were; every key *inside* a
+new object is required, nulls included, as the server writes it. Open unions
+(`| (string & {})`) take a value a newer server adds:
 
 ```ts
+type LibraryKind = 'books' | 'podcasts';           // Library.kind?
+type ChaptersSource = 'community' | 'generated' | 'id3_chap';
+// Capabilities: podcasts?: boolean (the module), podcast_fetch?: boolean (core)
+// Book: episode?: PodcastEpisodeInfo (only GET /item sends it)
+
+type PodcastFetchState = 'absent' | 'queued' | 'fetching' | 'ready' | 'failed' | 'unavailable';
 type PodcastFetchStatus = {
-  state: 'absent' | 'queued' | 'fetching' | 'ready' | 'failed' | 'unavailable';
+  state: PodcastFetchState | (string & {});
   request_id: number | null;
   bytes_received: number;
   bytes_total: number | null;
@@ -336,10 +353,8 @@ type PodcastFetchStatus = {
   error: { code: string; message: string } | null;
 };
 type PodcastFetchResponse = { fetch: PodcastFetchStatus };
-type PodcastFetchPending = PodcastFetchResponse & {
-  error: string;
-  code: 'podcast_fetching' | 'podcast_fetch_unavailable' | 'podcast_fetch_failed';
-};
+type PodcastFetchPendingCode =
+  'podcast_fetching' | 'podcast_fetch_unavailable' | 'podcast_fetch_failed';
 type PodcastGeneration = {
   fetch?: PodcastFetchStatus;
   generation?: number;
@@ -347,92 +362,111 @@ type PodcastGeneration = {
   timeline_changed?: boolean;
 };
 type PodcastEpisodeInfo = PodcastGeneration & {
-  show_path: string;
-  published: string | null;
-  season: number | null;
-  episode: number | null;
-  episode_type: 'full' | 'trailer' | 'bonus';
-  explicit: boolean;
-  downloaded: boolean;
-  duration_source: 'file' | 'feed' | 'none';
-  removed: boolean;
+  show_path: string; published: string | null; season: number | null;
+  episode: number | null; episode_type: 'full' | 'trailer' | 'bonus' | (string & {});
+  explicit: boolean; downloaded: boolean;
+  duration_source: 'file' | 'feed' | 'none' | (string & {}); removed: boolean;
 };
 type PodcastEpisode = PodcastGeneration & {
-  path: string;
-  title: string;
-  published: string | null;
-  duration: number;
-  duration_source: 'file' | 'feed' | 'none';
-  season: number | null;
-  episode: number | null;
-  episode_type: 'full' | 'trailer' | 'bonus';
-  explicit: boolean;
-  description: string;
-  downloaded: boolean;
-  size: number;
-  removed: boolean;
+  path: string; title: string; published: string | null; duration: number;
+  duration_source: 'file' | 'feed' | 'none' | (string & {});
+  season: number | null; episode: number | null;
+  episode_type: 'full' | 'trailer' | 'bonus' | (string & {});
+  explicit: boolean; description: string; downloaded: boolean; size: number; removed: boolean;
 };
-type PodcastCapabilities = { podcast_fetch?: boolean };
-type PodcastBookFields = { episode?: PodcastEpisodeInfo };
-// Merge these optional fields into Capabilities and Book.
+type PodcastEpisodePage = { episodes: PodcastEpisode[]; next_cursor: string | null };
+// PodcastShow, PodcastRequest, MyPodcasts and PodcastFollowResult mirror
+// the read routes and POST /podcasts/follow in the API reference.
 ```
 
-Do not confuse public `fetch:PodcastFetchStatus` with the on-disk `fetch:Fetch`
-pin. `generation`/`sha256`/`timeline_changed` are absent before a valid pin,
-but may remain after deletion. Preserve an explicit false flag. A true flag
-warns of changed bytes/timeline without resetting or rescaling progress,
-bookmarks or finished state. Extend the open chapter source union with
-`'id3_chap'` on both Book and ChaptersResponse; it is embedded MP3 metadata,
-not generated/ASR chapters. Absence retains existing chapter-source behavior.
+Do not confuse the public `fetch: PodcastFetchStatus` with the on-disk
+`fetch: Fetch` pin. `generation`/`sha256`/`timeline_changed` are absent before
+a valid pin and may remain after deletion; the player keeps an explicit
+`timeline_changed: false`. A true flag only shows a notice on the episode page
+(when the listener has progress): it never resets or rescales progress,
+bookmarks or the finished mark. `id3_chap` is embedded MP3 metadata, not
+generated chapters; the chapters tab captions it "Chapters from the episode
+file".
 
-Proposed client methods keep the server envelope and the existing optional
-abort signal convention:
+**Client** (`src/api/client.ts`). Each method but the two follow writes takes
+the optional abort `signal`:
 
-```ts
-interface PodcastFetchClient {
-  podcastFetchStatus(libraryId: number, path: string,
-    signal?: AbortSignal): Promise<PodcastFetchResponse>;
-  retryPodcastFetch(libraryId: number, path: string,
-    signal?: AbortSignal): Promise<PodcastFetchResponse>;
-}
-```
+| Method | Request |
+|---|---|
+| `podcastShows(libraryId)` | `GET /libraries/{id}/podcasts`, unwrapped to `PodcastShow[]` |
+| `podcastEpisodes(libraryId, {show, order, limit?, cursor?})` | `GET /libraries/{id}/podcasts/episodes`, a `PodcastEpisodePage` |
+| `myPodcasts()` | `GET /me/podcasts` (`requests` is unused until 2d-2) |
+| `followPodcast(libraryId, path)` | `POST /podcasts/follow` with exactly `{library_id, path}`; never `private` beside a path |
+| `unfollowPodcast(libraryId, path)` | `DELETE /podcasts/follow?library_id=&path=`, `204` |
+| `podcastFetchStatus(libraryId, path)` | `GET /libraries/{id}/podcasts/fetch?path=`, observation only |
+| `retryPodcastFetch(libraryId, path)` | `POST /libraries/{id}/podcasts/fetch` with exactly `{path}` |
+| `prepareEpisodeStream(libraryId, path)` | `GET` the stream URL with `Range: bytes=0-0`, the token in `Authorization` (no `?token=`); a 2xx resolves |
 
-The first uses GET with encoded `path`; the second POSTs only `{path}` to
-`/libraries/{id}/podcasts/fetch`. Preserve `fetch` and `Retry-After` when
-decoding the stream 503; today's `ApiError(status,message,code?)` discards them.
-Suggested hooks follow `useBook`'s connection selection:
+Every JSON route and the probe decode a non-2xx answer through one helper
+(`apiErrorOf`): a **503** whose JSON has a `podcast_fetch*` code and an object
+`fetch` becomes `PodcastFetchPendingError` (an `ApiError` with `code`, `fetch`
+and `retryAfterSeconds`: the `Retry-After` header when it reads as a
+non-negative number, else `fetch.retry_after_seconds`, else 2). A non-JSON 503
+from a proxy stays a plain `ApiError`. `API_ERROR_CODES` gains `module_off`,
+`bridge_unavailable`, `fetch_limit`, `identity_changed` and `show_not_found`.
+Cross-origin web dev can't read `Retry-After` ([CORS](../server/api/index.md#cors)),
+so the body's value is what it uses there.
 
-```ts
-declare function usePodcastFetchStatus(
-  libraryId: number, path: string, connectionId?: string,
-  options?: { enabled?: boolean },
-): UseQueryResult<PodcastFetchStatus, Error>;
-declare function useRetryPodcastFetch(connectionId?: string):
-  UseMutationResult<PodcastFetchStatus, Error, BookRef>;
-// BookRef is { library_id: number; path: string }.
-// Query key: ['podcastFetch', cid, libraryId, path].
-```
+**Hooks** (`src/api/hooks.ts`). Reads are core and never gated on `podcasts`:
+`usePodcastShows`, `usePodcastEpisodes` (an infinite query, 50 a page,
+`next_cursor` as the page param), `myPodcastsQuery` and `latestEpisodesQuery`
+(Home) ask only for a library whose `kind` is `podcasts`. `useFollowPodcast`
+and `useUnfollowPodcast` are `useCapabilityMutation('podcasts', ...)`: they
+patch `following` in the cached show list (an unfollowed private show leaves
+it) and read `myPodcasts` again. `usePodcastFetchStatus` is a plain
+`podcast_fetch` capability query with no interval. Query keys:
+`['podcastShows', cid, lib]`, `['podcastEpisodes', cid, lib, show, order]`
+(Home's one page is `[..., show, 'latest', limit]` under the same show prefix),
+`['myPodcasts', cid]` and `['podcastFetch', cid, lib, path]`. There is no
+retry hook: Try again is the controller's.
 
-Unwrap `fetch` in the hooks. Gate new calls on `podcast_fetch === true` and use
-the optional connection client so a removed connection disables reads. Do not
-gate ready reads/status solely on the live `podcasts` flag. Episode-list
-rows read the list's batched `fetch`; the per-path hook is for the item being
-played or retried. After a media 503, poll GET every two seconds while
-queued/fetching instead of repeating the media request, and request media
-again at ready. Pause polling while the app is in the background. Stop polling at ready, failed or unavailable; absent
-GET is also observation only. A terminal failure needs explicit POST Retry
-or a later server-scheduled attempt, never a poll-triggered POST loop.
-An unavailable status still has retry 2; that alone does not justify an
-automatic Retry loop. Treat `409 fetch_limit` as a refusal to create work.
+**The episode-fetch controller** (`src/playback/episode-fetch.ts`) is the one
+poller. The rules it keeps:
 
-Seed/update the status cache from a media 503 and Retry response. At ready,
-refresh the item and its chapters/files before retrying media, and mark the
-episode list stale rather than refetching it at once;
-at failed/unavailable retain the safe error code for localized controls.
-Cancel polling when the connection/path or consumer changes, without a
-server job cancellation. `wire-2b.json` fixes fetching/ready/failed examples
-and the 503 envelope; missing optional fields must leave existing books and
-older-server behavior intact. No player, cast or screen changes ship here.
+- **The probe is the play trigger.** A start of an episode that is not
+  downloaded, on a server with `podcast_fetch === true`, goes to
+  `requestEpisodeFetch`, which asks `/stream` once (`prepareEpisodeStream`).
+  A play goes through `/stream` rather than POST because an ordinary stream
+  fetch respects the failure cooldown, while POST is reserved for the explicit
+  Try again (it bypasses it). The stream's two-second hold also serves an
+  episode that is about to be ready.
+- **Polling.** While `queued` or `fetching`, it GETs the status every
+  `max(2, Retry-After)` seconds and seeds `['podcastFetch', ...]` from every
+  answer (the 503's `fetch`, the POST's, each GET's). A network error, a `429`
+  or a `5xx` while polling reschedules the next turn at 2 seconds.
+- **Background.** It pauses while the app is not active and asks once at once
+  on the way back (`onForeground`; RN-web maps it to `visibilitychange`).
+- **It never POSTs by itself.** It stops at `failed`, `unavailable`, or
+  `absent` after a trigger (shown as failed); only Try again
+  (`retryEpisodeFetch()`, or `requestEpisodeFetch(..., {retry: true})` from a
+  row or the episode page) sends the POST. `409 fetch_limit` is `refused`;
+  `module_off`, `bridge_unavailable`, `library_not_writable` and
+  `demo_account` are `unavailable` with that code; `identity_changed`
+  invalidates the item and the library's episode lists and stops as failed.
+- **Abort, never cancel on the server.** One `AbortController` per run. Any
+  other start, a profile switch (`mayActFor`), a removed connection
+  (`resolveClient`) or the listener's Cancel ends the run; the server's shared
+  fetch carries on. There is no client time cap: the Bridge's size-scaled
+  ceiling ends a dead fetch as `failed`.
+- **Refresh at ready.** It reads the item and its chapters again
+  (`staleTime: 0`), marks the show's episode lists stale, then starts the
+  episode in place with `{fetched: true}`, which plays only while the fetch is
+  still `starting` (a Cancel or another start since wins).
+
+**Exclusions.** Episodes are never downloaded in 2d-1 (decision 6.1): the
+downloads store refuses `book.episode` as `unsupported`, the download control
+and the tile menu leave it out, and auto-download and keep-ahead skip it (an
+absent episode would answer 503 to the native download engines, and nothing
+would clean the files up). The Cast button hides for an episode (cast tokens
+never see podcasts; the server answers `403` to `POST /cast/token` for one).
+An episode never opens the end credits. Kids mode lists no podcast library
+(decision 6.2). Golden: the player keeps `wire-2b.json` byte-identical in
+`src/testing/podcast-fixtures/`.
 
 ## Discovery and OPML transfer
 
@@ -470,11 +504,11 @@ shapes and error codes are in the
   follow, an `invalid` row in an import), before anything is queued. The
   canonical hash bytes and the Bridge's URL vectors are unchanged.
 
-### Player handoff: discovery and OPML (Phase 2d, not implemented)
+### Player handoff: discovery and OPML (Phase 2d-2, not implemented)
 
-The server side is implemented; **no player or console screen calls it yet**,
-and `auth.PodcastPlayerMinVersion` stays empty, so released players remain
-outside the podcast client gate. These are proposed additions to the player's
+The server side is implemented; **no player or console screen calls it yet**.
+Players from 2.2.0 pass the podcast client gate (Phase 2d-1) but have no
+search, follow-by-URL or OPML screen. These are proposed additions to the player's
 `src/api/{types,client,hooks}.ts`, mirroring the reviewed wire. Keep every
 new capability optional; every key inside a returned object is required,
 nulls included:
@@ -511,7 +545,7 @@ Mirror `OpmlRowStatus`, `OpmlImportRow` and `OpmlImportResult` from the
 [import reference](../server/api/reference.md#post-apiv1podcastsopmlimport), which is their one
 written copy.
 
-What 2d has to get right:
+What 2d-2 has to get right:
 
 - **Capability flags.** Treat an absent `podcast_discovery` or `podcast_opml`
   as unsupported ([what they mean](../server/api/index.md#capability-flags---gate-your-features)).
@@ -574,7 +608,7 @@ What 2d has to get right:
   player and native apps can. A list too large to export is
   `413 opml_export_limit`, never a truncated file.
 
-Copy the shared goldens into the player's tests when 2d starts: the server
+Copy the shared goldens into the player's tests when 2d-2 starts: the server
 keeps them byte-identical in `internal/podcast/testdata/phase2c3/`
 (`providers/*-normalized.json`, `opml/duplicates-private-expected.json`,
 `opml/export-expected.opml`, `opml/export-expected-headers.json`, `wire.json`).

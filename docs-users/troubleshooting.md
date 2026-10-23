@@ -210,6 +210,26 @@ server (spotty Wi‑Fi, mobile data dead zones). For commutes and travel,
 [download the book to your device](./listening/offline-downloads.md) and play
 it locally.
 
+### A podcast episode won't start
+
+An episode marked **Plays on demand** isn't on your server yet: pressing
+**Play** asks the server to download it first, and the player shows **Getting
+this episode** until it's ready. A long episode can take a minute or two. If it
+stops with a message instead, [Playing an episode](./listening/podcasts.md#playing-an-episode)
+says what each one means. For **This episode can't be fetched now**, ask your
+admin to check that **Podcasts** is on in **Server > Settings > Modules** and
+that the [Bridge](./admin/bridge.md) is online and can write to the podcast
+library. The same reason shows beside a greyed-out **Play** on the episode's
+row and page before you press it: *"Your server can't download episodes right
+now."* also appears when the server is too old to fetch episodes on demand.
+
+If you don't see your server's podcasts at all, check your app's version first:
+an app older than 2.2.0 shows no podcasts, so update it. If it is up to date,
+ask your admin whether you have access to the podcast library (and whether the
+server itself is up to date). Kids mode never shows podcasts, and a
+[private show](./listening/podcasts.md#private-feeds) appears only to the
+people who follow it.
+
 ### My book restarted from the beginning
 
 It shouldn't lose your place - the player has several protections stacked up:

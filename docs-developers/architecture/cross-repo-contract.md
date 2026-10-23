@@ -245,8 +245,8 @@ book is the only additive marker (mirrored as `Book.chapters_source` /
 page captions such chapters (an older app shows them as ordinary chapters), and a downloaded book replaces its
 saved chapters with a newer server answer while its audio files are unchanged
 (same paths, order and sizes; `startChapterRefresh`). Podcasts additionally
-return `id3_chap` from the server's CHAP attachments; player type/UI support is
-deferred with podcast player views. See [podcasts](#17-podcast-shows-feeds-and-client-visibility).
+return `id3_chap` from the server's CHAP attachments; the player (2.2.0 and
+later) captions it "Chapters from the episode file". See [podcasts](#17-podcast-shows-feeds-and-client-visibility).
 
 **A change requires:** any change to chapter normalization changes the queue
 builder and the timeline math with it. And always: **stream the file, not the
@@ -311,7 +311,7 @@ and `bridge`, which follows the Bridge's heartbeat, [§16](#16-the-bridge)),
 one flag per [managed module](../server/modules.md) (`contributions` and `podcasts`: the module's
 toggle **and** its Bridge requirement met, sent `false` otherwise; the console reads
 it to offer contributing; `podcasts` needs `podcast` and gates actions, while
-reads stay core and released players are still excluded), the independent
+reads stay core and players older than 2.2.0 are excluded), the independent
 `podcast_fetch:true` protocol flag (even offline/module-off; older servers omit
 it, [§17](#17-podcast-shows-feeds-and-client-visibility)), the Phase 2c-3 core
 flags `podcast_discovery` (boot-only `podcasts.discovery.enabled` **and** the
@@ -391,7 +391,10 @@ the web image must exist before the server image builds.
 `scripts/fetch-web-player.sh` embed the same pinned build into native binaries.
 
 **A change requires:** publish the web image **before** the server image on every
-release. Full detail in [Release pipeline](release-pipeline.md); the operator
+release. The served `/web` identifies as its `app.json` version, and the
+server's podcast gate keys on it (2.2.0 and later see podcasts), so a server
+release that bakes in an older web image serves a player that shows no
+podcasts. Full detail in [Release pipeline](release-pipeline.md); the operator
 runbook is [Releasing](../contributing/releasing.md).
 
 ## 12. CORS for web development
@@ -411,6 +414,9 @@ so the web player sends it **only same-origin** (`shouldIdentify` in
 `src/lib/client-id.ts`; native always sends it). Keep that rule when adding any
 custom request header (see
 [Client identification](../server/api/index.md#client-identification-x-audiosilo-client)).
+Since podcasts are shown only to an identified 2.2.0 or later player, the
+cross-origin dev loop shows none unless a development build opts in with
+`EXPO_PUBLIC_IDENTIFY_CROSS_ORIGIN=1` (never in a production build).
 
 **A change requires:** nothing structural - just remember self-signed TLS (the
 server default) needs trusting in the browser, or use `AUDIOSILO_TLS_MODE=off`
@@ -816,7 +822,8 @@ security-critical: allowed and denied tests on the server.
 ## 17. Podcast shows, feeds and client visibility
 
 Phase 2c-2 extends the server/Bridge seam with episodes on disk, retention
-and on-demand fetching/status/Retry. Released player views arrive later.
+and on-demand fetching/status/Retry. Phase 2d-1 ships the player's views to
+players from 2.2.0; discovery and OPML in the player are Phase 2d-2.
 See [Podcasts](../bridge/podcasts.md) and the
 [API reference](../server/api/reference.md#podcasts) for exact fields.
 
@@ -832,9 +839,16 @@ See [Podcasts](../bridge/podcasts.md) and the
   offline/module-off; older servers omit it.
   Off gates actions, stops the scheduler and holds queued jobs; reads stay core.
 - **Visibility:** `auth.SeesPodcasts(Credential.Client)` feeds `catalog.Caller.Podcasts`.
-  `AudioSilo Admin` qualifies; `AudioSilo` version `dev` qualifies. The released
-  minimum remains empty, so released players, unidentified clients and API
-  tools without a recognized client do not qualify, admins included.
+  `AudioSilo Admin` qualifies; `AudioSilo` version `dev` qualifies; a released
+  player qualifies from `auth.PodcastPlayerMinVersion` = `"2.2.0"` (numeric
+  `X.Y.Z`, a pre-release counts as its base version). Players 2.1.x and older,
+  unidentified clients and API tools without a recognized client do not
+  qualify, admins included. The served `/web` identifies as its `app.json`
+  version (2.2.0 from this phase), so release the 2.2.0 web image before the
+  server that bakes it in.
+  A whole-list replace (`PUT /me/queue`, `PUT /me/collections/{id}/items`)
+  from a caller the gate hides podcasts from keeps the stored episodes only
+  the gate hides (`catalog.GatedScopes`), so an old player can't delete them.
   Media tokens inherit the stored client when no valid request header exists.
   Private-show scopes apply after grants, only for followers matching the
   show's id; the admin catalog remains separate. An authorized library with
@@ -938,12 +952,15 @@ See [Podcasts](../bridge/podcasts.md) and the
   work; the ordinary download lane drops to 1, keeping two enclosure downloads
   in total. An older server gets two ordinary download slots and no reserved
   claim.
-- **Player handoff:** no player/cast/screens ship and the released-player gate
-  remains unset. Carry the [optional types, client/hook signatures and polling
-  rules](../bridge/podcasts.md#player-handoff-phase-2d-not-implemented) into 2d:
-  poll only queued/fetching every two seconds, explicit Retry for terminal
-  failure, refresh item/list/chapters at ready. Preserve generation warnings
-  without rescaling state and recognize `chapters_source:id3_chap`.
+- **Player (Phase 2d-1):** the player mirrors the [types, client and
+  hooks](../bridge/podcasts.md#player-phase-2d-1) by hand and ships the shows,
+  show and episode pages, following, Home's New episodes and on-demand play
+  through one controller: probe `/stream` once, poll only queued/fetching every
+  `max(2, Retry-After)` seconds, explicit Retry for terminal failure, refresh
+  item/chapters (and mark the episode lists stale) at ready. It preserves
+  generation warnings without rescaling state and recognizes
+  `chapters_source:id3_chap`. No download, cast or kids-mode podcasts; no
+  server route changed. See [Frontend podcasts](../frontend/podcasts.md).
 - **Discovery and OPML (Phase 2c-3):** server and docs only; the Bridge and
   the player are unchanged. `GET /podcasts/discovery/providers|search|artwork`
   (adult, non-demo, module, client gate; artwork takes a media `?token=`) search
@@ -960,7 +977,7 @@ See [Podcasts](../bridge/podcasts.md) and the
   `X-OPML-Omitted-Unavailable`. An open subscribe is reused only at the same
   privacy (`409 privacy_conflict`). Optional flags `podcast_discovery` and
   `podcast_opml`; exact shapes and the player rules are in the
-  [2d handoff](../bridge/podcasts.md#player-handoff-discovery-and-opml-phase-2d-not-implemented)
+  [2d-2 handoff](../bridge/podcasts.md#player-handoff-discovery-and-opml-phase-2d-2-not-implemented)
   and the [reference](../server/api/reference.md#podcast-discovery).
 - **CHAP:** the [sidecar](../bridge/attachments.md#podcast-chap-attachments)
   is a version-1 stem-prefixed `chapters.json` using `from:id3_chap`, Fetch timestamp and one matching
