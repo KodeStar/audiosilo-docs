@@ -4,6 +4,9 @@
 //   - feed.json (feed.json v1, as docs-developers/bridge/podcasts.md describes it), dated
 //     back from now, so the newest episodes are always within Home's 14 days,
 //   - cover.jpg (a gradient with the show's name, ffmpeg),
+//   - the made-up directory's artwork for the Find shows shots (the fixture's `directory`,
+//     one <slug>.jpg each but those with `artwork: false` or a seeded `folder`), into
+//     podcast-directory beside <root>, outside the library,
 //   - one short silent mp3 per episode (ffmpeg), each with the fetch pin a Bridge writes
 //     once it has the file (generation 1, sha256, bytes and duration read from that file),
 //     except the episodes marked `absent`: no file and no pin, so the server lists them
@@ -16,17 +19,16 @@ import {spawnSync} from 'node:child_process';
 import {existsSync, mkdirSync, readFileSync, rmSync, statSync, writeFileSync} from 'node:fs';
 import path from 'node:path';
 
-import {DAY, FIXTURES, HOUR, ffmpeg, silence} from './lib.mjs';
+import {DAY, FIXTURES, HOUR, PODCAST_DIRECTORY, ffmpeg, silence, slug} from './lib.mjs';
 
 const root = process.argv[2];
 if (!root) {
   console.error('usage: node seed-podcasts.mjs <root>');
   process.exit(1);
 }
-const {shows} = JSON.parse(readFileSync(path.join(FIXTURES, 'podcasts.json'), 'utf8'));
+const {shows, directory} = JSON.parse(readFileSync(path.join(FIXTURES, 'podcasts.json'), 'utf8'));
 
 const sha256 = (data) => createHash('sha256').update(data).digest('hex');
-const slug = (s) => s.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
 // RFC 3339 without milliseconds, as the Bridge writes it.
 const stamp = (ms) => new Date(ms).toISOString().replace(/\.\d+Z$/, 'Z');
 
@@ -170,3 +172,11 @@ for (const show of shows) {
   writeFileSync(path.join(dir, 'feed.json'), JSON.stringify(feed, null, 2) + '\n');
 }
 console.log(`  ✓ ${shows.length} shows, ${files} episode files, ${absent} episodes not on the server`);
+
+// The directory's artwork (capture-web.mjs answers the artwork route with these files).
+const directoryDir = PODCAST_DIRECTORY(root);
+rmSync(directoryDir, {recursive: true, force: true});
+mkdirSync(directoryDir, {recursive: true});
+const drawn = directory.filter((d) => d.artwork !== false && !d.folder);
+for (const d of drawn) cover(path.join(directoryDir, `${slug(d.title)}.jpg`), d, directoryDir);
+console.log(`  ✓ ${drawn.length} directory artworks`);

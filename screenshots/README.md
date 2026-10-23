@@ -357,6 +357,22 @@ library is deleted, the module turned off, the player session signed out and thi
 audit log and event feed rows deleted (sqlite3), so neither the connect shots nor the
 admin console's show any of it.
 
+The Add shows shots (`web-player/find-shows-search.png`, `find-shows-address.png`,
+`find-shows-import.png`, `phone-find-shows.png`) run in the same pass, last, each in a
+browser context of its own (the same signed-in storage). Every way in ends in a follow,
+which needs an online Bridge, and a search would reach Apple, so those contexts stand in
+for the server with Playwright routes (`routeFindShows` in `capture-web.mjs`): `/server`
+says `podcasts`, `podcast_discovery` and `podcast_opml`; the directory's providers,
+search and artwork answer from `fixtures/podcasts.json`'s `directory` (made-up shows, one
+of them the seeded The Slow Kitchen; `seed-podcasts.mjs` draws their artwork into
+`.cache/podcast-directory`, beside the podcast root, so the scan never sees it); a follow
+by address answers 200 following for a seeded show's feed and 202 with a new request for
+any other; `/me/podcasts` is the real answer with the pass's made-up follow requests (one
+being added, one that failed); and the OPML import answers one first wave (two
+following, five being added, a duplicate, an invalid entry and three waiting) while its
+five requests stay open, so the page holds on its "Waiting for the shows being added"
+line. Nothing is followed on the server and no request leaves the machine.
+
 The connect shots run last, in a fresh browser with nothing stored:
 `web-player/connect.png` types the server's own address and presses Continue (the probe
 card), then the run signs in as the **admin** with a username and password (a real

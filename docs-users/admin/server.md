@@ -384,8 +384,9 @@ The modules today:
   to date, downloads episodes and checks retention. An admin sets retention
   per show [through the API](podcasts.md#downloads-and-retention) for now.
   It needs an online Bridge that supports podcasts. With it on, the server can
-  also [search podcast directories (no Bridge needed) and import OPML](podcasts.md#finding-shows-and-moving-subscriptions)
-  through the API; exporting OPML works with the module on or off.
+  also [search podcast directories (no Bridge needed) and import OPML](podcasts.md#finding-shows-and-moving-subscriptions),
+  which listeners use from the player's Add shows page; exporting OPML works
+  with the module on or off.
   Player apps from 2.2.0
   [show podcasts](podcasts.md#what-is-available-now); older ones don't. Turning the
   module off stops follows and feed/download/retention scheduling, keeping the

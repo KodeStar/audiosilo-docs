@@ -418,6 +418,14 @@ Since podcasts are shown only to an identified 2.2.0 or later player, the
 cross-origin dev loop shows none unless a development build opts in with
 `EXPO_PUBLIC_IDENTIFY_CROSS_ORIGIN=1` (never in a production build).
 
+For an allowed origin the server also lists `Range` (the episode probe's
+`Range: bytes=0-0` from a script with the `Authorization` header) and exposes
+`Retry-After` and the OPML export's `X-OPML-*` counts (Phase 2d-2). An older
+server exposes none, so the player reads `Retry-After` as absent (falling back
+to a body value or a fixed wait) and the counts as unknown cross-origin; the
+served `/web` player and native apps read them either way. See
+[CORS](../server/api/index.md#cors).
+
 **A change requires:** nothing structural - just remember self-signed TLS (the
 server default) needs trusting in the browser, or use `AUDIOSILO_TLS_MODE=off`
 for plain-HTTP local dev.
@@ -823,7 +831,8 @@ security-critical: allowed and denied tests on the server.
 
 Phase 2c-2 extends the server/Bridge seam with episodes on disk, retention
 and on-demand fetching/status/Retry. Phase 2d-1 ships the player's views to
-players from 2.2.0; discovery and OPML in the player are Phase 2d-2.
+players from 2.2.0; Phase 2d-2 adds discovery, follow by URL, OPML and Check
+for new episodes to the player.
 See [Podcasts](../bridge/podcasts.md) and the
 [API reference](../server/api/reference.md#podcasts) for exact fields.
 
@@ -976,9 +985,13 @@ See [Podcasts](../bridge/podcasts.md) and the
   counts omissions in `X-OPML-Exported` / `X-OPML-Omitted-Private` /
   `X-OPML-Omitted-Unavailable`. An open subscribe is reused only at the same
   privacy (`409 privacy_conflict`). Optional flags `podcast_discovery` and
-  `podcast_opml`; exact shapes and the player rules are in the
-  [2d-2 handoff](../bridge/podcasts.md#player-handoff-discovery-and-opml-phase-2d-2-not-implemented)
-  and the [reference](../server/api/reference.md#podcast-discovery).
+  `podcast_opml`; exact shapes and the player's rules (search on submit,
+  artwork through the proxy only, the import waves, export with the
+  `Authorization` header) are in
+  [Player: discovery and OPML](../bridge/podcasts.md#player-discovery-and-opml-phase-2d-2)
+  and the [reference](../server/api/reference.md#podcast-discovery). CORS
+  exposes `Retry-After` and the `X-OPML-*` counts and allows `Range` for an
+  allowed origin ([CORS](../server/api/index.md#cors)).
 - **CHAP:** the [sidecar](../bridge/attachments.md#podcast-chap-attachments)
   is a version-1 stem-prefixed `chapters.json` using `from:id3_chap`, Fetch timestamp and one matching
   basename/size/duration. No ASR/agent/generated flag; server consumes valid

@@ -510,7 +510,9 @@ sent `false` otherwise. `podcast_opml` is always `true`: the server speaks the
 OPML import/export protocol, even offline or module-off (the import still
 needs the module, the export does not). Neither is a module flag, and neither
 describes the caller: grants, kid and demo refusals and the client gate are
-still answered by the routes. See
+still answered by the routes. The player (Phase 2d-2) offers its directory
+search only with `podcast_discovery` and OPML import and export only with
+`podcast_opml`. See
 [Podcast discovery](reference.md#podcast-discovery) and
 [OPML import and export](reference.md#opml-import-and-export).
 
@@ -567,23 +569,31 @@ CORS is a strict allow-list driven by `cors_origins` in the server config:
   the player served at `/web`) are unaffected.
 - **Listed origins:** an exact-match `Origin` gets
   `Access-Control-Allow-Origin: <that origin>` (plus `Vary: Origin`), methods
-  `GET, POST, PUT, PATCH, DELETE, OPTIONS`, headers
-  `Authorization, Content-Type, X-AudioSilo-Client`, and
-  a 600 s preflight cache. `OPTIONS` requests short-circuit with 204.
+  `GET, POST, PUT, PATCH, DELETE, OPTIONS`, request headers
+  `Authorization, Content-Type, X-AudioSilo-Client, Range`
+  (`Access-Control-Allow-Headers`), the exposed response headers
+  `Retry-After, X-OPML-Exported, X-OPML-Omitted-Private, X-OPML-Omitted-Unavailable`
+  (`Access-Control-Expose-Headers`, on every allowed response, not only
+  preflights), and a 600 s preflight cache. `OPTIONS` requests short-circuit
+  with 204.
 - **`"*"`:** allows any origin (the request's own `Origin` is echoed back).
 
 For local player development against a dev server, set
 `cors_origins: ["http://localhost:8081"]`.
 
-No `Access-Control-Expose-Headers` is sent, so a cross-origin page cannot read
-response headers such as `Retry-After` or the OPML export's `X-OPML-*` counts
-(the `/web` player and native apps are unaffected). The player falls back to
-the status's `retry_after_seconds` for `Retry-After`. Its episode probe sends
-`Range: bytes=0-0` with its token in `Authorization`, so cross-origin it is
-always preflighted. Browsers that safelist a single byte range leave `Range`
-out of the preflight's `Access-Control-Request-Headers`, so it passes;
-`Allow-Headers` does not list `Range` yet (planned with Phase 2d-2's CORS
-change), so a browser that doesn't safelist it fails the probe there.
+The two lists are the consts `corsAllowHeaders` and `corsExposeHeaders`
+(`internal/api/middleware.go`). `Range` is there for a script's fetch of a
+stream with the `Authorization` header: the player's episode probe sends
+`Range: bytes=0-0` with its token, so cross-origin it is always preflighted
+(an `<audio>` element's own seeks are no-cors and need nothing). The exposed
+headers are `Retry-After` where a route sends one (the discovery and OPML
+budgets, a busy transcode, an episode on its way; the general rate limit and
+the request timeout send none) and the OPML export's counts, so a
+cross-origin web player reads them as the `/web` player and native apps
+always could. A denied or absent origin, and a server with `cors_origins`
+unset, still gets no CORS header at all. An older server exposes nothing, so
+the player falls back to the body's `retry_after_seconds` for an episode
+fetch and reads the export counts as unknown.
 
 ## The contract is hand-mirrored
 

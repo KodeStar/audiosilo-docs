@@ -50,5 +50,14 @@
         {"title": "The patience of onions", "days_ago": 23, "minutes": 16, "description": "Caramelising slowly, properly, and the soup it becomes."}
       ]
     }
+  ],
+  "_directory_comment": "`directory` is a made-up podcast directory's answer for the Find shows shots (capture-web.mjs stands in for the server's search, artwork, follow and import answers: no Bridge runs and nothing reaches a real directory). seed-podcasts.mjs writes each entry's artwork (a gradient with its name, from `colors`) into the podcast-directory folder beside the podcast root, except `artwork: false` (no artwork: the placeholder). `folder` names a seeded show the result stands for (its feed address and cover); `host` is the feed's host for the others. All names here are invented.",
+  "directory": [
+    {"title": "The Slow Kitchen", "author": "Larder & Lamp", "folder": "The Slow Kitchen", "episodes": 3, "itunes_id": "1730041187"},
+    {"title": "The Kitchen Garden Hour", "author": "Allotment Wireless", "colors": ["0x1f3d1a", "0x6f9a3c"], "episodes": 128, "itunes_id": "1501873320", "host": "feeds.allotmentwireless.example"},
+    {"title": "Kitchen Table Physics", "author": "Two Mugs Media", "colors": ["0x1b2440", "0x4f6bd0"], "episodes": 56, "itunes_id": "1622950418", "host": "audio.twomugs.example"},
+    {"title": "Night Kitchen Radio", "author": "Late Shift Collective", "colors": ["0x2a1238", "0x8a3f8f"], "episodes": 212, "itunes_id": "1398201765", "host": "rss.lateshift.example"},
+    {"title": "Small Kitchen, Big Flavour", "author": "Pantry Press", "artwork": false, "episodes": 44, "itunes_id": "1688420093", "host": "feeds.pantrypress.example"},
+    {"title": "Notes from a Ship's Kitchen", "author": "Galley Stories", "colors": ["0x0f3b46", "0x3d8ea0"], "episodes": 18, "itunes_id": "1755310642", "host": "podcast.galleystories.example"}
   ]
 }

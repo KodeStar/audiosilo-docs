@@ -1,11 +1,12 @@
 ---
 title: Podcasts
-description: "The player's podcast views (Bridge Phase 2d-1): who sees them, the Shows library mode, the show and episode pages, Follow, Home's New episodes, the episode-fetch controller that plays an episode not on the server yet, and what episodes never do."
+description: "The player's podcast views (Bridge Phases 2d-1 and 2d-2): who sees them, the Shows library mode, the show and episode pages, Follow, Home's New episodes, the episode-fetch controller that plays an episode not on the server yet, finding shows (directory search, a feed address, OPML import and export, Check for new episodes), and what episodes never do."
 ---
 
 ## Scope
 
-Bridge Phase 2d-1 shows a server's podcast libraries in the player. The server
+Bridge Phase 2d-1 shows a server's podcast libraries in the player, and Phase
+2d-2 adds [finding shows](#finding-shows). The server
 lists a podcast library (`Library.kind === 'podcasts'`) only to a client that
 passes its [podcast gate](../server/auth-and-security.md#podcast-visibility):
 the player from **2.2.0** (`app.json` `expo.version`, sent as
@@ -19,13 +20,12 @@ unless a development build opts in with `EXPO_PUBLIC_IDENTIFY_CROSS_ORIGIN=1`
 
 The wire mirror (types, client methods, `PodcastFetchPendingError`, hooks and
 query keys) is documented once, with the server protocol it follows, in
-[Bridge podcasts: Player (Phase 2d-1)](../bridge/podcasts.md#player-phase-2d-1).
-This page covers the screens and the controller. The code is in
+[Bridge podcasts: Player (Phase 2d-1)](../bridge/podcasts.md#player-phase-2d-1)
+and [Player: discovery and OPML (Phase 2d-2)](../bridge/podcasts.md#player-discovery-and-opml-phase-2d-2).
+This page covers the screens and the controllers. The code is in
 `src/components/podcasts/`, `src/playback/episode-fetch.ts`,
-`src/components/home/{new-episodes-model,use-new-episodes,new-episodes-rail}.ts*`
-and `src/lib/library-kind.ts`. Discovery, follow by URL and OPML are
-[Phase 2d-2](../bridge/podcasts.md#player-handoff-discovery-and-opml-phase-2d-2-not-implemented)
-and not in the player.
+`src/components/home/{new-episodes-model,use-new-episodes,new-episodes-rail}.ts*`,
+`src/lib/library-kind.ts` and `src/lib/podcast-requests.ts`.
 
 ## Telling an episode from a book
 
@@ -55,6 +55,9 @@ for a whole list), and the `useIsPodcastLibrary` hook.
   `apiErrorKind` (`module_off`, `kid_account`, `demo_account`,
   `show_not_found`, which also refetches the shows), never the server's text.
 - The fetch status is `podcast_fetch`'s (`usePodcastFetchStatus`).
+- Finding shows, follow by address and Check for new episodes are the
+  module's too (`podcasts`), search is `podcast_discovery`'s and OPML
+  `podcast_opml`'s; see [Finding shows](#finding-shows).
 
 ## Surfaces
 
@@ -70,7 +73,9 @@ hooks there, so those book-only routes are never asked; the count is the
 number of shows. `library-picker.tsx` puts a `microphone` icon beside a
 podcast library.
 
-`PodcastShowsMode` (`shows-mode.tsx`) is an All / Following chip row with
+`PodcastShowsMode` (`shows-mode.tsx`) starts with its
+[actions](#entry-points) (Add shows, the More show actions menu and a line
+while shows are being added), then an All / Following chip row with
 counts over a cover grid of `ShowTile`s (`show-tile.tsx`: `BookCover` on the
 show's path with `cover_version`, the title, then `New episode {{when}}` when
 `latest_published` is in the last 14 days, else the author, and a "Private
@@ -86,8 +91,9 @@ in `BROWSE_PATHS`). `PodcastShowScreen` (`podcast-show-screen.tsx`) names the
 browser tab and renders:
 
 - the hero: cover, title, author, a collapsible description, the episode
-  count, the Private feed badge, `FollowButton`, and "Last check failed" when
-  `status.error` is set (no codes for listeners);
+  count, the Private feed badge, `FollowButton` and
+  [`CheckEpisodesButton`](#check-for-new-episodes), and "Last check failed"
+  when `status.error` is set (no codes for listeners);
 - the order control: `defaultEpisodeOrder(show)` is `oldest` for a `serial`
   show and `newest` otherwise; the segmented control writes `?order=`. The
   client never re-sorts: the server orders by published, then path;
@@ -203,6 +209,117 @@ Cancel or another start since then wins. A start that fails stops as `failed`.
   that is the existing "refusal is a pause" path, and the episode loads
   paused.
 
+## Finding shows
+
+Phase 2d-2 lets a listener add shows to a podcast library from the player:
+search a podcast directory, follow a feed by its address, import an OPML
+list from another app, export the shows they follow, and ask a followed show
+to check for new episodes. The wire rules (search on submit, artwork through
+the proxy, the import waves, export with the `Authorization` header) are in
+[Bridge podcasts](../bridge/podcasts.md#player-discovery-and-opml-phase-2d-2);
+this section covers the screens.
+
+### The page
+
+Route `src/app/(app)/(home,library,search,offline,me)/find-shows.tsx`, URL
+`/find-shows?connection=&library=[&section=search|address|import]`
+(`findShowsHref`, `parseFindShowsParams` in `src/lib/paths.ts`, `openFindShows`
+in `src/lib/open.ts`; `/find-shows` is in `BROWSE_PATHS`). `FindShowsScreen`
+(`find-shows-screen.tsx`) runs in `ContentScope`, so it is scoped to its own
+`?connection=` like the show page, and its title (page and browser tab) is
+**Add shows**.
+
+- **Access** is `useAddShowsAccess(cid)` (`shows-actions.tsx`): `kid` for a
+  kid's account, `demo` for the demo, `unknown` while `/server` isn't known,
+  then `allowed` only with `podcasts === true` (the module on and its Bridge
+  online), else `unavailable`. Anything but `allowed` is a sentence instead of
+  the page ("Ask a grown-up to add shows.", "The demo can't add shows.",
+  "Adding shows isn't available right now").
+- **Sections** come from the flags (`availableSections` in
+  `find-shows-model.ts`): Search with `podcast_discovery`, Import a list with
+  `podcast_opml`, Feed address always, in that order. `resolveSection` takes
+  the link's `section` when offered, else the first; a `SegmentedControl`
+  (shown when more than one is offered) writes `?section=`.
+- The import (`useOpmlImport`) is held at page level, so it carries on while
+  another section shows and ends with the page (or a switch to another
+  connection or library).
+
+### The sections
+
+- **Search** (`directory-search.tsx`): one `FlatList` holding the page head,
+  the form (a provider `SegmentedControl` only when Podcast Index is
+  available, the field and Search), the results and, as its footer, the
+  follow requests. Too short a search shows "Type at least 2 characters." and
+  sends nothing. The caption `Results from {{provider}}` credits the
+  directory. A refusal reads through `searchErrorCopy` (with the
+  `Retry-After` seconds when known) above **Search again**.
+  `DiscoveryResultRow` (`discovery-result-row.tsx`) shows the artwork
+  (`DiscoveryArtwork`, `discovery-artwork.tsx`, the retry schedule in
+  `artwork-retry.ts`), title, author, episode count, `View on {{provider}}`
+  (`provider_url`, opened outside the app) and **Follow**, which becomes
+  **Adding** (a `202` request) or **Following** with **Open show** (a `200`).
+  The country is `deviceCountry()` (`discovery-country.ts`).
+- **Feed address** (`follow-by-url.tsx`): the address field with a hint, a
+  **Private feed** switch ("For a feed made just for you, like a paid or
+  member feed..."), **Follow**. `feedAddressProblem` refuses an empty, non
+  http(s) or over-2,048-byte address locally; a refusal from the server reads
+  through `followByUrlErrorKey`. A `200` says `You follow {{title}}.` with
+  Open show; a `202` says the show appears in Shows once it's ready.
+- **Follow requests** (`follow-requests.tsx`, under Search and Feed address):
+  "Shows being added", every open request then the ten newest ended ones,
+  each with its redacted feed label, its state (`requestStateKey`: Waiting for
+  its turn, Adding, Added, Couldn't add, Cancelled), the Private feed badge,
+  the reason for a failed one (`requestReasonKey`) and Open show once done. It
+  polls through `useFollowRequests` only while one is open and the page is
+  focused.
+- **Import a list** (`opml-import-panel.tsx`): an intro, **Choose a file**
+  (`pickOpml`: `opml-pick.web.ts` is a hidden file input accepting
+  `.opml,.xml,text/x-opml,text/xml,application/xml`, resolving null on its
+  `cancel` event; `opml-pick.ts` is expo-file-system's `File.pickFileAsync()`
+  with no type filter, since OPML has no system type on iOS, sending
+  `file.bytes()`), then the file name, the summary (`{{settled}} of {{total}} shows followed or being added`,
+  `importProgress`: duplicate and invalid rows
+  don't count), the status line (a countdown to the next batch, ticking with
+  `useNow` while the import runs), **Stop** while it runs, **Try again** once
+  it stopped, stalled or failed, and one row per subscription by
+  `outline_index` (`Entry {{index}}`, `importRowKey`: Following, Already
+  following, Being added, In the list twice, No usable feed address, Waiting
+  for the next batch, Can't be added right now, Couldn't add). A file over
+  1 MiB or one that can't be read is a line of its own, and nothing is sent.
+
+### Entry points
+
+- **Shows mode** (`shows-mode.tsx`) puts `ShowsActions` (`shows-actions.tsx`)
+  in the sub-nav row's end on tablet and desktop (`SubNavActions`, id
+  `shows-actions`) and above the grid on a phone: **Add shows** (when access
+  is `allowed`) and the **More show actions** menu with **Export my shows**
+  (`podcast_opml === true`, not the demo; it works with the module off, so it
+  isn't on the Find shows page). `FollowRequestsNotice` beside them reads
+  "Adding 2 shows" while this library's requests are open and opens the page.
+  A library with no shows gets an **Add shows** action in its empty state
+  ("Search a directory, paste a feed address or import a list from another
+  app.") when access is `allowed`.
+- **Export** (`opml-export.ts`, `useExportShows`) saves
+  `audiosilo-subscriptions.opml` through the Journal's `saveExport` (mime
+  `text/x-opml`, UTI `public.xml`), then toasts `exportToast`'s counts
+  ("Exported 3 shows", "1 private show left out. Private feeds are never
+  exported.", shows without a public address left out); a refusal is a toast
+  by `exportErrorKey`.
+
+### Check for new episodes
+
+`CheckEpisodesButton` (`check-episodes-button.tsx`) sits in the show page's
+hero beside Follow, only for a followed show and under `useAddShowsAccess`'s
+`allowed`. A `202` toasts "Checking for new episodes" and, 15 seconds later
+(`CHECK_REFRESH_MS`, the timer cleared on unmount), invalidates the show list
+and the show's episodes once. Refusals read through `checkErrorKey`
+("Checked less than a minute ago. Try again shortly." for
+`checked_recently`).
+
+All copy for these screens is under `podcasts.find.*`, `podcasts.import.*`,
+`podcasts.export.*`, `podcasts.check.*` and `podcasts.requests.*` in all six
+locales; none of it says "Bridge" or shows the server's English.
+
 ## What episodes never do
 
 - **Download** (decision 6.1). The downloads store refuses `book.episode` as
@@ -249,3 +366,23 @@ removal, `fetch_limit`, `identity_changed`); `start-book.test.ts` and
 `player-route.test.tsx` cover the choke point; `podcast-model.test.ts`,
 `library-modes.test.ts` and `new-episodes-model.test.ts` the rules; component
 tests cover the show page, rows, the panel and strip, the Library and Home.
+
+Finding shows (Phase 2d-2): `src/testing/podcast-fixtures/phase2c3/` holds the
+server's `internal/podcast/testdata/phase2c3/` goldens byte-identical, read
+through `src/testing/podcast-fixtures-2c3.ts`, and
+`podcast-fixtures-2c3.test.ts` checks each file's SHA-256 against its
+`manifest.json`. `client.test.ts` covers each new method's exact URL, body
+and headers and the refusal codes through `apiErrorKind` (with
+`retryAfterSeconds` read and absent); `hooks-podcasts.test.tsx` the search and
+provider queries, the follow and check mutations' cache writes and
+`useFollowRequests`' polling (only while open, stopping once all ended, the
+show list read again at `done`); `opml-waves.test.ts` drives the wave
+controller on fake timers (the queue-cap shape to `done`, `Retry-After`
+honoured, stalled, `unavailable` with no loop, a failed private request
+queued again by the next wave, stop and dispose sending nothing more,
+polling stopping, the background pause) and `use-opml-import.test.tsx` its
+hook; `find-shows-model.test.ts`, `podcast-requests.test.ts` and
+`paths.test.ts` the rules; component tests cover the page and its gating,
+the search and result rows, the artwork retry, the feed address, the follow
+requests, the import panel, the web picker, export, the Shows mode's actions
+and the check button.
