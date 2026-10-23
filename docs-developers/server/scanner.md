@@ -426,8 +426,9 @@ Before 2.4.0 a folder book's files played in byte order (`os.ReadDir`'s), so
 scan although no file changed: `Signature.FileOrder` (`catalog.FileOrderKey`,
 an FNV-64a of the stored file paths in order) differs from the new order's.
 Nothing remaps a listener's place: a whole-book position on such a book can
-land elsewhere in the story (offline copies take the new chapters through the
-player's `refreshedChapters`). Move detection still finds such a book by the
+land elsewhere in the story (an offline copy takes the new order and chapters
+the next time it is started online, the player's `adoptStartedChapters`; until
+then it plays the order it was downloaded in). Move detection still finds such a book by the
 file byte order put first (`byteFirstFingerprint`, in `detectMoves` and
 `IndexMoved`), and a Bridge `chapters.json` made while it played in byte order
 still applies, its chapters moved with their files (`movedChapters`, see

@@ -236,6 +236,21 @@ with no network.
   never touched, and a queue already playing keeps its chapters until the book
   is next started. Before this, a downloaded copy kept the chapters it was
   downloaded with.
+- **A new file order** (server 2.4.0 plays a folder book's files in natural
+  order, `2-` before `10-`, and re-indexes a book stored in byte order): the
+  same files in another order are **not** taken from a background answer
+  (`refreshedChapters` returns null for them), because JS sees only the queue
+  it loaded, not a book the Android service or a Cast receiver holds before
+  `adoptLoaded` maps the engine's track index through the manifest. They are
+  taken only by a start that loads the engine in the new order:
+  `adoptStartedChapters`, called by `playBook` once its load landed and it
+  still owns the engine, replaces `manifest.chapters` (same set of paths, same
+  sizes where both answers know them) and saves the registry at once. The
+  chapters carry the play order; `manifest.files` keeps the order the download
+  wrote it in, since a file's index there is its name on disk. An offline
+  start, Android's no-JS car start and `adoptLoaded` keep the manifest's order
+  until an online start plays the new one. A place saved on the old timeline
+  reads as moved once the new order is taken (nothing remaps it).
 
 ### Hydrate and the iOS container-move problem
 
