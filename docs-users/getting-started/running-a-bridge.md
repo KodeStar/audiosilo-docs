@@ -202,6 +202,8 @@ Open `http://<your machine>:8091` and sign in with that password. The page has t
 for its **Status**, **Libraries**, **Jobs**, **Settings**, **Accounts**, **Workers**
 and **Logs**.
 
+![The Bridge's sign-in page: the password field, Sign in, and the line naming the reset-password command for a lost password](/img/screenshots/bridge/sign-in.png)
+
 It only answers from your **local network**, and it always asks for the password,
 even on the same machine. It won't open over the internet, through a reverse proxy
 or over a VPN address like Tailscale's, and isn't meant to.
@@ -223,6 +225,8 @@ shows the same list on [Settings > Bridge](../admin/bridge.md#the-setup-card).
 | Review the monthly budget | yes | the **Settings** tab (step 8) |
 | Sign in to GitHub | no: only to share with the community | the **Accounts** tab (step 9) |
 
+![The Status tab of a new Bridge: the Get set up card, and Pair with a server with the server address and a pairing code filled in](/img/screenshots/bridge/status-unpaired.png)
+
 ### 4. Pair it with your server
 
 1. In the server's admin console, open **Server > Settings > Bridge** and press
@@ -236,7 +240,10 @@ The code works once, for 15 minutes. Instead of pasting, you can add
 first start; remove it again afterwards.
 
 Back in the console the Bridge shows as **Online**. What everything on that page
-means is in [The Bridge](../admin/bridge.md).
+means is in [The Bridge](../admin/bridge.md). On the Bridge's Status tab, the
+pairing form gives way to the server it is paired with.
+
+![The Status tab once paired: the steps still to do, the Server card with the server's name and address, and This Bridge](/img/screenshots/bridge/status-paired.png)
 
 ### 5. Check the libraries
 
@@ -247,6 +254,8 @@ library that isn't ready says why: see
 [Libraries](../admin/bridge.md#libraries). With the same folders mounted at the
 same paths (step 1) there is usually nothing to do. If you mounted a library
 somewhere else, tell the Bridge where it is on the **Libraries** tab.
+
+![The Bridge's Libraries tab: each of the server's libraries with where the Bridge found it and its check](/img/screenshots/bridge/libraries.png)
 
 This step is done when **every** library is ready, since the Bridge saves what it
 makes in each book's folder. Press **Verify** on a library in the console to check

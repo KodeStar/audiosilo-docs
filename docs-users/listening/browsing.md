@@ -86,6 +86,8 @@ Every book in the library, as a cover grid or a list:
 - **Sort** by **Recently added**, **Title**, **Author** or **Length**. Sorted by title, the books are grouped under letter headings, with an **A to Z** rail for jumping straight to a letter. A leading "The", "A" or "An" is skipped and accented letters file under their plain letter (*Émile* under E), and a book with no title is shown, and sorted, by its folder's name.
 - **Grid or list**. Your choice is remembered on that device, and the same choice applies to collections and Favourites. On a tablet or computer the list has columns for the narrator, the length and your progress.
 
+![The Genre filter open over Library > Books: each genre with how many books it would show, and Any genre](/img/screenshots/web-player/library-genre.png)
+
 A big library loads in the background, page by page, while you browse; the filters and sorting work on the whole of it once it's in.
 
 A cover with no art shows the book's initials instead.
