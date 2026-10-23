@@ -203,7 +203,7 @@ library to `config.yaml`, a declared library's name and folder can't be changed
 at runtime: `PATCH /admin/libraries/{id}` answers `409 config_library` (from
 2.4.0; a rename used to come back as a second library at the next start) and
 the console locks both fields, while its other settings stay editable. Change
-them in `config.yaml` (or the environment) and restart. There is deliberately **no layout key**
+them in `config.yaml` (or the app embedding the server) and restart. There is deliberately **no layout key**
 - folder shape is auto-detected per folder by the
 [scanner](scanner.md), with per-folder admin overrides for corrections.
 

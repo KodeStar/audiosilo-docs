@@ -1705,8 +1705,11 @@ for a feed in this library failed within the last hour
 (`podcast.RecentFailureWindow`), the row answers `error` with
 `error.code: "recently_failed"` and `request_id` set to that failed request,
 and nothing is queued again, so a few dead feeds cannot take every wave's
-slots. A private request that ended as `request_expired` (a server restart)
-does not count. A single [`POST /podcasts/follow`](#podcast-actions) by
+slots. Only a failure of the feed itself counts (its address, its answer, the
+network): a request that ended `request_expired` (a server restart),
+`bridge_lost`, `library_not_writable`, `not_podcast_library`, `write_failed`,
+`feed_secret_missing` or `identity_changed` does not (`notFeedFailures` in
+`internal/bridge`), nor one the caller has asked again since. A single [`POST /podcasts/follow`](#podcast-actions) by
 address always retries; that is the player's Try again. Older players show the
 row as a plain error.
 
@@ -4511,8 +4514,8 @@ Sending the existing `kind` is accepted; a different kind is
 `400 kind_immutable`. Root changes enforce the same `409 root_overlaps` rule
 as create.
 
-A library the server's config declares (`config.yaml`, the environment, or the
-app embedding the server: `launcher.Options.Libraries`) keeps the name and
+A library the server's config declares (`config.yaml`, or the app embedding
+the server: `launcher.Options.Libraries`; no environment variable declares one) keeps the name and
 folder declared there, since every start upserts it by name
 (`launcher.syncLibraries`) and the server never writes a library to
 `config.yaml`. A different `name` or `root` on such a library is

@@ -204,9 +204,11 @@ and **Logs**.
 
 ![The Bridge's sign-in page: the password field, Sign in, and the line naming the reset-password command for a lost password](/img/screenshots/bridge/sign-in.png)
 
-It only answers from your **local network**, and it always asks for the password,
-even on the same machine. It won't open over the internet, through a reverse proxy
-or over a VPN address like Tailscale's, and isn't meant to.
+It only answers connections that come from your **local network**, and it always
+asks for the password, even on the same machine. It won't open from an internet
+address or over a VPN address like Tailscale's, and isn't meant to. Don't put it
+behind a reverse proxy: the page sees the proxy's own address, which is on your
+network, so it would answer whatever the proxy lets through.
 
 Until the Bridge is set up, its **Status** tab starts with a **Get set up** card:
 the steps below, in the same order, each ticked once done, with a word on where

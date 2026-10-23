@@ -13,8 +13,10 @@ container.
 The `audiosilo-bridge` repository is **private**; its images,
 `ghcr.io/kodestar/audiosilo-bridge`, are **public from v0.3.0** and pull with no
 login. Bridge v0.3.0 is the release that speaks to server 2.4.0 (podcasts,
-contributions, generating and detecting chapters): a 2.4.0 server needs
-v0.3.0 or later. The Bridge is being built in phases. **Phase 0** laid
+contributions, generating and detecting chapters): run v0.3.0 or later with a
+2.4.0 server. Nothing checks the version: the server offers each feature by the
+job kinds the Bridge's heartbeat reports, so an older Bridge pairs but lacks
+them. The Bridge is being built in phases. **Phase 0** laid
 the foundations: pairing, the heartbeat and the capability, the job queue with
 leases, the library mapping checks and one proof job, `bridge.verify`. **Phase 1a**
 added the first job that makes it useful,

@@ -34,7 +34,7 @@ route table is in the [overview](overview.md#route-map). Three steps, counted by
    never in the route, where it would stay in the browser's history. On the served
    player, a pasted pairing or invite link for **another server** sends nothing (its
    CSP would block the call, which would read as "Could not reach the server"): it
-   says the link is for another server and offers **Open link** (`Linking.openURL`)
+   says the link is for another server and offers **Open the link** (`Linking.openURL`)
    instead. A route `token` (a pairing
    link or QR, with `server` on native and `home`/`away` when the server sent them) is
    exchanged at once. Remembered servers the person listening isn't signed in to

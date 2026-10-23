@@ -1193,7 +1193,7 @@ Created by `store.migrate` itself (not a migration file): `name` (PK),
 `applied_at`. Records which migration files have run. After migrating, a server
 that finds names here it does not ship (a newer AudioSilo ran on this database:
 a rollback) still starts but logs a warning naming them
-(`warnNewerMigrations`, `unknown_migrations`, from 2.4.0): features the newer
+(in `store.migrate`, the `unknown_migrations` attribute, from 2.4.0): features the newer
 server added may not work and their data can be lost, so run the newer version
 again or restore a backup made before the upgrade.
 
