@@ -52,6 +52,7 @@ import {
   shoot,
   step,
   submitSignIn,
+  waitForScans,
   wanted,
   DESKTOP_CONTEXT,
 } from './lib.mjs';
@@ -70,18 +71,6 @@ if (!PASSWORD) {
 // ── Provision demo state via the API ────────────────────────────────────────
 const api = apiClient(ORIGIN);
 
-// Waits until no library scans or waits in the job queue (scans run one at a time).
-const waitForScans = async (token, timeoutMs = 90000) => {
-  const until = Date.now() + timeoutMs;
-  await sleep(500);
-  while (Date.now() < until) {
-    const libs = (await api(token, 'GET', '/admin/libraries'))?.libraries ?? [];
-    if (!libs.some((l) => l.scan?.running || l.scan?.queued)) return;
-    await sleep(500);
-  }
-  throw new Error('scans still running after the timeout');
-};
-
 let inviteCode = '';
 let samId = null;
 let library = null; // the seeded library ({id, name, root, ...})
@@ -97,10 +86,13 @@ console.log('  ✓ admin login');
 // (capture-setup.mjs), so this server is marked set up. Finished and dismissed,
 // as an upgraded server is, so the Overview shows no "Finish setting up" card.
 // (A server from before the flow has no such route.)
+// Only a 404 (no such route) is let pass: any other failure stops the run, since
+// every console shot would then show the setup flow instead.
 const markSetUp = (client, tok) =>
-  client(tok, 'PUT', '/admin/setup', {finished: true, dismissed: true}).catch((e) =>
-    console.log(`  ! first-run setup not marked done: ${e.message}`),
-  );
+  client(tok, 'PUT', '/admin/setup', {finished: true, dismissed: true}).catch((e) => {
+    if (e.status !== 404) throw e;
+    console.log('  ! this server has no first-run setup to mark done');
+  });
 await markSetUp(api, token);
 
 await step('provision listener + share', async () => {
@@ -184,7 +176,7 @@ await step('provision scan settings', async () => {
     scan_schedule: 'every:6h',
     ignore_patterns: ['# Publisher samples and bonus material', '*.sample.mp3', 'Extras/'],
   });
-  await waitForScans(token);
+  await waitForScans(api, token);
   console.log('  ✓ provisioned (schedule + skip rules on the seeded library)');
 });
 
@@ -735,7 +727,7 @@ await step('provision an Inbox library with issues', async () => {
     ignore_patterns: ['# Bonus material', 'Extras/', '*.sample.mp3'],
   });
   inbox = created?.library ?? created;
-  await waitForScans(token);
+  await waitForScans(api, token);
   // One ignored book, so the cards and the list show "Show ignored".
   const folk = (await api(token, 'GET', `/admin/books?library_id=${inbox.id}&issue=no_cover&limit=50`))
     ?.books?.find((b) => b.path.startsWith('Folk Tales'));
@@ -1064,7 +1056,7 @@ await step('settings: bridge', async () => {
   if (!info?.capabilities || !('bridge' in info.capabilities)) throw new Error('this server build has no Bridge');
   try {
     await open(page, '/server?topic=bridge');
-    const connect = page.getByRole('button', {name: 'Connect a bridge', exact: true});
+    const connect = page.getByRole('button', {name: /^Connect a bridge$/i});
     await connect.waitFor({timeout: 15000});
     await sleep(800);
     await shoot(page, 'admin/settings-bridge.png');
@@ -1072,8 +1064,8 @@ await step('settings: bridge', async () => {
     // The code is shown once, in the dialog: the stand-in reads it from the
     // environment-variable block, as someone copying both would.
     await connect.click();
-    const dialog = page.getByRole('dialog', {name: 'Connect a bridge'});
-    await dialog.getByText('Waiting for the bridge...').waitFor({timeout: 8000});
+    const dialog = page.getByRole('dialog', {name: /^Connect a bridge$/i});
+    await dialog.getByText(/^Waiting for the bridge\.\.\.$/i).waitFor({timeout: 8000});
     await sleep(800);
     await shoot(page, 'admin/bridge-pair.png');
     const env = await dialog.locator('pre').innerText();

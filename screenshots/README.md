@@ -51,7 +51,9 @@ Because a fresh server sends its admin to that flow on the first console visit
 of every browser session, `capture-admin.mjs` marks the demo server (and the
 mirror-mode one) set up (`PUT /admin/setup`, finished and dismissed) before it
 opens a browser, so its shots never land on the flow and the Overview shows no
-setup card.
+setup card. Only a 404 (a server from before the flow) is let pass there; any
+other failure stops the run. `run.sh` waits for the `--setup` instance to answer
+`/healthz` before it reads the setup link from its log.
 
 Two admin shots depend on the server's community metadata lookup, which the
 demo server leaves at its default (`https://meta.audiosilo.app`, so it needs
@@ -369,9 +371,13 @@ of them the seeded The Slow Kitchen; `seed-podcasts.mjs` draws their artwork int
 by address answers 200 following for a seeded show's feed and 202 with a new request for
 any other; `/me/podcasts` is the real answer with the pass's made-up follow requests (one
 being added, one that failed); and the OPML import answers one first wave (two
-following, five being added, a duplicate, an invalid entry and three waiting) while its
-five requests stay open, so the page holds on its "Waiting for the shows being added"
-line. Nothing is followed on the server and no request leaves the machine.
+following, five being added, a duplicate, an invalid entry, one passed over because
+its follow failed within the hour (`recently_failed`, naming that failed request, so it
+shows that request's reason) and three waiting) while its five requests stay open, so
+the page holds on its "Waiting for the shows being added" line. The import and podcast
+show shots grow the viewport to the end of the list (`fitViewportTo` in `lib.mjs`), and
+the search shots wait for the directory artwork to load (`imagesLoaded`). Nothing is
+followed on the server and no request leaves the machine.
 
 The connect shots run last, in a fresh browser with nothing stored:
 `web-player/connect.png` types the server's own address and presses Continue (the probe
@@ -430,6 +436,36 @@ and pause steps always run, so a partial run stages its shots as a full one does
 3. Reference it from the doc page as `![alt](/img/screenshots/<file>)`.
 4. Run `./run.sh` (or at minimum `node placeholders.mjs`) so the file exists -
    the Docusaurus build fails on missing images by design.
+
+## The Bridge's page
+
+The `bridge/` shots (`sign-in.png`, `status-unpaired.png`, `status-paired.png`,
+`libraries.png`, `accounts.png`) come from `capture-bridge.mjs`, which `run.sh`
+runs after the setup captures when the `BRIDGE` checkout (default the sibling
+`audiosilo-bridge`, a private repo) is there; without it, or with
+`SKIP_BRIDGE=1`, the shots keep their previous images. `run.sh` syncs the
+Bridge's page into that checkout (`scripts/build-web.sh --sync-only`, built and
+gitignored there), builds the binary into `.cache/audiosilo-bridge` stamped with
+`BRIDGE_VERSION` (default the checkout's `git describe`; a release run sets the
+release's, such as `BRIDGE_VERSION=0.3.0`), and starts it on `:8793`
+(`SHOTS_BRIDGE_PORT`) with a fresh data dir, a `HOME` of its own and only the
+system's `PATH`, as a fresh container has: this machine's `gh` sign-in and
+speech-recognition tools stay out of the shots. It reads the one-time password
+from the Bridge's log.
+
+The script signs in through the page, takes a pairing code from the demo
+server's admin API (`POST /admin/bridge/pair`, which replaces the stand-in
+Bridge `capture-admin.mjs` paired) and pairs through the page's own form. The
+Bridge then finds the server's libraries at the server's paths, since it runs on
+the same machine. The page's `/api/status`, `/api/libraries` and `/api/engine`
+answers are rewritten on the way into the browser (a Playwright route) so the
+shots show what a reader's container would: the library folders as
+`/library` (as in the compose examples) and `/inbox` rather than this machine's `.cache` paths, the server
+as `http://audiosilo:8080` (the address the shot's Pair form shows too), and
+whisper.cpp on the CPU for speech recognition, which a Linux image picks where
+a Mac picks mlx-whisper. At the end
+it unpairs on both sides. The agent container never
+runs, so the Agent card and the setup checklist say it is not running.
 
 ## AudioSilo Meta site captures
 

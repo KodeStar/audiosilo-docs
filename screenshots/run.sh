@@ -13,7 +13,8 @@
 #   4. builds the AudioSilo Meta data artifact + site and starts a local
 #      metaserve (port 8795) for the meta.audiosilo.app site captures,
 #   5. runs the Playwright captures (web player + admin console + public pages
-#      + the first-run setup flow + the meta site),
+#      + the first-run setup flow + the meta site), and starts a real Bridge
+#      (from the BRIDGE checkout, when there is one) for its own page's shots,
 #   6. backfills placeholders for anything not captured.
 #
 # Prereqs: Go 1.26+, Node 24, ffmpeg/ffprobe, sqlite3, openssl, `npm install` +
@@ -47,8 +48,14 @@
 #              is built when missing, else used as it is, so rebuild it after a
 #              frontend change; relative paths are taken from where run.sh
 #              starts),
+#            BRIDGE=<dir> (the audiosilo-bridge checkout, default the sibling
+#              clone; a private repo, so without it the Bridge page shots keep
+#              their previous images), SKIP_BRIDGE=1 (skip them anyway),
+#            BRIDGE_VERSION (the version the Bridge page shows, default the
+#              checkout's git describe; set the release's, e.g. 0.3.0),
 #            SHOTS_PORT / SHOTS_SETUP_PORT / SHOTS_META_PORT /
-#              SHOTS_MIRROR_PORT (default 8790 / 8791 / 8795 / 8792 - move them
+#              SHOTS_MIRROR_PORT / SHOTS_BRIDGE_PORT (default 8790 / 8791 / 8795 /
+#              8792 / 8793 - move them
 #              when a run in another checkout holds those ports; two runs in one
 #              checkout share .cache/ and clash).
 set -euo pipefail
@@ -63,6 +70,7 @@ SERVER_BIN="$(abspath "${SERVER_BIN:-$SERVER/bin/audiosilo}")"
 FRONTEND="$(abspath "${FRONTEND:-$WORKSPACE/audiosilo-frontend}")"
 META="$(abspath "${META:-$WORKSPACE/audiosilo-meta}")"
 META_COMMUNITY="$(abspath "${META_COMMUNITY:-$WORKSPACE/audiosilo-meta-community}")"
+BRIDGE="$(abspath "${BRIDGE:-$WORKSPACE/audiosilo-bridge}")"
 CACHE="$HERE/.cache"
 LIBRARY="$CACHE/library"
 DATA="$CACHE/data"
@@ -71,6 +79,8 @@ PORT="${SHOTS_PORT:-8790}"
 SETUP_PORT="${SHOTS_SETUP_PORT:-8791}"
 META_PORT="${SHOTS_META_PORT:-8795}"
 MIRROR_PORT="${SHOTS_MIRROR_PORT:-8792}"
+BRIDGE_PORT="${SHOTS_BRIDGE_PORT:-8793}"
+BRIDGE_DATA="$CACHE/bridge-data"
 MIRROR_DATA="$CACHE/mirror-data"
 
 mkdir -p "$CACHE"
@@ -169,6 +179,7 @@ cleanup() {
   [ -n "${MAIN_PID:-}" ] && kill "$MAIN_PID" 2>/dev/null || true
   [ -n "${SETUP_PID:-}" ] && kill "$SETUP_PID" 2>/dev/null || true
   [ -n "${META_PID:-}" ] && kill "$META_PID" 2>/dev/null || true
+  [ -n "${BRIDGE_PID:-}" ] && kill "$BRIDGE_PID" 2>/dev/null || true
   # Stopped before its folder goes, so nothing writes there meanwhile.
   [ -n "${MIRROR_PID:-}" ] && { kill "$MIRROR_PID" 2>/dev/null; wait "$MIRROR_PID" 2>/dev/null; } || true
   rm -rf "$MIRROR_DATA"
@@ -248,6 +259,10 @@ if [ -z "$ADMIN_PASSWORD" ]; then
 fi
 SETUP_URL=""
 if [ "$WANT_SETUP" = 1 ]; then
+  # Healthy before its log is read: the setup URL is printed as it starts, and
+  # capture-setup.mjs opens it at once.
+  echo "==> waiting for the --setup server"
+  wait_healthy "http://127.0.0.1:$SETUP_PORT/healthz" "$CACHE/setup.log" "--setup server"
   SETUP_URL="$(grep -o "http://[^ ]*/setup#token=[^ ]*" "$CACHE/setup.log" | head -1 || true)"
 fi
 
@@ -338,6 +353,41 @@ if [ "${SKIP_ADMIN:-0}" != "1" ]; then
     SETUP_URL="$SETUP_URL" node capture-setup.mjs
   else
     echo "  ! no setup URL in $CACHE/setup.log: the setup shots keep their previous images"
+  fi
+fi
+
+# The Bridge's own page: a real Bridge, built with its page embedded, on a fresh
+# data dir, paired with the demo server by capture-bridge.mjs (see its header).
+if [ "${SKIP_BRIDGE:-0}" != "1" ] && shot_wanted bridge/; then
+  echo "==> capturing the Bridge's page"
+  if [ ! -x "$BRIDGE/scripts/build-web.sh" ]; then
+    echo "  ! no audiosilo-bridge checkout at $BRIDGE: the Bridge shots keep their previous images"
+  else
+    # Its page synced into the checkout (built, never committed), the binary into
+    # .cache, stamped with BRIDGE_VERSION (default: git describe, no leading v).
+    BRIDGE_VERSION="${BRIDGE_VERSION:-$(git -C "$BRIDGE" describe --tags --always 2>/dev/null | sed 's/^v//')}"
+    { (cd "$BRIDGE" && scripts/build-web.sh --sync-only) \
+        && (cd "$BRIDGE" && go build -tags embedui -ldflags "-X main.version=${BRIDGE_VERSION:-dev}" \
+          -o "$CACHE/audiosilo-bridge" ./cmd/audiosilo-bridge); } > "$CACHE/bridge-build.log" 2>&1 \
+      || { echo "  ! the Bridge build failed (see $CACHE/bridge-build.log)"; exit 1; }
+    rm -rf "$BRIDGE_DATA" "$CACHE/bridge-home" && mkdir -p "$BRIDGE_DATA" "$CACHE/bridge-home"
+    # As in a fresh container: none of this machine's tools on PATH (no gh sign-in,
+    # no local speech recognition) and a HOME of its own.
+    env -i PATH=/usr/bin:/bin:/usr/sbin:/sbin HOME="$CACHE/bridge-home" \
+      "$CACHE/audiosilo-bridge" serve --data "$BRIDGE_DATA" --listen "127.0.0.1:$BRIDGE_PORT" \
+      > "$CACHE/bridge.log" 2>&1 &
+    BRIDGE_PID=$!
+    wait_healthy "http://127.0.0.1:$BRIDGE_PORT/api/health" "$CACHE/bridge.log" "Bridge"
+    BRIDGE_PASSWORD="$(grep "The password for the Bridge's page is:" "$CACHE/bridge.log" | awk -F': ' '{print $2}' | tr -d ' ' || true)"
+    if [ -z "$BRIDGE_PASSWORD" ]; then
+      echo "  ! no one-time password in $CACHE/bridge.log: the Bridge shots keep their previous images"
+    else
+      BRIDGE_BASE="http://127.0.0.1:$BRIDGE_PORT/" BRIDGE_PASSWORD="$BRIDGE_PASSWORD" \
+        AS_ORIGIN="http://127.0.0.1:$PORT" ADMIN_PASSWORD="$ADMIN_PASSWORD" \
+        node capture-bridge.mjs
+    fi
+    kill "$BRIDGE_PID" 2>/dev/null || true
+    BRIDGE_PID=""
   fi
 fi
 

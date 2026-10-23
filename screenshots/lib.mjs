@@ -49,6 +49,9 @@ export const DESKTOP_CONTEXT = {
   reducedMotion: 'reduce',
 };
 
+// The phone viewport (a large iPhone, in CSS pixels) every phone shot uses.
+export const PHONE = {width: 430, height: 932};
+
 // Makes the viewport as tall as the page (between min and max, at the desktop
 // width), so a long card or every card is in the shot; the caller restores
 // DESKTOP_CONTEXT.viewport.
@@ -56,6 +59,21 @@ export const fitViewportToPage = async (p, min, max, settle = 800) => {
   const height = await p.evaluate(() => document.documentElement.scrollHeight);
   await p.setViewportSize({width: DESKTOP_CONTEXT.viewport.width, height: Math.min(Math.max(height, min), max)});
   await sleep(settle);
+};
+
+// Makes the viewport (at its width) tall enough to show `locator`'s last visible match
+// down to its bottom plus `pad`, between min and max CSS pixels: for a player screen,
+// which scrolls inside the page, so fitViewportToPage can't measure it. Measured twice,
+// since a windowed list renders more rows in a taller viewport. The caller restores
+// the viewport.
+export const fitViewportTo = async (p, locator, {min = 900, max = 1800, pad = 32, settle = 800} = {}) => {
+  for (let i = 0; i < 2; i++) {
+    const box = await locator.filter({visible: true}).last().boundingBox();
+    if (!box) return;
+    const height = Math.round(Math.min(Math.max(box.y + box.height + pad, min), max));
+    await p.setViewportSize({width: p.viewportSize().width, height});
+    await sleep(settle);
+  }
 };
 
 // Fills the console's sign-in form (already open on `p`) as admin and submits it.
@@ -95,9 +113,47 @@ export const apiClient = (origin) => async (token, method, p, body, headers = {}
   } catch {
     /* non-JSON */
   }
-  if (!res.ok) throw new Error(`${method} ${p} -> ${res.status} ${text.slice(0, 120)}`);
+  if (!res.ok) {
+    const err = new Error(`${method} ${p} -> ${res.status} ${text.slice(0, 120)}`);
+    err.status = res.status;
+    throw err;
+  }
   return json;
 };
+
+// Waits until no library scans or waits in the job queue (scans run one at a time),
+// asking through `api` (an apiClient) as admin `token`.
+export const waitForScans = async (api, token, timeoutMs = 90000) => {
+  const until = Date.now() + timeoutMs;
+  await sleep(500);
+  while (Date.now() < until) {
+    const libs = (await api(token, 'GET', '/admin/libraries'))?.libraries ?? [];
+    if (!libs.some((l) => l.scan?.running || l.scan?.queued)) return;
+    await sleep(500);
+  }
+  throw new Error('scans still running after the timeout');
+};
+
+// Waits until every shown <img> on `p` whose src contains `srcPart` has loaded (and
+// at least one is shown), rather than sleeping a fixed time for artwork. Gives up
+// after `timeoutMs` with a note: the shot is still taken.
+export const imagesLoaded = (p, srcPart, timeoutMs = 15000) =>
+  p
+    .waitForFunction(
+      (part) => {
+        const shown = [...document.images].filter((i) => i.src.includes(part) && i.getClientRects().length > 0);
+        return shown.length > 0 && shown.every((i) => i.complete && i.naturalWidth > 0);
+      },
+      srcPart,
+      {timeout: timeoutMs},
+    )
+    .then(
+      () => true,
+      () => {
+        console.log(`  ! images with "${srcPart}" still loading after ${timeoutMs} ms`);
+        return false;
+      },
+    );
 
 // Raw Playwright PNGs at deviceScaleFactor 2 are large (a full desktop shot is
 // ~0.5-1.3 MB); pngquant's lossy-palette pass shrinks them ~60% with no

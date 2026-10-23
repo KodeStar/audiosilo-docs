@@ -34,11 +34,14 @@ import {
   FIXTURES,
   HOUR,
   MIN,
+  PHONE,
   PODCAST_DIRECTORY,
   addHousehold,
   apiClient,
   around,
   firstVisible,
+  fitViewportTo,
+  imagesLoaded,
   isoAgo,
   pathQuery,
   shoot,
@@ -63,6 +66,18 @@ const SERIES = [
   {author: 'Sir Arthur Conan Doyle', title: 'Hound of the Baskervilles', series: 'Sherlock Holmes', index: '5'},
   {author: 'Lewis Carroll', title: "Alice's Adventures", series: 'Alice', index: '1'},
   {author: 'Lewis Carroll', title: 'Looking-Glass', series: 'Alice', index: '2'},
+];
+// Genres added to the seeded books the same way (a label edit adds to what the files
+// say), so Library > Books has a Genre filter worth opening (web-player/library-genre.png).
+const GENRES = [
+  {title: 'Adventures of Sherlock Holmes', genres: ['Mystery', 'Classics']},
+  {title: 'Hound of the Baskervilles', genres: ['Mystery', 'Classics']},
+  {title: "Alice's Adventures", genres: ['Fantasy', 'Classics']},
+  {title: 'Looking-Glass', genres: ['Fantasy', 'Classics']},
+  {title: 'Call of the Wild', genres: ['Adventure', 'Classics']},
+  {title: 'Scarlet Plague', genres: ['Science fiction']},
+  {title: 'Christmas Carol', genres: ['Classics']},
+  {title: 'Art of War', genres: ['Non-fiction']},
 ];
 
 // The demo user's Up next queue and one collection (title substrings of seeded books).
@@ -297,6 +312,21 @@ await step('series tags', async () => {
     await api(token, 'POST', '/auth/logout').catch(() => {});
   }
   console.log(`  ✓ series: ${SERIES.map((s) => `${s.series} ${s.index}`).join(', ')}`);
+});
+await step('genres', async () => {
+  if (!ADMIN_PASSWORD) throw new Error('ADMIN_PASSWORD not set: the Genre filter shows no seeded genres');
+  const {token} = await api(null, 'POST', '/auth/login', {username: 'admin', password: ADMIN_PASSWORD});
+  try {
+    const books = (await api(token, 'GET', '/admin/books?limit=200'))?.books ?? [];
+    for (const g of GENRES) {
+      const b = books.find((x) => `${x.title} ${x.path}`.includes(g.title));
+      if (!b) throw new Error(`no seeded book matching "${g.title}"`);
+      await api(token, 'PATCH', `/admin/libraries/${b.library_id}/book${pathQuery(b.path)}`, {add: {genres: g.genres}});
+    }
+  } finally {
+    await api(token, 'POST', '/auth/logout').catch(() => {});
+  }
+  console.log(`  ✓ genres on ${GENRES.length} books`);
 });
 
 // ── Pass 1: warm a demo session ─────────────────────────────────────────────
@@ -652,6 +682,23 @@ async function captureWide(name, viewport, shots) {
     });
   }
 
+  if (wanted(shots.bookRecapsGenerated)) {
+    // The same book's Recaps tab: the recaps.json run.sh seeds, with the Generated on
+    // this server mark, the recaps past the listener's place hidden and Show anyway.
+    await step('generated recaps', async () => {
+      await librarySection(page, 'Books');
+      await openNamed(page, 'The Call of the Wild');
+      await tid(page, 'book-tab-recaps').click({timeout: 15000});
+      // The mark heads the tab (generated-mark) when all of it was generated here.
+      await firstVisible(page.getByTestId('generated-mark').or(page.getByTestId('recaps-generated-mark'))).waitFor({timeout: 15000});
+      await scrollToTop(tid(page, 'book-tab-recaps'));
+      await page.mouse.wheel(0, -80);
+      await sleep(SETTLE_MS);
+      await page.mouse.move(0, 0);
+      await shoot(page, shots.bookRecapsGenerated);
+    });
+  }
+
   if (wanted(shots.journal, shots.journalBookmarks)) {
     // The Journal from the profile menu: the Diary (today's drift-off strip), then
     // the Bookmarks tab with its label filter.
@@ -776,6 +823,26 @@ async function captureWide(name, viewport, shots) {
       await tid(page, 'top-bar-(library)').click({timeout: 8000});
       await sleep(3000);
       await shoot(page, shots.library);
+    });
+  }
+
+  if (wanted(shots.libraryGenre)) {
+    // The Genre filter's choices over Library > Books (the genres pass 0 adds), closed
+    // again with Escape.
+    await step('library genre', async () => {
+      await tid(page, 'top-bar-(library)').click({timeout: 8000});
+      await sleep(1500);
+      await firstVisible(page.getByRole('button', {name: /^Genre\b/})).click({timeout: 8000});
+      const dialog = firstVisible(page.getByRole('dialog'));
+      try {
+        await dialog.getByRole('radio', {name: /^Classics, /}).waitFor({timeout: 15000});
+        await sleep(SETTLE_MS);
+        await page.mouse.move(0, 0);
+        await shoot(page, shots.libraryGenre);
+      } finally {
+        await page.keyboard.press('Escape');
+        await dialog.waitFor({state: 'hidden', timeout: 8000}).catch(() => {});
+      }
     });
   }
 
@@ -946,6 +1013,7 @@ await captureWide('desktop', {width: 1440, height: 900}, {
   bookDetails: 'web-player/book-details.png',
   bookFinished: 'web-player/book-finished.png',
   bookAboutGenerated: 'web-player/book-about-generated.png',
+  bookRecapsGenerated: 'web-player/book-recaps-generated.png',
   journal: 'web-player/journal.png',
   journalBookmarks: 'web-player/journal-bookmarks.png',
   player: 'web-player/player.png',
@@ -954,6 +1022,7 @@ await captureWide('desktop', {width: 1440, height: 900}, {
   palette: 'web-player/palette.png',
   profile: 'web-player/profile-menu.png',
   library: 'web-player/library.png',
+  libraryGenre: 'web-player/library-genre.png',
   upNext: 'web-player/up-next.png',
   librarySeries: 'web-player/library-series.png',
   series: 'web-player/series.png',
@@ -970,7 +1039,7 @@ await captureWide('tablet', {width: 834, height: 1112}, {
   home: 'web-player/tablet-home.png',
 });
 
-await capturePhone('phone', {width: 430, height: 932}, {
+await capturePhone('phone', PHONE, {
   home: 'web-player/phone-home.png',
   book: 'web-player/phone-book-detail.png',
   player: 'web-player/phone-player.png',
@@ -1007,7 +1076,6 @@ const PODCAST_CLIENT = {'x-audiosilo-client': 'AudioSilo/2.2.0 (web)'};
 // show whose newest episode (not on the server) the fetching shot starts.
 const PODCAST_SHOW = 'The Lantern Archive';
 const PODCAST_FETCH_SHOW = 'Field Notes at Dawn';
-const PHONE = {width: 430, height: 932};
 
 // The fixture's shows, each with its feed.json as run.sh wrote it, and its directory.
 function podcastFixture() {
@@ -1149,7 +1217,13 @@ async function capturePodcasts(pod) {
         await tid(page, 'podcast-show-hero').waitFor({timeout: 15000});
         await tid(page, 'podcast-following-badge').waitFor({timeout: 15000});
         await firstVisible(page.getByTestId('episode-row')).waitFor({timeout: 15000});
-        await settleShoot(page, PODCAST_SHOTS.show);
+        // Down to the last episode's reason line.
+        await fitViewportTo(page, page.getByTestId('episode-row'));
+        try {
+          await settleShoot(page, PODCAST_SHOTS.show);
+        } finally {
+          await page.setViewportSize(DESKTOP_CONTEXT.viewport);
+        }
       });
     }
 
@@ -1315,6 +1389,11 @@ async function findShowsStand(pod) {
     ...importRequests.map((r, i) => row(4 + i, 'queued', {feed: r.feed, private: r.private, request_id: r.id})),
     row(9, 'duplicate', {feed: importRequests[0].feed, duplicate_of: 4}),
     row(10, 'invalid', {error: {code: 'invalid_feed_url', message: 'invalid feed URL'}}),
+    // The follow that failed earlier (request 88, below), passed over: it shows that reason.
+    row(11, 'error', {
+      feed: 'https://www.oldmill.example/...', request_id: 88,
+      error: {code: 'recently_failed', message: 'Following this feed failed within the last hour. Follow it on its own to try again.'},
+    }),
     ...['feeds.northlight.example', 'audio.cellarclub.example', 'rss.weekendwalks.example'].map((host, i) =>
       row(12 + i, 'limited', {feed: `https://${host}/...`}),
     ),
@@ -1326,7 +1405,7 @@ async function findShowsStand(pod) {
     nextId: 92,
     requests: [
       request(91, 'running', 'https://feeds.harbourlights.example/...', 4 * MIN),
-      request(88, 'failed', 'https://www.oldmill.example/...', 3 * HOUR, {error: {code: 'not_a_feed', message: 'not a podcast feed'}}),
+      request(88, 'failed', 'https://www.oldmill.example/...', 40 * MIN, {error: {code: 'not_a_feed', message: 'not a podcast feed'}}),
     ],
     importRequests,
     importRows,
@@ -1357,7 +1436,8 @@ async function captureFindShows(ctx, pod, cid) {
       await p.getByRole('button', {name: `Follow ${newResult(pod).title}`}).click({timeout: 8000});
       await tid(p, 'discovery-result-adding').waitFor({timeout: 15000});
     }
-    await sleep(2000); // the artwork
+    await imagesLoaded(p, '/podcasts/discovery/artwork');
+    await sleep(SETTLE_MS);
   };
   const desk = await sameDevice(ctx);
   try {
@@ -1394,9 +1474,15 @@ async function captureFindShows(ctx, pod, cid) {
         await (await chooser).setFiles({name: 'podcast-subscriptions.opml', mimeType: 'text/x-opml', buffer: Buffer.from(FIND_OPML)});
         await tid(p, 'opml-summary').waitFor({timeout: 15000});
         await p.getByText('Waiting for the shows being added', {exact: false}).waitFor({timeout: 15000});
-        await sleep(SETTLE_MS);
-        await p.mouse.move(0, 0);
-        await shoot(p, FIND_SHOTS.import);
+        // Every row of the list, not the first 900 px.
+        await fitViewportTo(p, p.getByTestId('opml-import'));
+        try {
+          await sleep(SETTLE_MS);
+          await p.mouse.move(0, 0);
+          await shoot(p, FIND_SHOTS.import);
+        } finally {
+          await p.setViewportSize(DESKTOP_CONTEXT.viewport);
+        }
       });
     }
   } finally {
@@ -1913,7 +1999,7 @@ async function captureHouse(house) {
     if (wanted(HOUSE_SHOTS.phonePage)) {
       // The Me tab's Household segment on a phone (the same device's storage).
       await step('household: phone', async () => {
-        const phone = await sameDevice(ctx, {viewport: {width: 430, height: 932}, timezoneId});
+        const phone = await sameDevice(ctx, {viewport: PHONE, timezoneId});
         try {
           const p = await phone.newPage();
           await openHousehold(p, 'you?section=household');
@@ -1994,7 +2080,7 @@ async function captureHouse(house) {
       if (wanted(HOUSE_SHOTS.phoneKids)) {
         await step('household: phone kids', async () => {
           // This device's storage, from the live browser (kidsStaged picks the child itself).
-          const phone = await sameDevice(ctx, {viewport: {width: 430, height: 932}, timezoneId});
+          const phone = await sameDevice(ctx, {viewport: PHONE, timezoneId});
           try {
             const p = await phone.newPage();
             await kidsStaged(p, kid.name);

@@ -11,11 +11,13 @@
 //   'admin'   - capture-admin.mjs (admin console + public pages)
 //   'setup'   - capture-setup.mjs (the --setup page and the console's first-run flow)
 //   'meta'    - capture-meta.mjs (the meta.audiosilo.app site via a local metaserve)
+//   'bridge'  - capture-bridge.mjs (the Bridge's own page, a real Bridge paired with the demo server)
 
 export const SHOTS = [
   // ── Web player (desktop 1440x900, dark) ────────────────────────────────
   {file: 'web-player/home.png', capture: 'web', title: 'Web player - Home', hint: 'Home (Up next drawer hidden): greeting + sync pill, the Now card with its chapter scale, This week (if the server has user_stats), Continue listening and the shelves, docked player bar'},
   {file: 'web-player/library.png', capture: 'web', title: 'Web player - Library', hint: 'Library > Books (the default section): Books / Authors / Series / Narrators / Collections / Folders in the sub-nav with sort + grid/list, the filter chips and the cover grid with progress bars'},
+  {file: 'web-player/library-genre.png', capture: 'web', title: 'Web player - Genre filter', hint: 'Library > Books with the Genre filter chip opened: the dialog of the library\'s genres (the ones the run adds to the seeded books) with how many books each would show, and Any genre'},
   {file: 'web-player/library-series.png', capture: 'web', title: 'Web player - Library series', hint: 'Library > Series (/library?mode=series): series cards with their mini shelves (the seeded Sherlock Holmes series shows its gaps)'},
   {file: 'web-player/series.png', capture: 'web', title: 'Web player - Series page', hint: 'the Sherlock Holmes series page: hero with the progress track, the bookcase with the book in progress face-out and dashed gaps, the list below'},
   {file: 'web-player/author.png', capture: 'web', title: 'Web player - Author page', hint: "Lewis Carroll's author page: stat tiles, the Alice series shelf, other books"},
@@ -27,6 +29,7 @@ export const SHOTS = [
   {file: 'web-player/book-details.png', capture: 'web', title: 'Web player - Book details tab', hint: 'the Details tab of the playing book (downloaded first, so Plays from this device): the notice, the files table (codec, about N kbps, length), the path on the server'},
   {file: 'web-player/book-finished.png', capture: 'web', title: 'Web player - Finished book', hint: 'the page of the provisioned finished book: the Finished <date> badge, the four stars, Listen again'},
   {file: 'web-player/book-about-generated.png', capture: 'web', title: 'Web player - Generated description', hint: "The Call of the Wild's About card (clipped) on its book page: the description run.sh seeds into its .audiosilo folder (a description.json as a Bridge writes it), with the Generated on this server mark under the heading and no credit line; the book has no description of its own and no community match"},
+  {file: 'web-player/book-recaps-generated.png', capture: 'web', title: 'Web player - Generated recaps', hint: "The Call of the Wild's Recaps tab on its book page (early in the book): the recaps run.sh seeds into its .audiosilo folder (a recaps.json as a Bridge writes it) with the Generated on this server mark, the Whole-book summary row marked Spoiler, the hidden-to-avoid-spoilers line with Show anyway"},
   {file: 'web-player/journal.png', capture: 'web', title: 'Web player - Journal', hint: "the Journal's Diary from the profile menu (the You hub's Journal section): Today with its 24 hour bar and sessions, the drift-off strip under the provisioned sleep-timer session, earlier days below"},
   {file: 'web-player/journal-bookmarks.png', capture: 'web', title: 'Web player - Journal bookmarks', hint: "the Journal's Bookmarks tab: the export actions, search, the label filter chips and every bookmark across books, newest first"},
   {file: 'web-player/player.png', capture: 'web', title: 'Web player - Now playing', hint: 'the full player on a desktop, opened from the docked bar with the book paused: cover, status line, seek bar and timeline, transport, actions, and the companion column'},
@@ -161,6 +164,13 @@ export const SHOTS = [
   {file: 'setup/phone.png', capture: 'setup', title: 'Setup - Connect a phone', hint: 'step 7: the pairing QR code, New code, Open the web player, the ffmpeg line and the household note'},
   {file: 'setup/bridge.png', capture: 'setup', title: 'Setup - Add a Bridge', hint: 'step 8 with no Bridge paired: what a Bridge does, the compose snippet, Connect a bridge, Skip and finish (as tall as the page)'},
   {file: 'setup/finish-card.png', capture: 'setup', title: 'Setup - Finish setting up card', hint: "the Overview's Finish setting up card (clipped) after the flow finished with the Audiobookshelf and Bridge steps skipped"},
+
+  // ── The Bridge's page (desktop 1440x900, dark; as tall as the page) ─────
+  {file: 'bridge/sign-in.png', capture: 'bridge', title: 'Bridge - Sign in', hint: "the Bridge page's sign-in card on a fresh Bridge: Password, Sign in, where the first password was printed, and the reset-password line"},
+  {file: 'bridge/status-unpaired.png', capture: 'bridge', title: 'Bridge - Status, not paired', hint: 'the Status tab before pairing: the Get set up checklist, Pair with a server filled in (the server address and a pairing code from the console), This Bridge, the engine'},
+  {file: 'bridge/status-paired.png', capture: 'bridge', title: 'Bridge - Status, paired', hint: 'the Status tab once paired with the demo server: what is left of Get set up, the Server card (name, address, Paired, Unpair...), This Bridge with its job kinds and lanes'},
+  {file: 'bridge/libraries.png', capture: 'bridge', title: 'Bridge - Libraries', hint: "the Libraries tab after the first heartbeat: the server's libraries, the seeded one mapped to its folder on this machine with its check state, Check now"},
+  {file: 'bridge/accounts.png', capture: 'bridge', title: 'Bridge - Accounts', hint: 'the Accounts tab: the GitHub card (not signed in, Sign in with GitHub) and the Agent card'},
 
   // ── AudioSilo Meta site (meta.audiosilo.app; desktop 1440x900, dark) ────
   {file: 'meta/home.png', capture: 'meta', title: 'Meta - Home', hint: 'search hero, live stats band, latest additions grid'},
