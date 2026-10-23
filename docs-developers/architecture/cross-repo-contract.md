@@ -196,7 +196,9 @@ client.
 
 **Server:** the scanner records each book's `codec` (ffprobe `codec_name`,
 migration `0008_book_codec`); `item`/`chapters` expose `direct_playable` via
-`media.DirectPlayable`; `GET .../stream?path=…&transcode=1` pipes through ffmpeg
+`media.DirectPlayable` (from 2.4.0 the container counts too: a book with an
+`.mka` file is always `false`, so the web player transcodes it and a native app
+can't play it); `GET .../stream?path=…&transcode=1` pipes through ffmpeg
 to MP3 (`media.Transcode`), with `&t=<seconds>` to start mid-file (transcoded
 output isn't byte-seekable). All gated by the `--ffmpeg` flag and reflected in the
 `transcode` capability (seam 8).
@@ -246,7 +248,7 @@ page captions such chapters (an older app shows them as ordinary chapters), and 
 saved chapters with a newer server answer while its audio files are unchanged
 (same paths, order and sizes; `startChapterRefresh`). Podcasts additionally
 return `id3_chap` from the server's CHAP attachments; the player (2.2.0 and
-later) captions it "Chapters from the episode file". See [podcasts](#17-podcast-shows-feeds-and-client-visibility).
+later, first released in 2.4.0) captions it "Chapters from the episode file". See [podcasts](#17-podcast-shows-feeds-and-client-visibility).
 
 **A change requires:** any change to chapter normalization changes the queue
 builder and the timeline math with it. And always: **stream the file, not the
@@ -266,7 +268,10 @@ Universal/App Links on claimed domains, else the web player) and `uri`
 token → device-scoped session).
 **Frontend:** the `audiosilo` scheme in `app.json`; the connect/pairing parser and
 the `/web/connect` route consume both carriers; `client.ts`
-`redeemCode()`/`exchange()`.
+`redeemCode()`/`exchange()`. The app's scanner and the web player's paste field also
+read the console's invite link (`inviteURL`, `<base>/connect#code=…`; `parseInviteScan`
+from player 2.4.0) and sign in with its code through the same redeem and exchange, so
+a change to that link's shape changes both repos.
 
 **Home and away addresses (`addresses` capability).** Every pairing payload
 (`/auth/redeem`, `/auth/pair`, the demo session's `pairing`) may carry
@@ -826,8 +831,9 @@ security-critical: allowed and denied tests on the server.
 ## 17. Podcast shows, feeds and client visibility
 
 Phase 2c-2 extends the server/Bridge seam with episodes on disk, retention
-and on-demand fetching/status/Retry. Phase 2d-1 ships the player's views to
-players from 2.2.0; Phase 2d-2 adds discovery, follow by URL, OPML and Check
+and on-demand fetching/status/Retry. Phase 2d-1 ships the player's views
+(shown to players the gate admits, 2.2.0 and later; first released in the
+2.4.0 player); Phase 2d-2 adds discovery, follow by URL, OPML and Check
 for new episodes to the player.
 See [Podcasts](../bridge/podcasts.md) and the
 [API reference](../server/api/reference.md#podcasts) for exact fields.

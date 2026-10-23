@@ -126,16 +126,22 @@ else the folder), so the book kept ready is usually the book that plays; it diff
 in skipping finished series books too and in planning nothing when `/next` fails
 ([Offline](offline.md#keep-the-next-books-ready-keep-aheadts--keep-ahead-controllerts)).
 
-**Leaving the queue** is `dropFromQueue(connectionId, books)` (`end-of-book.ts`,
+**Leaving the queue** is `dropFromQueue(connectionId, books)` (`queue-drop.ts`,
 framework-free): on a server the cache knows has `queue`, it looks the books up in
 that connection's queue (the cached one, else one read), removes each by the stored
 entry's own path and takes it out of the cached queue at once (so a second call for
 the same book, the credits opened on return after the end already dropped it, sends
-nothing), and is quiet - housekeeping never toasts or reaches the reachability
-tracker. **The finished book always leaves Up next where it is finished**, whether
+nothing), sends one remove even when two callers drop the same entry at once (a
+start in place and the end of a book), and is quiet - housekeeping never toasts or
+reaches the reachability tracker. **The finished book always leaves Up next where it is finished**, whether
 or not the next one starts (the credits opened with `ended`, a Play now within the end tolerance,
 `BookEndedListener` in the background or with the credits already open); the queue
-entry that plays leaves it inside `advanceTo`, only once it has started.
+entry that plays leaves it inside `advanceTo`, only once it has started. **Any
+start leaves Up next too** (2.4.0): `startBookInPlace` (a book's page, a browse row,
+the car), the `/player` route's auto-start and Up next's Play now all call
+`dropStartedBook` (`drop-started.ts`), which drops the book only once it is the book
+loaded and not in error, so a start that failed or that another start took over
+keeps its place in the queue.
 
 The resolver's reads (`up-next-sources.ts`: the capability read, the queue, the
 finished set, `/next`) go through `fetchFailFast` (`api/hooks.ts`): TanStack holds a

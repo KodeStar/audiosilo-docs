@@ -32,7 +32,8 @@ content by `(library_id, rel_path)`, and owns exactly one hard problem:
 ```
 src/app/            Expo Router routes: (app) with its five tab groups, connect/
                     onboarding, the player + finished modals, demo landing,
-                    +html.tsx web shell, +native-intent.tsx (app links as paths)
+                    +html.tsx web shell, +native-intent.tsx (app links as paths),
+                    +not-found.tsx (any unknown path)
 src/api/            client.ts (typed fetch wrapper), types.ts (wire mirrors),
                     hooks.ts (React Query), provider.tsx (multi-connection registry),
                     reachability.ts (online/offline tracking), address-route.ts +
@@ -140,6 +141,7 @@ URLs, so every URL below is the same as before the groups existed.
 | `/browse?type=recent\|finished` | `(app)/(home,library,search,offline,me)/browse.tsx` → `src/components/library/books/see-all-screen.tsx` | The "See all" cover grid behind Home's Recently finished shelf (Recently added's See all opens the Library's Books mode with `sort=recent` instead). |
 | `/search` | `(app)/(search)/search.tsx` → `src/components/search/search-screen.tsx` | Search across the person listening's connections: books (de-duplicated), series, people and met characters, in groups with their own loading/error states (`useSearch`, shared with the palette; see [Search](state-and-data.md#search-and-the-spoiler-model)). Empty, it shows the recent searches and Browse cards. The query lives in `useSearchStore`, so it survives the screen remounting. On a **native tablet** the top bar's search field jumps here and bumps the store's `focusRequest`, which re-keys the input so it takes focus; on web the same field opens the [command palette](#command-palette-web) instead. Leaving the Search tab clears the query (`useShellEffects`). |
 | `/library?mode=…` | `(app)/(library)/library/index.tsx` → `src/components/library/library-screen.tsx` | The Library tab root: the browse modes `books` (absent = books), `authors`, `series`, `narrators`, `collections`, `folders` - see [The Library modes](#the-library-modes). Books mode also reads `sort` (`recent\|title\|author\|length`), `status` (`new\|progress\|finished`), `dl=1` and `len` (`short\|mid\|long`), which Home's links set. |
+| `/find-shows?connection=…&library=…&section=…` | `(app)/(library)/find-shows.tsx` → `src/components/podcasts/find-shows-screen.tsx` | Add shows to a podcast library (search, a feed address, an OPML import): see [Podcasts](podcasts.md#finding-shows). The Library tab's own page, so a cold link (a reload, a pasted URL) lands in the Library and Back returns there. |
 | `/series?connection=…&library=…&name=…&work=…` | `(app)/(home,library,search,offline,me)/series.tsx` → `src/components/library/series-screen.tsx` | The series bookcase. `name` is a **local** series (the exact `Book.series` value, the `series=` filter of `GET /books`); `work` is a community work id whose rails to show (how a series the listener owns nothing of is reached). At least one; with both, `name` lists the owned books and `work` supplies the reading orders and ghosts. |
 | `/author?connection=…&library=…&name=…`, `/narrator?…` | `author.tsx` / `narrator.tsx` (same group) → `src/components/library/person-screen.tsx` | A person page: the books whose `Book.author` / `Book.narrator` is **exactly** `name` (a joint credit is one name, as the server lists it), series shelves, other books, Read by / Books by chips. A narrator filter needs `browse_people`; an older server shows a "can't list books by narrator yet" state. |
 | `/collection?connection=…&id=…` | `collection.tsx` (same group) → `src/components/library/collection-screen.tsx` | A collection (per server, not per library: its items can span libraries). Owner: Edit, Share, Delete, Move up / Move down / Remove in the list view; viewer (`owned: false`): Leave. A `404` reads as deleted or no longer shared. |
@@ -163,6 +165,7 @@ URLs, so every URL below is the same as before the groups existed.
 | `/profiles` | `src/app/profiles.tsx` → `src/components/profiles/profiles-screen.tsx` | Who's listening?: a root full-screen modal with no swipe-back (`ProfilesScreen`); see [Profiles](profiles.md#whos-listening-profiles). |
 | `/kids` | `src/app/kids.tsx` → `src/components/kids/kids-screen.tsx` | Kids mode, a root route outside the tabs with no swipe-back (`KidsScreen`); `KidsRouteGuard` keeps a kids profile here; see [Kids mode](kids-mode.md). |
 | `/demo` | `src/app/demo.tsx` | Public demo landing: mints a throwaway session on a demo-mode server and shows the pairing QR so the same demo user opens on a phone. |
+| (any other path) | `src/app/+not-found.tsx` | The app's own themed "Page not found" with a way Home, in place of Expo Router's unbranded Unmatched Route (2.4.0). On the web, the server answers an unknown `/web/...` path with the player's `index.html`, so while the page hydrates it renders the same empty view and shows right after (`useHydrated`), which keeps React's hydration error #418 away. The `expo-router` plugin's `sitemap: false` in `app.json` turns the `_sitemap` route off. |
 
 ## The shell: tabs and navigation
 
@@ -322,7 +325,11 @@ with a hint that says what it does (Up next first, then the series).
 
 When a book ends, the queue's head plays first ([what plays next](end-of-book.md#what-plays-next-up-next-resolverts));
 the book that starts from it and the finished book leave it through `dropFromQueue`
-(`src/components/player/end-of-book.ts`).
+(`src/components/player/queue-drop.ts`). Any other start leaves it too
+(`dropStartedBook`: a queued book started from its page, a browse row, the car or
+Play now, once it is the book loaded). With an episode loaded, the suggestion's
+label is "Next episode" and the footer switch is worded for Up next only (after an
+episode, only Up next's head plays).
 
 ### Profile menu
 

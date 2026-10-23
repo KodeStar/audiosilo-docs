@@ -601,7 +601,7 @@ CSP-sensitive work against a real build served by Go. The console's own gate is
   (a book with one chapter). The server decides what a title says with
   `metadata.ChapterTitle`: a filename-shaped title is tidied as the player's
   `prettifyChapterTitle` tidies it, and a title that names nothing ("024",
-  "Track 01": `metadata.NamesNothing`, so a title in another script stays) is
+  "Track 01": `metadata.IsGenericTitle`, which reads letters in every script, so a title in another script stays) is
   left out; "Chapter 10" or "Part 7" is kept as written.
 - **Activity > Sessions** (`sessions-page.tsx`) - `GET /admin/sessions` as an
   infinite query (50 a page, "Show older sessions" passes `next_before`),
@@ -939,6 +939,17 @@ sign-in to a named, matched library and a paired phone. The account itself
 still comes from the first-run banner or the [`/setup` page](#first-run-setup-page-setup).
 It is console-only and admin-only: no capability flag, and the player never
 asks.
+
+The headless first-run banner (`writeBanner` in `pkg/launcher`) prints the
+admin username and password, the auth code and the config file's path, then
+sends the reader to this flow and to the connect page (from 2.4.0; before, it
+named only the API routes), from the same base URL as `OnURL`:
+
+```
+ Finish setting up: open https://audiosilo.example.com/admin and sign in as admin.
+ Connect a device: open https://audiosilo.example.com/ and enter the auth code.
+ (API: POST /api/v1/auth/redeem or /api/v1/auth/login.)
+```
 
 **Where it shows.** The console route `/setup` (so `/admin/setup`) renders as
 a page of its own, outside `AppShell`: `Root` signs the admin in, then

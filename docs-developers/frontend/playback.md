@@ -635,7 +635,8 @@ local files (`switchCurrentBookToLocal`, preferring the engine's gapless
 
 ## Web transcode negotiation (`transcode.ts`)
 
-Browsers can't decode some codecs a book may use (AC-3, E-AC-3, ALAC...). The
+Browsers can't decode some codecs a book may use (AC-3, E-AC-3, ALAC...), nor
+the Matroska container (`.mka`, indexed from server 2.4.0). The
 server marks those books `direct_playable: false` and, when it has ffmpeg
 (capability `transcode`), streams them re-encoded to MP3 with
 `?transcode=1&t=<seconds>` ([cross-repo contract §5](../architecture/cross-repo-contract.md#5-transcode-negotiation-direct_playable-and-transcode1)).

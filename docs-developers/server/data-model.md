@@ -171,7 +171,9 @@ alone), and `last_ip` the address of its newest request. Both are overwritten by
 `auth.ResolveRequest` on every authenticated request, never kept as a history,
 and the daily retention job blanks `last_ip` on revoked tokens
 (`auth.ForgetRevokedAddresses`), so an address is kept only while the device is
-signed in.
+signed in. The same job deletes pairing tokens that can never pair again
+(`auth.PrunePairingTokens`: revoked, expired, or linked to an expired or
+used-up code).
 `created_on_token_id` *(0044; FK to `tokens` `ON DELETE SET NULL`, partial index
 `idx_tokens_created_on`)* records, for a household member's session made on their
 owner's device (`sign_in_here`, `…/members/{id}/session`), the owner's token it was
@@ -1188,7 +1190,12 @@ the 100 most common by key, each named by the spelling most of its books use
 ### `schema_migrations`
 
 Created by `store.migrate` itself (not a migration file): `name` (PK),
-`applied_at`. Records which migration files have run.
+`applied_at`. Records which migration files have run. After migrating, a server
+that finds names here it does not ship (a newer AudioSilo ran on this database:
+a rollback) still starts but logs a warning naming them
+(`warnNewerMigrations`, `unknown_migrations`, from 2.4.0): features the newer
+server added may not work and their data can be lost, so run the newer version
+again or restore a backup made before the upgrade.
 
 ## Migration policy: append-only
 

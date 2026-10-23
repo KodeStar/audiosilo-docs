@@ -87,6 +87,15 @@ Top-level fields:
 | `subscribed_at`, `updated_at` | RFC 3339 UTC timestamps |
 | `show`, `episodes` | show object and episodes, newest first |
 
+**Episode order** (`podcast.newestFirst`): the newest publication date first,
+then, for episodes sharing a date or with none (a LibriVox serial), the higher
+season (none counts as 0), then the higher episode number (a numbered episode
+before an unnumbered one), then the path. So an undated serial lists from its
+last numbered episode back to E1, not in the order of its hashed file names
+(v0.3.0; before, date then path). The server's episode lists, `/next` and the
+retention windows use the same key
+([episode order](../server/api/reference.md#podcast-read-routes)).
+
 `show` contains `title` (300 bytes), `author` (300), `description` (4,000),
 `link` (`""` when private), `language` (35), `type` (`episodic` or `serial`),
 `explicit`, `categories` (up to ten), `podcast_guid`, and nullable `image`.
@@ -440,7 +449,10 @@ poller. The rules it keeps:
 - **Polling.** While `queued` or `fetching`, it GETs the status every
   `max(2, Retry-After)` seconds and seeds `['podcastFetch', ...]` from every
   answer (the 503's `fetch`, the POST's, each GET's). A network error, a `429`
-  or a `5xx` while polling reschedules the next turn at 2 seconds.
+  or a `5xx` while polling reschedules the next turn with a backoff
+  (`blipDelay`: 2 seconds, doubling with each failed look in a row up to 60,
+  never under the answer's `Retry-After`; an answer resets it), so a server
+  answering 5xx for good is not asked every 2 seconds.
 - **Background.** It pauses while the app is not active and asks once at once
   on the way back (`onForeground`; RN-web maps it to `visibilitychange`).
 - **It never POSTs by itself.** It stops at `failed`, `unavailable`, or
@@ -465,7 +477,10 @@ downloads store refuses `book.episode` as `unsupported`, the download control
 and the tile menu leave it out, and auto-download and keep-ahead skip it (an
 absent episode would answer 503 to the native download engines, and nothing
 would clean the files up). The Cast button hides for an episode (cast tokens
-never see podcasts; the server answers `403` to `POST /cast/token` for one).
+never see podcasts; the server answers `403` to `POST /cast/token` for one,
+with `error.code: "not_a_book"` from 2.4.0), and starting an episode while a
+book is cast is refused before any token is asked for (`CastBlockedError`
+`episode`; a `not_a_book` refusal reads the same).
 An episode never opens the end credits. Kids mode lists no podcast library
 (decision 6.2). Golden: the player keeps `wire-2b.json` byte-identical in
 `src/testing/podcast-fixtures/`.
@@ -509,8 +524,9 @@ none); the routes, shapes and error codes are in the
 
 ### Player: discovery and OPML (Phase 2d-2)
 
-Players from 2.2.0 search a directory, follow a feed by its address, import
-and export OPML lists and ask a followed show to check for new episodes. The
+The player (first released with these screens in 2.4.0) searches a
+directory, follows a feed by its address, imports and exports OPML lists and
+asks a followed show to check for new episodes. The
 screens are in [Frontend: Podcasts](../frontend/podcasts.md#finding-shows);
 this section is the wire mirror and the rules the player keeps. The only
 server change is CORS: an allowed origin may read `Retry-After` and the
@@ -635,7 +651,12 @@ OPML codes (`opml_rate_limited`, `opml_busy`, `opml_limit`, `invalid_opml`,
   framework-free with its own timers; `useOpmlImport` keeps it, and the
   picked bytes, for the Find shows page's life). A file over 1 MiB is refused
   before any upload. Each upload's rows merge by `outline_index` (the latest
-  answer wins). No `limited` row left: `done`. Otherwise the next upload of
+  answer wins, except that a row this import followed or queued stays
+  followed when a later wave answers it `already_following`). No `limited`
+  row left: `done`, and no other wave is sent (what is queued is followed
+  live). `error` rows never start a wave either: a server from 2.4.0 answers
+  a feed whose follow failed within the hour `recently_failed` and queues
+  nothing, so a few dead feeds no longer take every wave's slots. Otherwise the next upload of
   the same bytes waits until every request this import queued (`queued` and
   `already_queued` rows' `request_id`) is no longer open in
   `GET /me/podcasts` (absent counts as ended; read every 5 s), fewer than five
@@ -643,7 +664,16 @@ OPML codes (`opml_rate_limited`, `opml_busy`, `opml_limit`, `invalid_opml`,
   upload. `unavailable` rows never start a wave: a `done` import with some
   left offers a manual Try again (`canRetryImport`), which uploads once more.
   The panel reads each queued row's request live, so the import reads done
-  ("All done.") only once none is still being added. A wave that moves no row out
+  ("All done.") only once none is still being added and none failed. **A row
+  that could not be added** (`error`, `recently_failed` included, or one whose
+  request ended `cancelled`) has its own **Try again**: a single
+  `POST /podcasts/follow` by address, which the server always tries again.
+  The server reports only a redacted label, so the address comes from the
+  picked bytes (`outlineFeeds` in `opml-feeds.ts`, counting outlines as the
+  server's parser does) and is used only when its scheme and host match the
+  row's label (`rowFeedUrl`); a row whose address can't be found has no Try
+  again. Its answer stands over the waves' answer for that row
+  (`withRetries`). A wave that moves no row out
   of `limited` stops as `stalled` (Try again). `429 opml_rate_limited` and
   `503 opml_busy` wait their `Retry-After` (else 30 s and 2 s); five such
   answers in a row stop it. Any other refusal stops as `failed` with its code,
@@ -664,8 +694,13 @@ OPML codes (`opml_rate_limited`, `opml_busy`, `opml_limit`, `invalid_opml`,
   refusals read through `find-shows-model.ts`, and a failed request's
   `error.code` through `requestReasonKey` (`podcast-model.ts`: `dns`,
   `timeout`, `tls`, `network` could not reach the feed; `not_a_feed`,
-  `not_a_podcast`; `gone` and `http_*`; `request_expired` and
-  `feed_secret_missing` ask to follow again), all six locales.
+  `not_a_podcast`; `gone` (410), `http_404` (nothing at that address),
+  `http_401`/`http_403` (refused) and other `http_*`; `blocked_address` (a
+  local network the server may not reach); `too_large`; `request_expired` and
+  `feed_secret_missing` ask to follow again), all six locales. An import row's
+  reason (`importRowReasonKey`) is its request's when the requests list it,
+  else its own code's (`recently_failed`: it failed within the last hour,
+  follow it on its own to try again).
 
 **Goldens.** The player keeps the server's
 `internal/podcast/testdata/phase2c3/` files it reads byte-identical in
@@ -685,11 +720,11 @@ All keys are required on PUT, including unused ones: `mode` is
 Policies are durable server state keyed by library/path/show id, not feed data.
 A replacement show at the same path starts with the default.
 
-- Keep downloads the newest N currently listed entries, publication descending
-  then path descending, undated last. Deletion additionally requires being
-  outside this window.
-- Archive downloads every currently listed entry oldest first, path ascending,
-  undated last, and never deletes.
+- Keep downloads the newest N currently listed entries in the episode order
+  above (publication, season, episode number, path, descending), undated last.
+  Deletion additionally requires being outside this window.
+- Archive downloads every currently listed entry oldest first (the same key
+  ascending), undated last, and never deletes.
 - On demand fetches on play and permits one-ahead queue preparation, with no
   feed-wide scheduled downloads. Individual admin fetches work too. Its
   deletion rule has no Keep window.
@@ -744,6 +779,11 @@ the same duration. Later equal hashes retain that warning. Saved progress,
 finished state, bookmarks, annotations and queues are never rescaled or reset.
 
 Per-episode process/filesystem locks prevent overlapping reclaimed writers.
+The filesystem lock is the episode's `.fetch.lock`; its holder removes it while
+still holding it, as it lets go (`releaseLock`, v0.3.0; before, the files
+stayed), and a waiter that then gets a lock on a file no longer at that path
+opens the path again (`lockedAt`), so the files never pile up and no two jobs
+hold one.
 The short show mutation lock is shared by subscribe/poll/fetch/retain and never
 spans an audio GET. A writer recovers journals, confirms its lease, checks
 mapping and identities, and rereads the latest feed before committing, keeping
@@ -912,7 +952,9 @@ of at least 24 URL-safe characters containing both a letter and a digit.
 `private:true` forces privacy; `false` cannot force a private URL public.
 
 The server holds a private subscribe URL only in memory from follow until the
-job ends. Stored params have `feed_url: ""`; the URL is injected only into the
+job ends; deleting the library drops the URLs held for its jobs at once
+(`Service.PruneSecrets`, server 2.4.0; before, they stayed until a restart).
+Stored params have `feed_url: ""`; the URL is injected only into the
 claim answer. A restart before claim fails it as `request_expired`: follow
 again. The Bridge seals the URL **before** recording its local claim, under
 `podcast_job_<id>_<attempt>`, then keeps the show's URL as

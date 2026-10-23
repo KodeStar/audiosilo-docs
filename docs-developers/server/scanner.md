@@ -33,7 +33,14 @@ The show signature combines the feed's size/mtime with show and `.audiosilo`
 listings, including audio, CHAP and publication journals. Changes to those
 files are noticed even with unchanged feed stat. Refresh observes regular file
 presence, sizes, artwork, barriers and matching CHAP, then atomically updates
-the show/episode index. A targeted
+the show/episode index. An unchanged signature skips the show only while its
+episodes are still indexed: a show with fewer `podcast_episodes` rows than its
+`feed.json` listed is indexed again (`PodcastEpisodeRows`, from 2.4.0), since an
+older server run on the same database (a rollback to 2.3.1, say) scans the
+library as books and drops the episode rows while the show keeps its
+signature. Each podcast scan then deletes the books rows that are not episodes
+(`PruneNonEpisodeBooks`: what such a books scan left, a folder book at a show
+path for one). A targeted
 `POST /bridge/rescan` forces that refresh for a show path or an indexed episode
 path belonging to it, returning `{path:<show>, episodes:N}`. It refuses
 `attachments` mode and `from`; nothing indexable gives `404 not_indexable`.
@@ -387,7 +394,10 @@ There is no per-library layout setting. The model matches the dominant
 
 - **A directory that directly contains audio is ONE book**, with all those
   files as its ordered tracks - whether it holds a single `.m4b` or fifty
-  distinctly-named `.mp3` chapters. Do **not** split a folder's files into
+  distinctly-named `.mp3` chapters. Audio is what `metadata.AudioExtensions`
+  lists ([Media](media.md#recognized-audio-metadataaudioextensions)); `.mka`
+  joins it in 2.4.0, except an `.mka` beside a file of the same name in another
+  audio format, which `folderAudio` leaves out as that file's source or copy. Do **not** split a folder's files into
   separate books by filename; that heuristic produced one phantom book per
   chapter file.
 - The single exception is the **library root**: loose audio files sitting
@@ -400,8 +410,29 @@ There is no per-library layout setting. The model matches the dominant
   `PUT/DELETE /admin/libraries/{id}/folder-override?path=` (which rescans), and
   driven by the admin console's folder detection dialog.
 
-`folderBook` orders parts by name (`os.ReadDir`'s stable ordering), sums sizes,
-takes the max mtime, and takes the **earliest** file's `added_at`. `addedAt` is
+`folderBook` takes its parts in **natural name order** (`sortFileOrder`, from
+2.4.0, #160: `naturalLess`, a copy of audiosilo-meta's `scan.NaturalLess` held
+to it by `TestNaturalLessIsMetas`, since the Bridge and the community metadata
+number a book's files, and so its sidecars' chapters, in that order). Digit
+runs compare by value (`2- Part` before `10- Part`, `02` level with `2`), the
+rest byte by byte with case folded, so `01 - Prologue` plays before
+`01a - Interlude`; names alike that way fall back to their bytes. `audioEntries`
+and the discovery walk (`audioDirs`) both sort this way. It sums sizes,
+takes the max mtime, and takes the **earliest** file's `added_at`.
+
+:::note[Behaviour change in 2.4.0]
+Before 2.4.0 a folder book's files played in byte order (`os.ReadDir`'s), so
+`10-` played before `2-`. A book stored in byte order is re-indexed by the next
+scan although no file changed: `Signature.FileOrder` (`catalog.FileOrderKey`,
+an FNV-64a of the stored file paths in order) differs from the new order's.
+Nothing remaps a listener's place: a whole-book position on such a book can
+land elsewhere in the story (offline copies take the new chapters through the
+player's `refreshedChapters`). Move detection still finds such a book by the
+file byte order put first (`byteFirstFingerprint`, in `detectMoves` and
+`IndexMoved`), and a Bridge `chapters.json` made while it played in byte order
+still applies, its chapters moved with their files (`movedChapters`, see
+[Generated chapters](community-chapters.md#generated-chapters)).
+::: `addedAt` is
 the file's birth (creation) time where the OS records it
 (`birthtime_darwin.go`/`birthtime_linux.go`), otherwise mtime - a stable
 chronological key for "recently added" that survives re-indexing.
@@ -432,8 +463,8 @@ place, `joinRoot` (the folder or the one holding it, with `book` and a disc set)
   discs' audio as its files (hidden files and the ignore rules apply as usual):
   the disc folders in natural order (`discOrder`: `CD2` before `CD10`, `CD 1`
   equal to `CD1`, ties by path), each disc's files in exactly the order a book
-  of that disc alone has them (byte-wise name order, not natural), since the
-  state carry-over maps a disc position as offset plus position. Files and
+  of that disc alone has them (natural name order, `sortFileOrder`, above),
+  since the state carry-over maps a disc position as offset plus position. Files and
   chapters keep their real paths in the disc folders (`file_path`); a part with
   no chapters of its own is titled with its disc first (`joinedPartTitle`:
   `CD2 - 01`). The cover is the folder's own image, then the first disc's.
@@ -571,10 +602,24 @@ embedded data winning where it is trustworthy:
    it gives any), then ffprobe (when configured) for duration, chapters, the audio
    `codec` (`codec_name` of the first audio stream - this is what feeds the
    `direct_playable` API flag), and richer container tags.
+   A **series tag** that carries its own position (the series atom, the MP4
+   `\xa9grp` grouping, `show` or `TXXX:SERIES`), as Audible-sourced tooling
+   writes `Discworld, book #40`, is split into the series and its position
+   (`metadata.SplitSeriesTag`, from 2.4.0, #100): `Series, Book 3`,
+   `Series Book 3`, `Series #3`, `Series, #3.5`, `Series (Book 3)` and
+   `Series, Vol. 2` (`book`, `bk`, `vol`, `volume` and `no.` in any case). Only
+   a trailing, explicitly marked number set off from the name counts, so
+   `Warhammer 40,000`, `Metro 2033` and `Learning C# 2` keep their whole name. A
+   tag naming several series (`Discworld #40; Moist von Lipwig #3`) is read by
+   its first when that one carries a position; a later series-part tag still
+   overrides the position.
 3. **Generic-title guard**: `chooseTitle` keeps the path-derived title when the
    embedded one is missing or generic - `metadata.IsGenericTitle` flags bare
    numbers and "Track 01"/"Disc 2"/"CD1"-style labels (token-based, so a real
-   title like "Part of Your World" is not flagged).
+   title like "Part of Your World" is not flagged). Letters and numbers in any
+   script count (from 2.4.0; before, only ASCII ones did), so a title written
+   in another script names something (`Пролог`, `Глава 1`, `第1章`), and a
+   number in another script (`٠١`) is still a bare number.
 
 The scanner does not record where each value came from. The admin console's
 per-field provenance works it out when the book is read
@@ -904,7 +949,12 @@ granted files still stream.
    the **unresolved** join - `SafeJoin` returns a symlink-resolved path, and
    using it would produce `rel_path` keys that disagree with the full scan
    (which walks the root unresolved) whenever any component of the root is a
-   symlink (macOS `/tmp → /private/tmp`, NAS mounts).
+   symlink (macOS `/tmp → /private/tmp`, NAS mounts). The path must also be
+   spelled **as on disk** (`dirPresent`, from 2.4.0): a case or normalization
+   variant opens on a case-insensitive filesystem (macOS's and Windows'
+   defaults), but the scan names a book by the folder listings' spelling, so
+   indexing the variant would add a duplicate book everyone sees. Such a path
+   is `ErrNotIndexable`.
 2. Classifies the containing directory **exactly as a full scan would**
    (`booksInDir`, including overrides and the root case; `joinRoot` and
    `joinedBook` when the path is in a joined folder, walking the folder's
