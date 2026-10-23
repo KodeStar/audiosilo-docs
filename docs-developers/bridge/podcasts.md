@@ -388,8 +388,8 @@ bookmarks or the finished mark. `id3_chap` is embedded MP3 metadata, not
 generated chapters; the chapters tab captions it "Chapters from the episode
 file".
 
-**Client** (`src/api/client.ts`). Each method takes the optional abort
-`signal`:
+**Client** (`src/api/client.ts`). Each method but the two follow writes takes
+the optional abort `signal`:
 
 | Method | Request |
 |---|---|

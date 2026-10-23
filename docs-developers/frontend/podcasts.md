@@ -126,7 +126,8 @@ podcast library, takes the followed shows that published in the last 14 days
 newest `NEW_EPISODES_PER_SHOW` = 5 episodes (`latestEpisodesQuery`, five
 minutes fresh). `newEpisodes` (`new-episodes-model.ts`) keeps those published
 in the last `NEW_EPISODE_DAYS` = 14 days, drops removed episodes, trailers and
-any with progress (Continue listening has those), sorts newest first then by
+any started or finished (`skip`, Home's `skipNext`: Continue listening has the
+started ones), sorts newest first then by
 key and caps the shelf. `NewEpisodesRail` sits after "Next in your series":
 title "New episodes", sub "From shows you follow", action "All shows" (selects
 that server's podcast library, then opens `/library?mode=shows`), and
@@ -171,11 +172,13 @@ Cancel or another start since then wins. A start that fails stops as `failed`.
 
 - `EpisodeFetchPanel` takes the full player's place while `pending.key` is
   the route's episode (the route never calls `playBook` then): cover, title,
-  show, "Getting this episode" (or "Waiting for its turn", "Couldn't get this
-  episode", "This episode can't be fetched now"), the progress line
-  (`{{received}} of {{total}}` or `{{received}} so far`, `formatBytes`) with a
-  bar, Cancel, and Try again only when stopped. Reasons read through
-  `fetchReasonKey(code)` with a generic fallback.
+  show, the heading "Getting this episode" (once stopped, "Couldn't get this
+  episode" or "This episode can't be fetched now"), one line under it (the
+  body while probing, "Waiting for its turn" while queued, the progress
+  `{{received}} of {{total}}` or `{{received}} so far` with `formatBytes`
+  while fetching, the reason once stopped) with a bar, Cancel, and Try again
+  only when stopped. Reasons read through `fetchReasonKey(code)` with a
+  generic fallback.
 - `EpisodeFetchStrip` is the compact form, in `DockedPlayer` (wide) and
   `MiniPlayer` (phone, player closed). While another book plays it sits above
   that book's controls, which keep playing until the episode replaces it at

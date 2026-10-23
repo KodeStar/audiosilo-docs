@@ -6,8 +6,8 @@ description: "Listening to podcasts in the player: shows in the Library, a show'
 When your server has a podcast library, the player shows its podcasts beside your books: the
 shows in the Library, each show's episodes, a **New episodes** shelf on Home for the shows you
 follow, and episodes that play like any book. Podcasts need the **AudioSilo app 2.2.0 or later**
-(the web player your server serves is always up to date). An older app doesn't show podcasts at
-all; update it from the App Store or Google Play.
+(the web player comes with your server and is updated with it). An older app doesn't
+show podcasts at all; update it from the App Store or Google Play.
 
 Your admin sets podcasts up on the server: see [Podcasts](../admin/podcasts.md) in the admin
 guide. Adding a new show, searching podcast directories and importing a list from another podcast
@@ -73,7 +73,7 @@ marked **No longer in the feed**. Once the file is gone, the episode isn't liste
 follows a show shares the same downloaded episodes.
 
 The button is there only when your server can fetch podcasts right now: the admin has turned
-podcasts on and the server's Bridge is running. Otherwise a show you follow just shows a
+podcasts on and the server can download episodes. Otherwise a show you follow just shows a
 **Following** badge, and you can still play everything that's there. Kids' accounts and the demo
 can't follow shows.
 
@@ -87,7 +87,7 @@ and you'd need the feed's address to follow it again.
 **New episodes**, under **Next in your series** on Home, gathers recent episodes from the shows
 you follow: ones that came out in the last 14 days, newest first, with the show's name and how
 long ago under each. It leaves out trailers, episodes gone from the feed, and any episode you've
-already started or finished (those are in **Continue listening**). **All shows** opens the
+already started (those are in **Continue listening**) or finished. **All shows** opens the
 Library's Shows. If you follow nothing, or nothing new came out, the shelf isn't shown.
 
 Podcasts stay off your book shelves: they never appear in **Recently added**, book search or the
@@ -100,13 +100,15 @@ place in it the same way.
 
 An episode marked **Plays on demand** isn't on your server yet. Press **Play** and the server
 downloads it first: the player shows **Getting this episode** with the episode's cover and *"Your
-server is downloading it. It starts as soon as it's ready."*, and how much has arrived (*"12 MB
-of 40 MB"*, or *"12 MB so far"* while the full size isn't known). **Waiting for its turn** means
-it is queued behind other downloads. When the episode is ready it starts by itself.
+server is downloading it. It starts as soon as it's ready."*; once the download is under way that
+line shows how much has arrived (*"12 MB of 40 MB"*, or *"12 MB so far"* while the full size
+isn't known). **Waiting for its turn** in its place means it is queued behind other downloads.
+When the episode is ready it starts by itself.
 
 ![The full player while the server gets an episode: Getting this episode, with the download's progress](/img/screenshots/web-player/episode-fetching.png)
 
-- On a computer (or a wide tablet), a compact strip above the player shows the same progress.
+- With the full player closed, a compact strip shows the same progress: above the player bar on
+  a computer (or a wide tablet), and in the mini player on a phone.
   **Whatever you were listening to keeps playing** until the episode is ready; then the episode
   takes over.
 - **Cancel** stops waiting in the player. The server keeps downloading, so the episode will be
@@ -119,7 +121,7 @@ If the server can't get the episode, the player says why, with **Try again**:
 | Message | What it means |
 |---|---|
 | **Couldn't get this episode** | The download failed (the show's host didn't answer, for instance). **Try again** asks the server to download it again. |
-| **This episode can't be fetched now** | The server can't download episodes right now: podcasts are turned off, its Bridge is offline, or it can't save to this library. Ask your admin. |
+| **This episode can't be fetched now** | The server can't download episodes right now: podcasts are turned off, the part of your server that downloads them is offline, or it can't save to this library. Ask your admin. |
 | **Five episodes are already on their way. Try again once one is ready.** | Each person can have at most five episodes downloading at once. Wait for one to finish. |
 | **This episode is too large for your server to keep.** | The file is over the server's size limit. |
 | **This episode changed in its feed. Open the show to find it again.** | The show replaced the episode; open the show's page for the new one. |

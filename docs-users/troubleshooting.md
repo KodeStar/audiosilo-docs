@@ -221,8 +221,12 @@ admin to check that **Podcasts** is on in **Server > Settings > Modules** and
 that the [Bridge](./admin/bridge.md) is online and can write to the podcast
 library.
 
-If you don't see your server's podcasts at all, your app is older than 2.2.0:
-update it.
+If you don't see your server's podcasts at all, check your app's version first:
+an app older than 2.2.0 shows no podcasts, so update it. If it is up to date,
+ask your admin whether you have access to the podcast library (and whether the
+server itself is up to date). Kids mode never shows podcasts, and a
+[private show](./listening/podcasts.md#private-feeds) appears only to the
+people who follow it.
 
 ### My book restarted from the beginning
 

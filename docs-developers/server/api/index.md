@@ -579,9 +579,11 @@ No `Access-Control-Expose-Headers` is sent, so a cross-origin page cannot read
 response headers such as `Retry-After` or the OPML export's `X-OPML-*` counts
 (the `/web` player and native apps are unaffected). The player falls back to
 the status's `retry_after_seconds` for `Retry-After`. Its episode probe sends
-`Range: bytes=0-0`: browsers that safelist a single byte range send it without
-a preflight, and `Allow-Headers` does not list `Range` yet (planned with
-Phase 2d-2's CORS change).
+`Range: bytes=0-0` with its token in `Authorization`, so cross-origin it is
+always preflighted. Browsers that safelist a single byte range leave `Range`
+out of the preflight's `Access-Control-Request-Headers`, so it passes;
+`Allow-Headers` does not list `Range` yet (planned with Phase 2d-2's CORS
+change), so a browser that doesn't safelist it fails the probe there.
 
 ## The contract is hand-mirrored
 
