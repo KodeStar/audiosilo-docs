@@ -110,8 +110,9 @@ The pure rules are `cast-media.ts`:
 - **`castBlockReason`** - why a book can't be cast: `unsupported` (no `cast` flag),
   `local-address` (the address is this device: `localhost`, `*.localhost`, the
   loopback range, `::1`, `0.0.0.0`; `isReachableByReceiver`), `codec` (it needs the
-  transcoder and the server has none), `no-connection` (its server isn't signed in).
-  The Cast button and the cast engine share it.
+  transcoder and the server has none), `no-connection` (its server isn't signed in),
+  `episode` (a podcast episode, which never casts). The Cast button and the cast
+  engine share it.
 - **`castNeedsTranscode`** - the server's `direct_playable: false`, or a codec the
   Default Media Receiver doesn't play (`CAST_UNPLAYABLE_CODECS`: ALAC, the AC-3
   family, DTS, TrueHD, WMA, AMR). Such a book casts with `?transcode=1` when the
@@ -169,7 +170,13 @@ the playing book's server has `cast` (an older server, or flags not known yet: n
 button); while a session is connected it shows whatever the book, so a cast can
 always be stopped. It is not offered for a podcast episode (`episode` in the
 model, from `NowPlaying.episode`): a cast token never covers podcasts, and the
-server answers `403` to `POST /cast/token` for one. Native renders the SDK's own `CastButton` in a 44 pt frame; the
+server answers `403 not_a_book` to `POST /cast/token` for one. An episode
+started while a book is cast is refused before any token is asked:
+`prepareCast` blocks it as `episode` when its item says so (`book.episode`) or
+its library is a podcast library (`cachedPodcastLibrary`), and reads a
+`not_a_book` refusal of the token the same way. The cast session then ends and
+a toast says "This episode can't be cast" ("Podcast episodes can't be cast yet,
+so this one stays on this device."). Native renders the SDK's own `CastButton` in a 44 pt frame; the
 web draws our own, which opens Chrome's Cast chooser. When `castBlockReason` blocks
 the book, the button explains why instead (a toast) rather than casting. Strings are
 in the `cast` namespace.

@@ -279,7 +279,10 @@ handlers at priority at least 100 (`InteractiveHandler`, `podcast.fetch`
 today), never background work. Ordinary slots can take interactive jobs too;
 total enclosure concurrency stays at two. Without negotiated support,
 `interactive` becomes zero and `download` two, so an older server ignoring an
-unknown query cannot fill the reserve with background jobs.
+unknown query cannot fill the reserve with background jobs. The lanes the page
+lists (`Runner.Lanes`, in `GET /api/status`) leave out a lane with no capacity
+and nothing running, so that folded `interactive` lane no longer shows as
+"0 of 0" (v0.3.0).
 
 A change to eligible kinds, pairing, negotiated reserve or capacities cancels
 and joins the outstanding claim, then reissues immediately without cancellation
@@ -348,6 +351,14 @@ they were:
   reported again, every 30 seconds, until the server takes it or says it has moved
   on.
 - A running job of a kind the Bridge no longer runs is failed.
+- **A parked job** (`needs_attention`) resumes parked, and its first report
+  sends the progress it last recorded, park code and all (v0.3.0). While it
+  stays parked, a report whose progress names no park keeps the one before it
+  (`Reporter.Progress`), since a resumed job reports its first steps before it
+  hears its engine's park again. The server keeps the stored park too when an
+  update to a parked job names none (`carryPark` in `internal/bridge`, server
+  2.4.0), so a restart no longer reads as a park dropped and a new one raised:
+  no spurious `bridge_job_failed` events, and the console keeps the reason.
 
 When the server refuses the token (a `401`), a running job stops where it is,
 without a final report, and is kept aside. When a link to the same server works

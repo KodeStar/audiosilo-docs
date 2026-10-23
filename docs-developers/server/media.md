@@ -72,11 +72,13 @@ players - iOS `AVPlayer` in particular - then refuse the stream outright
    | `0xFF` with `b[1] & 0xF6 == 0xF0` | `audio/aac` | Raw ADTS AAC (e.g. per-chapter `.aac` files). Checked **before** the MP3 case because the ADTS sync word also matches the MPEG mask |
    | `0xFF` with `b[1] & 0xE0 == 0xE0` | `audio/mpeg` | Bare MPEG audio frame sync (untagged MP3) |
    | `ftyp` at offset 4 | `audio/mp4` | ISO base media: `.m4a`/`.m4b`/`.mp4`, AAC or ALAC inside |
+   | `1A 45 DF A3` | `audio/x-matroska` | EBML header: Matroska audio (`.mka`), MP3 or another codec inside (2.4.0) |
 
 2. **`audioContentType`** falls back to the extension when the sniff comes up
    empty: `.m4b`/`.m4a`/`.aax`/`.mp4` → `audio/mp4`, `.mp3` → `audio/mpeg`,
    `.aac` → `audio/aac`, `.flac` → `audio/flac`, `.ogg`/`.oga` → `audio/ogg`,
-   `.opus` → `audio/opus`, `.wav`/`.wave` → `audio/wav`. Anything else lets
+   `.opus` → `audio/opus`, `.wav`/`.wave` → `audio/wav`, `.mka` →
+   `audio/x-matroska`. Anything else lets
    `ServeContent` decide.
 
 :::warning
@@ -91,11 +93,19 @@ The scanner and the `/fs` browse view treat a file as an audiobook when its
 extension is in `metadata.AudioExtensions` (checked via `metadata.IsAudio`):
 
 ```
-.m4b  .m4a  .mp4  .mp3  .flac  .ogg  .opus
+.m4b  .m4a  .mp4  .mp3  .flac  .ogg  .opus  .mka
 ```
 
 `.mp4` is included because audiobooks are sometimes delivered as AAC-in-MP4;
-`media` serves it as `audio/mp4`. Audible's DRM formats (`.aax`/`.aaxc`) are
+`media` serves it as `audio/mp4`. `.mka` (Matroska audio, often MP3 with its
+chapters, as Audiobookshelf reads it) is indexed from 2.4.0 **for the web
+player only** (#161): no browser or native player plays the container, so it
+is never [direct-playable](#directplayable-when-a-client-should-transcode) and
+the web player streams it through `?transcode=1`; a native app lists such a
+book but can't play it (a server-side remux is a later follow-up). An `.mka`
+beside a file of the same name in another audio format is left out of the
+book (`folderAudio`): like an `.aax` beside its `.m4b`, it is that file's source
+or copy, and reading both would give the book its chapters twice. Audible's DRM formats (`.aax`/`.aaxc`) are
 **deliberately excluded**: the server can never stream them (they need
 per-account decryption), and indexing an `.aax` sitting next to its converted
 `.m4b` would lump both into one book with duplicated chapters and an
@@ -281,8 +291,14 @@ first full pass the runner only reads books whose art is new.
 ## `DirectPlayable`: when a client should transcode
 
 The scanner records each book's audio codec (ffprobe `codec_name`, verbatim)
-in `books.codec`. `media.DirectPlayable(codec)` reports whether mainstream
-browsers can decode it natively, against this allow-list (`browserCodecs`):
+in `books.codec`. `media.DirectPlayable(format, codec)` reports whether mainstream
+browsers can play it natively. A **container** no browser plays
+(`containerFormats`: `mka`, by the file extension in `books.format`) never is,
+whatever the codec inside; for a folder book every file's container counts, not
+only the first file's (`Book.PlaysInBrowsers` for `/item` and `/chapters`, and `directPlayableExpr`,
+built from `DirectPlayableSQL`, for the admin catalog's `direct_playable`
+filter and the Health `transcode` issue). Otherwise
+the codec is checked against this allow-list (`browserCodecs`):
 
 ```
 aac  mp3  mp2  flac  opus  vorbis  pcm_s16le

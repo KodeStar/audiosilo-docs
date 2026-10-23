@@ -47,11 +47,13 @@ import {
   fitViewportToPage,
   isoAgo,
   pathQuery,
+  showDockerPaths,
   silence,
   sleep,
   shoot,
   step,
   submitSignIn,
+  waitForScans,
   wanted,
   DESKTOP_CONTEXT,
 } from './lib.mjs';
@@ -62,6 +64,23 @@ const PASSWORD = process.env.ADMIN_PASSWORD;
 const MIRROR_ORIGIN = (process.env.MIRROR_ORIGIN || '').replace(/\/$/, '');
 const MIRROR_PASSWORD = process.env.MIRROR_PASSWORD || '';
 const INBOX_DIR = path.resolve(process.env.INBOX_DIR || path.join(CACHE, 'inbox'));
+const WEB_DIR = process.env.WEB_DIR ? path.resolve(process.env.WEB_DIR) : '';
+// The console shows this machine's folders as a Docker install has them (lib.mjs
+// showDockerPaths); anything else under .cache reads as under /srv.
+const SHOWN = [
+  [path.join(CACHE, 'library'), '/library'],
+  [path.join(CACHE, 'podcasts'), '/podcasts'],
+  [INBOX_DIR, '/inbox'],
+  [path.join(CACHE, 'data'), '/data'],
+  [path.join(CACHE, 'mirror-data'), '/data'],
+  ...(WEB_DIR ? [[WEB_DIR, '/app/web']] : []),
+  [CACHE, '/srv'],
+];
+const SHOWN_HOST = [['"os":"darwin"', '"os":"linux"'], ['"arch":"arm64"', '"arch":"amd64"']];
+const shownPath = (real) => {
+  const hit = SHOWN.find(([r]) => real === r || real.startsWith(`${r}/`));
+  return hit ? hit[1] + real.slice(hit[0].length) : real;
+};
 if (!PASSWORD) {
   console.error('capture-admin: ADMIN_PASSWORD is required');
   process.exit(1);
@@ -69,18 +88,6 @@ if (!PASSWORD) {
 
 // ── Provision demo state via the API ────────────────────────────────────────
 const api = apiClient(ORIGIN);
-
-// Waits until no library scans or waits in the job queue (scans run one at a time).
-const waitForScans = async (token, timeoutMs = 90000) => {
-  const until = Date.now() + timeoutMs;
-  await sleep(500);
-  while (Date.now() < until) {
-    const libs = (await api(token, 'GET', '/admin/libraries'))?.libraries ?? [];
-    if (!libs.some((l) => l.scan?.running || l.scan?.queued)) return;
-    await sleep(500);
-  }
-  throw new Error('scans still running after the timeout');
-};
 
 let inviteCode = '';
 let samId = null;
@@ -97,10 +104,13 @@ console.log('  ✓ admin login');
 // (capture-setup.mjs), so this server is marked set up. Finished and dismissed,
 // as an upgraded server is, so the Overview shows no "Finish setting up" card.
 // (A server from before the flow has no such route.)
+// Only a 404 (no such route) is let pass: any other failure stops the run, since
+// every console shot would then show the setup flow instead.
 const markSetUp = (client, tok) =>
-  client(tok, 'PUT', '/admin/setup', {finished: true, dismissed: true}).catch((e) =>
-    console.log(`  ! first-run setup not marked done: ${e.message}`),
-  );
+  client(tok, 'PUT', '/admin/setup', {finished: true, dismissed: true}).catch((e) => {
+    if (e.status !== 404) throw e;
+    console.log('  ! this server has no first-run setup to mark done');
+  });
 await markSetUp(api, token);
 
 await step('provision listener + share', async () => {
@@ -184,7 +194,7 @@ await step('provision scan settings', async () => {
     scan_schedule: 'every:6h',
     ignore_patterns: ['# Publisher samples and bonus material', '*.sample.mp3', 'Extras/'],
   });
-  await waitForScans(token);
+  await waitForScans(api, token);
   console.log('  ✓ provisioned (schedule + skip rules on the seeded library)');
 });
 
@@ -404,6 +414,7 @@ await step('provision listening sessions', async () => {
 // ── Capture ────────────────────────────────────────────────────────────────
 const browser = await chromium.launch();
 const ctx = await browser.newContext(DESKTOP_CONTEXT);
+await showDockerPaths(ctx, SHOWN, SHOWN_HOST);
 const page = await ctx.newPage();
 
 // Opens a console route and waits for it to render: by default its page
@@ -551,7 +562,7 @@ await step('add library with the folder picker', async () => {
   await dialog.waitFor({timeout: 8000});
   // Start the picker in the seeded library's folder, so it lists its author
   // folders rather than the capture machine's filesystem root.
-  if (library?.root) await dialog.getByLabel('Folder', {exact: true}).fill(library.root);
+  if (library?.root) await dialog.getByLabel('Folder', {exact: true}).fill(shownPath(library.root));
   await dialog.getByRole('button', {name: 'Browse', exact: true}).click();
   await dialog.getByRole('list', {name: 'Folders on the server'}).waitFor({timeout: 8000});
   // Choosing a folder fills the empty Name field from the folder's name.
@@ -735,7 +746,7 @@ await step('provision an Inbox library with issues', async () => {
     ignore_patterns: ['# Bonus material', 'Extras/', '*.sample.mp3'],
   });
   inbox = created?.library ?? created;
-  await waitForScans(token);
+  await waitForScans(api, token);
   // One ignored book, so the cards and the list show "Show ignored".
   const folk = (await api(token, 'GET', `/admin/books?library_id=${inbox.id}&issue=no_cover&limit=50`))
     ?.books?.find((b) => b.path.startsWith('Folk Tales'));
@@ -863,6 +874,7 @@ await step('health: system in mirror mode', async () => {
     }
   }
   const mctx = await browser.newContext(DESKTOP_CONTEXT);
+  await showDockerPaths(mctx, SHOWN, SHOWN_HOST);
   try {
     const mp = await mctx.newPage();
     await open(mp, '/', (pg) => pg.getByLabel('Username', {exact: true}), MIRROR_ORIGIN);
@@ -1064,7 +1076,7 @@ await step('settings: bridge', async () => {
   if (!info?.capabilities || !('bridge' in info.capabilities)) throw new Error('this server build has no Bridge');
   try {
     await open(page, '/server?topic=bridge');
-    const connect = page.getByRole('button', {name: 'Connect a bridge', exact: true});
+    const connect = page.getByRole('button', {name: /^Connect a bridge$/i});
     await connect.waitFor({timeout: 15000});
     await sleep(800);
     await shoot(page, 'admin/settings-bridge.png');
@@ -1072,8 +1084,8 @@ await step('settings: bridge', async () => {
     // The code is shown once, in the dialog: the stand-in reads it from the
     // environment-variable block, as someone copying both would.
     await connect.click();
-    const dialog = page.getByRole('dialog', {name: 'Connect a bridge'});
-    await dialog.getByText('Waiting for the bridge...').waitFor({timeout: 8000});
+    const dialog = page.getByRole('dialog', {name: /^Connect a bridge$/i});
+    await dialog.getByText(/^Waiting for the bridge\.\.\.$/i).waitFor({timeout: 8000});
     await sleep(800);
     await shoot(page, 'admin/bridge-pair.png');
     const env = await dialog.locator('pre').innerText();

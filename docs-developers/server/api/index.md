@@ -567,8 +567,11 @@ CORS is a strict allow-list driven by `cors_origins` in the server config:
 - **Unset (default):** no CORS headers are ever emitted. Cross-origin browser
   requests fail preflight; native apps and same-origin web clients (including
   the player served at `/web`) are unaffected.
-- **Listed origins:** an exact-match `Origin` gets
-  `Access-Control-Allow-Origin: <that origin>` (plus `Vary: Origin`), methods
+- **Listed origins:** every answer carries `Vary: Origin` (from 2.4.0: with no
+  `Origin`, a denied one and preflights too, so a browser cache never reuses an
+  answer made without the grant for a granted origin, or the other way round).
+  An exact-match `Origin` gets
+  `Access-Control-Allow-Origin: <that origin>`, methods
   `GET, POST, PUT, PATCH, DELETE, OPTIONS`, request headers
   `Authorization, Content-Type, X-AudioSilo-Client, Range`
   (`Access-Control-Allow-Headers`), the exposed response headers
@@ -590,8 +593,8 @@ headers are `Retry-After` where a route sends one (the discovery and OPML
 budgets, a busy transcode, an episode on its way; the general rate limit and
 the request timeout send none) and the OPML export's counts, so a
 cross-origin web player reads them as the `/web` player and native apps
-always could. A denied or absent origin, and a server with `cors_origins`
-unset, still gets no CORS header at all. An older server exposes nothing, so
+always could. A denied or absent origin gets no CORS header but `Vary`, and a
+server with `cors_origins` unset gets none at all. An older server exposes nothing, so
 the player falls back to the body's `retry_after_seconds` for an episode
 fetch and reads the export counts as unknown.
 

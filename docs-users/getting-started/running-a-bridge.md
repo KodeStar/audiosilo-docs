@@ -23,7 +23,7 @@ With the Podcasts module on, it also fetches missing podcast episodes on play
 through a compatible client, downloads episodes selected by policy and checks
 retention by a per-show policy an admin sets through the API for now. See
 [Podcasts](../admin/podcasts.md#downloads-and-retention) for the default,
-protections and the API calls. Player apps from 2.2.0 show podcasts; older
+protections and the API calls. Player apps from 2.4.0 show podcasts; older
 ones don't (see [Podcasts](../listening/podcasts.md)).
 
 The book-generation setup uses **two containers**:
@@ -37,9 +37,20 @@ The book-generation setup uses **two containers**:
   can't reach the server or the Bridge. Each job hands it just the text it needs.
 
 :::info[Early days]
-The Bridge is new and still being built, and its images aren't open to everyone
-yet. Read-along and more jobs come in later versions.
+The Bridge is new and still being built. Its images are public from version
+0.3.0: anyone can pull them, with no sign-in. Read-along and more jobs come in
+later versions.
 :::
+
+### Which Bridge version
+
+With AudioSilo server 2.4.0, run **Bridge 0.3.0 or later**. Podcasts,
+contributions to the community, **Generate characters and recaps** and
+**Detect chapters** need it. The `:latest` tags below follow the newest
+release; to stay on one version, use its tag instead, such as
+`ghcr.io/kodestar/audiosilo-bridge:v0.3.0`. The console's
+[Settings > Bridge](../admin/bridge.md#online-offline-and-its-details) shows the
+version of the Bridge you have paired.
 
 ### What you need
 
@@ -82,6 +93,7 @@ services:
     volumes:
       - ./bridge-data:/bridge-data        # the Bridge's settings and state
       - /srv/audiobooks:/library:rw       # the SAME folder, at the SAME path, read-write
+      # One line like it for each other library, a podcast library too.
       - staging:/staging                  # the work folder it shares with the agent
     environment:
       PUID: "1000"                        # the owner of your audiobooks (Unraid: 99)
@@ -125,7 +137,12 @@ What matters:
   The server mounts it read-only (`:ro`), the Bridge read-write (`:rw`). With the
   same path inside both, the Bridge finds each library by itself. (If you mount it
   somewhere else, tell the Bridge where each library is on its page's
-  **Libraries** tab.) The agent container never mounts it.
+  **Libraries** tab.) With several libraries, give the Bridge one volume for
+  each, every one at the path the server uses. The console writes these lines
+  for your libraries: the snippet on **Server > Settings > Bridge** (while no
+  Bridge is paired), or in the setup flow's
+  [Bridge step](first-run.md#step-8-add-a-bridge), lists one volume per
+  library. The agent container never mounts them.
 - **`PUID`/`PGID`** are the user and group the Bridge runs as. Use the **owner of
   your audiobooks folders**, the same as the server, so anything the Bridge writes
   belongs to the right user. On generic Linux that is the output of `id -u` and
@@ -165,15 +182,33 @@ log:
 
 Copy it now. You can change it later on the page's **Settings** tab.
 
+Lost it? Run the Bridge's `reset-password` command as the owner of its data
+folder (the `PUID`/`PGID` above). It prints a new password once and signs
+everyone out of the page; the pairing, the library mappings and the stored
+secrets stay as they are, and a running Bridge uses the new password at once:
+
+```bash
+docker compose exec -u 1000:1000 bridge audiosilo-bridge reset-password
+```
+
+On Unraid, use `-u 99:100`, with `docker exec` and the container's name in
+place of `docker compose exec` and `bridge`. Run as root (without `-u`), the
+command refuses and names the user to run it as, so the files it touches stay
+the Bridge's own. The Bridge's sign-in page points to this command too.
+
 ### 3. Open the Bridge's page
 
 Open `http://<your machine>:8091` and sign in with that password. The page has tabs
 for its **Status**, **Libraries**, **Jobs**, **Settings**, **Accounts**, **Workers**
 and **Logs**.
 
-It only answers from your **local network**, and it always asks for the password,
-even on the same machine. It won't open over the internet, through a reverse proxy
-or over a VPN address like Tailscale's, and isn't meant to.
+![The Bridge's sign-in page: the password field, Sign in, and the line naming the reset-password command for a lost password](/img/screenshots/bridge/sign-in.png)
+
+It only answers connections that come from your **local network**, and it always
+asks for the password, even on the same machine. It won't open from an internet
+address or over a VPN address like Tailscale's, and isn't meant to. Don't put it
+behind a reverse proxy: the page sees the proxy's own address, which is on your
+network, so it would answer whatever the proxy lets through.
 
 Until the Bridge is set up, its **Status** tab starts with a **Get set up** card:
 the steps below, in the same order, each ticked once done, with a word on where
@@ -192,10 +227,12 @@ shows the same list on [Settings > Bridge](../admin/bridge.md#the-setup-card).
 | Review the monthly budget | yes | the **Settings** tab (step 8) |
 | Sign in to GitHub | no: only to share with the community | the **Accounts** tab (step 9) |
 
+![The Status tab of a new Bridge: the Get set up card, and Pair with a server with the server address and a pairing code filled in](/img/screenshots/bridge/status-unpaired.png)
+
 ### 4. Pair it with your server
 
 1. In the server's admin console, open **Server > Settings > Bridge** and press
-   **Connect a bridge**. Copy the code.
+   **Connect a Bridge**. Copy the code.
 2. On the Bridge's **Status** tab, under **Pair with a server**, fill in the
    **Server address** (`http://audiosilo:8080` in the compose file above) and the
    **Pairing code**, and press **Pair**.
@@ -205,7 +242,10 @@ The code works once, for 15 minutes. Instead of pasting, you can add
 first start; remove it again afterwards.
 
 Back in the console the Bridge shows as **Online**. What everything on that page
-means is in [The Bridge](../admin/bridge.md).
+means is in [The Bridge](../admin/bridge.md). On the Bridge's Status tab, the
+pairing form gives way to the server it is paired with.
+
+![The Status tab once paired: the steps still to do, the Server card with the server's name and address, and This Bridge](/img/screenshots/bridge/status-paired.png)
 
 ### 5. Check the libraries
 
@@ -217,6 +257,8 @@ library that isn't ready says why: see
 same paths (step 1) there is usually nothing to do. If you mounted a library
 somewhere else, tell the Bridge where it is on the **Libraries** tab.
 
+![The Bridge's Libraries tab: each of the server's libraries with where the Bridge found it and its check](/img/screenshots/bridge/libraries.png)
+
 This step is done when **every** library is ready, since the Bridge saves what it
 makes in each book's folder. Press **Verify** on a library in the console to check
 it end to end.
@@ -225,8 +267,8 @@ For a **podcast** library, mount its own folder in both containers, read-only
 for the server and read-write for the Bridge, just as for books. An empty
 podcast library can be ready: the Bridge writes a small marker in its hidden
 settings folder and asks the server to read it back. It does not need a book
-to compare. Leave the marker in place. **Verify** uses a sample book and is for
-books libraries.
+to compare. Leave the marker in place. **Verify** uses a sample book, so a
+podcast library has no **Verify** button in the console.
 
 Give the podcast folder room for downloads; see
 [Space and availability](../admin/podcasts.md#space-and-availability) for the
@@ -385,11 +427,12 @@ month's spend against the cap.
 
 On Unraid the Bridge and its agent are **two containers**, set up with the same
 settings as the compose file above. There are no ready-made Community
-Applications templates for them yet (their images aren't public), so add them
-with **Add Container**:
+Applications templates for them yet, so add them with **Add Container** (the
+images are public, so no registry sign-in is needed):
 
-- **The Bridge** (`ghcr.io/kodestar/audiosilo-bridge:latest`): your audiobooks
-  share mapped read-write at the same path as in the server's container,
+- **The Bridge** (`ghcr.io/kodestar/audiosilo-bridge:latest`): each library's
+  share (your audiobooks, and a podcast share if you have one) mapped
+  read-write at the same path as in the server's container,
   `/bridge-data` to an appdata folder, port `8091`, `PUID` `99` and `PGID` `100`,
   the variables from step 1, and a **work folder** mapped to `/staging`, for
   example `/mnt/user/appdata/audiosilo-staging`. Keep the work folder outside

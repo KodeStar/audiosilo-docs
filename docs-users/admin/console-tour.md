@@ -130,7 +130,8 @@ people are listening right now, then:
   with its count. Click one to open its list, or **Triage** to open
   [Library health](health.md). It says "Nothing needs attention." when
   everything is fine.
-- **Books per library** - each library's book count as a bar. A count that
+- **Books per library** - each books library's book count as a bar (podcast
+  libraries aren't listed). A count that
   looks wrong is the cue to check that library's
   [folder detection](libraries.md#folder-detection).
 - **Server** - the version (with a "*version* available" link to
@@ -146,13 +147,18 @@ notice says "AudioSilo can't read this folder" instead, since there was nothing
 to keep.) See
 [When a library folder goes missing](libraries.md#when-a-library-folder-goes-missing).
 
+When saved settings are waiting for a restart, a notice says "Restart AudioSilo
+to finish applying your changes" and names them, with **Open Settings** (see
+[When a change takes effect](server.md#when-a-change-takes-effect)).
+
 A brand-new server with no libraries shows a welcome card instead, with an
 **Add your first library** button.
 
 After the first-run [Set up your server](../getting-started/first-run.md#set-up-your-server)
 flow, a [Finish setting up](../getting-started/first-run.md#the-finish-setting-up-card)
 card at the top of the side column lists the steps you skipped until an admin
-presses **Dismiss**.
+presses **Dismiss**. While the flow is unfinished, the card offers **Continue
+setting up** instead.
 
 ### The support card
 

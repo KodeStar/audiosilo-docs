@@ -400,11 +400,21 @@ on a server with that capability - the same shape as `/auth/exchange`.
 ### `POST /api/v1/auth/pair`
 
 *Session.* Issues a fresh pairing payload for the calling user - "add another
-device" from an existing session. No request body. Response `200`: a
+device" from an existing session. The body is optional:
+
+```json
+{ "ttl_seconds": 120 }
+```
+
+Response `200`: a
 `PairingPayload` (same shape as `/auth/redeem`, without the invite budget fields). Its
 token is single-use and lasts 10 minutes (`pairingTTL`), so the player counts down from
-when the payload arrived. The admin console's **Listen in player** uses it too, to sign the
-web player in as the admin in a new tab. An API key gets `403`. A kid's account (a [household member](#household-members)
+when the payload arrived. `ttl_seconds` (from 2.4.0) asks for a shorter life, clamped to
+30 seconds through 10 minutes (`pairTTL`): a caller can shorten a token's life, never
+lengthen it; no body or no field is the 10 minutes, and a malformed body is `400
+invalid request`. The admin console's **Listen in player** uses it too, to sign the
+web player in as the admin in a new tab, asking 120 seconds (`PLAYER_TAB_TTL_SECONDS`),
+since that token rides the tab's URL and history. An API key gets `403`. A kid's account (a [household member](#household-members)
 with `member_kind: "kid"`) gets `403` `code: "kid_account"`: its owner sets up its
 devices with [`POST /me/household/members/{id}/pair`](#post-apiv1mehouseholdmembersidpair).
 
@@ -470,7 +480,9 @@ Either field is omitted when unknown, and the answer is `{}` when neither is.
 
 The routes in this section but `DELETE /auth/recovery` (which only reduces access, so
 it is neither limited nor refused), together with the [API keys](#personal-api-keys)
-below, share one rate limit (10 attempts per IP per 15 minutes) and are
+below (but their listing, `GET /auth/tokens`, which is not counted), share one rate
+limit (10 attempts per IP per 15 minutes; a refusal is `429` with `Retry-After`, the
+seconds until the lockout ends) and are
 **refused for demo accounts** (403 `code: "demo_account"`, `not available for demo
 accounts`), so a throwaway session can't mint a durable credential. `POST
 /auth/password`, `POST /auth/recovery` and `POST /auth/tokens` (and `POST /auth/pair`)
@@ -536,8 +548,9 @@ integrations - dashboards, cron jobs, monitoring. A key authenticates on any
 its owner**: an admin's key also passes *Admin* routes, a regular user's does
 not. A pairing token is never accepted as a bearer credential, and an API key is
 never valid for `/auth/exchange`. Revocation is the only lifecycle - a key never
-expires. All three routes share the [self-service](#self-service-account) rate
-limit (10 attempts per IP per 15 minutes) and are **refused for demo accounts**
+expires. Creating and revoking share the [self-service](#self-service-account) rate
+limit (10 attempts per IP per 15 minutes; a refusal is `429` with `Retry-After`);
+listing does not spend it (from 2.4.0). All three are **refused for demo accounts**
 (403).
 
 **Containment.** A key cannot mint a *fresh durable credential*. A request that
@@ -1136,8 +1149,13 @@ filtered out returns **empty lists**, not `403`. A hidden individual show is
 
 Episodes require `show=<show path>`. `order` is `newest` (default) or `oldest`;
 `limit` defaults to 50 and must be 1 through 200 (`400 invalid_request` otherwise).
-Pagination uses an opaque `cursor` with a published/path keyset; it is bound
-to show and order. Invalid order/cursor gives `400 invalid cursor`.
+Episodes are ordered by `published` (undated as the earliest), then
+season (none counts as 0), then episode number (unnumbered before numbered,
+oldest first), then path, the order the Bridge's `feed.json` uses, so an
+undated serial such as a LibriVox reading lists as its feed numbers it.
+Pagination uses an opaque `cursor` over that keyset; it is bound to show and
+order, and a cursor from a server before 2.4.0 (a published/path keyset) is
+refused. Invalid order/cursor gives `400 invalid cursor`.
 Per-episode grants are applied before pagination.
 
 A **Show**:
@@ -1406,7 +1424,7 @@ sends a finished/failed notification. See [the Bridge implementation](../../brid
 shows by name; following one is the ordinary
 [`POST /podcasts/follow`](#podcast-actions) with `{library_id, feed_url}`
 (there is no provider-id follow and no new follow field). The player's Add
-shows page calls them (players from 2.2.0,
+shows page calls them (the player from 2.4.0,
 [Phase 2d-2](../../bridge/podcasts.md#player-discovery-and-opml-phase-2d-2));
 the console does not.
 
@@ -1664,7 +1682,7 @@ subscriptions. For example, a list whose first outline is a category:
 | `invalid` | `error.code` `missing_feed_url` or `invalid_feed_url` | `error` |
 | `limited` | `error.code` `too_many_requests`: the wave is full (below) | `error` |
 | `unavailable` | `error.code` `bridge_unavailable`, `library_not_writable` or `module_off` | `error` |
-| `error` | `error.code` `privacy_conflict`, `no_library_access` or `subscribe_failed` | `error` |
+| `error` | `error.code` `privacy_conflict`, `no_library_access`, `subscribe_failed` or `recently_failed` | `error`; `request_id` for `recently_failed` |
 
 `feed` is the redacted label even for public URLs, and `null` for an
 invalid or missing URL; `private` follows the usual automatic detection, a
@@ -1681,6 +1699,19 @@ a known show (current or previous URL) is followed at once, even with the
 Bridge offline, and only a new feed or a secret repair needs an online Bridge
 running `podcast.subscribe` and a writable mapping. Each row commits on its
 own: a later failure never undoes an earlier row.
+
+**Recently failed feeds.** When the caller's last `podcast.subscribe` request
+for a feed in this library failed within the last hour
+(`podcast.RecentFailureWindow`), the row answers `error` with
+`error.code: "recently_failed"` and `request_id` set to that failed request,
+and nothing is queued again, so a few dead feeds cannot take every wave's
+slots. Only a failure of the feed itself counts (its address, its answer, the
+network): a request that ended `request_expired` (a server restart),
+`bridge_lost`, `library_not_writable`, `not_podcast_library`, `write_failed`,
+`feed_secret_missing` or `identity_changed` does not (`notFeedFailures` in
+`internal/bridge`), nor one the caller has asked again since. A single [`POST /podcasts/follow`](#podcast-actions) by
+address always retries; that is the player's Try again. Older players show the
+row as a plain error.
 
 **Waves.** One upload creates at most **five new** subscribe requests, and the
 caller can never have more than five open subscribe requests at once (single
@@ -1752,7 +1783,10 @@ left out as unavailable, and one whose URL now looks private as private.
 
 The omission counts count follows before duplicate URLs are merged. More than
 10,000 matching follows, or an export over 4 MiB, is `413 opml_export_limit`
-(never a truncated list). Fetch it with the `Authorization` header; there is no
+(never a truncated list); the two refusals share the code and their
+`error.message` says which limit was hit ("Too many subscriptions to export
+(more than 10,000)." or "The subscription list is too large to export (over
+4 MiB)."). Fetch it with the `Authorization` header; there is no
 `?token=` download link.
 
 ### Podcast storage (admin)
@@ -1777,9 +1811,9 @@ are shared per library/show path/show id and survive index rebuilds; replacing
 a show at the same path starts with the default. PUT/DELETE wake scheduling
 and do not wait for disk changes. There is no retention UI yet.
 
-Keep downloads the newest N currently listed episodes (published/path
-descending, undated last); Archive downloads all currently listed episodes
-oldest first and never deletes. On demand schedules no feed-wide downloads;
+Keep downloads the newest N currently listed episodes (the
+[episode order](#podcast-read-routes) descending, undated last); Archive
+downloads all currently listed episodes oldest first and never deletes. On demand schedules no feed-wide downloads;
 play, one-ahead queue preparation and admin fetch work.
 No followers means no policy-scheduled downloads/deletions; authorized
 play/Retry and queue preparation still work. Removed feed entries are not
@@ -1901,7 +1935,8 @@ single-book response (and [`/chapters`](#get-apiv1librariesidchapters)) carries
 it.
 
 `direct_playable` reports whether the codec plays natively in browsers (unknown
-codec ⇒ `true`). The web player streams a `false` book with `?transcode=1` when
+codec ⇒ `true`); a book with a Matroska (`.mka`) file is always `false`, whatever
+its codec (from 2.4.0). The web player streams a `false` book with `?transcode=1` when
 the `transcode` capability is true; it does not retry through the transcoder after
 a failed direct play. Durations/positions are seconds (float).
 
@@ -2074,6 +2109,14 @@ Otherwise the local steps decide, in order, and the first one with an answer win
    that are not books are never offered. Ordering is by name, not `series_index`.
    An unreadable folder falls through.
 4. **`none`** - `{"source": "none"}`.
+
+After a **podcast episode** (a path in a podcast library) none of those steps
+run: the answer is the next episode of its show in the
+[episode order](#podcast-read-routes) oldest first (whichever way the show
+lists), among the episodes in scope that can still play (in the feed, or kept
+on disk), as a `folder` answer with `next` and `book`; `{"source": "none"}` at
+the show's end. Episode file names say nothing about their order, so the
+folder's name order is never used (`catalog.NextPodcastEpisode`).
 
 | Status | Meaning |
 |---|---|
@@ -4060,7 +4103,7 @@ person keeps, what ends it and how dead ones are pruned:
 | `201` | `{ token, expires_at }` |
 | `400` | `invalid request` (a malformed body or an unknown field), `path is required` |
 | `401` | no session (a cast token can't mint another: it is never a bearer credential) |
-| `403` | the library or the path is outside the caller's access; or `not available when authenticating with an API key` (a key never mints another credential) |
+| `403` | the library or the path is outside the caller's access; `error.code: "not_a_book"` (`Only books can be cast.`) for a path in a podcast library, since episodes are not cast (from 2.4.0; before, the same 403 with no code); or `not available when authenticating with an API key` (a key never mints another credential) |
 | `404` | `book not found` (no book at the path), or `library not found` (an admin naming an unknown library; anyone else gets the `403`) |
 | `500` | `could not start casting`; `access check failed`, `could not load library` or `could not load book` on a database failure |
 
@@ -4439,7 +4482,7 @@ settings are not echoed - read them from
 | Status | Meaning |
 |---|---|
 | `400` | `name and root are required`; `invalid request`; `code: "invalid_schedule"` (a schedule that isn't one of the forms above); `code: "invalid_pattern"` (too many patterns, one too long, one that matches nothing, or a malformed wildcard - the message names the line); `code: "invalid_metadata_source"` (a `metadata_source` other than `"tags"` or `"path"`) |
-| `409` | `name already taken` (`code: "name_taken"`) |
+| `409` | `name already taken` (`code: "name_taken"`); also `name_taken` when the server's config declares a library by this name at another folder (the next start would give it the declared folder; the library is deleted, say, and not back yet) |
 
 Invalid `kind` is `400 invalid_kind`. If either library is a podcast library,
 equal, ancestor or descendant roots conflict (`409 root_overlaps`), using
@@ -4470,6 +4513,18 @@ schedule or the ignore rules (`sort_order` is managed via `/order`).
 Sending the existing `kind` is accepted; a different kind is
 `400 kind_immutable`. Root changes enforce the same `409 root_overlaps` rule
 as create.
+
+A library the server's config declares (`config.yaml`, or the app embedding
+the server: `launcher.Options.Libraries`; no environment variable declares one) keeps the name and
+folder declared there, since every start upserts it by name
+(`launcher.syncLibraries`) and the server never writes a library to
+`config.yaml`. A different `name` or `root` on such a library is
+`409 config_library` (from 2.4.0; before, the rename stuck until the next
+start brought the declared library back as a second one); the same values
+resent write nothing, and its other settings stay editable. The console reads
+the declared names from `GET /admin/setup`'s `config_libraries` and locks the
+fields. Renaming another library to a declared name at another folder is
+`409 name_taken`.
 
 A rescan is queued (trigger `change`) **only** when the root or the ignore rules
 change, since those make the index stale. A rename, a new default view or a new
@@ -4945,7 +5000,7 @@ what the first does).
 | `genre` · `tag` | string | - | a genre (tag) the book has, one value each, case-insensitive with spacing collapsed, as on the [player's list](#get-apiv1librariesidbooks) |
 | `format` | string, repeatable | - | `?format=m4b&format=mp3`; at most 50 values |
 | `codec` | string, repeatable | - | ffprobe codec name (`aac`, `mp3`, …); at most 50 values |
-| `direct_playable` | `true`\|`false` | - | the book's codec plays in browsers (an unknown codec counts as playable) |
+| `direct_playable` | `true`\|`false` | - | the book's codec plays in browsers (an unknown codec counts as playable) and no file of it is in a container no browser plays (`.mka`) |
 | `has_cover` | `true`\|`false` | - | a sibling image, embedded art or a custom cover |
 | `has_chapters` | `true`\|`false` | - | **more than one** chapter (every single-part book has one) |
 | `matched` | `true`\|`false` | - | the book has an ASIN or an ISBN |
@@ -5747,15 +5802,16 @@ scope below); it never changes the identifier itself. Only books a scope would
 change are recorded (a book already up to date leaves no item, as a repick
 records only books with a new ASIN), and each refresh proposal names the
 identifier it was found by (`proposal.found_by`, `"asin:<ASIN>"` or
-`"isbn:<ISBN>"`): applying it changes nothing on a book that no longer has that
-identifier (matched again since, by hand).
+`"isbn:<ISBN>"`), as each repick proposal names the ASIN it looked up (from
+2.4.0; a repick recorded earlier has none): applying it changes nothing on a
+book that no longer has that identifier (matched again since, by hand).
 
 Each book's **outcome**:
 
 | Outcome | Meaning |
 |---|---|
 | `auto` | Confident: the best candidate scores **90** or more, at least **10** ahead of the next, its recording has an ASIN or ISBN, and, when both lengths are known, the recording's runtime is within **10%** of the book's (the closest recording of a work can still be another edition). Applied unless the admin leaves it out. A repick's offers are all `auto`. |
-| `review` | A candidate that isn't confident. Applied only if the admin puts it in. |
+| `review` | A candidate that isn't confident. Applied only if the admin puts it in. One held because its recording's length is more than 10% from the book's (a match run's or a refresh's) carries `detail: "length_differs"` (from 2.4.0), worded with the item's `book.duration` and the proposal's `runtime_min`. |
 | `none` | No candidate. |
 | `error` | The service failed for this book (`detail: "metadata_unavailable"`). Five in a row stop the run. |
 
@@ -5854,7 +5910,7 @@ item's score, so every page follows one order), `?limit=` (1-200, default 50).
                     "published": "2011", "asin": "B0UK000001" }
       },
       "applied": "",
-      "book": { "title": "The Martian (Unabridged)", "author": "Andy Weir" },
+      "book": { "title": "The Martian (Unabridged)", "author": "Andy Weir", "duration": 38052.4 },
       "changes": {
         "ids": { "fields": ["asin"], "cover": false },
         "fill": { "fields": ["narrator", "published", "asin"], "cover": true },
@@ -5872,8 +5928,8 @@ item's score, so every page follows one order), `?limit=` (1-200, default 50).
   identifier's, else the closest runtime (a recording selling in the preferred
   marketplace wins a tie), and its ASIN is that recording's best for this
   server, named by `asin_region`.
-- `book` is the book as it is now; `gone: true` when nothing is indexed at the
-  path any more.
+- `book` is the book as it is now, with its `duration` in seconds (omitted when
+  unknown); `gone: true` when nothing is indexed at the path any more.
 - `matched_since: true` (a match run only) when the book has an ASIN or ISBN now
   that it didn't have when the run looked: matched since, by hand or otherwise.
   Its `changes` are empty, and an apply leaves it alone under any scope.
@@ -5932,7 +5988,9 @@ range (an omnibus, `"1-3"`) is written as one: `series_index` `"1-3"`, or a
 no position. A
 retired work id is a redirect the server follows, so a merged record's series
 are the ones written. A repick writes its ASIN whatever the scope, and only while
-the book's ASIN is still the community override it found; a refresh takes only
+the book's ASIN is still the community override it found and still the ASIN it
+looked up (`found_by`), so a book matched again by hand since, to another
+record, keeps that match; a refresh takes only
 `fill` or `overwrite` (`400` for `ids`, which would write nothing). Audited as
 `book.match_apply` (`run`, `books`, `scope`). Applying `ready` again after a
 stopped apply takes the rest.
@@ -6218,12 +6276,13 @@ a scan last finished.
 ### `GET /api/v1/admin/issues/duplicates`
 
 Groups of books that look like the same book **within one library** (copies in
-different libraries are deliberate and never grouped).
+different libraries are usually deliberate and are grouped only with `across`).
 
 | Query param | Type | Notes |
 |---|---|---|
 | `library_id` | int | one library; a non-positive or non-integer id is `400 invalid library_id` |
 | `ignored` | `true` | return **only** the groups an admin said are different books (instead of the open ones) |
+| `across` | `1` or `true` | also group copies in **different** libraries (2.4.0, the console's "Include other libraries"): each copy's row names its `library_id` and `library_name`, and with `library_id` the groups holding one of that library's books are kept, their copies from any library. Without it nothing changes; the Health `duplicate` count never uses it |
 
 ```json
 {
@@ -7024,8 +7083,8 @@ a cross-user "currently listening" feed (up to 200 rows, newest first; `title`/
   "total_libraries": 2,
   "total_users": 5,
   "libraries": [
-    { "id": 1, "name": "Audiobooks", "book_count": 1201 },
-    { "id": 2, "name": "Kids", "book_count": 83 }
+    { "id": 1, "name": "Audiobooks", "kind": "books", "book_count": 1201 },
+    { "id": 2, "name": "Kids", "kind": "books", "book_count": 83 }
   ],
   "listening": [
     {
@@ -7043,6 +7102,9 @@ a cross-user "currently listening" feed (up to 200 rows, newest first; `title`/
   ]
 }
 ```
+
+Each `libraries[]` entry carries its `kind` (`books` or `podcasts`, from
+2.4.0), so the dashboard's "Books per library" lists books libraries only.
 
 #### `?range=`: listening activity
 
@@ -8031,8 +8093,9 @@ server and this request:
   under them or under `/etc`, by whole path segments, so `/devices` is
   offered), not pseudo
   filesystems, not the server's data folder, sorted, at most 20. `[]` on other
-  systems, when the table can't be read, and once the flow is finished (only
-  its folder step offers them).
+  systems, when the table can't be read, and once the flow is finished, unless
+  its folder step was skipped and can still be reopened from the Overview card
+  (only that step offers them).
 
 | Status | Meaning |
 |---|---|

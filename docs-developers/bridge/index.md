@@ -9,9 +9,14 @@ stay read-only and safe to expose to the internet. It is a separate program in i
 own repository, `audiosilo-bridge`, and runs beside the server, usually as a second
 container.
 
-:::info[Private repository, built in phases]
-The `audiosilo-bridge` repository (and its images, `ghcr.io/kodestar/audiosilo-bridge`)
-is **private** for now, and the Bridge is being built in phases. **Phase 0** laid
+:::info[Private repository, public images, built in phases]
+The `audiosilo-bridge` repository is **private**; its images,
+`ghcr.io/kodestar/audiosilo-bridge`, are **public from v0.3.0** and pull with no
+login. Bridge v0.3.0 is the release that speaks to server 2.4.0 (podcasts,
+contributions, generating and detecting chapters): run v0.3.0 or later with a
+2.4.0 server. Nothing checks the version: the server offers each feature by the
+job kinds the Bridge's heartbeat reports, so an older Bridge pairs but lacks
+them. The Bridge is being built in phases. **Phase 0** laid
 the foundations: pairing, the heartbeat and the capability, the job queue with
 leases, the library mapping checks and one proof job, `bridge.verify`. **Phase 1a**
 added the first job that makes it useful,
@@ -38,7 +43,7 @@ fetching on play, fetch status/Retry, one-ahead queue preparation and a
 reserved download slot for play requests. **Phase 2c-3** adds server-side
 podcast [directory search and OPML import/export](podcasts.md#discovery-and-opml-transfer)
 with no Bridge change. **Phase 2d-1** adds the player's
-[podcast views](podcasts.md#player-phase-2d-1) (players from 2.2.0), again
+[podcast views](podcasts.md#player-phase-2d-1) (first released in player 2.4.0), again
 with no Bridge change, and **Phase 2d-2** its
 [discovery, follow by URL and OPML screens](podcasts.md#player-discovery-and-opml-phase-2d-2)
 (a CORS change on the server only). Read-along, Audible backups and file moves

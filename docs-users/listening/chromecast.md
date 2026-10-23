@@ -22,7 +22,7 @@ It only appears while a book is loaded, and only when that book's server runs an
 
 On an iPhone, if AudioSilo hasn't asked before, the first tap brings up a request to use your **local network**: that's how it finds Cast devices. Allow it, or the app can't see any.
 
-Podcast episodes don't cast yet: the Cast button isn't shown while an [episode](podcasts.md) plays.
+Podcast episodes don't cast yet: an [episode](podcasts.md) always plays on this device, and the Cast button isn't shown while one plays. If you start an episode while a book is casting, the episode plays on your phone or computer and casting ends, with a note: *"This episode can't be cast"* - *"Podcast episodes can't be cast yet, so this one stays on this device."*
 
 ## What you need
 
@@ -63,5 +63,6 @@ Tap the **Cast** button again and choose to stop casting (in the web player, Chr
 The player says what went wrong, and the book stays on your device:
 
 - *"This book can't be cast"* explains why: the server doesn't support casting yet, the app reaches the server at `localhost`, or the book's format can't be played and the server can't convert it.
+- *"This episode can't be cast"* means you started a podcast episode while casting: it plays on this device instead.
 - *"Couldn't play on Living Room TV"* (or *"Couldn't start casting"*) usually means the Cast device couldn't reach your server: check the [address and certificate](#what-you-need) above.
 - *"Couldn't connect to the Cast device"* means the Cast device itself didn't answer: check it's on and on the same network.

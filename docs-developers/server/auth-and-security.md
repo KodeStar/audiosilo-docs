@@ -63,6 +63,13 @@ and the [Bridge's token](#bridge-tokens) (`auth.KindBridge`):
   (multi-scan within it, since recovery codes are unlimited); `/auth/pair`, a
   household member's code (`POST /me/household/members/{id}/pair`) and demo tokens
   are unlinked - single-use (revoked on exchange) with the same 10-minute TTL.
+  `/auth/pair` can ask for a shorter one (`ttl_seconds`, clamped to 30 seconds
+  through 10 minutes by `pairTTL`); the console's Listen in player asks 120
+  seconds, since its token rides a tab's URL and history.
+  The daily retention job deletes the pairing tokens that can never pair again
+  (`auth.PrunePairingTokens`: revoked, past their own expiry, or linked to an
+  expired or used-up code), so the rows don't pile up one per QR shown; the
+  code's own row is untouched.
 - **API keys** (`auth.KindAPI`) are user-minted, **non-expiring** bearer
   credentials for headless integrations (dashboards, cron), created / listed /
   revoked via `POST` / `GET` / `DELETE /auth/tokens`
@@ -71,9 +78,12 @@ and the [Bridge's token](#bridge-tokens) (`auth.KindBridge`):
   passes `requireAdmin` - but it is never valid for `/auth/exchange` (pairing),
   and its lifecycle is mint / list / revoke rather than sign-in / sign-out. Only
   the SHA-256 hash is stored (the secret is returned once at creation) and the
-  user's label rides in `tokens.device_name`. All three routes go through
+  user's label rides in `tokens.device_name`. Creating and revoking go through
   `gateSelfService`, so they share the `accountLimiter` and are refused for demo
-  accounts, exactly like the password/recovery routes. **Containment:** an API-key
+  accounts, exactly like the password/recovery routes; listing (`GET
+  /auth/tokens`) takes `nonDemoAccount` alone (from 2.4.0), so opening the
+  Account page never spends the per-IP budget a household behind one NAT
+  shares. **Containment:** an API-key
   caller is additionally barred (403, via `denyAPIKey` in
   `internal/api/handlers_auth.go`, also called by `handlers_cast.go` and
   `handlers_members.go`) from the credential-minting routes
@@ -853,14 +863,34 @@ Two mechanisms in `internal/api/ratelimit.go`, six buckets wired in `api.New`:
 | `loginLimiter` | Failure lockout per IP (`limiter`) | 10 failures / 15 min | `POST /auth/login` |
 | `redeemLimiter` | Failure lockout per IP | 10 failures / 15 min | `POST /auth/redeem`, and the Bridge's pairing exchange `POST /bridge/pair` (one shared counter) |
 | `demoLimiter` | **Attempt** cap per IP (`Acquire`) | 5 / 15 min | `POST /demo/session` |
-| `accountLimiter` | **Attempt** cap per IP (`Acquire`) | 10 / 15 min | `POST /auth/password`, `POST /auth/recovery`, `/auth/tokens` (create/list/revoke); adding a household member, and a member's session and pairing code (`POST /me/household/members`, `.../{id}/session`, `.../{id}/pair`), charged only after the API-key, demo and member refusals |
+| `accountLimiter` | **Attempt** cap per IP (`Acquire`) | 10 / 15 min | `POST /auth/password`, `POST /auth/recovery`, `POST /auth/tokens` and `DELETE /auth/tokens/{id}` (create/revoke; listing is not counted); adding a household member, and a member's session and pairing code (`POST /me/household/members`, `.../{id}/session`, `.../{id}/pair`), charged only after the API-key, demo and member refusals |
 
 The failure-lockout `limiter` has two usage patterns: `Allowed`/`Fail`/`Reset`
 counts only *failed* attempts (right for login/redeem, where success should not
 lock anyone out), while `Acquire` atomically admits-and-counts every attempt -
 used for account-creating/mutating endpoints where even successful requests
 must be metered and a check-then-count pair could race. Both structures sweep
-stale entries so a flood of distinct IPs can't grow memory without bound.
+stale entries so a flood of distinct IPs can't grow memory without bound. An
+`accountLimiter` refusal (`acquireAccountBudget`) is a `429` with
+`Retry-After`, the seconds until the lockout ends (`LockedFor`, rounded up).
+
+**Podcast discovery and OPML** have budgets of their own, per user and in
+memory (reset by a restart), outside the six buckets above
+(`internal/podcast/discovery`, `handlers_podcast_discovery.go`; full tables in
+the [reference](api/reference.md#podcast-discovery)):
+
+| Budget | Limit | Refusal |
+|---|---|---|
+| Directory search, per user (both providers, cache hits included, admins too) | 10 / min, burst 3 | `429 discovery_rate_limited` |
+| Directory fetches, server-wide | iTunes 20 / min, burst 1; Podcast Index 30 / min, burst 2; 2 at once | `429 provider_rate_limited` |
+| Search artwork, per user | 120 / min, burst 20 | `429 discovery_rate_limited` |
+| Artwork image fetches, server-wide | 60 / min, burst 4; 4 at once | `429 provider_rate_limited` |
+| OPML import, per user | 2 / min, burst 1; 2 imports at once server-wide | `429 opml_rate_limited`, or `503 opml_busy` |
+| OPML export, per user | 6 / min, burst 2 | `429 opml_rate_limited` |
+
+Each refusal carries `Retry-After`. The per-user tables hold at most 4,096
+users (`503 opml_busy` for OPML once full), and an upstream `429` cools that
+provider down for its `Retry-After` (1 to 300 seconds, 60 by default).
 
 **Media is classed by route.** A cover grid loads every cover as its own
 `?token=` request, so sharing the per-IP budget turned a fast server's covers
@@ -906,7 +936,10 @@ NAT or proxy gateway hands over from a private address on https.
 
 CORS (`cors` middleware) is a strict allow-list from `cors_origins`; with no
 configured origins, cross-origin browser requests simply get no CORS headers
-(native apps and same-origin web are unaffected).
+(native apps and same-origin web are unaffected). Once any origin is
+configured, every answer carries `Vary: Origin` (`liveConfig.corsOn`), granted
+or not, so a cached cover or answer made without the grant is never reused
+for a granted origin's request.
 
 Non-streaming requests are bounded by a 30 s timeout (`requestTimeout`) that
 cancels the request context and returns 503 - resilience against a stuck
@@ -939,7 +972,9 @@ Details and the reasoning live in [Web UI](web-ui.md).
 Secrets that must ride in a URL go in the **fragment**, which browsers never
 send to the server - so they cannot appear in server or proxy logs:
 
-- Invite links: `<base>/connect#code=…` (the connect page auto-redeems it).
+- Invite links: `<base>/connect#code=…` (the connect page auto-redeems it; from
+  2.4.0 the app's scanner and the web player's paste field read it too and hand the
+  code to their sign-in step in memory, never in a route).
 - First-run setup: `<base>/setup#token=…` (the POST then verifies the token in
   constant time).
 
@@ -950,7 +985,7 @@ class as the invite link itself), which is acceptable because the server keeps
 no access log, sends `Referrer-Policy: no-referrer`, and the token dies with
 the invite (revoke, rotate, supersede, expiry, use cap) - the exposure
 class matches the media `?token=` fallback. Recovery-derived and `/auth/pair`
-tokens stay 10-minute-bounded. Follow the fragment convention for any new
+tokens stay 10-minute-bounded (Listen in player's 2-minute). Follow the fragment convention for any new
 durable secret.
 
 ## The allowed + denied test rule

@@ -9,7 +9,7 @@ AudioSilo has no import step and no required naming scheme. It reads your books 
 
 ### One folder = one book
 
-The core rule is simple: **a folder that directly contains audio files is one book**, and all the audio files in it are that book's parts, played in filename order. This matches how most collections are already organized (and how tools like Audiobookshelf expect them):
+The core rule is simple: **a folder that directly contains audio files is one book**, and all the audio files in it are that book's parts, played in the natural order of their names: numbers count as numbers, so `2 - The Road.mp3` plays before `10 - The End.mp3`. This matches how most collections are already organized (and how tools like Audiobookshelf expect them):
 
 ```text
 Audiobooks/                          ← the library root
@@ -24,7 +24,11 @@ Audiobooks/                          ← the library root
 └── Project Hail Mary.m4b                      ← loose file at the root: its own book
 ```
 
-It doesn't matter whether a book folder holds a single `.m4b` or fifty numbered `.mp3` chapter files - the folder is the book. Number multi-file books so they sort correctly (`01`, `02`, … rather than `1`, `2`, … `10`).
+It doesn't matter whether a book folder holds a single `.m4b` or fifty numbered `.mp3` chapter files - the folder is the book. Padded numbers (`01`, `02`, …) and plain ones (`1`, `2`, … `10`) both play in the right order.
+
+:::note[Upgrading from a version before 2.4.0]
+Older versions played a book's files in strict character order, so `10` came before `2`. Any book whose files now sort differently is re-read at its next scan and then plays in the new order. Someone partway through such a book may find their place in it has moved. Chapters your [Bridge](../admin/bridge.md) found for the book move with their files.
+:::
 
 The one exception is the **library root** itself: loose audio files sitting directly in the root are each treated as an individual single-file book, so a simple "flat folder of m4b files" library works with no folders at all.
 
@@ -61,6 +65,7 @@ AudioSilo recognizes these audio file types (upper or lower case):
 - **MP3**
 - **FLAC**
 - **OGG / Opus**
+- **MKA** (Matroska audio) - for the **web player**: no browser plays this container, so the server converts it to MP3 as it streams, which needs ffmpeg. The phone apps list such a book but may not play it (an iPhone can't); to listen there, convert it to `.m4b` or `.mp3`. An `.mka` beside a file of the same name in another format (`Book.m4b` and `Book.mka`) is left out, as the other file's source or copy.
 
 Anything else in your folders - `.jpg` covers, `.nfo` files, `.pdf` companions - is simply ignored and hidden from browsing, so everything you can click in the player is playable.
 
@@ -73,7 +78,7 @@ Audible's DRM-protected files are deliberately **not** indexed: the server can n
 For each book, AudioSilo starts with the names on disk, then lets the audio files' embedded tags override them when they're present and meaningful:
 
 - **From your folders**: the book's folder (or file) name becomes the title; a leading number like `03 - The Title` is read as its position in a series (but not a number that runs into the name, like `3rd Rock` or `20,000 Leagues Under the Sea`); the parent folder is read as the series and the folder above that as the author. A book with only one folder above it (`Author/Title/`) takes that folder as its author, with no series. So an `Author/Series/03 - Title/` or an `Author/Title/` layout works with no tags at all.
-- **From embedded tags**: a title (audiobooks usually carry it in the *album* tag; when the album holds the series name and the *title* tag carries the full "Series: Book" title, the more specific title tag wins), the author (album artist or artist tag), the narrator (composer or narrator tag), the series where a tag exists, and the genres in the *genre* tag (several in one tag are split by `;`, never by a comma, which a store's category such as "Mystery, Thriller & Suspense" holds; a genre that only says the file is an audiobook, such as "Audiobook", "Speech", "Spoken Word" or "Other", is left out). Junk tag titles like "Track 01" are ignored in favour of the folder name.
+- **From embedded tags**: a title (audiobooks usually carry it in the *album* tag; when the album holds the series name and the *title* tag carries the full "Series: Book" title, the more specific title tag wins), the author (album artist or artist tag), the narrator (composer or narrator tag), the series where a tag exists (a series tag that ends in a marked number, like the grouping tag "Discworld, book #40", gives the series Discworld and its position, 40; a name that only ends in a number, like "Metro 2033", stays whole), and the genres in the *genre* tag (several in one tag are split by `;`, never by a comma, which a store's category such as "Mystery, Thriller & Suspense" holds; a genre that only says the file is an audiobook, such as "Audiobook", "Speech", "Spoken Word" or "Other", is left out). Junk tag titles like "Track 01" are ignored in favour of the folder name.
 - **From Audiobookshelf's `metadata.json`**, when the book's folder has one: its title, subtitle, authors, narrators, series, published year, description, publisher, language, abridged, genres, tags, ASIN and ISBN go over the tags. See [Coming from Audiobookshelf](#coming-from-audiobookshelf).
 - **From ffmpeg's ffprobe**, when available: durations and any chapter list embedded in the file, so a chaptered M4B shows its real chapters in the player.
 - **From the community database**, for chapters only: a book whose files have no chapters of their own (one long file, or a folder with one chapter per file) gets the community's chapter list once it is [matched](../admin/books.md#matching-with-community-metadata) and the list fits your copy. A book with only broad chapters can be switched to the community's more detailed ones. See [Community chapters](../admin/books.md#community-chapters).

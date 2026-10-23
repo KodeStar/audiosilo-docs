@@ -25,13 +25,22 @@ import {mkdir, rm} from 'node:fs/promises';
 import path from 'node:path';
 import {chromium} from 'playwright';
 import {
-  CACHE, DESKTOP_CONTEXT, around, fitViewportToPage, shoot, silence, sleep, step, submitSignIn, wanted,
+  CACHE, DESKTOP_CONTEXT, around, fitViewportToPage, shoot, showDockerPaths, silence, sleep, step, submitSignIn, wanted,
 } from './lib.mjs';
 import {SHOTS as MANIFEST} from './manifest.mjs';
 
 const SETUP_URL = process.env.SETUP_URL || '';
 const BOOKS = path.resolve(process.env.SETUP_BOOKS || path.join(CACHE, 'setup', 'Audiobooks'));
 const HOST = process.env.SETUP_HOST || 'audiosilo.local';
+// The flow shows this machine's folders as a Docker install has them (lib.mjs
+// showDockerPaths): the books at /library, the data folder at /data.
+const SHOWN_BOOKS = '/library';
+const SHOWN = [
+  [BOOKS, SHOWN_BOOKS],
+  [path.join(CACHE, 'setup-data'), '/data'],
+  ...(process.env.WEB_DIR ? [[path.resolve(process.env.WEB_DIR), '/app/web']] : []),
+  [CACHE, '/srv'],
+];
 const PASSWORD = 'hearthside-setup';
 if (!wanted(...MANIFEST.filter((s) => s.capture === 'setup').map((s) => s.file))) {
   console.log('capture-setup: no setup shots wanted, skipped.');
@@ -75,6 +84,7 @@ await step('build the setup books folder', async () => {
 // ── Capture ────────────────────────────────────────────────────────────────
 const browser = await chromium.launch({args: [`--host-resolver-rules=MAP ${HOST} 127.0.0.1`]});
 const ctx = await browser.newContext(DESKTOP_CONTEXT);
+await showDockerPaths(ctx, SHOWN, [['"os":"darwin"', '"os":"linux"'], ['"arch":"arm64"', '"arch":"amd64"']], {[HOST]: '127.0.0.1'});
 const page = await ctx.newPage();
 
 // Makes the viewport as tall as the page (between min and max) for one shot.
@@ -113,7 +123,7 @@ await step('the console flow', async () => {
   await heading('Where are your books?').waitFor({timeout: 20000});
 
   // 1. Books folder: typed, checked, named.
-  await page.getByLabel('Books folder', {exact: true}).fill(BOOKS);
+  await page.getByLabel('Books folder', {exact: true}).fill(SHOWN_BOOKS);
   await button('Check folder').click();
   await page.getByText(/^Found \d+ audio files$/).waitFor({timeout: 30000});
   await page.getByLabel('Library name', {exact: true}).fill('Audiobooks');

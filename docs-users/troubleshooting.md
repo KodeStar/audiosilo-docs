@@ -102,6 +102,23 @@ overrides**. Move the database files aside rather than deleting them, so you
 can restore them if you change your mind.
 :::
 
+### I went back to an older server version
+
+Each update can add to the database, and an older server doesn't know what a
+newer one added. It still starts, and from 2.4.0 on its log warns about it:
+"this database was used by a newer AudioSilo server: features it added may not
+work here and their data can be lost; run the newer version again, or restore
+a backup made before the upgrade". (Versions before 2.4.0 start without the
+warning.) Run the newer version again as soon as you can, or
+[restore a backup](./admin/backups.md#restoring-a-backup) made before the
+update if you mean to stay on the older one.
+
+Podcasts are the part an older server gets wrong: a version before 2.4.0
+reads a podcast library as books, and drops its episodes from the index.
+Back on 2.4.0 or later, the next scan of the podcast library indexes them
+again from the details the Bridge saved; nobody's listening progress or
+bookmarks are lost, since they belong to each episode's file.
+
 ## Connecting
 
 ### My invite code says "invalid or expired auth code"
@@ -197,6 +214,14 @@ If such a book still won't play in the browser:
   and let the server rescan (your progress survives as long as the path stays
   the same).
 
+### A book plays in the browser but not in the app
+
+A book in `.mka` (Matroska audio) files plays only in the web player: the
+server converts it as it streams, which the apps can't ask for, and an iPhone
+can't play the format at all. Convert the files to `.m4b` or `.mp3` and let
+the server rescan (see
+[Supported formats](./getting-started/organizing-your-library.md#supported-formats)).
+
 ### Playback stops with an error mid-book
 
 The player watches every playback attempt: if the audio doesn't start (or
@@ -224,7 +249,9 @@ row and page before you press it: *"Your server can't download episodes right
 now."* also appears when the server is too old to fetch episodes on demand.
 
 If you don't see your server's podcasts at all, check your app's version first:
-an app older than 2.2.0 shows no podcasts, so update it. If it is up to date,
+an app older than 2.4.0 shows no podcasts, so update it. An older app can't
+see podcast episodes in **Up next** either, so clearing Up next there leaves
+the episodes queued for your up-to-date devices. If it is up to date,
 ask your admin whether you have access to the podcast library (and whether the
 server itself is up to date). Kids mode never shows podcasts, and a
 [private show](./listening/podcasts.md#private-feeds) appears only to the
@@ -252,7 +279,7 @@ progress on the server is intact.
 ### AudioSilo doesn't appear in Android Auto or CarPlay
 
 Android Auto only lists apps installed from Google Play unless you allow
-unknown sources, and CarPlay arrives with an iPhone app update after 2.0.0 (see
+unknown sources, and CarPlay needs version 2.4.0 or later of the iPhone app (see
 [Availability](./listening/mobile-apps.md#availability)). See
 [Getting AudioSilo into the car](./listening/in-the-car.md#getting-audiosilo-into-the-car)
 for the steps and checks.

@@ -5,7 +5,8 @@ description: "Working in audiosilo-bridge: the gate and CI, the package layout a
 
 `audiosilo-bridge` is a Go module (`github.com/kodestar/audiosilo-bridge`, Go 1.26,
 AGPL-3.0) with a small web page in `web/` (Vite, React 19, TypeScript, Tailwind v4,
-Node 24). It is **private**; its own `CLAUDE.md` and `PACKAGES.md` (the
+Node 24). The repository is **private** (its images are public from v0.3.0);
+its own `CLAUDE.md` and `PACKAGES.md` (the
 per-package rules and history) are authoritative, and the seam with the server is
 section 23 of the workspace `CROSS-REPO.md`.
 
@@ -31,15 +32,17 @@ docker build --target slim .   # a Dockerfile change: slim | cuda | full | agent
 CI (`.github/workflows/ci.yml`) runs both sides on every pull request and every
 push to `main`: a **go** job (build, vet, `go test -race`, golangci-lint) and a
 **web** job (`npm ci`, typecheck, lint, the prettier check, the tests and a
-production build). `image.yml` builds and pushes the three images on `v*` tags and
-on manual dispatch (`full` and `slim` for amd64 and arm64, `cuda` for amd64); which
-tags each publishes is in [the images](configuration.md#the-images).
+production build). `image.yml` builds and pushes the four images to the public
+GHCR package on `v*` tags and on manual dispatch (`full`, `slim` and `agent` for
+amd64 and arm64, `cuda` for amd64); which tags each publishes is in
+[the images](configuration.md#the-images).
 
 To run it locally:
 
 ```sh
 scripts/build-web.sh                    # build the page and embed it into bin/audiosilo-bridge
 ./bin/audiosilo-bridge --data ./data    # the first start prints the page's password ONCE
+./bin/audiosilo-bridge reset-password --data ./data   # lost it: a new one, printed once
 ```
 
 Then open `http://localhost:8091`, sign in, and pair it with a local server (see
@@ -129,7 +132,8 @@ Conventions that carry the design:
   sends on every call, `AudioSilo Bridge/<version> (<os>)`, must parse with the
   server's `auth.ParseClient`; a test holds the server's pattern.
 - **Secrets are never logged or echoed.** The page's password is printed once at the
-  first start (to standard error, never through the logger), the server token, the
+  first start (to standard error, never through the logger) and once by
+  `reset-password` (to standard output), the server token, the
   GitHub sign-in and the Accounts tab's agent credentials are sealed (the page API
   says only whether one is set), and the log ring redacts attributes whose key looks like a secret
   (`token`, `password`, `code`, `key`, `secret`, `cookie`, `authorization`).

@@ -29,6 +29,8 @@ repositories on GitHub, under **your** GitHub account, through a GitHub app call
 **AudioSilo Contributions**, and GitHub marks each one as filed through that
 app. You need a GitHub account; a free one is fine.
 
+![The Bridge's Accounts tab: the GitHub card, not signed in yet, and the Agent card](/img/screenshots/bridge/accounts.png)
+
 To sign in:
 
 1. On the Accounts tab, press **Sign in to GitHub**. The card shows a short code

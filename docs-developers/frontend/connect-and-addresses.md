@@ -24,7 +24,18 @@ route table is in the [overview](overview.md#route-map). Three steps, counted by
    `looksLikeHomeAddress` (the same host rule the server uses, see
    [`lan_url`](../server/configuration.md#home-address-lan_url)); or the server's error.
    Native offers **Scan a QR code** (`/connect/scan`, `expo-camera`); web offers **I have
-   a pairing link** (pasted, parsed with `parsePairingScan`). A route `token` (a pairing
+   a pairing link** (pasted, parsed with `parsePairingScan`). Both also take the
+   console's **invite link**, `https://<base>/connect#code=XXXX-XXXX-XXXX-XXXX`
+   (`parseInviteScan` in `src/lib/pairing.ts`, the server's `inviteURL`; a
+   `/web/connect` link is a pairing link, never an invite): it sets the pending server
+   and opens the sign-in step, which fills the code in and signs in with it at once,
+   once (`initialCode`). The code is handed over in memory (`holdInvite` /
+   `takeInviteCode` in `invite-handoff.ts`, taken once and only for that server),
+   never in the route, where it would stay in the browser's history. On the served
+   player, a pasted pairing or invite link for **another server** sends nothing (its
+   CSP would block the call, which would read as "Could not reach the server"): it
+   says the link is for another server and offers **Open the link** (`Linking.openURL`)
+   instead. A route `token` (a pairing
    link or QR, with `server` on native and `home`/`away` when the server sent them) is
    exchanged at once. Remembered servers the person listening isn't signed in to
    (`knownToOffer` over `useProfileConnections`, from `src/lib/known-servers.ts`; for
@@ -40,7 +51,8 @@ route table is in the [overview](overview.md#route-map). Three steps, counted by
    is hidden while every connection is at the page's origin (`onlyOwnServer`), and the
    sign-in step's "Another server" reads "Back" and goes back.
 2. **Sign in** (`/connect/sign-in` → `SignInStep`): an invite code (`redeemCode` then
-   `exchange`) or a username and password (`login`), against the address in
+   `exchange`; one handed over by an invite link is submitted at once, and a refused one
+   stays in the field with the reason) or a username and password (`login`), against the address in
    `pendingServerUrl`, read once when the screen opens. It uses a bare client: it is not
    a saved connection yet, and a wrong password's `401` must never flag a reconnect. It
    shows the "At home and away" card only when the device already knows both addresses

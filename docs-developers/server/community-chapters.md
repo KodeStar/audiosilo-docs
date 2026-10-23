@@ -241,9 +241,13 @@ is a chapter source **between the community's and the files'**:
   `files` or `community` keeps it out),
 - the **community's chapters don't apply** (no current fitted check that is
   chosen or a `fill`),
-- the list's **files are the book's** (`sameChapterFiles`: as many, in the same
-  order, each the same path relative to the book's folder, a single-file book's
-  being its file name, and the same size), and
+- the list's **files are the book's** (`chaptersOnFiles`: as many, each the
+  same path relative to the book's folder, a single-file book's being its file
+  name, and the same size). In the same order the chapters are as listed; in
+  another (a list the Bridge found while the book played its files in byte
+  order, before 2.4.0's natural order) they move with their files
+  (`movedChapters`: each chapter starts at the same place in the same file, by
+  the listed lengths, and runs to the next start in the new order), and
 - `chapteralign.Align` with **no `Prober`** (no snapping: the list is already
   timed on this audio) answers **`fill`**, the fit's word for "the book has no
   chapters of its own" (no file holding two); any other status leaves the scan's

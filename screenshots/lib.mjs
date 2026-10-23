@@ -49,6 +49,9 @@ export const DESKTOP_CONTEXT = {
   reducedMotion: 'reduce',
 };
 
+// The phone viewport (a large iPhone, in CSS pixels) every phone shot uses.
+export const PHONE = {width: 430, height: 932};
+
 // Makes the viewport as tall as the page (between min and max, at the desktop
 // width), so a long card or every card is in the shot; the caller restores
 // DESKTOP_CONTEXT.viewport.
@@ -57,6 +60,86 @@ export const fitViewportToPage = async (p, min, max, settle = 800) => {
   await p.setViewportSize({width: DESKTOP_CONTEXT.viewport.width, height: Math.min(Math.max(height, min), max)});
   await sleep(settle);
 };
+
+// Makes the viewport (at its width) tall enough to show `locator`'s last visible match
+// down to its bottom plus `pad`, between min and max CSS pixels: for a player screen,
+// which scrolls inside the page, so fitViewportToPage can't measure it. Measured twice,
+// since a windowed list renders more rows in a taller viewport. The caller restores
+// the viewport.
+export const fitViewportTo = async (p, locator, {min = 900, max = 1800, pad = 32, settle = 800} = {}) => {
+  for (let i = 0; i < 2; i++) {
+    const box = await locator.filter({visible: true}).last().boundingBox();
+    if (!box) return;
+    const height = Math.round(Math.min(Math.max(box.y + box.height + pad, min), max));
+    if (height === p.viewportSize().height) return;
+    await p.setViewportSize({width: p.viewportSize().width, height});
+    await sleep(settle);
+  }
+};
+
+// Runs `fit` (one of the two above, bound to `p`), then `shot`, and restores
+// DESKTOP_CONTEXT.viewport however the shot ends.
+export const fitted = async (p, fit, shot) => {
+  await fit();
+  try {
+    await shot();
+  } finally {
+    await p.setViewportSize(DESKTOP_CONTEXT.viewport);
+  }
+};
+
+// Shows this machine's paths in a browser context (`ctx`) as a Docker install has them
+// (the seeded library at /library, the data folder at /data, ...), so no shot names the
+// capture machine's folders. `pairs` is [[real path, shown path], ...]. Every /api/
+// answer that is JSON or text has each real path replaced by its shown one; a request's
+// query values and JSON body strings that start with a shown path go to the server as
+// the real one, so a folder typed or picked in its shown spelling still works. Range
+// requests (audio) pass untouched. `text` is further [from, to] swaps made on answers
+// only (the host's OS and architecture, say). `resolve` maps a host name the browser
+// resolves itself (--host-resolver-rules) to the address the fetch, made from node,
+// must use.
+export async function showDockerPaths(ctx, pairs, text = [], resolve = {}) {
+  const byReal = [...pairs].sort((a, b) => b[0].length - a[0].length);
+  const byShown = [...pairs].sort((a, b) => b[1].length - a[1].length);
+  const swaps = [...byReal, ...text];
+  const toShown = (body) => swaps.reduce((t, [from, to]) => t.replaceAll(from, to), body);
+  const toReal = (v) => {
+    for (const [real, shown] of byShown) if (v === shown || v.startsWith(`${shown}/`)) return real + v.slice(shown.length);
+    return v;
+  };
+  const deep = (v) => {
+    if (typeof v === 'string') return toReal(v);
+    if (Array.isArray(v)) return v.map(deep);
+    if (v && typeof v === 'object') return Object.fromEntries(Object.entries(v).map(([k, x]) => [k, deep(x)]));
+    return v;
+  };
+  await ctx.route(
+    (url) => url.pathname.startsWith('/api/'),
+    async (route) => {
+      const req = route.request();
+      if (req.headers().range) return route.continue();
+      const url = new URL(req.url());
+      for (const [k, v] of [...url.searchParams]) url.searchParams.set(k, toReal(v));
+      const overrides = {};
+      if (resolve[url.hostname]) {
+        overrides.headers = {...req.headers(), host: url.host};
+        url.hostname = resolve[url.hostname];
+      }
+      overrides.url = url.toString();
+      const body = req.postData();
+      if (body && (req.headers()['content-type'] ?? '').includes('json')) {
+        try {
+          overrides.postData = JSON.stringify(deep(JSON.parse(body)));
+        } catch {
+          /* not JSON after all: sent as it is */
+        }
+      }
+      const res = await route.fetch(overrides);
+      if (!/json|text/.test(res.headers()['content-type'] ?? '')) return route.fulfill({response: res});
+      return route.fulfill({response: res, body: toShown(await res.text())});
+    },
+  );
+}
 
 // Fills the console's sign-in form (already open on `p`) as admin and submits it.
 export const submitSignIn = async (p, password) => {
@@ -76,10 +159,11 @@ export const silence = (file, seconds, meta = {}, codec = ['-c:a', 'libmp3lame',
     ...codec, file,
   ]);
 
-// A JSON client for a server's /api/v1: api(token, method, path, body?, headers?)
-// returns the parsed body (null when empty or not JSON) and throws on a non-2xx.
-export const apiClient = (origin) => async (token, method, p, body, headers = {}) => {
-  const res = await fetch(`${origin}/api/v1${p}`, {
+// A JSON client for a server's /api/v1 (or another `prefix` on `origin`):
+// api(token, method, path, body?, headers?) returns the parsed body (null when empty
+// or not JSON) and throws on a non-2xx, with the code as err.status.
+export const apiClient = (origin, prefix = '/api/v1') => async (token, method, p, body, headers = {}) => {
+  const res = await fetch(`${origin}${prefix}${p}`, {
     method,
     headers: {
       'content-type': 'application/json',
@@ -95,9 +179,47 @@ export const apiClient = (origin) => async (token, method, p, body, headers = {}
   } catch {
     /* non-JSON */
   }
-  if (!res.ok) throw new Error(`${method} ${p} -> ${res.status} ${text.slice(0, 120)}`);
+  if (!res.ok) {
+    const err = new Error(`${method} ${p} -> ${res.status} ${text.slice(0, 120)}`);
+    err.status = res.status;
+    throw err;
+  }
   return json;
 };
+
+// Waits until no library scans or waits in the job queue (scans run one at a time),
+// asking through `api` (an apiClient) as admin `token`.
+export const waitForScans = async (api, token, timeoutMs = 90000) => {
+  const until = Date.now() + timeoutMs;
+  await sleep(500);
+  while (Date.now() < until) {
+    const libs = (await api(token, 'GET', '/admin/libraries'))?.libraries ?? [];
+    if (!libs.some((l) => l.scan?.running || l.scan?.queued)) return;
+    await sleep(500);
+  }
+  throw new Error('scans still running after the timeout');
+};
+
+// Waits until every shown <img> on `p` whose src contains `srcPart` has loaded (and
+// at least one is shown), rather than sleeping a fixed time for artwork. Gives up
+// after `timeoutMs` with a note: the shot is still taken.
+export const imagesLoaded = (p, srcPart, timeoutMs = 15000) =>
+  p
+    .waitForFunction(
+      (part) => {
+        const shown = [...document.images].filter((i) => i.src.includes(part) && i.getClientRects().length > 0);
+        return shown.length > 0 && shown.every((i) => i.complete && i.naturalWidth > 0);
+      },
+      srcPart,
+      {timeout: timeoutMs},
+    )
+    .then(
+      () => true,
+      () => {
+        console.log(`  ! images with "${srcPart}" still loading after ${timeoutMs} ms`);
+        return false;
+      },
+    );
 
 // Raw Playwright PNGs at deviceScaleFactor 2 are large (a full desktop shot is
 // ~0.5-1.3 MB); pngquant's lossy-palette pass shrinks them ~60% with no

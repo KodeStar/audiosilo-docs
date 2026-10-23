@@ -10,7 +10,10 @@ safe to put on the internet.
 
 A Bridge is optional for listening to your existing books.
 [Podcasts](podcasts.md) need one and the Podcasts module. Player apps from
-2.2.0 [show podcasts](podcasts.md#what-is-available-now); older ones don't.
+2.4.0 [show podcasts](podcasts.md#what-is-available-now); older ones don't.
+With AudioSilo 2.4.0, use **Bridge 0.3.0 or later**: podcasts, contributions,
+generating characters and recaps, and **Detect chapters** need it (see
+[Running a Bridge](../getting-started/running-a-bridge.md#which-bridge-version)).
 
 :::info[What it does today]
 The Bridge is new. Today it
@@ -35,15 +38,23 @@ page covers the console side: **Server > Settings > Bridge** in the
 
 ![Server > Settings > Bridge before a Bridge is connected](/img/screenshots/admin/settings-bridge.png)
 
+With no Bridge paired, the page shows the same compose snippet as the
+[setup flow's Bridge step](../getting-started/first-run.md#step-8-add-a-bridge):
+the lines to add to the compose file that runs your server, with one volume
+for each of your libraries at the folder the server uses (**Copy snippet**),
+and a **Running a Bridge** link to this guide for the agent container and the
+rest of the options. Under it: "Once the Bridge is running, connect it with a
+pairing code."
+
 ## Connecting a Bridge
 
 1. Start the Bridge (see [Running a Bridge](../getting-started/running-a-bridge.md))
    and open its own page.
 2. In the console, open **Server > Settings > Bridge** and press **Connect a
-   bridge**. A pairing code appears, with the server's address.
+   Bridge**. A pairing code appears, with the server's address.
 3. On the Bridge's page, paste the **server address** and the **code**, then pair.
 
-![The Connect a bridge dialog with a pairing code](/img/screenshots/admin/bridge-pair.png)
+![The Connect a Bridge dialog with a pairing code](/img/screenshots/admin/bridge-pair.png)
 
 Instead of pasting, you can give the Bridge the two settings the dialog shows
 before you start it (**Copy both** copies them):
@@ -57,12 +68,16 @@ Good to know:
 - **The server address** in the dialog is the server's address on your home
   network when it knows one (an `http://` address if the server uses its own
   self-signed certificate, which the Bridge can't check), else the address you
-  opened the console on. If the Bridge runs in a container next to the server, it
-  may need a different address to reach it, such as `http://audiosilo:8080`: use
-  whatever works from the Bridge.
+  opened the console on. A Bridge started from the compose snippet, beside the
+  server, can use `http://audiosilo:8080` instead, as the line under it says:
+  use whatever works from the Bridge. When the only address the server knows
+  is `localhost` or `127.0.0.1`, which a Bridge in another container can't
+  reach (it would be calling itself), the dialog gives `http://audiosilo:8080`
+  instead and says why; a Bridge elsewhere needs the server's address on your
+  network. **Copy both** copies the address the dialog shows.
 - The dialog closes on its own with **Bridge connected** once the Bridge uses the
   code. Its details show as soon as it sends its first report, a few seconds later.
-- **One Bridge per server.** **Pair a new bridge** makes a code for a replacement:
+- **One Bridge per server.** **Pair a new Bridge** makes a code for a replacement:
   the current Bridge keeps working until the new one uses the code, and then stops.
 
 ## Online, offline and its details
@@ -82,7 +97,8 @@ lines cover [characters and recaps](generating-characters-and-recaps.md):
 - **Agent** - the tool the agent container runs (`claude` or `codex`) and whether
   it is **Ready**, or **None set up**.
 - **Paid by** - a **Subscription** (the costs are what the same use would cost on
-  an API key) or an **API key**.
+  an API key) or an **API key**. It shows once the agent has a credential to pay
+  with.
 - **This month** - what the agent has cost this month against the Bridge's
   monthly cap ("$12.30 of $100"), or "no monthly cap".
 - **Estimates from** - how many finished books the cost estimates are based on.
@@ -130,9 +146,9 @@ done ("3 of 5 required steps done").
 
 Under the steps, the Bridge's accounts, read-only:
 
-- **GitHub account** - the GitHub user signed in on the Bridge's Accounts tab, or
-  **Not signed in** (shown too when the Bridge shares with a GitHub token from its
-  environment or the gh command).
+- **GitHub account** - the GitHub user signed in on the Bridge's Accounts tab;
+  **Signed in**, with how (the checklist's line), when the Bridge shares with a
+  GitHub token from its environment or the gh command; else **Not signed in**.
 - **Agent credential** - **Set** or **Not set**, as the **Agent credential set**
   step reads (so **Not set** too while the agent container isn't ready).
 - **Contributing** - **Ready** when the Bridge can share with the community now,
@@ -176,10 +192,12 @@ The **Libraries** card lists every library on the server with what the Bridge fo
 | **Not reported yet** | the Bridge hasn't checked it yet |
 
 Each library shows its folder **On the server**, the folder **On the Bridge**, and
-the book it **Checked with**. The Bridge doesn't take a folder's word for it: it
+the book it **Checked with** (for a podcast library, the marker file it was
+**Found by its marker**). The Bridge doesn't take a folder's word for it: it
 finds a book the server knows and checks that its files are there with exactly the
 same sizes, and only then tries writing a small test file (which it removes).
-**Verify** below uses the book comparison and is for books libraries.
+**Verify** below uses the book comparison, so only books libraries have it: a
+podcast library shows no **Verify** button.
 
 When a library isn't **Ready**, the line under it says why. The usual reasons:
 
@@ -242,7 +260,10 @@ filters it by state:
 | **Failed** | it didn't work: the reason is shown under it |
 | **Cancelled** | you cancelled it |
 
-Each job shows the library (and book), its progress, who asked and when. A finished
+Each job shows the library (and book), its progress, who asked and when: "Asked
+by" a person, "Scheduled by the server" for the podcast feed checks, episode
+downloads and retention checks the server queues itself, or "Asked by a
+deleted account". A finished
 Verify sums up what it found (how many files matched, whether it can write, how long
 it took); **Details** shows everything it reported.
 
@@ -270,7 +291,7 @@ no podcast follow, search, import or retention controls yet; see
 [Podcasts](podcasts.md).
 
 The Bridge also fetches a missing episode when a compatible client asks to
-play it, ahead of waiting downloads. The player (2.2.0 and later) shows
+play it, ahead of waiting downloads. The player (2.4.0 and later) shows
 **Getting this episode** meanwhile. See
 [Playing an episode that isn't downloaded](podcasts.md#playing-an-episode-that-isnt-downloaded).
 

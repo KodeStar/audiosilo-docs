@@ -14,6 +14,8 @@ Under each, a line credits the people who wrote them and links the open licence 
 
 For a book the community hasn't covered, your server's admin can have the server's [Bridge](../admin/bridge.md) write characters and recaps itself (see [Generating characters and recaps](../admin/generating-characters-and-recaps.md)). They appear in the same tabs and follow the same spoiler rules, with a small **Generated on this server** mark at the top of the tab and no community credit line. A book doesn't need to be matched for them to appear.
 
+![A book's Recaps tab early in the book, with recaps generated on the server: the Generated on this server mark, the Whole-book summary kept closed as a spoiler, and the line saying how many recaps are hidden to avoid spoilers, with Show anyway](/img/screenshots/web-player/book-recaps-generated.png)
+
 The community's material always comes first: when the community has characters but no recaps for a book, you see the community's characters and the generated recaps, each tab marked for what it holds. When the community has only the book's whole-book summary, its summary stays beside the generated chapter recaps, and the Recaps tab marks each for where it came from, with the community's credit line for its summary. An app version from before this feature shows generated material only for a book matched with community metadata, without the mark.
 
 The Bridge also writes a short, spoiler-free description of the book, which the book page's [About card](book-page.md#about-this-book) shows, with the same mark, when nothing else describes the book.

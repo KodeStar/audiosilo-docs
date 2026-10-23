@@ -73,7 +73,7 @@ The **Library** tab is everything on your server, sorted the way you want to loo
 
 ![The Library's Books section: the sections and controls along the top, and the cover grid with progress bars](/img/screenshots/web-player/library.png)
 
-A **podcast library** has just two sections, **Shows** and **Folders**: see [Podcasts](podcasts.md#shows-in-the-library). It appears in the app from version 2.2.0, with a microphone beside its name in the picker.
+A **podcast library** has just two sections, **Shows** and **Folders**: see [Podcasts](podcasts.md#shows-in-the-library). It appears in the app from version 2.4.0, with a microphone beside its name in the picker.
 
 Every section except Folders shows **one library at a time**. If you have more than one library (or more than one server), a **Library** picker sits with the controls, with your libraries grouped under each server's name; with a single library there's nothing to pick, so it doesn't appear. Your choice is remembered on that device.
 
@@ -85,6 +85,8 @@ Every book in the library, as a cover grid or a list:
 - **Genre** and **Tag**, after the other filters, when a book in the library has one. Each opens a list of the library's genres (or tags) with how many books each would show, plus **Any genre** (**Any tag**) to drop it; the chip then names your pick (*"Fantasy"*). Capitals don't matter: "Sci-Fi" and "sci-fi" are one tag. Tapping a genre or tag on a [book's page](book-page.md#about-this-book) opens this view with it chosen.
 - **Sort** by **Recently added**, **Title**, **Author** or **Length**. Sorted by title, the books are grouped under letter headings, with an **A to Z** rail for jumping straight to a letter. A leading "The", "A" or "An" is skipped and accented letters file under their plain letter (*Émile* under E), and a book with no title is shown, and sorted, by its folder's name.
 - **Grid or list**. Your choice is remembered on that device, and the same choice applies to collections and Favourites. On a tablet or computer the list has columns for the narrator, the length and your progress.
+
+![The Genre filter open over Library > Books: each genre with how many books it would show, and Any genre](/img/screenshots/web-player/library-genre.png)
 
 A big library loads in the background, page by page, while you browse; the filters and sorting work on the whole of it once it's in.
 

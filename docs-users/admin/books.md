@@ -84,9 +84,25 @@ you pick another sort; a sort you pick stays when you change the filters.
 
 ### Changing many books at once
 
-Hover a cover and tick its checkbox to select it (in the table, tick the row,
-or the header box to select every loaded book). A bar appears at the bottom of
-the screen with the number selected and two actions:
+Press **Select** in the row above the list (beside **Filters**) to start picking books, or hover a
+cover and tick its checkbox (in the table, tick the row, or the header box to
+select every loaded book). While you are selecting, clicking a cover or a row
+picks it instead of opening the book, and **Select** reads **Done**: pressing
+it ends the selection and clears it.
+
+- **Shift-click** a cover or a row to select every book from the last one you
+  clicked to this one, in the order the list shows them, in the grid and the
+  table alike. Shift-clicking a selected book deselects the run.
+- While you are selecting, **Select all *N* books** above the list selects every book shown (it reads
+  **Select the *N* books shown** while more are still to load). When your
+  filters match more books than have loaded, **Select all *N* matching books**
+  loads the rest and selects them all. A bulk action takes up to 1,000 books at
+  a time, so past that it reads **Select the first 1,000 matching books**, and
+  the line beside it says "Bulk edits and shares take up to 1,000 books at a
+  time."
+
+A bar appears at the bottom of the screen with the number selected and two
+actions:
 
 - **Edit fields** - set **Author**, **Narrator** or **Series** on every
   selected book. Only the fields you fill in change; where the books disagree,
@@ -106,7 +122,7 @@ the screen with the number selected and two actions:
   book is added as one of the share's folders, and everyone with the share
   sees it right away.
 
-**Clear selection** (or Escape) deselects everything.
+**Clear selection** (or Escape, or **Done**) deselects everything.
 
 ## A book's page
 
@@ -128,7 +144,8 @@ The buttons there are:
   [Matching with community metadata](#matching-with-community-metadata).
 - **Listen in player** - opens the book in the web player in a new tab,
   already signed in as you, so you can check how it sounds or test its
-  chapters without signing in again. If the browser blocks the new tab, the
+  chapters without signing in again. The tab signs in with a one-time link
+  that works for about two minutes. If the browser blocks the new tab, the
   console says so: allow pop-ups for your server's address and click it again.
   It only shows when your server has the web player.
 - **Change cover** - see [Covers](#covers).

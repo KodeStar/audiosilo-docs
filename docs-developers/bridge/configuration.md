@@ -200,7 +200,16 @@ for example, `openssl rand -hex 32`. The startup log says where the key came fro
 
 The page's own password is not a secret in this sense: it is hashed (argon2id) in
 the database, generated and **printed once** to the log on the first start, and
-changed on the page's Settings tab.
+changed on the page's Settings tab. An owner who lost it runs
+`audiosilo-bridge reset-password [--data DIR]` (from v0.3.0; in Docker
+`docker exec -u PUID:PGID <container> audiosilo-bridge reset-password`): it
+prints a new generated password once and signs every session out, changing
+only the password hash and the sessions (`app.ResetPassword`), so the pairing,
+the mappings, the jobs and the sealed secrets stay, and a running Bridge takes
+it at once. It refuses a folder with no Bridge database (a mistyped `--data`)
+and, as root, a data folder another user owns (SQLite's new files would be
+root's), naming the user to run it as. The command goes before its flags:
+`--data DIR reset-password` is refused rather than starting the Bridge.
 
 ## PUID and PGID
 
@@ -222,8 +231,9 @@ user's. The entrypoint warns when it isn't writable.
 
 ## The images
 
-`ghcr.io/kodestar/audiosilo-bridge` (private while the repository is), built from
-one Dockerfile with four targets:
+`ghcr.io/kodestar/audiosilo-bridge`, public from v0.3.0 (pulled with no login;
+the source repository stays private), built from one Dockerfile with four
+targets:
 
 | Tag | Target | What's in it | Arch |
 |---|---|---|---|

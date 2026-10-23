@@ -198,7 +198,12 @@ The well-known endpoints 404 until the relevant identifiers are set - see
 Config-declared libraries are **upserted by name** into the database at every
 startup (`syncLibraries`, roots made absolute) and scanned in the background;
 libraries can equally be created at runtime through the admin API, in which
-case they live only in the database. There is deliberately **no layout key**
+case they live only in the database. Because the server never writes a
+library to `config.yaml`, a declared library's name and folder can't be changed
+at runtime: `PATCH /admin/libraries/{id}` answers `409 config_library` (from
+2.4.0; a rename used to come back as a second library at the next start) and
+the console locks both fields, while its other settings stay editable. Change
+them in `config.yaml` (or the app embedding the server) and restart. There is deliberately **no layout key**
 - folder shape is auto-detected per folder by the
 [scanner](scanner.md), with per-folder admin overrides for corrections.
 

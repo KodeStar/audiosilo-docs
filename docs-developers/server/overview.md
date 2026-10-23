@@ -78,7 +78,7 @@ in-process (see [Configuration](configuration.md#launcher-options-for-embedders)
 Before the database opens, `Run` applies a restore an admin asked for
 (`backup.ApplyPendingRestore`); it then starts the backup schedule, the
 notification workers and the daily retention (sessions, audit log, event
-feed).
+feed, dead cast and pairing tokens).
 `resolveTools` here picks the ffmpeg/ffprobe binaries: an explicit path, a copy
 next to the executable, `$PATH`, and only then a download via
 `internal/toolfetch`.

@@ -41,7 +41,7 @@ device.
 
 If you have the **AudioSilo app** installed, the surest way to sign *it* in with a QR is to scan from inside the app: on the app's connect screen, tap **Scan a QR code** and point the camera at the pairing QR. (This button is in the iOS and Android apps only - a web browser can't scan.) The connect page's **Open in app** button does the same job without a camera.
 
-The QR on the admin console's **invite card** opens an invite web page. Scan that one with your phone's normal camera, or open the invite link in a browser first. The connect page then displays the **pairing QR** the AudioSilo app's scanner accepts. If the app says the QR is not an AudioSilo pairing code, check which of these two codes you are scanning. You can pair an admin account too; a separate listener account is optional.
+The app's scanner also takes the QR on the admin console's **invite card**: the app opens that server's sign-in screen and signs in with the invite's code at once, as if you had typed it. (Scanned with your phone's normal camera instead, that QR opens the invite web page.) Each sign-in uses one of the invite's uses. If the app says *"That QR code isn't an AudioSilo pairing or invite code."*, you're scanning some other code. You can pair an admin account too; a separate listener account is optional.
 
 ## Connecting from the app
 
@@ -62,9 +62,9 @@ If the server can't be reached, the screen says *"Couldn't reach &lt;address&gt;
 Instead of an address you can use:
 
 - **Scan a QR code** (in the iOS and Android apps) - the pairing QR from the server's connect page or from another of your devices.
-- **I have a pairing link** (in the web player) - paste a pairing link your admin or another of your devices sent you (it looks like `https://books.example.com/web/connect?token=…`) and tap **Connect**.
+- **I have a pairing link** (in the web player) - paste a pairing link your admin or another of your devices sent you (it looks like `https://books.example.com/web/connect?token=…`), or an invite link (`https://books.example.com/connect#code=…`), and tap **Connect**.
 
-Either signs you in straight away, with nothing to type. A pairing link from an invite keeps working as long as the invite does, for as many devices as it has uses left; one made on another device (or a household member's code) works once, for 10 minutes. One that has expired or been used up says *"This pairing link has expired or was already used. Ask for a new one, or enter your invite code on the sign-in screen."* After a lot of tries in a row, the server asks you to wait: *"Too many tries. Wait a few minutes and try again."*
+Either signs you in straight away, with nothing to type. The web player can only connect to the server it came from, so a link for another server says *"This link is for another server, and this page can only connect to its own. Open the link to connect there."*, with **Open the link**. A pairing link from an invite keeps working as long as the invite does, for as many devices as it has uses left; one made on another device (or a household member's code) works once, for 10 minutes. One that has expired or been used up says *"This pairing link has expired or was already used. Ask for a new one, or enter your invite code on the sign-in screen."* After a lot of tries in a row, the server asks you to wait: *"Too many tries. Wait a few minutes and try again."*
 
 On a device in [kids mode](kids-mode.md#links-in-kids-mode), a link or QR code isn't opened at all: the app asks for a grown-up to open it.
 

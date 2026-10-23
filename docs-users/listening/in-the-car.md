@@ -6,7 +6,7 @@ description: "Listening with Android Auto and Apple CarPlay: getting AudioSilo o
 The AudioSilo apps for Android and iPhone can put your books on a car's screen: **Android Auto** on Android, **CarPlay** on iPhone. The car shows the same lists on both, plays through the app on your phone, and saves your place exactly as the phone does. The web player has no car mode.
 
 :::note
-Apple has approved AudioSilo for CarPlay, but the iPhone app in the App Store (version 2.0.0) doesn't include it yet: it arrives with a later update (see [Availability](mobile-apps.md#availability)). Until then, AudioSilo doesn't appear in CarPlay.
+CarPlay needs version **2.4.0** or later of the iPhone app (see [Availability](mobile-apps.md#availability)). An older version doesn't appear in CarPlay.
 :::
 
 ## Getting AudioSilo into the car
@@ -24,7 +24,7 @@ If AudioSilo isn't in the launcher:
 
 ### CarPlay
 
-Once your iPhone app has the update that brings CarPlay, AudioSilo appears on the CarPlay home screen like any audio app: connect your iPhone to the car and tap it. It works with your iPhone locked in your pocket, as long as you've unlocked it once since it last restarted; until then it waits, and never signs you out.
+With version 2.4.0 or later of the iPhone app, AudioSilo appears on the CarPlay home screen like any audio app: connect your iPhone to the car and tap it. It works with your iPhone locked in your pocket, as long as you've unlocked it once since it last restarted; until then it waits, and never signs you out.
 
 ## What the car shows
 

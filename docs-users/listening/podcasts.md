@@ -5,7 +5,7 @@ description: "Listening to podcasts in the player: shows in the Library, a show'
 
 When your server has a podcast library, the player shows its podcasts beside your books: the
 shows in the Library, each show's episodes, a **New episodes** shelf on Home for the shows you
-follow, and episodes that play like any book. Podcasts need the **AudioSilo app 2.2.0 or later**
+follow, and episodes that play like any book. Podcasts need the **AudioSilo app 2.4.0 or later**
 (the web player comes with your server and is updated with it). An older app doesn't
 show podcasts at all; update it from the App Store or Google Play.
 
@@ -47,9 +47,16 @@ opens the rest), how many episodes it has, the **Private feed** badge when it is
 [Check for new episodes](#checking-for-new-episodes). **Last check failed** means the server couldn't read the
 show's feed the last time it looked; the episodes it already has still play.
 
+A link to a show that leads nowhere (its library is gone, isn't shared with you, or isn't a
+podcast library) says *"This link doesn't point to anything here."*
+
 **Episode order.** A show that is told in order (a serial) lists its **oldest episode first**, so
 you start at the beginning; every other show lists its **newest first**. Switch with **Newest
 first** / **Oldest first** at the top of the list. The list keeps loading as you scroll.
+
+Episodes go by the date they came out. Episodes from the same day, and shows whose feed gives no
+dates at all (a LibriVox reading, say), go by their season and episode numbers, so **E1** to
+**E10** of an undated serial list in order.
 
 Each episode row has:
 
@@ -63,12 +70,15 @@ Each episode row has:
   *"Your server can't download episodes right now."* (the same reasons as the
   [table below](#playing-an-episode));
 - one button: **Play** (or **Resume** once you've started), or **Try again** after the server
-  couldn't get it. While an episode isn't available, **Play** is greyed out;
+  couldn't get it. While an episode isn't available, **Play** is greyed out with the reason
+  beside it, on a finished episode too. When the player has no words for the reason, the
+  button is **Try again** instead, because asking again may work;
 - a **...** menu with **Add to Up next** and **Mark as finished**.
 
 Tap the row itself to open the episode's own page: its cover, title, the show (tap it to go back
-to the show), date, length and badges, the play button, its description and, when the episode
-file has them, its chapters (**Chapters from the episode file**). When the episode can't be
+to the show), date, length and badges, the play button, its description and its chapters under **The whole episode**: the ones in
+the episode file (**Chapters from the episode file**), or, for a long episode with no chapter
+marks, parts of the length set in Settings (*"This episode has no chapter marks"*). When the episode can't be
 played right now, the reason sits beside the greyed-out button. An episode page has no Who's who
 or Story so far: those are for books.
 
@@ -94,14 +104,15 @@ and you'd need the feed's address to follow it again.
 
 ## Adding shows
 
-**Add shows**, in a podcast library's Shows, opens a page for adding shows to that library. It
-has up to three sections at the top: **Search**, **Feed address** and **Import a list**. Your
+**Add shows**, in a podcast library's Shows, opens a page for adding shows to that library. The
+page belongs to the Library: **Back** returns there, and a link to the page opens it in the
+Library tab. It has up to three sections at the top: **Search**, **Feed address** and **Import a list**. Your
 server decides which ones you get: **Feed address** is always there, while **Search** and
 **Import a list** need a server new enough to offer them, and your admin can turn search off.
 
 Adding a show needs the same as the Follow button: your admin has turned podcasts on and the
 server can download episodes right now. Otherwise **Add shows** isn't there, and the page says
-*"Adding shows isn't available right now"*. Kids' accounts and the demo can't add shows. To
+*"Adding shows isn't available right now"* and to ask the person who runs your server. Kids' accounts and the demo can't add shows. To
 add a show, you need full access to the library (one shared with you only in part says
 *"You can add shows only to a library shared with you in full."*).
 
@@ -123,13 +134,15 @@ search. The list says where its results came from, and each result has:
   directory;
 - **Follow**. It turns into **Following** with **Open show** when the library already has the
   show, or **Adding** when the server is fetching it. Once the server is done, **Adding**
-  turns into **Following** with **Open show**, or into **Couldn't add** with **Follow** back
-  to try again ([Shows being added](#shows-being-added) says why).
+  turns into **Following** with **Open show**, or into **Couldn't add** (or **Cancelled**)
+  with **Follow** back to try again ([Shows being added](#shows-being-added) says why).
 
 Searching the same words again shows the same results without asking the directory again. Each
 person can search about ten times a minute: after that the page says *"You've searched a lot
 just now. Try again in 20 s."* (with the real wait). **No shows found** means the directory
-has nothing under those words; try others, or follow the show by its address.
+has nothing under those words; try others, or follow the show by its address. *"This app can't
+use podcasts on this server. Update the app, then try again."* means the app is too old for
+your server's podcasts.
 
 **What the directory sees.** The directory receives the words you searched for (and, for
 Apple, your device's country), and sees your server's address, not yours: the search and the
@@ -153,7 +166,10 @@ only you see the show, and it's [never exported](#exporting-your-shows). Many pr
 addresses are recognised as private by themselves; the switch is for the ones that aren't.
 
 If the library already has the show, the page says *"You follow The Slow Kitchen."* with
-**Open show**. Otherwise it says *"Adding the show. It appears in Shows once it's ready."*
+**Open show**. Otherwise it says *"Adding the show. It appears in Shows once it's ready."* When
+you turned on **Private feed** but the library already has that feed as a public show, you
+follow it as it is: *"You follow The Slow Kitchen. It was already in this library as a public
+feed, so it isn't private."*
 
 When it can't follow the address, the page says why:
 
@@ -177,7 +193,12 @@ feed's address (shortened, so a private address isn't on screen in full) and how
 |---|---|
 | **Couldn't reach the feed.** | The show's host didn't answer. Check the address, or try again later. |
 | **That address isn't a podcast feed.** | It's a web page or another kind of file; find the show's RSS feed address. |
+| **Nothing was found at that address.** | Check the address for a typo. If it's right, the show may have moved. |
 | **The feed isn't there any more.** | The show moved or ended. Look for its new address. |
+| **The feed refused the request. It may need a login.** | A members-only feed needs the private address made for you; find it on the show's site. |
+| **That address is on a local network. The person who runs your server can allow it.** | The feed is on a home or office network, which your server doesn't fetch from unless your admin allows that network. |
+| **That feed is too large.** | The feed file is bigger than your server accepts. |
+| **The feed's server answered with an error. Try again later.** | The show's host had a problem. |
 | **Follow the feed again to finish adding it.** | The server restarted before it got to it. Follow the address (or import the list) again. |
 | **Something went wrong adding it.** | Try again later, or ask your admin. |
 
@@ -199,19 +220,35 @@ per show in the list, by its place in the file (**Entry 4**, say):
 |---|---|
 | **Following** | The library had the show, so you follow it now. |
 | **Already following** | You followed it already. |
-| **Being added** | The server is fetching it (see [Shows being added](#shows-being-added)). It turns into **Following** once added, or **Couldn't add**. |
+| **Being added** | The server is fetching it (see [Shows being added](#shows-being-added)). It turns into **Following** once added, or **Couldn't add** or **Cancelled**. |
 | **Waiting for the next batch** | Still to come (see below). |
 | **In the list twice** | The same feed appears earlier in the file (its entry number is in brackets). |
 | **No usable feed address** | The entry has no address the server can use. |
 | **Can't be added right now** | The server can't fetch new shows at the moment; ask your admin. |
-| **Couldn't add** | Something else went wrong with this one. |
+| **Couldn't add** | The server couldn't add this one. A line under it says why, as in [Shows being added](#shows-being-added). *"It couldn't be added a short while ago."* means the same feed failed to add in the last hour. |
+| **Cancelled** | Adding it was stopped before it finished. |
 
 **Long lists go in batches of five.** Your server adds at most five new shows for you at a time,
 so the rest of a long list waits. The player sends the next batch by itself once the shows
 being added are done and at least half a minute has passed: the page says *"Waiting for the
 shows being added before the next batch."* or *"Next batch in 12 s."* Once the last batch is
 sent it says *"The last shows are still being added."* until they're in, then **All done.**
-Shows the library already has don't wait for a batch.
+Shows the library already has don't wait for a batch. When your server limits how often
+imports run, the page says *"Imports can run about once every 30 seconds. Trying again in 12
+s."* and goes on by itself.
+
+**A feed that failed recently isn't tried again by the import.** If you tried to add a feed
+in the list to this library in the last hour and it couldn't be added, the import marks it **Couldn't add** straight away and
+doesn't send it to your server again, so a few dead feeds can't hold up the rest of the list.
+Once no entry is waiting for a batch, the import sends nothing more. When it finishes with
+entries that couldn't be added, it says *"Done. 2 shows couldn't be added. You can try each one
+again below."* in place of **All done.**
+
+**Try again on an entry.** An entry that says **Couldn't add** or **Cancelled** has its own
+**Try again**, which follows that one feed by its address, the same as
+[Feed address](#following-a-feed-by-its-address). That always asks your server again, even
+for a feed that failed a moment ago. The entry then reads **Following** or **Being added**;
+if the follow is refused, a note says why.
 
 When some entries **Can't be added right now** (the part of your server that fetches podcasts
 is offline, say), the import doesn't keep retrying them by itself: the page says *"2 shows can't
@@ -285,6 +322,11 @@ episode"*.
   **Whatever you were listening to keeps playing** until the episode is ready; then the episode
   takes over.
 - If the server can't get it, the strip shows the reason in place of the progress.
+- On an iPhone with iOS 26, the player above the tab bar shows the episode on its way, with
+  **Try again** and **Cancel**, even when nothing else is playing. With a book playing, its
+  second line says how the episode is getting on.
+- If your server stops answering for a moment while it gets the episode, the player checks
+  back less and less often (at most once a minute) until it answers again.
 - **Cancel** stops waiting in the player. The server keeps downloading, so the episode will be
   **Ready on your server** next time.
 - Playing something else while you wait also stops waiting for it.
@@ -314,7 +356,14 @@ and finished mark stay exactly where they were, so you may land a little early o
 
 An episode never opens the [end credits](end-of-book.md). It leaves your Up next, and with
 **auto-play** on (and the sleep timer not running) the next item in [Up next](up-next.md)
-starts; otherwise playback stops. An episode never plays on into a series or folder.
+starts; otherwise playback stops. An episode never plays on into a series or folder, or into
+the show's next episode by itself.
+
+To hear the show's episodes one after another, put them in Up next. While an episode plays, the
+suggestions under Up next offer the episode that comes after it in the show (**Next episode**,
+in the show's order from oldest to newest, whichever way you list the show), and **+** adds it.
+While an episode is loaded, Up next's switch reads **Play Up next automatically**: *"When this
+episode ends, the first item in Up next plays."*
 
 ## Private feeds
 
@@ -332,4 +381,7 @@ collection you share with a child. A kid's account can't follow shows. See
 
 - **Offline downloads.** Episodes can't be downloaded to your device, and automatic downloads and
   keeping the next books ready skip them. They stream from your server.
-- **Casting.** The Cast button doesn't appear while an episode plays.
+- **Casting.** Episodes play on this device, never on a Cast device: the Cast button doesn't
+  appear while an episode plays. Start an episode while a book is casting and the episode plays
+  here and casting ends, with *"This episode can't be cast"*. See
+  [Chromecast](chromecast.md).
