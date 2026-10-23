@@ -71,8 +71,20 @@ export const fitViewportTo = async (p, locator, {min = 900, max = 1800, pad = 32
     const box = await locator.filter({visible: true}).last().boundingBox();
     if (!box) return;
     const height = Math.round(Math.min(Math.max(box.y + box.height + pad, min), max));
+    if (height === p.viewportSize().height) return;
     await p.setViewportSize({width: p.viewportSize().width, height});
     await sleep(settle);
+  }
+};
+
+// Runs `fit` (one of the two above, bound to `p`), then `shot`, and restores
+// DESKTOP_CONTEXT.viewport however the shot ends.
+export const fitted = async (p, fit, shot) => {
+  await fit();
+  try {
+    await shot();
+  } finally {
+    await p.setViewportSize(DESKTOP_CONTEXT.viewport);
   }
 };
 
@@ -94,10 +106,11 @@ export const silence = (file, seconds, meta = {}, codec = ['-c:a', 'libmp3lame',
     ...codec, file,
   ]);
 
-// A JSON client for a server's /api/v1: api(token, method, path, body?, headers?)
-// returns the parsed body (null when empty or not JSON) and throws on a non-2xx.
-export const apiClient = (origin) => async (token, method, p, body, headers = {}) => {
-  const res = await fetch(`${origin}/api/v1${p}`, {
+// A JSON client for a server's /api/v1 (or another `prefix` on `origin`):
+// api(token, method, path, body?, headers?) returns the parsed body (null when empty
+// or not JSON) and throws on a non-2xx, with the code as err.status.
+export const apiClient = (origin, prefix = '/api/v1') => async (token, method, p, body, headers = {}) => {
+  const res = await fetch(`${origin}${prefix}${p}`, {
     method,
     headers: {
       'content-type': 'application/json',

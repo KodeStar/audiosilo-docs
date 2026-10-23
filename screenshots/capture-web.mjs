@@ -41,6 +41,7 @@ import {
   around,
   firstVisible,
   fitViewportTo,
+  fitted,
   imagesLoaded,
   isoAgo,
   pathQuery,
@@ -295,39 +296,44 @@ await mkdir(CACHE, {recursive: true});
 
 // ── Pass 0: series tags ─────────────────────────────────────────────────────
 console.log('== provision series ==');
-await step('series tags', async () => {
-  if (!ADMIN_PASSWORD) throw new Error('ADMIN_PASSWORD not set: the series shots will show no series');
+// One admin session for both; signed out again, so it never shows in the admin
+// Devices shot.
+const asAdmin = async (fn) => {
+  if (!ADMIN_PASSWORD) throw new Error('ADMIN_PASSWORD not set: the series shots show no series, the Genre filter no genres');
   const {token} = await api(null, 'POST', '/auth/login', {username: 'admin', password: ADMIN_PASSWORD});
   try {
+    await fn(token);
+  } finally {
+    await api(token, 'POST', '/auth/logout').catch(() => {});
+  }
+};
+const seededBook = (books, title) => {
+  const b = books.find((x) => `${x.title} ${x.path}`.includes(title));
+  if (!b) throw new Error(`no seeded book matching "${title}"`);
+  return b;
+};
+await step('series tags', () =>
+  asAdmin(async (token) => {
     for (const s of SERIES) {
       const list = await api(token, 'GET', `/admin/books?author=${encodeURIComponent(s.author)}&limit=50`);
-      const b = (list?.books ?? []).find((x) => `${x.title} ${x.path}`.includes(s.title));
-      if (!b) throw new Error(`no seeded book matching "${s.title}"`);
-      await api(token, 'PATCH', `/admin/libraries/${b.library_id}/book?path=${encodeURIComponent(b.path)}`, {
+      const b = seededBook(list?.books ?? [], s.title);
+      await api(token, 'PATCH', `/admin/libraries/${b.library_id}/book${pathQuery(b.path)}`, {
         set: {series: s.series, series_index: s.index},
       });
     }
-  } finally {
-    // Sign this session out again, so it never shows in the admin Devices shot.
-    await api(token, 'POST', '/auth/logout').catch(() => {});
-  }
-  console.log(`  ✓ series: ${SERIES.map((s) => `${s.series} ${s.index}`).join(', ')}`);
-});
-await step('genres', async () => {
-  if (!ADMIN_PASSWORD) throw new Error('ADMIN_PASSWORD not set: the Genre filter shows no seeded genres');
-  const {token} = await api(null, 'POST', '/auth/login', {username: 'admin', password: ADMIN_PASSWORD});
-  try {
+    console.log(`  ✓ series: ${SERIES.map((s) => `${s.series} ${s.index}`).join(', ')}`);
+  }),
+);
+await step('genres', () =>
+  asAdmin(async (token) => {
     const books = (await api(token, 'GET', '/admin/books?limit=200'))?.books ?? [];
     for (const g of GENRES) {
-      const b = books.find((x) => `${x.title} ${x.path}`.includes(g.title));
-      if (!b) throw new Error(`no seeded book matching "${g.title}"`);
+      const b = seededBook(books, g.title);
       await api(token, 'PATCH', `/admin/libraries/${b.library_id}/book${pathQuery(b.path)}`, {add: {genres: g.genres}});
     }
-  } finally {
-    await api(token, 'POST', '/auth/logout').catch(() => {});
-  }
-  console.log(`  ✓ genres on ${GENRES.length} books`);
-});
+    console.log(`  ✓ genres on ${GENRES.length} books`);
+  }),
+);
 
 // ── Pass 1: warm a demo session ─────────────────────────────────────────────
 console.log('== warm demo session ==');
@@ -1218,12 +1224,11 @@ async function capturePodcasts(pod) {
         await tid(page, 'podcast-following-badge').waitFor({timeout: 15000});
         await firstVisible(page.getByTestId('episode-row')).waitFor({timeout: 15000});
         // Down to the last episode's reason line.
-        await fitViewportTo(page, page.getByTestId('episode-row'));
-        try {
-          await settleShoot(page, PODCAST_SHOTS.show);
-        } finally {
-          await page.setViewportSize(DESKTOP_CONTEXT.viewport);
-        }
+        await fitted(
+          page,
+          () => fitViewportTo(page, page.getByTestId('episode-row')),
+          () => settleShoot(page, PODCAST_SHOTS.show),
+        );
       });
     }
 
@@ -1475,14 +1480,15 @@ async function captureFindShows(ctx, pod, cid) {
         await tid(p, 'opml-summary').waitFor({timeout: 15000});
         await p.getByText('Waiting for the shows being added', {exact: false}).waitFor({timeout: 15000});
         // Every row of the list, not the first 900 px.
-        await fitViewportTo(p, p.getByTestId('opml-import'));
-        try {
-          await sleep(SETTLE_MS);
-          await p.mouse.move(0, 0);
-          await shoot(p, FIND_SHOTS.import);
-        } finally {
-          await p.setViewportSize(DESKTOP_CONTEXT.viewport);
-        }
+        await fitted(
+          p,
+          () => fitViewportTo(p, p.getByTestId('opml-import')),
+          async () => {
+            await sleep(SETTLE_MS);
+            await p.mouse.move(0, 0);
+            await shoot(p, FIND_SHOTS.import);
+          },
+        );
       });
     }
   } finally {

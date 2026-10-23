@@ -15,7 +15,7 @@
 // one-time password), AS_ORIGIN + ADMIN_PASSWORD (the demo server).
 import {chromium} from 'playwright';
 import path from 'node:path';
-import {CACHE, DESKTOP_CONTEXT, apiClient, fitViewportToPage, shoot, sleep, step, wanted} from './lib.mjs';
+import {CACHE, DESKTOP_CONTEXT, apiClient, fitViewportToPage, fitted, shoot, sleep, step, wanted} from './lib.mjs';
 
 const BASE = (process.env.BRIDGE_BASE || '').replace(/\/?$/, '/');
 const PASSWORD = process.env.BRIDGE_PASSWORD || '';
@@ -36,27 +36,13 @@ if (!BASE || !PASSWORD || !ORIGIN || !ADMIN_PASSWORD) {
 
 const server = apiClient(ORIGIN);
 // The Bridge page's own API, as the page calls it (a bearer token from /api/login).
-const bridgeApi = async (token, method, p, body) => {
-  const res = await fetch(new URL(p, BASE), {
-    method,
-    headers: {...(token ? {authorization: `Bearer ${token}`} : {}), ...(body ? {'content-type': 'application/json'} : {})},
-    body: body === undefined ? undefined : JSON.stringify(body),
-  });
-  const text = await res.text();
-  if (!res.ok) throw new Error(`bridge ${method} ${p} -> ${res.status} ${text.slice(0, 120)}`);
-  return text ? JSON.parse(text) : null;
-};
+const bridgeApi = apiClient(BASE.replace(/\/$/, ''), '/api');
 
 // Settles, moves the pointer away and shoots the page as tall as its content.
-const settleShoot = async (page, file) => {
+const tallShoot = async (page, file) => {
   await sleep(800);
   await page.mouse.move(0, 0);
-  await fitViewportToPage(page, 900, 1600, 400);
-  try {
-    await shoot(page, file);
-  } finally {
-    await page.setViewportSize(DESKTOP_CONTEXT.viewport);
-  }
+  await fitted(page, () => fitViewportToPage(page, 900, 1600, 400), () => shoot(page, file));
 };
 
 const tab = async (page, name) => {
@@ -74,7 +60,7 @@ const tab = async (page, name) => {
 const SHOWN_SERVER = 'http://audiosilo:8080';
 const shown = (text) =>
   text
-    .replaceAll(`${path.join(CACHE, 'library')}`, '/library')
+    .replaceAll(path.join(CACHE, 'library'), '/library')
     .replaceAll(`${CACHE}/`, '/')
     .replaceAll(ORIGIN, SHOWN_SERVER)
     .replaceAll('"mlx-whisper"', '"whisper-cpp"')
@@ -90,13 +76,14 @@ await ctx.route(
 );
 const page = await ctx.newPage();
 let admin = null;
-let paired = false;
+// The Bridge's page token once it is paired (null until then).
+let btoken = null;
 console.log('== bridge page ==');
 try {
   await step('bridge: sign in', async () => {
     await page.goto(BASE, {waitUntil: 'networkidle', timeout: 30000});
     await page.getByLabel('Password', {exact: true}).waitFor({timeout: 15000});
-    await settleShoot(page, SHOTS.signIn);
+    await tallShoot(page, SHOTS.signIn);
     await page.getByLabel('Password', {exact: true}).fill(PASSWORD);
     await page.getByRole('button', {name: 'Sign in', exact: true}).click();
     await page.getByText('Pair with a server', {exact: true}).waitFor({timeout: 15000});
@@ -111,22 +98,21 @@ try {
     // compose file's address in the shot, this server's for the real pairing).
     await page.getByLabel('Server address').fill(SHOWN_SERVER);
     await page.getByLabel('Pairing code').fill(pair.code);
-    await settleShoot(page, SHOTS.unpaired);
+    await tallShoot(page, SHOTS.unpaired);
   });
 
   await step('bridge: pair', async () => {
     await page.getByLabel('Server address').fill(ORIGIN);
     await page.getByRole('button', {name: 'Pair', exact: true}).click();
     await page.getByRole('button', {name: 'Unpair...', exact: true}).waitFor({timeout: 30000});
-    paired = true;
+    btoken = await page.evaluate(() => localStorage.getItem('audiosilo_bridge_token'));
   });
 
-  if (paired) {
+  if (btoken) {
     // The libraries arrive with the first heartbeat after pairing.
-    const btoken = await page.evaluate(() => localStorage.getItem('audiosilo_bridge_token'));
     let libs = [];
     for (const until = Date.now() + 60000; Date.now() < until; await sleep(1000)) {
-      libs = (await bridgeApi(btoken, 'GET', 'api/libraries'))?.libraries ?? [];
+      libs = (await bridgeApi(btoken, 'GET', '/libraries'))?.libraries ?? [];
       if (libs.length) break;
     }
     if (!libs.length) console.log('  ! the Bridge listed no libraries after pairing');
@@ -137,28 +123,25 @@ try {
     await step('bridge: status, paired', async () => {
       await page.reload({waitUntil: 'networkidle'});
       await page.getByRole('button', {name: 'Unpair...', exact: true}).waitFor({timeout: 15000});
-      await settleShoot(page, SHOTS.paired);
+      await tallShoot(page, SHOTS.paired);
     });
     await step('bridge: libraries', async () => {
       await tab(page, 'Libraries');
       await page.getByRole('button', {name: 'Check now'}).waitFor({timeout: 15000});
       await sleep(1500);
-      await settleShoot(page, SHOTS.libraries);
+      await tallShoot(page, SHOTS.libraries);
     });
     await step('bridge: accounts', async () => {
       await tab(page, 'Accounts');
       await page.getByText('GitHub', {exact: true}).first().waitFor({timeout: 15000});
       await sleep(1500);
-      await settleShoot(page, SHOTS.accounts);
+      await tallShoot(page, SHOTS.accounts);
     });
   }
 } finally {
-  if (paired) {
-    const btoken = await page.evaluate(() => localStorage.getItem('audiosilo_bridge_token')).catch(() => null);
-    if (btoken) await bridgeApi(btoken, 'POST', 'api/unpair').catch((e) => console.log(`  ! Bridge left paired: ${e.message}`));
-  }
+  if (btoken) await bridgeApi(btoken, 'POST', '/unpair').catch((e) => console.log(`  ! Bridge left paired: ${e.message}`));
   if (admin) {
-    if (paired) await server(admin, 'DELETE', '/admin/bridge').catch((e) => console.log(`  ! server left paired: ${e.message}`));
+    if (btoken) await server(admin, 'DELETE', '/admin/bridge').catch((e) => console.log(`  ! server left paired: ${e.message}`));
     await server(admin, 'POST', '/auth/logout').catch(() => {});
   }
   await browser.close();

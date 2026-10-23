@@ -202,6 +202,15 @@ shot_wanted() { # <file>
   return 1
 }
 
+# Whether SHOTS_ONLY keeps any shot the manifest gives to capture <name> (setup, bridge).
+capture_wanted() { # <name>
+  (cd "$HERE" && CAPTURE="$1" node --input-type=module -e '
+    import {SHOTS} from "./manifest.mjs";
+    import {wanted} from "./lib.mjs";
+    process.exit(wanted(...SHOTS.filter((s) => s.capture === process.env.CAPTURE).map((s) => s.file)) ? 0 : 1);
+  ')
+}
+
 wait_healthy() { # <url> <logfile> <name>
   for i in $(seq 1 60); do
     curl -fsS "$1" >/dev/null 2>&1 && return 0
@@ -232,11 +241,7 @@ MAIN_PID=$!
 # console's first-run flow (with the web player, so its phone step offers it).
 # It starts only when a setup shot is wanted.
 WANT_SETUP=0
-if [ "${SKIP_ADMIN:-0}" != "1" ] && (cd "$HERE" && node --input-type=module -e '
-  import {SHOTS} from "./manifest.mjs";
-  import {wanted} from "./lib.mjs";
-  process.exit(wanted(...SHOTS.filter((s) => s.capture === "setup").map((s) => s.file)) ? 0 : 1);
-'); then
+if [ "${SKIP_ADMIN:-0}" != "1" ] && capture_wanted setup; then
   WANT_SETUP=1
 fi
 if [ "$WANT_SETUP" = 1 ]; then
@@ -358,11 +363,7 @@ fi
 
 # The Bridge's own page: a real Bridge, built with its page embedded, on a fresh
 # data dir, paired with the demo server by capture-bridge.mjs (see its header).
-if [ "${SKIP_BRIDGE:-0}" != "1" ] && (cd "$HERE" && node --input-type=module -e '
-  import {SHOTS} from "./manifest.mjs";
-  import {wanted} from "./lib.mjs";
-  process.exit(wanted(...SHOTS.filter((s) => s.capture === "bridge").map((s) => s.file)) ? 0 : 1);
-'); then
+if [ "${SKIP_BRIDGE:-0}" != "1" ] && capture_wanted bridge; then
   echo "==> capturing the Bridge's page"
   if [ ! -x "$BRIDGE/scripts/build-web.sh" ]; then
     echo "  ! no audiosilo-bridge checkout at $BRIDGE: the Bridge shots keep their previous images"
@@ -370,9 +371,9 @@ if [ "${SKIP_BRIDGE:-0}" != "1" ] && (cd "$HERE" && node --input-type=module -e 
     # Its page synced into the checkout (built, never committed), the binary into
     # .cache, stamped with BRIDGE_VERSION (default: git describe, no leading v).
     BRIDGE_VERSION="${BRIDGE_VERSION:-$(git -C "$BRIDGE" describe --tags --always 2>/dev/null | sed 's/^v//')}"
-    { (cd "$BRIDGE" && scripts/build-web.sh --sync-only) \
-        && (cd "$BRIDGE" && go build -tags embedui -ldflags "-X main.version=${BRIDGE_VERSION:-dev}" \
-          -o "$CACHE/audiosilo-bridge" ./cmd/audiosilo-bridge); } > "$CACHE/bridge-build.log" 2>&1 \
+    (cd "$BRIDGE" && scripts/build-web.sh --sync-only \
+        && go build -tags embedui -ldflags "-X main.version=${BRIDGE_VERSION:-dev}" \
+          -o "$CACHE/audiosilo-bridge" ./cmd/audiosilo-bridge) > "$CACHE/bridge-build.log" 2>&1 \
       || { echo "  ! the Bridge build failed (see $CACHE/bridge-build.log)"; exit 1; }
     rm -rf "$BRIDGE_DATA" "$CACHE/bridge-home" && mkdir -p "$BRIDGE_DATA" "$CACHE/bridge-home"
     # As in a fresh container: none of this machine's tools on PATH (no gh sign-in,
