@@ -39,8 +39,10 @@ reserved download slot for play requests. **Phase 2c-3** adds server-side
 podcast [directory search and OPML import/export](podcasts.md#discovery-and-opml-transfer)
 with no Bridge change. **Phase 2d-1** adds the player's
 [podcast views](podcasts.md#player-phase-2d-1) (players from 2.2.0), again
-with no Bridge change. Discovery and OPML in the player (Phase 2d-2), read-along,
-Audible backups and file moves arrive later.
+with no Bridge change, and **Phase 2d-2** its
+[discovery, follow by URL and OPML screens](podcasts.md#player-discovery-and-opml-phase-2d-2)
+(a CORS change on the server only). Read-along, Audible backups and file moves
+arrive later.
 :::
 
 ## What it is for

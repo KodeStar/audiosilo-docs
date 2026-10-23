@@ -11,7 +11,8 @@
 //   2. capture desktop, tablet and phone profiles into static/img/screenshots/web-player/,
 //   2b. podcasts: run.sh's seeded shows added as a podcast library through the admin API
 //      (the Podcasts module on, two shows followed by path), shot as the admin in a fresh
-//      browser (the episode fetch stood in for by routes), then removed again,
+//      browser (the episode fetch, and Find shows' Bridge and directory, stood in for by
+//      routes), then removed again,
 //   3. the household: three accounts made through the admin API (ADMIN_PASSWORD), and,
 //      as one of them, a collection and the kid household member through the player's
 //      own API (the grown-up member through the add dialog, or the API when only the
@@ -25,6 +26,7 @@ import https from 'node:https';
 import {mkdir} from 'node:fs/promises';
 import {existsSync, readFileSync, statSync} from 'node:fs';
 import {execFileSync} from 'node:child_process';
+import {createHash} from 'node:crypto';
 import {
   CACHE,
   DAY,
@@ -32,6 +34,7 @@ import {
   FIXTURES,
   HOUR,
   MIN,
+  PODCAST_DIRECTORY,
   addHousehold,
   apiClient,
   around,
@@ -40,6 +43,8 @@ import {
   pathQuery,
   shoot,
   sleep,
+  slug,
+  stamp,
   step,
   tid,
   wanted,
@@ -1004,10 +1009,13 @@ const PODCAST_SHOW = 'The Lantern Archive';
 const PODCAST_FETCH_SHOW = 'Field Notes at Dawn';
 const PHONE = {width: 430, height: 932};
 
-// The fixture's shows, each with its feed.json as run.sh wrote it.
+// The fixture's shows, each with its feed.json as run.sh wrote it, and its directory.
 function podcastFixture() {
-  const {shows} = JSON.parse(readFileSync(path.join(FIXTURES, 'podcasts.json'), 'utf8'));
-  return shows.map((s) => ({...s, feed: JSON.parse(readFileSync(path.join(PODCASTS_DIR, s.folder, 'feed.json'), 'utf8'))}));
+  const {shows, directory} = JSON.parse(readFileSync(path.join(FIXTURES, 'podcasts.json'), 'utf8'));
+  return {
+    shows: shows.map((s) => ({...s, feed: JSON.parse(readFileSync(path.join(PODCASTS_DIR, s.folder, 'feed.json'), 'utf8'))})),
+    directory,
+  };
 }
 
 // The newest id in a server feed table (sqlite3), so teardown removes only this pass's rows.
@@ -1016,7 +1024,7 @@ const lastId = (table) => Number(sqlite(`SELECT COALESCE(MAX(id), 0) FROM ${tabl
 async function provisionPodcasts(pod) {
   if (!ADMIN_PASSWORD) throw new Error('ADMIN_PASSWORD not set: no podcast library to add');
   if (!existsSync(PODCASTS_DIR)) throw new Error(`no seeded shows at ${PODCASTS_DIR} (run.sh section 2c)`);
-  pod.shows = podcastFixture();
+  Object.assign(pod, podcastFixture());
   pod.marks = {audit: lastId('audit_events'), events: lastId('server_events')};
   const {token} = await api(null, 'POST', '/auth/login', {username: 'admin', password: ADMIN_PASSWORD}, PODCAST_CLIENT);
   pod.admin = token;
@@ -1182,6 +1190,9 @@ async function capturePodcasts(pod) {
         await phone.close();
       }
     }
+
+    // Find shows, on contexts of their own (the stand-in answers stay there).
+    if (wanted(...Object.values(FIND_SHOTS))) await captureFindShows(ctx, pod, cid);
   } finally {
     // Sign this player session out again, whatever happened above.
     if (session) await api(session, 'POST', '/auth/logout').catch(() => {});
@@ -1189,9 +1200,226 @@ async function capturePodcasts(pod) {
   }
 }
 
-if (wanted(...Object.values(PODCAST_SHOTS))) {
+// ── Podcasts: Find shows (Bridge Phase 2d-2) ────────────────────────────────
+// Every way in ends in a follow, which needs an online Bridge, and a search would reach
+// Apple, so these shots stand in for the server on their own browser contexts with
+// Playwright routes. What each route answers: README.md (the Add shows shots).
+const FIND_SHOTS = {
+  search: 'web-player/find-shows-search.png',
+  address: 'web-player/find-shows-address.png',
+  import: 'web-player/find-shows-import.png',
+  phone: 'web-player/phone-find-shows.png',
+};
+const FIND_QUERY = 'kitchen';
+// A feed address as the server shows it in a request or an import row (its origin only).
+const feedLabel = (url) => url.replace(/^(https?:\/\/[^/]+).*$/, '$1/...');
+// The directory result standing for a seeded show (Follow answers 200 following) and the
+// first one that is new (Follow answers 202 with a request).
+const seededResult = (pod) => pod.directory.find((d) => d.folder);
+const newResult = (pod) => pod.directory.find((d) => !d.folder);
+
+// The made-up directory's results (the server's PodcastDiscoverySearch shape), and the
+// artwork behind each result's proxy id (read once; a missing file answers 404).
+function findShowsDirectory(pod) {
+  const art = new Map();
+  const results = pod.directory.map((d) => {
+    const name = slug(d.title);
+    const seeded = d.folder ? pod.shows.find((s) => s.folder === d.folder) : null;
+    const id = createHash('sha256').update(`directory:${name}`).digest('hex');
+    if (d.artwork !== false) {
+      const file = seeded ? path.join(PODCASTS_DIR, d.folder, 'cover.jpg') : path.join(PODCAST_DIRECTORY(PODCASTS_DIR), `${name}.jpg`);
+      if (existsSync(file)) art.set(id, readFileSync(file));
+    }
+    return {
+      title: d.title,
+      author: d.author,
+      feed_url: seeded ? seeded.feed.feed_url : `https://${d.host}/${name}.xml`,
+      artwork_url: d.artwork === false ? null : `/api/v1/podcasts/discovery/artwork?id=${id}`,
+      provider_ids: {itunes: d.itunes_id, podcast_index: null},
+      episode_count: d.episodes,
+      provider_url: `https://podcasts.apple.com/us/podcast/${name}/id${d.itunes_id}`,
+    };
+  });
+  return {results, art};
+}
+
+// Route the Find shows answers on `ctx` (see above). Returns the stand-in's state.
+async function routeFindShows(ctx, pod, stand) {
+  const origin = new URL(BASE).origin;
+  const at = (p) => (url) => url.origin === origin && url.pathname === `/api/v1${p}`;
+  const json = (route, status, body) => route.fulfill({status, contentType: 'application/json', body: JSON.stringify(body)});
+  await ctx.route(at('/server'), async (route) => {
+    const res = await route.fetch();
+    const info = await res.json();
+    info.capabilities = {...info.capabilities, podcasts: true, podcast_discovery: true, podcast_opml: true};
+    return route.fulfill({response: res, json: info});
+  });
+  await ctx.route(at('/podcasts/discovery/providers'), (route) =>
+    json(route, 200, {providers: [{id: 'itunes', available: true}, {id: 'podcast_index', available: false}]}),
+  );
+  await ctx.route(at('/podcasts/discovery/search'), (route) => {
+    const q = new URL(route.request().url()).searchParams;
+    return json(route, 200, {provider: 'itunes', query: q.get('q') ?? '', country: q.get('country') ?? 'US', results: stand.directory.results});
+  });
+  await ctx.route(at('/podcasts/discovery/artwork'), (route) => {
+    const body = stand.directory.art.get(new URL(route.request().url()).searchParams.get('id'));
+    if (!body) return json(route, 404, {error: 'artwork not found', code: 'artwork_not_found'});
+    return route.fulfill({status: 200, contentType: 'image/jpeg', body});
+  });
+  await ctx.route(at('/podcasts/follow'), (route) => {
+    if (route.request().method() !== 'POST') return route.continue();
+    const {feed_url: feedUrl, private: isPrivate} = route.request().postDataJSON() ?? {};
+    const seeded = pod.shows.find((s) => s.feed.feed_url === feedUrl);
+    if (seeded) {
+      const show = stand.shows.find((s) => s.path === seeded.folder);
+      return json(route, 200, {state: 'following', show: {...show, following: true}});
+    }
+    const request = stand.request(stand.nextId++, 'queued', feedLabel(feedUrl), 0, {private: isPrivate === true});
+    stand.requests.unshift(request);
+    return json(route, 202, {state: 'subscribing', request});
+  });
+  await ctx.route(at('/me/podcasts'), async (route) => {
+    const res = await route.fetch();
+    const mine = await res.json();
+    return route.fulfill({response: res, json: {...mine, requests: stand.requests}});
+  });
+  await ctx.route(at('/podcasts/opml/import'), (route) => {
+    // Once only, however often the page uploads (a repeat would list each request twice).
+    if (!stand.requests.includes(stand.importRequests[0])) stand.requests.unshift(...stand.importRequests);
+    return json(route, 200, {library_id: pod.library.id, rows: stand.importRows});
+  });
+}
+
+// The stand-in's state: the library's real shows (for a 200 follow), the follow requests
+// `/me/podcasts` lists (one being added and one that failed to start with), and the
+// import's first wave.
+async function findShowsStand(pod) {
+  const shows = (await api(pod.admin, 'GET', `/libraries/${pod.library.id}/podcasts`, undefined, PODCAST_CLIENT))?.shows ?? [];
+  const request = (id, state, feed, ago, extra = {}) => ({
+    id, library_id: pod.library.id, state, feed, private: false, show_path: null, error: null,
+    created_at: stamp(Date.now() - ago), updated_at: stamp(Date.now() - Math.max(0, ago - MIN)), ...extra,
+  });
+  const imported = [
+    ['feeds.marketday.example', 'queued'], ['audio.hillwalkers.example', 'queued'], ['rss.quietpages.example', 'queued'],
+    ['members.tidewater.example', 'queued', true], ['feeds.boatyard.example', 'running'],
+  ];
+  const importRequests = imported.map(([host, state, isPrivate], i) => request(101 + i, state, `https://${host}/...`, 20_000 - i * 1000, {private: !!isPrivate}));
+  const row = (outline_index, status, extra = {}) => ({
+    outline_index, status, feed: null, private: false, path: null, request_id: null, duplicate_of: null, error: null, ...extra,
+  });
+  const slow = pod.shows.find((s) => s.folder === seededResult(pod).folder);
+  const lantern = pod.shows.find((s) => s.folder === PODCAST_SHOW);
+  const importRows = [
+    row(2, 'followed', {feed: feedLabel(slow.feed.feed_url), path: slow.folder}),
+    row(3, 'already_following', {feed: feedLabel(lantern.feed.feed_url), path: lantern.folder}),
+    ...importRequests.map((r, i) => row(4 + i, 'queued', {feed: r.feed, private: r.private, request_id: r.id})),
+    row(9, 'duplicate', {feed: importRequests[0].feed, duplicate_of: 4}),
+    row(10, 'invalid', {error: {code: 'invalid_feed_url', message: 'invalid feed URL'}}),
+    ...['feeds.northlight.example', 'audio.cellarclub.example', 'rss.weekendwalks.example'].map((host, i) =>
+      row(12 + i, 'limited', {feed: `https://${host}/...`}),
+    ),
+  ];
+  return {
+    shows,
+    directory: findShowsDirectory(pod),
+    request,
+    nextId: 92,
+    requests: [
+      request(91, 'running', 'https://feeds.harbourlights.example/...', 4 * MIN),
+      request(88, 'failed', 'https://www.oldmill.example/...', 3 * HOUR, {error: {code: 'not_a_feed', message: 'not a podcast feed'}}),
+    ],
+    importRequests,
+    importRows,
+  };
+}
+
+// The OPML list the import shot chooses (the stand-in answers it, so only its name and
+// that it is OPML matter).
+const FIND_OPML = `<?xml version="1.0" encoding="UTF-8"?>
+<opml version="2.0"><head><title>My podcasts</title></head><body>
+<outline text="Food"><outline type="rss" text="The Slow Kitchen" xmlUrl="https://feeds.example.com/the-slow-kitchen.xml"/></outline>
+</body></opml>
+`;
+
+async function captureFindShows(ctx, pod, cid) {
+  const stand = await findShowsStand(pod);
+  const findUrl = (section) =>
+    `${BASE}find-shows?connection=${encodeURIComponent(cid)}&library=${pod.library.id}&section=${section}`;
+  // Search, follow two results (one the library has, one new), and wait for the rows.
+  const searchAndFollow = async (p, {follow}) => {
+    await p.goto(findUrl('search'), {waitUntil: 'networkidle', timeout: 45000});
+    await tid(p, 'directory-search-input').fill(FIND_QUERY);
+    await tid(p, 'directory-search-submit').click({timeout: 8000});
+    await firstVisible(p.getByTestId('discovery-result')).waitFor({timeout: 15000});
+    if (follow) {
+      await p.getByRole('button', {name: `Follow ${seededResult(pod).title}`}).click({timeout: 8000});
+      await firstVisible(p.getByRole('button', {name: 'Open show'})).waitFor({timeout: 15000});
+      await p.getByRole('button', {name: `Follow ${newResult(pod).title}`}).click({timeout: 8000});
+      await tid(p, 'discovery-result-adding').waitFor({timeout: 15000});
+    }
+    await sleep(2000); // the artwork
+  };
+  const desk = await sameDevice(ctx);
+  try {
+    await routeFindShows(desk, pod, stand);
+    const p = await desk.newPage();
+    if (wanted(FIND_SHOTS.search)) {
+      await step('podcasts: find shows search', async () => {
+        await searchAndFollow(p, {follow: true});
+        await p.mouse.move(0, 0);
+        await shoot(p, FIND_SHOTS.search);
+      });
+    }
+    if (wanted(FIND_SHOTS.address)) {
+      await step('podcasts: find shows address', async () => {
+        // The queued request the search shot's follow adds, when that shot didn't run.
+        if (!stand.requests.some((r) => r.state === 'queued')) {
+          const feed = feedLabel(stand.directory.results.find((r) => r.title === newResult(pod).title).feed_url);
+          stand.requests.unshift(stand.request(stand.nextId++, 'queued', feed, 0));
+        }
+        await p.goto(findUrl('address'), {waitUntil: 'networkidle', timeout: 45000});
+        await tid(p, 'follow-requests').waitFor({timeout: 15000});
+        await tid(p, 'feed-address').fill('https://members.example.net/rss/8f3a2c');
+        await tid(p, 'private-feed').click({timeout: 8000});
+        await sleep(SETTLE_MS);
+        await p.mouse.move(0, 0);
+        await shoot(p, FIND_SHOTS.address);
+      });
+    }
+    if (wanted(FIND_SHOTS.import)) {
+      await step('podcasts: find shows import', async () => {
+        await p.goto(findUrl('import'), {waitUntil: 'networkidle', timeout: 45000});
+        const chooser = p.waitForEvent('filechooser', {timeout: 15000});
+        await tid(p, 'opml-choose').click({timeout: 8000});
+        await (await chooser).setFiles({name: 'podcast-subscriptions.opml', mimeType: 'text/x-opml', buffer: Buffer.from(FIND_OPML)});
+        await tid(p, 'opml-summary').waitFor({timeout: 15000});
+        await p.getByText('Waiting for the shows being added', {exact: false}).waitFor({timeout: 15000});
+        await sleep(SETTLE_MS);
+        await p.mouse.move(0, 0);
+        await shoot(p, FIND_SHOTS.import);
+      });
+    }
+  } finally {
+    await desk.close();
+  }
+  if (wanted(FIND_SHOTS.phone)) {
+    const phone = await sameDevice(ctx, {viewport: PHONE});
+    try {
+      await routeFindShows(phone, pod, stand);
+      const p = await phone.newPage();
+      await step('podcasts: phone find shows', async () => {
+        await searchAndFollow(p, {follow: false});
+        await shoot(p, FIND_SHOTS.phone);
+      });
+    } finally {
+      await phone.close();
+    }
+  }
+}
+
+if (wanted(...Object.values(PODCAST_SHOTS), ...Object.values(FIND_SHOTS))) {
   console.log('== podcasts ==');
-  const pod = {admin: null, library: null, moduleOn: false, shows: [], marks: null};
+  const pod = {admin: null, library: null, moduleOn: false, shows: [], directory: [], marks: null};
   try {
     await step('provision podcasts', () => provisionPodcasts(pod));
     if (pod.library) await step('podcasts', () => capturePodcasts(pod));

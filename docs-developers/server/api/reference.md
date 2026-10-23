@@ -1405,9 +1405,10 @@ sends a finished/failed notification. See [the Bridge implementation](../../brid
 *Session, adult, not demo; Podcasts module.* Directory search finds public
 shows by name; following one is the ordinary
 [`POST /podcasts/follow`](#podcast-actions) with `{library_id, feed_url}`
-(there is no provider-id follow and no new follow field). Nothing in the
-console or a released player calls these routes yet (the player's screens are
-[Phase 2d-2](../../bridge/podcasts.md#player-handoff-discovery-and-opml-phase-2d-2-not-implemented)).
+(there is no provider-id follow and no new follow field). The player's Add
+shows page calls them (players from 2.2.0,
+[Phase 2d-2](../../bridge/podcasts.md#player-discovery-and-opml-phase-2d-2));
+the console does not.
 
 | Route | Query | Success |
 |---|---|---|
@@ -1571,7 +1572,9 @@ fails.
 
 OPML is how podcast apps move subscription lists. The import follows each feed
 of an uploaded list as the caller; the export writes the caller's followed
-public shows. Both are API only for now.
+public shows. The player imports from its Add shows page and exports from the
+Shows library mode ([Phase 2d-2](../../bridge/podcasts.md#player-discovery-and-opml-phase-2d-2));
+the console has no screen for either.
 
 #### `POST /api/v1/podcasts/opml/import`
 

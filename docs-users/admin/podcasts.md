@@ -1,6 +1,6 @@
 ---
 title: "Podcasts"
-description: "Podcast libraries, episode downloads and per-show retention through the admin API, podcast search and OPML import/export, storage limits, private feeds, and which player apps show podcasts (2.2.0 and later)."
+description: "Podcast libraries, episode downloads and per-show retention through the admin API, podcast search and OPML import/export (in the player and the API), storage limits, private feeds, and which player apps show podcasts (2.2.0 and later)."
 ---
 
 ## What is available now
@@ -13,15 +13,16 @@ reads what the Bridge saves.
 :::info[Players 2.2.0 and later show podcasts]
 The player shows podcast libraries from **version 2.2.0**: the shows, each
 show's episodes, following, a New episodes shelf on Home and playing episodes,
-including ones the Bridge downloads when someone presses Play (see
-[Podcasts](../listening/podcasts.md) in the listening guide). **Older app
+including ones the Bridge downloads when someone presses Play. Listeners can
+also add shows themselves (directory search, a feed address, an OPML list from
+another app), export the shows they follow and ask a show to check for new
+episodes (see [Podcasts](../listening/podcasts.md) in the listening guide). **Older app
 builds don't show podcasts at all**, even to an admin: update the app. The web
 player your server serves is the one built into it, so it shows podcasts once
 the server is up to date.
 
-There is no follow-by-URL, search or import screen in the player or the console
-yet; following a new feed, checking feeds, searching podcast directories and
-OPML import and export are available through the
+The console has no screen for following shows, searching directories or OPML:
+use the player (signed in as yourself) or the
 [developer API](/developers/server/api/reference#podcasts).
 :::
 
@@ -30,8 +31,7 @@ when an admin requests one through the API, or when a compatible client asks
 to play an episode whose audio is missing. It also saves supported MP3 chapter
 markers, and it can
 [search podcast directories and import or export OPML subscription lists](#finding-shows-and-moving-subscriptions).
-External chapter files and transcripts arrive later. The player shows
-on-demand fetching; it does not offer search or OPML yet.
+External chapter files and transcripts arrive later.
 
 ## Set up a podcast library
 
@@ -185,10 +185,12 @@ choosing Archive.
 
 ## Following and feed checks
 
-Through the API, an adult with access to the whole podcast library can follow
-a feed by its URL. In the player (2.2.0 and later), anyone but a kid's account
-or the demo can follow a show already in the library from its page, while the
-module is on and the Bridge is online. Following a visible show already in the library is immediate;
+An adult with access to the whole podcast library can follow a feed by its
+URL, in the player's **Add shows** page or through the API. In the player
+(2.2.0 and later), anyone but a kid's account or the demo can follow a show
+already in the library from its page, add shows and press **Check for new
+episodes** on a show they follow, while the module is on and the Bridge is
+online. Following a visible show already in the library is immediate;
 a new feed waits for the Bridge to validate and save it. Following also lets
 the server schedule downloads selected by the show's policy. Each person can have
 at most five follow requests open at once. Kids and demo accounts cannot
@@ -211,10 +213,12 @@ badge) and episodes already on the server still play.
 ## Finding shows and moving subscriptions
 
 The server can search public podcast directories and read or write OPML, the
-file podcast apps use to move a list of subscriptions. Both are available
-through the [developer API](/developers/server/api/reference#podcast-discovery)
-for now; no screen in the console or the released apps uses them yet. Kids and
-demo accounts cannot search or import.
+file podcast apps use to move a list of subscriptions. Listeners use them from
+the player's **Add shows** page and the Shows **...** menu (see
+[Adding shows](../listening/podcasts.md#adding-shows)); they are also in the
+[developer API](/developers/server/api/reference#podcast-discovery). The
+console has no screen for them. Kids and demo accounts cannot search or
+import.
 
 ### Searching podcast directories
 
@@ -251,11 +255,12 @@ anything. Folders in the file are flattened; titles are ignored.
 requests, and each person can have at most five open at once. Shows already in
 the library are followed straight away and do not count. The rest of the list
 is reported as waiting: import the same file again once those requests finish,
-and the next five go ahead. Entries already followed are reported as such, so
-importing again is safe. Private feeds in the file are recognised
+and the next five go ahead (the player does this by itself while its import page
+is open). Entries already followed are reported as such, so importing again is
+safe. Private feeds in the file are recognised
 [as when following by URL](#private-feeds), but an import cannot mark any
-other feed private: follow such a members-only feed by URL through the API
-with `private` set.
+other feed private: follow such a members-only feed by its address with the
+player's **Private feed** switch on (or through the developer API, marking it private).
 
 Exporting writes every public show the person follows, across their podcast
 libraries, as an OPML file another app can import. It works while the module is

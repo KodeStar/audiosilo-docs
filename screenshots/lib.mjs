@@ -19,6 +19,15 @@ export const MIN = 60_000;
 export const HOUR = 60 * MIN;
 export const DAY = 24 * HOUR;
 export const isoAgo = (ms) => new Date(Date.now() - ms).toISOString();
+// RFC 3339 without milliseconds (as the Bridge writes it), for the epoch time `ms`.
+export const stamp = (ms) => new Date(ms).toISOString().replace(/\.\d+Z$/, 'Z');
+
+// A name as a file or URL slug ("The Slow Kitchen" -> "the-slow-kitchen").
+export const slug = (s) => s.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
+
+// Where seed-podcasts.mjs writes the made-up directory's artwork for the podcast root
+// `root` (beside it, so the library scan never sees it).
+export const PODCAST_DIRECTORY = (root) => path.join(path.dirname(path.resolve(root)), 'podcast-directory');
 
 // A content path as the API's `?path=` query.
 export const pathQuery = (relPath) => `?path=${encodeURIComponent(relPath)}`;

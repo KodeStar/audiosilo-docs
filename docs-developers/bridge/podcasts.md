@@ -1,6 +1,6 @@
 ---
 title: "Podcasts"
-description: "Podcast jobs, on-demand fetch/status/Retry, discovery and OPML, the player (2d-1) and its discovery handoff (2d-2), queue prefetch, pinned generations, guarded downloads, retention, publication recovery, CHAP attachments and private feed secrets."
+description: "Podcast jobs, on-demand fetch/status/Retry, discovery and OPML, the player (2d-1) and its discovery and OPML screens (2d-2), queue prefetch, pinned generations, guarded downloads, retention, publication recovery, CHAP attachments and private feed secrets."
 ---
 
 ## Scope and ownership
@@ -29,8 +29,9 @@ intents, status/Retry routes and a bounded stream wait. Phase 2c-3 adds
 server-side [directory search and OPML import/export](#discovery-and-opml-transfer)
 with no Bridge change. Phase 2d-1 adds the [player](#player-phase-2d-1)
 (shows, show and episode pages, following, Home's New episodes, on-demand
-play) with no Bridge change; discovery, follow by URL and OPML in the player
-are [Phase 2d-2](#player-handoff-discovery-and-opml-phase-2d-2-not-implemented).
+play) with no Bridge change; Phase 2d-2 adds [discovery, follow by URL, OPML
+and Check for new episodes](#player-discovery-and-opml-phase-2d-2) to the
+player, with a CORS change on the server only.
 External chapters and transcripts arrive later.
 Players from **2.2.0** (`auth.PodcastPlayerMinVersion`), the admin console
 and `AudioSilo/dev` see podcast libraries; 2.1.x and older players, the
@@ -395,7 +396,7 @@ the optional abort `signal`:
 |---|---|
 | `podcastShows(libraryId)` | `GET /libraries/{id}/podcasts`, unwrapped to `PodcastShow[]` |
 | `podcastEpisodes(libraryId, {show, order, limit?, cursor?})` | `GET /libraries/{id}/podcasts/episodes`, a `PodcastEpisodePage` |
-| `myPodcasts()` | `GET /me/podcasts` (`requests` is unused until 2d-2) |
+| `myPodcasts()` | `GET /me/podcasts` (its `requests` are the follow requests [2d-2](#player-discovery-and-opml-phase-2d-2) shows) |
 | `followPodcast(libraryId, path)` | `POST /podcasts/follow` with exactly `{library_id, path}`; never `private` beside a path |
 | `unfollowPodcast(libraryId, path)` | `DELETE /podcasts/follow?library_id=&path=`, `204` |
 | `podcastFetchStatus(libraryId, path)` | `GET /libraries/{id}/podcasts/fetch?path=`, observation only |
@@ -409,8 +410,9 @@ and `retryAfterSeconds`: the `Retry-After` header when it reads as a
 non-negative number, else `fetch.retry_after_seconds`, else 2). A non-JSON 503
 from a proxy stays a plain `ApiError`. `API_ERROR_CODES` gains `module_off`,
 `bridge_unavailable`, `fetch_limit`, `identity_changed` and `show_not_found`.
-Cross-origin web dev can't read `Retry-After` ([CORS](../server/api/index.md#cors)),
-so the body's value is what it uses there.
+A cross-origin page reads `Retry-After` only from a server that exposes it
+([CORS](../server/api/index.md#cors), Phase 2d-2); from an older one the
+body's value is what it uses.
 
 **Hooks** (`src/api/hooks.ts`). Reads are core and never gated on `podcasts`:
 `usePodcastShows`, `usePodcastEpisodes` (an infinite query, 50 a page,
@@ -472,8 +474,9 @@ An episode never opens the end credits. Kids mode lists no podcast library
 
 Phase 2c-3 adds two server-only flows, with **no Bridge change**: directory
 search, whose results are followed through the existing follow by URL, and
-OPML import and export of subscription lists. Both are API only; the routes,
-shapes and error codes are in the
+OPML import and export of subscription lists. The player's screens for them
+are [Phase 2d-2](#player-discovery-and-opml-phase-2d-2) (the console has
+none); the routes, shapes and error codes are in the
 [API reference](../server/api/reference.md#podcast-discovery).
 
 - **Search runs on the server.** `internal/podcast/discovery` asks Apple's
@@ -504,114 +507,173 @@ shapes and error codes are in the
   follow, an `invalid` row in an import), before anything is queued. The
   canonical hash bytes and the Bridge's URL vectors are unchanged.
 
-### Player handoff: discovery and OPML (Phase 2d-2, not implemented)
+### Player: discovery and OPML (Phase 2d-2)
 
-The server side is implemented; **no player or console screen calls it yet**.
-Players from 2.2.0 pass the podcast client gate (Phase 2d-1) but have no
-search, follow-by-URL or OPML screen. These are proposed additions to the player's
-`src/api/{types,client,hooks}.ts`, mirroring the reviewed wire. Keep every
-new capability optional; every key inside a returned object is required,
-nulls included:
+Players from 2.2.0 search a directory, follow a feed by its address, import
+and export OPML lists and ask a followed show to check for new episodes. The
+screens are in [Frontend: Podcasts](../frontend/podcasts.md#finding-shows);
+this section is the wire mirror and the rules the player keeps. The only
+server change is CORS: an allowed origin may read `Retry-After` and the
+`X-OPML-*` counts and send `Range` ([CORS](../server/api/index.md#cors)). No
+Bridge, console or migration change.
+
+**Types** (`src/api/types.ts`). `Capabilities` gains the optional core flags
+`podcast_discovery` and `podcast_opml` (not `ModuleFlag` entries). Every key
+inside a returned object is always sent, nulls included:
 
 ```ts
 type PodcastDiscoveryProvider = 'itunes' | 'podcast_index';
-interface PodcastDiscoveryProviders {
-  providers: { id: PodcastDiscoveryProvider; available: boolean }[];
-}
-interface PodcastDiscoveryResult {
-  title: string;
-  author: string;
-  feed_url: string;
-  artwork_url: string | null; // relative: /api/v1/podcasts/discovery/artwork?id=<64 hex>
-  provider_ids: { itunes: string | null; podcast_index: string | null };
-  episode_count: number | null;
-  provider_url: string | null;
-}
-interface PodcastDiscoverySearch {
-  provider: PodcastDiscoveryProvider;
-  query: string;
-  country: string | null; // null for podcast_index
-  results: PodcastDiscoveryResult[];
-}
-type PodcastTransferCapabilities = {
-  podcast_discovery?: boolean;
-  podcast_opml?: boolean;
+type PodcastDiscoveryProviders = {
+  providers: { id: PodcastDiscoveryProvider | (string & {}); available: boolean }[];
 };
-// Merge these optional flags into Capabilities. They are core flags,
-// not ModuleFlag entries.
+type PodcastDiscoveryResult = {
+  title: string; author: string;
+  feed_url: string;               // normalized public address: what a follow sends
+  artwork_url: string | null;     // relative: /api/v1/podcasts/discovery/artwork?id=<64 hex>
+  provider_ids: { itunes: string | null; podcast_index: string | null }; // strings, they exceed 2^53
+  episode_count: number | null; provider_url: string | null;
+};
+type PodcastDiscoverySearch = {
+  provider: PodcastDiscoveryProvider; query: string;
+  country: string | null;         // null for podcast_index
+  results: PodcastDiscoveryResult[];
+};
+type PodcastCheckResult = { request: { id: number; state: string } }; // POST /podcasts/check 202
+type OpmlImportResult = { library_id: number; rows: OpmlImportRow[] };
+type OpmlExport = {               // client-side: the body and the X-OPML-* counts
+  text: string; exported: number | null;
+  omittedPrivate: number | null; omittedUnavailable: number | null;
+};
 ```
 
-Mirror `OpmlRowStatus`, `OpmlImportRow` and `OpmlImportResult` from the
-[import reference](../server/api/reference.md#post-apiv1podcastsopmlimport), which is their one
-written copy.
+`OpmlRowStatus` and `OpmlImportRow` mirror the
+[import reference](../server/api/reference.md#post-apiv1podcastsopmlimport),
+their one written copy.
 
-What 2d-2 has to get right:
+**Client** (`src/api/client.ts`):
 
-- **Capability flags.** Treat an absent `podcast_discovery` or `podcast_opml`
-  as unsupported ([what they mean](../server/api/index.md#capability-flags---gate-your-features)).
-  Neither says the caller may use them: handle `403 kid_account`,
-  `403 demo_account`, `403 no_library_access` and `404 module_off` /
-  `discovery_off` from the routes.
-- **Provider selection.** Read `GET /podcasts/discovery/providers` and let the
-  person pick; send `provider=podcast_index` only when it is `available`
-  (otherwise `409 provider_unavailable`). There is no fallback and no merged
-  list, so never retry a failed search on the other provider silently. Send
-  `country` only for iTunes (`400 invalid_country` for Podcast Index); do not
-  derive it from `metadata.region`. Keep provider ids as strings (they exceed
-  2^53). Before building the UI, check each directory's current display,
-  attribution and quota terms; credit the provider and link `provider_url`.
-- **Artwork.** `artwork_url` is relative to the server. Load it through the
-  normal media-token helper (the route takes a session or API key as
-  `?token=`, nothing else), use a placeholder for `null`, a `404
-  artwork_not_found` (ids expire) or a `502`. The server fetches uncached
-  images only a few at a time, so a full results grid can get `429`/`503`
-  for some: load artwork lazily and retry those later rather than keeping the
-  placeholder. The existing CSP needs no change: images come only from the
-  server.
-- **Rate limits.** The per-person search budget is small
-  ([budgets](../server/api/reference.md#podcast-discovery)): search on submit, not while typing, and
-  reuse the held results when the query, provider, country and limit are
-  unchanged. Honour `Retry-After` on `429` and `503`; cross-origin web dev
-  cannot read it ([CORS](../server/api/index.md#cors)), so fall back to a
-  fixed wait.
-- **Following a result.** `POST /podcasts/follow` with `{library_id,
-  feed_url}`: `200 following` for a show the library has, `202 subscribing`
-  with a Request otherwise. The library must be one the person holds whole
-  and the Bridge must be online for a new feed.
-- **Import waves.** Send the file's bytes as the raw body with
-  `Content-Type: text/x-opml` (or `application/xml`), no compression, to
-  `POST /podcasts/opml/import?library_id=`. Keep the uploaded bytes locally
-  for the screen's life: the server keeps nothing. A `200` holds one row per
-  subscription; show them by `outline_index`. A long list answers `limited`
-  past the [wave](../server/api/reference.md#post-apiv1podcastsopmlimport). The player may re-submit
-  the same bytes automatically: poll
-  [`GET /me/podcasts`](../server/api/reference.md#podcast-read-routes) every few seconds only while a
-  row's request is still open, then upload again once those end and the import
-  budget allows (about one upload every 30 seconds; `429 opml_rate_limited`
-  and `503 opml_busy` carry `Retry-After`). Stop when no row is `limited`, or
-  when a wave admits nothing new (offer a manual retry). Treat `unavailable`
-  rows (`bridge_unavailable`, `library_not_writable`, `module_off`) as needing
-  the person or admin, not an automatic loop. A `503 request timed out` or a
-  dropped connection may leave earlier rows committed: re-uploading is safe.
-- **Per-row retry.** A `limited` or `unavailable` row is retried by a later
-  upload, a row in `error` with `privacy_conflict` after its open request
-  ends; `invalid` and `duplicate` rows never succeed by retrying. A queued
-  private row whose request later fails `request_expired` (server restart
-  before the claim) also recovers by uploading again.
-- **Export.** `GET /podcasts/opml/export` with the `Authorization` header
-  (no `?token=` link exists), then save or share the body as
-  `audiosilo-subscriptions.opml`. Read the counts from `X-OPML-Exported`,
-  `X-OPML-Omitted-Private` and `X-OPML-Omitted-Unavailable` and tell the person
-  when shows were left out: **private feeds are never exported**, for anyone,
-  and there is no option to include them. Cross-origin web dev cannot read
-  these headers ([CORS](../server/api/index.md#cors)); the served `/web`
-  player and native apps can. A list too large to export is
-  `413 opml_export_limit`, never a truncated file.
+| Method | Request |
+|---|---|
+| `podcastDiscoveryProviders()` | `GET /podcasts/discovery/providers` |
+| `searchPodcastDirectory({q, provider, country?, limit?})` | `GET /podcasts/discovery/search`; `country` is sent only with `provider=itunes` |
+| `discoveryArtworkUrl(rel)` | no request: the artwork route rebuilt from the result's 64-hex `id` with the media token (`?id=&token=`); `null`, an absolute URL, another route or a bad id gives `null` (the placeholder) |
+| `followPodcastByUrl(libraryId, feedUrl, {private})` | `POST /podcasts/follow` with exactly `{library_id, feed_url}`, plus `private: true` only when set |
+| `checkPodcast(libraryId, path)` | `POST /podcasts/check` with exactly `{library_id, path}` |
+| `importOpml(libraryId, body)` | `POST /podcasts/opml/import?library_id=` with the raw bytes (a `Blob` on the web, a `Uint8Array` on a device; `send()`'s `raw` body), always `Content-Type: text/x-opml`, no compression, a timeout of at least 45 s (the client's own when longer; the server's import budget is 30 s) |
+| `exportOpml()` | `GET /podcasts/opml/export` with the `Authorization` header (no `?token=` link exists); the counts read through `Headers.get`, so Go's `X-Opml-*` spelling matches, and a missing or non-numeric one is `null` |
 
-Copy the shared goldens into the player's tests when 2d-2 starts: the server
-keeps them byte-identical in `internal/podcast/testdata/phase2c3/`
-(`providers/*-normalized.json`, `opml/duplicates-private-expected.json`,
-`opml/export-expected.opml`, `opml/export-expected-headers.json`, `wire.json`).
+`ApiError` gains an optional `retryAfterSeconds`: `Retry-After` when it
+reads as a non-negative number, on any status (a date, or a header the
+browser can't read, is absent). `API_ERROR_CODES` adds `privacy_conflict`,
+`too_many_requests`, `checked_recently`, `invalid_feed_url`,
+`no_library_access`, `not_podcast_library`, the discovery codes
+(`discovery_off`, `provider_unavailable`, `invalid_query`, `invalid_country`,
+`discovery_rate_limited`, `provider_rate_limited`, `discovery_busy`,
+`discovery_timeout`, `provider_rejected`, `discovery_unavailable`) and the
+OPML codes (`opml_rate_limited`, `opml_busy`, `opml_limit`, `invalid_opml`,
+`unsupported_opml_type`, `opml_export_limit`).
+
+**Hooks** (`src/api/hooks.ts`):
+
+- `usePodcastDiscoveryProviders` and `usePodcastSearch(params | null)` are
+  `useCapabilityQuery('podcast_discovery', ...)` with `staleTime` 15 minutes
+  (the server's own cache) and `retry: false`; `null` params ask nothing. Keys
+  `['discoveryProviders', cid]` and
+  `['discoverySearch', cid, provider, q, country, limit]`, so an unchanged
+  repeat reuses the held results.
+- `useFollowPodcastByUrl` and `useCheckPodcast` are
+  `useCapabilityMutation('podcasts', ...)`; `useExportOpml` is
+  `useCapabilityMutation('podcast_opml', ...)`. A `200 following` goes into
+  the cached show list (`storeFollowing`; the list is read again when it lacks
+  the show) and `['myPodcasts', cid]` is read again; a `202 subscribing`
+  request goes to the head of the cached follow requests (`storeAnswer`, so a
+  poll already in flight can't land over it).
+- `useFollowRequests(libraryId, {active})` selects one library's
+  `GET /me/podcasts` `requests`, open first then ended, newest first
+  (`libraryRequests` in `src/lib/podcast-requests.ts`). It reads again every
+  5 s (`FOLLOW_REQUEST_POLL_MS`) only while one of them is open (`queued`,
+  `claimed`, `running` or `needs_attention`: `isOpenRequest`, the Bridge
+  job's open states), its screen is focused (`active`) and the app is in the
+  foreground, so nothing polls once they have all ended. `myPodcastsQuery`
+  compares each answer with the last: a request it saw open that now reads
+  `done` reads its library's show list again, whichever screen asked.
+
+**The rules the player keeps:**
+
+- **Flags.** An absent `podcast_discovery` or `podcast_opml` reads as
+  unsupported. Adding shows (the page and its entry points) needs
+  `podcasts === true` and is never offered to a kid's account or the demo;
+  inside, Search needs `podcast_discovery`, Import needs `podcast_opml`, the
+  feed address is always there. Export needs `podcast_opml` and not the demo,
+  and works with the module off. Check for new episodes is for a followed
+  show under the same rule as adding. The flags don't describe the caller, so
+  the refusals (`kid_account`, `demo_account`, `no_library_access`,
+  `module_off`, `discovery_off`, `not_podcast_library`) still have their own
+  wording.
+- **Search on submit only**, never while typing: the text trimmed with its
+  whitespace runs collapsed (as the server cleans it) and at least two code
+  points, `limit` 20 sent explicitly. The same search again reuses the held
+  results; it is asked again only after it failed. Apple Podcasts unless
+  `podcast_index` is `available`, when a picker chooses; a failed search is
+  never retried on the other provider. `country` is the device locale's
+  `regionCode` (expo-localization) when it is two letters A-Z, for iTunes
+  only, never `metadata.region`; otherwise it is left out (the server's
+  default, US). The list is captioned with the provider ("Results from Apple
+  Podcasts") and each result links its `provider_url`. A `429` shows its
+  `Retry-After` wait when it has one.
+- **Artwork** loads only through the server's proxy (`discoveryArtworkUrl`),
+  lazily as the list windows rows in. An image can't see the status and the
+  route refuses any extra parameter (no cache buster), so a failed load (the
+  server fetches uncached images a few at a time: `429`/`503`) mounts the
+  image again with the same URL after 3, 10 and 30 seconds
+  (`artworkRetryDelay`, four tries in all), then keeps the placeholder (an
+  expired id is a `404` every time).
+- **Follow by address** checks the address first (http or https with a host,
+  at most 2,048 bytes), so a bad one sends nothing. A result's Follow is the
+  same call with its `feed_url`.
+- **Import waves** (`OpmlWaves`, `src/components/podcasts/opml-waves.ts`,
+  framework-free with its own timers; `useOpmlImport` keeps it, and the
+  picked bytes, for the Find shows page's life). A file over 1 MiB is refused
+  before any upload. Each upload's rows merge by `outline_index` (the latest
+  answer wins). No `limited` row left: `done`. Otherwise the next upload of
+  the same bytes waits until every request this import queued (`queued` and
+  `already_queued` rows' `request_id`) is no longer open in
+  `GET /me/podcasts` (absent counts as ended; read every 5 s), fewer than five
+  of the caller's requests are open, and 30 seconds have passed since the last
+  upload. `unavailable` rows never start a wave: a `done` import with some
+  left offers a manual Try again (`canRetryImport`), which uploads once more.
+  The panel reads each queued row's request live, so the import reads done
+  ("All done.") only once none is still being added. A wave that moves no row out
+  of `limited` stops as `stalled` (Try again). `429 opml_rate_limited` and
+  `503 opml_busy` wait their `Retry-After` (else 30 s and 2 s); five such
+  answers in a row stop it. Any other refusal stops as `failed` with its code,
+  and a network failure or a timeout as `failed` with none; Try again
+  re-uploads, which is safe (rows already done answer `already_following` or
+  `already_queued`). The controller holds its timers in the background and
+  looks again at once on the way back, checks `mayActFor` before each upload,
+  and sends nothing more after Stop or once the page is gone.
+- **Export** reads the counts from the `X-OPML-*` headers; a count that
+  reads `null` gives "Exported your shows", and `413 opml_export_limit` has
+  its own message. How it is saved:
+  [Entry points](../frontend/podcasts.md#entry-points).
+- **Check for new episodes** refreshes once after the `202`, with no polling,
+  since a check is not a follow request; `429 checked_recently` and
+  `bridge_unavailable` have their own wording. The button and its timer:
+  [Check for new episodes](../frontend/podcasts.md#check-for-new-episodes).
+- **Copy** never shows the server's English and never says "Bridge":
+  refusals read through `find-shows-model.ts`, and a failed request's
+  `error.code` through `requestReasonKey` (`podcast-model.ts`: `dns`,
+  `timeout`, `tls`, `network` could not reach the feed; `not_a_feed`,
+  `not_a_podcast`; `gone` and `http_*`; `request_expired` and
+  `feed_secret_missing` ask to follow again), all six locales.
+
+**Goldens.** The player keeps the server's
+`internal/podcast/testdata/phase2c3/` files it reads byte-identical in
+`src/testing/podcast-fixtures/phase2c3/` (`wire.json`,
+`providers/*-normalized.json`, `opml/duplicates-private-expected.json`,
+`opml/export-expected.opml`, `opml/export-expected-headers.json`,
+`opml/queue-cap.opml`), and `podcast-fixtures-2c3.test.ts` checks each one's
+SHA-256 against the copied `manifest.json`.
 
 ## Retention policy and deletion authority
 
