@@ -418,13 +418,9 @@ Since podcasts are shown only to an identified 2.2.0 or later player, the
 cross-origin dev loop shows none unless a development build opts in with
 `EXPO_PUBLIC_IDENTIFY_CROSS_ORIGIN=1` (never in a production build).
 
-For an allowed origin the server also lists `Range` (the episode probe's
-`Range: bytes=0-0` from a script with the `Authorization` header) and exposes
-`Retry-After` and the OPML export's `X-OPML-*` counts (Phase 2d-2). An older
-server exposes none, so the player reads `Retry-After` as absent (falling back
-to a body value or a fixed wait) and the counts as unknown cross-origin; the
-served `/web` player and native apps read them either way. See
-[CORS](../server/api/index.md#cors).
+For an allowed origin the server also allows `Range` and exposes
+`Retry-After` and the OPML export's `X-OPML-*` counts (Phase 2d-2), with what
+an older server means for the player: [CORS](../server/api/index.md#cors).
 
 **A change requires:** nothing structural - just remember self-signed TLS (the
 server default) needs trusting in the browser, or use `AUDIOSILO_TLS_MODE=off`

@@ -44,6 +44,7 @@ import {
   shoot,
   sleep,
   slug,
+  stamp,
   step,
   tid,
   wanted,
@@ -1008,10 +1009,13 @@ const PODCAST_SHOW = 'The Lantern Archive';
 const PODCAST_FETCH_SHOW = 'Field Notes at Dawn';
 const PHONE = {width: 430, height: 932};
 
-// The fixture's shows, each with its feed.json as run.sh wrote it.
+// The fixture's shows, each with its feed.json as run.sh wrote it, and its directory.
 function podcastFixture() {
-  const {shows} = JSON.parse(readFileSync(path.join(FIXTURES, 'podcasts.json'), 'utf8'));
-  return shows.map((s) => ({...s, feed: JSON.parse(readFileSync(path.join(PODCASTS_DIR, s.folder, 'feed.json'), 'utf8'))}));
+  const {shows, directory} = JSON.parse(readFileSync(path.join(FIXTURES, 'podcasts.json'), 'utf8'));
+  return {
+    shows: shows.map((s) => ({...s, feed: JSON.parse(readFileSync(path.join(PODCASTS_DIR, s.folder, 'feed.json'), 'utf8'))})),
+    directory,
+  };
 }
 
 // The newest id in a server feed table (sqlite3), so teardown removes only this pass's rows.
@@ -1020,7 +1024,7 @@ const lastId = (table) => Number(sqlite(`SELECT COALESCE(MAX(id), 0) FROM ${tabl
 async function provisionPodcasts(pod) {
   if (!ADMIN_PASSWORD) throw new Error('ADMIN_PASSWORD not set: no podcast library to add');
   if (!existsSync(PODCASTS_DIR)) throw new Error(`no seeded shows at ${PODCASTS_DIR} (run.sh section 2c)`);
-  pod.shows = podcastFixture();
+  Object.assign(pod, podcastFixture());
   pod.marks = {audit: lastId('audit_events'), events: lastId('server_events')};
   const {token} = await api(null, 'POST', '/auth/login', {username: 'admin', password: ADMIN_PASSWORD}, PODCAST_CLIENT);
   pod.admin = token;
@@ -1197,16 +1201,9 @@ async function capturePodcasts(pod) {
 }
 
 // ── Podcasts: Find shows (Bridge Phase 2d-2) ────────────────────────────────
-// Every way in ends in a follow, which needs the Podcasts module AND an online Bridge
-// (`capabilities.podcasts`), and a search would reach Apple: neither happens here. So
-// these shots stand in for the server on their own browser context only (Playwright
-// routes, README.md): `/server` says `podcasts`, `podcast_discovery` and `podcast_opml`;
-// the directory's providers, search and artwork answer from the fixture's `directory`
-// (seed-podcasts.mjs drew the artwork); a follow by address answers 200 following for a
-// seeded show and 202 with a new request otherwise; `/me/podcasts` is the real answer
-// with this pass's made-up follow requests; and the OPML import answers its first wave
-// (seven of ten following or on their way, three limited) while its five requests stay
-// open, so the import page holds on "Waiting for the shows being added".
+// Every way in ends in a follow, which needs an online Bridge, and a search would reach
+// Apple, so these shots stand in for the server on their own browser contexts with
+// Playwright routes. What each route answers: README.md (the Add shows shots).
 const FIND_SHOTS = {
   search: 'web-player/find-shows-search.png',
   address: 'web-player/find-shows-address.png',
@@ -1214,19 +1211,24 @@ const FIND_SHOTS = {
   phone: 'web-player/phone-find-shows.png',
 };
 const FIND_QUERY = 'kitchen';
-const stampAgo = (ms) => isoAgo(ms).replace(/\.\d+Z$/, 'Z');
+// A feed address as the server shows it in a request or an import row (its origin only).
+const feedLabel = (url) => url.replace(/^(https?:\/\/[^/]+).*$/, '$1/...');
+// The directory result standing for a seeded show (Follow answers 200 following) and the
+// first one that is new (Follow answers 202 with a request).
+const seededResult = (pod) => pod.directory.find((d) => d.folder);
+const newResult = (pod) => pod.directory.find((d) => !d.folder);
 
 // The made-up directory's results (the server's PodcastDiscoverySearch shape), and the
-// artwork file behind each result's proxy id.
+// artwork behind each result's proxy id (read once; a missing file answers 404).
 function findShowsDirectory(pod) {
-  const {directory} = JSON.parse(readFileSync(path.join(FIXTURES, 'podcasts.json'), 'utf8'));
   const art = new Map();
-  const results = directory.map((d) => {
+  const results = pod.directory.map((d) => {
     const name = slug(d.title);
     const seeded = d.folder ? pod.shows.find((s) => s.folder === d.folder) : null;
     const id = createHash('sha256').update(`directory:${name}`).digest('hex');
     if (d.artwork !== false) {
-      art.set(id, seeded ? path.join(PODCASTS_DIR, d.folder, 'cover.jpg') : path.join(PODCAST_DIRECTORY(PODCASTS_DIR), `${name}.jpg`));
+      const file = seeded ? path.join(PODCASTS_DIR, d.folder, 'cover.jpg') : path.join(PODCAST_DIRECTORY(PODCASTS_DIR), `${name}.jpg`);
+      if (existsSync(file)) art.set(id, readFileSync(file));
     }
     return {
       title: d.title,
@@ -1260,9 +1262,9 @@ async function routeFindShows(ctx, pod, stand) {
     return json(route, 200, {provider: 'itunes', query: q.get('q') ?? '', country: q.get('country') ?? 'US', results: stand.directory.results});
   });
   await ctx.route(at('/podcasts/discovery/artwork'), (route) => {
-    const file = stand.directory.art.get(new URL(route.request().url()).searchParams.get('id'));
-    if (!file || !existsSync(file)) return json(route, 404, {error: 'artwork not found', code: 'artwork_not_found'});
-    return route.fulfill({status: 200, contentType: 'image/jpeg', body: readFileSync(file)});
+    const body = stand.directory.art.get(new URL(route.request().url()).searchParams.get('id'));
+    if (!body) return json(route, 404, {error: 'artwork not found', code: 'artwork_not_found'});
+    return route.fulfill({status: 200, contentType: 'image/jpeg', body});
   });
   await ctx.route(at('/podcasts/follow'), (route) => {
     if (route.request().method() !== 'POST') return route.continue();
@@ -1272,7 +1274,7 @@ async function routeFindShows(ctx, pod, stand) {
       const show = stand.shows.find((s) => s.path === seeded.folder);
       return json(route, 200, {state: 'following', show: {...show, following: true}});
     }
-    const request = stand.request(stand.nextId++, 'queued', feedUrl.replace(/^(https?:\/\/[^/]+).*$/, '$1/...'), 0, {private: isPrivate === true});
+    const request = stand.request(stand.nextId++, 'queued', feedLabel(feedUrl), 0, {private: isPrivate === true});
     stand.requests.unshift(request);
     return json(route, 202, {state: 'subscribing', request});
   });
@@ -1294,7 +1296,7 @@ async function findShowsStand(pod) {
   const shows = (await api(pod.admin, 'GET', `/libraries/${pod.library.id}/podcasts`, undefined, PODCAST_CLIENT))?.shows ?? [];
   const request = (id, state, feed, ago, extra = {}) => ({
     id, library_id: pod.library.id, state, feed, private: false, show_path: null, error: null,
-    created_at: stampAgo(ago), updated_at: stampAgo(Math.max(0, ago - MIN)), ...extra,
+    created_at: stamp(Date.now() - ago), updated_at: stamp(Date.now() - Math.max(0, ago - MIN)), ...extra,
   });
   const imported = [
     ['feeds.marketday.example', 'queued'], ['audio.hillwalkers.example', 'queued'], ['rss.quietpages.example', 'queued'],
@@ -1304,17 +1306,17 @@ async function findShowsStand(pod) {
   const row = (outline_index, status, extra = {}) => ({
     outline_index, status, feed: null, private: false, path: null, request_id: null, duplicate_of: null, error: null, ...extra,
   });
-  const slow = pod.shows.find((s) => s.folder === 'The Slow Kitchen');
+  const slow = pod.shows.find((s) => s.folder === seededResult(pod).folder);
   const lantern = pod.shows.find((s) => s.folder === PODCAST_SHOW);
   const importRows = [
-    row(2, 'followed', {feed: slow.feed.feed_url.replace(/^(https?:\/\/[^/]+).*$/, '$1/...'), path: slow.folder}),
-    row(3, 'already_following', {feed: lantern.feed.feed_url.replace(/^(https?:\/\/[^/]+).*$/, '$1/...'), path: lantern.folder}),
+    row(2, 'followed', {feed: feedLabel(slow.feed.feed_url), path: slow.folder}),
+    row(3, 'already_following', {feed: feedLabel(lantern.feed.feed_url), path: lantern.folder}),
     ...importRequests.map((r, i) => row(4 + i, 'queued', {feed: r.feed, private: r.private, request_id: r.id})),
     row(9, 'duplicate', {feed: importRequests[0].feed, duplicate_of: 4}),
     row(10, 'invalid', {error: {code: 'invalid_feed_url', message: 'invalid feed URL'}}),
-    row(12, 'limited', {feed: 'https://feeds.northlight.example/...'}),
-    row(13, 'limited', {feed: 'https://audio.cellarclub.example/...'}),
-    row(14, 'limited', {feed: 'https://rss.weekendwalks.example/...'}),
+    ...['feeds.northlight.example', 'audio.cellarclub.example', 'rss.weekendwalks.example'].map((host, i) =>
+      row(12 + i, 'limited', {feed: `https://${host}/...`}),
+    ),
   ];
   return {
     shows,
@@ -1349,9 +1351,9 @@ async function captureFindShows(ctx, pod, cid) {
     await tid(p, 'directory-search-submit').click({timeout: 8000});
     await firstVisible(p.getByTestId('discovery-result')).waitFor({timeout: 15000});
     if (follow) {
-      await p.getByRole('button', {name: 'Follow The Slow Kitchen'}).click({timeout: 8000});
+      await p.getByRole('button', {name: `Follow ${seededResult(pod).title}`}).click({timeout: 8000});
       await firstVisible(p.getByRole('button', {name: 'Open show'})).waitFor({timeout: 15000});
-      await p.getByRole('button', {name: 'Follow The Kitchen Garden Hour'}).click({timeout: 8000});
+      await p.getByRole('button', {name: `Follow ${newResult(pod).title}`}).click({timeout: 8000});
       await tid(p, 'discovery-result-adding').waitFor({timeout: 15000});
     }
     await sleep(2000); // the artwork
@@ -1411,7 +1413,7 @@ async function captureFindShows(ctx, pod, cid) {
 
 if (wanted(...Object.values(PODCAST_SHOTS), ...Object.values(FIND_SHOTS))) {
   console.log('== podcasts ==');
-  const pod = {admin: null, library: null, moduleOn: false, shows: [], marks: null};
+  const pod = {admin: null, library: null, moduleOn: false, shows: [], directory: [], marks: null};
   try {
     await step('provision podcasts', () => provisionPodcasts(pod));
     if (pod.library) await step('podcasts', () => capturePodcasts(pod));

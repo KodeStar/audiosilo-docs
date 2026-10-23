@@ -19,7 +19,7 @@ import {spawnSync} from 'node:child_process';
 import {existsSync, mkdirSync, readFileSync, rmSync, statSync, writeFileSync} from 'node:fs';
 import path from 'node:path';
 
-import {DAY, FIXTURES, HOUR, PODCAST_DIRECTORY, ffmpeg, silence, slug} from './lib.mjs';
+import {DAY, FIXTURES, HOUR, PODCAST_DIRECTORY, ffmpeg, silence, slug, stamp} from './lib.mjs';
 
 const root = process.argv[2];
 if (!root) {
@@ -29,8 +29,6 @@ if (!root) {
 const {shows, directory} = JSON.parse(readFileSync(path.join(FIXTURES, 'podcasts.json'), 'utf8'));
 
 const sha256 = (data) => createHash('sha256').update(data).digest('hex');
-// RFC 3339 without milliseconds, as the Bridge writes it.
-const stamp = (ms) => new Date(ms).toISOString().replace(/\.\d+Z$/, 'Z');
 
 // A font for the covers' text (drawtext needs a file on macOS); without one the cover
 // is the gradient alone.

@@ -649,15 +649,14 @@ OPML codes (`opml_rate_limited`, `opml_busy`, `opml_limit`, `invalid_opml`,
   `already_queued`). The controller holds its timers in the background and
   looks again at once on the way back, checks `mayActFor` before each upload,
   and sends nothing more after Stop or once the page is gone.
-- **Export** is saved the Journal's way (`saveExport`: a download on the
-  web, the share sheet on a device) as `audiosilo-subscriptions.opml`, then a
-  toast with the counts. A count that reads `null` gives "Exported your
-  shows", and the toast always says private feeds are never exported.
-  `413 opml_export_limit` has its own message.
-- **Check for new episodes** toasts on `202` and reads the show list and the
-  show's episodes again once, 15 seconds later (the timer ends with the
-  page); there is no polling, since a check is not a follow request.
-  `429 checked_recently` and `bridge_unavailable` have their own wording.
+- **Export** reads the counts from the `X-OPML-*` headers; a count that
+  reads `null` gives "Exported your shows", and `413 opml_export_limit` has
+  its own message. How it is saved:
+  [Entry points](../frontend/podcasts.md#entry-points).
+- **Check for new episodes** refreshes once after the `202`, with no polling,
+  since a check is not a follow request; `429 checked_recently` and
+  `bridge_unavailable` have their own wording. The button and its timer:
+  [Check for new episodes](../frontend/podcasts.md#check-for-new-episodes).
 - **Copy** never shows the server's English and never says "Bridge":
   refusals read through `find-shows-model.ts`, and a failed request's
   `error.code` through `requestReasonKey` (`podcast-model.ts`: `dns`,

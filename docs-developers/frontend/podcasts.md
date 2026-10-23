@@ -367,11 +367,10 @@ removal, `fetch_limit`, `identity_changed`); `start-book.test.ts` and
 `library-modes.test.ts` and `new-episodes-model.test.ts` the rules; component
 tests cover the show page, rows, the panel and strip, the Library and Home.
 
-Finding shows (Phase 2d-2): `src/testing/podcast-fixtures/phase2c3/` holds the
-server's `internal/podcast/testdata/phase2c3/` goldens byte-identical, read
-through `src/testing/podcast-fixtures-2c3.ts`, and
-`podcast-fixtures-2c3.test.ts` checks each file's SHA-256 against its
-`manifest.json`. `client.test.ts` covers each new method's exact URL, body
+Finding shows (Phase 2d-2): the server's goldens are copied byte-identical
+into `src/testing/podcast-fixtures/phase2c3/` and read through
+`src/testing/podcast-fixtures-2c3.ts` (the list and the SHA-256 check:
+[Player: discovery and OPML](../bridge/podcasts.md#player-discovery-and-opml-phase-2d-2)). `client.test.ts` covers each new method's exact URL, body
 and headers and the refusal codes through `apiErrorKind` (with
 `retryAfterSeconds` read and absent); `hooks-podcasts.test.tsx` the search and
 provider queries, the follow and check mutations' cache writes and
