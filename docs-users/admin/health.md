@@ -74,7 +74,8 @@ disk. Click the title or cover to open the book's page.
   chapters** in **More detailed chapters available**, and **Detect chapters**
   in **Long books without chapters** (one confirmation for them all).
   **Shift-click** a box to select every book from the last one you clicked to
-  this one, [as on Books](books.md#changing-many-books-at-once).
+  this one, [as on Books](books.md#changing-many-books-at-once);
+  Shift-clicking a ticked box clears the run instead.
 - Long lists load 50 books at a time; **Show more** loads the next.
 
 When a list is empty it says **All clear** - the category you were working on
@@ -121,10 +122,8 @@ what it found and apply it.
    narrators and length, the series it belongs to with its position ("Series:
    Alice in Wonderland #2"), and the ASIN with its store. A match to the wrong
    book of a series, or to another series altogether, shows at a glance.
-5. **Confident** matches are ticked; untick any you don't want. **Shift-click**
-   a box to give every book from the last one you clicked to this one the
-   same tick (books already applied, gone or matched since are skipped).
-   **To review** lists matches that scored lower, or only just ahead of another work, and
+5. **Confident** matches are ticked; untick any you don't want. **To review**
+   lists matches that scored lower, or only just ahead of another work, and
    matches whose recording is another length than the book, however well they
    scored. Those say so in both lengths ("Held for review: the book is 10h 34m
    long, this recording 7h 2m"), as the closest recording can be
@@ -132,7 +131,10 @@ what it found and apply it.
    match dialog over the review. When you accept a match there, you're back on
    the review where you left it, and the book reads **Matched since this run**.
    To look closer first, or to listen to it, the icon beside **Match by hand**
-   opens the book's page in a new tab. **Not found** and **Not checked** list
+   opens the book's page in a new tab. On **Confident** and **To review**,
+   **Shift-click** a box to give every book from the last one you clicked on
+   that list to this one the same tick (books already applied, gone or matched
+   since are skipped). **Not found** and **Not checked** list
    the rest. Each list is ordered best match first.
 
    An apply never writes over a book matched since the run looked, whatever you
