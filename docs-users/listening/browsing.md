@@ -171,7 +171,7 @@ Sharing isn't offered on a demo account.
 - Big folders (more than a couple dozen entries) get a **filter box** ("Filter this folder…") and an **A–Z rail** on the right edge for jumping straight to a letter - a library with thousands of authors stays quick to navigate.
 - Your scroll position is remembered, so backing out of a book returns you to where you were.
 
-With more than one server, each server's libraries sit under its name. If a server doesn't answer, its group says "Couldn't load libraries from &lt;server&gt;." with **Retry**, which asks just that server again. Your other servers' libraries stay where they are. If your sign-in to a server ended, Folders says **Sign in again to &lt;server&gt;** with **Reconnect** instead. Inside a folder it's the same: a folder on a server that needs signing in again shows **Sign in again**, not an error with **Retry**.
+With more than one server, each server's libraries sit under its name. If a server doesn't answer, its group says "Couldn't load libraries from &lt;server&gt;." with **Retry**, which asks just that server again. Your other servers' libraries stay where they are. If your sign-in to a server ended, Folders says **Sign in again to &lt;server&gt;** with **Reconnect** instead. Inside a folder it's the same: a folder on a server that needs signing in again shows **Sign in again to &lt;server&gt;** with **Reconnect**, not an error with **Retry**.
 
 What you see here is what your account has been granted - see [Sharing](../admin/sharing.md) if some of the server's content isn't visible to you.
 

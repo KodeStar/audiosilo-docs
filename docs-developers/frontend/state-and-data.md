@@ -744,9 +744,9 @@ pure (the podcast "New episodes" rail, `use-new-episodes.ts` and
   holding the newest progress marked down, is "Saved on this device, will sync";
   otherwise the newest `updated_at` any server holds. Another server being down
   says nothing about the place: the greeting's servers pill names it, on a
-  phone too, on a row of its own), `nextCandidates` (the Now book, other books in
-  progress, then recently finished, at most `NEXT_CANDIDATES` = 6, one `/next` each
-  on the candidate's own server), `nextInSeriesItems` (an owned next book, else the
+  phone too, where it gets a row of its own under the date), `nextCandidates`
+  (the Now book, other books in progress, then recently finished, at most
+  `NEXT_CANDIDATES` = 6, one `/next` each on the candidate's own server), `nextInSeriesItems` (an owned next book, else the
   community rail's next work as a ghost; books already on Home are skipped and a
   book two candidates lead to shows once), `smartShelves` (Finish what you started,
   Short listens = recently added books in the Library's `len=short` bucket
@@ -1149,12 +1149,14 @@ hammering a dead endpoint:
   connection not already marked down. A capability gate or a cancel says
   nothing. So one slow or broken read never marks a healthy server down, and a
   read answered from a local copy never marks a dead one up (2.4.1,
-  frontend#131). Nothing marks a server down without a check.
-- `noteSuccess(cid)` marks a connection up: a save that got through, or
-  `loadInitialProgress` reading an `ApiError` (the server answered).
+  frontend#131). Apart from the web `offline` event (below), nothing marks a
+  server down without a check.
+- `noteSuccess(cid)` marks a connection up: a save that got through,
+  `loadInitialProgress` reading an `ApiError` (the server answered), or the
+  `/server` query succeeding for a connection marked down (the query cache).
 - `noteAnswer(cid)` counts an answer without changing the state. Every
-  `ApiClient` gets it as its `onAnswer` callback (the provider's clients and
-  the ones `resolveClient` builds for the save loop, the car and the
+  connection's `ApiClient` gets it as its `onAnswer` callback (the provider's
+  clients and the ones `resolveClient` builds for the save loop, the car and the
   downloads), called whenever a fetch resolves, whatever the status. So a check
   that timed out on a slow but healthy server sees that another request was
   answered meanwhile and leaves it up (2.4.1).
@@ -1180,8 +1182,9 @@ hammering a dead endpoint:
   reactively.
 
 Callers in the write paths (`progress-sync`, the history recorder in the player
-store) consult `isReachable()` before firing and call `noteFailure`/`noteSuccess`
-around requests, which is what keeps the classification current without a
+store) consult `isReachable()` before firing and report a failure with
+`noteFailure` (the progress saves also call `noteSuccess` when one gets
+through), which is what keeps the classification current without a
 dedicated heartbeat while healthy.
 
 ## Storage layers

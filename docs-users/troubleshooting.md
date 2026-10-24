@@ -170,7 +170,8 @@ Home) names a server that has stopped answering: "&lt;server&gt; isn't
 answering", with an amber dot. If it's the server you're using, the top bar
 says you're offline instead. When a page or a save of your place fails, the
 app checks the server itself before saying so. A server that is slow but still
-answering is never named, so one slow page or save doesn't trigger it. Books
+answering your other requests isn't named, so one slow page or save doesn't
+trigger it. Books
 from your other servers keep working. Once that server answers again, the note goes and its lists fill in
 by themselves. If it stays, work through
 [I can't reach the server at all](#i-cant-reach-the-server-at-all).
