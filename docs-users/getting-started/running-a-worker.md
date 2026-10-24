@@ -1,6 +1,6 @@
 ---
 title: Running an ASR worker
-description: "Speed up the Bridge's transcription with a worker on a faster computer (a Mac with Apple Silicon, or a PC with an NVIDIA GPU): add it on the Bridge's page, install it as a service, what happens when it is off, and how to remove it."
+description: "Speed up the Bridge's transcription with a worker on a faster computer (a Mac with Apple Silicon, or a PC with an NVIDIA GPU): add it on the Bridge's Workers tab, paste one command, what happens when it is off, updating, installing by hand and removing it."
 ---
 
 ## Running an ASR worker
@@ -22,6 +22,10 @@ and sends the text back. It needs no access to your library and no folders set u
 the Bridge sends it the audio. While a worker is connected, every book's
 transcription goes to it; the rest of the work stays on the Bridge.
 
+A worker works for **one Bridge**, and a computer runs one worker. If you have two
+Bridges, each needs a worker of its own on a different computer: installing a
+second Bridge's worker on the same computer replaces the first.
+
 :::info[Docker on a Mac can't use the graphics chip]
 If your Bridge runs in Docker on a Mac, its own transcription runs on the processor
 only, because Docker on macOS can't reach the graphics chip. Run a worker on the
@@ -30,53 +34,65 @@ same Mac to get the fast speech recognition.
 
 ### What you need
 
-- A [Bridge](running-a-bridge.md) that is running and paired.
-- The worker's computer on the **same local network** as the Bridge. Like the
-  Bridge's page, the worker's connection is refused from the internet and over a
-  VPN address like Tailscale's.
-- The `audiosilo-bridge` program for the worker's computer (macOS or Linux). The
-  Bridge is still in early access, so you build it from its repository for now:
-  `go build -o audiosilo-bridge ./cmd/audiosilo-bridge` (Go 1.26), then put it
-  somewhere it can stay, such as `/usr/local/bin`.
+- A [Bridge](running-a-bridge.md) that is running in Docker and paired. The
+  Bridge's Docker image carries the worker program for every computer a worker
+  runs on, so the worker's computer downloads it from the Bridge: nothing to find
+  or build, and always the same version as the Bridge. (A Bridge run outside
+  Docker has no worker downloads: see [Installing it by hand](#installing-it-by-hand).)
+- The worker's computer on the **same local network** as the Bridge, running
+  macOS or Linux. Like the Bridge's page, the worker's connection (and its
+  download) is refused from the internet and over a VPN address like Tailscale's.
 - On a Mac: **Python 3** and **ffmpeg**, for example from Homebrew
   (`brew install python ffmpeg`). The first start builds the speech recognition
   and downloads its model (about 1.6 GB), which takes a few minutes.
-- On Linux: nothing more. The worker downloads a speech recognition build for
-  your computer (the GPU one when it finds an NVIDIA driver) and its model.
+- On Linux: nothing more (the command uses `curl` and `gzip`, which nearly every
+  Linux has). The worker downloads a speech recognition build for your computer
+  (the GPU one when it finds an NVIDIA driver) and its model.
 
 ### 1. Add the worker on the Bridge's page
 
 1. Open the Bridge's page (`http://<your machine>:8091`) and the **Workers** tab.
 2. Under **Add a worker**, give it a name (the computer it runs on, say) and press
    **Add worker**.
-3. The page shows two commands with the worker's **token**. The token is shown only
-   this once: copy a command before you press **Done**. If you lose it, remove the
+3. The page shows a command with the worker's **token**. The token is shown only
+   this once: press **Copy** before you press **Done**. If you lose it, remove the
    worker and add it again.
 
-The commands use the Bridge's **public address** from its Settings. If the page
-says it is open at a local-only address (like `localhost`), set the public address
-first, or put the Bridge's network address into the command yourself. A worker on
-the same computer as the Bridge can use `localhost`.
+The command uses the Bridge's **public address** from its Settings, else the
+address you opened the page at. If the page says it is open at a local-only
+address (like `localhost`), set the public address first, or put the Bridge's
+network address into the command yourself. A worker on the same computer as the
+Bridge can use `localhost`.
 
-### 2. Install it on the worker's computer
+If **Copy** can't reach the clipboard (some browsers refuse on a plain `http://`
+page), the page selects the command and says so: copy it with Cmd-C (Ctrl-C on
+Linux).
 
-Paste the first command into a terminal on the worker's computer:
+### 2. Paste it on the worker's computer
+
+Open a terminal on the worker's computer (on a Mac, the Terminal app) and paste the
+command:
 
 ```bash
-audiosilo-bridge worker install --bridge http://192.168.1.20:8091 --token asw_...
+curl -fsSL http://192.168.1.20:8091/worker/install.sh | sh -s -- --token asw_...
 ```
 
-It installs the worker as a service that starts when you log in and restarts
-itself if it stops (a launch agent on a Mac, a systemd user service on Linux), and
-starts it now. The token is kept in the worker's own folder
-(`~/.audiosilo-bridge-worker`), readable only by you.
+It:
+
+1. downloads the worker program for that computer (macOS or Linux, Apple Silicon,
+   Intel or ARM) **from your Bridge**, the same version as the Bridge;
+2. puts it in `~/.audiosilo-bridge-worker/bin` (the folder `audiosilo-bridge`
+   lives in, in your home folder) and says where it put it;
+3. installs the worker as a service that starts when you log in and restarts
+   itself if it stops (a launch agent on a Mac, a systemd user service on Linux),
+   and starts it now.
+
+The token is kept in the worker's own folder (`~/.audiosilo-bridge-worker`),
+readable only by you.
 
 - On a Mac its log is `~/.audiosilo-bridge-worker/worker.log`.
 - On Linux, `journalctl --user -u audiosilo-bridge-worker -f` shows its log. To
   keep it running while you are logged out, run `loginctl enable-linger` once.
-
-To try it first without installing anything, use the second command instead: it
-runs the worker in that terminal until you press Ctrl-C.
 
 Within a few seconds the worker shows as **Connected** on the Bridge's **Workers**
 tab, with the speech recognition it runs (for example *mlx-whisper on metal*). The
@@ -84,6 +100,26 @@ server's console lists it too, under
 [Settings > Bridge > Workers](../admin/bridge.md#workers). While it transcribes it
 says **Transcribing**, and the tab counts the pieces it finished, how much audio and
 how fast.
+
+The program isn't on your `PATH`, so the commands on this page use its full path,
+`~/.audiosilo-bridge-worker/bin/audiosilo-bridge`. The command prints the line to
+add to your shell's profile if you'd rather type `audiosilo-bridge`.
+
+:::tip[Try it in a terminal first]
+Add `--run` at the end of the command to run the worker in that terminal instead
+of installing the service. It downloads the program the same way, then works until
+you press Ctrl-C or close the terminal. Paste the command again without `--run`
+to install the service.
+:::
+
+The command takes two more options: `--dir <folder>` puts the program somewhere
+else, and `--help` lists the options.
+
+:::note[No security warning on a Mac]
+The worker program isn't signed by Apple. A file `curl` downloads isn't marked as
+downloaded from the internet, so macOS runs it without asking. A file downloaded in
+a browser is: see [Installing it by hand](#installing-it-by-hand).
+:::
 
 ### When the worker is off
 
@@ -104,24 +140,89 @@ is lost but that piece: about a minute later it is handed out again, to the work
 when it comes back or to the Bridge. A worker that restarts carries on with the
 piece it was on.
 
-### Updating and removing
+### Updating
 
-- **To update** the worker, replace the program and run the same
-  `worker install` command again (the token is remembered, so `--token` can be
-  left out). The Bridge and its workers must be the same version of the worker
-  protocol: a worker that is too old or too new for its Bridge says so in its log
-  and waits until both are updated.
-- **To stop and remove** it on its computer: `audiosilo-bridge worker uninstall`.
-  The worker's folder stays (delete `~/.audiosilo-bridge-worker` too, if you like).
+After you update the Bridge, update its worker the same way you installed it:
+paste the command again on the worker's computer. The token is remembered, so you
+can leave out `--token` and what follows it:
+
+```bash
+curl -fsSL http://192.168.1.20:8091/worker/install.sh | sh -s
+```
+
+It downloads the Bridge's new version over the old one and restarts the service.
+The Bridge and its workers must speak the same version of the worker protocol: a
+worker that is too old or too new for its Bridge says so in its log and waits
+until both match.
+
+### Installing it by hand
+
+Install the worker by hand when the Bridge runs outside Docker (it then has no
+worker downloads to give, and the **Workers** tab says so and opens **Install it
+by hand**), or when you'd rather download the program yourself:
+
+1. Download the archive for the worker's computer from the
+   [Bridge's releases on GitHub](https://github.com/KodeStar/audiosilo-bridge/releases).
+   Take the release that matches your Bridge's version (its **Status** tab shows
+   it). The archives are named for the computer they run on:
+   `audiosilo-bridge_<version>_darwin_arm64.tar.gz` for a Mac with Apple Silicon,
+   `darwin_amd64` for an Intel Mac, `linux_amd64` and `linux_arm64` for Linux.
+   `checksums.txt` beside them lets you check the download.
+2. Unpack it and move the `audiosilo-bridge` program inside to
+   `~/.audiosilo-bridge-worker/bin/` (or anywhere it can stay).
+3. **On a Mac, if you downloaded it in a browser**, macOS marks the program as
+   downloaded from the internet and refuses to open it, because it isn't signed by
+   Apple. Clear the mark once:
+
+   ```bash
+   xattr -d com.apple.quarantine ~/.audiosilo-bridge-worker/bin/audiosilo-bridge
+   ```
+
+   An archive downloaded with `curl` (for example `curl -fLO <the archive's link>`)
+   carries no mark.
+4. Under **Install it by hand** on the **Workers** tab, copy the install command
+   (or the one that runs the worker once in a terminal) and paste it into a
+   terminal. It looks like:
+
+   ```bash
+   ~/.audiosilo-bridge-worker/bin/audiosilo-bridge worker install --bridge http://192.168.1.20:8091 --token asw_...
+   ```
+
+   If you put the program somewhere else, change the start of the command to
+   match.
+
+To update a worker installed by hand, replace the program with the new release's
+and run the same `worker install` command again (the token is remembered, so
+`--token` can be left out).
+
+### Removing it
+
+- **To stop and remove** it on its computer:
+  `~/.audiosilo-bridge-worker/bin/audiosilo-bridge worker uninstall` (use the
+  program's own path if you put it elsewhere). This removes the service. The
+  worker's folder stays: delete `~/.audiosilo-bridge-worker` too to remove the
+  program, its saved token, the speech recognition and its model.
 - **To revoke** it on the Bridge: **Remove...** on the **Workers** tab. Its token
   stops working at once, and the piece it was on goes to another worker or the
   Bridge.
 
 ### Troubleshooting
 
+When the command can't install the worker, it stops and says why on the terminal.
+
+| What the command says | What to do |
+|---|---|
+| *--token is required* | The first install needs the token: copy the whole command from the **Workers** tab. Only an update of a worker installed on this computer can leave it out. |
+| *this Bridge has no worker downloads* | The Bridge isn't running from its Docker image. [Install the worker by hand](#installing-it-by-hand) from the GitHub release. |
+| *the download failed* | Check that the address in the command is your Bridge's (its IP address and port, `8091`), that the Bridge is running, and that this computer is on the same network. |
+| *the address this was fetched from isn't a plain host name or IP address* | Use the command as the **Workers** tab shows it, with the Bridge's IP address and port. |
+| *a worker runs on macOS or Linux only*, or *on arm64 or amd64 only* | This computer can't run a worker (Windows has none). Use a Mac or a Linux computer. |
+| *the download is damaged*, or *the downloaded program doesn't run on this computer* | Paste the command again. If it keeps failing, install by hand from the GitHub release. |
+| *curl is needed* or *gzip is needed* | Install it with your system's package manager, then paste the command again. |
+
 | What the worker's log says | What to do |
 |---|---|
-| *the Bridge refused the token* | The worker was removed on the Bridge's page, or the token is from another Bridge. Add it again and run `worker install` with the new token. |
-| *the Bridge speaks another worker protocol* | Update the worker or the Bridge so both are the same version. |
-| *can't reach the Bridge* | Check the address in the command (`--bridge`), that the Bridge is running, and that both computers are on the same network. |
-| *mlx-whisper needs ffmpeg on PATH* | Install ffmpeg (`brew install ffmpeg`) and run `worker install` again, so the service sees it. |
+| *the Bridge refused the token* | The worker was removed on the Bridge's page, or the token is from another Bridge. Add it again and paste its new command. |
+| *the Bridge speaks another worker protocol* | The worker and the Bridge are different versions: [update the worker](#updating) (or the Bridge) so both match. |
+| *can't reach the Bridge* | Check the Bridge's address in the command, that the Bridge is running, and that both computers are on the same network. |
+| *mlx-whisper needs ffmpeg on PATH* | Install ffmpeg (`brew install ffmpeg`) and paste the command again, so the service sees it. |
