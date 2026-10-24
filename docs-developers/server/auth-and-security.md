@@ -927,8 +927,10 @@ same-site` on every response, with two exceptions on media answers
   is a web app on another site (`gstatic.com`) loading the book's audio and
   cover as no-cors `<audio>`/`<img>` requests, which `same-site` would make the
   browser block. It reaches one book's media only.
-- Every authenticated media answer (a book's cover and stream, `/meta/cover`)
-  once `cors_origins` is set (from 2.4.1, server#188), whoever the caller. A web
+- Every authenticated media answer (a book's cover and stream, `/meta/cover`,
+  `/podcasts/discovery/artwork`)
+  once `cors_origins` is set (from 2.4.1, server#188), for every token kind the
+  route takes. A web
   player served from another site loads covers and audio the same no-cors way,
   and such a request carries no `Origin` to check against the list. The policy
   guards against another site loading a resource with the browser's ambient
