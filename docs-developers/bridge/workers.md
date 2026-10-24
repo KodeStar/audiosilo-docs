@@ -152,10 +152,9 @@ it).
 
 `worker install --print` shows the file without installing it; `worker uninstall`
 stops it and removes the file (the data dir stays). Windows has no install. On
-macOS, `install` unloads the previous agent and waits (up to 10 s) until launchd
-no longer knows it before bootstrapping the new file, retrying a failed bootstrap
-a few times: `launchctl bootout` returns before the old job is gone, and a
-bootstrap meanwhile fails. The service has one fixed label (unit), so a computer
+macOS, `launchctl bootout` returns before the old job is gone and a bootstrap
+meanwhile fails, so `install` waits (up to 10 s) for launchd to drop the previous
+agent and retries a failed bootstrap a few times. The service has one fixed label (unit), so a computer
 runs one worker, for one Bridge: installing another Bridge's worker replaces it.
 
 ## Installing a worker
@@ -176,8 +175,8 @@ repo's `internal/workerdist` (the builds folder, the platform set, install.sh) a
   points at the GitHub releases and opens its manual commands.
 - **`GET /worker/install.sh`** answers a POSIX `sh` script with the address the
   request reached (its scheme and `Host`, checked against a plain host name, IPv4
-  or bracketed IPv6 with a port) baked in, single-quoted: reachable from the
-  computer that fetched it by construction. The configured `public_url` only goes
+  or bracketed IPv6, with an optional port) baked in, single-quoted: the computer
+  that fetched the script reached that address, so its worker can too. The configured `public_url` only goes
   into the command the Workers tab shows. It always answers `200` with a script:
   when it can't serve install.sh (no builds, an unusable `Host`) the script prints
   the reason to stderr and exits 1, because `curl -fsSL` drops an error status's
@@ -202,8 +201,9 @@ the one with Metal), downloads to a temp file beside the target, checks that the
 program runs (`version`), moves it into place, prints a `PATH` hint when its
 folder isn't on `PATH`, then runs `worker install --bridge <addr> [--token ...]`.
 A file `curl` writes carries no quarantine attribute, so Gatekeeper doesn't stop
-the unsigned binary on macOS; a browser download does carry one (the user guide
-says to clear it with `xattr -d com.apple.quarantine`). The script holds no
+the unsigned binary on macOS; a browser download does carry one (the user guide's
+[Installing it by hand](/users/getting-started/running-a-worker#installing-it-by-hand)
+says how to clear it). The script holds no
 secret: the token comes from the user's command line.
 
 **By hand.** `.github/workflows/release.yml` attaches the same four platforms to a

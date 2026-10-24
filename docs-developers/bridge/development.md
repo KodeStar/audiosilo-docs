@@ -102,6 +102,11 @@ internal/
   setup/      the setup checklist the heartbeat and the Status tab show; pure
   correct/    meta.correct: an admin's corrections as one correction-batch issue
   auth/       the page's single password, hashed sessions, the login limiter
+  -- Phase 1b --
+  workerproto/ the worker wire protocol (routes, version, task and result shapes); a leaf
+  workers/    the Bridge's side: the segment queue, leases, registry and the ASR router
+  worker/     `audiosilo-bridge worker`: client, run loop, spool, the service install
+  workerdist/ the worker builds the images carry and install.sh (the install routes); a leaf
   -- the engine (from audiosilo-sidecars; wired by app/engine.go since Phase 1a) --
   toolfetch/ audio/ asr/ transcript/ ebook/ scratch/ qa/ spelling/ agent/ repair/
   pipeline/ contrib/ state/ eta/ scheduler/ supervisor/ metaops/ events/ pricing/ fsutil/
@@ -185,7 +190,7 @@ id).
 | `POST /api/login` | `{ password }` -> `{ token }`; rate limited per address |
 | `POST /api/logout` | ends the session |
 | `POST /api/password` | `{ current, new }`; at least 8 characters. A wrong current password is `403`, not `401` (a `401` signs the page out) |
-| `GET /api/status` | the Bridge's state: version, pairing (with the reason when the server refuses its token), online, last heartbeat and error, kinds, lanes, the secret key's source, `public_url`, the server address the pairing form starts with, (Phase 2b) `setup` and `setup_complete`, and `worker_downloads` (whether this Bridge serves the [worker install](workers.md#installing-a-worker): the image's worker builds are there) |
+| `GET /api/status` | the Bridge's state: version, pairing (with the reason when the server refuses its token), online, last heartbeat and error, kinds, lanes, the secret key's source, `public_url`, the server address the pairing form starts with, (Phase 2b) `setup` and `setup_complete`, and `worker_downloads` (true when the image's worker builds are there, so the [worker install](workers.md#installing-a-worker) is served) |
 | `POST /api/pair` | `{ server_url, code }`: pair with a server. `400` for an address that isn't an absolute `http(s)` URL; `422` when the server refused the code, is too old for a Bridge (`404`/`405`), refused the pairing otherwise, or has a certificate the Bridge can't verify (the message says to use its `http://` address); `502` for a server it can't reach; `409` when already paired |
 | `POST /api/unpair` | forget the token here |
 | `GET /api/libraries` | the server's libraries with the Bridge's folder, whether it is configured, and the last check |
@@ -219,11 +224,9 @@ Two rules protect the page, and both hold for **every** request, loopback includ
   page isn't meant to sit behind a reverse proxy, and a client can't claim to be
   local). Carrier-grade NAT ranges (Tailscale's among them) are **not** local.
 - **The password, always.** Every route but `/api/health`, `/api/login` and the
-  two worker install routes (`/worker/install.sh`, `/worker/download/...`: a
-  `curl | sh` carries no session, the program is public and the worker token in
-  the user's command is the credential) needs a session token, even from the same
-  machine. The worker protocol under `/worker/v1` takes a worker token instead
-  ([ASR workers](workers.md#security)). An agent container sharing the
+  two [worker install routes](workers.md#security) (`/worker/install.sh`,
+  `/worker/download/...`) needs a session token, even from the same machine. The
+  worker protocol under `/worker/v1` takes a worker token instead. An agent container sharing the
   Bridge's network could otherwise reach the page (the compose example gives it a
   network of its own, but nothing makes an installation do so); the research spike
   that settled the agent design showed it could.

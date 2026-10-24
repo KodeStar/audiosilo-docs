@@ -34,11 +34,10 @@ same Mac to get the fast speech recognition.
 
 ### What you need
 
-- A [Bridge](running-a-bridge.md) that is running in Docker and paired. The
-  Bridge's Docker image carries the worker program for every computer a worker
-  runs on, so the worker's computer downloads it from the Bridge: nothing to find
-  or build, and always the same version as the Bridge. (A Bridge run outside
-  Docker has no worker downloads: see [Installing it by hand](#installing-it-by-hand).)
+- A [Bridge](running-a-bridge.md) that is running in Docker and paired: the
+  worker's computer downloads the worker program from it, so there is nothing to
+  find or build. A Bridge run outside Docker can't serve it: see
+  [Installing it by hand](#installing-it-by-hand).
 - The worker's computer on the **same local network** as the Bridge, running
   macOS or Linux. Like the Bridge's page, the worker's connection (and its
   download) is refused from the internet and over a VPN address like Tailscale's.
@@ -70,6 +69,13 @@ Linux).
 
 ### 2. Paste it on the worker's computer
 
+:::tip[Try it in a terminal first]
+Add `--run` at the end of the command to run the worker in that terminal instead
+of installing the service. It downloads the program the same way, then works until
+you press Ctrl-C or close the terminal. Paste the command again without `--run`
+to install the service.
+:::
+
 Open a terminal on the worker's computer (on a Mac, the Terminal app) and paste the
 command:
 
@@ -81,18 +87,10 @@ It:
 
 1. downloads the worker program for that computer (macOS or Linux, Apple Silicon,
    Intel or ARM) **from your Bridge**, the same version as the Bridge;
-2. puts it in `~/.audiosilo-bridge-worker/bin` (the folder `audiosilo-bridge`
-   lives in, in your home folder) and says where it put it;
+2. puts it in `.audiosilo-bridge-worker/bin` in your home folder and says where;
 3. installs the worker as a service that starts when you log in and restarts
    itself if it stops (a launch agent on a Mac, a systemd user service on Linux),
    and starts it now.
-
-The token is kept in the worker's own folder (`~/.audiosilo-bridge-worker`),
-readable only by you.
-
-- On a Mac its log is `~/.audiosilo-bridge-worker/worker.log`.
-- On Linux, `journalctl --user -u audiosilo-bridge-worker -f` shows its log. To
-  keep it running while you are logged out, run `loginctl enable-linger` once.
 
 Within a few seconds the worker shows as **Connected** on the Bridge's **Workers**
 tab, with the speech recognition it runs (for example *mlx-whisper on metal*). The
@@ -101,25 +99,20 @@ server's console lists it too, under
 says **Transcribing**, and the tab counts the pieces it finished, how much audio and
 how fast.
 
-The program isn't on your `PATH`, so the commands on this page use its full path,
-`~/.audiosilo-bridge-worker/bin/audiosilo-bridge`. The command prints the line to
-add to your shell's profile if you'd rather type `audiosilo-bridge`.
+The token is kept in the worker's own folder (`~/.audiosilo-bridge-worker`),
+readable only by you.
 
-:::tip[Try it in a terminal first]
-Add `--run` at the end of the command to run the worker in that terminal instead
-of installing the service. It downloads the program the same way, then works until
-you press Ctrl-C or close the terminal. Paste the command again without `--run`
-to install the service.
-:::
+- On a Mac its log is `~/.audiosilo-bridge-worker/worker.log`.
+- On Linux, `journalctl --user -u audiosilo-bridge-worker -f` shows its log. To
+  keep it running while you are logged out, run `loginctl enable-linger` once.
 
-The command takes two more options: `--dir <folder>` puts the program somewhere
-else, and `--help` lists the options.
+The worker program isn't signed by Apple, but macOS runs it without asking: a file
+`curl` downloads isn't marked as downloaded from the internet.
 
-:::note[No security warning on a Mac]
-The worker program isn't signed by Apple. A file `curl` downloads isn't marked as
-downloaded from the internet, so macOS runs it without asking. A file downloaded in
-a browser is: see [Installing it by hand](#installing-it-by-hand).
-:::
+The command also takes `--dir <folder>` (put the program somewhere else) and
+`--help`. The program isn't on your `PATH`, so the commands on this page use its
+full path, `~/.audiosilo-bridge-worker/bin/audiosilo-bridge`; the command prints
+the line to add to your shell's profile if you'd rather type `audiosilo-bridge`.
 
 ### When the worker is off
 
@@ -157,9 +150,9 @@ until both match.
 
 ### Installing it by hand
 
-Install the worker by hand when the Bridge runs outside Docker (it then has no
-worker downloads to give, and the **Workers** tab says so and opens **Install it
-by hand**), or when you'd rather download the program yourself:
+Install the worker by hand when the Bridge runs outside Docker (the **Workers**
+tab then opens **Install it by hand**), or when you'd rather download the program
+yourself:
 
 1. Download the archive for the worker's computer from the
    [Bridge's releases on GitHub](https://github.com/KodeStar/audiosilo-bridge/releases).
@@ -178,8 +171,7 @@ by hand**), or when you'd rather download the program yourself:
    xattr -d com.apple.quarantine ~/.audiosilo-bridge-worker/bin/audiosilo-bridge
    ```
 
-   An archive downloaded with `curl` (for example `curl -fLO <the archive's link>`)
-   carries no mark.
+   (An archive downloaded with `curl -fLO` carries no mark.)
 4. Under **Install it by hand** on the **Workers** tab, copy the install command
    (or the one that runs the worker once in a terminal) and paste it into a
    terminal. It looks like:

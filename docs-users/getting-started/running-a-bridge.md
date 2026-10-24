@@ -305,8 +305,8 @@ hours for a long book). Two ways to make it faster, or to give a `:latest-slim`
 Bridge (which has no speech recognition of its own) a way to transcribe at all:
 
 - an [ASR worker](running-a-worker.md) on a faster computer, such as a Mac with
-  Apple Silicon: add it on the Bridge's **Workers** tab and paste the one command
-  it shows into a terminal there (the worker program comes from the Bridge itself);
+  Apple Silicon: add it on the Bridge's **Workers** tab and paste the command it
+  shows into a terminal on that computer;
 - the `:latest-cuda` image, on a computer with an NVIDIA graphics card.
 
 The **Settings** tab's **When no ASR worker is connected** says what happens while
