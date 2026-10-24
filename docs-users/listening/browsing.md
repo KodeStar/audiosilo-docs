@@ -77,7 +77,7 @@ A **podcast library** has just two sections, **Shows** and **Folders**: see [Pod
 
 Every section except Folders shows **one library at a time**. If you have more than one library (or more than one server), a **Library** picker sits with the controls, with your libraries grouped under each server's name; with a single library there's nothing to pick, so it doesn't appear. Your choice is remembered on that device.
 
-If a server doesn't answer, the Library says "Could not load libraries." with **Retry**; it fills in by itself once the server is back. If your sign-in to a server ended, it says **Sign in again to &lt;server&gt;** with **Reconnect** instead.
+If the Library has no library to show because a server didn't answer, it says "Could not load libraries." with **Retry**. It fills in by itself once the server is back. If your sign-in to that server ended, it says **Sign in again to &lt;server&gt;** with **Reconnect** instead.
 
 ### Books
 

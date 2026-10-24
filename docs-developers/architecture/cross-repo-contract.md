@@ -34,8 +34,8 @@ durable user state is path-keyed with no FK to `books`.
 in `src/lib/paths.ts`; client state persists keyed by `(library_id, path)`. From
 2.4.1 the book route given a track file or a disc folder inside a book (which
 `/item` resolves to the book above it) moves to the book's own `rel_path` before
-it renders (`useCanonicalBookPath`), so progress, plays and casts are keyed by
-the book path only.
+it renders (`useCanonicalBookPath`), so the page asks for progress, plays and
+casts by the book path only.
 
 **A change requires:** touching path semantics (normalization, casing, what a
 "book path" vs a "file path" means) means changing both sides at once, **plus**
