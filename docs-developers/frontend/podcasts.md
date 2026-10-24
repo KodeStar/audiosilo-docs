@@ -207,6 +207,9 @@ show's episode lists stale, then calls
 `startBookInPlace(target, opts, {fetched: true})`. A `fetched` start never goes back to the controller, and it
 plays only while the fetch is still `starting` (`isEpisodeFetchStarting`), so a
 Cancel or another start since then wins. A start that fails stops as `failed`.
+An episode `advanceTo` hands to a fetch stays at the head of Up next: the fetched
+start drops it once it plays (`dropStartedBook`), and a failed or cancelled fetch
+leaves it queued (2.4.1, see [End of book](end-of-book.md)).
 
 **UI.**
 

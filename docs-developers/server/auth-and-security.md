@@ -222,7 +222,8 @@ The middleware wrappers in `internal/api/middleware.go`:
 - `requireBookMediaAuth` - `requireMediaAuth` whose one token lookup also accepts a
   [cast token](#cast-tokens) (`ResolveCastRequest`, then `castOwnBook`). Only a
   book's own cover and stream use it; `/meta/cover` keeps `requireMediaAuth`.
-  A cast-authenticated answer sets `Cross-Origin-Resource-Policy: cross-origin`
+  A cast-authenticated answer sets `Cross-Origin-Resource-Policy: cross-origin`,
+  and so does every authenticated media answer once `cors_origins` is set
   (below).
 - `requireAdmin` - `requireAuth` plus a role check; every `/admin/*` route uses
   it. The baked-in admin HTML is unprivileged - the API enforces the role.
@@ -919,11 +920,26 @@ appears as the proxy's address and shares its general bucket and its lockouts.
 
 `secureHeaders` sets `X-Content-Type-Options: nosniff`, `X-Frame-Options:
 DENY`, `Referrer-Policy: no-referrer`, and `Cross-Origin-Resource-Policy:
-same-site` on every response. The one exception is an answer a
-[cast token](#cast-tokens) authenticated: it is `cross-origin`, because the
-Chromecast receiver is a web app on another site (`gstatic.com`) loading the
-book's audio and cover as no-cors `<audio>`/`<img>` requests, which `same-site`
-would make the browser block. It reaches one book's media only. **HSTS is set only in `autocert` TLS mode**:
+same-site` on every response, with two exceptions on media answers
+(`mediaAuth`), both `cross-origin`:
+
+- An answer a [cast token](#cast-tokens) authenticated. The Chromecast receiver
+  is a web app on another site (`gstatic.com`) loading the book's audio and
+  cover as no-cors `<audio>`/`<img>` requests, which `same-site` would make the
+  browser block. It reaches one book's media only.
+- Every authenticated media answer (a book's cover and stream, `/meta/cover`,
+  `/podcasts/discovery/artwork`)
+  once `cors_origins` is set (from 2.4.1, server#188), for every token kind the
+  route takes. A web
+  player served from another site loads covers and audio the same no-cors way,
+  and such a request carries no `Origin` to check against the list. The policy
+  guards against another site loading a resource with the browser's ambient
+  credentials, and media has none: it authenticates only by an explicit token
+  (`?token=` or `Authorization`, `bearerToken`), never a cookie. A page that can
+  load the answer already holds the credential that fetches it anywhere.
+
+A media request that fails to authenticate, every non-media route, and media on
+a server with `cors_origins` empty stay `same-site`. **HSTS is set only in `autocert` TLS mode**:
 pinning it with a self-signed cert would make the certificate warning
 impossible to bypass, and behind a reverse proxy (`off`) the proxy owns HSTS.
 That also keeps [home HTTP](configuration.md#home-http-tlshome_http) working: on a

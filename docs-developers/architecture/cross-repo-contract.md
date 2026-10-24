@@ -31,7 +31,11 @@ Canonical reference points on each side of the main seam:
 on demand); `library.SafeJoin` guards every user-derived filesystem access;
 durable user state is path-keyed with no FK to `books`.
 **Frontend:** every content call in `src/api/client.ts` passes `?path=`; helpers
-in `src/lib/paths.ts`; client state persists keyed by `(library_id, path)`.
+in `src/lib/paths.ts`; client state persists keyed by `(library_id, path)`. From
+2.4.1 the book route given a track file or a disc folder inside a book (which
+`/item` resolves to the book above it) moves to the book's own `rel_path` before
+it renders (`useCanonicalBookPath`), so the page asks for progress, plays and
+casts by the book path only.
 
 **A change requires:** touching path semantics (normalization, casing, what a
 "book path" vs a "file path" means) means changing both sides at once, **plus**
@@ -248,7 +252,10 @@ page captions such chapters (an older app shows them as ordinary chapters), and 
 saved chapters with a newer server answer while its audio files are unchanged
 (same paths, order and sizes; `startChapterRefresh`). The same files in a new
 order (the server's natural file order, 2.4.0) are taken only by a start that
-loads them that way (`adoptStartedChapters`), never from a background answer. Podcasts additionally
+loads them that way (`adoptStartedChapters`), never from a background answer. From 2.4.1 the
+download hot-swap can take them too: a copy that lands while a start's new order streams takes
+that start's chapters, only when they give the order the engine plays, so only the files' urls
+change ([Offline](../frontend/offline.md)). Podcasts additionally
 return `id3_chap` from the server's CHAP attachments; the player (2.2.0 and
 later, first released in 2.4.0) captions it "Chapters from the episode file". See [podcasts](#17-podcast-shows-feeds-and-client-visibility).
 
@@ -428,6 +435,14 @@ cross-origin dev loop shows none unless a development build opts in with
 For an allowed origin the server also allows `Range` and exposes
 `Retry-After` and the OPML export's `X-OPML-*` counts (Phase 2d-2), with what
 an older server means for the player: [CORS](../server/api/index.md#cors).
+
+Covers and audio are no-cors loads, which CORS never covers. With
+`cors_origins` set, every authenticated media answer is
+`Cross-Origin-Resource-Policy: cross-origin` (from 2.4.1), so a player on
+another site shows covers and plays audio; an older server's `same-site` makes
+the browser block its covers. Media takes only an explicit token, never a
+cookie, which is why that is safe
+([Transport hardening](../server/auth-and-security.md#transport-hardening)).
 
 **A change requires:** nothing structural - just remember self-signed TLS (the
 server default) needs trusting in the browser, or use `AUDIOSILO_TLS_MODE=off`

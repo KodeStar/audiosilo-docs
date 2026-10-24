@@ -27,7 +27,7 @@ At the top of each tab's first page, beside the big title, sits the **Up next** 
 
 From left to right:
 
-- The **AudioSilo** logo (tap it to go Home), with the server you're using underneath - or a note that you're **offline** if it can't be reached, or that it **needs signing in again**. If you've connected more than one server, it says how many more.
+- The **AudioSilo** logo (tap it to go Home), with the server you're using underneath - or a note that you're **offline** if it can't be reached, or that it **needs signing in again**. If you've connected more than one server, it says how many more, or names one that **isn't answering**.
 - **Home**, **Library**, **Downloads** and **You** (your [listening stats, year and Journal](you.md)). On narrower screens such as a tablet held upright, these show as icons only.
 - A **search field**. In the web player it opens [quick search](#quick-search-in-the-web-player); in the tablet app it takes you to the Search page. Where the bar is too narrow for the field (a tablet held upright, say), it shrinks to a search button that does the same.
 - The **Up next** button, with the number of books queued. It opens [Up next](up-next.md).
@@ -52,7 +52,7 @@ The home screen is built around what *you* are doing, not just what's on the ser
 
 ![The web player home screen: the greeting, the book you're on with its chapter scale, This week, and the shelves below](/img/screenshots/web-player/home.png)
 
-- **A greeting** with today's date and a small line that tells you, honestly, whether your place is safe: **Progress synced 7 minutes ago** once your servers have it, or **Saved on this device, will sync** while a server can't be reached. If you've connected more than one server, it also says how many Home is gathering from.
+- **A greeting** with today's date and a small line that tells you, honestly, whether your place is safe: **Progress synced 7 minutes ago** once your servers have it, or **Saved on this device, will sync** while a server can't be reached. If you've connected more than one server, it also says how many Home is gathering from, or names one that **isn't answering** (with an amber dot).
 - **Previously on** - when you come back to the book you're on after **12 days or more**, a dark card above the book you're on reminds you where you were: *"Previously on The Way of Kings · 14 days ago"*, the chapter you left it in, and the latest community recap you're already past (so it never gives away what you haven't heard - *"Spoiler-safe: written up to chapter 22."*). **Resume, with 30 seconds of overlap** starts the book half a minute before where you stopped (your latest place, whether this device or another one saved it), at your speed; **Read the full recap** opens the book's Recaps. It appears only for books the community database has recaps for, and not while the book is already loaded in the player. Close it with its **X** and it stays away until you next open the app.
 - **The book you're on**, in a card tinted with its cover's colours: the series and book number, the title, **Chapter 6 of 24** with the chapter's name, and a scale of the whole book with a tick for each chapter (and a small pin for each bookmark). Under it: how far through you are, how much is left at the speed you listen to that book, and, once there's enough listening to go on, the day you'll **finish at your pace**. **Resume chapter 6** carries on where you stopped. For books the community database knows, **Who's who** (with the number of characters you've met so far) and **Story so far** open the book's Characters and Recaps tabs, which [never show more than you've heard](recaps-and-characters.md#nothing-gets-spoiled-before-you-reach-it).
 - **This week** - a ring for the books you've finished this year against your yearly goal (or just how many you've finished, if you haven't set one), the hours you've listened in the last seven days, your listening streak, and a small bar for each of the last seven days.
@@ -76,6 +76,8 @@ The **Library** tab is everything on your server, sorted the way you want to loo
 A **podcast library** has just two sections, **Shows** and **Folders**: see [Podcasts](podcasts.md#shows-in-the-library). It appears in the app from version 2.4.0, with a microphone beside its name in the picker.
 
 Every section except Folders shows **one library at a time**. If you have more than one library (or more than one server), a **Library** picker sits with the controls, with your libraries grouped under each server's name; with a single library there's nothing to pick, so it doesn't appear. Your choice is remembered on that device.
+
+If the Library has no library to show because a server didn't answer, it says "Could not load libraries." with **Retry**. It fills in by itself once the server is back. If your sign-in to that server ended, it says **Sign in again to &lt;server&gt;** with **Reconnect** instead.
 
 ### Books
 

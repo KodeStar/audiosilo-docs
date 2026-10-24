@@ -53,7 +53,10 @@ player left open on it closes once the app is active. See
   (3 s), and otherwise uses the download's own copy, so it starts offline and from the
   car. `startBookInPlace` is the one way a book starts outside the player route; the
   `/player` route only *shows* a book started that way) and then takes its queue
-  entry off Up next; `dropFromQueue(connectionId, books)` removes books from one
+  entry off Up next, except an episode its server still has to fetch: handed to the
+  fetch (`useEpisodeFetch`'s `pending`), it stays at the head of Up next until the
+  fetch's own start drops it, and a failed or cancelled fetch leaves it there (2.4.1,
+  frontend#122); `dropFromQueue(connectionId, books)` removes books from one
   connection's queue (below); `useAutoPlayHold` holds the `contentKey` of a book
   that ended while a sleep timer was running for it - the listener asked the timer
   to end the night there, so the background start is skipped and the credits hold
@@ -141,7 +144,10 @@ start leaves Up next too** (2.4.0): `startBookInPlace` (a book's page, a browse 
 the car), the `/player` route's auto-start and Up next's Play now all call
 `dropStartedBook` (`drop-started.ts`), which drops the book only once it is the book
 loaded and not in error, so a start that failed or that another start took over
-keeps its place in the queue.
+keeps its place in the queue. It also drops the path the start was asked for when
+that differs from the loaded book's `rel_path` (a queue entry the server now
+resolves to the book folder above it), so the entry doesn't stay queued after it
+started (2.4.1).
 
 The resolver's reads (`up-next-sources.ts`: the capability read, the queue, the
 finished set, `/next`) go through `fetchFailFast` (`api/hooks.ts`): TanStack holds a

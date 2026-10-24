@@ -330,6 +330,9 @@ episode"*.
 - **Cancel** stops waiting in the player. The server keeps downloading, so the episode will be
   **Ready on your server** next time.
 - Playing something else while you wait also stops waiting for it.
+- An episode that plays next from [Up next](up-next.md), when the one before it ends, stays at
+  the top of Up next while the server gets it, and leaves once it plays. If the server can't get it, or you cancel, it is
+  still there to try again.
 - Leave the app and come back: it checks again straight away.
 
 If the server can't get the episode, the player says why, with **Try again**:

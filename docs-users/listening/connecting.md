@@ -96,7 +96,7 @@ Some servers offer a guest **demo**. If the one you enter does, the *"Found"* ca
 
 Signing out is not a big deal - the app remembers every server you've connected to before. The connect screen lists each remembered server you aren't signed in to under **Reconnect**, as a one-tap **Reconnect to &lt;server name&gt;** row, so you only re-enter your code or password - never the server address again. (In the apps, a server with a [home address](#at-home-and-away) is tried there first.) The **X** beside a row forgets that server.
 
-If your session is ever rejected while you're using the app - for example your admin revoked this device, or the server was rebuilt - a **Reconnect to &lt;server name&gt;** bar appears at the top of the screen instead of failing silently. Tapping it takes you straight to the sign-in screen for that server, ready for a fresh code or password.
+If your session is ever rejected while you're using the app - for example your admin revoked this device, or the server was rebuilt - a **Reconnect to &lt;server name&gt;** bar appears at the top of the screen instead of failing silently. Tapping it takes you straight to the sign-in screen for that server, ready for a fresh code or password. Until then, Home, the Library and Up next say **Sign in again to &lt;server name&gt;** with the same **Reconnect** button, instead of an error to retry.
 
 The most dependable key of all is a [password](account.md#password) you set on your server's account page: with one, reconnecting is just your username and password on any device, with no code or invite needed.
 

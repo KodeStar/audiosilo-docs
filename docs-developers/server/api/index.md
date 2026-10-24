@@ -183,6 +183,7 @@ Failures a person can fix also carry a machine-readable **`code`** next to
 |---|---|---|
 | `username_taken` | `409` | creating an account with a username that exists (`POST /admin/users`) |
 | `name_taken` | `409` | a library or share name already in use (create, rename) |
+| `config_library` | `409` | a library the server's config declares: renaming it or moving its folder (`PATCH /admin/libraries/{id}`, from 2.4.0), or deleting it (`DELETE /admin/libraries/{id}`, from 2.4.1) |
 | `last_admin` | `409` | demoting or disabling the last enabled admin |
 | `admin_needs_password` | `400` | an admin without a password (creating one, promoting a password-less account, or clearing an admin's password) |
 | `password_too_short` | `400` | a password under the minimum length |
@@ -594,7 +595,14 @@ budgets, a busy transcode, an episode on its way; the general rate limit and
 the request timeout send none) and the OPML export's counts, so a
 cross-origin web player reads them as the `/web` player and native apps
 always could. A denied or absent origin gets no CORS header but `Vary`, and a
-server with `cors_origins` unset gets none at all. An older server exposes nothing, so
+server with `cors_origins` unset gets none at all.
+
+CORS never covers an `<img>` cover or an `<audio>` stream: those are no-cors
+requests with no `Origin`. What lets a player on another site load them is the
+media answer's `Cross-Origin-Resource-Policy`, which is `cross-origin` on every
+authenticated media answer once `cors_origins` is set (from 2.4.1; before, it was
+`same-site` and the browser blocked the covers). See
+[Transport hardening](../auth-and-security.md#transport-hardening). An older server exposes nothing, so
 the player falls back to the body's `retry_after_seconds` for an episode
 fetch and reads the export counts as unknown.
 

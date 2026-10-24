@@ -13,7 +13,7 @@ draw. The user-facing tour is [A book's page](/users/listening/book-page).
 
 | File | What it is |
 |---|---|
-| `book-page.tsx` | `BookScreen` (wraps the page in `ContentScope`, so it reads the route's own `?connection=`) and `BookPage`: the data (`useBook`, `useChapters`, `useBookMeta`, `useBookProgress`, `useBookAnnotations`, the history query), the tab row, the play calls, and the layout |
+| `book-page.tsx` | `BookScreen` (wraps the page in `ContentScope`, so it reads the route's own `?connection=`), `useCanonicalBookPath` (2.4.1, frontend#130: a route given a track file or disc folder inside a book, which `/item` resolves to the book, moves to the book's own `rel_path` before the page renders. It uses `setParams`, so no history entry, and seeds the book path's item query. The page asks for progress, plays and casts by the book path only) and `BookPage`: the data (`useBook`, `useChapters`, `useBookMeta`, `useBookProgress`, `useBookAnnotations`, the history query), the tab row, the play calls, and the layout |
 | `book-page-model.ts` | Pure: `bookPageLayout`, `titleScale`, `heroSubtitle`, `primaryAction` / `primaryLabel`, `chapterList`, `rowAt`, `timelineStarts`, `placeLine`, `heroEyebrow`, `bookFacts`, `startedAt`, `listeningFigures` |
 | `book-tab-panel.tsx` | `BookTabPanel`: the active tab's panel (the tab row is the page's) |
 | `book-hero.tsx` | `BookHero`: the `CoverWash`, crumbs slot, eyebrow, title, subtitle, byline, facts, the place (or the finished badge and the stars), then the actions and footer slots |

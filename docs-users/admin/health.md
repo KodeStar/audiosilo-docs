@@ -134,7 +134,8 @@ what it found and apply it.
    opens the book's page in a new tab. On **Confident** and **To review**,
    **Shift-click** a box to give every book from the last one you clicked on
    that list to this one the same tick (books already applied, gone or matched
-   since are skipped). **Not found** and **Not checked** list
+   since are skipped, and so is a book you just matched by hand until its row
+   updates). **Not found** and **Not checked** list
    the rest. Each list is ordered best match first.
 
    An apply never writes over a book matched since the run looked, whatever you

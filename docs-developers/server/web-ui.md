@@ -355,8 +355,9 @@ CSP-sensitive work against a real build served by Go. The console's own gate is
 - **Library > Books** - the cover grid (virtualized) or table over
   `GET /admin/books` (keyset pages loaded as you scroll), the "Recently added"
   and "Continue curating" shelves, the library filter, search, sort and a
-  Filters sheet over `GET /admin/books/facets`, with every filter in the URL so
-  each view deep-links (the sheet's Genre and Tag groups are the facets'
+  Filters sheet over `GET /admin/books/facets` (its Library group hidden below
+  two book libraries, as the library filter is, unless a link set it), with
+  every filter in the URL so each view deep-links (the sheet's Genre and Tag groups are the facets'
   `genres` / `tags`, matched by `labelKey` in `lib/labels.ts`); selection with a
   floating bulk bar (bulk field edits through `POST /admin/books/bulk`, its
   **Tags and genres** boxes sending `add` / `remove` through `bulkLabelEdit`,
@@ -389,7 +390,9 @@ CSP-sensitive work against a real build served by Go. The console's own gate is
   `split_discs` mark on `/fs`) or one already joined, worded as a join ("Here: 3
   disc folders become one book, in disc order."); only clearing an override on
   any other folder without audio. The detection dialog applies the same rule
-  from the entry alone (`offersBook`, `offersCollection`).
+  from the entry alone (`offersBook`, `offersCollection`). With only podcast
+  libraries the page says "No book libraries yet" (`folders.podcastsOnly.*`)
+  rather than "No libraries yet".
 - **Book page** (`/admin/library/book?library=&path=`) - `GET`/`PATCH
   /admin/libraries/{id}/book` (click-to-edit fields with provenance, revert;
   `genres` and `tags` as chips edited with `components/label-input.tsx`,
@@ -469,7 +472,11 @@ CSP-sensitive work against a real build served by Go. The console's own gate is
   drag-and-drop or keyboard reorder (`PUT /admin/libraries/order`), rescan with
   live progress (the list's `scan`, including `queued`, shown as a "Waiting"
   badge, and `unavailable`), the next scheduled scan from `next_scan_at`, folder
-  detection (`/fs` browse + `…/folder-override`), export, delete.
+  detection (`/fs` browse + `…/folder-override`), export, delete. A library named
+  in `GET /admin/setup`'s `config_libraries` has its **Delete library...**
+  disabled with the reason (2.4.1, server#176); a delete the server refuses
+  anyway (`409 config_library`, a config the console read before it changed)
+  shows that reason in the dialog and reads the setup again, so the card locks.
 - **People > People / Invites / Shares / Devices** - person cards (the book a
   person is playing comes from `GET /admin/sessions/live`, else their newest
   unfinished progress from `GET /admin/stats`; the devices line from

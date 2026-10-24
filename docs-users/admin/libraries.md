@@ -334,7 +334,9 @@ full index rebuild. Set one once and forget it.
 ### The Folders page
 
 **Library > Folders** makes the same choice with more room. Pick a library
-(when you have more than one books library), then a folder in the tree. Folders
+(when you have more than one books library), then a folder in the tree. With
+only podcast libraries, the page says "No book libraries yet": podcast shows
+have no folders to read as books. Folders
 that are books are marked **Book**, and folders you have pinned say **Always
 one book** or **Separate books**.
 
@@ -458,6 +460,12 @@ particular person.
 says exactly what goes: it "removes the library and its books from AudioSilo,
 with everyone's progress, bookmarks and notes in it. The folder and its files
 are not touched."
+
+A library [from your config](#editing-a-library) can't be deleted here: its
+**Delete library...** is greyed out and says "Declared in config.yaml (or by the
+app that runs the server): remove it there and restart to delete it." Every
+start reads it from the config again, so deleting it here would only bring it
+back empty, with everyone's progress in it gone.
 
 :::warning[Everyone's progress in the library goes too]
 Deleting a library removes what AudioSilo knows *about* it for every person:
