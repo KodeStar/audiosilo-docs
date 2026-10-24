@@ -100,8 +100,8 @@ show details the Bridge saves instead.
 
 Click **Add library and scan**. The library appears straight away and its
 first scan starts ("The first scan has started. Covers fill in as books are
-found."). Listeners don't have to wait: the folder view works immediately, and
-books are indexed as the scan progresses (or on demand when someone opens one).
+found."). Books appear in the players as the scan reaches them, so listeners
+can start on the first ones while it runs.
 For a podcast library the message instead says "Shows and episodes appear as
 they are indexed."
 
