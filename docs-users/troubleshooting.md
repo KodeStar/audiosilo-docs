@@ -174,7 +174,8 @@ by themselves. If it stays, work through
 [I can't reach the server at all](#i-cant-reach-the-server-at-all).
 
 If the Library says "Could not load libraries.", the app couldn't get the list
-of libraries from a server: **Retry**, or wait for it to come back.
+of libraries from a server. Press **Retry** where the screen offers it, or wait for
+the server to come back: the Library reloads on its own once it answers.
 
 ### The app can't connect, but the browser can
 
