@@ -73,6 +73,9 @@ disk. Click the title or cover to open the book's page.
   books at a time, so a long selection takes a moment), **Use detailed
   chapters** in **More detailed chapters available**, and **Detect chapters**
   in **Long books without chapters** (one confirmation for them all).
+  **Shift-click** a box to select every book from the last one you clicked to
+  this one, [as on Books](books.md#changing-many-books-at-once);
+  Shift-clicking a ticked box clears the run instead.
 - Long lists load 50 books at a time; **Show more** loads the next.
 
 When a list is empty it says **All clear** - the category you were working on
@@ -86,7 +89,8 @@ card above its list. It looks every book in the list up in the community
 catalogue in one pass, then waits for you: nothing changes until you review
 what it found and apply it.
 
-1. Pick a library (when you have more than one) and click **Find matches**.
+1. Pick a library (when you have more than one books library) and click
+   **Find matches**.
    The server does the work, so you can leave the page. The card shows
    "Matching *N* of *M* books", and **Stop** ends the run without changing
    anything.
@@ -127,7 +131,10 @@ what it found and apply it.
    match dialog over the review. When you accept a match there, you're back on
    the review where you left it, and the book reads **Matched since this run**.
    To look closer first, or to listen to it, the icon beside **Match by hand**
-   opens the book's page in a new tab. **Not found** and **Not checked** list
+   opens the book's page in a new tab. On **Confident** and **To review**,
+   **Shift-click** a box to give every book from the last one you clicked on
+   that list to this one the same tick (books already applied, gone or matched
+   since are skipped). **Not found** and **Not checked** list
    the rest. Each list is ordered best match first.
 
    An apply never writes over a book matched since the run looked, whatever you

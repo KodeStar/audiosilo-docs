@@ -33,9 +33,10 @@ When you aren't searching or filtering, two shelves sit above the full list:
 
 Above the list:
 
-- **Library** - with more than one library, show **All** or just one. Each
-  choice shows its book count, and a library whose folder can't be read says
-  "offline".
+- **Library** - with more than one books library, show **All** or just one.
+  Each choice shows its book count, and a library whose folder can't be read
+  says "offline". [Podcast libraries](podcasts.md) aren't offered, here or on
+  the other Library screens (their episodes aren't books).
 - **Filter books** - type to narrow by title, author, narrator, series, genre or
   tag.
 - **Sort** - **Title**, **Author, then series**, **Author surname**, **Series**,
@@ -53,7 +54,9 @@ Above the list:
 ![The books table](/img/screenshots/admin/books-table.png)
 
 Every view has its own address, so you can bookmark a filtered list or send
-it to another admin.
+it to another admin. Change the view, the sort or the filters while scrolled
+down the list and the page scrolls back to the top of the list; otherwise it
+stays where it is.
 
 ### Filters
 

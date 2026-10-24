@@ -72,7 +72,9 @@ on the Bridge.
 The Bridge creates one folder per show, with its feed details and artwork.
 Leave those folder names alone: episode addresses include the show folder, so
 renaming one by hand breaks the saved paths. Podcasts stay out of book search,
-recently added books, author and series lists, and the console's book tools.
+recently added books, author and series lists, and the console's book tools,
+including the library filter on the Library screens and the library pick in
+**Match automatically** and **Clear community matches**.
 
 ## Downloads and retention
 
