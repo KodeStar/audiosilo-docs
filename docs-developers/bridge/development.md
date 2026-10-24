@@ -35,7 +35,9 @@ push to `main`: a **go** job (build, vet, `go test -race`, golangci-lint) and a
 production build). `image.yml` builds and pushes the four images to the public
 GHCR package on `v*` tags and on manual dispatch (`full`, `slim` and `agent` for
 amd64 and arm64, `cuda` for amd64); which tags each publishes is in
-[the images](configuration.md#the-images).
+[the images](configuration.md#the-images). `release.yml` attaches the four worker
+archives and `checksums.txt` to a `v*` tag's GitHub release (see
+[Installing a worker](workers.md#installing-a-worker)).
 
 To run it locally:
 
@@ -207,7 +209,7 @@ id).
 | `GET /api/workers` | the paired workers: the `workers` row (name, created and last seen, version, platform, backend, device, model, segments, audio and decode seconds) with `connected` and the `task` it decodes now |
 | `POST /api/workers` | `{ name }` -> `201 { worker, token }`: pair a worker; the token is in this answer only. `400` without a name |
 | `DELETE /api/workers/{id}` | remove a worker, revoking its token (`204`; `404` for none) |
-| `GET /worker/install.sh` | **no sign-in**: the worker's install script with the address this request reached baked in; always `200` and a script, one that prints why and exits 1 when it can't be served (see [Installing a worker](workers.md#installing-a-worker)) |
+| `GET /worker/install.sh` | **no sign-in**: the worker's install script with the address this request reached baked in; past the local-network guard (a `403` like every route), always `200` and a script, one that prints why and exits 1 when it can't be served (see [Installing a worker](workers.md#installing-a-worker)) |
 | `GET /worker/download/{os}/{arch}` | **no sign-in**: the gzipped worker build for `darwin` or `linux`, `arm64` or `amd64`; `404` with a plain-text reason for another platform or a Bridge without the builds |
 
 Errors are `{ "error": "..." }`, with a `code` where a client branches on it. The

@@ -176,9 +176,11 @@ repo's `internal/workerdist` (the builds folder, the platform set, install.sh) a
 - **`GET /worker/install.sh`** answers a POSIX `sh` script with the address the
   request reached (its scheme and `Host`, checked against a plain host name, IPv4
   or bracketed IPv6, with an optional port) baked in, single-quoted: the computer
-  that fetched the script reached that address, so its worker can too. The configured `public_url` only goes
-  into the command the Workers tab shows. It always answers `200` with a script:
-  when it can't serve install.sh (no builds, an unusable `Host`) the script prints
+  that fetched the script reached that address, so its worker can too. The
+  configured `public_url` only goes into the command the Workers tab shows. Past
+  the local-network guard (which refuses an outside address with its `403` JSON,
+  so `curl -fsSL` prints `curl: (22)` and `sh` exits 0 on nothing), it always
+  answers `200` with a script: when it can't serve install.sh (no builds, an unusable `Host`) the script prints
   the reason to stderr and exits 1, because `curl -fsSL` drops an error status's
   body and `sh` would run an empty script and exit 0.
 - **`GET /worker/download/{os}/{arch}`** serves one gzipped build. The OS and
