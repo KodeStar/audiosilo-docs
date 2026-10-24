@@ -334,7 +334,7 @@ full index rebuild. Set one once and forget it.
 ### The Folders page
 
 **Library > Folders** makes the same choice with more room. Pick a library
-(when you have more than one), then a folder in the tree. Folders
+(when you have more than one books library), then a folder in the tree. Folders
 that are books are marked **Book**, and folders you have pinned say **Always
 one book** or **Separate books**.
 

@@ -35,8 +35,8 @@ Above the list:
 
 - **Library** - with more than one books library, show **All** or just one.
   Each choice shows its book count, and a library whose folder can't be read
-  says "offline". [Podcast libraries](podcasts.md) aren't choices here (their
-  episodes aren't books), on Books, Authors, Narrators, Series or Folders.
+  says "offline". [Podcast libraries](podcasts.md) aren't offered, here or on
+  the other Library screens (their episodes aren't books).
 - **Filter books** - type to narrow by title, author, narrator, series, genre or
   tag.
 - **Sort** - **Title**, **Author, then series**, **Author surname**, **Series**,
@@ -46,8 +46,7 @@ Above the list:
   book without one, the date in its file's tags (usually when the audiobook was
   released rather than when the book first came out, so matching or editing
   **Published** gives a truer order).
-- **View** - **Cover grid** or **Table**. Switching view, sorting or filtering
-  while scrolled down the list brings the top of the list back into view. The table has columns for title,
+- **View** - **Cover grid** or **Table**. The table has columns for title,
   author, narrator, series, length, format, browser playback, community
   metadata and when the book was added. Click an author, narrator or series
   in the table to see all its books.
@@ -55,7 +54,9 @@ Above the list:
 ![The books table](/img/screenshots/admin/books-table.png)
 
 Every view has its own address, so you can bookmark a filtered list or send
-it to another admin.
+it to another admin. Change the view, the sort or the filters while scrolled
+down the list and the page scrolls back to the top of the list; otherwise it
+stays where it is.
 
 ### Filters
 

@@ -68,12 +68,13 @@ disk. Click the title or cover to open the book's page.
 - **Show ignored (*N*)** switches to the books you've ignored ("Ignored:
   *kind*"), each with **Show again**. **Back to the open ones** returns.
 - Tick the box on several rows (or **Select all**) to act on them together
-  from the bar at the bottom (**Shift-click** a box to select every book from
-  the last one you clicked to this one, as on [Books](books.md#changing-many-books-at-once)): **Ignore** (or **Show again** in the ignored
+  from the bar at the bottom: **Ignore** (or **Show again** in the ignored
   view), **Read again** in **Files that couldn't be read** (it reads two
   books at a time, so a long selection takes a moment), **Use detailed
   chapters** in **More detailed chapters available**, and **Detect chapters**
   in **Long books without chapters** (one confirmation for them all).
+  **Shift-click** a box to select every book from the last one you clicked to
+  this one, [as on Books](books.md#changing-many-books-at-once).
 - Long lists load 50 books at a time; **Show more** loads the next.
 
 When a list is empty it says **All clear** - the category you were working on
@@ -87,7 +88,8 @@ card above its list. It looks every book in the list up in the community
 catalogue in one pass, then waits for you: nothing changes until you review
 what it found and apply it.
 
-1. Pick a library (when you have more than one books library) and click **Find matches**.
+1. Pick a library (when you have more than one books library) and click
+   **Find matches**.
    The server does the work, so you can leave the page. The card shows
    "Matching *N* of *M* books", and **Stop** ends the run without changing
    anything.
@@ -119,10 +121,10 @@ what it found and apply it.
    narrators and length, the series it belongs to with its position ("Series:
    Alice in Wonderland #2"), and the ASIN with its store. A match to the wrong
    book of a series, or to another series altogether, shows at a glance.
-5. **Confident** matches are ticked; untick any you don't want (**Shift-click**
+5. **Confident** matches are ticked; untick any you don't want. **Shift-click**
    a box to give every book from the last one you clicked to this one the
-   same tick; books already applied, gone or matched since are passed over). **To review**
-   lists matches that scored lower, or only just ahead of another work, and
+   same tick (books already applied, gone or matched since are skipped).
+   **To review** lists matches that scored lower, or only just ahead of another work, and
    matches whose recording is another length than the book, however well they
    scored. Those say so in both lengths ("Held for review: the book is 10h 34m
    long, this recording 7h 2m"), as the closest recording can be
