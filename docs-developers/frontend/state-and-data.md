@@ -166,8 +166,17 @@ screen whose load failed for a connection that needs signing in again
 place of its load error, its Retry and its empty state: Home's Now card (and
 Recently added hides its error), the Library (`refusedConnection` over the
 library groups when it has no library to show, and in Folders mode; Books mode
-too), and Up next (a compact row). Its components are in
+too), Up next (a compact row), You > Stats and Year (`useSignedOutConnection(cid)`
+when their reads fail), and, through `LoadFailedNote` (the sign-in state for
+the page's `cid`, else the `ErrorNote` with its Retry), the book page, the
+episode page and folder browse (2.4.1, CONNECT-03). Its components are in
 `src/components/layout/sign-in-again.tsx`.
+
+Folders mode lists one group per server that has libraries or failed to list
+them, each under its server's name when there are several. A failed group that
+is not signed out shows "Couldn't load libraries from &lt;server&gt;."
+(`library.list.loadServerLibrariesError`) with a Retry that refetches only that
+server's list (`useLibrariesAll().retryServer(connectionId)`).
 
 ### Capability-gated reads (player redesign Phase 1a)
 
@@ -443,8 +452,8 @@ gains `household_members`.
 `useMemberDevices(id)` (queries gated on `useCapability('household_members')` with
 `skipToken`), and the mutations `useAddMember`, `useMemberSession`,
 `useMemberPairing`, `useRevokeMemberDevice`, `useUpdateMember` and `useDeleteMember`
-(each rejects with `CapabilityError` while the flag is off or unknown; never hand that
-to `noteError`). They refresh the members list, that member's devices and, when a
+(each rejects with `CapabilityError` while the flag is off or unknown, sending
+nothing, so it is never a network failure for reachability). They refresh the members list, that member's devices and, when a
 sign-in on this device appears or goes, the caller's own devices (whose rows carry
 `member_sign_ins`; `invalidateHousehold`); a refused write reads the list again (a 404
 means the member is gone). A member change that touches sharing (`collection_ids`, a
@@ -731,9 +740,11 @@ pure (the podcast "New episodes" rail, `use-new-episodes.ts` and
 `bookRowTest` keeps episodes off the book shelves below, by library kind):
 
 - `home-model.ts`: `pickNowBook` (the loaded book, else the most recently played
-  in progress), `syncPill` (told as it is: a save still in the offline queue, or an
-  unreachable server, is "Saved on this device, will sync"; otherwise the newest
-  `updated_at` any server holds), `nextCandidates` (the Now book, other books in
+  in progress), `syncPill` (told as it is: a save still in the offline queue, or the server
+  holding the newest progress marked down, is "Saved on this device, will sync";
+  otherwise the newest `updated_at` any server holds. Another server being down
+  says nothing about the place: the greeting's servers pill names it, on a
+  phone too, on a row of its own), `nextCandidates` (the Now book, other books in
   progress, then recently finished, at most `NEXT_CANDIDATES` = 6, one `/next` each
   on the candidate's own server), `nextInSeriesItems` (an owned next book, else the
   community rail's next work as a ghost; books already on Home are skipped and a
@@ -1129,20 +1140,24 @@ tracking whether the **active server** is reachable so the sync layer stops
 hammering a dead endpoint:
 
 - Starts optimistic (`online: true`).
-- `noteError(e)` classifies failures: an `ApiError` means the server *answered*
-  (even a 500) → reachable; an `AbortError` (deliberate cancel) is ignored;
-  anything else - including the client's `TimeoutError` - flips to offline.
-  `noteSuccess()` flips back. The save paths use `noteError`, so a save that
-  gets no answer marks its server down at once. `loadInitialProgress` calls
-  `noteSuccess` for an `ApiError` (the server answered).
-- `noteFailure(cid, e)` is for a caller that sees every kind of failure (the
-  query cache, `loadInitialProgress`, `fetchBookProgress`'s mirror fallback). It
+- `noteFailure(cid, e)` is how every request path reports a failure: the
+  query cache, `loadInitialProgress`, `fetchBookProgress`'s mirror fallback,
+  the progress saves (`saveProgress`, `flushGroup`, which keep the save queued)
+  and the listening span (`endHistory`). It
   only asks for a check (`checkReachability`), and only for no answer
   (`isUnreachableError`: a `TimeoutError`, or a fetch's own `TypeError`) on a
   connection not already marked down. A capability gate or a cancel says
   nothing. So one slow or broken read never marks a healthy server down, and a
   read answered from a local copy never marks a dead one up (2.4.1,
-  frontend#131).
+  frontend#131). Nothing marks a server down without a check.
+- `noteSuccess(cid)` marks a connection up: a save that got through, or
+  `loadInitialProgress` reading an `ApiError` (the server answered).
+- `noteAnswer(cid)` counts an answer without changing the state. Every
+  `ApiClient` gets it as its `onAnswer` callback (the provider's clients and
+  the ones `resolveClient` builds for the save loop, the car and the
+  downloads), called whenever a fetch resolves, whatever the status. So a check
+  that timed out on a slow but healthy server sees that another request was
+  answered meanwhile and leaves it up (2.4.1).
 - `checkReachability(cid)` asks `GET /server` (one check per connection at a
   time): any answer, an `ApiError` included, is reachable; no answer is
   unreachable. It records nothing once stale: the connection was removed or
@@ -1165,7 +1180,7 @@ hammering a dead endpoint:
   reactively.
 
 Callers in the write paths (`progress-sync`, the history recorder in the player
-store) consult `isReachable()` before firing and call `noteError`/`noteSuccess`
+store) consult `isReachable()` before firing and call `noteFailure`/`noteSuccess`
 around requests, which is what keeps the classification current without a
 dedicated heartbeat while healthy.
 

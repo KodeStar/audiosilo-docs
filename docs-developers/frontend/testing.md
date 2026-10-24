@@ -277,13 +277,11 @@ stores) import `@/api/reachability`; tests replace it wholesale. From
 
 ```ts
 // babel-jest hoists jest.mock above the imports, so the module under test sees
-// the mock at import time (it calls onReconnect() and gates saves on isReachable()).
+// the mock at import time (it gates every save on isReachable(cid)).
 jest.mock('@/api/reachability', () => ({
   isReachable: jest.fn(() => true),
-  noteError: jest.fn(),
+  noteFailure: jest.fn(),
   noteSuccess: jest.fn(),
-  onReconnect: jest.fn(() => () => {}),
-  getReachabilityApi: jest.fn(() => null),
 }));
 ```
 

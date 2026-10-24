@@ -26,7 +26,7 @@ flag is never asked):
   every active query, so a change made on another device shows the next time the app
   (or the web tab) comes back to the foreground.
 - `useSetHousehold(cid?)` - the switch. Rejects with `CapabilityError` (sending
-  nothing) while the flag is off or unknown; never hand that to `noteError`. It stores
+  nothing) while the flag is off or unknown, so it is never a network failure. It stores
   the server's answer under `qk.household(cid)` and invalidates
   `qk.houseListening(cid)`, since a change of the caller's own choice opens or
   empties the house (it is reciprocal). A demo account's `PUT` is a `403`.

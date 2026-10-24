@@ -476,7 +476,9 @@ CSP-sensitive work against a real build served by Go. The console's own gate is
   in `GET /admin/setup`'s `config_libraries` has its **Delete library...**
   disabled with the reason (2.4.1, server#176); a delete the server refuses
   anyway (`409 config_library`, a config the console read before it changed)
-  shows that reason in the dialog and reads the setup again, so the card locks.
+  closes the dialog, shows that reason as an error toast and reads the setup
+  again, so the card locks (another failure keeps the dialog open with its
+  message).
 - **People > People / Invites / Shares / Devices** - person cards (the book a
   person is playing comes from `GET /admin/sessions/live`, else their newest
   unfinished progress from `GET /admin/stats`; the devices line from

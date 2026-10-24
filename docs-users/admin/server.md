@@ -150,8 +150,9 @@ The **Network** card:
   The server believes their `X-Forwarded-For` header, so devices, sessions and
   rate limits see each visitor's real address. A plain address like
   `10.0.0.2` is saved as the range `10.0.0.2/32`.
-- **Allowed web origins** - other websites allowed to call this server from a
-  browser, one per line (like `http://localhost:8081`). Usually empty; see
+- **Allowed web origins** - other websites allowed to call this server's API
+  from a browser, show its covers and play its audio, one per line (like
+  `http://localhost:8081`). Usually empty; see
   [Settings you can leave alone](../getting-started/remote-access.md#settings-you-can-leave-alone).
 
 The HTTPS mode, plain HTTP at home, the certificate names and the listen
