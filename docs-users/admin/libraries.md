@@ -467,6 +467,12 @@ app that runs the server): remove it there and restart to delete it." Every
 start reads it from the config again, so deleting it here would only bring it
 back empty, with everyone's progress in it gone.
 
+If the console didn't know yet that a library comes from your config (say it
+was added to `config.yaml` and the server restarted while the console was
+open), the server refuses the delete. The dialog closes, a message says the
+same thing, and the card then shows **From your config** with its Delete
+greyed out.
+
 :::warning[Everyone's progress in the library goes too]
 Deleting a library removes what AudioSilo knows *about* it for every person:
 their listening progress, bookmarks, notes and listening history for books in

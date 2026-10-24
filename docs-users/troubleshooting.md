@@ -152,10 +152,11 @@ happen, it usually means the server stopped accepting this device: an admin
 revoked it, or the server was rebuilt. The app doesn't fail silently - it shows
 a **Reconnect to &lt;your server&gt;** bar (tap it to sign in again, with the
 address already filled in), and after a full sign-out the connect screen lists
-your previous servers as one-tap **Reconnect** shortcuts. Home, the Library and
-Up next show **Sign in again to &lt;your server&gt;** with a **Reconnect**
-button in place of their books, rather than an error with **Retry**: trying
-again can't help until you sign in.
+your previous servers as one-tap **Reconnect** shortcuts. Home, the Library,
+Up next, a folder, a book or episode page, and You > Stats and Year show
+**Sign in again to &lt;your server&gt;** with a **Reconnect** button in place
+of what they couldn't load, rather than an error with **Retry**: trying again
+can't help until you sign in.
 
 Either way you only re-enter your code or password, never the server address. If
 you have no password set, [set one](./listening/account.md#password) so
@@ -167,14 +168,18 @@ your admin.
 With more than one server connected, the top bar (and the servers pill on
 Home) names a server that has stopped answering: "&lt;server&gt; isn't
 answering", with an amber dot. If it's the server you're using, the top bar
-says you're offline instead. When a page fails to load, the app checks the
-server itself before saying so, so one slow page doesn't trigger it. Books from your other servers keep
-working. Once that server answers again, the note goes and its lists fill in
+says you're offline instead. When a page or a save of your place fails, the
+app checks the server itself before saying so. A server that is slow but still
+answering your other requests isn't named, so one slow page or save doesn't
+trigger it. Books
+from your other servers keep working. Once that server answers again, the note goes and its lists fill in
 by themselves. If it stays, work through
 [I can't reach the server at all](#i-cant-reach-the-server-at-all).
 
 If the Library says "Could not load libraries.", the app couldn't get the list
-of libraries from a server. Press **Retry** where the screen offers it, or wait for
+of libraries from a server. In Folders, the message names the server: "Couldn't
+load libraries from &lt;server&gt;." Your other servers' libraries still show
+under their own names. Press **Retry** where the screen offers it, or wait for
 the server to come back: the Library reloads on its own once it answers.
 
 ### The app can't connect, but the browser can
