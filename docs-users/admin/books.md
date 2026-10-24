@@ -33,9 +33,10 @@ When you aren't searching or filtering, two shelves sit above the full list:
 
 Above the list:
 
-- **Library** - with more than one library, show **All** or just one. Each
-  choice shows its book count, and a library whose folder can't be read says
-  "offline".
+- **Library** - with more than one books library, show **All** or just one.
+  Each choice shows its book count, and a library whose folder can't be read
+  says "offline". [Podcast libraries](podcasts.md) aren't choices here (their
+  episodes aren't books), on Books, Authors, Narrators, Series or Folders.
 - **Filter books** - type to narrow by title, author, narrator, series, genre or
   tag.
 - **Sort** - **Title**, **Author, then series**, **Author surname**, **Series**,
@@ -45,7 +46,8 @@ Above the list:
   book without one, the date in its file's tags (usually when the audiobook was
   released rather than when the book first came out, so matching or editing
   **Published** gives a truer order).
-- **View** - **Cover grid** or **Table**. The table has columns for title,
+- **View** - **Cover grid** or **Table**. Switching view, sorting or filtering
+  while scrolled down the list brings the top of the list back into view. The table has columns for title,
   author, narrator, series, length, format, browser playback, community
   metadata and when the book was added. Click an author, narrator or series
   in the table to see all its books.

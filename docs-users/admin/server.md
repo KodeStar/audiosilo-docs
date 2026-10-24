@@ -240,7 +240,7 @@ cover images are still downloaded from their hosts.
   is set, the switch is greyed out and a notice ("No metadata service is
   configured") asks you to enter one and restart.
 - **Clear community matches**, in the **Danger zone** at the bottom, undoes
-  every community match so you can match from fresh. With more than one
+  every community match so you can match from fresh. With more than one books
   library, pick one (or **All libraries**); then click **Clear matches** and
   type the word it asks for. It removes the titles, authors, narrators, series,
   years, descriptions, ASINs, ISBNs and covers a community match wrote, whether
