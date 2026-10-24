@@ -131,5 +131,5 @@ Being internet-facing for non-experts is the server's first design priority, and
 
 Two `config.yaml` entries look security-related but aren't part of a normal setup:
 
-- **`cors_origins`** only matters if a *separately hosted* website needs to call your server from a browser - in practice, developers running the player from a dev server. The apps and the built-in web player work with it empty. Leave it as `[]`.
+- **`cors_origins`** only matters if a *separately hosted* website needs to call your server from a browser - in practice, developers running the player from a dev server. Once it lists that site, the site can also show covers and play audio. The apps and the built-in web player work with it empty. Leave it as `[]`.
 - **`app_links`** lets an invite QR code open the installed mobile app *directly*, without a chooser - but it only works for a domain that a shipped app build explicitly claims, so it isn't useful for a personal domain with the store apps. Leave it empty; invites still work everywhere via the web player and the "Open in app" button.

@@ -152,12 +152,28 @@ happen, it usually means the server stopped accepting this device: an admin
 revoked it, or the server was rebuilt. The app doesn't fail silently - it shows
 a **Reconnect to &lt;your server&gt;** bar (tap it to sign in again, with the
 address already filled in), and after a full sign-out the connect screen lists
-your previous servers as one-tap **Reconnect** shortcuts.
+your previous servers as one-tap **Reconnect** shortcuts. Home, the Library and
+Up next show **Sign in again to &lt;your server&gt;** with a **Reconnect**
+button in place of their books, rather than an error with **Retry**: trying
+again can't help until you sign in.
 
 Either way you only re-enter your code or password, never the server address. If
 you have no password set, [set one](./listening/account.md#password) so
 you can always get back in on any device without waiting on a fresh invite from
 your admin.
+
+### The top bar says a server "isn't answering"
+
+With more than one server connected, the top bar (and the servers pill on
+Home) names a server that has stopped answering: "&lt;server&gt; isn't
+answering", with an amber dot. The app checks the server itself before saying
+so, so one slow page doesn't trigger it. Books from your other servers keep
+working. Once that server answers again, the note goes and its lists fill in
+by themselves. If it stays, work through
+[I can't reach the server at all](#i-cant-reach-the-server-at-all).
+
+If the Library says "Could not load libraries.", the server didn't answer when
+the app asked: **Retry**, or wait for it to come back.
 
 ### The app can't connect, but the browser can
 

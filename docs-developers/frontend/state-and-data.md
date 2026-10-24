@@ -150,7 +150,22 @@ where a result lives ("server · library") for de-duplicated rows.
 
 `provider.tsx` also registers an `onReconnect` handler that invalidates **all**
 queries when the server becomes reachable again - screens that errored or
-emptied while offline repopulate without a remount.
+emptied while offline repopulate without a remount. Since 2.4.1 the query cache
+also tells reachability what a query learnt (frontend#131): `onError` hands a
+failure to `noteFailure`, and `onSuccess` for a connection marked down asks for
+a check (`recheckReachability`; the public `/server` query's success is that
+check's own answer, `noteSuccess`). Neither sets the state itself (below).
+
+The default retry is `retryQuery`: once, never for a 401 (frontend#124). A
+refused token stays refused, so a retry only doubled every dead request. A
+screen whose load failed for a connection that needs signing in again
+(`useSignedOutConnections`, the person listening's connections with
+`needsReconnect`) shows one `SignInAgainState` ("Sign in again to
+&lt;server&gt;", with the banner's Reconnect flow, `reconnectConnection`) in
+place of its load error, its Retry and its empty state: Home's Now card (and
+Recently added hides its error), the Library (`refusedConnection` over the
+library groups, and Books mode), and Up next (a compact row). Its components are
+in `src/components/layout/sign-in-again.tsx`.
 
 ### Capability-gated reads (player redesign Phase 1a)
 
@@ -1115,9 +1130,28 @@ hammering a dead endpoint:
 - `noteError(e)` classifies failures: an `ApiError` means the server *answered*
   (even a 500) → reachable; an `AbortError` (deliberate cancel) is ignored;
   anything else - including the client's `TimeoutError` - flips to offline.
-  `noteSuccess()` flips back.
-- While offline, a 20 s probe loop calls `serverInfo()` on each offline connection's
-  client (the map `ApiProvider` registers via `setReachabilityClients`) until it answers.
+  `noteSuccess()` flips back. The save paths use it.
+- `noteFailure(cid, e)` is for a caller that sees every kind of failure (the
+  query cache, `loadInitialProgress`, `fetchBookProgress`'s mirror fallback). It
+  only asks for a check (`checkReachability`), and only for no answer
+  (`isUnreachableError`: a `TimeoutError`, or a fetch's own `TypeError`) on a
+  connection not already marked down. A capability gate or a cancel says
+  nothing. So one slow or broken read never marks a healthy server down, and a
+  read answered from a local copy never marks a dead one up (2.4.1,
+  frontend#131).
+- `checkReachability(cid)` asks `GET /server` (one check per connection at a
+  time): any answer, an `ApiError` included, is reachable; no answer is
+  unreachable. It records nothing once stale: the connection was removed or
+  moved to another address while it waited, or (for no answer) another request
+  was answered meanwhile. `recheckReachability` runs it once more after a check
+  already in flight, so a Retry that got through is not lost to a stale check.
+  The probe loop uses it too.
+- While offline, a 20 s probe loop runs `checkReachability` on each offline connection
+  (through the client map `ApiProvider` registers via `setReachabilityClients`) until
+  it answers.
+- `firstOffline(connections, online)` names the first connection that is not
+  answering: the top bar's server line and Home's servers pill show "&lt;server&gt;
+  isn't answering" for it (`shell.notAnswering`) rather than a green count.
 - On web only, the browser's `online`/`offline` events short-circuit the loop
   (an `online` event triggers an immediate probe - the NIC being up doesn't
   prove the *server* is).

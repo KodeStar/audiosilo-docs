@@ -68,7 +68,7 @@ A [downloaded](offline-downloads.md) book is the safe choice for a drive through
 
 The car's own Now Playing screen shows the **chapter** you're in, with the author under it (CarPlay shows the book too), and a scrubber for that chapter. Next and previous move by chapter, as on the [lock screen](playback.md#lock-screen-and-headphone-controls). A speed you pick in the car is remembered for the book, as one you pick on the phone is.
 
-**Bookmark** adds a bookmark where you are, on the book in your account, like the bookmark button in the app; the button fills for a moment to say it's done. A bookmark you add with the app closed is saved as soon as the app has started in the background, and one that can't reach your server yet is kept on the phone and sent later.
+**Bookmark** adds a bookmark where you are, on the book in your account, like the bookmark button in the app; the button fills for a moment to say it's done. A bookmark you add with the app closed is saved as soon as the app has started in the background, and one that can't reach your server yet is kept on the phone, at the place you pressed it, and sent later.
 
 Every move you make in the car is saved as your new place, as a move on the lock screen is (see [Your position follows you](playback.md#your-position-follows-you)).
 

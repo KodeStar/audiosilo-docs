@@ -2844,7 +2844,9 @@ An answer authenticated by a cast token carries
 `Cross-Origin-Resource-Policy: cross-origin` in place of the server's usual
 `same-site`: the receiver is a web app served from another site (`gstatic.com`)
 that loads the files as `<audio>` and `<img>`, which the browser would otherwise
-block. Only these answers opt out. A cast token authenticates `?transcode=1&t=`
+block. A session's or API key's media answer opts out the same way only when
+`cors_origins` is set (from 2.4.1; see
+[Transport hardening](../auth-and-security.md#transport-hardening)). A cast token authenticates `?transcode=1&t=`
 like a session (the player asks for it for codecs a Cast receiver can't play);
 each such stream holds one of the transcoder's slots while the receiver reads it,
 and it marks the **sending device's** listening session as transcoded (the sender's
@@ -4555,6 +4557,13 @@ it. Its whole-library grant
 shares (`whole_library_id` = this library) are deleted too, unless one also
 holds rules for another library, which it keeps granting. Audio files on disk are
 untouched. `204 No Content`.
+
+A library the server's config declares (see
+[`PATCH`](#patch-apiv1adminlibrariesid) above) is `409 config_library` (from
+2.4.1, server#176): every start upserts it by name, so it would come back empty,
+with everyone's progress, bookmarks and notes in it gone. Remove it from
+`config.yaml` (or the app embedding the server) and restart instead. The console
+disables its **Delete library...** with the reason.
 
 ### `PUT /api/v1/admin/libraries/{id}/folder-override`
 

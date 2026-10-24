@@ -64,7 +64,8 @@ stays where it is.
 would show with your other filters applied, so you never pick a filter that
 leads nowhere:
 
-- **Library**, **Format** (M4B, MP3, ...) and **Codec**
+- **Library** (when you have two or more book libraries), **Format** (M4B,
+  MP3, ...) and **Codec**
 - **Playback** - **Plays directly** or **Needs transcoding** (for browsers)
 - **Cover** - **Has cover** or **Missing cover**
 - **Community metadata** - **Matched** or **Not matched** (only when

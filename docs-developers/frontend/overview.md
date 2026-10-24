@@ -344,8 +344,9 @@ wins over "offline", else "Signed in as &lt;user&gt;" - each opening that server
 (`/connect?add=1`; hidden, as in Settings' accounts pane, when the served web player is signed in only to its own server, `onlyOwnServer(servedOrigin(), ...)`); **Journal** (`openJournal()`); **Household** (`openHousehold()`); **Settings** (`openSettings()`); **Account on &lt;default server&gt;**; and a light/dark
 appearance switch (`useTheme().toggleScheme()`, which the palette's action uses
 too). A phone keeps all of this in the Me tab's You hub. The same `serverStatus()` drives
-the top bar's server line (the default server's name, or "Offline" / "Needs
-signing in again"); the docked bar's sync line is `usePlaceSync` (sign in again >
+the top bar's server line (`serverLine`: the default server's name, "Offline" / "Needs
+signing in again" for it, else "&lt;server&gt; isn't answering" for another server
+`firstOffline` finds, else the name with "+ N more"); the docked bar's sync line is `usePlaceSync` (sign in again >
 saved on this device > synced / synced just now, see
 [Player UI](player-ui.md#mini-player-accessory-player-docked-player)).
 

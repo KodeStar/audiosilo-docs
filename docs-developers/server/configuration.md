@@ -79,7 +79,7 @@ is enabled but not found locally, the auto-download kicks in (below).
 | `public_url` | string, `""` | Externally reachable base URL, used in QR pairing payloads, invite links and the launcher's "open this URL" output. Empty → derived per-request from scheme + `Host` header. Also the **away** address the apps use outside the home network (see [Home address](#home-address-lan_url)) |
 | `lan_url` | string, `""` | The server's **home** address on the household network, e.g. `http://192.168.1.20:8080`: see [Home address](#home-address-lan_url). Empty → derived per request when the request's `Host` is a home-network host |
 | `trusted_proxies` | []string (CIDRs), `[]` | Networks whose `X-Forwarded-For` is trusted when deriving the client IP (which feeds the per-IP rate limiters). Set when running behind a reverse proxy. Each entry must be a valid CIDR |
-| `cors_origins` | []string, `[]` | Browser origins granted CORS (methods `GET, POST, PUT, PATCH, DELETE, OPTIONS`). Empty = no cross-origin headers at all (native apps and same-origin web still work); `"*"` disables the check entirely. Needed for a hot-reload frontend dev server, e.g. `http://localhost:8081` |
+| `cors_origins` | []string, `[]` | Browser origins granted CORS (methods `GET, POST, PUT, PATCH, DELETE, OPTIONS`). Empty = no cross-origin headers at all (native apps and same-origin web still work); `"*"` disables the check entirely. Needed for a hot-reload frontend dev server, e.g. `http://localhost:8081`. Once set, every authenticated media answer (covers, streams) is `Cross-Origin-Resource-Policy: cross-origin`, so a player on another site shows covers and plays audio (from 2.4.1; before, the browser blocked its covers): see [Transport hardening](auth-and-security.md#transport-hardening) |
 | `max_upload_bytes` | int64, `2147483648` (2 GiB) | Reserved for the planned `POST /uploads` (Phase B) - **not yet enforced**; JSON request bodies use a fixed 1 MiB cap regardless |
 
 #### Home address (`lan_url`)
@@ -203,7 +203,10 @@ library to `config.yaml`, a declared library's name and folder can't be changed
 at runtime: `PATCH /admin/libraries/{id}` answers `409 config_library` (from
 2.4.0; a rename used to come back as a second library at the next start) and
 the console locks both fields, while its other settings stay editable. Change
-them in `config.yaml` (or the app embedding the server) and restart. There is deliberately **no layout key**
+them in `config.yaml` (or the app embedding the server) and restart. Deleting one
+is refused the same way (`DELETE /admin/libraries/{id}`, `409 config_library`
+from 2.4.1): the next start would add it back empty, with everyone's progress in
+it gone. Remove it from the config and restart instead. There is deliberately **no layout key**
 - folder shape is auto-detected per folder by the
 [scanner](scanner.md), with per-folder admin overrides for corrections.
 

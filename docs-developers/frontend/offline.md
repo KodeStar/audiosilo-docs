@@ -250,7 +250,11 @@ with no network.
   wrote it in, since a file's index there is its name on disk. An offline
   start, Android's no-JS car start and `adoptLoaded` keep the manifest's order
   until an online start plays the new one. A place saved on the old timeline
-  reads as moved once the new order is taken (nothing remaps it).
+  reads as moved once the new order is taken (nothing remaps it). The
+  [hot-swap](#playing-downloaded-content) is the one other taker (2.4.1): a copy
+  that lands while that start's order streams (a pre-2.4.0 download retried, say)
+  takes the start's chapters, as the start's own load would have, when they give
+  the order the engine plays.
 
 ### Hydrate and the iOS container-move problem
 
@@ -501,8 +505,25 @@ Three paths, the first two in `src/playback/store.ts`:
   prefers the engine's **gapless `swapTo`** (buffer the local source in
   parallel, then switch at the same position). A refused swap - e.g. the web SW
   isn't controlling the page - leaves the streaming queue untouched, so
-  playback never dies from trying to go local. The store only commits the new
-  queue once the engine has actually moved.
+  playback never dies from trying to go local; a failed one is logged. The store
+  only commits the new queue once the engine has actually moved, and only while
+  that book is still the one loaded. The swap **keeps the engine's file order**
+  (2.4.1, frontend#135):
+  - A download in another order (a pre-2.4.0 download retried while the new
+    order streams) takes the chapters the book was started from
+    (`adoptStartedChapters`), only when they give exactly the engine's order. The
+    swap then changes only the files' urls: the track index, the in-file place
+    and the whole-book seconds stay what the saves, the resume floor, the sleep
+    timer, jump undo, the spoiler gates and a Cast receiver read.
+  - The same files in an order the engine doesn't play (a start given no
+    chapters) leave the book streaming: moved onto that order, the rest of the
+    book would play in another sequence.
+  - A download holding other files moves the listener to the same file (by
+    path-keyed track id) at the same in-file place, else to the same whole-book
+    place, and the resume floor moves with it. While that moves the track index,
+    `persist` and `onRemoteMove` refuse a place at another index of the book
+    (`swapHold`) until the download's queue is committed, which on a `load` is
+    before the rate and the play.
 - **Started by the car** (Android, no JS running): the playback service starts a
   downloaded book from the car snapshot's play spec (`file://` tracks, no auth
   headers), and once JS boots the store's `adoptLoaded` takes it over, building the

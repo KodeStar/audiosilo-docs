@@ -137,7 +137,10 @@ from arming in a car. It answers:
   book the engine names (else the loaded book). Bookmarks pressed while no JS ran
   (`consumePendingBookmarks`, Android) are added at start and on every return to the
   foreground, each on its own connection (dropped when the connection is gone); one that can't
-  reach its server waits under `audiosilo.carBookmarks` for the next drain.
+  reach its server waits under `audiosilo.carBookmarks` for the next drain, at the whole-book
+  place read on its first try (2.4.1, frontend#136: a file place converted later could go
+  through a re-ordered download's timeline). Only one whose place could not be read yet stays
+  in file coordinates.
 - **Adopting** (Android): see [below](#adopting-a-book-the-service-loaded).
 
 `car-native.ts` / `car-native.native.ts` are the one seam to the module's car surface, and
