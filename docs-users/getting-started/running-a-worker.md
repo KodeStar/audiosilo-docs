@@ -60,10 +60,17 @@ same Mac to get the fast speech recognition.
    worker and add it again.
 
 The command uses the Bridge's **public address** from its Settings, else the
-address you opened the page at. If the page says it is open at a local-only
-address (like `localhost`), set the public address first, or put the Bridge's
-network address into the command yourself. A worker on the same computer as the
-Bridge can use `localhost`.
+address you opened the page at. The worker downloads its program from that address
+and connects to it. If the page says it is open at a local-only address (like
+`localhost`), set the public address first, or put the Bridge's network address
+into the command yourself. A worker on the same computer as the Bridge can use
+`localhost`. If you reach the page through a reverse proxy anyway (it isn't
+advised: see [Open the Bridge's page](running-a-bridge.md#3-open-the-bridges-page)),
+set the public address to the proxy's full address, path included (like
+`https://nas.example/bridge`), and the worker goes through the proxy too. The
+proxy must pass on the address the worker's computer asked for (on nginx,
+`proxy_set_header Host $host;`), or the worker gets the proxy's own address for
+the Bridge instead, which it may not reach.
 
 If **Copy** can't reach the clipboard (some browsers refuse on a plain `http://`
 page), the page selects the command and says so: copy it with Cmd-C on a Mac
@@ -75,7 +82,9 @@ page), the page selects the command and says so: copy it with Cmd-C on a Mac
 Add `--run` at the end of the command to run the worker in that terminal instead
 of installing the service. It downloads the program the same way, then works until
 you press Ctrl-C or close the terminal. Paste the command again without `--run`
-to install the service.
+to install the service. A `--run` start doesn't save the token, so keep `--token`
+in the command each time you run it that way. On a computer where the service is
+already installed, a `--run` start replaces the service's program too.
 :::
 
 Open a terminal on the worker's computer (on a Mac, the Terminal app) and paste the
@@ -111,10 +120,11 @@ readable only by you.
 The worker program isn't signed by Apple, but macOS runs it without asking: a file
 `curl` downloads isn't marked as downloaded from the internet.
 
-The command also takes `--dir <folder>` (put the program somewhere else) and
-`--help`. The program isn't on your `PATH`, so the commands on this page use its
-full path, `~/.audiosilo-bridge-worker/bin/audiosilo-bridge`; the command prints
-the line to add to your shell's profile if you'd rather type `audiosilo-bridge`.
+The command also takes `--dir <folder>` (put the program somewhere else; see
+[Updating](#updating)) and `--help`. The program isn't on your `PATH`, so the
+commands on this page use its full path,
+`~/.audiosilo-bridge-worker/bin/audiosilo-bridge`; the command prints the line to
+add to your shell's profile if you'd rather type `audiosilo-bridge`.
 
 ### When the worker is off
 
@@ -146,10 +156,12 @@ curl -fsSL http://192.168.1.20:8091/worker/install.sh | sh -s
 ```
 
 It downloads the Bridge's new version over the old one and restarts the service.
-If you installed it with `--dir`, add the same `--dir` again (else the new version
-goes to the default folder and the old copy stays behind). The Bridge and its
-workers must speak the same version of the worker protocol: a worker that is too
-old or too new for its Bridge says so in its log and waits until both match.
+It updates the program in the folder the service runs it from (so a worker
+installed with `--dir` updates in place) and says which folder that is; if that
+folder is gone or it can't write there, it uses the default folder and the
+service runs it from there. Add `--dir` to put it somewhere else. The Bridge and
+its workers must speak the same version of the worker protocol: a worker that is
+too old or too new for its Bridge says so in its log and waits until both match.
 
 ### Installing it by hand
 
@@ -213,8 +225,8 @@ A message that starts with `curl:` comes from fetching the command itself.
 | What the command says | What to do |
 |---|---|
 | *curl: (7) Failed to connect*, *Could not resolve host* or *timed out* | The address in the command doesn't reach the Bridge. Check that it is your Bridge's (its IP address and port, `8091`), that the Bridge is running, and that this computer is on the same network. |
-| *curl: (22) The requested URL returned error: 403* | The Bridge refused this computer: it answers only its local network. Run the command from a computer on the same network, not over the internet or a VPN address like Tailscale's. |
-| *--token is required* | The first install needs the token: copy the whole command from the **Workers** tab. Only an update of a worker installed on this computer can leave it out. |
+| *this Bridge only serves the worker install to its local network* | The Bridge refused this computer: it answers only its local network. Run the command from a computer on the same network, not over the internet or a VPN address like Tailscale's. |
+| *--token is required* | The first install needs the token: copy the whole command from the **Workers** tab. Only an update of a worker installed as a service on this computer can leave it out (a `--run` start doesn't save it). |
 | *this Bridge has no worker downloads* | The Bridge isn't running from its Docker image. [Install the worker by hand](#installing-it-by-hand) from the GitHub release. |
 | *the download failed* | Check that the address in the command is your Bridge's (its IP address and port, `8091`), that the Bridge is running, and that this computer is on the same network. |
 | *the address this was fetched from isn't a plain host name or IP address* | Use the command as the **Workers** tab shows it, with the Bridge's IP address and port. |

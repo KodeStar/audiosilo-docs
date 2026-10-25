@@ -28,7 +28,7 @@ rather than being ignored.
 |---|---|---|---|
 | `listen` | `AUDIOSILO_BRIDGE_LISTEN` (or `--listen`) | `:8091` | the address its page listens on |
 | `server.url` | `AUDIOSILO_BRIDGE_SERVER_URL` | | the server, as the Bridge reaches it (`http://audiosilo:8080` on a compose network): the address `AUDIOSILO_BRIDGE_PAIR_CODE` pairs with, and the one the page's pairing form starts with. An absolute `http(s)` URL without credentials, query or fragment. Once paired, the Bridge keeps the address it paired with, with the pairing |
-| `public_url` | `AUDIOSILO_BRIDGE_PUBLIC_URL` | | its page as your local network reaches it (`http://192.168.1.10:8091`): sent in the heartbeat as `ui_url`, and the console's **Open its page** links to it. Without it the console shows no link |
+| `public_url` | `AUDIOSILO_BRIDGE_PUBLIC_URL` | | its page as your local network reaches it (`http://192.168.1.10:8091`): sent in the heartbeat as `ui_url`, and the console's **Open its page** links to it. Without it the console shows no link. The Workers tab's install command uses it, and so does `install.sh` when it is fetched at this address's host and port (see [Installing a worker](workers.md#installing-a-worker)) |
 | `libraries` | `AUDIOSILO_BRIDGE_LIBRARIES` (`<id>=<path>;<id>=<path>`; a path may hold a comma) | the server's own root path | where the Bridge sees each library, by the server's library id; absolute paths, each id once (see [Library mappings](mappings.md)) |
 | `mapping.check_minutes` | `AUDIOSILO_BRIDGE_MAPPING_CHECK_MINUTES` | `10` | how often the mappings are checked, 1 to 1440 |
 | | `AUDIOSILO_BRIDGE_PAIR_CODE` | | pair at the start with this code from the console, when not paired yet (needs `server.url`) |

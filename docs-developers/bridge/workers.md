@@ -173,16 +173,31 @@ repo's `internal/workerdist` (the builds folder, the platform set, install.sh) a
   protocol. They are never embedded in the Go binary, so a Bridge run natively has
   none: `GET /api/status` then says `worker_downloads: false`, and the Workers tab
   points at the GitHub releases and opens its manual commands.
-- **`GET /worker/install.sh`** answers a POSIX `sh` script with the address the
-  request reached (its scheme and `Host`, checked against a plain host name, IPv4
-  or bracketed IPv6, with an optional port) baked in, single-quoted: the computer
-  that fetched the script reached that address, so its worker can too. The
-  configured `public_url` only goes into the command the Workers tab shows. Past
-  the local-network guard (which refuses an outside address with its `403` JSON,
-  so `curl -fsSL` prints `curl: (22)` and `sh` exits 0 on nothing), it always
-  answers `200` with a script: when it can't serve install.sh (no builds, an unusable `Host`) the script prints
-  the reason to stderr and exits 1, because `curl -fsSL` drops an error status's
-  body and `sh` would run an empty script and exit 0.
+- **`GET /worker/install.sh`** answers a POSIX `sh` script with the Bridge's
+  address baked in, single-quoted (`workerdist.Address`):
+  - The request's scheme and `Host` are checked first: a plain host name, IPv4 or
+    bracketed IPv6, with an optional port. Anything else is `ErrAddress` and never
+    reaches the next step.
+  - The address is the configured `public_url` (trailing slashes trimmed) when it
+    is a plain http(s) URL (no user, query or fragment; a host that passes the
+    same check; a path of letters, digits and `._~/%-` only) whose host and
+    port match the `Host`. The match ignores case and reads a missing port as
+    `public_url`'s scheme default (80 or 443). Its scheme and path prefix are
+    kept, so behind a reverse proxy that serves the Bridge under a prefix or over
+    TLS the script and its download URLs match the Workers tab's command.
+    `public_url` is admin-set, and the `Host` shows the fetching computer reached
+    that host. Behind a proxy this needs the proxy to pass the client's `Host`
+    through (nginx's default sends its upstream's): else the script carries the
+    upstream address.
+  - Otherwise it is the request's own scheme and `Host`: the computer that fetched
+    the script reached that address, so its worker can too.
+
+  It always answers `200` with a script: when it can't serve install.sh (no
+  builds, an unusable `Host`, or a caller the local-network guard refuses), the
+  script prints the reason to stderr and exits 1, because `curl -fsSL` drops an
+  error status's body and `sh` would run an empty script and exit 0. The guard's
+  refusal as a script is for this route only (`GET` or `HEAD`); every other route
+  keeps the guard's `403` JSON.
 - **`GET /worker/download/{os}/{arch}`** serves one gzipped build. The OS and
   architecture pick from the fixed set (the file name never comes from the
   request); another platform, or a Bridge without the builds, is `404` with a
@@ -195,11 +210,19 @@ The Workers tab's command is
 script takes `--token` (required unless the worker's data dir already holds a
 saved token, or `$AUDIOSILO_WORKER_TOKEN` is set: re-running it without one is
 how a worker updates), `--run` (exec the worker in the foreground instead of
-installing the service), `--dir <path>` (where the program goes, default
-`~/.audiosilo-bridge-worker/bin`) and `-h`. Its body is one `main` called on the
-last line, so a download cut short runs nothing. It maps `uname -s`/`uname -m` to
-the platform (an Apple Silicon Mac under Rosetta takes the native `arm64` build,
-the one with Metal), downloads to a temp file beside the target, checks that the
+installing the service; it saves no token, and when `--token` was passed the
+script says a later re-run needs it again), `--dir <path>` (where the program
+goes) and `-h`. Without `--dir` it reuses the installed service's folder: the
+folder of the program in the launch agent's `ProgramArguments` (macOS) or the
+first word of the systemd user unit's `ExecStart` (Linux), as `worker install`
+writes them, when that is an existing, writable absolute folder with no character
+the file would have had to escape (a `--run` start too, so it replaces the
+service's program without restarting it). It prints the folder it reused, and
+otherwise falls back to `~/.audiosilo-bridge-worker/bin`. An explicit `--dir`
+always wins. Its body is one `main` called on the last line, so a download cut
+short runs nothing. It maps `uname -s`/`uname -m` to the platform (an Apple
+Silicon Mac under Rosetta takes the native `arm64` build, the one with Metal),
+downloads to a temp file beside the target, checks that the
 program runs (`version`), moves it into place, prints a `PATH` hint when its
 folder isn't on `PATH`, then runs `worker install --bridge <addr> [--token ...]`.
 A file `curl` writes carries no quarantine attribute, so Gatekeeper doesn't stop
@@ -224,10 +247,11 @@ for a hyphenated tag) when the tag has none yet, and a re-run replaces the asset
   LAN. A carrier-grade NAT address (Tailscale's) is refused, like the page.
 - The two install routes, `/worker/install.sh` and `/worker/download/...`, sit
   outside `/worker/v1` (which takes only worker tokens) behind the same
-  local-network guard, but ask for **no** password or token: a `curl | sh` carries
-  no session, the program is public, and the worker token in the user's command is
-  the credential. Neither reads a path from the request. Both are tested allowed
-  (a LAN address) and denied (a public address, an unknown platform, no builds).
+  local-network guard (install.sh answers its refusal as a script, above), but ask
+  for **no** password or token: a `curl | sh` carries no session, the program is
+  public, and the worker token in the user's command is the credential. Neither
+  reads a path from the request. Both are tested allowed (a LAN address) and
+  denied (a public address, an unknown platform, no builds).
 - A worker's free text (its name, versions, an error) is cleaned and capped; a
   transcript must parse as a complete one before it is written into the engine's
   work dir.
