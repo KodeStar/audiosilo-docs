@@ -131,10 +131,10 @@ Patterns to copy when adding an endpoint:
   back, `onSettled` invalidates to reconcile server-derived fields. The server
   derives a favourite's `is_book` from its index, so hearting a folder `/fs` flags
   `pending_book` (`pendingBook` in `ToggleFavouriteVars`) also reads the book
-  through the item query (`GET /item` indexes it on demand; asked once,
-  `networkMode: 'always'`, no retry, best effort) beside the add, then marks the
-  parent folder's browse listing stale: the optimistic stub is `is_book: true`, and
-  the mutation settles only once both are done, so Favourites and Home show a book,
+  through the item query beside the add (`GET /item` indexes it on demand; asked
+  once, `networkMode: 'always'`, no retry, best effort), then marks the parent
+  folder's browse listing stale. The optimistic stub is `is_book: true`, and the
+  mutation settles only once both are done, so Favourites and Home show a book,
   not a folder. Toggles of one connection run one at a time (the mutation `scope`),
   and only the last of a run invalidates the list, so an earlier answer can't flip
   the heart back.

@@ -177,8 +177,8 @@ export function naturalCompare(a: string, b: string): number {
 ```
 
 The sort is **client-side and numeric-aware** so `Book 2` precedes `Book 10`
-(a server before #177 lists `/fs` in plain string order; a newer one lists in
-natural order already, `naturalLess`). It never throws - any
+(an older server lists `/fs` in plain string order; a newer one lists in natural
+order already). It never throws - any
 failure resolves to `null`. The server's
 [`GET /libraries/{id}/next`](../server/api/reference.md#get-apiv1librariesidnext)
 ends in the same rule (`library.NextSibling`, a port of `findNextSibling` that

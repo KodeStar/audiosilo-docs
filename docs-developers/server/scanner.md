@@ -98,12 +98,14 @@ rename show folders manually: feed episode paths include them. See
   (`Ignore.Covers`, also before pagination), so the browse view never shows
   what the scanner skips.
 - An `.mka` beside a file of the same name in another audio format is left out
-  (`library.shadowedMKA`, the one rule `folderAudio` uses to keep it out of the
-  book; a lone `.mka` stays). `ListDir`, the listing behind `/next`'s folder
+  (`library.shadowedMKA`, the rule `folderAudio` uses to keep it out of the book,
+  see [Recognized audio](media.md#recognized-audio-metadataaudioextensions); a lone
+  `.mka` stays). `ListDir`, the listing behind `/next`'s folder
   fallback, applies the same rule.
 - Directories sort before files, each group in **natural order** (`naturalLess`,
-  the order a folder book's files play in, so `2` lists before `10`; before #177
-  it was by lowercased name, byte by byte); pagination is
+  the order a folder book's files play in, see
+  [Book detection](#book-detection-booksindir), so `2` lists before `10`; before
+  #177 it was by lowercased name, byte by byte); pagination is
   simple offset-based (default 200, cap 500) - fine here because a single
   directory is small, unlike the catalog-wide listings which must use keyset
   cursors.
@@ -122,19 +124,19 @@ not yet joined is marked `split_discs: true` (`catalog.SplitFolders`, from
 A member's listing never carries the key, so the player's wire is unchanged.
 
 Last, for every caller, `library.MarkPendingBooks` marks `pending_book: true` on
-the folders a scan would read as a book that the index doesn't hold yet (#193):
-`pendingBook` asks `resolveBook`'s questions (a `collection` override, then
-`joinRoot` for a disc set under a `book` override, walked with `audioDirs` only
-then and capped at 200 folders, then `hasAudio`: audio directly in the folder,
-hidden and ignore rules applied) from directory reads alone. It skips a folder the
-caller's scope doesn't `Allow` (one seen only on the way down to a grant), a folder
-with an indexed book at or below it (`catalog.FoldersHoldingBooks`, one query for the
-page, two index seeks per folder, so an indexed library's author and series folders cost no disk
-read), and everything once its 2-second budget (`pendingTime`) or the request's
-context runs out. A failed folder-overrides read marks nothing. The rule and the
-wire shape are in the
-[API reference](api/reference.md#get-apiv1librariesidfs); the player opens such a
-folder as a book, which [indexes it on demand](#on-demand-indexing-indexpath).
+the folders a scan would read as a book that the index doesn't hold yet (the rule
+and the wire shape are in the
+[API reference](api/reference.md#get-apiv1librariesidfs)). `pendingBook` asks
+`resolveBook`'s questions (a `collection` override, then `joinRoot` for a disc set
+under a `book` override, walked with `audioDirs` only then and capped at 200
+folders, then `hasAudio`) from directory reads alone. It skips a folder the
+caller's scope doesn't `Allow`, a folder with an indexed book at or below it
+(`catalog.FoldersHoldingBooks`, one query for the page, two index seeks per folder,
+so an indexed library's author and series folders cost no disk read; such a folder
+holding audio of its own stays unflagged until a scan indexes it), and everything
+once its 2-second budget (`pendingTime`) or the request's context runs out. A
+failed folder-overrides read marks nothing. The player opens such a folder as a
+book, which [indexes it on demand](#on-demand-indexing-indexpath).
 
 ## When scans run
 

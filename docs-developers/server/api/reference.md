@@ -855,8 +855,8 @@ own book, which a `book` override would join into one (see
 callers only and omitted otherwise, so the player's listing is unchanged.
 
 **Order.** Directories come first, then files, each group in **natural order**
-(`naturalLess`, the order a folder book's files play in: `1`, `2`, `10`, digit
-runs by value, the rest case-folded), so a book's files list as they play. A
+(`naturalLess`, the order a folder book's files play in, so `2` lists before `10`;
+see [Book detection](../scanner.md#book-detection-booksindir)). A
 joined book's discs play in `discOrder`, which also ignores spaces, hyphens and
 underscores, so only a disc set named unevenly (`CD1` beside `CD 2`) lists in
 another order than it plays. An older server sorts each group by its lowercased
@@ -868,7 +868,7 @@ leaves it out of the book (`library.shadowedMKA`, the rule `folderAudio` uses;
 see [Recognized audio](../media.md#recognized-audio-metadataaudioextensions)); a
 lone `.mka` is listed.
 
-**`pending_book: true`** (#193) marks a folder the background scan has not
+**`pending_book: true`** marks a folder the background scan has not
 indexed yet that the scanner would read as a book (`library.MarkPendingBooks`,
 called from `annotateWithBooks`), so a player can open it as a book: any content
 route then indexes it on demand
@@ -888,13 +888,10 @@ never flagged. It is never sent alongside `is_book`, never in a podcast library'
 listing, and absent (not `false`) otherwise. No capability flag: an older player
 ignores the field, and a newer player on an older server finds it absent.
 
-The pass is bounded. A folder with an indexed book at or below it is never read
-from disk (`catalog.FoldersHoldingBooks`, one index query for the page), so in an
-indexed library author and series folders cost nothing; such a folder that also
-holds audio of its own is not flagged until a scan indexes it. The whole pass,
-disc-set walks included (at most 200 folders each), has 2 seconds and the
-request's context: a folder it doesn't reach in time is listed unflagged, as is
-every folder when the library's folder overrides can't be read.
+The pass is bounded (see [the filesystem view](../scanner.md#the-filesystem-view-browsefs)),
+so a folder can be listed unflagged: one with an indexed book at or below it, one
+the pass doesn't reach in its 2 seconds, and every folder when the library's folder
+overrides can't be read.
 
 | Status | Meaning |
 |---|---|
@@ -2951,8 +2948,8 @@ under [`PUT`](#put-apiv1librariesidprogress); a listener corrects them with
 #### The progress path
 
 The three `/libraries/{id}/progress` routes (this read, `PUT` with its listening
-session, and `PATCH`) keep a book's progress on **the book's path** (#199,
-`api.progressPath` over `catalog.BookPathOfFile`). The `?path=` is scope-checked as
+session, and `PATCH`) keep a book's progress on **the book's path**
+(`api.progressPath` over `catalog.BookPathOfFile`). The `?path=` is scope-checked as
 given (out of scope is the usual `403`), then:
 
 - the path of an indexed book, or of one of its **track files**
