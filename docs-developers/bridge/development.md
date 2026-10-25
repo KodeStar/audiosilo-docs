@@ -221,9 +221,8 @@ Two rules protect the page, and both hold for **every** request, loopback includ
 
 - **Local network only.** A connection whose address isn't loopback, private
   (RFC 1918, or an IPv6 unique local address) or link-local gets
-  `403 {"code": "lan_only"}` (except `/worker/install.sh`, known by its cleaned
-  path so `//worker/install.sh` and `/worker/install.sh/` count too, which answers
-  with a script, see [Installing a worker](workers.md#installing-a-worker)), and the page
+  `403 {"code": "lan_only"}` (except `/worker/install.sh`, which answers with a
+  script, see [Installing a worker](workers.md#installing-a-worker)), and the page
   shows a "local network only" screen. The check reads the connection's own
   address, **never** a forwarded header (so the page isn't meant to sit behind a
   reverse proxy, and a client can't claim to be local). Carrier-grade NAT ranges

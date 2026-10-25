@@ -153,9 +153,9 @@ The buttons there are:
   console says so: allow pop-ups for your server's address and click it again.
   It only shows when your server has the web player.
 - **Change cover** - see [Covers](#covers).
-- The **⋯** menu (**More book actions**) - **Copy path** (when the browser
-  refuses the copy, a message shows the path and stays open until you close it, so you can select it and copy it
-  yourself), **Add to a share...** and **Read the files again**, which re-reads this book's files
+- The **⋯** menu (**More book actions**) - **Copy path** (if the browser blocks
+  the copy, a message shows the path and stays open for you to copy it by hand),
+  **Add to a share...** and **Read the files again**, which re-reads this book's files
   straight away (tags, chapters, cover) without rescanning the whole library -
   handy after you fix a file's tags, or for a file
   [Library health](health.md#the-kinds-of-issue) says couldn't be read.

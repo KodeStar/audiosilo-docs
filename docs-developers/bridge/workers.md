@@ -151,9 +151,9 @@ it).
   logged out.
 
 **An update keeps the service's flags.** Before it writes the file, `worker install`
-reads the installed one back into its argv (`worker.Service.InstalledArgs`: the
-plist's `ProgramArguments`, or the unit's first `ExecStart` with only the escapes
-`Render` writes undone, its inverse under a round-trip test) and parses it with the
+reads the installed one back into its argv (`worker.Service.InstalledArgs`, the
+inverse of `Render`: the plist's `ProgramArguments` or the unit's first
+`ExecStart`) and parses it with the
 same flag set that wrote it (`carryForward` in `cmd/audiosilo-bridge/worker.go`).
 Each written flag the command line didn't give (`--bridge`, `--data`, `--backend`,
 `--model`, `--whisper-cli`; never `--token`, which is never in the file) keeps its
@@ -196,20 +196,20 @@ repo's `internal/workerdist` (the builds folder, the platform set, install.sh) a
     is a plain http(s) URL (no user, query or fragment; a host that passes the
     same check; a path of RFC 3986 path characters only: letters, digits,
     `-._~`, `%XX`, `!$&()*+,;=:@` and `/`, but never `'`, which would end the
-    single-quoted bake-in) whose host and port match the `Host`. Every place the
-    address goes carries those characters as written: install.sh's double-quoted
-    expansions, curl's URL (curl globs only `[]{}`), the launch agent's plist
-    (XML-escaped) and the systemd unit (a quoted word with `%` and `$` doubled, so
-    `;` is no command separator either); the worker client appends each route to
-    the path as written (`EscapedPath`), so a `(` or `!` reaches the proxy
-    unescaped. The match ignores case and reads a missing port as
-    `public_url`'s scheme default (80 or 443). Its scheme and path prefix are
-    kept, so behind a reverse proxy that serves the Bridge under a prefix or over
-    TLS the script and its download URLs match the Workers tab's command.
-    `public_url` is admin-set, and the `Host` shows the fetching computer reached
-    that host. Behind a proxy this needs the proxy to pass the client's `Host`
-    through (nginx's default sends its upstream's): else the script carries the
-    upstream address.
+    single-quoted bake-in) whose host and port match the `Host`. The match
+    ignores case and reads a missing port as `public_url`'s scheme default (80
+    or 443). Its scheme and path prefix are kept, so behind a reverse proxy that
+    serves the Bridge under a prefix or over TLS the script and its download URLs
+    match the Workers tab's command. `public_url` is admin-set, and the `Host`
+    shows the fetching computer reached that host. Behind a proxy this needs the
+    proxy to pass the client's `Host` through (nginx's default sends its
+    upstream's): else the script carries the upstream address. Every place the
+    address goes carries those path characters as written: install.sh's
+    double-quoted expansions, curl's URL (curl globs only `[]{}`), the launch
+    agent's plist (XML-escaped) and the systemd unit (a quoted word with `%` and
+    `$` doubled, so `;` is no command separator either); the worker client
+    appends each route to the path as written (`EscapedPath`), so a `(` or `!`
+    reaches the proxy unescaped.
   - Otherwise it is `http://` and the request's own `Host`: the computer that
     fetched the script reached that address, so its worker can too.
 
@@ -231,24 +231,29 @@ repo's `internal/workerdist` (the builds folder, the platform set, install.sh) a
 
 The Workers tab's command is
 `curl -fsSL http://<bridge>/worker/install.sh | sh -s -- --token asw_...`. The
-script takes `--token` (required unless the worker's data dir already holds a
-saved token, or `$AUDIOSILO_WORKER_TOKEN` is set: re-running it without one is
-how a worker updates; the data dir it checks is the installed service's `--data`
-when its file names one plainly, since `worker install` keeps it, else, and for a
-`--run` start, `$AUDIOSILO_WORKER_DATA` or `~/.audiosilo-bridge-worker`, as
-`worker` finds it), `--run` (exec the worker in the foreground instead of
-installing the service; it saves no token, and when `--token` was passed the
-script says a later re-run needs it again; when the program lands in the folder
-the installed service runs from, the script says the service keeps the old
-program until it restarts and prints the restart command: `launchctl kickstart -k
-gui/<uid>/app.audiosilo.bridge-worker` or `systemctl --user restart
-audiosilo-bridge-worker.service`), `--dir <path>` (where the program
-goes) and `-h`. Without `--dir` it reuses the installed service's folder: the
+script takes:
+
+- `--token`: required unless the worker's data dir already holds a saved token,
+  or `$AUDIOSILO_WORKER_TOKEN` is set (re-running it without one is how a worker
+  updates). The data dir it checks is the installed service's `--data` when its
+  file names one plainly, since `worker install` keeps it; else, and for a
+  `--run` start, `$AUDIOSILO_WORKER_DATA` or `~/.audiosilo-bridge-worker`, as
+  `worker` finds it.
+- `--run`: exec the worker in the foreground instead of installing the service.
+  It saves no token, and when `--token` was passed the script says a later
+  re-run needs it again. When the program lands in the folder the installed
+  service runs from, the script says the service keeps the old program until it
+  restarts and prints the restart command (`launchctl kickstart -k
+  gui/<uid>/app.audiosilo.bridge-worker` or `systemctl --user restart
+  audiosilo-bridge-worker.service`).
+- `--dir <path>`: where the program goes.
+- `-h`.
+
+Without `--dir` it reuses the installed service's folder: the
 folder of the program in the launch agent's `ProgramArguments` (macOS) or the
 first word of the systemd user unit's `ExecStart` (Linux), as `worker install`
 writes them, when that is an existing, writable absolute folder with no character
-the file would have had to escape (a `--run` start too, so it replaces the
-service's program without restarting it). It prints the folder it reused, and
+the file would have had to escape (a `--run` start too). It prints the folder it reused, and
 otherwise falls back to `~/.audiosilo-bridge-worker/bin`. An explicit `--dir`
 always wins. Its body is one `main` called on the last line, so a download cut
 short runs nothing. It maps `uname -s`/`uname -m` to the platform (an Apple

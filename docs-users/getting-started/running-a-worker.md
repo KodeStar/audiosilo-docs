@@ -167,14 +167,15 @@ service runs it from there. Add `--dir` to put it somewhere else.
 An update keeps the settings the service was installed with: a worker
 [installed by hand](#installing-it-by-hand) with its own data folder (`--data`)
 or speech recognition (`--backend`, `--model`, `--whisper-cli`) keeps them, and
-the update says which ones it kept. The token isn't one of them (it is never
-written into the service): the update finds it saved in the data folder the
-service uses. To change a setting, run `worker install` by hand with that flag: a
-flag you give always wins, and one you leave out (`--bridge` included) stays as
-it was. If the service's settings can't be read, the update says so and the
-worker goes back to the defaults. The Bridge and
-its workers must speak the same version of the worker protocol: a worker that is
-too old or too new for its Bridge says so in its log and waits until both match.
+the update says which ones it kept. The token stays saved in the service's data folder.
+To change a setting, run `worker install` by hand with the new value: a flag you
+give always wins, and one you leave out (`--bridge` included) stays as it was. If
+the service's settings can't be read, the update says so and the worker goes back
+to the defaults.
+
+The Bridge and its workers must speak the same version of the worker protocol: a
+worker that is too old or too new for its Bridge says so in its log and waits
+until both match.
 
 ### Installing it by hand
 
@@ -212,8 +213,8 @@ yourself:
    match.
 
 To update a worker installed by hand, replace the program with the new release's
-and run the same `worker install` command again (the token is remembered, so
-`--token` can be left out, and so are the service's other settings: see
+and run the same `worker install` command again (the token and the service's
+other settings are remembered, so `--token` can be left out: see
 [Updating](#updating)).
 
 ### Removing it
