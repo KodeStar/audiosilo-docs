@@ -66,7 +66,7 @@ leads nowhere:
 
 - **Library** (when you have two or more book libraries), **Format** (M4B,
   MP3, ...) and **Codec**
-- **Playback** - **Plays directly** or **Needs transcoding** (for browsers, judged on the files as stored: an `.mka` book with MP3 inside shows **Needs transcoding**, though with ffmpeg the server sends it to every player as MP3)
+- **Playback** - **Plays directly** or **Needs transcoding** (for browsers, judged on the files as stored)
 - **Cover** - **Has cover** or **Missing cover**
 - **Community metadata** - **Matched** or **Not matched** (only when
   community metadata is on)
@@ -78,6 +78,10 @@ leads nowhere:
   books spell it.
 - **Length** - **Under 5h**, **5 to 15h**, **15 to 30h** or **Over 30h**
 - **Added** - **Last 7 days**, **Last 30 days** or **Last year**
+
+An `.mka` book with MP3 inside counts as **Needs transcoding** here, though
+with ffmpeg the server sends it to every player as MP3 (see
+[Supported formats](../getting-started/organizing-your-library.md#supported-formats)).
 
 Active filters show as chips above the list (for example "Author: Lewis Carroll").
 Click a chip's cross to remove it, or **Clear all**.

@@ -865,7 +865,7 @@ tools):
 | `<data>/certs/` | autocert certificate cache |
 | `<data>/selfsigned-cert.pem`, `<data>/selfsigned-key.pem` | Persisted self-signed certificate (mode `selfsigned`, default paths) |
 | `<data>/tools/` | Auto-downloaded ffmpeg/ffprobe, when no local copy was found |
-| `<data>/cache/remux/` | MP3 copies of `.mka` files holding MP3, made while ffmpeg is configured (`0700`; an LRU capped at 8 GiB, skipped when it would leave under 1 GiB free; see [Remuxing Matroska](media.md#remuxing-matroska-mediaremuxer)). Rebuildable: safe to delete, and needs no backup |
+| `<data>/cache/remux/` | MP3 copies of `.mka` files holding MP3, made while ffmpeg is configured (`0700`, a size-capped LRU: see [Remuxing Matroska](media.md#remuxing-matroska-mediaremuxer)). Rebuildable: safe to delete, and needs no backup |
 | `<data>/meta-mirror/` | [Mirror mode](#mirror-mode-metadatamode-mirror)'s local copy of the community metadata (what it holds: **The copy** there) |
 | `<data>/backups/` | Database backups (`audiosilo-<UTC time>-<kind>.db`), unless `backups.dir` puts them elsewhere |
 | `<data>/restore.json` | A restore waiting for the next start (removed when it is applied or refused) |

@@ -197,7 +197,7 @@ The `--data` directory (mounted at `/data` under Docker) is the server's home. A
 - `audiosilo.db` - the database: user accounts, listening progress, bookmarks, and a searchable index of your books. The index part is rebuildable from your files at any time; the accounts and progress are the part you'd back up.
 - `certs/` - the Let's Encrypt (autocert) certificate cache. In self-signed TLS mode the certificate and key are written at the data directory root instead, as `selfsigned-cert.pem` / `selfsigned-key.pem`.
 - `tools/` - ffmpeg/ffprobe, if the native binary had to download them (see [Install the native binary](./install-binary.md)).
-- `cache/remux/` - MP3 copies of `.mka` books with MP3 inside, made while ffmpeg is available so every player can play them (see [Supported formats](./organizing-your-library.md#supported-formats)). It holds at most 8 GiB, oldest-played removed first, and no copy is made that would leave less than 1 GiB free on the disk. Safe to delete, no backup needed: the copies are made again when played.
+- `cache/remux/` - MP3 copies of `.mka` books with MP3 inside, so every player can play them (size limits under [Server > Transcoding](../admin/server.md#transcoding)). Safe to delete, no backup needed: the copies are made again when played.
 - `meta-mirror/` - only when the server [keeps a local copy of the community metadata](../admin/server.md#keeping-a-local-copy): that copy (about 1.8 GB). It is downloaded again whenever it's missing, so it needs no backup.
 
 Your audiobooks are **never** copied in here. The books folder you point a library at stays untouched, and stays the source of truth - see [Organizing your library](./organizing-your-library.md).

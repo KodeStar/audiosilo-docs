@@ -113,10 +113,9 @@ how it plays depends on what is inside and on ffmpeg:
   web player streams it through `?transcode=1` (which needs ffmpeg), and a
   native app lists it but can't play it.
 
-An `.mka`
-beside a file of the same name in another audio format is left out of the
-book (`folderAudio`): like an `.aax` beside its `.m4b`, it is that file's source
-or copy, and reading both would give the book its chapters twice. Audible's DRM formats (`.aax`/`.aaxc`) are
+An `.mka` beside a file of the same name in another audio format is left out
+of the book (`folderAudio`): like an `.aax` beside its `.m4b`, it is that file's
+source or copy, and reading both would give the book its chapters twice. Audible's DRM formats (`.aax`/`.aaxc`) are
 **deliberately excluded**: the server can never stream them (they need
 per-account decryption), and indexing an `.aax` sitting next to its converted
 `.m4b` would lump both into one book with duplicated chapters and an
@@ -307,9 +306,8 @@ browsers can play the **stored** file natively. A **container** no browser plays
 (`containerFormats`: `mka`, by the file extension in `books.format`) never is,
 whatever the codec inside; for a folder book every file's container counts, not
 only the first file's (`Book.PlaysInBrowsers`, and `directPlayableExpr`,
-built from `DirectPlayableSQL`, for the admin catalog's `direct_playable`
-filter, the console's Playback column and the Health `transcode` issue, which
-all stay "as stored"). Otherwise
+built from `DirectPlayableSQL`, for the admin console; those stay
+[as stored](#remuxing-matroska-mediaremuxer)). Otherwise
 the codec is checked against this allow-list (`browserCodecs`):
 
 ```
@@ -480,12 +478,16 @@ the answer is `503`.
 
 **Warming.** `/item` and `/chapters` start the remuxes of the book's
 MP3-in-Matroska files in the background (`API.warmRemux` →
-`Remuxer.WarmAll`), so the first stream is usually a hit. Warms run one file
-and one book at a time across the server (so they hold at most one of the 2
-slots), a book is warmed once while queued, at most 16 books are queued (more
-are dropped), cached copies (not marked used: a book looked at is not one
-played) and known refusals are skipped, and a podcast library is never warmed.
-The answer never waits for them.
+`Remuxer.WarmAll`), so the first stream is usually a hit. The answer never
+waits for them.
+
+- Warms run one file and one book at a time across the server, so they hold at
+  most one of the 2 slots.
+- A queued book is warmed once; at most 16 books are queued, and more are
+  dropped.
+- Cached copies and known refusals are skipped. A warm doesn't mark a copy
+  used, since a book looked at is not one played.
+- A podcast library is never warmed.
 
 **The response.** `media.ServeOpenedAs` serves the copy with `Content-Type:
 audio/mpeg`, `Accept-Ranges: bytes` and Range, named `<stem>.mp3` (the

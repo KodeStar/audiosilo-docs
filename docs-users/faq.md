@@ -20,13 +20,10 @@ the server presents both the same way, with one continuous timeline and a
 chapter list. A folder's files play in the natural order of their names, so
 `2` comes before `10` whether or not the numbers are padded.
 
-`.mka` (Matroska audio) needs ffmpeg on the server. An `.mka` with MP3 audio
-inside, the usual kind, then plays everywhere: the web player, the phone apps
-and offline downloads, because the server sends it as a plain MP3 file (a
-lossless copy, nothing re-encoded). An `.mka` with other audio inside (AAC,
-Opus, FLAC) plays in the web player only, converted as it streams; convert it
-to `.m4b` or `.mp3` to listen in the apps. An `.mka` beside a file of the same
-name in another format is left out. See
+`.mka` (Matroska audio) needs ffmpeg on the server. With MP3 inside, the
+usual kind, it then plays everywhere, offline downloads included, as a lossless
+MP3 copy; with other audio inside (AAC, Opus, FLAC) it plays in the web player
+only. See
 [Supported formats](./getting-started/organizing-your-library.md#supported-formats).
 
 Audible's DRM formats (`.aax`/`.aaxc`) are deliberately **not** indexed - the
@@ -45,9 +42,7 @@ No - but you'll want it. The server uses two companion tools:
   MP3, which the web player uses automatically for such books. Without it,
   that feature is simply off, and those books play only in the mobile apps
   (where the device can decode them - an Android phone may not). It also lets
-  every player play an `.mka` book with MP3 inside (without ffmpeg, no player
-  can), and finds
-  the pauses that [community chapters](./admin/books.md#community-chapters)
+  every player play an `.mka` book with MP3 inside, and finds the pauses that [community chapters](./admin/books.md#community-chapters)
   start on; without it they are placed by time alone and may be a few seconds
   off.
 

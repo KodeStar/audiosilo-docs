@@ -75,9 +75,10 @@ under the **document directory** (persistent, not cache-evicted):
 `fileName` keeps the file's own extension, with one exception: **on iOS** a
 `.mka` is saved as `<i>.mp3`. A server with ffmpeg sends an MP3-in-Matroska file
 as its MP3 remux at the same URL, and AVFoundation picks a local file's type by
-its extension, so the bytes must not land under `.mka` there (raw Matroska from
-a server without the remux plays on iOS under no name). Android's Media3 sniffs
-the bytes and the web plays by `Content-Type`, so both keep `.mka`.
+its extension, so the bytes must not land under `.mka` there. (Raw Matroska,
+from a server without the remux, won't play on iOS whatever it is named.)
+Android's Media3 sniffs the bytes and the web plays by `Content-Type`, so both
+keep `.mka`.
 
 `slug()` is the sanitized tail of the book's `rel_path` (≤ 40 chars) plus a
 djb2 hash of the full path - readable *and* collision-proof. Downloads run
@@ -286,20 +287,24 @@ the car's headless task) reloads the registry and prunes it:
    check below fails and the book is dropped **and deleted**. `relocateEntry`
    rebuilds every file URI (and `cover.jpg`) from the live root via
    `engine.localUri(connectionId, libraryId, path, name)`, where `name` is the
-   file's **own saved name** (`storedName`, read from its stored URI when it is
-   `<i>` plus an extension) and otherwise `fileName(i, relPath)`, so a download
-   saved under an older naming rule (an Android 2.4.x `0.mka`) still resolves.
+   file's **own saved name**. `storedName` reads it from the stored URI when
+   that is `<i>` plus an extension, else it falls back to `fileName(i, relPath)`,
+   so a download saved under an older naming rule, such as an Android 2.4.x
+   `0.mka`, still resolves. This only works because the on-disk filename scheme
+   is owned by the store (`storedName`/`fileName` + `cover.jpg`) and
+   `engine.localUri` computes the same deterministic layout - **keep those two
+   in agreement**.
+
    On iOS an old `<i>.mka` is renamed on disk to `<i>.mp3` on the way
    (`playableName`, `engine.renameFile`): it plays after the update when its
    bytes are MP3; a rename that fails keeps whichever name the file is under
-   afterwards, so it is never lost. While hydrate reads the registry
-   (`hydrating`), `download` and `remove` wait for it and `persist` holds off,
-   so a saved book is never fetched over, put back after a remove, or saved over
-   by the live entries. This only works because the on-disk filename scheme is
-   owned by the store (`storedName`/`fileName` + `cover.jpg`) and
-   `engine.localUri` computes the same deterministic layout - **keep those two
-   in agreement**. Web implements
-   `localUri` too: its cache URLs are stable keys rather than container paths, so
+   afterwards, so it is never lost.
+
+   While hydrate reads the registry (`hydrating`), `download` and `remove`
+   wait for it and `persist` holds off, so a saved book is never fetched over,
+   put back after a remove, or saved over by the live entries.
+
+   Web implements `localUri` too: its cache URLs are stable keys rather than container paths, so
    there is no drift to correct, but a legacy download adopted into a connection
    on hydrate has been re-put under the new scoped prefix - relocation recomputes
    its URL there as well so the existence check finds it.

@@ -818,10 +818,10 @@ The server opens a regular descriptor, checks current feed signature/identity,
 expected size, named-file identity and absence of a journal, with a bounded
 retry on change. That descriptor serves the whole request, including transcode;
 the path is never reopened after validation. The transcode reads it as ffmpeg's
-stdin through `fd:` (seekable: an input seek, and a non-faststart m4a demuxes)
-when the ffmpeg has that protocol, else through the older non-seekable `pipe:0`
-(see [Transcoding](../server/media.md#transcoding-mediatranscode)). Direct streams and downloads use
-strong `ETag: "podcast-g<generation>-<sha256>"`, `Cache-Control: private, no-cache`
+stdin, through the seekable `fd:` protocol when that ffmpeg has it, else the
+older `pipe:0` (see
+[Transcoding](../server/media.md#transcoding-mediatranscode)). Direct streams
+and downloads use strong `ETag: "podcast-g<generation>-<sha256>"`, `Cache-Control: private, no-cache`
 and byte ranges. Matching `If-Range` gives 206; an old validator gives a full
 200 of the current generation. Changed bytes change the ETag even at equal
 size/mtime. Transformed output has no source strong ETag or byte seeking.

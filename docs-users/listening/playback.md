@@ -68,13 +68,9 @@ Most audiobooks use audio that every browser plays (AAC, the usual audio in `.m4
 - Everything works as usual - chapters, the seek bar, speed, the sleep timer. A jump takes a moment longer than usual, because the server starts converting again from the new place.
 - **You can't download such a book in the browser**: its files wouldn't play offline there, so the download button is turned off (on a wide enough page it says **Can't download in this browser**). Download it in the [mobile app](mobile-apps.md) instead. (A copy downloaded earlier can still be removed.)
 
-An `.mka` (Matroska) book with MP3 inside isn't one of these: your server sends
-it to every player as a plain MP3 file, so it plays, seeks and downloads like any
-MP3 book. The very first play of a large one can start while the server is still
-making that copy; until it's ready the book streams through the conversion
-above, so a jump takes a moment longer.
-
 The conversion needs **ffmpeg** on your server, which the Docker image includes and the server downloads for itself otherwise (your admin can check under [Server > Transcoding](../admin/server.md#transcoding)). Without it, the web player tries to play the book directly, and if the browser can't, you get the usual playback error - see [Troubleshooting](../troubleshooting.md#a-book-plays-in-the-app-but-wont-play-in-the-browser).
+
+An `.mka` (Matroska) book with MP3 inside isn't one of these when your server has ffmpeg: the server sends it as a plain MP3 file, so it plays, seeks and downloads like any MP3 book (see [Supported formats](../getting-started/organizing-your-library.md#supported-formats)). The very first play of a large one can start through the conversion while the server is still making that copy, so a jump takes a moment longer until it's ready.
 
 ## Lock-screen and headphone controls
 
