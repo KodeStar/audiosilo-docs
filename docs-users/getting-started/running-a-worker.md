@@ -65,6 +65,12 @@ address (like `localhost`), set the public address first, or put the Bridge's
 network address into the command yourself. A worker on the same computer as the
 Bridge can use `localhost`.
 
+The worker downloads its program from, and connects to, the address you fetch the
+command from. If you reach the Bridge's page through a reverse proxy, including one
+that serves it under a path (like `https://nas.example/bridge`), set the public
+address to that full address: the command then uses it, and the worker downloads
+and connects through the proxy too.
+
 If **Copy** can't reach the clipboard (some browsers refuse on a plain `http://`
 page), the page selects the command and says so: copy it with Cmd-C on a Mac
 (Ctrl-C on Windows or Linux).
@@ -75,7 +81,8 @@ page), the page selects the command and says so: copy it with Cmd-C on a Mac
 Add `--run` at the end of the command to run the worker in that terminal instead
 of installing the service. It downloads the program the same way, then works until
 you press Ctrl-C or close the terminal. Paste the command again without `--run`
-to install the service.
+to install the service. A `--run` start doesn't save the token, so keep `--token`
+in the command each time you run it that way (it reminds you).
 :::
 
 Open a terminal on the worker's computer (on a Mac, the Terminal app) and paste the
@@ -111,8 +118,8 @@ readable only by you.
 The worker program isn't signed by Apple, but macOS runs it without asking: a file
 `curl` downloads isn't marked as downloaded from the internet.
 
-The command also takes `--dir <folder>` (put the program somewhere else) and
-`--help`. The program isn't on your `PATH`, so the commands on this page use its
+The command also takes `--dir <folder>` (put the program somewhere else; see
+[Updating](#updating)) and `--help`. The program isn't on your `PATH`, so the commands on this page use its
 full path, `~/.audiosilo-bridge-worker/bin/audiosilo-bridge`; the command prints
 the line to add to your shell's profile if you'd rather type `audiosilo-bridge`.
 
@@ -146,8 +153,13 @@ curl -fsSL http://192.168.1.20:8091/worker/install.sh | sh -s
 ```
 
 It downloads the Bridge's new version over the old one and restarts the service.
-If you installed it with `--dir`, add the same `--dir` again (else the new version
-goes to the default folder and the old copy stays behind). The Bridge and its
+Without `--dir`, it puts the new version in the folder the installed service runs
+the program from, so a worker installed with `--dir` updates in place, and the
+command says which folder it used. `--dir` puts it somewhere else instead. (A
+folder you can't write to, such as one you moved the program to by hand, isn't
+reused: the new version goes to the default folder.) Leaving out `--token` works
+only once the service is installed: a worker you only started with `--run` needs
+`--token` again. The Bridge and its
 workers must speak the same version of the worker protocol: a worker that is too
 old or too new for its Bridge says so in its log and waits until both match.
 
@@ -213,8 +225,8 @@ A message that starts with `curl:` comes from fetching the command itself.
 | What the command says | What to do |
 |---|---|
 | *curl: (7) Failed to connect*, *Could not resolve host* or *timed out* | The address in the command doesn't reach the Bridge. Check that it is your Bridge's (its IP address and port, `8091`), that the Bridge is running, and that this computer is on the same network. |
-| *curl: (22) The requested URL returned error: 403* | The Bridge refused this computer: it answers only its local network. Run the command from a computer on the same network, not over the internet or a VPN address like Tailscale's. |
-| *--token is required* | The first install needs the token: copy the whole command from the **Workers** tab. Only an update of a worker installed on this computer can leave it out. |
+| *this Bridge only serves the worker install to its local network* | The Bridge refused this computer: it answers only its local network. Run the command from a computer on the same network, not over the internet or a VPN address like Tailscale's. |
+| *--token is required* | The first install needs the token: copy the whole command from the **Workers** tab. Only an update of a worker installed as a service on this computer can leave it out (a `--run` start doesn't save it). |
 | *this Bridge has no worker downloads* | The Bridge isn't running from its Docker image. [Install the worker by hand](#installing-it-by-hand) from the GitHub release. |
 | *the download failed* | Check that the address in the command is your Bridge's (its IP address and port, `8091`), that the Bridge is running, and that this computer is on the same network. |
 | *the address this was fetched from isn't a plain host name or IP address* | Use the command as the **Workers** tab shows it, with the Bridge's IP address and port. |

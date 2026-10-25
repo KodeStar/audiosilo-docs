@@ -173,16 +173,24 @@ repo's `internal/workerdist` (the builds folder, the platform set, install.sh) a
   protocol. They are never embedded in the Go binary, so a Bridge run natively has
   none: `GET /api/status` then says `worker_downloads: false`, and the Workers tab
   points at the GitHub releases and opens its manual commands.
-- **`GET /worker/install.sh`** answers a POSIX `sh` script with the address the
-  request reached (its scheme and `Host`, checked against a plain host name, IPv4
-  or bracketed IPv6, with an optional port) baked in, single-quoted: the computer
-  that fetched the script reached that address, so its worker can too. The
-  configured `public_url` only goes into the command the Workers tab shows. Past
-  the local-network guard (which refuses an outside address with its `403` JSON,
-  so `curl -fsSL` prints `curl: (22)` and `sh` exits 0 on nothing), it always
-  answers `200` with a script: when it can't serve install.sh (no builds, an unusable `Host`) the script prints
-  the reason to stderr and exits 1, because `curl -fsSL` drops an error status's
-  body and `sh` would run an empty script and exit 0.
+- **`GET /worker/install.sh`** answers a POSIX `sh` script with the Bridge's
+  address baked in, single-quoted (`workerdist.Address`). The request's scheme and
+  `Host` are checked first (a plain host name, IPv4 or bracketed IPv6, with an
+  optional port; anything else is `ErrAddress` and never reaches the next step).
+  When the configured `public_url` is a plain http(s) address (no user, query or
+  fragment; a plain path) whose host and port equal the `Host` (case-insensitive,
+  a missing port on either side read as `public_url`'s scheme default, 80 or 443),
+  the address is `public_url` as set, its trailing slashes trimmed: its scheme and
+  path prefix included, so the script and its download URLs match the Workers
+  tab's command behind a reverse proxy that serves the Bridge under a prefix or
+  over TLS (the admin set `public_url`, and the `Host` shows the fetching computer
+  reached that host). Otherwise it is the request's own scheme and `Host`: the
+  computer that fetched the script reached that address, so its worker can too.
+  It always answers `200` with a script: when it can't serve install.sh (no
+  builds, an unusable `Host`), or the local-network guard refuses the caller (for
+  this route only, `GET` or `HEAD`; every other route keeps the guard's `403`
+  JSON), the script prints the reason to stderr and exits 1, because `curl -fsSL`
+  drops an error status's body and `sh` would run an empty script and exit 0.
 - **`GET /worker/download/{os}/{arch}`** serves one gzipped build. The OS and
   architecture pick from the fixed set (the file name never comes from the
   request); another platform, or a Bridge without the builds, is `404` with a
@@ -195,8 +203,15 @@ The Workers tab's command is
 script takes `--token` (required unless the worker's data dir already holds a
 saved token, or `$AUDIOSILO_WORKER_TOKEN` is set: re-running it without one is
 how a worker updates), `--run` (exec the worker in the foreground instead of
-installing the service), `--dir <path>` (where the program goes, default
-`~/.audiosilo-bridge-worker/bin`) and `-h`. Its body is one `main` called on the
+installing the service; that start saves no token, so the script says a later
+re-run needs `--token` again when one was passed), `--dir <path>` (where the
+program goes) and `-h`. Without `--dir` it reuses the installed service's folder:
+the folder of the program in the launch agent's `ProgramArguments` (macOS) or the
+first word of the systemd user unit's `ExecStart` (Linux), as `worker install`
+writes them, when that is an absolute path to an existing folder this user can
+write (and holds no character the file would have had to escape); it says so, and
+otherwise falls back to `~/.audiosilo-bridge-worker/bin`. An explicit `--dir`
+always wins. Its body is one `main` called on the
 last line, so a download cut short runs nothing. It maps `uname -s`/`uname -m` to
 the platform (an Apple Silicon Mac under Rosetta takes the native `arm64` build,
 the one with Metal), downloads to a temp file beside the target, checks that the
