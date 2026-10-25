@@ -1,6 +1,6 @@
 ---
 title: ASR workers
-description: "The Bridge's native ASR workers (Phase 1b): why they exist, the worker protocol (routes, the version check, tasks as segments, leases and adoption, results), the dispatcher and the engine's ASR router with its fallback, per-segment resume, the service install, security, and the spike 4 measurements."
+description: "The Bridge's native ASR workers (Phase 1b): why they exist, the worker protocol (routes, the version check, tasks as segments, leases and adoption, results), the dispatcher and the engine's ASR router with its fallback, per-segment resume, the service install, installing a worker from its Bridge (install.sh, the image's worker builds, the release archives), security, and the spike 4 measurements."
 ---
 
 An **ASR worker** is `audiosilo-bridge worker`, the same binary as the Bridge run
@@ -151,7 +151,69 @@ it).
   logged out.
 
 `worker install --print` shows the file without installing it; `worker uninstall`
-stops it and removes the file (the data dir stays). Windows has no install.
+stops it and removes the file (the data dir stays). Windows has no install. On
+macOS, `launchctl bootout` returns before the old job is gone and a bootstrap
+meanwhile fails, so `install` waits (up to 10 s) for launchd to drop the previous
+agent and retries a failed bootstrap a few times. The service has one fixed label (unit), so a computer
+runs one worker, for one Bridge: installing another Bridge's worker replaces it.
+
+## Installing a worker
+
+The Bridge serves the worker program itself, so a first-time user pastes one
+command from the Workers tab and finds or builds nothing. The code is the Bridge
+repo's `internal/workerdist` (the builds folder, the platform set, install.sh) and
+`internal/api/workerdist.go` (the two routes).
+
+- **The builds.** The `slim`, `full` and `cuda` images (not `agent`) carry
+  `audiosilo-bridge` for `darwin/arm64`, `darwin/amd64`, `linux/amd64` and
+  `linux/arm64`, gzipped, in `/usr/local/share/audiosilo-bridge/workers`
+  (`audiosilo-bridge_<os>_<arch>.gz`, about 8 MB each). A Dockerfile stage
+  cross-builds them with CGO off and the image's own `VERSION`, so a worker
+  installed from its Bridge is always the Bridge's version and speaks its
+  protocol. They are never embedded in the Go binary, so a Bridge run natively has
+  none: `GET /api/status` then says `worker_downloads: false`, and the Workers tab
+  points at the GitHub releases and opens its manual commands.
+- **`GET /worker/install.sh`** answers a POSIX `sh` script with the address the
+  request reached (its scheme and `Host`, checked against a plain host name, IPv4
+  or bracketed IPv6, with an optional port) baked in, single-quoted: the computer
+  that fetched the script reached that address, so its worker can too. The
+  configured `public_url` only goes into the command the Workers tab shows. Past
+  the local-network guard (which refuses an outside address with its `403` JSON,
+  so `curl -fsSL` prints `curl: (22)` and `sh` exits 0 on nothing), it always
+  answers `200` with a script: when it can't serve install.sh (no builds, an unusable `Host`) the script prints
+  the reason to stderr and exits 1, because `curl -fsSL` drops an error status's
+  body and `sh` would run an empty script and exit 0.
+- **`GET /worker/download/{os}/{arch}`** serves one gzipped build. The OS and
+  architecture pick from the fixed set (the file name never comes from the
+  request); another platform, or a Bridge without the builds, is `404` with a
+  plain-text reason. The download gets a 10-minute write deadline (the page's
+  own is 60 s; the segment audio's hour is too long for a route with no
+  credential).
+
+The Workers tab's command is
+`curl -fsSL http://<bridge>/worker/install.sh | sh -s -- --token asw_...`. The
+script takes `--token` (required unless the worker's data dir already holds a
+saved token, or `$AUDIOSILO_WORKER_TOKEN` is set: re-running it without one is
+how a worker updates), `--run` (exec the worker in the foreground instead of
+installing the service), `--dir <path>` (where the program goes, default
+`~/.audiosilo-bridge-worker/bin`) and `-h`. Its body is one `main` called on the
+last line, so a download cut short runs nothing. It maps `uname -s`/`uname -m` to
+the platform (an Apple Silicon Mac under Rosetta takes the native `arm64` build,
+the one with Metal), downloads to a temp file beside the target, checks that the
+program runs (`version`), moves it into place, prints a `PATH` hint when its
+folder isn't on `PATH`, then runs `worker install --bridge <addr> [--token ...]`.
+A file `curl` writes carries no quarantine attribute, so Gatekeeper doesn't stop
+the unsigned binary on macOS; a browser download does carry one (the user guide's
+[Installing it by hand](/users/getting-started/running-a-worker#installing-it-by-hand)
+says how to clear it). The script holds no
+secret: the token comes from the user's command line.
+
+**By hand.** `.github/workflows/release.yml` attaches the same four platforms to a
+`v*` tag's GitHub release as `audiosilo-bridge_<version>_<os>_<arch>.tar.gz` (the
+version without its `v`; each holds the binary, `LICENSE` and `README.md`) plus
+`checksums.txt`. These are built with `-tags embedui`, so the same binary also
+runs a whole Bridge natively. The release is created (published, a pre-release
+for a hyphenated tag) when the tag has none yet, and a re-run replaces the assets.
 
 ## Security
 
@@ -160,6 +222,12 @@ stops it and removes the file (the data dir stays). Windows has no install.
   read their audio, nothing else: no library, no job, no setting.
 - The page's local-network guard covers the worker routes: a worker must be on the
   LAN. A carrier-grade NAT address (Tailscale's) is refused, like the page.
+- The two install routes, `/worker/install.sh` and `/worker/download/...`, sit
+  outside `/worker/v1` (which takes only worker tokens) behind the same
+  local-network guard, but ask for **no** password or token: a `curl | sh` carries
+  no session, the program is public, and the worker token in the user's command is
+  the credential. Neither reads a path from the request. Both are tested allowed
+  (a LAN address) and denied (a public address, an unknown platform, no builds).
 - A worker's free text (its name, versions, an error) is cleaned and capped; a
   transcript must parse as a complete one before it is written into the engine's
   work dir.

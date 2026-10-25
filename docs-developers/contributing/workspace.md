@@ -21,7 +21,7 @@ it, gitignored by the meta repo:
 │   DISTRIBUTION.md, store/, ...                  (the integration contract lives here)
 ├── audiosilo-server/      github.com/KodeStar/audiosilo-server    (Go)
 ├── audiosilo-frontend/    github.com/KodeStar/audiosilo-frontend  (Expo / React Native)
-├── audiosilo-bridge/      github.com/KodeStar/audiosilo-bridge    (the Bridge; private)
+├── audiosilo-bridge/      github.com/KodeStar/audiosilo-bridge    (the Bridge)
 ├── audiosilo-meta/        github.com/KodeStar/audiosilo-meta      (community metadata DB)
 ├── audiosilo-sidecars/    github.com/KodeStar/audiosilo-sidecars  (contributor extraction tool)
 ├── audiosilo-site/        github.com/KodeStar/audiosilo-site      (marketing site)
@@ -128,7 +128,7 @@ npm test                    # jest-expo unit tests
 npx expo export -p web      # bundle smoke test
 ```
 
-**audiosilo-bridge** (private; see [the Bridge's development page](../bridge/development.md))
+**audiosilo-bridge** (see [the Bridge's development page](../bridge/development.md))
 
 ```sh
 scripts/build-web.sh                    # build its page and embed it into bin/audiosilo-bridge

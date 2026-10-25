@@ -453,7 +453,7 @@ and pause steps always run, so a partial run stages its shots as a full one does
 The `bridge/` shots (`sign-in.png`, `status-unpaired.png`, `status-paired.png`,
 `libraries.png`, `accounts.png`) come from `capture-bridge.mjs`, which `run.sh`
 runs after the setup captures when the `BRIDGE` checkout (default the sibling
-`audiosilo-bridge`, a private repo) is there; without it, or with
+`audiosilo-bridge`) is there; without it, or with
 `SKIP_BRIDGE=1`, the shots keep their previous images. `run.sh` syncs the
 Bridge's page into that checkout (`scripts/build-web.sh --sync-only`, built and
 gitignored there), builds the binary into `.cache/audiosilo-bridge` stamped with

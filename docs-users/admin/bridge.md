@@ -500,8 +500,8 @@ The **Workers** card lists the [ASR workers](../getting-started/running-a-worker
 the Bridge reports: computers that transcribe audio for it, such as a Mac with Apple
 Silicon. Each shows its name, its platform and speech recognition (for example
 *darwin/arm64, mlx-whisper (metal)*), its version and when the Bridge last heard
-from it. A worker that never connected isn't listed. Workers are added and removed
-on the Bridge's own page, not here.
+from it. A worker that never connected isn't listed. Each worker works for
+[one Bridge](../getting-started/running-a-worker.md#running-an-asr-worker). Workers are added and removed on the Bridge's own page, not here.
 
 ## Unpairing
 

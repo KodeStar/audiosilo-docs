@@ -117,7 +117,7 @@ Every embedded image is listed in `screenshots/manifest.mjs` and lives under
 `static/img/screenshots/`. The pipeline (`screenshots/run.sh`) rebuilds the
 server, seeds a small public-domain LibriVox library, runs a demo-mode server,
 and captures the web player, admin console, connect page, the first-run
-setup page and console flow (on a second, `--setup` server) and, when the private
+setup page and console flow (on a second, `--setup` server) and, when the
 `audiosilo-bridge` checkout is there, the Bridge's own page (a real Bridge paired
 with the demo server, `capture-bridge.mjs`) with Playwright.
 Anything it can't reach gets a labelled placeholder so the build never breaks.

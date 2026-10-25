@@ -231,9 +231,8 @@ user's. The entrypoint warns when it isn't writable.
 
 ## The images
 
-`ghcr.io/kodestar/audiosilo-bridge`, public from v0.3.0 (pulled with no login;
-the source repository stays private), built from one Dockerfile with four
-targets:
+`ghcr.io/kodestar/audiosilo-bridge`, public from v0.3.0 (pulled with no login),
+built from one Dockerfile with four targets:
 
 | Tag | Target | What's in it | Arch |
 |---|---|---|---|
@@ -251,6 +250,10 @@ pinned by release tag (the same one the Bridge's own downloader uses), each chec
 against the sha256 that release's `checksums.txt` lists, and each image fetches only
 the build it carries; the speech models are not baked
 in (the Bridge downloads the one it needs into its data folder on first use).
+`latest`, `latest-slim` and `latest-cuda` (not `agent`) also carry the gzipped
+ASR worker builds the Bridge serves to the computers that run a worker, in
+`/usr/local/share/audiosilo-bridge/workers` (see
+[Installing a worker](workers.md#installing-a-worker)).
 **Only the `agent` image carries an AI agent's command-line tool**: the Bridge's
 own images never do, and the Bridge never runs one (decision 15). Run the same
 version of the Bridge and its agent image: they check each other's protocol

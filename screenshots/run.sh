@@ -49,7 +49,7 @@
 #              frontend change; relative paths are taken from where run.sh
 #              starts),
 #            BRIDGE=<dir> (the audiosilo-bridge checkout, default the sibling
-#              clone; a private repo, so without it the Bridge page shots keep
+#              clone; without it the Bridge page shots keep
 #              their previous images), SKIP_BRIDGE=1 (skip them anyway),
 #            BRIDGE_VERSION (the version the Bridge page shows, default the
 #              checkout's git describe; set the release's, e.g. 0.3.0),

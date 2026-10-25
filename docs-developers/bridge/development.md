@@ -5,8 +5,8 @@ description: "Working in audiosilo-bridge: the gate and CI, the package layout a
 
 `audiosilo-bridge` is a Go module (`github.com/kodestar/audiosilo-bridge`, Go 1.26,
 AGPL-3.0) with a small web page in `web/` (Vite, React 19, TypeScript, Tailwind v4,
-Node 24). The repository is **private** (its images are public from v0.3.0);
-its own `CLAUDE.md` and `PACKAGES.md` (the
+Node 24). The repository is public (`github.com/KodeStar/audiosilo-bridge`; its
+images are public from v0.3.0); its own `CLAUDE.md` and `PACKAGES.md` (the
 per-package rules and history) are authoritative, and the seam with the server is
 section 23 of the workspace `CROSS-REPO.md`.
 
@@ -35,7 +35,9 @@ push to `main`: a **go** job (build, vet, `go test -race`, golangci-lint) and a
 production build). `image.yml` builds and pushes the four images to the public
 GHCR package on `v*` tags and on manual dispatch (`full`, `slim` and `agent` for
 amd64 and arm64, `cuda` for amd64); which tags each publishes is in
-[the images](configuration.md#the-images).
+[the images](configuration.md#the-images). `release.yml` attaches the four worker
+archives and `checksums.txt` to a `v*` tag's GitHub release (see
+[Installing a worker](workers.md#installing-a-worker)).
 
 To run it locally:
 
@@ -102,6 +104,11 @@ internal/
   setup/      the setup checklist the heartbeat and the Status tab show; pure
   correct/    meta.correct: an admin's corrections as one correction-batch issue
   auth/       the page's single password, hashed sessions, the login limiter
+  -- Phase 1b --
+  workerproto/ the worker wire protocol (routes, version, task and result shapes); a leaf
+  workers/    the Bridge's side: the segment queue, leases, registry and the ASR router
+  worker/     `audiosilo-bridge worker`: client, run loop, spool, the service install
+  workerdist/ the worker builds the images carry and install.sh (the install routes); a leaf
   -- the engine (from audiosilo-sidecars; wired by app/engine.go since Phase 1a) --
   toolfetch/ audio/ asr/ transcript/ ebook/ scratch/ qa/ spelling/ agent/ repair/
   pipeline/ contrib/ state/ eta/ scheduler/ supervisor/ metaops/ events/ pricing/ fsutil/
@@ -185,7 +192,7 @@ id).
 | `POST /api/login` | `{ password }` -> `{ token }`; rate limited per address |
 | `POST /api/logout` | ends the session |
 | `POST /api/password` | `{ current, new }`; at least 8 characters. A wrong current password is `403`, not `401` (a `401` signs the page out) |
-| `GET /api/status` | the Bridge's state: version, pairing (with the reason when the server refuses its token), online, last heartbeat and error, kinds, lanes, the secret key's source, `public_url`, the server address the pairing form starts with, and (Phase 2b) `setup` and `setup_complete` |
+| `GET /api/status` | the Bridge's state: version, pairing (with the reason when the server refuses its token), online, last heartbeat and error, kinds, lanes, the secret key's source, `public_url`, the server address the pairing form starts with, (Phase 2b) `setup` and `setup_complete`, and `worker_downloads` (true when the image's worker builds are there, so the [worker install](workers.md#installing-a-worker) is served) |
 | `POST /api/pair` | `{ server_url, code }`: pair with a server. `400` for an address that isn't an absolute `http(s)` URL; `422` when the server refused the code, is too old for a Bridge (`404`/`405`), refused the pairing otherwise, or has a certificate the Bridge can't verify (the message says to use its `http://` address); `502` for a server it can't reach; `409` when already paired |
 | `POST /api/unpair` | forget the token here |
 | `GET /api/libraries` | the server's libraries with the Bridge's folder, whether it is configured, and the last check |
@@ -202,6 +209,8 @@ id).
 | `GET /api/workers` | the paired workers: the `workers` row (name, created and last seen, version, platform, backend, device, model, segments, audio and decode seconds) with `connected` and the `task` it decodes now |
 | `POST /api/workers` | `{ name }` -> `201 { worker, token }`: pair a worker; the token is in this answer only. `400` without a name |
 | `DELETE /api/workers/{id}` | remove a worker, revoking its token (`204`; `404` for none) |
+| `GET /worker/install.sh` | **no sign-in**: the worker's install script with the address this request reached baked in; past the local-network guard (a `403` like every route), always `200` and a script, one that prints why and exits 1 when it can't be served (see [Installing a worker](workers.md#installing-a-worker)) |
+| `GET /worker/download/{os}/{arch}` | **no sign-in**: the gzipped worker build for `darwin` or `linux`, `arm64` or `amd64`; `404` with a plain-text reason for another platform or a Bridge without the builds |
 
 Errors are `{ "error": "..." }`, with a `code` where a client branches on it. The
 page's API mirrors these shapes by hand in `web/src/api/types.ts`.
@@ -216,8 +225,10 @@ Two rules protect the page, and both hold for **every** request, loopback includ
   check reads the connection's own address, **never** a forwarded header (so the
   page isn't meant to sit behind a reverse proxy, and a client can't claim to be
   local). Carrier-grade NAT ranges (Tailscale's among them) are **not** local.
-- **The password, always.** Every route but `/api/health` and `/api/login` needs a
-  session token, even from the same machine. An agent container sharing the
+- **The password, always.** Every route but `/api/health`, `/api/login` and the
+  two [worker install routes](workers.md#security) (`/worker/install.sh`,
+  `/worker/download/...`) needs a session token, even from the same machine. The
+  worker protocol under `/worker/v1` takes a worker token instead. An agent container sharing the
   Bridge's network could otherwise reach the page (the compose example gives it a
   network of its own, but nothing makes an installation do so); the research spike
   that settled the agent design showed it could.

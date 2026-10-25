@@ -38,8 +38,9 @@ The book-generation setup uses **two containers**:
 
 :::info[Early days]
 The Bridge is new and still being built. Its images are public from version
-0.3.0: anyone can pull them, with no sign-in. Read-along and more jobs come in
-later versions.
+0.3.0: anyone can pull them, with no sign-in, and its source and releases are
+on [GitHub](https://github.com/KodeStar/audiosilo-bridge). Read-along and more
+jobs come in later versions.
 :::
 
 ### Which Bridge version
@@ -304,7 +305,8 @@ hours for a long book). Two ways to make it faster, or to give a `:latest-slim`
 Bridge (which has no speech recognition of its own) a way to transcribe at all:
 
 - an [ASR worker](running-a-worker.md) on a faster computer, such as a Mac with
-  Apple Silicon, added on the Bridge's **Workers** tab;
+  Apple Silicon: add it on the Bridge's **Workers** tab and paste the command it
+  shows into a terminal on that computer;
 - the `:latest-cuda` image, on a computer with an NVIDIA graphics card.
 
 The **Settings** tab's **When no ASR worker is connected** says what happens while

@@ -9,10 +9,12 @@ stay read-only and safe to expose to the internet. It is a separate program in i
 own repository, `audiosilo-bridge`, and runs beside the server, usually as a second
 container.
 
-:::info[Private repository, public images, built in phases]
-The `audiosilo-bridge` repository is **private**; its images,
-`ghcr.io/kodestar/audiosilo-bridge`, are **public from v0.3.0** and pull with no
-login. Bridge v0.3.0 is the release that speaks to server 2.4.0 (podcasts,
+:::info[Public repository and images, built in phases]
+The `audiosilo-bridge` repository is **public**, and its images,
+`ghcr.io/kodestar/audiosilo-bridge`, are public from v0.3.0 and pull with no
+login. From the release after v0.3.1, each `v*` tag's GitHub release carries
+native macOS and Linux binaries that run a Bridge or an
+[ASR worker](workers.md#installing-a-worker). Bridge v0.3.0 is the release that speaks to server 2.4.0 (podcasts,
 contributions, generating and detecting chapters): run v0.3.0 or later with a
 2.4.0 server. Nothing checks the version: the server offers each feature by the
 job kinds the Bridge's heartbeat reports, so an older Bridge pairs but lacks
