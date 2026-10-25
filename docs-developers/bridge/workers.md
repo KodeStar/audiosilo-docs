@@ -157,8 +157,9 @@ inverse of `Render`: the plist's `ProgramArguments` or the unit's first
 same flag set that wrote it (`carryForward` in `cmd/audiosilo-bridge/worker.go`).
 Each written flag the command line didn't give (`--bridge`, `--data`, `--backend`,
 `--model`, `--whisper-cli`; never `--token`, which is never in the file) keeps its
-installed value, and the command prints which it kept. An explicit flag wins, an
-empty one included. No file is a first install; a file that doesn't read back as
+installed value, and the command prints which it kept (not with `--print`;
+always `--data` and `--bridge` unless given, since `Render` writes both). An
+explicit flag wins, an empty one included. No file is a first install; a file that doesn't read back as
 `worker install` writes it (a specifier, a `$VAR`, another escape, a word the parse
 refuses) keeps nothing, and the command says so on stderr before any `--bridge`
 refusal. `worker uninstall` names the kept `--data` folder when it knows it.
@@ -238,7 +239,11 @@ script takes:
   updates). The data dir it checks is the installed service's `--data` when its
   file names one plainly, since `worker install` keeps it; else, and for a
   `--run` start, `$AUDIOSILO_WORKER_DATA` or `~/.audiosilo-bridge-worker`, as
-  `worker` finds it.
+  `worker` finds it. The script reads the file more loosely than
+  `InstalledArgs` (its words up to the first escape), so a file `worker install`
+  refuses can still pass this check; `worker install` then looks in the default
+  data dir and asks for `--token` when that has none (and
+  `$AUDIOSILO_WORKER_TOKEN` is unset).
 - `--run`: exec the worker in the foreground instead of installing the service.
   It saves no token, and when `--token` was passed the script says a later
   re-run needs it again. When the program lands in the folder the installed

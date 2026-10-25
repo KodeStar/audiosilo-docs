@@ -167,11 +167,14 @@ service runs it from there. Add `--dir` to put it somewhere else.
 An update keeps the settings the service was installed with: a worker
 [installed by hand](#installing-it-by-hand) with its own data folder (`--data`)
 or speech recognition (`--backend`, `--model`, `--whisper-cli`) keeps them, and
-the update says which ones it kept. The token stays saved in the service's data folder.
-To change a setting, run `worker install` by hand with the new value: a flag you
-give always wins, and one you leave out (`--bridge` included) stays as it was. If
-the service's settings can't be read, the update says so and the worker goes back
-to the defaults.
+the update says which ones it kept (the data folder is always among them). The
+token stays saved in the service's data folder. To change a setting, run
+`worker install` by hand with the new value: a flag you give always wins, and
+one you leave out (`--bridge` included) stays as it was. To clear one, give it
+empty (like `--model ''`), or `--backend auto`. A new `--data` folder has no
+saved token yet, so give `--token` with it. If the service's settings can't be
+read, the update says so and the worker goes back to the defaults, the default
+data folder included: when it had its own, add `--token` to the command.
 
 The Bridge and its workers must speak the same version of the worker protocol: a
 worker that is too old or too new for its Bridge says so in its log and waits
