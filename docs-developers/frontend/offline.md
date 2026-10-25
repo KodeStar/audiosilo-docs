@@ -289,8 +289,9 @@ the car's headless task) reloads the registry and prunes it:
    `engine.localUri(connectionId, libraryId, path, name)`, where `name` is the
    file's **own saved name**. `storedName` reads it from the stored URI when
    that is `<i>` plus an extension, else it falls back to `fileName(i, relPath)`,
-   so a download saved under an older naming rule, such as an Android 2.4.x
-   `0.mka`, still resolves. This only works because the on-disk filename scheme
+   so a download saved under an older naming rule, such as an iOS 2.4.x
+   `0.mka` (`fileName` now says `0.mp3`), still resolves, and `playableName`
+   below can rename it. This only works because the on-disk filename scheme
    is owned by the store (`storedName`/`fileName` + `cover.jpg`) and
    `engine.localUri` computes the same deterministic layout - **keep those two
    in agreement**.

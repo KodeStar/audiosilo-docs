@@ -105,13 +105,14 @@ how it plays depends on what is inside and on ffmpeg:
 
 - **MP3 inside, ffmpeg configured**: the stream URL serves a lossless copy of
   it as plain MP3 ([Remuxing Matroska](#remuxing-matroska-mediaremuxer),
-  server#174), so every client plays it, old native builds included, and
+  server#174), so every client streams it, old native builds included, and
   `/item` and `/chapters` say `direct_playable: true`.
 - **Another codec inside** (AAC, Opus, FLAC), or **no ffmpeg**: the stored
   bytes are served as `audio/x-matroska` and the book is
   [not direct-playable](#directplayable-when-a-client-should-transcode): the
-  web player streams it through `?transcode=1` (which needs ffmpeg), and a
-  native app lists it but can't play it.
+  web player streams it through `?transcode=1` (which needs ffmpeg). The iOS
+  app can't play it; Android's Media3 opens Matroska itself, so the Android app
+  plays it where the device decodes the codec inside.
 
 An `.mka` beside a file of the same name in another audio format is left out
 of the book (`folderAudio`): like an `.aax` beside its `.m4b`, it is that file's
@@ -305,8 +306,9 @@ in `books.codec`. `media.DirectPlayable(format, codec)` reports whether mainstre
 browsers can play the **stored** file natively. A **container** no browser plays
 (`containerFormats`: `mka`, by the file extension in `books.format`) never is,
 whatever the codec inside; for a folder book every file's container counts, not
-only the first file's (`Book.PlaysInBrowsers`, and `directPlayableExpr`,
-built from `DirectPlayableSQL`, for the admin console; those stay
+only the first file's (`Book.PlaysInBrowsers`, part of what `/item` and
+`/chapters` say, below, and `directPlayableExpr`, built from
+`DirectPlayableSQL`, for the admin console, which stays
 [as stored](#remuxing-matroska-mediaremuxer)). Otherwise
 the codec is checked against this allow-list (`browserCodecs`):
 
@@ -412,12 +414,16 @@ An `.mka` holding MP3 (server#174) is served at the **same stream URL** as a
 lossless copy of its audio into a plain MP3 file, so every client plays it with
 Range seeks: browsers, iOS `AVPlayer` (which types by `Content-Type` when
 streaming) and shipped native builds that only ever ask for the plain URL. No
-capability flag announces it; no client branches on it.
+capability flag announces it; no client branches on it. (A shipped iOS build
+saves its download under `.mka`, which AVFoundation won't open offline; the
+updated app renames it, see
+[Offline](../frontend/offline.md#native-engine-enginenativets---expo-file-system).)
 
 **When.** The remux is on (`API.remuxOn`) while ffmpeg is configured and the
 cache opened (`<data>` set; a cache that can't be created logs a warning and
-Matroska is served as stored). `handleStream` takes it for a path ending in
-`.mka` (any case), with or without `download=1`, unless `transcode=1` (the live
+Matroska is served as stored). A podcast library's stream never remuxes
+(`servePodcastStream` answers it first). Otherwise `handleStream` takes it for
+a path ending in `.mka` (any case), with or without `download=1`, unless `transcode=1` (the live
 transcode as before) or `original=1` (the stored bytes, for API tools and
 backups). `--ffmpeg ""` restores the 2.4.x behaviour exactly.
 
@@ -442,8 +448,8 @@ ffmpeg -nostdin -loglevel error -xerror -protocol_whitelist fd -f matroska -i fd
 - **Is it MP3?** is decided by trying: ffmpeg's mp3 muxer refuses anything but
   exactly one MP3 audio stream, which also covers folder parts whose codec the
   index doesn't hold. That refusal is `ErrNotRemuxable`, remembered in memory
-  per cache key (up to 1,024, so a changed file is tried again) and answered
-  with the stored bytes. An exit after ffmpeg wrote output (killed partway, a
+  per cache key (up to 1,024; a changed file is a new key, so it is tried
+  again) and answered with the stored bytes. An exit after ffmpeg wrote output (killed partway, a
   full disk, a read error) is not a refusal.
 
 **The cache.** `<data>/cache/remux/` (`0700`, made again if it went), one file
@@ -473,8 +479,10 @@ When the remux is still running after that, or the disk guard skipped it, or
 ffmpeg failed some other way, the request is answered with the
 [live transcode](#transcoding-mediatranscode) instead (`download=1` still named
 `<stem>.mp3`), because `direct_playable` told the web player not to ask for one;
-the remux goes on and the next request gets the copy. While the server stops
-the answer is `503`.
+the remux goes on and the next request gets the copy. That answer is the
+transcode from the start (the request carries no `t`), not byte-seekable, and a
+lossy 128 kb/s encode, so a seek or a download made in that window gets those
+bytes, not the copy's. While the server stops the answer is `503`.
 
 **Warming.** `/item` and `/chapters` start the remuxes of the book's
 MP3-in-Matroska files in the background (`API.warmRemux` →
@@ -498,8 +506,9 @@ stored Matroska gets the whole MP3, never a `304` or MP3 bytes spliced onto
 Matroska. A remuxed stream is not a "transcoded" listening session.
 
 **What stays as stored.** The admin console's Playback column, its
-`direct_playable` filter and the Health `transcode` issue describe the stored
-files, so an MP3-in-Matroska book still reads as needing transcoding there.
+`direct_playable` filter, the book page's playback line and Files card, and the
+Health `transcode` issue describe the stored files, so an MP3-in-Matroska book
+still reads as needing transcoding there.
 
 ## The chapters envelope: `{chapters, files, duration}`
 

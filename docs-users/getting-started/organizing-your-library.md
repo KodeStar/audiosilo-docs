@@ -67,7 +67,7 @@ AudioSilo recognizes these audio file types (upper or lower case):
 - **OGG / Opus**
 - **MKA** (Matroska audio) - needs ffmpeg on the server (the Docker image has it). Browsers and iPhones can't open this container, so:
   - an `.mka` with **MP3** inside, the usual kind, is sent to every player as a plain MP3 file: a lossless copy the server makes the first time and keeps in its data folder (see [Server > Transcoding](../admin/server.md#transcoding)). It plays in the web player and the phone apps, seeks normally, and downloads for offline listening;
-  - an `.mka` with **other audio** inside (AAC, Opus, FLAC) plays in the **web player** only, converted to MP3 as it streams. The phone apps list such a book but may not play it (an iPhone can't); to listen there, convert it to `.m4b` or `.mp3`.
+  - an `.mka` with **other audio** inside (AAC, Opus, FLAC) plays in the **web player**, converted to MP3 as it streams. The phone apps list such a book but may not play it (an iPhone can't; an Android phone can when it decodes the audio inside); to listen there, convert it to `.m4b` or `.mp3`.
 
   An `.mka` beside a file of the same name in another format (`Book.m4b` and `Book.mka`) is left out, as the other file's source or copy.
 

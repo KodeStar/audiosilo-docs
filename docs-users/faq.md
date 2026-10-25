@@ -22,8 +22,8 @@ chapter list. A folder's files play in the natural order of their names, so
 
 `.mka` (Matroska audio) needs ffmpeg on the server. With MP3 inside, the
 usual kind, it then plays everywhere, offline downloads included, as a lossless
-MP3 copy; with other audio inside (AAC, Opus, FLAC) it plays in the web player
-only. See
+MP3 copy; with other audio inside (AAC, Opus, FLAC) it plays in the web player,
+and in the Android app where the phone can decode it, but not on an iPhone. See
 [Supported formats](./getting-started/organizing-your-library.md#supported-formats).
 
 Audible's DRM formats (`.aax`/`.aaxc`) are deliberately **not** indexed - the

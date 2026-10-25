@@ -19,7 +19,7 @@ Audiobooks are big - often hundreds of megabytes each. Download on Wi‑Fi when 
 
 ### Books in MKA files
 
-A book in `.mka` (Matroska) files with MP3 inside downloads as MP3 when your server has ffmpeg, so it plays offline in the apps and in the web player. If one you downloaded on an iPhone with an older version of the app won't play offline, remove the download and download it again. An `.mka` book with other audio inside can't be downloaded in the browser, and won't play on an iPhone (see [Supported formats](../getting-started/organizing-your-library.md#supported-formats)).
+A book in `.mka` (Matroska) files with MP3 inside downloads as MP3 when your server has ffmpeg, so it plays offline in the apps and in the web player. On an iPhone, one an older version of the app downloaded as MP3 plays once you update the app, which renames the saved files. One downloaded before your server sent these books as MP3 (an older server, or one without ffmpeg) holds the Matroska file itself, which an iPhone can't play, even after the update: remove the download and download it again. A book downloaded while the server was still making its copy is saved through the live conversion instead, so it is not lossless. An `.mka` book with other audio inside can't be downloaded in the browser, and won't play on an iPhone (see [Supported formats](../getting-started/organizing-your-library.md#supported-formats)).
 
 ### Podcast episodes
 

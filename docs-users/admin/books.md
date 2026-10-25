@@ -144,7 +144,9 @@ by Michael Kramer · book 1 in The Stormlight Archive"; a book in several series
 lists each, "book 8 in Discworld and book 1 in City Watch"). Each name, and the
 series, opens **Books** filtered to it. Below that is how many files the book
 has, whether browsers can play it directly ("Plays directly", "Transcodes to
-MP3 for browsers" or "Browsers can't play this format") and when it was added.
+MP3 for browsers" or "Browsers can't play this format", judged on the files as
+stored, so an `.mka` book with MP3 inside reads "Transcodes to MP3 for
+browsers" though the server sends it as MP3) and when it was added.
 The buttons there are:
 
 - **Match with community metadata** (it reads **Compare with community** once

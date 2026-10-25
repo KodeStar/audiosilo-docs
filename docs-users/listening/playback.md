@@ -70,7 +70,7 @@ Most audiobooks use audio that every browser plays (AAC, the usual audio in `.m4
 
 The conversion needs **ffmpeg** on your server, which the Docker image includes and the server downloads for itself otherwise (your admin can check under [Server > Transcoding](../admin/server.md#transcoding)). Without it, the web player tries to play the book directly, and if the browser can't, you get the usual playback error - see [Troubleshooting](../troubleshooting.md#a-book-plays-in-the-app-but-wont-play-in-the-browser).
 
-An `.mka` (Matroska) book with MP3 inside isn't one of these when your server has ffmpeg: the server sends it as a plain MP3 file, so it plays, seeks and downloads like any MP3 book (see [Supported formats](../getting-started/organizing-your-library.md#supported-formats)). The very first play of a large one can start through the conversion while the server is still making that copy, so a jump takes a moment longer until it's ready.
+An `.mka` (Matroska) book with MP3 inside isn't one of these when your server has ffmpeg: the server sends it as a plain MP3 file, so it plays, seeks and downloads like any MP3 book (see [Supported formats](../getting-started/organizing-your-library.md#supported-formats)). The very first play of a large one can start through the conversion while the server is still making that copy (it starts when the book is opened). Until the copy is ready, a jump in that first stream may not land where you asked; once the copy is made, the book seeks normally.
 
 ## Lock-screen and headphone controls
 

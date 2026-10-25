@@ -206,9 +206,10 @@ is configured, `Book.PlaysRemuxed`. With ffmpeg an MP3-in-Matroska `.mka` is
 served at the same stream URL as MP3 (a cached lossless remux, `?original=1`
 for the stored bytes; see
 [Remuxing Matroska](../server/media.md#remuxing-matroska-mediaremuxer)), so it
-plays in every client, shipped native builds included, and is `true`. An `.mka`
-holding another codec stays `false`, so the web player transcodes it and a
-native app can't play it.
+streams in every client, shipped native builds included, and is `true`. An
+`.mka` holding another codec stays `false`, so the web player transcodes it; the
+iOS app can't play it, and the Android app plays it only where Media3 decodes
+the codec inside.
 
 `GET .../stream?path=…&transcode=1` pipes through ffmpeg to MP3
 (`media.Transcode`), with `&t=<seconds>` to start mid-file (transcoded output

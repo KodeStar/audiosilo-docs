@@ -2738,9 +2738,9 @@ cached lossless copy of its audio as plain MP3: `Content-Type: audio/mpeg`,
 `Accept-Ranges: bytes`, Range honoured, chapters as ID3 `CHAP` frames, a strong
 `ETag: "remux-<key>"` and the copy's own `Last-Modified` (so a validator kept
 from the stored Matroska never earns a `304` or a spliced range). It is the
-same URL that served the Matroska before, so shipped clients get the MP3 with
-no change. A copy not made yet is waited for up to 2 seconds; past
-that (or when the server is short of disk, or the copy fails) that request gets
+same URL that served the Matroska before, so shipped clients stream the MP3 with
+no change. A podcast library's stream is never remuxed. A copy not made yet is
+waited for up to 2 seconds; past that (or when the server is short of disk, or the copy fails) that request gets
 the live MP3 transcode instead, as `transcode=1` would, and the copy goes on
 for the next one. An `.mka` holding another codec (AAC, Opus, FLAC) is served
 as stored, `audio/x-matroska`. See
