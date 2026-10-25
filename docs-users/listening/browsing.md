@@ -84,7 +84,7 @@ If the Library has no library to show because a server didn't answer, it says "C
 Every book in the library, as a cover grid or a list:
 
 - **Filters** along the top: **Not started**, **In progress** and **Finished** (each with a count of how many books it would show), **Downloaded** (on this device), and a length: **Under 5 h**, **5 to 15 h** or **Over 15 h**. **Clear** takes them all off.
-- **Genre** and **Tag**, after the other filters, when a book in the library has one. Each opens a list of the library's genres (or tags) with how many books each would show, plus **Any genre** (**Any tag**) to drop it; the chip then names your pick (*"Fantasy"*). Capitals don't matter: "Sci-Fi" and "sci-fi" are one tag. Tapping a genre or tag on a [book's page](book-page.md#about-this-book) opens this view with it chosen.
+- **Genre** and **Tag**, after the other filters, when a book in the library has one. Once any filter is on, **Clear** moves to the front of the row, followed by the genre or tag you chose, so both stay in view on a narrow screen. Each opens a list of the library's genres (or tags) with how many books each would show, plus **Any genre** (**Any tag**) to drop it; the chip then names your pick (*"Fantasy"*). Capitals don't matter: "Sci-Fi" and "sci-fi" are one tag. Tapping a genre or tag on a [book's page](book-page.md#about-this-book) opens this view with it chosen.
 - **Sort** by **Recently added**, **Title**, **Author** or **Length**. Sorted by title, the books are grouped under letter headings, with an **A to Z** rail for jumping straight to a letter. A leading "The", "A" or "An" is skipped and accented letters file under their plain letter (*Émile* under E), and a book with no title is shown, and sorted, by its folder's name.
 - **Grid or list**. Your choice is remembered on that device, and the same choice applies to collections and Favourites. On a tablet or computer the list has columns for the narrator, the length and your progress.
 
@@ -145,7 +145,7 @@ Collections are lists of books you put together yourself: "Road trip", "For the 
 
 Collections belong to a server rather than to one library, so in this section the picker chooses a **server**.
 
-To add a book, open its [book menu](#the-book-menu) and choose **Add to collection...**. The dialog lists your collections, so you can add the book to several at once, take it out of one, or **Create and add** a new one there and then.
+To add a book, open its [book menu](#the-book-menu) and choose **Add to collection...**, or use **Add to collection** on its [page](book-page.md#listening-and-the-buttons). The dialog lists your collections, so you can add the book to several at once, take it out of one, or **Create and add** a new one there and then. A collection with nothing in it yet says *"Nothing in this collection yet"* and reminds you of the same two ways in.
 
 ![A collection's page: its name, description and total length, the owner's buttons, and its books](/img/screenshots/web-player/collection.png)
 

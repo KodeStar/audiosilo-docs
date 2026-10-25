@@ -84,4 +84,4 @@ Two switches in the speed sheet (and in [Settings](settings.md#playback), where 
 
 **Time saved** (Android). Once Smart speed has saved you a second or more, the speed sheet says how much in total on this device (*"Saved 2h 11m"*), and a book's page shows what it saved on that book under [Your listening](book-page.md#about-this-book) (*"Smart speed saved 14m"*). The figure is the silence removed, counted at normal speed, so listening faster doesn't inflate it. It's kept on the device, not on your server: each phone has its own. Removing a server from the app forgets its books' figures; the total stays.
 
-**Voice boost in the web player** starts the first time you switch it on or press play with it on. It works on books from the server the web player is opened from, and on every downloaded book; a book streamed from another server you've added plays without it.
+**Voice boost in the web player** starts the first time you switch it on or press play with it on. It works on books from the server the web player is opened from, on every downloaded book, and on books streamed from another server you've added.

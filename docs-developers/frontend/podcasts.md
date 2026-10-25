@@ -407,7 +407,11 @@ locales; none of it says "Bridge" or shows the server's English.
   a progress row's kind by its library: Next in your series (and the `/next`
   questions behind it), the smart shelves and Recently finished hold books
   only, and a server whose list is still loading counts as no books yet (one
-  whose list failed counts as books). The Now card, Continue listening and
+  whose list failed counts as books). It returns `{ isBook, pending }`: while a
+  row's server is `pending`, the shelf it could fill keeps its place with a
+  `ShelfSkeleton` instead of vanishing and coming back (Next in your series only
+  for a row whose server has `next_book`; the smart shelves only when the held
+  rows could make one), and episodes still never appear once the list is in. The Now card, Continue listening and
   Favourites show episodes like books; New episodes is their own rail.
 
 Listener copy never says "Bridge" and never shows the server's English:

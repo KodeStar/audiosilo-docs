@@ -74,7 +74,8 @@ player left open on it closes once the app is active. See
   place saved; it stays unfinished, in Up next, with its download), then `advanceTo(next)`; on success the
   player replaces the credits once the app is active (`navigateWhenActive`, and not
   at all if the credits were closed meanwhile), on failure the countdown stops and a
-  toast says "Couldn't start Oathbringer. Try again." Play now shows busy while the book
+  toast says "Couldn't start Oathbringer. Try again." (`playFailedToast`, with the
+  reason `advanceTo`'s `onError` was told as its description, when there is one). Play now shows busy while the book
   starts. The countdown counts only the time its ticks saw, so a suspended app
   doesn't wake to a countdown that already ran out, and the still-playing countdown
   runs at the playing speed. View details opens the book in the shell underneath
@@ -131,7 +132,10 @@ in skipping finished series books too and in planning nothing when `/next` fails
 
 **Leaving the queue** is `dropFromQueue(connectionId, books)` (`queue-drop.ts`,
 framework-free): on a server the cache knows has `queue`, it looks the books up in
-that connection's queue (the cached one, else one read), removes each by the stored
+that connection's queue (a read within the last `QUEUE_DROP_FRESH_MS`, five minutes,
+answers as it is and is kept that long even with Up next closed, so starts in a row read
+`/queue` at most once a window; an older one is read again, so a book queued on another
+device meanwhile still leaves), removes each by the stored
 entry's own path and takes it out of the cached queue at once (so a second call for
 the same book, the credits opened on return after the end already dropped it, sends
 nothing), sends one remove even when two callers drop the same entry at once (a

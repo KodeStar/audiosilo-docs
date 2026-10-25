@@ -30,10 +30,16 @@ timer have their own pages ([End of a book](end-of-book.md),
   never flashes over the bar; on web it rides on the web tab bar. It **publishes its
   own top edge** as the `mini` piece once known, which the toasts and the floating
   grace card clear. Content scrolls behind it, so scroll screens reserve room with
-  `useMiniPlayerInset()`.
+  `useMiniPlayerInset()`: once the floating stack (an episode's fetch strip and the
+  card) has laid out, the measured `mini` - `bar` edges, so a strip that wraps at a
+  large font scale or zoom still clears; before that first layout, the constants
+  (`MINI_PLAYER_HEIGHT` + `MINI_PLAYER_GAP`, `FETCH_STRIP_HEIGHT`).
 - **Tablet and desktop (web and native):** `DockedPlayer`
   (`src/components/shell/docked-player.tsx`): the whole-book progress line; the
-  cover, chapter, book and sync state on the left (a tap for the full player);
+  cover, chapter, book and sync state on the left (a tap for the full player; under
+  a chapter heading the second line is the title and author, but when the heading is
+  already the title, `useMiniHeading`'s `isChapter` false for a chapterless book or an
+  episode, it is the author or show alone, and nothing when there is none);
   `TransportControls size="sm"` over the dock's `ChapterScrubber`, which takes the
   playing book's `bookmarks` and draws their ticks in the segment
   (`usePlayingSegment`); and on the right the `UndoChip`, speed, sleep, bookmark,

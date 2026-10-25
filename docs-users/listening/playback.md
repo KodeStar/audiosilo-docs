@@ -16,7 +16,7 @@ On an **iPhone running iOS 26 or later**, the mini player is a glass strip insid
 **On a tablet or computer**, the **player bar** runs along the bottom of the window:
 
 - a thin line along its top edge showing your progress through the whole book;
-- on the left, the cover, the chapter, the book and author, and whether your [place is saved](#your-position-follows-you) - tap it to open the full player;
+- on the left, the cover, the chapter, the book and author, and whether your [place is saved](#your-position-follows-you) - tap it to open the full player. A book without chapters, or a podcast episode, shows its title and then just its author or show;
 - in the middle, previous chapter, skip back, play/pause, skip forward and next chapter, over a scrubber for the current chapter (with a tick for each bookmark) and the time left in the book;
 - on the right, the [undo button](full-player.md#undo-a-jump) after a jump, then speed, the [sleep timer](sleep-timer.md) (with its countdown while one runs), bookmark, output, [Cast](chromecast.md), [Up next](up-next.md), and an arrow that opens the full player.
 

@@ -589,7 +589,8 @@ The two lists are the consts `corsAllowHeaders` and `corsExposeHeaders`
 (`internal/api/middleware.go`). `Range` is there for a script's fetch of a
 stream with the `Authorization` header: the player's episode probe sends
 `Range: bytes=0-0` with its token, so cross-origin it is always preflighted
-(an `<audio>` element's own seeks are no-cors and need nothing). The exposed
+(an `<audio>` element's own Range requests come from the browser and are
+never preflighted). The exposed
 headers are `Retry-After` where a route sends one (the discovery and OPML
 budgets, a busy transcode, an episode on its way; the general rate limit and
 the request timeout send none) and the OPML export's counts, so a
@@ -597,11 +598,21 @@ cross-origin web player reads them as the `/web` player and native apps
 always could. A denied or absent origin gets no CORS header but `Vary`, and a
 server with `cors_origins` unset gets none at all.
 
-CORS never covers an `<img>` cover or an `<audio>` stream: those are no-cors
-requests with no `Origin`. What lets a player on another site load them is the
-media answer's `Cross-Origin-Resource-Policy`, which is `cross-origin` on every
-authenticated media answer once `cors_origins` is set (from 2.4.1; before, it was
-`same-site` and the browser blocked the covers). See
+Covers and audio depend on how the player loads them. The web player loads
+another origin's covers, artwork and audio in **CORS mode**
+(`crossOrigin="anonymous"` on the `<img>` and the `<audio>` element, only when
+the URL is cross-origin to the page; server#201): the request carries
+`Origin`, and the server's CORS layer answers it on media like any other route
+(a `206` and a `401` included), so `cors_origins` decides whether a player on
+another site shows covers and plays audio, and Web Audio (Voice boost) can
+hear the stream. CORS mode ignores `Cross-Origin-Resource-Policy`. The player
+at `/web` is same-origin and sets no attribute. An older player loads them as
+no-cors requests with no `Origin`, which CORS never covers: what lets those
+load is the media answer's `Cross-Origin-Resource-Policy`, which is
+`cross-origin` on every authenticated media answer once `cors_origins` is set
+(from 2.4.1; before, it was `same-site` and the browser blocked the covers). It
+stays `cross-origin` until shipped players load in CORS mode, then the server
+can narrow it (server#201's second half). See
 [Transport hardening](../auth-and-security.md#transport-hardening). An older server exposes nothing, so
 the player falls back to the body's `retry_after_seconds` for an episode
 fetch and reads the export counts as unknown.

@@ -258,6 +258,25 @@ server (spotty Wi‑Fi, mobile data dead zones). For commutes and travel,
 [download the book to your device](./listening/offline-downloads.md) and play
 it locally.
 
+### A book won't start
+
+When a book can't start, a note says so (*"Couldn't start this book. Try
+again."*, or with the book's title when it comes from Up next or the end of a
+book), with a second line when the player knows why:
+
+- *"Can't reach Home Server right now."* (with your server's name) - the book
+  streams from a server that isn't answering. See
+  [I can't reach the server at all](#i-cant-reach-the-server-at-all), or
+  [download the book](./listening/offline-downloads.md) before you go out of
+  reach.
+- *"Its audio didn't load from the server."* (web player) - the server
+  answered, but the book's audio file didn't load. If it keeps happening for
+  one book, ask your admin to check its files (see
+  [A book plays in the app but won't play in the browser](#a-book-plays-in-the-app-but-wont-play-in-the-browser)).
+
+Your place in the book isn't lost: the player keeps it, and **Retry** starts
+from there.
+
 ### A podcast episode won't start
 
 An episode marked **Plays on demand** isn't on your server yet: pressing

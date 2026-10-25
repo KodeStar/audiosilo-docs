@@ -84,6 +84,14 @@ points:
 - The session token is already in the stream URL (`?token=` - see
   [State & data](state-and-data.md)), so the browser's own Range requests
   (seek/scrub) authenticate without headers.
+- **Another origin's stream loads in CORS mode.** Before every `src` (a load, a
+  file skip, the `swapTo` element) the engine sets the element's `crossOrigin`
+  from `corsModeFor` (`src/lib/cors-mode.ts`): `'anonymous'` for an http(s) URL
+  on another origin than the page, none for the player's own origin at `/web`,
+  the service worker's `_offline/` copies, `blob:` and `data:`. The server's
+  `cors_origins` grant that load, which ignores its
+  `Cross-Origin-Resource-Policy` (server#201;
+  [CORS](../server/api/index.md#cors)).
 - The **Media Session API** wires lock-screen/notification transport: metadata
   per track plus `play`, `pause`, `seekbackward`, `seekforward` handlers using
   the configured jump intervals. Those seeks go back **through the store**
@@ -93,6 +101,18 @@ points:
   gesture (a cold `/player` deep link) rejects with `NotAllowedError`; the engine
   settles its snapshot on `paused` and rethrows it as `AutoplayBlockedError`
   (`types.ts`), which the store's `startEngine` catches.
+- **A source that failed is a `PlaybackStartError('audio')`.** `playElement`
+  reads a `NotSupportedError` ("no supported sources"), or an `AbortError` from
+  an element that has errored, as a failed source: it settles the snapshot on
+  `error` and throws `PlaybackStartError` (`types.ts`) with reason `audio`. An
+  `AbortError` from a healthy element is a `play()` superseded by a pause or the
+  next source, so nothing is thrown.
+- **A load ignores its own first `timeupdate`.** Setting `src` queues a
+  `timeupdate` at `currentTime` 0 before any metadata. The engine marks the
+  element `placing` until `loadedmetadata` has made the start seek (or it fires
+  `seeked`) and ignores its `timeupdate`s meanwhile, so the snapshot keeps the
+  load's position; a source that then fails keeps it too (the place Retry
+  starts from), never the dead element's 0:00.
 - **A file advance is not a pause.** The element fires `pause` just before `ended`
   at a file's natural end; when another file follows, the engine ignores it (the
   store keeps its intent through the next file's load), so a chapter sleep timer
@@ -102,7 +122,8 @@ points:
 - Auto-rewind on resume: `play()` rewinds by up to `autoRewindMax` seconds
   scaled by how long the pause lasted.
 - **Voice boost** routes the element through one lazily-built Web Audio compressor
-  where the browser allows it (never Safari, same-origin sources only) - see
+  where the browser allows it (never Safari; only a source Web Audio can hear:
+  same-origin, or another origin's loaded in CORS mode) - see
   [Smart speed and Voice boost](audio-effects.md#web-one-web-audio-graph).
 - Every element listener is guarded by an `active()` check so a second element
   being buffered by `swapTo` can't drive the snapshot until the switch commits.
@@ -437,10 +458,21 @@ behaviours it gained, each with its own regression tests:
   listener somewhere they have never been. The spoiler gates wait it out through
   `selectPlacedBookKey` (`use-listening-position.ts`); without it, switching books
   could reveal the new book's characters by the old book's position;
-- **`startEngine`** (the play step of `playBook`/`toggle`/`retry`) catches only
+- **`startEngine`** (the play step of `playBook`/`toggle`/`retry`) treats
   `AutoplayBlockedError` - a browser refusing `play()` without a user gesture (a
-  cold `/player` deep link) - clears the play intent so the watchdog can't turn
-  it into `error`, and settles on `paused`;
+  cold `/player` deep link) - as a pause: it clears the play intent so the
+  watchdog can't turn it into `error`, and settles on `paused`. Every other
+  failure rejects as a **`PlaybackStartError`** saying why (`startFailure`):
+  `offline` when the loaded book streams from a server known to be unreachable
+  (`isReachable`; never for a downloaded book), else the engine's own reason
+  (the web engine's `audio`), else `unknown`, with the book's `connectionId`.
+  `playBook` rejects with it, and every start's caller toasts through
+  `playFailedToast` (`src/components/player/play-failed.ts`: the caller's title,
+  by default `library.bookActions.playFailed`, with the reason as the
+  description, `player.startFailed.offline` naming the server or
+  `player.startFailed.audio`; no description for `unknown`). `toggle` and
+  `retry` never reject (`startLoadedEngine` logs instead): the error state
+  already shows Retry and its error line;
 - the store registers **`onRemoteSeek`** on the engine, so the OS media controls'
   seeks go through `seekInTrack` and lower the resume floor and save like any other
   seek (web);

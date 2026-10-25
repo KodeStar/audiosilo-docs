@@ -475,7 +475,9 @@ on. The view is
 `labelOptions` (the genre or tag choices, each counted the same way, the chosen one
 kept even at 0; shown by `books/label-filter.tsx` as a picker chip opening a dialog,
 and only when a loaded book has a label or the URL names one, so an older server
-shows no new control),
+shows no new control; with any filter on, `BooksMode` leads the chip row with Clear
+and then the chosen genre or tag chip, the unchosen pickers staying at the end, and
+re-keys the row by the chosen kinds so it starts scrolled to its start),
 `sortBooks` (title order folds accents and skips a leading article; an untitled book sorts, and shows, by its folder name through `bookTitle`), `letterGrid`
 for the title sort's letter heads and A-Z rail, and `lengthBucket` (the `len`
 chips, which Home's Short listens shelf reuses). The
@@ -618,9 +620,17 @@ ones a contributor trips over first.
   rendered by the root `ShellToastHost`) and `RowSurface` / `PressableRow` (the
   quiet hairline list row; the book page's chapter rows use it too). A primitive
   that renders its own text node reuses `EYEBROW_CLASS` for the eyebrow style.
-  Also there: `Sheet`, `Stepper`, `TimeStepper`, `EmptyState`, `SectionHeader`
-  and `AnimatedPressable` (a `className`-aware `Pressable` with a reduce-motion
-  aware press-in scale). To add another reusables component, generate it into a
+  Also there: `Sheet`, `Stepper`, `TimeStepper`, `EmptyState`, `SectionHeader`,
+  `AnimatedPressable` (a `className`-aware `Pressable` with a reduce-motion
+  aware press-in scale) and `CoverImage` (`cover-image.tsx`): every cover, artwork
+  or backdrop image from a server goes through it (`Cover`, `CoverBackdrop`,
+  `DiscoveryArtwork`), never expo-image directly. On native it is expo-image as
+  before (its disk cache, `source.headers`, `blurRadius`); on the web
+  (`cover-image.web.tsx`) a plain `<img>` (cover fit, lazy, async decode, a fade
+  in over `transition` ms, keyed by its URI), because expo-image's web image takes
+  no `crossOrigin`: it sets `crossOrigin="anonymous"` for another origin's URL
+  (`corsModeFor`, see [the web engine](playback.md#web-engine-servicewebts)) and
+  sends no headers (server image URLs carry `?token=`). To add another reusables component, generate it into a
   scratch directory with the reusables CLI and port it (the CLI would overwrite
   our same-named files) - the steps are in the frontend `CLAUDE.md`.
 - **Overlays portal.** Dialog, AlertDialog, Select, Popover, DropdownMenu and

@@ -937,6 +937,11 @@ same-site` on every response, with two exceptions on media answers
   credentials, and media has none: it authenticates only by an explicit token
   (`?token=` or `Authorization`, `bearerToken`), never a cookie. A page that can
   load the answer already holds the credential that fetches it anywhere.
+  The web player now loads another origin's covers and audio in CORS mode
+  (`crossOrigin="anonymous"`), which ignores this header and is governed by
+  `cors_origins` instead ([CORS](api/index.md#cors)); the `cross-origin`
+  answer stays for older players until the server narrows it (server#201's
+  second half).
 
 A media request that fails to authenticate, every non-media route, and media on
 a server with `cors_origins` empty stay `same-site`. **HSTS is set only in `autocert` TLS mode**:

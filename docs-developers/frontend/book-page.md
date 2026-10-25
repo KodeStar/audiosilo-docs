@@ -17,7 +17,7 @@ draw. The user-facing tour is [A book's page](/users/listening/book-page).
 | `book-page-model.ts` | Pure: `bookPageLayout`, `titleScale`, `heroSubtitle`, `primaryAction` / `primaryLabel`, `chapterList`, `rowAt`, `timelineStarts`, `placeLine`, `heroEyebrow`, `bookFacts`, `startedAt`, `listeningFigures` |
 | `book-tab-panel.tsx` | `BookTabPanel`: the active tab's panel (the tab row is the page's) |
 | `book-hero.tsx` | `BookHero`: the `CoverWash`, crumbs slot, eyebrow, title, subtitle, byline, facts, the place (or the finished badge and the stars), then the actions and footer slots |
-| `hero-actions.tsx` | `HeroActions`: the primary button, `DownloadControl`, the Up next menu, favourite, Add to collection, and `BookActionsMenu` with `omit` |
+| `hero-actions.tsx` | `HeroActions`: the primary button, `DownloadControl`, the Up next menu, favourite, Add to collection (in the menu when stacked), and `BookActionsMenu` with `omit` |
 | `book-crumbs.tsx` | `BookCrumbs`: the library, each folder above the book (links), the book's own folder or file name |
 | `book-chapters-tab.tsx` | `BookChaptersTab`: "The whole book" (`BookTimeline` + legend + axis) and the rows |
 | `book-details-tab.tsx` + `book-details-model.ts` | `BookDetailsTab`: the playback notice, the files table, the path; `fileRows`, `visibleFiles`, `playbackMode`, and the About card's `aboutContent`, `labelGroups` and `languageName` |
@@ -100,8 +100,10 @@ Both ways to play go through the app's one play path, `usePlayBook`
   (`seekBook`, or `goToTrack`) and plays on, or starts this book there in place
   (`startBookInPlace`).
 
-It rejects when the book can't start, and the page toasts
-`library.bookActions.playFailed`.
+It rejects when the book can't start (a `PlaybackStartError`, see
+[Playback](playback.md)), and the page toasts through `playFailedToast`:
+`library.bookActions.playFailed`, with the reason (the server can't be reached, or
+the audio didn't load) as the description.
 
 `HeroActions` lays the row out after the primary:
 
@@ -110,8 +112,8 @@ It rejects when the book can't start, and the page toasts
 | `DownloadControl` | - | an outline button per state: Download for offline, "N% · Cancel" with a `ProgressRing`, **Downloaded** (a menu with the size and Remove download), Retry download; disabled where this device can't keep the book |
 | Up next menu | `queue` | Play next (at position 0, with an Undo that puts it back where it was); Add to the end / Remove from Up next (`useQueueActions`) |
 | Favourite | - | ink, never pink |
-| Add to collection | `collections` | the book menu's dialog |
-| `BookActionsMenu` | its items' own | `omit={['play', 'queue', 'collect', 'download']}` leaves Mark as finished / not finished and More in this series; renders nothing when that leaves no item. For an admin whose book has generated characters or recaps it adds **Regenerate characters and recaps** (`extra`), then each active [player module's](state-and-data.md#player-modules-srcmodules) `bookActions` (none yet) |
+| Add to collection | `collections`, not stacked | the book menu's dialog; when stacked it is the menu's own item instead |
+| `BookActionsMenu` | its items' own | `omit` (`MENU_OMIT`, `['play', 'queue', 'collect', 'download']`) leaves Mark as finished / not finished and More in this series; stacked it keeps Add to collection too (`MENU_OMIT_PHONE` drops `'collect'`); renders nothing when that leaves no item. For an admin whose book has generated characters or recaps it adds **Regenerate characters and recaps** (`extra`), then each active [player module's](state-and-data.md#player-modules-srcmodules) `bookActions` (none yet) |
 | Generate characters and recaps | `useGenerate`'s `offer === 'generate'` | an outline button after the others (its own row when stacked), for an admin a Bridge can generate for (below) |
 
 **Generating characters and recaps** (Bridge Phase 1a, `src/components/bridge/`)
@@ -172,9 +174,10 @@ chapters found in the narration appear. The companion's empty Who's who and
 Story so far mount `GenerateOffer`, the same button and status.
 
 When the hero is stacked (under 600 measured), the primary takes its own row and the
-rest stay on **one** row: the download control gets `short` ("Download", just "Cancel"
-while it runs, its words ending in "..." rather than wrapping), and the menu opens as a
-sheet. The footer holds `DownloadProgress`, `GenerateStatus`, `GenerateCovered` (only while
+rest stay on **one** row: Add to collection moves into the menu, so the download slot
+(`flex-1`) takes the room the icon buttons leave, enough for its word on a phone; the
+download control gets `short` ("Download", just "Cancel" while it runs, its words ending
+in "..." rather than wrapping), and the menu opens as a sheet. The footer holds `DownloadProgress`, `GenerateStatus`, `GenerateCovered` (only while
 `covered`) and `TranscodeNote`.
 
 ## The tabs

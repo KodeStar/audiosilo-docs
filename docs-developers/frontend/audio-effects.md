@@ -10,7 +10,7 @@ No wire change: both are client-side, and "time saved" is kept on the device.
 | | Android | iOS | Web |
 |---|---|---|---|
 | **Smart speed** | every book: a silence-skipping `AudioProcessor` | not yet ([why](#why-smart-speed-isnt-on-iphone-yet)) | not offered |
-| **Voice boost** | every book: a compressor/limiter `AudioProcessor` after Sonic | every book: an `MTAudioProcessingTap` per item | Web Audio compressor, trim and limiter, never in WebKit-only browsers, same-origin sources only |
+| **Voice boost** | every book: a compressor/limiter `AudioProcessor` after Sonic | every book: an `MTAudioProcessingTap` per item | Web Audio compressor, trim and limiter, never in WebKit-only browsers, same-origin or CORS-mode sources only |
 
 ## The Voice boost preset
 
@@ -146,12 +146,15 @@ frames. Until then `smartSpeedApplies` is Android only, the iOS engine accepts a
   and never torn down; `ctx.resume()` runs synchronously in that gesture.
 - Each `<audio>` element gets **one** `MediaElementAudioSourceNode` for life (a second
   `createMediaElementSource` throws), made only while the context runs (a suspended one would
-  silence the book) and only for a **same-origin** source (`sameOrigin`,
-  `src/lib/same-origin.ts`): a cross-origin element routed through Web Audio without CORS
-  plays zeroes. So a book streamed from another signed-in server, or through the Metro dev
-  server talking to a remote API, plays unboosted (a downloaded copy, served from the page's
-  own origin under `/_offline/`, is boosted); a load of such a source onto an already-routed
-  element swaps in a fresh element.
+  silence the book) and only for a source Web Audio can hear (`routable`): a
+  **same-origin** one (`sameOrigin`, `src/lib/same-origin.ts`: the player at `/web`, a
+  downloaded copy under `/_offline/`) or another origin's loaded in **CORS mode**
+  (`corsModeFor`, `src/lib/cors-mode.ts`; see
+  [the web engine](playback.md#web-engine-servicewebts)). A cross-origin element routed
+  through Web Audio without CORS plays zeroes, so anything else (a `data:` URL) plays
+  unboosted, and a load of such a source onto an already-routed element swaps in a fresh
+  element. A book streamed from another signed-in server, or a dev build on Metro talking
+  to a remote API, is boosted when that server's `cors_origins` lists the page's origin.
 - Switching off reconnects each source straight to the destination; nothing is rebuilt.
 
 ## Time saved (`src/playback/time-saved.ts`)

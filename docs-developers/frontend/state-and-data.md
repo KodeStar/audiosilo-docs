@@ -737,7 +737,8 @@ The rule is the pure `communityCoverSource` (`community-cover.ts`), unit-tested:
 Home (`src/components/home/`) aggregates every connection and keeps its rules
 pure (the podcast "New episodes" rail, `use-new-episodes.ts` and
 `new-episodes-model.ts`, is in [Podcasts](podcasts.md#homes-new-episodes);
-`bookRowTest` keeps episodes off the book shelves below, by library kind):
+`bookRowTest` keeps episodes off the book shelves below, by library kind, and
+holds a shelf's place with a skeleton while a server's libraries load):
 
 - `home-model.ts`: `pickNowBook` (the loaded book, else the most recently played
   in progress), `syncPill` (told as it is: a save still in the offline queue, or the server
