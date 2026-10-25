@@ -4,7 +4,7 @@ description: "The SQLite schema behind audiosilo-server: the rebuildable index v
 ---
 
 The schema lives in `internal/store/migrations/` as numbered SQL files
-(`0001_init.sql` … `0054_podcast_fetch.sql`), embedded into the binary and
+(`0001_init.sql` … `0055_book_file_order.sql`), embedded into the binary and
 applied by `store.Open` at startup. This page documents the **resulting current
 schema**, noting which migration added what.
 
@@ -256,7 +256,7 @@ covered in [Auth & security](auth-and-security.md#authorization-shares--scope).
 `scan_error_file`, `scan_error_detail` and `suspect_parts` in 0017; `split_parent` in
 0022; `cover_art` and `cover_color` in 0023; `chapters_source`, `chapters_fit`,
 `scanned_chapters` and `chapters_hash` in 0035; `released` and `released_checked`
-in 0037; `series_key` in 0041; `series_index_end` in 0045; `abs_sig`, `abs_indexed_at` and `abs_file` in 0046; `attachments_sig` and `attachments_indexed_at` in 0048; `subtitle`, `publisher`, `language`, `abridged`, `genres`, `tags` and `genres_checked` in 0049)* - one row per book,
+in 0037; `series_key` in 0041; `series_index_end` in 0045; `abs_sig`, `abs_indexed_at` and `abs_file` in 0046; `attachments_sig` and `attachments_indexed_at` in 0048; `subtitle`, `publisher`, `language`, `abridged`, `genres`, `tags` and `genres_checked` in 0049; `file_order` and `file_order_indexed_at` in 0055)* - one row per book,
 `UNIQUE (library_id, rel_path)`. Columns: `is_folder` (folder book vs
 single-file book), identity metadata (`title`, `author`, `series`,
 `series_index`, `narrator`; `series_index_end` is the end of a main series
@@ -283,6 +283,14 @@ read it; see [the layers](#metadata-overrides-and-effective-values)),
 `name:size:mtime_ns` per known file, joined; `''` for none; `Book.generated` is
 read from it: a characters, recaps or description file) and `attachments_indexed_at` (the `indexed_at` they were read for,
 `NULL` until read; see [The .audiosilo folder](../bridge/attachments.md#storage)),
+`file_order` (a folder book's file order key, `catalog.FileOrderKey`: the FNV-64a
+of its file paths in play order, bit-cast to a signed integer; `NULL` for a
+single-file book) with `file_order_indexed_at` (the `indexed_at` it was recorded
+with; `NULL`, or another index's after an older server re-indexed the row, reads as
+not recorded, and the next scan that finds the book unchanged fills it from
+`book_files` without a re-index (one whose files are in another order is
+re-indexed, which records it); see
+[the stored order key](scanner.md#book-detection-booksindir)),
 `more_series` (the effective list of the other series the book is in beyond
 `series`, as JSON `[{"name","position"}]` plus `"position_end"` for a range, `'[]'` for none: only an edit, a
 community match or an Audiobookshelf `metadata.json` supplies it, an override like any other field; an admin edit
@@ -1263,6 +1271,7 @@ The migration history so far:
 | 0052 | `podcasts` | `libraries.kind`, show/hash/episode indexes, durable follows (bound to `show_id`), server feed state including the missing-secret latch, idempotent folded-job markers, and `bridge_jobs.feed_redacted` plus subscribe/recovery indexes; see [Podcasts](#podcasts) |
 | 0053 | `setup_state` | the `server_state` row `setup_state` (see [Server state](#server-state)), inserted (`INSERT OR IGNORE`) finished and dismissed with no steps when the server already holds a library of any kind or more than one account that isn't a demo account or a household member (`is_demo = 0 AND managed_by IS NULL`), so an upgraded server never shows the first-run flow or its Overview card. A fresh database has neither when it runs (the first admin is made after the migrations), so it gets no row |
 | 0054 | `podcast_fetch` | identity-bound feed state, durable `podcast_policies`, separate `podcast_fetch_state`, and derived episode hash/timeline/Fetch/signature columns; see [Podcasts](#podcasts) |
+| 0055 | `book_file_order` | `books.file_order` (`INTEGER`, `NULL` on every existing row) and `books.file_order_indexed_at` (`TEXT`, `NULL`): a folder book's stored file order key, so a scan compares the order without loading every `book_files` row (#177). No data moves: the next scan records the key of each unchanged folder book from its `book_files` (`catalog.SetFileOrders`), without re-indexing it |
 
 ## SQLite choices
 

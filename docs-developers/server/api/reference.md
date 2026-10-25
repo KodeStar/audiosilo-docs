@@ -827,9 +827,18 @@ The podcast branch caps a page at 2,000 entries and applies private scope.
       "series": "Mistborn",
       "series_index": 1,
       "duration": 88347.4
+    },
+    {
+      "name": "The Well of Ascension",
+      "path": "Brandon Sanderson/Mistborn/The Well of Ascension",
+      "is_dir": true,
+      "is_audio": false,
+      "size": 0,
+      "mod_time": 0,
+      "pending_book": true
     }
   ],
-  "total": 3,
+  "total": 2,
   "offset": 0
 }
 ```
@@ -844,7 +853,45 @@ only in disc folders directly in it (`CD1`, `CD2`, ...), each indexed as its
 own book, which a `book` override would join into one (see
 [Joined books](../scanner.md#joined-books-disc-sets)); it is sent to **admin**
 callers only and omitted otherwise, so the player's listing is unchanged.
-Dotfiles are hidden; directories sort before files.
+
+**Order.** Directories come first, then files, each group in **natural order**
+(`naturalLess`, the order a folder book's files play in, so `2` lists before `10`;
+see [Book detection](../scanner.md#book-detection-booksindir)). A
+joined book's discs play in `discOrder`, which also ignores spaces, hyphens and
+underscores, so only a disc set named unevenly (`CD1` beside `CD 2`) lists in
+another order than it plays. An older server sorts each group by its lowercased
+name, character by character (`10` before `2`).
+
+**What is listed.** Dotfiles are hidden. An `.mka` beside a file of the same name
+in another audio format (`Book.m4b` + `Book.mka`) is left out, as the scanner
+leaves it out of the book (`library.shadowedMKA`, the rule `folderAudio` uses;
+see [Recognized audio](../media.md#recognized-audio-metadataaudioextensions)); a
+lone `.mka` is listed.
+
+**`pending_book: true`** marks a folder the background scan has not
+indexed yet that the scanner would read as a book (`library.MarkPendingBooks`,
+called from `annotateWithBooks`), so a player can open it as a book: any content
+route then indexes it on demand
+([On-demand indexing](../scanner.md#on-demand-indexing-indexpath)). The scanner's
+own rules decide, from directory reads alone (no audio is opened):
+
+- a folder holding audio of its own (the hidden and
+  [ignore](../scanner.md#ignore-rules) rules applied) is one, unless it has a
+  `collection` override;
+- a folder with a `book` override that is a disc set is the joined book, and its
+  disc folders are none; without that override each disc folder holding audio is
+  one and the folder above is none.
+
+It is sent to every caller (player and console), but only on a folder the
+caller's scope **allows**: a folder listed only as the way down to a grant is
+never flagged. It is never sent alongside `is_book`, never in a podcast library's
+listing, and absent (not `false`) otherwise. No capability flag: an older player
+ignores the field, and a newer player on an older server finds it absent.
+
+The pass is bounded (see [the filesystem view](../scanner.md#the-filesystem-view-browsefs)),
+so a folder can be listed unflagged: one with an indexed book at or below it, one
+the pass doesn't reach in its 2 seconds, and every folder when the library's folder
+overrides or the index lookups for the page can't be read.
 
 | Status | Meaning |
 |---|---|
@@ -2917,6 +2964,34 @@ under [`PUT`](#put-apiv1librariesidprogress); a listener corrects them with
 *Session.* Progress for one book. Response `200`:
 `{ "progress": { … } }` - or `{ "progress": null }` when none exists.
 
+#### The progress path
+
+The three `/libraries/{id}/progress` routes (this read, `PUT` with its listening
+session, and `PATCH`) keep a book's progress on **the book's path**
+(`api.progressPath` over `catalog.BookPathOfFile`). The `?path=` is scope-checked as
+given (out of scope is the usual `403`), then:
+
+- the path of an indexed book, or of one of its **track files**
+  (`Author/Book/02.mp3`), is keyed on that book's path, when the caller's scope
+  allows the book. A file of a book nested in another book's folder belongs to the
+  innermost book (`Series/Book 2/01.m4b` is `Series/Book 2`'s). The row in the
+  response carries the book's `path`, so `PUT ?path=Author/Book/02.mp3` answers
+  `"path": "Author/Book"`;
+- anything else keeps the path as given, as before: a navigation folder, a book the
+  index doesn't hold yet (a save never indexes on demand), a book above a grant that
+  reaches only its part (the book outside the scope is never read or written), and a
+  **disc folder** of a joined book, which keeps its own key (a download of that disc
+  saves there, on the disc's own timeline).
+
+A failure of that lookup is a `500` (`could not load progress` / `could not save
+progress`), never a save under another key. Rows an older server or client already
+wrote under a part path stay where they are (they are not merged into the book's
+row), and bookmarks, notes, history, favourites, ratings and the queue keep the path
+they are given. [`POST /cast/token`](#post-apiv1casttoken) grants the book's path
+too, but by the media routes' rule rather than this one: a disc folder resolves to
+its joined book, a book not indexed yet is read on demand, and a book outside the
+caller's scope is a `403`.
+
 ### `PUT /api/v1/libraries/{id}/progress`
 
 *Session.* Upserts progress with **last-write-wins** reconciliation: the newer
@@ -2936,7 +3011,8 @@ returns the *effective stored* progress, so clients converge.
 | `updated_at` | string | RFC 3339; empty = server time. **This drives the merge** - send the real client-side write time when replaying offline queues |
 | `library_id`, `path` | - | accepted but ignored; taken from the URL and `?path=` |
 
-Response `200`: `{ "progress": { … } }` (the winning row).
+Response `200`: `{ "progress": { … } }` (the winning row), keyed on
+[the progress path](#the-progress-path).
 
 Each save is also the heartbeat of the caller's **listening session** on the
 book, which the server derives for the admin console (see
@@ -2953,7 +3029,8 @@ them), so a client changes them only through
 ### `PATCH /api/v1/libraries/{id}/progress`
 
 *Session.* Capability `progress_edit`. The caller's own edit of their progress
-on a book (`?path=` required): mark it finished or **unfinished**, move the
+on a book (`?path=` required, a track file's path editing its book's row: see
+[the progress path](#the-progress-path)): mark it finished or **unfinished**, move the
 position, or set or clear the start and finish dates. The same rules as an
 admin's [edit of someone's progress](#patch-apiv1adminlibrariesidprogress)
 (`catalog.EditProgress`), applied with the caller's own access. Any subset of:
@@ -3599,7 +3676,8 @@ list the server's usernames.
 ### `GET /api/v1/libraries/{id}/rating`
 
 *Session.* Capability `ratings`. The caller's rating of a book (`?path=`, the
-exact path, scoped like progress: use the book's own `rel_path`).
+exact path as given, scope-checked like progress but never moved to a book's path
+as [progress is](#the-progress-path): use the book's own `rel_path`).
 
 ```json
 {
@@ -4113,7 +4191,8 @@ Response `201`:
 ```
 
 The path resolves exactly as on the media routes, and a part path (one file, or a
-disc folder) resolves to its book: the token then covers every file of that book.
+disc folder) resolves to its book: the grant is recorded on the book's path, never
+the part's, so the token covers every file of that book and no other book's.
 The secret is returned once. `expires_at` falls on a whole second. A demo account
 may mint (it can play); an API key may not. How long a cast token lives, how many a
 person keeps, what ends it and how dead ones are pruned:

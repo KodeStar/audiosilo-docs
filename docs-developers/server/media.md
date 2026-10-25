@@ -116,7 +116,9 @@ how it plays depends on what is inside and on ffmpeg:
 
 An `.mka` beside a file of the same name in another audio format is left out
 of the book (`folderAudio`): like an `.aax` beside its `.m4b`, it is that file's
-source or copy, and reading both would give the book its chapters twice. Audible's DRM formats (`.aax`/`.aaxc`) are
+source or copy, and reading both would give the book its chapters twice. The
+`/fs` listing applies the same rule (see
+[the filesystem view](scanner.md#the-filesystem-view-browsefs)). Audible's DRM formats (`.aax`/`.aaxc`) are
 **deliberately excluded**: the server can never stream them (they need
 per-account decryption), and indexing an `.aax` sitting next to its converted
 `.m4b` would lump both into one book with duplicated chapters and an
