@@ -223,9 +223,10 @@ Two rules protect the page, and both hold for **every** request, loopback includ
   (RFC 1918, or an IPv6 unique local address) or link-local gets
   `403 {"code": "lan_only"}` (except `/worker/install.sh`, which answers with a
   script, see [Installing a worker](workers.md#installing-a-worker)), and the page
-  shows a "local network only" screen. The check reads the connection's own address, **never** a forwarded header (so the
-  page isn't meant to sit behind a reverse proxy, and a client can't claim to be
-  local). Carrier-grade NAT ranges (Tailscale's among them) are **not** local.
+  shows a "local network only" screen. The check reads the connection's own
+  address, **never** a forwarded header (so the page isn't meant to sit behind a
+  reverse proxy, and a client can't claim to be local). Carrier-grade NAT ranges
+  (Tailscale's among them) are **not** local.
 - **The password, always.** Every route but `/api/health`, `/api/login` and the
   two [worker install routes](workers.md#security) (`/worker/install.sh`,
   `/worker/download/...`) needs a session token, even from the same machine. The
