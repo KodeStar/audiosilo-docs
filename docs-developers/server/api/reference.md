@@ -1981,9 +1981,13 @@ additive: the chapters have the same shape either way, and only this
 single-book response (and [`/chapters`](#get-apiv1librariesidchapters)) carries
 it.
 
-`direct_playable` reports whether the codec plays natively in browsers (unknown
-codec ⇒ `true`); a book with a Matroska (`.mka`) file is always `false`, whatever
-its codec (from 2.4.0). The web player streams a `false` book with `?transcode=1` when
+`direct_playable` reports whether the book plays in browsers **as the server
+serves it** (unknown codec ⇒ `true`). A book with a Matroska (`.mka`) file is
+`false` (from 2.4.0), except one whose `.mka` files hold MP3 on a server with
+ffmpeg configured: [`/stream`](#get-apiv1librariesidstream) serves those as
+their remux to MP3, so it is `true`. Answering `/item` (or `/chapters`) also
+starts those files' remuxes in the background, so the first stream usually
+finds them ready. The web player streams a `false` book with `?transcode=1` when
 the `transcode` capability is true; it does not retry through the transcoder after
 a failed direct play. Durations/positions are seconds (float).
 
@@ -2763,8 +2767,9 @@ path.
 | Query param | Type | Default | Notes |
 |---|---|---|---|
 | `path` | string | required | library-relative audio file path |
-| `download` | `1` | - | sets `Content-Disposition: attachment` so browsers save the file |
+| `download` | `1` | - | sets `Content-Disposition: attachment` so browsers save the file (a remuxed `.mka` is named `<stem>.mp3`) |
 | `transcode` | `1` | - | re-encode to MP3 via ffmpeg for codecs browsers can't decode |
+| `original` | `1` | - | an `.mka`: serve the stored Matroska bytes, never the remux (for API tools and backups) |
 | `t` | float | `0` | with `transcode=1`: start the transcode this many seconds in |
 | `token` | string | - | session token (media-auth fallback), or a [cast token](#cast-tokens-as-media-auth) for this file's book |
 
@@ -2772,16 +2777,30 @@ Direct serving (default) supports HTTP **Range** (`206 Partial Content`) and
 sets the audio `Content-Type` from the file. Transcoded output is MP3 and **not
 byte-seekable** - no Range, no `Content-Length`; a client seeks by re-requesting
 with a new `t`. The ffmpeg process is bound to the request, so disconnecting
-kills it.
+kills it. A `HEAD` with `transcode=1` gets the headers without running ffmpeg.
+
+**Matroska holding MP3** (server#174). While ffmpeg is configured, a request
+for an `.mka` file without `transcode=1` or `original=1` is answered with a
+cached lossless copy of its audio as plain MP3: `Content-Type: audio/mpeg`,
+`Accept-Ranges: bytes`, Range honoured, chapters as ID3 `CHAP` frames, a strong
+`ETag: "remux-<key>"` and the copy's own `Last-Modified` (so a validator kept
+from the stored Matroska never earns a `304` or a spliced range). It is the
+same URL that served the Matroska before, so shipped clients stream the MP3 with
+no change. A podcast library's stream is never remuxed. A copy not made yet is
+waited for up to 2 seconds; past that (or when the server is short of disk, or the copy fails) that request gets
+the live MP3 transcode instead, as `transcode=1` would, and the copy goes on
+for the next one. An `.mka` holding another codec (AAC, Opus, FLAC) is served
+as stored, `audio/x-matroska`. See
+[Remuxing Matroska](../media.md#remuxing-matroska-mediaremuxer).
 
 | Status | Meaning |
 |---|---|
-| `200` / `206` | file bytes (Range honored for direct serving) |
+| `200` / `206` | file bytes (Range honored for direct serving and a remuxed `.mka`) |
 | `400` | missing `path` / path escapes the root |
 | `401` | missing/invalid token |
 | `403` | path outside the caller's scope |
 | `404` | file does not exist |
-| `503` | `transcode=1` but ffmpeg is not configured (check the `transcode` capability), or every transcode slot is busy (`server busy transcoding; try again shortly`, with `Retry-After: 5`) |
+| `503` | `transcode=1` but ffmpeg is not configured (check the `transcode` capability), or every transcode slot is busy (`server busy transcoding; try again shortly`, with `Retry-After: 5`; also a cold `.mka` answered with the transcode); `the server is shutting down` for a remux cut short by shutdown |
 
 ### `GET /api/v1/libraries/{id}/cover`
 
@@ -5088,7 +5107,7 @@ what the first does).
 | `genre` · `tag` | string | - | a genre (tag) the book has, one value each, case-insensitive with spacing collapsed, as on the [player's list](#get-apiv1librariesidbooks) |
 | `format` | string, repeatable | - | `?format=m4b&format=mp3`; at most 50 values |
 | `codec` | string, repeatable | - | ffprobe codec name (`aac`, `mp3`, …); at most 50 values |
-| `direct_playable` | `true`\|`false` | - | the book's codec plays in browsers (an unknown codec counts as playable) and no file of it is in a container no browser plays (`.mka`) |
+| `direct_playable` | `true`\|`false` | - | the book's codec plays in browsers (an unknown codec counts as playable) and no file of it is in a container no browser plays (`.mka`), judged on the stored files: an MP3-in-`.mka` book the stream remuxes still counts as `false` here |
 | `has_cover` | `true`\|`false` | - | a sibling image, embedded art or a custom cover |
 | `has_chapters` | `true`\|`false` | - | **more than one** chapter (every single-part book has one) |
 | `matched` | `true`\|`false` | - | the book has an ASIN or an ISBN |

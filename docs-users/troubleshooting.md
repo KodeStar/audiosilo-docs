@@ -239,11 +239,17 @@ If such a book still won't play in the browser:
 
 ### A book plays in the browser but not in the app
 
-A book in `.mka` (Matroska audio) files plays only in the web player: the
-server converts it as it streams, which the apps can't ask for, and an iPhone
-can't play the format at all. Convert the files to `.m4b` or `.mp3` and let
-the server rescan (see
+A book in `.mka` (Matroska audio) files with AAC, Opus or FLAC inside plays in
+the web player because the server converts it as it streams, which the apps
+can't ask for. An iPhone can't play the format at all, and an Android phone
+plays it only if it can decode the audio inside. Convert the files to
+`.m4b` or `.mp3` and let the server rescan (see
 [Supported formats](./getting-started/organizing-your-library.md#supported-formats)).
+
+An `.mka` book with MP3 inside plays in the apps too while the server has
+ffmpeg (your admin can check [Server > Transcoding](./admin/server.md#transcoding)).
+If one downloaded on an iPhone won't play, see
+[Books in MKA files](./listening/offline-downloads.md#books-in-mka-files).
 
 ### Playback stops with an error mid-book
 

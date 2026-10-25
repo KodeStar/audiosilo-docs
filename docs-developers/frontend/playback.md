@@ -640,6 +640,10 @@ the Matroska container (`.mka`, indexed from server 2.4.0). The
 server marks those books `direct_playable: false` and, when it has ffmpeg
 (capability `transcode`), streams them re-encoded to MP3 with
 `?transcode=1&t=<seconds>` ([cross-repo contract §5](../architecture/cross-repo-contract.md#5-transcode-negotiation-direct_playable-and-transcode1)).
+The exception is an `.mka` holding MP3 on a server with ffmpeg: the server
+[remuxes it](../server/media.md#remuxing-matroska-mediaremuxer) to MP3 at the
+same URL and reports `true`, so it plays like any MP3 (Range seeks, no `&t=`,
+browser download allowed).
 The web player negotiates that by itself; native engines never transcode (they rely
 on the platform's own decoders: no FFmpeg extension on Android), and a downloaded
 (local) file is never transcoded either.

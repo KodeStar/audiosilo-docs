@@ -66,7 +66,7 @@ leads nowhere:
 
 - **Library** (when you have two or more book libraries), **Format** (M4B,
   MP3, ...) and **Codec**
-- **Playback** - **Plays directly** or **Needs transcoding** (for browsers)
+- **Playback** - **Plays directly** or **Needs transcoding** (for browsers, judged on the files as stored)
 - **Cover** - **Has cover** or **Missing cover**
 - **Community metadata** - **Matched** or **Not matched** (only when
   community metadata is on)
@@ -78,6 +78,10 @@ leads nowhere:
   books spell it.
 - **Length** - **Under 5h**, **5 to 15h**, **15 to 30h** or **Over 30h**
 - **Added** - **Last 7 days**, **Last 30 days** or **Last year**
+
+An `.mka` book with MP3 inside counts as **Needs transcoding** here, though
+with ffmpeg the server sends it to every player as MP3 (see
+[Supported formats](../getting-started/organizing-your-library.md#supported-formats)).
 
 Active filters show as chips above the list (for example "Author: Lewis Carroll").
 Click a chip's cross to remove it, or **Clear all**.
@@ -140,7 +144,9 @@ by Michael Kramer · book 1 in The Stormlight Archive"; a book in several series
 lists each, "book 8 in Discworld and book 1 in City Watch"). Each name, and the
 series, opens **Books** filtered to it. Below that is how many files the book
 has, whether browsers can play it directly ("Plays directly", "Transcodes to
-MP3 for browsers" or "Browsers can't play this format") and when it was added.
+MP3 for browsers" or "Browsers can't play this format", judged on the files as
+stored, so an `.mka` book with MP3 inside reads "Transcodes to MP3 for
+browsers" though the server sends it as MP3) and when it was added.
 The buttons there are:
 
 - **Match with community metadata** (it reads **Compare with community** once

@@ -51,9 +51,9 @@ updates only a declared library's root and default view).
 
 | Flag | Default | Meaning |
 |---|---|---|
-| `--data` | `./data` | Data directory: config, SQLite database, generated certs, downloaded tools |
+| `--data` | `./data` | Data directory: config, SQLite database, generated certs, downloaded tools, the Matroska remux cache (`cache/remux/`) |
 | `--ffprobe` | `ffprobe` | Path to ffprobe (durations, chapters, codec detection). **`""` disables it** - the scanner degrades to path-derived metadata and `direct_playable` defaults to true |
-| `--ffmpeg` | `ffmpeg` | Path to ffmpeg for on-the-fly transcoding. **`""` disables it** - `?transcode=1` returns 503 and the `transcode` capability reports false |
+| `--ffmpeg` | `ffmpeg` | Path to ffmpeg for on-the-fly transcoding and the MP3-in-Matroska remux. **`""` disables it** - `?transcode=1` returns 503, the `transcode` capability reports false, and an `.mka` is served as stored (no remux, `direct_playable: false`) |
 | `--setup` | `false` | First-run **setup page**: instead of auto-creating the admin and printing credentials once, mint a one-time token and enable the guarded `/setup` page, where the admin's username and password are chosen in the browser (see [Built-in web UI](web-ui.md#first-run-setup-page-setup)). Either way the admin console's [first-run setup flow](web-ui.md#the-first-run-setup-flow) then adds the books folder and the rest on the first `/admin` visit |
 
 A bare tool name (no path separator) is resolved **next to the server
@@ -865,6 +865,7 @@ tools):
 | `<data>/certs/` | autocert certificate cache |
 | `<data>/selfsigned-cert.pem`, `<data>/selfsigned-key.pem` | Persisted self-signed certificate (mode `selfsigned`, default paths) |
 | `<data>/tools/` | Auto-downloaded ffmpeg/ffprobe, when no local copy was found |
+| `<data>/cache/remux/` | MP3 copies of `.mka` files holding MP3, made while ffmpeg is configured (`0700`, a size-capped LRU: see [Remuxing Matroska](media.md#remuxing-matroska-mediaremuxer)). Rebuildable: safe to delete, and needs no backup |
 | `<data>/meta-mirror/` | [Mirror mode](#mirror-mode-metadatamode-mirror)'s local copy of the community metadata (what it holds: **The copy** there) |
 | `<data>/backups/` | Database backups (`audiosilo-<UTC time>-<kind>.db`), unless `backups.dir` puts them elsewhere |
 | `<data>/restore.json` | A restore waiting for the next start (removed when it is applied or refused) |
