@@ -65,7 +65,8 @@ and connects to it. If the page says it is open at a local-only address (like
 `localhost`), set the public address first, or put the Bridge's network address
 into the command yourself. A worker on the same computer as the Bridge can use
 `localhost`. If you reach the page through a reverse proxy anyway (it isn't
-advised: see [Open the Bridge's page](running-a-bridge.md#3-open-the-bridges-page)),
+advised, and the proxy must itself only accept connections from your local
+network: see [Open the Bridge's page](running-a-bridge.md#3-open-the-bridges-page)),
 set the public address to the proxy's full address, path included (like
 `https://nas.example/bridge`), and the worker goes through the proxy too. The
 proxy must pass on the address the worker's computer asked for (on nginx,
@@ -84,7 +85,9 @@ of installing the service. It downloads the program the same way, then works unt
 you press Ctrl-C or close the terminal. Paste the command again without `--run`
 to install the service. A `--run` start doesn't save the token, so keep `--token`
 in the command each time you run it that way. On a computer where the service is
-already installed, a `--run` start replaces the service's program too.
+already installed, a `--run` start replaces the service's program too, but the
+service goes on with the old one until it restarts: the command says so and
+prints the line that restarts it (or paste the command again without `--run`).
 :::
 
 Open a terminal on the worker's computer (on a Mac, the Terminal app) and paste the
@@ -159,7 +162,17 @@ It downloads the Bridge's new version over the old one and restarts the service.
 It updates the program in the folder the service runs it from (so a worker
 installed with `--dir` updates in place) and says which folder that is; if that
 folder is gone or it can't write there, it uses the default folder and the
-service runs it from there. Add `--dir` to put it somewhere else. The Bridge and
+service runs it from there. Add `--dir` to put it somewhere else.
+
+An update keeps the settings the service was installed with: a worker
+[installed by hand](#installing-it-by-hand) with its own data folder (`--data`)
+or speech recognition (`--backend`, `--model`, `--whisper-cli`) keeps them, and
+the update says which ones it kept. The token isn't one of them (it is never
+written into the service): the update finds it saved in the data folder the
+service uses. To change a setting, run `worker install` by hand with that flag: a
+flag you give always wins, and one you leave out (`--bridge` included) stays as
+it was. If the service's settings can't be read, the update says so and the
+worker goes back to the defaults. The Bridge and
 its workers must speak the same version of the worker protocol: a worker that is
 too old or too new for its Bridge says so in its log and waits until both match.
 
@@ -200,7 +213,8 @@ yourself:
 
 To update a worker installed by hand, replace the program with the new release's
 and run the same `worker install` command again (the token is remembered, so
-`--token` can be left out).
+`--token` can be left out, and so are the service's other settings: see
+[Updating](#updating)).
 
 ### Removing it
 

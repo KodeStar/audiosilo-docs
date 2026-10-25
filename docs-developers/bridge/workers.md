@@ -150,6 +150,19 @@ it).
   its cgroup, a decode included). Run `loginctl enable-linger` to keep it running
   logged out.
 
+**An update keeps the service's flags.** Before it writes the file, `worker install`
+reads the installed one back into its argv (`worker.Service.InstalledArgs`: the
+plist's `ProgramArguments`, or the unit's first `ExecStart` with only the escapes
+`Render` writes undone, its inverse under a round-trip test) and parses it with the
+same flag set that wrote it (`carryForward` in `cmd/audiosilo-bridge/worker.go`).
+Each written flag the command line didn't give (`--bridge`, `--data`, `--backend`,
+`--model`, `--whisper-cli`; never `--token`, which is never in the file) keeps its
+installed value, and the command prints which it kept. An explicit flag wins, an
+empty one included. No file is a first install; a file that doesn't read back as
+`worker install` writes it (a specifier, a `$VAR`, another escape, a word the parse
+refuses) keeps nothing, and the command says so on stderr before any `--bridge`
+refusal. `worker uninstall` names the kept `--data` folder when it knows it.
+
 `worker install --print` shows the file without installing it; `worker uninstall`
 stops it and removes the file (the data dir stays). Windows has no install. On
 macOS, `launchctl bootout` returns before the old job is gone and a bootstrap
@@ -175,13 +188,21 @@ repo's `internal/workerdist` (the builds folder, the platform set, install.sh) a
   points at the GitHub releases and opens its manual commands.
 - **`GET /worker/install.sh`** answers a POSIX `sh` script with the Bridge's
   address baked in, single-quoted (`workerdist.Address`):
-  - The request's scheme and `Host` are checked first: a plain host name, IPv4 or
+  - The request's `Host` is checked first: a plain host name, IPv4 or
     bracketed IPv6, with an optional port. Anything else is `ErrAddress` and never
-    reaches the next step.
+    reaches the next step. The request's scheme is always `http` (the Bridge
+    serves plain HTTP; a TLS proxy in front shows only through `public_url`).
   - The address is the configured `public_url` (trailing slashes trimmed) when it
     is a plain http(s) URL (no user, query or fragment; a host that passes the
-    same check; a path of letters, digits and `._~/%-` only) whose host and
-    port match the `Host`. The match ignores case and reads a missing port as
+    same check; a path of RFC 3986 path characters only: letters, digits,
+    `-._~`, `%XX`, `!$&()*+,;=:@` and `/`, but never `'`, which would end the
+    single-quoted bake-in) whose host and port match the `Host`. Every place the
+    address goes carries those characters as written: install.sh's double-quoted
+    expansions, curl's URL (curl globs only `[]{}`), the launch agent's plist
+    (XML-escaped) and the systemd unit (a quoted word with `%` and `$` doubled, so
+    `;` is no command separator either); the worker client appends each route to
+    the path as written (`EscapedPath`), so a `(` or `!` reaches the proxy
+    unescaped. The match ignores case and reads a missing port as
     `public_url`'s scheme default (80 or 443). Its scheme and path prefix are
     kept, so behind a reverse proxy that serves the Bridge under a prefix or over
     TLS the script and its download URLs match the Workers tab's command.
@@ -189,15 +210,18 @@ repo's `internal/workerdist` (the builds folder, the platform set, install.sh) a
     that host. Behind a proxy this needs the proxy to pass the client's `Host`
     through (nginx's default sends its upstream's): else the script carries the
     upstream address.
-  - Otherwise it is the request's own scheme and `Host`: the computer that fetched
-    the script reached that address, so its worker can too.
+  - Otherwise it is `http://` and the request's own `Host`: the computer that
+    fetched the script reached that address, so its worker can too.
 
   It always answers `200` with a script: when it can't serve install.sh (no
   builds, an unusable `Host`, or a caller the local-network guard refuses), the
   script prints the reason to stderr and exits 1, because `curl -fsSL` drops an
   error status's body and `sh` would run an empty script and exit 0. The guard's
   refusal as a script is for this route only (`GET` or `HEAD`); every other route
-  keeps the guard's `403` JSON.
+  keeps the guard's `403` JSON. The guard knows the route by its cleaned path
+  (`path.Clean`, `isWorkerScript`), so `//worker/install.sh`,
+  `/worker/install.sh/` and `/worker/./install.sh` are refused with the script
+  too (from the local network they get whatever the mux answers them).
 - **`GET /worker/download/{os}/{arch}`** serves one gzipped build. The OS and
   architecture pick from the fixed set (the file name never comes from the
   request); another platform, or a Bridge without the builds, is `404` with a
@@ -209,9 +233,16 @@ The Workers tab's command is
 `curl -fsSL http://<bridge>/worker/install.sh | sh -s -- --token asw_...`. The
 script takes `--token` (required unless the worker's data dir already holds a
 saved token, or `$AUDIOSILO_WORKER_TOKEN` is set: re-running it without one is
-how a worker updates), `--run` (exec the worker in the foreground instead of
+how a worker updates; the data dir it checks is the installed service's `--data`
+when its file names one plainly, since `worker install` keeps it, else, and for a
+`--run` start, `$AUDIOSILO_WORKER_DATA` or `~/.audiosilo-bridge-worker`, as
+`worker` finds it), `--run` (exec the worker in the foreground instead of
 installing the service; it saves no token, and when `--token` was passed the
-script says a later re-run needs it again), `--dir <path>` (where the program
+script says a later re-run needs it again; when the program lands in the folder
+the installed service runs from, the script says the service keeps the old
+program until it restarts and prints the restart command: `launchctl kickstart -k
+gui/<uid>/app.audiosilo.bridge-worker` or `systemctl --user restart
+audiosilo-bridge-worker.service`), `--dir <path>` (where the program
 goes) and `-h`. Without `--dir` it reuses the installed service's folder: the
 folder of the program in the launch agent's `ProgramArguments` (macOS) or the
 first word of the systemd user unit's `ExecStart` (Linux), as `worker install`
