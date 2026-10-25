@@ -127,15 +127,16 @@ Last, for every caller, `library.MarkPendingBooks` marks `pending_book: true` on
 the folders a scan would read as a book that the index doesn't hold yet (the rule
 and the wire shape are in the
 [API reference](api/reference.md#get-apiv1librariesidfs)). `pendingBook` asks
-`resolveBook`'s questions (a `collection` override, then `joinRoot` for a disc set
-under a `book` override, walked with `audioDirs` only then and capped at 200
-folders, then `hasAudio`) from directory reads alone. It skips a folder the
-caller's scope doesn't `Allow`, a folder with an indexed book at or below it
+`resolveBook`'s questions (a `collection` override; then `hasAudio`, one read of
+the folder; then `joinRoot` for a disc set under a `book` override, walked with
+`audioDirs` only then and capped at 200 folders) from directory reads alone. It
+skips a folder the caller's scope doesn't `Allow`, a folder with an indexed book at or below it
 (`catalog.FoldersHoldingBooks`, one query for the page, two index seeks per folder,
 so an indexed library's author and series folders cost no disk read; such a folder
 holding audio of its own stays unflagged until a scan indexes it), and everything
 once its 2-second budget (`pendingTime`) or the request's context runs out. A
-failed folder-overrides read marks nothing. The player opens such a folder as a
+failed read of the folder overrides or of the index (`BooksByPaths`,
+`FoldersHoldingBooks`) marks nothing. The player opens such a folder as a
 book, which [indexes it on demand](#on-demand-indexing-indexpath).
 
 ## When scans run

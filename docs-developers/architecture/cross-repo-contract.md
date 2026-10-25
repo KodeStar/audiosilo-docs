@@ -37,9 +37,10 @@ in `src/lib/paths.ts`; client state persists keyed by `(library_id, path)`. From
 it renders (`useCanonicalBookPath`), so the page asks for progress, plays and
 casts by the book path only. The server keys progress the same way for any client
 (#199): `GET`/`PUT`/`PATCH /libraries/{id}/progress` given a book's own path or one
-of its track files read and write the book's row (`api.progressPath`), and
-`POST /cast/token` grants the book's path. Any other path keeps its key, and other
-path-keyed user state is not re-keyed (see
+of its track files read and write the book's row (`api.progressPath`); any other
+progress path keeps its key, and other path-keyed user state is not re-keyed.
+`POST /cast/token` grants the book's path, resolved as the media routes resolve a
+part path (a disc folder too) (see
 [the progress path](../server/api/reference.md#the-progress-path)).
 
 **Folders not indexed yet.** `/fs` marks a folder the scanner would read as a book

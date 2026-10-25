@@ -287,7 +287,9 @@ read from it: a characters, recaps or description file) and `attachments_indexed
 of its file paths in play order, bit-cast to a signed integer; `NULL` for a
 single-file book) with `file_order_indexed_at` (the `indexed_at` it was recorded
 with; `NULL`, or another index's after an older server re-indexed the row, reads as
-not recorded, and the next scan fills it from `book_files` without a re-index; see
+not recorded, and the next scan that finds the book unchanged fills it from
+`book_files` without a re-index (one whose files are in another order is
+re-indexed, which records it); see
 [the stored order key](scanner.md#book-detection-booksindir)),
 `more_series` (the effective list of the other series the book is in beyond
 `series`, as JSON `[{"name","position"}]` plus `"position_end"` for a range, `'[]'` for none: only an edit, a

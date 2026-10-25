@@ -838,7 +838,7 @@ The podcast branch caps a page at 2,000 entries and applies private scope.
       "pending_book": true
     }
   ],
-  "total": 3,
+  "total": 2,
   "offset": 0
 }
 ```
@@ -891,7 +891,7 @@ ignores the field, and a newer player on an older server finds it absent.
 The pass is bounded (see [the filesystem view](../scanner.md#the-filesystem-view-browsefs)),
 so a folder can be listed unflagged: one with an indexed book at or below it, one
 the pass doesn't reach in its 2 seconds, and every folder when the library's folder
-overrides can't be read.
+overrides or the index lookups for the page can't be read.
 
 | Status | Meaning |
 |---|---|
@@ -2969,7 +2969,9 @@ progress`), never a save under another key. Rows an older server or client alrea
 wrote under a part path stay where they are (they are not merged into the book's
 row), and bookmarks, notes, history, favourites, ratings and the queue keep the path
 they are given. [`POST /cast/token`](#post-apiv1casttoken) grants the book's path
-the same way.
+too, but by the media routes' rule rather than this one: a disc folder resolves to
+its joined book, a book not indexed yet is read on demand, and a book outside the
+caller's scope is a `403`.
 
 ### `PUT /api/v1/libraries/{id}/progress`
 
