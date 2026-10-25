@@ -209,7 +209,7 @@ id).
 | `GET /api/workers` | the paired workers: the `workers` row (name, created and last seen, version, platform, backend, device, model, segments, audio and decode seconds) with `connected` and the `task` it decodes now |
 | `POST /api/workers` | `{ name }` -> `201 { worker, token }`: pair a worker; the token is in this answer only. `400` without a name |
 | `DELETE /api/workers/{id}` | remove a worker, revoking its token (`204`; `404` for none) |
-| `GET /worker/install.sh` | **no sign-in**: the worker's install script with the Bridge's address baked in (`public_url` when its host and port match the request's `Host`, else the address this request reached); always `200` and a script, one that prints why and exits 1 when it can't be served, the local-network guard's refusal included (see [Installing a worker](workers.md#installing-a-worker)) |
+| `GET /worker/install.sh` | **no sign-in**: the worker's install script with the Bridge's address baked in; always `200`: when it can't serve the install (no builds, a bad `Host`, a caller outside the local network) the script prints why and exits 1 (see [Installing a worker](workers.md#installing-a-worker)) |
 | `GET /worker/download/{os}/{arch}` | **no sign-in**: the gzipped worker build for `darwin` or `linux`, `arm64` or `amd64`; `404` with a plain-text reason for another platform or a Bridge without the builds |
 
 Errors are `{ "error": "..." }`, with a `code` where a client branches on it. The
@@ -221,9 +221,9 @@ Two rules protect the page, and both hold for **every** request, loopback includ
 
 - **Local network only.** A connection whose address isn't loopback, private
   (RFC 1918, or an IPv6 unique local address) or link-local gets
-  `403 {"code": "lan_only"}` (a fetch of `/worker/install.sh` gets a script that
-  says why and exits 1 instead), and the page shows a "local network only" screen. The
-  check reads the connection's own address, **never** a forwarded header (so the
+  `403 {"code": "lan_only"}` (except `/worker/install.sh`, which answers with a
+  script, see [Installing a worker](workers.md#installing-a-worker)), and the page
+  shows a "local network only" screen. The check reads the connection's own address, **never** a forwarded header (so the
   page isn't meant to sit behind a reverse proxy, and a client can't claim to be
   local). Carrier-grade NAT ranges (Tailscale's among them) are **not** local.
 - **The password, always.** Every route but `/api/health`, `/api/login` and the
