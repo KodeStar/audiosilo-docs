@@ -199,13 +199,20 @@ a proxy in front) must preserve true audio MIME types, validated on an iOS devic
 client.
 
 **Server:** the scanner records each book's `codec` (ffprobe `codec_name`,
-migration `0008_book_codec`); `item`/`chapters` expose `direct_playable` via
-`media.DirectPlayable` (from 2.4.0 the container counts too: a book with an
-`.mka` file is always `false`, so the web player transcodes it and a native app
-can't play it); `GET .../stream?path=…&transcode=1` pipes through ffmpeg
+migration `0008_book_codec`); `item`/`chapters` expose `direct_playable`,
+meaning **plays in browsers as the server serves it**: `Book.PlaysInBrowsers`
+(`media.DirectPlayable`; from 2.4.0 the container counts too, and no browser or
+iOS player opens Matroska) or, while ffmpeg is configured, `Book.PlaysRemuxed`.
+With ffmpeg an MP3-in-Matroska `.mka` is served at the same stream URL as a
+cached lossless MP3 remux (`media.Remuxer`, `?original=1` for the stored
+bytes), so it plays in every client, shipped native builds included, and is
+`true`; an `.mka` holding another codec stays `false`, so the web player
+transcodes it and a native app can't play it. `GET .../stream?path=…&transcode=1` pipes through ffmpeg
 to MP3 (`media.Transcode`), with `&t=<seconds>` to start mid-file (transcoded
-output isn't byte-seekable). All gated by the `--ffmpeg` flag and reflected in the
-`transcode` capability (seam 8).
+output isn't byte-seekable); a podcast episode's verified descriptor is read
+through `fd:` (seekable) when the ffmpeg has it, else `pipe:0`. All gated by the
+`--ffmpeg` flag and reflected in the `transcode` capability (seam 8); the remux
+has no flag of its own.
 **Frontend:** `Book.direct_playable`/`codec` and
 `ChaptersResponse.direct_playable`/`codec` are mirrored in `types.ts`, and
 `client.ts` `streamUrl(…, { transcode, t })` builds a transcoded stream URL. The
@@ -215,7 +222,9 @@ server's `transcode` capability is `true`; the web engine re-requests with a new
 `&t=` on every seek and keeps positions track-absolute, the book page says the
 audio is converted for this browser, and downloading such a book is off in the
 browser. Native engines never transcode (they rely on the platform's own
-decoders); a downloaded file is never transcoded. Details in
+decoders); a downloaded file is never transcoded. An `.mka` file is saved
+offline as `<i>.mp3` on iOS only (AVFoundation types a local file by its
+extension; Android and the web keep `.mka`). Details in
 [frontend playback](../frontend/playback.md#web-transcode-negotiation-transcodets).
 
 **A change requires:** changing `direct_playable`'s meaning or the transcode query

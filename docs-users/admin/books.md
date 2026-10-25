@@ -66,7 +66,7 @@ leads nowhere:
 
 - **Library** (when you have two or more book libraries), **Format** (M4B,
   MP3, ...) and **Codec**
-- **Playback** - **Plays directly** or **Needs transcoding** (for browsers)
+- **Playback** - **Plays directly** or **Needs transcoding** (for browsers, judged on the files as stored: an `.mka` book with MP3 inside shows **Needs transcoding**, though with ffmpeg the server sends it to every player as MP3)
 - **Cover** - **Has cover** or **Missing cover**
 - **Community metadata** - **Matched** or **Not matched** (only when
   community metadata is on)

@@ -51,7 +51,7 @@ Useful flags:
 | --- | --- |
 | `--data <dir>` | Where config, database and certificates live (default `./data`). |
 | `--setup` | First run prints a one-time link to choose the admin password in the browser, instead of printing generated credentials. |
-| `--ffmpeg <path>` | Explicit path to ffmpeg; `""` disables transcoding. |
+| `--ffmpeg <path>` | Explicit path to ffmpeg; `""` disables transcoding and the MP3 copies of `.mka` books. |
 | `--ffprobe <path>` | Explicit path to ffprobe; `""` disables duration/chapter extraction. |
 
 ### Linux packages and systemd

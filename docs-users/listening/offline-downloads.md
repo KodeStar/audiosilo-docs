@@ -17,6 +17,10 @@ If a download stops (the connection dropped, the phone slept at the wrong moment
 Audiobooks are big - often hundreds of megabytes each. Download on Wi‑Fi when you can, and keep an eye on the storage card on the Downloads page.
 :::
 
+### Books in MKA files
+
+A book in `.mka` (Matroska) files with MP3 inside downloads as MP3 when your server has ffmpeg, so it plays offline in the apps and in the web player. If one you downloaded on an iPhone with an older version of the app won't play offline, remove the download and download it again. An `.mka` book with other audio inside can't be downloaded in the browser, and won't play on an iPhone (see [Supported formats](../getting-started/organizing-your-library.md#supported-formats)).
+
 ### Podcast episodes
 
 [Podcast episodes](podcasts.md) can't be downloaded to your device yet: they stream from your server, and there's no download button for them. **Download automatically** and **Keep the next books ready** skip them too.
