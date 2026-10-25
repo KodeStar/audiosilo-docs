@@ -35,7 +35,22 @@ in `src/lib/paths.ts`; client state persists keyed by `(library_id, path)`. From
 2.4.1 the book route given a track file or a disc folder inside a book (which
 `/item` resolves to the book above it) moves to the book's own `rel_path` before
 it renders (`useCanonicalBookPath`), so the page asks for progress, plays and
-casts by the book path only.
+casts by the book path only. The server keys progress the same way for any client
+(#199): `GET`/`PUT`/`PATCH /libraries/{id}/progress` given a book's own path or one
+of its track files read and write the book's row (`api.progressPath`, when the
+caller's scope allows the book), while a disc folder of a joined book, a navigation
+folder or a book not indexed yet keeps the path as given (see
+[the progress path](../server/api/reference.md#the-progress-path)), and
+`POST /cast/token` grants the book's path. Rows already written under a part path,
+and the other path-keyed user state (bookmarks, notes, history, favourites,
+ratings, the queue), are not moved.
+
+**Folders not indexed yet.** `/fs` marks a folder the scanner would read as a book
+that the index doesn't hold yet `pending_book: true` (#193; optional, no
+capability: an older player ignores it). The player's `FsEntry` mirrors it, and a
+pending row opens the book route like an `is_book` folder; the book screen's read
+(`/item`) indexes it on demand
+([`GET /libraries/{id}/fs`](../server/api/reference.md#get-apiv1librariesidfs)).
 
 **A change requires:** touching path semantics (normalization, casing, what a
 "book path" vs a "file path" means) means changing both sides at once, **plus**

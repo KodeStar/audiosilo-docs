@@ -105,7 +105,9 @@ the web player streams it through `?transcode=1`; a native app lists such a
 book but can't play it (a server-side remux is a later follow-up). An `.mka`
 beside a file of the same name in another audio format is left out of the
 book (`folderAudio`): like an `.aax` beside its `.m4b`, it is that file's source
-or copy, and reading both would give the book its chapters twice. Audible's DRM formats (`.aax`/`.aaxc`) are
+or copy, and reading both would give the book its chapters twice. The `/fs`
+listing leaves it out too, by the same rule (`library.shadowedMKA`), so a folder
+lists what the book plays; a lone `.mka` is listed. Audible's DRM formats (`.aax`/`.aaxc`) are
 **deliberately excluded**: the server can never stream them (they need
 per-account decryption), and indexing an `.aax` sitting next to its converted
 `.m4b` would lump both into one book with duplicated chapters and an
