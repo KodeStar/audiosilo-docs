@@ -97,7 +97,15 @@ rename show folders manually: feed episode paths include them. See
 - Entries the library's [ignore rules](#ignore-rules) cover are left out too
   (`Ignore.Covers`, also before pagination), so the browse view never shows
   what the scanner skips.
-- Directories sort before files, both case-insensitively by name; pagination is
+- An `.mka` beside a file of the same name in another audio format is left out
+  (`library.shadowedMKA`, the rule `folderAudio` uses to keep it out of the book,
+  see [Recognized audio](media.md#recognized-audio-metadataaudioextensions); a lone
+  `.mka` stays). `ListDir`, the listing behind `/next`'s folder
+  fallback, applies the same rule.
+- Directories sort before files, each group in **natural order** (`naturalLess`,
+  the order a folder book's files play in, see
+  [Book detection](#book-detection-booksindir), so `2` lists before `10`; before
+  #177 it was by lowercased name, byte by byte); pagination is
   simple offset-based (default 200, cap 500) - fine here because a single
   directory is small, unlike the catalog-wide listings which must use keyset
   cursors.
@@ -114,6 +122,22 @@ folder whose indexed books are the discs of a [disc set](#joined-books-disc-sets
 not yet joined is marked `split_discs: true` (`catalog.SplitFolders`, from
 `books.split_parent`; `omitempty`), which is where the console offers the join.
 A member's listing never carries the key, so the player's wire is unchanged.
+
+Last, for every caller, `library.MarkPendingBooks` marks `pending_book: true` on
+the folders a scan would read as a book that the index doesn't hold yet (the rule
+and the wire shape are in the
+[API reference](api/reference.md#get-apiv1librariesidfs)). `pendingBook` asks
+`resolveBook`'s questions (a `collection` override; then `hasAudio`, one read of
+the folder; then `joinRoot` for a disc set under a `book` override, walked with
+`audioDirs` only then and capped at 200 folders) from directory reads alone. It
+skips a folder the caller's scope doesn't `Allow`, a folder with an indexed book at or below it
+(`catalog.FoldersHoldingBooks`, one query for the page, two index seeks per folder,
+so an indexed library's author and series folders cost no disk read; such a folder
+holding audio of its own stays unflagged until a scan indexes it), and everything
+once its 2-second budget (`pendingTime`) or the request's context runs out. A
+failed read of the folder overrides or of the index (`BooksByPaths`,
+`FoldersHoldingBooks`) marks nothing. The player opens such a folder as a
+book, which [indexes it on demand](#on-demand-indexing-indexpath).
 
 ## When scans run
 
@@ -433,7 +457,23 @@ file byte order put first (`byteFirstFingerprint`, in `detectMoves` and
 `IndexMoved`), and a Bridge `chapters.json` made while it played in byte order
 still applies, its chapters moved with their files (`movedChapters`, see
 [Generated chapters](community-chapters.md#generated-chapters)).
-::: `addedAt` is
+:::
+
+**The stored order key** (#177, migration `0055`). The key is kept on the row,
+`books.file_order` (`catalog.FileOrderKey` bit-cast to a signed integer, `NULL`
+for a single-file book), written by `UpsertBook` with the upsert's `indexed_at` in
+`file_order_indexed_at`. `catalog.Signatures` reads it, so a scan of unchanged
+books reads no `book_files` rows; it falls back to the `group_concat` of a book's
+`book_files` only for a folder book whose key is not recorded (`fileOrderExpr` is
+`NULL`, `Signature.FileOrderUnset`): one indexed before `0055`, or one an older
+server has re-indexed since (its `indexed_at` no longer matches
+`file_order_indexed_at`, and its files are in that server's order). A scan that
+finds such a book unchanged records the key (`catalog.SetFileOrders`, in
+`flushBackfills`) without re-indexing it, so an upgrade costs one `book_files` read
+per folder book, once. A book whose stored order differs from the natural one is
+still re-indexed, as above.
+
+`addedAt` is
 the file's birth (creation) time where the OS records it
 (`birthtime_darwin.go`/`birthtime_linux.go`), otherwise mtime - a stable
 chronological key for "recently added" that survives re-indexing.
@@ -593,8 +633,8 @@ embedded data winning where it is trustworthy:
    in-process (album ≻ title for the book title - except when the title tag
    extends the album with a real subtitle, the Audible shape where album holds
    the *series* and only the title tag carries the actual book title; album-artist
-   ≻ artist for the author, composer as narrator, plus raw-tag lookups for
-   series/narrator atoms and the release date - MP4 `©day`, ID3 `TDRC`/`TYER`,
+   ≻ artist for the author, a narrator tag ≻ composer for the narrator (below), plus raw-tag lookups for
+   the series atoms and the release date - MP4 `©day`, ID3 `TDRC`/`TYER`,
    Vorbis `date`, read by `metadata.ReleaseDate` into `books.released`, never
    `published`, and the genre tag, read by `metadata.SplitGenres` into the
    scanned `genres`: split on `;` and NUL (never `,`, which a store's category name can hold), each trimmed and kept once in any
@@ -614,6 +654,18 @@ embedded data winning where it is trustworthy:
    tag naming several series (`Discworld #40; Moist von Lipwig #3`) is read by
    its first when that one carries a position; a later series-part tag still
    overrides the position.
+   The **narrator** is an explicit narrator tag when the file has one, else the
+   composer tag (#177). The explicit tags are the iTunes `©nrt` item of an MP4
+   (`.m4b`/`.m4a`/`.mp4`), which neither `dhowden/tag` nor ffprobe returns, so
+   `metadata.readMP4Narrator` reads it with its own bounded walk of
+   `moov > udta > meta > ilst` (or `moov > meta > ilst`: a capped number of boxes
+   per container, never a box larger than its parent, at most 4 KiB of the value,
+   and a malformed file read as no item); an iTunes `----` item named `NARRATOR`; a Vorbis `narrator`; and
+   ffprobe's `narrator`. One found by the tag read is never replaced by ffprobe's
+   composer (`applyProbe`), so the narrator is the same with or without ffprobe.
+   A book already indexed keeps the composer it was read with until its files are
+   read again (a change to them, or the console's Read the files again,
+   `POST /admin/libraries/{id}/book/rescan`): an unchanged book is skipped by the scan.
 3. **Generic-title guard**: `chooseTitle` keeps the path-derived title when the
    embedded one is missing or generic - `metadata.IsGenericTitle` flags bare
    numbers and "Track 01"/"Disc 2"/"CD1"-style labels (token-based, so a real
@@ -931,9 +983,18 @@ Content handlers (`item`, `chapters`, `cover`, `meta`) resolve
 indexed folder book **holding** the path (`catalog.GetBookHolding`: a part of a
 folder book, or a disc folder of a joined book, or a file in one; the innermost
 wins), then `Scanner.IndexPathWithin` - so a client can open a book it found in
-the filesystem view **before the background scan has reached it**, and the disc
+the filesystem view **before the background scan has reached it** (the `/fs`
+listing flags such a folder
+[`pending_book`](api/reference.md#get-apiv1librariesidfs)), and the disc
 paths shipped clients still hold after a join are answered from the index
 instead of re-walking and re-probing every disc on each request.
+
+Concurrent on-demand indexes of one book share one read (`Scanner.indexShared`,
+keyed by library and book path): a book page asks `item` and `chapters` at once,
+and only the first reads and probes the book while the other waits for it and
+loads what it stored. Each request resolves the book and passes its own scope
+check before it joins; a waiter whose own request ends stops waiting, and one
+whose leader's request was cancelled reads the book itself.
 
 A book found **above** the requested path must be in the caller's scope too
 (`Scope.Allows(book.RelPath)`): a share granting only a disc folder or one file
