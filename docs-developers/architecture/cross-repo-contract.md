@@ -438,22 +438,13 @@ For an allowed origin the server also allows `Range` and exposes
 an older server means for the player: [CORS](../server/api/index.md#cors).
 
 **Media for a player on another site.** The web player loads another origin's
-covers, artwork and audio in CORS mode: `corsModeFor` (`src/lib/cors-mode.ts`)
-gives `crossOrigin="anonymous"` for an http(s) URL cross-origin to the page, and
-nothing for the page's own origin (the player at `/web`), the service worker's
-`_offline/` copies, `blob:` and `data:`. `CoverImage` (`cover-image.web.tsx`, a
-plain `<img>`) and the `<audio>` element (`service.web.ts`, set before every
-`src`) apply it. The server's `cors` middleware answers an allowed `Origin` on
-media as on any route (`206` and `401` included), so `cors_origins` governs
-them, and a CORS-mode stream is one Web Audio can hear (Voice boost). CORS mode
-ignores CORP, so this also works against a server older than 2.4.1. An older
-player loads media no-cors, which CORS never covers: for it, with
-`cors_origins` set, every authenticated media answer is
-`Cross-Origin-Resource-Policy: cross-origin` (from 2.4.1); before that a
-server's `same-site` made the browser block the covers. CORP stays
-`cross-origin` until the server narrows it once CORS-mode players have shipped
-(server#201's second half). Media takes only an explicit token, never a
-cookie, which is why both are safe
+covers, artwork and audio in CORS mode (`corsModeFor`, applied by `CoverImage`
+and the `<audio>` element; see
+[the web engine](../frontend/playback.md#web-engine-servicewebts)), so the
+server's `cors_origins` governs them; an older player loads them no-cors and
+relies on `Cross-Origin-Resource-Policy` instead
+([CORS](../server/api/index.md#cors)). Media takes only an explicit token, never
+a cookie, which is why both are safe
 ([Transport hardening](../server/auth-and-security.md#transport-hardening)).
 
 **A change requires:** nothing structural - just remember self-signed TLS (the

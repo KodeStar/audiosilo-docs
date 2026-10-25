@@ -150,10 +150,10 @@ frames. Until then `smartSpeedApplies` is Android only, the iOS engine accepts a
   **same-origin** one (`sameOrigin`, `src/lib/same-origin.ts`: the player at `/web`, a
   downloaded copy under `/_offline/`) or another origin's loaded in **CORS mode**
   (`corsModeFor`, `src/lib/cors-mode.ts`; see
-  [the web engine](playback.md#web-engine-servicewebts)). A cross-origin element routed
-  through Web Audio without CORS plays zeroes, so anything else (a `data:` URL) plays
-  unboosted, and a load of such a source onto an already-routed element swaps in a fresh
-  element. A book streamed from another signed-in server, or a dev build on Metro talking
+  [the web engine](playback.md#web-engine-servicewebts)). Any other source (a `data:`
+  URL) plays unboosted, since a cross-origin element routed through Web Audio without CORS
+  plays zeroes, and a load of such a source onto an already-routed element swaps in a
+  fresh element. A book streamed from another signed-in server, or a dev build on Metro talking
   to a remote API, is boosted when that server's `cors_origins` lists the page's origin.
 - Switching off reconnects each source straight to the destination; nothing is rebuilt.
 

@@ -930,18 +930,15 @@ same-site` on every response, with two exceptions on media answers
 - Every authenticated media answer (a book's cover and stream, `/meta/cover`,
   `/podcasts/discovery/artwork`)
   once `cors_origins` is set (from 2.4.1, server#188), for every token kind the
-  route takes. A web
+  route takes. An older web
   player served from another site loads covers and audio the same no-cors way,
   and such a request carries no `Origin` to check against the list. The policy
   guards against another site loading a resource with the browser's ambient
   credentials, and media has none: it authenticates only by an explicit token
   (`?token=` or `Authorization`, `bearerToken`), never a cookie. A page that can
   load the answer already holds the credential that fetches it anywhere.
-  The web player now loads another origin's covers and audio in CORS mode
-  (`crossOrigin="anonymous"`), which ignores this header and is governed by
-  `cors_origins` instead ([CORS](api/index.md#cors)); the `cross-origin`
-  answer stays for older players until the server narrows it (server#201's
-  second half).
+  The current web player loads them in CORS mode, which ignores this header
+  ([CORS](api/index.md#cors)).
 
 A media request that fails to authenticate, every non-media route, and media on
 a server with `cors_origins` empty stay `same-site`. **HSTS is set only in `autocert` TLS mode**:

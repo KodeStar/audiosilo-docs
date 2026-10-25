@@ -613,7 +613,9 @@ load is the media answer's `Cross-Origin-Resource-Policy`, which is
 (from 2.4.1; before, it was `same-site` and the browser blocked the covers). It
 stays `cross-origin` until shipped players load in CORS mode, then the server
 can narrow it (server#201's second half). See
-[Transport hardening](../auth-and-security.md#transport-hardening). An older server exposes nothing, so
+[Transport hardening](../auth-and-security.md#transport-hardening).
+
+An older server exposes nothing, so
 the player falls back to the body's `retry_after_seconds` for an episode
 fetch and reads the export counts as unknown.
 

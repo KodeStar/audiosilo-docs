@@ -89,7 +89,7 @@ points:
   from `corsModeFor` (`src/lib/cors-mode.ts`): `'anonymous'` for an http(s) URL
   on another origin than the page, none for the player's own origin at `/web`,
   the service worker's `_offline/` copies, `blob:` and `data:`. The server's
-  `cors_origins` grant that load, which ignores its
+  `cors_origins` decides whether that load succeeds; CORS mode ignores
   `Cross-Origin-Resource-Policy` (server#201;
   [CORS](../server/api/index.md#cors)).
 - The **Media Session API** wires lock-screen/notification transport: metadata

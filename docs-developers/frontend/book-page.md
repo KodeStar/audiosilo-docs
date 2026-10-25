@@ -101,9 +101,9 @@ Both ways to play go through the app's one play path, `usePlayBook`
   (`startBookInPlace`).
 
 It rejects when the book can't start (a `PlaybackStartError`, see
-[Playback](playback.md)), and the page toasts through `playFailedToast`:
-`library.bookActions.playFailed`, with the reason (the server can't be reached, or
-the audio didn't load) as the description.
+[the player store](playback.md#the-player-store-storets)), and the page toasts
+`library.bookActions.playFailed` through `playFailedToast`, with the reason as the
+description.
 
 `HeroActions` lays the row out after the primary:
 
@@ -174,11 +174,12 @@ chapters found in the narration appear. The companion's empty Who's who and
 Story so far mount `GenerateOffer`, the same button and status.
 
 When the hero is stacked (under 600 measured), the primary takes its own row and the
-rest stay on **one** row: Add to collection moves into the menu, so the download slot
-(`flex-1`) takes the room the icon buttons leave, enough for its word on a phone; the
+rest stay on **one** row. Add to collection moves into the menu, so the download slot
+(`flex-1`) takes the room the icon buttons leave, enough for its word on a phone. The
 download control gets `short` ("Download", just "Cancel" while it runs, its words ending
-in "..." rather than wrapping), and the menu opens as a sheet. The footer holds `DownloadProgress`, `GenerateStatus`, `GenerateCovered` (only while
-`covered`) and `TranscodeNote`.
+in "..." rather than wrapping), and the menu opens as a sheet. The footer holds
+`DownloadProgress`, `GenerateStatus`, `GenerateCovered` (only while `covered`) and
+`TranscodeNote`.
 
 ## The tabs
 
