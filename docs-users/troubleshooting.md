@@ -260,9 +260,9 @@ it locally.
 
 ### A book won't start
 
-When a book can't start, a note says so (*"Couldn't start this book. Try
-again."*, or with the book's title when it comes from Up next or the end of a
-book), with a second line when the player knows why:
+When a book can't start, a note says so (such as *"Couldn't start this book.
+Try again."*, or with the book's title when it comes from Up next or the end of
+a book), with a second line when the player knows why:
 
 - *"Can't reach Home Server right now."* (with your server's name) - the book
   streams from a server that isn't answering. See

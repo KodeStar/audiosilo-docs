@@ -100,10 +100,11 @@ Both ways to play go through the app's one play path, `usePlayBook`
   (`seekBook`, or `goToTrack`) and plays on, or starts this book there in place
   (`startBookInPlace`).
 
-It rejects when the book can't start (a `PlaybackStartError`, see
-[the player store](playback.md#the-player-store-storets)), and the page toasts
+It rejects when the book can't start: with a `PlaybackStartError` when the engine
+couldn't (see [the player store](playback.md#the-player-store-storets)), or with the
+fetch's own error when the book couldn't be fetched. The page toasts
 `library.bookActions.playFailed` through `playFailedToast`, with the reason as the
-description.
+description when there is one.
 
 `HeroActions` lays the row out after the primary:
 
@@ -113,7 +114,7 @@ description.
 | Up next menu | `queue` | Play next (at position 0, with an Undo that puts it back where it was); Add to the end / Remove from Up next (`useQueueActions`) |
 | Favourite | - | ink, never pink |
 | Add to collection | `collections`, not stacked | the book menu's dialog; when stacked it is the menu's own item instead |
-| `BookActionsMenu` | its items' own | `omit` (`MENU_OMIT`, `['play', 'queue', 'collect', 'download']`) leaves Mark as finished / not finished and More in this series; stacked it keeps Add to collection too (`MENU_OMIT_PHONE` drops `'collect'`); renders nothing when that leaves no item. For an admin whose book has generated characters or recaps it adds **Regenerate characters and recaps** (`extra`), then each active [player module's](state-and-data.md#player-modules-srcmodules) `bookActions` (none yet) |
+| `BookActionsMenu` | its items' own | `omit` (`MENU_OMIT`, `['play', 'queue', 'collect', 'download']`) leaves Mark as finished / not finished and More in this series; stacked it keeps Add to collection too (`MENU_OMIT_PHONE` is the same list without `'collect'`); renders nothing when that leaves no item. For an admin whose book has generated characters or recaps it adds **Regenerate characters and recaps** (`extra`), then each active [player module's](state-and-data.md#player-modules-srcmodules) `bookActions` (none yet) |
 | Generate characters and recaps | `useGenerate`'s `offer === 'generate'` | an outline button after the others (its own row when stacked), for an admin a Bridge can generate for (below) |
 
 **Generating characters and recaps** (Bridge Phase 1a, `src/components/bridge/`)
