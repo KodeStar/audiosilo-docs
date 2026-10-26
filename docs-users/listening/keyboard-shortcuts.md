@@ -1,6 +1,6 @@
 ---
 title: Keyboard shortcuts
-description: "Controlling the web player from the keyboard: play and pause, skipping, chapters, speed, bookmarks, the full player, Up next, the sleep timer, and the ? overlay that lists them all."
+description: "Controlling the web player from the keyboard: play and pause, skipping, chapters, speed, bookmarks, the full player, Up next, the sleep timer, the ebook reader, and the ? overlay that lists them all."
 ---
 
 In the **web player** you can control playback from the keyboard, on any page and over the full player. Press **?** to see the list in the app.
@@ -21,6 +21,16 @@ In the **web player** you can control playback from the keyboard, on any page an
 | **?** | Show this list |
 
 The skip lengths follow your [Settings](settings.md#playback), and the list in the app shows your own.
+
+## In the ebook reader
+
+While the [ebook reader](reading-the-ebook.md) is open, the playback keys stand back and these work instead:
+
+| Key | What it does |
+|---|---|
+| **→** / **←** | Next or previous page (the other way round in a right-to-left book) |
+| **Page Down** / **Page Up** | Next or previous page, once you've clicked into the text |
+| **Esc** | Close the Contents, then the reader |
 
 ## When they don't fire
 

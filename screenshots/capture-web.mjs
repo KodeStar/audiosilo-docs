@@ -705,6 +705,46 @@ async function captureWide(name, viewport, shots) {
     });
   }
 
+  if (wanted(shots.bookRead, shots.reader, shots.readerContents)) {
+    // The ebook reader (Bridge Phase 3b): run.sh puts A Christmas Carol's EPUB beside
+    // its audio, so its page offers Read the ebook (the hero, clipped). The reader it
+    // opens (a root modal framing /web/reader.html) on its Contents sheet, then on the
+    // first stave picked from it. Closed with Escape, so later steps find the tabs.
+    await step('reader', async () => {
+      await librarySection(page, 'Books');
+      await openNamed(page, 'A Christmas Carol');
+      const read = tid(page, 'read-action');
+      await read.waitFor({timeout: 15000});
+      await sleep(SETTLE_MS);
+      await page.mouse.move(0, 0);
+      await shoot(page, shots.bookRead, {clip: around([await tid(page, 'book-hero').boundingBox()], 0)});
+      if (!wanted(shots.reader, shots.readerContents)) return;
+      await read.click({timeout: 8000});
+      try {
+        const contents = firstVisible(page.getByRole('button', {name: 'Contents', exact: true}));
+        await contents.waitFor({timeout: 30000});
+        await firstVisible(page.getByText(/% through the book$|· \d+%$/)).waitFor({timeout: 30000});
+        await sleep(2000);
+        await contents.click({timeout: 8000});
+        const stave = firstVisible(page.getByRole('button', {name: /stave\s+(one|i)\b/i}));
+        await stave.waitFor({timeout: 8000});
+        await sleep(SETTLE_MS);
+        await page.mouse.move(0, 0);
+        await shoot(page, shots.readerContents);
+        await stave.click({timeout: 8000});
+        await sleep(3000);
+        await page.mouse.move(0, 0);
+        await shoot(page, shots.reader);
+      } finally {
+        // Close whatever is open (the Contents sheet, then the reader).
+        for (let i = 0; i < 2 && (await tid(page, 'read-action').count()) === 0; i++) {
+          await page.keyboard.press('Escape');
+          await sleep(1500);
+        }
+      }
+    });
+  }
+
   if (wanted(shots.journal, shots.journalBookmarks)) {
     // The Journal from the profile menu: the Diary (today's drift-off strip), then
     // the Bookmarks tab with its label filter.
@@ -1020,6 +1060,9 @@ await captureWide('desktop', {width: 1440, height: 900}, {
   bookFinished: 'web-player/book-finished.png',
   bookAboutGenerated: 'web-player/book-about-generated.png',
   bookRecapsGenerated: 'web-player/book-recaps-generated.png',
+  bookRead: 'web-player/book-read.png',
+  reader: 'web-player/reader.png',
+  readerContents: 'web-player/reader-contents.png',
   journal: 'web-player/journal.png',
   journalBookmarks: 'web-player/journal-bookmarks.png',
   player: 'web-player/player.png',

@@ -122,7 +122,8 @@ The server costs the run from the figures in the Bridge's last heartbeat
 - **`source`** is `ebook` when the book has an ebook by the Bridge's own rule
   (`library.BookEbook`, mirroring the Bridge's `epubBeside`: exactly one regular,
   non-hidden `.epub` directly in a folder book's folder, or `<stem>.epub` beside a
-  single-file book). The server only finds the file; the Bridge also checks it
+  single-file book; the same rule names the book's `ebook`, the file the player's
+  reader opens: [A book's ebook](../server/scanner.md#a-books-ebook)). The server only finds the file; the Bridge also checks it
   can read it, and falls back to the audio when it can't.
 - **`asr_hours`** is the book's duration times `asr_seconds_per_audio_hour`, `0`
   for an ebook, without figures, or for audio of unknown length.

@@ -14,6 +14,7 @@ AudioSilo has native apps for **iOS** and **Android**. They're the same player y
 - **CarPlay**: built into the iPhone app from **version 2.4.0**; see [In the car](in-the-car.md#carplay). An older version doesn't appear in CarPlay, so update the app if you don't see it.
 - **Android Auto**: built into the Android app; see [In the car](in-the-car.md#android-auto) for getting it onto the car's screen.
 - **iPhone widgets and the sleep timer Live Activity**: in the iPhone app from **version 2.4.0**; see [Widgets on iPhone](#widgets-on-iphone).
+- **Reading ebooks**: in the web player only for now (see [Reading the ebook](reading-the-ebook.md)); the apps' reader comes in a later update.
 - **Podcasts**: need **version 2.4.0** or later of the app. An older version doesn't show your server's podcast libraries at all, so update it if your server has podcasts and you don't see them. See [Podcasts](podcasts.md).
 
 And you don't need the app to listen on your phone: the **web player works great on mobile** and can be [installed to your home screen](offline-downloads.md), downloads included.

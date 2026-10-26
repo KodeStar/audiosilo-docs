@@ -765,6 +765,47 @@ and not read again until it changes, and one that can't be read right now keeps
 what is stored. The details, and the storage (`book_attachments`, migrations
 `0048` and `0050`), are in [The .audiosilo folder](../bridge/attachments.md#how-the-server-finds-them).
 
+## A book's ebook
+
+Since Bridge Phase 3b (capability `ebooks`, migration `0056`, `library/ebook.go`), a
+book records the one `.epub` its reader opens: `books.ebook_path`, sent as the book's
+[`ebook {path, size}`](api/reference.md#get-apiv1librariesidbooks) and served by
+[`GET /libraries/{id}/ebook`](api/reference.md#get-apiv1librariesidebook). The rule
+is `library.BookEbook`'s, the Bridge's own (its `epubBeside`), so the reader, the
+generate estimate and the Bridge's `auto` source always name the same file:
+
+- **A folder book**: the one regular, non-hidden `.epub` directly in its folder. A
+  link never counts, and **two or more is none** (no way to tell which is the book).
+- **A single-file book**: `<stem>.epub` beside it, as the disk opens that name (on a
+  case-insensitive disk, any case of it; recorded under the computed name). Here a
+  link counts while it leads to a regular file inside the library.
+- **Readable**: a zip whose directory lists `META-INF/container.xml`
+  (`readableEpub`). DRM is not judged (the reader reports a locked book itself).
+  Ignore rules don't apply, as they don't to the Bridge.
+
+One rule function, `ebookCandidate`, serves every caller: the scan feeds it the
+`.epub` entries its discovery walk already lists (`sidecarFiles.epubs`, no extra
+read of the folder), an on-demand index (`IndexPath`, `IndexMoved`) and
+`BookEbook` (the estimate) what is on disk now. `TestScanRecordsEbookByBookEbookRule`
+holds them together.
+
+**No re-index.** `books.ebook_sig` is the signature (size, mtime and name) of the
+file the rule names, recorded whether or not it is readable. A book the scan finds
+unchanged whose signature differs (an EPUB added, replaced, renamed, removed, or a
+second one added; and every book after the upgrade, since `0056` starts them all at
+`''`) is recorded by `catalog.SetEbooks` with the scan's other backfills, without
+re-indexing its audio, and only over the row as the scan read it, so an on-demand
+index since then stays. An unreadable file is not opened again until its
+signature changes. A file that can't be read right now (a folder that won't list,
+a permission, a flaky mount) keeps what is stored, so the next scan looks again.
+
+Every open, the scan's and the route's, goes through `library.OpenEbook`: a regular
+file inside the library, checked before it is opened (a FIFO's open would block)
+and, once open, still the very file its name leads to (`os.SameFile`), so a link
+swapped in meanwhile is never followed out. The `.epub` is never audio:
+[`/stream`](api/reference.md#get-apiv1librariesidstream) refuses it and the
+[filesystem view](#the-filesystem-view-browsefs) doesn't list it.
+
 ## Covers
 
 Cover resolution has two stages - an indexed **sidecar** path, and an

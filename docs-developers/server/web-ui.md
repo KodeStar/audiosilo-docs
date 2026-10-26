@@ -1,6 +1,6 @@
 ---
 title: Built-in web UI
-description: "internal/web: the baked-in connect and setup pages, the admin console (admin-ui, embedded via internal/web/adminui), the shared SPA handler (internal/web/spa) that serves the console and the /web player, per-document CSP, the embedplayer build tag, the first-run setup page and the console's first-run setup flow, and the well-known app-association files."
+description: "internal/web: the baked-in connect and setup pages, the admin console (admin-ui, embedded via internal/web/adminui), the shared SPA handler (internal/web/spa) that serves the console and the /web player, per-document CSP, the ebook reader document and its own CSP, the embedplayer build tag, the first-run setup page and the console's first-run setup flow, and the well-known app-association files."
 ---
 
 The server ships three web surfaces from `internal/web`:
@@ -37,6 +37,7 @@ patterns.
 | `GET /favicon.ico` | 301 → `/assets/favicon.svg` | - |
 | `GET /sw.js`, `GET /manifest.webmanifest` | the console's PWA worker + manifest, served from the **site root** so the worker's scope covers `/admin` (`sw.js` is `Cache-Control: no-cache` so updates land promptly) | strict site-wide |
 | `GET /web/…` | the web player (`spa.Handler`; only mounted when a build with an `index.html` is available) | per-document `htmlCSP` |
+| `GET /web/reader.html` | the player's ebook reader document, which the player frames (Bridge Phase 3b; also any path naming it: `reader`, any case, a trailing slash); `404` when the export has none | its own `readerCSP`, `X-Frame-Options: SAMEORIGIN` |
 
 There is no classic console any more: `/admin/classic` is just another client
 route, which the console answers with its "There's nothing here" page.
@@ -1204,6 +1205,52 @@ pins it). Community covers, whose `cover_url` points at a third-party host, reac
 the player through the server instead, as thumbnails from
 [`GET /libraries/{id}/meta/cover`](api/reference.md#get-apiv1librariesidmetacover)
 (`meta_covers`); on a server without that route the web player shows placeholders.
+
+### The reader document: `readerCSP`
+
+The player's ebook reader (Bridge Phase 3b, capability `ebooks`) runs
+[foliate-js](https://github.com/johnfactotum/foliate-js) over an EPUB, which is
+untrusted content (a book can carry scripts, forms, remote images). It never runs
+in the player's own document: the frontend builds it into one self-contained page,
+`public/reader.html` (foliate and the reader in **one** inline script plus an inline
+style, no subresources; see [The ebook reader](../frontend/reader.md)), which the
+Expo export copies beside the app, and the player's reader screen frames it. The
+server serves it at `GET /web/reader.html` (`web.readerDocument`) with a policy of
+its own instead of `htmlCSP`:
+
+```
+default-src 'none'; script-src 'sha256-…'; style-src 'unsafe-inline' blob:;
+img-src blob: data:; font-src blob: data:; frame-src blob:; media-src 'none';
+connect-src 'none'; object-src 'none'; base-uri 'none'; form-action 'none';
+frame-ancestors 'self'
+```
+
+- **`script-src` is only the hash** of the document's inline script as served
+  (`web.inlineScriptHashes`, the same hashing `htmlCSP` uses; `'none'` when it has
+  none). No `'self'`, no remote source: the reader loads nothing.
+- **`connect-src 'none'`**: the reader makes no request at all. The player fetches
+  the EPUB with its bearer header
+  ([`GET /libraries/{id}/ebook`](api/reference.md#get-apiv1librariesidebook)) and
+  posts the bytes into the frame, so the reader never holds a token or an API URL.
+- **`frame-src blob:`** admits foliate's section frames (each EPUB section is laid
+  out in a `blob:` iframe), which inherit this policy, so the book's own inline
+  scripts are blocked; the reader also never loads the book's script files and
+  removes its meta refreshes, so a hostile EPUB runs and navigates nothing. `img-src` and `font-src` take the book's own images and fonts
+  as `blob:`/`data:` only.
+- **Framing**: `frame-ancestors 'self'`, and `X-Frame-Options: SAMEORIGIN` in place
+  of the site-wide `DENY` (`secureHeaders`), for browsers that read only the
+  header. Any other site framing it is refused.
+- `Cache-Control: no-cache` with an ETag (`spa.Files.ServeDocument`), like the
+  player's documents, and `nosniff`.
+
+The `/web/` handler sends every path that would name the file (`web.isReaderPath`:
+`reader.html` or `reader`, in any case, with or without a trailing slash) to this
+handler, so it is never served under the player's policy. That is also why the
+player's reader route is `/read`, never `/reader`: the static export would write
+`reader.html` over the document. An export without `reader.html` (an older web
+build) is a `404`, never the app shell, and the player's service worker never
+answers it with the shell either. The player's own `htmlCSP` is unchanged by all
+this (`TestHTMLCSPCastSender` still pins it; `TestReaderCSP` pins this one).
 
 ### The `embedplayer` build tag
 

@@ -134,6 +134,14 @@ every axis:
   good. The media handlers check the person's **current** share scope, so a revoked
   share is a `403` (and a restored one works again).
 
+**Not the ebook** (Bridge Phase 3b). `GET /libraries/{id}/ebook` takes no URL token
+of any kind, and there is no `reader` token kind: the web player fetches the EPUB
+with its bearer header and posts the bytes to its reader document, and the apps'
+reader will download it with the header into a local file. Nothing needs a URL that
+carries a credential, so none exists. Should the apps' WebView turn out unable to
+read a local file, a narrow `reader` kind on `cast_grants` (its own kind, `/ebook`
+only, minutes long) is the planned fallback, to be reviewed as this one was.
+
 Only the SHA-256 hash is stored. Any refusal is the uniform `401`. An API key may
 not mint one (`denyAPIKey`, the containment rule above: a key never mints another
 credential); a demo account may (it can play). A cast token is never a **device**:
@@ -211,7 +219,9 @@ The middleware wrappers in `internal/api/middleware.go`:
 - `requireAuth` - a **session token or an API key** from the `Authorization`
   header only (`ResolveRequest(secret, presence, KindSession, KindAPI)`); a pairing
   token is never accepted here, so a QR/pairing secret can't be used as a durable
-  credential.
+  credential. A book's ebook (`GET /libraries/{id}/ebook`, capability `ebooks`) is
+  served under it on purpose, not as media: the header only, never `?token=` (see
+  [Cast tokens](#cast-tokens) for why it has no URL token).
 - `requireMediaAuth` - additionally accepts `?token=` as a query parameter,
   used **only** for the media GETs (`/meta/cover` for a community cover; a book's
   `/cover` and `/stream` use `requireBookMediaAuth`, below) because browser
@@ -860,7 +870,7 @@ Two mechanisms in `internal/api/ratelimit.go`, six buckets wired in `api.New`:
 | Bucket | Mechanism | Limit | Applied to |
 |---|---|---|---|
 | `ipLimiter` | Token bucket per IP (`rateLimiter`) | ~50 req/s, burst 200 | The general API: every request (global `rateLimit` middleware) except static files and authenticated media. Static files are those the mux hands to a handler the web package registered (`web.IsStatic`: the console, the web player, the connect page and its assets, served from memory); one cold console page loads forty-odd chunks, so they are not counted. The health check and the setup page are counted |
-| `mediaLimiter` | Token bucket per credential (`rateLimiter`) | ~200 req/s, burst 2000 | Media GETs (`/cover`, `/stream`, `/meta/cover`: the routes `requireBookMediaAuth` and `requireMediaAuth` wrap, both `mediaAuth`) once they authenticate. See below |
+| `mediaLimiter` | Token bucket per credential (`rateLimiter`) | ~200 req/s, burst 2000 | Media GETs (`/cover`, `/stream`, `/meta/cover`: the routes `requireBookMediaAuth` and `requireMediaAuth` wrap, both `mediaAuth`) once they authenticate; a book's `/ebook` is not media here (`requireAuth`, the general bucket). See below |
 | `loginLimiter` | Failure lockout per IP (`limiter`) | 10 failures / 15 min | `POST /auth/login` |
 | `redeemLimiter` | Failure lockout per IP | 10 failures / 15 min | `POST /auth/redeem`, and the Bridge's pairing exchange `POST /bridge/pair` (one shared counter) |
 | `demoLimiter` | **Attempt** cap per IP (`Acquire`) | 5 / 15 min | `POST /demo/session` |
@@ -962,14 +972,17 @@ for a granted origin's request.
 Non-streaming requests are bounded by a 30 s timeout (`requestTimeout`) that
 cancels the request context and returns 503 - resilience against a stuck
 writer connection, not latency policing. Streaming reads
-(`/libraries/{id}/stream` and `/libraries/{id}/cover`, matched exactly by
-`isLibraryMedia` so the community `/libraries/{id}/meta/cover` stays bounded,
-a backup's download, `GET /admin/backups/{name}`, `/web/...`) are exempt because
-audio and large downloads must run long.
+(`/libraries/{id}/stream`, `/libraries/{id}/cover` and a book's
+`/libraries/{id}/ebook`, matched exactly by `isLibraryMedia` so the community
+`/libraries/{id}/meta/cover` stays bounded, a backup's download,
+`GET /admin/backups/{name}`, `/web/...`) are exempt because audio and large
+downloads must run long. The ebook's book lookup before its bytes is still
+bounded by the timeout (a `500` past it): it may index the book on demand, which
+waits for the one writer.
 
 ### Content Security Policy (summary)
 
-Two policies, both owned by `internal/web`:
+Three policies, all owned by `internal/web`:
 
 - The **admin console and the connect/setup pages** get the strict site-wide
   `contentSecurityPolicy`: same-origin everything, no `unsafe-inline` at all
@@ -982,6 +995,12 @@ Two policies, both owned by `internal/web`:
   origin) and a sha256 hash of each inline
   `<script>` in that HTML document, and `style-src 'unsafe-inline'`
   (react-native-web injects runtime styles that cannot be hashed).
+- The player's **ebook reader document** at `/web/reader.html` (capability
+  `ebooks`) gets its own `readerCSP`: `default-src 'none'`, the hash of its one
+  inline script, `connect-src 'none'` (it makes no request; the player posts it the
+  EPUB's bytes), `frame-src blob:` for the book's sections, `frame-ancestors 'self'`
+  with `X-Frame-Options: SAMEORIGIN` in place of `DENY`. The EPUB itself is served
+  with `Content-Security-Policy: sandbox; default-src 'none'`.
 
 Details and the reasoning live in [Web UI](web-ui.md).
 

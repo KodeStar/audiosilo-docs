@@ -356,7 +356,8 @@ reads stay core and players older than 2.2.0 are excluded), the independent
 it, [§17](#17-podcast-shows-feeds-and-client-visibility)), the Phase 2c-3 core
 flags `podcast_discovery` (boot-only `podcasts.discovery.enabled` **and** the
 module toggle, independent of the Bridge, sent `false` otherwise) and
-`podcast_opml` (always true), plus the
+`podcast_opml` (always true), `ebooks` (always true; the reader,
+[§18](#18-the-ebook-reader)), plus the
 server version
 (`api.Version`, stamped from the release tag via ldflags). `transcode` reflects
 ffmpeg availability; `web_player` reflects whether `/web` is populated; the
@@ -396,7 +397,9 @@ native binaries embed one via `-tags embedplayer`).
 with `baseUrl=/web` so asset URLs resolve under the subpath; `web.output: "static"`.
 **Server:** `internal/web/web.go` serves `web_dir` at `/web` with an SPA fallback
 to `index.html`, 404s for missing assets, and a per-response scoped CSP that
-hashes each document's inline scripts.
+hashes each document's inline scripts. The one exception is the player's ebook
+reader document, `reader.html`, served at `/web/reader.html` under its own policy
+([§18](#18-the-ebook-reader)).
 
 **A change requires:** watch the CSP coupling - the hash is computed per document
 at serve time, so it usually tracks automatically, but a change in how Expo
@@ -1061,6 +1064,49 @@ See [Podcasts](../bridge/podcasts.md) and the
   requires exact 206 range/total/strong ETag; 200 restarts from zero. Checkpoints
   omit URLs and seal validators. Private enclosure resolution is a fresh
   bounded feed read, no merge; URLs stay in memory.
+
+## 18. The ebook reader
+
+Bridge Phase 3b-1 (capability `ebooks`, web only until the apps' host lands), all
+additive: an older client ignores the field, and an older server has no flag, so
+no Read.
+
+**The book's ebook.** Every `Book` the server returns carries `ebook: {path, size}`
+when the scan found one readable `.epub` beside its audio (the Bridge's own rule,
+`library.BookEbook`: one in a folder book's folder, several being none, or
+`<stem>.epub` beside a single-file book; [the scan rule](../server/scanner.md#a-books-ebook)),
+omitted otherwise. Mirrored as `Book.ebook?: BookEbook` in `types.ts`. Its `path`
+is for display only.
+
+**The bytes.** `GET /libraries/{id}/ebook?path=<the book's path>`, the
+`Authorization` header only: never `?token=`, and no URL token of any kind
+([the reference](../server/api/reference.md#get-apiv1librariesidebook)). The web
+player's `client.ebook()` fetches it and posts the bytes to the reader; nothing ever
+holds a URL that carries a credential. The apps' host (3b-2) will download it with
+the header into a local file.
+
+**The place.** `GET`/`PUT /libraries/{id}/reading-progress?path=` keyed on the
+**book's** path, under Sync v2's rule: a save carries `base_version`, a diverged
+save keeps the further place and answers the other as `other_place`
+([the rule](../server/api/reference.md#the-conflict-rule-sync-v2)). Mirrored as
+`ReadingProgress`, `ReadingProgressInput`, `ReadingProgressSaved` and the client's
+`readingProgress()` / `saveReadingProgress()`; the player's queue sends the last
+version it acknowledged ([the reading place](../frontend/reader.md#the-reading-place)).
+`device_name` is the server's, from the saving token. Listening progress is
+untouched; it adopts the same rule later.
+
+**The reader document.** The frontend builds `public/reader.html` (vendored
+foliate-js, one inline script); the web export ships it as `reader.html`; the server
+serves it at `/web/reader.html` under `readerCSP` (the hash of that script, computed
+at serve time, `connect-src 'none'`, `frame-ancestors 'self'`, `X-Frame-Options:
+SAMEORIGIN`), not the player's `htmlCSP`. The host-reader `postMessage` protocol is
+the frontend's alone ([the protocol](../frontend/reader.md#the-protocol)).
+
+**A change requires:** a new field on the place or the conflict rule changes both
+repos (and is the same rule listening progress will reuse); the reader document's
+policy and the player's route names are coupled (`/web/reader*` is the document, so
+the player never has a `/reader` route); any URL credential for the ebook is a
+security-critical change with allowed and denied tests on the server.
 
 ## The wire-change checklist
 
