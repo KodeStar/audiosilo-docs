@@ -2977,7 +2977,7 @@ route stays under the general per-IP rate limit, not the media one.
 | `400` | missing `path` / invalid library id |
 | `401` | no `Authorization` header, or a bad token (a `?token=` alone is a `401`) |
 | `403` | the book is outside the caller's share scope |
-| `404` | `this book has no ebook`: the book has none (no `.epub`, several, an unreadable one), the file is gone or no longer a regular file inside the library, the path is not the book's own (a track, the `.epub` itself, a folder above, a hidden or `.audiosilo/` path), or the library is a podcast library; `no book at this path` when nothing is there |
+| `404` | `this book has no ebook`: the book has none (no `.epub`, several, an unreadable one), the file is gone or no longer a regular file inside the library, the path is inside the book but not its own (a track, the `.epub` in its folder), or the library is a podcast library; `no book at this path` when there is no book there; `not found` for a hidden or `.audiosilo/` path |
 | `500` | `could not load the ebook`: the file is there but can't be read right now (a permission, a flaky mount; logged), or the lookup ran past the request timeout |
 
 ### `GET /api/v1/libraries/{id}/reading-progress`

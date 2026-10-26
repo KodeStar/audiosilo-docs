@@ -187,6 +187,12 @@ stream only: a player casting to a Chromecast mints one for the book
 (`POST /cast/token`) and builds the receiver's URLs with it, never with its session
 token. Details in [§14](#14-listening-in-the-house-and-casting).
 
+**Not the ebook** (capability `ebooks`): `GET /libraries/{id}/ebook` is header auth
+only (`requireAuth`): it never reads `?token=`, refuses a cast token, and there is no
+URL token kind for it. The web player fetches the bytes with the `Authorization`
+header (`client.ebook`) and posts them to the reader frame. Details in
+[§18](#18-the-ebook-reader).
+
 **A change requires:** do **not** "tighten" the server to reject query-param
 tokens on media routes without first removing the web player's dependency on
 them - the web player cannot authenticate media any other way (and a Cast
@@ -1089,8 +1095,9 @@ the header into a local file.
 **book's** path, under Sync v2's rule: a save carries `base_version`, a diverged
 save keeps the further place and answers the other as `other_place`
 ([the rule](../server/api/reference.md#the-conflict-rule-sync-v2)). Mirrored as
-`ReadingProgress`, `ReadingProgressInput`, `ReadingProgressSaved` and the client's
-`readingProgress()` / `saveReadingProgress()`; the player's queue sends the last
+`ReadingProgress`, `ReadingProgressInput`, `ReadingProgressSaved`, `OtherReadingPlace`
+and the client's `readingProgress()` / `saveReadingProgress()` (read through
+`useReadingPlace`); the player's queue sends the last
 version it acknowledged ([the reading place](../frontend/reader.md#the-reading-place)).
 `device_name` is the server's, from the saving token. Listening progress is
 untouched; it adopts the same rule later.
@@ -1100,7 +1107,9 @@ foliate-js, one inline script); the web export ships it as `reader.html`; the se
 serves it at `/web/reader.html` under `readerCSP` (the hash of that script, computed
 at serve time, `connect-src 'none'`, `frame-ancestors 'self'`, `X-Frame-Options:
 SAMEORIGIN`), not the player's `htmlCSP`. The host-reader `postMessage` protocol is
-the frontend's alone ([the protocol](../frontend/reader.md#the-protocol)).
+the frontend's alone ([the protocol](../frontend/reader.md#the-protocol)). The
+player's service worker (`public/sw.js`) must never answer the document with the app
+shell, which would boot the whole player inside the reader's frame.
 
 **A change requires:** a new field on the place or the conflict rule changes both
 repos (and is the same rule listening progress will reuse); the reader document's

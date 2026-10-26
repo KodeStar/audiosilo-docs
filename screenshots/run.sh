@@ -186,9 +186,16 @@ EBOOK_FILE="$CACHE/a-christmas-carol.epub"
 if [ -d "$EBOOK_BOOK" ]; then
   if [ ! -s "$EBOOK_FILE" ]; then
     echo "==> fetching A Christmas Carol's EPUB (Project Gutenberg)"
-    curl -fsSL --retry 3 -o "$EBOOK_FILE.part" https://www.gutenberg.org/ebooks/46.epub3.images \
-      && mv "$EBOOK_FILE.part" "$EBOOK_FILE" \
-      || { rm -f "$EBOOK_FILE.part"; echo "  ! the EPUB fetch failed: the reader shots will fail"; }
+    # Bounded (a stalled network never holds up the run) and checked to be a zip
+    # (an HTML page answered with a 200 is never cached as the EPUB).
+    if curl -fsSL --retry 3 --connect-timeout 20 --max-time 300 -o "$EBOOK_FILE.part" \
+        https://www.gutenberg.org/ebooks/46.epub3.images \
+      && [ "$(head -c 2 "$EBOOK_FILE.part")" = "PK" ]; then
+      mv "$EBOOK_FILE.part" "$EBOOK_FILE"
+    else
+      rm -f "$EBOOK_FILE.part"
+      echo "  ! the EPUB fetch failed (offline, or not an EPUB): the reader shots will fail"
+    fi
   fi
   if [ -s "$EBOOK_FILE" ]; then
     cmp -s "$EBOOK_FILE" "$EBOOK_BOOK/A Christmas Carol.epub" \

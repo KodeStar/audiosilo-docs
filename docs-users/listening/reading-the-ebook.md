@@ -78,13 +78,13 @@ The note names the other device as your server knows it ("On another device" whe
 
 ## Reading offline
 
-Once a book is open, the whole ebook is in the browser, so you can keep reading without a connection. Your place is saved on this device meanwhile and sent to your server once the connection is back: with your next page turn, or the next time you open the reader. If another device read further in the meantime, you get the **Jump there?** note above rather than losing either place.
+Once a book is open, the whole ebook is in the browser, so you can keep reading without a connection. Your place is saved on this device meanwhile and sent to your server once the connection is back: as soon as the player notices your server again, or the next time you open the reader. If another device read further in the meantime, you get the **Jump there?** note above rather than losing either place.
 
 Opening the reader needs your server: ebooks aren't part of [downloads](offline-downloads.md) yet, so even a downloaded book needs a connection to open its ebook.
 
 ## When an ebook won't open
 
-The reader says what went wrong in plain words, with **Close** and, where trying again can help, **Try again**. Your place in the book is kept either way.
+The reader says what went wrong in plain words, with **Close the reader** and, where trying again can help, **Try again**. Your place in the book is kept either way.
 
 | What it says | What it means |
 |---|---|
@@ -93,6 +93,7 @@ The reader says what went wrong in plain words, with **Close** and, where trying
 | **This ebook is locked** | The EPUB is protected with DRM, which AudioSilo can't open. Put a DRM-free EPUB in the book's folder instead. |
 | **This ebook can't be opened** | The file isn't an EPUB AudioSilo can read, or it's damaged. |
 | **The ebook isn't on the server any more** | The file was removed or renamed since the last scan. After the next scan the button goes, or comes back if the file did. |
+| **No ebook for this book** | A link opened the reader for a book that has no ebook (or a server without the reader). See [Which books have it](#which-books-have-it). |
 
 ## What the reader doesn't do yet
 
