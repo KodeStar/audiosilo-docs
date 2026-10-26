@@ -190,7 +190,10 @@ if [ -d "$EBOOK_BOOK" ]; then
       && mv "$EBOOK_FILE.part" "$EBOOK_FILE" \
       || { rm -f "$EBOOK_FILE.part"; echo "  ! the EPUB fetch failed: the reader shots will fail"; }
   fi
-  [ -s "$EBOOK_FILE" ] && cp "$EBOOK_FILE" "$EBOOK_BOOK/A Christmas Carol.epub"
+  if [ -s "$EBOOK_FILE" ]; then
+    cmp -s "$EBOOK_FILE" "$EBOOK_BOOK/A Christmas Carol.epub" \
+      || cp "$EBOOK_FILE" "$EBOOK_BOOK/A Christmas Carol.epub"
+  fi
 else
   echo "  ! no $EBOOK_BOOK: the reader shots will fail"
 fi

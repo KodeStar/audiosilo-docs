@@ -1245,9 +1245,8 @@ frame-ancestors 'self'
 
 The `/web/` handler sends every path that would name the file (`web.isReaderPath`:
 `reader.html` or `reader`, in any case, with or without a trailing slash) to this
-handler, so it is never served under the player's policy. That is also why the
-player's reader route is `/read`, never `/reader`: the static export would write
-`reader.html` over the document. An export without `reader.html` (an older web
+handler, so it is never served under the player's policy (and the player's reader
+route is [`/read`](../frontend/reader.md#the-reader-document)). An export without `reader.html` (an older web
 build) is a `404`, never the app shell, and the player's service worker never
 answers it with the shell either. The player's own `htmlCSP` is unchanged by all
 this (`TestHTMLCSPCastSender` still pins it; `TestReaderCSP` pins this one).

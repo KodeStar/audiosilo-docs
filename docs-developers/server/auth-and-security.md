@@ -219,9 +219,8 @@ The middleware wrappers in `internal/api/middleware.go`:
 - `requireAuth` - a **session token or an API key** from the `Authorization`
   header only (`ResolveRequest(secret, presence, KindSession, KindAPI)`); a pairing
   token is never accepted here, so a QR/pairing secret can't be used as a durable
-  credential. A book's ebook (`GET /libraries/{id}/ebook`, capability `ebooks`) is
-  served under it on purpose, not as media: the header only, never `?token=` (see
-  [Cast tokens](#cast-tokens) for why it has no URL token).
+  credential. A book's ebook (`GET /libraries/{id}/ebook`) is served under it on
+  purpose, not as media (see [Cast tokens](#cast-tokens)).
 - `requireMediaAuth` - additionally accepts `?token=` as a query parameter,
   used **only** for the media GETs (`/meta/cover` for a community cover; a book's
   `/cover` and `/stream` use `requireBookMediaAuth`, below) because browser
@@ -996,11 +995,9 @@ Three policies, all owned by `internal/web`:
   `<script>` in that HTML document, and `style-src 'unsafe-inline'`
   (react-native-web injects runtime styles that cannot be hashed).
 - The player's **ebook reader document** at `/web/reader.html` (capability
-  `ebooks`) gets its own `readerCSP`: `default-src 'none'`, the hash of its one
-  inline script, `connect-src 'none'` (it makes no request; the player posts it the
-  EPUB's bytes), `frame-src blob:` for the book's sections, `frame-ancestors 'self'`
-  with `X-Frame-Options: SAMEORIGIN` in place of `DENY`. The EPUB itself is served
-  with `Content-Security-Policy: sandbox; default-src 'none'`.
+  `ebooks`) gets its own `readerCSP` (see
+  [The reader document](web-ui.md#the-reader-document-readercsp)): it makes no
+  request, runs only its own script, and only its own origin may frame it.
 
 Details and the reasoning live in [Web UI](web-ui.md).
 

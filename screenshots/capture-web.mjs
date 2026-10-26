@@ -715,9 +715,7 @@ async function captureWide(name, viewport, shots) {
       await openNamed(page, 'A Christmas Carol');
       const read = tid(page, 'read-action');
       await read.waitFor({timeout: 15000});
-      await sleep(SETTLE_MS);
-      await page.mouse.move(0, 0);
-      await shoot(page, shots.bookRead, {clip: around([await tid(page, 'book-hero').boundingBox()], 0)});
+      await shootElement(page, tid(page, 'book-hero'), shots.bookRead, 0);
       if (!wanted(shots.reader, shots.readerContents)) return;
       await read.click({timeout: 8000});
       try {
@@ -736,10 +734,9 @@ async function captureWide(name, viewport, shots) {
         await page.mouse.move(0, 0);
         await shoot(page, shots.reader);
       } finally {
-        // Close whatever is open (the Contents sheet, then the reader).
         for (let i = 0; i < 2 && (await tid(page, 'read-action').count()) === 0; i++) {
           await page.keyboard.press('Escape');
-          await sleep(1500);
+          await tid(page, 'read-action').waitFor({timeout: 1500}).catch(() => {});
         }
       }
     });

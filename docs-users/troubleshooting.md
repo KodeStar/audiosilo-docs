@@ -447,7 +447,7 @@ untouched (see [Covers](./admin/books.md#covers)).
 
 ### A book has no Read the ebook button
 
-**Read the ebook** shows only in the **web player** (the apps' reader comes in a later update), only on a server that has the reader, and only for a book with exactly one EPUB beside its audio: one `.epub` in the book's folder, or `<name>.epub` beside a book that is a single audio file. Check that:
+**Read the ebook** shows only in the **web player** (the apps' reader comes in a later update), only on a server that has the reader, and only for a book with one EPUB beside its audio. Check that:
 
 - the folder holds **one** `.epub`, not two or more (with several, none is used);
 - for a single-file book, the EPUB has the **same name** as the audio file;

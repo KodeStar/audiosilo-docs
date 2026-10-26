@@ -170,9 +170,9 @@ demo account or unrecognized client is still refused by the routes.
 Bridge Phase 3b adds one more, always `true` on a server that has it and absent
 on an older one:
 
-| Flag | Value | Gates |
-|---|---|---|
-| `ebooks` | always `true` | [the reader](#ebooks-and-the-reading-place): a book's `ebook` field, [`GET /libraries/{id}/ebook`](#get-apiv1librariesidebook) and [`GET`](#get-apiv1librariesidreading-progress)/[`PUT /libraries/{id}/reading-progress`](#put-apiv1librariesidreading-progress). A client offers Read only when it is `true` **and** the book has an `ebook` |
+| Flag | Gates |
+|---|---|
+| `ebooks` | [the reader](#ebooks-and-the-reading-place): a book's `ebook` field, [`GET /libraries/{id}/ebook`](#get-apiv1librariesidebook) and [`GET`](#get-apiv1librariesidreading-progress)/[`PUT /libraries/{id}/reading-progress`](#put-apiv1librariesidreading-progress). A client offers Read only when it is `true` **and** the book has an `ebook` |
 
 `bridge` follows the Bridge rather than a setting, so it can change from one
 request to the next: it is `true` only while a [Bridge](#the-bridge) is paired and its last heartbeat is under two minutes
@@ -2943,8 +2943,8 @@ document at [`/web/reader.html`](../web-ui.md#the-reader-document-readercsp).
 
 ### `GET /api/v1/libraries/{id}/ebook`
 
-*Session* (`Authorization` header only: a session token or an API key). The
-ebook of the book at `?path=`, as bytes:
+*Session* (a session token or an API key). The ebook of the book at `?path=`, as
+bytes:
 
 | Query param | Type | Required |
 |---|---|---|
