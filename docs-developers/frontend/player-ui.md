@@ -38,10 +38,14 @@ timer have their own pages ([End of a book](end-of-book.md),
 - **Tablet and desktop (web and native):** `DockedPlayer`
   (`src/components/shell/docked-player.tsx`): the whole-book progress line; the
   cover, chapter, book and sync state on the left (a tap for the full player; under
-  a chapter heading the second line is the title and author; when there is no chapter
-  to head it (a chapterless book, an episode without chapters), the heading is already
-  the title (`useMiniHeading`'s `isChapter` false), so it is the author or show alone,
-  or nothing when there is none);
+  a chapter heading the second line is the title and author; when the heading is
+  already the title (`useMiniHeading`'s `isChapter` false: no chapter label, or an item
+  with at most one chapter whose label is its title, trimmed and case-insensitive,
+  `namesTheItem` in `src/lib/chapter-label.ts`), it is the author or show alone, or
+  nothing when there is none. A lone chapter named otherwise, and every chapter of a
+  multi-chapter item, keeps the chapter heading. The mini card uses the same rule
+  (`MiniPlayerSubtitle`'s `showTitle`: then only the time left), and the Up next
+  panel's now-playing line drops a chapter name that `sameTitle` matches);
   `TransportControls size="sm"` over the dock's `ChapterScrubber`, which takes the
   playing book's `bookmarks` and draws their ticks in the segment
   (`usePlayingSegment`); and on the right the `UndoChip`, speed, sleep, bookmark,
