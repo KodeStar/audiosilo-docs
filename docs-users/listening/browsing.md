@@ -167,6 +167,8 @@ Sharing isn't offered on a demo account.
 **Folders** is the folder-by-folder view: your libraries (with a **Favourites** row at the top), and inside each one its **folders and books**, mirroring exactly how the audiobooks are organized on the server (typically author folders containing book folders).
 
 - **Folder rows** open a folder; **book rows** open a book. Book rows show the duration and bitrate.
+- Folders come first, then files, each in the order a book plays them (`2` before `10`). An `.mka` file with the same name as another audio file beside it (`Book.m4b` and `Book.mka`) is a copy of it, so it isn't listed, just as it isn't part of the book.
+- A book your server **hasn't scanned yet** (just copied in, before the next scan reaches it) still shows as a book, captioned **"Not scanned yet"**. Tap it and its page opens as a book: the server reads it there and then (a big book can take a moment), and you can play it at once; back in the folder, the row then shows the book like any other. On an older server such a folder opens as a folder instead, listing its files: tap one to open the book.
 - **Breadcrumbs** at the top show where you are and jump back up any level.
 - Big folders (more than a couple dozen entries) get a **filter box** ("Filter this folder…") and an **A–Z rail** on the right edge for jumping straight to a letter - a library with thousands of authors stays quick to navigate.
 - Your scroll position is remembered, so backing out of a book returns you to where you were.
@@ -249,7 +251,7 @@ Book results come from book metadata (title, author, series). To hunt by folder 
 
 Favourites are your personal shelf - mark anything you want to find again quickly:
 
-- Tap the **heart** on a [book's page](book-page.md), or the heart on any row in the Folders view. You can favourite whole **folders** as well as books (handy for a series or an author).
+- Tap the **heart** on a [book's page](book-page.md), or the heart on any row in the Folders view. You can favourite whole **folders** as well as books (handy for a series or an author). Hearting a book marked "Not scanned yet" reads it there and then, so it is saved as a book, not a folder (if the server can't read it at that moment, it shows as a folder until the next scan reaches it).
 - Find them again on the **Favourites** shelf on Home, the **Favourites** card in the Library's Collections section, or the **Favourites** row at the top of the Folders view. Each opens the full list, with books as a cover grid.
 - Tap the heart again to remove a favourite.
 

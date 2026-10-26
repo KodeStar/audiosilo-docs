@@ -12,8 +12,7 @@ solving, see [Troubleshooting](./troubleshooting.md).
 
 The server recognizes these file extensions as audiobooks:
 
-**`.m4b`, `.m4a`, `.mp4`, `.mp3`, `.flac`, `.ogg`, `.opus`**, and `.mka`
-for the web player
+**`.m4b`, `.m4a`, `.mp4`, `.mp3`, `.flac`, `.ogg`, `.opus`** and **`.mka`**
 
 `.m4b` (a single file with embedded chapters) is the audiobook standard and
 works best, but a folder of `.mp3` chapter files is treated just as well -
@@ -21,11 +20,10 @@ the server presents both the same way, with one continuous timeline and a
 chapter list. A folder's files play in the natural order of their names, so
 `2` comes before `10` whether or not the numbers are padded.
 
-`.mka` (Matroska audio) plays in the web player only, which the server
-converts to MP3 as it streams (it needs ffmpeg). The phone apps list such a
-book but may not play it (an iPhone can't), so convert it to `.m4b` or `.mp3`
-to listen there. An `.mka` beside a file of the same name in another format is
-left out. See
+`.mka` (Matroska audio) needs ffmpeg on the server. With MP3 inside, the
+usual kind, it then plays everywhere, offline downloads included, as a lossless
+MP3 copy; with other audio inside (AAC, Opus, FLAC) it plays in the web player,
+and in the Android app where the phone can decode it, but not on an iPhone. See
 [Supported formats](./getting-started/organizing-your-library.md#supported-formats).
 
 Audible's DRM formats (`.aax`/`.aaxc`) are deliberately **not** indexed - the
@@ -43,8 +41,8 @@ No - but you'll want it. The server uses two companion tools:
 - **ffmpeg** enables on-the-fly conversion of browser-unfriendly codecs to
   MP3, which the web player uses automatically for such books. Without it,
   that feature is simply off, and those books play only in the mobile apps
-  (where the device can decode them - an Android phone may not). It also finds
-  the pauses that [community chapters](./admin/books.md#community-chapters)
+  (where the device can decode them - an Android phone may not). It also lets
+  every player play an `.mka` book with MP3 inside, and finds the pauses that [community chapters](./admin/books.md#community-chapters)
   start on; without it they are placed by time alone and may be a few seconds
   off.
 

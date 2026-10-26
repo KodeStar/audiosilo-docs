@@ -315,7 +315,17 @@ How it behaves:
 **Transcoding** shows **ffmpeg** and **ffprobe**: the version found and where,
 "downloaded" when the server fetched its own copy into the data folder, or
 **Not available** with what that means. ffmpeg converts formats browsers can't
-play to MP3 while someone listens; ffprobe reads lengths, chapters and codecs.
+play to MP3 while someone listens, and copies the MP3 out of `.mka` (Matroska)
+files so every player can play them; ffprobe reads lengths, chapters and codecs.
+
+The MP3 copies are kept in the data folder, under `cache/remux`, so each book
+is copied once rather than on every play. The folder holds at most 8 GiB: past
+that, the copies played longest ago are removed (and made again if someone
+plays them). The server makes no new copy while the disk would be left with
+less than 1 GiB free; such a book then plays through the live conversion. The
+folder is safe to delete and needs no backup. Opening a book in the player
+starts its copies in the background, so they are usually ready by the time
+someone presses play.
 
 Nothing here can be changed in the console. The server finds the two tools
 when it starts: next to its own program, on the system's PATH, or downloaded
