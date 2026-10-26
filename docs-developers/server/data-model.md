@@ -676,10 +676,11 @@ are dropped while the player is offline, and carry no device.
   as listening; `continuousPlayback`), as long as the last save is within 12 hours
   (`resumeWindow`): Android pauses the player's JS timers while the screen is
   off, so the player keeps playing without saving and its next save arrives
-  late. Otherwise the save starts a new session. A session started before the
-  person last turned [Listening in the house](auth-and-security.md#listening-in-the-house-what-other-people-see)
-  sharing on (`household_sharing.updated_at`) is never continued either, so no
-  session holds listening from both sides of that moment.
+  late. Otherwise the save starts a new session. While the person shares
+  [Listening in the house](auth-and-security.md#listening-in-the-house-what-other-people-see),
+  a session started before they last turned sharing on
+  (`household_sharing.updated_at`) is never continued either, so no session
+  holds listening from both sides of that moment.
 - **Listened time.** Between two saves, the position advance divided by the
   playback speed, capped by the server time that passed (`listenedBetween`). A
   seek forward is not listening, and a seek back adds nothing. The same cap
