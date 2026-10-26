@@ -402,11 +402,8 @@ are granted shares, and a user's access is the union of their granted rules (plu
 for a household member, what their owner gives them: [the member rule](#household-members)).
 `catalog.GrantWholeLibrary` is sugar that ensures a `"Library: <name>"` share
 with a `""` rule exists and grants it. It never widens a share it didn't make for
-that purpose: it reuses one (marked by `whole_library_id`, else an unmarked one
-named and described as its own) only when that share's one rule is the library's
-`""` rule, or when it has no rules and nobody holds it; otherwise it makes a new
-`"Library: <name> (<id>)"` share
-([`POST /admin/library-access`](api/reference.md#post-apiv1adminlibrary-access)).
+that purpose: when no existing share qualifies, it makes a new one
+([which shares qualify](api/reference.md#post-apiv1adminlibrary-access)).
 
 At request time the rules are compiled into a `catalog.Scope` per library -
 `AllowAll` (admins for books; or any `""` rule; or a member on `all` whose owner is an
@@ -704,13 +701,12 @@ denied test:
 - **What of them.** One row per person: their newest session recorded on this
   server (`import_id = 0`, not backfilled, listened > 0) within 24 hours.
 - **Only while sharing.** That session must have started at or after the moment
-  the person last turned sharing on (`household_sharing.updated_at`, which moves
-  only when the choice changes, so a repeated `PUT` of `true` doesn't move it), so
+  the person last turned sharing on
+  ([`household_sharing.updated_at`](data-model.md#durable-per-user-state-path-keyed-no-fk-to-books)), so
   listening done while sharing was off never shows, even when sharing is turned
-  back on within the 24 hours. A session never runs across that moment:
-  `catalog.RecordHeartbeat` starts a new session on the first save after sharing
-  is turned on, so only the listening after it shows, and a later save
-  can't bring the earlier listening into view.
+  back on within the 24 hours. No session spans that moment: the first save
+  after it starts a new one
+  ([session grouping](data-model.md#listening-sessions-how-they-are-derived)).
 - **Only books the caller may open.** That newest book passes the **caller's**
   current scopes (`ScopesAllow`) or the person is dropped; an older in-scope book
   never stands in for it.
