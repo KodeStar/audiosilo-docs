@@ -63,8 +63,9 @@ Pure and tested (`house-model.test.ts`):
   identity).
 - `houseWhen(row, today)` - `playing` and `paused` as the server says; for `recent`,
   the **local calendar day** of the newest save, as of `today` (the local day's start
-  from `useToday()`, which ticks over just after midnight), worked out by hand (Hermes
-  has no `Intl.RelativeTimeFormat`): `today`, `yesterday`, or `earlier` for a clock
+  from `useToday()`, which ticks over just after midnight), worked out by hand
+  (calendar days, which neither `Intl.RelativeTimeFormat` nor `formatRelative`'s own
+  strings count in): `today`, `yesterday`, or `earlier` for a clock
   that disagrees with the server's 24 hours. A save in the future or one that doesn't
   parse counts as today.
 - `chapterName(row, t)` - the chapter's title, else "Chapter N" from

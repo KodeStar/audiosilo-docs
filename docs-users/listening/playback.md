@@ -9,14 +9,14 @@ Tap **Start listening** (or **Resume**) on any [book's page](book-page.md) to st
 
 While a book is playing, a small player stays with you on every screen. It steps aside while the full player is open.
 
-**On a phone**, a **mini player** card floats just above the tab bar (in the web player, on Android, and on iPhones before iOS 26): the cover, the current chapter, and the book with its [time left](full-player.md#time-left) (a running sleep timer's countdown comes first), then **skip back** and **play/pause**, which shows a spinner while the book loads and **Retry** if playback fails. A thin line along its bottom shows how far you are through the chapter. Tap it to open the full player.
+**On a phone**, a **mini player** card floats just above the tab bar (in the web player, on Android, and on iPhones before iOS 26): the cover, the current chapter, and the book with its [time left](full-player.md#time-left) (a running sleep timer's countdown comes first), then **skip back** and **play/pause**, which shows a spinner while the book loads and **Retry** if playback fails. A thin line along its bottom shows how far you are through the chapter. When the only chapter just repeats the title (a podcast episode, say, or a single-file book), or there's no chapter at all, the card shows the title once, then the time left. Tap it to open the full player.
 
 On an **iPhone running iOS 26 or later**, the mini player is a glass strip inside the tab bar with the same things. Scroll down and the tab bar shrinks; the mini player tucks in beside it with just the cover, the chapter and play/pause.
 
 **On a tablet or computer**, the **player bar** runs along the bottom of the window:
 
 - a thin line along its top edge showing your progress through the whole book;
-- on the left, the cover, the chapter, the book and author, and whether your [place is saved](#your-position-follows-you) - tap it to open the full player;
+- on the left, the cover, the chapter, the book and author, and whether your [place is saved](#your-position-follows-you) - tap it to open the full player. When the only chapter just repeats the title, or there's no chapter at all, it shows the title and then just the author or show;
 - in the middle, previous chapter, skip back, play/pause, skip forward and next chapter, over a scrubber for the current chapter (with a tick for each bookmark) and the time left in the book;
 - on the right, the [undo button](full-player.md#undo-a-jump) after a jump, then speed, the [sleep timer](sleep-timer.md) (with its countdown while one runs), bookmark, output, [Cast](chromecast.md), [Up next](up-next.md), and an arrow that opens the full player.
 

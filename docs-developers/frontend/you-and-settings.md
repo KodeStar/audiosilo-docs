@@ -168,8 +168,9 @@ its card. There is **no share link** (that would need a server endpoint).
 - **Under the `/web` CSP** (`connect-src 'self'`, `img-src 'self' data: blob:`; see
   [Web UI](../server/web-ui.md)): the fonts and covers `html-to-image` inlines are
   same-origin `fetch()`es, so covers on the web are plain `?token=` URLs (`BookCover`
-  hands the browser the URL itself, with no header), **never** a `blob:` copy (expo-image
-  makes one when it fetches with a header), which `connect-src 'self'` would refuse; `data:` URLs are kept as they are, the drawing is a
+  hands the browser the URL itself through `CoverImage`, a plain `<img>` that sends no
+  header), **never** a `blob:` copy (expo-image makes one when it fetches with a header),
+  which `connect-src 'self'` would refuse; `data:` URLs are kept as they are, the drawing is a
   `data:` SVG image and the PNG comes out of `canvas.toBlob`.
 - A failed capture is retried once with the covers drawn as plain title blocks
   (`coversOff`, `PlainCover`), so one unreadable image can't cost the whole card.

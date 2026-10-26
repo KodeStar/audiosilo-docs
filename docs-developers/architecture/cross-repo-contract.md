@@ -165,7 +165,8 @@ client side in [State & data](../frontend/state-and-data.md#bookmarks-notes-and-
 header-only (`bearerToken(r, false)`), so tokens never ride the query string where
 they could leak into access logs or Referer headers.
 **Frontend:** `client.ts` `mediaTokenQuery()` → `coverUrl()`/`streamUrl()`. Native
-also sends the header (belt-and-braces); web relies solely on the query param.
+also sends the header (belt-and-braces); web relies solely on the query param (a web
+cover is a plain `<img>`, `CoverImage`, which can't send one).
 
 **Cover thumbnails** ride the same path: `GET /libraries/{id}/cover?size=160|320|640`
 (capability `cover_sizes`) is a JPEG of the same art with an `ETag` of size + art
@@ -461,12 +462,14 @@ For an allowed origin the server also allows `Range` and exposes
 `Retry-After` and the OPML export's `X-OPML-*` counts (Phase 2d-2), with what
 an older server means for the player: [CORS](../server/api/index.md#cors).
 
-Covers and audio are no-cors loads, which CORS never covers. With
-`cors_origins` set, every authenticated media answer is
-`Cross-Origin-Resource-Policy: cross-origin` (from 2.4.1), so a player on
-another site shows covers and plays audio; an older server's `same-site` makes
-the browser block its covers. Media takes only an explicit token, never a
-cookie, which is why that is safe
+**Media for a player on another site.** The web player loads another origin's
+covers, artwork and audio in CORS mode (`corsModeFor`, applied by `CoverImage`
+and the `<audio>` element; see
+[the web engine](../frontend/playback.md#web-engine-servicewebts)), so the
+server's `cors_origins` governs them; an older player loads them no-cors and
+relies on `Cross-Origin-Resource-Policy` instead
+([CORS](../server/api/index.md#cors)). Media takes only an explicit token, never
+a cookie, which is why both are safe
 ([Transport hardening](../server/auth-and-security.md#transport-hardening)).
 
 **A change requires:** nothing structural - just remember self-signed TLS (the
