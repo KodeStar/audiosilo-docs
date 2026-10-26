@@ -401,7 +401,12 @@ Access control is filesystem-based. A **share** is a named set of path rules
 are granted shares, and a user's access is the union of their granted rules (plus,
 for a household member, what their owner gives them: [the member rule](#household-members)).
 `catalog.GrantWholeLibrary` is sugar that ensures a `"Library: <name>"` share
-with a `""` rule exists and grants it.
+with a `""` rule exists and grants it. It never widens a share it didn't make for
+that purpose: it reuses one (marked by `whole_library_id`, else an unmarked one
+named and described as its own) only when that share's one rule is the library's
+`""` rule, or when it has no rules and nobody holds it; otherwise it makes a new
+`"Library: <name> (<id>)"` share
+([`POST /admin/library-access`](api/reference.md#post-apiv1adminlibrary-access)).
 
 At request time the rules are compiled into a `catalog.Scope` per library -
 `AllowAll` (admins for books; or any `""` rule; or a member on `all` whose owner is an
@@ -698,6 +703,14 @@ denied test:
   out, as a row and as a viewer, with no kid filter of its own.
 - **What of them.** One row per person: their newest session recorded on this
   server (`import_id = 0`, not backfilled, listened > 0) within 24 hours.
+- **Only while sharing.** That session must have started at or after the moment
+  the person last turned sharing on (`household_sharing.updated_at`, which moves
+  only when the choice changes, so a repeated `PUT` of `true` doesn't move it), so
+  listening done while sharing was off never shows, even when sharing is turned
+  back on within the 24 hours. A session never runs across that moment:
+  `catalog.RecordHeartbeat` starts a new session on the first save after sharing
+  is turned on, so only the listening after it shows, and a later save
+  can't bring the earlier listening into view.
 - **Only books the caller may open.** That newest book passes the **caller's**
   current scopes (`ScopesAllow`) or the person is dropped; an older in-scope book
   never stands in for it.

@@ -39,6 +39,7 @@ The house is checked again every minute while the app is open on the Home page o
 
 - Only other people on the same server who have turned sharing on. You never see yourself.
 - Only their most recent book, and only if they listened to it in the last 24 hours.
+- Only listening done while their sharing is on. Anything they listened to while it was off never shows, even if they turn sharing back on soon after. If they were in the middle of a book when they turned it on, it shows once they listen to more of it.
 - Only books **you** can open yourself. If someone's latest book is in a library or folder you don't have access to, that person doesn't appear at all, rather than showing an older book.
 - Never a demo account, and never an account the admin has disabled.
 - Never a kids account from someone's [household](household.md): a kid can't turn sharing on, never shows up for others and never sees the house.

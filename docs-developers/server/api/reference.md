@@ -3884,7 +3884,9 @@ is in the foreground). No admin route reads or changes anyone's choice.
 ```
 
 `PUT` takes the same shape, `{ "share_listening": true }`, and answers `200` as
-`GET`. The field is required and the body is decoded strictly: a missing field
+`GET`. Turning sharing on starts what the others can see from that moment
+([`GET /household/listening`](#get-apiv1householdlistening)); a `PUT` of the
+choice already saved changes nothing, so it does not move that moment. The field is required and the body is decoded strictly: a missing field
 (`{}`), an unknown field or a wrong type is `400` `invalid request`. A demo account's
 `PUT` is `403` (`code: "demo_account"`; its `GET` works and reads
 `false`), so a public demo never shows up in anyone's house. A personal API key may
@@ -3894,7 +3896,9 @@ and its `GET` always reads `false`, even if it shared before it was made a kid.
 
 ### `GET /api/v1/household/listening`
 
-*Session.* What the other people who share are listening to, newest first.
+*Session.* What the other people who share are listening to, newest first. Only
+listening done since a person last turned sharing on is shown: when they were
+mid-book at that moment, the listening after it shows, as a new session.
 
 ```json
 {
@@ -5037,14 +5041,23 @@ whole-library share under the hood. Body:
 `{ "user_id": 4, "library_id": 1 }`. Response: `204 No Content`.
 
 The grant share is found by `whole_library_id` first, so it survives a library
-rename; only an **unmarked** older share named `Library: <name>` is reused as a
-fallback (and then marked). A share marked for a *different* library is never
-reused - adding this library's rule to it would hand this library to everyone
-who has that one. When such a share already holds the `Library: <name>` name (a
-library was renamed and a new one took its old name), the new grant share is
-named `Library: <name> (<library id>)` instead; the name is internal, since
-clients show the library's own name. Errors: `404` for an unknown library;
-`409` with `code: name_taken` only if even that name is taken.
+rename. Failing that, an **unmarked** share the grant itself could have made is
+reused as a fallback (and then marked): description `Whole library`, named
+`Library: <name>` (made before the column existed) or `Library: <name> (<library
+id>)` (left by an interrupted grant). Marked or not, a share is reused only when
+its one path rule is this library's whole-library rule (`""`), or when it has no
+rules and nobody holds it. Anything else - an admin's own share that happens to be
+named `Library: <name>` and covers a folder, a grant since narrowed to a folder, a
+share that also covers another library, or an empty share someone holds - is left
+exactly as it is, because adding the whole-library rule to it would widen what its
+holders see or hand its other rules to the new user. A share marked for a
+*different* library is never reused either - adding this library's rule to it
+would hand this library to everyone who has that one. When no share qualifies, a
+new grant share is made; if `Library: <name>` is already taken (by a share above
+that didn't qualify, or because a library was renamed and a new one took its old
+name), it is named `Library: <name> (<library id>)` instead; the name is
+internal, since clients show the library's own name. Errors: `404` for an unknown
+library; `409` with `code: name_taken` only if even that name is taken.
 
 ## Admin: catalog
 
