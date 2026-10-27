@@ -777,7 +777,10 @@ answers with what it holds and nothing more:
   years or `""` (LibriVox's `alive` is not a year). Translators are the work's
   translator credits, not the project's: a project attached to a work already in
   the catalogue records no new credits, so it lists that work's translators,
-  which may differ from LibriVox's and carry no LibriVox id or years.
+  which may differ from LibriVox's. Only a translator the work already names is
+  given the project's LibriVox id and years; the project's other translators are
+  in the import report's
+  [credits not recorded](contributing-data.md#credits-not-recorded).
 - `^` on `author` is the documented **prefix** match; LibriVox's own
   implementation matches the end of the name.
 - A section's `id` is `""`, its `section_number` its 1-based position (LibriVox

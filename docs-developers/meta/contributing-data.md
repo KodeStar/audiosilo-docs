@@ -616,11 +616,27 @@ each selected project:
   a plain year (`1883`, `-428`, `428 BC`), and only when the person states
   neither yet: a year another source or a hand edit wrote is never overwritten,
   and a pair whose death precedes its birth is dropped whole.
+- **An attach records the recording, not new credits.** A project that joins a
+  work already in the catalogue adds its recording (and its readers) only: a
+  create run never edits a catalogued work's credits. So only the authors and
+  translators that work already names (in its authors or its `credits`) are
+  resolved, created if need be and stamped with their LibriVox ids; anyone else
+  would be a person record credited nowhere, so none is created. A translator
+  joining a work **this run** created is still added to it, as before. Every
+  credit left out is printed in the import report (below).
 - `copyright_year` is written only when LibriVox states a year (its `0` means
   unstated); `url_text_source` becomes `links.text` when it is `https://`.
-- Genres map onto the vocabulary only where a counterpart is evident; LibriVox's
-  period genres ("Published before 1800") and its umbrella and format genres are
-  not mapped.
+- Genres map onto the vocabulary only where a counterpart is evident, and a
+  sub-genre maps where its own name has one: a poetry form ("Sonnets", "Epics")
+  to `poetry`, a Bible translation ("King James Version") to
+  `religion-spirituality`, a science branch ("Chemistry") to `science`,
+  "Suspense, Espionage, Political & Thrillers" to `thriller-suspense`, "War &
+  Military" to `military-history`. Period tags ("Published before 1800", and
+  the period sub-genres such as "Medieval" or "Modern (19th C)"), umbrella and
+  form tags ("General Fiction", "Single author", "Short works") and genres
+  whose nearest entry would be a guess ("Nautical & Marine Fiction") stay
+  unmapped; the run's `unmapped genre strings:` warning names them. The table is
+  `librivoxGenres` in `pkg/model/librivox.go`.
 - **Reported skips, never guesses.** A language name with no known code is a
   `language` refusal (never mapped to `und` or a neighbour); teaching the
   importer the language is what lets a re-import of that id range take it. A
@@ -646,7 +662,18 @@ order, after LibriVox's trailing "(version 2)" title marker is stripped:
    de/het/een, in any language. Numbers stay apart ("Vol. 1, 2" is not
    "Vol. 12"). Two or more such works is the worklist's `several-works`, even
    when one of them matches the credits exactly.
-3. **Otherwise a new work.** A same-titled work by an entirely **different**
+3. **A trailing qualifier waits for a person.** Otherwise, when the title with
+   its trailing parenthetical or bracketed qualifiers removed (one at a time,
+   from the end) is a work's title under rule 2, by the same authors
+   ("Frankenstein (1818)" beside "Frankenstein", "Black Beauty (The
+   Autobiography of a Horse)" beside "Black Beauty"), the project goes to the
+   worklist as `differently-spelled-title`, or `several-works` when more than one
+   work matches. It is **never attached**: the qualifier may be an edition or a
+   subtitle, but just as well a volume ("King in Yellow (part 1)"), which
+   only a person can tell apart. A "Part N" outside brackets ("Anna Karenina,
+   Book 1") is not a qualifier, and a mostly non-Latin title (below) skips this
+   rule.
+4. **Otherwise a new work.** A same-titled work by an entirely **different**
    author is a different book (think of every "Poems"), so the project gets a
    work of its own rather than a skip. A work whose authors only **partly**
    agree with the project's is `author-unmatched`.
@@ -679,9 +706,9 @@ librivox worklist: 2 projects skipped for a person to resolve (re-import the ids
 
 | Reason | Why the project waits |
 |---|---|
-| `several-works` | two or more catalogued works qualify under rule 2 |
+| `several-works` | two or more catalogued works qualify under rule 2, or under rule 3 once the trailing qualifier is removed |
 | `author-unmatched` | a work carries the title but its authors only partly agree with the project's, or agree only through the catch-all person (rule 1) |
-| `differently-spelled-title` | the duplicate-identity guard holds the book under a title rule 2 does not read as the same, such as one with a subtitle |
+| `differently-spelled-title` | the duplicate-identity guard holds the book under a title rule 2 does not read as the same, such as one with a subtitle, or rule 3 found the one work the title names without its trailing qualifier |
 | `fallback-slug-taken` | a non-Latin title's `librivox-<project id>` slug is already held by another record, or retired |
 
 Once a person has settled the work (merged the duplicates, fixed the credit),
@@ -690,6 +717,25 @@ also the guard's ordinary skip: it is counted among the run's duplicate-identity
 skips and, with `--conflicts`, writes that guard's `work_identity` row, which
 carries `librivox_id` since a LibriVox row has no ASIN. The other three reasons
 appear on the worklist alone.
+
+#### Credits not recorded
+
+The author and translator credits an attach leaves out (above) are not lost:
+the import report lists them after the worklist, one line per credit with the
+project id, the name, its roles, the person's `librivox_author_id` when LibriVox
+states one, the work the recording landed on, and whether a person record exists
+for the name (`person not created` when the run withheld it):
+
+```
+librivox credits not recorded: 1 (the project attached to a work that does not name them; for recording-level credits, meta#2752):
+  2027 "Amy Coulter" (translator, librivox_author_id 9876) -> siddhartha, person not created
+```
+
+They are kept for recording-level credits, which would give a recording a
+translator its work does not share (meta#2752); until then nothing is written for
+them. The run's `Summary.LibrivoxUnrecordedCredits` carries the same rows; each
+one's `PersonExists` is settled once every row is planned, since a later row
+(its own reader, or a new work) can create the person.
 
 Known gap: an author spelled differently from the catalogue ("Lev Tolstoy" for
 "Leo Tolstoy") is not the same author to these rules, so the project still
