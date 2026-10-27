@@ -8,8 +8,7 @@ reader opens the EPUB paginated, remembers the place per user across devices, an
 runs no script from the book anywhere. Bridge Phase 3b-1 built it for the web (an
 iframe host); Phase 3b-2 added the apps' host (a WebView fed the book in chunks), the
 per-book EPUB cache and the EPUB in downloads, so a downloaded book reads offline on
-every platform. The server side is capability
-`ebooks`: a book's [`ebook`](../server/api/reference.md#get-apiv1librariesidbooks)
+every platform. The server side is capability `ebooks`: a book's [`ebook`](../server/api/reference.md#get-apiv1librariesidbooks)
 field, its bytes at
 [`GET /libraries/{id}/ebook`](../server/api/reference.md#get-apiv1librariesidebook),
 the place at
@@ -25,7 +24,7 @@ listener's view is on [Reading the ebook](/users/listening/reading-the-ebook).
 | The route | `src/app/read.tsx` (`/read`, a root `fullScreenModal`), `readerHref` in `src/lib/paths.ts` |
 | The screen | `src/reader/reader-screen.tsx` (`ReaderScreen`: top bar, page edges, Contents sheet, the offer, failures) |
 | The hosts | `src/reader/reader-host.web.tsx` (the iframe), `reader-host.native.tsx` (the WebView, react-native-webview); `reader-host.tsx` re-exports the native one for type resolution; shared controls in `use-reader-controls.ts` |
-| The app's book | `src/reader/ebook-file.native.ts` (`localEbook`: the download's copy, else the cache file; `clearEbookCache`), `book-chunks.ts` (`sendInChunks`, `CHUNK_BYTES`), the reader's `reader/src/chunks.js` |
+| The app's book | `src/reader/ebook-file.native.ts` (`localEbook`: the download's copy, else the cache file; `hasLocalEbook`; `clearEbookCache`; the web's `ebook-file.ts` has the last two), `book-chunks.ts` (`sendInChunks`, `CHUNK_BYTES`), the reader's `reader/src/chunks.js` |
 | The protocol | `src/reader/protocol.ts` (`parseReaderMessage`, `acceptReaderMessage`, `createHostChannel`) |
 | The place | `src/reader/reading-progress.ts` (queue, mirror, `lookupReadingPlace`, `jumpOffer`, `adoptServerPlace`) |
 | Read on the book page | `canRead` (`src/reader/can-read.ts`) in `src/components/book/hero-actions.tsx` |
@@ -43,8 +42,8 @@ zip.js without workers: PDF, MOBI, FB2, comics, TTS and search are excluded) int
 subresources. The same build writes the app's variant,
 `src/reader/reader-html.native.ts` (generated, prettier- and eslint-ignored, the same
 CSP); the two differ only by esbuild's `__NATIVE__` define (the app's takes its book
-in chunks over the WebView bridge and talks through `window.ReactNativeWebView`). The page carries the whole policy as a meta CSP with the script's
-sha256 (`connect-src 'none'`); the server sends the same policy as a header, hashing
+in chunks over the WebView bridge and talks through `window.ReactNativeWebView`).
+The page carries the whole policy as a meta CSP with the script's sha256 (`connect-src 'none'`); the server sends the same policy as a header, hashing
 the served script itself, plus `frame-ancestors 'self'`, which a meta tag can't
 set. Expo's web export copies `public/reader.html` to `dist/reader.html`, served as
 `/web/reader.html`.
@@ -124,8 +123,8 @@ screen can close.
 ## The app host
 
 `ReaderHost` (`reader-host.native.tsx`) renders the app's variant in a
-react-native-webview `WebView` (exact pin 13.16.1, bumped only with `npx expo
-install` and a device run of the reader on both platforms):
+react-native-webview `WebView` (an exact pin, bumped only with `npx expo install` and
+a device run of the reader on both platforms):
 
 - **The document is an HTML source**: `source={{html: READER_HTML, baseUrl:
   'https://reader.audiosilo.invalid/'}}`. The base URL gives the document an origin
@@ -152,10 +151,9 @@ started at mount while the WebView loads) and, at each `ready`, posts `open {siz
 chunks, ...}` and then the file in **256 KB base64 chunks** (`CHUNK_BYTES`,
 `sendInChunks`): each piece is read natively (`readAsStringAsync` with `position`
 and `length`, encoded natively, never in JS) only once the last one was posted, so
-one piece's base64 is held on this side at a time. 256 KB opened Pride and Prejudice
-(24.8 MB) as fast as 1 and 2 MB pieces with the lowest peak memory (463 MB on the iOS
-simulator, 328 MB PSS on the Android emulator, about 1.05x a plain file load). The
-reader (`reader/src/chunks.js`, `createAssembly`) allocates one buffer of the
+one piece's base64 is held on this side at a time. The size was measured: on a 25 MB
+book, 256 KB pieces open as fast as 1 and 2 MB ones, at the lowest peak memory (about
+a plain file load's). The reader (`reader/src/chunks.js`, `createAssembly`) allocates one buffer of the
 announced size and refuses, as `unreadable`, a size over 512 MB (`MAX_BOOK_BYTES`)
 or a bad chunk count, a chunk out of order, repeated or extra, data that isn't
 base64, and a book larger or smaller than announced; then it opens the buffer as the
@@ -177,13 +175,13 @@ flag off, need no server change, and work offline.
 `onRenderProcessGone`), the host ends that WebView's session at once and makes a new
 one that reopens at the last `progress` place, `MAX_RELOADS` (3) times in a row,
 then `ReaderStartError`. A death `STABLE_MS` (60 s) or more after that WebView's
-`opened` resets the count (the system took a book that stayed open). A death while
+`opened` resets the count (the system reclaimed a book that had stayed open). A death while
 the app is in the background makes the new WebView only once the app is back
 (`whenActive`): made away, it may get no running process and its start timeout would
-run out. Each new document is told to the screen (`onReopen`, the web host too when
-its frame reloads), which clears `opened` so the edges, toolbar and offer wait for
-the next `opened`. A `drm` or `unreadable` after the book showed once on the screen
-is said as `start` (the same file opened before), and Try again reopens where the
+run out. The host tells the screen about each new document (`onReopen`, the web host
+too when its frame reloads), which clears `opened` so the edges, toolbar and offer
+wait for the next `opened`. Once the book has shown, a later `drm` or `unreadable` is
+reported as `start` (the same file opened before), and Try again reopens where the
 reader was (`resumeAt`). In the app the `start` notice's body is
 `reader.failure.start.bodyNative` (memory, not a browser).
 
@@ -229,11 +227,11 @@ looked up) and `start` get Try again where it can help (`fetch`, `start`);
 
 ### Read on the book page
 
-`canRead(ebooks, book)` is `ebooks === true && !!book.ebook`: the capability and the
-book's `ebook` field, on every platform since 3b-2 (the web-only gate and the apps'
-placeholder notice are gone). A downloaded book whose download holds the EPUB offers
-Read even when `ebooks` is unknown offline (fix round 1 of 3b-2). The hero shows an
-outline **Read the ebook** button after the download (its own row on a phone) that
+`canRead(ebooks, book, downloadedEbook)` needs the book's `ebook` field and the
+capability `ebooks` on every platform: `true`, or still unknown (offline) when the
+book's finished download holds the EPUB (`manifest.ebookUri`). A server that says
+`false` never offers it, downloaded or not. The reader screen applies the same rule.
+The hero shows an outline **Read the ebook** button after the download (its own row on a phone) that
 pushes `readerHref(connectionId, libraryId, book.rel_path)`.
 
 ## The reading place
@@ -276,10 +274,15 @@ online flag says (`networkMode: 'always'`), so an offline reader opens at a loca
 place or says it can't instead of waiting on a spinner. Opening at the server's row
 adopts its version.
 
-**A downloaded book opened offline with no local place** (3b-2 fix round 1) is the
-one exception to "never a guessed start": it opens at the start of the book, and its
-saves carry `base_version: 0` ("saw nothing"), so the server's `ResolvePlace` keeps a
-further place another device saved and the next online open offers Jump there.
+**A book whose EPUB is on this device, opened offline with no local place**, is the
+one exception to "never a guessed start". When the lookup's request never reached the
+server (any answer from it, an error status included, still fails the lookup) and
+`hasLocalEbook` finds the EPUB (in the app, the download's copy or the cache file for
+the current `ebook.size`; on the web, only a download), it opens at the start of the
+book. Its saves carry `base_version: 0` ("saw nothing"), which the server's
+`ResolvePlace` takes as diverged from another device's row, so it keeps that device's
+further place, and the answer to the first save that reaches the server (the queue's
+replay while the reader is open, or a save on the next online open) offers Jump there.
 
 ## Still to come
 

@@ -6,7 +6,7 @@ description: "Reading a book's EPUB in the web player and the iOS and Android ap
 When a book's folder on your server also holds its ebook, AudioSilo can open it, in the web player and in the iOS and Android apps alike. **Read the ebook** on the book's page shows the text a page at a time and remembers where you got to, on every device you read it on. A book you [download](offline-downloads.md) takes its ebook with it, so you can read it with no connection too.
 
 :::note[Reading in the apps]
-The apps' reader came after the web player's. If your app doesn't show **Read the ebook** on a book that has one, update the app from the App Store or Google Play.
+Reading needs an up-to-date app: if yours doesn't show **Read the ebook** on a book that has one, update it from the App Store or Google Play.
 :::
 
 ![The reader in the web player: the book's title, the chapter and how far through the book at the top, a page of text between the page-turn edges](/img/screenshots/web-player/reader.png)
@@ -78,15 +78,14 @@ The note names the other device as your server knows it ("On another device" whe
 
 ## Reading offline
 
-**Download the book** to read it with no connection. Downloading a book (the download button on its page, see [Offline downloads](offline-downloads.md)) saves its ebook beside the audio, in the apps and in the web player, and the reader then opens the book from the device, connection or not. A downloaded book shows **Read the ebook** even while your server can't be reached.
+**Download the book** to read it with no connection. In the apps and the web player, [downloading a book](offline-downloads.md) saves its ebook beside the audio, and the reader then opens it from the device, connection or not. A downloaded book shows **Read the ebook** even while your server can't be reached.
 
-- If the ebook can't be saved (the server couldn't send it, say), the download still finishes with the audio: you can listen offline, and reading needs a connection, as it does for a book you haven't downloaded. To get the ebook into the download, remove the download and download the book again.
-- A book downloaded with an older version of the app or web player has no ebook in its download. Remove the download and download it again to read it offline.
+- A download can lack the ebook: it couldn't be saved (the server couldn't send it, say), or an older version of the app or web player made the download. The audio still plays offline, but reading needs a connection, as for a book you haven't downloaded. To read it offline, remove the download and download the book again.
 - Once a book is open, you can keep reading if the connection drops, downloaded or not: the whole ebook is already on the device.
 
 Your place is saved on the device while you're offline and sent to your server once the connection is back: as soon as the app notices your server again, or the next time you open the reader. If another device read further in the meantime, you get the **Jump there?** note above rather than losing either place.
 
-**The first time you open a downloaded book offline** on a device that has no place saved for it yet, the reader can't ask your server where you got to, so it opens at the start. Reading there doesn't move your place on other devices back: the next time you open the book online, if another device is further along, the reader offers **Jump there?** with **Jump** and **Stay**, as above.
+**The first time you open a downloaded book offline** on a device that has no place saved for it yet, the reader can't ask your server where you got to, so it opens at the start. Reading there doesn't move your place on other devices back: once your server can be reached again (or the next time you open the book online), if another device is further along, the reader offers **Jump there?** with **Jump** and **Stay**, as above.
 
 ## When an ebook won't open
 
@@ -97,7 +96,7 @@ In the apps, if your phone stops the reader to free memory (while you're in anot
 | What it says | What it means |
 |---|---|
 | **Couldn't load the ebook** | The server didn't answer, or the connection dropped while the ebook was loading. Check the connection and press **Try again**. To read with no connection, [download the book](#reading-offline). |
-| **The reader didn't start** | In the web player: the reader didn't start in this browser within 30 seconds. A proxy in front of your server that changes its security headers, or an old browser, can stop it. Press **Try again**, or use another browser (see [Troubleshooting](../troubleshooting.md#the-ebook-reader-doesnt-start)). In the apps: the reader stopped, usually because the phone ran short of memory. Press **Try again**; if it keeps stopping, close some other apps, since a large book needs a lot of memory. |
+| **The reader didn't start** | In the web player: the reader didn't start in this browser within 30 seconds. A proxy in front of your server that changes its security headers, or an old browser, can stop it. Press **Try again**, or use another browser (see [Troubleshooting](../troubleshooting.md#the-ebook-reader-doesnt-start)). In the apps: the reader kept stopping, usually for lack of memory; press **Try again** (see [Troubleshooting](../troubleshooting.md#the-ebook-reader-doesnt-start)). |
 | **This ebook is locked** | The EPUB is protected with DRM, which AudioSilo can't open. Put a DRM-free EPUB in the book's folder instead. |
 | **This ebook can't be opened** | The file isn't an EPUB AudioSilo can read, or it's damaged. In the apps, an ebook larger than 512 MB can't be opened either. |
 | **The ebook isn't on the server any more** | The file was removed or renamed since the last scan. After the next scan the button goes, or comes back if the file did. |

@@ -447,14 +447,14 @@ untouched (see [Covers](./admin/books.md#covers)).
 
 ### A book has no Read the ebook button
 
-**Read the ebook** shows only on a server that has the reader, only for a book with one EPUB beside its audio, and in the iOS and Android apps only once the app is up to date (an older version has no reader). Check that:
+**Read the ebook** shows only on a server that has the reader, and only for a book with one EPUB beside its audio. Check that:
 
 - the folder holds **one** `.epub`, not two or more (with several, none is used);
 - for a single-file book, the EPUB has the **same name** as the audio file;
 - a scan has run since you added it: click **Rescan** on the library in the admin console;
-- in the app, you have its latest version from the App Store or Google Play.
+- in the iOS or Android app, you have its latest version from the App Store or Google Play (an older one has no reader).
 
-Offline, the reader needs the ebook on the device: download the book (one downloaded before ebooks were part of downloads has none, so download it again); see [Reading offline](listening/reading-the-ebook.md#reading-offline).
+Offline, the reader needs the ebook in the book's download: see [Reading offline](listening/reading-the-ebook.md#reading-offline).
 
 See [Reading the ebook](listening/reading-the-ebook.md#which-books-have-it).
 

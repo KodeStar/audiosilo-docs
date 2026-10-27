@@ -266,16 +266,17 @@ later on the same runtime finds the launch steps done.
 
 `getLoadedBook()` (Android; iOS resolves null) names the book the service has loaded (the
 car started it with no JS, or it kept playing while JS restarted) with its file index,
-position, rate and whether it plays. Since fe#134 it also carries `files`
-(`LoadedBook.files?: string[]`): the book-relative paths of the files the service
+position, rate and whether it plays. It also carries `files` (fe#134,
+`LoadedBook.files?: string[]`): the book-relative paths of the files the service
 loaded, in its file-index order, so the file index can be read against the order the
 service really plays rather than the manifest's. Kotlin's `LoadedFiles` reads them
 from the media item ids (`<libraryId>:<relPath>`, a chapter clip's `#<startInFile>`
 suffix dropped; unit-tested on the JVM in `LoadedFilesTest.kt`) and leaves `files` out
 when an id has another shape, two items of one file disagree or an index has no item.
-iOS never sends it, nor does a binary that predates it. JS does not remap with it yet
-(a later batch); `adoptLoaded` still maps the index through the manifest. The controller calls the store's
-`adoptLoaded(book)` at start, when a car connects, on returning to the foreground and when the
+iOS never sends it, nor does a binary that predates it. JS does not use it yet:
+`adoptLoaded` still maps the index through the manifest.
+
+The controller calls the store's `adoptLoaded(book)` at start, when a car connects, on returning to the foreground and when the
 engine moves to another file or starts playing on its own (never for the store's own switch
 or load), if `nowPlaying` isn't that book. Adopting builds the queue as
 `playBook` would, from `bookSourceOf` (`src/playback/book-source.ts`: the download manifest

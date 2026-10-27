@@ -9,7 +9,7 @@ Streaming needs your server; downloads don't. Download a book before a flight, a
 
 The download button lives on the [book's page](book-page.md#listening-and-the-buttons), beside **Resume**: **Download for offline** (just **Download** on a phone). You can also use **Download for offline** in any book's [menu](browsing.md#the-book-menu).
 
-While a download runs, the button shows how far it has got (*"52% · Cancel"*, or just **Cancel** on a phone; tap it to cancel), with the progress underneath (*"Downloading 42% · 210 MB / 500 MB"*). When it's done, the button reads **Downloaded** and the cover is saved too, and so is the book's ebook when it has one, so you can [read it offline](reading-the-ebook.md#reading-offline). The ebook is optional: if it can't be saved, the download still finishes with the audio. Tap **Downloaded** to see how much room the book takes on this device and to **Remove download**, which asks first and says how much space it frees.
+While a download runs, the button shows how far it has got (*"52% · Cancel"*, or just **Cancel** on a phone; tap it to cancel), with the progress underneath (*"Downloading 42% · 210 MB / 500 MB"*). When it's done, the button reads **Downloaded** and the cover and the book's ebook (when it has one) are saved too. Tap **Downloaded** to see how much room the book takes on this device and to **Remove download**, which asks first and says how much space it frees.
 
 If a download stops (the connection dropped, the phone slept at the wrong moment), the button becomes **Retry download** - see [When a download stops](#when-a-download-stops).
 
@@ -93,7 +93,7 @@ Honestly? Barely at all - that's the point:
 - **A new file order.** If your server now plays a downloaded book's files in a different order (from 2.4.0 a file named "2" plays before one named "10"), the downloaded copy takes the new order the next time you start the book while online. A copy that finishes downloading while you stream the book in the new order takes that order straight away, and playback carries on from the same spot. Until then, and whenever you start it offline, it plays in the order it was downloaded in. Your place in such a book can move once, because the new order changes where each part sits in the book.
 - Your listening progress is saved on the device while you're offline and **synced to the server automatically** the next time the app can reach it - so even offline listening ends up on your other devices' *Continue listening* shelf.
 - The book's page still opens offline for downloaded books, community notes and all ([below](#community-notes-offline)), and its **Details** tab says the book **Plays from this device**.
-- **Read the ebook** opens a downloaded book's ebook from the device, with no connection, in the apps and in the web player. A book downloaded before the ebook was part of downloads needs downloading again for that. See [Reading offline](reading-the-ebook.md#reading-offline).
+- **Read the ebook** opens a downloaded book's ebook from the device, with no connection, in the apps and in the web player ([Reading offline](reading-the-ebook.md#reading-offline)).
 
 ## Community notes offline
 

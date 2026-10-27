@@ -87,8 +87,8 @@ Android's Media3 sniffs the bytes and the web plays by `Content-Type`, so both
 keep `.mka`.
 
 `slug()` (`pathSlug` in `src/lib/path-slug.ts`, shared by both engines and the
-reader's EPUB cache) is the sanitized tail of the book's `rel_path` (≤ 40 chars) plus a
-djb2 hash of the full path - readable *and* collision-proof. Downloads run
+reader's EPUB cache) is the sanitized tail of the book's `rel_path` (≤ 40 chars)
+plus a djb2 hash of the full path - readable *and* collision-proof. Downloads run
 through `File.createDownloadTask(url, dest, { onProgress, signal, headers })`, so they
 report byte progress and honor an `AbortController`. `verify`/`probe` are
 omitted: on native disk, presence implies playability.
@@ -220,8 +220,8 @@ with no network.
   controller) removes the files *and* the entry. A run counts as cancelled only
   when its **own** signal aborted (`ctrl.signal.aborted`), never by the error's
   text: Android reports a dropped connection as "Software caused connection
-  abort", which is a failure that keeps its files like any other; `remove()` is the user-facing
-  delete: abort + `engine.removeBook` + drop the entry. Files on the server are
+  abort", a failure that keeps its files like any other. `remove()` is the
+  user-facing delete: abort + `engine.removeBook` + drop the entry. Files on the server are
   never touched. Both also add the book to a **session-only decline mark**
   (`isDeclined(cid, lib, path)`, a module-level `Set`, never stored), so no
   automatic download fetches a book the listener just cancelled or removed (also

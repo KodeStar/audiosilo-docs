@@ -1073,9 +1073,9 @@ See [Podcasts](../bridge/podcasts.md) and the
 
 ## 18. The ebook reader
 
-Bridge Phase 3b-1 (capability `ebooks`, the web) and 3b-2 (the apps, and the ebook in
-downloads, with no server change), all additive: an older client ignores the field, and an older server has no flag, so
-no Read.
+Bridge Phase 3b-1 (capability `ebooks`, the web) and 3b-2 (the apps and the ebook in
+downloads, no server change), all additive: an older client ignores the field, and
+an older server has no flag, so no Read.
 
 **The book's ebook.** Every `Book` the server returns carries `ebook: {path, size}`
 when the scan found one readable `.epub` beside its audio (the Bridge's own rule,
@@ -1089,8 +1089,7 @@ is for display only.
 ([the reference](../server/api/reference.md#get-apiv1librariesidebook)). The web
 player's `client.ebook()` fetches it and posts the bytes to the reader; nothing ever
 holds a URL that carries a credential. The apps (3b-2) download it with the header
-into a local file (the reader's cache, or `book.epub` in a book's download, which the
-web download keeps too) and post it to the reader in base64 chunks
+into a local file and post it to the reader in base64 chunks
 ([the app host](../frontend/reader.md#the-app-host)).
 
 **The place.** `GET`/`PUT /libraries/{id}/reading-progress?path=` keyed on the
@@ -1110,9 +1109,8 @@ serves it at `/web/reader.html` under `readerCSP` (the hash of that script, comp
 at serve time, `connect-src 'none'`, `frame-ancestors 'self'`, `X-Frame-Options:
 SAMEORIGIN`), not the player's `htmlCSP`. The apps' variant of the document is
 bundled in the app (`reader-html.native.ts`, the same CSP) and never fetched from the
-server. The host-reader `postMessage` protocol is
-the frontend's alone ([the protocol](../frontend/reader.md#the-protocol)). The
-player's service worker (`public/sw.js`) must never answer the document with the app
+server. The host-reader `postMessage` protocol is the frontend's alone
+([the protocol](../frontend/reader.md#the-protocol)). The player's service worker (`public/sw.js`) must never answer the document with the app
 shell, which would boot the whole player inside the reader's frame.
 
 **A change requires:** a new field on the place or the conflict rule changes both
