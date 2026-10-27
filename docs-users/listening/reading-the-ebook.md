@@ -85,7 +85,7 @@ The note names the other device as your server knows it ("On another device" whe
 
 Your place is saved on the device while you're offline and sent to your server once the connection is back: as soon as the app notices your server again, or the next time you open the reader. If another device read further in the meantime, you get the **Jump there?** note above rather than losing either place.
 
-**The first time you open a downloaded book offline** on a device that has no place saved for it yet, the reader can't ask your server where you got to, so it opens at the start. Reading there doesn't move your place on other devices back: once your server can be reached again (or the next time you open the book online), if another device is further along, the reader offers **Jump there?** with **Jump** and **Stay**, as above.
+**The first time you open a downloaded book offline** on a device that has no place saved for it yet, the reader can't ask your server where you got to, so it opens at the start. Reading there doesn't move your place on other devices back: once your server can be reached again (or the next time you open the book online), if your server has a place further along (from another device, or from this one before you signed out), the reader offers **Jump there?** with **Jump** and **Stay**, as above.
 
 ## When an ebook won't open
 

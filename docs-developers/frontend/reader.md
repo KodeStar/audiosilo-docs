@@ -253,14 +253,18 @@ are debounced) and at once on close or when the app goes to the background.
 carries the last server `version` this device **acknowledged** (0 only when no row
 was ever seen).
 
-- An answer that kept **this device's** place is acknowledged at once.
-- An answer that kept **another device's** place is acknowledged only once the open
-  reader has shown it (`adoptServerPlace`): Jump, Stay, or the reader already being
+- An answer that kept **this save** (this device's id, the same cfi and time) is
+  acknowledged at once, and so is this device's own row at a version it had
+  acknowledged (a stale save's echo; its version is left alone). The answer's `seen`
+  flag says so.
+- An answer that kept **a place this device never saw** (another device's, or its own
+  from before its places here were cleared: the device id survives sign-out) is
+  acknowledged only once the open reader has shown it (`adoptServerPlace`): Jump, Stay, or the reader already being
   there. Until then this device's saves stay diverged, so a further place it never
   saw is never moved back; after Stay its next save applies, which is how moving back
   on purpose works.
 - **The offer** (`jumpOffer`, judged against the page on screen): when a save's
-  answer kept another device's row whose place differs from the current one, a
+  answer kept a row this device never saw whose place differs from the current one, a
   non-blocking card says `On {device} you were at {percent}%. Jump there?` with
   Jump (`goto {cfi}`) and Stay. `device_name` is the server's (empty: "On another
   device"). `other_place` is not read in 3b.
@@ -282,8 +286,8 @@ having no client for the connection) and
 `hasLocalEbook` finds the EPUB (in the app, the download's copy or the cache file for
 the current `ebook.size`; on the web, only a download), it opens at the start of the
 book. Its saves carry `base_version: 0` ("saw nothing"), which the server's
-`ResolvePlace` takes as diverged from another device's row, so it keeps that device's
-further place, and the answer to the first save that reaches the server (the queue's
+`ResolvePlace` takes as diverged from any row, this device's own included (signed out
+and back in, its places here cleared), so it keeps the further place, and the answer to the first save that reaches the server (the queue's
 replay while the reader is open, or a save on the next online open) offers Jump there.
 
 ## Still to come

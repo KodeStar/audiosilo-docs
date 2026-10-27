@@ -3054,14 +3054,16 @@ Response `200`:
 
 - **No row stored**: the save applies (version 1).
 - **Diverged**: a row is stored, `base_version` is sent and is not its `version`,
-  and another device (`device_id`) wrote it. The device saved without seeing that
-  row, so the server never moves the place back silently: it keeps the **further**
+  and another device (`device_id`) wrote it, or `base_version` is `0` whatever the
+  device (a device id outlives the places a client kept: signed out and back in, its
+  start must not replace its own place further on). The device saved without seeing
+  that row, so the server never moves the place back silently: it keeps the **further**
   place by `progression` (the save applies when it is further, with a bumped
   version; otherwise the stored row stays, and a tie keeps the stored row) and
   answers the place it did not keep as `other_place`. The web player offers it
   ("On Pixel 8 you were at 60%. Jump there?").
-- **Anything else** (the same device's own queued saves, a save made on the stored
-  version, a save with no `base_version`) is **last-write-wins** exactly as
+- **Anything else** (the same device's own queued saves made on a version it saw,
+  a save made on the stored version, a save with no `base_version`) is **last-write-wins** exactly as
   [`PUT /progress`](#put-apiv1librariesidprogress): the later `updated_at` wins,
   the version breaking a tie. A stale save is not an error: the stored row comes
   back, with no `other_place`. This is how moving back on purpose works: once the
