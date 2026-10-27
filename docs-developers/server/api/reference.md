@@ -172,7 +172,7 @@ on an older one:
 
 | Flag | Gates |
 |---|---|
-| `ebooks` | [the reader](#ebooks-and-the-reading-place): a book's `ebook` field, [`GET /libraries/{id}/ebook`](#get-apiv1librariesidebook) and [`GET`](#get-apiv1librariesidreading-progress)/[`PUT /libraries/{id}/reading-progress`](#put-apiv1librariesidreading-progress). A client offers Read only when it is `true` **and** the book has an `ebook` |
+| `ebooks` | [the reader](#ebooks-and-the-reading-place): a book's `ebook` field, [`GET /libraries/{id}/ebook`](#get-apiv1librariesidebook) and [`GET`](#get-apiv1librariesidreading-progress)/[`PUT /libraries/{id}/reading-progress`](#put-apiv1librariesidreading-progress). A client offers Read only when the book has an `ebook` **and** it is `true` (the player also while it is unknown offline, for a book whose download holds the EPUB; never when `false`) |
 
 `bridge` follows the Bridge rather than a setting, so it can change from one
 request to the next: it is `true` only while a [Bridge](#the-bridge) is paired and its last heartbeat is under two minutes
@@ -2965,9 +2965,10 @@ Range, an `ETag` from its size and mtime, `Last-Modified`. Headers:
 **No `?token=`.** Unlike [`/cover` and `/stream`](#streaming--media), this route
 never reads a token from the URL, and there is no URL token for it of any kind (a
 [cast token](#cast-tokens-as-media-auth) is refused either way). The web player
-fetches the bytes with its bearer header and hands them to its reader document,
-so nothing ever holds a URL that carries a credential. The bytes are exempt from
-the 30 s request timeout (an illustrated EPUB can be tens of megabytes on a slow
+fetches the bytes with its bearer header and hands them to its reader document, and
+the apps download them with the header into a local file they post to their reader
+in chunks, so nothing ever holds a URL that carries a credential. The bytes are
+exempt from the 30 s request timeout (an illustrated EPUB can be tens of megabytes on a slow
 link), but the book lookup before them is not: a lookup past it is a `500`. The
 route stays under the general per-IP rate limit, not the media one.
 

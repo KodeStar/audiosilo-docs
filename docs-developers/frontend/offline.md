@@ -221,8 +221,8 @@ with no network.
   when its **own** signal aborted (`ctrl.signal.aborted`), never by the error's
   text: Android reports a dropped connection as "Software caused connection
   abort", a failure that keeps its files like any other. `remove()` is the
-  user-facing delete: abort + `engine.removeBook` + drop the entry. Files on the server are
-  never touched. Both also add the book to a **session-only decline mark**
+  user-facing delete: abort + `engine.removeBook` + drop the entry. Files on the
+  server are never touched. Both also add the book to a **session-only decline mark**
   (`isDeclined(cid, lib, path)`, a module-level `Set`, never stored), so no
   automatic download fetches a book the listener just cancelled or removed (also
   through "remove a download when you finish the book"). A `download()` with

@@ -36,7 +36,7 @@ Your server notices an ebook at its next library scan, and notices one you remov
 
 Press **Read the ebook** on the book's page, next to the download button (on a phone, on a row of its own). The reader fills the window: the book's title at the top, with the chapter you're in and how far through the book you are under it (*"Chapter 3 · 12%"*), and the text below.
 
-It opens where you left off, on this device or any other. The first time, it opens at the start. A large ebook, or one full of pictures, can take a few seconds to open, and a long chapter a moment to lay out; a spinner shows meanwhile. In the apps, the first time you open a book that isn't downloaded, the app fetches its ebook from your server; after that it keeps a copy on the phone, so opening it again is quicker.
+It opens where you left off, on this device or any other. The first time, it opens at the start. A large ebook, or one full of pictures, can take a few seconds to open, and a long chapter a moment to lay out; a spinner shows meanwhile. In the apps, the first time you open a book that isn't downloaded, the app fetches its ebook from your server; after that it keeps a copy on the device, so opening it again is quicker (until the device clears space, or you sign out of that server).
 
 The reader follows the app's light or dark appearance.
 
@@ -96,7 +96,7 @@ In the apps, if your phone stops the reader to free memory (while you're in anot
 | What it says | What it means |
 |---|---|
 | **Couldn't load the ebook** | The server didn't answer, or the connection dropped while the ebook was loading. Check the connection and press **Try again**. To read with no connection, [download the book](#reading-offline). |
-| **The reader didn't start** | In the web player: the reader didn't start in this browser within 30 seconds. A proxy in front of your server that changes its security headers, or an old browser, can stop it. Press **Try again**, or use another browser (see [Troubleshooting](../troubleshooting.md#the-ebook-reader-doesnt-start)). In the apps: the reader kept stopping, usually for lack of memory; press **Try again** (see [Troubleshooting](../troubleshooting.md#the-ebook-reader-doesnt-start)). |
+| **The reader didn't start** | In the web player: the reader didn't start in this browser within 30 seconds. A proxy in front of your server that changes its security headers, or an old browser, can stop it. Press **Try again**, or use another browser (see [Troubleshooting](../troubleshooting.md#the-ebook-reader-doesnt-start)). In the apps: the reader didn't start within 30 seconds or kept stopping, usually for lack of memory; press **Try again** (see [Troubleshooting](../troubleshooting.md#the-ebook-reader-doesnt-start)). |
 | **This ebook is locked** | The EPUB is protected with DRM, which AudioSilo can't open. Put a DRM-free EPUB in the book's folder instead. |
 | **This ebook can't be opened** | The file isn't an EPUB AudioSilo can read, or it's damaged. In the apps, an ebook larger than 512 MB can't be opened either. |
 | **The ebook isn't on the server any more** | The file was removed or renamed since the last scan. After the next scan the button goes, or comes back if the file did. |

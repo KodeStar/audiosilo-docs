@@ -43,8 +43,9 @@ subresources. The same build writes the app's variant,
 `src/reader/reader-html.native.ts` (generated, prettier- and eslint-ignored, the same
 CSP); the two differ only by esbuild's `__NATIVE__` define (the app's takes its book
 in chunks over the WebView bridge and talks through `window.ReactNativeWebView`).
-The page carries the whole policy as a meta CSP with the script's sha256 (`connect-src 'none'`); the server sends the same policy as a header, hashing
-the served script itself, plus `frame-ancestors 'self'`, which a meta tag can't
+The page carries the whole policy as a meta CSP with the script's sha256
+(`connect-src 'none'`); the server sends the same policy as a header, hashing the
+served script itself, plus `frame-ancestors 'self'`, which a meta tag can't
 set. Expo's web export copies `public/reader.html` to `dist/reader.html`, served as
 `/web/reader.html`.
 
@@ -153,10 +154,10 @@ chunks, ...}` and then the file in **256 KB base64 chunks** (`CHUNK_BYTES`,
 and `length`, encoded natively, never in JS) only once the last one was posted, so
 one piece's base64 is held on this side at a time. The size was measured: on a 25 MB
 book, 256 KB pieces open as fast as 1 and 2 MB ones, at the lowest peak memory (about
-a plain file load's). The reader (`reader/src/chunks.js`, `createAssembly`) allocates one buffer of the
-announced size and refuses, as `unreadable`, a size over 512 MB (`MAX_BOOK_BYTES`)
-or a bad chunk count, a chunk out of order, repeated or extra, data that isn't
-base64, and a book larger or smaller than announced; then it opens the buffer as the
+a plain file load's). The reader (`reader/src/chunks.js`, `createAssembly`)
+allocates one buffer of the announced size and refuses, as `unreadable`, a size over
+512 MB (`MAX_BOOK_BYTES`) or a bad chunk count, a chunk out of order, repeated or
+extra, data that isn't base64, and a book larger or smaller than announced; then it opens the buffer as the
 web reader opens its `ArrayBuffer`. A newer `ready` (the document reloaded) stops
 the running transfer and starts again.
 
@@ -231,8 +232,8 @@ looked up) and `start` get Try again where it can help (`fetch`, `start`);
 capability `ebooks` on every platform: `true`, or still unknown (offline) when the
 book's finished download holds the EPUB (`manifest.ebookUri`). A server that says
 `false` never offers it, downloaded or not. The reader screen applies the same rule.
-The hero shows an outline **Read the ebook** button after the download (its own row on a phone) that
-pushes `readerHref(connectionId, libraryId, book.rel_path)`.
+The hero shows an outline **Read the ebook** button after the download (its own row on
+a phone) that pushes `readerHref(connectionId, libraryId, book.rel_path)`.
 
 ## The reading place
 
@@ -275,8 +276,9 @@ place or says it can't instead of waiting on a spinner. Opening at the server's 
 adopts its version.
 
 **A book whose EPUB is on this device, opened offline with no local place**, is the
-one exception to "never a guessed start". When the lookup's request never reached the
-server (any answer from it, an error status included, still fails the lookup) and
+one exception to "never a guessed start". When the lookup's request got no answer from
+the server (any answer, an error status included, still fails the lookup, and so does
+having no client for the connection) and
 `hasLocalEbook` finds the EPUB (in the app, the download's copy or the cache file for
 the current `ebook.size`; on the web, only a download), it opens at the start of the
 book. Its saves carry `base_version: 0` ("saw nothing"), which the server's

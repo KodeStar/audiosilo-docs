@@ -1110,8 +1110,9 @@ at serve time, `connect-src 'none'`, `frame-ancestors 'self'`, `X-Frame-Options:
 SAMEORIGIN`), not the player's `htmlCSP`. The apps' variant of the document is
 bundled in the app (`reader-html.native.ts`, the same CSP) and never fetched from the
 server. The host-reader `postMessage` protocol is the frontend's alone
-([the protocol](../frontend/reader.md#the-protocol)). The player's service worker (`public/sw.js`) must never answer the document with the app
-shell, which would boot the whole player inside the reader's frame.
+([the protocol](../frontend/reader.md#the-protocol)). The player's service worker
+(`public/sw.js`) must never answer the document with the app shell, which would boot
+the whole player inside the reader's frame.
 
 **A change requires:** a new field on the place or the conflict rule changes both
 repos (and is the same rule listening progress will reuse); the reader document's

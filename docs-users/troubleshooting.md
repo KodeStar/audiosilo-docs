@@ -462,7 +462,7 @@ See [Reading the ebook](listening/reading-the-ebook.md#which-books-have-it).
 
 If the reader says *"The reader didn't start"* after about 30 seconds, the browser didn't run the reader's page. The usual cause is a **reverse proxy that adds its own security headers**: the reader is a page of its own that the web player shows inside itself, and your server sends it with headers that allow exactly that (`X-Frame-Options: SAMEORIGIN` and its own `Content-Security-Policy`). A proxy that replaces them with `X-Frame-Options: DENY` or a site-wide policy stops it. Let the proxy pass the server's headers through for `/web/reader.html`. A very old browser can't run it either: try a current one.
 
-In the iOS and Android apps a proxy's headers don't matter (the app's reader is part of the app). There, *"The reader didn't start"* means the reader stopped, usually because the phone ran short of memory, more than a few times in a row. Press **Try again**, and if it keeps stopping, close some other apps first: a large ebook, or one full of pictures, needs a lot of memory.
+In the iOS and Android apps a proxy's headers don't matter (the app's reader is part of the app). There, *"The reader didn't start"* means the reader didn't start within 30 seconds or stopped more than a few times in a row, usually because the phone ran short of memory. Press **Try again**, and if it keeps stopping, close some other apps first: a large ebook, or one full of pictures, needs a lot of memory.
 
 ## Downloads
 
