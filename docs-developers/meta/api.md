@@ -779,8 +779,9 @@ answers with what it holds and nothing more:
   the catalogue records no new credits, so it lists that work's translators,
   which may differ from LibriVox's: the project's other translators are not
   listed ([credits not recorded](contributing-data.md#credits-not-recorded)), and
-  a listed translator carries the project's LibriVox id and years only when the
-  project credits them too.
+  a listed translator's id and years are whatever their person record holds:
+  stamped by this project when it credits them too, by another project that
+  credited them, or none.
 - `^` on `author` is the documented **prefix** match; LibriVox's own
   implementation matches the end of the name.
 - A section's `id` is `""`, its `section_number` its 1-based position (LibriVox

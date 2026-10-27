@@ -669,13 +669,16 @@ order, after LibriVox's trailing "(version 2)" title marker is stripped:
    `differently-spelled-title`, or `several-works` when more than one work
    matches. It is **never attached**: the qualifier may be an edition or a
    subtitle, but just as well a volume ("King in Yellow (part 1)"), which
-   only a person can tell apart. A "Part N" outside brackets ("Anna Karenina,
-   Book 1") is not a qualifier, and a mostly non-Latin title (below) skips this
-   rule.
+   only a person can tell apart. Only a work whose authors fully agree holds
+   the project back: one whose authors only partly agree, or agree only
+   through the catch-all person, is passed over here, leaving the project to
+   rule 4. A "Part N" outside brackets ("Anna Karenina, Book 1") is not
+   a qualifier, and a mostly non-Latin title (below) skips this rule.
 4. **Otherwise a new work.** A same-titled work by an entirely **different**
    author is a different book (think of every "Poems"), so the project gets a
-   work of its own rather than a skip. A work whose authors only **partly**
-   agree with the project's is `author-unmatched`.
+   work of its own rather than a skip. A work under the project's own title
+   (rule 2's spelling) whose authors only **partly** agree with the project's
+   is `author-unmatched`, decided before rule 3 is tried.
 
 **Mostly non-Latin titles.** A title that slugs to nothing, or in which more than
 half of the letters are not Latin script (digits, punctuation and spaces are not
