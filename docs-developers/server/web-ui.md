@@ -549,8 +549,9 @@ CSP-sensitive work against a real build served by Go. The console's own gate is
   it is in flight (`useIssueActions().fixing`). Rows select into a floating bulk bar, which acts only on
   the selected books still listed (one fixed or ignored on its own row has
   left); its bulk "Read again" (`useIssueActions().rescanMany`) re-reads two
-  books at a time, since each is a synchronous re-read and firing them all at
-  once would trip the server's per-client rate limit. "Show ignored" lists the
+  books at a time, each a synchronous re-read (it was capped so a large selection
+  didn't trip the per-address rate limit, which a signed-in console's requests
+  no longer spend from). "Show ignored" lists the
   ignored books (`?issue_ignored=true`). Duplicates
   (`duplicates.tsx`) render each group side by side from
   `GET /admin/issues/duplicates`, the copy worth keeping first, with "They're

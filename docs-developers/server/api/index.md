@@ -387,6 +387,21 @@ with the same kind of opaque `cursor` / `next_cursor`: see
 Other list endpoints (`/search`, `/books/recent`, a single book's history) are
 single-shot with a `limit` and no pagination.
 
+**The player's book lists are answered from a cache between writes**
+(`api/listcache.go`, server#243). `GET /libraries/{id}/books` (a books library),
+`GET /books/recent` and `GET /search` keep their encoded answer, keyed on the
+path, the raw query string and the caller's scopes, under the database's write
+generation (`store.DB.Generation`, which moves after every `ExecContext` and
+every `WithTx` has finished, a failed or no-op write included). The generation is
+read before the request's first read, so an answer is never stored under a
+generation newer than its data, and any write empties the cache: a progress
+save or a token's last-seen touch too, so it saves work only between writes and
+never decides what is current. It holds 8 MiB (counting each answer and its
+entry), at most 1 MiB an answer, least recently used first out. Only an answer
+that is a pure function of the database, the query and the scopes may use it: a
+list book carries no per-listener field, and a handler that adds one must leave
+the cache. Nothing on the wire changes.
+
 ## Capability flags - gate your features
 
 `GET /api/v1/server` is public and returns the server's capabilities:
@@ -550,18 +565,30 @@ nothing; with it, an absent date is unknown or not set.
 
 ## Rate limiting
 
-Two limiter mechanisms guard the API (`internal/api/ratelimit.go`), keyed by
-client IP except for authenticated media. Tripping any of them returns **429**
-with an error envelope.
+Two limiter mechanisms guard the API (`internal/api/ratelimit.go`): token
+buckets, keyed by client IP until a request's credential is proved and by the
+credential after, and failure lockouts and attempt caps keyed by IP. Tripping
+any of them returns **429** with an error envelope.
 
 | Limiter | Scope | Policy |
 |---|---|---|
-| General token bucket | every request except static files and media | ~50 requests/second, burst 200, per IP (`rate limit exceeded`) |
-| Media token bucket | `GET /libraries/{id}/cover`, `GET /libraries/{id}/stream`, `GET /libraries/{id}/meta/cover` | ~200 requests/second, burst 2000, per credential (a cast token has a bucket of its own); a failed authentication counts against the general bucket ([details](../auth-and-security.md#rate-limiting)) |
+| Address token bucket | public routes, every `/auth/*` route (with or without a token), the Bridge's `/bridge/*`, a request whose token is missing or refused, a demo account's requests; static files are not counted | ~50 requests/second, burst 200, per IP (`rate limit exceeded`) |
+| Credential token bucket | every other authenticated API request (admin routes included), once its token is proved | ~50,000 requests/second, burst 100,000, per session or API key; past it the address is charged too |
+| Media token bucket | `GET /libraries/{id}/cover`, `GET /libraries/{id}/stream`, `GET /libraries/{id}/meta/cover` | ~200 requests/second, burst 2000, per credential (a cast token has a bucket of its own) |
 | Login lockout | `POST /auth/login` | 10 *failed* attempts per 15 min per IP; a success resets the counter |
 | Redeem lockout | `POST /auth/redeem`, `POST /bridge/pair` (one shared counter) | 10 *failed* attempts per 15 min per IP; a success resets |
 | Demo cap | `POST /demo/session` | at most 5 demo sessions per IP per 15 min, metered at admission (failures count too) |
-| Account mutations | `POST /auth/password`, `POST /auth/recovery`, `/auth/tokens` (create/list/revoke) | at most 10 attempts per IP per 15 min, metered at admission |
+| Account mutations | `POST /auth/password`, `POST /auth/recovery`, `/auth/tokens` (create/revoke; listing is not counted) | at most 10 attempts per IP per 15 min, metered at admission |
+
+The three token buckets' rates are `rate_limit.*` in the server's
+[configuration](../configuration.md#rate-limits-rate_limit) (these are the
+defaults). An authenticated request is refused at once while its address's
+bucket is empty, and a failed authentication on any route charges that bucket,
+so guessing tokens is bounded by the address limit
+([details](../auth-and-security.md#rate-limiting)). Several clients behind one
+address (a household behind NAT, a reverse proxy) each have their own
+credential bucket, so a whole library loading in the web player is not
+throttled.
 
 Podcast discovery and OPML transfer add their own per-user budgets on top,
 answered `429` with a `code` and `Retry-After`; see

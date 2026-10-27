@@ -108,7 +108,9 @@ Opens SQLite via `modernc.org/sqlite` (pure Go - the binary is CGO-free and
 cross-compiles anywhere) and applies the embedded, append-only migrations in
 `internal/store/migrations/`. `store.DB` routes reads and writes to separate
 pools (single-connection writer, read-only reader pool over WAL) and provides
-`WithTx` with slow-transaction logging. See [Data model](data-model.md) for the
+`WithTx` with slow-transaction logging, and `Generation`, the write generation
+that moves after every write has finished (the API's
+[list cache](api/index.md#pagination) keys on it). See [Data model](data-model.md) for the
 schema and the SQLite rationale.
 
 ### `internal/auth`
@@ -141,7 +143,8 @@ Two filesystem subsystems: `fsview.go` (instant, index-free directory browsing
 via `BrowseFS`, plus `SafeJoin` - the path-traversal gate every user-derived
 filesystem access must pass) and `scanner.go` (the background scanner that
 builds the index: discovery, book detection, metadata enrichment, chapter
-normalization, move detection, pruning). See [Scanner](scanner.md).
+normalization, move detection, pruning; `scanread.go` reads several files at
+once while the index is written in order). See [Scanner](scanner.md).
 
 ### `internal/metadata`
 
@@ -225,7 +228,8 @@ consulted by `pkg/launcher.resolveTools` after all local resolution fails.
 
 HTTP transport **only**: routing (`api.go` is the full route table), middleware
 (auth, CORS, security headers, real-IP, timeouts), rate limiting
-(`ratelimit.go`), and the `handlers_*.go` files. See the
+(`ratelimit.go`: per address, then per credential), the book lists' answer cache
+(`listcache.go`), and the `handlers_*.go` files. See the
 [API introduction](api/index.md) and [reference](api/reference.md).
 
 ### `internal/server`
