@@ -1249,7 +1249,10 @@ handler, so it is never served under the player's policy (and the player's reade
 route is [`/read`](../frontend/reader.md#the-reader-document)). An export without `reader.html` (an older web
 build) is a `404`, never the app shell, and the player's service worker never
 answers it with the shell either. The player's own `htmlCSP` is unchanged by all
-this (`TestHTMLCSPCastSender` still pins it; `TestReaderCSP` pins this one).
+this (`TestHTMLCSPCastSender` still pins it; `TestReaderCSP` pins this one). The
+iOS and Android apps never fetch this document: they bundle their own variant of it,
+with the same meta CSP, and load it into a WebView
+([the app host](../frontend/reader.md#the-app-host)).
 
 ### The `embedplayer` build tag
 

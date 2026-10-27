@@ -1,12 +1,12 @@
 ---
 title: Offline & PWA
-description: "Downloads on native (expo-file-system) and web (Cache API + service worker), the manifest/registry store, the offline companion (community metadata kept with a download), failures that keep finished files, keeping the next books ready, the Downloads page, playing local files, and what the PWA layer actually covers offline."
+description: "Downloads on native (expo-file-system) and web (Cache API + service worker), the manifest/registry store, the ebook in a download, the offline companion (community metadata kept with a download), failures that keep finished files, keeping the next books ready, the Downloads page, playing local files, and what the PWA layer actually covers offline."
 ---
 
 Offline support has two halves that meet in the middle:
 
-- **Downloads** (`src/downloads/`) - save a book's audio files + cover +
-  metadata locally, per platform.
+- **Downloads** (`src/downloads/`) - save a book's audio files + cover + its
+  ebook (when it has one) + metadata locally, per platform.
 - **The PWA layer** (`public/sw.js`, `public/manifest.json`,
   `src/lib/register-sw{,.web}.ts`) - on web, the service worker is what makes
   both the app shell *and* the downloaded media playable with no network.
@@ -22,7 +22,12 @@ by Metro exactly like the playback service (`engine.native.ts` /
 `engine.web.ts`; `engine.ts` is an unsupported stub for type resolution):
 
 - `downloadFile(connectionId, libraryId, path, fileName, url, onProgress?,
-  signal?)` → local URI
+  signal?, headers?)` → local URI. `headers` go with the request only, never
+  stored: the ebook's `Authorization` (its route takes no `?token=`).
+- `readFile?(localUri)` - a stored file's bytes (`ArrayBuffer`), or null when it is
+  missing or unreadable; web-only, read straight from the media cache (not through
+  the service worker). The web reader opens a downloaded book's ebook with it; the
+  app's reader reads its file in chunks itself ([The ebook reader](reader.md#the-app-host)).
 - `fileExists(localUri)`
 - `verify?(localUri)` - *can this file actually be played back offline right
   now?* Stronger than existence; web-only.
@@ -70,6 +75,7 @@ under the **document directory** (persistent, not cache-evicted):
 <Paths.document>/downloads/<connectionId>/<libraryId>/<slug(rel_path)>/
     0.mp3, 1.mp3, …      # fileName(i, relPath): file index + original extension
     cover.jpg
+    book.epub            # the book's ebook, when it has one (optional)
 ```
 
 `fileName` keeps the file's own extension, with one exception: **on iOS** a
@@ -80,9 +86,10 @@ from a server without the remux, won't play on iOS whatever it is named.)
 Android's Media3 sniffs the bytes and the web plays by `Content-Type`, so both
 keep `.mka`.
 
-`slug()` is the sanitized tail of the book's `rel_path` (≤ 40 chars) plus a
+`slug()` (`pathSlug` in `src/lib/path-slug.ts`, shared by both engines and the
+reader's EPUB cache) is the sanitized tail of the book's `rel_path` (≤ 40 chars) plus a
 djb2 hash of the full path - readable *and* collision-proof. Downloads run
-through `File.createDownloadTask(url, dest, { onProgress, signal })`, so they
+through `File.createDownloadTask(url, dest, { onProgress, signal, headers })`, so they
 report byte progress and honor an `AbortController`. `verify`/`probe` are
 omitted: on native disk, presence implies playability.
 
@@ -148,6 +155,8 @@ the playback store's download of the book you start; or `keep-ahead`), and the
 **manifest** - the offline source of truth: the full `Book`,
 the `ChaptersResponse`, the ordered `files` (`relPath → localUri`, plus the
 `bytes` written, absent on entries saved before it was recorded), `coverUri`,
+`ebookUri?` (the book's `book.epub`, Bridge Phase 3b-2; absent when the book has no
+`ebook`, when it couldn't be fetched, and on downloads made before it existed),
 `savedAt`. The manifest is everything the player needs to build a queue and render
 with no network.
 
@@ -176,11 +185,16 @@ with no network.
   instead of downloading against the wrong server.
 - **Run** (`runOne`): file specs come from `bookFileSpecs` in
   `src/playback/book-queue.ts`, so **download order ≡ play order**. The cover
-  downloads first (optional - a cover failure is swallowed, but an abort still
-  cancels the whole book), then each audio file via
+  downloads first, then each audio file via
   `api.streamUrl(libraryId, path, true)` (the `download=1` variant), patching
-  `progress`/`bytes` per chunk. `totalBytes` is the summed file sizes when
-  every spec knows its size, else 0.
+  `progress`/`bytes` per chunk, then the ebook when `book.ebook` is set
+  (`api.ebookRequest`, the `Authorization` header, saved as `book.epub`). The
+  ebook comes after the audio so an attempt that fails on the audio never
+  fetches it, and a retry fetches it once. The cover and the ebook are **extras**:
+  optional (a failure is swallowed and the book saves without it, so a failed
+  ebook never fails the audio download), but a cancel during one still cancels the
+  whole book. `totalBytes` is the summed audio file sizes when every spec knows its
+  size, else 0.
 - **Verify before claiming success**: if the engine has `verify` (web) and the
   first file can't actually be served offline, the entry is marked `error`
   with a "reload the app, then retry" message - **keeping the cached bytes**
@@ -203,7 +217,10 @@ with no network.
   app closed mid-download). The Downloads page words each one for
   the listener; entries saved before classification read as `unknown`.
 - **Cancel and remove**: a **cancel** (`cancel()` aborts the in-flight
-  controller) removes the files *and* the entry; `remove()` is the user-facing
+  controller) removes the files *and* the entry. A run counts as cancelled only
+  when its **own** signal aborted (`ctrl.signal.aborted`), never by the error's
+  text: Android reports a dropped connection as "Software caused connection
+  abort", which is a failure that keeps its files like any other; `remove()` is the user-facing
   delete: abort + `engine.removeBook` + drop the entry. Files on the server are
   never touched. Both also add the book to a **session-only decline mark**
   (`isDeclined(cid, lib, path)`, a module-level `Set`, never stored), so no
@@ -285,14 +302,15 @@ the car's headless task) reloads the registry and prunes it:
    dev rebuilds. A persisted URI then goes stale even though the file is still
    on disk at the same relative location; without relocation the existence
    check below fails and the book is dropped **and deleted**. `relocateEntry`
-   rebuilds every file URI (and `cover.jpg`) from the live root via
+   rebuilds every file URI (and `cover.jpg`, and `book.epub` when the manifest has
+   an `ebookUri`) from the live root via
    `engine.localUri(connectionId, libraryId, path, name)`, where `name` is the
    file's **own saved name**. `storedName` reads it from the stored URI when
    that is `<i>` plus an extension, else it falls back to `fileName(i, relPath)`,
    so a download saved under an older naming rule, such as an iOS 2.4.x
    `0.mka` (`fileName` now says `0.mp3`), still resolves, and `playableName`
    below can rename it. This only works because the on-disk filename scheme
-   is owned by the store (`storedName`/`fileName` + `cover.jpg`) and
+   is owned by the store (`storedName`/`fileName` + `COVER_FILE`/`EBOOK_FILE`) and
    `engine.localUri` computes the same deterministic layout - **keep those two
    in agreement**.
 
@@ -610,6 +628,7 @@ right file per platform.
 | Playing **downloaded** books, including seeking | `_offline/` URLs + Range slicing from the media cache |
 | Book/chapter metadata for downloaded books | manifests seeded into the React Query cache on hydrate |
 | Progress while offline | the offline replay queue + durable mirror in `src/playback/progress-sync.ts` |
+| Reading a **downloaded** book's ebook | the reader host's `engine.readFile` on its `book.epub` in the media cache; the place in `src/reader/reading-progress.ts`'s queue + mirror |
 
 Not covered: live API data (browse/search/covers for non-downloaded books) -
 the SW deliberately never caches API responses; screens render their

@@ -136,11 +136,12 @@ every axis:
 
 **Not the ebook** (Bridge Phase 3b). `GET /libraries/{id}/ebook` takes no URL token
 of any kind, and there is no `reader` token kind: the web player fetches the EPUB
-with its bearer header and posts the bytes to its reader document, and the apps'
-reader will download it with the header into a local file. Nothing needs a URL that
-carries a credential, so none exists. Should the apps' WebView turn out unable to
-read a local file, a narrow `reader` kind on `cast_grants` (its own kind, `/ebook`
-only, minutes long) is the planned fallback, to be reviewed as this one was.
+with its bearer header and posts the bytes to its reader document, and the apps
+download it with the header into a local file and post it to their reader's WebView
+in chunks (Phase 3b-2; the WebView reads no file and makes no request). Nothing
+needs a URL that carries a credential, so none exists. The `reader` token kind once
+planned as a fallback for the apps was dropped: the apps need no server change
+([the app host](../frontend/reader.md#the-app-host)).
 
 Only the SHA-256 hash is stored. Any refusal is the uniform `401`. An API key may
 not mint one (`denyAPIKey`, the containment rule above: a key never mints another

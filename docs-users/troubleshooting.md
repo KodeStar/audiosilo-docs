@@ -447,17 +447,22 @@ untouched (see [Covers](./admin/books.md#covers)).
 
 ### A book has no Read the ebook button
 
-**Read the ebook** shows only in the **web player** (the apps' reader comes in a later update), only on a server that has the reader, and only for a book with one EPUB beside its audio. Check that:
+**Read the ebook** shows only on a server that has the reader, only for a book with one EPUB beside its audio, and in the iOS and Android apps only once the app is up to date (an older version has no reader). Check that:
 
 - the folder holds **one** `.epub`, not two or more (with several, none is used);
 - for a single-file book, the EPUB has the **same name** as the audio file;
-- a scan has run since you added it: click **Rescan** on the library in the admin console.
+- a scan has run since you added it: click **Rescan** on the library in the admin console;
+- in the app, you have its latest version from the App Store or Google Play.
+
+Offline, the reader needs the ebook on the device: download the book (one downloaded before ebooks were part of downloads has none, so download it again); see [Reading offline](listening/reading-the-ebook.md#reading-offline).
 
 See [Reading the ebook](listening/reading-the-ebook.md#which-books-have-it).
 
 ### The ebook reader doesn't start
 
 If the reader says *"The reader didn't start"* after about 30 seconds, the browser didn't run the reader's page. The usual cause is a **reverse proxy that adds its own security headers**: the reader is a page of its own that the web player shows inside itself, and your server sends it with headers that allow exactly that (`X-Frame-Options: SAMEORIGIN` and its own `Content-Security-Policy`). A proxy that replaces them with `X-Frame-Options: DENY` or a site-wide policy stops it. Let the proxy pass the server's headers through for `/web/reader.html`. A very old browser can't run it either: try a current one.
+
+In the iOS and Android apps a proxy's headers don't matter (the app's reader is part of the app). There, *"The reader didn't start"* means the reader stopped, usually because the phone ran short of memory, more than a few times in a row. Press **Try again**, and if it keeps stopping, close some other apps first: a large ebook, or one full of pictures, needs a lot of memory.
 
 ## Downloads
 

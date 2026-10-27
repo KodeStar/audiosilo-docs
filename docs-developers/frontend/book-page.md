@@ -111,7 +111,7 @@ description when there is one.
 | Control | Gate | Notes |
 |---|---|---|
 | `DownloadControl` | - | an outline button per state: Download for offline, "N% · Cancel" with a `ProgressRing`, **Downloaded** (a menu with the size and Remove download), Retry download; disabled where this device can't keep the book |
-| Read the ebook | `canRead`: capability `ebooks`, `book.ebook`, the web only (Bridge Phase 3b-1) | an outline button after the download (its own row when stacked) that pushes `readerHref` to the `/read` modal; see [The ebook reader](reader.md) |
+| Read the ebook | `canRead`: capability `ebooks` and `book.ebook`, every platform (Bridge Phase 3b) | an outline button after the download (its own row when stacked) that pushes `readerHref` to the `/read` modal; see [The ebook reader](reader.md) |
 | Up next menu | `queue` | Play next (at position 0, with an Undo that puts it back where it was); Add to the end / Remove from Up next (`useQueueActions`) |
 | Favourite | - | ink, never pink |
 | Add to collection | `collections`, not stacked | the book menu's dialog; when stacked it is the menu's own item instead |

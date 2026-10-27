@@ -527,7 +527,7 @@ Bridge Phase 3b added one more, always `true` on a server that has it:
 
 | Flag | Gates |
 |---|---|
-| `ebooks` | the reader: a book's [`ebook`](reference.md#get-apiv1librariesidbooks) field, its bytes at [`GET /libraries/{id}/ebook`](reference.md#get-apiv1librariesidebook) and the reader's place at [`/libraries/{id}/reading-progress`](reference.md#get-apiv1librariesidreading-progress). The player offers Read only when it is `true` and the book has an `ebook` (and, until the apps' reader lands, only on the web) |
+| `ebooks` | the reader: a book's [`ebook`](reference.md#get-apiv1librariesidbooks) field, its bytes at [`GET /libraries/{id}/ebook`](reference.md#get-apiv1librariesidebook) and the reader's place at [`/libraries/{id}/reading-progress`](reference.md#get-apiv1librariesidreading-progress). The player offers Read only when it is `true` and the book has an `ebook`, on the web and in the apps |
 
 Then each [managed module](../modules.md) adds one flag, named after the module. A
 module ships off and an admin turns it on in the console's Settings > Modules, so the
