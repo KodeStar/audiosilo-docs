@@ -612,10 +612,10 @@ each selected project:
   is not recorded twice; the run warns about both. A name that slugs to nothing
   lands on the catch-all person, which is never given an id. An author's or
   translator's `dob` / `dod` become the person's `birth_year` / `death_year`
-  only when LibriVox states a plain year (`1883`, `-428`, `428 BC`), and only
-  when the person states neither yet: a year another source or a hand edit wrote
-  is never overwritten, and a pair whose death precedes its birth is dropped
-  whole.
+  as the run records that person's LibriVox author id, only when LibriVox states
+  a plain year (`1883`, `-428`, `428 BC`), and only when the person states
+  neither yet: a year another source or a hand edit wrote is never overwritten,
+  and a pair whose death precedes its birth is dropped whole.
 - `copyright_year` is written only when LibriVox states a year (its `0` means
   unstated); `url_text_source` becomes `links.text` when it is `https://`.
 - Genres map onto the vocabulary only where a counterpart is evident; LibriVox's
@@ -667,9 +667,9 @@ id is already catalogued, so it writes nothing.
 #### The worklist
 
 A match the rules cannot settle is **never guessed**: the project is skipped and
-listed in the import report's worklist (printed by `metaimport librivox import`,
-not counted among the ordinary skips), one line per project with its id, title,
-authors, a reason code and the catalogued works involved:
+listed in the import report's worklist (printed by `metaimport librivox import`),
+one line per project with its id, title, authors, a reason code and the
+catalogued works involved:
 
 ```
 librivox worklist: 2 projects skipped for a person to resolve (re-import the ids once settled):
@@ -682,11 +682,14 @@ librivox worklist: 2 projects skipped for a person to resolve (re-import the ids
 | `several-works` | two or more catalogued works qualify under rule 2 |
 | `author-unmatched` | a work carries the title but its authors only partly agree with the project's, or agree only through the catch-all person (rule 1) |
 | `differently-spelled-title` | the duplicate-identity guard holds the book under a title rule 2 does not read as the same, such as one with a subtitle |
-| `fallback-slug-taken` | a non-Latin title's `librivox-<project id>` slug is already used |
+| `fallback-slug-taken` | a non-Latin title's `librivox-<project id>` slug is already held by another record, or retired |
 
 Once a person has settled the work (merged the duplicates, fixed the credit),
-re-importing the project's id lands it. `--conflicts` rows for these projects
-carry `librivox_id`, since they have no ASIN.
+re-importing the project's id lands it. A `differently-spelled-title` project is
+also the guard's ordinary skip: it is counted among the run's duplicate-identity
+skips and, with `--conflicts`, writes that guard's `work_identity` row, which
+carries `librivox_id` since a LibriVox row has no ASIN. The other three reasons
+appear on the worklist alone.
 
 Known gap: an author spelled differently from the catalogue ("Lev Tolstoy" for
 "Leo Tolstoy") is not the same author to these rules, so the project still

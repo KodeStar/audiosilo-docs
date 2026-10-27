@@ -655,9 +655,9 @@ answer, such as `52`, not its catalogue page slug) and resolves the one
 recording that carries it. It is read only when
 neither `asin` nor `isbn` is given, so a request carrying an ASIN keeps the
 lookup it always was. A value that is not a positive integer is a 400
-(`librivox_id: "x" is not a LibriVox project id`); against an artifact older than
-`schema_version` 8 every `librivox_id` is a 404, since it holds no LibriVox
-recording.
+(`librivox_id: "x" is not a LibriVox project id`), on any artifact; against an
+artifact older than `schema_version` 8 every well-formed `librivox_id` is a 404,
+since it holds no LibriVox recording.
 
 ## The LibriVox layer
 
@@ -717,11 +717,11 @@ holds every LibriVox recording and is what the feed reads.
 |---|---|
 | `id` | one LibriVox project id; not a positive integer is a 400 |
 | `since` | a UNIX time: the projects that **reached the mirror** on or after that day (below); not an integer is a 400 |
-| `title` | the work's title, matched exactly and case-insensitively; a leading `^` makes it a prefix match |
-| `author` | an author's **last name** (the last word of the stored name), exact and case-insensitive, or a prefix with a leading `^`. A translator never matches |
+| `title` | the work's title, matched exactly and case-insensitively (ASCII letters only, as SQLite folds case); a leading `^` makes it a prefix match |
+| `author` | an author's **last name** (the last word of the stored name), exact and case-insensitive (ASCII letters only), or a prefix with a leading `^`. A translator never matches |
 | `genre` | a LibriVox genre name the importer maps (`Science Fiction`) or a genre of this project's vocabulary (`science-fiction`), case-insensitive, or a prefix with `^` |
 | `extended` | `1` adds `url_iarchive`, `sections`, `genres` and `translators` |
-| `coverart` | `1` adds `coverart_jpg`, `coverart_pdf` and `coverart_thumbnail` |
+| `coverart` | `1` adds `coverart_jpg` (`null` when the recording has no cover URL), `coverart_pdf` and `coverart_thumbnail` |
 | `fields` | keep only these top-level fields: `{id,title}`, a comma list, or repeated as `fields[]` |
 | `limit` | default **50**, at most **500**. Over 500 is a **400** (as LibriVox answers); empty or `0` is the default |
 | `offset` | matching projects to skip; not a non-negative integer is a 400 |
@@ -732,7 +732,8 @@ A flag is off when empty or `0` and on otherwise, as LibriVox's PHP reads it.
 Results are ordered by project id. A malformed parameter is a 400 with the usual
 `{"error": "..."}` envelope. **No result** is LibriVox's own **404**,
 `{"error": "Audiobooks could not be found"}`, which is also every answer of an
-artifact older than `schema_version` 8.
+artifact older than `schema_version` 8 to a well-formed request (a malformed
+parameter is still the 400).
 
 **`since` means "reached the mirror since".** LibriVox compares `since` with the
 day it catalogued a project; the mirror compares it, at the same day
@@ -747,7 +748,8 @@ day its tranche was imported).
 `{"books": [...]}`, each book in LibriVox's field names, with values as strings
 where LibriVox sends strings (ids, years, counts, `playtime`):
 `id`, `title`, `description`, `url_text_source`, `language` (LibriVox's language
-name, such as `English`), `copyright_year` (`"0"` when unstated, as LibriVox
+name, such as `English`; the stored language code when no LibriVox name is
+known for it), `copyright_year` (`"0"` when unstated, as LibriVox
 sends it), `num_sections`, `url_rss`, `url_zip_file`, `url_project`,
 `url_librivox`, `url_other`, `totaltime` (`H:MM:SS`), `totaltimesecs` (an
 integer) and `authors[]` (`{id, first_name, last_name, dob, dod}`), plus the
@@ -763,30 +765,32 @@ answers with what it holds and nothing more:
 - `description` is **always `""`**: LibriVox's descriptions are often quoted from
   elsewhere and are never imported. `url_project` and `url_other` are `""`;
   `coverart_pdf` and `coverart_thumbnail` are `null`.
-- `title` is the **work's** title. LibriVox's `(version N)` marker is not stored,
-  and a project the importer attached to an existing work whose title differs by
-  a leading article or punctuation shows the catalogue's spelling.
+- `title` is the **catalogue work's** title, so a project attached to an
+  existing work reads in that work's spelling and case, without LibriVox's
+  `(version N)` marker (which numbers projects, not works, and is not stored).
 - `genres` are this project's vocabulary values (`science-fiction`), never
   LibriVox's taxonomy verbatim, each with an empty `id`. The `genre` parameter
   accepts either spelling.
 - `authors` and `translators` are the work's: an author's `first_name` /
   `last_name` are the stored name split at its last word, and `dob` / `dod` are
-  years or `""` (LibriVox's `alive` is not a year). Translators are work-level
-  credits, so two LibriVox translations of one work list each other's
-  translators.
+  years or `""` (LibriVox's `alive` is not a year). Translators are the work's
+  translator credits, not the project's: a project attached to a work already in
+  the catalogue records no new credits, so it lists that work's translators,
+  which may differ from LibriVox's and carry no LibriVox id or years.
 - `^` on `author` is the documented **prefix** match; LibriVox's own
   implementation matches the end of the name.
-- A section's `id` is `""`, its `section_number` its 1-based position, its
-  `file_name` `null` (`listen_url` names the file), and its `language` the
-  project's.
+- A section's `id` is `""`, its `section_number` its 1-based position (LibriVox
+  numbers some projects from 0), its `file_name` `null` (`listen_url` names the
+  file), and its `language` the project's language (LibriVox sometimes states a
+  different one per section).
 - Per-section readers are not stored: a recording with **one** narrator names
   that reader on every section, a recording read by several names none.
 - `totaltimesecs` is the sum of the sections' playtimes (the runtime when a
   recording has no sections).
 
 Everything else (the ids, the language name, `copyright_year`, the URLs, the
-section titles, files and playtimes, the author and translator ids and years) is
-LibriVox's value as the mirror stored it.
+section titles, files and playtimes, the author ids and years) is LibriVox's
+value as the mirror stored it.
 
 ## Coverage endpoints
 
@@ -956,7 +960,9 @@ wants far more, and its route is the
 [release artifact](overview.md#release-artifacts). A rate of `0` turns the
 limit off (a private metaserve on the same host or LAN as its server can outrun
 any sane limit). A negative or non-finite rate, or a burst under 1 while the
-limit is on, is **refused at startup** rather than defaulted.
+limit is on, is **refused at startup** rather than defaulted. (An environment
+value that does not parse as a number at all, such as `METASERVE_RATE_LIMIT=off`,
+is reported on stderr and the default is used.)
 
 **Past the limit** a client gets **429** with `Retry-After` (whole seconds),
 `Cache-Control: no-store` and the error envelope
@@ -970,8 +976,11 @@ that long before it retries.
 its **/64** (one subscriber is routinely handed a whole /64, so the full address
 would be a fresh bucket per request). Only when the connection comes from one of
 `--trusted-proxy` does metaserve read `X-Forwarded-For`, taking the rightmost
-entry that is not itself a trusted proxy; a forwarded header from anywhere else
-is a value the client chose and is never read.
+entry that is not itself a trusted proxy (an entry may carry a port or brackets).
+An entry that is not an address ends the walk, and a request whose forwarded
+entries are all trusted, or that carries none, counts as the proxy itself. A
+forwarded header from anywhere else is a value the client chose and is never
+read.
 
 :::warning[Behind a reverse proxy, name it]
 Without `--trusted-proxy` every request through a proxy counts as the proxy, so
@@ -992,8 +1001,11 @@ day), or `public, max-age=60` on the searches (`/api/v1/search`,
 `works/search`, `people/search`, `series/search`, both `/abs` provider routes)
 and `works/match`, which a reader expects to track the search box. A route that
 states its own keeps it: the [watch feeds](#caching) and the
-[OpenAPI document](#apiv1openapijson) (`max-age=3600`). Every other status (an
-error, a 429, a 503) is left uncacheable (`internal/serve/cache.go`).
+[OpenAPI document](#apiv1openapijson) (`max-age=3600`). Every other status
+gets no default (`internal/serve/cache.go`): an error or a 503 carries no
+`Cache-Control`, a 429 carries `no-store`, and only the answers whose handler
+states one keep it (a retired slug's 301 and a watch feed's 304, both
+`max-age=3600`).
 
 ## Deadlines, security headers, and reverse proxies
 
