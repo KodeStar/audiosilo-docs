@@ -189,6 +189,44 @@ is not signed out shows "Couldn't load libraries from &lt;server&gt;."
 (`library.list.loadServerLibrariesError`) with a Retry that refetches only that
 server's list (`useLibrariesAll().retryServer(connectionId)`).
 
+### The startup cache (web)
+
+`src/api/startup-cache.ts` keeps the answers the first screens paint from, so
+a reload of the web player paints at once and asks again behind it (a "stale
+while revalidate" start). Without it a reload waited for `/server`, the
+libraries and the first page of books before a single cover was drawn.
+
+- **What is kept** (`isStartupQuery`): `/server`, the libraries, favourites,
+  the queue, collections, the listening goal, the household, the author,
+  narrator and series lists, Home's shelves and cards (Recently added, Continue
+  listening, the Now card's and This week's ranges) and, of the whole-library
+  list (`useWholeLibrary`, the one the Library grid paints from), only its
+  first page. Never a book's detail or anything per book; a new first-screen
+  query joins the list only if it is small.
+- **Restore.** `provider.tsx` calls `restore(queryClient, { dropOnError })` at
+  module load, before anything renders: each kept answer goes into the query
+  cache invalidated (a query already there is left alone), so it shows until
+  the new one lands. Each is asked again by its first observer, also one with
+  `refetchOnMount: false` (a tile's saved progress, Up next), which would
+  otherwise keep the last visit's answer as the truth. A kept answer whose ask
+  fails with a refused token (`isSignedOutError`, a 401) is cleared, so the
+  screen shows the sign-in state rather than the last visit's.
+- **Save.** `startSaving` writes the document `SAVE_DELAY_MS` (2 s) after a kept
+  query's answer (debounced) and when the page is hidden or left, only for the
+  signed-in connections. Each entry is written while the document stays under
+  `MAX_CHARS` (500,000 characters, about 100 KB for a 1,000-book library):
+  localStorage's small per-origin quota is shared with the session, the progress
+  queue and the downloads registry, whose writes fail quietly once it is full.
+- **Scope.** It lives under `STARTUP_CACHE_KEY` (`audiosilo.startupCache`), one
+  of the scoped keys, so a storage reset wipes it; signing out or removing a
+  connection drops its entries (`forget`), and every key carries its
+  connection id, so another connection's or a signed-out one's entry is never
+  read. A document written by another app version is ignored (the answers'
+  shapes may have changed).
+- **Native keeps none**: its query cache lives as long as the app, a cold
+  start is not a browser reload, and AsyncStorage can't be read before the
+  first render.
+
 ### Capability-gated reads (player redesign Phase 1a)
 
 The player redesign's data layer landed ahead of its screens: these methods and

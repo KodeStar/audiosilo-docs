@@ -331,8 +331,13 @@ toasts lift above it instead of landing on it.
 ### Fell asleep (`drift-controller.ts`)
 
 What happens after a sleep timer stopped a book nobody was awake for.
-`startDriftWatch()` is started once from `src/app/_layout.tsx` (like
-`startAutoSleep`) and is framework-free:
+`startDriftWatch()` is started once with the root's services
+(`startRootServices`, `src/components/shell/root-services-impl.tsx`, like
+`startAutoSleep`) and is framework-free. Native starts it with the first commit;
+the web once the first screen has painted, as `startDriftWatch({ late: true })`:
+a book already playing then started before the watch could look, so it is still
+an edge to offer on once the engine next reports (native's book already playing
+was looked at by an earlier run, so it isn't offered again).
 
 1. **The bookmark.** On an outcome with `fellAsleep`, a bookmark named
    `player.sleepTimer.fellAsleepNote` ("Fell asleep", translated when made: it is

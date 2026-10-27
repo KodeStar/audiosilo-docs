@@ -241,8 +241,9 @@ with no network.
   page, the book menu, the Downloads page) asks first through the shared
   `RemoveDownloadConfirm` (`src/components/downloads/remove-download-confirm.tsx`),
   which says how much room it frees.
-- **Changed chapters** (`startChapterRefresh`, started once from the root
-  layout): a book's chapters can change on the server after it was downloaded
+- **Changed chapters** (`startChapterRefresh`, started once with the root's
+  services, `root-services-impl.tsx`; on the web after the first paint, so it
+  first takes the `chapters` answers the cache already holds): a book's chapters can change on the server after it was downloaded
   (a rescan, a [community chapter list](../server/community-chapters.md)
   fitted onto its audio, `chapters_source: "community"`, the chapters a Bridge
   found in the narration, `"generated"`, or an admin switching it back). The listener subscribes to the query cache: every **server** answer
@@ -580,11 +581,13 @@ it is served at `<base>/sw.js` with scope `<base>/`. It has exactly two jobs:
 
 1. **App shell.** Navigations are **network-first**, falling back to the cached
    response for that route, then to the cached scope root (a shell that boots
-   the SPA), then a 503. Static assets with destinations
-   `script | style | font | image | manifest` are **stale-while-revalidate**
-   in `audiosilo-shell-v1`; the `install` step precaches the scope root.
-   API calls (destination `''`) and server-streamed audio pass straight through
-   to the network - the SW never caches API data.
+   the SPA), then a 503. The build's own content-hashed files
+   (`<base>/_expo/static/`) are served **cache-first** and never written again;
+   other static assets with destinations `script | style | font | image |
+   manifest` are **stale-while-revalidate**, all in `audiosilo-shell-v1`.
+   API calls (destination `''`), token-bearing URLs (`?token=`) and
+   server-streamed audio pass straight through to the network - the SW never
+   caches API data.
 2. **Offline media.** Requests whose path contains `/_offline/` are answered
    from `audiosilo-media-v1`. A `Range` request is satisfied by slicing the
    cached response's Blob (`blob.slice` is O(1) and streams only the requested
@@ -593,10 +596,36 @@ it is served at `<base>/sw.js` with scope `<base>/`. It has exactly two jobs:
    unsatisfiable range. This matters beyond seeking: Safari refuses a 200 for
    media, so without the 206 path downloaded books wouldn't play there at all.
 
+**Precaching the split build** (`precacheBuild`). The web build is split by
+route (see [the web start](overview.md#the-web-start-a-split-build)): a page's
+chunk loads when the page is first opened, so a page never opened online would
+not boot offline. The worker therefore fetches the shell (the scope's
+`index.html`, `cache: 'no-cache'`), caches every build script and stylesheet it
+names, then every chunk those name, level by level, and caches the shell itself
+once its own files are in, so offline it always boots. It runs at `install`
+and when the app asks (a `precache` message, `askPrecache`, 5 s after the page
+has loaded, `PRECACHE_DELAY_MS`, so its fetches never compete with the first
+screen). A record in the cache (`__precached-build`) names the build last
+precached: an ask whose shell names the same files is done at once, and a
+hashed file already cached isn't fetched again. Once a build is complete, the
+build before it stays one deploy longer (a tab still running it opens its pages
+from those files), older build files go, and so does every page an earlier build
+cached (offline it falls back to the shell, which boots the new build).
+Offline, or failing part way, it stops without writing the record, so the next
+ask finishes it.
+
+**One worker per deploy.** The app registers the worker under its build's name
+(`sw.js?build=<entry>.<common>`, `buildId` in `register-sw.web.ts`: the names of
+the page's entry script and of the shared `__common` chunk, which the entry does
+not name), so each deploy installs a new worker even though `sw.js`'s bytes are
+the same. Its `install` writes every build file again: Chrome compiles a script
+a worker caches while installing and keeps that code with it, which is most of a
+warm start's speed.
+
 `activate` deletes old shell cache versions but **never** the media cache -
 downloads must survive SW updates. When registered with `?dev=1` (the Metro dev
-server), the worker serves offline media only and leaves the shell to the
-network, so its caching can't fight hot reloading.
+server), the worker serves offline media only, precaches nothing and leaves the
+shell to the network, so its caching can't fight hot reloading.
 
 ### `public/manifest.json`
 
@@ -608,9 +637,10 @@ shell in `src/app/+html.tsx`.
 
 ### Registration wiring
 
-`src/lib/register-sw.web.ts` registers `<BASE_URL>/sw.js`, appending `?dev=1`
-under the dev server; it no-ops without `serviceWorker` support or a secure
-context. It registers **at once when `document.readyState` is already
+`src/lib/register-sw.web.ts` registers `<BASE_URL>/sw.js?build=<buildId>`
+(`workerUrl`; `?dev=1` under the dev server) and, outside dev, asks the worker
+to precache the build `PRECACHE_DELAY_MS` later (`askPrecache`); it no-ops
+without `serviceWorker` support or a secure context. It registers **at once when `document.readyState` is already
 `complete`**, else on `load`. The module runs when the root layout is first
 required, which in the static export is usually after `load` has fired; it used to
 only add a `load` listener, which then never ran, so the exported player never
@@ -624,7 +654,9 @@ right file per platform.
 | Works offline | How |
 |---|---|
 | Launching the installed PWA / revisiting routes | network-first navigation falling back to the cached shell |
-| The app's JS/CSS/fonts/icons | stale-while-revalidate asset cache |
+| Opening a page never opened online | the build's every chunk, precached per deploy (`precacheBuild`) |
+| The app's JS/CSS/fonts/icons | cache-first for the hashed build files, stale-while-revalidate for the rest |
+| A language other than English | its catalog chunk is part of the precached build |
 | Playing **downloaded** books, including seeking | `_offline/` URLs + Range slicing from the media cache |
 | Book/chapter metadata for downloaded books | manifests seeded into the React Query cache on hydrate |
 | Progress while offline | the offline replay queue + durable mirror in `src/playback/progress-sync.ts` |

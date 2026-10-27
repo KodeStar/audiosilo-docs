@@ -22,7 +22,8 @@ timer have their own pages ([End of a book](end-of-book.md),
 - **Android, iOS before 26, and phone web:** `MiniPlayer`
   (`src/components/player/mini-player.tsx`), a card floating just above the tab
   bar (sizes and gap are constants in that file). On native it is **one**
-  `FloatingMiniPlayer`, rendered once by `src/app/(app)/_layout.tsx` as the shell
+  `FloatingMiniPlayer`, rendered once by the native shell (`NativeAppShell`,
+  `src/components/shell/native-shell.tsx`, which `src/app/(app)/_layout.tsx` re-exports) as the shell
   frame's `phoneBottom` over NativeTabs - never one per tab stack, since NativeTabs
   keeps visited tabs alive and a card per stack ticked up to five times. It sits on
   the native bar's measured `bar` edge (see

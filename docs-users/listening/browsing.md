@@ -67,6 +67,8 @@ The home screen is built around what *you* are doing, not just what's on the ser
 If you're connected to more than one server, Home combines all of them. A book that lives on one of your other servers carries a small flag with that server's name.
 :::
 
+In the web player, Home and the Library open straight away with what they showed on your last visit, then quietly update from the server a moment later. The Library shows its first books first and fills in the rest as they arrive.
+
 ## The Library
 
 The **Library** tab is everything on your server, sorted the way you want to look at it. Across the top are its sections: **Books**, **Authors**, **Series**, **Narrators**, **Collections** and **Folders**. On a tablet or computer they sit in the slim row under the top bar, with the page's controls at its right-hand end; on a phone they're a row you can swipe sideways, under the big **Library** title.
