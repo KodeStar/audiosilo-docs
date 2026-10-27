@@ -278,11 +278,9 @@ The practical consequences for a deployment:
   exactly what triggers an automatic restart, which would turn the degraded boot
   above into the crash loop it exists to avoid. Wire `/healthz` as
   readiness/startup in the orchestrator instead.
-- **Name the reverse proxy.** The API is rate limited per client (100 requests a
-  second, burst 400). Behind a proxy, set `METASERVE_TRUSTED_PROXIES` (the
-  shipped `docker-compose.yml` trusts the loopback and private ranges) or every
-  visitor shares the proxy's one bucket; see
-  [rate limit and caching](api.md#rate-limit-and-caching).
+- **Name the reverse proxy.** The API is rate limited per client. Behind a
+  proxy, set `METASERVE_TRUSTED_PROXIES` or every visitor shares the proxy's one
+  bucket; see [rate limit and caching](api.md#rate-limit-and-caching).
 
 ## How it connects to the rest of AudioSilo
 

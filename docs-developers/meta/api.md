@@ -1,6 +1,6 @@
 ---
 title: Meta HTTP API
-description: "The metaserve read-only JSON API reference: every /api/v1 route, the structured works/match for identifying a file, the lang and source filters, the LibriVox layer and its LibriVox-shaped audiobooks feed, the per-client rate limit and Cache-Control, the Audiobookshelf provider at /abs/search and its per-language twin /abs/{lang}/search, the production release webhook, CORS behavior, connection deadlines and security headers, and how the server refreshes its artifact from GitHub Releases."
+description: "The metaserve read-only JSON API reference: every /api/v1 route, works/match for identifying a file, the lang and source filters, the LibriVox layer and its LibriVox-shaped feed, the Audiobookshelf provider, rate limiting and caching, the release webhook, CORS, deadlines and security headers, and how the server refreshes its artifact from GitHub Releases."
 ---
 
 `metaserve` (`cmd/metaserve` over `internal/serve`) is a **read-only** JSON API
@@ -13,9 +13,8 @@ every `/api/v1` route (and both Audiobookshelf provider routes) responds with pe
 (`Access-Control-Allow-Origin: *`, `Vary: Origin`), and responses are
 gzip-compressed. Cross-origin `GET`s work from any browser; there is no
 preflight handling, so requests must stay CORS-simple (no custom headers). The
-same routes are [rate limited per client and carry a `Cache-Control`](#rate-limit-and-caching)
-(metaserve only: a mirror-mode server mounting `pkg/query` adds neither). It
-can also serve a static site at `/` (`--site`) and hot-swaps a newer release
+same routes are [rate limited per client and carry a `Cache-Control`](#rate-limit-and-caching).
+It can also serve a static site at `/` (`--site`) and hot-swaps a newer release
 artifact without a restart.
 
 Errors are a JSON envelope `{"error": "..."}` with the matching HTTP status. All
@@ -119,8 +118,7 @@ the page for what has been typed so far. The same bound applies to
 `works/search`, `people/search`, and `series/search` below.
 
 It takes the [`lang` filter](#the-lang-filter) and the
-[`source` filter](#the-source-filter); `source` scopes the page to works, since a
-person or a series has no recording to judge.
+[`source` filter](#the-source-filter).
 
 A **possessive matches in either spelling.** The FTS tokenizer indexes "Ender's"
 as two terms, `ender` + `s`, so a query typed without the apostrophe - which is
@@ -160,9 +158,8 @@ ids it resolves are always works, so prepending them to a people or series page
 would put a work on a page that promises neither.
 
 `works/search` also takes the [`source` filter](#the-source-filter);
-`people/search` and `series/search` do not read it (a `source` there is left
-unread like any other parameter they do not take, so even an unknown value is not
-a 400).
+`people/search` and `series/search` ignore it, so even an unknown value is not a
+400 there.
 
 ## `/api/v1/works/match`
 
@@ -349,8 +346,8 @@ Like `lang` it narrows **lists** only: `works/{id}`, `people/{id}`,
   filtered list is **empty**, never the unfiltered page, which would claim every
   work came from that source.
 
-`source` is implemented in `pkg/query/librivox.go` (`sourceParam`,
-`worksWithSourceArm`), beside the rest of the LibriVox layer.
+`source` is implemented in `pkg/query/librivox.go` (`sourceParam`), beside the
+rest of the LibriVox layer.
 
 ## `/api/v1/works/latest?limit=`
 
@@ -572,8 +569,8 @@ only a variant places keeps that variant.
 The chapter list for one recording of a work: `{"chapters": [{title, start_ms,
 length_ms, audio_url?}]}`, ordered by chapter index. `audio_url` is the
 chapter's own audio file, present only for a recording published one file per
-section (a LibriVox recording, `schema_version` 8). An unknown work/recording yields an empty
-list, not a 404. audiosilo-server's
+section (a LibriVox recording, `schema_version` 8). An unknown work/recording
+yields an empty list, not a 404. audiosilo-server's
 [community chapter check](../server/community-chapters.md) calls it for the
 `recording_id` a `lookup` names, and fits the list onto the book's own audio.
 
@@ -655,7 +652,7 @@ its `asin`/`isbn`.
 
 `librivox_id` is a LibriVox **project id** (the number in LibriVox's API
 answer, such as `52`, not its catalogue page slug) and resolves the one
-recording that carries it (`idx_recordings_librivox`). It is read only when
+recording that carries it. It is read only when
 neither `asin` nor `isbn` is given, so a request carrying an ASIN keeps the
 lookup it always was. A value that is not a positive integer is a 400
 (`librivox_id: "x" is not a LibriVox project id`); against an artifact older than
@@ -694,7 +691,8 @@ facts and the people's LibriVox ids are described in
 **Version gate.** An artifact older than 8 omits every field above, answers the
 filter with an empty list, `librivox_id` with 404 and the feed with its 404, so
 a client should treat all of it as optional. An artifact that *claims* 8 but
-lacks a column or table the layer needs is refused at load (`librivoxShapeSQL`).
+lacks part of the layer is refused at load
+([schema versioning](data-model.md#the-compiled-artifact-and-schema-versioning)).
 
 ## `/api/v1/librivox/audiobooks`
 
@@ -740,9 +738,9 @@ artifact older than `schema_version` 8.
 day it catalogued a project; the mirror compares it, at the same day
 granularity (from the first UTC midnight at or after `since`), with the day the
 mirror **imported** the recording (its `added_at`). A client syncing LibriVox's
-newly catalogued projects reads LibriVox's own `since`; this one answers "what
-reached the mirror since", which trails LibriVox by however long a project takes
-to be imported (for the backfill, the day its tranche was imported).
+newly catalogued projects reads LibriVox's own `since`; this one trails
+LibriVox by however long a project takes to be imported (for the backfill, the
+day its tranche was imported).
 
 ### The response
 
@@ -954,7 +952,8 @@ the static site and the sitemaps.
 are sized from the heaviest legitimate caller, an AudioSilo server's bulk match,
 which does not pace itself (about 90 requests a second at full speed on a fast
 link), and a console Series page's burst of lookups; a scraper looping flat out
-wants far more, and its route is the release artifact. A rate of `0` turns the
+wants far more, and its route is the
+[release artifact](overview.md#release-artifacts). A rate of `0` turns the
 limit off (a private metaserve on the same host or LAN as its server can outrun
 any sane limit). A negative or non-finite rate, or a burst under 1 while the
 limit is on, is **refused at startup** rather than defaulted.
@@ -964,7 +963,8 @@ limit is on, is **refused at startup** rather than defaulted.
 (`{"error": "rate limit exceeded: at most 100 requests a second per client; ..."}`).
 The limit sits inside CORS, and the API sends
 `Access-Control-Expose-Headers: Retry-After`, so a script on another origin can
-read how long to wait (on a 429 or on a cold boot's 503).
+read how long to wait (on a 429 or on a cold boot's 503). A client should wait
+that long before it retries.
 
 **Who is a client.** The connection's address, with an IPv6 address keyed as
 its **/64** (one subscriber is routinely handed a whole /64, so the full address
@@ -992,8 +992,8 @@ day), or `public, max-age=60` on the searches (`/api/v1/search`,
 `works/search`, `people/search`, `series/search`, both `/abs` provider routes)
 and `works/match`, which a reader expects to track the search box. A route that
 states its own keeps it: the [watch feeds](#caching) and the
-[OpenAPI document](#apiv1openapijson) (`max-age=3600`). Every other status (an error, a 429, a 503) is left uncacheable
-(`internal/serve/cache.go`).
+[OpenAPI document](#apiv1openapijson) (`max-age=3600`). Every other status (an
+error, a 429, a 503) is left uncacheable (`internal/serve/cache.go`).
 
 ## Deadlines, security headers, and reverse proxies
 

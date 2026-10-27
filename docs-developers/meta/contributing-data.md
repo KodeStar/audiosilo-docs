@@ -542,8 +542,8 @@ onto the vocabulary where one fits, the LibriVox ids, the archive.org identifier
 the `links` (catalogue page, zip, RSS feed and the source text's URL), the
 `copyright_year` LibriVox states for the text, the authors' and translators'
 birth and death years where LibriVox states them as years, the cover URL
-(`https://` only) and `LibriVox` as the publisher of record. It **never** carries the project `description`: LibriVox's descriptions
-are often quoted from Wikipedia, so they are neither the project's to relicense
+(`https://` only) and `LibriVox` as the publisher of record. It **never** carries
+the project `description`: LibriVox's descriptions are often quoted from Wikipedia, so they are neither the project's to relicense
 nor CC0. Audio and cover art stay
 on archive.org; the records hold URLs. In the trust tiers `librivox` is a
 bulk-mirror source beside `libex-import`, so a user hand edit outranks it (see
@@ -612,7 +612,7 @@ each selected project:
   is not recorded twice; the run warns about both. A name that slugs to nothing
   lands on the catch-all person, which is never given an id. An author's or
   translator's `dob` / `dod` become the person's `birth_year` / `death_year`
-  only when LibriVox states plainly a year (`1883`, `-428`, `428 BC`), and only
+  only when LibriVox states a plain year (`1883`, `-428`, `428 BC`), and only
   when the person states neither yet: a year another source or a hand edit wrote
   is never overwritten, and a pair whose death precedes its birth is dropped
   whole.
@@ -680,7 +680,7 @@ librivox worklist: 2 projects skipped for a person to resolve (re-import the ids
 | Reason | Why the project waits |
 |---|---|
 | `several-works` | two or more catalogued works qualify under rule 2 |
-| `author-unmatched` | a work carries the title but its authors only partly agree with the project's, or the agreement rests on the catch-all person (no real author shared; a shared translator does not count) |
+| `author-unmatched` | a work carries the title but its authors only partly agree with the project's, or agree only through the catch-all person (rule 1) |
 | `differently-spelled-title` | the duplicate-identity guard holds the book under a title rule 2 does not read as the same, such as one with a subtitle |
 | `fallback-slug-taken` | a non-Latin title's `librivox-<project id>` slug is already used |
 
@@ -690,8 +690,7 @@ carry `librivox_id`, since they have no ASIN.
 
 Known gap: an author spelled differently from the catalogue ("Lev Tolstoy" for
 "Leo Tolstoy") is not the same author to these rules, so the project still
-creates a duplicate work. Teaching the rules person-name variants is a
-follow-up.
+creates a duplicate work.
 
 The backfill lands as human-reviewed tranches by project-id range (about 2,000
 projects a pull request) under the ordinary merge policy. No automated LibriVox
@@ -703,9 +702,7 @@ needs its recording's `librivox_id`, and a person's `death_year` is not before
 their `birth_year`); the fields and their rules are in
 [the data model](./data-model.md#recording---a-member-of-its-work-entrys-recordings-map).
 Once built into the artifact, the records reach the API's
-[LibriVox layer](./api.md#the-librivox-layer): the `source=librivox` filter,
-`lookup?librivox_id=` and the
-[LibriVox-shaped feed](./api.md#apiv1librivoxaudiobooks).
+[LibriVox layer](./api.md#the-librivox-layer).
 
 ## Scanning local files: metascan
 

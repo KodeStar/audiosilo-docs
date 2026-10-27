@@ -15,8 +15,7 @@ LibriVox is not imported through this envelope: `metaimport librivox` reads
 LibriVox's own feed from a local snapshot, deduplicates on the project id
 (`librivox_id`) rather than an ASIN, finds the work by its own
 [matching rules](./contributing-data.md#which-work-a-librivox-project-joins)
-(spelling variants, the catch-all author, `librivox-<id>` for a mostly non-Latin
-title) and writes fields this envelope has no column for (`archive_id`,
+and writes fields this envelope has no column for (`archive_id`,
 `links`, `copyright_year`, a chapter's `audio_url`, the people's LibriVox ids and
 life years). See [the LibriVox mirror](./contributing-data.md#librivox-the-public-domain-mirror).
 

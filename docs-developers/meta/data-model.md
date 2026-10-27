@@ -576,9 +576,9 @@ expressive layer was added in later versions:
 the translation links inline on `GET /works/{id}` (`characters` / `recaps` /
 `recap_summary` / `genres` / `community_description` / `translation_of` /
 `translations`, all `omitempty`), and a series' language, ordering and ordering
-family on `GET /series/{id}` (see [the API](api.md#apiv1seriesidlimitoffset)),
-and the LibriVox facts on a recording, the `source` filter and the
-LibriVox-shaped feed from version 8 (see [the LibriVox layer](api.md#the-librivox-layer)).
+family on `GET /series/{id}` (see [the API](api.md#apiv1seriesidlimitoffset)).
+From version 8 it also serves the LibriVox layer
+([the API](api.md#the-librivox-layer)).
 The serve queries **degrade gracefully** when a newer binary briefly serves an
 older release: the characters/recaps queries no-op below `schema_version` 2, the
 recap summary below 3, genres below 4, redirects below 5, the description below 6,
@@ -586,9 +586,9 @@ the languages layer below 7 and the LibriVox layer below 8, so a missing table
 reads as "no data", never a 500. An artifact that *claims* version 5, 6, 7 or 8
 but lacks what that version adds (for 7: the `translations` table or any of the
 series table's `language`, `ordering` and `ordering_of` columns; for 8: any of
-its columns or the `work_credits` and `recording_sources` tables) is refused when it is loaded,
-naming the claim, because the builder always writes the two together. The same versioning
-drives the [coverage endpoints](api.md#coverage-endpoints), which omit a
+its columns or the `work_credits` and `recording_sources` tables) is refused
+when it is loaded, naming the claim, because the builder always writes the two
+together. The same versioning drives the [coverage endpoints](api.md#coverage-endpoints), which omit a
 dimension's count rather than report it as a misleading zero when the artifact
 predates its table.
 
