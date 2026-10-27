@@ -11,8 +11,9 @@ downloaded copy of the artifact, so the same responses come from either (see
 [Public Go packages](overview.md#public-go-packages)). All data is public, so there is **no auth**;
 every `/api/v1` route (and both Audiobookshelf provider routes) responds with permissive CORS
 (`Access-Control-Allow-Origin: *`, `Vary: Origin`), and responses are
-gzip-compressed. Cross-origin `GET`s work from any browser; there is no
-preflight handling, so requests must stay CORS-simple (no custom headers). The
+gzip-compressed. Cross-origin `GET`s work from any browser, and an `OPTIONS`
+preflight answers 204 allowing `GET` and any request header. `Retry-After` is
+exposed, so a script on another origin can read how long to wait after a 429. The
 same routes are [rate limited per client and carry a `Cache-Control`](#rate-limit-and-caching).
 It can also serve a static site at `/` (`--site`) and hot-swaps a newer release
 artifact without a restart.
