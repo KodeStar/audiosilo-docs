@@ -26,9 +26,9 @@ Two different hashing strategies, chosen by entropy:
   block back to the OS once hashing has been quiet for a second
   (`memoryReleaser`, `debug.FreeOSMemory` on its own goroutine, never the
   request's; a burst of sign-ins costs one release). Without it a server that
-  hashed a password or two at start and then idled kept that memory: an idle
-  server with an empty library sat at about 140 MiB instead of about 20
-  (server#244).
+  hashed a password or two at start and then idled kept that memory: measured
+  in a container with an empty library, after the first-run admin and one
+  sign-in, its anonymous memory went from 143 MiB to 13 MiB (server#244).
 - **Tokens and auth codes** (full-entropy, machine-generated) are stored only
   as **SHA-256 hashes** (`hashSecret`). A fast hash is appropriate here because
   the secrets are 256-bit random values - argon2id is reserved for passwords.
@@ -924,23 +924,24 @@ Each refusal carries `Retry-After`. The per-user tables hold at most 4,096
 users (`503 opml_busy` for OPML once full), and an upstream `429` cools that
 provider down for its `Retry-After` (1 to 300 seconds, 60 by default).
 
-**Signed-in requests are limited per credential** (server#246). One budget
-per address was shared by everyone behind it: a household behind NAT, every
-visitor behind a reverse proxy, and a web player loading a whole library a page
-at a time (each cover a `?token=` request of its own) turned into 429s. So
-`rateLimit` only meters by address what runs before anyone is identified, and
-the authenticated routes meter themselves, read off the handler the mux picks
-(like `web.IsStatic`): `requireMediaAuth` and `requireBookMediaAuth` (both
-`mediaAuth`) return a `mediaHandler`, and `requireAuth` an `authHandler`
-(`tokenKeyed`: an `authHandler` whose pattern is outside `/api/v1/auth/`).
-For those, `rateLimit` only refuses an address whose `ipLimiter` bucket is
-already empty (`Ready`, which checks without spending), before the timeout
-layer's goroutine and buffer; the route's own check then:
+**Signed-in requests are limited per credential** (server#246), so the people
+behind one address (a household behind NAT, every visitor behind a reverse
+proxy) don't share a budget, and a web player loading a whole library a page at
+a time (each cover a `?token=` request of its own) isn't throttled. `rateLimit`
+meters by address only what runs before anyone is identified; the authenticated
+routes meter themselves. `rateLimit` recognises them from the handler the mux
+picks, as it does for `web.IsStatic`: `mediaAuth` (behind `requireMediaAuth` and
+`requireBookMediaAuth`) returns a `mediaHandler`, and `requireAuth` an
+`authHandler`; `tokenKeyed` is an `authHandler` whose pattern is outside
+`/api/v1/auth/`. For these, `rateLimit` only refuses an address whose
+`ipLimiter` bucket is already empty (`Ready`, which checks without spending),
+before the timeout layer starts its goroutine and buffer. The route's own check
+then:
 
 1. refuses the request while the address's bucket is empty (`Ready` again);
 2. authenticates, and when that fails (no token, or a bad one) charges the
    address's bucket one token, so unauthenticated requests are bounded exactly
-   like the general API;
+   like the public routes;
 3. otherwise spends from the credential's bucket (`tokenLimiter` or
    `mediaLimiter`, keyed by the token row id; a cast token is a `tokens` row
    too, so it has a media bucket of its own), and when that bucket refuses,
@@ -950,10 +951,10 @@ A **demo account** spends its API requests from its address's bucket instead
 (`allowCredential`): anyone can mint a demo session, so a per-token budget would
 be no limit at all. A request `rateLimit` has already charged to its address
 (the `/api/v1/auth/*` routes, marked `addressCharged` in the context) is only
-authenticated, never charged twice. The sign-in, pairing and account routes stay
-per address whatever token they carry: `POST /auth/pair` mints a pairing
-secret, `/auth/password` checks a password and `/auth/tokens` mints a key, so a
-credential must not take them out of their address's budget.
+authenticated, never charged twice. Those routes stay per address even with a
+token because they mint or check secrets (`POST /auth/pair` a pairing secret,
+`/auth/password` a password, `/auth/tokens` a key), so a credential must not
+take them out of their address's budget.
 
 Charges use `Charge`, which always lands, even past empty (down to minus the
 burst): requests that passed `Ready` together each pay, so concurrency can't buy

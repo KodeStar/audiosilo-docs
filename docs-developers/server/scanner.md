@@ -381,16 +381,15 @@ several files at a time, and writes the index in one place
 
 - **Slots.** `readSlots` bounds how many audio files are read at once, each
   read (tags, then ffprobe: `metadata.ExtractTimeout`) holding a slot. There
-  are `scan.concurrency` of them, by default one per CPU (`GOMAXPROCS`, so a
-  container's CPU limit) up to `DefaultScanReaders` (8); see
-  [Configuration](configuration.md#library-scans-scan).
+  are `scan.concurrency` of them, by default one per CPU up to
+  `DefaultScanReaders` (8); see [Configuration](configuration.md#library-scans-scan).
 - **Books read ahead.** Each book to index is read (`enrich`) on its own
   goroutine: its primary file first, then its other parts with the slots
   (`readFiles`), up to a window of twice as many books as slots ahead of the
   next one written.
 - **One writer, in order.** The scan's own goroutine writes each book once its
-  read is done, in discovery order (`writeNext`), through the same
-  `catalog.UpsertBook` as before, on the one writer connection. The rows, their
+  read is done, in discovery order (`writeNext`), through
+  `catalog.UpsertBook`, on the one writer connection. The rows, their
   ids, the file order, the chapter offsets and the scan's log come out as a
   scan reading one file at a time writes them.
 - **Stopping.** A Stop (or the scan's time limit) ends the ffprobe runs through
@@ -903,10 +902,10 @@ re-checks at once.
 `metadata.ErrProbeTimeout`, and the problem is `probe_failed` with the detail
 `ffprobe timed out after 30s`. Files sharing a slow disk or a busy share can
 each take longer than that while [others are read beside
-them](#reading-several-files-at-once), so a read that timed out while another
-ran is read again on its own before it counts (`readSlots.extract`): the retry
-waits for the reads under way to finish and holds back new ones while it runs,
-one retry at a time. Only a time-out alone is the file's problem. On a very
+them](#reading-several-files-at-once), so a read that timed out while others
+ran is retried on its own (`readSlots.extract`). The retry waits for the reads
+under way to finish and holds back new ones while it runs, one retry at a time.
+Only a file that also times out when read alone is recorded as a problem. On a very
 slow share where many files time out, the retries make the scan slower than
 reading one file at a time would; lower `scan.concurrency` there.
 

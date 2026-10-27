@@ -186,8 +186,8 @@ bucket is answered `429 rate limit exceeded`.
 
 | Key | Type / default | Meaning |
 |---|---|---|
-| `rate_limit.address.rate` / `.burst` | float / int, `50` / `200` | Per client address: requests no credential has been proved for (a missing or refused token pays here), the public routes, the Bridge's own requests (`/api/v1/bridge/*`), every `/api/v1/auth/*` route (sign-in, pairing, password, API keys) with or without a token, and a demo account's requests |
-| `rate_limit.token.rate` / `.burst` | float / int, `50000` / `100000` | Per signed-in device or API key (its `tokens` row): every other authenticated API request, admin routes included. Several people behind one address (a household behind NAT, every visitor behind a reverse proxy) each have their own. A request its bucket refuses also costs its address one token |
+| `rate_limit.address.rate` / `.burst` | float / int, `50` / `200` | Per client address: what runs before a credential is proved (a missing or refused token pays here), every `/api/v1/auth/*` route (sign-in, pairing, password, API keys), the Bridge's requests and a demo account's |
+| `rate_limit.token.rate` / `.burst` | float / int, `50000` / `100000` | Per signed-in device or API key (its `tokens` row): every other authenticated API request, admin routes included, so people behind one address each have their own |
 | `rate_limit.media.rate` / `.burst` | float / int, `200` / `2000` | Per signed-in device, API key or cast token: covers and audio (`/cover`, `/stream`, `/meta/cover`) |
 
 **Only what you set is kept.** A rate or burst left out, or `0`, is the
@@ -269,11 +269,10 @@ feed/audio network limits, allowlists and the per-episode size cap in its
 
 | Key | Type / default | Meaning |
 |---|---|---|
-| `scan.concurrency` | int, `0` | How many audio files a scan reads at once (their tags, then ffprobe), `0` to `64`. `0` is one per CPU up to 8 (`library.DefaultScanReaders`; one per CPU is `GOMAXPROCS`, so in a container it is the CPU limit, not the host's cores). Lower it for a library on a slow disk or a busy share; raise it for a fast disk on a machine with cores to spare. Read once at start (`Scanner.SetConcurrency`), with **no console setting**; `AUDIOSILO_SCAN_CONCURRENCY` sets it too |
+| `scan.concurrency` | int, `0` | How many audio files a scan reads at once (their tags, then ffprobe), `0` to `64`. `0` means one per CPU, up to 8 (`library.DefaultScanReaders`). CPUs are counted by `GOMAXPROCS`, so in a container that is its CPU limit, not the host's cores. Lower it for a library on a slow disk or a busy share; raise it for a fast disk on a machine with cores to spare. Read once at start (`Scanner.SetConcurrency`), with **no console setting**; `AUDIOSILO_SCAN_CONCURRENCY` sets it too |
 
-However many files a scan reads at once, the index is written in one place, in
-discovery order, so the result is the same as a scan reading one file at a time
-(see [Reading several files at once](scanner.md#reading-several-files-at-once)).
+The index comes out the same however many files a scan reads at once (see
+[Reading several files at once](scanner.md#reading-several-files-at-once)).
 The cap of 8 for the default is deliberate: past about eight, a scan gains
 little (the disk or share is the limit, and ffprobe's start-up dominates) while
 the ffprobe runs contend for CPU; on a 20-core machine, 20 at once took about a

@@ -602,10 +602,10 @@ chunk loads when the page is first opened, so a page never opened online would
 not boot offline. The worker therefore fetches the shell (the scope's
 `index.html`, `cache: 'no-cache'`), caches every build script and stylesheet it
 names, then every chunk those name, level by level, and caches the shell itself
-once its own files are in, so offline it always boots. It runs at `install`
-and when the app asks (a `precache` message, `askPrecache`, 5 s after the page
-has loaded, `PRECACHE_DELAY_MS`, so its fetches never compete with the first
-screen). A record in the cache (`__precached-build`) names the build last
+once its own files are in, so offline it always boots. It runs at `install`,
+and again when the app sends a `precache` message (`askPrecache`), which it does
+`PRECACHE_DELAY_MS` (5 s) after the page has loaded, so the fetches never compete
+with the first screen. A record in the cache (`__precached-build`) names the build last
 precached: an ask whose shell names the same files is done at once, and a
 hashed file already cached isn't fetched again. Once a build is complete, the
 build before it stays one deploy longer (a tab still running it opens its pages
@@ -637,9 +637,9 @@ shell in `src/app/+html.tsx`.
 
 ### Registration wiring
 
-`src/lib/register-sw.web.ts` registers `<BASE_URL>/sw.js?build=<buildId>`
-(`workerUrl`; `?dev=1` under the dev server) and, outside dev, asks the worker
-to precache the build `PRECACHE_DELAY_MS` later (`askPrecache`); it no-ops
+`src/lib/register-sw.web.ts` registers the worker under its build's name
+(`workerUrl`, [above](#publicswjs); `?dev=1` under the dev server) and, outside
+dev, asks it to precache the build (`askPrecache`); it no-ops
 without `serviceWorker` support or a secure context. It registers **at once when `document.readyState` is already
 `complete`**, else on `load`. The module runs when the root layout is first
 required, which in the static export is usually after `load` has fired; it used to

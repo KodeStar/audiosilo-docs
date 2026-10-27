@@ -280,7 +280,8 @@ minutes of a 30-minute timer.
 
 It is mounted **exactly once, at the app root**: the headless
 `ShakeToExtendListener` (`src/components/player/shake-to-extend-listener.tsx`)
-rendered by `src/app/_layout.tsx`, alongside `startAutoSleep()`. Deliberately
+rendered by the root's `RootListeners` (`src/components/shell/root-services-impl.tsx`),
+alongside `startAutoSleep()`. Deliberately
 **not** from `player-view.tsx` - the feature's main case is a nightly timer on a
 locked phone with no player screen open, where a hook mounted in the player modal
 would never be listening; mounting it in both places would double-fire a single
@@ -334,10 +335,10 @@ What happens after a sleep timer stopped a book nobody was awake for.
 `startDriftWatch()` is started once with the root's services
 (`startRootServices`, `src/components/shell/root-services-impl.tsx`, like
 `startAutoSleep`) and is framework-free. Native starts it with the first commit;
-the web once the first screen has painted, as `startDriftWatch({ late: true })`:
-a book already playing then started before the watch could look, so it is still
-an edge to offer on once the engine next reports (native's book already playing
-was looked at by an earlier run, so it isn't offered again).
+the web once the first screen has painted, as `startDriftWatch({ late: true })`,
+so a book that began playing before the watch existed is still treated as a new
+play and offered on at the engine's next report. On native a book already playing
+was seen by an earlier run, so it isn't offered again.
 
 1. **The bookmark.** On an outcome with `fellAsleep`, a bookmark named
    `player.sleepTimer.fellAsleepNote` ("Fell asleep", translated when made: it is
@@ -441,7 +442,8 @@ controller, so all the policy is unit-tested and none of it lives in a component
   window; there the poll (60s) picks it up once the grace closes, which is also the
   floor on how often anything can be armed.
 - **`startAutoSleep()` (`src/playback/auto-sleep-controller.ts`)** is started once
-  from `src/app/_layout.tsx` (`useEffect(() => startAutoSleep(), [])`) and returns its
+  with the root's services (`startRootServices`, `src/components/shell/root-services-impl.tsx`;
+  native with the first commit, the web once the first screen has painted) and returns its
   teardown. It is a module with subscriptions rather than a component that renders
   `null` - it uses no context, router, props or rendering - and it holds the session
   memory in **module state**, so "never again for this book" lasts as long as the JS

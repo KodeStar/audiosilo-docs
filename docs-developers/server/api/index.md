@@ -387,20 +387,10 @@ with the same kind of opaque `cursor` / `next_cursor`: see
 Other list endpoints (`/search`, `/books/recent`, a single book's history) are
 single-shot with a `limit` and no pagination.
 
-**The player's book lists are answered from a cache between writes**
-(`api/listcache.go`, server#243). `GET /libraries/{id}/books` (a books library),
-`GET /books/recent` and `GET /search` keep their encoded answer, keyed on the
-path, the raw query string and the caller's scopes, under the database's write
-generation (`store.DB.Generation`, which moves after every `ExecContext` and
-every `WithTx` has finished, a failed or no-op write included). The generation is
-read before the request's first read, so an answer is never stored under a
-generation newer than its data, and any write empties the cache: a progress
-save or a token's last-seen touch too, so it saves work only between writes and
-never decides what is current. It holds 8 MiB (counting each answer and its
-entry), at most 1 MiB an answer, least recently used first out. Only an answer
-that is a pure function of the database, the query and the scopes may use it: a
-list book carries no per-listener field, and a handler that adds one must leave
-the cache. Nothing on the wire changes.
+`GET /libraries/{id}/books`, `GET /books/recent` and `GET /search` may be
+answered from a server-side cache that any database write empties, so an answer
+is never staler than one built fresh; nothing on the wire changes (see
+[the list answer cache](../overview.md#the-list-answer-cache)).
 
 ## Capability flags - gate your features
 
@@ -582,13 +572,10 @@ any of them returns **429** with an error envelope.
 
 The three token buckets' rates are `rate_limit.*` in the server's
 [configuration](../configuration.md#rate-limits-rate_limit) (these are the
-defaults). An authenticated request is refused at once while its address's
-bucket is empty, and a failed authentication on any route charges that bucket,
-so guessing tokens is bounded by the address limit
-([details](../auth-and-security.md#rate-limiting)). Several clients behind one
-address (a household behind NAT, a reverse proxy) each have their own
-credential bucket, so a whole library loading in the web player is not
-throttled.
+defaults). A failed authentication on any route charges the address bucket,
+so guessing tokens is bounded by the address limit; how the address and
+credential buckets work together is in
+[Auth & security](../auth-and-security.md#rate-limiting).
 
 Podcast discovery and OPML transfer add their own per-user budgets on top,
 answered `429` with a `code` and `Retry-After`; see

@@ -162,7 +162,7 @@ thresholds and windows are constants at the top of `jump-undo.ts`.
 "Any jump" includes the ones that never pass through our UI - a lock-screen or
 headphone seek, a CarPlay scrub - so jumps are **not** recorded by the seek actions.
 They are **detected from the player's snapshot stream**: `startJumpUndo()` (started
-once from `src/app/_layout.tsx`) compares consecutive settled samples of the
+once with the root's services, `startRootServices`) compares consecutive settled samples of the
 whole-book position with how far playback could have carried the listener in the
 wall-clock time between them. `isJump` is the pure rule: while the previous sample
 was playing, anything up to `elapsed × rate` is natural; while it was paused,

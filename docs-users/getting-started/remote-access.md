@@ -79,7 +79,7 @@ trusted_proxies: ["127.0.0.1/32"]
 
 Point the proxy at `http://<server>:8080` as an ordinary HTTP upstream - AudioSilo needs no special proxy rules beyond passing requests through (including the standard `X-Forwarded-For` header, which most proxies send by default).
 
-`trusted_proxies` matters: list the address(es) your proxy connects from (as CIDR ranges, e.g. `["127.0.0.1/32", "10.0.0.0/8"]`; the console's **Trusted proxies** field also takes a plain address and saves it as a `/32` range). It tells AudioSilo to believe the proxy's `X-Forwarded-For` header, so rate limiting and lockouts apply to the real visitor's address instead of seeing every request as coming from the proxy. (Signed-in devices have budgets of their own either way, but signing in, pairing and requests with a wrong or old sign-in count against the address, and while its budget is used up nobody behind it gets through.)
+`trusted_proxies` matters: list the address(es) your proxy connects from (as CIDR ranges, e.g. `["127.0.0.1/32", "10.0.0.0/8"]`; the console's **Trusted proxies** field also takes a plain address and saves it as a `/32` range). It tells AudioSilo to believe the proxy's `X-Forwarded-For` header, so rate limiting and lockouts apply to the real visitor's address instead of seeing every request as coming from the proxy. Without it, one device retrying with an old sign-in can lock out everyone behind the proxy for a while (see [Everyone gets "Too many tries" at once](../troubleshooting.md#everyone-gets-too-many-tries-at-once)).
 
 :::warning
 Only use `tls.mode: "off"` behind a proxy that terminates HTTPS. Plain HTTP exposed directly to the internet sends passwords and audio unencrypted.
@@ -123,13 +123,14 @@ Being internet-facing for non-experts is the server's first design priority, and
 
 - **No default passwords.** The admin credential is randomly generated on first run (or chosen by you on the one-time `--setup` page); there is no factory password to forget to change.
 - **No sign-ups.** Nobody can sign themselves up. Accounts are created by the admin, and devices join via short-lived invite codes (by default good for 5 uses and one day). See [People and invites](../admin/users-and-invites.md). Someone who already has an account can also add the kids and grown-ups they live with as [household members](../listening/household.md), signed in by them and never through a public page, within limits [the admin sets](../admin/users-and-invites.md#household-members).
-- **Rate limiting and lockout.** Signing in, pairing and any request without a valid sign-in are rate-limited per visitor address; once a device is signed in, its requests count against that device's own budget instead, so a household behind one router, or everyone behind your reverse proxy, doesn't share one, and browsing a large library is never throttled. A wrong sign-in token still counts against the address, and repeated failed logins or invite-code guesses trigger a brute-force lockout. The limits have sensible defaults; you can change them with `rate_limit` in `config.yaml` (see the [configuration reference](/developers/server/configuration#rate-limits-rate_limit)), but you shouldn't need to.
+- **Rate limiting and lockout.** Signing in, pairing and requests without a valid sign-in are limited per visitor address. Once a device is signed in it gets a limit of its own, so people sharing one router or one reverse proxy don't slow each other down, and browsing a large library is never throttled. Repeated failed logins or invite-code guesses trigger a brute-force lockout.
 - **Secrets are stored scrambled.** Passwords use modern, deliberately slow hashing (argon2id); sign-in tokens and invite codes are stored only as hashes, and every token can be revoked.
 - **Contained file access.** Streaming requests are strictly confined to your library folders - path-traversal tricks to read other files are rejected - and request sizes are capped.
 
 ### Settings you can leave alone
 
-Two `config.yaml` entries look security-related but aren't part of a normal setup:
+Three `config.yaml` entries look security-related but aren't part of a normal setup:
 
 - **`cors_origins`** only matters if a *separately hosted* website needs to call your server from a browser - in practice, developers running the player from a dev server. Once it lists that site, the site can also show covers and play audio. The apps and the built-in web player work with it empty. Leave it as `[]`.
 - **`app_links`** lets an invite QR code open the installed mobile app *directly*, without a chooser - but it only works for a domain that a shipped app build explicitly claims, so it isn't useful for a personal domain with the store apps. Leave it empty; invites still work everywhere via the web player and the "Open in app" button.
+- **`rate_limit`** sets how many requests a visitor address and each signed-in device may make. The defaults suit almost everyone; see the [configuration reference](/developers/server/configuration#rate-limits-rate_limit) if you ever need to change them.

@@ -110,7 +110,7 @@ cross-compiles anywhere) and applies the embedded, append-only migrations in
 pools (single-connection writer, read-only reader pool over WAL) and provides
 `WithTx` with slow-transaction logging, and `Generation`, the write generation
 that moves after every write has finished (the API's
-[list cache](api/index.md#pagination) keys on it). See [Data model](data-model.md) for the
+[list answer cache](#the-list-answer-cache) keys on it). See [Data model](data-model.md) for the
 schema and the SQLite rationale.
 
 ### `internal/auth`
@@ -231,6 +231,22 @@ HTTP transport **only**: routing (`api.go` is the full route table), middleware
 (`ratelimit.go`: per address, then per credential), the book lists' answer cache
 (`listcache.go`), and the `handlers_*.go` files. See the
 [API introduction](api/index.md) and [reference](api/reference.md).
+
+#### The list answer cache
+
+`GET /libraries/{id}/books` (a books library), `GET /books/recent` and
+`GET /search` keep their encoded answer (`api/listcache.go`, server#243), keyed
+on the path, the raw query string and the caller's scopes, and stored under the
+database's write generation (`store.DB.Generation`), which moves after every
+`ExecContext` or `WithTx` finishes, failed and no-op writes included. Any write
+empties the cache, a progress save or a token's last-seen touch included, so it
+only saves work between writes and never serves an answer older than the
+database. The generation is read before the request's first read, so an answer
+is never stored under a generation newer than its data. It holds 8 MiB (counting
+each answer and its entry), at most 1 MiB an answer, least recently used first
+out. Only an answer that is a pure function of the database, the query and the
+scopes may use it: a list book carries no per-listener field, and a handler that
+adds one must leave the cache.
 
 ### `internal/server`
 

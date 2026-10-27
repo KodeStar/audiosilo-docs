@@ -120,7 +120,7 @@ A few browser realities to know:
 
 The web player is an installable app - a *Progressive Web App*. Installing it gets you an AudioSilo icon on your home screen or desktop, a clean full-screen window without browser bars, and the app shell itself stored offline so it opens even with no connection (your downloads waiting inside).
 
-The browser keeps a copy of the whole web player, every page of it, so even a page you've never opened works offline. After your server is updated, the web player fetches the new version in the background the next time you open it online.
+Installed or not, the browser keeps a copy of the whole web player, every page of it, so even a page you've never opened works offline. After your server is updated, the web player fetches the new version in the background the next time you open it online.
 
 - **Desktop (Chrome/Edge):** open the web player, then use the **install icon** in the address bar (or the browser menu's "Install AudioSilo…").
 - **Android:** open the web player in Chrome and choose **Add to Home screen / Install app** from the menu.

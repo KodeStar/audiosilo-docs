@@ -29,7 +29,8 @@ player left open on it closes once the app is active. See
   `autoDeleteFinished` is on and the book's download `status === 'downloaded'`** -
   removes the local files via the downloads store.
 - **`BookEndedListener` (`src/components/player/book-ended-listener.tsx`)** is a
-  headless component mounted once in `src/app/_layout.tsx`, so it covers the phone
+  headless component mounted once at the root (`RootListeners`, `root-services-impl.tsx`; on the web
+  once the first screen has painted), so it covers the phone
   modal and the desktop docked player alike. It watches `selectIsEnded` with
   **transition-edge detection** (a `wasEnded` ref, fires once per ended book) and
   on the false→true edge records whether a sleep timer was running for the book
