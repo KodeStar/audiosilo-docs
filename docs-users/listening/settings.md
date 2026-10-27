@@ -83,7 +83,7 @@ On a tablet or computer, the profile menu also has a quick switch between light 
 
 ## Language
 
-The app speaks **English, Español, Français, Deutsch, Português, and Italiano**. Pick one, or leave it on **System** to follow your device's language. Times like *"3 hours ago"* or *"yesterday"* follow it too.
+The app speaks **English, Español, Français, Deutsch, Português, and Italiano**. Pick one, or leave it on **System** to follow your device's language. Times like *"3 hours ago"* or *"yesterday"* follow it too. The web player fetches a language other than English when it's first needed, so on a slow connection it may open in English for a moment before switching.
 
 ## Household
 

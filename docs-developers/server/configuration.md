@@ -78,7 +78,7 @@ is enabled but not found locally, the auto-download kicks in (below).
 | `bind` | string, `"0.0.0.0:8080"` | `host:port` to listen on. Must parse with `net.SplitHostPort` |
 | `public_url` | string, `""` | Externally reachable base URL, used in QR pairing payloads, invite links and the launcher's "open this URL" output. Empty → derived per-request from scheme + `Host` header. Also the **away** address the apps use outside the home network (see [Home address](#home-address-lan_url)) |
 | `lan_url` | string, `""` | The server's **home** address on the household network, e.g. `http://192.168.1.20:8080`: see [Home address](#home-address-lan_url). Empty → derived per request when the request's `Host` is a home-network host |
-| `trusted_proxies` | []string (CIDRs), `[]` | Networks whose `X-Forwarded-For` is trusted when deriving the client IP (which feeds the per-IP rate limiters). Set when running behind a reverse proxy. Each entry must be a valid CIDR |
+| `trusted_proxies` | []string (CIDRs), `[]` | Networks whose `X-Forwarded-For` is trusted when deriving the client IP (which keys the per-address [rate limit](#rate-limits-rate_limit) and the lockouts). Set when running behind a reverse proxy. Each entry must be a valid CIDR |
 | `cors_origins` | []string, `[]` | Browser origins granted CORS (methods `GET, POST, PUT, PATCH, DELETE, OPTIONS`). Empty = no cross-origin headers at all (native apps and same-origin web still work); `"*"` disables the check entirely. Needed for a hot-reload frontend dev server, e.g. `http://localhost:8081`. Once set, every authenticated media answer (covers, streams) is `Cross-Origin-Resource-Policy: cross-origin`, so a player on another site shows covers and plays audio (from 2.4.1; before, the browser blocked its covers): see [Transport hardening](auth-and-security.md#transport-hardening) |
 | `max_upload_bytes` | int64, `2147483648` (2 GiB) | Reserved for the planned `POST /uploads` (Phase B) - **not yet enforced**; JSON request bodies use a fixed 1 MiB cap regardless |
 
@@ -176,6 +176,47 @@ its public name or address. A client that sends a home-network Host from outside
 forged one) only chooses cleartext for itself.
 :::
 
+### Rate limits (`rate_limit.*`)
+
+The API's request rate limits, each a token bucket refilled at `rate` requests a
+second that holds at most `burst` (`config.RateLimitConfig`, read once at start
+by `api.New`; how the buckets are applied is in
+[Auth & security](auth-and-security.md#rate-limiting)). A request past its
+bucket is answered `429 rate limit exceeded`.
+
+| Key | Type / default | Meaning |
+|---|---|---|
+| `rate_limit.address.rate` / `.burst` | float / int, `50` / `200` | Per client address: what runs before a credential is proved (a missing or refused token pays here), every `/api/v1/auth/*` route (sign-in, pairing, password, API keys), the Bridge's requests and a demo account's API requests (its covers and audio stay per credential, below) |
+| `rate_limit.token.rate` / `.burst` | float / int, `50000` / `100000` | Per signed-in device or API key (its `tokens` row): every other authenticated API request, admin routes included, so people behind one address each have their own |
+| `rate_limit.media.rate` / `.burst` | float / int, `200` / `2000` | Per signed-in device, API key or cast token: covers and audio (`/cover`, `/stream`, `/meta/cover`) |
+
+**Only what you set is kept.** A rate or burst left out, or `0`, is the
+release's default (`RateLimitConfig.Effective`, the `config.Default*RateLimit`
+values above). The fields are `omitempty`, so an unset value is never written
+into `config.yaml` and a later release's defaults reach an existing install;
+set one only to change it. Each has a variable (see
+[Environment variables](#environment-variables)) and none has a console setting.
+The token bucket's default is high on purpose: it is there to stop a runaway
+client, not to pace a web player loading a whole library page by page.
+The lockouts on wrong passwords, invite codes and Bridge pairing codes, and the
+attempt caps on demo sessions and account changes, are separate and not
+configurable.
+
+```yaml
+# Set only what you want to change; these are the defaults, so uncommenting
+# them as they are would pin today's values against a later release's.
+# rate_limit:
+#   address:
+#     rate: 50       # [AUDIOSILO_RATE_LIMIT_ADDRESS_RATE]
+#     burst: 200     # [AUDIOSILO_RATE_LIMIT_ADDRESS_BURST]
+#   token:
+#     rate: 50000    # [AUDIOSILO_RATE_LIMIT_TOKEN_RATE]
+#     burst: 100000  # [AUDIOSILO_RATE_LIMIT_TOKEN_BURST]
+#   media:
+#     rate: 200      # [AUDIOSILO_RATE_LIMIT_MEDIA_RATE]
+#     burst: 2000    # [AUDIOSILO_RATE_LIMIT_MEDIA_BURST]
+```
+
 ### Web player & app links
 
 | Key | Type / default | Meaning |
@@ -224,6 +265,24 @@ also a database/API preference, not YAML; an admin changes it through the
 [storage API](api/reference.md#podcast-storage-admin). The Bridge owns
 feed/audio network limits, allowlists and the per-episode size cap in its
 [configuration](../bridge/configuration.md#podcasts), not this file.
+
+### Library scans (`scan.*`)
+
+| Key | Type / default | Meaning |
+|---|---|---|
+| `scan.concurrency` | int, `0` | How many audio files a scan reads at once (their tags, then ffprobe), `0` to `64`. `0` means one per CPU, up to 8 (`library.DefaultScanReaders`). CPUs are counted by `GOMAXPROCS`, so in a container that is its CPU limit, not the host's cores. Lower it for a library on a slow disk or a busy share; raise it for a fast disk on a machine with cores to spare. Read once at start (`Scanner.SetConcurrency`), with **no console setting**; `AUDIOSILO_SCAN_CONCURRENCY` sets it too |
+
+The index comes out the same however many files a scan reads at once (see
+[Reading several files at once](scanner.md#reading-several-files-at-once)).
+The cap of 8 for the default is deliberate: past about eight, each ffprobe
+run costs more CPU as they contend. On a 20-core machine, 20 at once finished
+the same scan sooner than 8 (8.0 s against 13.4 s) but took about a third more
+CPU (141 against 104 CPU-seconds).
+
+```yaml
+scan:
+  concurrency: 0 # [AUDIOSILO_SCAN_CONCURRENCY]
+```
 
 ### Demo mode (`demo.*`)
 
@@ -592,6 +651,13 @@ by the settings table in `internal/config/settings.go` (`fields`: each entry's
 | `AUDIOSILO_MODULES_PODCASTS_ENABLED` | `modules.podcasts.enabled` | `strconv.ParseBool` (`true`/`1`/…); locks the console toggle when set |
 | `AUDIOSILO_MODULES_CONTRIBUTIONS_ENABLED` | `modules.contributions.enabled` | `strconv.ParseBool` (`true`/`1`/…); each module's toggle is `AUDIOSILO_MODULES_<ID>_ENABLED` |
 | `AUDIOSILO_PODCAST_DISCOVERY_ENABLED` | `podcasts.discovery.enabled` | `strconv.ParseBool` (`false`/`0`/… turns it off); read at start |
+| `AUDIOSILO_SCAN_CONCURRENCY` | `scan.concurrency` | integer, 0-64 (`0` = one per CPU, up to 8); read at start |
+| `AUDIOSILO_RATE_LIMIT_ADDRESS_RATE` | `rate_limit.address.rate` | number (requests a second); read at start |
+| `AUDIOSILO_RATE_LIMIT_ADDRESS_BURST` | `rate_limit.address.burst` | integer; read at start |
+| `AUDIOSILO_RATE_LIMIT_TOKEN_RATE` | `rate_limit.token.rate` | number (requests a second); read at start |
+| `AUDIOSILO_RATE_LIMIT_TOKEN_BURST` | `rate_limit.token.burst` | integer; read at start |
+| `AUDIOSILO_RATE_LIMIT_MEDIA_RATE` | `rate_limit.media.rate` | number (requests a second); read at start |
+| `AUDIOSILO_RATE_LIMIT_MEDIA_BURST` | `rate_limit.media.burst` | integer; read at start |
 
 `AUDIOSILO_PODCAST_INDEX_KEY` and `AUDIOSILO_PODCAST_INDEX_SECRET` override
 no key, so they are not in this table (see
@@ -655,8 +721,9 @@ restart, and whether the console may change it at all:
 | `modules.podcasts` | `modules.podcasts.enabled` | `AUDIOSILO_MODULES_PODCASTS_ENABLED` | at once; starts/stops feed/download/retention scheduling and gates writes; reads and present-pin reuse stay core |
 | `modules.contributions` | `modules.contributions.enabled` | `AUDIOSILO_MODULES_CONTRIBUTIONS_ENABLED` | at once (the Bridge jobs it owns are refused or held while it is off) |
 
-`podcasts.discovery.enabled` has no setting id: it is read at start from the
-file or its variable and never offered in the console.
+`podcasts.discovery.enabled`, `scan.concurrency` and the six `rate_limit.*`
+values have no setting id: each is read at start from the file or its variable
+and never offered in the console.
 
 Not in the console: `max_upload_bytes` (it has a variable but no setting),
 `tls.cache_dir`, `tls.cert_file`/`tls.key_file`, `server_id`, and `libraries`
@@ -781,7 +848,10 @@ overrides). It rejects:
   a `metadata.region` that isn't one of the marketplace codes; a `metadata.mode`
   other than `remote` or `mirror`;
 - a `backups.schedule` that isn't one of the forms above, a `backups.keep`
-  outside 1-365, or a `backups.dir` that isn't an absolute path.
+  outside 1-365, or a `backups.dir` that isn't an absolute path;
+- a `scan.concurrency` outside 0-64;
+- a `rate_limit.*.rate` that is negative, infinite or not a number, or a
+  negative `rate_limit.*.burst` (`0` is unset: the default).
 
 Secure-by-default choices baked into `Default()` and first-run: TLS on
 (`selfsigned`) out of the box, no default passwords (credentials are minted

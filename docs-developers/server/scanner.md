@@ -373,6 +373,40 @@ A skipped book's **`.audiosilo/` attachments** (the Bridge's generated
 characters and recaps) are backfilled the same way, from the same walk: see
 [The Bridge's attachments](#the-bridges-attachments).
 
+### Reading several files at once
+
+A scan reads the books it has to index (new, changed, or missing probe data)
+several files at a time, and writes the index in one place
+(`library/scanread.go`, server#242):
+
+- **Slots.** `readSlots` bounds how many audio files are read at once, each
+  read (tags, then ffprobe: `metadata.ExtractTimeout`) holding a slot. There
+  are `scan.concurrency` of them, by default one per CPU up to
+  `DefaultScanReaders` (8); see [Configuration](configuration.md#library-scans-scan).
+- **Books read ahead.** Each book to index is read (`enrich`) on its own
+  goroutine: its primary file first, then its other parts with the slots
+  (`readFiles`), up to a window of twice as many books as slots ahead of the
+  next one written.
+- **One writer, in order.** The scan's own goroutine writes each book once its
+  read is done, in discovery order (`writeNext`), through
+  `catalog.UpsertBook`, on the one writer connection. The rows, their
+  ids, the file order, the chapter offsets and the scan's log come out as a
+  scan reading one file at a time writes them.
+- **Stopping.** A Stop (or the scan's time limit) ends the ffprobe runs through
+  the scan's context. The reads under way are waited for and dropped (a read cut
+  short would record a false [read problem](#read-problems)), nothing more is
+  written, and the backfills read so far are kept.
+- **On-demand indexing** ([`IndexPath`](#on-demand-indexing-indexpath)) reads
+  with one slot, a file at a time on the request's own goroutine.
+- The skipped books' cheap backfills (above) and the re-read of a recorded
+  problem's file still run one at a time on the writing goroutine, outside the
+  slots.
+
+Every tag read goes through `metadata.ReadTags` (`tagreader.go`, used by
+`Extract` and `media.EmbeddedCover`): `dhowden/tag` reads an ID3v2 tag through
+a buffer up to the tag's end, not with one read system call per byte, which
+counts on a spinning disk or a network share.
+
 ### Prune: what a removed book leaves behind
 
 When discovery saw the whole tree, `catalog.DeleteBooksNotIn` drops every book
@@ -861,8 +895,21 @@ share that came back changes neither the file's mtime nor its size, so the
 unchanged-skip would keep the stale problem; instead each scan re-reads just the
 recorded file of an `unreadable` or `probe_failed` book (`problemCleared`) and
 re-indexes the book when it now reads. `POST /admin/libraries/{id}/book/rescan`
-re-checks at once. Extraction stays
-best-effort: a problem never stops a scan, and the book is still indexed with
+re-checks at once.
+
+**A probe that ran out of time.** Each ffprobe run gets 30 seconds
+(`metadata.ProbeTimeout`); one that runs out is killed, its `ProbeErr` wraps
+`metadata.ErrProbeTimeout`, and the problem is `probe_failed` with the detail
+`ffprobe timed out after 30s`. Files sharing a slow disk or a busy share can
+each take longer than that while [others are read beside
+them](#reading-several-files-at-once), so a read that timed out while others
+ran is retried on its own (`readSlots.extract`). The retry waits for the reads
+under way to finish and holds back new ones while it runs, one retry at a time.
+Only a file that also times out when read alone is recorded as a problem. On a very
+slow share where many files time out, the retries make the scan slower than
+reading one file at a time would; lower `scan.concurrency` there.
+
+Extraction stays best-effort: a problem never stops a scan, and the book is still indexed with
 what could be read. Each book with a problem adds a `problem` line to the
 scan's log and counts in its `errors`.
 

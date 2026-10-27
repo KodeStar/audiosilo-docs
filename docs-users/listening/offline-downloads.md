@@ -126,6 +126,8 @@ The web player is an installable app - a *Progressive Web App*. Installing it ge
 
 Once installed, it behaves like any other app - and because installation marks the site as important to you, the browser guards your downloaded books' storage far more strongly.
 
+Installed or not, on a secure (`https://`) connection the browser keeps a copy of the whole web player, every page of it, so even a page you've never opened works offline. After your server is updated, the web player fetches the new version in the background the next time you open it online.
+
 :::note
 Installing the web player and installing the native mobile app are different things. The PWA is the web player in an app suit; the native apps add more device integration - see [The mobile apps](mobile-apps.md).
 :::

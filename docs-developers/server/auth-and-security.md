@@ -22,6 +22,13 @@ Two different hashing strategies, chosen by entropy:
   Minimum length for a non-empty password is 8 (`auth.MinPasswordLen`). Test
   binaries may lower the cost with `auth.UseCheapHashingForTests()`, which
   panics outside a test binary (`testing.Testing()`).
+  Every hash and verify goes through `argonKey`, which hands the 64 MiB work
+  block back to the OS once hashing has been quiet for a second
+  (`memoryReleaser`, `debug.FreeOSMemory` on its own goroutine, never the
+  request's; a burst of sign-ins costs one release). Without it a server that
+  hashed a password or two at start and then idled kept that memory: measured
+  in a container with an empty library, after the first-run admin and one
+  sign-in, its anonymous memory went from 143 MiB to 13 MiB (server#244).
 - **Tokens and auth codes** (full-entropy, machine-generated) are stored only
   as **SHA-256 hashes** (`hashSecret`). A fast hash is appropriate here because
   the secrets are 256-bit random values - argon2id is reserved for passwords.
@@ -82,8 +89,8 @@ and the [Bridge's token](#bridge-tokens) (`auth.KindBridge`):
   `gateSelfService`, so they share the `accountLimiter` and are refused for demo
   accounts, exactly like the password/recovery routes; listing (`GET
   /auth/tokens`) takes `nonDemoAccount` alone (from 2.4.0), so opening the
-  Account page never spends the per-IP budget a household behind one NAT
-  shares. **Containment:** an API-key
+  Account page never spends the `accountLimiter` budget a household behind one
+  NAT shares. **Containment:** an API-key
   caller is additionally barred (403, via `denyAPIKey` in
   `internal/api/handlers_auth.go`, also called by `handlers_cast.go` and
   `handlers_members.go`) from the credential-minting routes
@@ -874,12 +881,17 @@ unresolved join so `rel_path` keys stay consistent - see
 
 ## Rate limiting
 
-Two mechanisms in `internal/api/ratelimit.go`, six buckets wired in `api.New`:
+Two mechanisms in `internal/api/ratelimit.go`, seven buckets wired in `api.New`.
+The three token buckets take their rates from `rate_limit.*` (read at start,
+`RateLimitConfig.Effective`: an unset value is the default below; see
+[Configuration](configuration.md#rate-limits-rate_limit)); the lockouts and caps
+are fixed.
 
 | Bucket | Mechanism | Limit | Applied to |
 |---|---|---|---|
-| `ipLimiter` | Token bucket per IP (`rateLimiter`) | ~50 req/s, burst 200 | The general API: every request (global `rateLimit` middleware) except static files and authenticated media. Static files are those the mux hands to a handler the web package registered (`web.IsStatic`: the console, the web player, the connect page and its assets, served from memory); one cold console page loads forty-odd chunks, so they are not counted. The health check and the setup page are counted |
-| `mediaLimiter` | Token bucket per credential (`rateLimiter`) | ~200 req/s, burst 2000 | Media GETs (`/cover`, `/stream`, `/meta/cover`: the routes `requireBookMediaAuth` and `requireMediaAuth` wrap, both `mediaAuth`) once they authenticate; a book's `/ebook` is not media here (`requireAuth`, the general bucket). See below |
+| `ipLimiter` | Token bucket per IP (`rateLimiter`) | `rate_limit.address`, ~50 req/s, burst 200 | Everything the two credential buckets below don't take: public routes (`GET /server`, the health check, the setup page, sign-in, redeem, demo sessions), every `/api/v1/auth/*` route whether or not it carries a token (sign-in, pairing, password, API keys), the Bridge's `/api/v1/bridge/*` (its own token kind, not `requireAuth`), a request whose token is missing or refused, and a demo account's API requests (its media stays on `mediaLimiter`). Static files are not counted: those the mux hands to a handler the web package registered (`web.IsStatic`: the console, the web player, the connect page and its assets, served from memory); one cold console page loads forty-odd chunks |
+| `tokenLimiter` | Token bucket per credential (`rateLimiter`) | `rate_limit.token`, ~50,000 req/s, burst 100,000 | Authenticated API routes outside `/api/v1/auth/` (`requireAuth`, and so `requireAdmin`), once they authenticate, a book's `/ebook` included; keyed by the credential's `tokens` row id (a session or an API key). See below |
+| `mediaLimiter` | Token bucket per credential (`rateLimiter`) | `rate_limit.media`, ~200 req/s, burst 2000 | Media GETs (`/cover`, `/stream`, `/meta/cover`: the routes `requireBookMediaAuth` and `requireMediaAuth` wrap, both `mediaAuth`) once they authenticate. See below |
 | `loginLimiter` | Failure lockout per IP (`limiter`) | 10 failures / 15 min | `POST /auth/login` |
 | `redeemLimiter` | Failure lockout per IP | 10 failures / 15 min | `POST /auth/redeem`, and the Bridge's pairing exchange `POST /bridge/pair` (one shared counter) |
 | `demoLimiter` | **Attempt** cap per IP (`Acquire`) | 5 / 15 min | `POST /demo/session` |
@@ -895,7 +907,7 @@ stale entries so a flood of distinct IPs can't grow memory without bound. An
 `Retry-After`, the seconds until the lockout ends (`LockedFor`, rounded up).
 
 **Podcast discovery and OPML** have budgets of their own, per user and in
-memory (reset by a restart), outside the six buckets above
+memory (reset by a restart), outside the seven buckets above
 (`internal/podcast/discovery`, `handlers_podcast_discovery.go`; full tables in
 the [reference](api/reference.md#podcast-discovery)):
 
@@ -912,28 +924,54 @@ Each refusal carries `Retry-After`. The per-user tables hold at most 4,096
 users (`503 opml_busy` for OPML once full), and an upstream `429` cools that
 provider down for its `Retry-After` (1 to 300 seconds, 60 by default).
 
-**Media is classed by route.** A cover grid loads every cover as its own
-`?token=` request, so sharing the per-IP budget turned a fast server's covers
-into 429s. `requireMediaAuth` and `requireBookMediaAuth` (both `mediaAuth`) return a `mediaHandler`, which `rateLimit` skips
-(read off the handler the mux picks, like `web.IsStatic`), and owns the media
-policy itself: it refuses the request while the address's `ipLimiter` bucket is
-empty (`Ready`, which checks without spending), charges that bucket one token
-when authentication fails (no token, or a bad one), so unauthenticated media is
-bounded exactly like the general API, and otherwise spends from `mediaLimiter`,
-keyed by the credential (its token row id; a cast token is a `tokens` row too, so it
-has a bucket of its own) rather than the address: several people
-behind one address would otherwise share a budget. A request its credential's
-bucket refuses has still cost a token lookup, so it is charged to the address
-too. Charges use `Charge`, which always lands, even past empty (down to minus
-the burst): requests that passed `Ready` together each pay, so concurrency can't
-buy lookups the bucket never paid for. The general bucket stays per IP because
-it runs before authentication.
+**Signed-in requests are limited per credential** (server#246), so the people
+behind one address (a household behind NAT, every visitor behind a reverse
+proxy) don't share a budget, and a web player loading a whole library a page at
+a time (each cover a `?token=` request of its own) isn't throttled. `rateLimit`
+meters by address only what runs before anyone is identified; the authenticated
+routes meter themselves. `rateLimit` recognises them from the handler the mux
+picks, as it does for `web.IsStatic`: `mediaAuth` (behind `requireMediaAuth` and
+`requireBookMediaAuth`) returns a `mediaHandler`, and `requireAuth` an
+`authHandler`; `tokenKeyed` is an `authHandler` whose pattern is outside
+`/api/v1/auth/`. For these, `rateLimit` only refuses an address whose
+`ipLimiter` bucket is already empty (`Ready`, which checks without spending),
+before the timeout layer starts its goroutine and buffer. The route's own check
+then:
+
+1. refuses the request while the address's bucket is empty (`Ready` again);
+2. authenticates, and when that fails (no token, or a bad one) charges the
+   address's bucket one token, so unauthenticated requests are bounded exactly
+   like the public routes;
+3. otherwise spends from the credential's bucket (`tokenLimiter` or
+   `mediaLimiter`, keyed by the token row id; a cast token is a `tokens` row
+   too, so it has a media bucket of its own), and when that bucket refuses,
+   charges the address too, since the lookup was already done.
+
+A **demo account** spends its API requests from its address's bucket instead
+(`allowCredential`): anyone can mint a demo session, so a per-token budget would
+be no limit at all. A request `rateLimit` has already charged to its address
+(the `/api/v1/auth/*` routes, marked `addressCharged` in the context) is only
+authenticated, never charged twice. Those routes stay per address even with a
+token because they mint or check secrets (`POST /auth/pair` a pairing secret,
+`/auth/password` a password, `/auth/tokens` a key), so a credential must not
+take them out of their address's budget.
+
+Charges use `Charge`, which always lands, even past empty (down to minus the
+burst): requests that passed `Ready` together each pay, so concurrency can't buy
+lookups the bucket never paid for. `Ready` reserves nothing, so a flood sending
+more than burst+1 bad tokens at a time gets that many lookups every
+(burst+1)/rate seconds before it pays; a token-bucket reserve with a refund
+would close that but would also 429 households, so it is accepted. A bucket
+idle for two full refills is swept (its idle TTL is floored at a minute and
+capped at a day, so a slow `rate_limit.*` still bounds the map).
 
 Client IPs come from `realIP` middleware: `X-Forwarded-For` is honored **only**
 when the direct peer is inside a configured `trusted_proxies` CIDR (the last
 entry, the address the proxy itself saw), so clients can't spoof their way out
 of a lockout. Behind a reverse proxy that isn't listed there, every visitor
-appears as the proxy's address and shares its general bucket and its lockouts.
+appears as the proxy's address and shares its address bucket and its lockouts
+(signed-in requests still have their own credential buckets, but a wrong token
+from anyone behind the proxy charges the shared one).
 
 ## Transport hardening
 
@@ -1041,7 +1079,8 @@ The enumerated critical list:
 - `library.SafeJoin`
 - `Scope.Allows` / `Scope.VisibleInBrowse` / `pathFilterSQL` (its single-parameter form too)
 - the household member rule (`catalog/members.go`) and the member routes
-- the rate limiters (`limiter`, `rateLimiter`) and the route classes in `rateLimit`
+- the rate limiters (`limiter`, `rateLimiter`), the route classes in `rateLimit` and the
+  per-credential limiting in `requireAuth`/`mediaAuth` (`allowCredential`)
 - `auth.ResolveRequest` / `lookupToken`
 - the cast token checks: `relpath.Within` / `relpath.Clean`, the grant's `covers`,
   `auth.ResolveCastRequest`, `api.authenticate` / `castOwnBook`

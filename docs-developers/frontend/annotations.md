@@ -160,8 +160,9 @@ The sleep timer's bookmark (`drift-controller.ts`; see
 on an `annotations` server; on an older one it can only be told by its note, which
 was translated when it was made and stored as text. `isDriftBookmark` therefore
 accepts the label, or no label at all with the automatic note in **any** of the six
-languages (`isFellAsleepNote`, every supported locale's
-`player.sleepTimer.fellAsleepNote` from the i18n resources). A bookmark with another label is the listener's
+languages (`isFellAsleepNote`, over `FELL_ASLEEP_NOTES` in `src/i18n/fell-asleep-notes.ts`;
+[Internationalisation](i18n.md#setup-srci18nindexts) says why that table is kept apart from
+the catalogs). A bookmark with another label is the listener's
 own, whatever its note says. `shownNote` hides the automatic note, so the row says
 "You drifted off around here" in today's language; a note the listener wrote on it
 shows instead. The Journal's Fell asleep filter and its Diary strips use the same

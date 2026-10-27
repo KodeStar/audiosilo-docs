@@ -53,7 +53,7 @@ You have three options:
   issued, and warns two weeks before it runs out.
 - **Put a reverse proxy in front** (Caddy, nginx, Traefik) and set
   `tls.mode: off` so the proxy handles HTTPS. Also set `trusted_proxies` so
-  rate limiting sees real visitor addresses.
+  rate limiting and the sign-in lockouts see real visitor addresses.
 
 Both public options are covered step by step in
 [Remote access](./getting-started/remote-access.md).
@@ -137,6 +137,20 @@ A few things can cause this:
 
 Invites are managed in [People and invites](./admin/users-and-invites.md); the
 connect flow itself is described in [Connecting](./listening/connecting.md).
+
+### Everyone gets "Too many tries" at once
+
+Signing in, pairing and requests with a wrong or old sign-in are limited per
+visitor address (signed-in devices have limits of their own). If AudioSilo runs
+behind a reverse proxy that isn't listed under **Trusted proxies** (**Server >
+Settings > Network & HTTPS**), every visitor looks like the same address. One
+device retrying with an old sign-in can then use up that address's limit, and
+everyone is refused for a short while: signing in or pairing says "Too many
+tries", and pages and covers don't load. Add the proxy's address to **Trusted
+proxies** (see
+[Behind a reverse proxy](./getting-started/remote-access.md#behind-a-reverse-proxy)); it applies
+at once. (The limits themselves are `rate_limit` in `config.yaml`, see the
+[configuration reference](/developers/server/configuration#rate-limits-rate_limit).)
 
 :::tip
 If you're signed in but worried about getting locked out later, **set a

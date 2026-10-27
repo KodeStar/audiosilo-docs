@@ -387,6 +387,11 @@ with the same kind of opaque `cursor` / `next_cursor`: see
 Other list endpoints (`/search`, `/books/recent`, a single book's history) are
 single-shot with a `limit` and no pagination.
 
+`GET /libraries/{id}/books`, `GET /books/recent` and `GET /search` may be
+answered from a server-side cache that any database write empties, so an answer
+is never staler than one built fresh; nothing on the wire changes (see
+[the list answer cache](../overview.md#the-list-answer-cache)).
+
 ## Capability flags - gate your features
 
 `GET /api/v1/server` is public and returns the server's capabilities:
@@ -550,18 +555,29 @@ nothing; with it, an absent date is unknown or not set.
 
 ## Rate limiting
 
-Two limiter mechanisms guard the API (`internal/api/ratelimit.go`), keyed by
-client IP except for authenticated media. Tripping any of them returns **429**
-with an error envelope.
+Two limiter mechanisms guard the API (`internal/api/ratelimit.go`): token
+buckets, keyed by client IP until a request's credential is proved and by the
+credential after (except the `/auth/*` routes and a demo account's API
+requests, which stay keyed by IP), and failure lockouts and attempt caps keyed
+by IP. Tripping
+any of them returns **429** with an error envelope.
 
 | Limiter | Scope | Policy |
 |---|---|---|
-| General token bucket | every request except static files and media | ~50 requests/second, burst 200, per IP (`rate limit exceeded`) |
-| Media token bucket | `GET /libraries/{id}/cover`, `GET /libraries/{id}/stream`, `GET /libraries/{id}/meta/cover` | ~200 requests/second, burst 2000, per credential (a cast token has a bucket of its own); a failed authentication counts against the general bucket ([details](../auth-and-security.md#rate-limiting)) |
+| Address token bucket | public routes, every `/auth/*` route (with or without a token), the Bridge's `/bridge/*`, a request whose token is missing or refused, a demo account's API requests (not its covers and audio); static files are not counted | ~50 requests/second, burst 200, per IP (`rate limit exceeded`) |
+| Credential token bucket | every other authenticated API request (admin routes included), once its token is proved | ~50,000 requests/second, burst 100,000, per session or API key; past it the address is charged too |
+| Media token bucket | `GET /libraries/{id}/cover`, `GET /libraries/{id}/stream`, `GET /libraries/{id}/meta/cover` | ~200 requests/second, burst 2000, per credential (a cast token has a bucket of its own) |
 | Login lockout | `POST /auth/login` | 10 *failed* attempts per 15 min per IP; a success resets the counter |
 | Redeem lockout | `POST /auth/redeem`, `POST /bridge/pair` (one shared counter) | 10 *failed* attempts per 15 min per IP; a success resets |
 | Demo cap | `POST /demo/session` | at most 5 demo sessions per IP per 15 min, metered at admission (failures count too) |
-| Account mutations | `POST /auth/password`, `POST /auth/recovery`, `/auth/tokens` (create/list/revoke) | at most 10 attempts per IP per 15 min, metered at admission |
+| Account mutations | `POST /auth/password`, `POST /auth/recovery`, `/auth/tokens` (create/revoke; listing is not counted) | at most 10 attempts per IP per 15 min, metered at admission |
+
+The three token buckets' rates are `rate_limit.*` in the server's
+[configuration](../configuration.md#rate-limits-rate_limit) (these are the
+defaults). A failed authentication on any route charges the address bucket,
+so guessing tokens is bounded by the address limit; how the address and
+credential buckets work together is in
+[Auth & security](../auth-and-security.md#rate-limiting).
 
 Podcast discovery and OPML transfer add their own per-user budgets on top,
 answered `429` with a `code` and `Retry-After`; see
@@ -604,8 +620,8 @@ stream with the `Authorization` header: the player's episode probe sends
 (an `<audio>` element's own Range requests come from the browser and are
 never preflighted). The exposed
 headers are `Retry-After` where a route sends one (the discovery and OPML
-budgets, a busy transcode, an episode on its way; the general rate limit and
-the request timeout send none) and the OPML export's counts, so a
+budgets, a busy transcode, an episode on its way; the token-bucket rate limits
+and the request timeout send none) and the OPML export's counts, so a
 cross-origin web player reads them as the `/web` player and native apps
 always could. A denied or absent origin gets no CORS header but `Vary`, and a
 server with `cors_origins` unset gets none at all.

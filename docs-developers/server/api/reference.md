@@ -2970,7 +2970,8 @@ the apps download them with the header into a local file they post to their read
 in chunks, so nothing ever holds a URL that carries a credential. The bytes are
 exempt from the 30 s request timeout (an illustrated EPUB can be tens of megabytes on a slow
 link), but the book lookup before them is not: a lookup past it is a `500`. The
-route stays under the general per-IP rate limit, not the media one.
+route is limited with the authenticated API, per credential, not by the media
+bucket ([rate limiting](index.md#rate-limiting)).
 
 | Status | Meaning |
 |---|---|
