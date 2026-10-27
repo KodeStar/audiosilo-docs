@@ -557,12 +557,14 @@ nothing; with it, an absent date is unknown or not set.
 
 Two limiter mechanisms guard the API (`internal/api/ratelimit.go`): token
 buckets, keyed by client IP until a request's credential is proved and by the
-credential after, and failure lockouts and attempt caps keyed by IP. Tripping
+credential after (except the `/auth/*` routes and a demo account's API
+requests, which stay keyed by IP), and failure lockouts and attempt caps keyed
+by IP. Tripping
 any of them returns **429** with an error envelope.
 
 | Limiter | Scope | Policy |
 |---|---|---|
-| Address token bucket | public routes, every `/auth/*` route (with or without a token), the Bridge's `/bridge/*`, a request whose token is missing or refused, a demo account's requests; static files are not counted | ~50 requests/second, burst 200, per IP (`rate limit exceeded`) |
+| Address token bucket | public routes, every `/auth/*` route (with or without a token), the Bridge's `/bridge/*`, a request whose token is missing or refused, a demo account's API requests (not its covers and audio); static files are not counted | ~50 requests/second, burst 200, per IP (`rate limit exceeded`) |
 | Credential token bucket | every other authenticated API request (admin routes included), once its token is proved | ~50,000 requests/second, burst 100,000, per session or API key; past it the address is charged too |
 | Media token bucket | `GET /libraries/{id}/cover`, `GET /libraries/{id}/stream`, `GET /libraries/{id}/meta/cover` | ~200 requests/second, burst 2000, per credential (a cast token has a bucket of its own) |
 | Login lockout | `POST /auth/login` | 10 *failed* attempts per 15 min per IP; a success resets the counter |
@@ -618,8 +620,8 @@ stream with the `Authorization` header: the player's episode probe sends
 (an `<audio>` element's own Range requests come from the browser and are
 never preflighted). The exposed
 headers are `Retry-After` where a route sends one (the discovery and OPML
-budgets, a busy transcode, an episode on its way; the general rate limit and
-the request timeout send none) and the OPML export's counts, so a
+budgets, a busy transcode, an episode on its way; the token-bucket rate limits
+and the request timeout send none) and the OPML export's counts, so a
 cross-origin web player reads them as the `/web` player and native apps
 always could. A denied or absent origin gets no CORS header but `Vary`, and a
 server with `cors_origins` unset gets none at all.

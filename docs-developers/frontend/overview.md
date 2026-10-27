@@ -751,8 +751,9 @@ repo's `CONVENTIONS.md` ("Web start (the split build)" and "Startup cache
   renders, so a reload paints at once and refreshes.
 - **First-screen covers.** A grid's first three rows, a shelf's first tiles and
   Home's Now card set `FirstScreenCovers` (`src/components/library/first-screen-covers.ts`):
-  those covers load at once, ahead of the page's other images, and show without
-  the fade. The Library grid asks for its second page once the first has
+  those covers load at once, ahead of the page's other images. On the web any
+  cover that loads within `FADE_AFTER_MS` (120 ms) of being drawn shows without
+  the fade (`cover-image.web.tsx`), so these usually do; a late one still fades. The Library grid asks for its second page once the first has
   painted (`useAllLibraryBooks`, through `afterPaint`), so the rest of the
   library never holds the first page's covers back.
 - **Languages.** Only English is bundled; another language's catalog is its own

@@ -186,7 +186,7 @@ bucket is answered `429 rate limit exceeded`.
 
 | Key | Type / default | Meaning |
 |---|---|---|
-| `rate_limit.address.rate` / `.burst` | float / int, `50` / `200` | Per client address: what runs before a credential is proved (a missing or refused token pays here), every `/api/v1/auth/*` route (sign-in, pairing, password, API keys), the Bridge's requests and a demo account's |
+| `rate_limit.address.rate` / `.burst` | float / int, `50` / `200` | Per client address: what runs before a credential is proved (a missing or refused token pays here), every `/api/v1/auth/*` route (sign-in, pairing, password, API keys), the Bridge's requests and a demo account's API requests (its covers and audio stay per credential, below) |
 | `rate_limit.token.rate` / `.burst` | float / int, `50000` / `100000` | Per signed-in device or API key (its `tokens` row): every other authenticated API request, admin routes included, so people behind one address each have their own |
 | `rate_limit.media.rate` / `.burst` | float / int, `200` / `2000` | Per signed-in device, API key or cast token: covers and audio (`/cover`, `/stream`, `/meta/cover`) |
 
@@ -203,17 +203,18 @@ attempt caps on demo sessions and account changes, are separate and not
 configurable.
 
 ```yaml
-# Set only what you want to change; these are the defaults.
-rate_limit:
-  address:
-    rate: 50       # [AUDIOSILO_RATE_LIMIT_ADDRESS_RATE]
-    burst: 200     # [AUDIOSILO_RATE_LIMIT_ADDRESS_BURST]
-  token:
-    rate: 50000    # [AUDIOSILO_RATE_LIMIT_TOKEN_RATE]
-    burst: 100000  # [AUDIOSILO_RATE_LIMIT_TOKEN_BURST]
-  media:
-    rate: 200      # [AUDIOSILO_RATE_LIMIT_MEDIA_RATE]
-    burst: 2000    # [AUDIOSILO_RATE_LIMIT_MEDIA_BURST]
+# Set only what you want to change; these are the defaults, so uncommenting
+# them as they are would pin today's values against a later release's.
+# rate_limit:
+#   address:
+#     rate: 50       # [AUDIOSILO_RATE_LIMIT_ADDRESS_RATE]
+#     burst: 200     # [AUDIOSILO_RATE_LIMIT_ADDRESS_BURST]
+#   token:
+#     rate: 50000    # [AUDIOSILO_RATE_LIMIT_TOKEN_RATE]
+#     burst: 100000  # [AUDIOSILO_RATE_LIMIT_TOKEN_BURST]
+#   media:
+#     rate: 200      # [AUDIOSILO_RATE_LIMIT_MEDIA_RATE]
+#     burst: 2000    # [AUDIOSILO_RATE_LIMIT_MEDIA_BURST]
 ```
 
 ### Web player & app links
@@ -273,10 +274,10 @@ feed/audio network limits, allowlists and the per-episode size cap in its
 
 The index comes out the same however many files a scan reads at once (see
 [Reading several files at once](scanner.md#reading-several-files-at-once)).
-The cap of 8 for the default is deliberate: past about eight, a scan gains
-little (the disk or share is the limit, and ffprobe's start-up dominates) while
-the ffprobe runs contend for CPU; on a 20-core machine, 20 at once took about a
-third more CPU than 8 for the same scan.
+The cap of 8 for the default is deliberate: past about eight, each ffprobe
+run costs more CPU as they contend. On a 20-core machine, 20 at once finished
+the same scan sooner than 8 (8.0 s against 13.4 s) but took about a third more
+CPU (141 against 104 CPU-seconds).
 
 ```yaml
 scan:

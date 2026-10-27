@@ -120,13 +120,13 @@ A few browser realities to know:
 
 The web player is an installable app - a *Progressive Web App*. Installing it gets you an AudioSilo icon on your home screen or desktop, a clean full-screen window without browser bars, and the app shell itself stored offline so it opens even with no connection (your downloads waiting inside).
 
-Installed or not, the browser keeps a copy of the whole web player, every page of it, so even a page you've never opened works offline. After your server is updated, the web player fetches the new version in the background the next time you open it online.
-
 - **Desktop (Chrome/Edge):** open the web player, then use the **install icon** in the address bar (or the browser menu's "Install AudioSilo…").
 - **Android:** open the web player in Chrome and choose **Add to Home screen / Install app** from the menu.
 - **iPhone/iPad:** open the web player in Safari, tap **Share → Add to Home Screen**.
 
 Once installed, it behaves like any other app - and because installation marks the site as important to you, the browser guards your downloaded books' storage far more strongly.
+
+Installed or not, on a secure (`https://`) connection the browser keeps a copy of the whole web player, every page of it, so even a page you've never opened works offline. After your server is updated, the web player fetches the new version in the background the next time you open it online.
 
 :::note
 Installing the web player and installing the native mobile app are different things. The PWA is the web player in an app suit; the native apps add more device integration - see [The mobile apps](mobile-apps.md).

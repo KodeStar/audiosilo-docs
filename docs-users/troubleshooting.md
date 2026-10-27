@@ -145,7 +145,8 @@ visitor address (signed-in devices have limits of their own). If AudioSilo runs
 behind a reverse proxy that isn't listed under **Trusted proxies** (**Server >
 Settings > Network & HTTPS**), every visitor looks like the same address. One
 device retrying with an old sign-in can then use up that address's limit, and
-everyone is refused for a short while. Add the proxy's address to **Trusted
+everyone is refused for a short while: signing in or pairing says "Too many
+tries", and pages and covers don't load. Add the proxy's address to **Trusted
 proxies** (see
 [Behind a reverse proxy](./getting-started/remote-access.md#behind-a-reverse-proxy)); it applies
 at once. (The limits themselves are `rate_limit` in `config.yaml`, see the
