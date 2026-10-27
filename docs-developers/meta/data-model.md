@@ -98,7 +98,8 @@ rides on the identifiers and the imprint, never on a second record.
 | `chapters` | no | array of `{title, start_ms, length_ms, audio_url?}`. `audio_url` (an `https://` URL) is the audio file the chapter *is*, for a recording published one file per section; `metacheck` requires the recording's `librivox_id` beside it |
 | `librivox_id` | no | the LibriVox project id this recording *is* (integer, at least 1). The identity a LibriVox import deduplicates on (never the title); `metacheck` holds it unique across the dataset |
 | `archive_id` | no | the Internet Archive item holding the recording's files (`archive.org/details/<archive_id>`), pattern `^[A-Za-z0-9][A-Za-z0-9._-]*$` |
-| `links` | no | where the recording is published, each URL as the source stated it and `https://` only: `librivox` (the catalogue page), `zip` (every file in one archive), `rss` (the podcast feed). At least one key; no others |
+| `links` | no | where the recording is published, each URL as the source stated it and `https://` only: `librivox` (the catalogue page), `zip` (every file in one archive), `rss` (the podcast feed), `text` (the text the recording reads from; LibriVox's `url_text_source`). At least one key; no others |
+| `copyright_year` | no | the copyright year of the **text** this recording reads, as the source stated it (LibriVox's `copyright_year`; its `0`, meaning unstated, is never written). A signed integer, negative for a year BC, never `0`. Deliberately not the work's `first_published`, which another source may own |
 | `added_at` | no | as on work |
 | `license` | yes | `CC0-1.0` |
 | `sources` | yes | |
@@ -112,11 +113,15 @@ that are not an individual, such as a full cast or a corporate credit of record;
 **absence means person or unclassified**, never a guess), optional `description`,
 optional `xref` (`wikidata`, `openlibrary` `OL\d+A`, `audible` ASIN), optional
 `librivox_reader_id` and `librivox_author_id` (the person's LibriVox catalogue
-ids, integers of at least 1; a translator's id is an author id), `license`
+ids, integers of at least 1; a translator's id is an author id), optional
+`birth_year` and `death_year` (the years a source stated, LibriVox's author
+`dob` / `dod`; signed integers, negative for a year BC, never `0`), `license`
 (`CC0-1.0`), `sources`. The two LibriVox ids are separate namespaces (a reader
 id and an author id of the same number are not a collision), and `metacheck`
 holds each unique across the dataset, because a LibriVox import keys people on
-them.
+them. A life year is a fact or it is absent: a stated value that is not plainly a
+year (`alive`, `c. 1500`) is never written, and `metacheck` refuses a
+`death_year` before the `birth_year` (`pkg/check/librivox.go`).
 
 ### series - an entry in the `data/series/` family
 
@@ -565,20 +570,24 @@ expressive layer was added in later versions:
 | 5 | the `redirects` table (retired slugs and their survivors) |
 | 6 | the `work_descriptions` table (the community spoiler-free description) |
 | 7 | the languages layer: the `translations` table (every work and series `translation_of` link), the series table's derived `language`, `ordering` and `ordering_of` columns, and a `language` column on the search index |
+| 8 | the LibriVox layer: the recordings' `librivox_id` (indexed), `archive_id`, `link_librivox` / `link_zip` / `link_rss` / `link_text`, `copyright_year` and `added_at` columns, the chapters' `audio_url`, the people's `librivox_reader_id`, `librivox_author_id`, `birth_year` and `death_year`, the `work_credits` table (a work's credited people by role, so the feed can tell a translator from an author), and the `recording_sources` table (`work_id, recording_id, type`, indexed by type) behind the API's `source` filter |
 
 `metaserve` returns characters, recaps, genres, the community description and
 the translation links inline on `GET /works/{id}` (`characters` / `recaps` /
 `recap_summary` / `genres` / `community_description` / `translation_of` /
 `translations`, all `omitempty`), and a series' language, ordering and ordering
-family on `GET /series/{id}` (see [the API](api.md#apiv1seriesidlimitoffset)).
+family on `GET /series/{id}` (see [the API](api.md#apiv1seriesidlimitoffset)),
+and the LibriVox facts on a recording, the `source` filter and the
+LibriVox-shaped feed from version 8 (see [the LibriVox layer](api.md#the-librivox-layer)).
 The serve queries **degrade gracefully** when a newer binary briefly serves an
 older release: the characters/recaps queries no-op below `schema_version` 2, the
-recap summary below 3, genres below 4, redirects below 5, the description below 6
-and the languages layer below 7, so a missing table reads as "no data", never a
-500. An artifact that *claims* version 5, 6 or 7 but lacks what that version adds
-(for 7: the `translations` table or any of the series table's `language`,
-`ordering` and `ordering_of` columns) is refused when it is loaded, naming the
-claim, because the builder always writes the two together. The same versioning
+recap summary below 3, genres below 4, redirects below 5, the description below 6,
+the languages layer below 7 and the LibriVox layer below 8, so a missing table
+reads as "no data", never a 500. An artifact that *claims* version 5, 6, 7 or 8
+but lacks what that version adds (for 7: the `translations` table or any of the
+series table's `language`, `ordering` and `ordering_of` columns; for 8: any of
+its columns or the `work_credits` and `recording_sources` tables) is refused when it is loaded,
+naming the claim, because the builder always writes the two together. The same versioning
 drives the [coverage endpoints](api.md#coverage-endpoints), which omit a
 dimension's count rather than report it as a misleading zero when the artifact
 predates its table.
