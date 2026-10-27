@@ -48,6 +48,14 @@ community-written and covers are URLs. Every entity also carries a `sources[]`
 provenance array so any source can be audited or retracted wholesale. Full detail
 is in [the data model](data-model.md).
 
+Imports are bounded, curated tranches, never a wholesale mirror of another
+catalogue, with one named exception: [LibriVox](https://librivox.org), whose
+recordings are in the public domain, may be mirrored in full under the
+`librivox` source type, facts only. The tooling is in place and the backfill
+lands in reviewed tranches, as
+[contributing data](contributing-data.md#librivox-the-public-domain-mirror)
+describes.
+
 ## Package layout
 
 The tooling follows the same discipline as the rest of the workspace: thin CLIs
@@ -80,7 +88,7 @@ pkg/query      PUBLIC read side of the artifact: Open, every query, and the JSON
 pkg/query/querytest  PUBLIC test support: a small real fixture artifact + constants naming its facts
 pkg/release    PUBLIC data-release fetcher: newest data release, verified download
 pkg/release/releasetest  PUBLIC test support: one fake of GitHub's releases API + checksum/gzip helpers
-internal/importer   OpenAudible / Libation export -> canonical records (ASIN dedup)
+internal/importer   OpenAudible / Libation / libex export -> canonical records (ASIN dedup); the LibriVox snapshot fetcher and adapter (librivox_id dedup)
 internal/issueform  issue-form body -> canonical records + an ok/duplicate/needs-human/invalid verdict
 internal/build      the deterministic SQLite builder (FTS5, ASIN/ISBN indexes, added_at)
 internal/serve      metaserve: serves pkg/query's handler (behind CORS + gzip), the hot swap,
@@ -152,7 +160,7 @@ run ./cmd/<name>`.
 | `metabuild` | Compiles `data/` into the SQLite artifact (`-o meta.sqlite`). Runs the full validation first and refuses to build invalid data. Deterministic: identical data produces an identical artifact; each record is dated by its own `added_at`, falling back to its newest `sources[].imported_at`. |
 | `metaserve` | Serves the compiled artifact read-only over HTTP (and optionally the static site at `/`), hot-swapping newer GitHub releases. See [the HTTP API](api.md). |
 | `metascan` | Scans a local audiobook folder into an import JSON - see [contributing data](contributing-data.md#scanning-local-files-metascan). |
-| `metaimport` | Ingests an OpenAudible/Libation library export into `data/` - see [contributing data](contributing-data.md#bulk-importers-metaimport). |
+| `metaimport` | Ingests external sources into `data/`: OpenAudible/Libation library exports, libex rows and the LibriVox mirror (`metaimport librivox fetch` and `import`) - see [contributing data](contributing-data.md#bulk-importers-metaimport) and [the LibriVox mirror](contributing-data.md#librivox-the-public-domain-mirror). |
 | `metaissue` | Issue-form body to canonical records + verdict, for the intake bot - see [contributing data](contributing-data.md#intake-automation-issue-form-to-bot-pull-request). |
 | `metaextract` | Supports the source-to-sidecar extraction pipeline: `split` (epub -> chapter text + manifest) and `ngram` (near-verbatim overlap check against the source text). `split` refuses a crafted epub rather than exhausting memory: any archive member over 64 MiB decompressed, or a spine over 256 MiB in total, rejects the whole book before anything is written. |
 

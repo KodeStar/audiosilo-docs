@@ -1,6 +1,6 @@
 ---
 title: Contributing data to Meta
-description: "How metadata enters audiosilo-meta: the GitHub issue forms (five in the core repository, two in audiosilo-meta-community) and the intake automation that turns them into validated bot pull requests, the advisory ai-verify layer, the OpenAudible/Libation importers, metascan, the in-browser site tools, and the authoring rules."
+description: "How metadata enters audiosilo-meta: the GitHub issue forms (five in the core repository, two in audiosilo-meta-community) and the intake automation that turns them into validated bot pull requests, the advisory ai-verify layer, the OpenAudible/Libation importers, the LibriVox public-domain mirror, metascan, the in-browser site tools, and the authoring rules."
 ---
 
 ## The rules that govern everything
@@ -84,10 +84,10 @@ date), then every other per-row warning.
 Seven behaviors are worth knowing:
 
 - **Mirror-seeded records are taken over by ASIN.** When an Add a work or Add a
-  recording submission names, by ASIN, a recording that was seeded from the
-  libex mirror and that no user has attested (every `sources[]` entry is
-  `libex-import`), the bot does not close it as a duplicate: it applies the
-  submission over that record through `importer.AttestAt`, which runs it as a
+  recording submission names, by ASIN, a recording that was seeded from a bulk
+  mirror and that no user has attested (every `sources[]` entry is bulk-mirror
+  tier: `libex-import` or `librivox`), the bot does not close it as a duplicate:
+  it applies the submission over that record through `importer.AttestAt`, which runs it as a
   one-row user-library import over the store `metaissue` already opened and
   hands it to `attestExisting` - the hook a library import takes at its
   ASIN-dedup skip. The stated runtime, release date, publisher and cover replace
@@ -332,9 +332,10 @@ Every pull request touching `data/**` is checked twice:
 
 - **`check.yml` (mechanical, blocking).** Runs `go build`/`vet`/`test`,
   `metacheck` (schema, pack placement and caps, referential integrity,
-  uniqueness, chapter/series rules), and `metafmt --check` (canonical JSON +
-  pack invariants). A red pull request never merges. It uses the plain `pull_request` trigger, so fork pull
-  requests run with a read-only token and no secrets.
+  uniqueness, chapter/series rules, LibriVox id rules), and `metafmt --check`
+  (canonical JSON + pack invariants). A red pull request never merges. It uses
+  the plain `pull_request` trigger, so fork pull requests run with a read-only
+  token and no secrets.
 - **`ai-verify.yml` (advisory, never blocking).** An AI judgement layer on top of
   the mechanical check: it posts a `PASS` / `FLAG` comment and label but **never
   blocks a merge**. It also uses the plain `pull_request` trigger by design (not
@@ -355,7 +356,9 @@ library" form - still needs a maintainer's approval however green it is.
 ## Bulk importers: metaimport
 
 `metaimport` ingests an external library export into `data/` as reviewable
-records, for contributors who already have a library manager's export:
+records, for contributors who already have a library manager's export (LibriVox's
+public-domain catalogue has its own two-step path, described
+[below](#librivox-the-public-domain-mirror)):
 
 ```sh
 go run ./cmd/metaimport openaudible <books.json>  [--dry-run] [--date YYYY-MM-DD]
@@ -520,6 +523,113 @@ go run ./cmd/metaimport libex /tmp/all-rows.ndjson --regenerate-genres \
 The summary line counts the works set to the vote, added to, unchanged and
 reached by no row, and the genre instances added and removed; notes count the
 contradicted rows and the works held back as newer than the rows.
+
+### LibriVox: the public-domain mirror
+
+`metaimport librivox` mirrors [LibriVox](https://librivox.org)'s catalogue, every
+language, under the `librivox` source type. It is the **one named exception** to
+the rule that the catalogue is never an unbounded mirror (LICENSING.md's "The
+public-domain exception: LibriVox", in `audiosilo-meta`): LibriVox volunteers
+release every recording into the public domain, the texts they read are public
+domain too, and what the importer takes is the factual record of each project.
+The exception names LibriVox only; another catalogue would need its own case
+argued in LICENSING.md before any tooling points at it.
+
+**Facts only.** A LibriVox record carries the title, the authors, the readers
+(as narrators), the translators (as `translator` credits), the language, the
+runtime, the sections (as chapters, each with its `audio_url`), the genres mapped
+onto the vocabulary where one fits, the LibriVox ids, the archive.org identifier,
+the `links`, the cover URL (`https://` only) and `LibriVox` as the publisher of
+record. It **never** carries the project `description`: LibriVox's descriptions
+are often quoted from Wikipedia, so they are neither the project's to relicense
+nor CC0. Audio and cover art stay
+on archive.org; the records hold URLs. In the trust tiers `librivox` is a
+bulk-mirror source beside `libex-import`, so a user hand edit outranks it (see
+[provenance](./data-model.md#provenance-on-every-entity)).
+
+It runs in two steps, and only the first calls LibriVox:
+
+```sh
+# 1) Fetch a local snapshot of LibriVox's audiobooks feed (resumable).
+go run ./cmd/metaimport librivox fetch --out ~/librivox-snapshot [--max-pages N]
+
+# 2) Import a tranche of it by project-id range, offline; --dry-run first.
+go run ./cmd/metaimport librivox import --from ~/librivox-snapshot --ids 1-2000 --dry-run
+```
+
+**`fetch` is polite by design**, because LibriVox's volunteer-run API caps its
+clients and asks them to slow down:
+
+- 100 projects a page (`limit=100`, with `extended=1` and `coverart=1` for the
+  sections, genres, translators, archive.org link and cover);
+- at least 5 seconds between the start of any two requests, retries included;
+- a User-Agent naming meta.audiosilo.app and a contact address;
+- on `429`, a `5xx` or a network error it backs off, honouring `Retry-After`
+  (seconds or an HTTP date, never less than the 5-second spacing) and otherwise
+  waiting exponentially from 30 seconds up to 10 minutes, for at most six retries
+  (seven requests for one page) before the run stops, resumably. Any other error
+  status stops the run at once.
+
+The snapshot is a directory that is **never committed**: `manifest.json` (the
+fetch's resume state: feed, query, limit, next offset, page and project counts,
+and whether the catalogue is complete) and `pages/offset-NNNNNNN.json`, each one
+feed response body verbatim. Every page is written atomically before the manifest
+records it, so rerunning the same command after an interrupt resumes at the
+first page the last run had not finished, and a snapshot fetched with other query
+parameters is refused rather than mixed in. Pages are offset windows over the
+feed's ascending project-id order, so a project catalogued during a long fetch
+lands at the end instead of shifting a window already read. The catalogue ends
+at a short page or the feed's "no results" answer; a snapshot already complete
+makes no request, so a fresh reading goes into a new directory. `--max-pages N`
+stops after `N` pages (`0`, the default, runs to the end).
+
+**`import` lands a tranche.** `--from` names the snapshot (the importer reads
+every `pages/*.json` and nothing else, so a hand-assembled snapshot works too)
+and `--ids` is required: one project id (`527`), a range (`1-2000`), an open
+range (`5000-`) or a comma-separated union of them. The other flags are the
+usual ones: `--data`, `--dry-run`, `--date YYYY-MM-DD` (the `imported_at` stamp,
+today in UTC by default) and `--conflicts <path>` (one NDJSON row per refused
+contradiction). A real run writes the packs, then validates the whole tree. For
+each selected project:
+
+- **Dedup is on `librivox_id`**, never the title: a project whose id is already
+  catalogued is skipped, so a rerun of a range changes nothing.
+- Otherwise it becomes a **new recording**, never merged into another one (two
+  LibriVox projects of one text are two productions). Its work is found by the
+  importer's ordinary identity walk (title, identity author set, language), with
+  LibriVox's trailing "(version 2)" repeat marker stripped first; when nothing
+  matches, a new work is created.
+- Sections become chapters: `start_ms` is cumulative from each section's
+  playtime and the section's archive.org file is the chapter's `audio_url`. One
+  section without a playtime leaves the timeline unknowable past it, so the whole
+  chapter list is omitted.
+- **People are keyed by LibriVox id.** A `librivox_reader_id` or
+  `librivox_author_id` the catalogue already holds resolves to that person
+  whatever the feed now calls them, and for every project that landed, its
+  readers' and authors' LibriVox ids are stamped onto the people they resolved to
+  (a translator's id is a LibriVox author id). A person already carrying a
+  different id in that namespace keeps it, and an id already on another person
+  is not recorded twice; the run warns about both. A name that slugs to nothing
+  lands on the catch-all person, which is never given an id.
+- Genres map onto the vocabulary only where a counterpart is evident; LibriVox's
+  period genres ("Published before 1800") and its umbrella and format genres are
+  not mapped.
+- **Reported skips, never guesses.** A language name with no known code is a
+  `language` refusal (never mapped to `und` or a neighbour), and a title in a
+  script the slug rule cannot read (Cyrillic, Greek, CJK) is skipped rather than
+  filed under the shared "untitled" fallback beside every other such title.
+  Teaching the importer the language or the script is what lets a re-import of
+  that id range take them. A project with no reader or no author is refused like
+  any other source's row.
+
+The backfill lands as human-reviewed tranches by project-id range (about 2,000
+projects a pull request) under the ordinary merge policy. No automated LibriVox
+lane runs yet; `GOVERNANCE.md` holds only a stub of its future invariant.
+
+`metacheck` enforces the identity rules the schema cannot see
+(`pkg/check/librivox.go`: the LibriVox ids are unique, and a chapter's
+`audio_url` needs its recording's `librivox_id`); the fields and their rules are
+in [the data model](./data-model.md#recording---a-member-of-its-work-entrys-recordings-map).
 
 ## Scanning local files: metascan
 

@@ -95,7 +95,10 @@ rides on the identifiers and the imprint, never on a second record.
 | `publisher` | no | the publisher of record |
 | `publishers` | no | array of `{region, publisher}`: other regions' imprints. May never restate the top-level `publisher` or name one region twice |
 | `cover_url` | no | must be an `https://` URL |
-| `chapters` | no | array of `{title, start_ms, length_ms}` |
+| `chapters` | no | array of `{title, start_ms, length_ms, audio_url?}`. `audio_url` (an `https://` URL) is the audio file the chapter *is*, for a recording published one file per section; `metacheck` requires the recording's `librivox_id` beside it |
+| `librivox_id` | no | the LibriVox project id this recording *is* (integer, at least 1). The identity a LibriVox import deduplicates on (never the title); `metacheck` holds it unique across the dataset |
+| `archive_id` | no | the Internet Archive item holding the recording's files (`archive.org/details/<archive_id>`), pattern `^[A-Za-z0-9][A-Za-z0-9._-]*$` |
+| `links` | no | where the recording is published, each URL as the source stated it and `https://` only: `librivox` (the catalogue page), `zip` (every file in one archive), `rss` (the podcast feed). At least one key; no others |
 | `added_at` | no | as on work |
 | `license` | yes | `CC0-1.0` |
 | `sources` | yes | |
@@ -107,8 +110,13 @@ the same entity type, and a person can be both. Fields: `id`, `name`, optional
 `sort_name`, optional `kind` (`person` / `group` / `publisher` - marks records
 that are not an individual, such as a full cast or a corporate credit of record;
 **absence means person or unclassified**, never a guess), optional `description`,
-optional `xref` (`wikidata`, `openlibrary` `OL\d+A`, `audible` ASIN), `license`
-(`CC0-1.0`), `sources`.
+optional `xref` (`wikidata`, `openlibrary` `OL\d+A`, `audible` ASIN), optional
+`librivox_reader_id` and `librivox_author_id` (the person's LibriVox catalogue
+ids, integers of at least 1; a translator's id is an author id), `license`
+(`CC0-1.0`), `sources`. The two LibriVox ids are separate namespaces (a reader
+id and an author id of the same number are not a collision), and `metacheck`
+holds each unique across the dataset, because a LibriVox import keys people on
+them.
 
 ### series - an entry in the `data/series/` family
 
@@ -522,10 +530,24 @@ scope. The object shape is deliberately extensible - a later `paragraph` or
 Every record carries a `sources[]` array (`$defs/sources`, at least one entry).
 Each source is `{type, ref?, imported_at?}`, where `type` is one of a fixed enum
 (`user`, `openaudible-import`, `libation-import`, `audiosilo-books-import`,
-`libex-import`, `audible-lookup`, `openlibrary`, `wikidata`, `inventaire`,
-`community`) and
+`libex-import`, `librivox`, `audible-lookup`, `openlibrary`, `wikidata`,
+`inventaire`, `community`) and
 `imported_at` is `YYYY-MM-DD`. Because every fact records where it came from, a
-whole source can be audited or retracted.
+whole source can be audited or retracted. (A `librivox` entry's `ref` is the
+LibriVox project id.)
+
+The source types are also ranked into trust tiers (`pkg/model/trust.go`; the
+policy is LICENSING.md's "Trust tiers and the user-overwrite rule"), applied at
+record granularity:
+
+| Tier | Source types | Authority |
+|---|---|---|
+| User library | `user` (issue forms and hand edits), `openaudible-import`, `libation-import`, `audiosilo-books-import` | may overwrite a record whose sources are bulk-mirror only |
+| Reference | `audible-lookup`, `openlibrary`, `wikidata`, `inventaire`, `community`, anything unclassified | no overwrite authority; its presence also means a record is not mirror-only |
+| Bulk mirror | `libex-import`, `librivox` | overwritable by the user-library tier: a hand edit outranks either |
+
+Why `librivox` may mirror a whole catalogue, and how its records are written, is
+in [the LibriVox mirror](./contributing-data.md#librivox-the-public-domain-mirror).
 
 ## The compiled artifact and schema versioning
 

@@ -11,6 +11,12 @@ layers, and authoring rules are in [Contributing data to Meta](./contributing-da
 If your tool works from **local audio files** rather than existing metadata, emit
 the folder-scan envelope instead (see [Scanning local files](#local-files-emit-the-folder-scan-envelope)).
 
+LibriVox is not imported through this envelope: `metaimport librivox` reads
+LibriVox's own feed from a local snapshot, deduplicates on the project id
+(`librivox_id`) rather than an ASIN, and writes fields this envelope has no
+column for (`archive_id`, `links`, a chapter's `audio_url`, the people's LibriVox
+ids). See [the LibriVox mirror](./contributing-data.md#librivox-the-public-domain-mirror).
+
 ## Target the `audiosilo-books` envelope
 
 Emit a single self-identifying JSON object. The `format` field is the contract:
