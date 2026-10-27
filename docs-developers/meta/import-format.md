@@ -13,9 +13,11 @@ the folder-scan envelope instead (see [Scanning local files](#local-files-emit-t
 
 LibriVox is not imported through this envelope: `metaimport librivox` reads
 LibriVox's own feed from a local snapshot, deduplicates on the project id
-(`librivox_id`) rather than an ASIN, and writes fields this envelope has no
-column for (`archive_id`, `links`, a chapter's `audio_url`, the people's LibriVox
-ids). See [the LibriVox mirror](./contributing-data.md#librivox-the-public-domain-mirror).
+(`librivox_id`) rather than an ASIN, finds the work by its own
+[matching rules](./contributing-data.md#which-work-a-librivox-project-joins)
+and writes fields this envelope has no column for (`archive_id`,
+`links`, `copyright_year`, a chapter's `audio_url`, the people's LibriVox ids and
+life years). See [the LibriVox mirror](./contributing-data.md#librivox-the-public-domain-mirror).
 
 ## Target the `audiosilo-books` envelope
 

@@ -1,6 +1,6 @@
 ---
 title: Contributing data to Meta
-description: "How metadata enters audiosilo-meta: the GitHub issue forms (five in the core repository, two in audiosilo-meta-community) and the intake automation that turns them into validated bot pull requests, the advisory ai-verify layer, the OpenAudible/Libation importers, the LibriVox public-domain mirror, metascan, the in-browser site tools, and the authoring rules."
+description: "How metadata enters audiosilo-meta: the GitHub issue forms (five in the core repository, two in audiosilo-meta-community) and the intake automation that turns them into validated bot pull requests, the advisory ai-verify layer, the OpenAudible/Libation importers, the LibriVox public-domain mirror and its work-matching rules, metascan, the in-browser site tools, and the authoring rules."
 ---
 
 ## The rules that govern everything
@@ -539,9 +539,11 @@ argued in LICENSING.md before any tooling points at it.
 (as narrators), the translators (as `translator` credits), the language, the
 runtime, the sections (as chapters, each with its `audio_url`), the genres mapped
 onto the vocabulary where one fits, the LibriVox ids, the archive.org identifier,
-the `links`, the cover URL (`https://` only) and `LibriVox` as the publisher of
-record. It **never** carries the project `description`: LibriVox's descriptions
-are often quoted from Wikipedia, so they are neither the project's to relicense
+the `links` (catalogue page, zip, RSS feed and the source text's URL), the
+`copyright_year` LibriVox states for the text, the authors' and translators'
+birth and death years where LibriVox states them as years, the cover URL
+(`https://` only) and `LibriVox` as the publisher of record. It **never** carries
+the project `description`: LibriVox's descriptions are often quoted from Wikipedia, so they are neither the project's to relicense
 nor CC0. Audio and cover art stay
 on archive.org; the records hold URLs. In the trust tiers `librivox` is a
 bulk-mirror source beside `libex-import`, so a user hand edit outranks it (see
@@ -596,9 +598,7 @@ each selected project:
   catalogued is skipped, so a rerun of a range changes nothing.
 - Otherwise it becomes a **new recording**, never merged into another one (two
   LibriVox projects of one text are two productions). Its work is found by the
-  importer's ordinary identity walk (title, identity author set, language), with
-  LibriVox's trailing "(version 2)" repeat marker stripped first; when nothing
-  matches, a new work is created.
+  [matching rules](#which-work-a-librivox-project-joins) below.
 - Sections become chapters: `start_ms` is cumulative from each section's
   playtime and the section's archive.org file is the chapter's `audio_url`. One
   section without a playtime leaves the timeline unknowable past it, so the whole
@@ -610,26 +610,102 @@ each selected project:
   (a translator's id is a LibriVox author id). A person already carrying a
   different id in that namespace keeps it, and an id already on another person
   is not recorded twice; the run warns about both. A name that slugs to nothing
-  lands on the catch-all person, which is never given an id.
+  lands on the catch-all person, which is never given an id. An author's or
+  translator's `dob` / `dod` become the person's `birth_year` / `death_year`
+  as the run records that person's LibriVox author id, only when LibriVox states
+  a plain year (`1883`, `-428`, `428 BC`), and only when the person states
+  neither yet: a year another source or a hand edit wrote is never overwritten,
+  and a pair whose death precedes its birth is dropped whole.
+- `copyright_year` is written only when LibriVox states a year (its `0` means
+  unstated); `url_text_source` becomes `links.text` when it is `https://`.
 - Genres map onto the vocabulary only where a counterpart is evident; LibriVox's
   period genres ("Published before 1800") and its umbrella and format genres are
   not mapped.
 - **Reported skips, never guesses.** A language name with no known code is a
-  `language` refusal (never mapped to `und` or a neighbour), and a title in a
-  script the slug rule cannot read (Cyrillic, Greek, CJK) is skipped rather than
-  filed under the shared "untitled" fallback beside every other such title.
-  Teaching the importer the language or the script is what lets a re-import of
-  that id range take them. A project with no reader or no author is refused like
-  any other source's row.
+  `language` refusal (never mapped to `und` or a neighbour); teaching the
+  importer the language is what lets a re-import of that id range take it. A
+  project with no reader or no author is refused like any other source's row. A
+  work match the rules cannot settle goes to the [worklist](#the-worklist).
+
+#### Which work a LibriVox project joins
+
+`routeLibrivox` (`internal/importer/librivoxmatch.go`) decides the work, in
+order, after LibriVox's trailing "(version 2)" title marker is stripped:
+
+1. **The ordinary identity walk**: same title, same identity authors, same
+   language. A hit whose authors agree **only through the catch-all person** is
+   not an attach: every name that slugs to nothing (two different
+   Cyrillic-named authors, say) lands on that one record, so the agreement must
+   rest on a real shared author, and a shared translator does not count. Such a
+   hit goes to the worklist as `author-unmatched`.
+2. **Spelling variants.** Otherwise, the **one** work by the same authors, in a
+   compatible language, whose title differs only by a leading article,
+   punctuation, case or accents ("The Metamorphosis" joins "Metamorphosis" by
+   Franz Kafka). The articles set aside are the English the/a/an, French
+   le/la/les/l', German der/die/das, Spanish el/los/las, Italian il/lo and Dutch
+   de/het/een, in any language. Numbers stay apart ("Vol. 1, 2" is not
+   "Vol. 12"). Two or more such works is the worklist's `several-works`, even
+   when one of them matches the credits exactly.
+3. **Otherwise a new work.** A same-titled work by an entirely **different**
+   author is a different book (think of every "Poems"), so the project gets a
+   work of its own rather than a skip. A work whose authors only **partly**
+   agree with the project's is `author-unmatched`.
+
+**Mostly non-Latin titles.** A title that slugs to nothing, or in which more than
+half of the letters are not Latin script (digits, punctuation and spaces are not
+counted, and the leading article is dropped first), never walks a slug chain:
+that would file it under the shared "untitled" fallback, or under its Latin or
+number fragment ("Сборник стихов 001" as "001"). It is matched by rule 2 alone,
+on a key that keeps its own letters (so a second project of the same title by the
+same author attaches, and "The Война и мир" meets "Война и мир"), and otherwise
+its new work is created at **`librivox-<project id>`**, titled as LibriVox writes
+it. Such a slug never merges two works; when it is already taken the project is
+the worklist's `fallback-slug-taken`. A title exactly half Latin ("Anna Karenina
+(Анна Каренина)") stays on the slug rule. A rerun is idempotent: the project
+id is already catalogued, so it writes nothing.
+
+#### The worklist
+
+A match the rules cannot settle is **never guessed**: the project is skipped and
+listed in the import report's worklist (printed by `metaimport librivox import`),
+one line per project with its id, title, authors, a reason code and the
+catalogued works involved:
+
+```
+librivox worklist: 2 projects skipped for a person to resolve (re-import the ids once settled):
+  99502 "The Metamorphosis" by Franz Kafka [several-works]: metamorphosis "Metamorphosis"; metamorphosis-2 "Metamorphosis"
+  99503 "Metamorphosis: A Novella" by Franz Kafka [differently-spelled-title]: metamorphosis "Metamorphosis"
+```
+
+| Reason | Why the project waits |
+|---|---|
+| `several-works` | two or more catalogued works qualify under rule 2 |
+| `author-unmatched` | a work carries the title but its authors only partly agree with the project's, or agree only through the catch-all person (rule 1) |
+| `differently-spelled-title` | the duplicate-identity guard holds the book under a title rule 2 does not read as the same, such as one with a subtitle |
+| `fallback-slug-taken` | a non-Latin title's `librivox-<project id>` slug is already held by another record, or retired |
+
+Once a person has settled the work (merged the duplicates, fixed the credit),
+re-importing the project's id lands it. A `differently-spelled-title` project is
+also the guard's ordinary skip: it is counted among the run's duplicate-identity
+skips and, with `--conflicts`, writes that guard's `work_identity` row, which
+carries `librivox_id` since a LibriVox row has no ASIN. The other three reasons
+appear on the worklist alone.
+
+Known gap: an author spelled differently from the catalogue ("Lev Tolstoy" for
+"Leo Tolstoy") is not the same author to these rules, so the project still
+creates a duplicate work.
 
 The backfill lands as human-reviewed tranches by project-id range (about 2,000
 projects a pull request) under the ordinary merge policy. No automated LibriVox
 lane runs yet; `GOVERNANCE.md` holds only a stub of its future invariant.
 
 `metacheck` enforces the identity rules the schema cannot see
-(`pkg/check/librivox.go`: the LibriVox ids are unique, and a chapter's
-`audio_url` needs its recording's `librivox_id`); the fields and their rules are
-in [the data model](./data-model.md#recording---a-member-of-its-work-entrys-recordings-map).
+(`pkg/check/librivox.go`: the LibriVox ids are unique, a chapter's `audio_url`
+needs its recording's `librivox_id`, and a person's `death_year` is not before
+their `birth_year`); the fields and their rules are in
+[the data model](./data-model.md#recording---a-member-of-its-work-entrys-recordings-map).
+Once built into the artifact, the records reach the API's
+[LibriVox layer](./api.md#the-librivox-layer).
 
 ## Scanning local files: metascan
 

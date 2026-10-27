@@ -54,7 +54,10 @@ recordings are in the public domain, may be mirrored in full under the
 `librivox` source type, facts only. The tooling is in place and the backfill
 lands in reviewed tranches, as
 [contributing data](contributing-data.md#librivox-the-public-domain-mirror)
-describes.
+describes. The API serves those recordings like any other and adds a
+`source=librivox` filter, `lookup?librivox_id=` and a feed in LibriVox's own
+shape, so an app that reads LibriVox can switch its base URL
+([the LibriVox layer](api.md#the-librivox-layer)).
 
 ## Package layout
 
@@ -84,14 +87,14 @@ pkg/canonical  PUBLIC canonical JSON (sorted keys, 2-space indent, trailing LF)
 pkg/check      PUBLIC schema validation + pack-storage invariants + integrity/uniqueness/chapter/series rules
 pkg/extract    PUBLIC epub split + the word-shingle near-verbatim check
 pkg/scan       PUBLIC local folder scanner (tags + path/filename heuristics + ffprobe)
-pkg/query      PUBLIC read side of the artifact: Open, every query, and the JSON API handler (NewHandler)
+pkg/query      PUBLIC read side of the artifact: Open, every query, and the JSON API handler (NewHandler), the LibriVox-shaped feed included
 pkg/query/querytest  PUBLIC test support: a small real fixture artifact + constants naming its facts
 pkg/release    PUBLIC data-release fetcher: newest data release, verified download
 pkg/release/releasetest  PUBLIC test support: one fake of GitHub's releases API + checksum/gzip helpers
-internal/importer   OpenAudible / Libation / libex export -> canonical records (ASIN dedup); the LibriVox snapshot fetcher and adapter (librivox_id dedup)
+internal/importer   OpenAudible / Libation / libex export -> canonical records (ASIN dedup); the LibriVox snapshot fetcher, adapter (librivox_id dedup) and work-matching rules
 internal/issueform  issue-form body -> canonical records + an ok/duplicate/needs-human/invalid verdict
 internal/build      the deterministic SQLite builder (FTS5, ASIN/ISBN indexes, added_at)
-internal/serve      metaserve: serves pkg/query's handler (behind CORS + gzip), the hot swap,
+internal/serve      metaserve: serves pkg/query's handler (behind CORS + gzip + a per-client rate limit + default Cache-Control), the hot swap,
                     the GitHub-release poller (over pkg/release), webhook, OpenAPI, HTML pages, sitemaps
 internal/httpx      the response helpers pkg/query and internal/serve share
 Dockerfile     image: the site build + the metaserve binary - no baked data; the catalogue is fetched from the newest data release at boot (see below)
@@ -275,6 +278,9 @@ The practical consequences for a deployment:
   exactly what triggers an automatic restart, which would turn the degraded boot
   above into the crash loop it exists to avoid. Wire `/healthz` as
   readiness/startup in the orchestrator instead.
+- **Name the reverse proxy.** The API is rate limited per client. Behind a
+  proxy, set `METASERVE_TRUSTED_PROXIES` or every visitor shares the proxy's one
+  bucket; see [rate limit and caching](api.md#rate-limit-and-caching).
 
 ## How it connects to the rest of AudioSilo
 
