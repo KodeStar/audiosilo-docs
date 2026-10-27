@@ -1,6 +1,6 @@
 ---
 title: Troubleshooting
-description: Fixes for the most common AudioSilo problems, organized by symptom - server, connecting, playback, library, and downloads.
+description: Fixes for the most common AudioSilo problems, organized by symptom - server, connecting, playback, library, reading, and downloads.
 ---
 
 Find the symptom that matches what you're seeing. Each entry explains what's
@@ -442,6 +442,22 @@ the server picks it up. Or upload a custom cover on the book's page in the
 admin console, or take the community's cover when you match the book: it is
 used ahead of all three, needs no rescan, and leaves the book's folder
 untouched (see [Covers](./admin/books.md#covers)).
+
+## Reading
+
+### A book has no Read the ebook button
+
+**Read the ebook** shows only in the **web player** (the apps' reader comes in a later update), only on a server that has the reader, and only for a book with one EPUB beside its audio. Check that:
+
+- the folder holds **one** `.epub`, not two or more (with several, none is used);
+- for a single-file book, the EPUB has the **same name** as the audio file;
+- a scan has run since you added it: click **Rescan** on the library in the admin console.
+
+See [Reading the ebook](listening/reading-the-ebook.md#which-books-have-it).
+
+### The ebook reader doesn't start
+
+If the reader says *"The reader didn't start"* after about 30 seconds, the browser didn't run the reader's page. The usual cause is a **reverse proxy that adds its own security headers**: the reader is a page of its own that the web player shows inside itself, and your server sends it with headers that allow exactly that (`X-Frame-Options: SAMEORIGIN` and its own `Content-Security-Policy`). A proxy that replaces them with `X-Frame-Options: DENY` or a site-wide policy stops it. Let the proxy pass the server's headers through for `/web/reader.html`. A very old browser can't run it either: try a current one.
 
 ## Downloads
 

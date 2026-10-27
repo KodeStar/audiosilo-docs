@@ -120,6 +120,11 @@ three routes (`requireBookMediaAuth` for cover and stream, `requireMediaAuth` fo
 string can leak into access logs and `Referer` headers, so no other route
 accepts it. Native clients should keep using the header even for media.
 
+A book's **ebook** ([`GET /libraries/{id}/ebook`](reference.md#get-apiv1librariesidebook),
+capability `ebooks`) is deliberately not one of them: it takes the header only, and
+has no URL token of any kind. Its only reader is the player, which can set the
+header and hands the bytes to its reader document itself.
+
 A book's cover and stream also accept a **cast token** (capability `cast`) as the
 `?token=`, which a player mints for the Chromecast receiver so it never sees the
 session token: see [Cast tokens as media auth](reference.md#cast-tokens-as-media-auth).
@@ -423,7 +428,8 @@ single-shot with a `limit` and no pagination.
     "podcasts": false,
     "podcast_fetch": true,
     "podcast_discovery": false,
-    "podcast_opml": true
+    "podcast_opml": true,
+    "ebooks": true
   },
   "auth": { "methods": ["auth_code", "password"] },
   "demo": { "enabled": false }
@@ -516,6 +522,12 @@ search only with `podcast_discovery` and OPML import and export only with
 `podcast_opml`. See
 [Podcast discovery](reference.md#podcast-discovery) and
 [OPML import and export](reference.md#opml-import-and-export).
+
+Bridge Phase 3b added one more, always `true` on a server that has it:
+
+| Flag | Gates |
+|---|---|
+| `ebooks` | the reader: a book's [`ebook`](reference.md#get-apiv1librariesidbooks) field, its bytes at [`GET /libraries/{id}/ebook`](reference.md#get-apiv1librariesidebook) and the reader's place at [`/libraries/{id}/reading-progress`](reference.md#get-apiv1librariesidreading-progress). The player offers Read only when it is `true` and the book has an `ebook` (and, until the apps' reader lands, only on the web) |
 
 Then each [managed module](../modules.md) adds one flag, named after the module. A
 module ships off and an admin turns it on in the console's Settings > Modules, so the

@@ -307,6 +307,7 @@ Cross-server screens ask per connection (`useCapabilitiesAll` /
 | `my_devices` | the Account page's signed-in devices and the identity card's device count (`useMyDevices`, `useRevokeMyDevice`, never on the current device) |
 | `addresses` | the Account page's At home and away card (`useServerAddresses`) and the native address runner's refresh (`addressesQuery`); see [Connect and home/away addresses](connect-and-addresses.md#home-and-away-addresses) |
 | `household` | Home's Listening in the house row, the book page's In the house card and the sharing switch (`useHousehold`, `useSetHousehold`, `useHouseListening`); see [Listening in the house](listening-in-the-house.md) |
+| `ebooks` | Read the ebook on the book page (`canRead`, with `book.ebook` and the web) and the reader screen's own check; see [The ebook reader](reader.md) |
 | `cast` | the Cast button and `prepareCast` (no flag, or flags not known yet: no button, and a cast is refused); see [Chromecast](chromecast.md) |
 
 Writes from screens follow the [1b write rules](#the-listeners-own-state-player-redesign-phase-1b)
@@ -1131,7 +1132,8 @@ The offline-safe write path for listening progress:
   it signs everyone out (one that can be re-keyed gets a key migration instead, as Phase
   8's did: [Connection identity](#connection-identity-server_iduser_id)). The **cache** axis (`audiosilo.cacheVersion`) wipes only the
   scoped cache (`audiosilo.downloads`, `audiosilo.progressMirror`,
-  `audiosilo.progressQueue`, `audiosilo.offlineServers`) and keeps every login: it is
+  `audiosilo.progressQueue`, the reader's `audiosilo.readingMirror` and
+  `audiosilo.readingQueue`, `audiosilo.offlineServers`) and keeps every login: it is
   the knob for any change to how that cache is keyed (a pre-split install adopts the
   version without a wipe). Either reset makes `bootstrapPlayback` wipe the on-disk
   downloads too. After both axes, the same `migrateStorage()` run moves legacy

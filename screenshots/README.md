@@ -16,7 +16,9 @@ npm install && npx playwright install chromium   # first time only
 
 `run.sh` builds the sibling `audiosilo-server`, seeds a small public-domain
 LibriVox library (cached in `.cache/library`; `MAX_FILES=3` chapter files per
-book keeps it ~100 MB), starts a demo-mode server on `:8790` serving the
+book keeps it ~100 MB; A Christmas Carol also gets Project Gutenberg's
+public-domain EPUB beside its audio, fetched once into `.cache`, for the reader
+shots), starts a demo-mode server on `:8790` serving the
 frontend's web export (plus a `--setup` instance on `:8791` for the first-run
 setup shots), builds the `audiosilo-meta` data artifact (composed with
 `audiosilo-meta-community`) + site and starts a `metaserve` on `:8795` for the

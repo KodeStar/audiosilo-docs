@@ -6,7 +6,8 @@
 #      the generated files of one book (2b) and three made-up podcast shows
 #      (2c, .cache/podcasts: feed.json, cover and short silent episodes, two
 #      of them left off the server; capture-web.mjs adds it as a podcast
-#      library for its podcast shots and removes it again),
+#      library for its podcast shots and removes it again) and one book's
+#      EPUB (2d, fetched once from Project Gutenberg),
 #   3. starts a demo-mode server (port 8790) serving the frontend's web export,
 #      plus a second --setup instance (port 8791) for the first-run setup shots
 #      (the --setup page and the console's "Set up your server" flow),
@@ -173,6 +174,36 @@ PODCASTS="$CACHE/podcasts"
 echo "==> seeding podcast shows into $PODCASTS"
 (cd "$HERE" && node seed-podcasts.mjs "$PODCASTS") \
   || echo "  ! the podcast seed failed: the podcast shots will fail"
+
+# ── 2d. An ebook (Bridge Phase 3b) ─────────────────────────────────────────
+# A Christmas Carol gets its EPUB beside its audio, as a listener's folder holds
+# one, for web-player/book-read.png and web-player/reader*.png: Project
+# Gutenberg's public-domain edition (ebook #46), fetched once into .cache and
+# copied in on every run (the cached library may predate it). The server's scan
+# records it as the book's ebook; it only reads it.
+EBOOK_BOOK="$LIBRARY/Charles Dickens/A Christmas Carol"
+EBOOK_FILE="$CACHE/a-christmas-carol.epub"
+if [ -d "$EBOOK_BOOK" ]; then
+  if [ ! -s "$EBOOK_FILE" ]; then
+    echo "==> fetching A Christmas Carol's EPUB (Project Gutenberg)"
+    # Bounded (a stalled network never holds up the run) and checked to be a zip
+    # (an HTML page answered with a 200 is never cached as the EPUB).
+    if curl -fsSL --retry 3 --connect-timeout 20 --max-time 300 -o "$EBOOK_FILE.part" \
+        https://www.gutenberg.org/ebooks/46.epub3.images \
+      && [ "$(head -c 2 "$EBOOK_FILE.part")" = "PK" ]; then
+      mv "$EBOOK_FILE.part" "$EBOOK_FILE"
+    else
+      rm -f "$EBOOK_FILE.part"
+      echo "  ! the EPUB fetch failed (offline, or not an EPUB): the reader shots will fail"
+    fi
+  fi
+  if [ -s "$EBOOK_FILE" ]; then
+    cmp -s "$EBOOK_FILE" "$EBOOK_BOOK/A Christmas Carol.epub" \
+      || cp "$EBOOK_FILE" "$EBOOK_BOOK/A Christmas Carol.epub"
+  fi
+else
+  echo "  ! no $EBOOK_BOOK: the reader shots will fail"
+fi
 
 # ── 3. Servers ──────────────────────────────────────────────────────────────
 cleanup() {

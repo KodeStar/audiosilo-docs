@@ -4,7 +4,7 @@ description: "The SQLite schema behind audiosilo-server: the rebuildable index v
 ---
 
 The schema lives in `internal/store/migrations/` as numbered SQL files
-(`0001_init.sql` … `0055_book_file_order.sql`), embedded into the binary and
+(`0001_init.sql` … `0057_reading_progress.sql`), embedded into the binary and
 applied by `store.Open` at startup. This page documents the **resulting current
 schema**, noting which migration added what.
 
@@ -108,6 +108,8 @@ erDiagram
     libraries ||--o{ community_chapters : "path-keyed, NO FK to books"
     libraries ||--o{ chapter_choices : "path-keyed, NO FK to books"
     users ||--o{ progress : ""
+    users ||--o{ reading_progress : "path-keyed, NO FK to books"
+    libraries ||--o{ reading_progress : ""
 ```
 
 :::warning
@@ -256,7 +258,7 @@ covered in [Auth & security](auth-and-security.md#authorization-shares--scope).
 `scan_error_file`, `scan_error_detail` and `suspect_parts` in 0017; `split_parent` in
 0022; `cover_art` and `cover_color` in 0023; `chapters_source`, `chapters_fit`,
 `scanned_chapters` and `chapters_hash` in 0035; `released` and `released_checked`
-in 0037; `series_key` in 0041; `series_index_end` in 0045; `abs_sig`, `abs_indexed_at` and `abs_file` in 0046; `attachments_sig` and `attachments_indexed_at` in 0048; `subtitle`, `publisher`, `language`, `abridged`, `genres`, `tags` and `genres_checked` in 0049; `file_order` and `file_order_indexed_at` in 0055)* - one row per book,
+in 0037; `series_key` in 0041; `series_index_end` in 0045; `abs_sig`, `abs_indexed_at` and `abs_file` in 0046; `attachments_sig` and `attachments_indexed_at` in 0048; `subtitle`, `publisher`, `language`, `abridged`, `genres`, `tags` and `genres_checked` in 0049; `file_order` and `file_order_indexed_at` in 0055; `ebook_path` and `ebook_sig` in 0056)* - one row per book,
 `UNIQUE (library_id, rel_path)`. Columns: `is_folder` (folder book vs
 single-file book), identity metadata (`title`, `author`, `series`,
 `series_index`, `narrator`; `series_index_end` is the end of a main series
@@ -291,6 +293,11 @@ not recorded, and the next scan that finds the book unchanged fills it from
 `book_files` without a re-index (one whose files are in another order is
 re-indexed, which records it); see
 [the stored order key](scanner.md#book-detection-booksindir)),
+`ebook_path` (the book's ebook, the one readable `.epub` beside its audio by
+`library.BookEbook`'s rule, library-relative; `''` for none) with `ebook_sig` (the
+size, mtime and name of the file the rule names, readable or not; `''` for none):
+derived like `cover_path`, and filled for an unchanged book by the scan's backfill
+(`catalog.SetEbooks`) without a re-index; see [A book's ebook](scanner.md#a-books-ebook)),
 `more_series` (the effective list of the other series the book is in beyond
 `series`, as JSON `[{"name","position"}]` plus `"position_end"` for a range, `'[]'` for none: only an edit, a
 community match or an Audiobookshelf `metadata.json` supplies it, an override like any other field; an admin edit
@@ -560,6 +567,18 @@ tables were rebuilt rather than migrated in place):
   `listened` and `sessions`, `estimated` *(0021)* and `import_id` *(0034)*. Device, app, time of day
   and playback mode are dropped. No primary key - a book moving onto a path that already has rows just
   adds rows, and every reader sums.
+- **`reading_progress`** *(0057, Bridge Phase 3b)* - a reader's place in a book's
+  ebook, PK `(user_id, library_id, rel_path)` on the **book's** own path (never the
+  `.epub`'s, never a track's): `cfi` (an EPUB CFI), `progression` (0-1, what the
+  conflict rule compares), `version` (bumped on every applied write), `device_id`,
+  `device_name` (the saving token's device name, never the request's; `''` when
+  unknown) and `updated_at` (the client's time, fixed-width UTC milliseconds, so a
+  move's merge compares two rows as text). Saved by `catalog.SaveReadingProgress`
+  under Sync v2's rule (`catalog.ResolvePlace`; see
+  [`PUT /reading-progress`](api/reference.md#the-conflict-rule-sync-v2)). Separate
+  from `progress` on purpose: neither moves the other. In `carryListeningState`, so a
+  move or a join carries it (the newer `updated_at` wins, under a version above
+  both). Index `idx_reading_progress_path` on `(library_id, rel_path)`.
 - **`favourites`** *(0009)* - PK `(user_id, library_id, rel_path)`. A
   favourite may address **any** path: a navigation folder (author/series), a
   book folder, or a single-file book.
@@ -1272,6 +1291,8 @@ The migration history so far:
 | 0053 | `setup_state` | the `server_state` row `setup_state` (see [Server state](#server-state)), inserted (`INSERT OR IGNORE`) finished and dismissed with no steps when the server already holds a library of any kind or more than one account that isn't a demo account or a household member (`is_demo = 0 AND managed_by IS NULL`), so an upgraded server never shows the first-run flow or its Overview card. A fresh database has neither when it runs (the first admin is made after the migrations), so it gets no row |
 | 0054 | `podcast_fetch` | identity-bound feed state, durable `podcast_policies`, separate `podcast_fetch_state`, and derived episode hash/timeline/Fetch/signature columns; see [Podcasts](#podcasts) |
 | 0055 | `book_file_order` | `books.file_order` (`INTEGER`, `NULL` on every existing row) and `books.file_order_indexed_at` (`TEXT`, `NULL`): a folder book's stored file order key, so a scan compares the order without loading every `book_files` row (#177). No data moves: the next scan records the key of each unchanged folder book from its `book_files` (`catalog.SetFileOrders`), without re-indexing it |
+| 0056 | `book_ebook` | `books.ebook_path` and `books.ebook_sig` (`TEXT NOT NULL DEFAULT ''`): a book's ebook, the one `.epub` the reader opens, and the signature of the file `library.BookEbook`'s rule names. No data moves: every row starts with none and the next scan records each unchanged book's ebook without re-indexing it |
+| 0057 | `reading_progress` | `reading_progress` (FK `users`/`libraries` `ON DELETE CASCADE`, no FK to `books`) and `idx_reading_progress_path`: a reader's place in a book's ebook, durable and path-keyed (see [Durable per-user state](#durable-per-user-state-path-keyed-no-fk-to-books)) |
 
 ## SQLite choices
 

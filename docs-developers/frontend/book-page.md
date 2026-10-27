@@ -17,7 +17,7 @@ draw. The user-facing tour is [A book's page](/users/listening/book-page).
 | `book-page-model.ts` | Pure: `bookPageLayout`, `titleScale`, `heroSubtitle`, `primaryAction` / `primaryLabel`, `chapterList`, `rowAt`, `timelineStarts`, `placeLine`, `heroEyebrow`, `bookFacts`, `startedAt`, `listeningFigures` |
 | `book-tab-panel.tsx` | `BookTabPanel`: the active tab's panel (the tab row is the page's) |
 | `book-hero.tsx` | `BookHero`: the `CoverWash`, crumbs slot, eyebrow, title, subtitle, byline, facts, the place (or the finished badge and the stars), then the actions and footer slots |
-| `hero-actions.tsx` | `HeroActions`: the primary button, `DownloadControl`, the Up next menu, favourite, Add to collection (in the menu when stacked), and `BookActionsMenu` with `omit` |
+| `hero-actions.tsx` | `HeroActions`: the primary button, `DownloadControl`, Read the ebook (`canRead`), the Up next menu, favourite, Add to collection (in the menu when stacked), and `BookActionsMenu` with `omit` |
 | `book-crumbs.tsx` | `BookCrumbs`: the library, each folder above the book (links), the book's own folder or file name |
 | `book-chapters-tab.tsx` | `BookChaptersTab`: "The whole book" (`BookTimeline` + legend + axis) and the rows |
 | `book-details-tab.tsx` + `book-details-model.ts` | `BookDetailsTab`: the playback notice, the files table, the path; `fileRows`, `visibleFiles`, `playbackMode`, and the About card's `aboutContent`, `labelGroups` and `languageName` |
@@ -111,6 +111,7 @@ description when there is one.
 | Control | Gate | Notes |
 |---|---|---|
 | `DownloadControl` | - | an outline button per state: Download for offline, "N% · Cancel" with a `ProgressRing`, **Downloaded** (a menu with the size and Remove download), Retry download; disabled where this device can't keep the book |
+| Read the ebook | `canRead`: capability `ebooks`, `book.ebook`, the web only (Bridge Phase 3b-1) | an outline button after the download (its own row when stacked) that pushes `readerHref` to the `/read` modal; see [The ebook reader](reader.md) |
 | Up next menu | `queue` | Play next (at position 0, with an Undo that puts it back where it was); Add to the end / Remove from Up next (`useQueueActions`) |
 | Favourite | - | ink, never pink |
 | Add to collection | `collections`, not stacked | the book menu's dialog; when stacked it is the menu's own item instead |

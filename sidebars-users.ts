@@ -48,6 +48,7 @@ const sidebars: SidebarsConfig = {
         'listening/connecting',
         'listening/browsing',
         'listening/book-page',
+        'listening/reading-the-ebook',
         'listening/recaps-and-characters',
         'listening/playback',
         'listening/full-player',

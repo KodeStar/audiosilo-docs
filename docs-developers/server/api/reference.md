@@ -66,7 +66,8 @@ else and gate features on the flags.
     "podcasts": false,
     "podcast_fetch": true,
     "podcast_discovery": false,
-    "podcast_opml": true
+    "podcast_opml": true,
+    "ebooks": true
   },
   "auth": { "methods": ["auth_code", "password"] },
   "demo": { "enabled": false }
@@ -165,6 +166,13 @@ unsupported):
 
 Both describe the server's configuration, not the caller's permissions: a kid,
 demo account or unrecognized client is still refused by the routes.
+
+Bridge Phase 3b adds one more, always `true` on a server that has it and absent
+on an older one:
+
+| Flag | Gates |
+|---|---|
+| `ebooks` | [the reader](#ebooks-and-the-reading-place): a book's `ebook` field, [`GET /libraries/{id}/ebook`](#get-apiv1librariesidebook) and [`GET`](#get-apiv1librariesidreading-progress)/[`PUT /libraries/{id}/reading-progress`](#put-apiv1librariesidreading-progress). A client offers Read only when it is `true` **and** the book has an `ebook` |
 
 `bridge` follows the Bridge rather than a setting, so it can change from one
 request to the next: it is `true` only while a [Bridge](#the-bridge) is paired and its last heartbeat is under two minutes
@@ -963,6 +971,7 @@ probed; `added_at` when unknown. Every book response (lists, search, recent,
 | `genres` | string[] | the book's genres: the files' genre tag (split on `;` and NUL, never `,`; placeholders such as `Audiobook`, `Speech`, `Spoken Word` and `Other` dropped), an Audiobookshelf `metadata.json`, or an admin edit. Each label once, compared case-insensitively, the first spelling kept; at most 50, each at most 64 characters. Sent on list and search pages too, so a client can filter a loaded library on the device |
 | `tags` | string[] | freeform tags, as `genres`, from an Audiobookshelf `metadata.json` or an admin edit only (no audio tag carries them) |
 | `generated` | boolean | `true` when the book's `.audiosilo/` folder holds characters, recaps or (since Bridge Phase 1c) a description the [Bridge](#the-bridge) generated on this server (read from the book's attachment signature, so a file that failed its checks still counts); omitted otherwise. A client asks [`/meta`](#generated-content) for such a book even when it has no `asin` or `isbn` |
+| `ebook` | object | `{"path", "size"}`: the book's ebook (Bridge Phase 3b, capability `ebooks`), the one readable `.epub` the scan found beside its audio (DRM is not judged) (see [A book's ebook](../scanner.md#a-books-ebook)): its library-relative `path` (for display: the file is fetched by the **book's** path at [`/ebook`](#get-apiv1librariesidebook)) and its `size` in bytes when last scanned. Omitted when the book has none |
 
 A book at a range, here as the omnibus of Mistborn 1-3 that is also book 1 of a
 box-set series:
@@ -1967,8 +1976,8 @@ response carries it; list, search, recent and `/next` books leave it out. It is
 not the community-written `community_description` on
 [`/meta`](#get-apiv1librariesidmeta). The other fields every book carries
 (`published`, `subtitle`, `publisher`, `language`, `abridged`, `genres`, `tags`,
-`cover_color`, `cover_version`, and `series_index_end`, `series_list` and
-`generated` when they apply) are described under
+`cover_color`, `cover_version`, and `series_index_end`, `series_list`,
+`generated` and `ebook` when they apply) are described under
 [`/books`](#get-apiv1librariesidbooks); each is omitted when empty or unknown.
 
 `chapters_source` is `"community"` when the book's `chapters` are a community
@@ -2918,6 +2927,153 @@ each such stream holds one of the transcoder's slots while the receiver reads it
 and it marks the **sending device's** listening session as transcoded (the sender's
 own progress saves make the session). The media rate limiter keys a cast token by its
 token id like any credential, so it has a bucket of its own.
+
+## Ebooks and the reading place
+
+The reader (Bridge Phase 3b, capability `ebooks`): a book whose folder holds its
+EPUB carries an [`ebook`](#get-apiv1librariesidbooks) field, the player fetches
+the file from [`/ebook`](#get-apiv1librariesidebook) and keeps the reader's place
+in it with [`/reading-progress`](#get-apiv1librariesidreading-progress). All three
+routes address the **book** by its own path (`?path=`, as
+[`/item`](#get-apiv1librariesiditem)), never the `.epub`'s path or a track's, and
+all take *Session* auth from the `Authorization` header only. Which file is a
+book's ebook is the scan's call: see
+[A book's ebook](../scanner.md#a-books-ebook). The web player's reader is the
+document at [`/web/reader.html`](../web-ui.md#the-reader-document-readercsp).
+
+### `GET /api/v1/libraries/{id}/ebook`
+
+*Session* (a session token or an API key). The ebook of the book at `?path=`, as
+bytes:
+
+| Query param | Type | Required |
+|---|---|---|
+| `path` | string | yes: the book's own path (`rel_path`), not a part, a track or the `.epub` |
+
+Response `200` (or `206` for a Range request): the file the scan recorded for the
+book, opened afresh and checked to be a regular file inside the library (a link
+swapped in since the scan is never followed out), served with `http.ServeContent`:
+Range, an `ETag` from its size and mtime, `Last-Modified`. Headers:
+
+| Header | Value |
+|---|---|
+| `Content-Type` | `application/epub+zip` |
+| `Content-Security-Policy` | `sandbox; default-src 'none'` (navigating to the URL runs and loads nothing) |
+| `Cache-Control` | `private, no-cache` |
+| `X-Content-Type-Options`, `Cross-Origin-Resource-Policy` | the site-wide `nosniff` and `same-site` |
+
+**No `?token=`.** Unlike [`/cover` and `/stream`](#streaming--media), this route
+never reads a token from the URL, and there is no URL token for it of any kind (a
+[cast token](#cast-tokens-as-media-auth) is refused either way). The web player
+fetches the bytes with its bearer header and hands them to its reader document,
+so nothing ever holds a URL that carries a credential. The bytes are exempt from
+the 30 s request timeout (an illustrated EPUB can be tens of megabytes on a slow
+link), but the book lookup before them is not: a lookup past it is a `500`. The
+route stays under the general per-IP rate limit, not the media one.
+
+| Status | Meaning |
+|---|---|
+| `200` / `206` | the EPUB's bytes |
+| `400` | missing `path` / invalid library id |
+| `401` | no `Authorization` header, or a bad token (a `?token=` alone is a `401`) |
+| `403` | the book is outside the caller's share scope |
+| `404` | `this book has no ebook`: the book has none (no `.epub`, several, an unreadable one), the file is gone or no longer a regular file inside the library, the path is inside the book but not its own (a track, the `.epub` in its folder), or the library is a podcast library; `no book at this path` when there is no book there; `not found` for a hidden or `.audiosilo/` path |
+| `500` | `could not load the ebook`: the file is there but can't be read right now (a permission, a flaky mount; logged), or the lookup ran past the request timeout |
+
+### `GET /api/v1/libraries/{id}/reading-progress`
+
+*Session.* The caller's place in the ebook of the book at `?path=` (a part path
+reads its book's):
+
+```json
+{
+  "reading_progress": {
+    "library_id": 1,
+    "path": "Charles Dickens/A Christmas Carol",
+    "cfi": "epubcfi(/6/14!/4/2/1:0)",
+    "progression": 0.4213,
+    "version": 3,
+    "device_id": "web-7f3c9a",
+    "device_name": "Pixel 8",
+    "updated_at": "2026-10-25T10:00:00.000Z"
+  }
+}
+```
+
+or `{ "reading_progress": null }` when the caller has none for the book. `cfi` is
+the place as an EPUB CFI; `progression` the same place as a fraction of the book
+(0 to 1); `version` the server's count of applied writes (bumped on every one);
+`device_id` the client's id of the device that wrote it and `device_name` that
+device's name as the server knows it from the saving token (`""` when unknown).
+`updated_at` is the client's time of the save, stored as fixed-width UTC
+milliseconds. `400` / `403` as `/ebook`; `404` when there is no book at the path
+or the book has no ebook.
+
+The place is separate from listening [progress](#get-apiv1librariesidprogress)
+on purpose: neither ever moves the other. It is durable, path-keyed user state
+(`reading_progress`, see the [data model](../data-model.md#durable-per-user-state-path-keyed-no-fk-to-books)),
+so it survives an index rebuild and moves with the book.
+
+### `PUT /api/v1/libraries/{id}/reading-progress`
+
+*Session.* Saves the caller's place, keyed on the book's own path (a part path
+resolves to its book), by Sync v2's conflict rule.
+
+| Body field | Type | Notes |
+|---|---|---|
+| `cfi` | string | required: starts `epubcfi(`, at most 2048 bytes |
+| `progression` | float | required (absent or `null` is a `400`, never read as 0): 0 to 1 |
+| `device_id` | string | required, non-empty, at most 200 bytes: this device's id (the conflict rule tells devices apart by it) |
+| `updated_at` | string | required, RFC 3339: when the save was made on the device (send the real time when replaying an offline queue). A time more than five minutes in the future is replaced by server time |
+| `base_version` | int | the stored `version` this device last saw (`0`: it has seen none). Absent: the save never diverges (below). Negative is a `400` |
+| `device_name` | - | accepted and ignored: the name is always the saving token's |
+
+The body is decoded strictly: any other field is a `400` (an echoed
+[`other_place`](#the-conflict-rule-sync-v2) is accepted, since its fields are
+these; a whole stored row is not).
+
+Response `200`:
+
+```json
+{
+  "reading_progress": { "library_id": 1, "path": "…", "cfi": "epubcfi(…)", "progression": 0.6,
+                        "version": 5, "device_id": "phone-1", "device_name": "Pixel 8",
+                        "updated_at": "…" },
+  "other_place": { "cfi": "epubcfi(…)", "progression": 0.31, "device_id": "web-7f3c9a",
+                   "device_name": "Kitchen iPad", "updated_at": "…" }
+}
+```
+
+`reading_progress` is the row stored **after** the save, whichever place won;
+`other_place` comes only on a diverged save and is never stored.
+
+#### The conflict rule (Sync v2)
+
+`catalog.ResolvePlace`, one writer transaction with the read of the stored row:
+
+- **No row stored**: the save applies (version 1).
+- **Diverged**: a row is stored, `base_version` is sent and is not its `version`,
+  and another device (`device_id`) wrote it. The device saved without seeing that
+  row, so the server never moves the place back silently: it keeps the **further**
+  place by `progression` (the save applies when it is further, with a bumped
+  version; otherwise the stored row stays, and a tie keeps the stored row) and
+  answers the place it did not keep as `other_place`. The web player offers it
+  ("On Pixel 8 you were at 60%. Jump there?").
+- **Anything else** (the same device's own queued saves, a save made on the stored
+  version, a save with no `base_version`) is **last-write-wins** exactly as
+  [`PUT /progress`](#put-apiv1librariesidprogress): the later `updated_at` wins,
+  the version breaking a tie. A stale save is not an error: the stored row comes
+  back, with no `other_place`. This is how moving back on purpose works: once the
+  device has seen the newer row (and sends its version), its save applies.
+
+A save records no listening session (reading isn't listening).
+
+| Status | Meaning |
+|---|---|
+| `200` | the stored row, and `other_place` on a diverged save |
+| `400` | `invalid request` (not JSON, an unknown field), or the reason: `cfi must be an EPUB CFI`, `cfi is too long`, `progression must be from 0 to 1`, `device_id is required`, `device_id is too long`, `base_version must not be negative`, `updated_at must be an RFC3339 time`; plus missing `path` / invalid library id |
+| `403` | the book is outside the caller's share scope |
+| `404` | no book at the path, or the book has no ebook (a client drops such a queued save: it can never succeed) |
 
 ## Listening state
 

@@ -35,6 +35,7 @@ On a phone it opens the [full player](full-player.md). On a tablet or computer t
 Beside it:
 
 - **Download for offline** keeps the book on this device: see [Downloading a book](offline-downloads.md#downloading-a-book).
+- **Read the ebook**, in the web player, for a book with its EPUB beside the audio: it opens the book's text in the reader, at the page you reached (on a phone, on a row of its own). See [Reading the ebook](reading-the-ebook.md).
 - **Up next**: **Play next** puts the book at the top of your [Up next](up-next.md) queue, and **Add to the end of Up next** queues it last (or **Remove from Up next**, if it's already there). A note confirms it, with **Undo**.
 - **The heart**, to make it a [favourite](browsing.md#favourites).
 - **Add to collection**, which opens the same dialog as the [book menu](browsing.md#the-book-menu). On a phone it's in the **More** menu instead.
