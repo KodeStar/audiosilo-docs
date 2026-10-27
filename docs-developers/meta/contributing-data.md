@@ -84,10 +84,10 @@ date), then every other per-row warning.
 Seven behaviors are worth knowing:
 
 - **Mirror-seeded records are taken over by ASIN.** When an Add a work or Add a
-  recording submission names, by ASIN, a recording that was seeded from the
-  libex mirror and that no user has attested (every `sources[]` entry is
-  `libex-import`), the bot does not close it as a duplicate: it applies the
-  submission over that record through `importer.AttestAt`, which runs it as a
+  recording submission names, by ASIN, a recording that was seeded from a bulk
+  mirror and that no user has attested (every `sources[]` entry is bulk-mirror
+  tier: `libex-import` or `librivox`), the bot does not close it as a duplicate:
+  it applies the submission over that record through `importer.AttestAt`, which runs it as a
   one-row user-library import over the store `metaissue` already opened and
   hands it to `attestExisting` - the hook a library import takes at its
   ASIN-dedup skip. The stated runtime, release date, publisher and cover replace
@@ -356,15 +356,14 @@ library" form - still needs a maintainer's approval however green it is.
 ## Bulk importers: metaimport
 
 `metaimport` ingests an external library export into `data/` as reviewable
-records, for contributors who already have a library manager's export:
+records, for contributors who already have a library manager's export (LibriVox's
+public-domain catalogue has its own two-step path, described
+[below](#librivox-the-public-domain-mirror)):
 
 ```sh
 go run ./cmd/metaimport openaudible <books.json>  [--dry-run] [--date YYYY-MM-DD]
 go run ./cmd/metaimport libation    <export.json> [--dry-run] [--date YYYY-MM-DD]
 ```
-
-LibriVox's public-domain catalogue has its own two-step path; see
-[below](#librivox-the-public-domain-mirror).
 
 It imports **factual fields only** (dropping publisher copy, genres, ratings, and
 personal state), maps one export entry to a work + recording (+ people + series),
@@ -565,9 +564,11 @@ clients and asks them to slow down:
   sections, genres, translators, archive.org link and cover);
 - at least 5 seconds between the start of any two requests, retries included;
 - a User-Agent naming meta.audiosilo.app and a contact address;
-- on `429` or a `5xx` it backs off, honouring `Retry-After` (seconds or an HTTP
-  date) and otherwise waiting exponentially from 30 seconds up to 10 minutes, for
-  at most six tries before the run stops, resumably.
+- on `429`, a `5xx` or a network error it backs off, honouring `Retry-After`
+  (seconds or an HTTP date, never less than the 5-second spacing) and otherwise
+  waiting exponentially from 30 seconds up to 10 minutes, for at most six retries
+  (seven requests for one page) before the run stops, resumably. Any other error
+  status stops the run at once.
 
 The snapshot is a directory that is **never committed**: `manifest.json` (the
 fetch's resume state: feed, query, limit, next offset, page and project counts,
@@ -604,9 +605,12 @@ each selected project:
   chapter list is omitted.
 - **People are keyed by LibriVox id.** A `librivox_reader_id` or
   `librivox_author_id` the catalogue already holds resolves to that person
-  whatever the feed now calls them, and the ids of the projects that landed are
-  stamped onto the people they resolved to. A name that slugs to nothing lands on
-  the catch-all person, which is never given an id.
+  whatever the feed now calls them, and for every project that landed, its
+  readers' and authors' LibriVox ids are stamped onto the people they resolved to
+  (a translator's id is a LibriVox author id). A person already carrying a
+  different id in that namespace keeps it, and an id already on another person
+  is not recorded twice; the run warns about both. A name that slugs to nothing
+  lands on the catch-all person, which is never given an id.
 - Genres map onto the vocabulary only where a counterpart is evident; LibriVox's
   period genres ("Published before 1800") and its umbrella and format genres are
   not mapped.

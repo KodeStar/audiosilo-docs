@@ -112,10 +112,11 @@ that are not an individual, such as a full cast or a corporate credit of record;
 **absence means person or unclassified**, never a guess), optional `description`,
 optional `xref` (`wikidata`, `openlibrary` `OL\d+A`, `audible` ASIN), optional
 `librivox_reader_id` and `librivox_author_id` (the person's LibriVox catalogue
-ids, integers of at least 1), `license` (`CC0-1.0`), `sources`. The two LibriVox
-ids are separate namespaces (a reader id and an author id of the same number are
-not a collision), and `metacheck` holds each unique across the dataset, because a
-LibriVox import keys people on them.
+ids, integers of at least 1; a translator's id is an author id), `license`
+(`CC0-1.0`), `sources`. The two LibriVox ids are separate namespaces (a reader
+id and an author id of the same number are not a collision), and `metacheck`
+holds each unique across the dataset, because a LibriVox import keys people on
+them.
 
 ### series - an entry in the `data/series/` family
 

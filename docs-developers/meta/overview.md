@@ -50,8 +50,9 @@ is in [the data model](data-model.md).
 
 Imports are bounded, curated tranches, never a wholesale mirror of another
 catalogue, with one named exception: [LibriVox](https://librivox.org), whose
-recordings are in the public domain, is mirrored in full under the `librivox`
-source type, facts only, as
+recordings are in the public domain, may be mirrored in full under the
+`librivox` source type, facts only. The tooling is in place and the backfill
+lands in reviewed tranches, as
 [contributing data](contributing-data.md#librivox-the-public-domain-mirror)
 describes.
 
