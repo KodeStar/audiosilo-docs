@@ -95,7 +95,7 @@ rides on the identifiers and the imprint, never on a second record.
 | `publisher` | no | the publisher of record |
 | `publishers` | no | array of `{region, publisher}`: other regions' imprints. May never restate the top-level `publisher` or name one region twice |
 | `cover_url` | no | must be an `https://` URL |
-| `chapters` | no | array of `{title, start_ms, length_ms, audio_url?}`. `audio_url` (an `https://` URL) is the audio file the chapter *is*, for a recording published one file per section; only a LibriVox recording carries it, so `metacheck` refuses it on a recording without a `librivox_id` |
+| `chapters` | no | array of `{title, start_ms, length_ms, audio_url?}`. `audio_url` (an `https://` URL) is the audio file the chapter *is*, for a recording published one file per section; `metacheck` requires the recording's `librivox_id` beside it |
 | `librivox_id` | no | the LibriVox project id this recording *is* (integer, at least 1). The identity a LibriVox import deduplicates on (never the title); `metacheck` holds it unique across the dataset |
 | `archive_id` | no | the Internet Archive item holding the recording's files (`archive.org/details/<archive_id>`), pattern `^[A-Za-z0-9][A-Za-z0-9._-]*$` |
 | `links` | no | where the recording is published, each URL as the source stated it and `https://` only: `librivox` (the catalogue page), `zip` (every file in one archive), `rss` (the podcast feed). At least one key; no others |
@@ -113,11 +113,9 @@ that are not an individual, such as a full cast or a corporate credit of record;
 optional `xref` (`wikidata`, `openlibrary` `OL\d+A`, `audible` ASIN), optional
 `librivox_reader_id` and `librivox_author_id` (the person's LibriVox catalogue
 ids, integers of at least 1), `license` (`CC0-1.0`), `sources`. The two LibriVox
-ids are separate namespaces (a reader id and an author id of the same number
-are not a collision), and
-`metacheck` holds each unique across the dataset, because a LibriVox import keys
-people on them: a reader renamed on LibriVox, or met again in a later snapshot,
-resolves to the person already catalogued instead of minting a second record.
+ids are separate namespaces (a reader id and an author id of the same number are
+not a collision), and `metacheck` holds each unique across the dataset, because a
+LibriVox import keys people on them.
 
 ### series - an entry in the `data/series/` family
 
@@ -547,11 +545,8 @@ record granularity:
 | Reference | `audible-lookup`, `openlibrary`, `wikidata`, `inventaire`, `community`, anything unclassified | no overwrite authority; its presence also means a record is not mirror-only |
 | Bulk mirror | `libex-import`, `librivox` | overwritable by the user-library tier: a hand edit outranks either |
 
-`librivox` is the bulk-mirror source for LICENSING.md's one named exception to
-"never an unbounded mirror": LibriVox's recordings are in the public domain, so
-the project mirrors its whole catalogue, every language, as facts only (no
-project descriptions). How those records are written is in
-[contributing data](./contributing-data.md#librivox-the-public-domain-mirror).
+Why `librivox` may mirror a whole catalogue, and how its records are written, is
+in [the LibriVox mirror](./contributing-data.md#librivox-the-public-domain-mirror).
 
 ## The compiled artifact and schema versioning
 

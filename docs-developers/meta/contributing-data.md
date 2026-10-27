@@ -332,9 +332,10 @@ Every pull request touching `data/**` is checked twice:
 
 - **`check.yml` (mechanical, blocking).** Runs `go build`/`vet`/`test`,
   `metacheck` (schema, pack placement and caps, referential integrity,
-  uniqueness, chapter/series rules, LibriVox id rules), and `metafmt --check` (canonical JSON +
-  pack invariants). A red pull request never merges. It uses the plain `pull_request` trigger, so fork pull
-  requests run with a read-only token and no secrets.
+  uniqueness, chapter/series rules, LibriVox id rules), and `metafmt --check`
+  (canonical JSON + pack invariants). A red pull request never merges. It uses
+  the plain `pull_request` trigger, so fork pull requests run with a read-only
+  token and no secrets.
 - **`ai-verify.yml` (advisory, never blocking).** An AI judgement layer on top of
   the mechanical check: it posts a `PASS` / `FLAG` comment and label but **never
   blocks a merge**. It also uses the plain `pull_request` trigger by design (not
@@ -362,8 +363,8 @@ go run ./cmd/metaimport openaudible <books.json>  [--dry-run] [--date YYYY-MM-DD
 go run ./cmd/metaimport libation    <export.json> [--dry-run] [--date YYYY-MM-DD]
 ```
 
-(LibriVox's public-domain catalogue has its own two-step path, described
-[below](#librivox-the-public-domain-mirror).)
+LibriVox's public-domain catalogue has its own two-step path; see
+[below](#librivox-the-public-domain-mirror).
 
 It imports **factual fields only** (dropping publisher copy, genres, ratings, and
 personal state), maps one export entry to a work + recording (+ people + series),
@@ -542,7 +543,7 @@ onto the vocabulary where one fits, the LibriVox ids, the archive.org identifier
 the `links`, the cover URL (`https://` only) and `LibriVox` as the publisher of
 record. It **never** carries the project `description`: LibriVox's descriptions
 are often quoted from Wikipedia, so they are neither the project's to relicense
-nor CC0. The importer does not read the field at all. Audio and cover art stay
+nor CC0. Audio and cover art stay
 on archive.org; the records hold URLs. In the trust tiers `librivox` is a
 bulk-mirror source beside `libex-import`, so a user hand edit outranks it (see
 [provenance](./data-model.md#provenance-on-every-entity)).
@@ -577,8 +578,9 @@ first page the last run had not finished, and a snapshot fetched with other quer
 parameters is refused rather than mixed in. Pages are offset windows over the
 feed's ascending project-id order, so a project catalogued during a long fetch
 lands at the end instead of shifting a window already read. The catalogue ends
-at a short page or the feed's "no results" answer. `--max-pages N` stops after
-`N` pages (`0`, the default, runs to the end).
+at a short page or the feed's "no results" answer; a snapshot already complete
+makes no request, so a fresh reading goes into a new directory. `--max-pages N`
+stops after `N` pages (`0`, the default, runs to the end).
 
 **`import` lands a tranche.** `--from` names the snapshot (the importer reads
 every `pages/*.json` and nothing else, so a hand-assembled snapshot works too)
@@ -621,11 +623,9 @@ projects a pull request) under the ordinary merge policy. No automated LibriVox
 lane runs yet; `GOVERNANCE.md` holds only a stub of its future invariant.
 
 `metacheck` enforces the identity rules the schema cannot see
-(`pkg/check/librivox.go`): a recording's `librivox_id` is unique across the
-dataset, so are a person's `librivox_reader_id` and (separately) their
-`librivox_author_id`, and a chapter's `audio_url` requires its recording's
-`librivox_id`. The fields themselves are in
-[the data model](./data-model.md#recording---a-member-of-its-work-entrys-recordings-map).
+(`pkg/check/librivox.go`: the LibriVox ids are unique, and a chapter's
+`audio_url` needs its recording's `librivox_id`); the fields and their rules are
+in [the data model](./data-model.md#recording---a-member-of-its-work-entrys-recordings-map).
 
 ## Scanning local files: metascan
 

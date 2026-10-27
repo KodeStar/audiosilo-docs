@@ -51,7 +51,7 @@ is in [the data model](data-model.md).
 Imports are bounded, curated tranches, never a wholesale mirror of another
 catalogue, with one named exception: [LibriVox](https://librivox.org), whose
 recordings are in the public domain, is mirrored in full under the `librivox`
-source type, facts only (no project descriptions), as
+source type, facts only, as
 [contributing data](contributing-data.md#librivox-the-public-domain-mirror)
 describes.
 
@@ -154,12 +154,12 @@ run ./cmd/<name>`.
 
 | Command | What it does |
 |---|---|
-| `metacheck` | Validates the whole `data/` tree - schema, pack placement and caps, referential integrity, uniqueness (LibriVox ids included), chapter ordering, series positions. Prints one line per problem and exits 1 if any are found. |
+| `metacheck` | Validates the whole `data/` tree - schema, pack placement and caps, referential integrity, uniqueness, chapter ordering, series positions. Prints one line per problem and exits 1 if any are found. |
 | `metafmt` | Enforces canonical JSON for `data/**/*.json` (sorted keys, 2-space indent, single trailing LF) and the pack-storage invariants: `--write` also relocates misplaced entries, performs due pack splits, and rebinds, so placement self-heals and nobody computes it by hand. `--check` reports and exits 1. |
 | `metabuild` | Compiles `data/` into the SQLite artifact (`-o meta.sqlite`). Runs the full validation first and refuses to build invalid data. Deterministic: identical data produces an identical artifact; each record is dated by its own `added_at`, falling back to its newest `sources[].imported_at`. |
 | `metaserve` | Serves the compiled artifact read-only over HTTP (and optionally the static site at `/`), hot-swapping newer GitHub releases. See [the HTTP API](api.md). |
 | `metascan` | Scans a local audiobook folder into an import JSON - see [contributing data](contributing-data.md#scanning-local-files-metascan). |
-| `metaimport` | Ingests an OpenAudible/Libation library export into `data/` - see [contributing data](contributing-data.md#bulk-importers-metaimport). `metaimport librivox fetch` and `import` mirror LibriVox's catalogue - see [the LibriVox mirror](contributing-data.md#librivox-the-public-domain-mirror). |
+| `metaimport` | Ingests external sources into `data/`: OpenAudible/Libation library exports, libex rows and the LibriVox mirror (`metaimport librivox fetch` and `import`) - see [contributing data](contributing-data.md#bulk-importers-metaimport) and [the LibriVox mirror](contributing-data.md#librivox-the-public-domain-mirror). |
 | `metaissue` | Issue-form body to canonical records + verdict, for the intake bot - see [contributing data](contributing-data.md#intake-automation-issue-form-to-bot-pull-request). |
 | `metaextract` | Supports the source-to-sidecar extraction pipeline: `split` (epub -> chapter text + manifest) and `ngram` (near-verbatim overlap check against the source text). `split` refuses a crafted epub rather than exhausting memory: any archive member over 64 MiB decompressed, or a spine over 256 MiB in total, rejects the whole book before anything is written. |
 
