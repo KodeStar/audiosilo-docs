@@ -172,7 +172,7 @@ on an older one:
 
 | Flag | Gates |
 |---|---|
-| `ebooks` | [the reader](#ebooks-and-the-reading-place): a book's `ebook` field, [`GET /libraries/{id}/ebook`](#get-apiv1librariesidebook) and [`GET`](#get-apiv1librariesidreading-progress)/[`PUT /libraries/{id}/reading-progress`](#put-apiv1librariesidreading-progress). A client offers Read only when it is `true` **and** the book has an `ebook` |
+| `ebooks` | [the reader](#ebooks-and-the-reading-place): a book's `ebook` field, [`GET /libraries/{id}/ebook`](#get-apiv1librariesidebook) and [`GET`](#get-apiv1librariesidreading-progress)/[`PUT /libraries/{id}/reading-progress`](#put-apiv1librariesidreading-progress). A client offers Read only when the book has an `ebook` **and** it is `true` (the player also while it is unknown offline, for a book whose download holds the EPUB; never when `false`) |
 
 `bridge` follows the Bridge rather than a setting, so it can change from one
 request to the next: it is `true` only while a [Bridge](#the-bridge) is paired and its last heartbeat is under two minutes
@@ -2965,9 +2965,10 @@ Range, an `ETag` from its size and mtime, `Last-Modified`. Headers:
 **No `?token=`.** Unlike [`/cover` and `/stream`](#streaming--media), this route
 never reads a token from the URL, and there is no URL token for it of any kind (a
 [cast token](#cast-tokens-as-media-auth) is refused either way). The web player
-fetches the bytes with its bearer header and hands them to its reader document,
-so nothing ever holds a URL that carries a credential. The bytes are exempt from
-the 30 s request timeout (an illustrated EPUB can be tens of megabytes on a slow
+fetches the bytes with its bearer header and hands them to its reader document, and
+the apps download them with the header into a local file they post to their reader
+in chunks, so nothing ever holds a URL that carries a credential. The bytes are
+exempt from the 30 s request timeout (an illustrated EPUB can be tens of megabytes on a slow
 link), but the book lookup before them is not: a lookup past it is a `500`. The
 route stays under the general per-IP rate limit, not the media one.
 
@@ -3053,14 +3054,16 @@ Response `200`:
 
 - **No row stored**: the save applies (version 1).
 - **Diverged**: a row is stored, `base_version` is sent and is not its `version`,
-  and another device (`device_id`) wrote it. The device saved without seeing that
-  row, so the server never moves the place back silently: it keeps the **further**
+  and another device (`device_id`) wrote it, or `base_version` is `0` whatever the
+  device (a device id outlives the places a client kept: signed out and back in, its
+  start must not replace its own place further on). The device saved without seeing
+  that row, so the server never moves the place back silently: it keeps the **further**
   place by `progression` (the save applies when it is further, with a bumped
   version; otherwise the stored row stays, and a tie keeps the stored row) and
   answers the place it did not keep as `other_place`. The web player offers it
   ("On Pixel 8 you were at 60%. Jump there?").
-- **Anything else** (the same device's own queued saves, a save made on the stored
-  version, a save with no `base_version`) is **last-write-wins** exactly as
+- **Anything else** (the same device's own queued saves made on a version it saw,
+  a save made on the stored version, a save with no `base_version`) is **last-write-wins** exactly as
   [`PUT /progress`](#put-apiv1librariesidprogress): the later `updated_at` wins,
   the version breaking a tie. A stale save is not an error: the stored row comes
   back, with no `other_place`. This is how moving back on purpose works: once the

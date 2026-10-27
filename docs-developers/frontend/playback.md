@@ -182,7 +182,7 @@ binary, and JS detects it):
 | Event | `onCarPlayRequest { id }` | The car asked for a book native can't start alone |
 | Field | `onProgress.silenceSaved` | Book seconds Smart speed removed since the app's process started (summed over every player the service builds), monotonic ([Android only](audio-effects.md#why-smart-speed-isnt-on-iphone-yet)) |
 | Function | `setCarSnapshot(json)` | Both platforms: the [car snapshot](native-integrations.md#the-car-snapshot-srccar) |
-| Function | `getLoadedBook()` | Android: the book the service has loaded (`LoadedBook`), else null; iOS: null |
+| Function | `getLoadedBook()` | Android: the book the service has loaded (`LoadedBook`, with `files?`, the loaded files' library-relative paths in file-index order, fe#134), else null; iOS: null |
 | Function | `consumePendingBookmarks()` | Android: bookmarks pressed while no JS ran, oldest first, cleared by the read; iOS: `[]` |
 | Argument | `load(..., chapters, book)` | The `BookRef`; iOS keeps it to name the loaded book for CarPlay, Android stores it in each item's extras |
 | Config | `setConfig({ smartSpeed, voiceBoost })` | The effects switches |

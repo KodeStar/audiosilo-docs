@@ -75,7 +75,7 @@ Anything else in your folders - `.jpg` covers, `.nfo` files, `.pdf` companions -
 
 ### A book's ebook
 
-An **EPUB** beside a book's audio is that book's ebook, which the web player opens with **Read the ebook**: one `.epub` in a book's folder (two or more, and none is used), or `<name>.epub` beside a book that is a single audio file (`Project Hail Mary.m4b` and `Project Hail Mary.epub`). It must be DRM-free. Like any other non-audio file it isn't listed when you browse folders; a scan finds it, with no re-index. See [Reading the ebook](../listening/reading-the-ebook.md#which-books-have-it).
+An **EPUB** beside a book's audio is that book's ebook, which the web player and the iOS and Android apps open with **Read the ebook**: one `.epub` in a book's folder (two or more, and none is used), or `<name>.epub` beside a book that is a single audio file (`Project Hail Mary.m4b` and `Project Hail Mary.epub`). It must be DRM-free. Like any other non-audio file it isn't listed when you browse folders; a scan finds it, with no re-index. See [Reading the ebook](../listening/reading-the-ebook.md#which-books-have-it).
 
 :::note[Audible files (.aax / .aaxc)]
 Audible's DRM-protected files are deliberately **not** indexed: the server can never play them, since they need per-account decryption. Add supported, DRM-free audio files to your library folder instead.
