@@ -123,6 +123,17 @@ them. A life year is a fact or it is absent: a stated value that is not plainly 
 year (`alive`, `c. 1500`) is never written, and `metacheck` refuses a
 `death_year` before the `birth_year` (`pkg/check/librivox.go`).
 
+A person's `id` is the one `model.PersonSlug` derives from their `name` (reserved
+names and the catch-all included), and `metacheck` refuses a record whose id is
+not, because the next import of that name would miss it and mint a second
+record. The one other legal form is a LibriVox reader's: a reader whose name
+another reader id already holds is `<name slug>-librivox-<reader id>`
+(`martina-librivox-634`; the name's part shortened at a word boundary to keep
+the id within 100 characters, the reader id always whole), and `metacheck`
+accepts it only on a record carrying exactly that `librivox_reader_id`, since the LibriVox import finds a reader by id
+before it reads a name. The rule is `model.PersonIDMatches`; the composed id is
+`model.LibrivoxReaderSlug`.
+
 ### series - an entry in the `data/series/` family
 
 A named, ordered set of works. Each entry is `{work, position}`, where
