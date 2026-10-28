@@ -97,9 +97,8 @@ the narrowest credential the server has:
 - **Checked again inside the write.** The heartbeat and every claim check the token
   again in their own transaction, so a call authenticated just before a pairing or
   an unpair revoked its token (a claim waiting out its long poll, say) saves nothing
-  and claims nothing: `401`. A claim checks it on the reader first, together with
-  whether it has anything to write (see [Claims and leases](#claims-and-leases)),
-  and again in the transaction when it goes on to write.
+  and claims nothing: `401`. A claim checks it first on the reader and again in
+  its transaction if it goes on to write (see [Claims and leases](#claims-and-leases)).
 - **Never a device, never touched.** The device lists and sign-outs leave it out,
   and its calls don't bump `last_seen`: a heartbeat every 30 seconds is not its
   admin's activity.
@@ -283,11 +282,11 @@ whose token a pairing or an unpair revoked during the wait is `401`.
 anything to write: a lease that ran out, a private follow request whose feed URL
 the server no longer holds, or a queued job it would hand out. Only then does it
 take the writer, check the token again and claim, in one transaction committed
-durably (`WithDurableTx`: an attempt number is never handed out twice). An idle
-Bridge long-polls on two loops, 4 to 6 claims a minute; before this each one took
-the single writer and moved the database's write generation, emptying the
-server's [list answer cache](../server/overview.md#the-list-answer-cache) and token
-cache to change nothing. A job queued after the read still wakes the waiting
+durably ([`WithDurableTx`](../server/data-model.md#sqlite-choices): an attempt
+number is never handed out twice). An idle Bridge long-polls without pause, so a
+write per claim would keep emptying the server's
+[list answer cache](../server/overview.md#the-list-answer-cache) and token cache
+for nothing. A job queued after the read still wakes the waiting
 claim, and a lease that lapses later is due at the next one.
 
 After `accepts` lists `claim_min_priority`, the reserved dispatcher uses
@@ -328,14 +327,14 @@ Every report (`PATCH /bridge/jobs/{id}`) renews the lease. A job's handler only
 records its progress; a reporting loop beside it sends each new step at once, other
 changes at most every 2 seconds, and a keepalive at least every **30 seconds** even
 with nothing new (`jobs.DefaultKeepalive`), so a lease only runs out when the
-Bridge stops. Every report is a write on the server (it empties the caches keyed
-on the write generation), so the keepalive is no more often than it must be: four
-still fit in the 2-minute lease. After a report that didn't reach the server (no
-answer, a 5xx, a 408 or a 429) the next goes after **10 seconds**
-(`jobs.DefaultReportRetry`) instead, until one gets through, so a few lost reports
-never let the lease lapse; any other 4xx would be refused again however soon, so
-it waits the keepalive. A report carries
-the `attempt` its claim returned: a report from an earlier claim is
+Bridge stops. Every report is a server write that empties the caches keyed on the
+write generation, so the keepalive is as rare as it can be: four still fit in the
+2-minute lease. After a report that didn't reach the server (no answer, a 5xx, a
+408 or a 429) the next goes after **10 seconds** (`jobs.DefaultReportRetry`) until
+one gets through, so a few lost reports never let the lease lapse. After any other
+4xx, which would be refused again however soon, it waits for the keepalive.
+
+A report carries the `attempt` its claim returned: a report from an earlier claim is
 `409 not_held`, as is one about a job that ended, was cancelled or no longer exists
 (the route never answers `finished`). Its `error` text is cleaned rather than
 refused (control characters become spaces, line breaks stay, cut at 2 KiB), since
@@ -361,10 +360,10 @@ ended) by the time anyone looks.
 `POST /admin/bridge/jobs/{id}/cancel` ends a `queued` or `needs_attention` job at
 once (nobody is working on it). For a `claimed` or `running` job it sets
 `cancel_requested`: the Bridge reads it in the answer to its next report (within
-about 32 seconds at a job with nothing new to report: the 30-second keepalive,
-checked on the reporter's 2-second tick), stops the job and reports it
-`cancelled`. The console shows the job as cancelling meanwhile. If the Bridge never reports
-again, the lease runs out and the job is cancelled then. Cancelling an ended job is
+about 32 seconds at a job with nothing new to report: the keepalive plus one
+2-second reporter tick), stops the job and reports it `cancelled`. The console
+shows the job as cancelling meanwhile. If the Bridge never reports again, the
+lease runs out and the job is cancelled then. Cancelling an ended job is
 `409 finished`. Until a cancelled job has stopped it is still open, so queuing the
 same again returns it (the console says it is still stopping).
 

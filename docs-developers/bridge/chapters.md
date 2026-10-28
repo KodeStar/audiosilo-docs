@@ -282,10 +282,10 @@ a generate job is refused while a detect job is queued or working (until an admi
 cancels it: one cancelled before `chapter_detecting` leaves no run to continue, so
 the generate job transcribes again), and cancels a **parked** one. The Bridge hears
 a cancel at the detect job's next report, so before any continue the generate job
-waits up to 40 polls (`awaitChaptersGivingWay`, `giveWayTries`: two minutes at
-the 3-second poll, room for a 30-second keepalive report or two lost on the
-way) until no chapters job follows the
-book (working, parked, or done and saving its list) and the book has stopped (the
+waits up to 40 polls, two minutes at the 3-second poll (`awaitChaptersGivingWay`,
+`giveWayTries`), long enough for a lost keepalive or two, until no chapters job
+follows the book (working, parked, or done and saving its list) and the book has
+stopped (the
 ending job [stops it](generating.md#states)). When the wait runs out, a job still
 open is refused, and a book no job follows that still isn't stopped (an orphan
 run) is stopped there, then continued when it is one of the two runs above, else
