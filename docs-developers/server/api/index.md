@@ -394,8 +394,9 @@ with the same kind of opaque `cursor` / `next_cursor`: see
 Other list endpoints (`/search`, `/books/recent`, a single book's history) are
 single-shot with a `limit` and no pagination.
 
-`GET /libraries/{id}/books`, `GET /books/recent` and `GET /search` may be
-answered from a server-side cache that any database write empties, so an answer
+`GET /libraries/{id}/books`, `GET /books/recent`, `GET /search` and
+`GET /libraries/{id}/authors`, `/narrators` and `/series` may be answered from a
+server-side cache that any database write empties, so an answer
 is never staler than one built fresh; nothing on the wire changes (see
 [the list answer cache](../overview.md#the-list-answer-cache)).
 

@@ -1307,13 +1307,35 @@ binary cross-compiles for every release target without a C toolchain - a hard
 requirement of the native-distribution pipeline (see
 [Release pipeline](../architecture/release-pipeline.md)).
 
-**Pragmas.** Every connection gets `journal_mode(WAL)`, `busy_timeout(5000)`,
-and `foreign_keys(ON)` appended to its DSN (`store.dsnPragmas`).
+**Pragmas.** Every connection gets `journal_mode(WAL)`, `synchronous(NORMAL)`,
+`busy_timeout(5000)` and `foreign_keys(ON)` appended to its DSN (`store.dsnPragmas`).
 `foreign_keys` defaults **off** per SQLite connection, and the schema relies on
 `ON DELETE CASCADE` rules throughout (deleting a user removes their sessions,
 codes, progress, bookmarks, notes, history, listening sessions, and grants) - so the pragmas are appended
 unconditionally, with the correct `?`/`&` separator, rather than skipped when a
 DSN already carries query params.
+
+**Durable writes.** `synchronous(NORMAL)` is the trade-off SQLite documents for
+WAL: a commit no longer fsyncs the WAL (only a checkpoint does), so a power cut
+or an OS crash can roll back the last few commits, though it never corrupts the
+database or tears a transaction, and a crash of the server process alone loses
+nothing. Any commit can be in that window, not only a progress save (which
+clients send again). `FULL` cost an fsync per commit (two per progress save),
+1 to 5 ms on an SSD and far more on an HDD array or a FUSE share, all of it
+serialized on the one writer.
+
+The few writes whose loss would bring back something a person ended go through
+`store.DB.WithDurableTx` (or `ExecDurable` for a lone statement), which holds the
+writer's one connection, sets `synchronous = FULL` for that commit and puts
+`NORMAL` back before another write can run. They are the writes that end a
+credential (a sign-out, a device or API key revoked, a password set or cleared,
+an account disabled, demoted or deleted, an auth code revoked, rotated, replaced
+or used, a pairing token used, a Bridge pairing code replaced, a Bridge paired or
+unpaired) and a Bridge job claim (its attempt number must never be handed out
+twice). Their fsync also flushes the `NORMAL` commits before them. Everything
+else stays `NORMAL`: listening progress and heartbeats never take it. A new
+write that ends a credential must use `WithDurableTx` or `ExecDurable`, and its
+test checks `store.DB.DurableCommits` moved.
 
 **Writer/reader pool split.** `store.DB` owns two pools over the same file:
 

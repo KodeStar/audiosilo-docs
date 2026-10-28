@@ -192,7 +192,13 @@ Bridge's public `POST /bridge/pair`; see
   index `idx_tokens_bridge`), and `auth.BridgeTokenLiveSQL` asks the same of one
   token: the heartbeat's write and every claim ask it inside their own transaction,
   so a call authenticated just before a pairing or an unpair revoked its token (a
-  long poll above all) saves nothing and claims nothing (`401`).
+  long poll above all) saves nothing and claims nothing (`401`). A claim asks it
+  first on the reader pool (`bridge.claimDue`, with whether it has anything to
+  write: a lapsed lease, a lost private follow request or a job to hand out), so
+  an idle claim writes nothing and a revoked token is refused there; a claim that
+  goes on to the writer asks again inside its transaction, which commits durably
+  (`WithDurableTx`, see [SQLite choices](data-model.md#sqlite-choices)) so an
+  attempt number is never handed out twice.
 - **401 means refused, 503 means unknown.** `requireBridge` answers `401` only for
   a missing or refused token; a failure to check it is `503`, so the Bridge never
   takes a database hiccup for a revoked token.
