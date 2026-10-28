@@ -223,7 +223,9 @@ meta repo at the workspace root). The honest summary:
   Play's app signing key, so it and a Play install can't update each other;
   switching means uninstalling first (see
   [Android without Google Play](/users/listening/mobile-apps#android-without-google-play)
-  in the User Guide).
+  in the User Guide). Like a `preview` APK, it carries no R8 mapping for a
+  console to use, so build it with `EAS_LOCAL_BUILD_SKIP_CLEANUP=1` and keep its
+  `mapping.txt` (path above) if you want to trace its crashes.
 - **Submission:** `eas submit --latest` per platform, with documented escape
   hatches - uploading the `.ipa` directly with `xcrun altool` when the EAS
   submit queue is slow, and manual `.aab` upload in the Play Console (which

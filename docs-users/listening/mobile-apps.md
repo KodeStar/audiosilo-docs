@@ -39,7 +39,7 @@ An APK installed this way doesn't update itself. To update, download the next re
 
 [Obtainium](https://github.com/ImranR98/Obtainium) is a free, open-source Android app that installs apps straight from their GitHub releases and tells you when a new one is out.
 
-1. Install Obtainium from its [releases page](https://github.com/ImranR98/Obtainium/releases/latest), the same way as an APK above.
+1. Install Obtainium from its [releases page](https://github.com/ImranR98/Obtainium/releases/latest), the same way as an APK above. It lists several APKs: `app-release.apk` works on any phone.
 2. In Obtainium, open **Add app** and paste `https://github.com/KodeStar/audiosilo-frontend` as the **App source URL**.
 3. Tap **Add**. Obtainium finds the newest release and its APK.
 4. Tap **Install**, and allow Obtainium to install unknown apps when Android asks.
@@ -50,7 +50,7 @@ From then on Obtainium checks for new releases in the background and offers the 
 
 The Google Play app and the GitHub APK are **signed differently**, so neither can update the other. To switch, uninstall the app first, then install it from the other source.
 
-Uninstalling removes what the app keeps on your phone: your **downloaded books** and its **sign-in** to your server. Your listening progress, bookmarks and favourites are on your server, so reconnect the app (a [QR code](connecting.md) is quickest) and download the books you want offline again.
+Uninstalling removes what the app keeps on your phone: your **downloaded books**, its **sign-in** to each server, and anyone else's [profile](profiles.md) on the phone. Your listening progress, bookmarks and favourites are on your server, so reconnect the app (a [QR code](connecting.md) is quickest) and download the books you want offline again. Progress you made offline is only on your server once it has synced, so open the app with a connection before you uninstall it.
 
 :::note[Android Auto and an APK]
 With the APK, AudioSilo shows in Android Auto only after one extra setting: see [In the car](in-the-car.md#android-auto).

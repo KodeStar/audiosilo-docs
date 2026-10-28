@@ -361,7 +361,7 @@ progress on the server is intact.
 ### AudioSilo doesn't appear in Android Auto or CarPlay
 
 Android Auto only lists apps installed from Google Play unless you allow
-unknown sources, and CarPlay needs version 2.4.1 or later of the iPhone app (see
+unknown sources (needed for [the APK from GitHub](./listening/mobile-apps.md#android-without-google-play)), and CarPlay needs version 2.4.1 or later of the iPhone app (see
 [Availability](./listening/mobile-apps.md#availability)). See
 [Getting AudioSilo into the car](./listening/in-the-car.md#getting-audiosilo-into-the-car)
 for the steps and checks.
