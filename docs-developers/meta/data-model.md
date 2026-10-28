@@ -123,9 +123,10 @@ them. A life year is a fact or it is absent: a stated value that is not plainly 
 year (`alive`, `c. 1500`) is never written, and `metacheck` refuses a
 `death_year` before the `birth_year` (`pkg/check/librivox.go`).
 
-A person's `id` is the slug of their `name`, and `metacheck` refuses a record
-whose id is not, because the next import of that name would miss it and mint a
-second record. There is one other legal form: a LibriVox reader whose name
+A person's `id` is the one `model.PersonSlug` derives from their `name` (reserved
+names and the catch-all included), and `metacheck` refuses a record whose id is
+not, because the next import of that name would miss it and mint a second
+record. The one other legal form is a LibriVox reader's: a reader whose name
 another reader id already holds is `<name slug>-librivox-<reader id>`
 (`martina-librivox-634`), and `metacheck` accepts it only on a record carrying
 exactly that `librivox_reader_id`, since the LibriVox import finds a reader by id
