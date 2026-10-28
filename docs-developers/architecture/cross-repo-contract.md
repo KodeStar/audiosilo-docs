@@ -169,11 +169,12 @@ also sends the header (belt-and-braces); web relies solely on the query param (a
 cover is a plain `<img>`, `CoverImage`, which can't send one).
 
 **Cover thumbnails** ride the same path: `GET /libraries/{id}/cover?size=160|320|640`
-(capability `cover_sizes`) is a JPEG of the same art with an `ETag` of size + art
-version and `Cache-Control: private, no-cache` (custom cover) or
-`private, max-age=86400` (file art); any other `size` is a `400`, and a thumbnail
-that can't be made is a `404` the client answers by falling back to the full-art
-URL. Clients add the book's `cover_version` as `v=` purely as a cache buster:
+(capability `cover_sizes`) is a JPEG of the same art with an `ETag` of size + the
+server's thumbnail revision (`media.ThumbnailRev`) + art version
+(`"thumb-<size>-<rev>-<hash>"`) and `Cache-Control: private, no-cache` (custom
+cover) or `private, max-age=86400` (file art); any other `size` is a `400`, and a
+thumbnail that can't be made is a `404` the client answers by falling back to the
+full-art URL. Clients add the book's `cover_version` as `v=` purely as a cache buster:
 `coverUrl(lib, path, { size, version })`.
 
 **Community covers** (capability `meta_covers`) are the other media-auth image
@@ -567,7 +568,7 @@ it is never an open proxy. Scope and errors are as `/meta` (403/404 for the path
 404 with metadata off, 502 metadata unavailable), plus `502 cover_unavailable`
 (the fetch failed; that URL is not fetched again for a minute, and concurrent
 misses share one fetch) and `404 no cover` (not an image, or over the pixel
-bound). Only a re-encoded JPEG is served, with `ETag` `"community-<size>-<hash>"`
+bound). Only a re-encoded JPEG is served, with `ETag` `"community-<size>-<rev>-<hash>"`
 and `private, max-age=86400`. Frontend: `Capabilities.meta_covers`,
 `client.communityCoverUrl(lib, path, cover_url, { size })`, and
 `communityCoverSource` / `useCommunityCover`: proxied when the flag is on; without

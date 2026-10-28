@@ -299,7 +299,7 @@ flowchart TD
     A["Signatures(lib)<br/>stored mtime/size/duration/codec/cover per rel_path"] --> B{"root probe answers (2 s)<br/>and os.Stat: exists & is dir?"}
     B -- no --> U1["ErrLibraryUnavailable<br/>(abort, no prune)"]
     B -- yes --> C["FolderOverrides(lib)"]
-    C --> D["discoverAuto: WalkDir the tree<br/>collect dirs that directly contain audio<br/>(skip ignored paths; log + skip unreadable entries)"]
+    C --> D["discoverAuto: walkDir the tree, folders listed up to 8 at once<br/>collect dirs that directly contain audio<br/>(skip ignored paths; log + skip unreadable entries),<br/>then statAudio: their files' lstat, up to 8 at once"]
     D --> E["booksInDir per dir<br/>(detection model + overrides)"]
     E --> F{"0 books found, index non-empty,<br/>and not all ignored?"}
     F -- yes --> U2["ErrLibraryUnavailable<br/>(abort, no prune)"]
@@ -322,7 +322,13 @@ The **unchanged-skip** condition is worth reading precisely: a book is skipped
 when its stored mtime and size match **and** either ffprobe is disabled or a
 prior probe already stored both a duration and a codec. That last clause is a
 backfill mechanism - books indexed before the `codec` column existed (migration
-`0008`) get re-probed once even though their files haven't changed.
+`0008`) get re-probed once even though their files haven't changed. One more
+book passes it: a book with one audio file whose recorded `unreadable` or
+`probe_failed` [read problem](#read-problems) names that file
+(`soleFileProblem`; an `empty_file` one doesn't). Its only file was never
+probed, so it has no duration or codec. `problemCleared` decides whether to read
+it; while the problem is still there the book is kept like any unchanged one
+(the metadata files beside it are still read).
 
 A skipped book can still get one cheap backfill: when its `has_cover` is unset
 (a row indexed before migration `0016`), the scan checks its primary file for
@@ -398,14 +404,65 @@ several files at a time, and writes the index in one place
   written, and the backfills read so far are kept.
 - **On-demand indexing** ([`IndexPath`](#on-demand-indexing-indexpath)) reads
   with one slot, a file at a time on the request's own goroutine.
-- The skipped books' cheap backfills (above) and the re-read of a recorded
-  problem's file still run one at a time on the writing goroutine, outside the
-  slots.
+- The skipped books' cheap backfills (above) still run one at a time on the
+  writing goroutine, outside the slots. The re-read of a recorded problem's file
+  (`problemCleared`) runs on that goroutine too, but through a slot and under the
+  scan's context, as `enrich`'s reads do: a read the scan stopped counts as the
+  problem still there, and the scan ends at its next check.
 
 Every tag read goes through `metadata.ReadTags` (`tagreader.go`, used by
 `Extract` and `media.EmbeddedCover`): `dhowden/tag` reads an ID3v2 tag through
 a buffer up to the tag's end, not with one read system call per byte, which
 counts on a spinning disk or a network share.
+
+### A rescan that finds nothing changed
+
+Most scans find most books unchanged, and then the scan is mostly waiting on the
+filesystem: a folder listing and an `lstat` per audio file. On a local disk each
+is cheap; on a network share or a FUSE pool (Unraid's `/mnt/user`) each is a round
+trip. So discovery does these several at once and skips what an unchanged book
+doesn't need:
+
+- **Folders listed ahead.** `walkDir` (`library/walk.go`) calls its function on
+  the same paths, in the same order and with the same errors as
+  `filepath.WalkDir`, but lists the folders a folder holds together, up to
+  `walkIO` (8) at a time, before going into the first of them. Hidden and ignored
+  folders are never listed (the walk's `descend` check). A capped walk (a setup
+  preview, a folder listing's disc-set check) still lists each folder as it
+  reaches it, since it may stop at any folder.
+- **Files looked at together.** `statAudio` then reads every audio file's `lstat`
+  (its size and mtime, all the unchanged-skip needs) 8 at a time, ahead of
+  `booksOf`. A file listed by the walk but gone by then means the tree changed
+  under the walk: the scan logs "audio files gone during discovery" and counts as
+  [partial](#scan-history-scan_runs), so it doesn't prune a book the next scan
+  finds moved.
+- **The width.** Both use `Scanner.walkWidth`: `walkIO`, or `scan.concurrency`
+  when that is set lower (1 lists each folder as the walk reaches it).
+  A higher `scan.concurrency` doesn't raise it: these calls wait on round trips,
+  not CPUs.
+- **`added_at` only for a new book.** Discovery reads no birth times.
+  `added_at` is set when a book is first indexed and never updated, so `enrich`
+  stamps it (`stampAddedAt`: the earliest `addedAt` of the book's audio files)
+  only for a book the index doesn't hold yet. A book that is re-indexed keeps
+  its row's value, so the scan sets a placeholder for it and reads none of its
+  files' birth times. On Linux a birth time is a `statx` per file on top of the
+  walk's `lstat`, so a no-change scan makes none.
+- **A damaged file isn't probed again.** Without this, `problemCleared` would
+  run ffprobe on a `probe_failed` book's file on every scan. When ffprobe rejects
+  a file's data (`metadata.ErrProbeRejected`: its last stderr line ends in
+  ffmpeg's "Invalid data found when processing input"), the scanner remembers
+  the file's absolute path with its own mtime and size (`noteRejected`), and
+  `problemCleared` doesn't run ffprobe on it again while both are as they were.
+  A time-out, an exec failure or a read error is never remembered (those may
+  pass), and any other reading of the file forgets it. The memory lasts for the
+  server process only, so a restart (perhaps with another ffprobe) looks again,
+  and the console's Read again (`POST /admin/libraries/{id}/book/rescan`, through
+  `IndexPath`) always reads the file.
+
+Together these took a no-change rescan of a 1,000-book library on an emulated
+FUSE mount from about 1.0 s to about 0.55 s, and its filesystem calls on library
+paths from about 20,000 to about 10,600 (no `statx` left). The index written is
+the same.
 
 ### Prune: what a removed book leaves behind
 
@@ -476,7 +533,9 @@ runs compare by value (`2- Part` before `10- Part`, `02` level with `2`), the
 rest byte by byte with case folded, so `01 - Prologue` plays before
 `01a - Interlude`; names alike that way fall back to their bytes. `audioEntries`
 and the discovery walk (`audioDirs`) both sort this way. It sums sizes,
-takes the max mtime, and takes the **earliest** file's `added_at`.
+takes the max mtime. Its `added_at` is the **earliest** file's, read later by
+`enrich` (`stampAddedAt`) and only for a book indexed for the first time (see
+[A rescan that finds nothing changed](#a-rescan-that-finds-nothing-changed)).
 
 :::note[Behaviour change in 2.4.0]
 Before 2.4.0 a folder book's files played in byte order (`os.ReadDir`'s), so
@@ -510,7 +569,9 @@ still re-indexed, as above.
 `addedAt` is
 the file's birth (creation) time where the OS records it
 (`birthtime_darwin.go`/`birthtime_linux.go`), otherwise mtime - a stable
-chronological key for "recently added" that survives re-indexing.
+chronological key for "recently added" that survives re-indexing. A book none of
+whose files can be looked at by then (gone since discovery) is stamped with the
+current time, as first seen.
 
 Discovery (`discoverAuto`) walks the tree once (`audioDirs`, which reads each
 folder's audio files in the same walk) and hands the folders to `booksOf`,
@@ -902,7 +963,12 @@ share that came back changes neither the file's mtime nor its size, so the
 unchanged-skip would keep the stale problem; instead each scan re-reads just the
 recorded file of an `unreadable` or `probe_failed` book (`problemCleared`) and
 re-indexes the book when it now reads. `POST /admin/libraries/{id}/book/rescan`
-re-checks at once.
+re-checks at once. Two exceptions keep a damaged file from costing every scan:
+a one-file book whose problem is still there passes the
+[unchanged-skip](#anatomy-of-a-scan-pass) rather than being read whole, and a
+file whose data ffprobe rejected isn't probed again until it changes or the
+server restarts (see
+[A rescan that finds nothing changed](#a-rescan-that-finds-nothing-changed)).
 
 **A probe that ran out of time.** Each ffprobe run gets 30 seconds
 (`metadata.ProbeTimeout`); one that runs out is killed, its `ProbeErr` wraps
@@ -1184,7 +1250,9 @@ drops. The scanner **aborts without pruning** when:
 Related but distinct: a *per-entry* read error during the walk (commonly a
 permission-denied subtree on a partially-readable mount) is warned and
 **skipped**, not fatal - aborting the whole scan would be worse, but silently
-dropping those books would let the prune step remove them.
+dropping those books would let the prune step remove them. An audio file gone
+by the time discovery looks at it makes the scan partial the same way (see
+[A rescan that finds nothing changed](#a-rescan-that-finds-nothing-changed)).
 
 ### Reporting it to the console
 

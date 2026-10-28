@@ -624,9 +624,10 @@ ask finishes it.
 (`sw.js?build=<entry>.<common>`, `buildId` in `register-sw.web.ts`: the names of
 the page's entry script and of the shared `__common` chunk, which the entry does
 not name), so each deploy installs a new worker even though `sw.js`'s bytes are
-the same. Its `install` writes every build file again: Chrome compiles a script
-a worker caches while installing and keeps that code with it, which is most of a
-warm start's speed.
+the same. When the start scripts are cut into parts, these are the entry's last
+part and the shared chunk's first. Its `install` writes every build file again:
+Chrome compiles a script a worker caches while installing and keeps that code
+with it, which is most of a warm start's speed.
 
 `activate` deletes old shell cache versions but **never** the media cache -
 downloads must survive SW updates. When registered with `?dev=1` (the Metro dev

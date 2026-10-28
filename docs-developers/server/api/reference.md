@@ -2696,7 +2696,8 @@ reach the client.
 - Thumbnails come from the server's in-memory thumbnail cache, the one
   [`POST /admin/meta/covers`](#post-apiv1adminmetacovers) uses (keyed by URL and
   size). Requests for the same thumbnail at once share one fetch.
-- `ETag` is `"community-<size>-<hash>"`, the hash of the URL, and
+- `ETag` is `"community-<size>-<rev>-<hash>"`, the hash of the URL (`rev` names
+  how the server makes thumbnails, as on [`?size=`](#get-apiv1librariesidcover)), and
   `Cache-Control` is `private, max-age=86400` (a community cover URL names one
   image; a new cover is a new URL). A matching `If-None-Match` is a `304` without
   the image being fetched.
@@ -2873,15 +2874,20 @@ Response `200`: image bytes with the appropriate `Content-Type`; `404`
 within `size` x `size` pixels, never scaled up, from the server's in-memory
 thumbnail cache - the one the admin console's
 [`POST /admin/covers`](#post-apiv1admincovers) uses. Its longer side is at most
-`size` pixels (a 2:3 portrait cover at `320` is 213 x 320). A source larger than 40
-megapixels, or one that can't be decoded, is a `404` here although the full-art URL
-still serves it, so a client falls back to the URL without `size` on a thumbnail
-`404`.
+`size` pixels (a 2:3 portrait cover at `320` is 213 x 320). A JPEG already within
+`size` may be sent re-encoded at quality 80 when that is smaller (see
+[Media](../media.md#thumbnails-for-the-admin-console-post-admincovers)). A source
+larger than 40 megapixels, or one that can't be decoded, is a `404` here although
+the full-art URL still serves it, so a client falls back to the URL without `size`
+on a thumbnail `404`.
 
-- `ETag` is `"thumb-<size>-<hash>"`, the hash of the art's own version: the value
-  the book's [`cover_version`](#get-apiv1librariesidbooks) takes from its first
-  thumbnail on. `If-None-Match` is matched like the server's other validators (a
-  list, weak tags).
+- `ETag` is `"thumb-<size>-<rev>-<hash>"`. `rev` names how the server makes
+  thumbnails: it changes when a server update makes other bytes of the same art,
+  so a client fetches each thumbnail once more after such an update instead of
+  keeping, or resuming a range of, the old bytes. `hash` is the art's own
+  version: the value the book's [`cover_version`](#get-apiv1librariesidbooks)
+  takes from its first thumbnail on. `If-None-Match` is matched like the server's
+  other validators (a list, weak tags).
 - A matching request gets a `304` without the image being read once the book's
   `cover_color` is recorded for this art. Until then the server still reads the art
   (usually from the thumbnail cache) to record it, and then answers the `304`, so a

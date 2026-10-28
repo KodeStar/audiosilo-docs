@@ -102,6 +102,20 @@ and the [Bridge's token](#bridge-tokens) (`auth.KindBridge`):
   GitHub's "a token cannot create tokens"). It can still list/revoke keys and clear a recovery code,
   which only reduce access.
 
+**The per-request lookup and its cache.** Every authenticated request looks its
+token up by hash (`lookupToken`: unknown, revoked, expired or a disabled user is
+refused). A valid session, API key or Bridge token's lookup is then held in
+`Service.tokens` (`auth/tokencache.go`, a `store.GenMap`, at most 4,096 entries)
+for as long as the database's [write generation](overview.md#internalstore)
+(`store.DB.Generation`) stays where it was when the row was read. Every change
+that could end a token (a sign-out or revoke, a disabled or deleted account, a
+changed role or membership, the token's own last-seen touch) is a write, which
+moves the generation, so the very next request reads the row again and refuses a
+revoked token. Expiry needs no write, so it is checked on every hit. A cast token
+(its grant and parent) and a pairing token (its one use) are never held, and
+nothing is held for a refusal. A write that bypassed the generation would leave
+a revoked token honoured.
+
 ### Cast tokens
 
 A **cast token** (capability `cast`, `internal/auth/cast.go`) is a fourth kind of
@@ -872,7 +886,14 @@ Any filesystem access derived from user input goes through
 2. **Symlink-aware containment** - symlinks in the longest *existing* prefix of
    the target are resolved (`resolveExisting`) and containment is re-checked,
    so a symlink inside the root pointing outside it is rejected rather than
-   followed.
+   followed. The root itself is still resolved (`filepath.EvalSymlinks`) on
+   every call. When it resolved, the target is checked only by the names below
+   it (`resolveBelow`: one `Lstat` per name, stopping at the first name that
+   isn't there, or at the first link, from which `resolveExisting` resolves the
+   rest), rather than by a second `filepath.EvalSymlinks` over the whole target,
+   which would `Lstat` every name from `/` down again, the root's own included:
+   on a network share or a FUSE pool (Unraid's `/mnt/user`) a round trip each
+   on every cover and stream request.
 
 Both `BrowseFS` and the stream/cover handlers call it; `Scanner.IndexPath` uses
 it as the security gate too (while deriving the working path from the
