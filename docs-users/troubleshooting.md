@@ -486,7 +486,7 @@ untouched (see [Covers](./admin/books.md#covers)).
 - the folder holds **one** `.epub`, not two or more (with several, none is used);
 - for a single-file book, the EPUB has the **same name** as the audio file;
 - a scan has run since you added it: click **Rescan** on the library in the admin console;
-- in the iOS or Android app, you have its latest version from the App Store or Google Play (an older one has no reader).
+- in the iOS or Android app, you have its latest version from the App Store or Google Play (an older one has no reader). On Android, the [APK on GitHub](./listening/mobile-apps.md#android-without-google-play) usually has a new version first.
 
 Offline, the reader needs the ebook in the book's download: see [Reading offline](listening/reading-the-ebook.md#reading-offline).
 

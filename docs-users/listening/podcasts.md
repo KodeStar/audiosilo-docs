@@ -7,7 +7,8 @@ When your server has a podcast library, the player shows its podcasts beside you
 shows in the Library, each show's episodes, a **New episodes** shelf on Home for the shows you
 follow, and episodes that play like any book. Podcasts need the **AudioSilo app 2.4.0 or later**
 (the web player comes with your server and is updated with it). An older app doesn't
-show podcasts at all; update it from the App Store or Google Play.
+show podcasts at all; update it from the App Store or Google Play (on Android, also
+[without Google Play](mobile-apps.md#android-without-google-play)).
 
 Your admin sets podcasts up on the server: see [Podcasts](../admin/podcasts.md) in the admin
 guide. You can [add shows](#adding-shows) yourself: search a podcast directory, paste a feed's

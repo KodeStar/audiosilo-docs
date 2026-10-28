@@ -65,6 +65,13 @@ unstyled or not at all, so update it or use the apps. The **iOS and Android apps
 The admin console at `/admin` is also built into the server - no separate
 install for that either.
 
+### Can I install the Android app without Google Play?
+
+Yes. From version 2.5.0, each app release on GitHub carries an APK you can
+install yourself, or follow with Obtainium for updates. The Google Play app and
+the APK can't update each other, so pick one. See
+[Android without Google Play](./listening/mobile-apps.md#android-without-google-play).
+
 ### Does it work offline?
 
 Yes. Download a book to your device and it plays with no connection - in the

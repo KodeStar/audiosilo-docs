@@ -20,6 +20,7 @@ step-by-step runbook. The maintainer notes it follows are
 | Native server binaries | `audiosilo-server/.github/workflows/release.yml` (GoReleaser) | `v*` tags; manual dispatch | **Draft** GitHub Release on `KodeStar/audiosilo-server` |
 | `lscr.io/linuxserver/audiosilo` | LinuxServer.io's CI ([linuxserver/docker-audiosilo](https://github.com/linuxserver/docker-audiosilo)) | publishing a server release (polled hourly) | Docker Hub / GHCR / lscr.io, and Unraid Community Applications |
 | iOS / Android apps | EAS Build (manual, outside CI) | on demand | App Store Connect / Google Play Console |
+| Android sideload APK | EAS Build, `production-apk` profile (manual) | each app release, from 2.5.0 | an `AudioSilo-<version>.apk` asset on the frontend's **App** GitHub Release |
 
 ## Step 1 - publish the web player image (audiosilo-frontend)
 
@@ -210,6 +211,19 @@ meta repo at the workspace root). The honest summary:
   usage, no cloud queue) while still using EAS-managed signing credentials and
   the remote version counter. One platform per invocation; iOS needs Xcode +
   Fastlane, Android needs JDK 17 + `ANDROID_HOME`.
+- **The sideload APK.** From 2.5.0 each app release on
+  `KodeStar/audiosilo-frontend` (the **App x.y.z** GitHub Release on the `v*`
+  tag) also carries an APK, for people who don't use Google Play or don't want to
+  wait for its review. `eas.json`'s `production-apk` profile is `production` plus
+  `android.buildType: apk`, so it is the same app code and version as the store
+  build. Build it with
+  `eas build --platform android --profile production-apk --local` and attach the
+  file to the release as **`AudioSilo-<version>.apk`** (that name is what the
+  User Guide and the Obtainium flow it describes expect). It is signed with the
+  upload key, not Google Play's app signing key, so Android won't update a Play
+  install with it or the reverse: users switching must uninstall first (see
+  [Android without Google Play](/users/listening/mobile-apps#android-without-google-play)
+  in the User Guide).
 - **Submission:** `eas submit --latest` per platform, with documented escape
   hatches - uploading the `.ipa` directly with `xcrun altool` when the EAS
   submit queue is slow, and manual `.aab` upload in the Play Console (which
