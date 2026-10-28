@@ -214,25 +214,23 @@ gated, since they are the data's own check regardless of what else changed.
 The jobs run in parallel, each on its own runner, so a pull request waits for the
 slowest of them rather than their sum. `test` is three shards:
 `.github/scripts/go-test-shard.sh` partitions `go list ./...` so every package
-runs in exactly one, balanced on measured per-package times. On a pull request an
-`advisories` job runs metacheck over the base beside the head's run, for the
-advisory delta. Jobs that need only Go code (`build`, `lint`, `vuln`) and the
-`site` job check out a sparse tree without `data/`, which is most of a full
-checkout's time.
+runs in exactly one. On a pull request an `advisories` job runs metacheck over
+the base beside the head's run, for the advisory delta. Jobs that need only Go
+code (`build`, `lint`, `vuln`) and the `site` job check out a sparse tree without
+`data/`, skipping most of a full checkout's time.
 
-**`check` is the verdict.** It needs `build`, `test`, `metacheck`, `metafmt` and
-`advisories`, and passes only when every one of them but `advisories` concluded
-`success` (`.github/scripts/check-verdict.sh`); a skipped or cancelled job is a
-failure, never a pass. It runs under `always()`, so even a cancelled run reports
-a red `check` rather than a skipped one, which branch protection and the sync bot
-would read as green. `advisories` can never end red (every step continues on
-error) and is never counted. `check` writes the advisories a pull request
-introduces into its job summary, and when it fails its log ends with the tails of
-the failing jobs' own output (only theirs, within one shared budget). The name is
-load-bearing: branch protection requires `check` and `compose`, and the
-[sync bot](sync-bot.md) merges once `check`, `compose`, `site` and `verify` are
-green and hands the tail of a failed check's log to its resolver. Rename or drop
-it and both wait for a check that never comes.
+**`check` is the verdict.** It needs `changes`, `build`, `test`, `metacheck`,
+`metafmt` and `advisories`, and passes only when every one of them but
+`advisories` concluded `success` (`.github/scripts/check-verdict.sh`); a skipped
+or cancelled job is a failure. It runs under `always()`, so a cancelled run
+reports a red `check`; a skipped one would read as green to branch protection and
+the sync bot. `advisories` can never end red (every step continues on error).
+`check` writes the advisories a pull request introduces into its job summary, and
+when it fails its log ends with the tails of the failing jobs' own output. The
+name is load-bearing: branch protection requires `check` and `compose`, and the
+[sync bot](sync-bot.md) gates its merge on `check` by name and hands the tail of
+a failed `check` log to its resolver, so renaming or dropping it leaves both
+waiting for a check that never comes.
 
 Build the artifact and serve it:
 
