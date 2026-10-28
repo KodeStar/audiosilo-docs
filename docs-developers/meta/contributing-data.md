@@ -733,8 +733,9 @@ nothing is dropped (Names that slug to nothing, below):
    person. Then every project of that id credits the catalogued person (who is
    keyed by the id), so the author's other books do not mint a second record.
    Otherwise each project is decided on its own. A work created earlier in the
-   run is matched like a catalogued one, so a variant is found even when both
-   works are new.
+   run is matched like a catalogued one, and an author id an earlier project of
+   the run took counts as carried, so two spellings land the same way whether
+   they arrive in one run or two.
 4. **A trailing qualifier waits for a person.** Otherwise the title's trailing
    `(...)` or `[...]` qualifiers are dropped one at a time from the end. If what
    remains matches a work by the same authors under rule 2 ("Frankenstein
