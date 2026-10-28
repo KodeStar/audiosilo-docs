@@ -673,9 +673,9 @@ each selected project:
 #### Which work a LibriVox project joins
 
 `routeLibrivox` (`internal/importer/librivoxmatch.go`, the author rules in
-`librivoxauthors.go`) decides the work, in order, after LibriVox's trailing
-"(version 2)" title marker is stripped and any credit whose name slugs to
-nothing is dropped (Names that slug to nothing, below):
+`librivoxauthors.go`) decides the work, in order, after LibriVox's repeat
+markers are stripped from the title (Repeat markers, below) and any credit whose
+name slugs to nothing is dropped (Names that slug to nothing, below):
 
 1. **The ordinary identity walk**: same title, same identity authors, same
    language.
@@ -748,12 +748,50 @@ nothing is dropped (Names that slug to nothing, below):
    the project back: one whose authors only partly agree is passed over here,
    leaving the project to rule 5. A "Part N" outside brackets ("Anna Karenina,
    Book 1") is not a qualifier, and a mostly non-Latin title (below) skips
-   this rule.
+   this rule. A repeat marker the strip left in place is dropped here like
+   any other qualifier, provided it is a parenthetical and only parentheticals
+   follow it (Repeat markers, below).
 5. **Otherwise a new work.** A same-titled work by an entirely **different**
    author is a different book (think of every "Poems"), so the project gets a
    work of its own rather than a skip. A work under the project's own title
    (rule 2's spelling) whose authors only **partly** agree with the project's
    is `author-unmatched`, decided before rule 4 is tried.
+
+**Repeat markers.** LibriVox numbers its second and later projects of one text,
+and marks a cast production, in the title. Either is another recording of the
+same text, so the marker is stripped before any rule runs and the rules above
+decide the project under the plain title: it joins the plain-titled work as any
+other project would, or creates a work under the plain title. `librivoxTitle`
+(`internal/importer/librivox.go`) strips, from the **end** of the title only:
+
+- a parenthetical holding `version N`, `ver N`, `ver. N` (any number, a year
+  included) or `Dramatic Reading`, any case, with "version" also in its
+  Italian, Spanish and Portuguese spellings (`versione`, `versión`, `versão`):
+  "Candide (version 2)", "Fables (Ver. 3)", "Canti (Versione 2)", "Eclogae
+  (Dramatic Reading)";
+- several markers in one parenthetical, bare or separated by a comma,
+  semicolon, colon, hyphen or dash: "Scarlet Pimpernel (Version 3, Dramatic
+  Reading)", "Dracula (version 2 dramatic reading)". A separator just before
+  the parenthetical goes with it ("Ballad of Reading Gaol, (version 2)" is
+  "Ballad of Reading Gaol");
+- a bare version without brackets: the full word (in any of the spellings
+  above, never "ver") and a number of one or two digits, after a space or one of
+  those separators: "Walden, Version 2", "Thief in the Night - Version 2",
+  "Rimas Versión 2". A title that merely ends in a number or a year ("...
+  Version 1611") is left alone.
+
+The strip repeats until no marker is left at the end, so stacked markers go in
+any order ("Wonderful Wizard of Oz (version 3) (Dramatic Reading)", "Emma
+(Dramatic Reading), Version 2"). Anything else after a marker keeps it in the
+title: "Metamorphosis (Dramatic Reading) (1915)" and "Ulysses (version 2):
+Circe" are unchanged, and a parenthetical that mixes a marker with other words
+("(abridged, version 2)") is not a marker. Rule 4 then drops trailing
+parentheticals of any kind, so "Metamorphosis (Dramatic Reading) (1915)" and
+"Candide (abridged, version 2)" go to the worklist when a plain-titled work by
+the same authors exists; "Ulysses (version 2): Circe" ends in no parenthetical,
+so rule 4 never reaches its marker. A title is never emptied: one made of
+markers alone keeps its first ("(Dramatic Reading) (version 2)" is "(Dramatic
+Reading)").
 
 **Names that slug to nothing.** An author or translator whose name has no letter
 the slug rule keeps (a Cyrillic "Йордан Йовков") would land on the one catch-all
