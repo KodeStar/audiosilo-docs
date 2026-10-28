@@ -611,14 +611,16 @@ each selected project:
   (a translator's id is a LibriVox author id; on an attach, only the people the
   work names, below). A person already carrying a different id in that
   namespace keeps it, and an id already on another person is not recorded twice;
-  the run warns about both. For an author that is two LibriVox ids whose names
-  are one person here; a reader reaches it only when the split below cannot
-  apply. An author's or translator's `dob` / `dod` become the
-  person's `birth_year` / `death_year` as the run records that person's LibriVox
-  author id, only when LibriVox states a plain year (`1883`, `-428`, `428 BC`),
-  and only when the person states neither yet: a year another source or a hand
-  edit wrote is never overwritten, and a pair whose death precedes its birth is
-  dropped whole.
+  the run warns about both. That is the case for an author who is two LibriVox
+  ids but one person here; a reader reaches it only when the split below cannot
+  apply. A reader whose name slugs to nothing lands on the catch-all person,
+  which is never given an id (an author or translator of that kind is credited
+  nowhere: [Names that slug to nothing](#which-work-a-librivox-project-joins)).
+  An author's or translator's `dob` / `dod` become the person's `birth_year` /
+  `death_year` as the run records that person's LibriVox author id, only when
+  LibriVox states a plain year (`1883`, `-428`, `428 BC`), and only when the
+  person states neither yet: a year another source or a hand edit wrote is never
+  overwritten, and a pair whose death precedes its birth is dropped whole.
 - **A reader id is a person of its own, even when the name is not.** LibriVox
   readers are accounts, and several share a display name ("Martina", "eva",
   "Lisa"). When a reader's name slugs to a person who already carries (or
@@ -696,9 +698,11 @@ nothing is dropped (Names that slug to nothing, below):
    **attaches** to that work and credits the catalogued person, whose spelling
    the work keeps (a
    [person record](data-model.md#person---an-entry-in-the-datapeople-family)
-   has no alias field, so LibriVox's spelling appears only in the run's note). Every author of the project must pair with
-   one of the work's this way or exactly, and nothing else under the title may
-   resemble them.
+   has no alias field, so LibriVox's spelling appears only in the run's note).
+   The work must be in a compatible language, and its authors and the
+   project's must pair one to one, each exactly or this way (the work credits
+   no other author; a collective such as "Anonymous" pairs only with itself).
+   Nothing else under the title may resemble them.
 
    **When LibriVox's spelling is already a person.** If the project's spelling
    is itself a person record (catalogued, keyed by the LibriVox author id the
@@ -713,11 +717,13 @@ nothing is dropped (Names that slug to nothing, below):
    Nesbit"), another given name ("Fanny" and "Frances Burney", "Lev" and "Leo
    Tolstoy"), a one-word name ("Homer"), "Saint" against "St", Jr. against
    Sr., or a suffix on one name only ("Francis Parkman, Jr." and "Francis
-   Parkman", "Henry James" and "Henry James Sr.": possibly father and son). So
-   is a work whose author already carries a **different** LibriVox author id
-   from the project's (LibriVox keeps the two as two people), and a variant
-   beside any other candidate; two variants are `several-works`. A different
-   surname is a different author (rule 5).
+   Parkman", "Henry James" and "Henry James Sr.": possibly father and son), or
+   a catalogued person no credit can name (a reader record at
+   `<name slug>-librivox-<reader id>`). So is a work whose author already
+   carries a **different** LibriVox author id from the project's (LibriVox
+   keeps the two as two people), and a variant beside any other candidate;
+   two variants are `several-works`. A different surname is a different author
+   (rule 5).
 
    **Once per author id.** When the variant is a catalogued person on a
    catalogued work, the project's author id is decided once for the whole run,
@@ -752,8 +758,9 @@ nothing is dropped (Names that slug to nothing, below):
 the slug rule keeps (a Cyrillic "Йордан Йовков") would land on the one catch-all
 person record every such name shares. It is credited nowhere instead: the credit
 is dropped before the work is decided and listed under
-[credits not recorded](#credits-not-recorded) as `unsluggable`. If the project
-also credits another author ("Yordan Yovkov"), it lands on that author's work.
+[credits not recorded](#credits-not-recorded) as `unsluggable` once the
+project lands. If the project also credits another author ("Yordan Yovkov"), its
+work is decided on that author alone.
 If no individual author is left (the name was its only author, or only a
 translator or a collective such as "Anonymous" remains), the project is the
 worklist's `author-unsluggable`, since a work by "Anonymous" alone would merge
@@ -764,14 +771,14 @@ half of the letters are not Latin script (digits, punctuation and spaces are not
 counted, and the leading article is dropped first), never walks a slug chain:
 that would file it under the shared "untitled" fallback, or under its Latin or
 number fragment ("Сборник стихов 001" as "001"). It is matched by rules 2 and 3
-alone, on a key that keeps its own letters (so a second project of the same title
-by the same author attaches, and "The Война и мир" meets "Война и мир"), and otherwise
-its new work is created at **`librivox-<project id>`**, titled as LibriVox writes
-it. Such a slug never merges two works; when it is already taken the project is
-the worklist's `fallback-slug-taken`. A title exactly half Latin ("Anna Karenina
-(Анна Каренина)") stays on the slug rule. A rerun is idempotent: the project
-id is already catalogued, so it writes nothing beyond the
-[reader split](#librivox-the-public-domain-mirror) on recordings it skips.
+alone, on a key that keeps its own letters (so a second project of the same
+title by the same author attaches, and "The Война и мир" meets "Война и мир"),
+and otherwise its new work is created at **`librivox-<project id>`**, titled as
+LibriVox writes it. Such a slug never merges two works; when it is already
+taken the project is the worklist's `fallback-slug-taken`. A title exactly
+half Latin ("Anna Karenina (Анна Каренина)") stays on the slug rule. A rerun is
+idempotent: the project id is already catalogued, so it writes nothing beyond
+the [reader split](#librivox-the-public-domain-mirror) on recordings it skips.
 
 #### The worklist
 
@@ -806,7 +813,8 @@ appear on the worklist alone.
 
 After the worklist, the import report lists the author and translator credits
 an attach leaves out (including one kept with its own record under rule 3) and
-every credit whose name slugs to nothing. Each is one line: the project id, the
+every credit whose name slugs to nothing, for each project that landed (a
+project on the worklist lists none). Each is one line: the project id, the
 name, its roles, the person's `librivox_author_id` when LibriVox states one, the
 work the recording landed on, and `unsluggable` for a name no record can hold or
 `person not created` when no person record exists for the name:
