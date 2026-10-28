@@ -6,7 +6,7 @@ description: "Reading a book's EPUB in the web player and the iOS and Android ap
 When a book's folder on your server also holds its ebook, AudioSilo can open it, in the web player and in the iOS and Android apps alike. **Read the ebook** on the book's page shows the text a page at a time and remembers where you got to, on every device you read it on. A book you [download](offline-downloads.md) takes its ebook with it, so you can read it with no connection too.
 
 :::note[Reading in the apps]
-The reader is new in AudioSilo **2.5.0**: it needs a server on version 2.5.0 or later and, on a phone or tablet, version 2.5.0 or later of the app. If your app doesn't show **Read the ebook** on a book that has one, update it from the App Store or Google Play.
+The reader is new in AudioSilo **2.5.0**: it needs a server on version 2.5.0 or later and, on a phone or tablet, version 2.5.0 or later of the app. If your app doesn't show **Read the ebook** on a book that has one, update it from the App Store, Google Play or, on Android, [the APK on GitHub](mobile-apps.md#android-without-google-play).
 :::
 
 ![The reader in the web player: the book's title, the chapter and how far through the book at the top, a page of text between the page-turn edges](/img/screenshots/web-player/reader.png)

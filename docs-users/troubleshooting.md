@@ -361,7 +361,7 @@ progress on the server is intact.
 ### AudioSilo doesn't appear in Android Auto or CarPlay
 
 Android Auto only lists apps installed from Google Play unless you allow
-unknown sources, and CarPlay needs version 2.4.1 or later of the iPhone app (see
+unknown sources (needed for [the APK from GitHub](./listening/mobile-apps.md#android-without-google-play)), and CarPlay needs version 2.4.1 or later of the iPhone app (see
 [Availability](./listening/mobile-apps.md#availability)). See
 [Getting AudioSilo into the car](./listening/in-the-car.md#getting-audiosilo-into-the-car)
 for the steps and checks.
@@ -486,7 +486,7 @@ untouched (see [Covers](./admin/books.md#covers)).
 - the folder holds **one** `.epub`, not two or more (with several, none is used);
 - for a single-file book, the EPUB has the **same name** as the audio file;
 - a scan has run since you added it: click **Rescan** on the library in the admin console;
-- in the iOS or Android app, you have its latest version from the App Store or Google Play (an older one has no reader).
+- in the iOS or Android app, you have its latest version from the App Store, Google Play or, on Android, [the APK on GitHub](./listening/mobile-apps.md#android-without-google-play) (an older one has no reader).
 
 Offline, the reader needs the ebook in the book's download: see [Reading offline](listening/reading-the-ebook.md#reading-offline).
 

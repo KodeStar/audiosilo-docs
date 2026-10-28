@@ -20,6 +20,7 @@ step-by-step runbook. The maintainer notes it follows are
 | Native server binaries | `audiosilo-server/.github/workflows/release.yml` (GoReleaser) | `v*` tags; manual dispatch | **Draft** GitHub Release on `KodeStar/audiosilo-server` |
 | `lscr.io/linuxserver/audiosilo` | LinuxServer.io's CI ([linuxserver/docker-audiosilo](https://github.com/linuxserver/docker-audiosilo)) | publishing a server release (polled hourly) | Docker Hub / GHCR / lscr.io, and Unraid Community Applications |
 | iOS / Android apps | EAS Build (manual, outside CI) | on demand | App Store Connect / Google Play Console |
+| Android sideload APK | EAS Build, `production-apk` profile (manual) | each app release, from 2.5.0 | an `AudioSilo-<version>.apk` asset on the frontend's **App** GitHub Release |
 
 ## Step 1 - publish the web player image (audiosilo-frontend)
 
@@ -210,20 +211,33 @@ meta repo at the workspace root). The honest summary:
   usage, no cloud queue) while still using EAS-managed signing credentials and
   the remote version counter. One platform per invocation; iOS needs Xcode +
   Fastlane, Android needs JDK 17 + `ANDROID_HOME`.
+- **The sideload APK.** From 2.5.0 each app release on
+  `KodeStar/audiosilo-frontend` (the **App x.y.z** GitHub Release on the `v*`
+  tag) also carries an APK. `eas.json`'s `production-apk` profile is
+  `production` plus `android.buildType: apk`, so it is the same app code and
+  version as the store build. Build it with
+  `eas build --platform android --profile production-apk --local` and attach the
+  file to the release as **`AudioSilo-<version>.apk`** (the name the User
+  Guide shows; keep it the only `.apk` on the release so Obtainium picks it
+  without asking). It is signed with the upload key, not Google
+  Play's app signing key, so it and a Play install can't update each other;
+  switching means uninstalling first (see
+  [Android without Google Play](/users/listening/mobile-apps#android-without-google-play)
+  in the User Guide). Like a `preview` APK, it carries no R8 mapping for a
+  console to use, so build it with `EAS_LOCAL_BUILD_SKIP_CLEANUP=1` and keep its
+  `mapping.txt` (path above) if you want to trace its crashes.
 - **Submission:** `eas submit --latest` per platform, with documented escape
   hatches - uploading the `.ipa` directly with `xcrun altool` when the EAS
   submit queue is slow, and manual `.aab` upload in the Play Console (which
   Google *requires* for the very first Android release anyway).
 - **No OTA updates.** `expo-updates` is not installed, so every change - JS or
   native - ships as a full store build.
-- **Current status: working through the stores' release processes, not
-  generally available.** Builds flow to TestFlight and Play testing tracks. On
-  Google Play, a personal developer account must run a closed test with ≥ 12
-  opted-in testers for 14 continuous days before production unlocks - that
-  tenure, not the build, is the long pole. On Apple, the gate is human App
+- **Current status: the apps are in the App Store and on Google Play.** Every
+  update still goes through each store's review. On Apple that is human App
   Review; the "reviewer needs a server" problem (guideline 2.1) is answered with
   the public demo server noted in `store/metadata/ios/review_notes.txt`, which
-  must stay reachable throughout a review.
+  must stay reachable throughout a review. On Google Play an update's review can
+  take days, which is why each release also carries the sideload APK.
 
 :::tip[When a release involves a wire change]
 A cross-repo wire change only reaches users compatibly because the server image

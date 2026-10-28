@@ -1,6 +1,6 @@
 ---
 title: The mobile apps
-description: "The native iOS and Android apps: current availability, connecting, getting around with the tab bar, background playback, lock-screen controls, the car, iPhone widgets and the sleep timer Live Activity, and gapless listening."
+description: "The native iOS and Android apps: current availability, installing on Android without Google Play (the APK and Obtainium), connecting, getting around with the tab bar, background playback, lock-screen controls, the car, iPhone widgets and the sleep timer Live Activity, and gapless listening."
 ---
 
 AudioSilo has native apps for **iOS** and **Android**. They're the same player you know from the web - same screens, same shelves, same account - plus the things only a real app can do well: rock-solid background playback, lock-screen controls, and downloads that live comfortably on your phone.
@@ -10,7 +10,7 @@ AudioSilo has native apps for **iOS** and **Android**. They're the same player y
 ## Availability
 
 - **iOS**: the app is on the **[App Store](https://apps.apple.com/us/app/audiosilo/id6783431375)** - search for AudioSilo, or follow the link.
-- **Android**: the app is on **[Google Play](https://play.google.com/store/apps/details?id=app.audiosilo)** - search for AudioSilo, or follow the link.
+- **Android**: the app is on **[Google Play](https://play.google.com/store/apps/details?id=app.audiosilo)** - search for AudioSilo, or follow the link. From **version 2.5.0** it's also on GitHub as an APK you install yourself; see [Android without Google Play](#android-without-google-play).
 - **CarPlay**: built into the iPhone app from **version 2.4.1**, the first version in the App Store with it; see [In the car](in-the-car.md#carplay). An older version doesn't appear in CarPlay, so update the app if you don't see it.
 - **Android Auto**: built into the Android app; see [In the car](in-the-car.md#android-auto) for getting it onto the car's screen.
 - **iPhone widgets and the sleep timer Live Activity**: in the iPhone app from **version 2.4.1**; see [Widgets on iPhone](#widgets-on-iphone).
@@ -20,7 +20,40 @@ AudioSilo has native apps for **iOS** and **Android**. They're the same player y
 And you don't need the app to listen on your phone: the **web player works great on mobile** and can be [installed to your home screen](offline-downloads.md), downloads included.
 
 :::note
-This page describes availability at the time of writing. New features reach the apps through the normal store updates, so keep the app up to date.
+This page describes availability at the time of writing. New features reach the apps through the normal store updates (and, on Android, a new APK), so keep the app up to date.
+:::
+
+## Android without Google Play
+
+From version 2.5.0, every app release on GitHub carries the Android app as an APK file, named like `AudioSilo-2.5.0.apk`. It's the same app as on Google Play and usually arrives first: Google Play reviews each update, which can take days, while the APK is there the day the release is published. There are two ways to use it.
+
+### Install the APK yourself
+
+1. On your phone, open the [latest AudioSilo app release](https://github.com/KodeStar/audiosilo-frontend/releases/latest).
+2. Under **Assets**, tap the `.apk` file to download it.
+3. Open the downloaded file. The first time, Android asks whether the app you opened it from may install unknown apps: allow it, go back and tap **Install**.
+
+An APK installed this way doesn't update itself. To update, download the next release's APK and install it over the top: your downloads and sign-in stay.
+
+### Let Obtainium keep it up to date
+
+[Obtainium](https://github.com/ImranR98/Obtainium) is a free, open-source Android app that installs apps straight from their GitHub releases and tells you when a new one is out.
+
+1. Install Obtainium from its [releases page](https://github.com/ImranR98/Obtainium/releases/latest), the same way as an APK above. It lists several APKs: `app-release.apk` works on any phone.
+2. In Obtainium, open **Add app** and paste `https://github.com/KodeStar/audiosilo-frontend` as the **App source URL**.
+3. Tap **Add**. Obtainium finds the newest release and its APK.
+4. Tap **Install**, and allow Obtainium to install unknown apps when Android asks.
+
+From then on Obtainium checks for new releases in the background and offers the update when one appears (how often it checks is under **Background update checking interval** in its settings). You can also open it and check by hand.
+
+### Pick one source and stay with it
+
+The Google Play app and the GitHub APK are **signed differently**, so neither can update the other. To switch, uninstall the app first, then install it from the other source.
+
+Uninstalling removes what the app keeps on your phone: your **downloaded books**, its **sign-in** to each server, and anyone else's [profile](profiles.md) on the phone. Your listening progress, bookmarks and favourites are on your server, so reconnect the app (a [QR code](connecting.md) is quickest) and download the books you want offline again. Progress you made offline is only on your server once it has synced, so open the app with a connection before you uninstall it.
+
+:::note[Android Auto and an APK]
+With the APK, AudioSilo shows in Android Auto only after one extra setting: see [In the car](in-the-car.md#android-auto).
 :::
 
 ## Connecting the app

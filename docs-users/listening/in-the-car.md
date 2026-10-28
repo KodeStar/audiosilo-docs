@@ -19,7 +19,7 @@ CarPlay needs version **2.4.1** or later of the iPhone app (see [Availability](m
 
 If AudioSilo isn't in the launcher:
 
-- **Android Auto only lists apps installed from Google Play** (a Google Play test track counts). An app installed any other way, such as an APK, only shows up once you turn on **Unknown sources** in Android Auto's developer settings on the phone. To reach those, open Android Auto's settings, tap **Version and permission info** ten times and allow development settings, then open **Developer settings** from the three-dot menu.
+- **Android Auto only lists apps installed from Google Play** (a Google Play test track counts). An app installed any other way, such as [the APK from GitHub](mobile-apps.md#android-without-google-play), only shows up once you turn on **Unknown sources** in Android Auto's developer settings on the phone. To reach those, open Android Auto's settings, tap **Version and permission info** ten times and allow development settings, then open **Developer settings** from the three-dot menu.
 - Check it isn't hidden: on the phone, open Android Auto's settings and look under **Customize launcher**.
 
 ### CarPlay
