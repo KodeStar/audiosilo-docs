@@ -63,8 +63,8 @@ route table is in the [overview](overview.md#route-map). Three steps, counted by
    `invite_used` and `invite_expired` codes on a redeem (server 2.5.0; an older server's
    bare `401` reads as a code that didn't work) and `member_disabled` get their own
    sentences; a `429` names the wait in whole minutes from `Retry-After` when the server
-   sent one (`connect.signIn.errors.wait`), else "Too many tries"; anything with no answer
-   is "Sign in failed". `sharedRefusalText` is the part a pairing link shares. It
+   sent one (`connect.signIn.errors.wait`), else "Too many tries"; anything else (no answer,
+   a `5xx`) is "Sign in failed". `sharedRefusalText` is the part a pairing link shares. It
    shows the "At home and away" card only when the device already knows both addresses
    (a reconnect of a connection that has them): for a new server, the addresses are
    known only once the code is redeemed, which is the sign-in itself.
@@ -93,7 +93,8 @@ so the two can't disagree:
 
 - **refused** (the link is dead): every `4xx` but `408` and `429`. The server's code
   words it when it names one (`invite_used`, `invite_expired`, `member_disabled`:
-  `sharedRefusalText`), else a `401` or `410` is "This pairing link has expired or was
+  `sharedRefusalText`; `/auth/exchange` names none today, so a link's `401` takes the
+  next rule), else a `401` or `410` is "This pairing link has expired or was
   already used..." (`pairingRefused`) and any other (a `409` without a code among them)
   "This pairing link can't be used..." (`pairingUnusable`). A failure after the
   exchange answered (the token spent, but this device couldn't keep the session) is

@@ -110,7 +110,7 @@ towards **Scheduled backups to keep**, and the schedule never deletes them.
 If the copy can't be made (the disk is full, say), the log has a warning and the
 server starts anyway, so with little room left, make a backup yourself before
 you update. To go back to the version you had, run it again and restore the
-newest **Before an upgrade** backup (see below); an older server lists it as
+**Before an upgrade** backup made when you updated, normally the newest (see below); an older server lists it as
 **Manual**.
 
 ## Restoring a backup

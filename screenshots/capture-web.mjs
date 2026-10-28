@@ -731,7 +731,6 @@ async function captureWide(name, viewport, shots) {
         // Opened: the top bar's place line has its percentage once the book is laid out.
         const where = firstVisible(page.getByText(/% through the book$|· \d+%$/));
         await where.waitFor({timeout: 30000});
-        await page.waitForLoadState('networkidle', {timeout: 15000}).catch(() => {});
         const opened = await where.textContent();
         await contents.click({timeout: 8000});
         const stave = firstVisible(page.getByRole('button', {name: /stave\s+(one|i)\b/i}));
@@ -739,7 +738,6 @@ async function captureWide(name, viewport, shots) {
         await stave.click({timeout: 8000});
         // Moved: the place line changes once the stave's page is laid out.
         for (let i = 0; i < 60 && (await where.textContent().catch(() => opened)) === opened; i++) await sleep(250);
-        await page.waitForLoadState('networkidle', {timeout: 15000}).catch(() => {});
         await sleep(SETTLE_MS);
         await page.mouse.move(0, 0);
         await shoot(page, shots.reader);

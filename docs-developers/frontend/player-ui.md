@@ -316,7 +316,7 @@ The building blocks shared by the full player and the docked bar:
   live seconds into it, the commit and the bookmarks inside it; with `hold` it keeps
   the segment a drag started in. The commit goes through `scrubTarget`
   (`transport.ts`), which holds any scrub short of the book's end by
-  `scrubGuard`, **`min(30 s, 10% of the book)`** (from 2.5.0; a flat 30 s before,
+  `scrubGuard`, **`min(30 s, max(10% of the book, 6 s))`** (from 2.5.0; a flat 30 s before,
   which left half of a one-minute book's bar dead): landing
   on the end would finish the book and take the undo chip with it. (A `file`
   segment, with no whole-book length, seeks within the file unguarded.) Both scrubbers

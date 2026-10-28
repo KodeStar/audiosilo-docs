@@ -142,8 +142,8 @@ A few things can cause it:
 - **Too many wrong attempts.** The server locks out repeated failed
   sign-ins from your network for a while, and the message says how long
   (*"Too many attempts. Try again in 15 minutes."* on the connect page). Wait
-  that long and try again with the code copied exactly. A wrong password counts
-  the same way.
+  that long and try again with the code copied exactly. Wrong passwords have a
+  lockout of their own that works the same way.
 
 Invites are managed in [People and invites](./admin/users-and-invites.md); the
 connect flow itself is described in [Connecting](./listening/connecting.md).
