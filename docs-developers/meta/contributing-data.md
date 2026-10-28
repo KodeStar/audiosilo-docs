@@ -595,14 +595,14 @@ today in UTC by default) and `--conflicts <path>` (one NDJSON row per refused
 contradiction). A real run writes the packs, then validates the whole tree. For
 each selected project:
 
+- **An in-progress project is set aside first**: a row with no runtime
+  (`totaltimesecs` 0 or missing) and no archive.org item writes nothing, and the
+  run prints its ids ("skipped N in-progress projects"). The feed has no status
+  field, so this is the sign of a project still being recorded; a later run over
+  the same ids imports it once LibriVox has catalogued it. A zero-runtime row
+  with an archive.org item is imported normally.
 - **Dedup is on `librivox_id`**, never the title: a project whose id is already
   catalogued is skipped, so a rerun of a range never imports a project twice.
-- **An in-progress project is skipped**: a row with no runtime (`totaltimesecs`
-  0 or missing) and no archive.org item writes nothing, and the run prints its
-  ids ("skipped N in-progress projects"). The feed has no status field, so this
-  is the sign of a project still being recorded; a later run over the same ids
-  imports it once LibriVox has catalogued it. A zero-runtime row that has an
-  archive.org item is not in progress and goes through the usual rules.
 - Otherwise it becomes a **new recording**, never merged into another one (two
   LibriVox projects of one text are two productions). Its work is found by the
   [matching rules](#which-work-a-librivox-project-joins) below.
