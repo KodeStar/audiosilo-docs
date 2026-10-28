@@ -613,8 +613,7 @@ each selected project:
   namespace keeps it, and an id already on another person is not recorded twice;
   the run warns about both. For an author that is two LibriVox ids whose names
   are one person here; a reader reaches it only when the split below cannot
-  apply. A name that slugs to nothing lands on the catch-all person, which is
-  never given an id. An author's or translator's `dob` / `dod` become the
+  apply. An author's or translator's `dob` / `dod` become the
   person's `birth_year` / `death_year` as the run records that person's LibriVox
   author id, only when LibriVox states a plain year (`1883`, `-428`, `428 BC`),
   and only when the person states neither yet: a year another source or a hand
@@ -671,15 +670,12 @@ each selected project:
 
 #### Which work a LibriVox project joins
 
-`routeLibrivox` (`internal/importer/librivoxmatch.go`) decides the work, in
-order, after LibriVox's trailing "(version 2)" title marker is stripped:
+`routeLibrivox` (`internal/importer/librivoxmatch.go`, the author rules in
+`librivoxauthors.go`) decides the work, in order, after LibriVox's trailing
+"(version 2)" title marker is stripped:
 
 1. **The ordinary identity walk**: same title, same identity authors, same
-   language. A hit whose authors agree **only through the catch-all person** is
-   not an attach: every name that slugs to nothing (two different
-   Cyrillic-named authors, say) lands on that one record, so the agreement must
-   rest on a real shared author, and a shared translator does not count. Such a
-   hit goes to the worklist as `author-unmatched`.
+   language.
 2. **Spelling variants.** Otherwise, the **one** work by the same authors, in a
    compatible language, whose title differs only by a leading article,
    punctuation, case or accents ("The Metamorphosis" joins "Metamorphosis" by
@@ -688,7 +684,30 @@ order, after LibriVox's trailing "(version 2)" title marker is stripped:
    de/het/een, in any language. Numbers stay apart ("Vol. 1, 2" is not
    "Vol. 12"). Two or more such works is the worklist's `several-works`, even
    when one of them matches the credits exactly.
-3. **A trailing qualifier waits for a person.** Otherwise the title's trailing
+3. **An author spelled with more or fewer words.** Otherwise, when a work
+   under the project's title (rule 2's spelling) is by an author the project
+   spells differently, the two names are compared word by word, case, accents
+   and punctuation folded and a trailing Jr., Sr. or II-IV set aside. The
+   **same surname** with one name's words a **subset** of the other's
+   ("Henrietta Elizabeth Marshall" and "Henrietta Marshall", "Joseph Sheridan
+   Le Fanu" and "Sheridan Le Fanu", "Francis Parkman, Jr." and "Francis
+   Parkman") is the same author: the project **attaches** to that work and
+   credits the catalogued person, whose spelling the work keeps (a person record
+   has no alias field, so LibriVox's spelling appears only in the run's note).
+   Every author of the project must pair with one of the work's this way or
+   exactly, and nothing else under the title may resemble them. Anything looser
+   is the worklist's `author-spelling`, never an attach: an initial ("E.
+   Nesbit" and "Edith Nesbit"), another given name ("Fanny" and "Frances
+   Burney", "Lev" and "Leo Tolstoy"), a one-word name ("Homer"), "Saint"
+   against "St", or Jr. against Sr. So is a variant beside any other candidate;
+   two variants are `several-works`. A different surname is a different author (rule 5).
+   When the catalogued person carries no LibriVox author id yet, the project's
+   author id is decided once for the whole run, before any project is planned:
+   every project of that id credits the catalogued person (and the person is
+   keyed by the id), so the author's other books do not mint a second record. A
+   variant spelling both of whose works are new in one run is found too, since
+   a work the run created is matched like a catalogued one.
+4. **A trailing qualifier waits for a person.** Otherwise the title's trailing
    `(...)` or `[...]` qualifiers are dropped one at a time from the end. If what
    remains matches a work by the same authors under rule 2 ("Frankenstein
    (1818)" beside "Frankenstein", "Black Beauty (The Autobiography of a Horse)"
@@ -697,21 +716,32 @@ order, after LibriVox's trailing "(version 2)" title marker is stripped:
    matches. It is **never attached**: the qualifier may be an edition or a
    subtitle, but just as well a volume ("King in Yellow (part 1)"), which
    only a person can tell apart. Only a work whose authors fully agree holds
-   the project back: one whose authors only partly agree, or agree only
-   through the catch-all person, is passed over here, leaving the project to
-   rule 4. A "Part N" outside brackets ("Anna Karenina, Book 1") is not
-   a qualifier, and a mostly non-Latin title (below) skips this rule.
-4. **Otherwise a new work.** A same-titled work by an entirely **different**
+   the project back: one whose authors only partly agree is passed over here,
+   leaving the project to rule 5. A "Part N" outside brackets ("Anna Karenina,
+   Book 1") is not a qualifier, and a mostly non-Latin title (below) skips
+   this rule.
+5. **Otherwise a new work.** A same-titled work by an entirely **different**
    author is a different book (think of every "Poems"), so the project gets a
    work of its own rather than a skip. A work under the project's own title
    (rule 2's spelling) whose authors only **partly** agree with the project's
-   is `author-unmatched`, decided before rule 3 is tried.
+   is `author-unmatched`, decided before rule 4 is tried.
+
+**Names that slug to nothing.** An author or translator whose name has no letter
+the slug rule keeps (a Cyrillic "Йордан Йовков") would land on the one catch-all
+person record every such name shares. It is credited nowhere instead: the credit
+is dropped before the work is decided and listed under
+[credits not recorded](#credits-not-recorded) as `unsluggable`. A project credited
+beside it to another author ("Yordan Yovkov") lands on that author's work; one
+left with no individual author (the name was its only author, or only a
+translator or a collective such as "Anonymous" remains) is the worklist's
+`author-unsluggable`, since a work by "Anonymous" alone would merge two authors'
+same-titled books.
 
 **Mostly non-Latin titles.** A title that slugs to nothing, or in which more than
 half of the letters are not Latin script (digits, punctuation and spaces are not
 counted, and the leading article is dropped first), never walks a slug chain:
 that would file it under the shared "untitled" fallback, or under its Latin or
-number fragment ("Сборник стихов 001" as "001"). It is matched by rule 2 alone,
+number fragment ("Сборник стихов 001" as "001"). It is matched by rules 2 and 3 alone,
 on a key that keeps its own letters (so a second project of the same title by the
 same author attaches, and "The Война и мир" meets "Война и мир"), and otherwise
 its new work is created at **`librivox-<project id>`**, titled as LibriVox writes
@@ -736,38 +766,45 @@ librivox worklist: 2 projects skipped for a person to resolve (re-import the ids
 
 | Reason | Why the project waits |
 |---|---|
-| `several-works` | two or more catalogued works qualify under rule 2 or rule 3 |
-| `author-unmatched` | a work carries the title but its authors only partly agree with the project's, or agree only through the catch-all person (rule 1) |
-| `differently-spelled-title` | the duplicate-identity guard holds the book under a title rule 2 does not read as the same, such as one with a subtitle, or the one work rule 3 matches |
+| `several-works` | two or more catalogued works qualify under rule 2, 3 or 4 |
+| `author-unmatched` | a work carries the title but its authors only partly agree with the project's |
+| `author-spelling` | a work carries the title by an author of the same surname whose name only loosely agrees with the project's (an initial, another given name), or a variant beside other candidates (rule 3) |
+| `author-unsluggable` | every individual author of the project has a name that slugs to nothing ([above](#which-work-a-librivox-project-joins)) |
+| `differently-spelled-title` | the duplicate-identity guard holds the book under a title rule 2 does not read as the same, such as one with a subtitle, or the one work rule 4 matches |
 | `fallback-slug-taken` | a non-Latin title's `librivox-<project id>` slug is already held by another record, or retired |
 
 Once a person has settled the work (merged the duplicates, fixed the credit),
 re-importing the project's id lands it. A `differently-spelled-title` project is
 also the guard's ordinary skip: it is counted among the run's duplicate-identity
 skips and, with `--conflicts`, writes that guard's `work_identity` row, which
-carries `librivox_id` since a LibriVox row has no ASIN. The other three reasons
+carries `librivox_id` since a LibriVox row has no ASIN. The other reasons
 appear on the worklist alone.
 
 #### Credits not recorded
 
 The import report lists the author and translator credits an attach leaves
-out after the worklist, one line per credit: the project id, the name, its
-roles, the person's `librivox_author_id` when LibriVox states one, the work the
-recording landed on, and `person not created` when no person record exists for
-the name:
+out after the worklist, and every credit whose name slugs to nothing, one line
+per credit: the project id, the name, its roles, the person's
+`librivox_author_id` when LibriVox states one, the work the recording landed on,
+and `unsluggable` for a name no record can hold or `person not created` when no
+person record exists for the name:
 
 ```
-librivox credits not recorded: 1 (the project attached to a work that does not name them; for recording-level credits, meta#2752):
+librivox credits not recorded: 2 (the project attached to a work that does not name them, or the name slugs to nothing; for recording-level credits, meta#2752):
   2027 "Amy Coulter" (translator, librivox_author_id 9876) -> siddhartha, person not created
+  2607 "Йордан Йовков" (author, librivox_author_id 6294) -> staroplaninski-legendi, unsluggable
 ```
 
 Nothing is written for them yet: recording-level credits, which would give a
 recording a translator its work does not share, are to hold them. The run's
 `Summary.LibrivoxUnrecordedCredits` carries the same rows.
 
-Known gap: an author spelled differently from the catalogue ("Lev Tolstoy" for
-"Leo Tolstoy") is not the same author to these rules, so the project still
-creates a duplicate work.
+Known gap: an author whose surname is spelled differently from the catalogue's
+("Publius Ovidius Naso" for "Ovid", "Henrietta Marhall" for "Henrietta
+Marshall") is a different author to these rules, so the project still creates a
+duplicate work, and the duplicates the first tranche minted before rule 3
+existed are a repair, not something a rerun undoes (the projects are already
+catalogued).
 
 The backfill lands as human-reviewed tranches by project-id range (about 2,000
 projects a pull request) under the ordinary merge policy. No automated LibriVox
