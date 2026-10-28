@@ -205,11 +205,37 @@ unused), so a new golangci-lint release cannot change which linters run; adding
 one is an edit there, with its findings fixed in the same change.
 
 CI runs that same build/vet/`go test -race`/golangci-lint gate, plus a
-`govulncheck` scan, in `check.yml`'s `check`/`lint`/`vuln` jobs - but only when a
-`changes` job classifies the diff as touching Go code. A data-and-prose-only pull
-request (most of them here, from the intake and sync bots) skips those three jobs
-straight through; `metacheck` and `metafmt` are never gated, since they are the
-data's own check regardless of what else changed.
+`govulncheck` scan, in `check.yml`'s `build`, `test`, `lint` and `vuln` jobs - but
+only when a `changes` job classifies the diff as touching Go code. A
+data-and-prose-only pull request (most of them here, from the intake and sync bots)
+skips their steps straight through; the `metacheck` and `metafmt` jobs are never
+gated, since they are the data's own check regardless of what else changed.
+
+The jobs run in parallel, each on its own runner, so a pull request waits for the
+slowest of them rather than their sum. `test` is three shards:
+`.github/scripts/go-test-shard.sh` partitions `go list ./...` so every package
+runs in exactly one. On a pull request an `advisories` job runs metacheck over
+the base beside the head's run, for the advisory delta (a pull request touching
+no `data/` skips that, since it cannot introduce one). Jobs that need only Go
+code (`build`, `lint`, `vuln`) and the `site` job check out a sparse tree without
+`data/`, skipping most of a full checkout's time; `advisories` does too, reading
+the base's `data/` from git.
+
+**`check` is the verdict.** It needs `changes`, `build`, `test`, `metacheck`,
+`metafmt` and `advisories`, and passes only when every one of them but
+`advisories` concluded `success` (`.github/scripts/check-verdict.sh`); a skipped
+or cancelled job is a failure. It runs under `always()`, so a cancelled run
+reports a red `check`; a skipped one would read as green to branch protection and
+the sync bot. `advisories` can never end red (every step continues on error,
+each under its own timeout), since the sync bot treats any failed check run on a
+head as a failure, required or not.
+`check` writes the advisories a pull request introduces into its job summary, and
+when it fails its log ends with the tails of the failing jobs' own output. The
+name is load-bearing: branch protection requires `check` and `compose`, and the
+[sync bot](sync-bot.md) gates its merge on `check` (with `compose`, `site` and
+`verify`) by name and hands the tail of
+a failed `check` log to its resolver, so renaming or dropping it leaves both
+waiting for a check that never comes.
 
 Build the artifact and serve it:
 
