@@ -110,7 +110,11 @@ cross-compiles anywhere) and applies the embedded, append-only migrations in
 pools (single-connection writer, read-only reader pool over WAL) and provides
 `WithTx` with slow-transaction logging, and `Generation`, the write generation
 that moves after every write has finished (the API's
-[list answer cache](#the-list-answer-cache) keys on it). See [Data model](data-model.md) for the
+[list answer cache](#the-list-answer-cache) keys on it, and so do the
+[token cache](auth-and-security.md#tokens-session-pairing-and-api-keys) and
+`catalog.GetLibrary`'s [library cache](#internalcatalog)). `store.GenMap` is the small map those two
+use: its entries all belong to one generation, the caller takes the generation
+before its read, and a newer one empties the map. See [Data model](data-model.md) for the
 schema and the SQLite rationale.
 
 ### `internal/auth`
@@ -136,6 +140,11 @@ saves and their retention (`sessions.go`), the admin Activity stats
 rows of listening imports and their one-transaction apply and undo
 (`imports.go`), and `MoveDurableState` (move-tracking).
 Handlers call into this package; it is where catalog business logic belongs.
+`GetLibrary` answers from a library cache (`Catalog.libs`, a `store.GenMap`,
+`catalog/librarycache.go`) while nothing has been written since the row was
+read, handing each caller its own copy: every path-addressed request reads its
+library twice (its scope, then the library itself), so a cover or a stream skips
+both queries between writes.
 
 ### `internal/library`
 
@@ -247,6 +256,16 @@ each answer and its entry), at most 1 MiB an answer, least recently used first
 out. Only an answer that is a pure function of the database, the query and the
 scopes may use it: a list book carries no per-listener field, and a handler that
 adds one must leave the cache.
+
+The admin console's lists use it as well (server#245): the first pages of
+`GET /admin/books`, `GET /admin/books/facets` (keyed like a list, without
+scopes: an admin sees every book) and the Health summary `GET /admin/issues`.
+The summary's key also takes the kinds it counts and the libraries that are
+offline right now (a filesystem probe made before the lookup, so a root going
+away shows without a write). Uncached, the summary and the facets take about
+100 ms each on a 5,000-book library, and about a millisecond from the cache.
+Any write, the once-a-minute last-seen touch included, means the next load
+computes them again.
 
 ### `internal/server`
 

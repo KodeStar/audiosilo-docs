@@ -567,7 +567,7 @@ it is never an open proxy. Scope and errors are as `/meta` (403/404 for the path
 404 with metadata off, 502 metadata unavailable), plus `502 cover_unavailable`
 (the fetch failed; that URL is not fetched again for a minute, and concurrent
 misses share one fetch) and `404 no cover` (not an image, or over the pixel
-bound). Only a re-encoded JPEG is served, with `ETag` `"community-<size>-<hash>"`
+bound). Only a re-encoded JPEG is served, with `ETag` `"community-<size>-<rev>-<hash>"`
 and `private, max-age=86400`. Frontend: `Capabilities.meta_covers`,
 `client.communityCoverUrl(lib, path, cover_url, { size })`, and
 `communityCoverSource` / `useCommunityCover`: proxied when the flag is on; without

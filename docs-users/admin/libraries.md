@@ -164,8 +164,10 @@ or every library at once, too.
 Scans run **one at a time**. If another library is being scanned, yours waits
 its turn: the card says **Waiting** and the button **Queued** until it starts.
 Within a scan, AudioSilo reads several audio files at once (one per processor,
-up to 8), which makes a first scan of a big library much quicker. On a slow disk
-or a busy network share you can make it read fewer at once: set
+up to 8), which makes a first scan of a big library much quicker. A rescan
+where little has changed looks through several folders and files at once too,
+so it finishes sooner, most of all on a network share or an Unraid array. On a
+slow disk or a busy network share you can make it do fewer things at once: set
 `scan.concurrency` in `config.yaml` (or the `AUDIOSILO_SCAN_CONCURRENCY`
 variable) and restart. It isn't in the console; see the
 [configuration reference](/developers/server/configuration#library-scans-scan).

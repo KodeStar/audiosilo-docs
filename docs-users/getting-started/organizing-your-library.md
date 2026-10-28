@@ -119,6 +119,8 @@ Cover art is found in this order:
 
 So in practice: embedded art just works, and dropping a `cover.jpg` into a book's folder overrides it. A custom cover uploaded in the admin console wins over all three and is stored in AudioSilo's database, not in the folder (see [Covers](../admin/books.md#covers)).
 
+Your files are never changed, but the apps and the web player are sent covers at the size they show them, made by the server. A small JPEG saved at a very high quality is sent re-compressed when that is smaller, so a grid of covers loads less. When a server update changes how these covers are made, the apps and the web player download each cover once more the first time they show it after the update; there is nothing to do.
+
 ### Renaming and moving are safe
 
 Your listening progress, bookmarks and notes belong to the *file*, not to a database entry - and AudioSilo goes out of its way to keep them attached:

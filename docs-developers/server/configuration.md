@@ -276,7 +276,7 @@ feed/audio network limits, allowlists and the per-episode size cap in its
 
 | Key | Type / default | Meaning |
 |---|---|---|
-| `scan.concurrency` | int, `0` | How many audio files a scan reads at once (their tags, then ffprobe), `0` to `64`. `0` means one per CPU, up to 8 (`library.DefaultScanReaders`). CPUs are counted by `GOMAXPROCS`, so in a container that is its CPU limit, not the host's cores. Lower it for a library on a slow disk or a busy share; raise it for a fast disk on a machine with cores to spare. Read once at start (`Scanner.SetConcurrency`), with **no console setting**; `AUDIOSILO_SCAN_CONCURRENCY` sets it too |
+| `scan.concurrency` | int, `0` | How many audio files a scan reads at once (their tags, then ffprobe), `0` to `64`. `0` means one per CPU, up to 8 (`library.DefaultScanReaders`). CPUs are counted by `GOMAXPROCS`, so in a container that is its CPU limit, not the host's cores. Set below 8, it also caps how many folder listings and file lookups discovery makes at once (8 otherwise, whatever this is; see [A rescan that finds nothing changed](scanner.md#a-rescan-that-finds-nothing-changed)). Lower it for a library on a slow disk or a busy share; raise it for a fast disk on a machine with cores to spare. Read once at start (`Scanner.SetConcurrency`), with **no console setting**; `AUDIOSILO_SCAN_CONCURRENCY` sets it too |
 
 The index comes out the same however many files a scan reads at once (see
 [Reading several files at once](scanner.md#reading-several-files-at-once)).

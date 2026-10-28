@@ -147,9 +147,18 @@ charts, through shadcn's chart component; see [Charts](#charts)),
 react-hook-form + zod (forms and validation), dnd-kit (library reordering,
 keyboard accessible), uqr (invite QR codes, drawn as SVG in the browser),
 i18next, lucide-react, fontsource (self-hosted Bricolage Grotesque, Figtree,
-JetBrains Mono). Each screen is a lazy-loaded chunk (`React.lazy` in
-`features/section-page.tsx`, `lazyRouteComponent` for a person's page and the
-book page), so the first paint carries only the shell and the overview.
+JetBrains Mono). Each screen is a lazy-loaded chunk, so the first paint
+carries only the shell and the overview. A section's screen is a `lazyScreen`
+(`lib/lazy-screen.tsx`, listed in `features/section-page.tsx`): its destination
+route's loader starts fetching the chunk (`preloadSection`, never awaited), so
+it loads beside the session check rather than after it, and until it is in the
+screen shows the page skeleton itself instead of suspending. With `React.lazy`
+React held a Suspense boundary's content for up to 300 ms after its fallback
+showed (its fallback throttle), and the page's own requests waited for that
+commit: on a 5,000-book library on a Mac, Health > Issues was ready in about 490 ms, and
+about 150 ms with `lazyScreen` (server#245). A chunk that fails to load throws in
+render, to the router's error boundary. A person's page and the book page stay
+`lazyRouteComponent`.
 Interface strings work the same way: English is bundled in the entry (it is
 also the fallback for any missing key), and each other language is its own
 chunk (`import.meta.glob` in `src/i18n/index.ts`), loaded when it is chosen.

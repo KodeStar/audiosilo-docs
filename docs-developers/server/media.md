@@ -188,8 +188,16 @@ instead of full-size art.
   by the requested path, then by the book the path resolves to, then the
   sidecar through `SafeJoin`, then embedded art). It never indexes on demand.
 - `media.Thumbnail` scales to fit within 160, 320 or 640 pixels and encodes a
-  JPEG (quality 80); it never scales up, and a JPEG already that small is
-  returned as is. It reads the image header first and refuses anything over
+  JPEG (quality 80); it never scales up. A JPEG already that small is re-encoded
+  at quality 80 and the smaller of that and its own bytes returned (a `cover.jpg`
+  is often saved near quality 95, about twice the bytes for a 180 px tile; one
+  saved at a lower quality comes out larger and is kept). It is returned as is
+  when it is CMYK or carries an EXIF orientation other than 1 or an ICC colour
+  profile (`ownRendering`: Go's encoder writes neither, so a re-encode would show
+  turned or in other colours), when it doesn't decode fully, or when its
+  segments can't be read. `media.ThumbnailRev` names what `Thumbnail` makes of
+  the same art and is part of every thumbnail's `ETag`: change it whenever
+  `Thumbnail` would return other bytes for the same source. It reads the image header first and refuses anything over
   `MaxThumbnailSourcePixels` (40 megapixels) before decoding, so a small file
   claiming huge dimensions can't exhaust memory.
 - `media.ThumbCache` is a byte-bounded LRU (48 MiB) keyed by library, path,
@@ -212,7 +220,10 @@ capability `cover_sizes`). It shares everything with the batch - `coverArt`,
 (`bookForPath`, which may index on demand, unlike the batch). Any `size` outside
 the three, including an empty one, is a `400`.
 
-- The `ETag` is `"thumb-<size>-<hash of the art's own version>"`, matched with the
+- The `ETag` is `"thumb-<size>-<rev>-<hash of the art's own version>"`
+  (`thumbETag`; `rev` is `media.ThumbnailRev`, so a change to how thumbnails are
+  made changes every validator and clients fetch each cover once more rather than
+  keep, or resume a range of, other bytes), matched with the
   same `If-None-Match` list matcher as the server's other validators. A match is
   answered `304` before any art is read only once the book's colour is recorded
   for this art (`src.Colored` and its identity equal to the art's version);
