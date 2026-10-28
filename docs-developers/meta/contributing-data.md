@@ -608,36 +608,41 @@ each selected project:
   whatever the feed now calls them, and for every project that landed, its
   readers' and authors' LibriVox ids are stamped onto the people they resolved to
   (a translator's id is a LibriVox author id; on an attach, only the people the
-  work names, below). An author already carrying a different author id keeps it,
-  and an id already on another person is not recorded twice; the run warns about both. A name that
-  slugs to nothing lands on the catch-all person, which is never given an id. An
-  author's or translator's `dob` / `dod` become the person's `birth_year` /
-  `death_year` as the run records that person's LibriVox author id, only when
-  LibriVox states a plain year (`1883`, `-428`, `428 BC`), and only when the
-  person states neither yet: a year another source or a hand edit wrote is never
-  overwritten, and a pair whose death precedes its birth is dropped whole.
+  work names, below). A person already carrying a different id in that
+  namespace keeps it, and an id already on another person is not recorded twice;
+  the run warns about both. For an author that is two LibriVox ids whose names
+  are one person here; a reader reaches it only when the split below cannot
+  apply. A name that slugs to nothing lands on the catch-all person, which is
+  never given an id. An author's or translator's `dob` / `dod` become the
+  person's `birth_year` / `death_year` as the run records that person's LibriVox
+  author id, only when LibriVox states a plain year (`1883`, `-428`, `428 BC`),
+  and only when the person states neither yet: a year another source or a hand
+  edit wrote is never overwritten, and a pair whose death precedes its birth is
+  dropped whole.
 - **A reader id is a person of its own, even when the name is not.** LibriVox
   readers are accounts, and several share a display name ("Martina", "eva",
-  "Lisa"). When a reader's name slugs to a person who already carries a
-  **different** reader id, the reader gets a person of their own at
-  `<name slug>-librivox-<reader id>` (`martina-librivox-634`, the
-  [person id rule](data-model.md#person---an-entry-in-the-datapeople-family)), created with
-  that id, and the first holder of the name keeps the plain slug. A later project
-  by the same reader finds that person by id, so no reader is ever minted twice.
-  A person at the plain slug who carries no reader id (a narrator another source
-  catalogued) is not another reader: the first LibriVox reader of that name is
-  stamped onto them. Collective credits ("Various", "Full Cast") and the
-  synthetic voice stand for no one person and are never split. The run never
-  writes over an existing or retired person id that the composed id happens to
-  match: it credits the plain slug instead, whose holder keeps their own reader
-  id, and warns. Authors are never split
-  this way: a work's identity rides on its author slugs. The `librivox:` summary
-  line counts the readers split.
+  "Lisa"). When a reader's name slugs to a person who already carries (or
+  earlier in the run took) a **different** reader id, the reader gets a person
+  of their own at `<name slug>-librivox-<reader id>` (`martina-librivox-634`,
+  the [person id rule](data-model.md#person---an-entry-in-the-datapeople-family)),
+  created with that id, and the first holder of the name keeps the plain slug. A
+  later project by the same reader finds that person by id, so no reader is ever
+  minted twice. A person at the plain slug who carries no reader id (a narrator
+  another source catalogued) is not another reader: the first LibriVox reader of
+  that name is stamped onto them. Collective credits ("Various", "Full Cast") and
+  the synthetic voice stand for no one person and are never split: a second
+  reader id of one is the keep-and-warn case above. The run never writes over an
+  existing or retired person id that the composed id happens to match: it
+  credits the plain slug instead, whose holder keeps their own reader id, and
+  warns. Authors are never split this way: a work's identity rides on its author
+  slugs. The `librivox:` summary line counts the readers split.
 - **A rerun splits readers on recordings it skips.** When a held recording
-  credits a reader to a person carrying another reader id of the same name, the
-  rerun still skips the project but moves that narrator credit onto the reader's
-  own person (keeping the other reader's credit when both read the project). The
-  summary line counts the credits moved; a second rerun changes nothing.
+  credits a reader to a person carrying another reader id of the same name, or
+  to anyone other than the person the catalogue already holds that reader's id
+  on, the rerun still skips the project but moves that narrator credit onto the
+  reader's own person (creating it when needed, and keeping the other reader's
+  credit when both read the project). The summary line counts the credits moved;
+  a second rerun changes nothing.
 - **An attach records the recording, not new credits.** A project that joins a
   work already in the catalogue adds its recording (and its readers) only: a
   create run never edits a catalogued work's credits. So only the authors and
@@ -712,7 +717,8 @@ its new work is created at **`librivox-<project id>`**, titled as LibriVox write
 it. Such a slug never merges two works; when it is already taken the project is
 the worklist's `fallback-slug-taken`. A title exactly half Latin ("Anna Karenina
 (Анна Каренина)") stays on the slug rule. A rerun is idempotent: the project
-id is already catalogued, so it writes nothing.
+id is already catalogued, so it writes nothing beyond the
+[reader split](#librivox-the-public-domain-mirror) on recordings it skips.
 
 #### The worklist
 
