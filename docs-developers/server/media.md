@@ -195,11 +195,9 @@ instead of full-size art.
   when it is CMYK or carries an EXIF orientation other than 1 or an ICC colour
   profile (`ownRendering`: Go's encoder writes neither, so a re-encode would show
   turned or in other colours), when it doesn't decode fully, or when its
-  segments can't be read. `media.ThumbnailRev` names what `Thumbnail` makes of
-  the same art and is part of every thumbnail's `ETag`: change it whenever
-  `Thumbnail` would return other bytes for the same source. It reads the image header first and refuses anything over
-  `MaxThumbnailSourcePixels` (40 megapixels) before decoding, so a small file
-  claiming huge dimensions can't exhaust memory.
+  segments can't be read. `Thumbnail` reads the image header first and refuses
+  anything over `MaxThumbnailSourcePixels` (40 megapixels) before decoding, so a
+  small file claiming huge dimensions can't exhaust memory.
 - `media.ThumbCache` is a byte-bounded LRU (48 MiB) keyed by library, path,
   size and the art's version (a custom cover's `updated_at`, a file's size and
   modification time), so a changed cover misses the cache. It holds the raw JPEG;
@@ -221,11 +219,11 @@ capability `cover_sizes`). It shares everything with the batch - `coverArt`,
 the three, including an empty one, is a `400`.
 
 - The `ETag` is `"thumb-<size>-<rev>-<hash of the art's own version>"`
-  (`thumbETag`; `rev` is `media.ThumbnailRev`, so a change to how thumbnails are
-  made changes every validator and clients fetch each cover once more rather than
-  keep, or resume a range of, other bytes), matched with the
-  same `If-None-Match` list matcher as the server's other validators. A match is
-  answered `304` before any art is read only once the book's colour is recorded
+  (`thumbETag`), matched with the same `If-None-Match` list matcher as the
+  server's other validators. `rev` is `media.ThumbnailRev`: change it whenever
+  `Thumbnail` would return other bytes for the same source, so every validator
+  changes and clients fetch each cover once more rather than keep, or resume a
+  range of, other bytes. A match is answered `304` before any art is read only once the book's colour is recorded
   for this art (`src.Colored` and its identity equal to the art's version);
   until then the thumbnail is made or taken from the cache, the colour recorded,
   and the `304` still sent, so clients that only revalidate don't leave a book

@@ -623,9 +623,9 @@ ask finishes it.
 **One worker per deploy.** The app registers the worker under its build's name
 (`sw.js?build=<entry>.<common>`, `buildId` in `register-sw.web.ts`: the names of
 the page's entry script and of the shared `__common` chunk, which the entry does
-not name; in a build whose start scripts are cut into parts, the entry's last
-part and the shared chunk's first), so each deploy installs a new worker even though `sw.js`'s bytes are
-the same. Its `install` writes every build file again: Chrome compiles a script
+not name), so each deploy installs a new worker even though `sw.js`'s bytes are
+the same. When the start scripts are cut into parts, these are the entry's last
+part and the shared chunk's first. Its `install` writes every build file again: Chrome compiles a script
 a worker caches while installing and keeps that code with it, which is most of a
 warm start's speed.
 

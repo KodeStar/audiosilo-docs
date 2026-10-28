@@ -112,10 +112,12 @@ pools (single-connection writer, read-only reader pool over WAL) and provides
 that moves after every write has finished (the API's
 [list answer cache](#the-list-answer-cache) keys on it, and so do the
 [token cache](auth-and-security.md#tokens-session-pairing-and-api-keys) and
-`catalog.GetLibrary`'s [library cache](#internalcatalog)). `store.GenMap` is the small map those two
-use: its entries all belong to one generation, the caller takes the generation
-before its read, and a newer one empties the map. See [Data model](data-model.md) for the
-schema and the SQLite rationale.
+`catalog.GetLibrary`'s [library cache](#internalcatalog)). Every write must go
+through `ExecContext` or `WithTx`: one that skipped them would leave these caches
+serving stale rows. `store.GenMap` is the small map the last two use: its entries
+all belong to one generation, the caller takes the generation before its read,
+and a newer one empties the map. See [Data model](data-model.md) for the schema
+and the SQLite rationale.
 
 ### `internal/auth`
 
@@ -264,8 +266,6 @@ The summary's key also takes the kinds it counts and the libraries that are
 offline right now (a filesystem probe made before the lookup, so a root going
 away shows without a write). Uncached, the summary and the facets take about
 100 ms each on a 5,000-book library, and about a millisecond from the cache.
-Any write, the once-a-minute last-seen touch included, means the next load
-computes them again.
 
 ### `internal/server`
 

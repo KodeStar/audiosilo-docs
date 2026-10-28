@@ -325,10 +325,9 @@ backfill mechanism - books indexed before the `codec` column existed (migration
 `0008`) get re-probed once even though their files haven't changed. One more
 book passes it: a book with one audio file whose recorded
 [read problem](#read-problems) names that file (`soleFileProblem`). Its only file
-was never probed, so it has no duration or codec, and before it was read whole on
-every scan only to record the same problem again; now `problemCleared` decides
-whether to read it, and while the problem is still there the book is kept like
-any unchanged one (the metadata files beside it are still read).
+was never probed, so it has no duration or codec. `problemCleared` decides
+whether to read it; while the problem is still there the book is kept like any
+unchanged one (the metadata files beside it are still read).
 
 A skipped book can still get one cheap backfill: when its `has_cover` is unset
 (a row indexed before migration `0016`), the scan checks its primary file for
@@ -437,22 +436,21 @@ doesn't need:
   [partial](#scan-history-scan_runs), so it doesn't prune a book the next scan
   finds moved.
 - **The width.** Both use `Scanner.walkWidth`: `walkIO`, or `scan.concurrency`
-  when that is set lower (1 lists each folder as the walk reaches it, as before).
+  when that is set lower (1 lists each folder as the walk reaches it).
   A higher `scan.concurrency` doesn't raise it: these calls wait on round trips,
   not CPUs.
-- **`added_at` only for a book being written.** Discovery no longer reads birth
+- **`added_at` only for a book being written.** Discovery reads no birth
   times. `added_at` is set when a book is first indexed and never updated, so
   `enrich` stamps it (`stampAddedAt`: the earliest `addedAt` of the book's audio
   files) only for a book it is about to write; a book that is re-indexed keeps its
   row's value anyway. On Linux a birth time is a `statx` per file on top of the
-  walk's `lstat`, so a no-change scan now makes none.
-- **A damaged file isn't probed again.** A book whose recorded problem is
-  `probe_failed` had its file re-read by `problemCleared` on every scan, an
-  ffprobe process each time. When ffprobe rejects a file's data
-  (`metadata.ErrProbeRejected`: its last stderr line ends in ffmpeg's "Invalid
-  data found when processing input"), the scanner remembers the file's absolute
-  path with its own mtime and size (`noteRejected`), and `problemCleared` doesn't
-  run ffprobe on it again while both are as they were. A time-out, an exec failure
+  walk's `lstat`, so a no-change scan makes none.
+- **A damaged file isn't probed again.** Without this, `problemCleared` would
+  run ffprobe on a `probe_failed` book's file on every scan. When ffprobe rejects
+  a file's data (`metadata.ErrProbeRejected`: its last stderr line ends in
+  ffmpeg's "Invalid data found when processing input"), the scanner remembers
+  the file's absolute path with its own mtime and size (`noteRejected`), and
+  `problemCleared` doesn't run ffprobe on it again while both are as they were. A time-out, an exec failure
   or a read error is never remembered (those may pass), and any other reading of
   the file forgets it. The memory lasts for the server process only, so a restart
   (perhaps with another ffprobe) looks again, and the console's Read again
@@ -964,12 +962,11 @@ unchanged-skip would keep the stale problem; instead each scan re-reads just the
 recorded file of an `unreadable` or `probe_failed` book (`problemCleared`) and
 re-indexes the book when it now reads. `POST /admin/libraries/{id}/book/rescan`
 re-checks at once. Two exceptions keep a damaged file from costing every scan:
-a file whose data ffprobe rejected is not probed again while its own mtime and
-size are unchanged, until the server restarts, and a one-file book whose problem
-is still there is kept as it is rather than read whole (see
-[A rescan that finds nothing changed](#a-rescan-that-finds-nothing-changed)). A
-rejected file that is replaced changes its mtime or size, so the next scan reads
-it.
+a one-file book whose problem is still there passes the
+[unchanged-skip](#anatomy-of-a-scan-pass) rather than being read whole, and a
+file whose data ffprobe rejected isn't probed again until it changes or the
+server restarts (see
+[A rescan that finds nothing changed](#a-rescan-that-finds-nothing-changed)).
 
 **A probe that ran out of time.** Each ffprobe run gets 30 seconds
 (`metadata.ProbeTimeout`); one that runs out is killed, its `ProbeErr` wraps
@@ -1251,9 +1248,9 @@ drops. The scanner **aborts without pruning** when:
 Related but distinct: a *per-entry* read error during the walk (commonly a
 permission-denied subtree on a partially-readable mount) is warned and
 **skipped**, not fatal - aborting the whole scan would be worse, but silently
-dropping those books would let the prune step remove them. An audio file the
-walk listed but that is gone when discovery looks at it (`statAudio`: the tree
-changed under the walk) makes the scan partial the same way.
+dropping those books would let the prune step remove them. An audio file gone
+by the time discovery looks at it makes the scan partial the same way (see
+[A rescan that finds nothing changed](#a-rescan-that-finds-nothing-changed)).
 
 ### Reporting it to the console
 

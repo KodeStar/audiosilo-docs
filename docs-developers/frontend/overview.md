@@ -751,15 +751,14 @@ thread").
   puts the first screens' queries back into the query cache before anything
   renders, so a reload paints at once and refreshes.
 - **The first screen's answers, asked as the gate opens.** On a start the
-  startup cache can't fill (a first visit, a private window), the screen used to
-  render twice: its skeleton, whose queries then asked, and again with the
-  answers, so its covers waited on both renders. Now `AuthGate` asks the page's
-  answers the moment it opens (`useStartupQueries`,
+  startup cache can't fill (a first visit, a private window), `AuthGate` asks the
+  page's answers the moment it opens (`useStartupQueries`,
   `src/components/shell/startup-queries.ts`: every server's `/server` and
   libraries; on Home or the Library grid their progress too, plus Home's Recently
   added and favourites, or the selected library's first page of books) and holds
   its spinner until they are in, at most `STARTUP_WAIT_MS` (200 ms), so the screen
-  renders once, with them. It asks once per page load and only what the cache
+  renders once, with them, rather than as a skeleton whose queries only then ask
+  and again with the answers. It asks once per page load and only what the cache
   lacks, so a reload the startup cache filled waits for nothing. Each entry is
   built from the screen's own query spec (`serverInfoQuery`, `recentQuery`,
   `favouritesQuery`, `wholeLibraryQuery`...), so the screen finds it fresh; a
@@ -776,14 +775,13 @@ thread").
   cached as immutable), chained by `requires` so the HTML names them in order:
   several parts compile on several threads at once. A cut is kept only when every
   part compiles on its own (`vm.Script`); an async chunk is never cut (the runtime
-  loads it by its name). This matters where no service worker can help: Chrome
-  keeps compiled code only for scripts a worker cached at install, and a page on
-  plain http (a LAN address is not a secure context) or a private window has no
-  such cache. Measured on a real host over the LAN, with the startup queries
-  above, the first cover went from 294-311 ms cold and 259-280 ms warm to about
-  180-205 ms in both (medians; one grid set under heavy load on the measuring
-  machine came to 225 ms). `npx expo export -p web` produces it directly, so CI and the
-  server's web build need no change.
+  loads it by its name). This matters where no service worker keeps compiled code
+  ([one worker per deploy](offline.md#publicswjs)): a page on plain http (a LAN
+  address is not a secure context) or a private window. Measured on a real host
+  over the LAN, with the startup queries above, the first cover went from
+  294-311 ms cold and 259-280 ms warm to about 180-205 ms in both (medians; one
+  grid set under heavy load came to 225 ms). `npx expo export -p web` produces it
+  directly, so CI and the server's web build need no change.
 - **First-screen covers.** A grid's first three rows, a shelf's first tiles and
   Home's Now card set `FirstScreenCovers` (`src/components/library/first-screen-covers.ts`):
   those covers load at once, ahead of the page's other images. On the web any
