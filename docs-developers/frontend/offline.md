@@ -584,7 +584,13 @@ it is served at `<base>/sw.js` with scope `<base>/`. It has exactly two jobs:
    the SPA), then a 503. The build's own content-hashed files
    (`<base>/_expo/static/`) are served **cache-first** and never written again;
    other static assets with destinations `script | style | font | image |
-   manifest` are **stale-while-revalidate**, all in `audiosilo-shell-v1`.
+   manifest` are **stale-while-revalidate**, all in `audiosilo-shell-v1`. The
+   `install` step precaches the scope root and, from 2.5.0, the ebook reader's
+   document (`<scope>reader.html`, `readerDocumentUrl`), so a downloaded book's
+   EPUB opens offline even when the reader never opened online. Each is added on
+   its own and a failure is skipped (a first install offline, an older server
+   with no reader): runtime caching covers it. The reader's document never gets
+   the shell as its offline fallback.
    API calls (destination `''`), token-bearing URLs (`?token=`) and
    server-streamed audio pass straight through to the network - the SW never
    caches API data.

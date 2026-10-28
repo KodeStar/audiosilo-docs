@@ -27,7 +27,7 @@ A [podcast episode](podcasts.md#when-an-episode-ends) never opens the end credit
 AudioSilo picks the next book the same way everywhere:
 
 1. The **first book in your [Up next](up-next.md) queue**, skipping any you've finished.
-2. Else the **next book in the series**: your server works it out from the community's reading order, then the series numbers, then the next book in the same folder. A book in more than one series (Guards! Guards! is Discworld book 8 and City Watch book 1) follows its main series first, then its other series, so when you have no later Discworld book, the next City Watch book you have plays instead (as long as your server numbers that book in City Watch). After an omnibus numbered as a range (books 1-3), the next book is book 4; and from book 2, the next is book 3, never the omnibus that starts at book 1.
+2. Else the **next book in the series**: your server works it out from the community's reading order, then the series numbers, then the next book in the same folder (one your server hasn't scanned yet counts too, and plays as it would from Folders). A book in more than one series (Guards! Guards! is Discworld book 8 and City Watch book 1) follows its main series first, then its other series, so when you have no later Discworld book, the next City Watch book you have plays instead (as long as your server numbers that book in City Watch). After an omnibus numbered as a range (books 1-3), the next book is book 4; and from book 2, the next is book 3, never the omnibus that starts at book 1.
 3. On an older server, the **next book in the same folder** (in natural order, so *Book 2* comes before *Book 10*).
 
 When it starts, it leaves Up next - it's the book you're on now.

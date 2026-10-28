@@ -49,7 +49,8 @@ The **Schedule** card:
   folder, 7 out of the box (anything from 1 to 365). Once there are more, the
   oldest scheduled backup is deleted each time a new one is made (except one
   that is waiting to be restored). Backups you make with **Back up now** are
-  never deleted for you: they stay until you delete them.
+  never deleted for you: they stay until you delete them. **Before an upgrade**
+  copies are kept apart from these (see [below](#before-an-upgrade)).
 - **Folder** - where backups are kept: a `backups` folder inside the server's
   data folder unless you choose another one. It can't be changed here, only in
   `config.yaml` (`backups.dir`) or with the `AUDIOSILO_BACKUP_DIR` environment
@@ -74,6 +75,8 @@ its kind, its file name and size:
 - **Manual** - made with **Back up now** (or a backup file you copied into the
   folder yourself).
 - **Before a restore** - the copy of the database that a restore replaced.
+- **Before an upgrade** - the copy the server made as it started a new version
+  that changes the database (see [below](#before-an-upgrade)).
 
 **Back up now** makes a backup straight away; the button says "Backing up..."
 until it's done, and a message says how it went. For each backup:
@@ -89,6 +92,26 @@ server can't write to its backups folder (check the folder's permissions), or
 something else (the cause is in [Server > Logs](server.md#logs)). The same
 shows as **Failed** on [Health > System](health.md#system), and you can have
 it [sent to you](notifications.md).
+
+## Before an upgrade
+
+From 2.5.0, a new version of the server that needs to change the database
+copies it first. As it starts, before it changes anything, it writes the
+database as it was into the backups folder as a **Before an upgrade** backup
+(a file named `audiosilo-<time>-before-upgrade.db`), and its log says so in
+one line, naming the changes and the copy: "copied the database before
+applying new migrations". A brand-new server, and an update that doesn't change
+the database, make no copy.
+
+The newest three of these copies are kept; an older one is deleted when a new
+one is made (except one that is waiting to be restored). They don't count
+towards **Scheduled backups to keep**, and the schedule never deletes them.
+
+If the copy can't be made (the disk is full, say), the log has a warning and the
+server starts anyway, so with little room left, make a backup yourself before
+you update. To go back to the version you had, run it again and restore the
+newest **Before an upgrade** backup (see below); an older server lists it as
+**Manual**.
 
 ## Restoring a backup
 

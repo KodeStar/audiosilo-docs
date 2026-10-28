@@ -650,7 +650,8 @@ embedded data winning where it is trustworthy:
 1. **Structural path parsing** (`metadata.DeriveFromPath`) is the baseline. The
    book's own name (filename minus extension, or folder name) yields the title
    and a leading series index (`splitSeriesIndex` parses `01 - Unsouled`,
-   `Book 3 - …`, `C02 …`, but not a number running straight into a letter, a
+   `Book 3 - …`, `C02 …`, and from 2.5.0 a decimal part, `02.5 - Gods of Risk`
+   giving 2.5 (a dot with digits after it; `7. Title` keeps 7), but not a number running straight into a letter, a
    comma or an apostrophe: `3rd Rock`, `20,000 Leagues Under the Sea` and
    `1's and 0's` keep their whole name as the title); the nearest ancestor directory is the series and the
    one above it the author (`Author/Series/01 - Title.m4b`), except a lone
@@ -811,7 +812,12 @@ generate estimate and the Bridge's `auto` source always name the same file:
 - **A folder book**: the one regular, non-hidden `.epub` directly in its folder. A
   link never counts, and **two or more is none** (no way to tell which is the book).
 - **A single-file book**: `<stem>.epub` beside it, as the disk opens that name (on a
-  case-insensitive disk, any case of it; recorded under the computed name). Here a
+  case-insensitive disk, any case of it; recorded under the computed name). From
+  2.5.0 (server#228) the name also counts spelled in its other Unicode form (an NFD
+  copy from macOS beside NFC audio, on a disk that tells the forms apart): the scan
+  and an on-demand index match listed names by `ebookNameKey` (NFC, lower-cased).
+  `BookEbook` (the estimate) still looks the name up as spelled, as the Bridge's
+  `os.Stat` does, so it never quotes an ebook run the Bridge wouldn't make. Here a
   link counts while it leads to a regular file inside the library.
 - **Readable**: a zip whose directory lists `META-INF/container.xml`
   (`readableEpub`). DRM is not judged (the reader reports a locked book itself).
@@ -819,8 +825,9 @@ generate estimate and the Bridge's `auto` source always name the same file:
 
 One rule function, `ebookCandidate`, serves every caller: the scan feeds it the
 `.epub` entries its discovery walk already lists (`sidecarFiles.epubs`, no extra
-read of the folder), an on-demand index (`IndexPath`, `IndexMoved`) and
-`BookEbook` (the estimate) what is on disk now. `TestScanRecordsEbookByBookEbookRule`
+read of the folder), an on-demand index (`IndexPath`, `IndexMoved`, through
+`ebookOnDisk`) and `BookEbook` (the estimate, for a folder book; a single-file book's
+name it looks up as spelled, above) what is on disk now. `TestScanRecordsEbookByBookEbookRule`
 holds them together.
 
 **No re-index.** `books.ebook_sig` is the signature (size, mtime and name) of the
@@ -1136,6 +1143,17 @@ on disk any more (`bookOnDisk`, which errs toward present: a path it can't check
 keeps its state), the fingerprints match and it isn't one folder seen two ways;
 otherwise `from` is ignored and logged. The state is carried before the new book
 is indexed, so its row resolves with the carried edits.
+
+**A move found on demand** (from 2.5.0, server#209). A book renamed or moved on
+disk and opened before a scan reaches it (a renamed folder opened from Folders)
+would otherwise start empty, its old row pruned with its listening state left
+behind. So the first on-demand index of a book (`leadIndex`) looks for where it was
+before: `Scanner.movedFrom` asks `catalog.MoveCandidates` for the indexed books
+with its fingerprint (its own and `byteFirstFingerprint`; none when a book is
+indexed at the path already) and takes the first that is no longer on disk
+(`bookOnDisk`). That path is the `from` of `indexBookFrom`, checked and carried as
+`IndexMoved`'s is above (progress, bookmarks and the rest), and the old row is
+dropped.
 
 `POST /admin/libraries/{id}/book/rescan?path=` (the console's "Read the files
 again" and Health's "Read again") calls `IndexPath` for an already-indexed book

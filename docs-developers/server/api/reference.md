@@ -323,8 +323,10 @@ address can belong to a different machine on another network. The player's rule 
 | Status | Meaning |
 |---|---|
 | `400` | `code` missing |
-| `401` | invalid or expired auth code (also: code owner disabled/deleted - a rejected attempt never burns a use) |
-| `429` | redeem lockout tripped |
+| `401` | `code: "invite_used"`: a real invite with no uses left (from 2.5.0) |
+| `401` | `code: "invite_expired"`: a real invite past its expiry (from 2.5.0) |
+| `401` | `invalid or expired auth code`, no `code` (anything else: an unknown code, the code owner disabled or deleted - a rejected attempt never burns a use) |
+| `429` | redeem lockout tripped, with `Retry-After` (seconds until the lockout ends) |
 
 ### `POST /api/v1/auth/exchange`
 
@@ -370,9 +372,10 @@ connection id is `<server_id>.<user_id>` with the answer's `user`
 | `401` | `invite already used on all its devices - ask for a new invite` (the parent invite's use cap is spent) |
 | `401` | `invite has expired - ask for a new invite` (the parent invite expired after the redeem) |
 | `401` | `invalid or expired pairing token` (anything else: bogus/revoked token, single-use token already exchanged, code owner disabled) |
-| `429` | redeem lockout tripped |
+| `429` | redeem lockout tripped, with `Retry-After` |
 
-A refused exchange never burns an invite use.
+A refused exchange never burns an invite use. Its `401`s carry no `code` (unlike
+`/auth/redeem`'s): tell them apart only by the English `error`, or not at all.
 
 ### `POST /api/v1/auth/login`
 
@@ -400,10 +403,14 @@ that person's, so the browser's next sign-in is announced again.
 Response `200`: `{ "token": "…", "user": { … }, "server_id": "…" }`, plus `addresses`
 on a server with that capability - the same shape as `/auth/exchange`.
 
+From 2.5.0 a `username` with surrounding spaces (a pasted or autocompleted
+`"alex "`) signs in as the account without them, when no account has the name
+exactly as typed (that one wins). Case still counts (`auth.Service.Authenticate`).
+
 | Status | Meaning |
 |---|---|
 | `401` | invalid credentials (also returned for disabled or password-less accounts - deliberately indistinguishable) |
-| `429` | login lockout tripped |
+| `429` | login lockout tripped, with `Retry-After` (seconds until the lockout ends) |
 
 ### `POST /api/v1/auth/pair`
 
@@ -762,7 +769,7 @@ On a server with `addresses`, the answer and its `pairing` also carry `addresses
 | Status | Meaning |
 |---|---|
 | `404` | demo mode is not enabled |
-| `429` | per-IP demo cap tripped |
+| `429` | per-IP demo cap tripped, with `Retry-After` |
 | `500` | configured `demo.library` doesn't exist |
 | `503` | demo is at capacity |
 
@@ -800,6 +807,11 @@ unless the authenticated request passes the
 [podcast client gate](../auth-and-security.md#podcast-visibility), including
 for admins. Library membership does not require a visible show, so a granted
 podcast library containing only unfollowed private shows still appears here.
+
+`root` (the library's folder on the server's disk) is sent only to an admin who
+is not a demo visitor. From 2.5.0 a listener and a demo session get each library
+without it (`listenerLibrary` in `handlers_library.go`); a client treats it as
+optional. The admin routes (`GET /admin/libraries`) keep it.
 
 ### `GET /api/v1/libraries/{id}/fs`
 
@@ -1461,8 +1473,8 @@ within 60 seconds of the last one.
 | `409 bridge_unavailable` | no online Bridge offering the action's podcast kind |
 | `409 library_not_writable` | Bridge mapping is not writable |
 | `409 privacy_conflict` | the caller already has an open subscribe request for this feed with the other privacy (a public request never joins a private one, and a private URL is never attached to a public one); wait for it to end, then follow again |
-| `429 too_many_requests` | five open subscribe requests |
-| `429 checked_recently` | last check under 60 seconds ago |
+| `429 too_many_requests` | five open subscribe requests (`Retry-After: 30`, a guess at when one has settled) |
+| `429 checked_recently` | last check under 60 seconds ago (`Retry-After`: the seconds until the minute is up) |
 
 Async failures appear on Request/Show status, rather than as the follow
 response's HTTP status. Codes include `invalid_feed_url`, `blocked_address`,
@@ -2161,7 +2173,12 @@ Otherwise the local steps decide, in order, and the first one with an answer win
    nothing else is numbered the step falls through.
 3. **`folder`** - the book's parent folder, listed whole as the caller may open it
    (their share scope and the library's ignore rules): the first book or folder
-   whose name sorts after the current one, preferring an indexed book. Names are
+   whose name sorts after the current one, preferring a book: an indexed one or,
+   from 2.5.0 (server#211, `markPendingNext`), a folder no scan has reached that a
+   scan would make a book of (`library.MarkPendingBooks`, the folder listing's
+   [`pending_book`](#get-apiv1librariesidfs) rule; only folders before the first
+   indexed book after the current one are read). A pending answer has `next` but no
+   `book`; opening it indexes it on demand, as `/item` does. Names are
    compared the way the player's `localeCompare` (numeric, base sensitivity) does:
    case and accents folded, numbers by value, so `Book 2` comes before `Book 10`;
    ties by path. A folder that is not indexed is offered only when nothing in the
@@ -2798,7 +2815,11 @@ same URL that served the Matroska before, so shipped clients stream the MP3 with
 no change. A podcast library's stream is never remuxed. A copy not made yet is
 waited for up to 2 seconds; past that (or when the server is short of disk, or the copy fails) that request gets
 the live MP3 transcode instead, as `transcode=1` would, and the copy goes on
-for the next one. An `.mka` holding another codec (AAC, Opus, FLAC) is served
+for the next one. From 2.5.0 (server#212) a `download=1` request, and a stream
+that finds every transcode slot busy, keep waiting for a copy still being made,
+up to 45 seconds (`remuxDownloadWait`), so a download saves the lossless copy
+rather than the transcode and a busy server doesn't answer `503`; past that they
+are transcoded after all. An `.mka` holding another codec (AAC, Opus, FLAC) is served
 as stored, `audio/x-matroska`. See
 [Remuxing Matroska](../media.md#remuxing-matroska-mediaremuxer).
 
@@ -2969,7 +2990,9 @@ fetches the bytes with its bearer header and hands them to its reader document, 
 the apps download them with the header into a local file they post to their reader
 in chunks, so nothing ever holds a URL that carries a credential. The bytes are
 exempt from the 30 s request timeout (an illustrated EPUB can be tens of megabytes on a slow
-link), but the book lookup before them is not: a lookup past it is a `500`. The
+link), but the book lookup before them is not: from 2.5.0 a lookup past it is
+`503 request timed out` (`writeCatalogError` on `context.DeadlineExceeded`), as the
+timeout middleware answers elsewhere, not a `500`. The
 route is limited with the authenticated API, per credential, not by the media
 bucket ([rate limiting](index.md#rate-limiting)).
 
@@ -2980,7 +3003,8 @@ bucket ([rate limiting](index.md#rate-limiting)).
 | `401` | no `Authorization` header, or a bad token (a `?token=` alone is a `401`) |
 | `403` | the book is outside the caller's share scope |
 | `404` | `this book has no ebook`: the book has none (no `.epub`, several, an unreadable one), the file is gone or no longer a regular file inside the library, the path is inside the book but not its own (a track, the `.epub` in its folder), or the library is a podcast library; `no book at this path` when there is no book there; `not found` for a hidden or `.audiosilo/` path |
-| `500` | `could not load the ebook`: the file is there but can't be read right now (a permission, a flaky mount; logged), or the lookup ran past the request timeout |
+| `500` | `could not load the ebook`: the file is there but can't be read right now (a permission, a flaky mount; logged) |
+| `503` | `request timed out`: the book lookup ran past the request timeout (from 2.5.0; a `500` before) |
 
 ### `GET /api/v1/libraries/{id}/reading-progress`
 
@@ -3509,6 +3533,14 @@ position also carries `series_index_end`, as on a [book](#get-apiv1librariesidbo
 *Session.* Heart / un-heart a path (`?path=` required on both; one favourite
 per user+library+path). Both are idempotent. POST → `201 Created` (empty body);
 DELETE → `204 No Content`.
+
+From 2.5.0 (server#211) a `POST` on a book no scan has reached yet (a pending
+folder) also indexes it on demand (`indexFavourite`), so it shows on
+[`/me/favourites`](#get-apiv1mefavourites), which reads the index, without being
+opened first. It is best-effort: the read runs detached from the request, which
+waits for it up to 5 s (`favouriteIndexWait`); the favourite is saved either way,
+and a path that is no book (an author's folder) stays a bare favourite. Podcast
+libraries are never indexed this way.
 
 ## Up next, collections and ratings
 
@@ -4826,6 +4858,9 @@ with everyone's progress, bookmarks and notes in it gone. Remove it from
 `config.yaml` (or the app embedding the server) and restart instead. The console
 disables its **Delete library...** with the reason.
 
+An id with no library is `404 not_found` (`library not found`), with no audit row
+(from 2.5.0, server#198; before, the delete answered `204` and recorded one).
+
 ### `PUT /api/v1/admin/libraries/{id}/folder-override`
 
 Forces how the auto-detector classifies a folder, then rescans. `?path=`
@@ -5215,9 +5250,15 @@ everyone who has that one.
 
 When no share qualifies, a new grant share is made. If `Library: <name>` is
 already taken (by a share that didn't qualify, or by another library's grant
-after a rename), it is named `Library: <name> (<library id>)` instead; the name
-is internal, since clients show the library's own name. Errors: `404` for an unknown
-library; `409` with `code: name_taken` only if even that name is taken.
+after a rename), it is named `Library: <name> (<library id>)` instead, and from
+2.5.0 (server#230) when that is taken too, `Library: <name> (<library id>) 2`,
+`3` and so on (`grantName`, up to 20 names); the name is internal, since clients
+show the library's own name. From 2.5.0 the new share is created with its
+whole-library rule and its `whole_library_id` mark in one transaction
+(`createWholeLibraryShare`), so an interrupted grant never leaves a share without
+its rule, and the transaction looks for a grant share again first, so first grants
+sent together share one share. Errors: `404` for an unknown library; `409` with
+`code: name_taken` only if every one of those names is taken.
 
 ## Admin: catalog
 
@@ -5366,8 +5407,8 @@ is a `400` too (`too many format or codec values`).
 ```
 
 - Every field is always present (empty string / `0` / `false` when unknown),
-  except `cover_color`, the four Health fields below, `chapters_check` and
-  `chapter_choice`, which are omitted when empty or `0`.
+  except `cover_color`, the four Health fields below, `chapters_check`,
+  `chapter_choice` and `ebook`, which are omitted when empty or `0`.
   `path` is the book path (the player's `rel_path`).
 - `custom_cover` - an admin uploaded a cover; `has_cover` includes it.
 - `series_list` - every series the book is in, `[{"name", "position", "position_end"?}]`: its main
@@ -5406,6 +5447,10 @@ is a `400` too (`too many format or codec values`).
   narration stand in only with no choice, so the console's Health `no_chapters`
   rows offer no **Detect chapters** for a book with one (and a `chapters.detect`
   job for it is `409 chapters_chosen`).
+- `ebook` - from 2.5.0, the book's ebook as on the player's `Book`:
+  `{"path", "size"}` (`books.ebook_path`, and the size its stored signature
+  holds), omitted when the book has none. The book page's `book` carries it too
+  (its Files card and hero chip).
 - `chapters_check` - the status of the book's last
   [community chapter check](../community-chapters.md): `fill`, `titles`,
   `refine`, `restructure`, `same`, `length_mismatch`, `structure_mismatch`,
@@ -7640,7 +7685,7 @@ effect. Lists are never `null`.
 | `household.max_members` | members per person, 1-50 (default 6); outside the range is `400 invalid_setting` (`field: "household.max_members"`) |
 | `household.max_members_default`, `household.max_members_min`, `household.max_members_max` | read-only facts: the cap's default (6) and range (1 to 50), so the console names the range and checks a value before saving |
 | `backups.schedule` | `""` (off), `daily:HH:MM` or `weekly:DAY:HH:MM` in the server's time zone; stored in canonical form (see [Backups](#admin-backups)) |
-| `backups.keep` | how many scheduled backups are kept, 1-365 (manual and before-restore backups stay until deleted) |
+| `backups.keep` | how many scheduled backups are kept, 1-365 (manual and before-restore backups stay until deleted; the newest three before-upgrade backups are kept apart) |
 | `backups.dir` | read-only: changed only in `config.yaml` or `AUDIOSILO_BACKUP_DIR`; `""` = `<data>/backups` (`GET /admin/backups`' `status.dir` has the folder in use) |
 | `modules.<id>` | each [managed module's](../modules.md) toggle, by module id (`false` by default; config key `modules.<id>.enabled`, variable `AUDIOSILO_MODULES_<ID>_ENABLED`). Applies at once, with no restart. [`GET /admin/modules`](#get-apiv1adminmodules) says more about each |
 | `locked` | setting id → why the console can't change it: the `AUDIOSILO_*` variable that set it, or `"launcher"` (a launcher override for `bind`, `tls.mode` or `public_url`) |
@@ -8015,11 +8060,11 @@ restore waiting for, or applied at, a start:
 
 | Field | Meaning |
 |---|---|
-| `backups[].kind` | `scheduled`, `manual` or `before-restore` (the copy of the database a restore replaced). A file put in the folder under another valid name reads as `manual`, dated by its modification time |
+| `backups[].kind` | `scheduled`, `manual`, `before-restore` (the copy of the database a restore replaced) or `before-upgrade` (the copy a start with pending migrations made first, from 2.5.0). A file put in the folder under another valid name reads as `manual`, dated by its modification time |
 | `backups[].created_at` | from the name (UTC, to the second) |
 | `status.running` | a backup is being made now |
 | `status.last` | the newest attempt **since the server started** (`null` before one): `trigger` `scheduled` or `manual`, and on failure `ok: false` with `error` `disk_full`, `permission_denied` or `failed` (the cause is in the log) |
-| `status.latest` | the newest backup in the folder that isn't a before-restore copy, whenever it was made (`null` when there is none) |
+| `status.latest` | the newest backup in the folder that isn't a before-restore or before-upgrade copy, whenever it was made (`null` when there is none) |
 | `status.next` | the next scheduled backup, in the server's time zone; `null` when the schedule is off |
 | `restore.pending` | the restore waiting for the next start: `{name, requested_at, requested_by, schema}` (`schema` is the backup's newest migration), or `null` |
 | `restore.last` | how the last restore went, written at start: `{name, applied_at, requested_by, ok, error, safety_copy}`. `error` (when `ok` is false) is `missing`, `unusable`, `newer` or `failed`, and the database was left as it was; `safety_copy` names the before-restore backup (or, if the database couldn't be copied, the file it was renamed to in the data folder). A restore marker that couldn't be read is reported as `error: "failed"` with an empty `name`. `null` when no restore ever ran |
@@ -9047,7 +9092,7 @@ made the request (with no details: the audit log keeps no addresses).
 | `201` | `{ token, server_id, server_name }` |
 | `400` | `code is required` |
 | `401` | `invalid or expired pairing code` (wrong, used or expired, or its admin is no longer an enabled admin) |
-| `429` | `too many attempts, try again later` |
+| `429` | `too many attempts, try again later`, with `Retry-After` (seconds until the lockout ends) |
 
 A server without the Bridge routes answers `404` (or `405`); the Bridge reads that
 as "this server is too old for a Bridge".

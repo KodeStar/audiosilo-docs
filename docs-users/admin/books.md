@@ -146,7 +146,9 @@ series, opens **Books** filtered to it. Below that is how many files the book
 has, whether browsers can play it directly ("Plays directly", "Transcodes to
 MP3 for browsers" or "Browsers can't play this format", judged on the files as
 stored, so an `.mka` book with MP3 inside reads "Transcodes to MP3 for
-browsers" though the server sends it as MP3) and when it was added.
+browsers" though the server sends it as MP3) and when it was added. A book
+with an ebook beside its audio also shows an **Ebook** chip there (see
+[Reading the ebook](../listening/reading-the-ebook.md#which-books-have-it)).
 The buttons there are:
 
 - **Match with community metadata** (it reads **Compare with community** once
@@ -403,7 +405,9 @@ chapters ends, the card shows them straight away.
 ### Files
 
 **Files** lists the book's audio files with their codec, bitrate, size, length
-and whether browsers play them directly or need them transcoded.
+and whether browsers play them directly or need them transcoded. Below them,
+an **Ebook** line names the book's EPUB and its size when it has one, the file listeners
+open with **Read the ebook**.
 
 ### Covers
 

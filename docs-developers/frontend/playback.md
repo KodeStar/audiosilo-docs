@@ -655,7 +655,13 @@ anything up.
 - Listening **history spans** are recorded around the same transitions:
   a span opens on `playing`, closes on leaving `playing` (or on a mid-playback
   track change, so each file logs as it finishes), ignores spans under 20 s,
-  and is skipped entirely while the server is unreachable.
+  and is skipped entirely while the server is unreachable. On the web (from
+  2.5.0, `watchPageHide` / `flushHistoryOnHide`) the span is also written as the
+  page goes, posted with a `keepalive` request that outlives it: `pagehide` (the
+  tab closed, reloaded or navigated off) ends it, and the document going `hidden`
+  (a phone's browser may close a tab with no `pagehide`) splits it once it is long
+  enough to keep, a new span opening while playback goes on. Ending a span clears
+  it first, so it is never posted twice.
 - When playback halts, the store invalidates the `['progress', 'all']` query so
   the Home/Browse "continue listening" and "finished" lists re-read from the
   server - without invalidating on every 15 s save.

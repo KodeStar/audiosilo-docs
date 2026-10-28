@@ -57,7 +57,9 @@ The card's states:
 | **Signed in** | the Bridge holds a sign-in GitHub hasn't refused, as the user shown (the Bridge shares with it unless **Sharing uses** names another token, or says none while the sign-in can't be renewed: see below) |
 | **Waiting for the code** | a sign-in is waiting for you to enter the code on GitHub |
 | **Sign in again** | GitHub stopped accepting the sign-in: you revoked it on GitHub, it expired, or GitHub took a renewal whose answer never reached the Bridge. Press **Sign in to GitHub** again |
-| **Not signed in** | no sign-in yet |
+| **Signed in (gh)** | Bridge 0.4.0: no sign-in here, but sharing goes through the `gh` command's own sign-in on the Bridge's computer. **Sign in here instead** signs in through the AudioSilo Contributions app, which sharing then uses |
+| **Signed in (environment)** | Bridge 0.4.0: sharing uses the `AUDIOSILO_BRIDGE_GITHUB_TOKEN` environment variable (see below), so there is no sign-in to offer here |
+| **Not signed in** | no sign-in yet, and no other token for sharing |
 
 **Sharing uses** says where the GitHub token for sharing comes from now: this
 sign-in, the `AUDIOSILO_BRIDGE_GITHUB_TOKEN` environment variable (see below), the

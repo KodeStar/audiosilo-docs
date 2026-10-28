@@ -35,7 +35,10 @@ Most topics are made of cards. Change what you like in a card, then press
 **Save changes** at its foot (**Reset** puts the card back as it was). Only
 the values you changed are sent. If the server refuses one - an address
 without `https://`, a time like "2 days" - the reason shows under that field
-and nothing in the card is saved, so fix it and save again. The switches
+and nothing in the card is saved, so fix it and save again. A number outside
+what the setting takes (**Days to keep sessions** below 30, say) is caught
+before anything is sent: the field says "Enter a whole number from 30 to
+3,650." and **Save changes** waits until it's in range. The switches
 (**Check for new versions**, **Look up community metadata** and each
 module's **Enable** switch) save the moment you flip them.
 

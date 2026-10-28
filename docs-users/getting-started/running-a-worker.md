@@ -38,8 +38,8 @@ same Mac to get the fast speech recognition.
   worker's computer downloads the worker program from it, so there is nothing to
   find or build. A Bridge run outside Docker can't serve it: see
   [Installing it by hand](#installing-it-by-hand). The one-line install and the
-  downloads on GitHub came after Bridge 0.3.1: with 0.3.1 or earlier, update the
-  Bridge first.
+  downloads on GitHub need **Bridge 0.4.0** or later: with an older Bridge,
+  update it first.
 - The worker's computer on the **same local network** as the Bridge, running
   macOS or Linux. Like the Bridge's page, the worker's connection (and its
   download) is refused from the internet and over a VPN address like Tailscale's.

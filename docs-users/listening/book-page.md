@@ -89,7 +89,7 @@ Everything else sits in a row of tabs, so a long chapter list never buries the r
 
 ### Chapters
 
-At the top, **The whole book**: a timeline with a segment for each chapter, the part you've heard filled in, and pins for your **bookmarks** and **notes** (the notes in their own colour). Under it, the start, where you are (*"38% · 1:02:03"*) and the end. While this book is playing, the timeline follows it and a tap or drag jumps there; for a book that isn't playing, a tap starts it at that point. Like the player's, it never takes you all the way to the end: a tap there lands 30 seconds short.
+At the top, **The whole book**: a timeline with a segment for each chapter, the part you've heard filled in, and pins for your **bookmarks** and **notes** (the notes in their own colour). Under it, the start, where you are (*"38% · 1:02:03"*) and the end. While this book is playing, the timeline follows it and a tap or drag jumps there; for a book that isn't playing, a tap starts it at that point. Like the player's, it never takes you all the way to the end: a tap there lands 30 seconds short (on a book shorter than five minutes, a tenth of its length short).
 
 Below it, every chapter in order: its number, its title (with a small bookmark when you've marked something in it), when it starts (on a tablet or computer), and its length, or a tick once you've heard it. The chapter you're in is highlighted. Tap any chapter to listen from there: on a phone the full player opens on it, elsewhere it plays where you are.
 

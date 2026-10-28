@@ -170,10 +170,12 @@ a paused fetch a mounted hook holds for the same key; `fetchCapabilities` reads 
 The folder fallback. `resolveNextBook` browses the parent folder via
 `client.browse` (paging to exhaustion, `PAGE_LIMIT` 200); `findNextSibling` takes
 the books and folders whose names sort strictly after the current leaf (with
-`naturalCompare`) and returns the first **indexed book** (`is_book`) among them. A
-bare folder (`is_dir: true, is_book: false`, a book not scanned yet) is offered only
-when nothing in the folder, the current book included, is indexed; otherwise the
-answer is `null`. Loose files that are not books are never offered:
+`naturalCompare`) and returns the first **book** among them: one the index holds
+(`is_book`) or, from 2.5.0 (fe#154), a folder no scan has reached that the server
+would read as a book (`pending_book`), which the book screen and the player read on
+demand. Any other bare folder (`is_dir: true, is_book: false`) is offered only
+when nothing in the folder, the current book included, is a book either way;
+otherwise the answer is `null`. Loose files that are not books are never offered:
 
 ```ts
 export function naturalCompare(a: string, b: string): number {

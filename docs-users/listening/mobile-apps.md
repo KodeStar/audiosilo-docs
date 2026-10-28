@@ -11,10 +11,10 @@ AudioSilo has native apps for **iOS** and **Android**. They're the same player y
 
 - **iOS**: the app is on the **[App Store](https://apps.apple.com/us/app/audiosilo/id6783431375)** - search for AudioSilo, or follow the link.
 - **Android**: the app is on **[Google Play](https://play.google.com/store/apps/details?id=app.audiosilo)** - search for AudioSilo, or follow the link.
-- **CarPlay**: built into the iPhone app from **version 2.4.0**; see [In the car](in-the-car.md#carplay). An older version doesn't appear in CarPlay, so update the app if you don't see it.
+- **CarPlay**: built into the iPhone app from **version 2.4.1**, the first version in the App Store with it; see [In the car](in-the-car.md#carplay). An older version doesn't appear in CarPlay, so update the app if you don't see it.
 - **Android Auto**: built into the Android app; see [In the car](in-the-car.md#android-auto) for getting it onto the car's screen.
-- **iPhone widgets and the sleep timer Live Activity**: in the iPhone app from **version 2.4.0**; see [Widgets on iPhone](#widgets-on-iphone).
-- **Reading ebooks**: in the apps as in the web player, offline too for a downloaded book (see [Reading the ebook](reading-the-ebook.md)). An older version of the app doesn't show **Read the ebook**, so update it if you don't see it on a book that has its EPUB.
+- **iPhone widgets and the sleep timer Live Activity**: in the iPhone app from **version 2.4.1**; see [Widgets on iPhone](#widgets-on-iphone).
+- **Reading ebooks**: in the apps from **version 2.5.0**, as in the web player, offline too for a downloaded book (see [Reading the ebook](reading-the-ebook.md)). An older version of the app doesn't show **Read the ebook**, so update it if you don't see it on a book that has its EPUB.
 - **Podcasts**: need **version 2.4.0** or later of the app. An older version doesn't show your server's podcast libraries at all, so update it if your server has podcasts and you don't see them. See [Podcasts](podcasts.md).
 
 And you don't need the app to listen on your phone: the **web player works great on mobile** and can be [installed to your home screen](offline-downloads.md), downloads included.

@@ -37,8 +37,8 @@ too, though the next scan would rebuild it anyway. **Not** in it:
 `config.yaml`, the certificates, downloaded tools, and the audiobooks.
 
 **Files.** Each backup is `audiosilo-<UTC time>-<kind>.db`, the time as
-`20060102-150405Z` and the kind one of `scheduled`, `manual` or
-`before-restore`. It is written under a hidden temporary name
+`20060102-150405Z` and the kind one of `scheduled`, `manual`,
+`before-restore` or `before-upgrade`. It is written under a hidden temporary name
 (`.audiosilo-….db.tmp`), set to mode `0600` (it holds password and token
 hashes), then renamed into place, so a half-written file is never listed; the
 folder is created `0700`. A server that stops mid-backup leaves the temporary
@@ -67,16 +67,33 @@ backup waits for its next slot instead of retrying every minute.
 **Retention.** After each successful *scheduled* backup, `prune` deletes the
 scheduled backups past the newest `backups.keep` (1-365, default 7). Manual and
 before-restore backups are never pruned: they stay until an admin deletes them.
+Before-upgrade backups have their own rule (below).
 Nor is the scheduled backup a waiting restore names (the next start would find
 it gone); if the restore marker can't be read, nothing is pruned that time.
 Lowering `keep` takes effect at the next scheduled backup.
+
+**Before an upgrade** (2.5.0). `pkg/launcher` calls `backup.BeforeUpgrade`
+before `store.Open` migrates the database. `store.PendingMigrations` reads the
+database read-only and lists the migrations it lacks (none for a fresh install,
+no database or no migration recorded, or one already up to date); when there
+are some, the database is written into the backups folder with `VACUUM INTO`
+as `audiosilo-<UTC time>-before-upgrade.db` (`KindBeforeUpgrade`, the same
+temporary-name, `0600` path as every backup) and one INFO line names the
+migrations and the copy ("copied the database before applying new
+migrations"). A failed copy is a WARN and the start carries on, migrating
+without one. `pruneBeforeUpgrade` then keeps the newest three
+(`keepBeforeUpgrade`): the copy just made always stays, a waiting restore's
+backup is never removed, and a copy holding the same pending migrations as a
+newer one counts once and goes (a start whose migrations failed part way copies
+the half-migrated database on every retry, which would otherwise push out the
+copy of the database as the older server left it).
 
 **Status.** `Service.Status` is what the console shows (and
 [`GET /admin/system`](api/reference.md#get-apiv1adminsystem)'s `backups`
 block): the folder, whether a backup is being made, `last` (the newest attempt
 since the server started, with a short `error`: `disk_full`,
 `permission_denied` or `failed`; the cause is in the log), `latest` (the newest
-backup in the folder that isn't a before-restore copy, whenever it was made)
+backup in the folder that isn't a before-restore or before-upgrade copy, whenever it was made)
 and `next` (`null` when the schedule is off). A failed backup calls
 `OnFailure`, which the launcher wires to the `backup_failed` notification; a
 backup cut short because the server is stopping is not announced.
