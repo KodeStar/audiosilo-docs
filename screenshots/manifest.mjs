@@ -32,7 +32,7 @@ export const SHOTS = [
   {file: 'web-player/book-recaps-generated.png', capture: 'web', title: 'Web player - Generated recaps', hint: "The Call of the Wild's Recaps tab on its book page (early in the book): the recaps run.sh seeds into its .audiosilo folder (a recaps.json as a Bridge writes it) with the Generated on this server mark, the Whole-book summary row marked Spoiler, the hidden-to-avoid-spoilers line with Show anyway"},
   {file: 'web-player/book-read.png', capture: 'web', title: 'Web player - Read the ebook', hint: "A Christmas Carol's book page hero (clipped): run.sh puts the book's EPUB (Project Gutenberg's public-domain edition) beside its audio, so the action row has Read the ebook after the download"},
   {file: 'web-player/reader.png', capture: 'web', title: 'Web player - Ebook reader', hint: "the ebook reader on A Christmas Carol, opened by Read the ebook and moved to the first stave from Contents: the top bar (close, title, chapter and percentage, Contents, text size), a page of the book between the page-turn edges"},
-  {file: 'web-player/reader-contents.png', capture: 'web', title: 'Web player - Reader contents', hint: "the ebook reader's Contents sheet over A Christmas Carol: the book's contents as the EPUB lists them (Gutenberg's front matter, then the staves), opened at the start"},
+  {file: 'web-player/reader-contents.png', capture: 'web', title: 'Web player - Reader contents', hint: "the ebook reader's Contents sheet over A Christmas Carol: the book's contents as the EPUB lists them (Gutenberg's front matter, then the staves), opened on the section being read (Marley's Ghost, in bold), marked as the current entry"},
   {file: 'web-player/journal.png', capture: 'web', title: 'Web player - Journal', hint: "the Journal's Diary from the profile menu (the You hub's Journal section): Today with its 24 hour bar and sessions, the drift-off strip under the provisioned sleep-timer session, earlier days below"},
   {file: 'web-player/journal-bookmarks.png', capture: 'web', title: 'Web player - Journal bookmarks', hint: "the Journal's Bookmarks tab: the export actions, search, the label filter chips and every bookmark across books, newest first"},
   {file: 'web-player/player.png', capture: 'web', title: 'Web player - Now playing', hint: 'the full player on a desktop, opened from the docked bar with the book paused: cover, status line, seek bar and timeline, transport, actions, and the companion column'},
@@ -153,7 +153,7 @@ export const SHOTS = [
   {file: 'admin/activity-live.png', capture: 'admin', title: 'Admin - Live now', hint: 'Activity > Live now: two devices playing (one transcoding) and one paused'},
   {file: 'admin/activity-sessions.png', capture: 'admin', title: 'Admin - Sessions', hint: 'Activity > Sessions: the session table, newest first'},
   {file: 'admin/activity-year.png', capture: 'admin', title: 'Admin - Year in listening', hint: 'Activity > Year in listening: this year\'s story and calendar (1440x1100)'},
-  {file: 'server/connect-page.png', capture: 'admin', title: 'Connect page', hint: 'public connect page (auth-code box / QR)'},
+  {file: 'server/connect-page.png', capture: 'admin', title: 'Connect page', hint: 'public connect page (invite-code box / QR)'},
 
   // ── First-run setup (capture-setup.mjs: a fresh --setup server; desktop 1440 wide, dark) ──
   {file: 'server/setup-wizard.png', capture: 'setup', title: 'Setup page', hint: "the --setup page: Welcome - let's set up your server, the admin username and password, Create account"},
