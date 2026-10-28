@@ -723,8 +723,9 @@ npm test`) - CI enforces all four; see
 The web player paints its first screen from the last visit's answers, then asks
 the server again behind it, and loads only what that screen needs. Native ships
 one bundle and is not split. The rules live in the
-repo's `CONVENTIONS.md` ("Web start (the split build)" and "Startup cache
-(web)").
+repo's `CONVENTIONS.md` ("Web start (the split build)", "Startup cache
+(web)", "Startup queries (web)" and "Web start scripts compiled off the main
+thread").
 
 - **Async routes.** `app.json` sets Expo Router's `asyncRoutes: { web:
   "production", default: false }`: the web export splits each page into its own
@@ -749,6 +750,40 @@ repo's `CONVENTIONS.md` ("Web start (the split build)" and "Startup cache
 - **The last visit's answers.** The [startup cache](state-and-data.md#the-startup-cache-web)
   puts the first screens' queries back into the query cache before anything
   renders, so a reload paints at once and refreshes.
+- **The first screen's answers, asked as the gate opens.** On a start the
+  startup cache can't fill (a first visit, a private window), the screen used to
+  render twice: its skeleton, whose queries then asked, and again with the
+  answers, so its covers waited on both renders. Now `AuthGate` asks the page's
+  answers the moment it opens (`useStartupQueries`,
+  `src/components/shell/startup-queries.ts`: every server's `/server` and
+  libraries; on Home or the Library grid their progress too, plus Home's Recently
+  added and favourites, or the selected library's first page of books) and holds
+  its spinner until they are in, at most `STARTUP_WAIT_MS` (200 ms), so the screen
+  renders once, with them. It asks once per page load and only what the cache
+  lacks, so a reload the startup cache filled waits for nothing. Each entry is
+  built from the screen's own query spec (`serverInfoQuery`, `recentQuery`,
+  `favouritesQuery`, `wholeLibraryQuery`...), so the screen finds it fresh; a
+  new first-screen read joins through its spec, never a hand-built key. Native
+  never waits (`use-startup-queries.ts` returns true).
+- **Start scripts compiled off the main thread.** `scripts/web-start-chunks.cjs`,
+  wrapped around Expo's serializer in `metro.config.js`, changes the web export
+  only (never the dev server, native, or an export with source maps). Every web
+  script starts with V8's compile hint `//# allFunctionsCalledOnLoad`, so Chrome
+  compiles it whole on a background thread as it streams in, not function by
+  function on the main thread as it runs. A start script (`isAsync: false`) over
+  `PART_CHARS` (about 450 KB) is cut at module boundaries into parts named
+  `<name>-<n>-<hash>.js` (`hash` of the part itself, since the build's files are
+  cached as immutable), chained by `requires` so the HTML names them in order:
+  several parts compile on several threads at once. A cut is kept only when every
+  part compiles on its own (`vm.Script`); an async chunk is never cut (the runtime
+  loads it by its name). This matters where no service worker can help: Chrome
+  keeps compiled code only for scripts a worker cached at install, and a page on
+  plain http (a LAN address is not a secure context) or a private window has no
+  such cache. Measured on a real host over the LAN, with the startup queries
+  above, the first cover went from 294-311 ms cold and 259-280 ms warm to about
+  180-205 ms in both (medians; one grid set under heavy load on the measuring
+  machine came to 225 ms). `npx expo export -p web` produces it directly, so CI and the
+  server's web build need no change.
 - **First-screen covers.** A grid's first three rows, a shelf's first tiles and
   Home's Now card set `FirstScreenCovers` (`src/components/library/first-screen-covers.ts`):
   those covers load at once, ahead of the page's other images. On the web any

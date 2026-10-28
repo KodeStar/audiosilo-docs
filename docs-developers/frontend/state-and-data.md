@@ -194,7 +194,10 @@ server's list (`useLibrariesAll().retryServer(connectionId)`).
 `src/api/startup-cache.ts` keeps the answers the first screens paint from, so
 a reload of the web player paints at once and asks again behind it (a "stale
 while revalidate" start). Without it a reload waited for `/server`, the
-libraries and the first page of books before a single cover was drawn.
+libraries and the first page of books before a single cover was drawn. A start
+with nothing kept (a first visit, a private window) asks the same first answers
+as the gate opens instead (see
+[the web start](overview.md#the-web-start-a-split-build)).
 
 - **What is kept** (`isStartupQuery`): `/server`, the libraries, favourites,
   the queue, collections, the listening goal, the household, the author,
