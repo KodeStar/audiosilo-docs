@@ -137,10 +137,15 @@ from arming in a car. It answers:
   book the engine names (else the loaded book). Bookmarks pressed while no JS ran
   (`consumePendingBookmarks`, Android) are added at start and on every return to the
   foreground, each on its own connection (dropped when the connection is gone); one that can't
-  reach its server waits under `audiosilo.carBookmarks` for the next drain, at the whole-book
-  place read on its first try (2.4.1, frontend#136: a file place converted later could go
-  through a re-ordered download's timeline). Only one whose place could not be read yet stays
-  in file coordinates.
+  reach its server waits under `audiosilo.carBookmarks` for the next drain, kept by its file
+  (`trackId`, path-keyed) and the seconds in it, read on its first try, plus the whole-book
+  place read on its latest (fe#146). Each later try reads it in the order the book's files
+  are in now (`trackIndexById`, shared with `adoptLoaded`), on the device only (the loaded
+  queue, else the download's; never a request before its send), so a download that took the
+  server's new order since still puts it in its file. The whole-book seconds stand only for a
+  book that no longer holds that file, or that is neither loaded nor downloaded. A kept one of
+  the older form (whole-book seconds alone, 2.4.1) is still read; only one whose place could
+  not be read yet stays in file coordinates.
 - **Adopting** (Android): see [below](#adopting-a-book-the-service-loaded).
 
 `car-native.ts` / `car-native.native.ts` are the one seam to the module's car surface, and
@@ -274,20 +279,51 @@ manifest's. Kotlin's `LoadedFiles` reads them
 from the media item ids (`<libraryId>:<relPath>`, a chapter clip's `#<startInFile>`
 suffix dropped; unit-tested on the JVM in `LoadedFilesTest.kt`) and leaves `files` out
 when an id has another shape, two items of one file disagree or an index has no item.
-iOS never sends it, nor does a binary that predates it. JS does not use it yet:
-`adoptLoaded` still maps the index through the manifest.
+iOS never sends it, nor does a binary that predates it. `adoptLoaded` reads the file
+index in that order ([below](#the-engines-file-order)).
 
-The controller calls the store's `adoptLoaded(book)` at start, when a car connects, on
+The controller calls the store's `adoptLoaded(book, reread)` at start, when a car connects, on
 returning to the foreground and when the engine moves to another file or starts
 playing on its own (never for the store's own switch or load), if `nowPlaying` isn't that book. Adopting builds the queue as
 `playBook` would, from `bookSourceOf` (`src/playback/book-source.ts`: the download manifest
-when downloaded, else through the query cache), sets `nowPlaying` and the rate, makes the
-**resume floor** the engine's place, seeds the bridge's snapshot (`adoptPlace`, so the next tick maps onto the right file) and, if playing,
-runs the place reconcile's pick-up check (`onPickedUpAgain`) before its first save (another
-device may have played on since the place the car started from) and starts the save loop and
-a listening span, all **without `svc.load`** (a reload would cut the
-audio). It gives up, changing nothing, if another book started while the item was read. The
-regression tests are in `src/playback/store-adopt.test.ts`.
+when downloaded, else through the query cache), then reads the service's book again
+(`reread`, the controller's `getLoadedBook`: the engine played on while the source was read,
+so a pause, a move or a speed change made meanwhile stands). It sets `nowPlaying` and the
+rate, makes the **resume floor** the engine's place, seeds the bridge's snapshot
+(`adoptPlace`, so the next tick maps onto the right file) and, if playing, runs the place
+reconcile's pick-up check (`onPickedUpAgain`) before its first save (another device may have
+played on since the place the car started from) and starts the save loop and a listening
+span, all **without `svc.load`** (a reload would cut the audio) while the engine plays the
+queue's file order. It gives up, changing nothing, if another book started while the item
+was read, or the service plays another book or file order once read again. The regression
+tests are in `src/playback/store-adopt.test.ts`.
+
+#### The engine's file order
+
+Every tick the service reports after the adoption counts its file index in the service's own
+order, so the queue has to be in that order too (fe#134: a JS restart during a start's load
+can leave the service playing the server's new order while the download keeps its old one,
+see the download's [new file order](offline.md#lifecycle)). With `files` absent (iOS, Cast, an
+older binary) or the same as the queue's order, nothing changes. Otherwise:
+
+- **A downloaded book asks the server's chapters once** (afresh, for 3 s at most,
+  `SERVED_ORDER_WAIT_MS`). When they come back in exactly the engine's order, the queue is
+  built from them as the start JS lost built it (the download's files, streaming any file it
+  lacks), and the download takes them when it holds those files (`adoptStartedChapters`, as
+  `playBook` does). No reload: the engine already plays that queue.
+- **Anything else** (offline, no answer, the server's chapters in another order or with other
+  files than the engine's) **reloads the engine in the queue's order** (`reloadAdopted`): at
+  the same file (`trackIndexById`, by the path-keyed track id) and in-file place, or at the
+  same whole-book seconds for a file the queue lacks (short of the queue's end; the engine's
+  file index when an earlier file's length is unknown). The resume floor moves to that place
+  and the play state is kept, a short cut in the audio being the price of every later tick
+  landing on the right file. Saves and remote moves are held by `loadingBook` until the load
+  lands, and the reloaded place saves nothing until it plays (`quietAdopted`): it was never
+  checked against the server, so a play's pick-up check runs first, once the load hold is
+  released when the play came during it (`pickUpDue`). A paused book is paused again once
+  loaded, and a pause pressed while it loads stands.
+- **Not while casting** (the receiver streams the book, and a load would cut it;
+  fe#145).
 
 ## CarPlay
 
