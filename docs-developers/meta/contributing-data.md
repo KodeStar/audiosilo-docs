@@ -690,23 +690,43 @@ each selected project:
    and punctuation folded and a trailing Jr., Sr. or II-IV set aside. The
    **same surname** with one name's words a **subset** of the other's
    ("Henrietta Elizabeth Marshall" and "Henrietta Marshall", "Joseph Sheridan
-   Le Fanu" and "Sheridan Le Fanu", "Francis Parkman, Jr." and "Francis
-   Parkman") is the same author: the project **attaches** to that work and
-   credits the catalogued person, whose spelling the work keeps (a person record
-   has no alias field, so LibriVox's spelling appears only in the run's note).
-   Every author of the project must pair with one of the work's this way or
-   exactly, and nothing else under the title may resemble them. Anything looser
-   is the worklist's `author-spelling`, never an attach: an initial ("E.
-   Nesbit" and "Edith Nesbit"), another given name ("Fanny" and "Frances
-   Burney", "Lev" and "Leo Tolstoy"), a one-word name ("Homer"), "Saint"
-   against "St", or Jr. against Sr. So is a variant beside any other candidate;
-   two variants are `several-works`. A different surname is a different author (rule 5).
-   When the catalogued person carries no LibriVox author id yet, the project's
-   author id is decided once for the whole run, before any project is planned:
-   every project of that id credits the catalogued person (and the person is
-   keyed by the id), so the author's other books do not mint a second record. A
-   variant spelling both of whose works are new in one run is found too, since
-   a work the run created is matched like a catalogued one.
+   Le Fanu" and "Sheridan Le Fanu") is the same author, provided both names
+   carry the same generational suffix or neither does. The project
+   **attaches** to that work and credits the catalogued person, whose spelling
+   the work keeps (a person record has no alias field, so LibriVox's spelling
+   appears only in the run's note). Every author of the project must pair with
+   one of the work's this way or exactly, and nothing else under the title may
+   resemble them.
+
+   **When LibriVox's spelling is already a person.** If the project's spelling
+   is itself a person record (catalogued, keyed by the LibriVox author id the
+   project states, or created earlier in the run), the credit is not moved: the
+   project still attaches, but the credit stays with that record and its id,
+   listed under [credits not recorded](#credits-not-recorded) for the work it
+   joined. Two records of one surname are a person merge for a maintainer, not
+   something an import decides.
+
+   **The worklist instead.** Anything looser is the worklist's
+   `author-spelling`, never an attach: an initial ("E. Nesbit" and "Edith
+   Nesbit"), another given name ("Fanny" and "Frances Burney", "Lev" and "Leo
+   Tolstoy"), a one-word name ("Homer"), "Saint" against "St", Jr. against
+   Sr., or a suffix on one name only ("Francis Parkman, Jr." and "Francis
+   Parkman", "Henry James" and "Henry James Sr.": possibly father and son). So
+   is a work whose author already carries a **different** LibriVox author id
+   from the project's (LibriVox keeps the two as two people), and a variant
+   beside any other candidate; two variants are `several-works`. A different
+   surname is a different author (rule 5).
+
+   **Once per author id.** When the variant is a catalogued person on a
+   catalogued work, the project's author id is decided once for the whole run,
+   before any project is planned, provided no person carries that id yet,
+   LibriVox's spelling is not a person record, the catalogued person carries no
+   LibriVox author id, and every project proposing the id names the same
+   person. Then every project of that id credits the catalogued person (who is
+   keyed by the id), so the author's other books do not mint a second record.
+   Otherwise each project is decided on its own. A variant spelling both of
+   whose works are new in one run is found too, since a work the run created
+   is matched like a catalogued one.
 4. **A trailing qualifier waits for a person.** Otherwise the title's trailing
    `(...)` or `[...]` qualifiers are dropped one at a time from the end. If what
    remains matches a work by the same authors under rule 2 ("Frankenstein
@@ -768,7 +788,7 @@ librivox worklist: 2 projects skipped for a person to resolve (re-import the ids
 |---|---|
 | `several-works` | two or more catalogued works qualify under rule 2, 3 or 4 |
 | `author-unmatched` | a work carries the title but its authors only partly agree with the project's |
-| `author-spelling` | a work carries the title by an author of the same surname whose name only loosely agrees with the project's (an initial, another given name), or a variant beside other candidates (rule 3) |
+| `author-spelling` | a work carries the title by an author of the same surname whose name only loosely agrees with the project's (an initial, another given name, a suffix on one name only), whose author carries another LibriVox author id, or a variant beside other candidates (rule 3) |
 | `author-unsluggable` | every individual author of the project has a name that slugs to nothing ([above](#which-work-a-librivox-project-joins)) |
 | `differently-spelled-title` | the duplicate-identity guard holds the book under a title rule 2 does not read as the same, such as one with a subtitle, or the one work rule 4 matches |
 | `fallback-slug-taken` | a non-Latin title's `librivox-<project id>` slug is already held by another record, or retired |
@@ -783,8 +803,8 @@ appear on the worklist alone.
 #### Credits not recorded
 
 The import report lists the author and translator credits an attach leaves
-out after the worklist, and every credit whose name slugs to nothing, one line
-per credit: the project id, the name, its roles, the person's
+out (including a credit kept with its own record under rule 3), and every
+credit whose name slugs to nothing, after the worklist, one line per credit: the project id, the name, its roles, the person's
 `librivox_author_id` when LibriVox states one, the work the recording landed on,
 and `unsluggable` for a name no record can hold or `person not created` when no
 person record exists for the name:
