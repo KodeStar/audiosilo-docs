@@ -2990,9 +2990,9 @@ fetches the bytes with its bearer header and hands them to its reader document, 
 the apps download them with the header into a local file they post to their reader
 in chunks, so nothing ever holds a URL that carries a credential. The bytes are
 exempt from the 30 s request timeout (an illustrated EPUB can be tens of megabytes on a slow
-link), but the book lookup before them is not: from 2.5.0 a lookup past it is
+link), but the book lookup before them is not: a lookup past it is
 `503 request timed out` (`writeCatalogError` on `context.DeadlineExceeded`), as the
-timeout middleware answers elsewhere, not a `500`. The
+timeout middleware answers elsewhere. The
 route is limited with the authenticated API, per credential, not by the media
 bucket ([rate limiting](index.md#rate-limiting)).
 
@@ -3004,7 +3004,7 @@ bucket ([rate limiting](index.md#rate-limiting)).
 | `403` | the book is outside the caller's share scope |
 | `404` | `this book has no ebook`: the book has none (no `.epub`, several, an unreadable one), the file is gone or no longer a regular file inside the library, the path is inside the book but not its own (a track, the `.epub` in its folder), or the library is a podcast library; `no book at this path` when there is no book there; `not found` for a hidden or `.audiosilo/` path |
 | `500` | `could not load the ebook`: the file is there but can't be read right now (a permission, a flaky mount; logged) |
-| `503` | `request timed out`: the book lookup ran past the request timeout (from 2.5.0; a `500` before) |
+| `503` | `request timed out`: the book lookup ran past the request timeout |
 
 ### `GET /api/v1/libraries/{id}/reading-progress`
 

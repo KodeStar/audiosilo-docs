@@ -13,7 +13,7 @@ The reader is new in AudioSilo **2.5.0**: it needs a server on version 2.5.0 or 
 
 ## Which books have it
 
-**Read the ebook** appears on a book's page when your server has the reader (version 2.5.0 or later) and the book has exactly one ebook beside its audio:
+**Read the ebook** appears on a book's page when your server has the reader and the book has exactly one ebook beside its audio:
 
 - **A book that is a folder**: one `.epub` file directly in the book's folder, with the audio. If the folder holds two or more `.epub` files, AudioSilo can't tell which one is the book, so it uses none of them and there's no **Read the ebook**. Keep one, or move the others out of the folder.
 - **A book that is a single audio file**: an `.epub` with the same name beside it, such as `Project Hail Mary.m4b` and `Project Hail Mary.epub`.

@@ -568,11 +568,9 @@ credential after (except the `/auth/*` routes and a demo account's API
 requests, which stay keyed by IP), and failure lockouts and attempt caps keyed
 by IP. Tripping any of them returns **429** with an error envelope and, from
 2.5.0, a `Retry-After` header in whole seconds (at least 1): the wait for the
-bucket's next token on the token buckets (for a request limited per
-credential, the longer of the credential's and the address's waits, since
-going past the credential's bucket charges the address too), the time left on
-the lockout for the sign-in and account limiters (`tooManyAttempts`). Every
-other `429` the server sends carries one too (the podcast routes' and the
+bucket's next token, or the time left on the lockout (`tooManyAttempts`); how
+it is worked out is in [Auth & security](../auth-and-security.md#rate-limiting).
+Every other `429` the server sends carries one too (the podcast routes' and the
 budgets below), so a client can say when to try again.
 
 | Limiter | Scope | Policy |

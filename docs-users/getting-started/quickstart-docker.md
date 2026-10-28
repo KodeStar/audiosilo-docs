@@ -102,7 +102,7 @@ The server and the bundled web player ship together in the image, so updating ei
 docker compose pull && docker compose up -d
 ```
 
-An update never changes your books. A new version can add to the database in the data directory, and when it does, the server first copies the database into its backups folder as a **Before an upgrade** backup (the newest three are kept; see [Backups](../admin/backups.md#before-an-upgrade)), so you can go back. To hear about new versions, look at **Server > About** in the admin console: the server asks GitHub once a day whether a newer release exists (you can turn that off; see [What the update check sends](../admin/server.md#what-the-update-check-sends)).
+An update never changes your books. A new version can add to the database in the data directory, and when it does, the server first copies the database into its backups folder as a **Before an upgrade** backup (see [Backups](../admin/backups.md#before-an-upgrade)), so you can go back. To hear about new versions, look at **Server > About** in the admin console: the server asks GitHub once a day whether a newer release exists (you can turn that off; see [What the update check sends](../admin/server.md#what-the-update-check-sends)).
 
 :::note
 If your books live on a network share (SMB/NFS), mount the share on the Docker host and bind-mount the mounted path into the container. The server is deliberately careful here: if the share goes away, it will not wipe its index or your listening progress - books simply reappear when the share is back.

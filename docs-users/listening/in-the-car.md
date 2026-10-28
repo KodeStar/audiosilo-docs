@@ -24,7 +24,7 @@ If AudioSilo isn't in the launcher:
 
 ### CarPlay
 
-With version 2.4.1 or later of the iPhone app, AudioSilo appears on the CarPlay home screen like any audio app: connect your iPhone to the car and tap it. It works with your iPhone locked in your pocket, as long as you've unlocked it once since it last restarted; until then it waits, and never signs you out.
+AudioSilo appears on the CarPlay home screen like any audio app: connect your iPhone to the car and tap it. It works with your iPhone locked in your pocket, as long as you've unlocked it once since it last restarted; until then it waits, and never signs you out.
 
 ## What the car shows
 

@@ -43,7 +43,7 @@ Under the bar: the time into the chapter, how long the rest of it takes and when
 
 Below it, the **whole-book timeline** shows each chapter as a segment sized by its length, the chapters you've finished shaded and the one you're in in pink. Pins above it mark your **bookmarks** and **notes**: tap a pin to jump to it, or tap or drag anywhere else to jump anywhere in the book.
 
-Neither scrubber takes you all the way to the end: a tap or drag there lands **30 seconds short** (on a book shorter than five minutes, a tenth of its length short, so a short book's end is still within reach), so a slip can't finish the book by accident. To finish one on purpose, use **Mark as Finished**. (Until a book's file lengths are known, its seek bar covers just the current file and has no such stop.)
+Neither scrubber takes you all the way to the end: a tap or drag there lands **30 seconds short** (a tenth of its length on a book under five minutes), so a slip can't finish the book by accident. To finish one on purpose, use **Mark as Finished**. (Until a book's file lengths are known, its seek bar covers just the current file and has no such stop.)
 
 ## Time left
 

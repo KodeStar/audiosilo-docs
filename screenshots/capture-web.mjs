@@ -752,11 +752,11 @@ async function captureWide(name, viewport, shots) {
           await shoot(page, shots.readerContents);
         }
       } finally {
-        for (let i = 0; i < 2 && (await tid(page, 'read-action').count()) === 0; i++) {
+        for (let i = 0; i < 2 && (await read.count()) === 0; i++) {
           await page.keyboard.press('Escape');
-          await tid(page, 'read-action').waitFor({timeout: 1500}).catch(() => {});
+          await read.waitFor({timeout: 1500}).catch(() => {});
         }
-        if ((await tid(page, 'read-action').count()) === 0) await backToShell(page);
+        if ((await read.count()) === 0) await backToShell(page);
       }
     });
   }

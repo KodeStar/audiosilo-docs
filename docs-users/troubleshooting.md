@@ -126,11 +126,12 @@ bookmarks are lost, since they belong to each episode's file.
 
 ### My invite code doesn't work
 
-The connect page and the player's sign-in screen say why when they can: *"That
-invite code isn't valid or has expired"* (the player: *"That invite code didn't
-work"*), *"This invite has already been used on all its devices"* or *"This
-invite has expired"*. (Before 2.5.0 the connect page said "Could not redeem
-auth code" for all of these.) A few things can cause it:
+The connect page says why when it can: *"That invite code isn't valid or has
+expired"*, *"This invite has already been used on all its devices"* or *"This
+invite has expired"* (a server before 2.5.0 says "Could not redeem auth code"
+for all of these). The player's sign-in screen has its own wording, listed in
+[When signing in doesn't work](./listening/connecting.md#when-signing-in-doesnt-work).
+A few things can cause it:
 
 - **It expired or was used up.** Unless the admin chose otherwise, an invite is
   valid for **1 day** and **5 uses**. Ask the admin to rotate it - **Rotate**
@@ -139,12 +140,10 @@ auth code" for all of these.) A few things can cause it:
   when an admin creates a new invite for you, any older still-usable invite
   link stops working. Make sure you're using the most recent one.
 - **Too many wrong attempts.** The server locks out repeated failed
-  sign-ins from your network for a while, and the message says how long:
-  *"Too many attempts. Try again in 15 minutes."* on the connect page, *"Too
-  many tries from this network. Try again in 15 minutes."* in the player. Wait
+  sign-ins from your network for a while, and the message says how long
+  (*"Too many attempts. Try again in 15 minutes."* on the connect page). Wait
   that long and try again with the code copied exactly. A wrong password counts
-  the same way. See also
-  [When signing in doesn't work](./listening/connecting.md#when-signing-in-doesnt-work).
+  the same way.
 
 Invites are managed in [People and invites](./admin/users-and-invites.md); the
 connect flow itself is described in [Connecting](./listening/connecting.md).

@@ -201,7 +201,7 @@ never reads as the book. A server status becomes an `ApiError` (404: the screen'
 
 - **The rule**: the download's copy (`manifest.ebookUri`) when it is there and not
   empty, else `book-<size>.epub` when it is there and not empty, else a fetch. The
-  other way round too (from 2.5.0): a book download copies the cache file for the
+  other way round too: a book download copies the cache file for the
   current `ebook.size` into the download (`cachedEbookUri`, then `engine.copyFile`)
   instead of fetching the EPUB again, and fetches only when there is none. A new
   `ebook.size` (a scan saw the ebook change) misses the cache, fetches it again and
@@ -224,22 +224,22 @@ Contents (a `Sheet` of the TOC: the current entry, the first named as the sectio
 screen, is bold on a muted row with `aria-current="location"`, and the list opens
 scrolled to it) and the text size
 steps (A-/A+, `FONT_SCALES` 0.8 to 1.8). The page edges are 44 px tap targets over
-the margins, narrowed to 24 px in the phone layout (under 640 px wide, from 2.5.0) so
+the margins, narrowed to 24 px in the phone layout (under 640 px wide) so
 they stay clear of the text. A spinner shows only when a section takes over 300 ms to lay out.
-The reader document's viewport is `maximum-scale=1, user-scalable=no` (from 2.5.0),
+The reader document's viewport is `maximum-scale=1, user-scalable=no`,
 so focusing an input inside an EPUB doesn't leave the iOS WebView zoomed.
 
 Failures are plain notices (`reader.failure.*`): `drm`, `unreadable`, `missing`
 (a 404 for the book or the ebook), `fetch` (no answer, or the place couldn't be
-looked up), `start`, and from 2.5.0 `section` (a part of the open book failed to
+looked up), `start`, and `section` (a part of the open book failed to
 load: the reader document reports an `error` with code `section` once the book
 shows) get Try again where it can help (`fetch`, `start`, `section`: `RETRYABLE`);
 `noEbook` covers a link to a book without one. A `401` (`isSignedOutError`) is
-`signedOut` (from 2.5.0): while the connection needs signing in again
+`signedOut`: while the connection needs signing in again
 (`useSignedOutConnection`) the screen shows `SignInAgainState` with Reconnect in place
 of the notice (a `fetch` failure too), never a Try again that can't work.
 
-**A save the server refused** (from 2.5.0): `saveReadingPlace` drops a `4xx` and
+**A save the server refused**: `saveReadingPlace` drops a `4xx` and
 tells `onReadingRefused`, and the open reader shows a "place wasn't saved" card at
 the page's foot (`NotSavedCard`, stacked with the Jump offer) until a save of the
 book goes through. OK puts it away; with the sign-in ended it carries the compact
@@ -267,7 +267,7 @@ dropped (it can never succeed). It is separate from listening progress on purpos
 The screen saves two seconds after the reader rests on a page (`progress` messages
 are debounced) and at once on close or when the app goes to the background. The
 first `progress` after `opened` is where the book landed (the start of the page the
-saved place falls on), so from 2.5.0 it is not saved (`landing`): saving it would
+saved place falls on), so it is not saved (`landing`): saving it would
 pull a place read at another page size back to this page's start. The first move
 saves.
 
@@ -307,7 +307,7 @@ one exception to "never a guessed start". When the lookup's request got no answe
 the server (any answer, an error status included, still fails the lookup, and so does
 having no client for the connection) and
 `hasLocalEbook` finds the EPUB (in the app, the download's copy or the cache file for
-the current `ebook.size`; on the web, only a download, and from 2.5.0 only when its
+the current `ebook.size`; on the web, only a download, and only when its
 Cache API copy is still there, `engine.fileExists`, since the browser can evict it), it
 opens at the start of the book. A request that **timed out** (`TimeoutError`) counts
 as no answer only when the reachability check has found the server down too (from
