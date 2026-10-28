@@ -222,13 +222,17 @@ checkout's time.
 
 **`check` is the verdict.** It needs `build`, `test`, `metacheck`, `metafmt` and
 `advisories`, and passes only when every one of them but `advisories` concluded
-`success` (`.github/scripts/check-verdict.sh`). It writes the advisories a pull
-request introduces into its job summary, and when it fails its log ends with the
-failing jobs' own output. The name is load-bearing: branch protection requires
-`check` and `compose`, and the [sync bot](sync-bot.md) merges once `check`,
-`compose`, `site` and `verify` are green and hands the tail of a failed check's
-log to its resolver. Rename or drop it and both wait for a check that never
-comes.
+`success` (`.github/scripts/check-verdict.sh`); a skipped or cancelled job is a
+failure, never a pass. It runs under `always()`, so even a cancelled run reports
+a red `check` rather than a skipped one, which branch protection and the sync bot
+would read as green. `advisories` can never end red (every step continues on
+error) and is never counted. `check` writes the advisories a pull request
+introduces into its job summary, and when it fails its log ends with the tails of
+the failing jobs' own output (only theirs, within one shared budget). The name is
+load-bearing: branch protection requires `check` and `compose`, and the
+[sync bot](sync-bot.md) merges once `check`, `compose`, `site` and `verify` are
+green and hands the tail of a failed check's log to its resolver. Rename or drop
+it and both wait for a check that never comes.
 
 Build the artifact and serve it:
 
