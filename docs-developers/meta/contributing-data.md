@@ -748,9 +748,8 @@ name slugs to nothing is dropped (Names that slug to nothing, below):
    the project back: one whose authors only partly agree is passed over here,
    leaving the project to rule 5. A "Part N" outside brackets ("Anna Karenina,
    Book 1") is not a qualifier, and a mostly non-Latin title (below) skips
-   this rule. A repeat marker that is not last in the title was not stripped
-   (Repeat markers, below), so it counts as a qualifier like any other:
-   "Metamorphosis (Dramatic Reading) (1915)" goes to the worklist here.
+   this rule. A repeat marker left mid-title is a qualifier like any other
+   (Repeat markers, below).
 5. **Otherwise a new work.** A same-titled work by an entirely **different**
    author is a different book (think of every "Poems"), so the project gets a
    work of its own rather than a skip. A work under the project's own title
@@ -758,10 +757,9 @@ name slugs to nothing is dropped (Names that slug to nothing, below):
    is `author-unmatched`, decided before rule 4 is tried.
 
 **Repeat markers.** LibriVox numbers its second and later projects of one text,
-and marks a cast production, in the title. Those markers name a project, not a
-work: a dramatic reading or a numbered version is another recording of the same
-text, so they are stripped before any rule runs and the project joins the
-plain-titled work (or creates it, under the plain title). `librivoxTitle`
+and marks a cast production, in the title. Either is another recording of the
+same text, so the marker is stripped before any rule runs and the project joins
+the plain-titled work (or creates it, under the plain title). `librivoxTitle`
 (`internal/importer/librivox.go`) strips, from the **end** of the title only:
 
 - a parenthetical holding `version N`, `ver N`, `ver. N` or `Dramatic Reading`,
@@ -770,8 +768,7 @@ plain-titled work (or creates it, under the plain title). `librivoxTitle`
   (Ver. 3)", "Canti (Versione 2)", "Eclogae (Dramatic Reading)";
 - several markers in one parenthetical, bare or separated by a comma,
   semicolon, colon, hyphen or dash: "Scarlet Pimpernel (Version 3, Dramatic
-  Reading)", "Dracula (version 2 dramatic reading)", "Whose Body? (Version 3 -
-  dramatic reading)". A separator just before the parenthetical goes with it
+  Reading)", "Dracula (version 2 dramatic reading)". A separator just before the parenthetical goes with it
   ("Ballad of Reading Gaol, (version 2)" is "Ballad of Reading Gaol");
 - a bare version without brackets: the full word (in any of the spellings
   above, never "ver") and a number of one or two digits, after a space or one of
