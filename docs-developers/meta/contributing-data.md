@@ -596,11 +596,15 @@ contradiction). A real run writes the packs, then validates the whole tree. For
 each selected project:
 
 - **An in-progress project is set aside first**: a row with no runtime
-  (`totaltimesecs` 0 or missing) and no archive.org item writes nothing, and the
-  run prints its ids ("skipped N in-progress projects"). The feed has no status
+  (`totaltimesecs` 0, missing or not a number) and no archive.org item (no
+  `url_iarchive` naming an `archive.org/details/<id>` item) writes nothing - no
+  work, person or id stamp - and the run prints its ids on one line
+  (`librivox: skipped N in-progress projects (no runtime and no archive.org item;
+  nothing written, re-import once complete): <ids>`). The feed has no status
   field, so this is the sign of a project still being recorded; a later run over
-  the same ids imports it once LibriVox has catalogued it. A zero-runtime row
-  with an archive.org item is imported normally.
+  the same ids imports it once LibriVox completes it (a runtime or an
+  archive.org item appears). A zero-runtime row with an archive.org item is
+  imported normally.
 - **Dedup is on `librivox_id`**, never the title: a project whose id is already
   catalogued is skipped, so a rerun of a range never imports a project twice.
 - Otherwise it becomes a **new recording**, never merged into another one (two
