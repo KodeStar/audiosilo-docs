@@ -267,21 +267,20 @@ with no network.
   same files in another order are **not** taken from a background answer
   (`refreshedChapters` returns null for them), because JS sees only the queue
   it loaded, not a book the Android service or a Cast receiver holds before
-  `adoptLoaded` / the receiver adoption. They are taken only by a start that
-  loads the engine in the new order:
-  `adoptStartedChapters`, called by `playBook` once its load landed and it
-  still owns the engine, replaces `manifest.chapters` (same set of paths, same
-  sizes where both answers know them) and saves the registry at once. The
+  `adoptLoaded` or the receiver adoption takes it over. They are taken only
+  where the engine plays the new order: `adoptStartedChapters`, called by
+  `playBook` once its load landed and it still owns the engine (and by
+  `adoptLoaded` when the engine already plays it), replaces `manifest.chapters`
+  (same set of paths, same sizes where both answers know them) and saves the registry at once. The
   chapters carry the play order; `manifest.files` keeps the order the download
   wrote it in, since a file's index there is its name on disk. An offline
   start and Android's no-JS car start keep the manifest's order until an
-  online start plays the new one. `adoptLoaded` reads the engine's own order
-  (`LoadedBook.files`) and takes the server's chapters only when they are
-  exactly that order, else reloads the engine in the manifest's (fe#134, see
-  [Native integrations](native-integrations.md#the-engines-file-order)); the
-  Cast receiver adoption still maps its track index through the manifest. A
-  place saved on the old timeline
-  reads as moved once the new order is taken (nothing remaps it). The
+  online start plays the new one. `adoptLoaded` follows the engine's own
+  order (fe#134, see
+  [The engine's file order](native-integrations.md#the-engines-file-order));
+  the Cast receiver adoption still maps its track index through the manifest.
+  A place saved on the old timeline reads as moved once the new order is taken
+  (nothing remaps it). The
   [hot-swap](#playing-downloaded-content) is the one other taker (2.4.1): a copy
   that lands while that start's order streams (a pre-2.4.0 download retried, say)
   takes the start's chapters, as the start's own load would have, when they give
@@ -574,11 +573,11 @@ Three paths, the first two in `src/playback/store.ts`:
 - **Started by the car** (Android, no JS running): the playback service starts a
   downloaded book from the car snapshot's play spec (`file://` tracks, no auth
   headers), and once JS boots the store's `adoptLoaded` takes it over, building the
-  same queue from the manifest without reloading the engine while the engine plays
-  the manifest's file order (a JS restart during an online start's load can leave
-  it on the server's new order: then the server's chapters in that order, else a
-  reload in the manifest's; see
-  [Native integrations](native-integrations.md#adopting-a-book-the-service-loaded)).
+  same queue from the manifest without reloading the engine when it plays the
+  manifest's file order (see
+  [Native integrations](native-integrations.md#adopting-a-book-the-service-loaded),
+  and [The engine's file order](native-integrations.md#the-engines-file-order) for an
+  engine a JS restart left on the server's new order).
 
 ## The PWA layer
 
