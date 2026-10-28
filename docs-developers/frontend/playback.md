@@ -457,7 +457,10 @@ behaviours it gained, each with its own regression tests:
   **previous** book's place, so mapping it through the new queue would place the
   listener somewhere they have never been. The spoiler gates wait it out through
   `selectPlacedBookKey` (`use-listening-position.ts`); without it, switching books
-  could reveal the new book's characters by the old book's position;
+  could reveal the new book's characters by the old book's position. `adoptLoaded`
+  also sets it while it reloads the engine in the adopted queue's order (a tick until
+  then still counts in the engine's old order,
+  [The engine's file order](native-integrations.md#the-engines-file-order));
 - **`startEngine`** (the play step of `playBook`/`toggle`/`retry`) treats
   `AutoplayBlockedError` - a browser refusing `play()` without a user gesture (a
   cold `/player` deep link) - as a pause: it clears the play intent so the
@@ -485,7 +488,7 @@ behaviours it gained, each with its own regression tests:
   out-of-range speed goes back to the engine) and persists; **`onSilenceSaved`** feeds [time saved](audio-effects.md#time-saved-srcplaybacktime-savedts),
   which is also flushed when playback halts;
 - every `load` and `swapTo` passes the book (`bookRefOf(nowPlaying)`);
-- **`adoptLoaded(book)`** (Android): [adopting a book the service loaded](native-integrations.md#adopting-a-book-the-service-loaded);
+- **`adoptLoaded(book, reread)`** (Android): [adopting a book the service loaded](native-integrations.md#adopting-a-book-the-service-loaded);
 - `clampRate` lives in `rate.ts` (shared with the time-left helpers);
 - `maybeAutoDownloadCurrent` asks `download()` with the `'auto'` origin
   ([The end of a book](end-of-book.md#auto-download-on-play)).
@@ -507,8 +510,8 @@ The single most battle-scarred piece of the store. Design rules, in order of
 importance:
 
 1. **It is armed by the play/retry *action*, not by interpreting engine
-   events.** `beginPlaybackAttempt()` (called from `playBook`, `retry`, and the
-   play half of `toggle`) sets two module-level flags - `wantsPlayback` (we
+   events.** `beginPlaybackAttempt()` (called from `playBook`, `retry`, the
+   play half of `toggle`, and a playing adoption's reload, `reloadAdopted`) sets two module-level flags - `wantsPlayback` (we
    intend to be playing) and `startingPlayback` (an attempt is in flight) - and
    starts a `STALL_GRACE_MS` (3 s) timer. When the timer fires, the test is
    simply *"are we `playing`?"* - so no transient state the bridge left behind
@@ -626,7 +629,9 @@ overwritten (the server is last-write-wins). `startPlaceReconcile`, started from
 layout, asks the server for the loaded book's progress when it is picked up again: when
 the app comes to the foreground or the book's server comes back while the book is loaded
 and settled, and when the book plays again after `LONG_PAUSE_MS` (60 s) of pause from any
-source (the store's `onPickedUpAgain`, called before that play's first save). While the
+source (the store's `onPickedUpAgain`, called before that play's first save; a play
+reported while a load holds the store, `loadingBook`, is told once that hold is released,
+`pickUpDue`). While the
 check is out the store holds its saves (`holdSaves`, 5 s at most), so the stale place is
 never written.
 

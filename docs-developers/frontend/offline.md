@@ -275,13 +275,14 @@ with no network.
   chapters carry the play order; `manifest.files` keeps the order the download
   wrote it in, since a file's index there is its name on disk. An offline
   start and Android's no-JS car start keep the manifest's order until an
-  online start plays the new one. `adoptLoaded` follows the engine's own
-  order (fe#134, see
+  online start plays the new one. `adoptLoaded` reads the engine's own order
+  (`LoadedBook.files`) and takes the server's chapters only when they are
+  exactly that order, else reloads the engine in the manifest's (fe#134, see
   [The engine's file order](native-integrations.md#the-engines-file-order));
   the Cast receiver adoption still maps its track index through the manifest.
   A place saved on the old timeline reads as moved once the new order is taken
   (nothing remaps it). The
-  [hot-swap](#playing-downloaded-content) is the one other taker (2.4.1): a copy
+  [hot-swap](#playing-downloaded-content) is the third taker (2.4.1): a copy
   that lands while that start's order streams (a pre-2.4.0 download retried, say)
   takes the start's chapters, as the start's own load would have, when they give
   the order the engine plays.

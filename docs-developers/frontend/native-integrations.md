@@ -137,8 +137,8 @@ from arming in a car. It answers:
   book the engine names (else the loaded book). Bookmarks pressed while no JS ran
   (`consumePendingBookmarks`, Android) are added at start and on every return to the
   foreground, each on its own connection (dropped when the connection is gone); one that can't
-  reach its server waits under `audiosilo.carBookmarks` for the next drain (fe#146). It is
-  kept by its file (the path-keyed `trackId`) and its seconds in that file, read on its first
+  reach its server waits under `audiosilo.carBookmarks` for the next drain. It is kept by
+  its file (fe#146: the path-keyed `trackId`) and its seconds in that file, read on its first
   try, because a file and its in-file place survive a re-ordered download while whole-book
   seconds do not; the whole-book place read on its latest try is kept beside them. Each retry
   finds the file in the book's current order (`trackIndexById`, shared with
@@ -284,8 +284,8 @@ when an id has another shape, two items of one file disagree or an index has no 
 iOS never sends it, nor does a binary that predates it. `adoptLoaded` reads the file
 index in that order ([below](#the-engines-file-order)).
 
-The controller calls the store's `adoptLoaded(book, reread)` at start, when a car connects, on
-returning to the foreground and when the engine moves to another file or starts
+The controller calls the store's `adoptLoaded(book, reread)` at start, when a car connects,
+on returning to the foreground and when the engine moves to another file or starts
 playing on its own (never for the store's own switch or load), if `nowPlaying` isn't that book. Adopting builds the queue as
 `playBook` would, from `bookSourceOf` (`src/playback/book-source.ts`: the download manifest
 when downloaded, else through the query cache), then reads the service's book again through
@@ -298,7 +298,7 @@ played on since the place the car started from) and starts the save loop and a l
 span, all **without `svc.load`** (a reload would cut the audio), as long as the engine plays
 the queue's file order (else see [below](#the-engines-file-order)). It gives up, changing
 nothing, if another book started while the item was read, or the service plays another book
-or file order once read again. The regression tests are in `src/playback/store-adopt.test.ts`.
+or file order (or none) once read again. The regression tests are in `src/playback/store-adopt.test.ts`.
 
 #### The engine's file order
 
@@ -311,19 +311,23 @@ older binary) or the same as the queue's order, nothing changes. Otherwise:
 - **A downloaded book asks the server's chapters once** (afresh, for 3 s at most,
   `SERVED_ORDER_WAIT_MS`). When they come back in exactly the engine's order, the queue is
   built from them as the interrupted start would have built it (the download's files,
-  streaming any file it lacks), and the download takes them when it holds those files (`adoptStartedChapters`, as
-  `playBook` does). No reload: the engine already plays that queue.
-- **Anything else** (offline, no answer, the server's chapters in another order or with other
-  files than the engine's) **reloads the engine in the queue's order** (`reloadAdopted`): at
+  streaming any file it lacks), and the download takes them when it holds those files
+  (`adoptStartedChapters`, as `playBook` does). No reload: the engine already plays that
+  queue.
+- **Anything else** (a streamed book, which asks nothing; offline, no answer, the server's
+  chapters in another order or with other files than the engine's) **reloads the engine in
+  the queue's order** (`reloadAdopted`): at
   the same file (`trackIndexById`, by the path-keyed track id) and in-file place, or at the
   same whole-book seconds for a file the queue lacks (short of the queue's end; the engine's
   file index when an earlier file's length is unknown). The resume floor moves to that place
   and the play state is kept, a short cut in the audio being the price of every later tick
   landing on the right file. Saves and remote moves are held by `loadingBook` until the load
-  lands, and the reloaded place saves nothing until it plays (`quietAdopted`): it was never
-  checked against the server, so the play's pick-up check runs first (a play reported during
-  the load runs it once the load's hold is released, `pickUpDue`). A paused book is paused
-  again once loaded, and a pause pressed while it loads stands.
+  lands, and the reloaded place saves nothing until it plays or the listener moves it
+  (`quietAdopted`): it was never checked against the server, so the play's pick-up check
+  runs first (a play reported during the load runs it once the load's hold is released,
+  `pickUpDue`). A paused book is paused again once loaded, unless play was pressed while it
+  loaded; a pause pressed while it loads stands. A load that fails leaves the book in
+  `error` (Retry).
 - **Not while casting** (the receiver streams the book, and a load would cut it;
   fe#145).
 
