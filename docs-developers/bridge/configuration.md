@@ -206,7 +206,10 @@ changed on the page's Settings tab. An owner who lost it runs
 prints a new generated password once and signs every session out, changing
 only the password hash and the sessions (`app.ResetPassword`), so the pairing,
 the mappings, the jobs and the sealed secrets stay, and a running Bridge takes
-it at once. It refuses a folder with no Bridge database (a mistyped `--data`)
+it at once. From v0.4.0 (bridge#16) the first start's `auth.Manager.EnsureAdmin`
+creates the password only while none is stored (`CreatePassword`, one statement),
+so a first start racing a reset on the same data folder never overwrites the
+reset's password (and prints none). It refuses a folder with no Bridge database (a mistyped `--data`)
 and, as root, a data folder another user owns (SQLite's new files would be
 root's), naming the user to run it as. The command goes before its flags:
 `--data DIR reset-password` is refused rather than starting the Bridge.

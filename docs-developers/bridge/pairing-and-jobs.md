@@ -57,7 +57,14 @@ words a failed pairing:
 | another refusal (a `4xx`) | the server refused the pairing, with the server's message |
 | the server's certificate can't be verified (a self-signed one) | pair with the server's `http://` address on the local network (the server also answers plain HTTP on the same port there) |
 | an address that isn't an absolute `http(s)` URL | a `400` on the page's own API |
-| no answer | the server can't be reached (a `502` on the page's API) |
+| no answer (the request itself failed, or the answer didn't finish in time) | `Couldn't reach <address>` with the reason in a few words (no such host, its name couldn't be looked up, nothing answered on that port, no route to that address, it didn't answer in time) and, for those, the address to use instead: the server's as this computer reaches it, like `http://192.168.1.10:8080` (a compose service name given to a Bridge outside that compose project is the usual cause). A `502` on the page's API |
+| a `5xx` from the server | the server at that address answered with an error (its status and message): try again, then check the server's log. A `502` |
+| an answer the Bridge can't use (not JSON, no token) | check the address is the AudioSilo server's and that it is up to date. A `502` |
+| the server accepted the code, but the Bridge couldn't keep its token or the pairing (`pairNotSaved`) | the pairing wasn't saved: fix the cause (the Bridge's log), make a new code and pair again, since the code is spent. A `500` that shows this sentence (`api.ErrFailed`); the token is forgotten again, so a restart never comes back half paired |
+
+`pairError` (`internal/app/backend.go`) does the wording, from v0.4.0. Once the
+server has accepted the code, `Conn.Pair` saves without the caller's cancellation
+(`context.WithoutCancel`), so a page closed mid-pairing doesn't lose a spent code.
 
 **Unpairing** is either side's. The console's `DELETE /admin/bridge` revokes the
 token and forgets the Bridge's status (its jobs stay). The Bridge's own Unpair only
@@ -174,6 +181,11 @@ Bridge's pure `setup.Checklist` from what the app already knows, in a fixed orde
   "can_contribute": false
 }
 ```
+
+The `asr` item's "waiting for an ASR worker" is a stable string
+(`setup.DetailASRWaiting`): from v0.4.0 the Bridge's Status tab, and the console's
+Setup card from server 2.5.0 (`ASR_WAITING_DETAIL` in `setup-model.ts`), match it to
+link the Bridge's Workers tab, so keep the words when changing the checklist.
 
 The Bridge collapses each detail's whitespace and cuts it to 200 bytes (ending
 "..."). The server reads the block

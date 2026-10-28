@@ -572,6 +572,12 @@ async function minimisePlayer(page) {
 // `finally`, so a step that fails half-way can't leave a root modal over (and the
 // shell hidden under it for) every later step.
 async function backToShell(page) {
+  // The ebook reader is a root modal of its own, closed by its own button.
+  const closeReader = firstVisible(page.getByRole('button', {name: 'Close the reader', exact: true}));
+  if (await closeReader.count()) {
+    await closeReader.click({timeout: 8000});
+    await closeReader.waitFor({state: 'hidden', timeout: 8000});
+  }
   const close = firstVisible(page.getByRole('button', {name: 'Close', exact: true}));
   if (await close.count()) {
     await close.click({timeout: 8000});
@@ -708,8 +714,9 @@ async function captureWide(name, viewport, shots) {
   if (wanted(shots.bookRead, shots.reader, shots.readerContents)) {
     // The ebook reader (Bridge Phase 3b): run.sh puts A Christmas Carol's EPUB beside
     // its audio, so its page offers Read the ebook (the hero, clipped). The reader it
-    // opens (a root modal framing /web/reader.html) on its Contents sheet, then on the
-    // first stave picked from it. Closed with Escape, so later steps find the tabs.
+    // opens (a root modal framing /web/reader.html) on the first stave picked from its
+    // Contents, then its Contents sheet again, opened on that stave as the current
+    // entry. Closed with Escape (or its close button), so later steps find the tabs.
     await step('reader', async () => {
       await librarySection(page, 'Books');
       await openNamed(page, 'A Christmas Carol');
@@ -721,23 +728,33 @@ async function captureWide(name, viewport, shots) {
       try {
         const contents = firstVisible(page.getByRole('button', {name: 'Contents', exact: true}));
         await contents.waitFor({timeout: 30000});
-        await firstVisible(page.getByText(/% through the book$|· \d+%$/)).waitFor({timeout: 30000});
-        await sleep(2000);
+        // Opened: the top bar's place line has its percentage once the book is laid out.
+        const where = firstVisible(page.getByText(/% through the book$|· \d+%$/));
+        await where.waitFor({timeout: 30000});
+        const opened = await where.textContent();
         await contents.click({timeout: 8000});
         const stave = firstVisible(page.getByRole('button', {name: /stave\s+(one|i)\b/i}));
         await stave.waitFor({timeout: 8000});
+        await stave.click({timeout: 8000});
+        // Moved: the place line changes once the stave's page is laid out.
+        for (let i = 0; i < 60 && (await where.textContent().catch(() => opened)) === opened; i++) await sleep(250);
         await sleep(SETTLE_MS);
         await page.mouse.move(0, 0);
-        await shoot(page, shots.readerContents);
-        await stave.click({timeout: 8000});
-        await sleep(3000);
-        await page.mouse.move(0, 0);
         await shoot(page, shots.reader);
-      } finally {
-        for (let i = 0; i < 2 && (await tid(page, 'read-action').count()) === 0; i++) {
-          await page.keyboard.press('Escape');
-          await tid(page, 'read-action').waitFor({timeout: 1500}).catch(() => {});
+        if (wanted(shots.readerContents)) {
+          // Contents again: it opens on the entry being read, marked as the current one.
+          await contents.click({timeout: 8000});
+          await firstVisible(page.locator('[aria-current="location"]')).waitFor({timeout: 8000});
+          await sleep(SETTLE_MS);
+          await page.mouse.move(0, 0);
+          await shoot(page, shots.readerContents);
         }
+      } finally {
+        for (let i = 0; i < 2 && (await read.count()) === 0; i++) {
+          await page.keyboard.press('Escape');
+          await read.waitFor({timeout: 1500}).catch(() => {});
+        }
+        if ((await read.count()) === 0) await backToShell(page);
       }
     });
   }

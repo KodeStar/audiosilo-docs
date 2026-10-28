@@ -102,7 +102,7 @@ Type the folder on the server that holds your audiobooks and press **Check folde
 - **Folders mounted into the server** (on Linux, including Docker) are offered as buttons under the field; pressing one checks it.
 - **No audio files found here** means the folder exists but holds no books AudioSilo recognizes - usually the wrong folder.
 - A folder another library already uses gets a warning (adding it again makes a second library with the same books), and a folder inside, or around, a [podcast library's](../admin/podcasts.md) folder is refused.
-- **Library name** defaults to the folder's name; it's shown in the apps and the console, and you can rename it later.
+- **Library name** appears once the check has found the folder, and defaults to the folder's name with a capital letter (`/audiobooks` gives "Audiobooks"); it's shown in the apps and the console, and you can rename it later.
 
 Libraries the server already has are listed under **Already added**, the ones from your `config.yaml` or environment marked **From your config**. With a library already there, you can leave the field empty and continue.
 
@@ -168,7 +168,7 @@ There is nothing to set here: **Continue** records the step as done, whether or 
 
 Scan the code with your phone's camera: it opens the AudioSilo app, or the web player, signed in as you. The code works once, for ten minutes; **New code** makes another. **Open the web player** opens it in a new tab, also signed in. See [Connecting to a server](../listening/connecting.md).
 
-If you opened the console on the server itself (at `localhost` or `127.0.0.1`), a phone can't use that address. The code then sends your phone to the server's home address instead, and says so ("This page is open on the server itself, so the code sends your phone to the home address, ..."). With no home or public address set, it warns **A phone can't reach 127.0.0.1:8080** (or whichever address you used) instead: **Set the server's address** takes you back to [step 4](#step-4-how-will-people-reach-the-server); add the address there, then make a new code.
+If you opened the console on the server itself (at `localhost` or `127.0.0.1`), a phone can't use that address. The code then sends your phone to the server's home address instead, and says so ("This page is open on the server itself, so the code sends your phone to the home address, ..."). With no home or public address set, it warns **A phone can't reach 127.0.0.1:8080** (or whichever address you used) instead, and leads with **Set the server's address**, which takes you back to [step 4](#step-4-how-will-people-reach-the-server); the QR code is dimmed meanwhile, since it won't work on a phone until the server has an address. Add the address there, then make a new code.
 
 Below them:
 
@@ -206,7 +206,7 @@ Your audiobooks are **never** copied in here. The books folder you point a libra
 
 Open the server's address in a browser (with the defaults, `https://your-server:8080` - expect a certificate warning until you've read [Remote access](./remote-access.md)).
 
-The front page is the **connect page**. It's public and deliberately minimal: anyone you invite lands here, enters an auth code, and gets a QR code plus "Open in app" / "Open web player" buttons to pair their device.
+The front page is the **connect page**. It's public and deliberately minimal: anyone you invite lands here, enters an invite code, and gets a QR code plus "Open in app" / "Open web player" buttons to pair their device.
 
 ![The connect page](/img/screenshots/server/connect-page.png)
 

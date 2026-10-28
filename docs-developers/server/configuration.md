@@ -56,6 +56,12 @@ updates only a declared library's root and default view).
 | `--ffmpeg` | `ffmpeg` | Path to ffmpeg for on-the-fly transcoding and the MP3-in-Matroska remux. **`""` disables it** - `?transcode=1` returns 503, the `transcode` capability reports false, and an `.mka` is served as stored (no remux, `direct_playable: false`) |
 | `--setup` | `false` | First-run **setup page**: instead of auto-creating the admin and printing credentials once, mint a one-time token and enable the guarded `/setup` page, where the admin's username and password are chosen in the browser (see [Built-in web UI](web-ui.md#first-run-setup-page-setup)). Either way the admin console's [first-run setup flow](web-ui.md#the-first-run-setup-flow) then adds the books folder and the rest on the first `/admin` visit |
 
+**One command** (from 2.5.0, `command` in `cmd/audiosilo/main.go`): after the
+flags, `audiosilo version` prints `audiosilo <version>` and exits `0` before
+anything touches the data directory. Any other positional argument, or `version`
+with an argument after it, prints a usage error and exits `2`, as the flag package
+does for a bad flag (before, a stray argument was ignored and the server started).
+
 A bare tool name (no path separator) is resolved **next to the server
 executable first**, then on `$PATH`; an explicit path is used as-is. If a tool
 is enabled but not found locally, the auto-download kicks in (below).
@@ -469,6 +475,14 @@ deletes `<data>/meta-mirror/` if it exists, and logs that it did. A server with
 no metadata service (an empty or invalid `base_url`) builds no mirror in either
 mode. If the folder can't be prepared, the server logs it and lookups go to
 `base_url`: a metadata problem never stops the server.
+
+**A rate-limited answer is waited out** (from 2.5.0, server#247). The service
+limits how often one client asks; a `429` from it (`internal/meta/client.go`,
+`getJSON`) is not an outage: the client waits for its `Retry-After` (seconds or a
+date; 1 s when it gives none; capped at 10 s, `maxRetryAfter`) and asks again, up to
+3 times (`rateLimitRetries`), so a bulk match's burst slows down instead of failing
+books. A wait the caller's deadline would cut short isn't started, and a `429` still
+there after the retries is an upstream failure like any other.
 
 #### The persistent cache
 

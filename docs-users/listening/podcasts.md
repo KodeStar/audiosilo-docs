@@ -282,8 +282,9 @@ while your admin has podcasts turned off; the demo can't export.
 ## Checking for new episodes
 
 Your server checks the shows people follow by itself, more often for shows that publish often.
-To look now, press **Check for new episodes** on the page of a show you follow. The player says
-**Checking for new episodes** and shows anything new about 15 seconds later. A show can be checked
+To look now, press **Check for new episodes** on the page of a show you follow. The button says
+**Asked the server to check** until the server has checked the show (it stops waiting after two
+minutes), then the page shows anything new. A show can be checked
 once a minute: sooner, it says *"Checked less than a minute ago. Try again shortly."* The button
 is there only when [adding shows](#adding-shows) is, so not for kids' accounts or the demo.
 

@@ -11,8 +11,9 @@ safe to put on the internet.
 A Bridge is optional for listening to your existing books.
 [Podcasts](podcasts.md) need one and the Podcasts module. Player apps from
 2.4.0 [show podcasts](podcasts.md#what-is-available-now); older ones don't.
-With AudioSilo 2.4.0, use **Bridge 0.3.0 or later**: podcasts, contributions,
-generating characters and recaps, and **Detect chapters** need it (see
+With AudioSilo 2.5.0, **Bridge 0.3.0 or later** works: podcasts, contributions,
+generating characters and recaps, and **Detect chapters** need it. The one-command
+[worker install](../getting-started/running-a-worker.md) needs **Bridge 0.4.0** (see
 [Running a Bridge](../getting-started/running-a-bridge.md#which-bridge-version)).
 
 :::info[What it does today]
@@ -141,7 +142,8 @@ Each step shows a green tick when done, an amber circle while still to do, or,
 for the optional one (marked **Optional**), a dashed circle until done. A step
 still to do says what is missing, with **Fix on the Bridge**, which
 opens the tab of the Bridge's own page where you do it (when the Bridge has told
-the server its page's address). The heading says how many required steps are
+the server its page's address): for **Speech recognition ready** while the Bridge
+waits for an ASR worker, its **Workers** tab. The heading says how many required steps are
 done ("3 of 5 required steps done").
 
 Under the steps, the Bridge's accounts, read-only:
@@ -152,7 +154,9 @@ Under the steps, the Bridge's accounts, read-only:
 - **Agent credential** - **Set** or **Not set**, as the **Agent credential set**
   step reads (so **Not set** too while the agent container isn't ready).
 - **Contributing** - **Ready** when the Bridge can share with the community now,
-  else **Not ready**.
+  else **Not ready**. When the Bridge is ready but the
+  [Contributions module](server.md#modules) is off, it says "Ready, but the
+  Contributions module is off", with **Open Modules** to turn it on.
 
 A Bridge signed in to GitHub whose sign-in couldn't be refreshed, because GitHub
 couldn't be reached, shows here as not signed in (**GitHub signed in** not done,

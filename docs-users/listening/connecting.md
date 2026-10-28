@@ -64,13 +64,33 @@ Instead of an address you can use:
 - **Scan a QR code** (in the iOS and Android apps) - the pairing QR from the server's connect page or from another of your devices.
 - **I have a pairing link** (in the web player) - paste a pairing link your admin or another of your devices sent you (it looks like `https://books.example.com/web/connect?token=…`), or an invite link (`https://books.example.com/connect#code=…`), and tap **Connect**.
 
-Either signs you in straight away, with nothing to type. The web player can only connect to the server it came from, so a link for another server says *"This link is for another server, and this page can only connect to its own. Open the link to connect there."*, with **Open the link**. A pairing link from an invite keeps working as long as the invite does, for as many devices as it has uses left; one made on another device (or a household member's code) works once, for 10 minutes. One that has expired or been used up says *"This pairing link has expired or was already used. Ask for a new one, or enter your invite code on the sign-in screen."* After a lot of tries in a row, the server asks you to wait: *"Too many tries. Wait a few minutes and try again."*
+Either signs you in straight away, with nothing to type. The web player can only connect to the server it came from, so a link for another server says *"This link is for another server, and this page can only connect to its own. Open the link to connect there."*, with **Open the link**. A pairing link from an invite keeps working as long as the invite does, for as many devices as it has uses left; one made on another device (or a household member's code) works once, for 10 minutes. One that has expired or been used up says *"This pairing link has expired or was already used. Ask for a new one, or enter your invite code on the sign-in screen."*, and a link the server refuses for another reason says *"This pairing link can't be used."* In the web player, a link that can't be used any more shows the server's **Found** card with **Sign in**, and the link's code is taken out of the address bar, so reloading the page doesn't try it again. If the server took the link but signing in didn't finish, it says *"This link was used, but signing in didn't finish. Ask for a new link."*
+
+A link that fails for a reason that passes (the server didn't answer, or had a problem) keeps its code, with **Try the link again**. After a lot of tries in a row, the server asks you to wait, and the message says for how long (see [When signing in doesn't work](#when-signing-in-doesnt-work)).
+
+In the web player, an `audiosilo://` link for another server can only open in the AudioSilo app, so it says *"This link is for another server, and it opens only in the AudioSilo app. Open it on your phone or tablet."* with no **Open the link**.
+
+A link to a book (from a message, or the admin console's **Listen in player**) opened while you aren't signed in takes you through signing in and then to the book.
 
 On a device in [kids mode](kids-mode.md#links-in-kids-mode), a link or QR code isn't opened at all: the app asks for a grown-up to open it.
 
 ### Invite codes
 
 An **invite code** comes from your admin, like `9M4K-P2TQ-WX7V-3RHD`. Type it on the **Invite code** tab. Invite codes can expire or be limited to a few uses, so if one doesn't work, ask for a new invite.
+
+### When signing in doesn't work
+
+The sign-in screen says what went wrong and what to do next:
+
+| It says | What to do |
+|---|---|
+| *"That invite code didn't work. Check it, or ask your admin for a new invite."* | Check the code for typos. |
+| *"This invite has been used on all the devices it allows."*, *"This invite has expired."* or *"This invite can't add another device: it is used up or has expired."* | Ask your admin for a new invite. |
+| *"The username or password is wrong. Check them and try again."* | Check both. Spaces typed before or after the username don't matter. |
+| *"Your account on this server is turned off."* | Ask your admin to turn it back on. |
+| *"Too many tries from this network. Try again in 15 minutes."* | Wait as long as it says: the server stops sign-ins from your network for a while after a lot of wrong tries. |
+
+An empty field isn't sent: the screen asks for the invite code, username or password under the field instead.
 
 ### Username and password
 
@@ -82,7 +102,9 @@ Many AudioSilo accounts don't have a password at all - that's normal. Accounts a
 
 ### "Your library is ready."
 
-The first time a device connects to a server, it finishes on *"Your library is ready."*: the server's name, how many books it holds and in which libraries, and, if you already had a book on the go there, where you left off (*"Your place in The Hobbit came with you: chapter 12, 48% in."*). **Start listening** takes you to the home screen and, if your place came with you, plays that book from there; **Browse the library** opens the Library.
+The first time a device connects to a server, it finishes on *"Your library is ready."*: the server's name, how many books it holds and in which libraries, and, if you already had a book on the go there, where you left off (*"Your place in The Hobbit came with you: chapter 12, 48% in."*). **Start listening** takes you to the home screen and, if your place came with you, plays that book from there; **Browse the library** opens the Library. The count is of books: podcast libraries aren't in it.
+
+If the server has nothing to play yet, there's no **Start listening**. An admin sees *"Add your first library"* instead, with **Open the admin console**, which opens the console's [set-up steps](../getting-started/first-run.md); anyone else reads that the server has no books yet.
 
 ![Your library is ready: the shelf of spines, the server's name and its libraries, and Start listening](/img/screenshots/web-player/connect-ready.png)
 
@@ -90,7 +112,7 @@ When you add another server later, the app goes straight back to where you were 
 
 ## Trying AudioSilo without a server
 
-Some servers offer a guest **demo**. If the one you enter does, the *"Found"* card also offers **Try the demo**, which signs you in to a throwaway demo account with nothing to type. There's also a public demo you can explore any time: see [The demo](../demo.md).
+Some servers offer a guest **demo**. If the one you enter does, the *"Found"* card also offers **Try the demo**, which signs you in to a throwaway demo account with nothing to type. A demo link (`/web/demo`) to a server that runs no demo says *"This server has no demo"*, with **Sign in**. There's also a public demo you can explore any time: see [The demo](../demo.md).
 
 ## Getting back in after signing out
 

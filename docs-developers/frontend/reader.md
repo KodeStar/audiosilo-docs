@@ -112,7 +112,7 @@ channel (`createHostChannel`) until the reader says `ready`.
 | Direction | Messages |
 |---|---|
 | host -> reader | `open {book (ArrayBuffer), name, at?: {cfi?, fraction?}, theme, fontScale}` (web) or `open {size, chunks, name, at?, theme, fontScale}` then `chunk {seq, data (base64)}` for `seq` 0 to `chunks - 1` (app), `goto {href \| cfi \| fraction}`, `appearance {theme, fontScale}`, `next`, `prev` |
-| reader -> host | `ready`, `opened {title, toc: [{label, href, depth}], rtl}`, `progress {cfi, fraction, sectionLabel}`, `loading {value}`, `error {code: drm \| unreadable \| runtime, message}`, `escape`, `csp {directive, blocked}` |
+| reader -> host | `ready`, `opened {title, toc: [{label, href, depth}], rtl}`, `progress {cfi, fraction, sectionLabel}`, `loading {value}`, `error {code: drm \| unreadable \| section \| runtime, message}`, `escape`, `csp {directive, blocked}` |
 
 The reader's messages describe a book nobody vetted, so `acceptReaderMessage` takes
 a message only from **that frame's** `contentWindow` on our own origin, and
@@ -200,7 +200,10 @@ never reads as the book. A server status becomes an `ApiError` (404: the screen'
 `missing`).
 
 - **The rule**: the download's copy (`manifest.ebookUri`) when it is there and not
-  empty, else `book-<size>.epub` when it is there and not empty, else a fetch. A new
+  empty, else `book-<size>.epub` when it is there and not empty, else a fetch. The
+  other way round too: a book download copies the cache file for the
+  current `ebook.size` into the download (`cachedEbookUri`, then `engine.copyFile`)
+  instead of fetching the EPUB again, and fetches only when there is none. A new
   `ebook.size` (a scan saw the ebook change) misses the cache, fetches it again and
   drops the folder's other files (an older size, a dead fetch's part).
 - **Dropped with its connection**: `clearEbookCache(connectionId)` deletes the
@@ -217,14 +220,30 @@ so the player's global shortcuts stand back; its own Escape and bare arrows use
 `useGlobalShortcut(..., 'reader')` (with Cmd, Ctrl or Alt held they are the
 browser's). A right-to-left book (`opened.rtl`) turns forward from the left edge and
 ArrowLeft. The top bar holds close, the title, the section label and percentage,
-Contents (a `Sheet` of the TOC, the current section in bold) and the text size
+Contents (a `Sheet` of the TOC: the current entry, the first named as the section on
+screen, is bold on a muted row with `aria-current="location"`, and the list opens
+scrolled to it) and the text size
 steps (A-/A+, `FONT_SCALES` 0.8 to 1.8). The page edges are 44 px tap targets over
-the margins. A spinner shows only when a section takes over 300 ms to lay out.
+the margins, narrowed to 24 px in the phone layout (under 640 px wide) so
+they stay clear of the text. A spinner shows only when a section takes over 300 ms to lay out.
+The reader document's viewport is `maximum-scale=1, user-scalable=no`,
+so focusing an input inside an EPUB doesn't leave the iOS WebView zoomed.
 
 Failures are plain notices (`reader.failure.*`): `drm`, `unreadable`, `missing`
 (a 404 for the book or the ebook), `fetch` (no answer, or the place couldn't be
-looked up) and `start` get Try again where it can help (`fetch`, `start`);
-`noEbook` covers a link to a book without one.
+looked up), `start`, and `section` (a part of the open book failed to
+load: the reader document reports an `error` with code `section` once the book
+shows) get Try again where it can help (`fetch`, `start`, `section`: `RETRYABLE`);
+`noEbook` covers a link to a book without one. A `401` (`isSignedOutError`) is
+`signedOut`: while the connection needs signing in again
+(`useSignedOutConnection`) the screen shows `SignInAgainState` with Reconnect in place
+of the notice (a `fetch` failure too), never a Try again that can't work.
+
+**A save the server refused**: `saveReadingPlace` drops a `4xx` and
+tells `onReadingRefused`, and the open reader shows a "place wasn't saved" card at
+the page's foot (`NotSavedCard`, stacked with the Jump offer) until a save of the
+book goes through. OK puts it away; with the sign-in ended it carries the compact
+sign-in row with Reconnect instead.
 
 ### Read on the book page
 
@@ -246,7 +265,11 @@ pattern for the listening place: an offline queue keeping the **latest** save pe
 dropped (it can never succeed). It is separate from listening progress on purpose.
 
 The screen saves two seconds after the reader rests on a page (`progress` messages
-are debounced) and at once on close or when the app goes to the background.
+are debounced) and at once on close or when the app goes to the background. The
+first `progress` after `opened` is where the book landed (the start of the page the
+saved place falls on), so it is not saved (`landing`): saving it would
+pull a place read at another page size back to this page's start. The first move
+saves.
 
 **`base_version`** is what it adds, the client half of
 [Sync v2's rule](../server/api/reference.md#the-conflict-rule-sync-v2): every save
@@ -284,8 +307,12 @@ one exception to "never a guessed start". When the lookup's request got no answe
 the server (any answer, an error status included, still fails the lookup, and so does
 having no client for the connection) and
 `hasLocalEbook` finds the EPUB (in the app, the download's copy or the cache file for
-the current `ebook.size`; on the web, only a download), it opens at the start of the
-book. Its saves carry `base_version: 0` ("saw nothing"), which the server's
+the current `ebook.size`; on the web, only a download, and only when its
+Cache API copy is still there, `engine.fileExists`, since the browser can evict it), it
+opens at the start of the book. A request that **timed out** (`TimeoutError`) counts
+as no answer only when the reachability check has found the server down too (from
+2.5.0, `isReachable` false): a slow server is up and may hold a place further on, so
+then the lookup fails (the `fetch` notice) rather than opening at the start. Its saves carry `base_version: 0` ("saw nothing"), which the server's
 `ResolvePlace` takes as diverged from any row, this device's own included (signed out
 and back in, its places here cleared), so it keeps the further place, and the answer to the first save that reaches the server (the queue's
 replay while the reader is open, or a save on the next online open) offers Jump there.
@@ -293,8 +320,7 @@ replay while the reader is open, or a save on the next online open) offers Jump 
 ## Still to come
 
 Phase 3c: read-along with the audio. Known follow-ups: a generic save queue shared
-with progress sync, fetching the EPUB alongside the place lookup, the page edges
-overlapping text on narrow phones; from 3b-2, a clearer notice for a book over the
-512 MB limit or an allocation failure, checking a downloaded `book.epub`'s size, a
-cap on the cache's size, a disk-full notice, pinch zoom, a download fetching an EPUB
-the cache already holds, and the two hosts' duplicated session setup.
+with progress sync, fetching the EPUB alongside the place lookup; from 3b-2, a
+clearer notice for a book over the 512 MB limit or an allocation failure, checking a
+downloaded `book.epub`'s size, a cap on the cache's size, a disk-full notice, pinch
+zoom, and the two hosts' duplicated session setup.

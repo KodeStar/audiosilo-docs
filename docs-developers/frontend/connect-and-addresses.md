@@ -54,7 +54,17 @@ route table is in the [overview](overview.md#route-map). Three steps, counted by
    `exchange`; one handed over by an invite link is submitted at once, and a refused one
    stays in the field with the reason) or a username and password (`login`), against the address in
    `pendingServerUrl`, read once when the screen opens. It uses a bare client: it is not
-   a saved connection yet, and a wrong password's `401` must never flag a reconnect. It
+   a saved connection yet, and a wrong password's `401` must never flag a reconnect. The
+   username is sent trimmed, and an empty code, username or password is prompted for
+   under its field with nothing sent. A refusal is said in the app's words by status and
+   the request that failed (`signInErrorText` in `sign-in-error.ts`, `SignInStage`,
+   from 2.5.0): a `401` (or `400`) at `redeem` is a code that didn't work, at `exchange`
+   an invite used up or expired, at `login` a wrong name or password; the server's
+   `invite_used` and `invite_expired` codes on a redeem (server 2.5.0; an older server's
+   bare `401` reads as a code that didn't work) and `member_disabled` get their own
+   sentences; a `429` names the wait in whole minutes from `Retry-After` when the server
+   sent one (`connect.signIn.errors.wait`), else "Too many tries"; anything else (no answer,
+   a `5xx`) is "Sign in failed". `sharedRefusalText` is the part a pairing link shares. It
    shows the "At home and away" card only when the device already knows both addresses
    (a reconnect of a connection that has them): for a new server, the addresses are
    known only once the code is redeemed, which is the sign-in itself.
@@ -77,10 +87,28 @@ connection then shows `/connect/ready`; an added server goes straight back with
 ([below](#a-link-that-names-a-book)); and whenever the person listening is in kids mode afterwards (a
 kid's account signing in, below) it goes straight to `/kids` instead, with no "Your
 library is ready.". A link's exchange that fails is said in the app's words, never the
-server's (`apiErrorKind`): 429 "Too many tries. Wait a few minutes and try again.", a
-refused link (expired, used up, unknown, malformed) "This pairing link has expired or
-was already used...", a 5xx "The server couldn't finish pairing...", and no answer
-"Could not reach the server to finish pairing.".
+server's, by **one classifier** (`pairFailure` in `use-pairing.ts`, from 2.5.0), which
+reads the error once for both the words and what it means for the link (`PairOutcome`),
+so the two can't disagree:
+
+- **refused** (the link is dead): every `4xx` but `408` and `429`. The server's code
+  words it when it names one (`invite_used`, `invite_expired`, `member_disabled`:
+  `sharedRefusalText`; `/auth/exchange` names none today, so a link's `401` takes the
+  next rule), else a `401` or `410` is "This pairing link has expired or was
+  already used..." (`pairingRefused`) and any other (a `409` without a code among them)
+  "This pairing link can't be used..." (`pairingUnusable`). A failure after the
+  exchange answered (the token spent, but this device couldn't keep the session) is
+  refused too: "This link was used, but signing in didn't finish. Ask for a new link."
+  (`pairingSpent`).
+- **temporary** (the same link can work later): a `429` (the wait in minutes from
+  `Retry-After` when sent, else "Too many tries"), a `5xx` or another non-`4xx` status
+  ("The server couldn't finish pairing...", `pairingServerError`), and a `408` or no
+  answer ("Could not reach the server to finish pairing.", or the self-signed
+  certificate sentence where one may be why, `selfSignedMayBeWhy`).
+
+Only a refusal drops the route's `token` (so a reload doesn't try it again) and shows
+the served player's card; a temporary failure keeps the token for a reload and offers
+**Try the link again** (`connect-start.tsx`, from 2.5.0).
 
 ### A link that names a book
 

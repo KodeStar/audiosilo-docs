@@ -39,7 +39,7 @@ Save the password and the auth code now - they are never shown again. See [First
 
 Click the AudioSilo icon and choose **WebUI**. By default the server speaks HTTPS with a self-signed certificate, so your browser warns about the certificate the first time; accept it to continue.
 
-- **`/`** - the connect page, where a listener enters an auth code to pair a device.
+- **`/`** - the connect page, where a listener enters an invite code to pair a device.
 - **`/admin`** - the admin console. Log in as `admin` with the printed password.
 - **`/web`** - the web player.
 
@@ -63,7 +63,7 @@ Most settings can also be set with an `AUDIOSILO_*` variable, such as `AUDIOSILO
 
 ### Updating
 
-Unraid's Docker tab shows **update ready** when a new image is out; apply it there (or let the CA Auto Update plugin do it). The image follows AudioSilo's releases automatically, and also picks up Alpine and ffmpeg security updates weekly. Your appdata and books are untouched by updates.
+Unraid's Docker tab shows **update ready** when a new image is out; apply it there (or let the CA Auto Update plugin do it). The image follows AudioSilo's releases automatically, and also picks up Alpine and ffmpeg security updates weekly. An update never changes your books. A new version can add to the database in your appdata; when it does, the server first copies the database into its backups folder as a **Before an upgrade** backup (see [Backups](../admin/backups.md#before-an-upgrade)).
 
 ### Moving from the AudioSilo image
 

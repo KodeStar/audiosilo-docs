@@ -292,6 +292,13 @@ is `405 method_not_allowed`.
 **Branch on `code`, not on the English `error` text**, which is free to change.
 Errors without a `code` are ones a client can't help the person fix.
 
+**Unknown API routes.** From 2.5.0 any `/api/v1/` path no route claims answers in
+this envelope (`apiNoRoute` in `respond.go`), not the plain-text 404 of the web
+UI's catch-all: `404 {"error":"not found","code":"not_found"}`, or
+`405 {"error":"method not allowed","code":"method_not_allowed"}` with an `Allow`
+header when the path is a route under another method. So a client probing for a
+route an older server lacks gets JSON either way.
+
 The media file-serving layer is separate: missing-file and transcode failures
 from that layer use plain-text `http.Error` responses. Podcast fetch 503s
 are returned before file serving and include the fetch summary in JSON.
@@ -559,8 +566,12 @@ Two limiter mechanisms guard the API (`internal/api/ratelimit.go`): token
 buckets, keyed by client IP until a request's credential is proved and by the
 credential after (except the `/auth/*` routes and a demo account's API
 requests, which stay keyed by IP), and failure lockouts and attempt caps keyed
-by IP. Tripping
-any of them returns **429** with an error envelope.
+by IP. Tripping any of them returns **429** with an error envelope and, from
+2.5.0, a `Retry-After` header in whole seconds (at least 1): the wait for the
+bucket's next token, or the time left on the lockout (`tooManyAttempts`); how
+it is worked out is in [Auth & security](../auth-and-security.md#rate-limiting).
+Every other `429` the server sends carries one too (the podcast routes' and the
+budgets below), so a client can say when to try again.
 
 | Limiter | Scope | Policy |
 |---|---|---|
@@ -568,7 +579,7 @@ any of them returns **429** with an error envelope.
 | Credential token bucket | every other authenticated API request (admin routes included), once its token is proved | ~50,000 requests/second, burst 100,000, per session or API key; past it the address is charged too |
 | Media token bucket | `GET /libraries/{id}/cover`, `GET /libraries/{id}/stream`, `GET /libraries/{id}/meta/cover` | ~200 requests/second, burst 2000, per credential (a cast token has a bucket of its own) |
 | Login lockout | `POST /auth/login` | 10 *failed* attempts per 15 min per IP; a success resets the counter |
-| Redeem lockout | `POST /auth/redeem`, `POST /bridge/pair` (one shared counter) | 10 *failed* attempts per 15 min per IP; a success resets |
+| Redeem lockout | `POST /auth/redeem`, `POST /auth/exchange`, `POST /bridge/pair` (one shared counter) | 10 *failed* attempts per 15 min per IP; a success resets |
 | Demo cap | `POST /demo/session` | at most 5 demo sessions per IP per 15 min, metered at admission (failures count too) |
 | Account mutations | `POST /auth/password`, `POST /auth/recovery`, `/auth/tokens` (create/revoke; listing is not counted) | at most 10 attempts per IP per 15 min, metered at admission |
 
@@ -619,9 +630,9 @@ stream with the `Authorization` header: the player's episode probe sends
 `Range: bytes=0-0` with its token, so cross-origin it is always preflighted
 (an `<audio>` element's own Range requests come from the browser and are
 never preflighted). The exposed
-headers are `Retry-After` where a route sends one (the discovery and OPML
-budgets, a busy transcode, an episode on its way; the token-bucket rate limits
-and the request timeout send none) and the OPML export's counts, so a
+headers are `Retry-After`, which every `429` sends and some `503`s (a busy
+transcode, an episode on its way; the request timeout sends none), and the OPML
+export's counts, so a
 cross-origin web player reads them as the `/web` player and native apps
 always could. A denied or absent origin gets no CORS header but `Vary`, and a
 server with `cors_origins` unset gets none at all.

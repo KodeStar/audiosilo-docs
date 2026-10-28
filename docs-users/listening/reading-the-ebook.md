@@ -6,14 +6,14 @@ description: "Reading a book's EPUB in the web player and the iOS and Android ap
 When a book's folder on your server also holds its ebook, AudioSilo can open it, in the web player and in the iOS and Android apps alike. **Read the ebook** on the book's page shows the text a page at a time and remembers where you got to, on every device you read it on. A book you [download](offline-downloads.md) takes its ebook with it, so you can read it with no connection too.
 
 :::note[Reading in the apps]
-Reading needs an up-to-date app: if yours doesn't show **Read the ebook** on a book that has one, update it from the App Store or Google Play.
+The reader is new in AudioSilo **2.5.0**: it needs a server on version 2.5.0 or later and, on a phone or tablet, version 2.5.0 or later of the app. If your app doesn't show **Read the ebook** on a book that has one, update it from the App Store or Google Play.
 :::
 
 ![The reader in the web player: the book's title, the chapter and how far through the book at the top, a page of text between the page-turn edges](/img/screenshots/web-player/reader.png)
 
 ## Which books have it
 
-**Read the ebook** appears on a book's page when your server has the reader (a recent server) and the book has exactly one ebook beside its audio:
+**Read the ebook** appears on a book's page when your server has the reader and the book has exactly one ebook beside its audio:
 
 - **A book that is a folder**: one `.epub` file directly in the book's folder, with the audio. If the folder holds two or more `.epub` files, AudioSilo can't tell which one is the book, so it uses none of them and there's no **Read the ebook**. Keep one, or move the others out of the folder.
 - **A book that is a single audio file**: an `.epub` with the same name beside it, such as `Project Hail Mary.m4b` and `Project Hail Mary.epub`.
@@ -46,14 +46,16 @@ The reader follows the app's light or dark appearance.
 - **The arrow keys**: **→** for the next page, **←** for the previous one. Once you've clicked into the text, **Page Down** and **Page Up** work too.
 - **Swipe** on a touch screen.
 
+On a narrow phone screen the edges shrink to the page's margin, so a tap on the text itself doesn't turn the page.
+
 A book written right to left (in Arabic or Hebrew, for instance) turns the other way: the next page is the **left** edge and the **←** key.
 
 ## Contents and text size
 
-- **Contents** (the list button at the top right) lists the book's chapters, with the one you're in shown in bold. Pick one to go there.
+- **Contents** (the list button at the top right) lists the book's chapters. It opens on the one you're in, shown in bold, so in a long list you don't have to scroll to find your place. Pick one to go there.
 - **Smaller text** and **Larger text** (the **−** and **+** buttons) change the size of the text a step at a time. The size is remembered on this device (in the web player, in this browser), for every book.
 
-![The reader's Contents, listing the book's chapters](/img/screenshots/web-player/reader-contents.png)
+![The reader's Contents, listing the book's chapters with the one being read marked](/img/screenshots/web-player/reader-contents.png)
 
 ## Closing the reader
 
@@ -62,6 +64,10 @@ The **×** at the top left closes the reader and takes you back to where you wer
 ## Your place, on every device
 
 The reader saves your place a couple of seconds after you stop on a page, and straight away when you close it or switch to another app or tab. Your server keeps it for your account, so opening the book in another browser, on another computer or in the app on your phone, opens it at the page you reached.
+
+Opening the book doesn't move your place by itself. A phone and a laptop lay the same book out in different pages, so the page the reader opens on can start a little before the place you saved; it's saved only once you turn a page, so opening the book on a smaller screen never moves your place back.
+
+If your server refuses a save, a note at the foot of the page says *"Your place wasn't saved to the server. It's kept on this device."* When it's because your sign-in to the server ended, the note has **Reconnect**, and the place is sent once you're signed in again.
 
 Your reading place is separate from your listening place: reading doesn't move where you are in the audiobook, and listening doesn't move where you are in the ebook.
 
@@ -81,11 +87,12 @@ The note names the other device as your server knows it ("On another device" whe
 **Download the book** to read it with no connection. In the apps and the web player, [downloading a book](offline-downloads.md) saves its ebook beside the audio, and the reader then opens it from the device, connection or not. A downloaded book shows **Read the ebook** even while your server can't be reached.
 
 - A download can lack the ebook: it couldn't be saved (the server couldn't send it, say), or an older version of the app or web player made the download. The audio still plays offline, but reading needs a connection, as for a book you haven't downloaded. To read it offline, remove the download and download the book again.
+- In the web player, the reader itself is kept for offline use when the player is installed in the browser, so a downloaded book opens offline even if you never opened the reader there while online.
 - Once a book is open, you can keep reading if the connection drops, downloaded or not: the whole ebook is already on the device.
 
 Your place is saved on the device while you're offline and sent to your server once the connection is back: as soon as the app notices your server again, or the next time you open the reader. If another device read further in the meantime, you get the **Jump there?** note above rather than losing either place.
 
-**The first time you open a downloaded book offline** on a device that has no place saved for it yet, the reader can't ask your server where you got to, so it opens at the start. Reading there doesn't move your place on other devices back: once your server can be reached again (or the next time you open the book online), if your server has a place further along (from another device, or from this one before you signed out), the reader offers **Jump there?** with **Jump** and **Stay**, as above.
+**The first time you open a downloaded book offline** on a device that has no place saved for it yet, the reader can't ask your server where you got to, so it opens at the start. Reading there doesn't move your place on other devices back: once your server can be reached again (or the next time you open the book online), if your server has a place further along (from another device, or from this one before you signed out), the reader offers **Jump there?** with **Jump** and **Stay**, as above. That's only when your server can't be reached at all: if it's up but too slow to answer, the reader doesn't guess the start (your server may have a place further on), it says **Couldn't load the ebook**, and **Try again** asks again.
 
 ## When an ebook won't open
 
@@ -95,11 +102,12 @@ In the apps, if your phone stops the reader to free memory (while you're in anot
 
 | What it says | What it means |
 |---|---|
-| **Couldn't load the ebook** | The server didn't answer, or the connection dropped while the ebook was loading. Check the connection and press **Try again**. To read with no connection, [download the book](#reading-offline). |
+| **Couldn't load the ebook** | The server didn't answer, or the connection dropped while the ebook was loading. It also shows when one part of an open book didn't load (*"A part of the book didn't load"*). Check the connection and press **Try again**. To read with no connection, [download the book](#reading-offline). |
+| **Sign in again to &lt;your server&gt;** | Your sign-in to this server ended (the device was removed in the admin console, say). Press **Reconnect** to sign in again; your place is kept on this device and sent once you're back. |
 | **The reader didn't start** | In the web player: the reader didn't start in this browser within 30 seconds. A proxy in front of your server that changes its security headers, or an old browser, can stop it. Press **Try again**, or use another browser (see [Troubleshooting](../troubleshooting.md#the-ebook-reader-doesnt-start)). In the apps: the reader didn't start within 30 seconds or kept stopping, usually for lack of memory; press **Try again** (see [Troubleshooting](../troubleshooting.md#the-ebook-reader-doesnt-start)). |
 | **This ebook is locked** | The EPUB is protected with DRM, which AudioSilo can't open. Put a DRM-free EPUB in the book's folder instead. |
 | **This ebook can't be opened** | The file isn't an EPUB AudioSilo can read, or it's damaged. In the apps, an ebook larger than 512 MB can't be opened either. |
-| **The ebook isn't on the server any more** | The file was removed or renamed since the last scan. After the next scan the button goes, or comes back if the file did. |
+| **This ebook isn't in the library** | The book or its EPUB isn't on the server: it was moved, removed or renamed since the last scan, or the link is wrong. After the next scan the button goes, or comes back if the file did. |
 | **No ebook for this book** | A link opened the reader for a book that has no ebook (or a server without the reader). See [Which books have it](#which-books-have-it). |
 
 ## What the reader doesn't do yet

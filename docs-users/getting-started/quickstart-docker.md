@@ -84,7 +84,7 @@ https://your-server:8080
 
 Your browser will warn about the certificate the first time - that's expected with the default setup; accept it to continue. The phone apps can't accept that warning, so at home they connect over plain HTTP instead, which the server offers to devices on your home network ([plain HTTP at home](./remote-access.md#plain-http-at-home-how-the-phone-apps-connect), including a note on Docker Desktop). [Remote access](./remote-access.md) covers getting a proper certificate or running behind a reverse proxy.
 
-- **`/`** - the connect page, where a listener enters an auth code to pair a device.
+- **`/`** - the connect page, where a listener enters an invite code to pair a device.
 - **`/admin`** - the admin console. Log in as `admin` with the printed password.
 - **`/web`** - the web player, bundled with the image.
 
@@ -102,7 +102,7 @@ The server and the bundled web player ship together in the image, so updating ei
 docker compose pull && docker compose up -d
 ```
 
-Your data directory and books are untouched by updates. To hear about new versions, look at **Server > About** in the admin console: the server asks GitHub once a day whether a newer release exists (you can turn that off; see [What the update check sends](../admin/server.md#what-the-update-check-sends)).
+An update never changes your books. A new version can add to the database in the data directory, and when it does, the server first copies the database into its backups folder as a **Before an upgrade** backup (see [Backups](../admin/backups.md#before-an-upgrade)), so you can go back. To hear about new versions, look at **Server > About** in the admin console: the server asks GitHub once a day whether a newer release exists (you can turn that off; see [What the update check sends](../admin/server.md#what-the-update-check-sends)).
 
 :::note
 If your books live on a network share (SMB/NFS), mount the share on the Docker host and bind-mount the mounted path into the container. The server is deliberately careful here: if the share goes away, it will not wipe its index or your listening progress - books simply reappear when the share is back.

@@ -111,7 +111,10 @@ work here and their data can be lost; run the newer version again, or restore
 a backup made before the upgrade". (Versions before 2.4.0 start without the
 warning.) Run the newer version again as soon as you can, or
 [restore a backup](./admin/backups.md#restoring-a-backup) made before the
-update if you mean to stay on the older one.
+update if you mean to stay on the older one. From 2.5.0, an update that changes
+the database makes that backup by itself as it starts: it's the newest
+**Before an upgrade** backup in the list (see
+[Before an upgrade](./admin/backups.md#before-an-upgrade)).
 
 Podcasts are the part an older server gets wrong: a version before 2.4.0
 reads a podcast library as books, and drops its episodes from the index.
@@ -121,9 +124,14 @@ bookmarks are lost, since they belong to each episode's file.
 
 ## Connecting
 
-### My invite code says "invalid or expired auth code"
+### My invite code doesn't work
 
-A few things can cause this:
+The connect page says why when it can: *"That invite code isn't valid or has
+expired"*, *"This invite has already been used on all its devices"* or *"This
+invite has expired"* (a server before 2.5.0 says "Could not redeem auth code"
+for all of these). The player's sign-in screen has its own wording, listed in
+[When signing in doesn't work](./listening/connecting.md#when-signing-in-doesnt-work).
+A few things can cause it:
 
 - **It expired or was used up.** Unless the admin chose otherwise, an invite is
   valid for **1 day** and **5 uses**. Ask the admin to rotate it - **Rotate**
@@ -132,8 +140,10 @@ A few things can cause this:
   when an admin creates a new invite for you, any older still-usable invite
   link stops working. Make sure you're using the most recent one.
 - **Too many wrong attempts.** The server locks out repeated failed
-  redemptions for a while ("too many attempts, try again later"). Wait a few
-  minutes and try again with the code copied exactly.
+  sign-ins from your network for a while, and the message says how long
+  (*"Too many attempts. Try again in 15 minutes."* on the connect page). Wait
+  that long and try again with the code copied exactly. Wrong passwords have a
+  lockout of their own that works the same way.
 
 Invites are managed in [People and invites](./admin/users-and-invites.md); the
 connect flow itself is described in [Connecting](./listening/connecting.md).
@@ -297,6 +307,16 @@ a book), with a second line when the player knows why:
 Your place in the book isn't lost: the player keeps it, and **Retry** starts
 from there.
 
+### "This book isn't in the library"
+
+A book page, a folder or the player opened from a link says *"This book isn't
+in the library"* (or *"This folder isn't in the library"*) with **Back** and
+**Home** when the server has no such book: it was moved, renamed or removed
+since the link was made, or the link is wrong or for a library you can't see.
+There's no **Retry**, because asking again won't find it. Search for the book,
+or find it under its new folder in the Library. The player opened with no book
+at all says *"Nothing is playing"*.
+
 ### A podcast episode won't start
 
 An episode marked **Plays on demand** isn't on your server yet: pressing
@@ -341,7 +361,7 @@ progress on the server is intact.
 ### AudioSilo doesn't appear in Android Auto or CarPlay
 
 Android Auto only lists apps installed from Google Play unless you allow
-unknown sources, and CarPlay needs version 2.4.0 or later of the iPhone app (see
+unknown sources, and CarPlay needs version 2.4.1 or later of the iPhone app (see
 [Availability](./listening/mobile-apps.md#availability)). See
 [Getting AudioSilo into the car](./listening/in-the-car.md#getting-audiosilo-into-the-car)
 for the steps and checks.
@@ -519,6 +539,12 @@ listen offline. A download that stopped with "Saved, but offline playback
 isn't ready yet" just needs **Retry** after the reload.
 
 ## Demo
+
+### "This server has no demo"
+
+A demo link (`/web/demo`) opened on a server that doesn't run a demo says so,
+with **Sign in** for your invite code or account. Only servers set up for it
+offer a demo; the public one is at [The demo](./demo.md).
 
 ### The demo says it's at capacity
 

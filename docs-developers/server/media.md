@@ -483,8 +483,14 @@ ffmpeg failed some other way, the request is answered with the
 `<stem>.mp3`), because `direct_playable` told the web player not to ask for one;
 the remux goes on and the next request gets the copy. That answer is the
 transcode from the start (the request carries no `t`), not byte-seekable, and a
-lossy 128 kb/s encode, so a seek or a download made in that window gets those
-bytes, not the copy's. While the server stops the answer is `503`.
+lossy 128 kb/s encode, so a seek made in that window gets those bytes, not the
+copy's. From 2.5.0 (server#212) two requests wait longer instead, up to
+`remuxDownloadWait`, **45 s** (under the 60 s an idle response gets from
+Android's downloader and a reverse proxy's default read timeout): a `download=1`,
+whose saved copy would otherwise be the lossy transcode, and a stream that finds
+every transcode slot busy (`takeTranscodeSlot` returns none), which would
+otherwise be a `503`. Past that wait they are transcoded after all. While the
+server stops the answer is `503`.
 
 **Warming.** `/item` and `/chapters` start the remuxes of the book's
 MP3-in-Matroska files in the background (`API.warmRemux` →

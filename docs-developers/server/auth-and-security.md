@@ -893,7 +893,7 @@ are fixed.
 | `tokenLimiter` | Token bucket per credential (`rateLimiter`) | `rate_limit.token`, ~50,000 req/s, burst 100,000 | Authenticated API routes outside `/api/v1/auth/` (`requireAuth`, and so `requireAdmin`), once they authenticate, a book's `/ebook` included; keyed by the credential's `tokens` row id (a session or an API key). See below |
 | `mediaLimiter` | Token bucket per credential (`rateLimiter`) | `rate_limit.media`, ~200 req/s, burst 2000 | Media GETs (`/cover`, `/stream`, `/meta/cover`: the routes `requireBookMediaAuth` and `requireMediaAuth` wrap, both `mediaAuth`) once they authenticate. See below |
 | `loginLimiter` | Failure lockout per IP (`limiter`) | 10 failures / 15 min | `POST /auth/login` |
-| `redeemLimiter` | Failure lockout per IP | 10 failures / 15 min | `POST /auth/redeem`, and the Bridge's pairing exchange `POST /bridge/pair` (one shared counter) |
+| `redeemLimiter` | Failure lockout per IP | 10 failures / 15 min | `POST /auth/redeem`, `POST /auth/exchange`, and the Bridge's pairing exchange `POST /bridge/pair` (one shared counter) |
 | `demoLimiter` | **Attempt** cap per IP (`Acquire`) | 5 / 15 min | `POST /demo/session` |
 | `accountLimiter` | **Attempt** cap per IP (`Acquire`) | 10 / 15 min | `POST /auth/password`, `POST /auth/recovery`, `POST /auth/tokens` and `DELETE /auth/tokens/{id}` (create/revoke; listing is not counted); adding a household member, and a member's session and pairing code (`POST /me/household/members`, `.../{id}/session`, `.../{id}/pair`), charged only after the API-key, demo and member refusals |
 
@@ -902,9 +902,15 @@ counts only *failed* attempts (right for login/redeem, where success should not
 lock anyone out), while `Acquire` atomically admits-and-counts every attempt -
 used for account-creating/mutating endpoints where even successful requests
 must be metered and a check-then-count pair could race. Both structures sweep
-stale entries so a flood of distinct IPs can't grow memory without bound. An
-`accountLimiter` refusal (`acquireAccountBudget`) is a `429` with
-`Retry-After`, the seconds until the lockout ends (`LockedFor`, rounded up).
+stale entries so a flood of distinct IPs can't grow memory without bound. A
+refusal from any of the four (`allowAttempt`, `acquireAccountBudget`, the demo
+cap) is a `429` with `Retry-After`, the seconds until the lockout ends
+(`LockedFor`, rounded up by `setRetryAfter`, at least 1); before 2.5.0 only the
+account limiter sent one. From 2.5.0 the token buckets' `429` (`rateLimited`)
+sends one too, the wait for the next token (`rateLimiter.Wait`; for a request
+limited per credential, media or the authenticated API, the longer of the
+credential's and the address's waits, since a refusal charges the address too
+and the next request meets the address's bucket first).
 
 **Podcast discovery and OPML** have budgets of their own, per user and in
 memory (reset by a restart), outside the seven buckets above

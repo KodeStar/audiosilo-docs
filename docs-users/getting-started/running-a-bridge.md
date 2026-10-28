@@ -45,11 +45,13 @@ jobs come in later versions.
 
 ### Which Bridge version
 
-With AudioSilo server 2.4.0, run **Bridge 0.3.0 or later**. Podcasts,
+**Bridge 0.3.0 or later** works with AudioSilo server 2.5.0. Podcasts,
 contributions to the community, **Generate characters and recaps** and
-**Detect chapters** need it. The `:latest` tags below follow the newest
+**Detect chapters** need 0.3.0; the one-command
+[ASR worker install](running-a-worker.md) and the worker downloads need
+**Bridge 0.4.0**. The `:latest` tags below follow the newest
 release; to stay on one version, use its tag instead, such as
-`ghcr.io/kodestar/audiosilo-bridge:v0.3.0`. The console's
+`ghcr.io/kodestar/audiosilo-bridge:v0.4.0`. The console's
 [Settings > Bridge](../admin/bridge.md#online-offline-and-its-details) shows the
 version of the Bridge you have paired.
 
@@ -315,7 +317,8 @@ The **Settings** tab's **When no ASR worker is connected** says what happens whi
 no worker is connected: **Transcribe on the Bridge**, or **Wait for a worker**.
 This step is done while something can transcribe now: the Bridge itself, or a
 connected worker. It isn't while the Bridge is set to wait and no worker is
-connected.
+connected; then the step says it is waiting for an ASR worker, with **Open
+Workers** to add one (Bridge 0.4.0).
 
 ### 7. The agent's credential
 
@@ -498,6 +501,16 @@ both: on Unraid, `chmod 777` it once.
   the Accounts tab, or in the agent container when it has one of its own (that one
   wins). A job paused for it carries on once it is replaced: at once after a
   change on the Accounts tab, else when it next looks (every 30 minutes).
+- **Pairing says "Couldn't reach" the server.** Nothing answered at that address
+  from the Bridge's container. The message says why (no such host, nothing on that
+  port, no answer in time) and suggests using the server's address as the Bridge's
+  computer reaches it, like `http://192.168.1.10:8080`. A name like
+  `http://audiosilo:8080` works only when both containers share a compose file.
+- **Pairing says the server answered with an error.** Try again, and if it keeps
+  happening, check the server's [logs](../admin/server.md#logs).
+- **Pairing says the server accepted the pairing, but this Bridge couldn't save
+  it.** The Bridge couldn't write to its data folder: fix that (its **Logs** tab
+  says why), then make a new code in the console and pair again.
 - **Pairing says the server doesn't know about a Bridge.** The server is too old:
   update it first.
 - **Pairing says the server's certificate isn't trusted.** Your server uses its own

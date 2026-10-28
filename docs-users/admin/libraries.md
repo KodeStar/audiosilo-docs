@@ -352,7 +352,9 @@ For the selected folder the page asks "How should AudioSilo read this
 folder?" and shows the three choices as cards, each with what it would mean
 for this folder (for example "Here: one book with 3 files." or "Here: 12
 books."), then the folder's audio files. If the folder is a book, **Open book**
-opens its [book page](books.md#a-books-page). A folder with no audio files of
+opens its [book page](books.md#a-books-page). A book folder the library hasn't
+scanned yet (one you've just copied in) says "Not in the library yet." with
+**Rescan**, which adds it; **Open book** shows once it's in. A folder with no audio files of
 its own has nothing to choose; the folders inside it are read on their own.
 The exception is a folder of disc folders, which can be joined into one book
 (below).
