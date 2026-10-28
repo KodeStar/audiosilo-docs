@@ -223,9 +223,10 @@ the three, including an empty one, is a `400`.
   server's other validators. `rev` is `media.ThumbnailRev`: change it whenever
   `Thumbnail` would return other bytes for the same source, so every validator
   changes and clients fetch each cover once more rather than keep, or resume a
-  range of, other bytes. A match is answered `304` before any art is read only once the book's colour is recorded
-  for this art (`src.Colored` and its identity equal to the art's version);
-  until then the thumbnail is made or taken from the cache, the colour recorded,
+  range of, other bytes. A match is answered `304` before any art is read only
+  once the book's colour is recorded for this art (`src.Colored` and its
+  identity equal to the art's version); until then the thumbnail is made or
+  taken from the cache, the colour recorded,
   and the `304` still sent, so clients that only revalidate don't leave a book
   without its colour.
 - `Cache-Control` is `private, no-cache` for a custom cover and

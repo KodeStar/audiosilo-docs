@@ -160,10 +160,11 @@ rather than after it, and until it is in the screen shows the page skeleton
 itself instead of suspending. `React.lazy` made React hold a Suspense boundary's
 content for up to 300 ms after its fallback showed (its fallback throttle), and
 the page's own requests waited for that commit: on a 5,000-book library on a
-Mac, Health > Issues was ready in about 490 ms with it and about 150 ms with
-`lazyScreen` (server#245). A chunk that fails to load throws in render, to the
-router's error boundary. A person's page and the book page stay
-`lazyRouteComponent`.
+Mac, Health > Issues was ready in about 490 ms with it, about 270 ms with
+`lazyScreen` when the summary is counted afresh, and about 150 ms when the
+[list answer cache](overview.md#the-list-answer-cache) answers it (server#245).
+A chunk that fails to load throws in render, to the router's error boundary. A
+person's page, the book page and the setup page stay `lazyRouteComponent`.
 
 ### Build and embed
 

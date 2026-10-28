@@ -299,7 +299,7 @@ flowchart TD
     A["Signatures(lib)<br/>stored mtime/size/duration/codec/cover per rel_path"] --> B{"root probe answers (2 s)<br/>and os.Stat: exists & is dir?"}
     B -- no --> U1["ErrLibraryUnavailable<br/>(abort, no prune)"]
     B -- yes --> C["FolderOverrides(lib)"]
-    C --> D["discoverAuto: walkDir the tree, folders listed 8 at once<br/>collect dirs that directly contain audio<br/>(skip ignored paths; log + skip unreadable entries),<br/>then statAudio: their files' lstat, 8 at once"]
+    C --> D["discoverAuto: walkDir the tree, folders listed up to 8 at once<br/>collect dirs that directly contain audio<br/>(skip ignored paths; log + skip unreadable entries),<br/>then statAudio: their files' lstat, up to 8 at once"]
     D --> E["booksInDir per dir<br/>(detection model + overrides)"]
     E --> F{"0 books found, index non-empty,<br/>and not all ignored?"}
     F -- yes --> U2["ErrLibraryUnavailable<br/>(abort, no prune)"]
@@ -323,11 +323,12 @@ when its stored mtime and size match **and** either ffprobe is disabled or a
 prior probe already stored both a duration and a codec. That last clause is a
 backfill mechanism - books indexed before the `codec` column existed (migration
 `0008`) get re-probed once even though their files haven't changed. One more
-book passes it: a book with one audio file whose recorded
-[read problem](#read-problems) names that file (`soleFileProblem`). Its only file
-was never probed, so it has no duration or codec. `problemCleared` decides
-whether to read it; while the problem is still there the book is kept like any
-unchanged one (the metadata files beside it are still read).
+book passes it: a book with one audio file whose recorded `unreadable` or
+`probe_failed` [read problem](#read-problems) names that file
+(`soleFileProblem`; an `empty_file` one doesn't). Its only file was never
+probed, so it has no duration or codec. `problemCleared` decides whether to read
+it; while the problem is still there the book is kept like any unchanged one
+(the metadata files beside it are still read).
 
 A skipped book can still get one cheap backfill: when its `has_cover` is unset
 (a row indexed before migration `0016`), the scan checks its primary file for
@@ -439,23 +440,24 @@ doesn't need:
   when that is set lower (1 lists each folder as the walk reaches it).
   A higher `scan.concurrency` doesn't raise it: these calls wait on round trips,
   not CPUs.
-- **`added_at` only for a book being written.** Discovery reads no birth
-  times. `added_at` is set when a book is first indexed and never updated, so
-  `enrich` stamps it (`stampAddedAt`: the earliest `addedAt` of the book's audio
-  files) only for a book it is about to write; a book that is re-indexed keeps its
-  row's value anyway. On Linux a birth time is a `statx` per file on top of the
+- **`added_at` only for a new book.** Discovery reads no birth times.
+  `added_at` is set when a book is first indexed and never updated, so `enrich`
+  stamps it (`stampAddedAt`: the earliest `addedAt` of the book's audio files)
+  only for a book the index doesn't hold yet. A book that is re-indexed keeps
+  its row's value, so the scan sets a placeholder for it and reads none of its
+  files' birth times. On Linux a birth time is a `statx` per file on top of the
   walk's `lstat`, so a no-change scan makes none.
 - **A damaged file isn't probed again.** Without this, `problemCleared` would
   run ffprobe on a `probe_failed` book's file on every scan. When ffprobe rejects
   a file's data (`metadata.ErrProbeRejected`: its last stderr line ends in
   ffmpeg's "Invalid data found when processing input"), the scanner remembers
   the file's absolute path with its own mtime and size (`noteRejected`), and
-  `problemCleared` doesn't run ffprobe on it again while both are as they were. A time-out, an exec failure
-  or a read error is never remembered (those may pass), and any other reading of
-  the file forgets it. The memory lasts for the server process only, so a restart
-  (perhaps with another ffprobe) looks again, and the console's Read again
-  (`POST /admin/libraries/{id}/book/rescan`, through `IndexPath`) always reads
-  the file.
+  `problemCleared` doesn't run ffprobe on it again while both are as they were.
+  A time-out, an exec failure or a read error is never remembered (those may
+  pass), and any other reading of the file forgets it. The memory lasts for the
+  server process only, so a restart (perhaps with another ffprobe) looks again,
+  and the console's Read again (`POST /admin/libraries/{id}/book/rescan`, through
+  `IndexPath`) always reads the file.
 
 Together these took a no-change rescan of a 1,000-book library on an emulated
 FUSE mount from about 1.0 s to about 0.55 s, and its filesystem calls on library
@@ -532,7 +534,7 @@ rest byte by byte with case folded, so `01 - Prologue` plays before
 `01a - Interlude`; names alike that way fall back to their bytes. `audioEntries`
 and the discovery walk (`audioDirs`) both sort this way. It sums sizes,
 takes the max mtime. Its `added_at` is the **earliest** file's, read later by
-`enrich` (`stampAddedAt`) and only for a book about to be written (see
+`enrich` (`stampAddedAt`) and only for a book indexed for the first time (see
 [A rescan that finds nothing changed](#a-rescan-that-finds-nothing-changed)).
 
 :::note[Behaviour change in 2.4.0]

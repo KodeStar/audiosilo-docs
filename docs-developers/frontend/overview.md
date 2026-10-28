@@ -752,7 +752,8 @@ thread").
   renders, so a reload paints at once and refreshes.
 - **The first screen's answers, asked as the gate opens.** On a start the
   startup cache can't fill (a first visit, a private window), `AuthGate` asks the
-  page's answers the moment it opens (`useStartupQueries`,
+  page's answers the moment it opens (`useStartupQueries` in
+  `use-startup-queries.web.ts`, the list in `startupQueries`,
   `src/components/shell/startup-queries.ts`: every server's `/server` and
   libraries; on Home or the Library grid their progress too, plus Home's Recently
   added and favourites, or the selected library's first page of books) and holds

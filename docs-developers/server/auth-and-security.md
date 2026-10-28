@@ -886,13 +886,14 @@ Any filesystem access derived from user input goes through
 2. **Symlink-aware containment** - symlinks in the longest *existing* prefix of
    the target are resolved (`resolveExisting`) and containment is re-checked,
    so a symlink inside the root pointing outside it is rejected rather than
-   followed. When the root itself resolved, only the names below it are looked
-   at (`resolveBelow`: one `Lstat` per name, stopping at the first name that
+   followed. The root itself is still resolved (`filepath.EvalSymlinks`) on
+   every call. When it resolved, the target is checked only by the names below
+   it (`resolveBelow`: one `Lstat` per name, stopping at the first name that
    isn't there, or at the first link, from which `resolveExisting` resolves the
-   rest).
-   `filepath.EvalSymlinks` would `Lstat` every name from `/` down, the root's own
-   included, which on a network share or a FUSE pool (Unraid's `/mnt/user`) is a
-   round trip each on every cover and stream request.
+   rest), rather than by a second `filepath.EvalSymlinks` over the whole target,
+   which would `Lstat` every name from `/` down again, the root's own included:
+   on a network share or a FUSE pool (Unraid's `/mnt/user`) a round trip each
+   on every cover and stream request.
 
 Both `BrowseFS` and the stream/cover handlers call it; `Scanner.IndexPath` uses
 it as the security gate too (while deriving the working path from the

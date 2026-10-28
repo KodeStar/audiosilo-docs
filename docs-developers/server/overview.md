@@ -263,9 +263,10 @@ The admin console's lists use it as well (server#245): the first pages of
 `GET /admin/books`, `GET /admin/books/facets` (keyed like a list, without
 scopes: an admin sees every book) and the Health summary `GET /admin/issues`.
 The summary's key also takes the kinds it counts and the libraries that are
-offline right now (a filesystem probe made before the lookup, so a root going
-away shows without a write). Uncached, the summary and the facets take about
-100 ms each on a 5,000-book library, and about a millisecond from the cache.
+offline right now (a filesystem probe made before the lookup, its answer kept
+up to 15 seconds, so a root going away shows within that without a write).
+Uncached, the summary and the facets take about 100 ms each on a 5,000-book
+library, and about a millisecond from the cache.
 
 ### `internal/server`
 

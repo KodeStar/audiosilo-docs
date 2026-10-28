@@ -169,11 +169,12 @@ also sends the header (belt-and-braces); web relies solely on the query param (a
 cover is a plain `<img>`, `CoverImage`, which can't send one).
 
 **Cover thumbnails** ride the same path: `GET /libraries/{id}/cover?size=160|320|640`
-(capability `cover_sizes`) is a JPEG of the same art with an `ETag` of size + art
-version and `Cache-Control: private, no-cache` (custom cover) or
-`private, max-age=86400` (file art); any other `size` is a `400`, and a thumbnail
-that can't be made is a `404` the client answers by falling back to the full-art
-URL. Clients add the book's `cover_version` as `v=` purely as a cache buster:
+(capability `cover_sizes`) is a JPEG of the same art with an `ETag` of size + the
+server's thumbnail revision (`media.ThumbnailRev`) + art version
+(`"thumb-<size>-<rev>-<hash>"`) and `Cache-Control: private, no-cache` (custom
+cover) or `private, max-age=86400` (file art); any other `size` is a `400`, and a
+thumbnail that can't be made is a `404` the client answers by falling back to the
+full-art URL. Clients add the book's `cover_version` as `v=` purely as a cache buster:
 `coverUrl(lib, path, { size, version })`.
 
 **Community covers** (capability `meta_covers`) are the other media-auth image
