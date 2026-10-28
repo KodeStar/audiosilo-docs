@@ -256,8 +256,9 @@ scopes. Entries are stored under the database's write generation
 (`store.DB.Generation`), which moves after every write finishes, durable, failed
 and no-op writes included. Any write empties the cache, a progress save or a
 token's last-seen touch included, so it only saves work between writes and never
-serves an answer older than the database. The generation is read before the request's first read, so an answer
-is never stored under a generation newer than its data. It holds 8 MiB (counting
+serves an answer older than the database. The generation is read before the
+request's first read, so an answer is never stored under a generation newer than
+its data. It holds 8 MiB (counting
 each answer and its entry), at most 1 MiB an answer, least recently used first
 out. Only an answer that is a pure function of the database, the query and the
 scopes may use it: a list book carries no per-listener field, and a handler that

@@ -190,12 +190,12 @@ Bridge's public `POST /bridge/pair`; see
 - **Checked again where it matters.** "A Bridge is paired" has one statement,
   `auth.BridgeLiveSQL` (a live bridge token of an enabled admin, with the partial
   index `idx_tokens_bridge`), and `auth.BridgeTokenLiveSQL` asks the same of one
-  token: the heartbeat's write and every claim ask it inside their own transaction,
-  so a call authenticated just before a pairing or an unpair revoked its token (a
-  long poll above all) saves nothing and claims nothing (`401`). A claim asks it
-  first on the reader pool (`bridge.claimDue`), so an idle claim writes nothing
-  and a revoked token is refused there, and again inside its durable write
-  transaction (see [Claims and leases](../bridge/pairing-and-jobs.md#claims-and-leases)).
+  token: the heartbeat's write asks it inside its own transaction, and every claim
+  asks it first on the reader pool (`bridge.claimDue`, so an idle claim writes
+  nothing) and, if it goes on to write, again inside its durable write transaction
+  (see [Claims and leases](../bridge/pairing-and-jobs.md#claims-and-leases)). So a
+  call authenticated just before a pairing or an unpair revoked its token (a long
+  poll above all) saves nothing and claims nothing (`401`).
 - **401 means refused, 503 means unknown.** `requireBridge` answers `401` only for
   a missing or refused token; a failure to check it is `503`, so the Bridge never
   takes a database hiccup for a revoked token.

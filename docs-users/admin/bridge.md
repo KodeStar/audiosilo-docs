@@ -300,7 +300,8 @@ play it, ahead of waiting downloads. The player (2.4.0 and later) shows
 [Playing an episode that isn't downloaded](podcasts.md#playing-an-episode-that-isnt-downloaded).
 
 **Cancel** stops a job. A job that is waiting is cancelled at once; one the Bridge
-is working on shows **Cancelling** until the Bridge stops it, within a few seconds.
+is working on shows **Cancelling** until the Bridge stops it, usually within half a
+minute.
 
 If the Bridge stops in the middle of a job (it crashes, or its computer restarts),
 the job isn't lost: after about two minutes the server puts it back in the queue,

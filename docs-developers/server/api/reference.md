@@ -9197,12 +9197,13 @@ The server picks from the kinds the last heartbeat named **and** the server know
 narrowed to the `kind` values when there are any. It hands out the highest
 priority, then oldest, queued job of those kinds, leased for 2 minutes and with
 `attempts` one higher, and answers `200` with the [job](#the-job-object). With no
-job it waits up to `wait` (a job queued meanwhile, or a lease that runs out, wakes
-it) and then answers `204`; when no kind is left after the narrowing it answers
+job it waits up to `wait` (a job queued meanwhile, or one put back by a lapsed
+lease, wakes it) and then answers `204`; when no kind is left after the narrowing it answers
 `204` at once, and when the server is stopping it ends the wait with `204`. The
 token is checked again with every claim, so a Bridge that a pairing or an unpair
 replaced during its long poll gets `401`, never a job. A claim with nothing to
-do (no job to hand out, no lease run out) writes nothing on the server.
+do (no job to hand out, no lease run out, no private follow request whose feed
+URL the server lost) writes nothing on the server.
 
 The priority floor is applied in the claim transaction before lease/attempt
 mutation, alongside kinds, module and token checks. The reserved Bridge

@@ -1327,13 +1327,16 @@ serialized on the one writer.
 The few writes whose loss would bring back something a person ended go through
 `store.DB.WithDurableTx` (or `ExecDurable` for a lone statement), which holds the
 writer's one connection, sets `synchronous = FULL` for that commit and puts
-`NORMAL` back before another write can run. They are the writes that end a
+`NORMAL` back before another write can run. They are the writes that can end a
 credential (a sign-out, a device or API key revoked, a password set or cleared,
-an account disabled, demoted or deleted, an auth code revoked, rotated, replaced
-or used, a pairing token used, a Bridge pairing code replaced, a Bridge paired or
-unpaired) and a Bridge job claim (its attempt number must never be handed out
-twice). Their fsync also flushes the `NORMAL` commits before them. Everything
-else stays `NORMAL`: listening progress and heartbeats never take it. A new
+an account disabled, demoted, made a kid, moved between households or deleted,
+an invite or recovery code revoked, rotated, replaced, cleared or used, a
+pairing token used, a Bridge pairing code replaced, a Bridge paired or unpaired)
+and a Bridge job claim (its attempt number must never be handed out twice). Such
+a transaction commits durably whatever else it changes (`auth.UpdateUser` and
+`UpdateMember` take it for a rename too). Their fsync also flushes the `NORMAL`
+commits before them. Every other write stays `NORMAL`: listening progress and
+heartbeats never take it. A new
 write that ends a credential must use `WithDurableTx` or `ExecDurable`, and its
 test checks `store.DB.DurableCommits` moved.
 

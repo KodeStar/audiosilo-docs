@@ -94,11 +94,11 @@ the narrowest credential the server has:
 - **Its admin's.** It belongs to the admin who made the code, and works only while
   that account exists, is enabled and is still an admin. Demoting or disabling the
   admin stops the Bridge at its next call.
-- **Checked again inside the write.** The heartbeat and every claim check the token
-  again in their own transaction, so a call authenticated just before a pairing or
-  an unpair revoked its token (a claim waiting out its long poll, say) saves nothing
-  and claims nothing: `401`. A claim checks it first on the reader and again in
-  its transaction if it goes on to write (see [Claims and leases](#claims-and-leases)).
+- **Checked again inside the write.** The heartbeat checks the token again in its
+  own transaction, and every claim checks it again on the reader and, if it goes on
+  to write, in its transaction too (see [Claims and leases](#claims-and-leases)), so
+  a call authenticated just before a pairing or an unpair revoked its token (a claim
+  waiting out its long poll, say) saves nothing and claims nothing: `401`.
 - **Never a device, never touched.** The device lists and sign-outs leave it out,
   and its calls don't bump `last_seen`: a heartbeat every 30 seconds is not its
   admin's activity.
@@ -272,7 +272,7 @@ highest-priority, oldest queued job among the kinds the last heartbeat named tha
 the server knows, narrowed to the `kind` values (the kinds the Bridge has a free
 **lane** for), and leases it to the Bridge for **2 minutes** (`bridge.Lease`),
 incrementing `attempts`. With none queued it waits up to 25 seconds, and a job
-queued meanwhile (or a lease that runs out) wakes it; with no kind left after the
+queued meanwhile (or one put back by a lapsed lease) wakes it; with no kind left after the
 narrowing it answers `204` at once, and a server that is stopping ends the wait
 with `204`. Before the first heartbeat a claim is `409 no_heartbeat`, and a claim
 whose token a pairing or an unpair revoked during the wait is `401`.

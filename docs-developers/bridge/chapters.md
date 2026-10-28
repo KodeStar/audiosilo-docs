@@ -285,8 +285,7 @@ a cancel at the detect job's next report, so before any continue the generate jo
 waits up to 40 polls, two minutes at the 3-second poll (`awaitChaptersGivingWay`,
 `giveWayTries`), long enough for a lost keepalive or two, until no chapters job
 follows the book (working, parked, or done and saving its list) and the book has
-stopped (the
-ending job [stops it](generating.md#states)). When the wait runs out, a job still
+stopped (the ending job [stops it](generating.md#states)). When the wait runs out, a job still
 open is refused, and a book no job follows that still isn't stopped (an orphan
 run) is stopped there, then continued when it is one of the two runs above, else
 cleared as any earlier run is. Stopping leaves alone a book another open job
