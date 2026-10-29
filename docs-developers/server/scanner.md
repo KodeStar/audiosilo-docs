@@ -306,8 +306,8 @@ flowchart TD
     F -- no --> G["detectMoves<br/>fingerprint-match vanished → new paths,<br/>MoveDurableState (logged)"]
     G --> H{"per book:<br/>mtime+size unchanged<br/>and probe data present?"}
     H -- "yes (skip; backfill has_cover /<br/>suspect_parts if unset)" --> H
-    H -- no --> I["enrich: path heuristic + tags/ffprobe,<br/>chapters, cover, fingerprint,<br/>read problems, suspect parts"]
-    I --> J["catalog.UpsertBook (one tx):<br/>scanned values + files + chapters,<br/>then enrichment + overrides layered on, FTS"]
+    H -- no --> I["enrich: path heuristic + tags + probe<br/>(in-process, ffprobe the fallback),<br/>chapters, cover, fingerprint,<br/>read problems, suspect parts"]
+    I --> J["catalog.UpsertBooks (up to 64 books a tx,<br/>a savepoint each): scanned values + files + chapters,<br/>then enrichment + overrides layered on, FTS"]
     J --> H
     H -- done --> HC["SetHasCover + SetSuspectParts<br/>noted backfills, one tx each"]
     HC --> P{"discovery saw<br/>the whole tree?"}
@@ -386,7 +386,8 @@ several files at a time, and writes the index in one place
 (`library/scanread.go`, server#242):
 
 - **Slots.** `readSlots` bounds how many audio files are read at once, each
-  read (tags, then ffprobe: `metadata.ExtractTimeout`) holding a slot. There
+  read (tags and the [in-process probe](#the-in-process-probe), then ffprobe
+  for a file the probe leaves to it: `metadata.ExtractTimeout`) holding a slot. There
   are `scan.concurrency` of them, by default one per CPU up to
   `DefaultScanReaders` (8); see [Configuration](configuration.md#library-scans-scan).
 - **Books read ahead.** Each book to index is read (`enrich`) on its own
@@ -394,14 +395,32 @@ several files at a time, and writes the index in one place
   (`readFiles`), up to a window of twice as many books as slots ahead of the
   next one written.
 - **One writer, in order.** The scan's own goroutine writes each book once its
-  read is done, in discovery order (`writeNext`), through
-  `catalog.UpsertBook`, on the one writer connection. The rows, their
-  ids, the file order, the chapter offsets and the scan's log come out as a
-  scan reading one file at a time writes them.
-- **Stopping.** A Stop (or the scan's time limit) ends the ffprobe runs through
-  the scan's context. The reads under way are waited for and dropped (a read cut
-  short would record a false [read problem](#read-problems)), nothing more is
-  written, and the backfills read so far are kept.
+  read is done, in discovery order (`writeNext`), on the one writer
+  connection. The rows, their ids, the file order, the chapter offsets and the
+  scan's log come out as a scan reading one file at a time writes them.
+- **Several books a transaction.** A transaction's begin and commit cost a scan
+  about as much as a book's own writes (0.6 of 1.5 ms a book on a synthetic
+  library, 1.3 of 3.9 ms on a real one), so the books read wait in a batch and
+  are written together by `catalog.UpsertBooks`: once there are `writeBatch`
+  (64) of them, once the first has waited `writeBatchAge` (250 ms), when the
+  writer would otherwise wait on a read, or when the scan ends or stops. The
+  same 250 ms is `UpsertBooks`' budget: a transaction takes another book only
+  while it has run for less than that, so a batch holds the writer (and every
+  other write, a listener's progress among them) no longer than that plus a
+  book. Each book is written under its own savepoint, so one that fails is
+  rolled back alone and logged as before while the rest of the batch is
+  written; a transaction that fails as a whole (its commit, say) has its books
+  written again one at a time (`UpsertBook`). Each book's FTS row, its
+  `refreshEffective` and the scan's progress are as with one book a
+  transaction. A scan whose reads are slower than its writes (ffprobe on every
+  file) still writes each book as its read is done, since the writer never
+  waits on a read while holding books.
+- **Stopping.** A Stop (or the scan's time limit) ends the in-process probes
+  and the ffprobe runs through the scan's context. The reads under way are
+  waited for and dropped (a read cut short would record a false
+  [read problem](#read-problems)), the books already read are written (their
+  reads finished before the Stop), nothing more is read, and the backfills read
+  so far are kept.
 - **On-demand indexing** ([`IndexPath`](#on-demand-indexing-indexpath)) reads
   with one slot, a file at a time on the request's own goroutine.
 - The skipped books' cheap backfills (above) still run one at a time on the
@@ -440,13 +459,19 @@ doesn't need:
   when that is set lower (1 lists each folder as the walk reaches it).
   A higher `scan.concurrency` doesn't raise it: these calls wait on round trips,
   not CPUs.
-- **`added_at` only for a new book.** Discovery reads no birth times.
-  `added_at` is set when a book is first indexed and never updated, so `enrich`
-  stamps it (`stampAddedAt`: the earliest `addedAt` of the book's audio files)
-  only for a book the index doesn't hold yet. A book that is re-indexed keeps
-  its row's value, so the scan sets a placeholder for it and reads none of its
-  files' birth times. On Linux a birth time is a `statx` per file on top of the
-  walk's `lstat`, so a no-change scan makes none.
+- **`added_at` only for a new book, from discovery's `lstat`.** `added_at` is
+  set when a book is first indexed and never updated, so `enrich` stamps it
+  (`stampAddedAt`: the earliest `addedAt` of the book's audio files) only for a
+  book the index doesn't hold yet. A book that is re-indexed keeps its row's
+  value, so the scan sets a placeholder for it and reads none of its files'
+  birth times. The new book's files are not looked up again: `statAudio` keeps
+  what each file's `lstat` already told (`Book.FoundAdded`, from
+  `statEntry.found`). On Darwin that carries the birth time, so a file costs no
+  system call at all; on Linux, whose stat struct has no birth time, one
+  `statx` per file reads it, and the walk's mtime stands in where the
+  filesystem records none (before, each file had a second `lstat` as well). A
+  file `statx` finds gone is left to an `lstat` of its own, as before. A
+  no-change scan makes no `statx`.
 - **A damaged file isn't probed again.** Without this, `problemCleared` would
   run ffprobe on a `probe_failed` book's file on every scan. When ffprobe rejects
   a file's data (`metadata.ErrProbeRejected`: its last stderr line ends in
@@ -736,9 +761,11 @@ embedded data winning where it is trustworthy:
    scanned `genres`: split on `;` and NUL (never `,`, which a store's category name can hold), each trimmed and kept once in any
    case, with the placeholders `audiobook(s)`, `audio book(s)`, `speech`,
    `spoken word` and `other` dropped; ffprobe's `genre` replaces dhowden's when
-   it gives any), then ffprobe (when configured) for duration, chapters, the audio
-   `codec` (`codec_name` of the first audio stream - this is what feeds the
-   `direct_playable` API flag), and richer container tags.
+   it gives any), then the probe (when ffprobe is configured) for duration,
+   chapters, the audio `codec` (`codec_name` of the first audio stream - this
+   is what feeds the `direct_playable` API flag), and richer container tags:
+   the [in-process probe](#the-in-process-probe) for most files, ffprobe
+   itself for the rest, with the same answer either way.
    A **series tag** that carries its own position (the series atom, the MP4
    `\xa9grp` grouping, `show` or `TXXX:SERIES`), as Audible-sourced tooling
    writes `Discworld, book #40`, is split into the series and its position
@@ -791,7 +818,86 @@ path-derived metadata still works, durations fall back to chapter ends or
 remain 0, and `codec` stays empty - which the API treats as directly playable
 (`direct_playable: true`, so the web player streams the file as it is rather than
 through the transcoder). See
-[Media & streaming](media.md).
+[Media & streaming](media.md). With ffprobe disabled (`--ffprobe ""`) the
+in-process probe does not run either, so nothing changes there: a server
+without ffprobe reads tags and paths only, as before (SCAN-SPIKE decision 2;
+probing in-process with no ffprobe is a possible follow-up).
+
+### The in-process probe
+
+A first scan used to be mostly ffprobe: about 94% of a real library's read time,
+almost all of it starting the process (some 31 ms on an Intel N305 before
+ffprobe read a byte). So the scanner reads ffprobe's answer itself for the
+common formats (`internal/metadata/fastprobe*.go`, server#261) and runs ffprobe
+only for a file it can't be sure of. In the spike, its prototype took a scan of
+a 1,165-book, 9,165-file slice of a real library from 197 s to 9.9 s, and 3
+of those files went to ffprobe.
+
+**One open, one cache.** `metadata.ExtractTimeout` opens a file once and reads
+its tags (`dhowden/tag`), the iTunes narrator and the probe through one 64 KiB
+block cache (at most 4 MiB kept), then closes it before any ffprobe run.
+
+**What it answers.** Exactly what the scan took from ffprobe: the format
+duration as ffprobe's `"%f"` string, the first audio stream's `codec_name`,
+the chapters, and the format tags `applyProbe` reads (`probeTagKeys`; a key
+`applyProbe` starts reading joins that list). It reads MP3, M4B/M4A/MP4, FLAC,
+Ogg Vorbis, Ogg Opus, Ogg FLAC and MKA, each reader a port of FFmpeg's demuxer
+(an MP4's duration is the least of `mdhd`, `stts` and the edit list; a `chpl`
+list or a chapter track, as FFmpeg picks; ID3 frames in FFmpeg's dictionary
+order and overwrite rules; a Vorbis stream's start; Matroska's `TagDefault`).
+Every other format goes to ffprobe, as before.
+
+**Parity is the contract.** Every value equals what the configured ffprobe
+gives, by the rules of its FFmpeg release (`ffRules`), so the probe changes no
+stored duration, chapter or tag, and an upgraded server needs no re-index. The
+release is read once per ffprobe path per process from `ffprobe -version`
+(10 s at most): its major.minor, so `7.1.1`, `7.1.1-3ubuntu1` and `n8.1.3` are
+7.1, 7.1 and 8.1. The probe knows **7.1 and 8.1** (`knownRules`; they differ in
+MP3 gapless durations and in empty UTF-16 ID3 strings). **Any other release
+turns the probe off** and ffprobe reads every file, as before: Ubuntu 24.04's
+6.1, a master or nightly build (its version is no release, so the BtbN builds
+the server [downloads](configuration.md#ffmpegffprobe-resolution--auto-download)
+for Linux and Windows get no speedup), or an ffprobe whose `-version` fails.
+The Docker image's Alpine ffmpeg is 8.1. Tags are still read in-process either
+way, as they always were.
+
+**What goes to ffprobe, per file and silently.** A reader returns `unsure` for
+any shape it does not model exactly, and that one file is read by ffprobe as
+before, with nothing logged:
+
+- a VBR MP3 with no Xing or VBRI header (ffprobe estimates its duration from
+  the bitrate; SCAN-SPIKE decision 1 keeps that estimate, so the stored
+  duration stays the same), and a concatenated MP3;
+- a FLAC with a CUESHEET block or an ID3 prefix;
+- a fragmented or compressed MP4, or one with an unknown handler or sample
+  entry;
+- a multi-stream Ogg;
+- an MKA with no duration or a second SeekHead;
+- another container named `.mp3` (WAV, FLAC, Ogg, MKV, MP4);
+- a crafted table past a bound (a chapter track over 65,536 samples or with
+  counts past its tables, Matroska SimpleTags over 4,096 or 8 deep, a
+  compressed ID3 frame over 16 MiB);
+- a read error, a reader's panic, no duration, or a probe limit (below).
+
+**Limits.** Each file's probe stops at a deadline, the caller's context and
+`min(timeout, maxProbeTime)`: at most 5 s, under the time `ExtractTimeout`
+gives ffprobe (30 s, see [Read problems](#read-problems)). It also stops after
+`maxProbeBytes` (64 MiB; the real library's p95 is about 0.9 MiB) read. Both are
+checked on every block read, before an ID3 frame is inflated or a repeated
+Vorbis key grows (`blockFile.check`), and every 256 ticks in the walks that
+loop without reading (`blockFile.tick`, a `probeLimit` panic `fastProbe`
+recovers). A probe that stops at a limit sends the file to ffprobe.
+
+**A file neither reads** keeps ffprobe's error as its `ProbeErr`, so Health
+shows the same `probe_failed` text as before (`ErrProbeRejected` included).
+
+**Keeping parity.** A new FFmpeg release that changes a rule would change a
+value, so the probe is checked against ffprobe mechanically: a fixture corpus
+with each known release's answers, a live comparison and a CI job (see
+[Gates and CI](../contributing/gates-and-ci.md#the-in-process-probes-fixtures)).
+Adding a release means its rules where they differ, its golden file and a
+`knownRules` entry. `cmd/probediff <dirs>` compares the probe with the installed
+ffprobe over any folders and times both: the tool to point at a real library.
 
 ## Chapter normalization
 
@@ -976,7 +1082,7 @@ reading a book's files, in three columns:
 |---|---|
 | `unreadable` | a file couldn't be opened (`metadata.Metadata.OpenErr`) |
 | `empty_file` | a file is 0 bytes |
-| `probe_failed` | ffprobe is configured and couldn't read a file (`ProbeErr`) |
+| `probe_failed` | ffprobe is configured and couldn't read a file (`ProbeErr`): the in-process probe left it to ffprobe, which failed |
 
 `scan_error_file` is the library-relative file and `scan_error_detail` the OS's
 or ffprobe's own message, without the absolute path (the console shows the file
@@ -998,7 +1104,9 @@ server restarts (see
 [A rescan that finds nothing changed](#a-rescan-that-finds-nothing-changed)).
 
 **A probe that ran out of time.** Each ffprobe run gets 30 seconds
-(`metadata.ProbeTimeout`); one that runs out is killed, its `ProbeErr` wraps
+(`metadata.ProbeTimeout`; the in-process probe's own bound, 5 s, only sends a
+file to ffprobe, see [The in-process probe](#the-in-process-probe)); one that
+runs out is killed, its `ProbeErr` wraps
 `metadata.ErrProbeTimeout`, and the problem is `probe_failed` with the detail
 `ffprobe timed out after 30s`. Files sharing a slow disk or a busy share can
 each take longer than that while [others are read beside

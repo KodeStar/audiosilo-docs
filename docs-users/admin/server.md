@@ -320,6 +320,10 @@ How it behaves:
 **Not available** with what that means. ffmpeg converts formats browsers can't
 play to MP3 while someone listens, and copies the MP3 out of `.mka` (Matroska)
 files so every player can play them; ffprobe reads lengths, chapters and codecs.
+When ffprobe is version 7.1 or 8.1, the server reads most files' lengths,
+chapters and codecs itself during a scan, much faster, and uses ffprobe for the
+rest; with another version, ffprobe reads every file (see
+[Rescanning](libraries.md#rescanning)).
 
 The MP3 copies are kept in the data folder, under `cache/remux`, so each book
 is copied once rather than on every play. The folder holds at most 8 GiB: past

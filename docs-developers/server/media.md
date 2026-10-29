@@ -313,7 +313,8 @@ first full pass the runner only reads books whose art is new.
 
 ## `DirectPlayable`: when a client should transcode
 
-The scanner records each book's audio codec (ffprobe `codec_name`, verbatim)
+The scanner records each book's audio codec (ffprobe `codec_name`, verbatim,
+or the [in-process probe](scanner.md#the-in-process-probe)'s identical answer)
 in `books.codec`. `media.DirectPlayable(format, codec)` reports whether mainstream
 browsers can play the **stored** file natively. A **container** no browser plays
 (`containerFormats`: `mka`, by the file extension in `books.format`) never is,

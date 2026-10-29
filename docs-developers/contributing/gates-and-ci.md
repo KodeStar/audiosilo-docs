@@ -49,6 +49,7 @@ The workflows for the server, player and metadata repos, verified against
 | `ci.yml` | `ci` | every PR; push to `main` | Three jobs side by side. **test**: Go from `go.mod`, Node from `admin-ui/.nvmrc` and `scripts/build-admin.sh --vite-only` (before the Go steps, so the embed tests see a real build; no typecheck, the admin-ui job does that), installs ffmpeg (so the ffprobe-dependent scanner tests stay live), `go test -race -coverprofile=coverage.out ./...` (which compiles every package, test files or not, so there is no separate build step), uploads the coverage artifact. **admin-ui**: the full `scripts/build-admin.sh` (`npm ci`, `npm run check`, the build). **lint**: `golangci-lint-action@v9` (golangci-lint v2, config `.golangci.yml`; its govet replaces a separate `go vet` step). |
 | `image.yml` | `server image` | `v*` tags; push to `main`; manual dispatch (input `web_version`) | Builds the Docker image, baking the pinned web player in via the `WEB_IMAGE` build-arg, and pushes `ghcr.io/<owner>/audiosilo-server` (semver + `latest` on tags; `edge` on `main`; `sha-<short>` off a tag). See [releasing](releasing.md#testing-main-before-a-release-edge). |
 | `release.yml` | `release (native binaries)` | `v*` tags; manual dispatch (input `web_version`) | GoReleaser: cross-platform native binaries with the web player embedded (`-tags embedplayer`), published as a **draft** GitHub Release. |
+| `probe-drift.yml` | `probe-drift` | PRs and pushes to `main` touching `internal/metadata/**`, the `Dockerfile` or the workflow; weekly (Monday 05:17 UTC); manual dispatch | Job **image-ffprobe**: builds the `internal/metadata` test binary, then runs it in the Dockerfile's Alpine base image with that image's ffmpeg installed and `AUDIOSILO_PROBE_LIVE=1`: `TestProbeMatchesLiveFFprobe` and `TestProbeMatchesGoldens`. It fails when the [in-process probe](../server/scanner.md#the-in-process-probe) answers a fixture differently from the image's ffprobe (drift), or when that ffprobe is missing or of a release the probe has no rules for. Weekly because Alpine updates ffmpeg with no change in the repo. See [The in-process probe's fixtures](#the-in-process-probes-fixtures). |
 
 ### audiosilo-frontend
 
@@ -123,6 +124,44 @@ the repo:
   (`handlers_members.go`), the rate limiters, `auth.ResolveRequest`/`lookupToken`, `web.htmlCSP`, or `bearerToken`. See
   [auth and security](../server/auth-and-security.md).
 
+### The in-process probe's fixtures
+
+The scanner's [in-process probe](../server/scanner.md#the-in-process-probe)
+must answer exactly as ffprobe does, so it is tested against ffprobe's own
+answers, with and without ffprobe installed:
+
+- **The corpus.** `internal/metadata/testdata/probe` holds about 90 small
+  fixtures (a few seconds of audio each, under 3 MB together) in every shape
+  the probe reads or leaves to ffprobe: MP3 (CBR, VBR with and without a
+  Xing/VBRI header, gapless, ID3 and APE tags, chapters), M4B/M4A/MP4, FLAC,
+  Ogg Vorbis/Opus/FLAC and MKA, plus crafted and truncated files.
+  `scripts/gen-probe-fixtures.sh` makes them (with `cmd/mkfixtures` for the
+  crafted ones; it needs ffmpeg/ffprobe 7.x or 8.x with libmp3lame, libvorbis
+  and libopus, the `lame` CLI and `metaflac`). Regenerating rewrites every
+  fixture, since encoders differ by version: commit the files and the goldens
+  together and review the goldens' diff.
+- **Goldens.** `golden-<release>.json` (`golden-7.1.json`, `golden-8.1.json`)
+  is a known release's normalised answer for every fixture, written by
+  `cmd/probediff -golden`; the script writes one for the local ffprobe and,
+  through docker, one for the Docker image's. `probe_golden_test.go` checks the
+  probe against each with no ffprobe needed, so the plain `go test ./...` gate
+  covers it everywhere.
+- **The live comparison.** `probe_live_test.go` compares the probe with the
+  ffprobe on `PATH` over the fixtures, and over any folders of real books
+  `AUDIOSILO_PROBE_DIRS` (a path list) names. It skips without an ffprobe or
+  with one of a release the probe has no rules for, unless
+  `AUDIOSILO_PROBE_LIVE` is set, when either is a failure (the `probe-drift`
+  workflow sets it).
+- **Adding a release.** Its rules where they differ, its golden and a
+  `knownRules` entry; then the live test and the CI job cover it.
+- **Stand-in ffprobe scripts.** A test whose ffprobe is a script on *valid*
+  files (to fake a rejection or a time-out) would otherwise be answered by the
+  probe and never run the script. It calls
+  `metadata.ForceFFprobeForTests(path)` (`library`'s `stubProbe` helper does),
+  which sends every `Extract` given that ffprobe path to ffprobe; it is keyed
+  by the path, so parallel tests don't touch each other, and panics outside a
+  test binary.
+
 ### Frontend (TypeScript)
 
 - Harness: **jest-expo (jest 29) + `@testing-library/react-native` 14** -
@@ -141,7 +180,9 @@ the repo:
 - **ffmpeg-dependent tests skip silently.** A few server scanner tests need
   ffprobe; without it they `t.Skip` and the suite still passes - so a green local
   run without ffmpeg proved less than you think. CI installs ffmpeg precisely to
-  keep those tests live. Install it locally too.
+  keep those tests live. Install it locally too. (The in-process probe's golden
+  test needs no ffprobe; its live comparison skips without one, see
+  [above](#the-in-process-probes-fixtures).)
 - **Keep `package-lock.json` committed in sync.** CI uses `npm ci` (frozen
   lockfile), so after any dependency change regenerate the lockfile with
   `npm install` and commit it - otherwise CI fails on a lockfile mismatch.
