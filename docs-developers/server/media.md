@@ -19,7 +19,7 @@ for the request/response shapes see the [API reference](api/reference.md).
 | Route | Handler | Purpose |
 |---|---|---|
 | `GET /api/v1/libraries/{id}/stream?path=` | `handleStream` | Serve one audio **file** (Range streaming), force a download with `?download=1`, or transcode with `?transcode=1&t=`; an MP3-in-Matroska `.mka` is served as its cached [remux to MP3](#remuxing-matroska-mediaremuxer) unless `?original=1` |
-| `GET /api/v1/libraries/{id}/cover?path=` | `handleCover` | Serve a book's cover (custom cover, else sidecar image, else embedded art); with `?size=160\|320\|640` a JPEG thumbnail of it (`handleCoverThumbnail`) |
+| `GET /api/v1/libraries/{id}/cover?path=` | `handleCover` | Serve a book's cover (custom cover, else sidecar image, else embedded art); with `?size=96\|160\|320\|640` a JPEG thumbnail of it (`handleCoverThumbnail`; `96` from 2.5.1) |
 | `POST /api/v1/admin/covers` | `handleAdminCovers` | Admin only: JPEG thumbnails of many books' covers as `data:` URLs, for the admin console |
 | `GET /api/v1/libraries/{id}/chapters?path=` | `handleChapters` | The normalized playable-units envelope `{chapters, files, duration, …}`; warms the book's remuxes |
 | `GET /api/v1/libraries/{id}/item?path=` | `handleItem` | Book detail; carries `direct_playable`; warms the book's remuxes |
@@ -187,7 +187,8 @@ instead of full-size art.
 - `coverArt` resolves the art in the same order as `handleCover` (custom cover
   by the requested path, then by the book the path resolves to, then the
   sidecar through `SafeJoin`, then embedded art). It never indexes on demand.
-- `media.Thumbnail` scales to fit within 160, 320 or 640 pixels and encodes a
+- `media.Thumbnail` scales to fit within 96 (from 2.5.1, a table row's cover),
+  160, 320 or 640 pixels (`thumbSizes`) and encodes a
   JPEG (quality 80); it never scales up. A JPEG already that small is re-encoded
   at quality 80 and the smaller of that and its own bytes returned (a `cover.jpg`
   is often saved near quality 95, about twice the bytes for a 180 px tile; one
@@ -207,16 +208,26 @@ instead of full-size art.
   `?size=` alike: `coverReads` (8) the art being read or waiting to be decoded, so
   a slow mount never has a grid's 60 reads in flight, and `thumbSem` (4) the
   decodes themselves.
+- From 2.5.1 each thumbnail carries a `version`: the `cover_version` the book's
+  admin row has once this request's colour is recorded (`catalog.CoverVersion`
+  of the colour record's `Version`, else its `Art`, else the source's `Art`).
+  A first thumbnail moves the row's version to the art's own
+  (`RecordCoverColors`), and a cover can be replaced between the row being read
+  and its cover being asked for, so the version on the row that asked can be
+  stale. The console files the thumbnail under the answer's version, so the
+  next row it reads names the key it kept (see the console's
+  [thumbnail cache](web-ui.md#covers)).
 
 ### Thumbnails for the player: `?size=`
 
 The player asks for the same thumbnails one cover at a time, as an image URL:
-`GET /libraries/{id}/cover?path=&size=160|320|640` (`handleCoverThumbnail`,
+`GET /libraries/{id}/cover?path=&size=160|320|640` (`96` is accepted too, but
+an older server refuses it, so the player keeps to these three; `handleCoverThumbnail`,
 capability `cover_sizes`). It shares everything with the batch - `coverArt`,
 `coverThumbnail`, the cache and both semaphores. A path with no book indexed at it
 (a part, a disc folder, a book the scan hasn't reached) is resolved like `/item`
 (`bookForPath`, which may index on demand, unlike the batch). Any `size` outside
-the three, including an empty one, is a `400`.
+`thumbSizes`, including an empty one, is a `400`.
 
 - The `ETag` is `"thumb-<size>-<rev>-<hash of the art's own version>"`
   (`thumbETag`), matched with the same `If-None-Match` list matcher as the

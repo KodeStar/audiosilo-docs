@@ -249,13 +249,57 @@ each cover it needs, and `src/api/cover-batch.ts` (on the shared batcher,
 of up to 60 books. The server answers with small JPEG thumbnails, already
 `data:` URLs, so a grid costs a handful of requests and about 20 KB a cover
 (server side: [Thumbnails for the admin console](media.md#thumbnails-for-the-admin-console-post-admincovers)).
-Covers are cached for an hour and refetched everywhere after an upload or
-removal.
+In memory (TanStack Query) a cover is fresh for an hour and dropped five minutes
+after the last cover showing it unmounts, so a long grid doesn't hold every
+`data:` URL. `BookCover`'s `size` is `96` for a books-table row (its 36 to 48 px
+cover), `160` for list rows, `320` for tiles (the default) and `640` for the book
+hero's thumbnail. `load` false holds a skeleton without asking (a long list
+asking for covers only as they near the viewport).
 
-Only the book page's hero loads the full art (`size="full"`: `GET
-/libraries/{id}/cover` with the `Authorization` header, converted to a `data:`
-URL); its background tint is computed from that image in the browser
-(`use-hero-tint.ts`, a same-origin canvas). A book with no art gets a generated
+**The thumbnail cache** (`admin-ui/src/api/thumb-cache.ts`, from 2.5.1). The
+`data:` URLs arrive inside JSON, so the browser's HTTP cache never holds them;
+without a cache of its own every reload or re-scroll would fetch every cover
+again. Admin book rows carry `cover_version`
+([`GET /admin/books`](api/reference.md#get-apiv1adminbooks)), and
+`useCover(libraryId, path, size, enabled, version)` passes it to `loadThumb`
+(`cover-batch.ts`), which looks the thumbnail up before queueing it in a batch:
+
+- **Store.** IndexedDB, database `audiosilo-admin-thumbs`, with the entries'
+  metadata (key, bytes, last used, stored) and the `data:` URLs in separate
+  object stores, so the index is read once at start without the image data. It
+  is IndexedDB rather than Cache Storage because a console reached over plain
+  HTTP on a LAN address is not a secure context, where Cache Storage doesn't
+  exist. Where IndexedDB is missing, fails to open, or doesn't open within 5
+  seconds (private browsing in some browsers, blocked site data), the cache
+  falls back to memory for the page's life.
+- **Keys.** `thumbKey(ref, size, version)`: library id, path, size and
+  `cover_version`, separated by NUL. New art is a new version and so a new key;
+  the old entry simply ages out. A thumbnail is kept under the `version` the
+  [`POST /admin/covers`](api/reference.md#post-apiv1admincovers) answer names,
+  never under the (possibly older) version of the row that asked, so the next
+  row read finds it. A book with no art is not kept (its art may only be
+  unreadable for now), nor is a request made without a version.
+- **Bounds.** At most 5000 entries or 50 MB in IndexedDB (1500 or 16 MB in
+  memory), whichever comes first. Over a limit, the least recently used entries
+  go, down to 90% of both, so a full cache evicts in batches. A read refreshes an
+  entry's last-used time at most once an hour (a read isn't otherwise a write).
+  An entry older than 7 days is asked for again (`MAX_AGE_MS`): a sidecar
+  replaced in place under the same name moves `cover_version` only once the
+  server makes a thumbnail of the new art, which a cache that never asks would
+  never see.
+- **Invalidation.** `invalidateCover` (after a cover upload or removal) forgets
+  every kept size of that book (`ThumbCache.forget`) before refetching it.
+- **Sign-out.** Every sign-out (`SessionProvider`, also after a 401 or a lost
+  admin role) calls `clearThumbCache()`, so the covers one admin saw are not
+  there for whoever signs in next in that browser. A thumbnail still on its way
+  at the moment of the sign-out is dropped rather than stored (the cache's
+  `epoch` moved).
+- A failed store write (quota, a closed database) only loses that entry: the
+  next view asks the server again.
+
+The book page's hero shows the largest thumbnail (`640`), and its background
+tint is computed in the browser from the `160` one (`use-hero-tint.ts`, a
+same-origin canvas over the `data:` URL); the console never loads full art. A book with no art gets a generated
 cover (`src/components/generated-cover.tsx`, a React SVG component, colours
 from `src/lib/cover-model.ts`), never an `innerHTML` string.
 
@@ -302,6 +346,8 @@ in); the language choice shares the connect page's storage key. A 401 drops the
 session ("Your session ended"). A 403 from an admin endpoint re-checks
 `GET /me`, and if the account is no longer an admin (another admin demoted it
 mid-session) signs out with "This account is not an administrator."
+Every sign-out also empties the console's
+[thumbnail cache](#covers).
 
 Every API call also names the console to the server with
 `X-AudioSilo-Client: AudioSilo Admin (web)` (`CLIENT_IDENTITY` in
@@ -588,7 +634,15 @@ CSP-sensitive work against a real build served by Go. The console's own gate is
   ignored books (`?issue_ignored=true`). Duplicates
   (`duplicates.tsx`) render each group side by side from
   `GET /admin/issues/duplicates`, the copy worth keeping first, with "They're
-  different books" (ignore every copy). Series spelled several ways
+  different books" (ignore every copy). From 2.5.1 the groups come 50 at a time
+  (`useDuplicates`, an infinite query on `limit` and `cursor`; `DUPLICATES_PAGE`):
+  a `LoadMore` "Show more" button under the list also asks for the next page by
+  itself as it nears the viewport (not after a failed page, which keeps the pages
+  already shown). A group that moves across a page boundary between loads is
+  shown once, where its copies first appeared, and the "n of total" count is the
+  newest page's `total`. Each copy's cover loads only as its column nears the
+  viewport (`useInView`, `src/lib/use-in-view.ts`), and a group of more than 10
+  copies shows the first 10 until "Show all n copies". Series spelled several ways
   (`series-spellings.tsx`) is grouped too: one notice per series and library from
   `GET /admin/issues/series-spellings`, the suggested spelling picked first in a
   select, "Use this spelling" running the Authors page's merge (`useMerge` on `series`:
