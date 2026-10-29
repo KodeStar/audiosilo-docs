@@ -394,8 +394,10 @@ offline:
   (`qk.readalongLocal`, `networkMode: 'always'`) with the EPUB on the device. A copy
   that can't be read gives way to the server's map when the server has one ready.
 
-A download made before 3c-2, or one whose map fetch failed, has no map: the Text tab
-then needs the server, as for a book that isn't downloaded.
+A download made before 3c-2, or one whose map fetch failed, has no map until
+`startReadalongRefresh` takes the book's next `/item` answer (`readalongChange` says
+`fetch`, tried once per launch); until then the Text tab needs the server, as for a
+book that isn't downloaded.
 
 ## The offline companion (`offline-meta.ts`)
 

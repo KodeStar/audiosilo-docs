@@ -1392,9 +1392,9 @@ await step('bridge: detect chapters', async () => {
 // Bridge's book route, hashes the EPUB, and writes .audiosilo/readalong.json.
 // The stand-in aligns nothing, so the map it writes is its head alone (what the
 // server checks and the card shows: the EPUB's sha256, the book's files with the
-// server's lengths, the coverage) with no sections; the player's Text panel
-// (Phase 3c-2) will need a real map. The file is removed again after the shot,
-// so no other capture sees it.
+// server's lengths, the coverage) with no sections; the player's read-along shots
+// use a real map on another book (run.sh section 2e). The file is removed again
+// after the shot, so no other capture sees it.
 await step('bridge: make a read-along', async () => {
   if (!wanted(...READALONG_SHOTS)) return;
   if (!bridgeToken || !bridgeStatus) throw new Error('no stand-in Bridge was paired');

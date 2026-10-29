@@ -347,7 +347,7 @@ with its narration and writes `.audiosilo/readalong.json`; the server serves it 
 and says on `/item` whether it is `ready` or `stale` (`Book.readalong`). With a
 ready map the reader follows the narration: it shows the page of the sentence
 being read, highlights it, turns the page as the narration moves on, and a tapped
-sentence plays from its start. Two surfaces use it: the companion's
+sentence moves the narration to its start. Two surfaces use it: the companion's
 [Text tab](player-ui.md#the-text-tab-read-along) and the full-screen reader's
 **Follow narration** ([below](#follow-narration-in-the-full-screen-reader)). The
 admin's Make read-along offer lives in the Text tab. The listener's view is on
@@ -376,7 +376,7 @@ admin's Make read-along offer lives in the Text tab. The listener's view is on
 (up to 16 MiB of JSON, and the server may hash the ebook first). `parseReadalongMap`
 checks it: the head must say `audiosilo-readalong/v1` with a `sections` array (else
 a `ReadalongMapError`); the server checks only the head, so **every span** is checked
-here, field by field: a `cfi` that starts `epubcfi(` and is at most 1024 UTF-8
+here, field by field: a `cfi` that starts `epubcfi(`, ends `)` and is at most 1024 UTF-8
 bytes, finite times with `0 <= start <= end`. A bad span is dropped and counted
 (`dropped`), never the map; `gaps` and `audio_gaps` are not kept. The reader document
 is sent only the sections' hrefs and spans (`readerMapOf`), nothing of the head.
@@ -393,7 +393,7 @@ Only a map with a sentence (`hasSpans`) reaches the reader. It returns:
 |---|---|
 | `map` | the sections and spans to send, or null: none to follow |
 | `pending` | still reading it |
-| `failed` | the read failed for a reason that says nothing about the map (offline, a 5xx, a timeout, a copy that won't read): never "no read-along". Only the server's 404 `no_readalong` and 409 `readalong_stale` (`readalongNone`) mean none |
+| `failed` | the read failed for a reason that says nothing about the map (offline, a 5xx, a timeout, a copy that won't read): never "no read-along". Only the server's 404 `no_readalong` and 409 `readalong_stale`, or the flag off (a `CapabilityError`), mean none (`readalongNone`) |
 | `retry` | read it again |
 
 While another copy of the map shown is on its way (the download took it, the map was
@@ -406,11 +406,11 @@ checked field by field both ways:
 
 | Direction | Message | Meaning |
 |---|---|---|
-| host -> reader | `readalong {map}` | the map's sections and spans (`{sections: [{href, spans: [{cfi, start, end}]}]}`, times in whole-book seconds), or `null`: none, stop following. A document that never had a map is sent none |
+| host -> reader | `readalong {map}` | the map's sections and spans (`{sections: [{href, spans: [{cfi, start, end}]}]}`, times in whole-book seconds), or `null`: none, stop following. A document that never had a map is sent nothing |
 | host -> reader (app) | `readalong {length, chunks}` then `readalongChunk {seq, data}` | a map over 256 KB of JSON, as pieces of its text (`readalongMessages`, never cutting a surrogate pair); the reader's `createTextAssembly` refuses any wrong piece, and a wrong map is `none` |
 | host -> reader | `position {t, rate, playing}` | the narration's whole-book place, speed and whether it plays: once a second (`POSITION_MS`) while a map is in, and at once on a play, pause, seek or speed change |
 | host -> reader | `follow` | turn to the sentence being read and keep following (Back to narration, Follow narration) |
-| reader -> host | `seek {t}` | a sentence was tapped: play from its start (`t` at most a week, checked) |
+| reader -> host | `seek {t}` | a sentence was tapped: move the narration to its start (`seekBook`, which keeps the play state; `t` at most a week, checked) |
 | reader -> host | `following {value}` | the reader follows the narration, or stopped because the listener turned away |
 | reader -> host | `readalong {state, unresolved}` | `ok` once a span names a section of this book, else `none`; `unresolved` counts the spans skipped (sent once) |
 
@@ -473,7 +473,7 @@ Jump offer and the not-saved card) says **Follow narration**; pressing it calls
 
 **No reading-place save while following.** The narration turns the pages, not the
 reader, so `onFollowing(true)` drops the save timer and any pending save; leaving
-following (`onFollowing(false)`) schedules a save of the page on screen at once
+following (`onFollowing(false)`) schedules the usual debounced save of the page on screen
 (`atNow`, the latest `progress`), and every move after saves as usual. A map that
 goes away, or Try again (a new host, which has followed nothing), ends following
 too. The companion's Text tab never saves a reading place at all

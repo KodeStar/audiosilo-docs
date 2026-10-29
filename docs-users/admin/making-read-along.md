@@ -19,7 +19,7 @@ An admin can also make a book's read-along from the player
 
 ## What it needs
 
-- **An admin**, in the console.
+- **An admin**, in the console (or in the player, [below](#from-the-player)).
 - **A book with an ebook.** The ebook is the EPUB the player's
   [Read the ebook](../listening/reading-the-ebook.md#which-books-have-it) opens:
   the book's page shows an **Ebook** chip for one. It has to be DRM-free, and the

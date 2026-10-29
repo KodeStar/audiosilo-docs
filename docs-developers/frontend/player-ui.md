@@ -286,7 +286,7 @@ the tab's scroller (the reader pages itself; inline on a tablet it is 520 px tal
   until the reader opened the book and said `readalong ok`; then the page edges
   (narrow, by the column's measured width) and, once the listener turned a page
   away while the book is placed, a **Back to narration** pill (`FollowPill`). A
-  tapped sentence plays from its start. **It never saves the reading place**: the
+  tapped sentence moves the narration to its start. **It never saves the reading place**: the
   tab follows the narration, the full-screen reader is where a reading place is made.
 - **Notices**, each an `EmptyState`: the reader said `none` (the map names nothing
   in this ebook): "The text can't follow this narration", with Make again for an

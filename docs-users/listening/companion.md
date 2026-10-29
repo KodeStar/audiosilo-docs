@@ -41,7 +41,7 @@ For a book with a **read-along** (your server's [Bridge](../admin/making-read-al
 
 ![The full player on a computer with the companion on its Text tab, following the narration of The Call of the Wild](/img/screenshots/web-player/player-text.png)
 
-- **Tap a sentence** to play from the start of it.
+- **Tap a sentence** to move the audiobook to the start of it (it plays on from there if it's playing).
 - **Turn the page** (the edges of the text, or a swipe) to look back or ahead: the tab stops following, and a **Back to narration** button takes you back to the sentence being read.
 - Pausing, skipping and changing the speed in the player move the highlight with it.
 
