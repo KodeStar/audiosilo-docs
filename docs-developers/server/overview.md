@@ -173,7 +173,10 @@ once while the index is written in order). See [Scanner](scanner.md).
 ### `internal/metadata`
 
 Metadata extraction: embedded tags in-process via `dhowden/tag`, durations /
-chapters / codec via ffprobe when available (`probe.go`), the release
+chapters / codec when ffprobe is available, read in-process for MP3, MP4, FLAC,
+Ogg and MKA by the configured ffprobe's release's rules (`fastprobe*.go`, the
+[in-process probe](scanner.md#the-in-process-probe)) and by ffprobe itself for
+any file the probe is unsure of (`probe.go`), the release
 date (`ReleaseDate`, a date tag as `YYYY[-MM[-DD]]`), and
 `DeriveFromPath` - the structural path heuristic
 (`Author/Series/01 - Title.m4b`; a lone folder above the book is its author,
@@ -445,6 +448,9 @@ Every feature ships with a test (see
   `newTestCatalog`), `internal/web/web_test.go`, and so on.
 - A few scanner tests need `ffprobe` on the machine; without it they `t.Skip`
   (CI installs ffmpeg).
+- The in-process probe is checked against ffprobe's answers over a fixture
+  corpus; see
+  [Gates and CI](../contributing/gates-and-ci.md#the-in-process-probes-fixtures).
 - **Security-critical code requires both an allowed and a denied regression
   test** - the enumerated list is in
   [Auth & security](auth-and-security.md#the-allowed--denied-test-rule).

@@ -72,7 +72,7 @@ admin asks for always fits again (a first fit made without ffmpeg, say, gets
 its pauses).
 
 A `Kick` follows every committed book change: the API registers it with
-`Catalog.OnBookChange`, which `UpsertBook` (a scan), `EditBook` and `EditBooks`
+`Catalog.OnBookChange`, which `UpsertBooks` and `UpsertBook` (a scan), `EditBook` and `EditBooks`
 (an edit, an accepted match, a [bulk match run](api/reference.md#bulk-community-matching)
 applying), `SetEnrichment`, clearing community matches and setting or removing a
 custom cover fire after their transaction (to every listener: the

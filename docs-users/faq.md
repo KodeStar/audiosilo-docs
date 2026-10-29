@@ -36,8 +36,12 @@ see [Organizing your library](./getting-started/organizing-your-library.md).
 No - but you'll want it. The server uses two companion tools:
 
 - **ffprobe** reads durations, embedded chapters, and each file's audio codec.
-  Without it, books still index and play (titles and authors come from tags
-  and folder names), but durations and chapter lists are unavailable.
+  With FFmpeg 7.1 or 8.1, the server reads most files itself during a scan,
+  which is much faster (see
+  [ffmpeg and ffprobe](./getting-started/install-binary.md#ffmpeg-and-ffprobe)).
+  Without ffprobe, books
+  still index and play (titles and authors come from tags and folder names),
+  but durations and chapter lists are unavailable.
 - **ffmpeg** enables on-the-fly conversion of browser-unfriendly codecs to
   MP3, which the web player uses automatically for such books. Without it,
   that feature is simply off, and those books play only in the mobile apps
