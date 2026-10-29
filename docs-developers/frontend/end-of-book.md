@@ -228,14 +228,10 @@ positively-known metered connection is skipped. The three settings
 `src/stores/settings.ts` with defaults `false` / `defaultAutoDownload()` /
 `true` - the persisted `autoDownloadNext` key name predates the download-on-start
 behavior and is kept for hydration compatibility. `defaultAutoDownload()` is
-`'wifi'` on native and `'never'` on web: since `wifi` lets web through, a `wifi`
-default there downloaded every book started in a browser on any connection.
-
-The stored document carries a schema `version` (`SETTINGS_VERSION`, now 1; a
-document without one is 0), written with every save and dropped from the store
-state on hydrate. `migrateSettings` runs in the document's parse step: on web
-only, a version-0 document whose `autoDownloadNext` is `'wifi'` becomes `'never'`,
-unless its `keepAhead` (through `toKeepAhead`) is above 0 - an opt-in to
-automatic downloads that `'never'` would silently stop. `'always'`, `'never'` and
-every native document are left as they are. The migration re-runs on each load
-until the next save writes `version: 1`, and gives the same answer each time.
+`'wifi'` on native and `'never'` on web: the browser can't report the connection
+type, so `wifi` there behaved like `always` and downloaded every book started in a
+browser. A web document saved before that change (settings version 0) whose
+`autoDownloadNext` is `'wifi'` is read as `'never'`, unless its `keepAhead` is above
+0 - an opt-in to automatic downloads that `'never'` would silently stop; see
+[Settings](state-and-data.md#settings-srcstoressettingsts) for the version and
+`migrateSettings`.
