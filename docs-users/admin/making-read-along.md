@@ -114,7 +114,8 @@ the right edition of the ebook, it is usually well over 90%.
 
 **Less than half is refused.** When under 50% of the text lines up, the ebook and
 the narration aren't the same book, or are very different editions. The job fails
-with "the ebook and the narration don't match: 23% lined up", and nothing is saved:
+with "the ebook and the narration don't match: 23% lined up" (rounded down, so
+49.7% says 49%), and nothing is saved:
 a read-along that is mostly wrong would only send listeners to the wrong place.
 Put the matching edition's EPUB beside the audio and make it again; the transcript
 is reused.

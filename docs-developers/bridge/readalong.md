@@ -88,7 +88,15 @@ agent state**:
   the retranscribe queue or with a loop finding (a repeated run, a multi-loop, a
   tail-rate hit) is re-transcribed whole, every other chapter accepted, and never
   a tail or mid clip (spliced text has no word timings). `retranscribing` runs it
-  (NoContext, as for a whole run). **One round only**: the second sweep goes on
+  (NoContext, as for a whole run) with its own adopt rule,
+  `repair.AdoptFreshReadalong`: a loop's words are noise, not narration, so the
+  whole run's `AdoptFresh` (which keeps the longer run) would keep a looped
+  original. The re-run replaces the original unless its word rate is implausible
+  (`AdoptFresh`'s check; the heal takes that span), it loops over more words
+  (`qa.LoopWords`: the words a 6-gram repeated 5 or more times covers), or it
+  dropped narration: under 80% of a looped original's words outside its loops,
+  or fewer words than a loop-free original. Generate keeps `AdoptFresh`.
+  **One round only**: the second sweep goes on
   to `readalong_aligning` clean or not, with a stage note naming the chapters
   left; the heal (below) covers what remains. The spike's single NoContext re-run
   took one book from 56% to 99.96% coverage.
@@ -174,11 +182,17 @@ when a resumed run first looks or the server moved the job with its book.
    (RANSAC and a longest increasing subsequence, up to 8 clusters per section),
    the gaps between anchors filled by Needleman-Wunsch with fuzzy 1:1 matches and
    2:1 merge and 1:2 split moves, then each sentence timed by its words.
-5. **Heal**: every unaligned run between two aligned sentences becomes a window
-   `[previous end - 0.5 s, next start + 0.5 s]` (2 to 600 s), plus every
-   `tail_verdicts.json` window (a clip-repaired chapter's `transcripts-json` still
-   holds its loop); a window crossing a file boundary is cut there, and
-   overlapping or touching windows merge. Each window's clip
+5. **Heal** (`readalong.HealWindows`): every unaligned run between two aligned
+   sentences becomes a window `[previous end - 0.5 s, next start + 0.5 s]` (2 to
+   600 s). A section's **trailing** unaligned run (a loop that took its chapter's
+   end, say) becomes a window from the previous end - 0.5 s for as long as its
+   text could take (10 characters a second + 10 s), never past its chapter's end
+   nor the next section's first aligned sentence, at most 600 s. Added to those:
+   every `tail_verdicts.json` window (a clip-repaired chapter's
+   `transcripts-json` still holds its loop) and every cross-segment loop the
+   transcript check (`qa.CrossSegment`) finds in the aligned transcripts (2 to
+   600 s), so a re-align from kept transcripts heals too. A window crossing a
+   file boundary is cut there, and overlapping or touching windows merge. Each window's clip
    (`readalong/heal/`) is transcribed again **NoContext** through the engine's
    speech recognition (a worker when one is connected), the words spliced in, and
    the book aligned again.
@@ -214,8 +228,9 @@ pin.
 The job reads the map from the work folder and:
 
 1. **Refuses a poor match**: text coverage under **50%** fails the job with "the
-   ebook and the narration don't match: N% lined up" and **writes nothing**. That
-   is another edition, or another book.
+   ebook and the narration don't match: N% lined up" (N rounded down: 49.7% says
+   "49%", never "50%") and **writes nothing**. That is another edition, or
+   another book.
 2. Refuses a map over 16 MiB (the server wouldn't read it).
 3. **Hashes the ebook again**: a sha256 that differs from the map's fails "the
    ebook changed while aligning; run it again".
