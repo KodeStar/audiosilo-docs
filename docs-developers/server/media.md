@@ -208,22 +208,19 @@ instead of full-size art.
   `?size=` alike: `coverReads` (8) the art being read or waiting to be decoded, so
   a slow mount never has a grid's 60 reads in flight, and `thumbSem` (4) the
   decodes themselves.
-- From 2.5.1 each thumbnail carries a `version`: the `cover_version` the book's
-  admin row has once this request's colour is recorded (`catalog.CoverVersion`
-  of the colour record's `Version`, else its `Art`, else the source's `Art`).
-  A first thumbnail moves the row's version to the art's own
-  (`RecordCoverColors`), and a cover can be replaced between the row being read
-  and its cover being asked for, so the version on the row that asked can be
-  stale. The console files the thumbnail under the answer's version, so the
-  next row it reads names the key it kept (see the console's
-  [thumbnail cache](web-ui.md#covers)).
+- From 2.5.1 each thumbnail carries a `version`: `catalog.CoverVersion` of the
+  colour record's `Version`, else its `Art`, else the source's `Art` (a first
+  thumbnail moves the row's version through `RecordCoverColors`). Why a client
+  files under it rather than the row's version:
+  [`POST /admin/covers`](api/reference.md#post-apiv1admincovers); the console's
+  side: its [thumbnail cache](web-ui.md#the-thumbnail-cache).
 
 ### Thumbnails for the player: `?size=`
 
 The player asks for the same thumbnails one cover at a time, as an image URL:
-`GET /libraries/{id}/cover?path=&size=160|320|640` (`96` is accepted too, but
-an older server refuses it, so the player keeps to these three; `handleCoverThumbnail`,
-capability `cover_sizes`). It shares everything with the batch - `coverArt`,
+`GET /libraries/{id}/cover?path=&size=160|320|640` (`handleCoverThumbnail`,
+capability `cover_sizes`; the player never sends `96`, which an older server
+refuses). It shares everything with the batch - `coverArt`,
 `coverThumbnail`, the cache and both semaphores. A path with no book indexed at it
 (a part, a disc folder, a book the scan hasn't reached) is resolved like `/item`
 (`bookForPath`, which may index on demand, unlike the batch). Any `size` outside

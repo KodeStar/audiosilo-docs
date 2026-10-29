@@ -254,12 +254,34 @@ after the last cover showing it unmounts, so a long grid doesn't hold every
 `data:` URL. `BookCover`'s `size` is `96` for a books-table row (its 36 to 48 px
 cover), `160` for list rows, `320` for tiles (the default) and `640` for the book
 hero's thumbnail. `load` false holds a skeleton without asking (a long list
-asking for covers only as they near the viewport).
+asking for covers only as they near the viewport). Below memory sits the
+[thumbnail cache](#the-thumbnail-cache).
 
-**The thumbnail cache** (`admin-ui/src/api/thumb-cache.ts`, from 2.5.1). The
-`data:` URLs arrive inside JSON, so the browser's HTTP cache never holds them;
-without a cache of its own every reload or re-scroll would fetch every cover
-again. Admin book rows carry `cover_version`
+The console never loads full art: the book page's hero shows the largest
+thumbnail (`640`), and its background tint is computed in the browser from the
+`160` one (`use-hero-tint.ts`, a same-origin canvas over the `data:` URL). A
+book with no art gets a generated cover (`src/components/generated-cover.tsx`,
+a React SVG component, colours from `src/lib/cover-model.ts`), never an
+`innerHTML` string.
+
+Covers are square frames. Art that isn't square (`CoverArt` in
+`src/components/book-cover.tsx` measures it on load) is drawn whole with
+`object-fit: contain` over a blurred copy of itself; square art, most of it,
+gets no second layer, since each blur is its own compositing pass.
+
+Book pages are addressed by identity, `/admin/library/book?library=<id>&path=<path>`
+(`src/lib/book-route.ts`), never by an internal book id. Names and series link to
+the Books list through `BooksLink` (`src/components/books-link.tsx`, built on
+`booksRoute`), which filters on the exact value and keeps the page's `library`
+and the list's `view`. It memoizes the route per value, because TanStack's
+`<Link>` rebuilds its href whenever `search` changes identity and `booksRoute`'s
+`search` is a function.
+
+#### The thumbnail cache
+
+From 2.5.1, `admin-ui/src/api/thumb-cache.ts`. The `data:` URLs arrive inside
+JSON, so the browser's HTTP cache never holds them; without a cache of its own
+every reload or re-scroll would fetch every cover again. Admin book rows carry `cover_version`
 ([`GET /admin/books`](api/reference.md#get-apiv1adminbooks)), and
 `useCover(libraryId, path, size, enabled, version)` passes it to `loadThumb`
 (`cover-batch.ts`), which looks the thumbnail up before queueing it in a batch:
@@ -274,11 +296,10 @@ again. Admin book rows carry `cover_version`
   falls back to memory for the page's life.
 - **Keys.** `thumbKey(ref, size, version)`: library id, path, size and
   `cover_version`, separated by NUL. New art is a new version and so a new key;
-  the old entry simply ages out. A thumbnail is kept under the `version` the
+  the old entry simply ages out. A thumbnail is kept under the `version` its
   [`POST /admin/covers`](api/reference.md#post-apiv1admincovers) answer names,
-  never under the (possibly older) version of the row that asked, so the next
-  row read finds it. A book with no art is not kept (its art may only be
-  unreadable for now), nor is a request made without a version.
+  not the row's (the reference says why). A book with no art is not kept (its
+  art may only be unreadable for now), nor is a request made without a version.
 - **Bounds.** At most 5000 entries or 50 MB in IndexedDB (1500 or 16 MB in
   memory), whichever comes first. Over a limit, the least recently used entries
   go, down to 90% of both, so a full cache evicts in batches. A read refreshes an
@@ -296,25 +317,6 @@ again. Admin book rows carry `cover_version`
   `epoch` moved).
 - A failed store write (quota, a closed database) only loses that entry: the
   next view asks the server again.
-
-The book page's hero shows the largest thumbnail (`640`), and its background
-tint is computed in the browser from the `160` one (`use-hero-tint.ts`, a
-same-origin canvas over the `data:` URL); the console never loads full art. A book with no art gets a generated
-cover (`src/components/generated-cover.tsx`, a React SVG component, colours
-from `src/lib/cover-model.ts`), never an `innerHTML` string.
-
-Covers are square frames. Art that isn't square (`CoverArt` in
-`src/components/book-cover.tsx` measures it on load) is drawn whole with
-`object-fit: contain` over a blurred copy of itself; square art, most of it,
-gets no second layer, since each blur is its own compositing pass.
-
-Book pages are addressed by identity, `/admin/library/book?library=<id>&path=<path>`
-(`src/lib/book-route.ts`), never by an internal book id. Names and series link to
-the Books list through `BooksLink` (`src/components/books-link.tsx`, built on
-`booksRoute`), which filters on the exact value and keeps the page's `library`
-and the list's `view`. It memoizes the route per value, because TanStack's
-`<Link>` rebuilds its href whenever `search` changes identity and `booksRoute`'s
-`search` is a function.
 
 ### Downloading a file from an authenticated endpoint
 
@@ -347,7 +349,7 @@ session ("Your session ended"). A 403 from an admin endpoint re-checks
 `GET /me`, and if the account is no longer an admin (another admin demoted it
 mid-session) signs out with "This account is not an administrator."
 Every sign-out also empties the console's
-[thumbnail cache](#covers).
+[thumbnail cache](#the-thumbnail-cache).
 
 Every API call also names the console to the server with
 `X-AudioSilo-Client: AudioSilo Admin (web)` (`CLIENT_IDENTITY` in
@@ -636,9 +638,9 @@ CSP-sensitive work against a real build served by Go. The console's own gate is
   `GET /admin/issues/duplicates`, the copy worth keeping first, with "They're
   different books" (ignore every copy). From 2.5.1 the groups come 50 at a time
   (`useDuplicates`, an infinite query on `limit` and `cursor`; `DUPLICATES_PAGE`):
-  a `LoadMore` "Show more" button under the list also asks for the next page by
-  itself as it nears the viewport (not after a failed page, which keeps the pages
-  already shown). A group that moves across a page boundary between loads is
+  a "Show more" button (`LoadMore`) under the list fetches the next page, and
+  fetches it by itself as it nears the viewport, except after a failed page (the
+  pages already shown stay). A group that moves across a page boundary between loads is
   shown once, where its copies first appeared, and the "n of total" count is the
   newest page's `total`. Each copy's cover loads only as its column nears the
   viewport (`useInView`, `src/lib/use-in-view.ts`), and a group of more than 10

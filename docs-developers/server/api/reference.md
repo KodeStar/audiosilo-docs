@@ -2882,7 +2882,7 @@ three is tried, custom covers included.
 | Query param | Type | Required | Notes |
 |---|---|---|---|
 | `path` | string | yes | |
-| `size` | int | no | `96` (from 2.5.1), `160`, `320` or `640`: a JPEG thumbnail instead of the full art (`cover_sizes` capability; below) |
+| `size` | int | no | `96` (from 2.5.1; older servers refuse it, below), `160`, `320` or `640`: a JPEG thumbnail instead of the full art (`cover_sizes` capability; below) |
 | `v` | string | no | ignored by the server; clients append the book's `cover_version` as a cache buster |
 | `token` | string | no | media-auth fallback: a session token, or a [cast token](#cast-tokens-as-media-auth) for this book |
 
@@ -2900,6 +2900,10 @@ thumbnail cache - the one the admin console's
 larger than 40 megapixels, or one that can't be decoded, is a `404` here although
 the full-art URL still serves it, so a client falls back to the URL without `size`
 on a thumbnail `404`.
+
+`96` is for a table row's small cover (the admin console's books table). A server
+before 2.5.1 answers it `400`, and `cover_sizes` is true on both, so a client
+that talks to older servers (the player) keeps to `160` and up.
 
 - `ETag` is `"thumb-<size>-<rev>-<hash>"`. `rev` names how the server makes
   thumbnails: it changes when a server update makes other bytes of the same art,
@@ -2926,10 +2930,6 @@ on a thumbnail `404`.
 
 A client appends `v=<cover_version>` to every cover URL (with or without `size`)
 so a cover replaced since the last fetch is a new URL to its image cache.
-
-`96` is for a table row's small cover (the admin console's books table). A server
-before 2.5.1 answers it `400`, and `cover_sizes` is true on both, so a client
-that talks to older servers (the player) keeps to `160` and up.
 
 | Status | Meaning |
 |---|---|
@@ -5496,11 +5496,9 @@ is a `400` too (`too many format or codec values`).
   The book page (`GET /admin/libraries/{id}/book`) carries it too.
 - `cover_version` - from 2.5.1, the book's
   [`cover_version`](#get-apiv1librariesidbooks), the same value the player's
-  `Book` has: a short token that moves when the cover art does. The console
-  keeps its cover thumbnails keyed by it, so a replaced cover is a new key.
-  Omitted for a book with no art identity yet. Every row that is a
-  `GET /admin/books` row carries it (the duplicates groups' copies and the book
-  page's `book` too).
+  `Book` has: a short token that moves when the cover art does, so a client can
+  key cached thumbnails by it. Omitted for a book with no art identity yet. The
+  duplicates groups' copies and the book page's `book` carry it too.
 - `matched` - the book has an ASIN or ISBN: the same rule as the `matched` filter.
 - `abridged` - `true`, `false`, or `null` while nothing says (always present,
   unlike the player's `Book`, which omits it). `genres` and `tags` are `[]` for
@@ -6553,13 +6551,13 @@ Response `200`, one entry per requested book, in request order:
   `size` (never scaled up; transparency is flattened onto white). It is `""`
   when the book has no art, the art can't be read or decoded, or no book is
   indexed at the path (an unknown `library_id` too).
-- `version` - from 2.5.1, with every thumbnail (omitted with `""`): the
-  [`cover_version`](#get-apiv1adminbooks) the book's admin row has **once this
-  request's colour is recorded**. It can differ from the version on the row the
-  client read: the art may have moved on since (a cover just replaced), and a
-  book's first thumbnail moves its version to the art's own. A client that
-  keeps thumbnails should file each under this `version`, never under the
-  older row's, so the next row it reads finds it.
+- `version` - from 2.5.1, with every thumbnail (omitted when `data` is `""`):
+  the [`cover_version`](#get-apiv1adminbooks) the book's admin row has **once
+  this request's colour is recorded**. It can differ from the version on the row
+  the client read: the cover may have been replaced since, or this is the book's
+  first thumbnail, which moves its version to the art's own. A client that keeps
+  thumbnails should file each under this `version`, never under the row's, so
+  the next row it reads finds it.
 - Thumbnails are cached in server memory, keyed by the art's version (a custom
   cover's upload time, a file's size and modification time), so a replaced
   cover is picked up on the next request. A source image larger than 40
@@ -6698,7 +6696,7 @@ different libraries are usually deliberate and are grouped only with `across`).
 | `library_id` | int | one library; a non-positive or non-integer id is `400 invalid library_id` |
 | `ignored` | `true` | return **only** the groups an admin said are different books (instead of the open ones) |
 | `across` | `1` or `true` | also group copies in **different** libraries (2.4.0, the console's "Include other libraries"): each copy's row names its `library_id` and `library_name`, and with `library_id` the groups holding one of that library's books are kept, their copies from any library. Without it nothing changes; the Health `duplicate` count never uses it |
-| `limit` | int | from 2.5.1: groups per page, at most 500 (a larger value is 500). Without it (or with one that is not a positive integer) the answer is the first 500 groups with no bound on their copies, as before |
+| `limit` | int | from 2.5.1: groups per page, at most 500 (a larger value is 500; one that is not a positive integer counts as absent). A page can end early (below), so page on `next_cursor`, not on the count |
 | `cursor` | string | from 2.5.1: the previous page's `next_cursor`, passed back verbatim; a malformed one is `400 invalid cursor` |
 
 ```json
@@ -6751,19 +6749,19 @@ different libraries are usually deliberate and are grouped only with `across`).
   boundary. The groups are found afresh for every page. A group whose kept copy
   changes between two page loads (a better copy arrived) can sort elsewhere, so
   a client paging through should show a group once even if a later page brings
-  it again; the console drops a group any of whose copies it already shows.
+  it again.
 - `total` - how many groups there are in all, on every page (counted after the
   `ignored` filter, so every ignored group can be reached). `next_cursor` is
   omitted on the last page.
-- A paged request (with `limit`) also ends a page early, before the group that
-  would take it past **300 copies**, once the page holds one group: a few very
-  large groups (identical audio across a big library) can't make one answer
-  megabytes, as each copy is a full admin row. A single group of more than 300
-  copies is still one page on its own. So a page can hold fewer than `limit`
-  groups and still have a `next_cursor`.
-- A request without `limit` (an older console, or a script that doesn't page)
-  gets the first 500 groups whole, with `total` and, past 500, a `next_cursor`
-  beside them. The console asks for 50 at a time.
+- With `limit`, a page also stops before a group that would take it past
+  **300 copies**, unless the page is still empty. Each copy is a full admin row,
+  so without this a few very large groups (identical audio across a big library)
+  would make one answer megabytes. A single group of more than 300 copies is a
+  page of its own. So a page can hold fewer than `limit` groups and still have a
+  `next_cursor`.
+- Without `limit` (an older console, or a script that doesn't page) the answer
+  is the first 500 groups whole, with no bound on their copies, as before, plus
+  `total` and, past 500, a `next_cursor`.
 
 ### `GET /api/v1/admin/issues/series-spellings`
 
