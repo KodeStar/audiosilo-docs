@@ -74,6 +74,7 @@ const sidebars: SidebarsConfig = {
         'bridge/mappings',
         'bridge/generating',
         'bridge/chapters',
+        'bridge/readalong',
         'bridge/attachments',
         'bridge/agent-container',
         'bridge/contributions',

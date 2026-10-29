@@ -49,8 +49,10 @@ with no Bridge change. **Phase 2d-1** adds the player's
 [podcast views](podcasts.md#player-phase-2d-1) (first released in player 2.4.0), again
 with no Bridge change, and **Phase 2d-2** its
 [discovery, follow by URL and OPML screens](podcasts.md#player-discovery-and-opml-phase-2d-2)
-(a CORS change on the server only). Read-along, Audible backups and file moves
-arrive later.
+(a CORS change on the server only). **Phase 3c-1** adds
+[read-along maps](readalong.md): `readalong.align` lines a book's ebook up with
+its narration, with no agent, and the server serves the map (the player's Text
+panel is Phase 3c-2, not built yet). Audible backups and file moves arrive later.
 :::
 
 ## What it is for
@@ -180,6 +182,9 @@ the mark; see [generated content](../server/api/reference.md#generated-content))
 - [Chapterless books](chapters.md) - Phase 1d: the windows, the
   `chapter_detecting` stage and its detector, `chapters.detect`, and how the
   chapters reach the server.
+- [Read-along](readalong.md) - Phase 3c-1: `readalong.align`, the goal readalong
+  path, the reuse table, the aligner, the `audiosilo-readalong/v1` map, and how the
+  server indexes, checks and serves it.
 - [The .audiosilo folder](attachments.md) - where the results go, their formats,
   and how the server finds, checks and serves them.
 - [The agent container](agent-container.md) - where the AI agents run, the

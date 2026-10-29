@@ -31,10 +31,10 @@
 // audiosilo-server/admin-ui/src/i18n/locales/en.json - if a label changes there,
 // change it here too.
 import {spawnSync} from 'node:child_process';
-import {createHmac, timingSafeEqual} from 'node:crypto';
+import {createHash, createHmac, timingSafeEqual} from 'node:crypto';
 import {constants as fsc} from 'node:fs';
 import http from 'node:http';
-import {cp, mkdir, rm, writeFile} from 'node:fs/promises';
+import {cp, mkdir, readFile, rm, writeFile} from 'node:fs/promises';
 import path from 'node:path';
 import {chromium} from 'playwright';
 import {
@@ -1066,12 +1066,14 @@ const standInSetup = (libraries, {budget, github}) => {
 const STORY_SHOTS = ['admin/book-story.png', 'admin/book-story-recaps.png'];
 const DETECT_SHOTS = ['admin/health-detect-chapters.png', 'admin/detect-chapters-dialog.png',
   'admin/book-chapters-generated.png'];
+const READALONG_SHOTS = ['admin/readalong-dialog.png', 'admin/book-readalong.png'];
 // The stand-in's heartbeat. The server keeps a heartbeat it just saved as the
 // current one, so the next GET /server sees it at once.
 const standInHeartbeat = (status) => api(bridgeToken, 'PUT', '/bridge/status', status, BRIDGE_CLIENT);
 await step('settings: bridge', async () => {
   if (!wanted('admin/settings-bridge.png', 'admin/bridge-pair.png', 'admin/bridge-setup.png',
-    'admin/settings-bridge-paired.png', ...GENERATE_SHOTS, ...STORY_SHOTS, ...DETECT_SHOTS)) return;
+    'admin/settings-bridge-paired.png', ...GENERATE_SHOTS, ...STORY_SHOTS, ...DETECT_SHOTS,
+    ...READALONG_SHOTS)) return;
   const info = await api(null, 'GET', '/server');
   if (!info?.capabilities || !('bridge' in info.capabilities)) throw new Error('this server build has no Bridge');
   try {
@@ -1379,6 +1381,101 @@ await step('bridge: detect chapters', async () => {
   await card.scrollIntoViewIfNeeded();
   await sleep(800);
   await shoot(page, 'admin/book-chapters-generated.png', {clip: around([await card.boundingBox()])});
+});
+
+// ── Make a read-along (Bridge Phase 3c-1) ────────────────────────────────────
+// A Christmas Carol has the EPUB run.sh copies beside its audio (section 2d), so
+// its page shows the Read-along card once the stand-in offers readalong.align.
+// The confirmation is shot and submitted, then the stand-in runs the job as a
+// Bridge would: it reads the book's files and lengths and its ebook from the
+// Bridge's book route, hashes the EPUB, and writes .audiosilo/readalong.json.
+// The stand-in aligns nothing, so the map it writes is its head alone (what the
+// server checks and the card shows: the EPUB's sha256, the book's files with the
+// server's lengths, the coverage) with no sections; the player's Text panel
+// (Phase 3c-2) will need a real map. The file is removed again after the shot,
+// so no other capture sees it.
+await step('bridge: make a read-along', async () => {
+  if (!wanted(...READALONG_SHOTS)) return;
+  if (!bridgeToken || !bridgeStatus) throw new Error('no stand-in Bridge was paired');
+  const list = await api(token, 'GET', `/admin/books?author=${encodeURIComponent('Charles Dickens')}&limit=50`);
+  const carol = (list?.books ?? []).find((b) => `${b.title} ${b.path}`.includes('Christmas Carol'));
+  if (!carol) throw new Error('no seeded A Christmas Carol');
+  if (!carol.ebook) throw new Error('A Christmas Carol has no ebook (run.sh section 2d)');
+  const root = library?.id === carol.library_id ? library.root : null;
+  if (!root) throw new Error('A Christmas Carol is not in the seeded library');
+  const folder = path.join(root, carol.path, '.audiosilo');
+  const mapFile = path.join(folder, 'readalong.json');
+  const rescan = () => api(bridgeToken, 'POST', '/bridge/rescan',
+    {library_id: carol.library_id, path: carol.path, mode: 'attachments'}, BRIDGE_CLIENT);
+  // A map an earlier run left behind would turn Make into Make again.
+  await rm(mapFile, {force: true});
+  await rescan();
+  await standInHeartbeat({...bridgeStatus, kinds: [...bridgeStatus.kinds, 'readalong.align']});
+
+  try {
+    await open(page, bookRoute(carol), (p) => p.getByRole('heading', {name: 'Details', exact: true}));
+    const card = page.locator('[aria-labelledby="readalong-title"]');
+    const make = card.getByRole('button', {name: 'Make read-along', exact: true});
+    await make.waitFor({timeout: 15000});
+    await make.click();
+    const dialog = page.getByRole('dialog', {name: 'Make a read-along'});
+    await dialog.getByText('None: no agent is used').waitFor({timeout: 15000});
+    await dialog.getByText(/^Up to /).waitFor({timeout: 15000}); // the transcription time
+    await sleep(800);
+    await shoot(page, 'admin/readalong-dialog.png');
+    await dialog.getByRole('button', {name: 'Make read-along'}).click();
+    await dialog.waitFor({state: 'hidden', timeout: 15000});
+
+    // The stand-in's run.
+    const job = await api(bridgeToken, 'GET', '/bridge/jobs/next?wait=5&kind=readalong.align', undefined, BRIDGE_CLIENT);
+    if (!job || job.path !== carol.path) throw new Error('the readalong.align job was not handed out');
+    await api(bridgeToken, 'PATCH', `/bridge/jobs/${job.id}`, {
+      attempt: job.attempts, state: 'running',
+      progress: {step: 'readalong_aligning', stage: 'readalong_aligning', source: 'audio',
+        message: 'Lining up the ebook with the narration', done: 0, total: 1},
+    }, BRIDGE_CLIENT);
+    const info = await api(bridgeToken, 'GET',
+      `/bridge/libraries/${carol.library_id}/book?path=${encodeURIComponent(carol.path)}`, undefined, BRIDGE_CLIENT);
+    const ebook = info?.book?.ebook;
+    if (!ebook) throw new Error('the Bridge book route names no ebook (a server before Phase 3c?)');
+    const sha256 = createHash('sha256').update(await readFile(path.join(root, ebook.path))).digest('hex');
+    const files = info.files.map((f) => ({
+      path: path.posix.relative(carol.path, f.path),
+      duration: Math.round(f.duration * 1000) / 1000,
+    }));
+    if (files.some((f) => !(f.duration > 0))) throw new Error('the server has no length for a file');
+    const coverage = {text: 0.996, audio: 0.987};
+    await mkdir(folder, {recursive: true});
+    await writeFile(mapFile, JSON.stringify({
+      format: 'audiosilo-readalong/v1',
+      ebook: {file: path.posix.basename(ebook.path), sha256},
+      audio: {duration: Math.round(files.reduce((t, f) => t + f.duration, 0) * 100) / 100, files},
+      granularity: 'sentence',
+      generator: {name: 'audiosilo-bridge', version: '0.5.0', aligner: 'whisper-words/1', asr: 'whisper-large-v3-turbo'},
+      generated_at: isoAgo(2 * DAY).replace(/\.\d+Z$/, 'Z'),
+      coverage,
+      sections: [],
+      audio_gaps: [],
+    }) + '\n');
+    const read = await rescan();
+    if (!read?.attachments?.readalong) throw new Error('the server did not take the readalong.json');
+    await api(bridgeToken, 'PATCH', `/bridge/jobs/${job.id}`, {
+      attempt: job.attempts, state: 'done',
+      progress: {step: 'done', stage: 'done', source: 'audio', message: 'Finished', done: 1, total: 1},
+      result: {library_id: carol.library_id, path: carol.path, file: 'readalong.json', coverage,
+        sections: 7, spans: 1650, audio_gaps: 1, heal_windows: 4, transcribed: false, ebook_sha256: sha256},
+    }, BRIDGE_CLIENT);
+
+    await open(page, bookRoute(carol), (p) => p.getByRole('heading', {name: 'Details', exact: true}));
+    await card.getByText(/^Ready: lines up/).waitFor({timeout: 15000});
+    await card.getByText('the transcript was reused').waitFor({timeout: 15000});
+    await card.scrollIntoViewIfNeeded();
+    await sleep(800);
+    await shoot(page, 'admin/book-readalong.png', {clip: around([await card.boundingBox()])});
+  } finally {
+    await rm(mapFile, {force: true});
+    await rescan().catch(() => {});
+  }
 });
 
 await step('webhook deliveries', async () => {

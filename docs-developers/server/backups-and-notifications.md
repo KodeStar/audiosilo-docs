@@ -221,7 +221,7 @@ kind. A nil `*Service` does nothing, so callers don't check.
 | `invite_redeemed` | a pairing exchange whose token came from an invite code | `user` (whose invite), `device` |
 | `update_available` | `updates.Checker.OnAvailable` after a check that finds a newer release; announced **once per version** (`dedup_key` is the version) | `version`, `name`, `url` (the release page) |
 | `backup_failed` | `backup.Service.OnFailure` (scheduled or manual) | `trigger`, `error` (`disk_full`, `permission_denied`, `failed`) |
-| `bridge_job_finished` | `bridge.Service.OnTransition` (wired by `API.SetBridge`): a [Bridge](../bridge/index.md) job moved **into** `done` | `job_id`, `job_kind`, `state`, `library`, `library_id`, `path`, `title` (the book's title as indexed now, one plain line of at most 200 characters; `""` when it can't be read), and for a `chapters.detect` job (Phase 1d) `chapters_source` (where the book's chapters come from once the Bridge's attachments rescan has run: `generated`, `community` or `files`), and for a `sidecars.contribute` job (Phase 2b) that filed nothing because the community already had everything, `shared_nothing: true` |
+| `bridge_job_finished` | `bridge.Service.OnTransition` (wired by `API.SetBridge`): a [Bridge](../bridge/index.md) job moved **into** `done` | `job_id`, `job_kind`, `state`, `library`, `library_id`, `path`, `title` (the book's title as indexed now, one plain line of at most 200 characters; `""` when it can't be read), and for a `chapters.detect` job (Phase 1d) `chapters_source` (where the book's chapters come from once the Bridge's attachments rescan has run: `generated`, `community` or `files`), and for a `sidecars.contribute` job (Phase 2b) that filed nothing because the community already had everything, `shared_nothing: true`, and for a `readalong.align` job (Phase 3c) `coverage` (its result's `coverage.text`, 0 to 1, when the result says) |
 | `bridge_job_failed` | the same hook: a job moved **into** `failed` (a Bridge's report, or a lease that ran out on the last attempt), or into `needs_attention` with a park that isn't transient (`bridge.Job.Notable`: never `agent_rate_limited`, `agent_unavailable` or `asr_worker_waiting`; a park changing its code in place counts when the new one isn't transient) | as `bridge_job_finished`, plus `code` (the park code, only for `needs_attention`) and `detail` (the job's `error`, the Bridge's own text, which can name a folder on its disk: **bell only**) |
 
 `notify.Kinds` lists them in this order, which is the order the console shows.
@@ -242,17 +242,21 @@ review. The book page links it."; `Already in the community: <title>` when it
 filed nothing because the community already had it: `contributed` empty, `covered`
 not) and for a `meta.correct` job `Corrections sent: <title>` ("The
 book's corrections went to the community for review. The book page links them."),
+and (Phase 3c) for a `readalong.align` job `Read-along ready: <title> (N% lined
+up)` (the coverage rounded down to a whole percent, so 0.996 reads 99%; "Listeners
+with the book's ebook can follow the narration in it."),
 and any other kind `<kind> finished: <title>` ("The Bridge finished the job."; a
 `bridge.verify` job's is `Bridge check finished: <library>`, its book's title
-when it named one); in the bell only `sidecars.generate`, `sidecars.describe`
-and `chapters.detect` have titles of their own (`FINISHED_OWN` in
-`lib/server-events.ts`), and every other kind, `sidecars.contribute` and
+when it named one); in the bell only `sidecars.generate`, `sidecars.describe`,
+`chapters.detect` and `readalong.align` have titles of their own (`FINISHED_OWN` in
+`lib/server-events.ts`; a read-along's `Read-along ready for <name>`, with `N% of
+the text lined up.` under it), and every other kind, `sidecars.contribute` and
 `meta.correct` included, reads `Bridge job finished: <name>` with the kind's
 name under it;
 `bridge_job_failed` reads `A Bridge job needs attention: <title>`
 (warning colour) or `<kind> failed: <title>` (`Characters and recaps`,
-`Description`, `Chapters`, `Sharing with the community`, `Corrections`, `Bridge
-check`, else `Bridge job`; `notify.bridgeKindWords`), its text the park
+`Description`, `Chapters`, `Sharing with the community`, `Corrections`,
+`Read-along`, `Bridge check`, else `Bridge job`; `notify.bridgeKindWords`), its text the park
 code in words (`book_not_writable`, `budget_exceeded` (raise the cap on the
 Bridge, or wait for the monthly one to reset; a cap set in its `config.yaml` or
 environment needs a restart, which resumes the job), `agent_credential_refused`

@@ -191,8 +191,9 @@ token. Details in [§14](#14-listening-in-the-house-and-casting).
 **Not the ebook** (capability `ebooks`): `GET /libraries/{id}/ebook` is header auth
 only (`requireAuth`): it never reads `?token=`, refuses a cast token, and there is no
 URL token kind for it. The web player fetches the bytes with the `Authorization`
-header (`client.ebook`) and posts them to the reader frame. Details in
-[§18](#18-the-ebook-reader).
+header (`client.ebook`) and posts them to the reader frame. A read-along map
+(`GET /libraries/{id}/readalong`, capability `readalong`) follows the same rule.
+Details in [§18](#18-the-ebook-reader).
 
 **A change requires:** do **not** "tighten" the server to reject query-param
 tokens on media routes without first removing the web player's dependency on
@@ -364,6 +365,7 @@ it, [§17](#17-podcast-shows-feeds-and-client-visibility)), the Phase 2c-3 core
 flags `podcast_discovery` (boot-only `podcasts.discovery.enabled` **and** the
 module toggle, independent of the Bridge, sent `false` otherwise) and
 `podcast_opml` (always true), `ebooks` (always true; the reader,
+[§18](#18-the-ebook-reader)), `readalong` (always true; read-along maps,
 [§18](#18-the-ebook-reader)), plus the
 server version
 (`api.Version`, stamped from the release tag via ldflags). `transcode` reflects
@@ -840,6 +842,17 @@ both repos, with a test on each side.
   admin book detail `generated_chapters_fit`. A change to the file touches the
   Bridge's writer and the server's reader. Detail:
   [Chapterless books](../bridge/chapters.md).
+- **Read-along (Phase 3c-1):** `readalong.align` (feature `readalong`, params
+  `{}`, writes) lines the book's ebook (the server's pick, the book route's new
+  `book.ebook {path, size}`) up with its narration, with no agent, and writes
+  `.audiosilo/readalong.json` (`audiosilo-readalong/v1`; only when at least half the
+  text lined up), timed on the server's file lengths (the book route's new
+  `files[].duration`). `409 no_ebook`, `generate_open` and `detect_open` refuse it;
+  a new generate or detect job meets `409 readalong_open` (a generate job cancels a
+  parked one). The estimate gains `kind=readalong.align`; the rescan answer gains
+  `attachments.readalong`. A change to the map touches the Bridge's writer, the
+  server's head checks and the player's reader. Detail:
+  [Read-along](../bridge/readalong.md).
 - **Setup and contributions (Phase 2b):** the heartbeat's `setup` block (the
   Bridge's onboarding checklist: `paired`, `libraries`, `asr`, `agent`, `budget`,
   `github`, plus `can_contribute` and `github_login`) reaches the console only, as
@@ -874,7 +887,10 @@ shipped players never see either. A shipped player ignores a `work` beside
 `generated` mark (the owner kept that as built); it ignores
 `generated_description` entirely. Phase 2b's are additive too: an older server
 sends no `accepts`, so a newer Bridge sends it no `setup`; an older Bridge doesn't
-advertise the new kinds; a signed-in player still gets the `bridge` block. The Bridge sends `X-AudioSilo-Client:
+advertise the new kinds; a signed-in player still gets the `bridge` block. Phase
+3c-1's are too: an older Bridge ignores the book route's `duration` and `ebook` and
+never advertises `readalong.align`; a newer one reads an older server's missing
+fields as none. The Bridge sends `X-AudioSilo-Client:
 AudioSilo Bridge/<version> (<os>)` on every call.
 
 **A change requires:** the server handler and its test, the mirrored type in the
@@ -1076,7 +1092,8 @@ See [Podcasts](../bridge/podcasts.md) and the
 
 Bridge Phase 3b-1 (capability `ebooks`, the web) and 3b-2 (the apps and the ebook in
 downloads, no server change), all additive: an older client ignores the field, and
-an older server has no flag, so no Read.
+an older server has no flag, so no Read. Phase 3c-1 adds read-along maps (below);
+the player's side, following the narration in the text, is 3c-2 and not built yet.
 
 **The book's ebook.** Every `Book` the server returns carries `ebook: {path, size}`
 when the scan found one readable `.epub` beside its audio (the Bridge's own rule,
@@ -1114,6 +1131,22 @@ server. The host-reader `postMessage` protocol is the frontend's alone
 ([the protocol](../frontend/reader.md#the-protocol)). The player's service worker
 (`public/sw.js`) must never answer the document with the app shell, which would boot
 the whole player inside the reader's frame.
+
+**Read-along maps** (Phase 3c-1, capability `readalong`). A Bridge's
+`readalong.align` job ([§16](#16-the-bridge)) writes the book's
+`.audiosilo/readalong.json`: sentence spans as EPUB CFIs that match foliate's
+`epubcfi.js` (UTF-16 offsets) with whole-book `start`/`end` seconds, the ebook's
+sha256 and the audio files it was made from, book-relative
+([the format](../bridge/readalong.md#the-map-audiosilo-readalongv1)). The server
+stores only the checked head (migration `0058`), hashes the ebook of a book with a
+map only, and answers `Book.readalong` on `/item` (never a list row):
+`{state: "ready", coverage, generated_at}` or `{state: "stale", reason}`
+(`ebook_changed`, `audio_changed`). `GET /libraries/{id}/readalong?path=` is header
+auth only, as `/ebook`, re-checks the file against the book on every request, and
+answers `404 no_readalong` or `409 readalong_stale`
+([the reference](../server/api/reference.md#get-apiv1librariesidreadalong)). The
+player will show its Text panel only for a `ready` map of a book it can read
+(planned, 3c-2).
 
 **A change requires:** a new field on the place or the conflict rule changes both
 repos (and is the same rule listening progress will reuse); the reader document's
