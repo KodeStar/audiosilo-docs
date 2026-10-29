@@ -303,7 +303,8 @@ Linux only; every other platform says no). `statfs` must say FUSE
 a stacked mount needs no path matching) must name `fuse.shfs`. Any failure
 along the way, or no line for the device, means no mapping. Inside a container
 both checks see the bind mount's real filesystem: an Unraid appdata path under
-`/mnt/user` is shfs, one under `/mnt/cache` is the pool's btrfs or xfs.
+`/mnt/user` is shfs, one under `/mnt/cache` is the pool's btrfs or xfs (and so
+is a `/mnt/user` exclusive share, which Unraid hands straight to its pool).
 
 Why only there: on shfs every page read (`pread`) is a round trip through the
 FUSE daemon, and mapping lets a reader take pages straight from the kernel's
@@ -321,10 +322,12 @@ purpose. The 256 MiB is a cap on address space, not memory: the mapped pages
 are the kernel's reclaimable file cache.
 
 The start logs the outcome once, `database readers: mmap` with `on`, `mode`,
-`mmap_size` (what SQLite took for a reader) and `asked`. Truncating the open
+`mmap_size` (what SQLite took for a reader) and `asked`. It is the limit SQLite
+took, not a mapping made: a reader whose `mmap()` fails later falls back to
+plain reads without a log line. Truncating the open
 database file in place would also raise `SIGBUS`, so nothing does: backups are
 `VACUUM INTO` and a restore swaps the file before it opens (see
-[Backups](backups-and-notifications.md)).
+[Restore at the next start](backups-and-notifications.md#restore-at-the-next-start)).
 
 ```yaml
 database:
@@ -777,8 +780,8 @@ restart, and whether the console may change it at all:
 | `modules.podcasts` | `modules.podcasts.enabled` | `AUDIOSILO_MODULES_PODCASTS_ENABLED` | at once; starts/stops feed/download/retention scheduling and gates writes; reads and present-pin reuse stay core |
 | `modules.contributions` | `modules.contributions.enabled` | `AUDIOSILO_MODULES_CONTRIBUTIONS_ENABLED` | at once (the Bridge jobs it owns are refused or held while it is off) |
 
-`podcasts.discovery.enabled`, `scan.concurrency` and the six `rate_limit.*`
-values have no setting id: each is read at start from the file or its variable
+`podcasts.discovery.enabled`, `scan.concurrency`, `database.mmap` and the six
+`rate_limit.*` values have no setting id: each is read at start from the file or its variable
 and never offered in the console.
 
 Not in the console: `max_upload_bytes` (it has a variable but no setting),

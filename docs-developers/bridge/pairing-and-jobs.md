@@ -327,10 +327,11 @@ Every report (`PATCH /bridge/jobs/{id}`) renews the lease. A job's handler only
 records its progress; a reporting loop beside it sends each new step at once, other
 changes at most every 2 seconds, and a keepalive at least every **30 seconds** even
 with nothing new (`jobs.DefaultKeepalive`), so a lease only runs out when the
-Bridge stops. A report that only renews the lease or carries progress is a
-user-state write on the server, which leaves the caches keyed on the content
-generation warm (server#258); a new state, result or error is a content write.
-Four keepalives fit in the 2-minute lease. After a report that didn't reach the server (no answer, a 5xx, a
+Bridge stops; four keepalives fit in the 2-minute lease. A report that only
+renews the lease or carries progress is a user-state write on the server, which
+leaves the caches keyed on the content generation warm (server#258); a new
+state, result or error, or a report that expires another job's lease, is a
+content write. After a report that didn't reach the server (no answer, a 5xx, a
 408 or a 429) the next goes after **10 seconds** (`jobs.DefaultReportRetry`) until
 one gets through, so a few lost reports never let the lease lapse. After any other
 4xx, which would be refused again however soon, it waits for the keepalive.

@@ -47,7 +47,7 @@ The first time you sign in to the admin console, it opens **Set up your server**
 
 ### Appdata on a user share
 
-When the appdata folder is on a user share (`/mnt/user/...`), AudioSilo maps its database into memory for reading, which makes browsing several times quicker on Unraid's user-share layer. It isn't needed on a cache or pool path, and it stays off on other network storage (an NFS or SMB mount, for example), where a read error while it is in use would stop the server. Each start logs a line with `database readers: mmap` in it; `on=true` means it is in use.
+When the appdata folder is on a user share (`/mnt/user/...`) that goes through Unraid's user-share layer, AudioSilo maps its database into memory for reading, which makes browsing several times quicker there. An exclusive share (one Unraid hands straight to a single pool) skips that layer, so it behaves like a cache path. It isn't needed on a cache or pool path, and it stays off on network storage (an NFS or SMB mount, for example), where a read error while it is in use would stop the server. Each start logs a line with `database readers: mmap` in it; `on=true` means it is turned on.
 
 To turn it off, add this to `config.yaml` in your appdata folder and restart the container:
 

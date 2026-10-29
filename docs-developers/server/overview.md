@@ -118,11 +118,14 @@ through `ExecContext`, `WithTx`, their durable forms `ExecDurable` and
 user-state forms `ExecUserState` and `WithUserStateTx`: one that skipped them
 would leave these caches serving stale rows. A user-state write (`store/userstate.go`,
 server#258) is listening and housekeeping no content cache reads: a progress
-save, a listening session, history, bookmarks and notes, ratings, the queue, a
-token's last-seen touch, the Bridge's heartbeat and its job reports' lease and
-progress. It leaves the generation where it was unless it changed a row outside
-its table's rule in `userStateTables` (checked by SQLite's pre-update hook, so a
-misfiled write only empties the caches). `store.GenMap` is the
+save, a listening session, history, bookmarks and notes, ratings, the queue,
+reading progress, the console's bell, the community metadata cache, a token's
+last-seen touch (the token cache drops the touched row itself), the Bridge's
+heartbeat and its job reports' lease and progress. It leaves the generation
+where it was unless it changed a row outside its table's rule in
+`userStateTables` (a progress row added, removed or re-keyed moves it, as the
+Health summary's duplicate ranking reads those keys; checked by SQLite's
+pre-update hook, so a misfiled write only empties the caches). `store.GenMap` is the
 small map the last two use: its entries
 all belong to one generation, the caller takes the generation before its read,
 and a newer one empties the map. See [Data model](data-model.md) for the schema
@@ -263,13 +266,14 @@ the raw query string (so `?memberships=1` is its own entry) and the caller's
 scopes. Entries are stored under the database's content generation
 (`store.DB.ContentGeneration`), which moves after every content write finishes,
 durable, failed and no-op writes included. Any content write empties the cache;
-a user-state write (a progress save, a heartbeat, a token's last-seen touch, a
-Bridge job's lease or progress report) leaves it warm, as no cached answer reads
-what it changes. So the cache never serves an answer older than the content it
-was computed from. The generation is read before the
+a user-state write (an update to a book's existing progress, a heartbeat, a
+token's last-seen touch, a Bridge job's lease or progress report) leaves it warm,
+as no cached answer reads what it changes. A book's first progress save adds a
+row, which is a content write. So the cache never serves an answer older than
+the content it was computed from. The generation is read before the
 request's first read, so an answer is never stored under a generation newer than
-its data. Each entry keeps the answer's gzip beside its JSON, made once when it
-is stored, and a hit sends the gzip to a client that takes it (`writeCachedJSON`;
+its data. Each entry of at least 1 KiB keeps the answer's gzip beside its JSON,
+made once when it is stored, and a hit sends the gzip to a client that takes it (`writeCachedJSON`;
 see [Response compression](api/index.md#response-compression)), so a hit
 compresses nothing. It holds 8 MiB (counting each answer's JSON, its gzip and
 its entry), at most 1 MiB an answer, least recently used first out. Only an
