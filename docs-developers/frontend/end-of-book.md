@@ -225,6 +225,13 @@ browser can't report the connection type) plus native `WIFI`/`ETHERNET`, and
 **fails open** on an `UNKNOWN`/undefined type or a probe error, so only a
 positively-known metered connection is skipped. The three settings
 (`autoPlayNext`, `autoDownloadNext`, `autoDeleteFinished`) live in
-`src/stores/settings.ts` with defaults `false` / `'wifi'` / `true` - the
-persisted `autoDownloadNext` key name predates the download-on-start behavior
-and is kept for hydration compatibility.
+`src/stores/settings.ts` with defaults `false` / `defaultAutoDownload()` /
+`true` - the persisted `autoDownloadNext` key name predates the download-on-start
+behavior and is kept for hydration compatibility. `defaultAutoDownload()` is
+`'wifi'` on native and `'never'` on web: the browser can't report the connection
+type, so `wifi` there behaved like `always` and downloaded every book started in a
+browser. A web document saved before that change (settings version 0) whose
+`autoDownloadNext` is `'wifi'` is read as `'never'`, unless its `keepAhead` is above
+0 - an opt-in to automatic downloads that `'never'` would silently stop; see
+[Settings](state-and-data.md#settings-srcstoressettingsts) for the version and
+`migrateSettings`.

@@ -43,7 +43,7 @@ Downloads are per-device: what you downloaded on your phone isn't automatically 
 
 The **Automatic downloads** card on the Downloads page holds three settings. They're the same settings as the **Up next and downloads** section of [Settings](settings.md#up-next-and-downloads), so changing one place changes the other.
 
-- **Download automatically**: **Never**, **On Wi-Fi** or **Always**. With On Wi-Fi or Always, the book you start listening to is downloaded as you play it, and playback quietly switches to the downloaded copy once it's on the device. On Wi-Fi skips mobile data on a phone or tablet. A browser can't tell Wi-Fi from mobile data, so in the web player On Wi-Fi downloads on any connection, and the card says so. Like Keep the next books ready (below), it leaves at least 1 GB (or a tenth of your storage) free, and it won't fetch a book you cancelled or removed earlier in the session.
+- **Download automatically**: **Never**, **On Wi-Fi** or **Always**. With On Wi-Fi or Always, the book you start listening to is downloaded as you play it, and playback quietly switches to the downloaded copy once it's on the device. On Wi-Fi skips mobile data on a phone or tablet. A browser can't tell Wi-Fi from mobile data, so in the web player On Wi-Fi downloads on any connection, and the card says so. The apps start at **On Wi-Fi** and the web player at **Never**, so a book you play in a browser streams without being saved unless you choose otherwise (see [Settings](settings.md#up-next-and-downloads) for a browser that was set to On Wi-Fi before). Like Keep the next books ready (below), it leaves at least 1 GB (or a tenth of your storage) free, and it won't fetch a book you cancelled or removed earlier in the session.
 - **Keep the next books ready**: **Off**, **1**, **2** or **3** (below).
 - **Remove a download when you finish the book**, to free up space as you go. Your place in the book is kept. On out of the box.
 
@@ -109,6 +109,7 @@ Earlier versions of the web player could fetch a book but then stop with "offlin
 
 A few browser realities to know:
 
+- Out of the box, nothing downloads on its own: the web player's **Download automatically** starts at **Never**, so a book you play streams from your server. Choose On Wi-Fi or Always on the Downloads page to keep the books you play.
 - It needs a **secure connection** (an `https://` address, which your server normally has). On a plain `http://` connection the Downloads tab disappears from the navigation, and a book's download button shows as a disabled **Downloads unavailable** instead.
 - Storage belongs to that browser on that machine, and the browser decides how much a site may keep. **Clearing the browser's site data deletes your downloads** (never your books or progress - those live on the server).
 - Browsers can clear stored data if the disk runs very low. AudioSilo asks the browser to keep its storage persistent, and installing the web player as an app (below) makes the browser much more protective of it - but a native [mobile app](mobile-apps.md) download is still the most bomb-proof option for long trips.

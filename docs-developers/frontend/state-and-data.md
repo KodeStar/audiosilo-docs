@@ -1039,11 +1039,21 @@ Playback tunables persisted as one JSON blob (`audiosilo.settings`):
 `voiceBoost` (off; see [Smart speed and Voice boost](audio-effects.md#the-settings-and-the-ui)).
 The playback layer subscribes and re-`configure`s the engine whenever these change.
 The same document holds the end-of-book and download behaviour - `autoPlayNext` (off), `autoDownloadNext`
-(`never | wifi | always`, default `wifi`), `keepAhead` (`0 | 1 | 2 | 3`, default
+(`never | wifi | always`; `defaultAutoDownload()` is `wifi` on native and `never` on web, see
+[Auto-download on play](end-of-book.md#auto-download-on-play)), `keepAhead` (`0 | 1 | 2 | 3`, default
 `0` = off; `toKeepAhead` reads a stored value that isn't one as off; see
 [Offline](offline.md#keep-the-next-books-ready-keep-aheadts--keep-ahead-controllerts))
 and `autoDeleteFinished`
 (on) - and the auto sleep timer's settings.
+
+The stored document carries a schema `version` (`SETTINGS_VERSION`; a document
+without one is version 0), written with every save and dropped from the store state
+on hydrate. `migrateSettings` runs in the document's parse step and brings an older
+document up to date; today its one rule is version 1's (on web only, a stored
+`'wifi'` `autoDownloadNext` becomes `'never'` unless `toKeepAhead(keepAhead)` is
+above 0). It re-runs on each load, with the same answer, until the next save writes
+the current version. A new settings change that must move stored values bumps
+`SETTINGS_VERSION` and adds its rule there.
 
 ### Series orderings (`src/stores/series-orderings.ts`)
 

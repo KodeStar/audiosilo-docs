@@ -230,7 +230,11 @@ with no network.
   why the playback store's automatic download asks as `auto`.
 - **UI**: `useDownloadControls` (`use-download-controls.ts`) wraps all of this
   for the book screen, the badges and the book menu (`book-actions.tsx` reads the
-  same hook); the `/downloads` page is below. Its `needsTranscode` (web, a book that
+  same hook); the `/downloads` page is below. The hook returns a book's `status` and
+  `error` (through the shallow-compared `useDownloadState`) and the start/cancel
+  actions, never the progress numbers, so a running download's ticks re-render
+  none of its callers. `DownloadControl`'s bar reads `useDownloadProgress` itself.
+  The hook's `needsTranscode` (web, a book that
   streams transcoded, with no entry or an errored one - a download already on disk
   stays removable) turns `supported` off so `DownloadControl` reads "Can't download
   in this browser" rather than the generic "Downloads unavailable". List responses
