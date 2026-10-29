@@ -1039,7 +1039,8 @@ Playback tunables persisted as one JSON blob (`audiosilo.settings`):
 `voiceBoost` (off; see [Smart speed and Voice boost](audio-effects.md#the-settings-and-the-ui)).
 The playback layer subscribes and re-`configure`s the engine whenever these change.
 The same document holds the end-of-book and download behaviour - `autoPlayNext` (off), `autoDownloadNext`
-(`never | wifi | always`, default `wifi`), `keepAhead` (`0 | 1 | 2 | 3`, default
+(`never | wifi | always`, default `wifi` on native and `never` on web, `defaultAutoDownload`; see
+[Auto-download on play](end-of-book.md#auto-download-on-play)), `keepAhead` (`0 | 1 | 2 | 3`, default
 `0` = off; `toKeepAhead` reads a stored value that isn't one as off; see
 [Offline](offline.md#keep-the-next-books-ready-keep-aheadts--keep-ahead-controllerts))
 and `autoDeleteFinished`

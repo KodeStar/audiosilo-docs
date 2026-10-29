@@ -651,8 +651,8 @@ async function captureWide(name, viewport, shots) {
         }
       }
       if (wanted(shots.bookDetails)) {
-        // Download it here unless it already is (the default automatic download may
-        // have kept it as it played), so Details says Plays from this device.
+        // Download it here unless it already is (an automatic download, off by default
+        // on the web, may have kept it as it played), so Details says Plays from this device.
         const download = firstVisible(page.getByRole('button', {name: /^download( for offline)?$/i}));
         if (await download.count()) await download.click({timeout: 8000});
         await firstVisible(page.getByRole('button', {name: /^downloaded$/i})).waitFor({timeout: 120000});
