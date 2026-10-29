@@ -175,11 +175,14 @@ server's thumbnail revision (`media.ThumbnailRev`) + art version
 cover) or `private, max-age=86400` (file art); any other `size` is a `400`, and a
 thumbnail that can't be made is a `404` the client answers by falling back to the
 full-art URL. Clients add the book's `cover_version` as `v=` purely as a cache buster:
-`coverUrl(lib, path, { size, version })`.
+`coverUrl(lib, path, { size, version })`. From 2.5.1 the server takes `size=96` too
+(the sizes are shared with `POST /admin/covers`, where the admin console asks for `96`
+for its table rows); the player never sends it, since an older server answers it `400`
+([reference](../server/api/reference.md#get-apiv1librariesidcover)).
 
 **Community covers** (capability `meta_covers`) are the other media-auth image
-route: `GET /libraries/{id}/meta/cover?path=&url=&size=160|320|640` is a JPEG
-thumbnail of a community `cover_url` that the server fetched, so the web player,
+route: `GET /libraries/{id}/meta/cover?path=&url=&size=160|320|640` (`96` too from
+2.5.1) is a JPEG thumbnail of a community `cover_url` that the server fetched, so the web player,
 whose CSP stays `img-src 'self' data: blob:`, never contacts a cover host. Details
 in [§13](#13-community-metadata-a-three-repo-seam).
 
@@ -562,7 +565,7 @@ answer. See
 
 **Community covers through the server** (`meta_covers`, which tracks `metadata`).
 `GET /libraries/{id}/meta/cover?path=&url=&size=160|320|640` (`size` optional,
-default 320; media auth, `?token=`) answers `image/jpeg`, a thumbnail of `url`,
+default 320, `96` too from 2.5.1; media auth, `?token=`) answers `image/jpeg`, a thumbnail of `url`,
 **only when** that exact URL is a `cover_url` the `/meta` envelope for the same
 `(library_id, path)` hands out (the recording's, or any rail entry's in a main
 view or an ordering). Anything else is `404 no such cover` **before any fetch**:

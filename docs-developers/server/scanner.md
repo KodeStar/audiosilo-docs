@@ -1082,7 +1082,10 @@ issue, whose fix joins them.
 Within a group the copy worth keeping comes first: the better format tier,
 then a single file, then the higher bitrate, then the one with more
 listeners. A request asks for the open groups or (`?ignored=true`) only the
-ignored ones, filtered before the cap of 500 groups.
+ignored ones, filtered before paging: from 2.5.1 a page of at most `limit`
+groups (500 at most, and the size of an unpaged answer) after a keyset
+`cursor`, a paged one also ending before the group that would take it past 300
+copies (see [the reference](api/reference.md#get-apiv1adminissuesduplicates)).
 
 An admin can **ignore** a book under a kind (`issue_ignores`, path-keyed
 durable state that moves with the book and survives rebuilds). A duplicate

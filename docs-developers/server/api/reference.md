@@ -1247,7 +1247,7 @@ Private shows have `feed_url: null` and `link: ""`. Only their followers see
 them, including player-facing admins; following by URL proves access through
 the current or previous normalized URL hash. Unknown times and
 `latest_published` are `null`. A status error is `{code, message}`.
-Artwork is `GET /api/v1/libraries/{id}/cover?path=<show>[&size=160|320|640]`;
+Artwork is `GET /api/v1/libraries/{id}/cover?path=<show>[&size=160|320|640]` (`96` too from 2.5.1);
 episode covers use the same show artwork.
 `retention` is additive policy data on both show-list routes; older clients
 must tolerate it. The server supplies the default when there is no override.
@@ -2698,7 +2698,7 @@ as `?token=` on an `<img>`.
 |---|---|---|---|
 | `path` | string | yes | the book whose `/meta` envelope handed out the cover; authorized against the caller's share scope exactly like `/meta` |
 | `url` | string | yes | the `cover_url`, exactly as the envelope carries it |
-| `size` | int | no | `160`, `320` (default) or `640`: the thumbnail's longest side in pixels |
+| `size` | int | no | `96` (from 2.5.1), `160`, `320` (default) or `640`: the thumbnail's longest side in pixels |
 | `token` | string | no | media-auth fallback |
 
 **Not an open proxy.** The server looks up the book's envelope (the same lookup and
@@ -2735,7 +2735,7 @@ reach the client.
 |---|---|
 | `200` | the JPEG thumbnail |
 | `304` | `If-None-Match` matched |
-| `400` | `url is required`; `size must be one of [160 320 640]` (an empty `size=` too); `path is required` / `invalid library id` |
+| `400` | `url is required`; `size must be one of [96 160 320 640]` (an empty `size=` too); `path is required` / `invalid library id` |
 | `401` | missing/invalid token |
 | `403` | path outside the caller's share scope |
 | `404` | `no such cover` - the book is unmatched (no `asin`/`isbn`, or no match upstream) or its envelope hands out no such URL; `no cover` - the image isn't one the server can decode, or is over 40 megapixels; `no book at that path`; `metadata lookup not enabled` (`meta_covers` false) |
@@ -2882,7 +2882,7 @@ three is tried, custom covers included.
 | Query param | Type | Required | Notes |
 |---|---|---|---|
 | `path` | string | yes | |
-| `size` | int | no | `160`, `320` or `640`: a JPEG thumbnail instead of the full art (`cover_sizes` capability; below) |
+| `size` | int | no | `96` (from 2.5.1; older servers refuse it, below), `160`, `320` or `640`: a JPEG thumbnail instead of the full art (`cover_sizes` capability; below) |
 | `v` | string | no | ignored by the server; clients append the book's `cover_version` as a cache buster |
 | `token` | string | no | media-auth fallback: a session token, or a [cast token](#cast-tokens-as-media-auth) for this book |
 
@@ -2900,6 +2900,12 @@ thumbnail cache - the one the admin console's
 larger than 40 megapixels, or one that can't be decoded, is a `404` here although
 the full-art URL still serves it, so a client falls back to the URL without `size`
 on a thumbnail `404`.
+
+`96` is for a table row's small cover. The admin console asks for it through
+[`POST /admin/covers`](#post-apiv1admincovers), never this route, which takes it
+because the two share their sizes. A server before 2.5.1 answers it `400`, and
+`cover_sizes` is true on both, so a client that talks to older servers (the
+player) keeps to `160` and up.
 
 - `ETag` is `"thumb-<size>-<rev>-<hash>"`. `rev` names how the server makes
   thumbnails: it changes when a server update makes other bytes of the same art,
@@ -2929,7 +2935,7 @@ so a cover replaced since the last fetch is a new URL to its image cache.
 
 | Status | Meaning |
 |---|---|
-| `400` | `size must be one of [160 320 640]` - any other value, including an empty `size=` (an older server ignores `size`, so only send it when `cover_sizes` is true); missing `path` / invalid library id |
+| `400` | `size must be one of [96 160 320 640]` - any other value, including an empty `size=` (an older server ignores `size`, so only send it when `cover_sizes` is true); missing `path` / invalid library id |
 | `304` | `If-None-Match` matched (thumbnails, and custom covers) |
 | `403` | the path, or the book it resolves to, is outside the caller's share scope |
 | `404` | `no cover`: no art at all, no book at the path, or (with `size`) art that cannot be decoded or is over 40 megapixels |
@@ -5457,6 +5463,7 @@ is a `400` too (`too many format or codec values`).
       "has_cover": true,
       "custom_cover": false,
       "cover_color": { "bg": "#1d2a44", "accent": "#e8a33c", "on_accent": "#000000" },
+      "cover_version": "3f9a1c07be",
       "chapter_count": 27,
       "file_count": 1,
       "asin": "B00B5HZGUG",
@@ -5476,7 +5483,7 @@ is a `400` too (`too many format or codec values`).
 ```
 
 - Every field is always present (empty string / `0` / `false` when unknown),
-  except `cover_color`, the four Health fields below, `chapters_check`,
+  except `cover_color`, `cover_version`, the four Health fields below, `chapters_check`,
   `chapter_choice` and `ebook`, which are omitted when empty or `0`.
   `path` is the book path (the player's `rel_path`).
 - `custom_cover` - an admin uploaded a cover; `has_cover` includes it.
@@ -5489,6 +5496,11 @@ is a `400` too (`too many format or codec values`).
   reads on it). Omitted until the server has read the current art's colour, from a
   thumbnail or in the [background colour pass](../media.md#the-background-colour-pass).
   The book page (`GET /admin/libraries/{id}/book`) carries it too.
+- `cover_version` - from 2.5.1, the book's
+  [`cover_version`](#get-apiv1librariesidbooks), the same value the player's
+  `Book` has: a short token that moves when the cover art does, so a client can
+  key cached thumbnails by it. Omitted for a book with no art identity yet. The
+  duplicates groups' copies and the book page's `book` carry it too.
 - `matched` - the book has an ASIN or ISBN: the same rule as the `matched` filter.
 - `abridged` - `true`, `false`, or `null` while nothing says (always present,
   unlike the player's `Book`, which omits it). `genres` and `tags` are `[]` for
@@ -6514,7 +6526,7 @@ path on demand.
 | Body field | Type | Required | Notes |
 |---|---|---|---|
 | `books` | array | yes | `[ { "library_id": 1, "path": "Andy Weir/The Martian" } ]`, 1 to 60 entries |
-| `size` | int | no | the longest side of the thumbnail in pixels: `160`, `320` (default) or `640` |
+| `size` | int | no | the longest side of the thumbnail in pixels: `96` (from 2.5.1, for a table row), `160`, `320` (default) or `640` |
 
 ```json
 {
@@ -6531,7 +6543,7 @@ Response `200`, one entry per requested book, in request order:
 ```json
 {
   "covers": [
-    { "library_id": 1, "path": "Andy Weir/The Martian", "data": "data:image/jpeg;base64,/9j/4AAQSkZJRg…" },
+    { "library_id": 1, "path": "Andy Weir/The Martian", "data": "data:image/jpeg;base64,/9j/4AAQSkZJRg…", "version": "3f9a1c07be" },
     { "library_id": 1, "path": "Andy Weir/Artemis", "data": "" }
   ]
 }
@@ -6541,6 +6553,13 @@ Response `200`, one entry per requested book, in request order:
   `size` (never scaled up; transparency is flattened onto white). It is `""`
   when the book has no art, the art can't be read or decoded, or no book is
   indexed at the path (an unknown `library_id` too).
+- `version` - from 2.5.1, with every thumbnail (omitted when `data` is `""`):
+  the [`cover_version`](#get-apiv1adminbooks) the book's admin row has **once
+  this request's colour is recorded**. It can differ from the version on the row
+  the client read: the cover may have been replaced since, or this is the book's
+  first thumbnail, which moves its version to the art's own. A client that keeps
+  thumbnails should file each under this `version`, never under the row's, so
+  the next row it reads finds it.
 - Thumbnails are cached in server memory, keyed by the art's version (a custom
   cover's upload time, a file's size and modification time), so a replaced
   cover is picked up on the next request. A source image larger than 40
@@ -6552,7 +6571,7 @@ Response `200`, one entry per requested book, in request order:
 
 | Status | Meaning |
 |---|---|
-| `400` | `books is required` (an empty list); `size must be one of [160 320 640]`; `invalid request` (malformed body or an unknown key); `code: "too_large"` for more than 60 books |
+| `400` | `books is required` (an empty list); `size must be one of [96 160 320 640]`; `invalid request` (malformed body or an unknown key); `code: "too_large"` for more than 60 books |
 | `401` / `403` | anonymous / non-admin |
 | `500` | `could not load covers` - a database failure (an unreadable image is never an error, it is `""`) |
 
@@ -6569,7 +6588,7 @@ can't load from the image's own host. Requires the `metadata`
 | Body field | Type | Required | Notes |
 |---|---|---|---|
 | `urls` | string array | yes | 1 to 12 cover URLs |
-| `size` | int | no | the longest side of the thumbnail in pixels: `160`, `320` (default) or `640` |
+| `size` | int | no | the longest side of the thumbnail in pixels: `96` (from 2.5.1), `160`, `320` (default) or `640` |
 
 ```json
 {
@@ -6603,7 +6622,7 @@ Response `200`, one entry per requested URL, in request order:
 
 | Status | Meaning |
 |---|---|
-| `400` | `urls is required` (an empty list); `size must be one of [160 320 640]`; `invalid request` (malformed body or an unknown key); `code: "too_large"` for more than 12 URLs |
+| `400` | `urls is required` (an empty list); `size must be one of [96 160 320 640]`; `invalid request` (malformed body or an unknown key); `code: "too_large"` for more than 12 URLs |
 | `401` / `403` | anonymous / non-admin |
 | `404` | `code: "metadata_off"` - community metadata is turned off |
 
@@ -6679,6 +6698,8 @@ different libraries are usually deliberate and are grouped only with `across`).
 | `library_id` | int | one library; a non-positive or non-integer id is `400 invalid library_id` |
 | `ignored` | `true` | return **only** the groups an admin said are different books (instead of the open ones) |
 | `across` | `1` or `true` | also group copies in **different** libraries (2.4.0, the console's "Include other libraries"): each copy's row names its `library_id` and `library_name`, and with `library_id` the groups holding one of that library's books are kept, their copies from any library. Without it nothing changes; the Health `duplicate` count never uses it |
+| `limit` | int | from 2.5.1: groups per page, at most 500 (a larger value is 500; one that is not a positive integer counts as absent). A page can end early (below), so page on `next_cursor`, not on the count |
+| `cursor` | string | from 2.5.1: the previous page's `next_cursor`, passed back verbatim; a malformed one is `400 invalid cursor` |
 
 ```json
 {
@@ -6692,7 +6713,9 @@ different libraries are usually deliberate and are grouped only with `across`).
         { "library_id": 1, "path": "Inbox/Alice (copy)", "…": "…", "listeners": 0 }
       ]
     }
-  ]
+  ],
+  "total": 132,
+  "next_cursor": "THV3aXMgQ2Fycm9sbC9BbGljZSdzIEFkdmVudHVyZXMgaW4gV29uZGVybGFuZAAx"
 }
 ```
 
@@ -6722,8 +6745,25 @@ different libraries are usually deliberate and are grouped only with `across`).
   `?ignored=true` only groups with `ignored: false` are returned; with it, only
   the ignored ones. An ignored group becomes open again by itself when a new
   copy joins it.
-- At most 500 groups (counted after that filter, so every ignored group can be
-  reached), ordered by library and the kept copy's path.
+- Groups are ordered by library and the kept copy's path, and paged by keyset
+  on that order (from 2.5.1): `cursor` names the last group's kept copy, so a
+  group that comes or goes between pages moves no other group across the
+  boundary. The groups are found afresh for every page. A group whose kept copy
+  changes between two page loads (a better copy arrived) can sort elsewhere, so
+  a client paging through should show a group once even if a later page brings
+  it again.
+- `total` - how many groups there are in all, on every page (counted after the
+  `ignored` filter, so every ignored group can be reached). `next_cursor` is
+  omitted on the last page.
+- With `limit`, a page also stops before a group that would take it past
+  **300 copies**, unless the page is still empty. Each copy is a full admin row,
+  so without this a few very large groups (identical audio across a big library)
+  would make one answer megabytes. A single group of more than 300 copies is a
+  page of its own. So a page can hold fewer than `limit` groups and still have a
+  `next_cursor`.
+- Without `limit` (an older console, or a script that doesn't page) the answer
+  is the first 500 groups whole, with no bound on their copies, as before, plus
+  `total` and, past 500, a `next_cursor`.
 
 ### `GET /api/v1/admin/issues/series-spellings`
 

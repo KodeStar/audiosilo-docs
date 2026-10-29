@@ -254,6 +254,11 @@ when it was **Added**. **Open book** opens a copy's page.
   the library folder and rescan; listening progress on the deleted copy's path
   is kept (see [Jobs](#what-a-removed-book-leaves-behind)).
 
+A long list shows more groups as you scroll down (or click **Show more** at the
+bottom), and each copy's cover appears as it scrolls into view. A group with more
+than 10 copies (for example, the same audio copied across a big library) shows
+the first 10; **Show all *n* copies** at the bottom of the group shows the rest.
+
 ### Series spelled several ways
 
 AudioSilo treats names that differ only in capitals, accents, punctuation or
