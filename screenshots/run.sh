@@ -182,94 +182,45 @@ echo "==> seeding podcast shows into $PODCASTS"
 # Gutenberg's public-domain edition (ebook #46), fetched once into .cache and
 # copied in on every run (the cached library may predate it). The server's scan
 # records it as the book's ebook; it only reads it.
-EBOOK_BOOK="$LIBRARY/Charles Dickens/A Christmas Carol"
-EBOOK_FILE="$CACHE/a-christmas-carol.epub"
-if [ -d "$EBOOK_BOOK" ]; then
-  if [ ! -s "$EBOOK_FILE" ]; then
-    echo "==> fetching A Christmas Carol's EPUB (Project Gutenberg)"
-    # Bounded (a stalled network never holds up the run) and checked to be a zip
-    # (an HTML page answered with a 200 is never cached as the EPUB).
-    if curl -fsSL --retry 3 --connect-timeout 20 --max-time 300 -o "$EBOOK_FILE.part" \
-        https://www.gutenberg.org/ebooks/46.epub3.images \
-      && [ "$(head -c 2 "$EBOOK_FILE.part")" = "PK" ]; then
-      mv "$EBOOK_FILE.part" "$EBOOK_FILE"
+# fetch_epub <gutenberg id> <cache file> <book dir> <epub name> <shots>: fetches
+# Project Gutenberg's EPUB once into the cache file, then copies it into the book
+# folder as <epub name> when it differs. Bounded (a stalled network never holds up
+# the run) and checked to be a zip (an HTML page answered with a 200 is never
+# cached as the EPUB). Fails when there is no EPUB to copy.
+fetch_epub() {
+  local id="$1" cached="$2" book="$3" name="$4" shots="$5"
+  if [ ! -s "$cached" ]; then
+    echo "==> fetching ${name%.epub}'s EPUB (Project Gutenberg)"
+    if curl -fsSL --retry 3 --connect-timeout 20 --max-time 300 -o "$cached.part" \
+        "https://www.gutenberg.org/ebooks/$id.epub3.images" \
+      && [ "$(head -c 2 "$cached.part")" = "PK" ]; then
+      mv "$cached.part" "$cached"
     else
-      rm -f "$EBOOK_FILE.part"
-      echo "  ! the EPUB fetch failed (offline, or not an EPUB): the reader shots will fail"
+      rm -f "$cached.part"
+      echo "  ! the EPUB fetch failed (offline, or not an EPUB): the $shots shots will fail"
+      return 1
     fi
   fi
-  if [ -s "$EBOOK_FILE" ]; then
-    cmp -s "$EBOOK_FILE" "$EBOOK_BOOK/A Christmas Carol.epub" \
-      || cp "$EBOOK_FILE" "$EBOOK_BOOK/A Christmas Carol.epub"
-  fi
+  cmp -s "$cached" "$book/$name" || cp "$cached" "$book/$name"
+}
+
+EBOOK_BOOK="$LIBRARY/Charles Dickens/A Christmas Carol"
+if [ -d "$EBOOK_BOOK" ]; then
+  fetch_epub 46 "$CACHE/a-christmas-carol.epub" "$EBOOK_BOOK" "A Christmas Carol.epub" reader || true
 else
   echo "  ! no $EBOOK_BOOK: the reader shots will fail"
 fi
 
 # ── 2e. A read-along (Bridge Phase 3c) ────────────────────────────────────
-# The Call of the Wild gets its EPUB and the read-along map a real Bridge made for
-# it (fixtures/call-of-the-wild.readalong.json, byte for byte the readalong.json of
-# the 3c-1 verification run: the same LibriVox recording, Project Gutenberg's
-# ebook #215), for web-player/player-text.png, reader-readalong.png and
-# phone-player-text.png. The EPUB is fetched once into .cache and checked against
-# the map's ebook.sha256: Gutenberg rebuilds its EPUBs now and then, and a map
-# made from another file is served stale (ebook_changed), never followed.
-# The seed caps each book at MAX_FILES audio files (3 of this book's 7), and the
-# server serves a map only while its audio files are the book's, so the map
-# written into .audiosilo/ is cut to the files seeded: their seeded names
-# ("001 - <file>"), the spans and audio gaps inside them, the duration theirs and
-# coverage.text scaled by the share of spans kept (MAX_FILES=0 or 7 keeps it whole).
-# Written on every run (the cached library may predate it); the server only reads it.
+# The Call of the Wild gets its EPUB (Project Gutenberg's ebook #215, fetched once
+# into .cache) and the read-along map a real Bridge made for it, cut to the seeded
+# audio files by seed-readalong.mjs (its header says how), for
+# web-player/player-text.png, reader-readalong.png and phone-player-text.png.
 RA_BOOK="$LIBRARY/Jack London/The Call of the Wild"
 RA_EPUB="$CACHE/the-call-of-the-wild.epub"
 if [ -d "$RA_BOOK" ]; then
-  if [ ! -s "$RA_EPUB" ]; then
-    echo "==> fetching The Call of the Wild's EPUB (Project Gutenberg)"
-    if curl -fsSL --retry 3 --connect-timeout 20 --max-time 300 -o "$RA_EPUB.part" \
-        https://www.gutenberg.org/ebooks/215.epub3.images \
-      && [ "$(head -c 2 "$RA_EPUB.part")" = "PK" ]; then
-      mv "$RA_EPUB.part" "$RA_EPUB"
-    else
-      rm -f "$RA_EPUB.part"
-      echo "  ! the EPUB fetch failed (offline, or not an EPUB): the read-along shots will fail"
-    fi
-  fi
-  if [ -s "$RA_EPUB" ]; then
-    cmp -s "$RA_EPUB" "$RA_BOOK/The Call of the Wild.epub" \
-      || cp "$RA_EPUB" "$RA_BOOK/The Call of the Wild.epub"
-    mkdir -p "$RA_BOOK/.audiosilo"
-    node -e '
-      const fs = require("node:fs");
-      const crypto = require("node:crypto");
-      const [fixture, book, epub] = process.argv.slice(1);
-      const map = JSON.parse(fs.readFileSync(fixture, "utf8"));
-      const sha = crypto.createHash("sha256").update(fs.readFileSync(epub)).digest("hex");
-      if (sha !== map.ebook.sha256) {
-        console.log(`  ! the EPUB is not the one the map was made from (sha256 ${sha.slice(0, 8)}, not ${map.ebook.sha256.slice(0, 8)}): the read-along shots will fail`);
-      }
-      // The seeded audio files by their own names: "001 - callofthewild_1_london_64kb.mp3".
-      const seeded = new Map(fs.readdirSync(book).filter((f) => f.endsWith(".mp3"))
-        .map((f) => [f.replace(/^\d+ - /, ""), f]));
-      const files = [];
-      for (const f of map.audio.files) {
-        if (!seeded.has(f.path)) break;
-        files.push({path: seeded.get(f.path), duration: f.duration});
-      }
-      if (!files.length) throw new Error("no audio file of the map is seeded");
-      const end = files.reduce((t, f) => t + f.duration, 0);
-      const all = map.sections.reduce((n, s) => n + s.spans.length, 0);
-      let kept = 0;
-      for (const s of map.sections) {
-        s.spans = s.spans.filter((sp) => sp.end <= end);
-        kept += s.spans.length;
-      }
-      map.ebook.file = "The Call of the Wild.epub";
-      map.audio = {duration: Math.round(end * 100) / 100, files};
-      map.coverage.text = Math.round(map.coverage.text * (kept / all) * 10000) / 10000;
-      map.audio_gaps = (map.audio_gaps || []).filter((g) => g.end <= end);
-      fs.writeFileSync(`${book}/.audiosilo/readalong.json`, JSON.stringify(map));
-      console.log(`  read-along: ${files.length} audio files of the map seeded, ${kept} of ${all} sentences kept`);
-    ' "$HERE/fixtures/call-of-the-wild.readalong.json" "$RA_BOOK" "$RA_EPUB" \
+  if fetch_epub 215 "$RA_EPUB" "$RA_BOOK" "The Call of the Wild.epub" read-along; then
+    (cd "$HERE" && node seed-readalong.mjs "$RA_BOOK" "$RA_EPUB") \
       || echo "  ! the read-along map could not be written: the read-along shots will fail"
   fi
 else

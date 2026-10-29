@@ -586,6 +586,16 @@ async function backToShell(page) {
   if (await tid(page, 'player-menu').count()) await minimisePlayer(page);
 }
 
+// Out of the full-screen reader, back to the book page whose Read action `read` is:
+// Escape (twice at most, a sheet over the reader first), else backToShell.
+async function leaveReader(page, read) {
+  for (let i = 0; i < 2 && (await read.count()) === 0; i++) {
+    await page.keyboard.press('Escape');
+    await read.waitFor({timeout: 1500}).catch(() => {});
+  }
+  if ((await read.count()) === 0) await backToShell(page);
+}
+
 // A player sheet from one of the full player's action pills (`player-speed`,
 // `player-sleep`), shot and closed again with Escape.
 async function sheetShot(page, testId, shot) {
@@ -750,11 +760,7 @@ async function captureWide(name, viewport, shots) {
           await shoot(page, shots.readerContents);
         }
       } finally {
-        for (let i = 0; i < 2 && (await read.count()) === 0; i++) {
-          await page.keyboard.press('Escape');
-          await read.waitFor({timeout: 1500}).catch(() => {});
-        }
-        if ((await read.count()) === 0) await backToShell(page);
+        await leaveReader(page, read);
       }
     });
   }
@@ -1185,11 +1191,7 @@ async function captureReadalong() {
             await page.mouse.move(0, 0);
             await shoot(page, READALONG_SHOTS.reader);
           } finally {
-            for (let i = 0; i < 2 && (await read.count()) === 0; i++) {
-              await page.keyboard.press('Escape');
-              await read.waitFor({timeout: 1500}).catch(() => {});
-            }
-            if ((await read.count()) === 0) await backToShell(page);
+            await leaveReader(page, read);
           }
         });
       }

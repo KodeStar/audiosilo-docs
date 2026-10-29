@@ -55,7 +55,7 @@ The tab appears only once the book's read-along has loaded. A book without one, 
 
 ### Making one (admins)
 
-For an admin, with a [Bridge](../admin/bridge.md) that can make read-alongs, every book with an ebook has the **Text** tab. Where there is nothing to follow yet it says **No read-along for this book yet**, with **Make read-along**; where the read-along is out of date it says **The read-along is out of date**, why (the ebook or the audio changed), and **Make the read-along again**. The button opens a confirmation: what the Bridge reads (the ebook and the audio), the most transcription it may take (**Up to** how long transcribing the whole book takes on your Bridge, less when it still has the book's transcript; no estimate when the Bridge hasn't sent its figures), **AI agent cost: None: no AI agent is used** and where the result appears (on this server). Press **Make read-along** to queue it: *"Queued. The text appears here when it's done."* The tab then shows the job's progress (*"Making the read-along"*, with **Cancel**) and, when it's done, the text. The Bridge can't make one while it's generating characters and recaps or finding the chapters of the same book, so the confirmation says to wait; [Making a read-along](../admin/making-read-along.md) has the details, and the admin console's Read-along card does the same.
+For an admin, with a [Bridge](../admin/bridge.md) that can make read-alongs, every book with an ebook has the **Text** tab. Where there is nothing to follow yet, or the read-along is out of date, the tab offers to make it: see [Making a read-along from the player](../admin/making-read-along.md#from-the-player).
 
 ## Chapters
 

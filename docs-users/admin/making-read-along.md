@@ -81,12 +81,26 @@ book" action.
 ### From the player
 
 As an admin, you can make one from the player too. Play the book and open the
-companion's **Text** tab: where there is nothing to follow yet it says **No
-read-along for this book yet** with **Make read-along** (for an out-of-date one,
-**Make the read-along again**). Its confirmation shows the ebook and the audio,
-the transcription "Up to" time and **AI agent cost: None**, then the tab follows
-the job and shows the text once it's done. See
-[The companion](../listening/companion.md#making-one-admins).
+companion's [Text tab](../listening/companion.md#text). Where there is nothing to
+follow yet it says **No read-along for this book yet**, with **Make read-along**;
+where the read-along is out of date it says **The read-along is out of date**, why
+(the ebook or the audio changed), and **Make the read-along again**.
+
+The button opens a confirmation:
+
+- what the Bridge reads (the ebook and the audio);
+- **Up to** how long transcribing the whole book takes on your Bridge, less when it
+  still has the book's transcript (no estimate when the Bridge hasn't sent its
+  figures);
+- **AI agent cost: None: no AI agent is used**, and where the result appears (on
+  this server).
+
+Press **Make read-along** to queue it: *"Queued. The text appears here when it's
+done."* The tab then shows the job's progress (*"Making the read-along"*, with
+**Cancel**) and, when it's done, the text. The Bridge can't make one while it's
+generating characters and recaps or finding the chapters of the same book, so the
+confirmation says to wait (see
+[Sharing the Bridge's work](#sharing-the-bridges-work)).
 
 ## How long it takes
 

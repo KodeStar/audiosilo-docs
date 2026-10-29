@@ -233,23 +233,15 @@ hour), asked again from the script with `GITHUB_TOKEN` when it is set
 
 The read-along shots (`web-player/player-text.png`,
 `web-player/reader-readalong.png`, `web-player/phone-player-text.png`, Bridge Phase
-3c-2) need a book the server serves a `ready` read-along map for. Before the
-servers start, `run.sh` (section 2e) puts Project Gutenberg's EPUB of **The Call of
-the Wild** (ebook #215, fetched once into `.cache`) beside its audio and writes
-`fixtures/call-of-the-wild.readalong.json` into its `.audiosilo/` folder: the map a
-real Bridge made in the 3c-1 verification run, from the same LibriVox recording and
-that same EPUB (its `ebook.sha256` is checked, and a mismatch is reported: a map
-made from another file is served stale). The server serves a map only while its
-audio files are the book's, and the seed keeps `MAX_FILES` (3) of the book's 7
-files, so the map written is cut to the seeded files: their seeded names, the
-spans and audio gaps inside them, their duration, and `coverage.text` scaled by
-the share of spans kept (a whole seed keeps it whole). No audio is added to the
-seed and nothing large is committed (the map is 166 KB of JSON). The captures run
-after every other web profile (playing the book makes it the demo user's latest):
-the book is opened by its route, started and paused in chapter 1, then the desktop
-full player's companion is switched to Text, the full-screen reader is opened and
-**Follow narration** pressed, and on a phone the companion sheet is opened from the
-Chapters chip and switched to Text.
+3c-2) need a book the server serves a `ready` read-along map for. No Bridge runs:
+`run.sh` (section 2e) puts Project Gutenberg's EPUB of **The Call of the Wild**
+(ebook #215, fetched once into `.cache`) beside its audio, and `seed-readalong.mjs`
+writes `fixtures/call-of-the-wild.readalong.json` (the map a real Bridge made in the
+3c-1 verification run, from the same recording and EPUB) into its `.audiosilo/`
+folder, cut to the `MAX_FILES` audio files seeded (its header has the rules). No
+audio is added and nothing large is committed (the map is 166 KB of JSON). The
+captures run after every other web profile, since playing the book makes it the
+demo user's latest; `READALONG_SHOTS` in `capture-web.mjs` says what each one does.
 
 The web player's browse shots need state the seeded library doesn't carry.
 Before warming the demo session, `capture-web.mjs` signs in as the admin

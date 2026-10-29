@@ -300,23 +300,28 @@ the tab's scroller (the reader pages itself; inline on a tablet it is 520 px tal
 
 **Make read-along** (`src/components/bridge/`: `use-make-readalong.ts`,
 `make-readalong.tsx`, the rules in `readalong-model.ts`, pure and tested) follows
-Generate's pattern. It is offered (`readalongOffer`) once the book's jobs are known
-and none shows its status (`readalongStatusJob`: the newest `readalong.align` while
-open or once failed, shown by the shared `BridgeJobStatus` in `generate-status.tsx`,
-the stage `readalong_aligning` reading "Lining the text up with the narration").
-The confirmation reads the estimate (`useReadalongEstimate`, `GET
-/admin/bridge/estimate?kind=readalong.align`): the source (the ebook's file name
-and the audio), "Up to" the transcription (`asr_hours`; no estimate when the
-server has no `figures`), no AI agent, and that results appear on this server. It is held back
-(`readalongBlockKey`) on `no_ebook`, `library_not_writable`, an open generate or
-detect job, or the book's own open read-along job (`readalong_open`); a refused
-queue reads in the app's words (`readalongRefusalKey`). The job queues `{}`. An open
-confirmation belongs to the book (`useBridgeJobSurface`): it closes when the playing
-book changes. The job's finish reads the book's item again (`refreshAfterFinish`),
-and the map follows under its new `generated_at`. Generate, in turn, is held back
-while a read-along job is open (`readalong_open`, "This book's read-along is being
-made"). The console's own [Read-along card](/users/admin/making-read-along) covers
-the same job.
+Generate's pattern:
+
+- **Offered** (`readalongOffer`) once the book's jobs are known and none shows its
+  status (`readalongStatusJob`: the newest `readalong.align` while open or once
+  failed, shown by the shared `BridgeJobStatus` in `generate-status.tsx`, the stage
+  `readalong_aligning` reading "Lining the text up with the narration").
+- **The confirmation** reads the estimate (`useReadalongEstimate`, fields in
+  [State & data](state-and-data.md#read-along-usereadalong-and-usebookreadalong)):
+  the source (the ebook's file name and the audio), "Up to" the transcription (no
+  estimate when the server has no `figures`), no AI agent, and that results appear
+  on this server. The job queues `{}`.
+- **Held back** (`readalongBlockKey`) on `no_ebook`, `library_not_writable`, an open
+  generate or detect job, or the book's own open read-along job (`readalong_open`);
+  a refused queue reads in the app's words (`readalongRefusalKey`). Generate, in
+  turn, is held back while a read-along job is open (`readalong_open`, "This book's
+  read-along is being made").
+- **Lifetime**: an open confirmation belongs to the book (`useBridgeJobSurface`): it
+  closes when the playing book changes. The job's finish reads the book's item again
+  (`refreshAfterFinish`), and the map follows under its new `generated_at`.
+
+The console's own [Read-along card](/users/admin/making-read-along) covers the same
+job.
 
 **The reveal toast** is `CompanionRevealListener` (`reveal-listener.tsx`), mounted
 once in the root layout so it fires wherever the listener is. It subscribes to

@@ -369,8 +369,8 @@ Bridge Phase 3c-2. `Book.readalong` (`BookReadalong`: `state` `ready` with
 absent on older servers and for a book with no ebook or no valid map. The map itself
 (`ReadalongMap`, hand-mirrored from the Bridge's `internal/readalong` mapfile;
 `ReadalongSpan` is `{cfi, start, end}` in whole-book seconds) comes from
-`client.readalong`, which checks it span by span (`parseReadalongMap`) and rejects
-an answer that is no map with a `ReadalongMapError`.
+`client.readalong`, checked span by span as [The ebook reader](reader.md#the-map)
+describes.
 
 - **`useReadalong`** is keyed by the map's `generated_at` (`qk.readalong(cid, lib,
   path, generatedAt)`), `staleTime: Infinity`, **no retry**: a 404 `no_readalong` or a
@@ -380,11 +380,8 @@ an answer that is no map with a `ReadalongMapError`.
   same as a generate or detect job), and `useBridgeJobs` polls the book's jobs while
   a read-along job is open on a surface on screen.
 - **`useBookReadalong`** (`src/reader/use-book-readalong.ts`) is what the surfaces
-  call: it picks the download's copy (`qk.readalongLocal`, read from the device with
-  `networkMode: 'always'`) or the server's map (`readalongSource`), and answers `map`
-  (sections and spans for the reader, or null), `pending`, `failed` (a read that
-  failed for any reason but the server's none, `readalongNone`) and `retry`. The full
-  rules are on [The ebook reader](reader.md#the-map).
+  call: it picks the download's copy or the server's map; its contract is on
+  [The ebook reader](reader.md#the-map).
 - **`useReadalongEstimate`** sits under the book's `qk.bridgeEstimate` prefix
   (`qk.readalongEstimate`), so a refused queue reads it again with the other
   estimates; it gets `bridgeEstimate`'s longer budget, since the server may hash the
