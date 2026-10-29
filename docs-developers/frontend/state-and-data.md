@@ -27,8 +27,9 @@ themselves.
   knows (the `API_ERROR_CODES` list: `member_limit`, `username_taken`,
   `invalid_name`, `invalid_collections`, `feature_off`, `not_allowed`,
   `member_cannot_manage`, `member_disabled`, `kid_account`, `demo_account`, and
-  the Bridge's `library_not_writable`, `kind_unavailable`, `detect_open` and
-  `contribute_open`), else
+  the Bridge's `library_not_writable`, `kind_unavailable`, `detect_open`,
+  `contribute_open`, `generate_open`, `readalong_open` and `no_ebook`, and the
+  read-along map's `no_readalong` and `readalong_stale`), else
   the status's kind (`too_many` 429, `not_found` 404, `forbidden` 403, `invalid`
   400, `conflict` 409, `failed` for anything else or no answer), so an older
   server without codes still reads sensibly. A new code needs a case in the list
@@ -265,6 +266,8 @@ older server (React Query rejects it instead) and the query stays pending.
 | `bookMeta(lib, path, signal, { includePrevious, hideSpoilers })` | `useBookMeta(lib, path, enabled, opts?)` | `meta_bundle` (the caller checks it; the hook gates only on `enabled`) | `GET /libraries/{id}/meta?include=previous&spoilers=hide` |
 | `coverUrl(lib, path, { size, version })` | - | `cover_sizes` for `size` | `GET /libraries/{id}/cover?size=&v=` |
 | `communityCoverUrl(lib, path, coverUrl, { size })` | `useCommunityCover(cid, lib, path)` (a resolver, not a query) | `meta_covers` | `GET /libraries/{id}/meta/cover?path=&url=&size=` ([below](#community-covers-clientcommunitycoverurl)) |
+| `readalong(lib, path)` | `useReadalong(lib, path, { enabled, generatedAt }, connectionId?)`, behind `useBookReadalong` | `readalong` | `GET /libraries/{id}/readalong` (the map, checked span by span: `CheckedReadalongMap`; [below](#read-along-usereadalong-and-usebookreadalong)) |
+| `readalongEstimate(lib, path)` | `useReadalongEstimate(lib, path, connectionId?)` | `bridge` | `GET /admin/bridge/estimate?kind=readalong.align` (`ReadalongEstimate`, admin only) |
 
 - **People lists are normalised.** The server answers `{ authors, unknown }` and
   `{ narrators, unknown }`; the client returns both as one shape,
@@ -349,6 +352,7 @@ Cross-server screens ask per connection (`useCapabilitiesAll` /
 | `addresses` | the Account page's At home and away card (`useServerAddresses`) and the native address runner's refresh (`addressesQuery`); see [Connect and home/away addresses](connect-and-addresses.md#home-and-away-addresses) |
 | `household` | Home's Listening in the house row, the book page's In the house card and the sharing switch (`useHousehold`, `useSetHousehold`, `useHouseListening`); see [Listening in the house](listening-in-the-house.md) |
 | `ebooks` | Read the ebook on the book page (`canRead`, [the rule](reader.md#read-on-the-book-page)) and the reader screen's own check; see [The ebook reader](reader.md) |
+| `readalong` | the companion's Text tab, the full-screen reader's Follow narration (`readalongReady`), the admin's Make read-along (`mayMakeReadalong`, with `bridge` and the Bridge's `readalong` feature), the map in downloads (`wantsReadalong`); see [Read-along](reader.md#read-along-following-the-narration) |
 | `cast` | the Cast button and `prepareCast` (no flag, or flags not known yet: no button, and a cast is refused); see [Chromecast](chromecast.md) |
 
 Writes from screens follow the [1b write rules](#the-listeners-own-state-player-redesign-phase-1b)
@@ -356,6 +360,41 @@ Writes from screens follow the [1b write rules](#the-listeners-own-state-player-
 up / Move down send `position` = the visible index (`moveIndex` in
 `collections-model.ts`, `moveItem` in `up-next-model.ts`), and an Undo re-adds at
 the old index. `useSetQueue` / `useSetCollectionItems` have no caller.
+
+### Read-along (`useReadalong` and `useBookReadalong`)
+
+Bridge Phase 3c-2. `Book.readalong` (`BookReadalong`: `state` `ready` with
+`coverage` and `generated_at`, or `stale` with a `reason`, `ebook_changed` or
+`audio_changed`) rides only on `GET /libraries/{id}/item`, never a list row, and is
+absent on older servers and for a book with no ebook or no valid map. The map itself
+(`ReadalongMap`, hand-mirrored from the Bridge's `internal/readalong` mapfile;
+`ReadalongSpan` is `{cfi, start, end}` in whole-book seconds) comes from
+`client.readalong`, which checks it span by span (`parseReadalongMap`) and rejects
+an answer that is no map with a `ReadalongMapError`.
+
+- **`useReadalong`** is keyed by the map's `generated_at` (`qk.readalong(cid, lib,
+  path, generatedAt)`), `staleTime: Infinity`, **no retry**: a 404 `no_readalong` or a
+  409 `readalong_stale` is final. A map is one `generated_at`, so no copy is ever
+  fetched twice; a map made again comes under its new key once the item names it. A
+  done `readalong.align` job reads the book's item again (`refreshAfterFinish`, the
+  same as a generate or detect job), and `useBridgeJobs` polls the book's jobs while
+  a read-along job is open on a surface on screen.
+- **`useBookReadalong`** (`src/reader/use-book-readalong.ts`) is what the surfaces
+  call: it picks the download's copy (`qk.readalongLocal`, read from the device with
+  `networkMode: 'always'`) or the server's map (`readalongSource`), and answers `map`
+  (sections and spans for the reader, or null), `pending`, `failed` (a read that
+  failed for any reason but the server's none, `readalongNone`) and `retry`. The full
+  rules are on [The ebook reader](reader.md#the-map).
+- **`useReadalongEstimate`** sits under the book's `qk.bridgeEstimate` prefix
+  (`qk.readalongEstimate`), so a refused queue reads it again with the other
+  estimates; it gets `bridgeEstimate`'s longer budget, since the server may hash the
+  ebook first. `ReadalongEstimate` carries `asr_hours`, `figures`, `writable`, the
+  book's `ebook` (null: the job would be refused 409 `no_ebook`), its `readalong` now
+  and the `open_job` a new one would be or wait for.
+- **The job**: `readalong.align`, queued with `useQueueBridgeJob` and params `{}`;
+  its result on `done` is `ReadalongAlignResult` (the file written, `coverage`,
+  `sections`, `spans`, `audio_gaps`, `heal_windows`, `transcribed`,
+  `ebook_sha256`).
 
 ### Player modules (`src/modules/`)
 

@@ -1,6 +1,6 @@
 ---
 title: Offline & PWA
-description: "Downloads on native (expo-file-system) and web (Cache API + service worker), the manifest/registry store, the ebook in a download, the offline companion (community metadata kept with a download), failures that keep finished files, keeping the next books ready, the Downloads page, playing local files, and what the PWA layer actually covers offline."
+description: "Downloads on native (expo-file-system) and web (Cache API + service worker), the manifest/registry store, the ebook and its read-along map in a download, the offline companion (community metadata kept with a download), failures that keep finished files, keeping the next books ready, the Downloads page, playing local files, and what the PWA layer actually covers offline."
 ---
 
 Offline support has two halves that meet in the middle:
@@ -76,6 +76,7 @@ under the **document directory** (persistent, not cache-evicted):
     0.mp3, 1.mp3, …      # fileName(i, relPath): file index + original extension
     cover.jpg
     book.epub            # the book's ebook, when it has one (optional)
+    readalong.json       # its read-along map, beside book.epub (optional, Bridge Phase 3c)
 ```
 
 `fileName` keeps the file's own extension, with one exception: **on iOS** a
@@ -157,7 +158,9 @@ the `ChaptersResponse`, the ordered `files` (`relPath → localUri`, plus the
 `bytes` written, absent on entries saved before it was recorded), `coverUri`,
 `ebookUri?` (the book's `book.epub`, Bridge Phase 3b-2; absent when the book has no
 `ebook`, when it couldn't be fetched, and on downloads made before it existed),
-`savedAt`. The manifest is everything the player needs to build a queue and render
+`readalongGeneratedAt?` (the `generated_at` of the read-along map kept as
+`readalong.json`, Bridge Phase 3c; only with `ebookUri`, see
+[below](#the-read-along-map-in-downloads)), `savedAt`. The manifest is everything the player needs to build a queue and render
 with no network.
 
 ### Lifecycle
@@ -193,8 +196,9 @@ with no network.
   fetches it, and a retry fetches it once. The cover and the ebook are **extras**:
   optional (a failure is swallowed and the book saves without it, so a failed
   ebook never fails the audio download), but a cancel during one still cancels the
-  whole book. `totalBytes` is the summed audio file sizes when every spec knows its
-  size, else 0.
+  whole book. Then, with the EPUB saved, the book's read-along map
+  ([below](#the-read-along-map-in-downloads)), optional the same way. `totalBytes` is
+  the summed audio file sizes when every spec knows its size, else 0.
 - **Verify before claiming success**: if the engine has `verify` (web) and the
   first file can't actually be served offline, the entry is marked `error`
   with a "reload the app, then retry" message - **keeping the cached bytes**
@@ -357,6 +361,41 @@ deletes its books' files (`engine.removeBook`), and drops their entries. Re-addi
 the server mints a **new** id, so those records would otherwise be unreachable
 forever. The connection-remove and sign-out UI warn the user first when the server
 has downloads on the device.
+
+## The read-along map in downloads
+
+`src/downloads/readalong-file.ts` (Bridge Phase 3c-2). A download that saved the
+EPUB also keeps the book's [read-along map](reader.md#read-along-following-the-narration)
+as `readalong.json` beside it, so the companion's Text tab follows the narration
+offline:
+
+- **When**: `wantsReadalong` - the EPUB is on the device (a map without it reads
+  nothing), the server serves maps (`cachedCapability(cid, 'readalong')` is `true`)
+  and the book is not known to have only a stale one (a list-shape book says nothing
+  either way: asked, a 404 is none).
+- **How**: `fetchReadalongFile` reads it through `client.readalong` (the
+  `Authorization` header, checked span by span) and writes it with
+  `engine.writeText` only once it has a `generated_at` and a sentence to follow, so
+  nothing is written or removed before a checked map is in hand. Optional like the
+  EPUB: a failure keeps the book (without a map), a cancel cancels it. Its bytes are
+  not counted in the download's progress or size.
+- **The manifest** marks it by `readalongGeneratedAt` only (the file is read by
+  name, and checked again on every read: `readReadalongFile`), and its `book.readalong`
+  names the map kept (`namingReadalong`): offline that book is the item's seed, and
+  `readalongSource` reads the copy only while the book names it or names no map.
+- **Kept current**: `startReadalongRefresh` (started by the root's services; on the
+  web after paint) first takes the `/item` answers the query cache already holds,
+  then watches the server's `/item` answers for a downloaded book. `readalongChange`
+  decides: another `generated_at` (made again) fetches the map again (a failed
+  fetch keeps the copy and the manifest as they were); no ready map any more (stale,
+  or none) drops the file, and the book then says what the server said; else keep.
+  Each answer's map is tried once per launch (`readalongTried`).
+- **Read offline**: the Text tab reads it with `readDownloadedReadalong`
+  (`qk.readalongLocal`, `networkMode: 'always'`) with the EPUB on the device. A copy
+  that can't be read gives way to the server's map when the server has one ready.
+
+A download made before 3c-2, or one whose map fetch failed, has no map: the Text tab
+then needs the server, as for a book that isn't downloaded.
 
 ## The offline companion (`offline-meta.ts`)
 
@@ -676,6 +715,7 @@ right file per platform.
 | Book/chapter metadata for downloaded books | manifests seeded into the React Query cache on hydrate |
 | Progress while offline | the offline replay queue + durable mirror in `src/playback/progress-sync.ts` |
 | Reading a **downloaded** book's ebook | the reader host's `engine.readFile` on its `book.epub` in the media cache; the place in `src/reader/reading-progress.ts`'s queue + mirror |
+| The Text tab (read-along) for a **downloaded** book | its `readalong.json` (`readDownloadedReadalong`) with its `book.epub` |
 
 Not covered: live API data (browse/search/covers for non-downloaded books) -
 the SW deliberately never caches API responses; screens render their

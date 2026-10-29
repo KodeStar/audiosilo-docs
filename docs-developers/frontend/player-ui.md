@@ -1,6 +1,6 @@
 ---
 title: Player UI
-description: "The player's screens and pieces: the mini player, the iOS 26 accessory, the docked bar and the full player, the player's sheets and overlays, jump undo, time left, the companion, the controls and the web keyboard shortcuts."
+description: "The player's screens and pieces: the mini player, the iOS 26 accessory, the docked bar and the full player, the player's sheets and overlays, jump undo, time left, the companion and its Text tab (read-along, with the admin's Make read-along), the controls and the web keyboard shortcuts."
 ---
 
 Where the player lives in the shell, and the pieces it is built from. The
@@ -214,11 +214,13 @@ the same `timeLeft`.
 ## The companion (`companion/`)
 
 `src/components/player/companion/` is the full player's companion (Who's who, Story
-so far, Chapters, Bookmarks, Notes, History) in one `Companion` with three
+so far, Text, Chapters, Bookmarks, Notes, History) in one `Companion` with three
 variants: `column` on desktop, `inline` on a tablet, `sheet` on a phone.
 
-- **`companion-model.ts`** (pure): which tabs a server gets (the two community tabs
-  only with `metadata`), Who's who order, Story so far (recaps split by the book
+- **`companion-model.ts`** (pure): which tabs a book gets (`companionTabs`: the two
+  community tabs only with `metadata`, Text only where `textTab` says, after Story so
+  far), the tab shown (`activeCompanionTab`: the one asked for when it exists, else
+  the first that isn't Text), Who's who order, Story so far (recaps split by the book
   page's `splitRecaps`), the chapter rows (through `timeLeft`), and the reveal rules
   below.
 - **`use-companion-data.ts`**: the playing book's community data and the listener's
@@ -255,6 +257,66 @@ variants: `column` on desktop, `inline` on a tablet, `sheet` on a phone.
   with **Show anyway**). The companion never shows the Generate covered line.
   For an admin, the empty Who's who and Story so far end with `GenerateOffer`
   ([Generating characters and recaps](book-page.md#the-primary-action-and-the-action-row)).
+
+### The Text tab (read-along)
+
+Bridge Phase 3c-2: the playing book's ebook following its narration, through a
+[read-along map](reader.md#read-along-following-the-narration). `use-text-tab.ts`
+(`useTextTab`) gathers what the tab needs for the playing book (inside its
+`ConnectionScope`): the book, whether it reads (`canRead`, the server's EPUB or the
+download's), its map (`useBookReadalong`) and whether this person may make one
+(`mayMakeReadalong`, for a book that reads). `textTab` decides whether it shows:
+
+| Who | The tab shows |
+|---|---|
+| a listener | once the map is in with a sentence to follow; never while it is on its way (no tab that vanishes a moment later), never for a stale or absent map |
+| an admin who may make one | always: a spinner while the map is on its way, the Make offer where there is none to follow |
+| anyone | when the map's read failed (offline, a 5xx): "Couldn't load the text" with Try again, never the Make offer (a map may well be there, and making it again takes hours) |
+
+The companion never lands on Text unasked (`activeCompanionTab` falls back to the
+first tab that isn't Text), since it starts a reader; the tab picked last still
+wins while the book has it. The phone's chips have no Text chip: the sheet opens from another
+chip, and Text is one of its tabs. `TextPanel` (`text-panel.tsx`) renders, outside
+the tab's scroller (the reader pages itself; inline on a tablet it is 520 px tall):
+
+- **`ReadAlong`**, one per book (keyed by it: the playing book changing under an open
+  tab gets its own reader): the reader host opened at the sentence being read when
+  the tab opened (`cfiAt` on the narration's place), with `followNarration`, told
+  of every play, pause, seek and speed change (`useNarration`). A spinner shows
+  until the reader opened the book and said `readalong ok`; then the page edges
+  (narrow, by the column's measured width) and, once the listener turned a page
+  away while the book is placed, a **Back to narration** pill (`FollowPill`). A
+  tapped sentence plays from its start. **It never saves the reading place**: the
+  tab follows the narration, the full-screen reader is where a reading place is made.
+- **Notices**, each an `EmptyState`: the reader said `none` (the map names nothing
+  in this ebook): "The text can't follow this narration", with Make again for an
+  admin; a part of the book didn't load (fe#164), the reader didn't start, or the
+  EPUB fetch failed: "Couldn't load the text" with Try again (a new host); no client
+  for the book's server: "This book's server isn't connected".
+- **The admin's empty state** (no map to follow): "No read-along for this book yet"
+  and what a read-along is, or, for a stale map, "The read-along is out of date"
+  with why (`textStaleEbook`, `textStaleAudio` by the server's `reason`), then
+  `MakeReadalongOffer` ("Make read-along", or "Make the read-along again").
+
+**Make read-along** (`src/components/bridge/`: `use-make-readalong.ts`,
+`make-readalong.tsx`, the rules in `readalong-model.ts`, pure and tested) follows
+Generate's pattern. It is offered (`readalongOffer`) once the book's jobs are known
+and none shows its status (`readalongStatusJob`: the newest `readalong.align` while
+open or once failed, shown by the shared `BridgeJobStatus` in `generate-status.tsx`,
+the stage `readalong_aligning` reading "Lining the text up with the narration").
+The confirmation reads the estimate (`useReadalongEstimate`, `GET
+/admin/bridge/estimate?kind=readalong.align`): the source (the ebook's file name
+and the audio), "Up to" the transcription (`asr_hours`; no estimate when the
+server has no `figures`), no AI agent, and that results appear on this server. It is held back
+(`readalongBlockKey`) on `no_ebook`, `library_not_writable`, an open generate or
+detect job, or the book's own open read-along job (`readalong_open`); a refused
+queue reads in the app's words (`readalongRefusalKey`). The job queues `{}`. An open
+confirmation belongs to the book (`useBridgeJobSurface`): it closes when the playing
+book changes. The job's finish reads the book's item again (`refreshAfterFinish`),
+and the map follows under its new `generated_at`. Generate, in turn, is held back
+while a read-along job is open (`readalong_open`, "This book's read-along is being
+made"). The console's own [Read-along card](/users/admin/making-read-along) covers
+the same job.
 
 **The reveal toast** is `CompanionRevealListener` (`reveal-listener.tsx`), mounted
 once in the root layout so it fires wherever the listener is. It subscribes to

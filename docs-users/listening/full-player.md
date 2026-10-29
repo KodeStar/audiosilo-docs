@@ -16,7 +16,7 @@ The full player is about the book you're listening to. Its background takes on t
 - **The transport**: previous chapter, skip back, play/pause, skip forward, next chapter. The skip buttons show how far they jump (15 seconds back and 30 forward out of the box; change them in [Settings](settings.md#playback)). If playback fails, the play button becomes **Retry**.
 - **The actions**: [speed](#playback-speed), the [sleep timer](sleep-timer.md), **bookmark** (one tap adds one where you are; see [Bookmarks and notes](bookmarks-and-notes.md)), **output** to send the sound to another speaker ([AirPlay](playback.md#play-to-another-speaker-airplay-and-chromecast) on an iPhone, an iPad or in Safari, the system's media output panel on Android) where your device has one, **Cast** to play on a [Chromecast](chromecast.md) when your server supports it, and [Up next](up-next.md) with how many books are queued. On a tablet or computer, while [Smart speed or Voice boost](#smart-speed-and-voice-boost) is on, one more button says so: *"Saved 2h 11m"* (Android, once Smart speed has saved some), else *"Voice boost"* or *"Smart speed"* for whichever is on. It opens the speed sheet.
 
-Beside or below it sits the [companion](companion.md): Who's who, Story so far, the chapters, and your bookmarks, notes and history for the book.
+Beside or below it sits the [companion](companion.md): Who's who, Story so far, the ebook's [Text](companion.md#text) following the narration (for a book with a read-along), the chapters, and your bookmarks, notes and history for the book.
 
 :::tip
 If a book's chapters are just named after their audio files, AudioSilo tidies those names for display - dropping the file extension and turning underscores into spaces. Real chapter titles are left exactly as they are.
@@ -24,7 +24,7 @@ If a book's chapters are just named after their audio files, AudioSilo tidies th
 
 ## On a phone, a tablet and a computer
 
-- **On a phone** the player fills the screen. Under the actions, chips for **Who's who** and **Story so far** (when your server has community metadata switched on) and **Chapters** open the companion as a sheet; the chapter title opens it on **Chapters**.
+- **On a phone** the player fills the screen. Under the actions, chips for **Who's who** and **Story so far** (when your server has community metadata switched on) and **Chapters** open the companion as a sheet; the chapter title opens it on **Chapters**. The other tabs, **Text** among them, are at the top of the sheet.
 
   ![The player on a phone, paused, with the companion chips under the actions](/img/screenshots/web-player/phone-player.png)
 

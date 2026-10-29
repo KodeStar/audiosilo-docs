@@ -10,9 +10,11 @@ beside it, using speech recognition only, with **no AI agent and no agent cost**
 and saves it with the book.
 
 :::note[Following along in the player]
-Making read-alongs and checking them happens in the admin console today. Following
-the narration in the ebook's text in the player comes in a later player update;
-the read-alongs you make now are what it will use.
+Listeners follow the narration in the player from version 2.6.0: in the
+companion's [Text tab](../listening/companion.md#text) and with **Follow
+narration** in the [reader](../listening/reading-the-ebook.md#follow-the-narration).
+An admin can also make a book's read-along from the player
+([below](#from-the-player)).
 :::
 
 ## What it needs
@@ -75,6 +77,16 @@ seconds.
 
 Read-alongs are made one book at a time; there is no "make read-alongs for every
 book" action.
+
+### From the player
+
+As an admin, you can make one from the player too. Play the book and open the
+companion's **Text** tab: where there is nothing to follow yet it says **No
+read-along for this book yet** with **Make read-along** (for an out-of-date one,
+**Make the read-along again**). Its confirmation shows the ebook and the audio,
+the transcription "Up to" time and **AI agent cost: None**, then the tab follows
+the job and shows the text once it's done. See
+[The companion](../listening/companion.md#making-one-admins).
 
 ## How long it takes
 

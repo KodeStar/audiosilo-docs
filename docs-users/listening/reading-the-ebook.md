@@ -1,6 +1,6 @@
 ---
 title: Reading the ebook
-description: "Reading a book's EPUB in the web player and the iOS and Android apps: which books offer Read the ebook, turning pages, the contents and text size, your place kept across devices, reading a downloaded book offline, and what to do when an ebook won't open."
+description: "Reading a book's EPUB in the web player and the iOS and Android apps: which books offer Read the ebook, turning pages, the contents and text size, following the narration with a read-along, your place kept across devices, reading a downloaded book offline, and what to do when an ebook won't open."
 ---
 
 When a book's folder on your server also holds its ebook, AudioSilo can open it, in the web player and in the iOS and Android apps alike. **Read the ebook** on the book's page shows the text a page at a time and remembers where you got to, on every device you read it on. A book you [download](offline-downloads.md) takes its ebook with it, so you can read it with no connection too.
@@ -61,6 +61,25 @@ A book written right to left (in Arabic or Hebrew, for instance) turns the other
 
 The **×** at the top left closes the reader and takes you back to where you were, or press **Esc** in the web player. With the Contents open, **Esc** closes them first.
 
+## Follow the narration
+
+A book can also have a **read-along**: your server's [Bridge](../admin/making-read-along.md) lines its ebook up with the narration, sentence by sentence. While such a book is playing, the reader can follow along with the audio.
+
+:::note[New in 2.6.0]
+Following the narration needs a server on version 2.6.0 or later and, on a phone or tablet, version 2.6.0 or later of the app. An admin makes a book's read-along once, with a [Bridge](../admin/making-read-along.md); there's nothing for you to switch on.
+:::
+
+![The reader following the narration of The Call of the Wild: the sentence being read is highlighted](/img/screenshots/web-player/reader-readalong.png)
+
+- **Start the book playing** (or load it in the player and pause), then press **Read the ebook**. Once the reader has opened the book, a **Follow narration** button appears at the foot of the page.
+- Press **Follow narration**: the reader turns to the sentence being read and highlights it, and turns the pages by itself as the narration goes on, through the chapters too. Pausing, skipping or changing the speed in the player moves the highlight with it.
+- **Tap a sentence** to play the audiobook from the start of that sentence.
+- **Turn the page yourself** and the reader stops following, so you can look back or ahead in peace; the button then says **Back to narration**. A jump in the player (a skip, a chapter, the seek bar) brings it back too.
+
+While the reader follows the narration, it doesn't save your reading place: the narration is turning the pages, not you. As soon as you turn away, the page you're on is saved as usual.
+
+**Follow narration** shows only while the book is the one in the player, and only when its read-along fits the book: if the ebook or the audio files changed since it was made, the read-along is out of date and you won't see it until an admin makes it again. The same text also follows the narration in the player itself, in the companion's [Text tab](companion.md#text).
+
 ## Your place, on every device
 
 The reader saves your place a couple of seconds after you stop on a page, and straight away when you close it or switch to another app or tab. Your server keeps it for your account, so opening the book in another browser, on another computer or in the app on your phone, opens it at the page you reached.
@@ -112,4 +131,4 @@ In the apps, if your phone stops the reader to free memory (while you're in anot
 
 ## What the reader doesn't do yet
 
-The reader is deliberately simple for now. It opens EPUB files only (not MOBI, AZW3 or PDF), it can't search the text or keep highlights and notes in it, and it doesn't follow along with the audio. Your [bookmarks and notes](bookmarks-and-notes.md) stay with the audiobook.
+The reader is deliberately simple for now. It opens EPUB files only (not MOBI, AZW3 or PDF), and it can't search the text or keep highlights and notes in it. It follows the narration only for a book with a [read-along](#follow-the-narration). Your [bookmarks and notes](bookmarks-and-notes.md) stay with the audiobook.
