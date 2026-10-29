@@ -623,9 +623,8 @@ each selected project:
   namespace keeps it, and an id already on another person is not recorded twice;
   the run warns about both. That is the case for an author who is two LibriVox
   ids but one person here; a reader reaches it only when the split below cannot
-  apply. A reader whose name slugs to nothing lands on the catch-all person,
-  which is never given an id (an author or translator of that kind is credited
-  nowhere: [Names that slug to nothing](#which-work-a-librivox-project-joins)).
+  apply. An author or translator whose name slugs to nothing is credited
+  nowhere: [Names that slug to nothing](#which-work-a-librivox-project-joins).
   An author's or translator's `dob` / `dod` become the person's `birth_year` /
   `death_year` as the run records that person's LibriVox author id, only when
   LibriVox states a plain year (`1883`, `-428`, `428 BC`), and only when the
@@ -647,7 +646,15 @@ each selected project:
   existing or retired person id that the composed id happens to match: it
   credits the plain slug instead, whose holder keeps their own reader id, and
   warns. Authors are never split this way: a work's identity rides on its author
-  slugs. The `librivox:` summary line counts the readers split.
+  slugs. The `librivox:` summary line counts the readers split. A reader whose
+  name slugs to nothing (Greek, Cyrillic, CJK) is a person of their own at
+  `librivox-reader-<reader id>` (`librivox-reader-11294`), created with that id
+  and the name kept as written, so two such readers are never one record and a
+  rerun finds each by id; a `librivox:` summary line of its own counts them.
+  When that id is already another person's or a retired one, the run warns and
+  the credit falls to the shared catch-all person, which `metacheck` refuses for
+  LibriVox, so a real run's post-write validation fails (it exits non-zero)
+  rather than such a reader ever being committed there.
 - **A rerun splits readers on recordings it skips.** When a held recording
   credits a reader to a person carrying another reader id of the same name, or
   to anyone other than the person the catalogue already holds that reader's id
@@ -684,8 +691,9 @@ each selected project:
 
 `routeLibrivox` (`internal/importer/librivoxmatch.go`, the author rules in
 `librivoxauthors.go`) decides the work, in order, after LibriVox's repeat
-markers are stripped from the title (Repeat markers, below) and any credit whose
-name slugs to nothing is dropped (Names that slug to nothing, below):
+markers are stripped from the title (Repeat markers, below) and any author or
+translator credit whose name slugs to nothing is dropped (Names that slug to
+nothing, below):
 
 1. **The ordinary identity walk**: same title, same identity authors, same
    language.
@@ -809,7 +817,9 @@ person record every such name shares. It is credited nowhere instead: the credit
 is dropped before the work is decided and listed under
 [credits not recorded](#credits-not-recorded) as `unsluggable` once the
 project lands. If the project also credits another author ("Yordan Yovkov"), its
-work is decided on that author alone.
+work is decided on that author alone. A reader of that kind is not dropped: they
+take `librivox-reader-<reader id>` (the
+[person id rule](data-model.md#person---an-entry-in-the-datapeople-family)).
 If no individual author is left (the name was its only author, or only a
 translator or a collective such as "Anonymous" remains), the project is the
 worklist's `author-unsluggable`, since a work by "Anonymous" alone would merge
@@ -862,7 +872,8 @@ appear on the worklist alone.
 
 After the worklist, the import report lists the author and translator credits
 an attach leaves out (including one kept with its own record under rule 3) and
-every credit whose name slugs to nothing, for each project that landed (a
+every author or translator credit whose name slugs to nothing (a reader of that
+kind is a person of their own, never listed), for each project that landed (a
 project on the worklist lists none). Each is one line: the project id, the
 name, its roles, the person's `librivox_author_id` when LibriVox states one, the
 work the recording landed on, and `unsluggable` for a name no record can hold or
