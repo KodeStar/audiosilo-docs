@@ -242,7 +242,7 @@ The console runs under the same `script-src 'self'; style-src 'self'` policy
 ### Covers
 
 Grids and shelves show hundreds of covers, so the console asks for them in
-batches. `useCover(libraryId, path, size)` (`admin-ui/src/api/hooks.ts`) queues
+batches. `useCover(libraryId, path, size, enabled, version)` (`admin-ui/src/api/hooks.ts`) queues
 each cover it needs, and `src/api/cover-batch.ts` (on the shared batcher,
 `src/api/batcher.ts`) sends everything asked for in the same moment as one
 [`POST /api/v1/admin/covers`](api/reference.md#post-apiv1admincovers) request
@@ -251,8 +251,8 @@ of up to 60 books. The server answers with small JPEG thumbnails, already
 (server side: [Thumbnails for the admin console](media.md#thumbnails-for-the-admin-console-post-admincovers)).
 In memory (TanStack Query) a cover is fresh for an hour and dropped five minutes
 after the last cover showing it unmounts, so a long grid doesn't hold every
-`data:` URL. `BookCover`'s `size` is `96` for a books-table row (its 36 to 48 px
-cover), `160` for list rows, `320` for tiles (the default) and `640` for the book
+`data:` URL. `BookCover`'s `size` is `96` for a books-table or command-palette
+row (its 36 px cover), `160` for list rows, `320` for tiles (the default) and `640` for the book
 hero's thumbnail. `load` false holds a skeleton without asking (a long list
 asking for covers only as they near the viewport). Below memory sits the
 [thumbnail cache](#the-thumbnail-cache).
@@ -288,7 +288,7 @@ every reload or re-scroll would fetch every cover again. Admin book rows carry `
 
 - **Store.** IndexedDB, database `audiosilo-admin-thumbs`, with the entries'
   metadata (key, bytes, last used, stored) and the `data:` URLs in separate
-  object stores, so the index is read once at start without the image data. It
+  object stores, so the index is read once, on first use, without the image data. It
   is IndexedDB rather than Cache Storage because a console reached over plain
   HTTP on a LAN address is not a secure context, where Cache Storage doesn't
   exist. Where IndexedDB is missing, fails to open, or doesn't open within 5
@@ -642,7 +642,7 @@ CSP-sensitive work against a real build served by Go. The console's own gate is
   fetches it by itself as it nears the viewport, except after a failed page (the
   pages already shown stay). A group that moves across a page boundary between loads is
   shown once, where its copies first appeared, and the "n of total" count is the
-  newest page's `total`. Each copy's cover loads only as its column nears the
+  newest page's `total` (or the groups shown, if more). Each copy's cover loads only as its column nears the
   viewport (`useInView`, `src/lib/use-in-view.ts`), and a group of more than 10
   copies shows the first 10 until "Show all n copies". Series spelled several ways
   (`series-spellings.tsx`) is grouped too: one notice per series and library from

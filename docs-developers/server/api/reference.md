@@ -2901,9 +2901,11 @@ larger than 40 megapixels, or one that can't be decoded, is a `404` here althoug
 the full-art URL still serves it, so a client falls back to the URL without `size`
 on a thumbnail `404`.
 
-`96` is for a table row's small cover (the admin console's books table). A server
-before 2.5.1 answers it `400`, and `cover_sizes` is true on both, so a client
-that talks to older servers (the player) keeps to `160` and up.
+`96` is for a table row's small cover. The admin console asks for it through
+[`POST /admin/covers`](#post-apiv1admincovers), never this route, which takes it
+because the two share their sizes. A server before 2.5.1 answers it `400`, and
+`cover_sizes` is true on both, so a client that talks to older servers (the
+player) keeps to `160` and up.
 
 - `ETag` is `"thumb-<size>-<rev>-<hash>"`. `rev` names how the server makes
   thumbnails: it changes when a server update makes other bytes of the same art,

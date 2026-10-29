@@ -229,11 +229,6 @@ check. Don't delete either until you know which is which:
 - If both are right (two editions that really share an identifier), click
   **They're different books**.
 
-A long list shows more groups as you scroll down (or click **Show more** at the
-bottom), and each copy's cover appears as it scrolls into view. A group with more
-than 10 copies (for example, the same audio copied across a big library) shows
-the first 10; **Show all *n* copies** at the bottom of the group shows the rest.
-
 Each column
 shows the copy's **Path**, **Format**, **Length**, **Size**, **Chapters**,
 whether it is **Matched**, how many **Listeners** have progress on it, and
@@ -258,6 +253,11 @@ when it was **Added**. **Open book** opens a copy's page.
 - AudioSilo never deletes a copy for you. To remove one, delete its files from
   the library folder and rescan; listening progress on the deleted copy's path
   is kept (see [Jobs](#what-a-removed-book-leaves-behind)).
+
+A long list shows more groups as you scroll down (or click **Show more** at the
+bottom), and each copy's cover appears as it scrolls into view. A group with more
+than 10 copies (for example, the same audio copied across a big library) shows
+the first 10; **Show all *n* copies** at the bottom of the group shows the rest.
 
 ### Series spelled several ways
 
