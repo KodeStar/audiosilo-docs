@@ -112,7 +112,8 @@ client accepts it, with `Vary: Accept-Encoding`, kept only when smaller.
 Embedded files are hashed and compressed once per process; files from
 `web_dir` are cached by path and redone when their size or modification time
 changes. A `Range` request always gets the plain bytes (`http.ServeContent`).
-Nothing under `/api/` (media, covers) goes through it.
+Nothing under `/api/` (media, covers) goes through it; the API compresses its
+own JSON answers (see [Response compression](api/index.md#response-compression)).
 Every response carries `X-Content-Type-Options: nosniff`; HTML gets
 `DocumentCSP` (computed from the document's bytes) and other files `FileCSP`.
 Content types come from an explicit table pinned in `spa`'s `init` (Go's MIME
