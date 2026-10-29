@@ -150,6 +150,10 @@ for a book:
 - Generating characters and recaps while a read-along job is **paused** cancels
   the read-along ("make the read-along again after"); generating then reuses what
   the read-along transcribed, and so does the read-along you make after.
+- Characters and recaps generated **from the ebook** are never disturbed by a
+  read-along or by Detect chapters: those transcribe the audio separately, and the
+  book keeps its characters, recaps and description as they were. Generating again
+  from the audio later reuses that transcription.
 
 ## Where it is saved
 

@@ -101,12 +101,22 @@ narration".
 ## The reuse table
 
 An earlier engine book at the **audio** source path (`audio.ResolveSource`) is
-reused where it can be, under the engine's hold, as `chapters.detect` does. "Kept"
-below means its transcripts weren't swept by the retention, its audio is still the
-book's (`pipeline.AudioCurrent`: a single file the same size and not modified
-since `probe.json` was written, a folder the same files by name and order, none
-modified since; a file it can't look at right now says try again, never "the audio
-changed"), and it isn't an ebook run:
+reused where it can be, under the engine's hold, as `chapters.detect` does.
+
+**An ebook run is never touched.** When the book's own engine book is an ebook
+run (characters and recaps generated from the ebook), a read-along or
+`chapters.detect` job never continues, converts or clears it: its kind, ebook path,
+chapter manifest and notes stay, and `sidecars.describe` keeps reading them. The job
+works in an **audio run of its own beside it**, keyed `audio:<path>`
+(`store.AudioRunKey`: two engine books at one path, never a real path), with its
+own work folder; the reuse table below applies to that audio run, and a second
+read-along or chapters job reuses it. `sidecars.describe` never reads the audio run.
+
+"Kept" below means its transcripts weren't swept by the retention, and its audio is
+still the book's (`pipeline.AudioCurrent`: a single file the same size and not
+modified since `probe.json` was written, a folder the same files by name and order,
+none modified since; a file it can't look at right now says try again, never "the
+audio changed"):
 
 | The earlier engine book | Goes on |
 |---|---|
@@ -115,12 +125,13 @@ changed"), and it isn't an ebook run:
 | kept, transcribed but not repaired (a `chapters.detect` run done, or any run stopped between `sanitizing` and `retranscribing`) | at `sanitizing`, goal `readalong` |
 | stopped at `asr`, with what it transcribed kept (`pipeline.TranscriptionContinuable`, now for files and markers manifests too) | from `splitting`, goal `readalong` |
 | a finished whole run whose transcripts went or whose audio changed | from `inspecting`, goal `readalong`: its notes, `knowledge-final.md` and ledger kept (a whole run is never cleared) |
+| an ebook run | never continued: the audio run beside it is looked up instead (above) |
 | none, or anything else | cleared, and a new engine book (goal `readalong`, no series) |
 | one another open job follows | refused: "A generate job is working on this book; make the read-along once it has finished.", "job N is already making this book's read-along", else "job N is working on this book; let it finish or cancel it first" |
 | one a stage is running on | refused: "the engine is still busy with this book's earlier run; try again in a minute" |
 
-`store.ContinueReadalong` moves the book on in one transaction (goal, kind audio,
-status cleared, the job mapped). Before it, the sentinels of the stage it goes on
+`store.ContinueReadalong` moves the book on in one transaction (goal, its kind
+kept, status cleared, the job mapped), and refuses an ebook run. Before it, the sentinels of the stage it goes on
 at and of the read-along stages after it are removed, a book going on from
 `inspecting` forgets its old manifest's transcription, and a book going on before
 `qa_sweep` gets its loop-repair round again.
@@ -131,9 +142,16 @@ Two jobs meet the same engine books:
   with goal `""`: the agent's adjudication then runs on the already repaired
   transcript, and nothing is transcribed twice (never a read-along transcribed in
   windows: its chapters were never found).
+- **A `sidecars.generate` job reading the audio takes the audio run on** as the
+  book's own run, continuing it at `qa_sweep` as above: the ebook run beside it is
+  cleared first (generate always replaces the book's earlier run) and the audio run
+  re-keyed to the book's path. A generate job reading the **ebook** leaves the
+  audio run alone.
 - **A `chapters.detect` job clears a read-along run** rather than refusing it as
   a whole run, unless the read-along went on from a whole run (it holds that run's
-  notes).
+  notes). That protection reads the notes on disk (`facts/knowledge-final.md`),
+  else any fact pass that ever succeeded on the book, so it survives a restart's
+  rewind of the stage history.
 
 ## The `readalong_aligning` stage
 
