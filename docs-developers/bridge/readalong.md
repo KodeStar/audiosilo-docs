@@ -95,8 +95,9 @@ agent state**:
 
 A goal-readalong book holds no series lock (`state.SeriesLockExempt`: it makes
 nothing a later volume carries on from), has no series, and contributes nothing.
-The console and the player word the stage "Lining up the ebook with the
-narration".
+The console words the stage "Lining up the ebook with the narration", as the
+job's progress message does (the player has no word for it: it follows no
+read-along job).
 
 ## The reuse table
 
@@ -171,8 +172,8 @@ when a resumed run first looks or the server moved the job with its book.
    pairs).
 4. **Align** (`readalong.Align`): unique 5-gram anchors placed per section
    (RANSAC and a longest increasing subsequence, up to 8 clusters per section),
-   the gaps between anchors filled by Needleman-Wunsch with fuzzy and 1:1 to 1:5
-   moves, then each sentence timed by its words.
+   the gaps between anchors filled by Needleman-Wunsch with fuzzy 1:1 matches and
+   2:1 merge and 1:2 split moves, then each sentence timed by its words.
 5. **Heal**: every unaligned run between two aligned sentences becomes a window
    `[previous end - 0.5 s, next start + 0.5 s]` (2 to 600 s), plus every
    `tail_verdicts.json` window (a clip-repaired chapter's `transcripts-json` still
@@ -183,9 +184,10 @@ when a resumed run first looks or the server moved the job with its book.
    the book aligned again.
 6. **Snap** each sentence's start to its speech onset: 10 ms frame energies from
    an `ffmpeg` f32le pipe per chapter FLAC (only the energies kept), a threshold of
-   p10 + 0.3 x (p95 - p10), onsets after a pause, at a run's start or mid-flow;
-   the start becomes the onset - 0.1 s, never past the sentence's end - 0.2 s,
-   never earlier than its raw start - 0.5 s.
+   p10 + 0.3 x (p95 - p10). An onset after a pause or at a voiced run's start
+   moves the start to the onset - 0.1 s; a mid-flow sentence keeps its raw start.
+   Either way the start is never past the sentence's end - 0.2 s, never earlier
+   than its raw start - 0.5 s.
 7. **Write** `readalong/map.json`, `words.json` and `align_report.json` (coverage,
    the first pass's coverage, the heal windows and seconds, the snap statistics,
    the ebook's sha256, what was cut again).
@@ -340,7 +342,7 @@ read-along after the purge transcribes again (the reuse table's "from
 
 Speech recognition dominates. The
 [estimate](../server/api/reference.md#get-apiv1adminbridgeestimate) quotes the whole
-audio at the Bridge's `asr_seconds_per_audio_hour` (`asr_hours`, the most it may
-take), plus up to one round of loop re-transcription; the align, heal and snap add
-minutes. A re-align with a kept transcript skips the transcription, so it takes
+audio once at the Bridge's `asr_seconds_per_audio_hour` (`asr_hours`); up to one
+round of loop re-transcription and the heal's windows come on top, and the align
+and snap add minutes. A re-align with a kept transcript skips the transcription, so it takes
 minutes rather than hours.

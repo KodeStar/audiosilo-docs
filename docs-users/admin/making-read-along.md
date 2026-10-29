@@ -64,7 +64,7 @@ happen before anything starts:
   Bridge, "less if the Bridge still has this book's transcript" (see
   [How long it takes](#how-long-it-takes)).
 - **Agent cost**: "None: no agent is used".
-- For **Make again**, the read-along it replaces.
+- For **Make again** over a ready read-along, when the one it replaces was made.
 - That if less than half of the ebook lines up with the narration, the job stops
   and saves nothing.
 
@@ -148,8 +148,10 @@ for a book:
 - While a read-along is being made, the book's **Generate characters and recaps**
   waits the same way, and **Detect chapters** passes over the book.
 - Generating characters and recaps while a read-along job is **paused** cancels
-  the read-along ("make the read-along again after"); generating then reuses what
-  the read-along transcribed, and so does the read-along you make after.
+  the read-along ("make the read-along again after"). Generating picks up the
+  read-along's transcription only when the read-along had finished and was waiting
+  to save; otherwise it transcribes the book itself. The read-along you make after
+  reuses generating's transcription.
 - Characters and recaps generated **from the ebook** are never disturbed by a
   read-along or by Detect chapters: the book keeps its characters, recaps and
   description as they were, and generating again from the audio later reuses the

@@ -485,7 +485,7 @@ CSP-sensitive work against a real build served by Go. The console's own gate is
   open one, parked included, not one being cancelled; its status and a note show
   in place of the offer). The confirmation reads `GET /admin/bridge/estimate?kind=readalong.align`:
   the ebook's name, "Up to N h, less if the Bridge still has this book's
-  transcript", Agent cost "None: no agent is used", the map it replaces, and that
+  transcript", Agent cost "None: no agent is used", when a ready map it replaces was made, and that
   a match under half of the text stops the job and saves nothing; it can't be
   confirmed for a library the Bridge can't write or a book with no ebook. It
   queues `readalong.align` with `params: {}` (`queueInOrder`) and words a

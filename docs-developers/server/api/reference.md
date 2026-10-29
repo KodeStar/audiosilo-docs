@@ -9169,7 +9169,7 @@ With `kind=readalong.align` (Phase 3c) the answer is the read-along confirmation
 
 | Field | Meaning |
 |---|---|
-| `asr_hours` | the most transcription it may take: the book's whole audio at the Bridge's `asr_seconds_per_audio_hour`, as for generate. Less when the Bridge still has the book's transcript (a re-align takes minutes); never an agent |
+| `asr_hours` | one transcription of the book's whole audio at the Bridge's `asr_seconds_per_audio_hour`, as for generate (a loop-repair round and the heal's windows can add to it). Much less when the Bridge still has the book's transcript (a re-align takes minutes); never an agent |
 | `figures`, `writable` | as above |
 | `ebook` | the book's ebook (`{path, size}`), `null` when it has none: queueing is then `409 no_ebook` |
 | `readalong` | the book's map now, as [`Book.readalong`](#get-apiv1librariesiditem); `null` for none |
