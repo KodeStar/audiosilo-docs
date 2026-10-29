@@ -61,7 +61,7 @@ What happens as one book ends and the next begins (see [The end of a book](end-o
 | **Remove a download when you finish the book** | Remove a book's downloaded files from the device when it's marked finished, to free up space. Your place in it is kept | On / Off (default **On**) |
 
 :::note
-**On Wi-Fi** skips the automatic download on a known mobile-data connection, so it won't eat your data allowance. When the app can't tell the connection type, it goes ahead. A browser can never tell, so in the web player On Wi-Fi downloads on any connection; that's why the web player starts at **Never**. A browser that was on the old On Wi-Fi default now shows Never, unless **Keep the next books ready** was set to 1, 2 or 3. You can always download a book by hand on the book's page - see [Offline downloads](offline-downloads.md).
+**On Wi-Fi** skips the automatic download on a known mobile-data connection, so it won't eat your data allowance. When the app can't tell the connection type, it goes ahead. A browser can never tell, so in the web player On Wi-Fi downloads on any connection; that's why the web player starts at **Never**. A browser that was set to On Wi-Fi before this change (the old default, or picked by hand - the two look the same) now shows Never, unless **Keep the next books ready** was set to 1, 2 or 3; pick On Wi-Fi again to keep it. You can always download a book by hand on the book's page - see [Offline downloads](offline-downloads.md).
 :::
 
 ## Appearance
