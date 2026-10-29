@@ -106,12 +106,14 @@ and the [Bridge's token](#bridge-tokens) (`auth.KindBridge`):
 token up by hash (`lookupToken`: unknown, revoked, expired or a disabled user is
 refused). A valid session, API key or Bridge token's lookup is then held in
 `Service.tokens` (`auth/tokencache.go`, a `store.GenMap`, at most 4,096 entries)
-for as long as the database's [write generation](overview.md#internalstore)
-(`store.DB.Generation`) stays where it was when the row was read. Every change
-that could end a token (a sign-out or revoke, a disabled or deleted account, a
-changed role or membership, the token's own last-seen touch) is a write, which
-moves the generation, so the very next request reads the row again and refuses a
-revoked token. Expiry needs no write, so it is checked on every hit. A cast token
+for as long as the database's [content generation](overview.md#internalstore)
+(`store.DB.ContentGeneration`) stays where it was when the row was read. Every
+change that could end a token (a sign-out or revoke, a disabled or deleted
+account, a changed role or membership) is a content write, which moves the
+generation, so the very next request reads the row again and refuses a revoked
+token. The token's own last-seen touch is a user-state write that leaves the
+generation alone, so the touch drops that token's cached row itself
+(`auth.Service.resolve`). Expiry needs no write, so it is checked on every hit. A cast token
 (its grant and parent) and a pairing token (its one use) are never held, and
 nothing is held for a refusal. A write that bypassed the generation would leave
 a revoked token honoured.
