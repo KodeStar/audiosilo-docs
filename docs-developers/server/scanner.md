@@ -398,23 +398,23 @@ several files at a time, and writes the index in one place
   read is done, in discovery order (`writeNext`), on the one writer
   connection. The rows, their ids, the file order, the chapter offsets and the
   scan's log come out as a scan reading one file at a time writes them.
-- **Several books a transaction.** A transaction's begin and commit cost a scan
-  about as much as a book's own writes (0.6 of 1.5 ms a book on a synthetic
-  library, 1.3 of 3.9 ms on a real one), so the books read wait in a batch and
-  are written together by `catalog.UpsertBooks`: once there are `writeBatch`
-  (64) of them, once the first has waited `writeBatchAge` (250 ms), when the
-  writer would otherwise wait on a read, or when the scan ends or stops. The
-  same 250 ms is `UpsertBooks`' budget: a transaction takes another book only
-  while it has run for less than that, so a batch holds the writer (and every
-  other write, a listener's progress among them) no longer than that plus a
-  book. Each book is written under its own savepoint, so one that fails is
-  rolled back alone and logged as before while the rest of the batch is
-  written; a transaction that fails as a whole (its commit, say) has its books
-  written again one at a time (`UpsertBook`). Each book's FTS row, its
-  `refreshEffective` and the scan's progress are as with one book a
-  transaction. A scan whose reads are slower than its writes (ffprobe on every
-  file) still writes each book as its read is done, since the writer never
-  waits on a read while holding books.
+- **Several books a transaction.** The books read wait in a batch and are
+  written together by `catalog.UpsertBooks`, since a transaction's begin and
+  commit cost about as much as a book's own writes (0.6 of 1.5 ms a book on a
+  synthetic library, 1.3 of 3.9 ms on a real one).
+  - *When a batch is written:* once it holds `writeBatch` (64) books, once the
+    first has waited `writeBatchAge` (250 ms), when the writer would otherwise
+    wait on a read, or when the scan ends or stops. Since the writer never
+    waits on a read while holding books, a scan whose reads are slower than its
+    writes (ffprobe on every file) still writes each book as its read is done.
+  - *How long it holds the writer:* the same 250 ms is `UpsertBooks`' budget.
+    A transaction takes another book only while it has run for less than that,
+    so a batch holds the writer (and every other write, a listener's progress
+    among them) no longer than that plus a book.
+  - *A failure:* each book is written under its own savepoint, so one that
+    fails is rolled back alone and logged while the rest of the batch is
+    written. A transaction that fails as a whole (its commit, say) has its
+    books written again one at a time (`UpsertBook`).
 - **Stopping.** A Stop (or the scan's time limit) ends the in-process probes
   and the ffprobe runs through the scan's context. The reads under way are
   waited for and dropped (a read cut short would record a false
@@ -469,9 +469,8 @@ doesn't need:
   `statEntry.found`). On Darwin that carries the birth time, so a file costs no
   system call at all; on Linux, whose stat struct has no birth time, one
   `statx` per file reads it, and the walk's mtime stands in where the
-  filesystem records none (before, each file had a second `lstat` as well). A
-  file `statx` finds gone is left to an `lstat` of its own, as before. A
-  no-change scan makes no `statx`.
+  filesystem records none. A file `statx` finds gone is left to an `lstat` of
+  its own. A no-change scan makes no `statx`.
 - **A damaged file isn't probed again.** Without this, `problemCleared` would
   run ffprobe on a `probe_failed` book's file on every scan. When ffprobe rejects
   a file's data (`metadata.ErrProbeRejected`: its last stderr line ends in
@@ -819,9 +818,8 @@ remain 0, and `codec` stays empty - which the API treats as directly playable
 (`direct_playable: true`, so the web player streams the file as it is rather than
 through the transcoder). See
 [Media & streaming](media.md). With ffprobe disabled (`--ffprobe ""`) the
-in-process probe does not run either, so nothing changes there: a server
-without ffprobe reads tags and paths only, as before (SCAN-SPIKE decision 2;
-probing in-process with no ffprobe is a possible follow-up).
+[in-process probe](#the-in-process-probe) is off too, so the server reads tags
+and paths only (probing in-process with no ffprobe is a possible follow-up).
 
 ### The in-process probe
 
@@ -845,29 +843,34 @@ Ogg Vorbis, Ogg Opus, Ogg FLAC and MKA, each reader a port of FFmpeg's demuxer
 (an MP4's duration is the least of `mdhd`, `stts` and the edit list; a `chpl`
 list or a chapter track, as FFmpeg picks; ID3 frames in FFmpeg's dictionary
 order and overwrite rules; a Vorbis stream's start; Matroska's `TagDefault`).
-Every other format goes to ffprobe, as before.
+Every other format goes to ffprobe.
 
 **Parity is the contract.** Every value equals what the configured ffprobe
 gives, by the rules of its FFmpeg release (`ffRules`), so the probe changes no
-stored duration, chapter or tag, and an upgraded server needs no re-index. The
-release is read once per ffprobe path per process from `ffprobe -version`
+stored duration, chapter or tag, and an upgraded server needs no re-index.
+Which releases it runs for:
+
+- **7.1 and 8.1** (`knownRules`; they differ in MP3 gapless durations and in
+  empty UTF-16 ID3 strings). The official and LinuxServer.io images are both
+  Alpine 3.24, whose ffprobe is 8.1.3.
+- **Any other release turns the probe off**, and ffprobe reads every file:
+  Ubuntu 24.04's 6.1, a master or nightly build (its version is no release, so
+  the BtbN builds the server
+  [downloads](configuration.md#ffmpegffprobe-resolution--auto-download) for
+  Linux and Windows get no speedup), or an ffprobe whose `-version` fails.
+  Tags are still read in-process either way.
+
+The release is read once per ffprobe path per process from `ffprobe -version`
 (10 s at most): its major.minor, so `7.1.1`, `7.1.1-3ubuntu1` and `n8.1.3` are
-7.1, 7.1 and 8.1. The probe knows **7.1 and 8.1** (`knownRules`; they differ in
-MP3 gapless durations and in empty UTF-16 ID3 strings). **Any other release
-turns the probe off** and ffprobe reads every file, as before: Ubuntu 24.04's
-6.1, a master or nightly build (its version is no release, so the BtbN builds
-the server [downloads](configuration.md#ffmpegffprobe-resolution--auto-download)
-for Linux and Windows get no speedup), or an ffprobe whose `-version` fails.
-The Docker image's Alpine ffmpeg is 8.1. Tags are still read in-process either
-way, as they always were.
+7.1, 7.1 and 8.1.
 
 **What goes to ffprobe, per file and silently.** A reader returns `unsure` for
-any shape it does not model exactly, and that one file is read by ffprobe as
-before, with nothing logged:
+any shape it does not model exactly, and that one file is read by ffprobe,
+with nothing logged:
 
 - a VBR MP3 with no Xing or VBRI header (ffprobe estimates its duration from
-  the bitrate; SCAN-SPIKE decision 1 keeps that estimate, so the stored
-  duration stays the same), and a concatenated MP3;
+  the bitrate; keeping that estimate keeps the stored duration the same), and
+  a concatenated MP3;
 - a FLAC with a CUESHEET block or an ID3 prefix;
 - a fragmented or compressed MP4, or one with an unknown handler or sample
   entry;
@@ -879,14 +882,14 @@ before, with nothing logged:
   compressed ID3 frame over 16 MiB);
 - a read error, a reader's panic, no duration, or a probe limit (below).
 
-**Limits.** Each file's probe stops at a deadline, the caller's context and
-`min(timeout, maxProbeTime)`: at most 5 s, under the time `ExtractTimeout`
-gives ffprobe (30 s, see [Read problems](#read-problems)). It also stops after
-`maxProbeBytes` (64 MiB; the real library's p95 is about 0.9 MiB) read. Both are
-checked on every block read, before an ID3 frame is inflated or a repeated
+**Limits.** A file's probe stops after 5 s or 64 MiB read, and that file goes
+to ffprobe. The deadline is the caller's context and
+`min(timeout, maxProbeTime)`, under the time `ExtractTimeout` gives ffprobe
+(30 s, see [Read problems](#read-problems)); `maxProbeBytes` is far past the
+real library's p95 of about 0.9 MiB. Both are checked on every block read, before an ID3 frame is inflated or a repeated
 Vorbis key grows (`blockFile.check`), and every 256 ticks in the walks that
 loop without reading (`blockFile.tick`, a `probeLimit` panic `fastProbe`
-recovers). A probe that stops at a limit sends the file to ffprobe.
+recovers).
 
 **A file neither reads** keeps ffprobe's error as its `ProbeErr`, so Health
 shows the same `probe_failed` text as before (`ErrProbeRejected` included).
@@ -894,9 +897,8 @@ shows the same `probe_failed` text as before (`ErrProbeRejected` included).
 **Keeping parity.** A new FFmpeg release that changes a rule would change a
 value, so the probe is checked against ffprobe mechanically: a fixture corpus
 with each known release's answers, a live comparison and a CI job (see
-[Gates and CI](../contributing/gates-and-ci.md#the-in-process-probes-fixtures)).
-Adding a release means its rules where they differ, its golden file and a
-`knownRules` entry. `cmd/probediff <dirs>` compares the probe with the installed
+[Gates and CI](../contributing/gates-and-ci.md#the-in-process-probes-fixtures),
+which also says how to add a release). `cmd/probediff <dirs>` compares the probe with the installed
 ffprobe over any folders and times both: the tool to point at a real library.
 
 ## Chapter normalization

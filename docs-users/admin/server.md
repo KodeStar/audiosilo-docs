@@ -323,7 +323,7 @@ files so every player can play them; ffprobe reads lengths, chapters and codecs.
 When ffprobe is version 7.1 or 8.1, the server reads most files' lengths,
 chapters and codecs itself during a scan, much faster, and uses ffprobe for the
 rest; with another version, ffprobe reads every file (see
-[Rescanning](libraries.md#rescanning)).
+[ffmpeg and ffprobe](../getting-started/install-binary.md#ffmpeg-and-ffprobe)).
 
 The MP3 copies are kept in the data folder, under `cache/remux`, so each book
 is copied once rather than on every play. The folder holds at most 8 GiB: past

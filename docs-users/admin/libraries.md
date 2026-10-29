@@ -164,14 +164,7 @@ or every library at once, too.
 Scans run **one at a time**. If another library is being scanned, yours waits
 its turn: the card says **Waiting** and the button **Queued** until it starts.
 Within a scan, AudioSilo reads several audio files at once (one per processor,
-up to 8), which makes a first scan of a big library much quicker. It also reads
-the lengths and chapters of most MP3, M4B, M4A, FLAC, Ogg and MKA files itself,
-instead of starting ffprobe for each one, which makes a first scan many times
-faster. It does this only when the server's ffprobe is FFmpeg 7.1 or 8.1 (the
-official Docker image's is), since it gives exactly the answers that ffprobe would; with
-any other version every file is still read by ffprobe, as before, so the scan
-takes as long as it always did. A file it can't be sure about (an unusual MP3
-or MP4, for example) is read by ffprobe, so ffprobe is still needed. A rescan
+up to 8), which makes a first scan of a big library much quicker. A rescan
 where little has changed looks through several folders and files at once too,
 so it finishes sooner, most of all on a network share or an Unraid array. On a
 slow disk or a busy network share you can make it do fewer things at once: set
@@ -181,6 +174,14 @@ variable) and restart. It isn't in the console; see the
 **Health > Jobs** shows what is running and waiting, lets you stop a scan or
 cancel a waiting one, and keeps a history of every scan with its log (see
 [Jobs](health.md#jobs)).
+
+**With FFmpeg 7.1 or 8.1, a first scan is many times faster.** The server then
+reads the lengths and chapters of most MP3, M4B, M4A, FLAC, Ogg and MKA files
+itself instead of starting ffprobe for each one, and asks ffprobe only about a
+file it can't be sure of (an unusual MP3 or MP4, for example). The official and
+LinuxServer.io Docker images have 8.1. With any other version, ffprobe reads
+every file. See [ffmpeg and ffprobe](../getting-started/install-binary.md#ffmpeg-and-ffprobe)
+for how to check yours.
 
 Scans also run automatically:
 

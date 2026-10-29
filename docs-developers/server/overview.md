@@ -431,13 +431,9 @@ Every feature ships with a test (see
   `newTestCatalog`), `internal/web/web_test.go`, and so on.
 - A few scanner tests need `ffprobe` on the machine; without it they `t.Skip`
   (CI installs ffmpeg).
-- The in-process probe is checked against goldens of ffprobe's answers over a
-  fixture corpus (`internal/metadata/testdata/probe`, no ffprobe needed) and
-  live against the installed ffprobe, and the `probe-drift` workflow compares
-  it with the Docker image's (see
-  [Gates and CI](../contributing/gates-and-ci.md#the-in-process-probes-fixtures)).
-  A test whose ffprobe is a stand-in script calls
-  `metadata.ForceFFprobeForTests`.
+- The in-process probe is checked against ffprobe's answers over a fixture
+  corpus; see
+  [Gates and CI](../contributing/gates-and-ci.md#the-in-process-probes-fixtures).
 - **Security-critical code requires both an allowed and a denied regression
   test** - the enumerated list is in
   [Auth & security](auth-and-security.md#the-allowed--denied-test-rule).
