@@ -623,9 +623,15 @@ each selected project:
   namespace keeps it, and an id already on another person is not recorded twice;
   the run warns about both. That is the case for an author who is two LibriVox
   ids but one person here; a reader reaches it only when the split below cannot
-  apply. A reader whose name slugs to nothing lands on the catch-all person,
-  which is never given an id (an author or translator of that kind is credited
-  nowhere: [Names that slug to nothing](#which-work-a-librivox-project-joins)).
+  apply. A reader whose name slugs to nothing (Greek, Cyrillic, CJK) is a
+  person of their own at `librivox-reader-<reader id>`
+  (`librivox-reader-11294`, the
+  [person id rule](data-model.md#person---an-entry-in-the-datapeople-family)),
+  the name kept as written, so two such readers are never one record and a
+  rerun finds them by id (a `librivox:` summary line counts them). They never
+  land on the shared catch-all person, which `metacheck` refuses when LibriVox
+  states it (an author or translator of that kind is credited nowhere:
+  [Names that slug to nothing](#which-work-a-librivox-project-joins)).
   An author's or translator's `dob` / `dod` become the person's `birth_year` /
   `death_year` as the run records that person's LibriVox author id, only when
   LibriVox states a plain year (`1883`, `-428`, `428 BC`), and only when the
@@ -809,7 +815,8 @@ person record every such name shares. It is credited nowhere instead: the credit
 is dropped before the work is decided and listed under
 [credits not recorded](#credits-not-recorded) as `unsluggable` once the
 project lands. If the project also credits another author ("Yordan Yovkov"), its
-work is decided on that author alone.
+work is decided on that author alone. (A reader of that kind is not dropped:
+they take `librivox-reader-<reader id>`, above.)
 If no individual author is left (the name was its only author, or only a
 translator or a collective such as "Anonymous" remains), the project is the
 worklist's `author-unsluggable`, since a work by "Anonymous" alone would merge

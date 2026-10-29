@@ -126,13 +126,23 @@ year (`alive`, `c. 1500`) is never written, and `metacheck` refuses a
 A person's `id` is the one `model.PersonSlug` derives from their `name` (reserved
 names and the catch-all included), and `metacheck` refuses a record whose id is
 not, because the next import of that name would miss it and mint a second
-record. The one other legal form is a LibriVox reader's: a reader whose name
+record. The other legal forms are a LibriVox reader's: a reader whose name
 another reader id already holds is `<name slug>-librivox-<reader id>`
 (`martina-librivox-634`; the name's part shortened at a word boundary to keep
-the id within 100 characters, the reader id always whole), and `metacheck`
-accepts it only on a record carrying exactly that `librivox_reader_id`, since the LibriVox import finds a reader by id
-before it reads a name. The rule is `model.PersonIDMatches`; the composed id is
-`model.LibrivoxReaderSlug`.
+the id within 100 characters, the reader id always whole), and a reader whose
+name slugs to nothing (Greek, Cyrillic, CJK) is `librivox-reader-<reader id>`
+(`librivox-reader-11294`, the name kept as written). `metacheck` accepts each
+only on a record carrying exactly that `librivox_reader_id` (and the second only
+for a name that slugs to nothing), since the LibriVox import finds a reader by
+id before it reads a name. The rule is `model.PersonIDMatches`; the composed
+ids are `model.LibrivoxReaderSlug` and `model.LibrivoxUnslugReaderSlug`.
+
+The catch-all person (`person`, where every name that slugs to nothing would
+otherwise land) stays legal for the user-library imports, but never for
+LibriVox: `metacheck` refuses a `person` record LibriVox states (a `librivox`
+source or a LibriVox id) and a LibriVox recording (a `librivox` source or a
+`librivox_id`) keyed on or narrated by it, since one record would then narrate
+every unrelated project such a name read.
 
 ### series - an entry in the `data/series/` family
 
