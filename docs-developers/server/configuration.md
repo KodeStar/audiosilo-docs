@@ -294,7 +294,7 @@ scan:
 
 | Key | Type / default | Meaning |
 |---|---|---|
-| `database.mmap` | string, `""` (`auto`) | Whether the database's **reader** connections map the file into memory (SQLite `mmap_size`, 256 MiB, `store.WithReaderMmap`); the single writer never maps. `auto` (or empty, the default) maps only when the database file is on Linux on Unraid's shfs (a `/mnt/user` share); `on` always maps; `off` never does. Any case. Any other value is a config error naming the allowed ones, so the server doesn't start. Read once at start, with **no console setting**; `AUDIOSILO_DB_MMAP` sets it too |
+| `database.mmap` | `auto` (default, or empty) \| `on` \| `off`, any case | Whether the database's **reader** connections map the file into memory (SQLite `mmap_size`, 256 MiB, `store.WithReaderMmap`); the single writer never maps. `auto` maps only when the database file is on Linux on Unraid's shfs (a `/mnt/user` share); `on` always maps; `off` never does. Any other value is a config error naming the allowed ones, so the server doesn't start. Read once at start, with **no console setting**; `AUDIOSILO_DB_MMAP` sets it too |
 
 `auto` decides from the database file's filesystem (`store.onMappableFUSE`,
 Linux only; every other platform says no). `statfs` must say FUSE
@@ -321,8 +321,8 @@ purpose. The 256 MiB is a cap on address space, not memory: the mapped pages
 are the kernel's reclaimable file cache.
 
 The start logs the outcome once, `database readers: mmap` with `on`, `mode`,
-`mmap_size` (what SQLite took for a reader) and `asked`. Nothing may truncate
-the database file in place while it is open, mmap's other `SIGBUS`: backups are
+`mmap_size` (what SQLite took for a reader) and `asked`. Truncating the open
+database file in place would also raise `SIGBUS`, so nothing does: backups are
 `VACUUM INTO` and a restore swaps the file before it opens (see
 [Backups](backups-and-notifications.md)).
 

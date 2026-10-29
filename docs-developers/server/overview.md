@@ -112,16 +112,15 @@ pools (single-connection writer, read-only reader pool over WAL) and provides
 that moves after every write has finished (the API's
 [list answer cache](#the-list-answer-cache) keys on it, and so do the
 [token cache](auth-and-security.md#tokens-session-pairing-and-api-keys) and
-`catalog.GetLibrary`'s [library cache](#internalcatalog)). On Unraid's shfs the
-readers map the file (`mmap_size`, `database.mmap`: see
-[Database](configuration.md#database-database)). Every write must go
+`catalog.GetLibrary`'s [library cache](#internalcatalog)). Every write must go
 through `ExecContext`, `WithTx` or their durable forms `ExecDurable` and
 `WithDurableTx` (see [SQLite choices](data-model.md#sqlite-choices)): one that
 skipped them would leave these caches serving stale rows. `store.GenMap` is the
 small map the last two use: its entries
 all belong to one generation, the caller takes the generation before its read,
 and a newer one empties the map. See [Data model](data-model.md) for the schema
-and the SQLite rationale.
+and the SQLite rationale. On Unraid's shfs the readers map the file
+([Database](configuration.md#database-database)).
 
 ### `internal/auth`
 
@@ -263,11 +262,11 @@ request's first read, so an answer is never stored under a generation newer than
 its data. Each entry keeps the answer's gzip beside its JSON, made once when it
 is stored, and a hit sends the gzip to a client that takes it (`writeCachedJSON`;
 see [Response compression](api/index.md#response-compression)), so a hit
-compresses nothing. It holds 8 MiB (counting
-each answer's JSON, its gzip and its entry), at most 1 MiB an answer, least
-recently used first out. Only an answer that is a pure function of the database, the query and the
-scopes may use it: a list book carries no per-listener field, and a handler that
-adds one must leave the cache.
+compresses nothing. It holds 8 MiB (counting each answer's JSON, its gzip and
+its entry), at most 1 MiB an answer, least recently used first out. Only an
+answer that is a pure function of the database, the query and the scopes may use
+it: a list book carries no per-listener field, and a handler that adds one must
+leave the cache.
 
 The admin console's lists use it as well (server#245): the first pages of
 `GET /admin/books`, `GET /admin/books/facets` (keyed like a list, without

@@ -1358,11 +1358,9 @@ test checks `store.DB.DurableCommits` moved.
   means a slow or stuck write (e.g. stalled on a network volume) never blocks
   browsing. `/healthz` probes the reader pool for the same reason.
 
-The readers alone may also map the file (`mmap_size(268435456)`, 256 MiB,
-`store/mmap.go`): by default only when it is on Unraid's shfs, where it is several
-times faster, and never on another FUSE filesystem or a network share, where an
-I/O error under a mapping would be a crash. `database.mmap` forces it on or off;
-see [Database](configuration.md#database-database).
+The readers alone may also map the file (`mmap_size`, `store/mmap.go`), by
+default only on Unraid's shfs; when, why and the `database.mmap` override:
+[Database](configuration.md#database-database).
 
 An in-memory DSN (tests) stays single-pool: an in-memory database is
 per-connection, so a second pool would silently be a distinct, empty database.

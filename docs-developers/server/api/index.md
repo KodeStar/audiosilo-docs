@@ -65,8 +65,8 @@ An answer is compressed only when both halves say yes:
 
 Every JSON answer to a compressible request carries `Vary: Accept-Encoding`,
 compressed or not, so a cache in between never hands one client's encoding to
-another. The [list answer cache](../overview.md#the-list-answer-cache) keeps
-each answer's gzip beside its JSON, so a cache hit compresses nothing.
+another. A [list answer cache](../overview.md#the-list-answer-cache) hit
+sends a gzip made when the answer was stored.
 
 Why the exclusions: compressing a secret beside text an attacker can influence
 leaks the secret through the compressed size (BREACH). Every credential the API
