@@ -113,8 +113,10 @@ that moves after every write has finished (the API's
 [list answer cache](#the-list-answer-cache) keys on it, and so do the
 [token cache](auth-and-security.md#tokens-session-pairing-and-api-keys) and
 `catalog.GetLibrary`'s [library cache](#internalcatalog)). Every write must go
-through `ExecContext` or `WithTx`: one that skipped them would leave these caches
-serving stale rows. `store.GenMap` is the small map the last two use: its entries
+through `ExecContext`, `WithTx` or their durable forms `ExecDurable` and
+`WithDurableTx` (see [SQLite choices](data-model.md#sqlite-choices)): one that
+skipped them would leave these caches serving stale rows. `store.GenMap` is the
+small map the last two use: its entries
 all belong to one generation, the caller takes the generation before its read,
 and a newer one empties the map. See [Data model](data-model.md) for the schema
 and the SQLite rationale.
@@ -245,15 +247,18 @@ HTTP transport **only**: routing (`api.go` is the full route table), middleware
 
 #### The list answer cache
 
-`GET /libraries/{id}/books` (a books library), `GET /books/recent` and
-`GET /search` keep their encoded answer (`api/listcache.go`, server#243), keyed
-on the path, the raw query string and the caller's scopes, and stored under the
-database's write generation (`store.DB.Generation`), which moves after every
-`ExecContext` or `WithTx` finishes, failed and no-op writes included. Any write
-empties the cache, a progress save or a token's last-seen touch included, so it
-only saves work between writes and never serves an answer older than the
-database. The generation is read before the request's first read, so an answer
-is never stored under a generation newer than its data. It holds 8 MiB (counting
+`GET /libraries/{id}/books`, `GET /books/recent`, `GET /search` and a books
+library's browse lists `GET /libraries/{id}/authors`, `/narrators` and `/series`
+(through `browseList`; a podcasts library's lists skip it, as its `/books` does)
+keep their encoded answer (`api/listcache.go`, server#243). The key is the path,
+the raw query string (so `?memberships=1` is its own entry) and the caller's
+scopes. Entries are stored under the database's write generation
+(`store.DB.Generation`), which moves after every write finishes, durable, failed
+and no-op writes included. Any write empties the cache, a progress save or a
+token's last-seen touch included, so it only saves work between writes and never
+serves an answer older than the database. The generation is read before the
+request's first read, so an answer is never stored under a generation newer than
+its data. It holds 8 MiB (counting
 each answer and its entry), at most 1 MiB an answer, least recently used first
 out. Only an answer that is a pure function of the database, the query and the
 scopes may use it: a list book carries no per-listener field, and a handler that

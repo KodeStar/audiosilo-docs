@@ -8804,7 +8804,8 @@ running or needs attention) at a time: queuing the same again returns that job.
 #### Leases, attempts and cancelling
 
 A claim leases the job for **2 minutes**, and every report from the Bridge renews
-the lease (the Bridge reports at least every 10 seconds while it works). A lease
+the lease (the Bridge reports at least every 30 seconds while it works, every
+10 seconds after a report that didn't get through). A lease
 that runs out puts the job back in the queue, dropping the dead attempt's
 `progress`, `result` and `error`, unless it was the **third** attempt (the job
 fails, `error` "the Bridge stopped reporting on every attempt") or an admin had
@@ -9196,11 +9197,13 @@ The server picks from the kinds the last heartbeat named **and** the server know
 narrowed to the `kind` values when there are any. It hands out the highest
 priority, then oldest, queued job of those kinds, leased for 2 minutes and with
 `attempts` one higher, and answers `200` with the [job](#the-job-object). With no
-job it waits up to `wait` (a job queued meanwhile, or a lease that runs out, wakes
-it) and then answers `204`; when no kind is left after the narrowing it answers
+job it waits up to `wait` (a job queued meanwhile, or one put back by a lapsed
+lease, wakes it) and then answers `204`; when no kind is left after the narrowing it answers
 `204` at once, and when the server is stopping it ends the wait with `204`. The
 token is checked again with every claim, so a Bridge that a pairing or an unpair
-replaced during its long poll gets `401`, never a job.
+replaced during its long poll gets `401`, never a job. A claim with nothing to
+do (no job to hand out, no lease run out, no private follow request whose feed
+URL the server lost) writes nothing on the server.
 
 The priority floor is applied in the claim transaction before lease/attempt
 mutation, alongside kinds, module and token checks. The reserved Bridge

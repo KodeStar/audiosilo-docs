@@ -216,7 +216,10 @@ or parked. One run:
    files, or one whose OPF doesn't parse, as a DRM-wrapped one doesn't). An engine
    book left by an earlier run at the same source path is deleted first, unless
    another open job follows it (the job fails: cancel that one first) or a stage
-   of it stays busy through a few polls (the job fails: try again in a minute). A
+   of it stays busy through up to 40 polls, about two minutes (`deleteEarlier`,
+   `giveWayTries`, the same bound as the
+   [give-way wait](chapters.md#a-generate-job-after-a-detect-job); the job fails:
+   try again in a minute). A
    `chapters.detect` run at the same path (finished, or stopped at its detection)
    is **continued** instead, so its transcription is reused ([A generate job after a detect job](chapters.md#a-generate-job-after-a-detect-job)). The new book takes
    its identity from the server's facts (title, authors, narrators, series and

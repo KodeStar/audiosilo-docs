@@ -258,7 +258,8 @@ they may reset after a restart from zero. Unknown total is `null`:
 {"step":"fetching","bytes_received":1048576,"bytes_total":314572800,"message":"Fetching episode"}
 ```
 
-Reports/keepalives occur at least every ten seconds. Success is
+Reports and keepalives follow the usual
+[report timing](pairing-and-jobs.md#claims-and-leases). Success is
 `{library_id,path,show_id,episode_id,fetch:Fetch,chapters:3,reused:false}`.
 `reused:true` means a valid pin or recovered completed installation needed no
 new enclosure GET. Failure is a failed job with safe `error` and
