@@ -2016,8 +2016,8 @@ read-along map, the file a Bridge's `readalong.align` job wrote beside it (see
 `ready`: the map fits the book, `coverage` the share of the ebook's text it lines
 up (0 to 1), `generated_at` when it was made; fetch it from
 [`/readalong`](#get-apiv1librariesidreadalong). `stale`: it was made for another
-ebook (`reason` `ebook_changed`) or other audio (`audio_changed`: another set of
-files, or a length off by more than 0.05 s), so a client hides it until an admin
+ebook (`reason` `ebook_changed`) or other audio (`audio_changed`; the rules:
+[Read-along](../../bridge/readalong.md#on-the-server)), so a client hides it until an admin
 makes it again. Omitted when the book has no ebook, no map, or a map that fails the
 server's checks. Only this single-book response (and the console's book page)
 carries it, never a list row: working it out may read the ebook's digest.

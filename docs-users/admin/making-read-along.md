@@ -61,8 +61,8 @@ happen before anything starts:
 
 - **Ebook**: the file it lines up.
 - **Transcription**: "Up to" how long transcribing the whole book takes on your
-  Bridge, "less if the Bridge still has this book's transcript". The Bridge transcribes the whole book unless it kept the
-  transcript from an earlier job on the same audio (below).
+  Bridge, "less if the Bridge still has this book's transcript" (see
+  [How long it takes](#how-long-it-takes)).
 - **Agent cost**: "None: no agent is used".
 - For **Make again**, the read-along it replaces.
 - That if less than half of the ebook lines up with the narration, the job stops
@@ -151,9 +151,9 @@ for a book:
   the read-along ("make the read-along again after"); generating then reuses what
   the read-along transcribed, and so does the read-along you make after.
 - Characters and recaps generated **from the ebook** are never disturbed by a
-  read-along or by Detect chapters: those transcribe the audio separately, and the
-  book keeps its characters, recaps and description as they were. Generating again
-  from the audio later reuses that transcription.
+  read-along or by Detect chapters: the book keeps its characters, recaps and
+  description as they were, and generating again from the audio later reuses the
+  read-along's transcription.
 
 ## Where it is saved
 

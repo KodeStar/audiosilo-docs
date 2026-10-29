@@ -136,17 +136,15 @@ at and of the read-along stages after it are removed, a book going on from
 `inspecting` forgets its old manifest's transcription, and a book going on before
 `qa_sweep` gets its loop-repair round again.
 
-Two jobs meet the same engine books:
+Other jobs meet the same engine books:
 
 - **A `sidecars.generate` job continues a done read-along run** at `qa_sweep`
   with goal `""`: the agent's adjudication then runs on the already repaired
   transcript, and nothing is transcribed twice (never a read-along transcribed in
-  windows: its chapters were never found).
-- **A `sidecars.generate` job reading the audio takes the audio run on** as the
-  book's own run, continuing it at `qa_sweep` as above: the ebook run beside it is
-  cleared first (generate always replaces the book's earlier run) and the audio run
-  re-keyed to the book's path. A generate job reading the **ebook** leaves the
-  audio run alone.
+  windows: its chapters were never found). When the read-along was an audio run
+  beside an ebook run, a generate job reading the audio clears the ebook run first
+  (generate always replaces the book's earlier run) and re-keys the audio run to
+  the book's path; one reading the **ebook** leaves the audio run alone.
 - **A `chapters.detect` job clears a read-along run** rather than refusing it as
   a whole run, unless the read-along went on from a whole run (it holds that run's
   notes). That protection reads the notes on disk (`facts/knowledge-final.md`),
@@ -292,10 +290,8 @@ A test map lives in the Bridge's `internal/readalong/testdata/alice.readalong.js
 **Indexing.** The server reads `readalong.json` as a [Bridge attachment](attachments.md#readalongjson)
 (its own bound, 16 MiB) and stores only its **head** (format, ebook, audio,
 generator, `generated_at`, coverage; never the sections) in
-`book_attachments.readalong` (migration `0058`). The head is checked: `format`
-exactly `audiosilo-readalong/v1`, `ebook.sha256` 64 hex, 1 to 5000 `audio.files`
-each with a path of 1 to 1024 bytes and a duration above 0, `coverage.text` and
-`coverage.audio` present and in [0, 1], `sections` an array. A map that fails is
+`book_attachments.readalong` (migration `0058`). The head is checked
+([the bounds](attachments.md#how-the-server-checks-them)); a map that fails is
 none (logged, its signature recorded). A map is not generated content:
 `Book.generated` doesn't change.
 

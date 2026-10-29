@@ -51,6 +51,7 @@ import {
   silence,
   sleep,
   shoot,
+  stamp,
   step,
   submitSignIn,
   waitForScans,
@@ -1288,7 +1289,7 @@ await step('book: characters and recaps', async () => {
 // Detect chapters on the Inbox's A Long Lecture (2.5 h, no chapter marks), then
 // the stand-in runs the job as a Bridge would. The fixture's audio is silence, so
 // the chapters.json it writes is the fixture's own list, laid over the file the
-// server indexed. Last of the Bridge steps, so no other shot sees the Inbox
+// server indexed. No later shot shows the Inbox, so none sees it
 // writable or the found chapters.
 const LECTURE_TITLES = ['Introduction', 'Part One: Keeping Time', 'Part Two: The Clockmakers',
   'Part Three: Longitude', 'Part Four: Railway Time', 'Afterword'];
@@ -1435,7 +1436,7 @@ await step('bridge: make a read-along', async () => {
         message: 'Lining up the ebook with the narration', done: 0, total: 1},
     }, BRIDGE_CLIENT);
     const info = await api(bridgeToken, 'GET',
-      `/bridge/libraries/${carol.library_id}/book?path=${encodeURIComponent(carol.path)}`, undefined, BRIDGE_CLIENT);
+      `/bridge/libraries/${carol.library_id}/book${pathQuery(carol.path)}`, undefined, BRIDGE_CLIENT);
     const ebook = info?.book?.ebook;
     if (!ebook) throw new Error('the Bridge book route names no ebook (a server before Phase 3c?)');
     const sha256 = createHash('sha256').update(await readFile(path.join(root, ebook.path))).digest('hex');
@@ -1452,7 +1453,7 @@ await step('bridge: make a read-along', async () => {
       audio: {duration: Math.round(files.reduce((t, f) => t + f.duration, 0) * 100) / 100, files},
       granularity: 'sentence',
       generator: {name: 'audiosilo-bridge', version: '0.5.0', aligner: 'whisper-words/1', asr: 'whisper-large-v3-turbo'},
-      generated_at: isoAgo(2 * DAY).replace(/\.\d+Z$/, 'Z'),
+      generated_at: stamp(Date.now() - 2 * DAY),
       coverage,
       sections: [],
       audio_gaps: [],
