@@ -15,7 +15,7 @@ On Unraid, install AudioSilo from **Community Applications** (the Apps tab). The
    - **Audiobooks** (`/audiobooks`) - your audiobooks share, for example `/mnt/user/audiobooks`. It is mounted read-only: the server never writes to your books.
    - **WebUI** (the port) - `8080` unless it's taken on your server.
 4. Click **Show more settings** for the rest of the template:
-   - **Appdata** (`/config`) - where the server keeps its database, `config.yaml` and TLS certificates. Unraid usually pre-fills your default appdata location; prefer a cache or pool path such as `/mnt/cache/appdata/audiosilo` so the database isn't on the slower user-share layer.
+   - **Appdata** (`/config`) - where the server keeps its database, `config.yaml` and TLS certificates. Unraid usually pre-fills your default appdata location; prefer a cache or pool path such as `/mnt/cache/appdata/audiosilo` so the database isn't on the slower user-share layer. The default `/mnt/user/appdata/audiosilo` works well too; see [Appdata on a user share](#appdata-on-a-user-share).
    - **PUID / PGID** - leave the Unraid defaults, `99` and `100` (`nobody:users`).
 5. Click **Apply**.
 
@@ -44,6 +44,19 @@ Click the AudioSilo icon and choose **WebUI**. By default the server speaks HTTP
 - **`/web`** - the web player.
 
 The first time you sign in to the admin console, it opens **Set up your server**. Its first step asks for your books folder: type **`/audiobooks`** (the path inside the container, not the `/mnt/user/...` share) and press **Check folder**. [First run](./first-run.md#set-up-your-server) walks through it and the steps after it. Skipped the folder? Add it later from **Add your first library**; see [Libraries](../admin/libraries.md). Then [connect a phone or browser](../listening/connecting.md).
+
+### Appdata on a user share
+
+When the appdata folder is on a user share (`/mnt/user/...`) that goes through Unraid's user-share layer, AudioSilo maps its database into memory for reading, which makes browsing several times quicker there. An exclusive share (one Unraid hands straight to a single pool) skips that layer, so it behaves like a cache path. It isn't needed on a cache or pool path, and it stays off on network storage (an NFS or SMB mount, for example), where a read error while it is in use would stop the server. Each start logs a line with `database readers: mmap` in it; `on=true` means it is turned on.
+
+To turn it off, add this to `config.yaml` in your appdata folder and restart the container:
+
+```yaml
+database:
+  mmap: off
+```
+
+Or add a container **Variable** `AUDIOSILO_DB_MMAP` with the value `off` (edit the container, **Add another Path, Port, Variable or Device**). `on` forces it on anywhere, at your own risk on network storage, and `auto` is the default. See the [database setting](/developers/server/configuration#database-database) in the developer docs for the details.
 
 ### HTTPS and reverse proxies
 

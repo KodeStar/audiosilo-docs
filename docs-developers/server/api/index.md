@@ -39,6 +39,52 @@ serializes as JSON `null`, not `[]` (e.g. `{"books": null}`). Treat `null` and
 `[]` as equivalent.
 :::
 
+## Response compression
+
+JSON answers to `GET` requests under `/api/v1/` are gzipped (`gzip.BestSpeed`)
+for a client that sends `Accept-Encoding: gzip` (`api/compress.go`, server
+v2.5.1). A 200-book page is about 71 KB of JSON and about 10 KB gzipped. The
+JSON shape is unchanged and nothing needs opting in: browsers, the apps' `fetch`
+and Go's `http.Transport` (the Bridge, the manager) all send the header and
+decode the answer themselves. A client that sends no `Accept-Encoding`, or one
+without gzip, gets the plain bytes as before.
+
+An answer is compressed only when both halves say yes:
+
+- **The request** is a `GET` under `/api/v1/` without a `Range` header, and not
+  one of the excluded classes: the media (a cover, a stream, an ebook, a
+  community cover `/meta/cover`, a backup's download), everything under
+  `/api/v1/auth/` and everything under `/api/v1/bridge/` (the Bridge's long-poll
+  claim, and job parameters that can carry a private feed URL). A `HEAD`, a
+  `POST` or any other method is never compressed.
+- **The answer** is `application/json`, at least **1 KiB**, has a body (not
+  `204`/`304`) and carries no `Content-Encoding` or `ETag` of its handler's own
+  (a handler with a validator, such as
+  [`GET /libraries/{id}/readalong`](reference.md#get-apiv1librariesidreadalong),
+  compresses its own representation). Smaller answers go out as they are.
+
+Every JSON answer to a compressible request carries `Vary: Accept-Encoding`,
+compressed or not, so a cache in between never hands one client's encoding to
+another. A [list answer cache](../overview.md#the-list-answer-cache) hit
+sends a gzip made when the answer was stored.
+
+Why the exclusions: compressing a secret beside text an attacker can influence
+leaks the secret through the compressed size (BREACH). Every credential the API
+hands out (sign-in, pairing, API keys, cast tokens, member sessions, auth codes,
+Bridge pairing, recovery codes) is minted by a `POST`, and `/api/v1/auth/` is
+excluded whole besides, so no compressed body holds one. Media keeps its exact
+bytes for `Range` and seeking.
+
+:::note[Adding a route]
+A new `GET` that returns a credential, or a long poll or stream, joins
+`compressExcluded` in `api/compress.go` (path prefixes), with a test that it
+stays identity. Anything else is compressed by default.
+:::
+
+A reverse proxy needs no compression rule for the API: the server does it. A
+proxy that compresses again is harmless, since it sees the answer's
+`Content-Encoding` and passes it through.
+
 ## Authentication
 
 Every route except the public set (`/server`, `/healthz`, `/auth/redeem`,

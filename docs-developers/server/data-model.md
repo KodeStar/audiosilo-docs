@@ -1358,6 +1358,10 @@ test checks `store.DB.DurableCommits` moved.
   means a slow or stuck write (e.g. stalled on a network volume) never blocks
   browsing. `/healthz` probes the reader pool for the same reason.
 
+The readers alone may also map the file (`mmap_size`, `store/mmap.go`), by
+default only on Unraid's shfs; when, why and the `database.mmap` override:
+[Database](configuration.md#database-database).
+
 An in-memory DSN (tests) stays single-pool: an in-memory database is
 per-connection, so a second pool would silently be a distinct, empty database.
 Supporting telemetry: `WithTx` logs any transaction over 2 s, and a background

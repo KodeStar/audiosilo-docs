@@ -108,18 +108,29 @@ Opens SQLite via `modernc.org/sqlite` (pure Go - the binary is CGO-free and
 cross-compiles anywhere) and applies the embedded, append-only migrations in
 `internal/store/migrations/`. `store.DB` routes reads and writes to separate
 pools (single-connection writer, read-only reader pool over WAL) and provides
-`WithTx` with slow-transaction logging, and `Generation`, the write generation
-that moves after every write has finished (the API's
-[list answer cache](#the-list-answer-cache) keys on it, and so do the
+`WithTx` with slow-transaction logging, and `ContentGeneration`, the content
+generation that moves after every write has finished except a user-state one
+(the API's [list answer cache](#the-list-answer-cache) keys on it, and so do the
 [token cache](auth-and-security.md#tokens-session-pairing-and-api-keys) and
 `catalog.GetLibrary`'s [library cache](#internalcatalog)). Every write must go
-through `ExecContext`, `WithTx` or their durable forms `ExecDurable` and
-`WithDurableTx` (see [SQLite choices](data-model.md#sqlite-choices)): one that
-skipped them would leave these caches serving stale rows. `store.GenMap` is the
+through `ExecContext`, `WithTx`, their durable forms `ExecDurable` and
+`WithDurableTx` (see [SQLite choices](data-model.md#sqlite-choices)) or their
+user-state forms `ExecUserState` and `WithUserStateTx`: one that skipped them
+would leave these caches serving stale rows. A user-state write (`store/userstate.go`,
+server#258) is listening and housekeeping no content cache reads: a progress
+save, a listening session, history, bookmarks and notes, ratings, the queue,
+reading progress, the console's bell, the community metadata cache, a token's
+last-seen touch (the token cache drops the touched row itself), the Bridge's
+heartbeat and its job reports' lease and progress. It leaves the generation
+where it was unless it changed a row outside its table's rule in
+`userStateTables` (a progress row added, removed or re-keyed moves it, as the
+Health summary's duplicate ranking reads those keys; checked by SQLite's
+pre-update hook, so a misfiled write only empties the caches). `store.GenMap` is the
 small map the last two use: its entries
 all belong to one generation, the caller takes the generation before its read,
 and a newer one empties the map. See [Data model](data-model.md) for the schema
-and the SQLite rationale.
+and the SQLite rationale. On Unraid's shfs the readers map the file
+([Database](configuration.md#database-database)).
 
 ### `internal/auth`
 
@@ -252,17 +263,23 @@ library's browse lists `GET /libraries/{id}/authors`, `/narrators` and `/series`
 (through `browseList`; a podcasts library's lists skip it, as its `/books` does)
 keep their encoded answer (`api/listcache.go`, server#243). The key is the path,
 the raw query string (so `?memberships=1` is its own entry) and the caller's
-scopes. Entries are stored under the database's write generation
-(`store.DB.Generation`), which moves after every write finishes, durable, failed
-and no-op writes included. Any write empties the cache, a progress save or a
-token's last-seen touch included, so it only saves work between writes and never
-serves an answer older than the database. The generation is read before the
+scopes. Entries are stored under the database's content generation
+(`store.DB.ContentGeneration`), which moves after every content write finishes,
+durable, failed and no-op writes included. Any content write empties the cache;
+a user-state write (an update to a book's existing progress, a heartbeat, a
+token's last-seen touch, a Bridge job's lease or progress report) leaves it warm,
+as no cached answer reads what it changes. A book's first progress save adds a
+row, which is a content write. So the cache never serves an answer older than
+the content it was computed from. The generation is read before the
 request's first read, so an answer is never stored under a generation newer than
-its data. It holds 8 MiB (counting
-each answer and its entry), at most 1 MiB an answer, least recently used first
-out. Only an answer that is a pure function of the database, the query and the
-scopes may use it: a list book carries no per-listener field, and a handler that
-adds one must leave the cache.
+its data. Each entry of at least 1 KiB keeps the answer's gzip beside its JSON,
+made once when it is stored, and a hit sends the gzip to a client that takes it (`writeCachedJSON`;
+see [Response compression](api/index.md#response-compression)), so a hit
+compresses nothing. It holds 8 MiB (counting each answer's JSON, its gzip and
+its entry), at most 1 MiB an answer, least recently used first out. Only an
+answer that is a pure function of the database, the query and the scopes may use
+it: a list book carries no per-listener field, and a handler that adds one must
+leave the cache.
 
 The admin console's lists use it as well (server#245): the first pages of
 `GET /admin/books`, `GET /admin/books/facets` (keyed like a list, without

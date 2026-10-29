@@ -290,6 +290,50 @@ scan:
   concurrency: 0 # [AUDIOSILO_SCAN_CONCURRENCY]
 ```
 
+### Database (`database.*`)
+
+| Key | Type / default | Meaning |
+|---|---|---|
+| `database.mmap` | `auto` (default, or empty) \| `on` \| `off`, any case | Whether the database's **reader** connections map the file into memory (SQLite `mmap_size`, 256 MiB, `store.WithReaderMmap`); the single writer never maps. `auto` maps only when the database file is on Linux on Unraid's shfs (a `/mnt/user` share); `on` always maps; `off` never does. Any other value is a config error naming the allowed ones, so the server doesn't start. Read once at start, with **no console setting**; `AUDIOSILO_DB_MMAP` sets it too |
+
+`auto` decides from the database file's filesystem (`store.onMappableFUSE`,
+Linux only; every other platform says no). `statfs` must say FUSE
+(`0x65735546`), and then the `/proc/self/mountinfo` line for the file's device
+(the `major:minor` of its `st_dev`, so a symlinked data folder, a bind mount or
+a stacked mount needs no path matching) must name `fuse.shfs`. Any failure
+along the way, or no line for the device, means no mapping. Inside a container
+both checks see the bind mount's real filesystem: an Unraid appdata path under
+`/mnt/user` is shfs, one under `/mnt/cache` is the pool's btrfs or xfs (and so
+is a `/mnt/user` exclusive share, which Unraid hands straight to its pool).
+
+Why only there: on shfs every page read (`pread`) is a round trip through the
+FUSE daemon, and mapping lets a reader take pages straight from the kernel's
+file cache. Measured on an Intel N305 Unraid box, the authors list went from
+78.8 to 8.9 ms, the Health summary from 157 to 60 ms and a 200-book page from
+9.1 to 4.3 ms, with the database's integrity intact under a concurrent scan. On
+a local disk it gained little (search and a deep page were about 10% slower),
+so `auto` leaves it off there. It stays off on every other FUSE filesystem
+and on network shares too. mergerfs (with `cache.files=off`) runs `direct_io`,
+where a mapping fails or, on some kernels, can show readers stale pages after the
+writer's direct writes. On sshfs, rclone, s3fs, ntfs-3g, NFS or SMB a read can
+fail, and an I/O error under a mapping is a `SIGBUS`, which stops the pure-Go
+server, where a plain read would fail one request. `on` takes those risks on
+purpose. The 256 MiB is a cap on address space, not memory: the mapped pages
+are the kernel's reclaimable file cache.
+
+The start logs the outcome once, `database readers: mmap` with `on`, `mode`,
+`mmap_size` (what SQLite took for a reader) and `asked`. It is the limit SQLite
+took, not a mapping made: a reader whose `mmap()` fails later falls back to
+plain reads without a log line. Truncating the open
+database file in place would also raise `SIGBUS`, so nothing does: backups are
+`VACUUM INTO` and a restore swaps the file before it opens (see
+[Restore at the next start](backups-and-notifications.md#restore-at-the-next-start)).
+
+```yaml
+database:
+  mmap: auto # [AUDIOSILO_DB_MMAP] auto | on | off
+```
+
 ### Demo mode (`demo.*`)
 
 | Key | Type / default | Meaning |
@@ -666,6 +710,7 @@ by the settings table in `internal/config/settings.go` (`fields`: each entry's
 | `AUDIOSILO_MODULES_CONTRIBUTIONS_ENABLED` | `modules.contributions.enabled` | `strconv.ParseBool` (`true`/`1`/…); each module's toggle is `AUDIOSILO_MODULES_<ID>_ENABLED` |
 | `AUDIOSILO_PODCAST_DISCOVERY_ENABLED` | `podcasts.discovery.enabled` | `strconv.ParseBool` (`false`/`0`/… turns it off); read at start |
 | `AUDIOSILO_SCAN_CONCURRENCY` | `scan.concurrency` | integer, 0-64 (`0` = one per CPU, up to 8); read at start |
+| `AUDIOSILO_DB_MMAP` | `database.mmap` | `auto`, `on` or `off` (any case); any other value stops the start; read at start |
 | `AUDIOSILO_RATE_LIMIT_ADDRESS_RATE` | `rate_limit.address.rate` | number (requests a second); read at start |
 | `AUDIOSILO_RATE_LIMIT_ADDRESS_BURST` | `rate_limit.address.burst` | integer; read at start |
 | `AUDIOSILO_RATE_LIMIT_TOKEN_RATE` | `rate_limit.token.rate` | number (requests a second); read at start |
@@ -735,8 +780,8 @@ restart, and whether the console may change it at all:
 | `modules.podcasts` | `modules.podcasts.enabled` | `AUDIOSILO_MODULES_PODCASTS_ENABLED` | at once; starts/stops feed/download/retention scheduling and gates writes; reads and present-pin reuse stay core |
 | `modules.contributions` | `modules.contributions.enabled` | `AUDIOSILO_MODULES_CONTRIBUTIONS_ENABLED` | at once (the Bridge jobs it owns are refused or held while it is off) |
 
-`podcasts.discovery.enabled`, `scan.concurrency` and the six `rate_limit.*`
-values have no setting id: each is read at start from the file or its variable
+`podcasts.discovery.enabled`, `scan.concurrency`, `database.mmap` and the six
+`rate_limit.*` values have no setting id: each is read at start from the file or its variable
 and never offered in the console.
 
 Not in the console: `max_upload_bytes` (it has a variable but no setting),
@@ -864,6 +909,7 @@ overrides). It rejects:
 - a `backups.schedule` that isn't one of the forms above, a `backups.keep`
   outside 1-365, or a `backups.dir` that isn't an absolute path;
 - a `scan.concurrency` outside 0-64;
+- a `database.mmap` other than `auto`, `on` or `off` (any case);
 - a `rate_limit.*.rate` that is negative, infinite or not a number, or a
   negative `rate_limit.*.burst` (`0` is unset: the default).
 
