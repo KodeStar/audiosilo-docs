@@ -418,9 +418,10 @@ several files at a time, and writes the index in one place
 - **Stopping.** A Stop (or the scan's time limit) ends the in-process probes
   and the ffprobe runs through the scan's context. The reads under way are
   waited for and dropped (a read cut short would record a false
-  [read problem](#read-problems)), the books already read are written (their
-  reads finished before the Stop), nothing more is read, and the backfills read
-  so far are kept.
+  [read problem](#read-problems)), as is a finished read the writer had not yet
+  taken into the batch. The books already in the batch are written (their reads
+  finished before the Stop), nothing more is read, and the backfills read so far
+  are kept.
 - **On-demand indexing** ([`IndexPath`](#on-demand-indexing-indexpath)) reads
   with one slot, a file at a time on the request's own goroutine.
 - The skipped books' cheap backfills (above) still run one at a time on the
@@ -464,12 +465,13 @@ doesn't need:
   (`stampAddedAt`: the earliest `addedAt` of the book's audio files) only for a
   book the index doesn't hold yet. A book that is re-indexed keeps its row's
   value, so the scan sets a placeholder for it and reads none of its files'
-  birth times. The new book's files are not looked up again: `statAudio` keeps
+  birth times. The new book's files get no second `lstat`: `statAudio` keeps
   what each file's `lstat` already told (`Book.FoundAdded`, from
   `statEntry.found`). On Darwin that carries the birth time, so a file costs no
   system call at all; on Linux, whose stat struct has no birth time, one
   `statx` per file reads it, and the walk's mtime stands in where the
-  filesystem records none. A file `statx` finds gone is left to an `lstat` of
+  filesystem records none; on any other platform the walk's mtime is the
+  time, with no system call. A file `statx` finds gone is left to an `lstat` of
   its own. A no-change scan makes no `statx`.
 - **A damaged file isn't probed again.** Without this, `problemCleared` would
   run ffprobe on a `probe_failed` book's file on every scan. When ffprobe rejects
@@ -861,7 +863,8 @@ Which releases it runs for:
   Tags are still read in-process either way.
 
 The release is read once per ffprobe path per process from `ffprobe -version`
-(10 s at most): its major.minor, so `7.1.1`, `7.1.1-3ubuntu1` and `n8.1.3` are
+(10 s at most), so an ffprobe upgraded in place is read again only after a
+restart: its major.minor, so `7.1.1`, `7.1.1-3ubuntu1` and `n8.1.3` are
 7.1, 7.1 and 8.1.
 
 **What goes to ffprobe, per file and silently.** A reader returns `unsure` for
@@ -871,7 +874,7 @@ with nothing logged:
 - a VBR MP3 with no Xing or VBRI header (ffprobe estimates its duration from
   the bitrate; keeping that estimate keeps the stored duration the same), and
   a concatenated MP3;
-- a FLAC with a CUESHEET block or an ID3 prefix;
+- a FLAC with a CUESHEET block, or a FLAC or Ogg with an ID3 prefix;
 - a fragmented or compressed MP4, or one with an unknown handler or sample
   entry;
 - a multi-stream Ogg;

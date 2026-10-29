@@ -133,8 +133,8 @@ answers, with and without ffprobe installed:
 - **The corpus.** `internal/metadata/testdata/probe` holds about 90 small
   fixtures (a few seconds of audio each, under 3 MB together) in every shape
   the probe reads or leaves to ffprobe: MP3 (CBR, VBR with and without a
-  Xing/VBRI header, gapless, ID3 and APE tags, chapters), M4B/M4A/MP4, FLAC,
-  Ogg Vorbis/Opus/FLAC and MKA, plus crafted and truncated files.
+  Xing/VBRI header, gapless, ID3 and APE tags, chapters), M4B and M4A, FLAC,
+  Ogg Vorbis/Opus/FLAC (`.ogg` and `.opus`) and MKA, plus crafted and truncated files.
   `scripts/gen-probe-fixtures.sh` makes them (with `cmd/mkfixtures` for the
   crafted ones; it needs ffmpeg/ffprobe 7.x or 8.x with libmp3lame, libvorbis
   and libopus, the `lame` CLI and `metaflac`). Regenerating rewrites every

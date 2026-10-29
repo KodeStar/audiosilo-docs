@@ -52,7 +52,7 @@ updates only a declared library's root and default view).
 | Flag | Default | Meaning |
 |---|---|---|
 | `--data` | `./data` | Data directory: config, SQLite database, generated certs, downloaded tools, the Matroska remux cache (`cache/remux/`) |
-| `--ffprobe` | `ffprobe` | Path to ffprobe (durations, chapters, codec detection). With FFmpeg 7.1 or 8.1 the scanner reads most files in-process by that release's rules and runs it only for the rest; any other release reads every file (see [The in-process probe](scanner.md#the-in-process-probe)). **`""` disables it**, the in-process probe included - the scanner degrades to path-derived metadata and `direct_playable` defaults to true |
+| `--ffprobe` | `ffprobe` | Path to ffprobe (durations, chapters, codec detection). With FFmpeg 7.1 or 8.1 the scanner reads most files in-process by that release's rules and runs it only for the rest; with any other release ffprobe reads every file (see [The in-process probe](scanner.md#the-in-process-probe)). **`""` disables it**, the in-process probe included - the scanner degrades to path-derived metadata and `direct_playable` defaults to true |
 | `--ffmpeg` | `ffmpeg` | Path to ffmpeg for on-the-fly transcoding and the MP3-in-Matroska remux. **`""` disables it** - `?transcode=1` returns 503, the `transcode` capability reports false, and an `.mka` is served as stored (no remux, `direct_playable: false`) |
 | `--setup` | `false` | First-run **setup page**: instead of auto-creating the admin and printing credentials once, mint a one-time token and enable the guarded `/setup` page, where the admin's username and password are chosen in the browser (see [Built-in web UI](web-ui.md#first-run-setup-page-setup)). Either way the admin console's [first-run setup flow](web-ui.md#the-first-run-setup-flow) then adds the books folder and the rest on the first `/admin` visit |
 
@@ -936,8 +936,10 @@ tools):
 - **No in-process probe with the Linux/Windows download**: BtbN's builds are
   FFmpeg master (`ffmpeg-master-latest-*`), whose version is no release, so the
   scanner's [in-process probe](scanner.md#the-in-process-probe) stays off and
-  ffprobe reads every file. A local ffprobe of a known release (7.1 or 8.1)
-  found first avoids that.
+  ffprobe reads every file. evermeet's macOS download is the latest release
+  when it was fetched (and is kept), so the probe runs with it only while that
+  is 7.1 or 8.1. A local ffprobe of a known release (7.1 or 8.1) found first
+  avoids both.
 - **Hardening**: extraction only takes files named `ffmpeg`/`ffprobe`
   (basename-only, so no zip-slip), capped at 300 MiB per binary
   (decompression-bomb guard). Pinning per-asset SHA-256 is noted in the

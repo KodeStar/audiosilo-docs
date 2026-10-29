@@ -29,7 +29,7 @@ AudioSilo uses ffmpeg/ffprobe for durations, chapter extraction and on-the-fly t
 
 In short: on the common path there is nothing to install, and if the download can't happen, nothing breaks.
 
-**For faster first scans, use FFmpeg 7.1 or 8.1.** With one of those versions the server reads most files' lengths and chapters itself, without starting ffprobe for each one, and asks ffprobe only about the files it can't be sure of. With any other version (for example Ubuntu 24.04's 6.1), every file is read by ffprobe, which works but makes the first scan of a big library much slower. The copy the server downloads for Linux and Windows is a development build, not a release, so it gets no speedup either: install a 7.1 or 8.1 package and the server finds it first. Run `ffprobe -version` to see which you have. ffprobe is still needed either way.
+**For faster first scans, use FFmpeg 7.1 or 8.1** (from 2.5.1). With one of those versions the server reads most files' lengths and chapters itself, without starting ffprobe for each one, and asks ffprobe only about the files it can't be sure of. With any other version (for example Ubuntu 24.04's 6.1), every file is read by ffprobe, which works but makes the first scan of a big library much slower. The copy the server downloads for Linux and Windows is a development build, not a release, so it gets no speedup either: install a 7.1 or 8.1 package and restart the server, which then finds it first. Run `ffprobe -version` to see which you have. ffprobe is still needed either way.
 
 ### Run it from a terminal
 

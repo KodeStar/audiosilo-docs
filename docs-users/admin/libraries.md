@@ -175,12 +175,12 @@ variable) and restart. It isn't in the console; see the
 cancel a waiting one, and keeps a history of every scan with its log (see
 [Jobs](health.md#jobs)).
 
-**With FFmpeg 7.1 or 8.1, a first scan is many times faster.** The server then
-reads the lengths and chapters of most MP3, M4B, M4A, FLAC, Ogg and MKA files
-itself instead of starting ffprobe for each one, and asks ffprobe only about a
-file it can't be sure of (an unusual MP3 or MP4, for example). The official and
-LinuxServer.io Docker images have 8.1. With any other version, ffprobe reads
-every file. See [ffmpeg and ffprobe](../getting-started/install-binary.md#ffmpeg-and-ffprobe)
+**With FFmpeg 7.1 or 8.1, a first scan is many times faster** (from 2.5.1). The
+server then reads the lengths and chapters of most MP3, M4B, M4A, MP4, FLAC,
+Ogg, Opus and MKA files itself instead of starting ffprobe for each one, and
+asks ffprobe only about a file it can't be sure of (an unusual MP3 or MP4, for
+example). The official and LinuxServer.io Docker images have 8.1. With any
+other version, ffprobe reads every file. See [ffmpeg and ffprobe](../getting-started/install-binary.md#ffmpeg-and-ffprobe)
 for how to check yours.
 
 Scans also run automatically:
