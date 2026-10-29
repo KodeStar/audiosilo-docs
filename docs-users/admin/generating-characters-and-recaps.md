@@ -375,6 +375,8 @@ Some books are passed over, and the toast names them:
 
 - a book already being generated: that run finds its chapters too;
 - a book a description is being written for: try again once it has finished;
+- a book whose [read-along](making-read-along.md) is being made: try again once it
+  has finished;
 - a book whose detection is already waiting for attention on the Bridge;
 - a book whose chapter source was chosen on its page. Its row says so ("Uses the
   file's chapters by choice. Set it back to automatic on the book page to detect
@@ -485,11 +487,15 @@ The Bridge keeps a book's transcripts in its own data folder for **30 days**
 after its job ends, then deletes them. They never go into your library and are
 never contributed. What a later book in the same series builds on (the facts and
 the spelling of names) is kept. On the Bridge, `transcripts.retention_days` sets
-the number of days; `0` deletes them as soon as the job ends.
+the number of days; `0` deletes them as soon as the job ends. A
+[read-along](making-read-along.md) reuses a kept transcript, and its job restarts
+the 30 days.
 
 ## Where to next
 
 - [The Bridge](bridge.md) - the console's Settings > Bridge.
+- [Making a read-along](making-read-along.md) - lining a book's ebook up with its
+  narration, from the same transcript.
 - [Running a Bridge](../getting-started/running-a-bridge.md) - setting up the
   Bridge and its agent container.
 - [Recaps and characters](../listening/recaps-and-characters.md) - how listeners

@@ -1,6 +1,6 @@
 ---
 title: "The Bridge"
-description: "Connect an optional Bridge to your server from Settings > Bridge: make a pairing code, see whether it's online and what its AI agent costs, follow its setup checklist and accounts, check that it can find and write to each library, verify a library, share characters and recaps and suggest corrections to the community, follow its jobs and unpair it."
+description: "Connect an optional Bridge to your server from Settings > Bridge: make a pairing code, see whether it's online and what its AI agent costs, follow its setup checklist and accounts, check that it can find and write to each library, verify a library, share characters and recaps and suggest corrections to the community, follow its jobs (read-alongs included) and unpair it."
 ---
 
 The **Bridge** is an optional companion you can run beside your AudioSilo server.
@@ -21,7 +21,8 @@ The Bridge is new. Today it
 [generates characters and recaps](generating-characters-and-recaps.md) for books
 the community hasn't covered, saving them with the book,
 [finds the chapters](generating-characters-and-recaps.md#books-without-chapters) of
-a book that has none, and you can ask it to **Verify** a library to check it is
+a book that has none, [makes read-alongs](making-read-along.md) that line a book's
+ebook up with its narration, and you can ask it to **Verify** a library to check it is
 set up. With the [Contributions module](server.md#modules) on, it also
 [shares characters and recaps](#share-with-the-community) and
 [suggests your corrections](#suggest-corrections) to the community metadata
@@ -281,7 +282,9 @@ done it also says whether a description came with them. A **Description** job
 ([Write a description](generating-characters-and-recaps.md#writing-a-description-for-an-older-book))
 shows the same way, and "Description written" once done, and so does a
 **Chapters** job ([Detect chapters](generating-characters-and-recaps.md#detect-chapters-without-characters-and-recaps)),
-with "24 chapters found" once done. A **Community share** job
+with "24 chapters found" once done, and so does a **Read-along** job
+([Making a read-along](making-read-along.md)), with how much of the ebook's text
+lined up ("99% of the text lined up") and whether the transcript was reused. A **Community share** job
 ([Share with the community](#share-with-the-community)) and a **Corrections** job
 ([Suggest corrections](#suggest-corrections)) link what they filed once done.
 
@@ -524,6 +527,8 @@ Bridge forget the server, so unpair it here too.
 
 - [Generating characters and recaps](generating-characters-and-recaps.md) - the
   job the Bridge is for.
+- [Making a read-along](making-read-along.md) - lining a book's ebook up with its
+  narration, with no agent.
 - [Running a Bridge](../getting-started/running-a-bridge.md) - setting one up beside
   your server.
 - [Server settings, updates and logs](server.md) - the other settings topics and the

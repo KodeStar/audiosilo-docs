@@ -114,7 +114,7 @@ pairing and after a mapping check finishes:
 | Field | What it carries |
 |---|---|
 | `version` | the Bridge's version |
-| `kinds` | the job kinds it runs (`bridge.verify`, `sidecars.generate` since Phase 1a, `sidecars.describe` since Phase 1c, `chapters.detect` since Phase 1d, and `sidecars.contribute` and `meta.correct` since Phase 2b) |
+| `kinds` | the job kinds it runs (`bridge.verify`, `sidecars.generate` since Phase 1a, `sidecars.describe` since Phase 1c, `chapters.detect` since Phase 1d, `sidecars.contribute` and `meta.correct` since Phase 2b, and `readalong.align` since Phase 3c) |
 | `libraries` | its last [mapping check](mappings.md) of each library |
 | `workers` | its [ASR workers](workers.md) that have connected at least once: `name`, `version`, `platform` (the GOOS/GOARCH and the speech recognition in one line, e.g. `darwin/arm64, mlx-whisper (metal)`) and `last_seen` |
 | `ui_url` | its own page as the local network reaches it (its `public_url` setting), which the console links to |
@@ -209,7 +209,7 @@ minutes** old (`bridge.OnlineWindow`). Then, and only then, `GET /server` says
 `capabilities.bridge: true`, with a top-level `bridge: {version, features}` beside
 `capabilities`. `features` are the job families the Bridge runs **that the server
 knows**: the part of each known kind before its dot, so `bridge.verify` gives
-`bridge`, `sidecars.generate` (or `sidecars.describe`, `sidecars.contribute`) gives `sidecars`, `chapters.detect` gives `chapters` and `meta.correct` gives `meta`; `podcast.subscribe` and `podcast.poll` give `podcast` (a list, `[]` for none, never `null`). `features` also lists `contribute` while the Bridge can contribute (`Status.CanContribute()`, above; `bridge.FeatureContribute`), the first feature that is not a job family. The server's `contributions` [module](../server/modules.md) needs that feature. **The `bridge` block goes only to a signed-in caller** (Phase 2b): a session or an API key of any role, not a demo account's (`api.signedIn` over `auth.Peek`, which records nothing on the token); an anonymous, refused, demo or bridge token sees the flag alone. The capability flags stay public. The server reuses the heartbeat it
+`bridge`, `sidecars.generate` (or `sidecars.describe`, `sidecars.contribute`) gives `sidecars`, `chapters.detect` gives `chapters`, `meta.correct` gives `meta` and `readalong.align` gives `readalong`; `podcast.subscribe` and `podcast.poll` give `podcast` (a list, `[]` for none, never `null`). `features` also lists `contribute` while the Bridge can contribute (`Status.CanContribute()`, above; `bridge.FeatureContribute`), the first feature that is not a job family. The server's `contributions` [module](../server/modules.md) needs that feature. **The `bridge` block goes only to a signed-in caller** (Phase 2b): a session or an API key of any role, not a demo account's (`api.signedIn` over `auth.Peek`, which records nothing on the token); an anonymous, refused, demo or bridge token sees the flag alone. The capability flags stay public. The server reuses the heartbeat it
 read for up to **5 seconds**, so `GET /server`, which every client calls often,
 rarely reads the database for it; a pairing or an unpair drops that copy at once. A
 client checks the flag **and** the feature it needs; a feature the Bridge doesn't
@@ -415,7 +415,7 @@ Bridge can't advertise a kind into existence, and the server can't queue one the
 Bridge doesn't have.
 
 The server's table also says whether a kind **writes** into the library. Such a
-kind (`sidecars.generate`, `sidecars.describe`, `chapters.detect`, `podcast.subscribe`,
+kind (`sidecars.generate`, `sidecars.describe`, `chapters.detect`, `readalong.align`, `podcast.subscribe`,
 `podcast.poll`, `podcast.fetch`, `podcast.retain`) is queued only for a library the last heartbeat reports
 **mapped and writable**, else `409 library_not_writable`, after the dedupe (an open
 job is still returned). `bridge.verify`, `sidecars.contribute` and `meta.correct`
@@ -432,17 +432,18 @@ it is queued or parked, else `cancel_requested`, its error "a generate job for t
 book replaced it"). A generate job is never refused for an open describe job. See
 [A description on its own](generating.md#a-description-on-its-own-sidecarsdescribe).
 
-Phase 1d's `chapters.detect` joins them. `kindSpec`'s `refusedWhileOpen` and
+Phase 1d's `chapters.detect` and Phase 3c's `readalong.align` join them. `kindSpec`'s `refusedWhileOpen` and
 `cancelsOpen` are the one statement of which open kind refuses, or gives way to,
 which:
 
 | New job | Refused while open for the book | Cancels |
 |---|---|---|
-| `sidecars.generate` | `chapters.detect` queued, claimed or running (`409 detect_open`: cancelling it would throw its transcription away, and a generate job queued after it reuses it); `sidecars.contribute` queued or working (`409 contribute_open`, `ErrContributeOpen`: it would replace the characters and recaps being filed), but not a queued one held while the `contributions` module is off (`Service.givesWay`, `Service.held`) | an open `sidecars.describe`; a **parked** `chapters.detect` ("it finds the chapters itself"); a **parked** or **held** `sidecars.contribute` ("a generate job for the book replaced what it was sharing") |
+| `sidecars.generate` | `chapters.detect` queued, claimed or running (`409 detect_open`: cancelling it would throw its transcription away, and a generate job queued after it reuses it); `sidecars.contribute` queued or working (`409 contribute_open`, `ErrContributeOpen`: it would replace the characters and recaps being filed), but not a queued one held while the `contributions` module is off (`Service.givesWay`, `Service.held`); `readalong.align` queued or working (`409 readalong_open`, `ErrReadalongOpen`: both transcribe the same audio, and a generate job after it continues its run) | an open `sidecars.describe`; a **parked** `chapters.detect` ("it finds the chapters itself"); a **parked** or **held** `sidecars.contribute` ("a generate job for the book replaced what it was sharing"); a **parked** `readalong.align` ("a generate job for the book replaced it; make the read-along again after") |
 | `sidecars.describe` | `sidecars.generate` (`409 generate_open`), `chapters.detect` (`409 detect_open`: both rewrite the book's `bridge.json`) | nothing |
-| `chapters.detect` | `sidecars.generate` (`409 generate_open`), `sidecars.describe` (`409 describe_open`) | nothing |
+| `chapters.detect` | `sidecars.generate` (`409 generate_open`), `sidecars.describe` (`409 describe_open`), `readalong.align` (`409 readalong_open`) | nothing |
 | `sidecars.contribute` | `sidecars.generate` (`409 generate_open`: that run replaces what it would file) | nothing |
 | `meta.correct` | nothing | nothing |
+| `readalong.align` | `sidecars.generate` (`409 generate_open`), `chapters.detect` (`409 detect_open`), parked ones too: the Bridge runs one engine book per audio source, so runs over the same audio never overlap | nothing |
 
 A job being cancelled (`cancel_requested`) refuses nothing, since it ends without
 writing (so a detect job queues behind a generate job being cancelled), and the
@@ -450,7 +451,9 @@ blocker kinds are asked in name order, so the answer is stable.
 `Service.Blocker` names the open job that refuses a new job of a kind now (the
 estimate's `open_job` uses it). The api also refuses `chapters.detect` with `409
 chapters_chosen` for a book whose chapter source an admin chose (the catalog holds
-the choice), since a found list stands in only with no choice.
+the choice), since a found list stands in only with no choice, and
+`readalong.align` with `409 no_ebook` for a book whose index holds no ebook
+(before the queue). See [Read-along](readalong.md#the-job).
 
 ### Jobs of a managed module
 
@@ -477,8 +480,8 @@ run at once. `light` has room for 2 (`bridge.verify`, and Phase 2b's
 `sidecars.contribute` and `meta.correct`, a few reads and HTTP calls each); `pipeline` for 25
 (`sidecars.generate`, whose jobs mostly wait on the engine's own scheduler, which
 decides what actually runs, `sidecars.describe`, which can wait a long time
-on an agent park, and `chapters.detect`, which follows an engine book like
-generate).
+on an agent park, `chapters.detect`, which follows an engine book like
+generate, and Phase 3c's `readalong.align`, likewise).
 
 ### Podcast jobs
 

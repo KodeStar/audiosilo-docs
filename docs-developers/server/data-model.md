@@ -4,7 +4,7 @@ description: "The SQLite schema behind audiosilo-server: the rebuildable index v
 ---
 
 The schema lives in `internal/store/migrations/` as numbered SQL files
-(`0001_init.sql` … `0057_reading_progress.sql`), embedded into the binary and
+(`0001_init.sql` … `0058_readalong.sql`), embedded into the binary and
 applied by `store.Open` at startup. This page documents the **resulting current
 schema**, noting which migration added what.
 
@@ -258,7 +258,7 @@ covered in [Auth & security](auth-and-security.md#authorization-shares--scope).
 `scan_error_file`, `scan_error_detail` and `suspect_parts` in 0017; `split_parent` in
 0022; `cover_art` and `cover_color` in 0023; `chapters_source`, `chapters_fit`,
 `scanned_chapters` and `chapters_hash` in 0035; `released` and `released_checked`
-in 0037; `series_key` in 0041; `series_index_end` in 0045; `abs_sig`, `abs_indexed_at` and `abs_file` in 0046; `attachments_sig` and `attachments_indexed_at` in 0048; `subtitle`, `publisher`, `language`, `abridged`, `genres`, `tags` and `genres_checked` in 0049; `file_order` and `file_order_indexed_at` in 0055; `ebook_path` and `ebook_sig` in 0056)* - one row per book,
+in 0037; `series_key` in 0041; `series_index_end` in 0045; `abs_sig`, `abs_indexed_at` and `abs_file` in 0046; `attachments_sig` and `attachments_indexed_at` in 0048; `subtitle`, `publisher`, `language`, `abridged`, `genres`, `tags` and `genres_checked` in 0049; `file_order` and `file_order_indexed_at` in 0055; `ebook_path` and `ebook_sig` in 0056; `ebook_size`, `ebook_sha256` and `ebook_hashed_sig` in 0058)* - one row per book,
 `UNIQUE (library_id, rel_path)`. Columns: `is_folder` (folder book vs
 single-file book), identity metadata (`title`, `author`, `series`,
 `series_index`, `narrator`; `series_index_end` is the end of a main series
@@ -298,6 +298,11 @@ re-indexed, which records it); see
 size, mtime and name of the file the rule names, readable or not; `''` for none):
 derived like `cover_path`, and filled for an unchanged book by the scan's backfill
 (`catalog.SetEbooks`) without a re-index; see [A book's ebook](scanner.md#a-books-ebook)),
+`ebook_size` (that file's size in bytes, recorded with `ebook_path`; the wire's
+`ebook.size`), `ebook_sha256` (the lowercase sha256 of the ebook of a book with a
+read-along map, `''` otherwise: only those are hashed) with `ebook_hashed_sig` (the
+`ebook_sig` it was computed for, so a digest whose file has changed since is known
+stale; see [Read-along](../bridge/readalong.md#on-the-server)),
 `more_series` (the effective list of the other series the book is in beyond
 `series`, as JSON `[{"name","position"}]` plus `"position_end"` for a range, `'[]'` for none: only an edit, a
 community match or an Audiobookshelf `metadata.json` supplies it, an override like any other field; an admin edit
@@ -481,12 +486,14 @@ the admin list's `genre` / `tag` filters (`catalog.labelFilters`, kept to the
 library by `library_id`) and the facet counts find a label in any case by an
 index seek.
 
-**`book_attachments`** *(0048; `description` in 0050; `chapters` in 0051)* - the Bridge's generated files for a book, checked:
+**`book_attachments`** *(0048; `description` in 0050; `chapters` in 0051; `readalong` in 0058)* - the Bridge's generated files for a book, checked:
 `book_id` (primary key, FK to `books` `ON DELETE CASCADE`), `characters`, `recaps`,
 `description` and `provenance` (JSON as checked against audiosilo-meta's formats, `''` for a
 file that isn't there or can't be used), `chapters` (the checked `chapters.json`,
-the chapters a Bridge found in the narration, a chapter source of its own) and
-`updated_at`; a row only for a book with any. Derived from the book's `.audiosilo/` files like `abs_file`, so
+the chapters a Bridge found in the narration, a chapter source of its own),
+`readalong` (the checked **head** of the read-along map `readalong.json`: format,
+ebook, audio, generator, `generated_at`, coverage, never its sections, which are
+streamed from the file) and `updated_at`; a row only for a book with any. Derived from the book's `.audiosilo/` files like `abs_file`, so
 rebuildable and never carried by a move. `/meta` lays the generated content (not
 `chapters`, which `refreshEffective` reads) into its answer per request; see
 [The .audiosilo folder](../bridge/attachments.md).
@@ -1299,6 +1306,7 @@ The migration history so far:
 | 0055 | `book_file_order` | `books.file_order` (`INTEGER`, `NULL` on every existing row) and `books.file_order_indexed_at` (`TEXT`, `NULL`): a folder book's stored file order key, so a scan compares the order without loading every `book_files` row (#177). No data moves: the next scan records the key of each unchanged folder book from its `book_files` (`catalog.SetFileOrders`), without re-indexing it |
 | 0056 | `book_ebook` | `books.ebook_path` and `books.ebook_sig` (`TEXT NOT NULL DEFAULT ''`): a book's ebook, the one `.epub` the reader opens, and the signature of the file `library.BookEbook`'s rule names. No data moves: every row starts with none and the next scan records each unchanged book's ebook without re-indexing it |
 | 0057 | `reading_progress` | `reading_progress` (FK `users`/`libraries` `ON DELETE CASCADE`, no FK to `books`) and `idx_reading_progress_path`: a reader's place in a book's ebook, durable and path-keyed (see [Durable per-user state](#durable-per-user-state-path-keyed-no-fk-to-books)) |
+| 0058 | `readalong` | `book_attachments.readalong` (`TEXT NOT NULL DEFAULT ''`, the checked head of a Bridge's `.audiosilo/readalong.json`, Phase 3c), `books.ebook_sha256` and `books.ebook_hashed_sig` (`TEXT NOT NULL DEFAULT ''`: the digest of the ebook of a book with a map and the `ebook_sig` it was computed for; only such books are hashed, since hashing every EPUB would read whole libraries over a network share), and `books.ebook_size` (`INTEGER NOT NULL DEFAULT 0`, server#228), filled from the leading size of each `ebook_sig`. A book with a map has a changed attachments signature (the name was unknown before), so the next scan reads it again, without re-indexing |
 
 ## SQLite choices
 

@@ -824,8 +824,8 @@ own can likewise get the chapters a Bridge found in its narration (its
 ## The Bridge's attachments
 
 A book's hidden **`.audiosilo/`** folder holds the characters, recaps,
-description, chapters and provenance the [Bridge](../bridge/index.md) generated for it (`characters.json`,
-`recaps.json`, `description.json` since Phase 1c, `chapters.json` since Phase 1d, `bridge.json`; a single-file book's carry its file stem first,
+description, chapters, provenance and read-along map the [Bridge](../bridge/index.md) generated for it (`characters.json`,
+`recaps.json`, `description.json` since Phase 1c, `chapters.json` since Phase 1d, `bridge.json`, `readalong.json` since Phase 3c; a single-file book's carry its file stem first,
 `Book.characters.json`, in a `.audiosilo/` beside it). They are not a metadata
 layer: nothing in the effective row reads them but `chapters.json`, a chapter
 source of its own, and `/meta` serves the rest. Recording a book's attachments
@@ -855,11 +855,14 @@ finds them the way it finds an ABS `metadata.json`:
   [`POST /bridge/rescan {mode: "attachments"}`](api/reference.md#post-apiv1bridgerescan):
   the attachments of one indexed book, never its audio.
 
-Each file is read as a regular file only, never through a link, at most 4 MiB,
-and checked against audiosilo-meta's formats; one that fails is logged, left out
-and not read again until it changes, and one that can't be read right now keeps
-what is stored. The details, and the storage (`book_attachments`, migrations
-`0048` and `0050`), are in [The .audiosilo folder](../bridge/attachments.md#how-the-server-finds-them).
+Each file is read as a regular file only, never through a link, at most 4 MiB
+(a read-along map 16 MiB), and checked against audiosilo-meta's formats (a map
+against its own head checks); one that fails is logged, left out and not read
+again until it changes, and one that can't be read right now keeps what is
+stored. The details, and the storage (`book_attachments`, migrations `0048`,
+`0050`, `0051` and `0058`), are in [The .audiosilo folder](../bridge/attachments.md#how-the-server-finds-them).
+Only a read-along map's head is stored; the file is streamed by
+[`/readalong`](api/reference.md#get-apiv1librariesidreadalong).
 
 ## A book's ebook
 
@@ -904,7 +907,31 @@ a permission, a flaky mount) keeps what is stored, so the next scan looks again.
 Every open, the scan's and the route's, goes through `library.OpenEbook`: a regular
 file inside the library, checked before it is opened (a FIFO's open would block)
 and, once open, still the very file its name leads to (`os.SameFile`), so a link
-swapped in meanwhile is never followed out. The `.epub` is never audio:
+swapped in meanwhile is never followed out.
+
+**The size** (`books.ebook_size`, migration `0058`, server#228) is recorded with
+`ebook_path` (`UpsertBook`, `SetEbooks`) and backfilled from the signature's
+leading size, never parsed out of `ebook_sig` per row.
+
+**Hashing, for read-along only** (Bridge Phase 3c). A [read-along map](../bridge/readalong.md)
+names the ebook it was made from by its sha256, so the server hashes the ebook of
+a book **with a map**, and only those: hashing every EPUB would read whole
+libraries over a network share. `books.ebook_sha256` is the digest and
+`ebook_hashed_sig` the `ebook_sig` it was computed for, so a digest whose sig isn't
+the row's is stale. After the walk, the scan's post-pass
+(`Scanner.hashReadalongEbooks`; `RefreshAttachments` for its one book) hashes the
+books `catalog.ReadalongEbooksDue` lists (a stored valid map head, an ebook, a
+digest not current) through `library.EbookDigest` (`OpenEbook`), skipping one whose
+stored digest is already of the file on disk, and `SetEbookDigest` records it with
+the signature of the file it hashed, only while the row still names that ebook. A
+request ([`/item`](api/reference.md#get-apiv1librariesiditem)'s `readalong`,
+[`/readalong`](api/reference.md#get-apiv1librariesidreadalong)) trusts the stored
+digest only while the file on disk still has the signature it was computed for
+(one stat, `Scanner.EbookDigestNow`); otherwise it hashes the file then and records
+the digest under the new signature, so an EPUB replaced since the last scan is
+never answered with the old file's digest, and is hashed once, not on every ask.
+
+The `.epub` is never audio:
 [`/stream`](api/reference.md#get-apiv1librariesidstream) refuses it and the
 [filesystem view](#the-filesystem-view-browsefs) doesn't list it.
 

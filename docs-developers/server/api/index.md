@@ -123,7 +123,9 @@ accepts it. Native clients should keep using the header even for media.
 A book's **ebook** ([`GET /libraries/{id}/ebook`](reference.md#get-apiv1librariesidebook),
 capability `ebooks`) is deliberately not one of them: it takes the header only, and
 has no URL token of any kind. Its only reader is the player, which can set the
-header and hands the bytes to its reader document itself.
+header and hands the bytes to its reader document itself. The same holds for a
+book's read-along map ([`GET /libraries/{id}/readalong`](reference.md#get-apiv1librariesidreadalong),
+capability `readalong`).
 
 A book's cover and stream also accept a **cast token** (capability `cast`) as the
 `?token=`, which a player mints for the Chromecast receiver so it never sees the
@@ -242,12 +244,16 @@ Failures a person can fix also carry a machine-readable **`code`** next to
 | `has_members` | `409` | `PATCH /admin/users/{id}` assigning a person who has household members of their own |
 | `invalid_keep_members` | `400` | `DELETE /admin/users/{id}?keep_members=` with an entry that isn't one of that person's members |
 | `kind_unavailable` | `409` | `POST /admin/bridge/jobs` (or `GET /admin/bridge/estimate`) for a kind the paired Bridge doesn't run, or before any Bridge has reported |
-| `library_not_writable` | `409` | podcast follow/check, or `POST /admin/bridge/jobs` for a kind that writes (`sidecars.generate`, `sidecars.describe`, `chapters.detect`) in a library the Bridge's last heartbeat doesn't report mapped and writable |
+| `library_not_writable` | `409` | podcast follow/check, or `POST /admin/bridge/jobs` for a kind that writes (`sidecars.generate`, `sidecars.describe`, `chapters.detect`, `readalong.align`) in a library the Bridge's last heartbeat doesn't report mapped and writable |
 | `cannot_contribute` | `409` | `POST /admin/bridge/jobs` for `sidecars.generate` with `contribute: "issue"`, `sidecars.contribute` or `meta.correct` while the Bridge's last heartbeat doesn't say it can contribute (its `setup.can_contribute`, else `estimates.sidecars.can_contribute`) |
-| `generate_open` | `409` | `POST /admin/bridge/jobs` for `sidecars.describe`, `chapters.detect` or `sidecars.contribute` while a `sidecars.generate` job is open for the book (it writes the description, finds a chapterless book's chapters, and replaces the characters and recaps a share would file, itself) |
+| `generate_open` | `409` | `POST /admin/bridge/jobs` for `sidecars.describe`, `chapters.detect`, `sidecars.contribute` or `readalong.align` while a `sidecars.generate` job is open for the book (it writes the description, finds a chapterless book's chapters, and replaces the characters and recaps a share would file, itself; a read-along waits because both transcribe the same audio) |
 | `contribute_open` | `409` | `POST /admin/bridge/jobs` for `sidecars.generate` while a `sidecars.contribute` job is queued or working for the book (a parked one, or a queued one held while the `contributions` module is off, is cancelled instead) |
 | `not_edited` | `400` | `POST /admin/bridge/jobs` for `meta.correct` with a change whose field isn't an edit made on this server, or whose corrected value isn't the book's value now; `field` names it |
-| `detect_open` | `409` | `POST /admin/bridge/jobs` for `sidecars.generate` while a `chapters.detect` job is queued or working for the book (the generate job after it reuses its transcription), or for `sidecars.describe` while one is open |
+| `detect_open` | `409` | `POST /admin/bridge/jobs` for `sidecars.generate` while a `chapters.detect` job is queued or working for the book (the generate job after it reuses its transcription), or for `sidecars.describe` or `readalong.align` while one is open |
+| `readalong_open` | `409` | `POST /admin/bridge/jobs` for `sidecars.generate` while a `readalong.align` job is queued or working for the book (a parked one is cancelled instead), or for `chapters.detect` while one is open: all three transcribe the same audio on the Bridge |
+| `no_ebook` | `409` | `POST /admin/bridge/jobs` for `readalong.align` for a book the index holds no ebook for |
+| `no_readalong` | `404` | [`GET /libraries/{id}/readalong`](reference.md#get-apiv1librariesidreadalong) for a book with no read-along map (none, one that fails the server's checks, no ebook, a part's path, a podcast library) |
+| `readalong_stale` | `409` | [`GET /libraries/{id}/readalong`](reference.md#get-apiv1librariesidreadalong) for a map made for another ebook or other audio, with `reason` `ebook_changed` or `audio_changed` |
 | `describe_open` | `409` | `POST /admin/bridge/jobs` for `chapters.detect` while a `sidecars.describe` job is open for the book |
 | `chapters_chosen` | `409` | `POST /admin/bridge/jobs` for `chapters.detect` for a book whose chapter source an admin chose (`files` or `community`): chapters found in the narration stand in only with no choice |
 | `finished` | `409` | `POST /admin/bridge/jobs/{id}/cancel` on a job that already ended |
@@ -442,7 +448,8 @@ is never staler than one built fresh; nothing on the wire changes (see
     "podcast_fetch": true,
     "podcast_discovery": false,
     "podcast_opml": true,
-    "ebooks": true
+    "ebooks": true,
+    "readalong": true
   },
   "auth": { "methods": ["auth_code", "password"] },
   "demo": { "enabled": false }
@@ -512,7 +519,7 @@ server (a [managed module's](../modules.md#the-toggle-and-the-capability-flag) f
 
 | Flag | Gates |
 |---|---|
-| `bridge` | anything that needs the [Bridge](reference.md#the-bridge). It is `true` only while a Bridge is paired and its last heartbeat is under two minutes old, so it turns off when the Bridge stops. While it is `true`, a top-level `bridge: {version, features}` object sits beside `capabilities`: `features` lists the job families the Bridge runs that the server knows (`bridge`, `sidecars` for generating characters and recaps and, from a Phase 1c Bridge, descriptions, and `chapters` for finding a chapterless book's chapters, from a Phase 1d Bridge, and `meta` for filing corrections, from a Phase 2b Bridge), plus `contribute` while the Bridge can file contributions to the community database (it has a GitHub token GitHub accepts, from its Accounts sign-in, its environment or `gh`: its heartbeat's `setup.can_contribute`, else `estimates.sidecars.can_contribute`); a list, never `null`. Since Phase 2b the block goes only to a **signed-in** caller (a session or API key of any role, not a demo account's); an anonymous caller gets the flag alone. The server reuses the heartbeat it read for up to 5 seconds, so the flag can lag by that much. Check the flag **and** the feature you need: the player shows an admin **Generate characters and recaps** only with `bridge`, `sidecars` in `features` and `metadata`, and the console's Health offers **Detect chapters** only with `chapters` in `features` |
+| `bridge` | anything that needs the [Bridge](reference.md#the-bridge). It is `true` only while a Bridge is paired and its last heartbeat is under two minutes old, so it turns off when the Bridge stops. While it is `true`, a top-level `bridge: {version, features}` object sits beside `capabilities`: `features` lists the job families the Bridge runs that the server knows (`bridge`, `sidecars` for generating characters and recaps and, from a Phase 1c Bridge, descriptions, and `chapters` for finding a chapterless book's chapters, from a Phase 1d Bridge, `meta` for filing corrections, from a Phase 2b Bridge, and `readalong` for making read-along maps, from a Phase 3c Bridge), plus `contribute` while the Bridge can file contributions to the community database (it has a GitHub token GitHub accepts, from its Accounts sign-in, its environment or `gh`: its heartbeat's `setup.can_contribute`, else `estimates.sidecars.can_contribute`); a list, never `null`. Since Phase 2b the block goes only to a **signed-in** caller (a session or API key of any role, not a demo account's); an anonymous caller gets the flag alone. The server reuses the heartbeat it read for up to 5 seconds, so the flag can lag by that much. Check the flag **and** the feature you need: the player shows an admin **Generate characters and recaps** only with `bridge`, `sidecars` in `features` and `metadata`, and the console's Health offers **Detect chapters** only with `chapters` in `features`, and the book page's Read-along card offers **Make read-along** only with `readalong` |
 
 `podcast_fetch` is an optional core flag: true means the server supports the
 [on-demand/status/Retry protocol](reference.md#podcast-fetch-status-and-retry),
@@ -536,11 +543,12 @@ search only with `podcast_discovery` and OPML import and export only with
 [Podcast discovery](reference.md#podcast-discovery) and
 [OPML import and export](reference.md#opml-import-and-export).
 
-Bridge Phase 3b added one more, always `true` on a server that has it:
+Bridge Phases 3b and 3c added two more, always `true` on a server that has them:
 
 | Flag | Gates |
 |---|---|
 | `ebooks` | the reader: a book's [`ebook`](reference.md#get-apiv1librariesidbooks) field, its bytes at [`GET /libraries/{id}/ebook`](reference.md#get-apiv1librariesidebook) and the reader's place at [`/libraries/{id}/reading-progress`](reference.md#get-apiv1librariesidreading-progress). The player offers Read when it is `true` and the book has an `ebook` (a downloaded book also while the flag is unknown offline), on the web and in the apps |
+| `readalong` | read-along (Phase 3c): a book's [`readalong`](reference.md#get-apiv1librariesiditem) field on `/item` and its map at [`GET /libraries/{id}/readalong`](reference.md#get-apiv1librariesidreadalong). The route exists; whether a book has a map is its `readalong.state`. The player that follows the narration with it is planned (Phase 3c-2) |
 
 Then each [managed module](../modules.md) adds one flag, named after the module. A
 module ships off and an admin turns it on in the console's Settings > Modules, so the

@@ -402,6 +402,13 @@ book."). You can rename a found chapter like any other: the revert button's hint
 shows the narration's title ("Found: *title*"). When the book's job to find its
 chapters ends, the card shows them straight away.
 
+### Read-along
+
+A book with an ebook has a **Read-along** card under Chapters, while it has a
+read-along or your Bridge can make one: whether the ebook is lined up with the
+narration (and how much of its text), whether that is out of date, and **Make
+read-along**. See [Making a read-along](making-read-along.md).
+
 ### Files
 
 **Files** lists the book's audio files with their codec, bitrate, size, length

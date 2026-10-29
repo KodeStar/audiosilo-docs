@@ -39,6 +39,7 @@ const sidebars: SidebarsConfig = {
         'admin/import',
         'admin/bridge',
         'admin/generating-characters-and-recaps',
+        'admin/making-read-along',
       ],
     },
     {

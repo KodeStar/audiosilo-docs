@@ -67,7 +67,8 @@ else and gate features on the flags.
     "podcast_fetch": true,
     "podcast_discovery": false,
     "podcast_opml": true,
-    "ebooks": true
+    "ebooks": true,
+    "readalong": true
   },
   "auth": { "methods": ["auth_code", "password"] },
   "demo": { "enabled": false }
@@ -167,12 +168,13 @@ unsupported):
 Both describe the server's configuration, not the caller's permissions: a kid,
 demo account or unrecognized client is still refused by the routes.
 
-Bridge Phase 3b adds one more, always `true` on a server that has it and absent
-on an older one:
+Bridge Phases 3b and 3c add two more, always `true` on a server that has them
+and absent on an older one:
 
 | Flag | Gates |
 |---|---|
 | `ebooks` | [the reader](#ebooks-and-the-reading-place): a book's `ebook` field, [`GET /libraries/{id}/ebook`](#get-apiv1librariesidebook) and [`GET`](#get-apiv1librariesidreading-progress)/[`PUT /libraries/{id}/reading-progress`](#put-apiv1librariesidreading-progress). A client offers Read only when the book has an `ebook` **and** it is `true` (the player also while it is unknown offline, for a book whose download holds the EPUB; never when `false`) |
+| `readalong` | [read-along](#get-apiv1librariesidreadalong) (Phase 3c): a book's `readalong` field on [`/item`](#get-apiv1librariesiditem) and [`GET /libraries/{id}/readalong`](#get-apiv1librariesidreadalong). It says the route exists, not that any book has a map: a client also needs the book's `readalong.state` to be `ready` (and its `ebook`). Making a map needs a [Bridge](#the-bridge) whose `features` list `readalong` |
 
 `bridge` follows the Bridge rather than a setting, so it can change from one
 request to the next: it is `true` only while a [Bridge](#the-bridge) is paired and its last heartbeat is under two minutes
@@ -2002,6 +2004,24 @@ additive: the chapters have the same shape either way, and only this
 single-book response (and [`/chapters`](#get-apiv1librariesidchapters)) carries
 it.
 
+`readalong` (Phase 3c, capability `readalong`) is the state of the book's
+read-along map, the file a Bridge's `readalong.align` job wrote beside it (see
+[Read-along](../../bridge/readalong.md)):
+
+```json
+"readalong": { "state": "ready", "coverage": 0.996, "generated_at": "2026-11-02T10:11:12Z" }
+"readalong": { "state": "stale", "reason": "ebook_changed" }
+```
+
+`ready`: the map fits the book, `coverage` the share of the ebook's text it lines
+up (0 to 1), `generated_at` when it was made; fetch it from
+[`/readalong`](#get-apiv1librariesidreadalong). `stale`: it was made for another
+ebook (`reason` `ebook_changed`) or other audio (`audio_changed`; the rules:
+[Read-along](../../bridge/readalong.md#on-the-server)), so a client hides it until an admin
+makes it again. Omitted when the book has no ebook, no map, or a map that fails the
+server's checks. Only this single-book response (and the console's book page)
+carries it, never a list row: working it out may read the ebook's digest.
+
 `direct_playable` reports whether the book plays in browsers **as the server
 serves it** (unknown codec ⇒ `true`). A book with a Matroska (`.mka`) file is
 `false` (from 2.4.0), except one whose `.mka` files hold MP3 on a server with
@@ -3010,6 +3030,49 @@ bucket ([rate limiting](index.md#rate-limiting)).
 | `403` | the book is outside the caller's share scope |
 | `404` | `this book has no ebook`: the book has none (no `.epub`, several, an unreadable one), the file is gone or no longer a regular file inside the library, the path is inside the book but not its own (a track, the `.epub` in its folder), or the library is a podcast library; `no book at this path` when there is no book there; `not found` for a hidden or `.audiosilo/` path |
 | `500` | `could not load the ebook`: the file is there but can't be read right now (a permission, a flaky mount; logged) |
+| `503` | `request timed out`: the book lookup ran past the request timeout |
+
+### `GET /api/v1/libraries/{id}/readalong`
+
+*Session* (a session token or an API key), capability `readalong` (Bridge Phase
+3c). The read-along map of the book at `?path=`: where each sentence of its ebook
+is spoken in its audio, as a Bridge wrote it into the book's `.audiosilo/` folder
+(the format, `audiosilo-readalong/v1`, is in
+[Read-along](../../bridge/readalong.md#the-map-audiosilo-readalongv1)).
+
+| Query param | Type | Required |
+|---|---|---|
+| `path` | string | yes: the book's own path (`rel_path`), not a part or a track |
+
+Response `200`: the map file's bytes as they are on disk.
+
+| Header | Value |
+|---|---|
+| `Content-Type` | `application/json; charset=utf-8` |
+| `Content-Encoding` | `gzip` when the request's `Accept-Encoding` allows it (`Vary: Accept-Encoding`) |
+| `ETag` | `"<size hex>-<mtime ns hex>"` of the file (the same for both encodings); a matching `If-None-Match` is `304` |
+| `Cache-Control` | `private, no-cache` (the Bridge may rewrite the map at any moment) |
+
+**Header auth only**, as [`/ebook`](#get-apiv1librariesidebook): `?token=` is
+never read, and a map is at most 16 MiB, so it stays under the request timeout.
+Every request reads the file again (a regular file in a real `.audiosilo` folder,
+never through a link; read once more when the Bridge renamed a new map in as it
+was opened) and checks it against the book **now**, never trusting the indexed
+copy for the bytes it sends: its head must pass the server's checks, its
+`ebook.sha256` must be the digest of the book's ebook (the stored one only while
+the file on disk still has the signature it was computed for, else hashed now),
+and its `audio.files` must be the book's files.
+
+| Status | Meaning |
+|---|---|
+| `200` | the map |
+| `304` | not modified |
+| `400` | missing `path` / invalid library id |
+| `401` | no `Authorization` header, or a bad token (a `?token=` alone is a `401`) |
+| `403` | the book is outside the caller's share scope |
+| `404` | `code: "no_readalong"` (`this book has no read-along`): the book has no map, a map that fails its checks, or no ebook; the path is a part of the book, not its own; or the library is a podcast library. `no book at this path` when there is no book there |
+| `409` | `code: "readalong_stale"` with `reason` (`ebook_changed` or `audio_changed`): the map was made for another ebook or other audio; an admin makes it again |
+| `500` | `could not load the read-along`: the file is there but can't be read right now (logged) |
 | `503` | `request timed out`: the book lookup ran past the request timeout |
 
 ### `GET /api/v1/libraries/{id}/reading-progress`
@@ -5454,9 +5517,11 @@ is a `400` too (`too many format or codec values`).
   rows offer no **Detect chapters** for a book with one (and a `chapters.detect`
   job for it is `409 chapters_chosen`).
 - `ebook` - from 2.5.0, the book's ebook as on the player's `Book`:
-  `{"path", "size"}` (`books.ebook_path`, and the size its stored signature
-  holds), omitted when the book has none. The book page's `book` carries it too
-  (its Files card and hero chip).
+  `{"path", "size"}` (`books.ebook_path` and, since `0058`, `books.ebook_size`,
+  recorded with it), omitted when the book has none. The book page's `book` carries it too
+  (its Files card and hero chip, and the Read-along card's gate). The book page's
+  `book` also carries `readalong` (Phase 3c), as on the player's
+  [`/item`](#get-apiv1librariesiditem): never a list row.
 - `chapters_check` - the status of the book's last
   [community chapter check](../community-chapters.md): `fill`, `titles`,
   `refine`, `restructure`, `same`, `length_mismatch`, `structure_mismatch`,
@@ -8585,7 +8650,8 @@ that read the block, ask with their token.
 - `features` - the job families the Bridge runs that this server knows: the part of
   each known kind before its dot (`bridge.verify` is `bridge`, `sidecars.generate`,
   `sidecars.describe` and `sidecars.contribute` are `sidecars`, `chapters.detect`
-  is `chapters`, `meta.correct` is `meta`, and the podcast kinds give `podcast`),
+  is `chapters`, `meta.correct` is `meta`, `readalong.align` is `readalong`, and
+  the podcast kinds give `podcast`),
   plus `contribute` while the Bridge can
   file contributions (the last heartbeat's `setup.can_contribute`, else its
   `estimates.sidecars.can_contribute`), which the `contributions`
@@ -8769,13 +8835,14 @@ Every job route, the console's and the Bridge's, answers jobs in one shape:
   its library.
 - `params` - the kind's parameters as the server normalised them (`bridge.verify`
   stores a `hold_seconds` of 0 as `{}`; `sidecars.generate` stores every field with
-  its default; `sidecars.describe` and `chapters.detect` store `{}`;
+  its default; `sidecars.describe`, `chapters.detect` and `readalong.align` store `{}`;
   `sidecars.contribute` its `dimensions` in order; `meta.correct` the checked
   changes with the server's `source`); `progress` and `result` - JSON objects the Bridge reported (`{}`
   until it does; the server stores them as they are: `sidecars.generate`'s shapes
   are in [Characters and recaps](../../bridge/generating.md#progress), `sidecars.describe`'s in
   [A description on its own](../../bridge/generating.md#a-description-on-its-own-sidecarsdescribe),
   `chapters.detect`'s in [Chapterless books](../../bridge/chapters.md#goal-chapters-and-the-chaptersdetect-job),
+  `readalong.align`'s in [Read-along](../../bridge/readalong.md#at-done-the-50-refusal-and-the-write),
   `sidecars.contribute`'s and `meta.correct`'s results in [Contributions](../../bridge/contributions.md),
   their progress a `{step, message, done, total}` with the steps `sharing` and
   `done`, or `checking`, `filing` and `done`); `error` -
@@ -8918,6 +8985,23 @@ The kinds:
   them itself), while a `sidecars.describe` job is (`describe_open`), and for a
   book whose chapter source an admin chose (`chapters_chosen`: the list would
   never be used). See [Chapterless books](../../bridge/chapters.md).
+- **`readalong.align`** (Phase 3c) makes a book's read-along map: the Bridge
+  reuses the transcript it kept for the book (else transcribes it; no agent),
+  lines the words up with the book's ebook, and writes
+  [`readalong.json`](../../bridge/attachments.md#readalongjson) into its
+  `.audiosilo/` folder. It needs `library_id` **and** a book `path` in a books
+  library, and takes `params` `{}` or none (any field is refused; stored as `{}`).
+  It writes, so the same mapped-and-writable rule applies. It is refused for a
+  book the index holds no ebook for (`no_ebook`, checked before the queue), and
+  while a `sidecars.generate` (`generate_open`) or `chapters.detect`
+  (`detect_open`) job is open for the book, parked ones included. A new
+  `sidecars.generate` job is refused while a read-along job is queued or working
+  (`readalong_open`) and cancels a parked one; a new `chapters.detect` job is
+  refused while one is open. Re-aligning a book with a ready map is allowed. Its
+  progress is `chapters.detect`'s shape (`stage` including `readalong_aligning`);
+  its result is `{library_id, path, file, coverage: {text, audio}, sections, spans,
+  audio_gaps, heal_windows, transcribed, ebook_sha256}`. A map under 50% text
+  coverage fails the job and writes nothing. See [Read-along](../../bridge/readalong.md).
 - **`sidecars.contribute`** (Phase 2b) files the characters and recaps the Bridge
   generated for the book earlier on this server and kept (its own copy, not the
   book's `.audiosilo/` files), to the community metadata
@@ -8984,7 +9068,7 @@ the console says so. A new job is audited as `bridge.job`.
 | `200` | the open job of that kind for that library and path |
 | `400` | `invalid request` (not JSON, an unknown field, a body past the bound above); or a check of the kind, each message starting `invalid: `: `unknown kind "…"`, `library_id is required`, `this kind takes no library or path`, `this kind takes no path`, `path is required`, `params too large`, or a params error (`hold_seconds must be 0-600`, `source must be auto, audio or ebook`, `contribute must be local or issue`, a `work_id` too long or with a control character, an unknown field, a `dimensions` entry that isn't `characters` or `recaps` or is repeated, a `meta.correct` params error (the kind's checks above): no `work_id` or `evidence` (or evidence reading as nothing), a field that can't be corrected or is listed twice, a corrected value that is empty or reads the same as the current one, a change or the evidence past its bounds (counted as written), a value or the evidence holding a control character (the evidence's line breaks and tabs aside) or a bidirectional override character, written or as a character reference that reads as one, a `recording_id` that isn't a community slug, an identifier too long); `code: "not_edited"` with `field` - a `meta.correct` change of a field that isn't an edit made on this server, or whose corrected value isn't the book's value now |
 | `404` | `library not found`; `code: "book_not_found"` - the path is not an indexed book; `code: "module_off"` - a job of the `contributions` module (`sidecars.contribute`, `meta.correct`, `sidecars.generate` with `contribute: "issue"`) while the module is off |
-| `409` | `code: "kind_unavailable"` - no Bridge has reported, or the paired one doesn't run that kind (a Bridge from before Phase 1c doesn't run `sidecars.describe`, one from before Phase 1d `chapters.detect`, one from before Phase 2b `sidecars.contribute` or `meta.correct`); `code: "library_not_writable"` - a kind that writes, for a library the last heartbeat doesn't report mapped and writable; `code: "cannot_contribute"` - `sidecars.generate` with `contribute: "issue"`, `sidecars.contribute` or `meta.correct` while the Bridge can't contribute; `code: "generate_open"` - `sidecars.describe`, `chapters.detect` or `sidecars.contribute` while a `sidecars.generate` job is open for the book ("a generate job is still open for this book; queue this once it has finished"); `code: "contribute_open"` - `sidecars.generate` while a `sidecars.contribute` job is queued or working for the book (a parked one, or a queued one held while the `contributions` module is off, is cancelled instead); `code: "detect_open"` - `sidecars.generate` while a `chapters.detect` job is queued or working for the book, or `sidecars.describe` while one is open ("a chapter detection job is still open for this book; queue this once it has finished"); `code: "describe_open"` - `chapters.detect` while a `sidecars.describe` job is open for the book; `code: "chapters_chosen"` - `chapters.detect` for a book whose chapter source an admin chose (`files` or `community`), checked before the queue ("an admin chose this book's chapter source, so chapters found in the narration would never be used; set it back to automatic first"). `library_not_writable`, `cannot_contribute` and the open-job codes are checked after the dedupe: an open job of the same kind for the book is still returned (`200`) |
+| `409` | `code: "kind_unavailable"` - no Bridge has reported, or the paired one doesn't run that kind (a Bridge from before Phase 1c doesn't run `sidecars.describe`, one from before Phase 1d `chapters.detect`, one from before Phase 2b `sidecars.contribute` or `meta.correct`, one from before Phase 3c `readalong.align`); `code: "library_not_writable"` - a kind that writes, for a library the last heartbeat doesn't report mapped and writable; `code: "cannot_contribute"` - `sidecars.generate` with `contribute: "issue"`, `sidecars.contribute` or `meta.correct` while the Bridge can't contribute; `code: "generate_open"` - `sidecars.describe`, `chapters.detect`, `sidecars.contribute` or `readalong.align` while a `sidecars.generate` job is open for the book ("a generate job is still open for this book; queue this once it has finished"); `code: "contribute_open"` - `sidecars.generate` while a `sidecars.contribute` job is queued or working for the book (a parked one, or a queued one held while the `contributions` module is off, is cancelled instead); `code: "detect_open"` - `sidecars.generate` while a `chapters.detect` job is queued or working for the book, or `sidecars.describe` or `readalong.align` while one is open ("a chapter detection job is still open for this book; queue this once it has finished"); `code: "describe_open"` - `chapters.detect` while a `sidecars.describe` job is open for the book; `code: "chapters_chosen"` - `chapters.detect` for a book whose chapter source an admin chose (`files` or `community`), checked before the queue ("an admin chose this book's chapter source, so chapters found in the narration would never be used; set it back to automatic first"); `code: "readalong_open"` - `sidecars.generate` while a `readalong.align` job is queued or working for the book (a parked one is cancelled instead), or `chapters.detect` while one is open ("a read-along job is still open for this book; queue this once it has finished"); `code: "no_ebook"` - `readalong.align` for a book the index holds no ebook for, checked before the queue ("this book has no ebook to align with its narration"). `library_not_writable`, `cannot_contribute` and the open-job codes are checked after the dedupe: an open job of the same kind for the book is still returned (`200`) |
 
 ### `GET /api/v1/admin/bridge/jobs/{id}`
 
@@ -9016,7 +9100,7 @@ How each figure is worked out is in
 | Param | Meaning |
 |---|---|
 | `library_id`, `path` | the book (required; an indexed book's path) |
-| `kind` | `sidecars.generate` (the default, and the only kind with an estimate) |
+| `kind` | `sidecars.generate` (the default) or, Phase 3c, `readalong.align` (its own answer, below) |
 | `brief` | `1`: no look into the book's folder for an ebook (`source` is `audio`, no `ebook`) and no scan of the series (`earlier` is `[]`): the cheap answer for a label or a batch |
 
 ```json
@@ -9060,7 +9144,7 @@ How each figure is worked out is in
 | `has.community_unknown` | `true` when the community couldn't be asked right now, so `has.community` is no answer (never read it as "none"); omitted otherwise |
 | `has.local` | what the book's indexed [`.audiosilo/` files](../../bridge/attachments.md) carry: `characters`, `recaps` and `description` |
 | `earlier` | the books of the same library before this one in its first numbered series (any spelling), with no recaps generated here and, metadata on, none in the community (a book the community couldn't be asked about is left out): the nearest 10, in reading order, each with its own `asr_hours` and `agent_cost_usd` (costed from its audio). `[]` for none, and with `brief=1` |
-| `open_job` | the book's open `sidecars.generate` [job](#the-job-object), else (Phase 1d) the open job of another kind that refuses a generate job now: a queued or working `chapters.detect` job or (Phase 2b) `sidecars.contribute` job (not a queued one held while the `contributions` module is off), whose `kind` says so; omitted when there is neither |
+| `open_job` | the book's open `sidecars.generate` [job](#the-job-object), else (Phase 1d) the open job of another kind that refuses a generate job now: a queued or working `chapters.detect` job, (Phase 2b) `sidecars.contribute` job (not a queued one held while the `contributions` module is off) or (Phase 3c) `readalong.align` job, whose `kind` says so; omitted when there is neither |
 
 | Status | Meaning |
 |---|---|
@@ -9069,6 +9153,27 @@ How each figure is worked out is in
 | `401` / `403` | no admin credential |
 | `404` | `library not found`; `code: "book_not_found"` - no indexed book at that path |
 | `409` | `code: "kind_unavailable"` - no Bridge has reported, or it doesn't offer the kind |
+
+With `kind=readalong.align` (Phase 3c) the answer is the read-along confirmation's:
+
+```json
+{
+  "kind": "readalong.align",
+  "asr_hours": 2.98,
+  "figures": true,
+  "writable": true,
+  "ebook": { "path": "Jack London/The Call of the Wild/The Call of the Wild.epub", "size": 412345 },
+  "readalong": { "state": "ready", "coverage": 0.996, "generated_at": "2026-11-02T10:11:12Z" }
+}
+```
+
+| Field | Meaning |
+|---|---|
+| `asr_hours` | one transcription of the book's whole audio at the Bridge's `asr_seconds_per_audio_hour`, as for generate (a loop-repair round and the heal's windows can add to it). Much less when the Bridge still has the book's transcript (a re-align takes minutes); never an agent |
+| `figures`, `writable` | as above |
+| `ebook` | the book's ebook (`{path, size}`), `null` when it has none: queueing is then `409 no_ebook` |
+| `readalong` | the book's map now, as [`Book.readalong`](#get-apiv1librariesiditem); `null` for none |
+| `open_job` | the book's open `readalong.align` job, else the open `sidecars.generate` or `chapters.detect` job it would wait for; omitted when there is none |
 
 ### `POST /api/v1/bridge/pair`
 
@@ -9326,12 +9431,13 @@ whole.
   "library_id": 1,
   "path": "Andy Weir/Project Hail Mary",
   "files": [
-    { "path": "Andy Weir/Project Hail Mary/Project Hail Mary.m4b", "size": 912345678, "mod_time": 1781234567 }
+    { "path": "Andy Weir/Project Hail Mary/Project Hail Mary.m4b", "size": 912345678, "mod_time": 1781234567, "duration": 58008.4 }
   ],
   "book": {
     "title": "Project Hail Mary", "authors": ["Andy Weir"], "narrators": ["Ray Porter"],
     "series": "", "series_index": "", "asin": "B08G9PRS1K", "isbn": "",
-    "duration": 58008.4, "work_id": "project-hail-mary"
+    "duration": 58008.4, "work_id": "project-hail-mary",
+    "ebook": { "path": "Andy Weir/Project Hail Mary/Project Hail Mary.epub", "size": 1048576 }
   }
 }
 ```
@@ -9342,12 +9448,16 @@ answer): what a job about the book reads. The effective values; `authors` and
 `series_index` is the position as the server formats it (`"3"`, `"1-3"`, `""`
 for none); `duration` is in seconds; `work_id` is the community work the
 metadata cache already knows for the book's ASIN or ISBN, `""` otherwise (the
-cache only, never an upstream call; `""` while metadata is off).
+cache only, never an upstream call; `""` while metadata is off). `ebook` (Phase 3c)
+is the book's ebook as the server indexed it (the reader's file, the one a
+`readalong.align` job aligns), omitted when it has none.
 
 File paths are relative to the library root. A single-file book (one audio file,
 indexed without separate parts) is listed as its own one file. `size` and
 `mod_time` (Unix seconds) are read from the disk on the request; a file the server
-can't stat keeps its indexed size and `mod_time` `0`. Only an indexed book answers:
+can't stat keeps its indexed size and `mod_time` `0`. `duration` (Phase 3c) is the
+file's indexed length in seconds (a single-file book's is the book's), from which a
+read-along map's whole-book times are built; an older Bridge ignores it. Only an indexed book answers:
 this never indexes a path on demand.
 
 | Status | Meaning |
@@ -9384,13 +9494,14 @@ Bridge cannot map it through a sample episode. Use the marker route above.
   detection.
 - **`attachments`** re-reads only the book's
   [`.audiosilo/` files](../../bridge/attachments.md), never its audio: the
-  Bridge's call after writing characters, recaps, a description or chapters. The
-  path is the book's, or a path inside it. A changed `chapters.json` re-resolves
-  the book's chapters at once. It answers what is now indexed (`description` since
-  Phase 1c, `chapters` since Phase 1d):
+  Bridge's call after writing characters, recaps, a description, chapters or a
+  read-along map. The path is the book's, or a path inside it. A changed
+  `chapters.json` re-resolves the book's chapters at once. It answers what is now
+  indexed (`description` since Phase 1c, `chapters` since Phase 1d, `readalong`
+  since Phase 3c):
 
 ```json
-{ "path": "Andy Weir/Project Hail Mary", "attachments": { "characters": true, "recaps": true, "description": true, "chapters": false, "bridge": true } }
+{ "path": "Andy Weir/Project Hail Mary", "attachments": { "characters": true, "recaps": true, "description": true, "chapters": false, "bridge": true, "readalong": false } }
 ```
 
 For a podcast library, `path` names a show folder or an already indexed

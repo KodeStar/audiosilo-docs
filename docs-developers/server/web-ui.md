@@ -471,6 +471,29 @@ CSP-sensitive work against a real build served by Go. The console's own gate is
   ..."). The card follows the book's `chapters.detect` job
   (`useBookGenerateJob` with `KIND_DETECT`) and fetches the book again when it
   ends.
+  The **Read-along** card (Bridge Phase 3c, `features/book/readalong-card.tsx`,
+  `readalong-dialog.tsx`, the pure rules in `readalong-model.ts`) follows the
+  Chapters card, only for a book with an `ebook`, and only when it has something
+  to show (a map, an offer or a job). It shows the book's
+  [`readalong`](api/reference.md#get-apiv1librariesiditem): ready ("Ready: lines up
+  99% of the ebook's text", the coverage rounded down so it never reads 100% short
+  of it, and when it was made), stale (why: the ebook or the audio files changed
+  since; listeners don't see it) or none. **Make read-along** (or **Make again**
+  over a map) is offered while an online Bridge lists the `readalong` feature
+  (`readalongAvailable`), no read-along job is open for the book, and no
+  `sidecars.generate` or `chapters.detect` job holds it (`readalongBlocker`: any
+  open one, parked included, not one being cancelled; its status and a note show
+  in place of the offer). The confirmation reads `GET /admin/bridge/estimate?kind=readalong.align`:
+  the ebook's name, "Up to N h, less if the Bridge still has this book's
+  transcript", Agent cost "None: no agent is used", when a ready map it replaces was made, and that
+  a match under half of the text stops the job and saves nothing; it can't be
+  confirmed for a library the Bridge can't write or a book with no ebook. It
+  queues `readalong.align` with `params: {}` (`queueInOrder`) and words a
+  `generate_open` or `detect_open` refusal in the card's own words. The job's
+  status is `GenerateStatus` ("99% of the text lined up", "the transcript was
+  reused"), `KIND_READALONG` counts in the page's job poll, and the book is
+  fetched again when the job ends, so its new map shows. Per book only: there is
+  no bulk action.
 - **Library > Libraries** - library cards (`GET /admin/libraries` with
   `book_count`, `available`, `scan` and the scan settings, polled every second
   while any library scans or waits in the job queue, every minute otherwise),
@@ -555,8 +578,8 @@ CSP-sensitive work against a real build served by Go. The console's own gate is
   the Bridge's status (`detectPlan`, one request for any selection) and "None: no
   agent is used", and queues `chapters.detect` per book (`queueInOrder`), passing
   over, and naming in its toast (`skipNotes`), a book refused `generate_open`,
-  `describe_open` or `chapters_chosen` or whose answer is its own parked detect
-  job; it stays open while it queues. A
+  `describe_open`, `chapters_chosen` or (Phase 3c) `readalong_open`, or whose
+  answer is its own parked detect job; it stays open while it queues. A
   row's re-read or join runs once at a time: its fix button is disabled while
   it is in flight (`useIssueActions().fixing`). Rows select into a floating bulk bar, which acts only on
   the selected books still listed (one fixed or ignored on its own row has
@@ -776,8 +799,8 @@ CSP-sensitive work against a real build served by Go. The console's own gate is
   status card adds the heartbeat's `estimates.sidecars` as Agent (backend and
   Ready), Paid by, This month (spend against the cap) and Estimates from rows, and
   the job list words a `sidecars.generate` job (and, since Phase 1c, a
-  `sidecars.describe` job, and since Phase 1d a `chapters.detect` job, "Chapters":
-  `isBookKind`) with `GenerateStatus` (its stage,
+  `sidecars.describe` job, since Phase 1d a `chapters.detect` job, "Chapters", and
+  since Phase 3c a `readalong.align` job, "Read-along": `isBookKind`) with `GenerateStatus` (its stage,
   counts, time left and cost; a park's reason with **Open in the Bridge**, a link
   to `<ui_url>#/jobs/<id>`; the counts and cost once done, and for a generate job
   whether its description came), its path linking to the book's page. Since Phase
@@ -831,12 +854,15 @@ CSP-sensitive work against a real build served by Go. The console's own gate is
   series** once its books are loaded: `SeriesGenerateDialog` asks every book's
   brief estimate, four at a time, and queues the books with no recaps and no open
   job, earliest first, counting the ones it leaves out. A book refused
-  `detect_open` (its chapters are still being found) or, Phase 2b,
-  `contribute_open` (its characters and recaps are being shared) is passed over by
+  `detect_open` (its chapters are still being found), Phase 2b's
+  `contribute_open` (its characters and recaps are being shared) or Phase 3c's
+  `readalong_open` (its read-along is being made) is passed over by
   name in the series batch and the dialog (`GENERATE_SKIPS`) rather than stopping
-  them, and `GenerateSection` shows a queued or working detect job's status, or a
+  them, and `GenerateSection` shows a queued or working detect job's status, a
   note for a queued or working share ("The characters and recaps are being shared
-  with the community..."), in place of Generate (`generateBlocker`,
+  with the community..."), or a queued or working read-along's note ("A read-along
+  is being made for the book. Generate once that has finished: it reuses the
+  transcription."), in place of Generate (`generateBlocker`,
   `blocksGenerate`: the job list, else the estimate's `open_job`; a queued share
   counts only while the `contributions` toggle is on, read from the settings
   envelope (`useSettings`, counted on until it arrives) rather than the flag, as
