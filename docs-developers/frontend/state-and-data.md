@@ -354,6 +354,8 @@ Cross-server screens ask per connection (`useCapabilitiesAll` /
 | `ebooks` | Read the ebook on the book page (`canRead`, [the rule](reader.md#read-on-the-book-page)) and the reader screen's own check; see [The ebook reader](reader.md) |
 | `readalong` | the companion's Text tab, the full-screen reader's Follow narration (`readalongReady`), the admin's Make read-along (`mayMakeReadalong`, with `bridge` and the Bridge's `readalong` feature), the map in downloads (`wantsReadalong`); see [Read-along](reader.md#read-along-following-the-narration) |
 | `upcoming` | Home's Coming up in your series, the `/upcoming` page and the You hub's Upcoming section (`useUpcomingAll`, `useUpcomingAvailable`; never asked for a kid); see [Upcoming releases](#upcoming-releases) |
+| `upcoming_calendar` | the Add to your calendar card's row for that connection (`calendarConnections`; never a kid's); see [The upcoming calendar](#the-upcoming-calendar) |
+| `upcoming_covers` | an upcoming item's real cover over its ghost (`UpcomingCover`, from the item's own connection, only when `true`, never while unknown); see [Upcoming releases](#upcoming-releases) |
 | `cast` | the Cast button and `prepareCast` (no flag, or flags not known yet: no button, and a cast is refused); see [Chromecast](chromecast.md) |
 
 Writes from screens follow the [1b write rules](#the-listeners-own-state-player-redesign-phase-1b)
@@ -902,7 +904,7 @@ controller: [Podcasts](podcasts.md).
 
 ### Upcoming releases
 
-*(2.6.0, Track U2; the wire is the server's, [`GET /me/upcoming`](../server/api/reference.md#upcoming-releases).)*
+*(2.6.0, Tracks U2 and U3; the wire is the server's, [`GET /me/upcoming`](../server/api/reference.md#upcoming-releases), [the calendar feed](../server/api/reference.md#the-calendar-feed) and [`/me/upcoming/cover`](../server/api/reference.md#get-apiv1meupcomingcover).)*
 The listener's preorders, recent releases and missing volumes in the series they hold,
 merged across their servers. User guide: [Upcoming releases](/users/listening/upcoming).
 
@@ -947,17 +949,72 @@ merged across their servers. User guide: [Upcoming releases](/users/listening/up
   releases" while every answering server is `pending`, "Nothing coming up", "No upcoming
   releases here" where no server offers it, and "Couldn't load" with Retry when no server
   answered, never "Nothing coming up" for a failure); a failed server beside answering
-  ones, a `stale` one or a `pending` one is a note over the list. Every item is a
-  `GhostCover`, never the work's `cover_url`: the server doesn't proxy it (`meta_covers`
-  covers only what a book's own `/meta` hands out) and the web player's CSP refuses
-  another host. The server name (`useServerFlag`: only a non-default server, only with
+  ones, a `stale` one or a `pending` one is a note over the list. Under the list,
+  while `available`, the [calendar card](#the-upcoming-calendar). The server name (`useServerFlag`: only a non-default server, only with
   several connections) reads "From &lt;server&gt;". A tap opens
   `seriesHref(connectionId, local.library_id, { name: local.series, work: work.id })`.
+- **Covers** (Track U3, `upcoming-cover.tsx`). Every item is an `UpcomingCover`: a
+  `GhostCover` with the work's real cover drawn over it only when the item's **own**
+  connection (the one whose row won the merge) advertises `upcoming_covers === true`
+  (never while unknown) and the item has a `cover_url`. The image is
+  `client.upcomingCoverUrl(work.id, { size, version })`, `GET
+  /me/upcoming/cover?work=&size=&v=` with the media token, never the `cover_url`
+  itself: the device never contacts the cover's host, and the web player's CSP
+  refuses another host. `size` is `coverSizeFor` the tile; `v` is `fnv1a(cover_url)`,
+  purely a cache buster (the server caches the image for a day, and its job can
+  change a work's `cover_url` in place). The ghost stays underneath, so it shows
+  while the image loads, and alone without the flag or once the image fails (`failed`
+  is keyed by the URI, so a recycled tile starts afresh).
 - **Series pages.** `railEntries` (`series-model.ts`) gives a ghost its `release_date`:
   `outDate` while it is still ahead (the list's `entryLine` and the face-out note show
   "Out Nov 12, 2026" in place of "Not in your library"), else its year.
-- **Kids and demo.** A kid gets no rail or You section, and the route shows the "not
-  here" state. A demo account reads it like anyone else.
+- **Kids and demo.** A kid gets no rail, You section, cover or calendar row, and the
+  route shows the "not here" state. A demo account reads the list like anyone else;
+  its calendar row explains that it can't subscribe and asks nothing.
+
+#### The upcoming calendar
+
+*(Track U3; the card is `UpcomingCalendarCard`, `src/components/upcoming/upcoming-calendar.tsx`;
+the pure rules and the device copy are `src/lib/upcoming-calendar.ts`.)* User guide:
+[Add to your calendar](/users/listening/upcoming#add-to-your-calendar).
+
+- **Wire.** `types.ts` mirrors `UpcomingCalendarStatus {active, created_at?}` and
+  `UpcomingCalendarLink {path, created_at}` and adds `upcoming_calendar?` and
+  `upcoming_covers?` to `Capabilities`. `client.upcomingCalendar()` is `GET
+  /me/upcoming/calendar`, `mintUpcomingCalendar()` the `POST` (201; it replaces the
+  previous link; refused `403 kid_account` / `demo_account`, and to an API key),
+  `deleteUpcomingCalendar()` the `DELETE` (204).
+- **The full URL.** `path` is server-relative: `calendarFeedUrl(path, addresses,
+  baseUrl)` puts it on the server's away address when it has one (a calendar app may
+  fetch from anywhere), else on the address in use.
+- **The device's copy is a credential.** The server answers the secret once, so this
+  device keeps `{url, created_at}` per connection in the **secure store**
+  (`calendarLinkKey`: the keychain or keystore, localStorage on the web, like the
+  session token), never AsyncStorage or the startup query cache. Its query
+  (`qk.upcomingCalendarLink`) reads the secure store, is not a startup query, and is
+  `meta.local`, so its success says nothing about the server (no reconnect flag
+  cleared, no reachability check). It is forgotten with the connection
+  (`removeConnection`, a retired stale identity and the auth reset in
+  `src/stores/session.ts`, so it goes on sign-out even if Upcoming never mounted; a
+  mint that lands after its connection signed out is forgotten, not kept), moved by
+  the identity migration (`moveCalendarLink`), forgotten on Turn off and replaced on
+  Reset (the mutation stores it before it resolves).
+- **Rows and states.** One row per connection from `calendarConnections` (the flag
+  on, not a kid: a kid is never asked; a demo account's row explains and asks
+  nothing), named by server when there are several. `calendarRowState` gives
+  `loading`, `error` (Retry), `none` (Get calendar link), `shown` (the URL, Copy link
+  everywhere, Subscribe where `canSubscribeWebcal`: the iOS app and a browser on an
+  Apple device, which `openWebcal` hands a `webcal://` URL; Reset link and Turn off,
+  each behind a `ConfirmDialog`) and `elsewhere` (a link is active but this device has
+  no copy: "Reset it to see it here").
+- **Staleness.** A copy whose `created_at` is not the server's (compared as
+  instants), or a copy of an inactive link, is stale and forgotten, but never while
+  the row's own mint or delete is pending. A write sets the copy and the status in
+  one step after cancelling any read of either in flight (an answer sent before the
+  write would land over it and the row would forget the new copy). A write that got
+  no answer (the network, not a refusal) reads the status again, since it may have
+  landed. A failed change shows the player's own words by `code` (`kid_account`,
+  `demo_account`, else "refused" or "couldn't reach"), never the server's English.
 
 ## Zustand stores
 

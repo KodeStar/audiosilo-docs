@@ -48,7 +48,8 @@ re-export of `YouHub` (`src/components/you/you-hub.tsx`). The rules are the pure
   is not a kid there), so it rides with the modules' sections: `youExtraSections(upcoming,
   modules)` puts it first among them (`UPCOMING_SECTION`, a key no module can take), after
   the hub's fixed sections on every form factor. A link to it while the flags still load
-  opens Stats.
+  opens Stats. It is the same `UpcomingContent` as the page, so it ends with the
+  [calendar card](state-and-data.md#the-upcoming-calendar) too.
 - `youSectionParams(next)`: the params a switch writes with `router.setParams` (Stats is
   the bare `/you`; leaving the Journal drops its `tab`).
 

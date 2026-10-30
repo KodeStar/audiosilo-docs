@@ -17,6 +17,9 @@ its owner anywhere a *Session* token does - so an admin's key also satisfies
 [Personal API keys](#personal-api-keys)).
 *Bridge token*: the paired Bridge's own token, accepted only on the
 [`/bridge/*` routes](#the-bridge) and refused everywhere else.
+*Feed token*: a listener's calendar feed token, accepted only on
+[`GET /me/upcoming/releases.ics`](#get-apiv1meupcomingreleasesics) (header or
+`?token=`), which takes no other credential.
 
 All `/api/v1` bodies and responses are JSON. Timestamps are RFC 3339. Remember
 that empty list fields may serialize as `null`.
@@ -68,7 +71,10 @@ else and gate features on the flags.
     "podcast_discovery": false,
     "podcast_opml": true,
     "ebooks": true,
-    "readalong": true
+    "readalong": true,
+    "upcoming": true,
+    "upcoming_calendar": true,
+    "upcoming_covers": true
   },
   "auth": { "methods": ["auth_code", "password"] },
   "demo": { "enabled": false }
@@ -175,6 +181,13 @@ and absent on an older one:
 |---|---|
 | `ebooks` | [the reader](#ebooks-and-the-reading-place): a book's `ebook` field, [`GET /libraries/{id}/ebook`](#get-apiv1librariesidebook) and [`GET`](#get-apiv1librariesidreading-progress)/[`PUT /libraries/{id}/reading-progress`](#put-apiv1librariesidreading-progress). A client offers Read only when the book has an `ebook` **and** it is `true` (the player also while it is unknown offline, for a book whose download holds the EPUB; never when `false`) |
 | `readalong` | [read-along](#get-apiv1librariesidreadalong) (Phase 3c): a book's `readalong` field on [`/item`](#get-apiv1librariesiditem) and [`GET /libraries/{id}/readalong`](#get-apiv1librariesidreadalong). It says the route exists, not that any book has a map: a client also needs the book's `readalong.state` to be `ready` (and its `ebook`). Making a map needs a [Bridge](#the-bridge) whose `features` list `readalong` |
+
+Track U (2.6.0) adds three that follow two settings: `upcoming`,
+`upcoming_calendar` and `upcoming_covers` are all `true` while community metadata
+is on **and** the upcoming releases job is switched on, and `false` (sent, not
+absent) otherwise; an older server omits them. See
+[Upcoming releases](#upcoming-releases) and
+[Capability flags](index.md#capability-flags---gate-your-features).
 
 `bridge` follows the Bridge rather than a setting, so it can change from one
 request to the next: it is `true` only while a [Bridge](#the-bridge) is paired and its last heartbeat is under two minutes
@@ -574,7 +587,10 @@ listing does not spend it (from 2.4.0). All three are **refused for demo account
 authenticates with an API key is refused (**403**) on the credential-minting
 routes - `POST /auth/tokens` (another key), `POST /auth/recovery`,
 `POST /auth/pair`, `POST /auth/password`, [`POST /cast/token`](#post-apiv1casttoken)
-(refused although a cast token would die with the key), and every
+(refused although a cast token would die with the key),
+[`POST`](#post-apiv1meupcomingcalendar) and
+[`DELETE /me/upcoming/calendar`](#delete-apiv1meupcomingcalendar) (a calendar link,
+which would outlive the key), and every
 [household member](#household-members) route (adding one with `sign_in_here`,
 `…/{id}/session` and `…/{id}/pair` make a member's session or pairing code) - so
 revoking a leaked key cuts off everything it could reach: it can't spawn a key,
@@ -4252,6 +4268,156 @@ Errors: a kid's `403` `kid_account` comes first (the route's own check), then `4
 `code: "metadata_off"` while community metadata is off, `404` `code: "upcoming_off"` while the job is switched off
 (`upcoming.enabled`, the console's Settings > Metadata). Either way the capability
 is `false`, so a client that honours it never asks.
+
+### The calendar feed
+
+Capability `upcoming_calendar` (Track U3, 2.6.0; `true` exactly when `upcoming`
+is). A listener subscribes a calendar app to their own upcoming releases through
+one secret link per user per server: `GET /me/upcoming/releases.ics?token=<secret>`.
+The secret is a token of its own kind, `feed`, accepted on that route **only**
+(see [Calendar feed tokens](../auth-and-security.md#calendar-feed-tokens)), so a
+leaked link reads that one person's release list and nothing else. The player's
+card: [The upcoming calendar](../../frontend/state-and-data.md#the-upcoming-calendar).
+
+#### `GET /api/v1/me/upcoming/calendar`
+
+*Session* (an API key may read it). Whether the caller has a calendar link, never
+the link itself (the server keeps only its hash):
+
+```json
+{ "active": true, "created_at": "2026-10-30T09:14:02.517Z" }
+```
+
+`created_at` (RFC 3339, UTC, milliseconds) is absent while `active` is `false`.
+It is the mint's own `created_at` exactly, and later than the link it replaced,
+so a client that kept a copy of a link compares the two to tell whether its copy
+is still the live one (a link reset or turned off on another device is not).
+
+Errors, in order: `401`; `403` `kid_account`; `404` `metadata_off`; `404`
+`upcoming_off`.
+
+#### `POST /api/v1/me/upcoming/calendar`
+
+*Session only.* Makes the caller's calendar link, ending the one they had in the
+same transaction (a reset). No body. `201`, with `Cache-Control: no-store`:
+
+```json
+{
+  "path": "/api/v1/me/upcoming/releases.ics?token=<secret>",
+  "created_at": "2026-10-30T09:14:02.517Z"
+}
+```
+
+`path` is server-relative, not a URL: the server knows no reliable public
+address, so the client puts it on the address a calendar app should fetch it
+from (the player uses the server's away address when it has one, else the address
+it reaches the server at). This is the only time the secret is answered: a client
+that wants to show the link again keeps it as it keeps a session token.
+
+Errors, in order: `401`; `403` `kid_account`; `403` `demo_account` (a demo
+account can't make a credential); `403` for an API key (a key never mints a
+credential, [Personal API keys](#personal-api-keys)); `404` `metadata_off`; `404`
+`upcoming_off`.
+
+#### `DELETE /api/v1/me/upcoming/calendar`
+
+*Session only.* Ends the caller's calendar link: `204` whether there was one or
+not. Not gated on the two switches (ending a link only takes access away), so it
+works while upcoming releases are off. Errors: `401`; `403` `kid_account`; `403`
+for an API key.
+
+#### `GET /api/v1/me/upcoming/releases.ics`
+
+*Feed token only*, as `?token=` (a calendar app can't set a header) or the
+`Authorization` header. A session, API key, cast, bridge or pairing token is
+`401` here, and a feed token is `401` on every other route. It runs under the
+media rate limit, per credential.
+
+The token owner's [`GET /me/upcoming`](#get-apiv1meupcoming) list, read with their
+scopes at this request (a share taken away is felt at once), as an iCalendar
+document (RFC 5545):
+
+```text
+BEGIN:VCALENDAR
+VERSION:2.0
+PRODID:-//AudioSilo//Upcoming releases//EN
+CALSCALE:GREGORIAN
+X-WR-CALNAME:AudioSilo: upcoming releases (Den\, upstairs)
+REFRESH-INTERVAL;VALUE=DURATION:PT12H
+X-PUBLISHED-TTL:PT12H
+BEGIN:VEVENT
+UID:the-expanse-10@kx8Qz1c7m2Vw0aB3dEfGh
+DTSTAMP:20261030T041200Z
+DTSTART;VALUE=DATE:20261112
+DTEND;VALUE=DATE:20261113
+SUMMARY:Book Ten (The Expanse #10)
+DESCRIPTION:By James S. A. Corey\nFirst release: 2026-11-12\nhttps://meta.a
+ udiosilo.app/work?id=the-expanse-10
+URL:https://meta.audiosilo.app/work?id=the-expanse-10
+TRANSP:TRANSPARENT
+END:VEVENT
+END:VCALENDAR
+```
+
+- **Events.** One all-day `VEVENT` per `preorder` or `released` item whose
+  `release_date` is a whole day (`YYYY-MM-DD`). A `missing` item (its date is a
+  back-catalogue first release, often years past) and a `YYYY` or `YYYY-MM` date
+  (no honest all-day event) are left out. `DTSTART;VALUE=DATE` is the day and
+  `DTEND` the next. `UID` is `<work id>@<server_id>` (`audiosilo` when the server
+  has none), so a date that slips moves the event rather than adding one. `DTSTAMP`
+  is the list's `generated_at` (else now), in UTC. `SUMMARY` is "Title (Series
+  #position)", the same label as the `book_released` notification; `DESCRIPTION`
+  is "By *authors*", "First release: *date*" and the work's `web_url`, which is
+  also the `URL`. `TRANSP:TRANSPARENT`: an event never shows the listener as busy.
+- **The calendar.** `X-WR-CALNAME` is "AudioSilo: upcoming releases", with the
+  server's name in brackets when it has one; `REFRESH-INTERVAL` and
+  `X-PUBLISHED-TTL` ask for a poll every 12 hours. There is no `METHOD` (a
+  subscription needs none; with one, RFC 5545 asks the `Content-Type` for a
+  matching `method` parameter and iTIP's `PUBLISH` an `ORGANIZER`). A server whose
+  job never ran (`pending`), or a list with no such item, answers a calendar with
+  no component, which calendar apps read as empty.
+- **Text.** CRLF line ends; lines folded at 75 octets, never inside a UTF-8
+  sequence; TEXT values escaped (`\\`, `\;`, `\,`, `\n`; a CR, an LF or a CRLF is
+  one line break; other control characters and invalid UTF-8 are dropped); a URI
+  with a space or a control character is left out.
+- **Headers.** `Content-Type: text/calendar; charset=utf-8`, `Content-Disposition:
+  inline; filename="releases.ics"`, `Cache-Control: private, max-age=3600` and an
+  `ETag` (`"ics-"` and the first 16 hex digits of the body's SHA-256): a poll that
+  sends it back in `If-None-Match` gets a `304`. Never gzipped.
+
+Errors, in order: `401` (no token, an unknown or ended one, or another kind);
+`403` `kid_account` (a leftover token of a person who is now a kid); `404`
+`metadata_off`; `404` `upcoming_off`. A disabled account's token is refused
+(`401`) while it is disabled.
+
+#### `GET /api/v1/me/upcoming/cover`
+
+*Session (media)*: a session token or API key, as the header or `?token=` (never a
+cast or feed token). Capability `upcoming_covers` (`true` exactly when `upcoming`
+is). A JPEG thumbnail of the cover the caller's own `/me/upcoming` list hands out
+for a work **right now**, so a client shows community covers from its own server
+(the web player's CSP refuses another host, and the device never contacts the
+cover's host).
+
+| Param | Meaning |
+|---|---|
+| `work` | required: the item's `work.id` |
+| `size` | optional: one of the [cover sizes](#get-apiv1librariesidcover) (96, 160, 320 or 640), 320 when unset |
+
+It is not an image proxy: the server reads the caller's list for that one work
+(the list's own rules: the caller's scopes, a work they hold a copy of dropped)
+and serves only the `cover_url` it holds, from the database alone (no metadata
+traffic). Then it is [`/meta/cover`](#get-apiv1librariesidmetacover)'s tail: the
+same guarded fetch (16 MiB cap, one fetch at a time per image), thumbnail cache,
+`ETag` and `Cache-Control`.
+
+Errors, in order: `401`; `403` `kid_account`; `404` `metadata_off`; `404`
+`upcoming_off`; `400` without `work` or with a `size` outside the list; `404`
+`not_found` for a work not in the caller's list (another person's series, one the
+caller holds, none at all) or listed without a cover, before any fetch; `502`
+`cover_unavailable` when the image couldn't be fetched (also for a minute after a
+failed fetch, as on `/meta/cover`); `404` (no code) when the fetched file is no usable
+image.
 
 ## Listening in the house
 

@@ -2397,7 +2397,7 @@ if (wanted(...Object.values(HOUSE_SHOTS))) {
   }
 }
 
-// ── Upcoming releases (Track U2) ────────────────────────────────────────────
+// ── Upcoming releases (Tracks U2 and U3) ────────────────────────────────────
 // Home's Coming up in your series and the Upcoming page need what the server's upcoming
 // releases job found: for this pass Sherlock Holmes is matched (HOLMES_MATCH), the job is
 // switched off and on so it runs at once, and the ASIN is reverted afterwards. What the
@@ -2407,6 +2407,7 @@ const UPCOMING_SHOTS = {
   home: 'web-player/home-upcoming.png',
   page: 'web-player/upcoming.png',
   phone: 'web-player/phone-upcoming.png',
+  calendar: 'web-player/upcoming-calendar.png',
 };
 
 // The demo listener's Upcoming page in `page`, once its rows show.
@@ -2472,6 +2473,37 @@ if (wanted(...Object.values(UPCOMING_SHOTS))) {
         try {
           await upcomingPageShot(await ctx.newPage(), UPCOMING_SHOTS.phone);
         } finally {
+          await ctx.close();
+        }
+      });
+    }
+    // Add to your calendar (Track U3): a demo account can't make a calendar link, so this
+    // shot signs the admin in to the player, makes one, and turns it off and signs out
+    // again afterwards (no link and no player session outlive the shot).
+    if (listed && wanted(UPCOMING_SHOTS.calendar)) {
+      await step('upcoming: calendar link', async () => {
+        if (!ADMIN_PASSWORD) throw new Error('ADMIN_PASSWORD not set: no account that can make a calendar link');
+        const ctx = await newCaptureContext();
+        const page = await ctx.newPage();
+        try {
+          await page.goto(BASE + 'connect', {waitUntil: 'networkidle', timeout: 45000});
+          await probeServer(page, new URL(BASE).origin);
+          await signInWithPassword(page, 'admin', ADMIN_PASSWORD);
+          await tid(page, 'ready-screen').waitFor({timeout: 15000});
+          await firstVisible(page.getByRole('button', {name: 'Start listening'})).click({timeout: 8000});
+          await tid(page, 'top-bar-(home)').waitFor({timeout: 15000});
+          await page.goto(BASE + 'upcoming', {waitUntil: 'networkidle', timeout: 45000});
+          await tid(page, 'upcoming-row').waitFor({timeout: 30000});
+          await tid(page, 'upcoming-calendar-get').click({timeout: 15000});
+          await tid(page, 'upcoming-calendar-url').waitFor({timeout: 15000});
+          await tid(page, 'upcoming-calendar').evaluate((el) => el.scrollIntoView({block: 'end'}));
+          await settleShoot(page, UPCOMING_SHOTS.calendar);
+        } finally {
+          const token = await demoToken(page).catch(() => null);
+          if (token) {
+            await api(token, 'DELETE', '/me/upcoming/calendar').catch(() => {});
+            await api(token, 'POST', '/auth/logout').catch(() => {});
+          }
           await ctx.close();
         }
       });

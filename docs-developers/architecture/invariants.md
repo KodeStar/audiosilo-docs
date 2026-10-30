@@ -179,10 +179,12 @@ audiobooks" into "remote file read on your NAS".
   whose `script-src` carries a sha256 hash of that document's inline scripts
   (`web.htmlCSP` in `internal/web/web.go`).
 - **Confined token-in-URL**: the `?token=` media-auth fallback is accepted **only**
-  on the cover, stream and community cover GETs (`bearerToken(r, true)` via
-  `requireBookMediaAuth` / `requireMediaAuth` in
-  `internal/api/middleware.go`); every other route is header-only, so session
-  tokens can't leak into logs or Referer headers elsewhere.
+  on the cover, stream and community cover GETs (a book's `/meta/cover` and
+  `/me/upcoming/cover`) (`bearerToken(r, true)` via `requireBookMediaAuth` /
+  `requireMediaAuth` in `internal/api/middleware.go`) and on the calendar feed,
+  `GET /me/upcoming/releases.ics`, which takes a `feed` token and no other kind
+  (`requireFeedAuth`); every other route is header-only, so session tokens can't
+  leak into logs or Referer headers elsewhere.
 - **Tested both ways**: security-critical code (`SafeJoin`, scope checks, rate
   limiters, `ResolveRequest`/`lookupToken`, `htmlCSP`) requires both an *allowed* and a *denied*
   regression test - see [gates and CI](../contributing/gates-and-ci.md).

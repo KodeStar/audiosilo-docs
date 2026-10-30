@@ -153,12 +153,17 @@ it goes. Durable: this is the account, not the index.
 **`tokens`** *(0001; `auth_code_id` added in 0014; `client_app`,
 `client_version`, `client_platform` and `last_ip` in 0018; `created_on_token_id` in 0044)* - opaque bearer tokens:
 `user_id` (FK CASCADE), `token_hash` (UNIQUE - only the SHA-256 hash is
-stored), `kind` (`'session'`/`'pairing'`/`'api'`/`'cast'`/`'bridge'`: `'api'` a user-minted personal
+stored), `kind` (`'session'`/`'pairing'`/`'api'`/`'cast'`/`'bridge'`/`'feed'`: `'api'` a user-minted personal
 API key whose label rides in `device_name`, `'cast'` *(0043)* a
 cast token with its `cast_grants` row (below), `'bridge'` *(0047)* the paired
 [Bridge](#the-bridge)'s token, named `AudioSilo Bridge`, at most one live, found by
 the partial index `idx_tokens_bridge` on `user_id` over live bridge tokens, and never
-touched by its calls), `device_name`, `created_at`,
+touched by its calls; `'feed'` a listener's
+[calendar feed token](auth-and-security.md#calendar-feed-tokens), named `Calendar
+feed`, at most one live per user by the partial unique index `idx_tokens_feed_user`
+*(0060)* on `user_id` over live feed tokens, its `created_at` in milliseconds,
+deleted (never flagged revoked) when it ends, and never touched by the calendar's
+polls), `device_name`, `created_at`,
 `last_seen` (bumped by authenticated requests, at most once a minute unless the
 request's address or `X-AudioSilo-Client` changed: `auth.touchInterval`, so a
 progress save isn't also a token write), `expires_at` (NULL = no
@@ -186,7 +191,7 @@ when the admin moves the person into another owner's household, which sessions a
 API keys were made on someone else's device and are revoked with the move
 (`auth.leaveOwners`).
 The admin console lists live session and API-key tokens as **devices** (never pairing,
-cast or bridge tokens)
+cast, bridge or feed tokens)
 (`auth.ListDevices`) and can revoke one (`auth.RevokeDevice`).
 
 **`cast_grants`** *(0043)* - what a **cast token** may read. A cast token is a
@@ -1097,7 +1102,10 @@ through the user-state path (no content cache reads them).
   400 days, longer than any release window. It names no library; losing it can at
   most announce a release again.
 
-The job's run status is the `upcoming` key of [`server_state`](#server-state).
+The job's run status is the `upcoming` key of [`server_state`](#server-state). The
+calendar feed (Track U3) adds no table: its secret is a `tokens` row of kind `feed`
+(above, `0060`), and the calendar and the Upcoming covers are read from these tables
+at the request.
 
 ### Durable per-library config (path-keyed, no FK to books)
 
@@ -1355,6 +1363,8 @@ The migration history so far:
 | 0056 | `book_ebook` | `books.ebook_path` and `books.ebook_sig` (`TEXT NOT NULL DEFAULT ''`): a book's ebook, the one `.epub` the reader opens, and the signature of the file `library.BookEbook`'s rule names. No data moves: every row starts with none and the next scan records each unchanged book's ebook without re-indexing it |
 | 0057 | `reading_progress` | `reading_progress` (FK `users`/`libraries` `ON DELETE CASCADE`, no FK to `books`) and `idx_reading_progress_path`: a reader's place in a book's ebook, durable and path-keyed (see [Durable per-user state](#durable-per-user-state-path-keyed-no-fk-to-books)) |
 | 0058 | `readalong` | `book_attachments.readalong` (`TEXT NOT NULL DEFAULT ''`, the checked head of a Bridge's `.audiosilo/readalong.json`, Phase 3c), `books.ebook_sha256` and `books.ebook_hashed_sig` (`TEXT NOT NULL DEFAULT ''`: the digest of the ebook of a book with a map and the `ebook_sig` it was computed for; only such books are hashed, since hashing every EPUB would read whole libraries over a network share), and `books.ebook_size` (`INTEGER NOT NULL DEFAULT 0`, server#228), filled from the leading size of each `ebook_sig`. A book with a map has a changed attachments signature (the name was unknown before), so the next scan reads it again, without re-indexing |
+| 0059 | `upcoming` | the [upcoming releases](#upcoming-releases) tables, all derived and path-keyed with no FK to `books` (cascaded with the library): `upcoming_owned` (index `idx_upcoming_owned_work`), `upcoming_series`, `meta_series`, `upcoming_items` (index `idx_upcoming_items_work`) and `upcoming_announced` |
+| 0060 | `feed_tokens` | `idx_tokens_feed_user`, a partial unique index on `tokens(user_id) WHERE kind = 'feed' AND revoked = 0`: at most one live [calendar feed token](auth-and-security.md#calendar-feed-tokens) per user. No column changes (`kind` is free text) |
 
 ## SQLite choices
 
