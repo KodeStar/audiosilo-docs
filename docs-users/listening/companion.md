@@ -65,7 +65,7 @@ The tab appears only once the book's read-along has loaded. A book without one, 
 | **This book isn't on the server any more** | It may have moved or been removed. Open it from the library again. |
 | **The read-along is for a newer ebook** | Only for a [downloaded](offline-downloads.md) book: the ebook on the server was replaced after you downloaded the book, and the read-along was made from the new one, so it doesn't line up with the ebook on your device. Remove the download and download the book again. |
 
-Only the first can be mended by trying again, so only it has a button. If the read-along doesn't match this ebook at all, the tab says **The text can't follow this narration**. A [downloaded](offline-downloads.md) book keeps its read-along with its ebook, so the Text tab works offline too. In the web player, a book that isn't downloaded has no Text tab while you're offline (it comes back with the connection).
+If the read-along doesn't match this ebook at all, the tab says **The text can't follow this narration**. A [downloaded](offline-downloads.md) book keeps its read-along with its ebook, so the Text tab works offline too. In the web player, a book that isn't downloaded has no Text tab while you're offline (it comes back with the connection).
 
 ### Making one (admins)
 

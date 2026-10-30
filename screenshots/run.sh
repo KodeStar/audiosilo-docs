@@ -129,12 +129,14 @@ shot_wanted() { # <file>
   return 1
 }
 
-# Whether SHOTS_ONLY keeps any shot the manifest gives to capture <name> (setup, bridge).
-capture_wanted() { # <name>
-  (cd "$HERE" && CAPTURE="$1" node --input-type=module -e '
+# Whether SHOTS_ONLY keeps any manifest shot whose <field> is <value>: `capture
+# setup`, `capture bridge`, `readalong true`.
+manifest_wanted() { # <field> <value>
+  (cd "$HERE" && FIELD="$1" VALUE="$2" node --input-type=module -e '
     import {SHOTS} from "./manifest.mjs";
     import {wanted} from "./lib.mjs";
-    process.exit(wanted(...SHOTS.filter((s) => s.capture === process.env.CAPTURE).map((s) => s.file)) ? 0 : 1);
+    const {FIELD, VALUE} = process.env;
+    process.exit(wanted(...SHOTS.filter((s) => String(s[FIELD]) === VALUE).map((s) => s.file)) ? 0 : 1);
   ')
 }
 
@@ -234,19 +236,11 @@ fi
 # ── 2e. A read-along (Bridge Phase 3c) ────────────────────────────────────
 # The Call of the Wild gets its EPUB (Project Gutenberg's ebook #215, fetched once
 # into .cache) and the read-along map a real Bridge made for it, cut to the seeded
-# audio files by seed-readalong.mjs (its header says how), for
-# web-player/player-text.png, reader-readalong.png and phone-player-text.png.
-# Without the map those shots would fail much later with an unclear error, so a
-# run that wants any of them stops here instead (docs#200): the EPUB couldn't be
-# fetched, or it isn't the one the map was made from (Gutenberg rebuilt it).
+# audio files by seed-readalong.mjs (its header says how), for the manifest's
+# `readalong: true` shots. Without the map, a run that wants any of them stops here
+# (docs#200; seed-readalong.mjs says why).
 RA_BOOK="$LIBRARY/Jack London/The Call of the Wild"
 RA_EPUB="$CACHE/the-call-of-the-wild.epub"
-RA_SHOTS="web-player/player-text.png web-player/reader-readalong.png web-player/phone-player-text-chip.png web-player/phone-player-text.png"
-readalong_wanted() {
-  local f
-  for f in $RA_SHOTS; do shot_wanted "$f" && return 0; done
-  return 1
-}
 RA_OK=0
 if [ -d "$RA_BOOK" ]; then
   if fetch_epub 215 "$RA_EPUB" "$RA_BOOK" "The Call of the Wild.epub" read-along; then
@@ -260,7 +254,7 @@ else
   echo "  ! no $RA_BOOK"
 fi
 if [ "$RA_OK" != 1 ]; then
-  if readalong_wanted; then
+  if manifest_wanted readalong true; then
     echo "stopping: the read-along shots need the map (leave them out with SHOTS_ONLY)"
     exit 1
   fi
@@ -314,7 +308,7 @@ MAIN_PID=$!
 # console's first-run flow (with the web player, so its phone step offers it).
 # It starts only when a setup shot is wanted.
 WANT_SETUP=0
-if [ "${SKIP_ADMIN:-0}" != "1" ] && capture_wanted setup; then
+if [ "${SKIP_ADMIN:-0}" != "1" ] && manifest_wanted capture setup; then
   WANT_SETUP=1
 fi
 if [ "$WANT_SETUP" = 1 ]; then
@@ -436,7 +430,7 @@ fi
 
 # The Bridge's own page: a real Bridge, built with its page embedded, on a fresh
 # data dir, paired with the demo server by capture-bridge.mjs (see its header).
-if [ "${SKIP_BRIDGE:-0}" != "1" ] && capture_wanted bridge; then
+if [ "${SKIP_BRIDGE:-0}" != "1" ] && manifest_wanted capture bridge; then
   echo "==> capturing the Bridge's page"
   if [ ! -x "$BRIDGE/scripts/build-web.sh" ]; then
     echo "  ! no audiosilo-bridge checkout at $BRIDGE: the Bridge shots keep their previous images"

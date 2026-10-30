@@ -794,7 +794,7 @@ restart, and whether the console may change it at all:
 | `metadata.base_url` | `metadata.base_url` | `AUDIOSILO_METADATA_BASE_URL` | restart |
 | `metadata.region` | `metadata.region` | `AUDIOSILO_METADATA_REGION` | at once |
 | `metadata.mode` | `metadata.mode` | `AUDIOSILO_METADATA_MODE` | restart |
-| `metadata.upcoming` | `upcoming.enabled` | `AUDIOSILO_UPCOMING_ENABLED` | at once (switched on, a run follows soon when none has succeeded for a day; switched off, a run in flight stops) |
+| `metadata.upcoming` | `upcoming.enabled` | `AUDIOSILO_UPCOMING_ENABLED` | at once |
 | `demo.enabled` | `demo.enabled` | `AUDIOSILO_DEMO_ENABLED` | restart |
 | `demo.library` | `demo.library` | `AUDIOSILO_DEMO_LIBRARY` | at once |
 | `demo.max_users` | `demo.max_users` | `AUDIOSILO_DEMO_MAX_USERS` | at once |

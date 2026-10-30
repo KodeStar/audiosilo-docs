@@ -8,9 +8,9 @@
 // kept (all seeded files keep it whole). The EPUB is checked against the map's
 // ebook.sha256 first: a map made from another file would be served stale
 // (ebook_changed) and the read-along shots would fail later with an unclear error, so
-// a drift (Gutenberg rebuilt ebook #215) stops here with exit code 2 and writes
-// nothing; run.sh then stops the run when it wants those shots (docs#200). Written
-// on every run (the cached library may predate it). The server only reads it.
+// a drift (Gutenberg rebuilt ebook #215) fails here and writes nothing; run.sh then
+// stops the run when it wants those shots (docs#200). Written on every run (the
+// cached library may predate it). The server only reads it.
 //
 //   node seed-readalong.mjs <book dir> <epub>
 import {createHash} from 'node:crypto';
@@ -32,7 +32,7 @@ if (sha !== map.ebook.sha256) {
       ' Project Gutenberg has likely rebuilt ebook #215. Make the map again with a Bridge from the new EPUB' +
       ' (fixtures/call-of-the-wild.readalong.json), or put the old EPUB back in .cache.',
   );
-  process.exit(2);
+  process.exit(1);
 }
 // The seeded audio files by their own names: "001 - callofthewild_1_london_64kb.mp3".
 const seeded = new Map(

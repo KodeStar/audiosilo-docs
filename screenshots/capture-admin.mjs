@@ -429,10 +429,13 @@ const open = async (p, route, ready = (pg) => pg.locator('h1.display').first(), 
   await sleep(1500);
 };
 const bookRoute = (b) => `/library/book?library=${b.library_id}&path=${encodeURIComponent(b.path)}`;
+// A seeded book by its author and a piece of its title (or path); undefined when none.
+const bookBy = async (author, title) =>
+  ((await api(token, 'GET', `/admin/books?author=${encodeURIComponent(author)}&limit=50`))?.books ?? [])
+    .find((b) => `${b.title} ${b.path}`.includes(title));
 // The seeded Call of the Wild, whose .audiosilo folder run.sh fills (section 2b).
 const callOfTheWild = async () => {
-  const list = await api(token, 'GET', `/admin/books?author=${encodeURIComponent('Jack London')}&limit=50`);
-  const book = (list?.books ?? []).find((b) => `${b.title} ${b.path}`.includes('Call of the Wild'));
+  const book = await bookBy('Jack London', 'Call of the Wild');
   if (!book) throw new Error('no seeded Call of the Wild');
   return book;
 };
@@ -535,8 +538,8 @@ await step('authors', async () => {
 const SERIES_MATCH = {author: 'Sir Arthur Conan Doyle', title: 'Adventures of Sherlock Holmes', asin: 'B00OQT6ZJ6'};
 
 await step('series', async () => {
-  const holmes = ((await api(token, 'GET', `/admin/books?author=${encodeURIComponent(SERIES_MATCH.author)}&limit=50`))?.books ?? [])
-    .find((b) => `${b.title} ${b.path}`.includes(SERIES_MATCH.title));
+  if (!wanted('admin/series.png')) return;
+  const holmes = await bookBy(SERIES_MATCH.author, SERIES_MATCH.title);
   const edit = holmes ? `/admin/libraries/${holmes.library_id}/book${pathQuery(holmes.path)}` : '';
   if (edit) await api(token, 'PATCH', edit, {set: {asin: SERIES_MATCH.asin}});
   else console.log(`  ! no "${SERIES_MATCH.title}": the series shot shows no gaps`);
@@ -1422,8 +1425,7 @@ await step('bridge: detect chapters', async () => {
 await step('bridge: make a read-along', async () => {
   if (!wanted(...READALONG_SHOTS)) return;
   if (!bridgeToken || !bridgeStatus) throw new Error('no stand-in Bridge was paired');
-  const list = await api(token, 'GET', `/admin/books?author=${encodeURIComponent('Charles Dickens')}&limit=50`);
-  const carol = (list?.books ?? []).find((b) => `${b.title} ${b.path}`.includes('Christmas Carol'));
+  const carol = await bookBy('Charles Dickens', 'Christmas Carol');
   if (!carol) throw new Error('no seeded A Christmas Carol');
   if (!carol.ebook) throw new Error('A Christmas Carol has no ebook (run.sh section 2d)');
   const root = library?.id === carol.library_id ? library.root : null;

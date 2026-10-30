@@ -243,9 +243,8 @@ cover images are still downloaded from their hosts.
   last check: "Not run yet" (the first check runs as soon as you switch it on,
   or about an hour after the server starts), "Last checked *when*: *N* series,
   *M* books coming or missing", or, in red, "Last check failed *when*" with the
-  reason. A failed check is tried again an hour later, up to three times. How
-  far back a release still counts as new (90 days) is set in the config file
-  only.
+  reason. How far back a release still counts as new (90 days) is set in the
+  config file only.
 - **Audible marketplace** in the **Matching** card is the store you buy from
   (United Kingdom, United States, Germany and so on). When a recording sells in
   several stores, a match takes this store's ASIN; with **No preference** it

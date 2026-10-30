@@ -304,8 +304,8 @@ screen and notification for it (the app's own chapters, the chapter list and the
 sleep timer's end of chapter are unchanged, since the JS side is file-based anyway);
 other files keep their clips. A file of unknown duration counts as long as its clips
 reach (the last chapter's end). The module's manifest sets
-`android:largeHeap="true"`, which puts the line at about 41 hours of audio in one file on the phones measured (the heap varies by device)
-(without it, about 4 hours). Known limit: two very long files meeting at a boundary
+`android:largeHeap="true"`, which puts the line at about 41 hours of audio in one
+file on the phones measured (about 4 without it; the heap varies by device). Known limit: two very long files meeting at a boundary
 can still overflow, since the budget counts one file's extractors.
 
 - **`TimelineMap` keeps the bridge contract file-based.** The JS store and iOS

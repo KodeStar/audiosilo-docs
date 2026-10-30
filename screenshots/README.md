@@ -240,12 +240,11 @@ writes `fixtures/call-of-the-wild.readalong.json` (the map a real Bridge made in
 3c-1 verification run, from the same recording and EPUB) into its `.audiosilo/`
 folder, cut to the `MAX_FILES` audio files seeded (its header has the rules). No
 audio is added and nothing large is committed (the map is 166 KB of JSON). The
-map is made from one exact EPUB (sha256 `e50ec086...`, the map's `ebook.sha256`):
-when the fetched EPUB is another file (Gutenberg rebuilt #215) or can't be fetched,
-`seed-readalong.mjs` writes nothing and `run.sh` stops at once if any read-along
-shot is wanted (the server would serve the map stale and the shots would fail much
-later with an unclear error), else carries on. To mend it, make the map again with
-a Bridge from the new EPUB, or put the old EPUB back in `.cache`. The
+map fits one exact EPUB (sha256 `e50ec086...`, the map's `ebook.sha256`): when
+Gutenberg has rebuilt #215, or it can't be fetched, `run.sh` stops at once if a
+manifest shot marked `readalong: true` is wanted (`seed-readalong.mjs`'s header says
+why), else carries on. To mend it, make the map again with a Bridge from the new
+EPUB, or put the old EPUB back in `.cache`. The
 captures run after every other web profile, since playing the book makes it the
 demo user's latest; `READALONG_SHOTS` in `capture-web.mjs` says what each one does.
 

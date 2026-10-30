@@ -303,7 +303,7 @@ the tab's scroller (the reader pages itself; inline on a tablet it is 520 px tal
   Reconnect, `SignInAgainState`), else a 401 says "Sign in to this server again to load
   the read-along"; `denied` "This read-along isn't yours to open"; `missing` "This book
   isn't on the server any more"; `ebookChanged` "The read-along is for a newer ebook"
-  (remove the download and download the book again). Only `retry` has Try again.
+  (remove the download and download the book again).
 - **Room for the pill**: while Back to narration shows, the page ends 48 px above the
   foot (`followPillRoom`), so it never covers the last line.
 - **The admin's empty state** (no map to follow): "No read-along for this book yet"
