@@ -138,8 +138,10 @@ type goes through the session, never into one host.
 (or its local read) as soon as they mount, while the screen still looks the place
 up, and hand the book over only once `placeKnown` is true (`usePlaceGate`), so the
 open is never the fetch after the lookup. In the app, the offline lookup's "EPUB on
-this device" counts the cache file only as it was when the screen mounted its host
-(`cachedBefore`): a copy this screen fetched meanwhile never opens a guessed start.
+this device" counts the cache file only while this screen's host did not fetch it:
+`localEbook` calls `onFetch` as a fetch starts, before any file of it exists, and the
+host passes it on (`ReaderHostProps.onFetch`, fe#193). So a copy this screen fetched
+never opens a guessed start, and a copy that was there is asked about as it is.
 
 ## The app host
 
@@ -372,8 +374,11 @@ admin's Make read-along offer lives in the Text tab. The listener's view is on
 ### The map
 
 `client.readalong(libraryId, path)` fetches the map by the **book's** path with the
-`Authorization` header only (the route takes no `?token=`), with a 60 s timeout
-(up to 16 MiB of JSON, and the server may hash the ebook first). `parseReadalongMap`
+`Authorization` header only (the route takes no `?token=`). On the web its 60 s
+timeout covers the answer (the server may hash the ebook first) and then restarts
+with every piece of the map as it arrives (up to 16 MiB of JSON), so only a stalled
+map fails, however slow the link (fe#193); the app's fetch hands over no body stream,
+so there the whole answer gets three minutes. `parseReadalongMap`
 checks it: the head must say `audiosilo-readalong/v1` with a `sections` array (else
 a `ReadalongMapError`); the server checks only the head, so **every span** is checked
 here, field by field: a `cfi` that starts `epubcfi(`, ends `)` and is at most 1024 UTF-8
@@ -393,11 +398,23 @@ Only a map with a sentence (`hasSpans`) reaches the reader. It returns:
 |---|---|
 | `map` | the sections and spans to send, or null: none to follow |
 | `pending` | still reading it |
-| `failed` | the read failed for a reason that says nothing about the map (offline, a 5xx, a timeout, a copy that won't read): never "no read-along". Only the server's 404 `no_readalong` and 409 `readalong_stale`, or the flag off (a `CapabilityError`), mean none (`readalongNone`) |
-| `retry` | read it again |
+| `failure` | why there is no map when its read failed (`ReadalongFailure`), else null; never "no read-along". Only the server's 404 `no_readalong` and 409 `readalong_stale`, or the flag off (a `CapabilityError`), mean none (`readalongNone`). `retry`: a reason that says nothing about the map (offline, a 5xx, a timeout, a copy that won't read); `signedOut`: a 401 (and any failure while the connection needs signing in again); `denied`: a 403; `missing`: a 404 without the read-along's own code; `ebookChanged`: the server's map was made from another ebook than the downloaded one (below). Only `retry` offers Try again, and none offers Make (fe#192) |
+| `offline` | the server's map waits for the connection with no copy on the device: neither pending nor failed, so a surface shows nothing (no spinner, no Make), and a map already shown stays meanwhile |
+| `retry` | read it again (for `retry`) |
 
 While another copy of the map shown is on its way (the download took it, the map was
 made again), the one shown stays: a reader that has a map never loses it in between.
+
+**A downloaded EPUB is the book its reader shows** (fe#193), so a server map made from
+another ebook is never paired with it: the download keeps the sha256 of the ebook its
+map was made from (`ebookSha256`, `useDownloadedEbookSha`), and a server map whose
+`ebook.sha256` differs is not used. With no sha kept (a download made before it, or
+one that never kept a map), a server ebook of another size than the one downloaded
+(`useDownloadedEbookSize`) counts as another ebook, as the download's refresh takes
+it. The download's own copy then stands in; with none, the failure is `ebookChanged`
+("The read-along is for a newer ebook": remove the download and download the book
+again). Online, a book the server calls `stale` has no map here even when the
+download's kept copy fits it (a known follow-up); offline the copy is used.
 
 ### The read-along messages
 
@@ -469,7 +486,10 @@ sends it **only while its book is the one the player holds**: another book playi
 has nothing to follow here. It never sets `followNarration`: once the reader said
 `ok`, a pill at the page's foot (`FollowPill`, `readalong-follow`, stacked with the
 Jump offer and the not-saved card) says **Follow narration**; pressing it calls
-`follow()`. Once the listener turns a page away it says **Back to narration**.
+`follow()`. Once the listener turns a page away it says **Back to narration**. While
+the pill shows, the page ends `FOLLOW_PILL_ROOM` (48 px) above the foot
+(`followPillRoom`), so the pill never covers the last line (fe#192); the companion's
+Text tab does the same.
 
 **No reading-place save while following.** The narration turns the pages, not the
 reader, so `onFollowing(true)` drops the save timer and any pending save; leaving
@@ -484,5 +504,8 @@ too. The companion's Text tab never saves a reading place at all
 Known follow-ups: a generic save queue shared with progress sync; from 3b-2, a
 clearer notice for a book over the 512 MB limit or an allocation failure, checking a
 downloaded `book.epub`'s size, a cap on the cache's size, a disk-full notice and
-pinch zoom; from 3c-2, comparing a kept read-along map with the download's own
-EPUB (its sha256), and Try again for a signed-out or missing book in the Text tab.
+pinch zoom; from fix batch R, hiding the app's Text tab offline (the app has no
+`onlineManager` wiring yet, so offline it says "couldn't load" with Try again), a
+download whose `book.epub` won't read being checked against the server's map by the
+download's sha, and using a stale book's kept map online when it still fits the
+download.

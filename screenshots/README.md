@@ -232,14 +232,20 @@ hour), asked again from the script with `GITHUB_TOKEN` when it is set
 (`GITHUB_TOKEN=$(gh auth token)`).
 
 The read-along shots (`web-player/player-text.png`,
-`web-player/reader-readalong.png`, `web-player/phone-player-text.png`, Bridge Phase
-3c-2) need a book the server serves a `ready` read-along map for. No Bridge runs:
+`web-player/reader-readalong.png`, `web-player/phone-player-text-chip.png`,
+`web-player/phone-player-text.png`, Bridge Phase 3c-2) need a book the server serves a `ready` read-along map for. No Bridge runs:
 `run.sh` (section 2e) puts Project Gutenberg's EPUB of **The Call of the Wild**
 (ebook #215, fetched once into `.cache`) beside its audio, and `seed-readalong.mjs`
 writes `fixtures/call-of-the-wild.readalong.json` (the map a real Bridge made in the
 3c-1 verification run, from the same recording and EPUB) into its `.audiosilo/`
 folder, cut to the `MAX_FILES` audio files seeded (its header has the rules). No
 audio is added and nothing large is committed (the map is 166 KB of JSON). The
+map is made from one exact EPUB (sha256 `e50ec086...`, the map's `ebook.sha256`):
+when the fetched EPUB is another file (Gutenberg rebuilt #215) or can't be fetched,
+`seed-readalong.mjs` writes nothing and `run.sh` stops at once if any read-along
+shot is wanted (the server would serve the map stale and the shots would fail much
+later with an unclear error), else carries on. To mend it, make the map again with
+a Bridge from the new EPUB, or put the old EPUB back in `.cache`. The
 captures run after every other web profile, since playing the book makes it the
 demo user's latest; `READALONG_SHOTS` in `capture-web.mjs` says what each one does.
 

@@ -45,13 +45,27 @@ For a book with a **read-along** (your server's [Bridge](../admin/making-read-al
 - **Turn the page** (the edges of the text, or a swipe) to look back or ahead: the tab stops following, and a **Back to narration** button takes you back to the sentence being read.
 - Pausing, skipping and changing the speed in the player move the highlight with it.
 
-On a computer the tab is in the companion column; on a tablet it sits under the controls with the other tabs. On a phone there's no chip for it: open the companion from any chip (**Chapters**, say), then pick **Text** at the top of the sheet.
+On a computer the tab is in the companion column; on a tablet it sits under the controls with the other tabs. On a phone, the **Text** chip under the player's actions opens the companion sheet straight on it (the chip is there whenever the book has a Text tab).
+
+![The player on a phone with a Text chip among the companion chips](/img/screenshots/web-player/phone-player-text-chip.png)
 
 ![The companion sheet on a phone, on its Text tab](/img/screenshots/web-player/phone-player-text.png)
 
+While the text has turned away from the narration, the **Back to narration** button sits below the page, so it never covers the last line.
+
 The companion only shows **Text** when you've picked it (it starts on another tab otherwise), since it opens the ebook. It doesn't save your reading place: that's for the full-screen reader ([Reading the ebook](reading-the-ebook.md#follow-the-narration), which can follow the narration too). It needs the book's server on version 2.6.0 or later and, on a phone or tablet, version 2.6.0 or later of the app.
 
-The tab appears only once the book's read-along has loaded. A book without one, or whose read-along is out of date (its ebook or audio files changed since it was made), has no Text tab. If the text can't load (the connection dropped, say), the tab says **Couldn't load the text** with **Try again**; if the read-along doesn't match this ebook at all, it says **The text can't follow this narration**. A [downloaded](offline-downloads.md) book keeps its read-along with its ebook, so the Text tab works offline too.
+The tab appears only once the book's read-along has loaded. A book without one, or whose read-along is out of date (its ebook or audio files changed since it was made), has no Text tab. If the read-along can't load, the tab says why:
+
+| It says | What happened, and what to do |
+|---|---|
+| **Couldn't load the text** with **Try again** | The connection dropped, or the server didn't answer. Try again once you're back online. |
+| **Sign in again to *your server*** with **Reconnect** (or **Couldn't load the text**, asking you to sign in to the server again) | This device's sign-in to the server has ended. Sign in again, and the text loads. |
+| **This read-along isn't yours to open** | The server no longer shares this book with you. Ask the person who runs it. |
+| **This book isn't on the server any more** | It may have moved or been removed. Open it from the library again. |
+| **The read-along is for a newer ebook** | Only for a [downloaded](offline-downloads.md) book: the ebook on the server was replaced after you downloaded the book, and the read-along was made from the new one, so it doesn't line up with the ebook on your device. Remove the download and download the book again. |
+
+Only the first can be mended by trying again, so only it has a button. If the read-along doesn't match this ebook at all, the tab says **The text can't follow this narration**. A [downloaded](offline-downloads.md) book keeps its read-along with its ebook, so the Text tab works offline too. In the web player, a book that isn't downloaded has no Text tab while you're offline (it comes back with the connection).
 
 ### Making one (admins)
 

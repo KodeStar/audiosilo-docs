@@ -24,7 +24,7 @@ If a book's chapters are just named after their audio files, AudioSilo tidies th
 
 ## On a phone, a tablet and a computer
 
-- **On a phone** the player fills the screen. Under the actions, chips for **Who's who** and **Story so far** (when your server has community metadata switched on) and **Chapters** open the companion as a sheet; the chapter title opens it on **Chapters**. The other tabs, **Text** among them, are at the top of the sheet.
+- **On a phone** the player fills the screen. Under the actions, chips for **Who's who** and **Story so far** (when your server has community metadata switched on), **Text** (for a book with a [read-along](companion.md#text)) and **Chapters** open the companion as a sheet; the chapter title opens it on **Chapters**. The other tabs are at the top of the sheet.
 
   ![The player on a phone, paused, with the companion chips under the actions](/img/screenshots/web-player/phone-player.png)
 

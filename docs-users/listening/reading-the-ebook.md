@@ -74,7 +74,7 @@ Following the narration needs a server on version 2.6.0 or later and, on a phone
 - **Start the book playing** (or load it in the player and pause), then press **Read the ebook**. Once the reader has opened the book, a **Follow narration** button appears at the foot of the page.
 - Press **Follow narration**: the reader turns to the sentence being read and highlights it, and turns the pages by itself as the narration goes on, through the chapters too. Pausing, skipping or changing the speed in the player moves the highlight with it.
 - **Tap a sentence** to move the audiobook to the start of that sentence (it plays on from there if it's playing).
-- **Turn the page yourself** and the reader stops following, so you can look back or ahead in peace; the button then says **Back to narration**. A jump in the player (a skip, a chapter, the seek bar) brings it back too.
+- **Turn the page yourself** and the reader stops following, so you can look back or ahead in peace; the button then says **Back to narration** (it sits below the page, never over the last line). A jump in the player (a skip, a chapter, the seek bar) brings it back too.
 
 While the reader follows the narration, it doesn't save your reading place: the narration is turning the pages, not you. As soon as you turn away, the page you're on is saved as usual.
 

@@ -87,8 +87,9 @@ modal but a desktop browser can be any size.
   Voice boost state pill, `useEffectsPill`, while either is on: see
   [Smart speed and Voice boost](audio-effects.md#the-settings-and-the-ui)).
 - **Phone:** a flex column whose cover slot takes what the rest leaves, so the
-  player fits without scrolling; `CompanionChips` open the companion sheet on a
-  tab (`openCompanion(tab)`).
+  player fits without scrolling; `CompanionChips` (Who's who and Story so far with
+  community metadata, Text while the book has a Text tab, Chapters) open the
+  companion sheet on a tab (`openCompanion(tab)`).
 - **Tablet:** the companion inline under the controls (`variant="inline"`, the page
   scrolls).
 - **Desktop:** the companion as a fixed-width column (`variant="column"`), and no
@@ -271,12 +272,15 @@ download's), its map (`useBookReadalong`) and whether this person may make one
 |---|---|
 | a listener | once the map is in with a sentence to follow; never while it is on its way (no tab that vanishes a moment later), never for a stale or absent map |
 | an admin who may make one | always: a spinner while the map is on its way, the Make offer where there is none to follow |
-| anyone | when the map's read failed (offline, a 5xx): "Couldn't load the text" with Try again, never the Make offer (a map may well be there, and making it again takes hours) |
+| anyone | when the map's read failed (`failure`, [The ebook reader](reader.md#the-map)): a notice by its reason (below), never the Make offer (a map may well be there, and making it again takes hours) |
+| nobody, an admin included | while the server's map waits for the connection with nothing on the device (`offline`): nothing can be said or made meanwhile |
 
 The companion never lands on Text unasked (`activeCompanionTab` falls back to the
 first tab that isn't Text), since it starts a reader; the tab picked last still
-wins while the book has it. The phone's chips have no Text chip: the sheet opens from another
-chip, and Text is one of its tabs. `TextPanel` (`text-panel.tsx`) renders, outside
+wins while the book has it. On a phone, `CompanionChips` shows a **Text** chip (testID
+`player-chip-text`, between Story so far and Chapters, in the companion's tab order)
+while `useTextTab` shows the tab for the playing book (fe#192), so the chip opens the
+sheet straight on Text. `TextPanel` (`text-panel.tsx`) renders, outside
 the tab's scroller (the reader pages itself; inline on a tablet it is 520 px tall):
 
 - **`ReadAlong`**, one per book (keyed by it: the playing book changing under an open
@@ -293,6 +297,15 @@ the tab's scroller (the reader pages itself; inline on a tablet it is 520 px tal
   admin; a part of the book didn't load (fe#164), the reader didn't start, or the
   EPUB fetch failed: "Couldn't load the text" with Try again (a new host); no client
   for the book's server: "This book's server isn't connected".
+- **The map's failures** (`MapFailure`, fe#192), by `failure`: `retry` is "Couldn't
+  load the text" with "The read-along didn't load" and Try again; a connection that
+  needs signing in again is the sign-in state ("Sign in again to *server*" with
+  Reconnect, `SignInAgainState`), else a 401 says "Sign in to this server again to load
+  the read-along"; `denied` "This read-along isn't yours to open"; `missing` "This book
+  isn't on the server any more"; `ebookChanged` "The read-along is for a newer ebook"
+  (remove the download and download the book again). Only `retry` has Try again.
+- **Room for the pill**: while Back to narration shows, the page ends 48 px above the
+  foot (`followPillRoom`), so it never covers the last line.
 - **The admin's empty state** (no map to follow): "No read-along for this book yet"
   and what a read-along is, or, for a stale map, "The read-along is out of date"
   with why (`textStaleEbook`, `textStaleAudio` by the server's `reason`), then

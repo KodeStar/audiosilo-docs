@@ -1125,13 +1125,14 @@ await capturePhone('phone', PHONE, {
 // started from its page (the warm-up left it in chapter 1, inside the map) and paused,
 // a still frame: the reader highlights the sentence at the paused place. Desktop: the
 // full player's companion on its Text tab, following the narration, then the
-// full-screen reader (Read the ebook) after Follow narration. Phone: the companion
-// sheet from the Chapters chip (the phone has no Text chip), switched to Text. Each
-// opens the book by its route. Run after the other profiles, since playing the book
-// makes it the demo user's latest.
+// full-screen reader (Read the ebook) after Follow narration. Phone: the full player
+// with its Text chip (shown while the companion has a Text tab, fe#192), then the
+// companion sheet that chip opens, on Text. Each opens the book by its route. Run after
+// the other profiles, since playing the book makes it the demo user's latest.
 const READALONG_SHOTS = {
   text: 'web-player/player-text.png',
   reader: 'web-player/reader-readalong.png',
+  phoneChip: 'web-player/phone-player-text-chip.png',
   phoneText: 'web-player/phone-player-text.png',
 };
 
@@ -1200,14 +1201,23 @@ async function captureReadalong() {
     }
   }
 
-  if (wanted(READALONG_SHOTS.phoneText)) {
+  if (wanted(READALONG_SHOTS.phoneChip, READALONG_SHOTS.phoneText)) {
     const {ctx, page} = await newProfile('read-along phone', PHONE);
     try {
       await step('read-along: phone text tab', async () => {
         await openReadalongBook(page);
         try {
           await playThenPause(page);
-          await firstVisible(tid(page, 'player-companion-chips').getByRole('button', {name: 'Chapters'})).click({timeout: 8000});
+          // The Text chip comes once the book's map is in (useTextTab).
+          const chip = firstVisible(tid(page, 'player-chip-text'));
+          await chip.waitFor({timeout: 30000});
+          if (wanted(READALONG_SHOTS.phoneChip)) {
+            await sleep(SETTLE_MS);
+            await page.mouse.move(0, 0);
+            await shoot(page, READALONG_SHOTS.phoneChip);
+          }
+          if (!wanted(READALONG_SHOTS.phoneText)) return;
+          await chip.click({timeout: 8000});
           await textTabShot(page, READALONG_SHOTS.phoneText);
         } finally {
           // The sheet closes with Escape (its own Close is one of several), then the player.
