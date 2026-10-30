@@ -9,7 +9,7 @@ The list comes from the [community metadata database](../community/meta-site.md)
 
 ## Coming up in your series on Home
 
-When there's something to show, the [home screen](browsing.md#the-home-screen) has a **Coming up in your series** shelf, right after **Next in your series**: preorders first, then recent releases, then the books you're missing.
+The [home screen](browsing.md#the-home-screen) has a **Coming up in your series** shelf, right after **Next in your series**: preorders first, then recent releases, then the books you're missing.
 
 ![Home scrolled to Coming up in your series: pale ghost covers for the Sherlock Holmes books the library is missing, each with its series and number and when it first came out](/img/screenshots/web-player/home-upcoming.png)
 

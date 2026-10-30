@@ -32,6 +32,7 @@ import {
   DAY,
   DESKTOP_CONTEXT,
   FIXTURES,
+  HOLMES_MATCH,
   HOUR,
   MIN,
   PHONE,
@@ -531,6 +532,13 @@ async function scrollToTop(locator) {
 
 // A short pause for an entrance animation to finish after the state it waits on.
 const SETTLE_MS = 600;
+
+// Let the covers settle, then shoot `file` with the pointer out of the way.
+async function settleShoot(page, file, ms = 1500) {
+  await sleep(ms);
+  await page.mouse.move(0, 0);
+  await shoot(page, file);
+}
 
 // The frontend's jump-undo ignores every jump for its SETTLE_MS (3 s) after a book
 // first plays (src/playback/jump-undo.ts); this leaves the load a few seconds on top.
@@ -1369,12 +1377,6 @@ async function capturePodcasts(pod) {
     // The episode the fetching shot starts (not on the server; also the newest on Home).
     const fetchEpisode = pod.shows.find((s) => s.folder === PODCAST_FETCH_SHOW)?.feed.episodes.find((e) => !e.fetch);
     if (!fetchEpisode) throw new Error(`no episode of ${PODCAST_FETCH_SHOW} that is not on the server`);
-    // Let the covers settle, then shoot `file` with the pointer out of the way.
-    const settleShoot = async (p, file, ms = 1500) => {
-      await sleep(ms);
-      await p.mouse.move(0, 0);
-      await shoot(p, file);
-    };
 
     if (wanted(PODCAST_SHOTS.home)) {
       await step('podcasts: home', async () => {
@@ -2397,38 +2399,21 @@ if (wanted(...Object.values(HOUSE_SHOTS))) {
 
 // ── Upcoming releases (Track U2) ────────────────────────────────────────────
 // Home's Coming up in your series and the Upcoming page need what the server's upcoming
-// releases job found, and the seeded books carry no ASIN, so the job has no community
-// series to follow. For this pass only, The Adventures of Sherlock Holmes gets the US
-// ASIN the admin series shot uses (a recording the live catalogue files under that work),
-// the admin switches the job off and on again (a server whose job never succeeded then
-// runs it at once) and the pass waits for GET /me/upcoming to answer `ok` with items:
-// Sherlock Holmes's real gaps from the live catalogue (the books below book 5 the seed
-// lacks, and the next one after it), all "Missing from your series" with their first
-// release dates and the "New" badge (the job listed them just now); the seeded series
-// have no preorder or recent release, so Coming soon and Just released don't show. The
-// ASIN is reverted afterwards. What the job stored, and its last run, stay until its
-// next run, so this pass comes after the other player shots, and the admin console's
-// Community metadata shot shows that last check. Needs the network (the live catalogue).
+// releases job found: for this pass Sherlock Holmes is matched (HOLMES_MATCH), the job is
+// switched off and on so it runs at once, and the ASIN is reverted afterwards. What the
+// job stored stays until its next run, so this pass comes after the other player shots.
+// Needs the network (the live catalogue); README.md has the whole account.
 const UPCOMING_SHOTS = {
   home: 'web-player/home-upcoming.png',
   page: 'web-player/upcoming.png',
   phone: 'web-player/phone-upcoming.png',
 };
-const UPCOMING_MATCH = {author: 'Sir Arthur Conan Doyle', title: 'Adventures of Sherlock Holmes', asin: 'B00OQT6ZJ6'};
 
-// The demo listener's Upcoming page at `viewport`, once its rows show.
-async function upcomingPageShot(viewport, file) {
-  const ctx = await newCaptureContext({viewport, storageState: AUTH});
-  try {
-    const page = await ctx.newPage();
-    await page.goto(BASE + 'upcoming', {waitUntil: 'networkidle', timeout: 45000});
-    await tid(page, 'upcoming-row').waitFor({timeout: 30000});
-    await sleep(1500);
-    await page.mouse.move(0, 0);
-    await shoot(page, file);
-  } finally {
-    await ctx.close();
-  }
+// The demo listener's Upcoming page in `page`, once its rows show.
+async function upcomingPageShot(page, file) {
+  await page.goto(BASE + 'upcoming', {waitUntil: 'networkidle', timeout: 45000});
+  await tid(page, 'upcoming-row').waitFor({timeout: 30000});
+  await settleShoot(page, file);
 }
 
 if (wanted(...Object.values(UPCOMING_SHOTS))) {
@@ -2437,10 +2422,10 @@ if (wanted(...Object.values(UPCOMING_SHOTS))) {
   try {
     await step('upcoming: run the job', () =>
       asAdmin(async (token) => {
-        const list = await api(token, 'GET', `/admin/books?author=${encodeURIComponent(UPCOMING_MATCH.author)}&limit=50`);
-        const b = seededBook(list?.books ?? [], UPCOMING_MATCH.title);
+        const list = await api(token, 'GET', `/admin/books?author=${encodeURIComponent(HOLMES_MATCH.author)}&limit=50`);
+        const b = seededBook(list?.books ?? [], HOLMES_MATCH.title);
         holmesEdit = `/admin/libraries/${b.library_id}/book${pathQuery(b.path)}`;
-        await api(token, 'PATCH', holmesEdit, {set: {asin: UPCOMING_MATCH.asin}});
+        await api(token, 'PATCH', holmesEdit, {set: {asin: HOLMES_MATCH.asin}});
         await api(token, 'PATCH', '/admin/settings', {metadata: {upcoming: false}});
         await api(token, 'PATCH', '/admin/settings', {metadata: {upcoming: true}});
         const ready = (up) => up?.status === 'ok' && up.items?.length > 0;
@@ -2454,30 +2439,37 @@ if (wanted(...Object.values(UPCOMING_SHOTS))) {
       }),
     );
 
-    if (wanted(UPCOMING_SHOTS.home)) {
-      await step('upcoming: home', async () => {
-        const ctx = await newCaptureContext({viewport: {width: 1440, height: 900}, storageState: AUTH});
+    if (wanted(UPCOMING_SHOTS.home, UPCOMING_SHOTS.page)) {
+      const ctx = await newCaptureContext({storageState: AUTH});
+      try {
+        const page = await ctx.newPage();
+        if (wanted(UPCOMING_SHOTS.home)) {
+          await step('upcoming: home', async () => {
+            await page.goto(BASE, {waitUntil: 'networkidle', timeout: 45000});
+            const heading = firstVisible(page.getByText('Coming up in your series', {exact: true}));
+            await heading.waitFor({timeout: 30000});
+            await tid(page, 'upcoming-tile').waitFor({timeout: 15000});
+            await heading.evaluate((el) => el.scrollIntoView({block: 'start'}));
+            await page.mouse.wheel(0, -120);
+            await settleShoot(page, UPCOMING_SHOTS.home);
+          });
+        }
+        if (wanted(UPCOMING_SHOTS.page)) {
+          await step('upcoming: page', () => upcomingPageShot(page, UPCOMING_SHOTS.page));
+        }
+      } finally {
+        await ctx.close();
+      }
+    }
+    if (wanted(UPCOMING_SHOTS.phone)) {
+      await step('upcoming: phone', async () => {
+        const ctx = await newCaptureContext({viewport: PHONE, storageState: AUTH});
         try {
-          const page = await ctx.newPage();
-          await page.goto(BASE, {waitUntil: 'networkidle', timeout: 45000});
-          const heading = firstVisible(page.getByText('Coming up in your series', {exact: true}));
-          await heading.waitFor({timeout: 30000});
-          await tid(page, 'upcoming-tile').waitFor({timeout: 15000});
-          await heading.evaluate((el) => el.scrollIntoView({block: 'start'}));
-          await page.mouse.wheel(0, -120);
-          await sleep(1500);
-          await page.mouse.move(0, 0);
-          await shoot(page, UPCOMING_SHOTS.home);
+          await upcomingPageShot(await ctx.newPage(), UPCOMING_SHOTS.phone);
         } finally {
           await ctx.close();
         }
       });
-    }
-    if (wanted(UPCOMING_SHOTS.page)) {
-      await step('upcoming: page', () => upcomingPageShot({width: 1440, height: 900}, UPCOMING_SHOTS.page));
-    }
-    if (wanted(UPCOMING_SHOTS.phone)) {
-      await step('upcoming: phone', () => upcomingPageShot(PHONE, UPCOMING_SHOTS.phone));
     }
   } finally {
     if (holmesEdit) {

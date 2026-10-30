@@ -953,8 +953,8 @@ merged across their servers. User guide: [Upcoming releases](/users/listening/up
 - **Series pages.** `railEntries` (`series-model.ts`) gives a ghost its `release_date`:
   `outDate` while it is still ahead (the list's `entryLine` and the face-out note show
   "Out 12 Nov 2026" in place of "Not in your library"), else its year.
-- **Kids and demo.** A kid sees none of it (no request, rail, You section or list; the
-  route shows the "not here" state). A demo account reads it like anyone else.
+- **Kids and demo.** A kid gets no rail or You section, and the route shows the "not
+  here" state. A demo account reads it like anyone else.
 
 ## Zustand stores
 

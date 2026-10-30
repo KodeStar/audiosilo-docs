@@ -530,9 +530,8 @@ taken from each item's tag or URL) once a day, and `GET /series/{id}` for a seri
 never read, one with news or one read over a week ago, and the
 series rails' work cards carry `release_date` through to `/meta` (additive). The
 player (2.6.0, Track U2) reads [`GET /me/upcoming`](../server/api/reference.md#get-apiv1meupcoming)
-as `UpcomingResponse` in `types.ts` (`client.upcoming()`, `useUpcomingAll()`: one query
-per connection whose server sends `upcoming` and whose user is not a kid, `skipToken`
-otherwise, merged one row per `work.id` in the server's order) for Home's Coming up in
+as `UpcomingResponse` in `types.ts` (`client.upcoming()`, `useUpcomingAll()`; only a
+server that sends `upcoming`, never for a kid) for Home's Coming up in
 your series, the `/upcoming` page and the You hub's Upcoming section, opening an item's
 series page by its `local` view; the series page dates its not-yet-released ghosts from
 the rails' `release_date` ("Out 12 Nov 2026"). Details:

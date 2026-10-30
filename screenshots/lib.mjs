@@ -52,6 +52,13 @@ export const DESKTOP_CONTEXT = {
 // The phone viewport (a large iPhone, in CSS pixels) every phone shot uses.
 export const PHONE = {width: 430, height: 932};
 
+// A seeded book to match for a shot that needs the community's view of a series: the
+// seeded books carry no ASIN. This is the US ASIN of a recording of The Adventures of
+// Sherlock Holmes the live catalogue files under that work (b-j-harrison-2014), so its
+// series shows the books the seed lacks, each dated by its first release. The admin
+// Series shot and the player's upcoming pass set it for their shots and revert it.
+export const HOLMES_MATCH = {author: 'Sir Arthur Conan Doyle', title: 'Adventures of Sherlock Holmes', asin: 'B00OQT6ZJ6'};
+
 // Makes the viewport as tall as the page (between min and max, at the desktop
 // width), so a long card or every card is in the shot; the caller restores
 // DESKTOP_CONTEXT.viewport.
