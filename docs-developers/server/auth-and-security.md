@@ -49,8 +49,9 @@ codes/tokens in the response body and store only the hash.
 
 `tokens.kind` distinguishes three kinds of credential a client holds
 (`auth.KindSession`, `auth.KindPairing`, `auth.KindAPI`), plus the
-[cast tokens](#cast-tokens) a player hands a Chromecast receiver (`auth.KindCast`)
-and the [Bridge's token](#bridge-tokens) (`auth.KindBridge`):
+[cast tokens](#cast-tokens) a player hands a Chromecast receiver (`auth.KindCast`),
+the [Bridge's token](#bridge-tokens) (`auth.KindBridge`) and a listener's
+[calendar feed token](#calendar-feed-tokens) (`auth.KindFeed`):
 
 - **Session tokens** are the durable bearer credential (`Authorization: Bearer
   …`). Issued by `POST /auth/login` and `POST /auth/exchange` with **no
@@ -93,8 +94,9 @@ and the [Bridge's token](#bridge-tokens) (`auth.KindBridge`):
   NAT shares. **Containment:** an API-key
   caller is additionally barred (403, via `denyAPIKey` in
   `internal/api/handlers_auth.go`, also called by `handlers_cast.go` and
-  `handlers_members.go`) from the credential-minting routes
-  (`POST /auth/{tokens,recovery,pair,password}`, `POST /cast/token`, and every
+  `handlers_members.go` and `handlers_upcoming_calendar.go`) from the credential-minting routes
+  (`POST /auth/{tokens,recovery,pair,password}`, `POST /cast/token`, the calendar
+  link's `POST` and `DELETE /me/upcoming/calendar`, and every
   [household member](#household-members) route, whose create, `…/session` and
   `…/pair` make a member's session or pairing code), so a leaked key can never spawn a fresh credential - another
   key, recovery code, pairing token, or password that would outlive its own
@@ -215,6 +217,57 @@ were): its calls, a heartbeat every 30 seconds, are not its admin's activity, wh
 is the newest `last_seen` of their tokens. The heartbeat says when the Bridge was
 last heard. Only the SHA-256 hash is stored.
 
+### Calendar feed tokens
+
+A listener's calendar link (capability `upcoming_calendar`, Track U3,
+`internal/auth/feed.go`) is a `tokens` row of kind `feed` (`auth.KindFeed`): the
+secret of `GET /me/upcoming/releases.ics?token=<secret>`, which a calendar app
+polls by its URL alone, so it has to ride in the URL and be shown to the person to
+paste. It is built so that a link that gets out reads that person's upcoming
+release list and nothing else:
+
+- **One route, one kind.** `GET /me/upcoming/releases.ics` is the only route that
+  lists `KindFeed` (`requireFeedAuth`: `mediaAuth` with `feedKinds`, `?token=` or
+  the header, the media rate limit per credential), and it lists no other kind: a
+  session, API key, cast, bridge or pairing token is `401` there, and a feed token is
+  `401` on every other route, media `?token=` included. Two tests hold that:
+  `TestFeedTokenRefusedOnEveryOtherRoute` sends one (header and `?token=`) to every
+  route in the table, and `TestFeedKindNamedOnce` checks that the api package names
+  `auth.KindFeed` only in `feedKinds`, uses `feedKinds` only in `requireFeedAuth`,
+  and wraps one route in it.
+- **Minted only from a session.** `POST /me/upcoming/calendar`
+  (`auth.IssueFeedToken(user, session)`: `generateToken`, the SHA-256 hash stored,
+  no expiry, device name "Calendar feed") is refused to an API key (`denyAPIKey`,
+  plain `403`), a kid (`403 kid_account`, by `notKid` and again by `refuseKid`
+  inside the write) and a demo account (`403 demo_account`). It copies the
+  `created_on_token_id` of the session it was made from (the owner's device that
+  sign-in was made on; none for a sign-in on the person's own device), so a member
+  signed in on their owner's device makes the link "on" that device.
+- **One per user.** A mint deletes the earlier row in the same durable transaction,
+  and migration `0060`'s partial unique index `idx_tokens_feed_user`
+  (`tokens(user_id) WHERE kind = 'feed' AND revoked = 0`) refuses a second live row
+  whatever writes it. `created_at` is set in milliseconds and always after the link
+  it replaced (two resets in one millisecond included), so a client compares it
+  with `GET /me/upcoming/calendar`'s to tell whether its copy is the live link.
+- **Deleted when it ends, never flagged.** A reset, Turn off
+  (`DELETE /me/upcoming/calendar`, `auth.RevokeFeedToken`), the switch to a kid
+  (`clearKidCredentials`, the owner's member edit and the admin's assign alike) and
+  a move into another owner's household when the link was made on someone else's
+  device (`leaveOwners`, with the sign-in made there; one made on the person's own
+  device stays, as that sign-in does) delete the row. Deleting the account
+  cascades; a disabled account's token is refused by `lookupToken` while it is
+  disabled. A password change revokes no token of any kind on this server, so it
+  leaves the link alone too.
+- **Behind the token, the person's own rules.** The route still applies `notKid`
+  (`403` for a leftover token of a person who is now a kid) and the two `404`s, and
+  reads the list with the owner's scopes at the request, so a share taken away is
+  felt at once.
+
+A feed token is never **touched** (`auth.neverTouched`, as a bridge token: a
+calendar's polls are not the person's activity, and no `last_ip` is kept), never a
+**device** (the device lists and sign-outs take session and API-key kinds only), and
+is held in the token cache like a session (every way it ends is a content write).
+
 `auth.ResolveRequest` (which `ResolveToken` wraps for a single kind) validates a presented secret for the accepted kinds: it hashes
 the secret, looks up the row, and rejects revoked tokens, expired tokens, and
 tokens whose user is disabled. On success it bumps `tokens.last_seen` - which
@@ -248,7 +301,8 @@ The middleware wrappers in `internal/api/middleware.go`:
   credential. A book's ebook (`GET /libraries/{id}/ebook`) is served under it on
   purpose, not as media (see [Cast tokens](#cast-tokens)).
 - `requireMediaAuth` - additionally accepts `?token=` as a query parameter,
-  used **only** for the media GETs (`/meta/cover` for a community cover; a book's
+  used **only** for the media GETs (`/meta/cover` for a community cover and
+  `/me/upcoming/cover` for an upcoming release's; a book's
   `/cover` and `/stream` use `requireBookMediaAuth`, below) because browser
   `<img>`/`<audio>` elements cannot set headers. `bearerToken(r, allowQuery)`
   confines the fallback deliberately: a token in a query string can leak into
@@ -260,6 +314,9 @@ The middleware wrappers in `internal/api/middleware.go`:
   A cast-authenticated answer sets `Cross-Origin-Resource-Policy: cross-origin`,
   and so does every authenticated media answer once `cors_origins` is set
   (below).
+- `requireFeedAuth` - the same sequence accepting **only** a
+  [calendar feed token](#calendar-feed-tokens), header or `?token=`; used only on
+  `GET /me/upcoming/releases.ics`.
 - `requireAdmin` - `requireAuth` plus a role check; every `/admin/*` route uses
   it. The baked-in admin HTML is unprivileged - the API enforces the role.
 

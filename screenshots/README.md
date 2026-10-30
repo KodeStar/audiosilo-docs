@@ -143,7 +143,8 @@ wait is most of an admin run's length; a smaller value is fine for checking the
 script.
 
 The upcoming releases shots (`web-player/home-upcoming.png`,
-`web-player/upcoming.png`, `web-player/phone-upcoming.png`) need what the
+`web-player/upcoming.png`, `web-player/phone-upcoming.png`,
+`web-player/upcoming-calendar.png`) need what the
 server's daily upcoming releases job found, and the seeded books carry no ASIN.
 `capture-web.mjs`'s upcoming pass, after the other player shots, gives The
 Adventures of Sherlock Holmes the same US ASIN the admin series shot uses,
@@ -151,7 +152,12 @@ switches the job off and on through `PATCH /admin/settings` (a server whose
 job has not succeeded in the last day then runs it at once), waits up to three minutes for
 `GET /me/upcoming` to answer `ok` with items, shoots the demo listener's Home
 rail and the Upcoming page (none when the job listed nothing), and reverts the
-ASIN (and switches the job back on if the pass left it off). The items are real: the
+ASIN (and switches the job back on if the pass left it off). The covers are the
+items' real community covers, which the server fetches from their hosts. A demo
+account can't make a calendar link, so the calendar shot signs the admin in to the
+player in a fresh browser, presses **Get calendar link** on the Upcoming page and
+shoots the card; it then turns the link off and signs that session out again, so
+neither outlives the shot (nor shows in the admin Devices shot). The items are real: the
 Sherlock Holmes books the seed lacks, from the live catalogue (so it needs the
 network), all "Missing from your series" with the "New" badge; the seeded
 series have no preorder or recent release. The job's stored items and last run

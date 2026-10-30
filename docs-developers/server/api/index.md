@@ -144,7 +144,8 @@ key satisfies the admin-role check, a regular user's does not. Pairing tokens
 are never accepted as a bearer credential, and an API key is never valid for
 `/auth/exchange`. It also **cannot mint a fresh durable credential** - an API-key
 caller is refused (403) on the credential-minting routes (create key, recovery,
-pair, set password, cast token, and every household member route), so revoking a
+pair, set password, cast token, the calendar link, and every household member
+route), so revoking a
 leaked key cuts off everything it could reach.
 See the [reference](reference.md#personal-api-keys).
 
@@ -158,17 +159,30 @@ every other credential. On those routes a failure to check the token is a `503`,
 not a `401`, since a `401` tells the Bridge its token is refused. Its calls don't
 bump `last_seen`. See [The Bridge](reference.md#the-bridge).
 
-### Media requests: `?token=` - media GETs only
+A listener's **calendar feed** (capability `upcoming_calendar`) is a token of kind
+`feed`, made by [`POST /me/upcoming/calendar`](reference.md#post-apiv1meupcomingcalendar)
+(session only, one per user). It is accepted **only** on
+[`GET /me/upcoming/releases.ics`](reference.md#get-apiv1meupcomingreleasesics), as
+the header or `?token=` (a calendar app reads a subscription by its URL alone), and
+that route takes no other kind: a feed token is `401` everywhere else, and a session
+or API key is `401` there. Its polls don't bump
+`last_seen`, and it is never a device. See
+[Calendar feed tokens](../auth-and-security.md#calendar-feed-tokens).
 
-`GET /libraries/{id}/cover`, `GET /libraries/{id}/stream` and
-`GET /libraries/{id}/meta/cover` (a community cover, `meta_covers`) accept the
+### Media requests: `?token=` - media GETs and the calendar feed only
+
+`GET /libraries/{id}/cover`, `GET /libraries/{id}/stream`,
+`GET /libraries/{id}/meta/cover` (a community cover, `meta_covers`) and
+`GET /me/upcoming/cover` (an upcoming release's cover, `upcoming_covers`) accept the
 session token **either** as the bearer header **or** as a `?token=` query
 parameter. This exists because browser `<img>` and `<audio>` elements cannot set
 an `Authorization` header. The query fallback is deliberately confined to these
-three routes (`requireBookMediaAuth` for cover and stream, `requireMediaAuth` for
-`/meta/cover`, both `mediaAuth` in `internal/api/middleware.go`): a token in a query
-string can leak into access logs and `Referer` headers, so no other route
-accepts it. Native clients should keep using the header even for media.
+four routes and the calendar feed, whose `?token=` is a **feed** token, never a
+session token (`requireBookMediaAuth` for cover and stream, `requireMediaAuth` for
+the two community covers, `requireFeedAuth` for the feed, all `mediaAuth` in
+`internal/api/middleware.go`): a token in a query string can leak into access logs
+and `Referer` headers, so no other route accepts it. Native clients should keep
+using the header even for media.
 
 A book's **ebook** ([`GET /libraries/{id}/ebook`](reference.md#get-apiv1librariesidebook),
 capability `ebooks`) is deliberately not one of them: it takes the header only, and
@@ -251,11 +265,12 @@ Failures a person can fix also carry a machine-readable **`code`** next to
 | `book_not_found` | `404` | an admin catalog call on a path that is not an indexed book (book page, edit, bulk edit, match, cover upload, community cover); an admin progress edit on a path with no progress and no indexed book; `POST /admin/bridge/jobs` and `GET /admin/bridge/estimate` on a path that is not an indexed book |
 | `invalid_override` | `400` | a metadata edit the server refuses; the body also carries a `field` key naming the offending field (`PATCH /admin/libraries/{id}/book`, `POST /admin/books/bulk`) |
 | `module_off` | `404` | any route a [managed module](../modules.md) mounts, while that module is off (Settings > Modules), for a caller the route's auth check admits (it runs first). The route exists either way, so turning the module on needs no restart. The `podcasts` module mounts `POST`/`DELETE /podcasts/follow`, `POST /podcasts/check`, the `/podcasts/discovery/*` routes and `POST /podcasts/opml/import`. Also `POST /admin/bridge/jobs` for a job the module owns (Phase 2b: `sidecars.contribute`, `meta.correct`, `sidecars.generate` with `contribute: "issue"`, the `contributions` module), checked before anything else about the job |
-| `metadata_off` | `404` | a community match search, a `POST /admin/books/works` work-id batch, a community cover (`POST /admin/meta/covers`, `PUT /admin/libraries/{id}/cover/community`), or the metadata mirror (`GET /admin/meta/mirror`, `POST /admin/meta/mirror/check`) while community metadata is turned off; also [`GET /me/upcoming`](reference.md#get-apiv1meupcoming) (checked after `kid_account`, before `upcoming_off`) |
-| `upcoming_off` | `404` | [`GET /me/upcoming`](reference.md#get-apiv1meupcoming) while community metadata is on but the upcoming releases job is switched off (`upcoming.enabled`, the console's Settings > Metadata) |
+| `metadata_off` | `404` | a community match search, a `POST /admin/books/works` work-id batch, a community cover (`POST /admin/meta/covers`, `PUT /admin/libraries/{id}/cover/community`), or the metadata mirror (`GET /admin/meta/mirror`, `POST /admin/meta/mirror/check`) while community metadata is turned off; also [`GET /me/upcoming`](reference.md#get-apiv1meupcoming), [`GET`](reference.md#get-apiv1meupcomingcalendar)/[`POST /me/upcoming/calendar`](reference.md#post-apiv1meupcomingcalendar), [`/me/upcoming/releases.ics`](reference.md#get-apiv1meupcomingreleasesics) and [`/me/upcoming/cover`](reference.md#get-apiv1meupcomingcover) (checked after `kid_account` and, on the mint, the `demo_account` and API-key refusals; before `upcoming_off`). Never `DELETE /me/upcoming/calendar` |
+| `upcoming_off` | `404` | the same upcoming routes as `metadata_off` while community metadata is on but the upcoming releases job is switched off (`upcoming.enabled`, the console's Settings > Metadata) |
 | `too_large` | `400` / `413` | a bulk edit or an issue ignore over 1000 books, a cover batch over 60, a community cover batch over 12, or a work-id batch over 100 (`400`); a custom cover upload over 5 MiB, or a community cover over 16 MiB or 40 megapixels (`413`) |
 | `unsupported_image` | `415` | a custom cover (uploaded or community) that is not a JPEG, PNG or WebP image |
-| `cover_unavailable` | `502` | `PUT /admin/libraries/{id}/cover/community` or `GET /libraries/{id}/meta/cover` when the server couldn't fetch the image (the latter also for a minute after a failed fetch, without asking again) |
+| `cover_unavailable` | `502` | `PUT /admin/libraries/{id}/cover/community`, `GET /libraries/{id}/meta/cover` or [`GET /me/upcoming/cover`](reference.md#get-apiv1meupcomingcover) when the server couldn't fetch the image (the latter two also for a minute after a failed fetch, without asking again) |
+| `not_found` | `404` | an [unknown API route](#error-envelope-and-status-conventions) (below), `DELETE /admin/libraries/{id}` for a library that doesn't exist, and [`GET /me/upcoming/cover`](reference.md#get-apiv1meupcomingcover) for a work the caller's upcoming list doesn't hand out a cover for (not listed for them, or listed without one) |
 | `invalid_schedule` | `400` | a library `scan_schedule` that isn't `""`, `every:<N>h` (1, 3, 6, 12, 24) or `daily:HH:MM` (`POST`/`PATCH /admin/libraries`) |
 | `invalid_pattern` | `400` | a library `ignore_patterns` list the server refuses: more than 100 patterns, one over 200 bytes, one that matches nothing, or a malformed wildcard; the message names the line (`POST`/`PATCH /admin/libraries`, `POST /admin/setup/preview`) |
 | `invalid_metadata_source` | `400` | a library `metadata_source` other than `"tags"` or `"path"` (`POST`/`PATCH /admin/libraries`) |
@@ -275,8 +290,8 @@ Failures a person can fix also carry a machine-readable **`code`** next to
 | `backup_too_new` | `400` | `POST /admin/backups/{name}/restore` on a backup made by a newer server |
 | `invalid_target` | `400` | a notification destination the server refuses (`POST`/`PATCH /admin/notifications`); `field` names the field (`kind`, `name`, `url`, `secret`, `events`) |
 | `too_many_targets` | `409` | `POST /admin/notifications` when the server has 20 destinations |
-| `demo_account` | `403` | a demo account on a route it can't use: the self-service routes (password, recovery code, API keys), sharing a collection, `GET /me/share-targets`, `PUT /me/household`, every `/me/household/members` route but the list, and (Phase 2b) every user route a managed module mounts |
-| `kid_account` | `403` | a kid household member on `POST /auth/password`, `POST /auth/tokens`, `POST /auth/pair`, `POST /auth/recovery`, `PUT /me/household`, `PUT /me/collections/{id}/shares`, `GET /me/upcoming` or (Phase 2b) a user route a managed module mounts (where it is enforced: [Kids](../auth-and-security.md#household-members)) |
+| `demo_account` | `403` | a demo account on a route it can't use: the self-service routes (password, recovery code, API keys), sharing a collection, `GET /me/share-targets`, `PUT /me/household`, every `/me/household/members` route but the list, [`POST /me/upcoming/calendar`](reference.md#post-apiv1meupcomingcalendar) (before the API-key refusal), and (Phase 2b) every user route a managed module mounts |
+| `kid_account` | `403` | a kid household member on `POST /auth/password`, `POST /auth/tokens`, `POST /auth/pair`, `POST /auth/recovery`, `PUT /me/household`, `PUT /me/collections/{id}/shares`, `GET /me/upcoming`, every `/me/upcoming/*` route (the calendar's three, the feed and the cover) or (Phase 2b) a user route a managed module mounts (where it is enforced: [Kids](../auth-and-security.md#household-members)) |
 | `kid_account` | `409` | the admin's `POST /admin/users/{id}/authcode` or `POST /admin/authcodes/{id}/rotate` for a kid household member's account (a kid holds no invite; only their owner sets up their devices) |
 | `member_cannot_manage` | `403` | a household member on every `/me/household/members` route but the list (which answers a member `200`, `allowed: false`, `reason: "member"`) |
 | `feature_off` | `403` | adding a household member while `household.members_enabled` is off |
@@ -604,11 +619,14 @@ Bridge Phases 3b and 3c added two more, always `true` on a server that has them:
 | `ebooks` | the reader: a book's [`ebook`](reference.md#get-apiv1librariesidbooks) field, its bytes at [`GET /libraries/{id}/ebook`](reference.md#get-apiv1librariesidebook) and the reader's place at [`/libraries/{id}/reading-progress`](reference.md#get-apiv1librariesidreading-progress). The player offers Read when it is `true` and the book has an `ebook` (a downloaded book also while the flag is unknown offline), on the web and in the apps |
 | `readalong` | read-along (Phase 3c): a book's [`readalong`](reference.md#get-apiv1librariesiditem) field on `/item` and its map at [`GET /libraries/{id}/readalong`](reference.md#get-apiv1librariesidreadalong). The route exists; whether a book has a map is its `readalong.state`. The player follows the narration with it (Phase 3c-2: the companion's Text tab and the reader's Follow narration) |
 
-Track U1 (2.6.0) added one more, which follows two settings:
+Track U (2.6.0) adds three, which follow two settings (kids and demo accounts are
+refused by the routes, not the flags):
 
 | Flag | Gates |
 |---|---|
 | `upcoming` | [upcoming releases](reference.md#upcoming-releases): [`GET /me/upcoming`](reference.md#get-apiv1meupcoming). It is `true` while community metadata is on **and** the upcoming releases job is switched on (`upcoming.enabled`, on by default; the console's Settings > Metadata), so it can change while the server runs; an older server omits it. The `release_date` on the `/meta` rails' works is additive and needs no flag |
+| `upcoming_calendar` | the [calendar feed](reference.md#the-calendar-feed) (Track U3): `GET`/`POST`/`DELETE /me/upcoming/calendar` and `GET /me/upcoming/releases.ics`. Exactly `upcoming` (`false`, never absent, while off) |
+| `upcoming_covers` | an upcoming release's cover from the server, [`GET /me/upcoming/cover`](reference.md#get-apiv1meupcomingcover) (Track U3). Exactly `upcoming`. Without it a client shows no cover for an item (the web player can't load the `cover_url` itself) |
 
 Then each [managed module](../modules.md) adds one flag, named after the module. A
 module ships off and an admin turns it on in the console's Settings > Modules, so the

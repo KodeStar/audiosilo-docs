@@ -159,9 +159,10 @@ client side in [State & data](../frontend/state-and-data.md#bookmarks-notes-and-
 `?token=` query param on every platform.
 
 **Server:** `internal/api/middleware.go` - only the cover and stream routes
-(`requireBookMediaAuth`, which also takes a cast token) and the community cover route
-(`/meta/cover`, `requireMediaAuth`) call `bearerToken(r, true)`, both through
-`mediaAuth`; all other routes are
+(`requireBookMediaAuth`, which also takes a cast token), the two community cover
+routes (`/meta/cover` and `/me/upcoming/cover`, `requireMediaAuth`) and the calendar
+feed (`/me/upcoming/releases.ics`, `requireFeedAuth`: a `feed` token only) call
+`bearerToken(r, true)`, all through `mediaAuth`; all other routes are
 header-only (`bearerToken(r, false)`), so tokens never ride the query string where
 they could leak into access logs or Referer headers.
 **Frontend:** `client.ts` `mediaTokenQuery()` → `coverUrl()`/`streamUrl()`. Native
@@ -185,6 +186,22 @@ route: `GET /libraries/{id}/meta/cover?path=&url=&size=160|320|640` (`96` too fr
 2.5.1) is a JPEG thumbnail of a community `cover_url` that the server fetched, so the web player,
 whose CSP stays `img-src 'self' data: blob:`, never contacts a cover host. Details
 in [§13](#13-community-metadata-a-three-repo-seam).
+
+**Upcoming covers** (capability `upcoming_covers`): `GET
+/me/upcoming/cover?work=&size=` is the same kind of thumbnail for an upcoming
+release, served only when the caller's own upcoming list hands out that work's cover
+([reference](../server/api/reference.md#get-apiv1meupcomingcover)). The player builds
+it with `client.upcomingCoverUrl` (media token, like every cover).
+
+**The calendar feed** (capability `upcoming_calendar`) is the one `?token=` that is
+not a session: `GET /me/upcoming/releases.ics?token=<secret>` takes a token of kind
+`feed` and no other kind, and a feed token is refused everywhere else, so the link a
+listener pastes into a calendar app reads their upcoming releases and nothing more.
+The server answers it as a server-relative `path` (`POST /me/upcoming/calendar`); the
+player puts it on the server's away address (else the address in use) and keeps the
+full URL in its secure store, like a session token
+([reference](../server/api/reference.md#the-calendar-feed),
+[Calendar feed tokens](../server/auth-and-security.md#calendar-feed-tokens)).
 
 **Cast tokens** (capability `cast`) ride the same `?token=`, on a book's cover and
 stream only: a player casting to a Chromecast mints one for the book
@@ -371,7 +388,10 @@ module toggle, independent of the Bridge, sent `false` otherwise) and
 [§18](#18-the-ebook-reader)), `readalong` (always true; read-along maps,
 [§18](#18-the-ebook-reader)), `upcoming` (2.6.0: community metadata on **and**
 `upcoming.enabled`; [`GET /me/upcoming`](../server/api/reference.md#get-apiv1meupcoming),
-upcoming releases in the caller's series), plus the
+upcoming releases in the caller's series) with `upcoming_calendar` and
+`upcoming_covers` (Track U3, exactly `upcoming`: the
+[calendar feed](../server/api/reference.md#the-calendar-feed) and
+[`/me/upcoming/cover`](../server/api/reference.md#get-apiv1meupcomingcover)), plus the
 server version
 (`api.Version`, stamped from the release tag via ldflags). `transcode` reflects
 ffmpeg availability; `web_player` reflects whether `/web` is populated; the
@@ -534,7 +554,9 @@ as `UpcomingResponse` in `types.ts` (`client.upcoming()`, `useUpcomingAll()`; on
 server that sends `upcoming`, never for a kid) for Home's Coming up in
 your series, the `/upcoming` page and the You hub's Upcoming section, opening an item's
 series page by its `local` view; the series page dates its not-yet-released ghosts from
-the rails' `release_date` ("Out Nov 12, 2026"). Details:
+the rails' `release_date` ("Out Nov 12, 2026"). Track U3 adds each item's real cover
+(`upcoming_covers`) and a calendar feed (`upcoming_calendar`, a `feed` token); see
+[§3](#3-media-auth-rides-in-the-url---token). Details:
 [Upcoming releases](../frontend/state-and-data.md#upcoming-releases).
 **Frontend:** the `BookMeta` envelope (hand-mirrored in `src/api/types.ts`) is
 fetched by `client.bookMeta` and rendered capability-gated on the book screen's

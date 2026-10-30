@@ -38,7 +38,9 @@ Two things happen before any bytes are read, on every media request:
    `/meta/cover`, also accepts the session token as a `?token=` query parameter
    (and on these two a [cast token](auth-and-security.md#cast-tokens)) - browser
    `<img>`/`<audio>` elements cannot set an `Authorization` header. Every other
-   route rejects query tokens (see [Auth & security](auth-and-security.md)).
+   route rejects query tokens but the Upcoming cover (`/me/upcoming/cover`,
+   `requireMediaAuth` too) and the calendar feed (`releases.ics`, a `feed` token
+   only; see [Auth & security](auth-and-security.md#calendar-feed-tokens)).
 2. **Path safety**: the relative path is joined to the library root with
    `library.SafeJoin`, which rejects any traversal outside the root.
 
