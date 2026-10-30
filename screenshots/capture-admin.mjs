@@ -961,7 +961,7 @@ await step('settings: backups', async () => {
 });
 
 await step('settings: notifications', async () => {
-  await page.setViewportSize({width: 1440, height: 1240});
+  await page.setViewportSize({width: 1440, height: 1320});
   try {
     await open(page, '/server?topic=notifications');
     await page.getByRole('list', {name: 'Where to send alerts'}).waitFor({timeout: 15000});
