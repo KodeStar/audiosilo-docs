@@ -118,6 +118,26 @@ if [ ! -f "$FRONTEND/dist/index.html" ]; then
   (cd "$SERVER" && FRONTEND_DIR="$FRONTEND" DEST="$FRONTEND/dist" scripts/build-web.sh)
 fi
 
+# Whether SHOTS_ONLY (see lib.mjs) keeps <file>: unset keeps everything, else
+# one of its comma-separated prefixes must start the path.
+shot_wanted() { # <file>
+  [ -z "${SHOTS_ONLY:-}" ] && return 0
+  local p
+  for p in ${SHOTS_ONLY//,/ }; do
+    case "$1" in "$p"*) return 0 ;; esac
+  done
+  return 1
+}
+
+# Whether SHOTS_ONLY keeps any shot the manifest gives to capture <name> (setup, bridge).
+capture_wanted() { # <name>
+  (cd "$HERE" && CAPTURE="$1" node --input-type=module -e '
+    import {SHOTS} from "./manifest.mjs";
+    import {wanted} from "./lib.mjs";
+    process.exit(wanted(...SHOTS.filter((s) => s.capture === process.env.CAPTURE).map((s) => s.file)) ? 0 : 1);
+  ')
+}
+
 # ── 2. Seed library (idempotent; ~8 short-capped books) ────────────────────
 if [ "${SKIP_SEED:-0}" != "1" ]; then
   echo "==> seeding library into $LIBRARY (MAX_FILES=${MAX_FILES:-3})"
@@ -216,15 +236,35 @@ fi
 # into .cache) and the read-along map a real Bridge made for it, cut to the seeded
 # audio files by seed-readalong.mjs (its header says how), for
 # web-player/player-text.png, reader-readalong.png and phone-player-text.png.
+# Without the map those shots would fail much later with an unclear error, so a
+# run that wants any of them stops here instead (docs#200): the EPUB couldn't be
+# fetched, or it isn't the one the map was made from (Gutenberg rebuilt it).
 RA_BOOK="$LIBRARY/Jack London/The Call of the Wild"
 RA_EPUB="$CACHE/the-call-of-the-wild.epub"
+RA_SHOTS="web-player/player-text.png web-player/reader-readalong.png web-player/phone-player-text-chip.png web-player/phone-player-text.png"
+readalong_wanted() {
+  local f
+  for f in $RA_SHOTS; do shot_wanted "$f" && return 0; done
+  return 1
+}
+RA_OK=0
 if [ -d "$RA_BOOK" ]; then
   if fetch_epub 215 "$RA_EPUB" "$RA_BOOK" "The Call of the Wild.epub" read-along; then
-    (cd "$HERE" && node seed-readalong.mjs "$RA_BOOK" "$RA_EPUB") \
-      || echo "  ! the read-along map could not be written: the read-along shots will fail"
+    if (cd "$HERE" && node seed-readalong.mjs "$RA_BOOK" "$RA_EPUB"); then
+      RA_OK=1
+    else
+      echo "  ! the read-along map could not be written"
+    fi
   fi
 else
-  echo "  ! no $RA_BOOK: the read-along shots will fail"
+  echo "  ! no $RA_BOOK"
+fi
+if [ "$RA_OK" != 1 ]; then
+  if readalong_wanted; then
+    echo "stopping: the read-along shots need the map (leave them out with SHOTS_ONLY)"
+    exit 1
+  fi
+  echo "  (no read-along shot is wanted: carrying on)"
 fi
 
 # ── 3. Servers ──────────────────────────────────────────────────────────────
@@ -242,26 +282,6 @@ trap cleanup EXIT
 # The first-run admin password a server printed to <log> ("" when it didn't).
 admin_password() { # <log>
   grep 'Admin password' "$1" | awk -F': ' '{print $2}' | tr -d ' ' || true
-}
-
-# Whether SHOTS_ONLY (see lib.mjs) keeps <file>: unset keeps everything, else
-# one of its comma-separated prefixes must start the path.
-shot_wanted() { # <file>
-  [ -z "${SHOTS_ONLY:-}" ] && return 0
-  local p
-  for p in ${SHOTS_ONLY//,/ }; do
-    case "$1" in "$p"*) return 0 ;; esac
-  done
-  return 1
-}
-
-# Whether SHOTS_ONLY keeps any shot the manifest gives to capture <name> (setup, bridge).
-capture_wanted() { # <name>
-  (cd "$HERE" && CAPTURE="$1" node --input-type=module -e '
-    import {SHOTS} from "./manifest.mjs";
-    import {wanted} from "./lib.mjs";
-    process.exit(wanted(...SHOTS.filter((s) => s.capture === process.env.CAPTURE).map((s) => s.file)) ? 0 : 1);
-  ')
 }
 
 wait_healthy() { # <url> <logfile> <name>
