@@ -312,6 +312,15 @@ override.
   tab resumes the books and description jobs parked `agent_credential_refused`
   and `agent_unavailable` at once ([Parks](generating.md#parks)).
 
+- **The problem as a kind** (v0.5.0). Beside its `Detail`, `agentbox.Status`
+  carries `Problem` (`not_running`, `outdated`, `no_cli`, `other_backend`,
+  `no_credential`; empty when available or refused) and, for `other_backend`,
+  `Other`, the CLI that is signed in. The container too old to take the
+  Accounts tab's credential is `outdated`, like another protocol. The Status
+  tab's agent line keeps the full `Detail`; the setup checklist words the kind
+  for a person instead, one hint per kind (see
+  [The setup checklist](pairing-and-jobs.md#the-setup-checklist)).
+
 `request.json` and the protocol version are unchanged: an older Bridge never
 writes the file, and an older runner never sees one written for it.
 

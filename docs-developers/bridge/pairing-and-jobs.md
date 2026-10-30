@@ -163,9 +163,9 @@ Bridge's pure `setup.Checklist` from what the app already knows, in a fixed orde
 | `id` | `required` | `done` when | `detail` |
 |---|---|---|---|
 | `paired` | yes | the Bridge is paired | |
-| `libraries` | yes | the Bridge has checked libraries and every one is mapped and writable (a library counts once it has been checked) | "1 of 2 libraries writable" (or "the server has no libraries yet", also before the first check); `library_ids` lists the ones still to fix |
+| `libraries` | yes | the Bridge has checked libraries and every one is mapped and writable (a library counts once it has been checked) | "checking the libraries..." (`setup.DetailLibrariesChecking`, from v0.5.0) from pairing until a heartbeat has listed the server's libraries and each has been checked (`Input.LibrariesPending`: no `lastBeat` yet, or `libs.Unchecked()`), never done and no `library_ids` meanwhile; then "1 of 2 libraries writable" (or "the server has no libraries yet"); `library_ids` lists the ones still to fix |
 | `asr` | yes | the engine has started and something can transcribe now, not waiting for a worker | `local`, `worker`, "waiting for an ASR worker", "the engine is starting", or why it isn't available |
-| `agent` | yes | the agent container is available (with its own or a handed-over credential) | the backend, or why it isn't ready |
+| `agent` | yes | the agent container is available (with its own or a handed-over credential) | the backend, or why it isn't ready in plain words (below) |
 | `budget` | yes | the monthly budget was saved on the page or is set by the environment (`Config.BudgetReviewed`) | "$100 a month" or "no monthly cap" |
 | `github` | no | a GitHub token resolves and isn't refused | the login, "a token from the environment" or "the gh CLI's token" |
 
@@ -175,13 +175,33 @@ Bridge's pure `setup.Checklist` from what the app already knows, in a fixed orde
     {"id": "paired", "done": true, "required": true},
     {"id": "libraries", "done": false, "required": true, "detail": "1 of 2 libraries writable", "library_ids": [3]},
     {"id": "asr", "done": true, "required": true, "detail": "local"},
-    {"id": "agent", "done": false, "required": true, "detail": "claude has no credential: set one on the Bridge's Accounts tab (a `claude setup-token` value or an Anthropic API key), or give one to the agent container"},
+    {"id": "agent", "done": false, "required": true, "detail": "set the agent's sign-in on the Accounts tab; the agent signs in to Claude or ChatGPT and is needed for characters, recaps and descriptions"},
     {"id": "budget", "done": true, "required": true, "detail": "$100 a month"},
     {"id": "github", "done": false, "required": false}
   ],
   "can_contribute": false
 }
 ```
+
+From v0.5.0 the `agent` item's detail is worded by `setup.Checklist` from the
+agent container's problem as a kind (`agentbox.Status.Problem`, carried as
+`setup.AgentProblem`), never the container's own text (which names the staging
+volume and stays on the Status tab's agent line). Each ends with what the agent
+is for ("the agent signs in to Claude or ChatGPT and is needed for characters,
+recaps and descriptions"), but the backend mismatch, which names both CLIs:
+
+| Problem | `detail` |
+|---|---|
+| `not_running` (no status, an unreadable one, a stale heartbeat; also an unknown kind) | `DetailAgentNotRunning`: "the agent container isn't running yet; ..." |
+| `outdated` (another protocol, or an image too old to take the Accounts tab's credential) | `DetailAgentOutdated`: "the agent image isn't this Bridge's version: run the same version of both images; ..." |
+| `no_cli` | "the agent image has no claude CLI: use this Bridge's agent image; ..." (`agentNoCLI`) |
+| `other_backend` | "codex is signed in, but this Bridge runs claude: set agent.backend: codex and restart the Bridge, or set claude's sign-in on the Accounts tab" (`agentOtherBackend`) |
+| `no_credential` | `DetailAgentNoCredential`: "set the agent's sign-in on the Accounts tab; ..." |
+| a refused credential (`Refused`) | the container's own detail, saying where to replace it (else `DetailAgentNoCredential`) |
+
+The item stays required (FIRST-RUN F2). The console's Setup card shows the
+Bridge's detail when it sends one, and otherwise its own hint for the id
+(`bridge.setup.hint.agent`, from server 2.5.1 also saying what the agent is for).
 
 The `asr` item's "waiting for an ASR worker" is a stable string
 (`setup.DetailASRWaiting`): from v0.4.0 the Bridge's Status tab, and the console's
@@ -371,6 +391,50 @@ same again returns it (the console says it is still stopping).
 
 The Bridge's own page can cancel a job it is running too; that is reported to the
 server as `cancelled`, the same as an admin's cancel.
+
+A **parked** job the server cancels at once is still held by the Bridge until its
+next keepalive (up to 30 seconds), so a book job queued for the same book right
+after would meet it as an open job and be refused ("cancel it first"). From
+v0.5.0 a new `sidecars.generate`, `sidecars.describe`, `chapters.detect` or
+`readalong.align` job that finds another open job on its engine book first asks
+that job to report now (`jobs.Reporter.Refresh`), and when the answer stopped it
+(or it couldn't be asked) waits for its end, up to `openJobWait` (30 s), with the
+progress message "Waiting for the book's earlier job to end"
+(`Handler.awaitOpenJobEnd`). A job the server still holds open is refused at
+once, as before. An ending job stops its engine book before its end is recorded
+(`release`), so the waiting job starts only once the engine's cancel has
+returned.
+
+**The server's cancel reasons** (server 2.5.1). When the server stops a
+job itself it writes the reason as the job's `error`: the kinds' `cancelsOpen`
+strings ("a generate job for the book replaced it", "... replaced it; it finds the
+chapters itself", "... replaced what it was sharing", "... replaced it; make the
+read-along again after"), `CancelMoved` ("the book moved onto another job of this
+kind", `MoveJobs`) and `CancelReplacedRequest` ("a newer request replaced it", a
+podcast request replaced by `Enqueue` through `cancelOpenTx`). `IsCancelReason`
+names them. `MoveJobs` cancels the old path's open job at once in any state
+(no `cancel_requested`; a Bridge still working on it learns at its next report,
+`ErrNotHeld`). Through `cancelOpenTx`, a queued or parked job is cancelled at
+once with the reason; for a claimed or running one `cancelOpenTx` sets `cancel_requested` and records the reason now
+(unless an admin asked first, whose cancel keeps its own error), and
+`UpdateHeld` keeps it through the Bridge's reports, which always send an error of
+their own, while the job works and when it ends `cancelled`. A job that ends
+`done`, `failed` or `needs_attention` anyway carries the Bridge's own error (or
+none), never the reason.
+
+The console words a cancelled row (`cancelledView` in `generate-model.ts`, which
+keeps a copy of those strings, `SERVER_CANCEL_REASONS`; `CancelledStatus` in
+`generate-status.tsx`; `en.json` `bridge.jobs.*`): a server reason as it is;
+else `bridge.jobs.cancelledByAdmin` "Cancelled by an admin." when
+`cancel_requested` (an admin's cancel), or `bridge.jobs.cancelledOther`
+"Cancelled." (the Bridge ended it itself), plus, for a job cancelled from a park,
+`bridge.jobs.cancelledPark` ("It was waiting for attention:" and the park's reason) and the
+park's plain hint. A working job with `cancel_requested` and a server reason
+(`isServerCancelReason`) shows that reason muted, not as an error
+(`bridge-jobs.tsx`), for a kind outside `BOOK_KINDS` (a podcast request); a book
+kind's row (every `cancelsOpen` kind among them) is `GenerateStatus`, which keeps
+its progress until the job ends `cancelled`. Any other `error` on a cancelled job (a supervisor's text,
+say) is never shown.
 
 ### Resuming after a restart
 

@@ -407,7 +407,11 @@ chapters ends, the card shows them straight away.
 A book with an ebook has a **Read-along** card under Chapters, while it has a
 read-along or your Bridge can make one: whether the ebook is lined up with the
 narration (and how much of its text), whether that is out of date, and **Make
-read-along**. See [Making a read-along](making-read-along.md).
+read-along**. When it can't offer that because of the Bridge, it says why for a
+read-along that is out of date, after a job that failed, or for a Bridge too old
+to make one: no Bridge is paired ("Making a read-along needs a Bridge."), the Bridge is offline,
+or it is too old to make read-alongs (update it to 0.5.0 or newer). See
+[Making a read-along](making-read-along.md#the-read-along-card).
 
 ### Files
 

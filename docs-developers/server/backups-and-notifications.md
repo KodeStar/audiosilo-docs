@@ -242,15 +242,18 @@ review. The book page links it."; `Already in the community: <title>` when it
 filed nothing because the community already had it: `contributed` empty, `covered`
 not) and for a `meta.correct` job `Corrections sent: <title>` ("The
 book's corrections went to the community for review. The book page links them."),
-and (Phase 3c) for a `readalong.align` job `Read-along ready: <title> (N% lined
-up)` (the coverage rounded down to a whole percent, so 0.996 reads 99%; "Listeners
-with the book's ebook can follow the narration in it."),
+and (Phase 3c) for a `readalong.align` job `Read-along made: <title> (N% lined
+up)` (the coverage rounded down to a whole percent, so 0.996 reads 99%; "It is
+saved with the book. Listeners can follow along once the player supports
+read-alongs.": from 2.5.1 it promises nothing before the player follows one,
+Phase 3c-2),
 and any other kind `<kind> finished: <title>` ("The Bridge finished the job."; a
 `bridge.verify` job's is `Bridge check finished: <library>`, its book's title
 when it named one); in the bell only `sidecars.generate`, `sidecars.describe`,
 `chapters.detect` and `readalong.align` have titles of their own (`FINISHED_OWN` in
-`lib/server-events.ts`; a read-along's `Read-along ready for <name>`, with `N% of
-the text lined up.` under it), and every other kind, `sidecars.contribute` and
+`lib/server-events.ts`; a read-along's `Read-along made for <name>`, with `N% of
+the text lined up. Listeners can follow along once the player supports
+read-alongs.` under it), and every other kind, `sidecars.contribute` and
 `meta.correct` included, reads `Bridge job finished: <name>` with the kind's
 name under it;
 `bridge_job_failed` reads `A Bridge job needs attention: <title>`

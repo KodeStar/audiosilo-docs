@@ -136,7 +136,7 @@ audio changed"):
 | a finished whole run whose transcripts went or whose audio changed | from `inspecting`, goal `readalong`: its notes, `knowledge-final.md` and ledger kept (a whole run is never cleared) |
 | an ebook run | never continued: the audio run beside it is looked up instead (above) |
 | none, or anything else | cleared, and a new engine book (goal `readalong`, no series) |
-| one another open job follows | refused: "A generate job is working on this book; make the read-along once it has finished.", "job N is already making this book's read-along", else "job N is working on this book; let it finish or cancel it first" |
+| one another open job follows | refused: "A generate job is working on this book; make the read-along once it has finished.", "job N is already making this book's read-along", else "job N is working on this book; let it finish or cancel it first". One the server has just cancelled is waited for first, up to 30 s (v0.5.0, [Cancelling](pairing-and-jobs.md#cancelling)) |
 | one a stage is running on | refused: "the engine is still busy with this book's earlier run; try again in a minute" |
 
 `store.ContinueReadalong` moves the book on in one transaction (goal, its kind
@@ -337,8 +337,8 @@ reads the file again on every request and checks it against the book now, never
 trusting the indexed head for the bytes it sends: `404 no_readalong` for none,
 `409 readalong_stale` with the reason. It takes header auth only, never `?token=`.
 
-**Notifications.** A done job is announced "Read-along ready: *title* (N% lined
-up)" (the coverage rounded down), a failed one "Read-along failed: *title*" (see
+**Notifications.** A done job is announced "Read-along made: *title* (N% lined
+up)" (the coverage rounded down; "ready" before server 2.5.1), a failed one "Read-along failed: *title*" (see
 [Notifications](../server/backups-and-notifications.md#events)).
 
 ## Transcript retention

@@ -39,19 +39,20 @@ The book-generation setup uses **two containers**:
 :::info[Early days]
 The Bridge is new and still being built. Its images are public from version
 0.3.0: anyone can pull them, with no sign-in, and its source and releases are
-on [GitHub](https://github.com/KodeStar/audiosilo-bridge). Read-along and more
-jobs come in later versions.
+on [GitHub](https://github.com/KodeStar/audiosilo-bridge). Read-alongs come
+with version 0.5.0, and more jobs in later versions.
 :::
 
 ### Which Bridge version
 
-**Bridge 0.3.0 or later** works with AudioSilo server 2.5.0. Podcasts,
+**Bridge 0.3.0 or later** works with AudioSilo server 2.5.0 and 2.5.1. Podcasts,
 contributions to the community, **Generate characters and recaps** and
 **Detect chapters** need 0.3.0; the one-command
 [ASR worker install](running-a-worker.md) and the worker downloads need
-**Bridge 0.4.0**. The `:latest` tags below follow the newest
-release; to stay on one version, use its tag instead, such as
-`ghcr.io/kodestar/audiosilo-bridge:v0.4.0`. The console's
+**Bridge 0.4.0**; [making read-alongs](../admin/making-read-along.md) needs
+**Bridge 0.5.0**, the release that ships beside AudioSilo 2.5.1. The `:latest`
+tags below follow the newest release; to stay on one version, use its tag
+instead, such as `ghcr.io/kodestar/audiosilo-bridge:v0.5.0`. The console's
 [Settings > Bridge](../admin/bridge.md#online-offline-and-its-details) shows the
 version of the Bridge you have paired.
 
@@ -203,7 +204,8 @@ the Bridge's own. The Bridge's sign-in page points to this command too.
 
 Open `http://<your machine>:8091` and sign in with that password. The page has tabs
 for its **Status**, **Libraries**, **Jobs**, **Settings**, **Accounts**, **Workers**
-and **Logs**.
+and **Logs**. The **Jobs** tab names each job's library and book as the console
+does ("Books · Author/Book"; from Bridge 0.5.0).
 
 ![The Bridge's sign-in page: the password field, Sign in, and the line naming the reset-password command for a lost password](/img/screenshots/bridge/sign-in.png)
 
@@ -255,7 +257,9 @@ pairing form gives way to the server it is paired with.
 ### 5. Check the libraries
 
 After pairing, the Bridge looks for each of the server's libraries and checks it
-can write there. Within a few seconds each library shows **Mapped** and
+can write there. Until it has heard back from the server and checked each one,
+the **Map the libraries** step says "checking the libraries...". Within a few
+seconds each library shows **Mapped** and
 **Writable** on the Bridge's **Libraries** tab, and **Ready** in the console. A
 library that isn't ready says why: see
 [Libraries](../admin/bridge.md#libraries). With the same folders mounted at the
@@ -376,7 +380,11 @@ Within about 15 seconds the **Characters and recaps** card on the Bridge page's
 **Status** tab says the agent is **Ready**, with the version of each tool and
 which kind of sign-in it has (never the token itself). If it says the agent isn't
 ready, the line under it says why: the container isn't running, it has no
-sign-in, or the Bridge is set to the other tool. The console's
+sign-in, or the Bridge is set to the other tool. The **Set the agent's
+credential** step in **Get set up** says the same in plain words, and what the
+agent is for: it signs in to Claude or ChatGPT and is needed for characters,
+recaps and descriptions. Read-alongs, chapters and podcasts don't need the
+agent. The console's
 [Settings > Bridge](../admin/bridge.md#online-offline-and-its-details) shows the
 same.
 
@@ -490,13 +498,21 @@ both: on Unraid, `chmod 777` it once.
   [Libraries](../admin/bridge.md#libraries).
 - **A library says Can't write.** Mount it read-write (`:rw`) and check
   `PUID`/`PGID`.
-- **The agent isn't ready.** The line under it on the Bridge's **Status** tab says
-  why. "Isn't running" or "hasn't written its status": check the agent container
-  is up and that both containers mount the same work folder at `/staging`. "Has
-  no credential": set one (step 7). "Is signed in: set agent.backend": the agent
-  is signed in to the other tool, so set `AUDIOSILO_BRIDGE_AGENT_BACKEND`. "The
-  container is too old to take the one on the Accounts tab": update the agent
-  image to the Bridge's version, or give the container a credential of its own.
+- **The agent isn't ready.** The **Set the agent's credential** step says what
+  to do, and the line under the agent on the Bridge's **Status** tab says more:
+  - "the agent container isn't running yet": check the agent container is up
+    (the Status tab's line also says when both containers don't mount the same
+    work folder at `/staging`);
+  - "set the agent's sign-in on the Accounts tab": the agent has no credential,
+    so set one (step 7);
+  - "the agent image isn't this Bridge's version": run the same version of both
+    images (an older agent image can't take the credential on the Accounts tab
+    either);
+  - "the agent image has no claude CLI" (or codex): use this Bridge's agent
+    image;
+  - "codex is signed in, but this Bridge runs claude" (or the other way round):
+    set `AUDIOSILO_BRIDGE_AGENT_BACKEND` to the tool that is signed in and
+    restart the Bridge, or set the other tool's sign-in on the Accounts tab.
 - **The agent's credential was refused.** Replace it where the agent gets it: on
   the Accounts tab, or in the agent container when it has one of its own (that one
   wins). A job paused for it carries on once it is replaced: at once after a

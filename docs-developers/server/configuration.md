@@ -979,13 +979,30 @@ tools):
   Rosetta 2 on Apple Silicon, which is fine to exec from an arm64 server).
 - **Self-check**: every downloaded binary must successfully run `-version`
   (15 s timeout) before it is adopted; a failing binary is deleted.
-- **No in-process probe with the Linux/Windows download**: BtbN's builds are
-  FFmpeg master (`ffmpeg-master-latest-*`), whose version is no release, so the
-  scanner's [in-process probe](scanner.md#the-in-process-probe) stays off and
-  ffprobe reads every file. evermeet's macOS download is the latest release
-  when it was fetched (and is kept), so the probe runs with it only while that
-  is 7.1 or 8.1. A local ffprobe of a known release (7.1 or 8.1) found first
-  avoids both.
+- **The Linux/Windows download is a release branch** (2.5.1, server#269):
+  BtbN's `ffmpeg-n8.1-latest-<platform>-lgpl-8.1` asset (`btbnBranch`,
+  `btbnAsset`), rebuilt at each 8.1 point release, whose `-version` reads
+  `n8.1...`, so the scanner's [in-process probe](scanner.md#the-in-process-probe)
+  runs with it. Before 2.5.1 it was FFmpeg master (`ffmpeg-master-latest-*`),
+  whose `N-...` version is no release, so the probe stayed off. `btbnBranch`
+  moves only to a branch `metadata`'s `knownRules` has. evermeet's macOS
+  download is the latest release when it was fetched (and is kept), so the
+  probe runs with it only while that is 7.1 or 8.1. A local ffprobe of a known
+  release found first avoids both.
+- **A cached master build is replaced in the background** (`replaceMaster`):
+  when the cached ffprobe's version starts `N-` (an older server's download),
+  that pair serves this run, and the 8.1 build is fetched in a goroutine into
+  `<data>/tools/next` and self-checked; the next start's `promoteStaged` moves it
+  into `<data>/tools/` (an incomplete or failing one is removed). A failed fetch
+  touches `<data>/tools/.release-fetch-failed` (an empty file whose modification
+  time is the failure's) and is retried no sooner than `releaseRetry` (24 hours)
+  after that time; a shutdown mid-fetch leaves the marker as it was, and a
+  success removes it. The start never waits for it.
+- **The start-up log** says which way the probe went
+  (`pkg/launcher.resolveTools`, `metadata.ProbeRelease`): "in-process probe on"
+  with the rules' release, or "in-process probe off: ffprobe is not a release it
+  knows, so ffprobe reads every file". The probe's per-file fallback reason is
+  logged at debug (`metadata.SetLogger`).
 - **Hardening**: extraction only takes files named `ffmpeg`/`ffprobe`
   (basename-only, so no zip-slip), capped at 300 MiB per binary
   (decompression-bomb guard). Pinning per-asset SHA-256 is noted in the

@@ -57,7 +57,7 @@ The bookmark button in the full player or on the player bar adds a bookmark wher
 If the connection drops mid-listen:
 
 - A **downloaded** book keeps playing as if nothing happened - see [Offline downloads](offline-downloads.md).
-- A **streamed** book will pause with an error and a **Retry** button once its buffer runs out.
+- A **streamed** book will pause with an error and a **Retry** button once its buffer runs out. Offline, Home's card for a book that isn't downloaded says **Not downloaded** rather than offering Resume.
 - Either way, an *"Offline - changes sync when reconnected"* banner appears, and any progress, bookmarks, or finished-marks you make are **queued on the device and synced automatically** when the server is reachable again.
 
 ## Books a browser can't play directly

@@ -207,6 +207,19 @@ stale-while-revalidate (cached on first use), so the console works offline after
 one online visit. It never intercepts `/api/` or `/web/`. The web manifest
 (`manifest.webmanifest`, scope `/admin`) uses the Shelf colours.
 
+**A tab left open across an upgrade** (2.5.1) still runs the old build,
+whose lazy route chunks the new server no longer has. The router's
+`defaultErrorComponent` is `RouteError` (`features/route-error.tsx`), a styled
+page inside the shell, with Reload and Go to the overview. When the error is a
+chunk that failed to load (`isChunkLoadError`, in Chromium's, Safari's and
+Firefox's words, plus a missing stylesheet chunk) it reloads the tab once per
+build (`reloadOnce` in `lib/stale-build.ts`: a `sessionStorage` guard,
+`audiosilo.admin.reloaded-for`, keyed on the build id Vite stamps,
+`__ADMIN_BUILD_ID__`), and past that says "AudioSilo was updated". Only a page
+that failed to open reloads: a chunk preloaded on a link's hover or focus fails
+quietly, so there is no window-wide `vite:preloadError` handler. Without
+`sessionStorage` it never reloads.
+
 ### The CSP does not change
 
 The console runs under the same `script-src 'self'; style-src 'self'` policy
@@ -305,10 +318,10 @@ every reload or re-scroll would fetch every cover again. Admin book rows carry `
   memory), whichever comes first. Over a limit, the least recently used entries
   go, down to 90% of both, so a full cache evicts in batches. A read refreshes an
   entry's last-used time at most once an hour (a read isn't otherwise a write).
-  An entry older than 7 days is asked for again (`MAX_AGE_MS`): a sidecar
-  replaced in place under the same name moves `cover_version` only once the
-  server makes a thumbnail of the new art, which a cache that never asks would
-  never see.
+  An entry older than 7 days is asked for again (`MAX_AGE_MS`). Before 2.5.1 a
+  sidecar replaced in place under the same name moved `cover_version` only once
+  the server made a thumbnail of the new art; from 2.5.1 the next scan moves it
+  (the art file's own version), so the new art gets a new key.
 - **Invalidation.** `invalidateCover` (after a cover upload or removal) forgets
   every kept size of that book (`ThumbCache.forget`) before refetching it.
 - **Sign-out.** Every sign-out (`SessionProvider`, also after a 401 or a lost
@@ -523,24 +536,40 @@ CSP-sensitive work against a real build served by Go. The console's own gate is
   The **Read-along** card (Bridge Phase 3c, `features/book/readalong-card.tsx`,
   `readalong-dialog.tsx`, the pure rules in `readalong-model.ts`) follows the
   Chapters card, only for a book with an `ebook`, and only when it has something
-  to show (a map, an offer or a job). It shows the book's
+  to show (a map, an offer, a job or a Bridge note). It shows the book's
   [`readalong`](api/reference.md#get-apiv1librariesiditem): ready ("Ready: lines up
   99% of the ebook's text", the coverage rounded down so it never reads 100% short
   of it, and when it was made), stale (why: the ebook or the audio files changed
   since; listeners don't see it) or none. **Make read-along** (or **Make again**
   over a map) is offered while an online Bridge lists the `readalong` feature
-  (`readalongAvailable`), no read-along job is open for the book, and no
+  (`readalongBridge`, 2.5.1: `ready`; an online Bridge without it is `too_old`,
+  a paired one with no heartbeat `offline`, none paired `none`, read from
+  `GET /admin/bridge` only while no Bridge is online, and `unknown` until that
+  answers), no read-along job is open for the book, and no
   `sidecars.generate` or `chapters.detect` job holds it (`readalongBlocker`: any
   open one, parked included, not one being cancelled; its status and a note show
-  in place of the offer). The confirmation reads `GET /admin/bridge/estimate?kind=readalong.align`:
+  in place of the offer). With no offer because of the Bridge, a `bridgeNote`
+  line says why, linking Settings > Bridge ("Making a read-along needs a
+  Bridge." with Set up a Bridge, "The Bridge is offline: ...", "This Bridge
+  can't make read-alongs. Update it to 0.5.0 or newer.", the version one
+  constant, `READALONG_BRIDGE_VERSION`), but only for a stale map, after a failed
+  job, or for a `too_old` Bridge. The book's last job shows under the map only
+  when it says more (`readalongJobShown`: open, parked or failed; cancelled with
+  a server reason; done only over a map that isn't ready, or one that reused a
+  transcript; never over a stale map). The confirmation reads `GET /admin/bridge/estimate?kind=readalong.align`:
   the ebook's name, "Up to N h, less if the Bridge still has this book's
   transcript", Agent cost "None: no agent is used", when a ready map it replaces was made, and that
   a match under half of the text stops the job and saves nothing; it can't be
-  confirmed for a library the Bridge can't write or a book with no ebook. It
+  confirmed for a library the Bridge can't write, a book with no ebook, or a
+  `too_old` Bridge (a "The Bridge is too old for read-alongs" notice; an offline
+  one doesn't stop it, the job waits). Its button reads Make again for a remake. It
   queues `readalong.align` with `params: {}` (`queueInOrder`) and words a
   `generate_open` or `detect_open` refusal in the card's own words. The job's
   status is `GenerateStatus` ("99% of the text lined up", "the transcript was
-  reused"), `KIND_READALONG` counts in the page's job poll, and the book is
+  reused"; a failed job's "the ebook and the narration don't match: N% lined
+  up" becomes `book.readalong.failed.noMatch`, saying what to do, any other error
+  shown from a capital, `readalongFailure`; while aligning, the transcription's
+  last message is hidden), `KIND_READALONG` counts in the page's job poll, and the book is
   fetched again when the job ends, so its new map shows. Per book only: there is
   no bulk action.
 - **Library > Libraries** - library cards (`GET /admin/libraries` with
@@ -848,7 +877,10 @@ CSP-sensitive work against a real build served by Go. The console's own gate is
   Can't write, Not found or Not reported yet, `mappingState`, with **Verify** and a
   dialog for a book path and a hold, `verify-dialog.tsx`), Workers, Jobs
   (`bridge-jobs.tsx`: a state filter, cancel, the result summed up by
-  `resultSummary` and the raw JSON under Details) and the Unpair danger zone. The
+  `resultSummary` and the raw JSON under Details; a cancelled row of any kind is
+  `CancelledStatus`, see
+  [Cancelling](../bridge/pairing-and-jobs.md#cancelling), never its raw `error`)
+  and the Unpair danger zone. The
   job list also shows while no Bridge is paired, when there are jobs, so queued
   ones can be cancelled. Queuing a job whose open twin is still stopping after a
   cancel (`cancel_requested`) gets that job back, and the toast says it is still
@@ -1064,9 +1096,15 @@ browser session** (`sessionStorage` key `audiosilo.setup.redirected`, set also
 when the admin opens the flow some other way; a module variable stands in when
 storage is blocked), so **Finish later** (a link to Overview) or any link out
 stays where it goes. `?step=<id>` deep-links one step; without it
-`resumeStep` opens the first step with no mark (the last when all have one),
-except that the folder step is asked again when its draft is gone and the
-server still has no library.
+`resumeStep` opens the first step with no mark (the last when all have one).
+The folder is **lost** (`folderLost`, 2.5.1) when its step is marked `done` but
+this browser holds no draft and the server has no books library (the step was
+finished in another browser, whose `localStorage` kept the draft): the stepper
+then shows the folder step unmarked, the step says so ("Choose the folder
+again", `setup.folder.lostBody`), and `naming` or `metadata`, opened by
+`resumeStep` or by `?step=`, opens the folder step instead (`needsFolder`). A
+library made on this visit clears the draft before the list refetches, so it is
+never lost then.
 
 **State.** The server keeps only the flow's progress (`state`: `finished`,
 `dismissed`, `steps` with each id `done` or `skipped`; an absent id is unseen)
@@ -1125,11 +1163,13 @@ bridge`, `SETUP_STEPS`), each with Skip and, after the first, Back (`StepFooter`
    (`usePlayerTab`, only with the `web_player` capability), the ffmpeg line
    from `useSystem().tools` and the household note.
 8. **bridge** - what a Bridge is, a compose snippet (`bridgeCompose`, from
-   audiosilo-bridge's `compose.example.yaml`, mounting the first books
-   library's root at the same path) and the existing pairing dialog
-   (`usePairCode`, `PairDialog`). Once `useBridge()` reports a paired Bridge it
-   shows `BridgeSetupList` from the heartbeat's `setup` block instead.
-   Continue records `done` only with a Bridge paired.
+   audiosilo-bridge's `compose.example.yaml`, one read-write volume per library
+   root at the same path, shown whole with no height limit; with no library yet
+   its one `/audiobooks` volume's comment says it is an example) and the existing
+   pairing dialog (`usePairCode`, `PairDialog`). Once `useBridge()` reports a
+   paired Bridge it shows `BridgeSetupList` from the heartbeat's `setup` block
+   instead. Finish setup records `done`, paired or not (2.5.1: the Bridge is
+   optional); Skip records `skipped`.
 
 Every settings write goes through `unlockedPatch`, which leaves out any
 setting the envelope's `locked` names (the server would refuse it with

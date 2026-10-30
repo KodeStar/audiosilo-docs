@@ -209,7 +209,7 @@ The line under the title says why they look like copies:
 
 | Line | Why they were grouped |
 |---|---|
-| **Identical audio files** | The audio is the same, byte for byte. |
+| **Identical audio files** | Every copy's audio is the same, byte for byte. A group where only some of the copies share their audio says what joins the rest instead (an ASIN or ISBN, or the same title, author and length). |
 | **Sharing an ASIN or ISBN, of the same length** | The books carry the same identifier and their lengths match (within a minute or 2%). |
 | **Sharing an ASIN or ISBN, but of different lengths** | The books carry the same identifier, but their lengths don't match. See below: these may not be copies at all. |
 | **The same title, author and length, in different files** | Title, author and narrator agree, and so do the lengths. |

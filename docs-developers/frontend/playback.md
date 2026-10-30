@@ -666,7 +666,10 @@ anything up.
   tab closed, reloaded or navigated off) ends it, and the document going `hidden`
   (a phone's browser may close a tab with no `pagehide`) splits it once it is long
   enough to keep, a new span opening while playback goes on. Ending a span clears
-  it first, so it is never posted twice.
+  it first, so it is never posted twice. From 2.5.1 every span on the
+  web goes as a `keepalive` request, since a hard navigation mid-play pauses the
+  audio before `pagehide`, and the span that pause ended was aborted with the page;
+  only the hide path skips the history refresh.
 - When playback halts, the store invalidates the `['progress', 'all']` query so
   the Home/Browse "continue listening" and "finished" lists re-read from the
   server - without invalidating on every 15 s save.

@@ -9,7 +9,7 @@ description: "The You destination (the Me tab on a phone): Your listening, with 
 
 **On a phone**, it's the **Me** tab at the bottom of the screen. A row of sections runs under its title: **Stats**, **Year**, **Journal**, **Settings**, **Household** and **Account**. Swipe the row to see them all, and tap one to switch. The big title says where you are: *Your listening* over Stats, *Year in listening* over Year, and so on.
 
-**On a tablet or computer**, it's **You** in the [top bar](browsing.md#getting-around). Its sections are **Stats**, **Year in listening** and **Journal**. Settings is the gear beside your profile button, and the [Household page](household.md) and your account are in the profile menu.
+**On a tablet or computer**, it's **You** in the [top bar](browsing.md#getting-around). Its sections are **Stats**, **Year in listening**, **Journal** and **Household**. Settings is the gear beside your profile button, and your account is in the profile menu. The profile menu opens the [Household page](household.md) too.
 
 In the web player's [quick search](browsing.md#quick-search-in-the-web-player), **Go to** lists **Your listening**, **Year in listening**, **Journal**, **Settings** and **Household**.
 

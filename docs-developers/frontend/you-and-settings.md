@@ -13,7 +13,7 @@ section component, so each can be read (and tested) on its own:
 | Year ("Year in listening") | `YearSection()` | `src/components/you/year/` |
 | Journal | `JournalScreen` (`embedded` on a phone) | `src/components/journal/` ([The Journal](journal.md)) |
 | Settings | `SettingsContent({ section?, onSectionChange?, embedded? })` | `src/components/settings/` |
-| Household (phone only; elsewhere the `/household` page) | `HouseholdPage({ embedded })` | `src/components/household/` ([Household page and members](household.md)) |
+| Household (also the `/household` page) | `HouseholdPage({ embedded })` (`embedded` on a phone) | `src/components/household/` ([Household page and members](household.md)) |
 | Account | `AccountSection({ connectionId? })` | `src/components/account/` |
 
 The user-facing behaviour is in the User Guide:
@@ -33,9 +33,12 @@ re-export of `YouHub` (`src/components/you/you-hub.tsx`). The rules are the pure
 - `youSectionsFor(layout, moduleKeys?)`: an active module's sections follow the hub's
   own on every form factor (none yet). A phone's segmented control offers all six sections (it has
   no top bar), Household between Settings and Account; tablet and desktop offer Stats,
-  Year in listening and Journal, because Settings is the top bar's gear and Household
-  and Account the profile menu (Household there is the pushed `/household` page). A link to `settings`, `household` or `account` still
-  renders there, with no segment chosen.
+  Year in listening, Journal and Household (`WIDE_SECTIONS`; from v2.5.1, since a link to
+  `?section=household` opened a hub with no segment chosen), because Settings is the top
+  bar's gear and Account the profile menu. The profile menu, Settings and Home's house row
+  still push the `/household` page, and the quick search's Go to lists Household once, as
+  its own entry. A link to `settings` or `account` still renders there, with no segment
+  chosen.
 - `youSectionLabelKey` / `youTitleKey`: "Year" on a phone, "Year in listening" in the
   wide sub-nav; the phone's large title follows the section (`navigation.setOptions`),
   the wide sub-nav keeps "You".

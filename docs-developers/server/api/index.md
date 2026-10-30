@@ -55,15 +55,19 @@ An answer is compressed only when both halves say yes:
   one of the excluded classes: the media (a cover, a stream, an ebook, a
   community cover `/meta/cover`, a backup's download), everything under
   `/api/v1/auth/` and everything under `/api/v1/bridge/` (the Bridge's long-poll
-  claim, and job parameters that can carry a private feed URL). A `HEAD`, a
-  `POST` or any other method is never compressed.
+  claim, and job parameters that can carry a private feed URL). A `HEAD` of such
+  a `GET` follows the same rule (from 2.5.1, server#270): it sends no body, but
+  carries the `Vary: Accept-Encoding` and, when the `GET` would be gzipped,
+  the `Content-Encoding: gzip` its `GET` would, so a cache that learns from a
+  `HEAD` stores the right variant. A `POST` or any other method is never
+  compressed.
 - **The answer** is `application/json`, at least **1 KiB**, has a body (not
   `204`/`304`) and carries no `Content-Encoding` or `ETag` of its handler's own
   (a handler with a validator, such as
   [`GET /libraries/{id}/readalong`](reference.md#get-apiv1librariesidreadalong),
   compresses its own representation). Smaller answers go out as they are.
 
-Every JSON answer to a compressible request carries `Vary: Accept-Encoding`,
+Every JSON answer to a compressible request (`HEAD` included) carries `Vary: Accept-Encoding`,
 compressed or not, so a cache in between never hands one client's encoding to
 another. A [list answer cache](../overview.md#the-list-answer-cache) hit
 sends a gzip made when the answer was stored.
@@ -333,7 +337,10 @@ feed failures: [Podcasts](reference.md#podcasts).
 (`409`), `discovery_rate_limited` and `provider_rate_limited` (`429`, with
 `Retry-After`), `provider_rejected`, `discovery_unavailable` and
 `artwork_unavailable` (`502`), `discovery_busy` (`503`, `Retry-After: 1`) and
-`discovery_timeout` (`504`). [OPML](reference.md#opml-import-and-export) adds
+`discovery_timeout` (`504`). From 2.5.1 artwork has an admission of its own,
+sized for a results page, so a page's images asked for at once are each served
+rather than answered `503 discovery_busy` (the
+[limits](reference.md#podcast-discovery)). [OPML](reference.md#opml-import-and-export) adds
 `invalid_opml` (`400`), `library_not_found` (`404`, an import's
 `library_id` names no library), `opml_limit` and `opml_export_limit` (`413`),
 `unsupported_opml_type` (`415`), `opml_rate_limited` (`429`, with
