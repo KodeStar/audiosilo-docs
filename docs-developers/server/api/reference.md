@@ -4149,6 +4149,11 @@ from the community metadata by a background job (`internal/upcoming.Runner`), so
 request reads only what the job stored and never asks the metadata service itself.
 No Bridge is needed.
 
+The player (2.6.0) shows it as Home's Coming up in your series, an Upcoming page and the
+You hub's Upcoming section, merged across the listener's servers one row per work
+([Upcoming releases](../../frontend/state-and-data.md#upcoming-releases)), and dates the
+series page's ghost volumes from `release_date` on [`/meta`](#get-apiv1librariesidmeta).
+
 **The job.** It runs about an hour after the server starts, then once a day (give
 or take an hour), and a light pass once a burst of new or edited books settles (it
 looks up the new books' works and reads only community series it has never read). A

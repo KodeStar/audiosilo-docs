@@ -234,9 +234,11 @@ cover images are still downloaded from their hosts.
   [Health > System](health.md#the-local-copy-of-community-metadata).
 - **Check for upcoming releases** turns on a daily check of the series your
   libraries hold: which books in them are preorders, which came out recently,
-  and which are missing (on by default). Today it gives you the
-  [notification](notifications.md#what-to-send) **New releases in your series**;
-  a list of these books in the players is planned. It asks the metadata service
+  and which are missing (on by default). It gives you the
+  [notification](notifications.md#what-to-send) **New releases in your series**,
+  and in the player each listener (except a kid) sees what's coming in the
+  series they can see, on Home and an Upcoming page
+  ([Upcoming releases](../listening/upcoming.md)). It asks the metadata service
   only about series and books, never who is listening, and with a
   [local copy](#keeping-a-local-copy) your server answers it itself. The switch
   works only while the lookup is on (it is greyed out otherwise). Under it, while

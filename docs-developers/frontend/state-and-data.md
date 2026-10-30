@@ -353,6 +353,7 @@ Cross-server screens ask per connection (`useCapabilitiesAll` /
 | `household` | Home's Listening in the house row, the book page's In the house card and the sharing switch (`useHousehold`, `useSetHousehold`, `useHouseListening`); see [Listening in the house](listening-in-the-house.md) |
 | `ebooks` | Read the ebook on the book page (`canRead`, [the rule](reader.md#read-on-the-book-page)) and the reader screen's own check; see [The ebook reader](reader.md) |
 | `readalong` | the companion's Text tab, the full-screen reader's Follow narration (`readalongReady`), the admin's Make read-along (`mayMakeReadalong`, with `bridge` and the Bridge's `readalong` feature), the map in downloads (`wantsReadalong`); see [Read-along](reader.md#read-along-following-the-narration) |
+| `upcoming` | Home's Coming up in your series, the `/upcoming` page and the You hub's Upcoming section (`useUpcomingAll`, `useUpcomingAvailable`; never asked for a kid); see [Upcoming releases](#upcoming-releases) |
 | `cast` | the Cast button and `prepareCast` (no flag, or flags not known yet: no button, and a cast is refused); see [Chromecast](chromecast.md) |
 
 Writes from screens follow the [1b write rules](#the-listeners-own-state-player-redesign-phase-1b)
@@ -898,6 +899,65 @@ Podcast reads (`usePodcastShows`, `usePodcastEpisodes`, `myPodcastsQuery`,
 episode-fetch controller seeds and is the only one to poll. Keys and shapes:
 [Bridge podcasts](../bridge/podcasts.md#player-phase-2d-1); screens and the
 controller: [Podcasts](podcasts.md).
+
+### Upcoming releases
+
+*(2.6.0, Track U2; the wire is the server's, [`GET /me/upcoming`](../server/api/reference.md#upcoming-releases).)*
+The listener's preorders, recent releases and missing volumes in the series they hold,
+merged across their servers. User guide: [Upcoming releases](/users/listening/upcoming).
+
+- **Wire and reads.** `types.ts` mirrors the envelope as `UpcomingResponse {status,
+  generated_at?, window_days, items}` (`UpcomingItem`, `UpcomingKind`; `items` never
+  null) and adds `upcoming?: boolean` to `Capabilities` and the additive
+  `release_date?` to `BookMetaSeriesWork`. `client.upcoming()` is `GET /me/upcoming`,
+  keyed `qk.upcoming(cid)` with a 15-minute `staleTime` (the server's job runs daily).
+- **`useUpcomingAll()`** (`hooks.ts`): `useApis()` + `useQueries` + `combine`, one query
+  per connection in `useApis()` order. A connection is asked only when its server
+  advertises `upcoming` **and** its user is not a kid (`isKidAccount`; the route answers
+  a kid `403 kid_account`); every other connection gets `skipToken`, so it is never
+  asked, not even by a manual `refetch`. It returns `items`, `available` (true once a
+  server offers it, false once none can, `undefined` while a server's flags load;
+  `useUpcomingAvailable` reads only that), `isLoading`, `statuses` (each answered
+  server's `ok|pending|stale`), `failed` (the servers that didn't answer, including one
+  whose `/server` flags couldn't be read, so a cold link settles instead of loading
+  forever) and `retry` (refetches each errored one and reads the unreadable servers'
+  flags again; a request paused for the network is not re-asked, it resumes when the
+  network returns).
+- **The pure rules** (`src/lib/upcoming.ts`, tested apart): `upcomingEligibility` (who
+  may be asked, and `available`), `mergeUpcoming` (tags each item with its connection,
+  keeps the **first** connection's row of a `work.id`, then `compareUpcoming`: the
+  server's order across servers, preorders soonest first, releases newest first, then
+  missing by series name and numeric position), `upcomingSectionOf` and `isNewUpcoming`
+  (`first_seen_at` within seven days: the "New" badge). A date's own rules are
+  `src/lib/release-date.ts`: `parseReleaseDate` and `releaseIsFuture` (a date at its
+  own precision against the UTC day: "2026" or "2026-10" is ahead only while the whole
+  period is). `formatReleaseDate` (`src/lib/format.ts`) prints "2027", "Nov 2026" or
+  "Nov 12, 2026" (read in UTC, written in the app's UI language, `getLocale()`: a bare
+  code such as `en`, so English always reads "Nov 12, 2026" and German "12. Nov. 2026";
+  other text as it came), and `upcomingDateLabel` labels it by kind:
+  "Out", "Released", "First released" (the metadata's one date is a work's **first**
+  release), no line without a date.
+- **Surfaces** (`src/components/upcoming/`): `UpcomingRail` on Home, after Next in your
+  series (`HomeSection` + `ShelfRow`, at most `UPCOMING_RAIL_LIMIT` = 12, See all ->
+  `upcomingHref()`); it renders nothing while loading, while empty or where no server
+  offers it, so Home never holds a skeleton for a rail that may never show.
+  `UpcomingContent` (`upcoming-screen.tsx`) is the `/upcoming` page's body and the You
+  hub's Upcoming section: Coming soon, Just released, Missing from your series (an empty
+  section hidden), and its states (rows standing in while loading, "Checking for
+  releases" while every answering server is `pending`, "Nothing coming up", "No upcoming
+  releases here" where no server offers it, and "Couldn't load" with Retry when no server
+  answered, never "Nothing coming up" for a failure); a failed server beside answering
+  ones, a `stale` one or a `pending` one is a note over the list. Every item is a
+  `GhostCover`, never the work's `cover_url`: the server doesn't proxy it (`meta_covers`
+  covers only what a book's own `/meta` hands out) and the web player's CSP refuses
+  another host. The server name (`useServerFlag`: only a non-default server, only with
+  several connections) reads "From &lt;server&gt;". A tap opens
+  `seriesHref(connectionId, local.library_id, { name: local.series, work: work.id })`.
+- **Series pages.** `railEntries` (`series-model.ts`) gives a ghost its `release_date`:
+  `outDate` while it is still ahead (the list's `entryLine` and the face-out note show
+  "Out Nov 12, 2026" in place of "Not in your library"), else its year.
+- **Kids and demo.** A kid gets no rail or You section, and the route shows the "not
+  here" state. A demo account reads it like anyone else.
 
 ## Zustand stores
 

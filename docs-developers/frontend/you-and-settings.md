@@ -15,14 +15,15 @@ section component, so each can be read (and tested) on its own:
 | Settings | `SettingsContent({ section?, onSectionChange?, embedded? })` | `src/components/settings/` |
 | Household (also the `/household` page) | `HouseholdPage({ embedded })` (`embedded` on a phone) | `src/components/household/` ([Household page and members](household.md)) |
 | Account | `AccountSection({ connectionId? })` | `src/components/account/` |
+| Upcoming (also the `/upcoming` page; only while a server offers it) | `UpcomingContent({ embedded })` (`embedded` on a phone) | `src/components/upcoming/` ([Upcoming releases](state-and-data.md#upcoming-releases)) |
 
 The user-facing behaviour is in the User Guide:
 [You and your listening](/users/listening/you), [Year in listening](/users/listening/year-in-listening),
-[Settings](/users/listening/settings), [Your household](/users/listening/household) and [Your account on a server](/users/listening/account).
+[Settings](/users/listening/settings), [Your household](/users/listening/household), [Your account on a server](/users/listening/account) and [Upcoming releases](/users/listening/upcoming).
 
 ## The hub and its routes
 
-`/you?section=stats|year|journal|settings|household|account` is `src/app/(app)/(me)/you.tsx`, a
+`/you?section=stats|year|journal|settings|household|account|upcoming` is `src/app/(app)/(me)/you.tsx`, a
 re-export of `YouHub` (`src/components/you/you-hub.tsx`). The rules are the pure
 `you-model.ts`:
 
@@ -42,6 +43,12 @@ re-export of `YouHub` (`src/components/you/you-hub.tsx`). The rules are the pure
 - `youSectionLabelKey` / `youTitleKey`: "Year" on a phone, "Year in listening" in the
   wide sub-nav; the phone's large title follows the section (`navigation.setOptions`),
   the wide sub-nav keeps "You".
+- **Upcoming** (`section=upcoming`, 2.6.0) is the hub's own section but offered only
+  while `useUpcomingAvailable()` is `true` (a server advertises `upcoming` for a user who
+  is not a kid there), so it rides with the modules' sections: `youExtraSections(upcoming,
+  modules)` puts it first among them (`UPCOMING_SECTION`, a key no module can take), after
+  the hub's fixed sections on every form factor. A link to it while the flags still load
+  opens Stats.
 - `youSectionParams(next)`: the params a switch writes with `router.setParams` (Stats is
   the bare `/you`; leaving the Journal drops its `tab`).
 

@@ -40,6 +40,7 @@ import {chromium} from 'playwright';
 import {
   CACHE,
   DAY,
+  HOLMES_MATCH,
   MIN,
   addHousehold,
   apiClient,
@@ -530,19 +531,15 @@ await step('authors', async () => {
   await shoot(page, 'admin/authors.png');
 });
 
-// A matched book for the Series shot: the seeded books carry no ASIN, so no card
-// would show the community's gaps. For the shot only, The Adventures of Sherlock
-// Holmes gets the US ASIN of a recording the live catalogue files under that work
-// (b-j-harrison-2014), so the Sherlock Holmes card shows the books it lacks as dashed
-// gaps, each dated by its first release; the edit is reverted right after.
-const SERIES_MATCH = {author: 'Sir Arthur Conan Doyle', title: 'Adventures of Sherlock Holmes', asin: 'B00OQT6ZJ6'};
+// A matched book for the Series shot (HOLMES_MATCH): the Sherlock Holmes card shows the
+// books it lacks as dashed gaps; the edit is reverted right after.
 
 await step('series', async () => {
   if (!wanted('admin/series.png')) return;
-  const holmes = await bookBy(SERIES_MATCH.author, SERIES_MATCH.title);
+  const holmes = await bookBy(HOLMES_MATCH.author, HOLMES_MATCH.title);
   const edit = holmes ? `/admin/libraries/${holmes.library_id}/book${pathQuery(holmes.path)}` : '';
-  if (edit) await api(token, 'PATCH', edit, {set: {asin: SERIES_MATCH.asin}});
-  else console.log(`  ! no "${SERIES_MATCH.title}": the series shot shows no gaps`);
+  if (edit) await api(token, 'PATCH', edit, {set: {asin: HOLMES_MATCH.asin}});
+  else console.log(`  ! no "${HOLMES_MATCH.title}": the series shot shows no gaps`);
   try {
     // Taller, so the Sherlock Holmes card's shelf (the second card) fits.
     await page.setViewportSize({width: 1440, height: 1400});
@@ -699,7 +696,8 @@ await step('server settings: community metadata', async () => {
   try {
     await open(page, '/server?topic=metadata');
     await page.getByText('Keep a local copy', {exact: true}).waitFor({timeout: 8000});
-    // The upcoming releases switch and its last run (a fresh server: not run yet).
+    // The upcoming releases switch and its last run: the check capture-web.mjs's upcoming
+    // pass ran (Not run yet when that pass didn't run).
     await page.getByText('Check for upcoming releases', {exact: true}).waitFor({timeout: 8000});
     await sleep(800); // the status row reads the system status
     await shoot(page, 'admin/settings-metadata.png');

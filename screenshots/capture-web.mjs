@@ -32,6 +32,7 @@ import {
   DAY,
   DESKTOP_CONTEXT,
   FIXTURES,
+  HOLMES_MATCH,
   HOUR,
   MIN,
   PHONE,
@@ -531,6 +532,13 @@ async function scrollToTop(locator) {
 
 // A short pause for an entrance animation to finish after the state it waits on.
 const SETTLE_MS = 600;
+
+// Let the covers settle, then shoot `file` with the pointer out of the way.
+async function settleShoot(page, file, ms = 1500) {
+  await sleep(ms);
+  await page.mouse.move(0, 0);
+  await shoot(page, file);
+}
 
 // The frontend's jump-undo ignores every jump for its SETTLE_MS (3 s) after a book
 // first plays (src/playback/jump-undo.ts); this leaves the load a few seconds on top.
@@ -1369,12 +1377,6 @@ async function capturePodcasts(pod) {
     // The episode the fetching shot starts (not on the server; also the newest on Home).
     const fetchEpisode = pod.shows.find((s) => s.folder === PODCAST_FETCH_SHOW)?.feed.episodes.find((e) => !e.fetch);
     if (!fetchEpisode) throw new Error(`no episode of ${PODCAST_FETCH_SHOW} that is not on the server`);
-    // Let the covers settle, then shoot `file` with the pointer out of the way.
-    const settleShoot = async (p, file, ms = 1500) => {
-      await sleep(ms);
-      await p.mouse.move(0, 0);
-      await shoot(p, file);
-    };
 
     if (wanted(PODCAST_SHOTS.home)) {
       await step('podcasts: home', async () => {
@@ -2392,6 +2394,97 @@ if (wanted(...Object.values(HOUSE_SHOTS))) {
     }
   } finally {
     if (house.admin) await step('remove household', () => unprovisionHouse(house));
+  }
+}
+
+// ── Upcoming releases (Track U2) ────────────────────────────────────────────
+// Home's Coming up in your series and the Upcoming page need what the server's upcoming
+// releases job found: for this pass Sherlock Holmes is matched (HOLMES_MATCH), the job is
+// switched off and on so it runs at once, and the ASIN is reverted afterwards. What the
+// job stored stays until its next run, so this pass comes after the other player shots.
+// Needs the network (the live catalogue); README.md has the whole account.
+const UPCOMING_SHOTS = {
+  home: 'web-player/home-upcoming.png',
+  page: 'web-player/upcoming.png',
+  phone: 'web-player/phone-upcoming.png',
+};
+
+// The demo listener's Upcoming page in `page`, once its rows show.
+async function upcomingPageShot(page, file) {
+  await page.goto(BASE + 'upcoming', {waitUntil: 'networkidle', timeout: 45000});
+  await tid(page, 'upcoming-row').waitFor({timeout: 30000});
+  await settleShoot(page, file);
+}
+
+if (wanted(...Object.values(UPCOMING_SHOTS))) {
+  console.log('== upcoming releases ==');
+  let holmesEdit = '';
+  let jobOff = false; // switched off and not yet back on: the finally switches it on
+  let listed = false; // the job listed items: the shots have something to show
+  try {
+    await step('upcoming: run the job', () =>
+      asAdmin(async (token) => {
+        const list = await api(token, 'GET', `/admin/books?author=${encodeURIComponent(HOLMES_MATCH.author)}&limit=50`);
+        const b = seededBook(list?.books ?? [], HOLMES_MATCH.title);
+        holmesEdit = `/admin/libraries/${b.library_id}/book${pathQuery(b.path)}`;
+        await api(token, 'PATCH', holmesEdit, {set: {asin: HOLMES_MATCH.asin}});
+        jobOff = true;
+        await api(token, 'PATCH', '/admin/settings', {metadata: {upcoming: false}});
+        await api(token, 'PATCH', '/admin/settings', {metadata: {upcoming: true}});
+        jobOff = false;
+        const ready = (up) => up?.status === 'ok' && up.items?.length > 0;
+        let up = null;
+        for (const until = Date.now() + 180000; Date.now() < until && !ready(up); ) {
+          await sleep(2000);
+          up = await api(token, 'GET', '/me/upcoming').catch(() => null);
+        }
+        if (!ready(up)) throw new Error(`no upcoming releases (status ${up?.status ?? 'none'}; the live catalogue may be unreachable)`);
+        listed = true;
+        console.log(`  ✓ the job listed ${up.items.length}: ${up.items.map((i) => `${i.series.name} ${i.series.position} (${i.kind})`).join(', ')}`);
+      }),
+    );
+
+    if (listed && wanted(UPCOMING_SHOTS.home, UPCOMING_SHOTS.page)) {
+      const ctx = await newCaptureContext({storageState: AUTH});
+      try {
+        const page = await ctx.newPage();
+        if (wanted(UPCOMING_SHOTS.home)) {
+          await step('upcoming: home', async () => {
+            await page.goto(BASE, {waitUntil: 'networkidle', timeout: 45000});
+            const heading = firstVisible(page.getByText('Coming up in your series', {exact: true}));
+            await heading.waitFor({timeout: 30000});
+            await tid(page, 'upcoming-tile').waitFor({timeout: 15000});
+            await heading.evaluate((el) => el.scrollIntoView({block: 'start'}));
+            await page.mouse.wheel(0, -120);
+            await settleShoot(page, UPCOMING_SHOTS.home);
+          });
+        }
+        if (wanted(UPCOMING_SHOTS.page)) {
+          await step('upcoming: page', () => upcomingPageShot(page, UPCOMING_SHOTS.page));
+        }
+      } finally {
+        await ctx.close();
+      }
+    }
+    if (listed && wanted(UPCOMING_SHOTS.phone)) {
+      await step('upcoming: phone', async () => {
+        const ctx = await newCaptureContext({viewport: PHONE, storageState: AUTH});
+        try {
+          await upcomingPageShot(await ctx.newPage(), UPCOMING_SHOTS.phone);
+        } finally {
+          await ctx.close();
+        }
+      });
+    }
+  } finally {
+    if (jobOff) {
+      await step('upcoming: switch the job back on', () =>
+        asAdmin((token) => api(token, 'PATCH', '/admin/settings', {metadata: {upcoming: true}})),
+      );
+    }
+    if (holmesEdit) {
+      await step('upcoming: revert the ASIN', () => asAdmin((token) => api(token, 'PATCH', holmesEdit, {revert: ['asin']})));
+    }
   }
 }
 
