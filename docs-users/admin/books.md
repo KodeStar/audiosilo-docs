@@ -696,10 +696,12 @@ book of this series to see what's missing". With community metadata off, the
 page offers to turn it on.
 
 A gap whose book the community catalogue has a release date for shows that
-date under its title, as precise as the catalogue knows it ("12 Nov 2026",
-"Nov 2026" or "2026"). A book that isn't out yet says **Preorder** before its
-date, and one that came out in the last 90 days says **New**, so you can see at
-a glance what you could add. The dates are the book's first release anywhere,
+date in a line beside its title, as precise as the catalogue knows it ("12 Nov
+2026", "Nov 2026" or "2026"). A book that isn't out yet says **Preorder** before
+its date, and one that came out in the last 90 days says **New**, where the
+spine is tall enough (otherwise just the date, in the preorder or new colour;
+hover the spine for the full wording), so you can see at a glance what you could
+add. The dates are the book's first release anywhere,
 whichever store had it first.
 
 A book is often in more than one community series (a Tiffany Aching novel is
