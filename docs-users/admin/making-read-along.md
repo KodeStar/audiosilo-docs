@@ -10,14 +10,16 @@ beside it, using speech recognition only, with **no AI agent and no agent cost**
 and saves it with the book.
 
 :::note[Following along in the player]
-Making read-alongs and checking them happens in the admin console today. Following
-the narration in the ebook's text in the player comes in a later player update;
-the read-alongs you make now are what it will use.
+Listeners follow the narration in the player from version 2.6.0: in the
+companion's [Text tab](../listening/companion.md#text) and with **Follow
+narration** in the [reader](../listening/reading-the-ebook.md#follow-the-narration).
+An admin can also make a book's read-along from the player
+([below](#from-the-player)).
 :::
 
 ## What it needs
 
-- **An admin**, in the console.
+- **An admin**, in the console (or in the player, [below](#from-the-player)).
 - **A book with an ebook.** The ebook is the EPUB the player's
   [Read the ebook](../listening/reading-the-ebook.md#which-books-have-it) opens:
   the book's page shows an **Ebook** chip for one. It has to be DRM-free, and the
@@ -96,6 +98,30 @@ seconds.
 
 Read-alongs are made one book at a time; there is no "make read-alongs for every
 book" action.
+
+### From the player
+
+As an admin, you can make one from the player too. Play the book and open the
+companion's [Text tab](../listening/companion.md#text). Where there is nothing to
+follow yet it says **No read-along for this book yet**, with **Make read-along**;
+where the read-along is out of date it says **The read-along is out of date**, why
+(the ebook or the audio changed), and **Make the read-along again**.
+
+The button opens a confirmation:
+
+- what the Bridge reads (the ebook and the audio);
+- **Up to** how long transcribing the whole book takes on your Bridge, less when it
+  still has the book's transcript (no estimate when the Bridge hasn't sent its
+  figures);
+- **AI agent cost: None: no AI agent is used**, and where the result appears (on
+  this server).
+
+Press **Make read-along** to queue it: *"Queued. The text appears here when it's
+done."* The tab then shows the job's progress (*"Making the read-along"*, with
+**Cancel**) and, when it's done, the text. The Bridge can't make one while it's
+generating characters and recaps or finding the chapters of the same book, so the
+confirmation says to wait (see
+[Sharing the Bridge's work](#sharing-the-bridges-work)).
 
 ## How long it takes
 

@@ -1,12 +1,13 @@
 ---
 title: The companion
-description: "The full player's companion: Who's who and Story so far, kept to what you've heard so far, the New in Who's who note when you meet someone, and the chapters, bookmarks, notes and history of the book you're playing."
+description: "The full player's companion: Who's who and Story so far, kept to what you've heard so far, the New in Who's who note when you meet someone, the Text tab that follows the narration in the ebook, and the chapters, bookmarks, notes and history of the book you're playing."
 ---
 
 The **companion** keeps everything about the book you're listening to one tap away, without leaving the player:
 
 - **Who's who** - the people you've met so far.
 - **Story so far** - what's happened up to where you are.
+- **Text** - the ebook, following the narration, for a book with a read-along.
 - **Chapters** - every chapter, and how long until each one.
 - **Bookmarks**, **Notes** and **History** - your own, for the book.
 
@@ -16,7 +17,7 @@ The **companion** keeps everything about the book you're listening to one tap aw
 
 A column beside the [full player](full-player.md#on-a-phone-a-tablet-and-a-computer) on a computer, under its controls on a tablet, and a sheet from the chips under the controls on a phone. It reopens on the tab you used last.
 
-Who's who and Story so far come from the community database, [AudioSilo Meta](../community/meta-site.md), so they appear only when your server has community metadata switched on. For a book nobody has written character notes or recaps for yet, the tab says so. Your server's [Bridge](../admin/generating-characters-and-recaps.md) can also write them for a book: those carry a **Generated on this server** mark, and for an admin the empty tabs offer **Generate characters and recaps**.
+The **Text** tab is [below](#text). Who's who and Story so far come from the community database, [AudioSilo Meta](../community/meta-site.md), so they appear only when your server has community metadata switched on. For a book nobody has written character notes or recaps for yet, the tab says so. Your server's [Bridge](../admin/generating-characters-and-recaps.md) can also write them for a book: those carry a **Generated on this server** mark, and for an admin the empty tabs offer **Generate characters and recaps**.
 
 ## Nothing ahead of where you are
 
@@ -33,6 +34,28 @@ When the book plays on into a chapter that brings in people you hadn't met, they
 ## Story so far
 
 The community recaps written to stop where you are, in story order, under a heading such as *"Up to chapter 22"*. A new part appears as you finish each chapter. A recap from before the book starts (a catch-up from earlier in the series) is labelled as such, and a whole-book summary stays behind a row marked **Spoiler** while you're still listening.
+
+## Text
+
+For a book with a **read-along** (your server's [Bridge](../admin/making-read-along.md) lined its ebook up with the narration), the **Text** tab shows the ebook following what you hear: it opens at the sentence being read, highlights it, and turns the pages by itself as the book plays on.
+
+![The full player on a computer with the companion on its Text tab, following the narration of The Call of the Wild](/img/screenshots/web-player/player-text.png)
+
+- **Tap a sentence** to move the audiobook to the start of it (it plays on from there if it's playing).
+- **Turn the page** (the edges of the text, or a swipe) to look back or ahead: the tab stops following, and a **Back to narration** button takes you back to the sentence being read.
+- Pausing, skipping and changing the speed in the player move the highlight with it.
+
+On a computer the tab is in the companion column; on a tablet it sits under the controls with the other tabs. On a phone there's no chip for it: open the companion from any chip (**Chapters**, say), then pick **Text** at the top of the sheet.
+
+![The companion sheet on a phone, on its Text tab](/img/screenshots/web-player/phone-player-text.png)
+
+The companion only shows **Text** when you've picked it (it starts on another tab otherwise), since it opens the ebook. It doesn't save your reading place: that's for the full-screen reader ([Reading the ebook](reading-the-ebook.md#follow-the-narration), which can follow the narration too). It needs the book's server on version 2.6.0 or later and, on a phone or tablet, version 2.6.0 or later of the app.
+
+The tab appears only once the book's read-along has loaded. A book without one, or whose read-along is out of date (its ebook or audio files changed since it was made), has no Text tab. If the text can't load (the connection dropped, say), the tab says **Couldn't load the text** with **Try again**; if the read-along doesn't match this ebook at all, it says **The text can't follow this narration**. A [downloaded](offline-downloads.md) book keeps its read-along with its ebook, so the Text tab works offline too.
+
+### Making one (admins)
+
+For an admin, with a [Bridge](../admin/bridge.md) that can make read-alongs, every book with an ebook has the **Text** tab. Where there is nothing to follow yet, or the read-along is out of date, the tab offers to make it: see [Making a read-along from the player](../admin/making-read-along.md#from-the-player).
 
 ## Chapters
 

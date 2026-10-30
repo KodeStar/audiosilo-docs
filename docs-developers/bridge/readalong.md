@@ -13,8 +13,9 @@ book, and serves it at
 [`GET /libraries/{id}/readalong`](../server/api/reference.md#get-apiv1librariesidreadalong).
 
 **No agent anywhere**: no credential, no spend, no agent container. Maps are made
-**per book only**, from the console's book page (no bulk action). The player's
-side, the Text panel that follows the narration, is Phase 3c-2 and not built yet.
+**per book only**, from the console's book page or the player's Text tab (no bulk
+action). The player's side, the companion's Text tab and the reader's Follow
+narration (Phase 3c-2), is on [The ebook reader](../frontend/reader.md#read-along-following-the-narration).
 
 Code: the Bridge's `internal/readalong` (the aligner, pure apart from reading the
 EPUB), `internal/epubcfi` (foliate's CFIs in Go), `internal/pipeline/readalong_stage.go`
@@ -104,8 +105,8 @@ agent state**:
 A goal-readalong book holds no series lock (`state.SeriesLockExempt`: it makes
 nothing a later volume carries on from), has no series, and contributes nothing.
 The console words the stage "Lining up the ebook with the narration", as the
-job's progress message does (the player has no word for it: it follows no
-read-along job).
+job's progress message does; the player's Text tab, which follows the job it
+queued, "Lining the text up with the narration".
 
 ## The reuse table
 

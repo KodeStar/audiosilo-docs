@@ -18,6 +18,7 @@ npm install && npx playwright install chromium   # first time only
 LibriVox library (cached in `.cache/library`; `MAX_FILES=3` chapter files per
 book keeps it ~100 MB; A Christmas Carol also gets Project Gutenberg's
 public-domain EPUB beside its audio, fetched once into `.cache`, for the reader
+shots, and The Call of the Wild its EPUB and a read-along map for the read-along
 shots), starts a demo-mode server on `:8790` serving the
 frontend's web export (plus a `--setup` instance on `:8791` for the first-run
 setup shots), builds the `audiosilo-meta` data artifact (composed with
@@ -229,6 +230,18 @@ would see it (a Playwright route), with the real latest release: the server's
 own update check, or, when GitHub refused that (60 unauthenticated requests an
 hour), asked again from the script with `GITHUB_TOKEN` when it is set
 (`GITHUB_TOKEN=$(gh auth token)`).
+
+The read-along shots (`web-player/player-text.png`,
+`web-player/reader-readalong.png`, `web-player/phone-player-text.png`, Bridge Phase
+3c-2) need a book the server serves a `ready` read-along map for. No Bridge runs:
+`run.sh` (section 2e) puts Project Gutenberg's EPUB of **The Call of the Wild**
+(ebook #215, fetched once into `.cache`) beside its audio, and `seed-readalong.mjs`
+writes `fixtures/call-of-the-wild.readalong.json` (the map a real Bridge made in the
+3c-1 verification run, from the same recording and EPUB) into its `.audiosilo/`
+folder, cut to the `MAX_FILES` audio files seeded (its header has the rules). No
+audio is added and nothing large is committed (the map is 166 KB of JSON). The
+captures run after every other web profile, since playing the book makes it the
+demo user's latest; `READALONG_SHOTS` in `capture-web.mjs` says what each one does.
 
 The web player's browse shots need state the seeded library doesn't carry.
 Before warming the demo session, `capture-web.mjs` signs in as the admin

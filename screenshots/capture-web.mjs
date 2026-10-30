@@ -586,6 +586,16 @@ async function backToShell(page) {
   if (await tid(page, 'player-menu').count()) await minimisePlayer(page);
 }
 
+// Out of the full-screen reader, back to the book page whose Read action `read` is:
+// Escape (twice at most, a sheet over the reader first), else backToShell.
+async function leaveReader(page, read) {
+  for (let i = 0; i < 2 && (await read.count()) === 0; i++) {
+    await page.keyboard.press('Escape');
+    await read.waitFor({timeout: 1500}).catch(() => {});
+  }
+  if ((await read.count()) === 0) await backToShell(page);
+}
+
 // A player sheet from one of the full player's action pills (`player-speed`,
 // `player-sleep`), shot and closed again with Escape.
 async function sheetShot(page, testId, shot) {
@@ -750,11 +760,7 @@ async function captureWide(name, viewport, shots) {
           await shoot(page, shots.readerContents);
         }
       } finally {
-        for (let i = 0; i < 2 && (await read.count()) === 0; i++) {
-          await page.keyboard.press('Escape');
-          await read.waitFor({timeout: 1500}).catch(() => {});
-        }
-        if ((await read.count()) === 0) await backToShell(page);
+        await leaveReader(page, read);
       }
     });
   }
@@ -1112,6 +1118,111 @@ await capturePhone('phone', PHONE, {
   youStats: 'web-player/phone-you-stats.png',
   settings: 'web-player/phone-settings.png',
 });
+
+// ── Read-along (Bridge Phase 3c): the Text tab and Follow narration ─────────
+// run.sh seeds The Call of the Wild with its EPUB and the read-along map a Bridge made
+// for it (cut to the seeded audio files), so the server serves it `ready`. The book is
+// started from its page (the warm-up left it in chapter 1, inside the map) and paused,
+// a still frame: the reader highlights the sentence at the paused place. Desktop: the
+// full player's companion on its Text tab, following the narration, then the
+// full-screen reader (Read the ebook) after Follow narration. Phone: the companion
+// sheet from the Chapters chip (the phone has no Text chip), switched to Text. Each
+// opens the book by its route. Run after the other profiles, since playing the book
+// makes it the demo user's latest.
+const READALONG_SHOTS = {
+  text: 'web-player/player-text.png',
+  reader: 'web-player/reader-readalong.png',
+  phoneText: 'web-player/phone-player-text.png',
+};
+
+// The open companion's Text tab, once its reader shows the book and follows (the page
+// edges come only once the reader said the map is this ebook's), shot.
+async function textTabShot(page, shot) {
+  await tid(page, 'companion-tab-text').click({timeout: 15000});
+  const text = tid(page, 'companion-text');
+  await text.waitFor({timeout: 30000});
+  await text.getByRole('button', {name: 'Next page', exact: true}).waitFor({timeout: 45000});
+  // The follow's turn to the narrated sentence, and its highlight.
+  await sleep(4000);
+  await page.mouse.move(0, 0);
+  await shoot(page, shot);
+}
+
+// The Call of the Wild's book page, by its route (the player's own session and library).
+async function openReadalongBook(page) {
+  await page.goto(BASE, {waitUntil: 'networkidle', timeout: 45000});
+  await sleep(2000);
+  const {cid, token} = await playerSession(page);
+  const {lib, find} = await seededBooks(token);
+  const book = find('Call of the Wild');
+  if (!book) throw new Error('no Call of the Wild in the seeded library');
+  await page.goto(`${BASE}book/${lib.id}?connection=${encodeURIComponent(cid)}&path=${encodeURIComponent(book.rel_path)}`, {waitUntil: 'networkidle', timeout: 45000});
+  await tid(page, 'book-page').waitFor({timeout: 15000});
+  await tid(page, 'read-action').waitFor({timeout: 15000});
+  await sleep(SETTLE_MS);
+}
+
+async function captureReadalong() {
+  if (wanted(READALONG_SHOTS.text, READALONG_SHOTS.reader)) {
+    const {ctx, page} = await newProfile('read-along', {width: 1440, height: 900});
+    try {
+      await step('read-along: text tab', async () => {
+        await openReadalongBook(page);
+        await playThenPause(page);
+        await expandPlayer(page);
+        try {
+          await textTabShot(page, READALONG_SHOTS.text);
+        } finally {
+          // Back to Chapters, so the companion opens where a fresh run's does.
+          await tid(page, 'companion-tab-chapters').click({timeout: 8000}).catch(() => {});
+          await backToShell(page);
+        }
+      });
+      if (wanted(READALONG_SHOTS.reader)) {
+        await step('read-along: follow narration', async () => {
+          const read = tid(page, 'read-action');
+          await read.click({timeout: 8000});
+          try {
+            const follow = tid(page, 'readalong-follow');
+            await follow.waitFor({timeout: 45000});
+            await follow.click({timeout: 8000});
+            await follow.waitFor({state: 'hidden', timeout: 15000});
+            await sleep(4000);
+            await page.mouse.move(0, 0);
+            await shoot(page, READALONG_SHOTS.reader);
+          } finally {
+            await leaveReader(page, read);
+          }
+        });
+      }
+    } finally {
+      await ctx.close();
+    }
+  }
+
+  if (wanted(READALONG_SHOTS.phoneText)) {
+    const {ctx, page} = await newProfile('read-along phone', PHONE);
+    try {
+      await step('read-along: phone text tab', async () => {
+        await openReadalongBook(page);
+        try {
+          await playThenPause(page);
+          await firstVisible(tid(page, 'player-companion-chips').getByRole('button', {name: 'Chapters'})).click({timeout: 8000});
+          await textTabShot(page, READALONG_SHOTS.phoneText);
+        } finally {
+          // The sheet closes with Escape (its own Close is one of several), then the player.
+          await page.keyboard.press('Escape');
+          await tid(page, 'companion-text').waitFor({state: 'hidden', timeout: 8000}).catch(() => {});
+          await backToShell(page);
+        }
+      });
+    } finally {
+      await ctx.close();
+    }
+  }
+}
+
+await captureReadalong();
 
 // ── Podcasts: Shows, a show page, New episodes, an episode being fetched ────
 // A podcast library is only written by a Bridge, and the demo account sees only the

@@ -1,6 +1,6 @@
 ---
 title: The ebook reader
-description: "The player's EPUB reader (src/reader/, the /read route): the reader document built from vendored foliate-js in a web and an app variant, the sandboxed web host, the apps' WebView host and its chunked transfer, the EPUB cache and the EPUB in downloads, the message protocol, the reading-place queue with Sync v2's base_version, the Jump there offer and Read on the book page (Bridge Phase 3b)."
+description: "The player's EPUB reader (src/reader/, the /read route): the reader document built from vendored foliate-js in a web and an app variant, the sandboxed web host, the apps' WebView host and its chunked transfer, the EPUB cache and the EPUB in downloads, the message protocol, the reading-place queue with Sync v2's base_version, the Jump there offer and Read on the book page (Bridge Phase 3b); read-along (Bridge Phase 3c-2): the map, its messages both ways, following the narration and the full-screen reader's Follow narration."
 ---
 
 A book whose folder holds its EPUB gets **Read the ebook** on its page, and the
@@ -8,7 +8,9 @@ reader opens the EPUB paginated, remembers the place per user across devices, an
 runs no script from the book anywhere. Bridge Phase 3b-1 built it for the web (an
 iframe host); Phase 3b-2 added the apps' host (a WebView fed the book in chunks), the
 per-book EPUB cache and the EPUB in downloads, so a downloaded book reads offline on
-every platform. The server side is capability `ebooks`: a book's [`ebook`](../server/api/reference.md#get-apiv1librariesidbooks)
+every platform. Phase 3c-2 added [read-along](#read-along-following-the-narration):
+with a book's read-along map, the reader follows the narration sentence by sentence,
+in the companion's Text tab and in the full-screen reader. The server side is capability `ebooks`: a book's [`ebook`](../server/api/reference.md#get-apiv1librariesidbooks)
 field, its bytes at
 [`GET /libraries/{id}/ebook`](../server/api/reference.md#get-apiv1librariesidebook),
 the place at
@@ -29,7 +31,9 @@ listener's view is on [Reading the ebook](/users/listening/reading-the-ebook).
 | The place | `src/reader/reading-progress.ts` (queue, mirror, `lookupReadingPlace`, `jumpOffer`, `adoptServerPlace`) |
 | Read on the book page | `canRead` (`src/reader/can-read.ts`) in `src/components/book/hero-actions.tsx` |
 | The EPUB in downloads | `manifest.ebookUri` (`book.epub`) in `src/downloads/store.ts`; see [Offline & PWA](offline.md#lifecycle) |
-| Text size | `src/reader/reader-settings.ts` (`audiosilo.readerFontScale`, per device, not synced) |
+| Text size | `src/reader/reader-settings.ts` (`audiosilo.readerFontScale`, per device, not synced); the theme and size both screens use, `use-reader-appearance.ts` |
+| One session setup (both hosts) | `src/reader/reader-session.ts` (`startReaderSession`), `use-place-gate.ts` (`usePlaceGate`), `page-edge.tsx` (`PageEdges`, `narrowPageEdges`, `FollowPill`) |
+| Read-along | the reader's `reader/src/readalong.js` (the core); `src/reader/readalong-map.ts` (`parseReadalongMap`, `readerMapOf`, `cfiAt`), `readalong-gating.ts`, `use-book-readalong.ts`, `narration.ts`, `use-reader-readalong.ts`; the Text tab in `src/components/player/companion/` ([Player UI](player-ui.md#the-text-tab-read-along)); the map in downloads in `src/downloads/readalong-file.ts` ([Offline](offline.md#the-read-along-map-in-downloads)) |
 
 ## The reader document
 
@@ -111,8 +115,8 @@ channel (`createHostChannel`) until the reader says `ready`.
 
 | Direction | Messages |
 |---|---|
-| host -> reader | `open {book (ArrayBuffer), name, at?: {cfi?, fraction?}, theme, fontScale}` (web) or `open {size, chunks, name, at?, theme, fontScale}` then `chunk {seq, data (base64)}` for `seq` 0 to `chunks - 1` (app), `goto {href \| cfi \| fraction}`, `appearance {theme, fontScale}`, `next`, `prev` |
-| reader -> host | `ready`, `opened {title, toc: [{label, href, depth}], rtl}`, `progress {cfi, fraction, sectionLabel}`, `loading {value}`, `error {code: drm \| unreadable \| section \| runtime, message}`, `escape`, `csp {directive, blocked}` |
+| host -> reader | `open {book (ArrayBuffer), name, at?: {cfi?, fraction?}, theme, fontScale}` (web) or `open {size, chunks, name, at?, theme, fontScale}` then `chunk {seq, data (base64)}` for `seq` 0 to `chunks - 1` (app), `goto {href \| cfi \| fraction}`, `appearance {theme, fontScale}`, `next`, `prev`; read-along: `readalong {map}`, `position {t, rate, playing}`, `follow` ([below](#the-read-along-messages)) |
+| reader -> host | `ready`, `opened {title, toc: [{label, href, depth}], rtl}`, `progress {cfi, fraction, sectionLabel}`, `loading {value}`, `error {code: drm \| unreadable \| section \| runtime, message}`, `escape`, `csp {directive, blocked}`; read-along: `seek {t}`, `following {value}`, `readalong {state, unresolved}` |
 
 The reader's messages describe a book nobody vetted, so `acceptReaderMessage` takes
 a message only from **that frame's** `contentWindow` on our own origin, and
@@ -120,6 +124,22 @@ a message only from **that frame's** `contentWindow` on our own origin, and
 TOC sizes): anything else is dropped. `escape` exists because a key pressed in the
 book stays in the frame; the reader turns pages itself and sends Escape back so the
 screen can close.
+
+**One session setup** (fe#172). Both hosts start each reader document's session
+with `startReaderSession` (`reader-session.ts`): the channel, the `READER_START_MS`
+timeout, and where each message goes (`ready` runs the host's own `onReady`, sends
+what waited, then tells the read-along side; `csp` is logged; `seek`, `following`
+and `readalong` go to the read-along side; the rest to the host's own handlers).
+A host keeps only what is its own: the web's reopen of a reloaded frame and its
+fetch, the app's chunked transfer, crash reloads and the last place. A new message
+type goes through the session, never into one host.
+
+**The bytes and the place together** (fe#164). Both hosts start the EPUB's fetch
+(or its local read) as soon as they mount, while the screen still looks the place
+up, and hand the book over only once `placeKnown` is true (`usePlaceGate`), so the
+open is never the fetch after the lookup. In the app, the offline lookup's "EPUB on
+this device" counts the cache file only as it was when the screen mounted its host
+(`cachedBefore`): a copy this screen fetched meanwhile never opens a guessed start.
 
 ## The app host
 
@@ -223,9 +243,11 @@ ArrowLeft. The top bar holds close, the title, the section label and percentage,
 Contents (a `Sheet` of the TOC: the current entry, the first named as the section on
 screen, is bold on a muted row with `aria-current="location"`, and the list opens
 scrolled to it) and the text size
-steps (A-/A+, `FONT_SCALES` 0.8 to 1.8). The page edges are 44 px tap targets over
-the margins, narrowed to 24 px in the phone layout (under 640 px wide) so
-they stay clear of the text. A spinner shows only when a section takes over 300 ms to lay out.
+steps (A-/A+, `FONT_SCALES` 0.8 to 1.8). The page edges (`PageEdges`) are 44 px
+tap targets over the margins, narrowed to 24 px when the reader's **measured** width
+is under `TABLET_MIN_WIDTH` (`narrowPageEdges`; before it is measured, the phone
+layout), so they stay clear of the text a tap lands on (fe#165): the companion's
+420 px column on a desktop gets the narrow edges too. A spinner shows only when a section takes over 300 ms to lay out.
 The reader document's viewport is `maximum-scale=1, user-scalable=no`,
 so focusing an input inside an EPUB doesn't leave the iOS WebView zoomed.
 
@@ -317,10 +339,150 @@ then the lookup fails (the `fetch` notice) rather than opening at the start. Its
 and back in, its places here cleared), so it keeps the further place, and the answer to the first save that reaches the server (the queue's
 replay while the reader is open, or a save on the next online open) offers Jump there.
 
+## Read-along: following the narration
+
+A Bridge's [`readalong.align` job](../bridge/readalong.md) lines a book's ebook up
+with its narration and writes `.audiosilo/readalong.json`; the server serves it at
+[`GET /libraries/{id}/readalong`](../server/api/reference.md#get-apiv1librariesidreadalong)
+and says on `/item` whether it is `ready` or `stale` (`Book.readalong`). With a
+ready map the reader follows the narration: it shows the page of the sentence
+being read, highlights it, turns the page as the narration moves on, and a tapped
+sentence moves the narration to its start. Two surfaces use it: the companion's
+[Text tab](player-ui.md#the-text-tab-read-along) and the full-screen reader's
+**Follow narration** ([below](#follow-narration-in-the-full-screen-reader)). The
+admin's Make read-along offer lives in the Text tab. The listener's view is on
+[Reading the ebook](/users/listening/reading-the-ebook#follow-the-narration) and
+[The companion](/users/listening/companion#text).
+
+### Who sees it
+
+`readalong-gating.ts`, pure and tested:
+
+- **`readalongReady(readalong, book, readable)`**: the server serves maps
+  (capability `readalong`), the book's `readalong.state` is `ready` with its
+  `generated_at`, and the book reads (`canRead`, which needs its ebook). A stale or
+  absent map is invisible to a listener. A surface still waits for the reader to
+  say the map's spans name this book (`readalong {state: 'ok'}`) before it shows
+  anything that follows.
+- **`mayMakeReadalong(user, server)`**: an admin (never a household member, a kid's
+  or a demo account, whatever its role says; `isBridgeAdmin`), on a server with
+  `bridge` and `readalong`, whose Bridge lists `readalong` in
+  `ServerInfo.bridge.features`. An older server has neither flag: never.
+
+### The map
+
+`client.readalong(libraryId, path)` fetches the map by the **book's** path with the
+`Authorization` header only (the route takes no `?token=`), with a 60 s timeout
+(up to 16 MiB of JSON, and the server may hash the ebook first). `parseReadalongMap`
+checks it: the head must say `audiosilo-readalong/v1` with a `sections` array (else
+a `ReadalongMapError`); the server checks only the head, so **every span** is checked
+here, field by field: a `cfi` that starts `epubcfi(`, ends `)` and is at most 1024 UTF-8
+bytes, finite times with `0 <= start <= end`. A bad span is dropped and counted
+(`dropped`), never the map; `gaps` and `audio_gaps` are not kept. The reader document
+is sent only the sections' hrefs and spans (`readerMapOf`), nothing of the head.
+
+`useBookReadalong(ref, book, readable, enabled?)` picks where the map comes from
+(`readalongSource`): the download's copy (`readalong.json`, see
+[Offline](offline.md#the-read-along-map-in-downloads)) while the server's book names
+that map or none (a list row, or offline with the capability unknown), else the
+server's (`useReadalong`, keyed by the map's `generated_at`, no retry); never a
+stale map, copy or not, and a copy that can't be read falls back to the server's.
+Only a map with a sentence (`hasSpans`) reaches the reader. It returns:
+
+| Field | Meaning |
+|---|---|
+| `map` | the sections and spans to send, or null: none to follow |
+| `pending` | still reading it |
+| `failed` | the read failed for a reason that says nothing about the map (offline, a 5xx, a timeout, a copy that won't read): never "no read-along". Only the server's 404 `no_readalong` and 409 `readalong_stale`, or the flag off (a `CapabilityError`), mean none (`readalongNone`) |
+| `retry` | read it again |
+
+While another copy of the map shown is on its way (the download took it, the map was
+made again), the one shown stays: a reader that has a map never loses it in between.
+
+### The read-along messages
+
+The reader's side of the protocol, in `protocol.ts` and `reader/src/reader.js`,
+checked field by field both ways:
+
+| Direction | Message | Meaning |
+|---|---|---|
+| host -> reader | `readalong {map}` | the map's sections and spans (`{sections: [{href, spans: [{cfi, start, end}]}]}`, times in whole-book seconds), or `null`: none, stop following. A document that never had a map is sent nothing |
+| host -> reader (app) | `readalong {length, chunks}` then `readalongChunk {seq, data}` | a map over 256 KB of JSON, as pieces of its text (`readalongMessages`, never cutting a surrogate pair); the reader's `createTextAssembly` refuses any wrong piece, and a wrong map is `none` |
+| host -> reader | `position {t, rate, playing}` | the narration's whole-book place, speed and whether it plays: once a second (`POSITION_MS`) while a map is in, and at once on a play, pause, seek or speed change |
+| host -> reader | `follow` | turn to the sentence being read and keep following (Back to narration, Follow narration) |
+| reader -> host | `seek {t}` | a sentence was tapped: move the narration to its start (`seekBook`, which keeps the play state; `t` at most a week, checked) |
+| reader -> host | `following {value}` | the reader follows the narration, or stopped because the listener turned away |
+| reader -> host | `readalong {state, unresolved}` | `ok` once a span names a section of this book, else `none`; `unresolved` counts the spans skipped (sent once) |
+
+**The host API** (`useReaderReadalong`, shared by both hosts): the props
+`readalongMap` (memoised: a new identity is sent again), `readalongPosition()`
+(read every second while a map is in, and on the handle's `syncPosition()`),
+`followNarration` (follow as soon as the map is in), `onSeek`, `onFollowing` and
+`onReadalongState`; the handle's `follow()` sends `follow`. Each `ready` (a reloaded
+document too) gets the map, then the place, then `follow` when the last document
+last said it followed (else `followNarration`).
+
+**The narration** (`useNarration(target, host)`, `narration.ts`): the reader
+follows only while the player's placed book is this book (`selectPlacedBookKey`);
+`readalongPosition()` reads its whole-book place, speed and playing state, and the
+host is told at once (`syncPosition()`) on play, pause, a speed change or a jump
+(`narrationMoved`: more than `NARRATION_JUMP_S`, 1.5 s, from where the clock would
+be). A tapped sentence's `seek` is the store's `seekBook`, only while placed: a tap
+in another book's text plays nothing.
+
+### The core (`reader/src/readalong.js`)
+
+Ported from the read-along spike's `readalong-core.js`, tested under `node:test`
+(`reader/test/readalong.test.mjs`; `readalong-cfi.test.mjs` resolves the Bridge's
+Alice map and EPUB, byte copies of audiosilo-bridge testdata in
+`reader/test/fixtures`, through the vendored `epubcfi.js` on jsdom).
+
+- **Indexing**: only once the book shows its first place (`attach` after `opened`:
+  a follow's `goTo` racing the opening one would supersede it). Spans sort by time
+  (`indexMap`); a span's section is the CFI's `/6/N` step against the sections' own
+  CFIs, else `view.resolveCFI`. Ranges resolve lazily per section; a CFI that names
+  nothing is skipped, never breaking the loop.
+- **The clock**: a 50 ms tick reads `PositionClock` (the host's one-a-second
+  samples, moved on at the speed while playing, never more than 3 s past the last)
+  and finds the sentence by binary search (`spanAt`, held 2 s across a short gap).
+  The highlight is foliate's annotation drawn with `Overlayer.highlight`. A sentence
+  running over the page end turns the page once the narration passes the share of
+  it shown.
+- **A tap** finds its sentence by CFI order (`findInOrder` on the caret's CFI),
+  seeks to its start and follows; for 2.5 s (`SEEK_GRACE_MS`) samples more than
+  1.5 s from the tapped sentence are ignored, so a late sample doesn't pull the page
+  back.
+- **Turning away**: a person's move (page, scroll, snap, navigation; never a
+  relayout, nor one that stays on the page shown) that takes the sentence off the
+  page stops following (`following {value: false}`), and one back onto it follows
+  again. A seek in the player (a sample 3 s or more, `JUMP`, from where the clock
+  would be) follows again, but only once the reader has followed at least once, so
+  the full-screen reader is never grabbed by every seek.
+- **One move at a time** (`inTurn`): the tick's, `follow`'s and the host's page
+  turns wait for each other, each given up after `MOVE_MS` (10 s), since foliate
+  never settles a `goTo` whose view a later one replaced.
+
+### Follow narration in the full-screen reader
+
+`ReaderScreen` asks for the map (`useBookReadalong(..., narration.narrating)`) and
+sends it **only while its book is the one the player holds**: another book playing
+has nothing to follow here. It never sets `followNarration`: once the reader said
+`ok`, a pill at the page's foot (`FollowPill`, `readalong-follow`, stacked with the
+Jump offer and the not-saved card) says **Follow narration**; pressing it calls
+`follow()`. Once the listener turns a page away it says **Back to narration**.
+
+**No reading-place save while following.** The narration turns the pages, not the
+reader, so `onFollowing(true)` drops the save timer and any pending save; leaving
+following (`onFollowing(false)`) schedules the usual debounced save of the page on screen
+(`atNow`, the latest `progress`), and every move after saves as usual. A map that
+goes away, or Try again (a new host, which has followed nothing), ends following
+too. The companion's Text tab never saves a reading place at all
+([Player UI](player-ui.md#the-text-tab-read-along)).
+
 ## Still to come
 
-Phase 3c: read-along with the audio. Known follow-ups: a generic save queue shared
-with progress sync, fetching the EPUB alongside the place lookup; from 3b-2, a
+Known follow-ups: a generic save queue shared with progress sync; from 3b-2, a
 clearer notice for a book over the 512 MB limit or an allocation failure, checking a
-downloaded `book.epub`'s size, a cap on the cache's size, a disk-full notice, pinch
-zoom, and the two hosts' duplicated session setup.
+downloaded `book.epub`'s size, a cap on the cache's size, a disk-full notice and
+pinch zoom; from 3c-2, comparing a kept read-along map with the download's own
+EPUB (its sha256), and Try again for a signed-out or missing book in the Text tab.
