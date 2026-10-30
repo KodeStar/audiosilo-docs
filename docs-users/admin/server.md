@@ -239,8 +239,8 @@ cover images are still downloaded from their hosts.
   a list of these books in the players is planned. It asks the metadata service
   only about series and books, never who is listening, and with a
   [local copy](#keeping-a-local-copy) your server answers it itself. The switch
-  works only while the lookup is on (it is greyed out otherwise). Under it, the
-  last check: "Not run yet" (the first check runs as soon as you switch it on,
+  works only while the lookup is on (it is greyed out otherwise). Under it, while
+  the switch and the lookup are both on, the last check: "Not run yet" (the first check runs as soon as you switch it on,
   or about an hour after the server starts), "Last checked *when*: *N* series,
   *M* books coming or missing", or, in red, "Last check failed *when*" with the
   reason. How far back a release still counts as new (90 days) is set in the

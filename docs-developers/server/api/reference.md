@@ -4156,9 +4156,10 @@ run:
 
 1. gives each owned book with an ASIN or ISBN its community work id (the metadata
    cache's answer, else a lookup under the service's own budget), and looks again
-   after 30 days, at most 500 books a run;
+   after 30 days (at most 500 of those month-old re-checks a run; a new or
+   changed book is always looked up);
 2. gives each local series (library and folded series name) the community series it
-   is, from its books' works' series named like it (the `/meta` rails' naming rule,
+   is (one or more), from its books' works' series named like it (the `/meta` rails' naming rule,
    then give or take a leading article or a trailing "Series"), looked up again
    after 30 days or when the series gains books;
 3. asks the metadata service's watch feed, 50 series a request, which series have
@@ -4242,8 +4243,8 @@ anywhere, and each work is listed once (the first library in sort order). Podcas
 libraries never count. Items come in order: preorders soonest first, then releases
 newest first, then missing volumes by series and position.
 
-Errors: `404` `code: "metadata_off"` while community metadata is off (checked
-first), `404` `code: "upcoming_off"` while the job is switched off
+Errors: a kid's `403` `kid_account` comes first (the route's own check), then `404`
+`code: "metadata_off"` while community metadata is off, `404` `code: "upcoming_off"` while the job is switched off
 (`upcoming.enabled`, the console's Settings > Metadata). Either way the capability
 is `false`, so a client that honours it never asks.
 

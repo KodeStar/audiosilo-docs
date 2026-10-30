@@ -219,7 +219,7 @@ fetch_epub() {
       mv "$cached.part" "$cached"
     else
       rm -f "$cached.part"
-      echo "  ! the EPUB fetch failed (offline, or not an EPUB): the $shots shots will fail"
+      echo "  ! the EPUB fetch failed (offline, or not an EPUB): no EPUB for the $shots shots"
       return 1
     fi
   fi
@@ -247,6 +247,9 @@ if [ -d "$RA_BOOK" ]; then
     if (cd "$HERE" && node seed-readalong.mjs "$RA_BOOK" "$RA_EPUB"); then
       RA_OK=1
     else
+      # A map left by an earlier run no longer fits this EPUB: drop it, so no other
+      # shot shows a stale read-along.
+      rm -f "$RA_BOOK/.audiosilo/readalong.json"
       echo "  ! the read-along map could not be written"
     fi
   fi

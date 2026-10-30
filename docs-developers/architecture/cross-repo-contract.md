@@ -526,7 +526,8 @@ ordinary chapters with the additive `chapters_source: "community"` (see
 [§6](#6-the-chapter--whole-book-timeline-model)); the console's panel reads the
 admin book page's `community_chapters`. Upcoming releases (2.6.0, `internal/upcoming`) read
 `metaserve`'s watch feed (`watch/feed.json?s=`, 50 series a request, the work id
-taken from each item's tag or URL) and `GET /series/{id}` once a day, and the
+taken from each item's tag or URL) once a day, and `GET /series/{id}` for a series
+never read, one with news or one read over a week ago, and the
 series rails' work cards carry `release_date` through to `/meta` (additive); the
 player screen that reads [`GET /me/upcoming`](../server/api/reference.md#get-apiv1meupcoming)
 is planned.

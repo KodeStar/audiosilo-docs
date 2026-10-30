@@ -111,7 +111,7 @@ export const SHOTS = [
   {file: 'admin/book.png', capture: 'admin', title: 'Admin - Book page', hint: 'a book\'s page: hero, Details card with provenance markers (one Edited field)'},
   {file: 'admin/book-match.png', capture: 'admin', title: 'Admin - Match with community metadata', hint: 'the match dialog open on a book page with its possible matches and their community covers'},
   {file: 'admin/authors.png', capture: 'admin', title: 'Admin - Authors', hint: 'Library > Authors: author tiles with book counts'},
-  {file: 'admin/series.png', capture: 'admin', title: 'Admin - Series', hint: 'Library > Series: one card per series with its spines; a series with a matched book shows the books not on the server as dashed gaps, each with its first release date when the community catalogue knows it (live meta.audiosilo.app)'},
+  {file: 'admin/series.png', capture: 'admin', title: 'Admin - Series', hint: 'Library > Series: one card per series with its spines; a series with a matched book shows the books not on the server as dashed gaps, each with its first release date when the community catalogue knows it (live meta.audiosilo.app) (1440x1400)'},
   {file: 'admin/folders.png', capture: 'admin', title: 'Admin - Folders', hint: 'Library > Folders: the folder tree and the selected folder\'s detection choice'},
   {file: 'admin/palette-search.png', capture: 'admin', title: 'Admin - Palette search', hint: 'the ⌘K palette searching books, authors and series for "alice"'},
   {file: 'admin/people.png', capture: 'admin', title: 'Admin - People', hint: "People > People: person cards with what each is listening to and their devices, maya's household (maya, then the members dan, a grown-up, and ivy, a kid, each Managed by maya) as one block across the grid"},

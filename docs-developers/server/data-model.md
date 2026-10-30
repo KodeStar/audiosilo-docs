@@ -1075,7 +1075,8 @@ through the user-state path (no content cache reads them).
   identifiers it was resolved by, the metadata cache's key, so a changed ASIN
   resolves again) and `checked_at`. Index on `work_id`.
 - **`upcoming_series`** - a local series (`library_id`, folded `series_key`) ->
-  the community series it is (`series_id`, `''` when none was found), with `name`
+  a community series it is, one row each (`series_id`, part of the key: a local series
+  can be several; one `''` row when none was found), with `name`
   (the local spelling the player opens the series by), `books` (its book count
   when resolved), `resolved_at` and `classified_at` (when its items were first
   worked out; `NULL` makes the next run's items for it a silent baseline).
