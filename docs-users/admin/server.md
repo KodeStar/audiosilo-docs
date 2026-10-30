@@ -239,9 +239,9 @@ cover images are still downloaded from their hosts.
   and in the player each listener (except a kid) sees what's coming in the
   series they can see, on Home and an Upcoming page, and can subscribe their
   calendar app to the release days
-  ([Upcoming releases](../listening/upcoming.md); a calendar that fetches from
+  ([Upcoming releases](../listening/upcoming.md)). A calendar that fetches from
   the cloud, like Google Calendar, needs the **Public address** above to be a
-  public HTTPS address with a trusted certificate). It asks the metadata service
+  public HTTPS address with a trusted certificate. It asks the metadata service
   only about series and books, never who is listening, and with a
   [local copy](#keeping-a-local-copy) your server answers it itself. The switch
   works only while the lookup is on (it is greyed out otherwise). Under it, while

@@ -555,10 +555,8 @@ server that sends `upcoming`, never for a kid) for Home's Coming up in
 your series, the `/upcoming` page and the You hub's Upcoming section, opening an item's
 series page by its `local` view; the series page dates its not-yet-released ghosts from
 the rails' `release_date` ("Out Nov 12, 2026"). Track U3 adds each item's real cover
-from the server (`GET /me/upcoming/cover`, only the `cover_url` the caller's own list
-hands out, flag `upcoming_covers`; the player draws it over the ghost) and a calendar
-feed (`/me/upcoming/calendar` and `releases.ics`, a `feed` token, flag
-`upcoming_calendar`; see [§3](#3-media-auth-rides-in-the-url---token)). Details:
+(`upcoming_covers`) and a calendar feed (`upcoming_calendar`, a `feed` token); see
+[§3](#3-media-auth-rides-in-the-url---token). Details:
 [Upcoming releases](../frontend/state-and-data.md#upcoming-releases).
 **Frontend:** the `BookMeta` envelope (hand-mirrored in `src/api/types.ts`) is
 fetched by `client.bookMeta` and rendered capability-gated on the book screen's

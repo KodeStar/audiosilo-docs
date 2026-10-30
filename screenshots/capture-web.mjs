@@ -2412,9 +2412,14 @@ const UPCOMING_SHOTS = {
 
 // The demo listener's Upcoming page in `page`, once its rows show.
 async function upcomingPageShot(page, file) {
+  await openUpcoming(page);
+  await settleShoot(page, file);
+}
+
+// The Upcoming page in `page`, once its rows show.
+async function openUpcoming(page) {
   await page.goto(BASE + 'upcoming', {waitUntil: 'networkidle', timeout: 45000});
   await tid(page, 'upcoming-row').waitFor({timeout: 30000});
-  await settleShoot(page, file);
 }
 
 if (wanted(...Object.values(UPCOMING_SHOTS))) {
@@ -2492,14 +2497,13 @@ if (wanted(...Object.values(UPCOMING_SHOTS))) {
           await tid(page, 'ready-screen').waitFor({timeout: 15000});
           await firstVisible(page.getByRole('button', {name: 'Start listening'})).click({timeout: 8000});
           await tid(page, 'top-bar-(home)').waitFor({timeout: 15000});
-          await page.goto(BASE + 'upcoming', {waitUntil: 'networkidle', timeout: 45000});
-          await tid(page, 'upcoming-row').waitFor({timeout: 30000});
+          await openUpcoming(page);
           await tid(page, 'upcoming-calendar-get').click({timeout: 15000});
           await tid(page, 'upcoming-calendar-url').waitFor({timeout: 15000});
           await tid(page, 'upcoming-calendar').evaluate((el) => el.scrollIntoView({block: 'end'}));
           await settleShoot(page, UPCOMING_SHOTS.calendar);
         } finally {
-          const token = await demoToken(page).catch(() => null);
+          const token = (await playerSession(page).catch(() => null))?.token;
           if (token) {
             await api(token, 'DELETE', '/me/upcoming/calendar').catch(() => {});
             await api(token, 'POST', '/auth/logout').catch(() => {});

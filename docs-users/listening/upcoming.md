@@ -15,7 +15,7 @@ The [home screen](browsing.md#the-home-screen) has a **Coming up in your series*
 
 Each book shows its cover from the community database, with its title, the series and its number in it (*"Sherlock Holmes, book 4"*), and a date line. A book the database has no cover for is a pale "ghost" cover, and so is every book while its cover loads or when it can't be loaded. Tap one to open that [series page](#on-series-pages). **See all** opens the Upcoming page.
 
-Your server fetches the covers and passes them on, so your device never contacts the sites they come from. A server older than the one that added them shows ghost covers only.
+Your server fetches the covers and passes them on, so your device never contacts the sites they come from.
 
 The shelf only appears once there's something in it. While your server hasn't checked yet, or when there's nothing coming up, Home simply doesn't show it.
 
@@ -83,6 +83,8 @@ Press **Get calendar link**. The card shows the link, and the buttons to use it:
 - **Subscribe** (on an iPhone, iPad or Mac) hands the link to the Calendar app, which asks you to confirm the subscription.
 - **Copy link** puts it on the clipboard, to paste into any calendar app.
 
+With several servers, the card has a row for each server that offers it, each with its own link.
+
 The calendar has a book only when it has a release day: books you can preorder and books that came out recently, with the exact day known. Missing volumes (most came out years ago) and books with only a month or a year to go on are left out. Each event is named like *"Leviathan Falls (The Expanse #9)"*, its notes say who wrote it, when it first came out and where its page is on the community database, and it shows as free time, so it never blocks your day.
 
 ### Subscribing in your calendar app
@@ -107,8 +109,6 @@ Anyone who has the link can see your upcoming releases (only those, nothing else
 - **Turn off** stops the link. A calendar subscribed to it stops updating (most calendar apps keep the events they already have until you remove the subscription).
 
 Both ask you to confirm first. Changing your password doesn't change the link.
-
-With several servers, the card has a row for each server that offers it, each with its own link.
 
 ### Who can subscribe
 

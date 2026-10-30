@@ -161,9 +161,7 @@ the partial index `idx_tokens_bridge` on `user_id` over live bridge tokens, and 
 touched by its calls; `'feed'` a listener's
 [calendar feed token](auth-and-security.md#calendar-feed-tokens), named `Calendar
 feed`, at most one live per user by the partial unique index `idx_tokens_feed_user`
-*(0060)* on `user_id` over live feed tokens, its `created_at` in milliseconds,
-deleted (never flagged revoked) when it ends, and never touched by the calendar's
-polls), `device_name`, `created_at`,
+*(0060)* on `user_id` over live feed tokens), `device_name`, `created_at`,
 `last_seen` (bumped by authenticated requests, at most once a minute unless the
 request's address or `X-AudioSilo-Client` changed: `auth.touchInterval`, so a
 progress save isn't also a token write), `expires_at` (NULL = no

@@ -163,8 +163,9 @@ A listener's **calendar feed** (capability `upcoming_calendar`) is a token of ki
 `feed`, made by [`POST /me/upcoming/calendar`](reference.md#post-apiv1meupcomingcalendar)
 (session only, one per user). It is accepted **only** on
 [`GET /me/upcoming/releases.ics`](reference.md#get-apiv1meupcomingreleasesics), as
-the header or `?token=`, and that route takes no other kind: a feed token is `401`
-everywhere else, and a session or API key is `401` there. Its polls don't bump
+the header or `?token=` (a calendar app reads a subscription by its URL alone), and
+that route takes no other kind: a feed token is `401` everywhere else, and a session
+or API key is `401` there. Its polls don't bump
 `last_seen`, and it is never a device. See
 [Calendar feed tokens](../auth-and-security.md#calendar-feed-tokens).
 
@@ -176,17 +177,12 @@ everywhere else, and a session or API key is `401` there. Its polls don't bump
 session token **either** as the bearer header **or** as a `?token=` query
 parameter. This exists because browser `<img>` and `<audio>` elements cannot set
 an `Authorization` header. The query fallback is deliberately confined to these
-four routes and the calendar feed (`requireBookMediaAuth` for cover and stream,
-`requireMediaAuth` for the two community covers, `requireFeedAuth` for the feed, all
-`mediaAuth` in `internal/api/middleware.go`): a token in a query string can leak
-into access logs and `Referer` headers, so no other route accepts it. Native
-clients should keep using the header even for media.
-
-The calendar feed, [`GET /me/upcoming/releases.ics`](reference.md#get-apiv1meupcomingreleasesics),
-takes its `?token=` because a calendar app reads a subscription by its URL alone.
-That `?token=` is a **feed** token, never a session token: the link a listener
-pastes into a calendar can read their release list and nothing else, and a
-session or API key there is `401`.
+four routes and the calendar feed, whose `?token=` is a **feed** token, never a
+session token (`requireBookMediaAuth` for cover and stream, `requireMediaAuth` for
+the two community covers, `requireFeedAuth` for the feed, all `mediaAuth` in
+`internal/api/middleware.go`): a token in a query string can leak into access logs
+and `Referer` headers, so no other route accepts it. Native clients should keep
+using the header even for media.
 
 A book's **ebook** ([`GET /libraries/{id}/ebook`](reference.md#get-apiv1librariesidebook),
 capability `ebooks`) is deliberately not one of them: it takes the header only, and
