@@ -940,6 +940,11 @@ Its keys:
   on the first console visit. `catalog.UpdateSetupState` merges a change into
   it in one writer transaction; migration `0053` writes it finished and
   dismissed on an upgraded server.
+- `upcoming`: the [upcoming releases](api/reference.md#upcoming-releases) job's
+  run status (`catalog.UpcomingRun`): `last_run_at`, `last_success_at`,
+  `last_error`, `failures` (failed runs since the last success, for the hourly
+  retries), `next_run_at`, `series` and `items`. The console reads it as
+  `metadata.upcoming_status` on `GET /admin/settings`.
 
 ### The Bridge
 
@@ -1056,6 +1061,42 @@ by both metadata modes (rows keep the `base_url` as `source` in mirror mode too)
 mirror mode's local copy of the community database is a file in
 `<data>/meta-mirror/`, not a table here (see
 [Mirror mode](configuration.md#mirror-mode-metadatamode-mirror)).
+
+### Upcoming releases
+
+*(0059, Track U1)* - what the [upcoming releases](api/reference.md#upcoming-releases)
+job (`internal/upcoming`, `catalog/upcoming.go`) works out. Every table is
+**derived**: rebuilt from the books and the community metadata by the next run,
+path-keyed with no FK to `books`, cascaded with its library. They are written
+through the user-state path (no content cache reads them).
+
+- **`upcoming_owned`** - each owned book's community work: `(library_id, path)`
+  (primary key) -> `work_id` (`''` for no community match), with `id_key` (the
+  identifiers it was resolved by, the metadata cache's key, so a changed ASIN
+  resolves again) and `checked_at`. Index on `work_id`.
+- **`upcoming_series`** - a local series (`library_id`, folded `series_key`) ->
+  the community series it is (`series_id`, `''` when none was found), with `name`
+  (the local spelling the player opens the series by), `books` (its book count
+  when resolved), `resolved_at` and `classified_at` (when its items were first
+  worked out; `NULL` makes the next run's items for it a silent baseline).
+- **`meta_series`** - a community series as `series/{id}` last answered it:
+  `series_id` (primary key), `name`, `members` (JSON: `work_id`, `position`,
+  `title`, `authors`, `cover_url`, `release_date`, `added_at`), `fetched_at`,
+  `state` (`ok` or `gone` after a `404`) and `gone_at` (dropped a week later).
+- **`upcoming_items`** - what a local series lacks, one row per work: primary key
+  `(library_id, series_key, work_id)`, `series_id`, `kind` (`preorder`,
+  `released` or `missing`), `release_date`, `position`, the work's `title`,
+  `authors` and `cover_url` (so `GET /me/upcoming` reads no member list),
+  `first_seen_at` (the player's "new" badge) and `announced_at` (when
+  `book_released` told the admin, or the silent baseline marked it). Index on
+  `work_id`.
+- **`upcoming_announced`** - the works `book_released` announced, server-wide
+  (`work_id` primary key, `announced_at`), so each is announced exactly once: an
+  item that leaves (a copy arrived) and comes back is not announced again. Kept
+  400 days, longer than any release window. It names no library; losing it can at
+  most announce a release again.
+
+The job's run status is the `upcoming` key of [`server_state`](#server-state).
 
 ### Durable per-library config (path-keyed, no FK to books)
 

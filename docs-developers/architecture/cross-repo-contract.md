@@ -369,7 +369,9 @@ flags `podcast_discovery` (boot-only `podcasts.discovery.enabled` **and** the
 module toggle, independent of the Bridge, sent `false` otherwise) and
 `podcast_opml` (always true), `ebooks` (always true; the reader,
 [§18](#18-the-ebook-reader)), `readalong` (always true; read-along maps,
-[§18](#18-the-ebook-reader)), plus the
+[§18](#18-the-ebook-reader)), `upcoming` (2.6.0: community metadata on **and**
+`upcoming.enabled`; [`GET /me/upcoming`](../server/api/reference.md#get-apiv1meupcoming),
+upcoming releases in the caller's series), plus the
 server version
 (`api.Version`, stamped from the release tag via ldflags). `transcode` reflects
 ffmpeg availability; `web_player` reflects whether `/web` is populated; the
@@ -522,7 +524,12 @@ list of the lookup's exact `recording_id` only (never the first recording a
 work lists), fit it onto the book's audio server-side, and reach the player as
 ordinary chapters with the additive `chapters_source: "community"` (see
 [§6](#6-the-chapter--whole-book-timeline-model)); the console's panel reads the
-admin book page's `community_chapters`.
+admin book page's `community_chapters`. Upcoming releases (2.6.0, `internal/upcoming`) read
+`metaserve`'s watch feed (`watch/feed.json?s=`, 50 series a request, the work id
+taken from each item's tag or URL) and `GET /series/{id}` once a day, and the
+series rails' work cards carry `release_date` through to `/meta` (additive); the
+player screen that reads [`GET /me/upcoming`](../server/api/reference.md#get-apiv1meupcoming)
+is planned.
 **Frontend:** the `BookMeta` envelope (hand-mirrored in `src/api/types.ts`) is
 fetched by `client.bookMeta` and rendered capability-gated on the book screen's
 Recaps/Characters/Series tabs, and also read by the series page, Home (the Now card

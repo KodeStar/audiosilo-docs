@@ -573,6 +573,28 @@ makes the cache survive a restart and an outage:
   information is stored in it; which books a user owns is worked out per
   request and never cached. Like every table, it is part of a database backup.
 
+### Upcoming releases (`upcoming.*`)
+
+[Upcoming releases](api/reference.md#upcoming-releases) (2.6.0): once a day the
+server reads the community metadata for the series it holds and works out, for
+each listener, the preorders, recent releases and missing volumes in the series
+they have ([`GET /me/upcoming`](api/reference.md#get-apiv1meupcoming), capability
+`upcoming`), and tells the admin about a new release in one (the `book_released`
+[notification](backups-and-notifications.md#events)). No Bridge is needed.
+
+| Key | Type / default | Meaning |
+|---|---|---|
+| `upcoming.enabled` | bool, `true` | The job's switch. It runs only while `metadata.enabled` is on too, so the default follows the metadata lookup. Applies live (console: **Server > Settings > Community metadata**, *Check for upcoming releases*, setting id `metadata.upcoming`); `AUDIOSILO_UPCOMING_ENABLED` wins at every start and locks it |
+| `upcoming.window_days` | int, `90` | How many days back a release still counts as new (`released` rather than `missing`), 1-365 (the community feed's limit); anything else is a config error naming the key. Read at start: config file or `AUDIOSILO_UPCOMING_WINDOW_DAYS` only, never offered in the console |
+
+What it sends is what the metadata lookup already sends (a book's ASIN or ISBN,
+then community work and series ids), never who is listening; with metadata off
+it makes no call at all, and in [mirror mode](#mirror-mode-metadatamode-mirror)
+the local copy answers. The first run (and the first read of each series) is a
+silent baseline: releases already out are listed, never announced. Everything it
+stores is derived and rebuilt by the next run (see
+[Data model](data-model.md#upcoming-releases)).
+
 ### Backups (`backups.*`)
 
 Copies of the database (`internal/backup`; see
@@ -703,6 +725,8 @@ by the settings table in `internal/config/settings.go` (`fields`: each entry's
 | `AUDIOSILO_METADATA_BASE_URL` | `metadata.base_url` | URL |
 | `AUDIOSILO_METADATA_REGION` | `metadata.region` | marketplace code (`uk`) |
 | `AUDIOSILO_METADATA_MODE` | `metadata.mode` | `remote` or `mirror` (any case) |
+| `AUDIOSILO_UPCOMING_ENABLED` | `upcoming.enabled` | `strconv.ParseBool` (`false`/`0`/… turns it off) |
+| `AUDIOSILO_UPCOMING_WINDOW_DAYS` | `upcoming.window_days` | integer, 1-365; read at start |
 | `AUDIOSILO_UPDATE_CHECK` | `update_check` | `strconv.ParseBool` (`false`/`0`/… turns it off) |
 | `AUDIOSILO_SESSION_DAYS` | `activity.session_days` | integer, 30-3650 |
 | `AUDIOSILO_BACKUP_SCHEDULE` | `backups.schedule` | `""`, `daily:HH:MM` or `weekly:DAY:HH:MM` |
@@ -770,6 +794,7 @@ restart, and whether the console may change it at all:
 | `metadata.base_url` | `metadata.base_url` | `AUDIOSILO_METADATA_BASE_URL` | restart |
 | `metadata.region` | `metadata.region` | `AUDIOSILO_METADATA_REGION` | at once |
 | `metadata.mode` | `metadata.mode` | `AUDIOSILO_METADATA_MODE` | restart |
+| `metadata.upcoming` | `upcoming.enabled` | `AUDIOSILO_UPCOMING_ENABLED` | at once (switched on, a run follows soon when none has succeeded for a day; switched off, a run in flight stops) |
 | `demo.enabled` | `demo.enabled` | `AUDIOSILO_DEMO_ENABLED` | restart |
 | `demo.library` | `demo.library` | `AUDIOSILO_DEMO_LIBRARY` | at once |
 | `demo.max_users` | `demo.max_users` | `AUDIOSILO_DEMO_MAX_USERS` | at once |
@@ -782,7 +807,7 @@ restart, and whether the console may change it at all:
 | `modules.podcasts` | `modules.podcasts.enabled` | `AUDIOSILO_MODULES_PODCASTS_ENABLED` | at once; starts/stops feed/download/retention scheduling and gates writes; reads and present-pin reuse stay core |
 | `modules.contributions` | `modules.contributions.enabled` | `AUDIOSILO_MODULES_CONTRIBUTIONS_ENABLED` | at once (the Bridge jobs it owns are refused or held while it is off) |
 
-`podcasts.discovery.enabled`, `scan.concurrency`, `database.mmap` and the six
+`podcasts.discovery.enabled`, `upcoming.window_days`, `scan.concurrency`, `database.mmap` and the six
 `rate_limit.*` values have no setting id: each is read at start from the file or its variable
 and never offered in the console.
 

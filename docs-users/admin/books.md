@@ -1,6 +1,6 @@
 ---
 title: "Books and metadata"
-description: "Browsing and filtering every book in the AudioSilo admin console, fixing titles, authors, series, genres and tags one book at a time or in bulk, where each value comes from, custom covers, chapters (including chapters from the community database), matching with community metadata, merging author spellings and spotting series gaps."
+description: "Browsing and filtering every book in the AudioSilo admin console, fixing titles, authors, series, genres and tags one book at a time or in bulk, where each value comes from, custom covers, chapters (including chapters from the community database), matching with community metadata, merging author spellings and spotting series gaps, with their release dates."
 ---
 
 The **Library** destination of the [admin console](console-tour.md) is where
@@ -694,6 +694,13 @@ shows the books you don't have, as dashed gaps, and says so: "You have 1, 2, 4
 of 5; missing 3, 5". A series none of whose books is matched yet says "Match a
 book of this series to see what's missing". With community metadata off, the
 page offers to turn it on.
+
+A gap whose book the community catalogue has a release date for shows that
+date under its title, as precise as the catalogue knows it ("12 Nov 2026",
+"Nov 2026" or "2026"). A book that isn't out yet says **Preorder** before its
+date, and one that came out in the last 90 days says **New**, so you can see at
+a glance what you could add. The dates are the book's first release anywhere,
+whichever store had it first.
 
 A book is often in more than one community series (a Tiffany Aching novel is
 in Discworld and in Discworld: Tiffany Aching). The card uses the community

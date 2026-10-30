@@ -527,15 +527,37 @@ await step('authors', async () => {
   await shoot(page, 'admin/authors.png');
 });
 
+// A matched book for the Series shot: the seeded books carry no ASIN, so no card
+// would show the community's gaps. For the shot only, The Adventures of Sherlock
+// Holmes gets the US ASIN of a recording the live catalogue files under that work
+// (b-j-harrison-2014), so the Sherlock Holmes card shows the books it lacks as dashed
+// gaps, each dated by its first release; the edit is reverted right after.
+const SERIES_MATCH = {author: 'Sir Arthur Conan Doyle', title: 'Adventures of Sherlock Holmes', asin: 'B00OQT6ZJ6'};
+
 await step('series', async () => {
-  await open(page, '/library/series');
-  await sleep(2000); // community series gaps load as each card scrolls into view
-  // The spines take their cover colours, which the server reads in the background
-  // shortly after a scan, and from the cover fans' thumbnails just loaded: load the
-  // page again so the spines have them.
-  await open(page, '/library/series');
-  await sleep(2000);
-  await shoot(page, 'admin/series.png');
+  const holmes = ((await api(token, 'GET', `/admin/books?author=${encodeURIComponent(SERIES_MATCH.author)}&limit=50`))?.books ?? [])
+    .find((b) => `${b.title} ${b.path}`.includes(SERIES_MATCH.title));
+  const edit = holmes ? `/admin/libraries/${holmes.library_id}/book${pathQuery(holmes.path)}` : '';
+  if (edit) await api(token, 'PATCH', edit, {set: {asin: SERIES_MATCH.asin}});
+  else console.log(`  ! no "${SERIES_MATCH.title}": the series shot shows no gaps`);
+  // Taller, so the Sherlock Holmes card's shelf (the second card) fits.
+  await page.setViewportSize({width: 1440, height: 1400});
+  try {
+    await open(page, '/library/series');
+    await sleep(2000); // community series gaps load as each card scrolls into view
+    // The spines take their cover colours, which the server reads in the background
+    // shortly after a scan, and from the cover fans' thumbnails just loaded: load the
+    // page again so the spines have them.
+    await open(page, '/library/series');
+    if (edit) await page.locator('.spine-date').first().waitFor({timeout: 20000}).catch(() => {
+      console.log('  ! no dated gap showed (the live catalogue may be unreachable)');
+    });
+    await sleep(2000);
+    await shoot(page, 'admin/series.png');
+  } finally {
+    await page.setViewportSize(DESKTOP_CONTEXT.viewport);
+    if (edit) await api(token, 'PATCH', edit, {revert: ['asin']}).catch((e) => console.log(`  ! the ASIN edit stayed: ${e.message}`));
+  }
 });
 
 await step('folders', async () => {
@@ -669,11 +691,13 @@ await step('server settings: network & https', async () => {
 });
 
 await step('server settings: community metadata', async () => {
-  // Taller, so the switch, Source, Matching and Service cards fit.
-  await page.setViewportSize({width: 1440, height: 1300});
+  // Taller, so the switches, Source, Matching and Service cards fit.
+  await page.setViewportSize({width: 1440, height: 1400});
   try {
     await open(page, '/server?topic=metadata');
     await page.getByText('Keep a local copy', {exact: true}).waitFor({timeout: 8000});
+    // The upcoming releases switch and its last run (a fresh server: not run yet).
+    await page.getByText('Check for upcoming releases', {exact: true}).waitFor({timeout: 8000});
     await sleep(800); // the status row reads the system status
     await shoot(page, 'admin/settings-metadata.png');
   } finally {
