@@ -136,7 +136,7 @@ everything required is done ("Everything required is done").
 | **Paired with this server** | the Bridge is paired |
 | **Libraries mapped and writable** | the Bridge can find and write to every library (the line under it says how many, "1 of 2 libraries writable") |
 | **Speech recognition ready** | something can transcribe now: the Bridge itself ("local") or an [ASR worker](../getting-started/running-a-worker.md) ("worker") |
-| **Agent credential set** | the agent container is ready, with a credential (the line names the tool). While it isn't, the line says what to do in plain words and what the agent is for: characters, recaps and descriptions (read-alongs, chapters and podcasts don't need it) |
+| **Agent credential set** | the agent container is ready, with a credential (the line names the tool). While it isn't, the line says what to do in plain words and what the agent is for: characters, recaps and descriptions. Read-alongs, chapters and podcasts don't need it |
 | **Monthly budget reviewed** | someone saved the agent's monthly budget on the Bridge's page, or the Bridge's environment sets it (the line says it, "$100 a month" or "no monthly cap") |
 | **GitHub signed in** (Optional) | the Bridge can share with the community (the line names the GitHub account, or says the token comes from the Bridge's environment or the gh command) |
 
@@ -264,7 +264,7 @@ filters it by state:
 | **Needs attention** | the Bridge stopped and needs you to look at it |
 | **Done** | finished |
 | **Failed** | it didn't work: the reason is shown under it |
-| **Cancelled** | an admin cancelled it, or the server did (see below) |
+| **Cancelled** | an admin cancelled it, the server did, or the Bridge ended it itself (see below) |
 
 Each job shows the library (and book), its progress, who asked and when: "Asked
 by" a person, "Scheduled by the server" for the podcast feed checks, episode
@@ -319,9 +319,11 @@ words:
 - "the book moved onto another job of this kind";
 - for a podcast request, "a newer request replaced it".
 
-A job the Bridge is still working on shows that reason in grey, not as an error,
-until the Bridge stops it. If the job finishes, fails or pauses before it stops,
-the row shows that outcome and the Bridge's own words instead.
+A podcast job the Bridge is still working on shows that reason in grey, not as
+an error, until the Bridge stops it; a book's job (a description, chapters, a
+share or a read-along) keeps showing its progress until then. If the job
+finishes, fails or pauses before it stops, the row shows that outcome and the
+Bridge's own words instead.
 
 You can ask for a book's job again straight after cancelling one that was
 waiting for attention: the new job waits, up to about half a minute, for the

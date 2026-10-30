@@ -383,8 +383,8 @@ ready, the line under it says why: the container isn't running, it has no
 sign-in, or the Bridge is set to the other tool. The **Set the agent's
 credential** step in **Get set up** says the same in plain words, and what the
 agent is for: it signs in to Claude or ChatGPT and is needed for characters,
-recaps and descriptions (read-alongs, chapters and podcasts don't need it). The
-console's
+recaps and descriptions. Read-alongs, chapters and podcasts don't need the
+agent. The console's
 [Settings > Bridge](../admin/bridge.md#online-offline-and-its-details) shows the
 same.
 

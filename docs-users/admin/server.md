@@ -478,9 +478,11 @@ When an update exists, the version line on the
 
 **A console tab left open during an update** still runs the console from before
 it. The first page you open there that the new server no longer has reloads the
-tab into the new console by itself, once (from 2.5.1). If the page still can't
-open, it says **AudioSilo was updated**: "This tab still has the console from
-before the update. Reload to open the new one.", with **Reload**. A page that
+tab into the new console by itself, once. This works for a tab opened on 2.5.1
+or later, so it starts with the update after 2.5.1: a tab still open from 2.5.0
+needs reloading by hand. If the page still can't open, it says **AudioSilo was
+updated**: "This tab still has the console from before the update. Reload to
+open the new one.", with **Reload** and **Go to the overview**. A page that
 fails for any other reason shows **This page hit a problem**, with **Reload** and
 **Go to the overview**, and the console's menu stays in place.
 

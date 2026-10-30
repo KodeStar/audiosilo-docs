@@ -412,8 +412,10 @@ chapters itself", "... replaced what it was sharing", "... replaced it; make the
 read-along again after"), `CancelMoved` ("the book moved onto another job of this
 kind", `MoveJobs`) and `CancelReplacedRequest` ("a newer request replaced it", a
 podcast request replaced by `Enqueue` through `cancelOpenTx`). `IsCancelReason`
-names them. A queued or parked job is cancelled at once with it; for a claimed or
-running one `cancelOpenTx` sets `cancel_requested` and records the reason now
+names them. `MoveJobs` cancels the old path's open job at once in any state
+(no `cancel_requested`; a Bridge still working on it learns at its next report,
+`ErrNotHeld`). Through `cancelOpenTx`, a queued or parked job is cancelled at
+once with the reason; for a claimed or running one `cancelOpenTx` sets `cancel_requested` and records the reason now
 (unless an admin asked first, whose cancel keeps its own error), and
 `UpdateHeld` keeps it through the Bridge's reports, which always send an error of
 their own, while the job works and when it ends `cancelled`. A job that ends
@@ -429,7 +431,9 @@ else `bridge.jobs.cancelledByAdmin` "Cancelled by an admin." when
 `bridge.jobs.cancelledPark` ("It was waiting for attention:" and the park's reason) and the
 park's plain hint. A working job with `cancel_requested` and a server reason
 (`isServerCancelReason`) shows that reason muted, not as an error
-(`bridge-jobs.tsx`). Any other `error` on a cancelled job (a supervisor's text,
+(`bridge-jobs.tsx`), for a kind outside `BOOK_KINDS` (a podcast request); a book
+kind's row (every `cancelsOpen` kind among them) is `GenerateStatus`, which keeps
+its progress until the job ends `cancelled`. Any other `error` on a cancelled job (a supervisor's text,
 say) is never shown.
 
 ### Resuming after a restart

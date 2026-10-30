@@ -85,11 +85,12 @@ happen before anything starts:
 - That if less than half of the ebook lines up with the narration, the job stops
   and saves nothing.
 
-When the Bridge is offline, or can't write to the book's library, the dialog says
-so, and nothing can be queued while it can't write there (a job queued while the
-Bridge is offline waits for it). A Bridge too old to make read-alongs shows **The
-Bridge is too old for read-alongs**, saying which version to update to, and
-nothing can be queued. Press **Make
+When the Bridge can't write to the book's library, the dialog says so, and
+nothing can be queued. If the Bridge goes offline while the dialog is open, it
+says so too (a job queued then waits for the Bridge), and if a Bridge that is too
+old to make read-alongs takes its place, it shows **The Bridge is too old for
+read-alongs**, saying which version to update to, and nothing can be queued.
+Press **Make
 read-along**: a toast says it is queued, and the Bridge picks it up within a few
 seconds.
 
