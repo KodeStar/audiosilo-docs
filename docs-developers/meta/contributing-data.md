@@ -630,14 +630,40 @@ each selected project:
   LibriVox states a plain year (`1883`, `-428`, `428 BC`), and only when the
   person states neither yet: a year another source or a hand edit wrote is never
   overwritten, and a pair whose death precedes its birth is dropped whole.
-- **A new author id is checked against the person its name meets.** An author
-  id no person carries yet is not simply credited to whoever holds its name's
-  slug (`internal/importer/librivoxpeople.go`). Only new projects are judged; a
+- **A new author id is checked against the person its name meets.** It is
+  not simply credited to whoever holds its name's slug
+  (`internal/importer/librivoxpeople.go`). Only new projects are judged; a
   project already catalogued, and the people it credits, are left as they are.
+  - **Same-name authors.** The catalogued person is someone else when:
+    - they carry another `librivox_author_id` and the two do not state the
+      same birth and death years;
+    - their years disagree with LibriVox's (a flourished year outside their
+      life included); or
+    - with neither id nor years, they are credited only as a narrator (a
+      LibriVox reader meeting an undated author is taken to be the same
+      volunteer), or only on works first published more than 25 years after
+      the author's death (or flourished year) that share no title with the
+      author's projects. A generic title ("Poems") is not a title in common.
+      A work's first publication is its `first_published`, else its
+      recordings' earliest release date; a work with no date at all is no
+      evidence against the match.
+
+    When it is someone else, the author becomes a person of their own, named
+    with LibriVox's years: "James Grant (1822-1887)" at
+    `james-grant-1822-1887`, "Richard Wilson (fl. 1916)" at
+    `richard-wilson-fl-1916`. When LibriVox states no year, or the catalogued
+    person's works are dated only by release dates (a modern book and a modern
+    edition of an old one look alike there), the project goes to the
+    [worklist](#the-worklist) as `same-name-author`, naming that person's works.
+    A second author id in the same run with the same name is checked against
+    the first the same way: it gets a dated id when the years disagree, and
+    goes to the worklist when it has no years. Settling a row means putting the
+    `librivox_author_id` on the right person (the catalogued one or a new dated
+    record); re-importing the id then finds that person by id.
   - **Courtesy titles and ranks.** A titled credit is not folded onto its bare
     twin when LibriVox lists the two as different author ids ("Mrs. William
     Platt" beside "William Platt"), nor onto a catalogued bare record that the
-    same-name test below finds is someone else ("Sir Hugh Fraser" is not
+    same-name test above finds is someone else ("Sir Hugh Fraser" is not
     `hugh-fraser`, an actor who narrates); when that test cannot tell, the
     project goes to the worklist as `same-name-author`. A credit whose id the
     catalogue already holds keeps its holder's spelling. The other way round, a
@@ -646,28 +672,6 @@ each selected project:
     Treves" on `sir-frederick-treves`, "Joseph H. Alexander" on
     `colonel-joseph-h-alexander`), unless their life years disagree or that
     record only narrates.
-  - **Same-name authors.** The catalogued person is someone else when they
-    carry another `librivox_author_id` and the two do not state the same birth
-    and death years; when their years disagree with LibriVox's (a flourished
-    year outside their life included); or, with neither id nor years, when they
-    are credited only as a narrator (a LibriVox reader meeting an undated author
-    is taken to be the same volunteer), or only on works first published more
-    than 25 years after the author's death (or flourished year) that share no
-    title with the author's projects. A generic title ("Poems") is not a title
-    in common. A work's first publication is its `first_published`, else its
-    recordings' earliest release date; a work with no date at all is no
-    evidence against the match. Someone else, the author becomes a person of
-    their own at the name with LibriVox's years: "James Grant (1822-1887)" at
-    `james-grant-1822-1887`, "Richard Wilson (fl. 1916)" at
-    `richard-wilson-fl-1916`. When LibriVox states no year, or the catalogued
-    person's works are dated only by release dates (a modern book and a modern
-    edition of an old one look alike there), the project goes to the
-    [worklist](#the-worklist) as `same-name-author`, naming that person's works.
-    A second author id of one run meeting the same name is judged the same way
-    against the first: dated when the years disagree, the worklist when it has
-    none. Settling a row means putting the `librivox_author_id` on the right
-    person (the catalogued one or a new dated record); re-importing the id then
-    finds that person by id.
 - **A reader id is a person of its own, even when the name is not.** LibriVox
   readers are accounts, and several share a display name ("Martina", "eva",
   "Lisa"). When a reader's name slugs to a person who already carries (or
@@ -680,9 +684,9 @@ each selected project:
   another source catalogued) is not another reader: the first LibriVox reader of
   that name is stamped onto them, unless that person is an **author record**
   (carrying a `librivox_author_id`, or a death year before 2005, when LibriVox
-  began, in whichever order the run meets the two). The reader is then split off
-  the same way: a reader called Adam Smith is `adam-smith-librivox-19341`, never
-  Adam Smith (1723-1790). Collective credits ("Various", "Full Cast") and
+  began, whether the run meets the author or the reader first). The reader is
+  then split off the same way: a reader called Adam Smith is
+  `adam-smith-librivox-19341`, never Adam Smith (1723-1790). Collective credits ("Various", "Full Cast") and
   the synthetic voice stand for no one person and are never split: a second
   reader id of one is the keep-and-warn case above. The run never writes over an
   existing or retired person id that the composed id happens to match: it
@@ -901,7 +905,7 @@ librivox worklist: 2 projects skipped for a person to resolve (re-import the ids
 | `author-spelling` | a work carries the title by an author of the same surname that rule 3 does not attach (a looser spelling, another LibriVox author id, or a variant beside other candidates) |
 | `author-unsluggable` | no individual author is left once the names that slug to nothing are dropped ([Names that slug to nothing](#which-work-a-librivox-project-joins), above) |
 | `differently-spelled-title` | the duplicate-identity guard holds the book under a title rule 2 does not read as the same, such as one with a subtitle, or the one work rule 4 matches |
-| `same-name-author` | a new author id meets a catalogued person of the same name (or a titled or bare twin) that no life year tells apart from them, or whose works are dated only by release dates; the line names that person's works ([the same-name test](#librivox-the-public-domain-mirror)) |
+| `same-name-author` | the same-name test (under the mirror's people rules, [above](#librivox-the-public-domain-mirror)) cannot tell a new author id from a catalogued person; the line names that person's works |
 | `fallback-slug-taken` | a non-Latin title's `librivox-<project id>` slug is already held by another record, or retired |
 
 Once a person has settled the work (merged the duplicates, fixed the credit),
