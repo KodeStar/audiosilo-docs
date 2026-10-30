@@ -106,7 +106,7 @@ Type the folder on the server that holds your audiobooks and press **Check folde
 
 Libraries the server already has are listed under **Already added**, the ones from your `config.yaml` or environment marked **From your config**. With a library already there, you can leave the field empty and continue.
 
-The library isn't created yet: that happens at the end of step 3, once its naming and region are chosen, so its very first scan uses them. Until then the folder is remembered by this browser only. Carry on in another browser before the library is made, and step 1 shows as not done there, with **Choose the folder again**: the folder chosen in the first browser is kept only in that browser. Steps 2 and 3, which need the folder, open step 1 instead. Type the folder once more and carry on; the library is made after the next two steps.
+The library isn't created yet: that happens at the end of step 3, once its naming and region are chosen, so its very first scan uses them. Until then only this browser remembers the folder: carry on in another browser before the library is made, and step 1 shows as not done there, with **Choose the folder again**. Steps 2 and 3, which need the folder, open step 1 instead. Type the folder once more and carry on; the library is made after the next two steps.
 
 ### Step 2: How are your books named?
 

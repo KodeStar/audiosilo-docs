@@ -258,7 +258,7 @@ JSON says about the cover:
   `UpsertBook`, `SetCover`, `DeleteCover`, a move or a disc join carrying a custom
   cover). The wire's `cover_version` is its hash (`catalog.CoverVersion`: the
   first 10 hex characters of its SHA-256, so the wire carries no stamp, size or
-  path), present on every indexed book. From 2.5.1 (server ADMIN-01) the scan
+  path), present on every indexed book. From 2.5.1 the scan
   records file art by the art file's own version (`catalog.FileArtVersion`: the
   sidecar or the first audio file, its kind, size and mtime, the scan's
   `Book.ArtVersion`), the same name the cover handler gives its thumbnail, so a

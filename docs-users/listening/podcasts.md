@@ -131,9 +131,8 @@ has set up **Podcast Index** too, a switch above the field lets you pick which d
 search. The list says where its results came from, and each result has:
 
 - the show's artwork, name, maker and number of episodes. The artwork fills in
-  as your server fetches it, for every result on the page, even right after
-  another search (from server 2.5.1; a show whose artwork can't be fetched keeps
-  a plain placeholder);
+  as your server fetches it, for every result on the page (a show whose artwork
+  can't be fetched keeps a plain placeholder);
 - **View on Apple Podcasts** (or **View on Podcast Index**), which opens the show's page on the
   directory;
 - **Follow**. It turns into **Following** with **Open show** when the library already has the

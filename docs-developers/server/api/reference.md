@@ -1651,7 +1651,7 @@ not decode as an image fail. Success is `image/jpeg` with
 A failed fetch is `502 artwork_unavailable`, answered again for a minute
 without refetching. Registrations last 15 minutes (at most 4,096; eviction can
 404 an id before its search expires), images are cached up to 32 MiB. Budgets
-(from 2.5.1, BRIDGE-03: artwork's own, sized by a results page of 20, and never
+(from 2.5.1: artwork's own, sized by a results page of 20, and never
 shared with search's): 120 artwork requests/minute per user (burst 40, hits
 included), 120 image fetches/minute server-wide (burst 40), four fetching at once
 and up to 40 more misses waiting for a slot, each for up to the five-second fetch

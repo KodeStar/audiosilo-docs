@@ -318,10 +318,8 @@ override.
   `Other`, the CLI that is signed in. The container too old to take the
   Accounts tab's credential is `outdated`, like another protocol. The Status
   tab's agent line keeps the full `Detail`; the setup checklist words the kind
-  for a person instead (one hint each: only `no_credential` asks for a sign-in,
-  `outdated` for the same version of both images, `no_cli` for this Bridge's
-  agent image, `other_backend` names both CLIs), see
-  [The setup checklist](pairing-and-jobs.md#the-setup-checklist).
+  for a person instead, one hint per kind (see
+  [The setup checklist](pairing-and-jobs.md#the-setup-checklist)).
 
 `request.json` and the protocol version are unchanged: an older Bridge never
 writes the file, and an older runner never sees one written for it.

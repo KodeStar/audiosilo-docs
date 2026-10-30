@@ -346,7 +346,7 @@ the car's headless task) reloads the registry and prunes it:
    finished"), or, on web with every file saved and no EPUB to come, `unservable`
    (only the offline check was left: the service worker may not control the
    page), and `kept`, `progress` and `bytes` are recomputed from the files really
-   on disk. From v2.5.1 (PLAYER-04) a failed or cut-short entry with **no**
+   on disk. From v2.5.1 a failed or cut-short entry with **no**
    finished file (most books are one file) stays too, as an `error` row with
    `kept: 0` and Retry, its folder emptied by the caller; a `keep-ahead` one is
    dropped instead (keep-ahead plans it again and never retries a failure). The engines can't resume a
@@ -359,7 +359,7 @@ the car's headless task) reloads the registry and prunes it:
    ([the offline companion](#the-offline-companion-offline-metats)).
 5. On web, `probe()` runs from the start of `hydrate` and is applied once the
    registry is read: it may downgrade `supported`, and the UI hides downloads
-   rather than offering ones that won't play offline. From v2.5.1 (PLAYER-03)
+   rather than offering ones that won't play offline. From v2.5.1
    `download` waits for that answer (`probing`, as it waits for `hydrating`) and
    then refuses with `unsupported` before a byte is fetched (the control says
    "Downloads unavailable"); before, a download started during the probe ran to
@@ -562,7 +562,7 @@ Three paths, the first two in `src/playback/store.ts`:
   points every track at its local URI and drops auth headers. Resume still
   works fully offline because `loadInitialProgress` falls back to the durable
   local mirror / offline queue (see [Playback](playback.md)). From v2.5.1
-  (PLAYER-01) a downloaded book's server place is kept in that mirror: the
+  a downloaded book's server place is kept in that mirror: the
   download's start seeds it from a `getProgress` (else the cached `qk.progress`; `keepServerPlace`),
   and `fetchBookProgress` writes each online answer for a book kept offline
   (`setKeptOfflineCheck`, `writeMirror(progressToSave(...))`), keep-newest, so a

@@ -207,7 +207,7 @@ stale-while-revalidate (cached on first use), so the console works offline after
 one online visit. It never intercepts `/api/` or `/web/`. The web manifest
 (`manifest.webmanifest`, scope `/admin`) uses the Shelf colours.
 
-**A tab left open across an upgrade** (2.5.1, UPG-01) still runs the old build,
+**A tab left open across an upgrade** (2.5.1) still runs the old build,
 whose lazy route chunks the new server no longer has. The router's
 `defaultErrorComponent` is `RouteError` (`features/route-error.tsx`), a styled
 page inside the shell, with Reload and Go to the overview. When the error is a

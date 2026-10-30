@@ -24,9 +24,8 @@ the read-alongs you make now are what it will use.
   same book as the narration, ideally the same edition.
 - **A Bridge that is paired and online**, **version 0.5.0 or newer** (the Bridge
   that ships beside AudioSilo 2.5.1). An older Bridge, such as 0.4.0, can't make
-  read-alongs: the card says "This Bridge can't make read-alongs. Update it to
-  0.5.0 or newer." with a **Bridge settings** link, and offers no **Make
-  read-along**. Update it as in
+  read-alongs: the card says so ([the card's Bridge lines](#the-read-along-card))
+  and offers no **Make read-along**. Update it as in
   [Running a Bridge](../getting-started/running-a-bridge.md#which-bridge-version).
 - **A library the Bridge can write to**, since the read-along is saved in the
   book's own folder: the library shows as **Ready** in
@@ -139,8 +138,8 @@ the right edition of the ebook, it is usually well over 90%.
 the narration aren't the same book, or are very different editions. The job fails
 and nothing is saved. The card and the job in Settings > Bridge say "The ebook and
 the narration don't match: only 23% lined up. Use the EPUB of the same edition as
-the audiobook, or check it's the right book, then make it again." (rounded down,
-so 49.7% says 49%). Nothing is saved because
+the audiobook, or check it's the right book, then make it again." Nothing is
+saved because
 a read-along that is mostly wrong would only send listeners to the wrong place.
 Put the matching edition's EPUB beside the audio and make it again; the transcript
 is reused.

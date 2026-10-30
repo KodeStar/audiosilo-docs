@@ -666,7 +666,7 @@ anything up.
   tab closed, reloaded or navigated off) ends it, and the document going `hidden`
   (a phone's browser may close a tab with no `pagehide`) splits it once it is long
   enough to keep, a new span opening while playback goes on. Ending a span clears
-  it first, so it is never posted twice. From 2.5.1 (PLAYER-14) every span on the
+  it first, so it is never posted twice. From 2.5.1 every span on the
   web goes as a `keepalive` request, since a hard navigation mid-play pauses the
   audio before `pagehide`, and the span that pause ended was aborted with the page;
   only the hide path skips the history refresh.

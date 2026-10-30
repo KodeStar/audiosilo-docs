@@ -405,7 +405,7 @@ once, as before. An ending job stops its engine book before its end is recorded
 (`release`), so the waiting job starts only once the engine's cancel has
 returned.
 
-**The server's cancel reasons** (server 2.5.1, BRIDGE-02). When the server stops a
+**The server's cancel reasons** (server 2.5.1). When the server stops a
 job itself it writes the reason as the job's `error`: the kinds' `cancelsOpen`
 strings ("a generate job for the book replaced it", "... replaced it; it finds the
 chapters itself", "... replaced what it was sharing", "... replaced it; make the
