@@ -4378,7 +4378,8 @@ END:VCALENDAR
   no component, which calendar apps read as empty.
 - **Text.** CRLF line ends; lines folded at 75 octets, never inside a UTF-8
   sequence; TEXT values escaped (`\\`, `\;`, `\,`, `\n`; a CR, an LF or a CRLF is
-  one line break; other control characters and invalid UTF-8 are dropped); a URI
+  one line break; a tab is kept; other control characters and invalid UTF-8 are
+  dropped); a URI
   with a space or a control character is left out.
 - **Headers.** `Content-Type: text/calendar; charset=utf-8`, `Content-Disposition:
   inline; filename="releases.ics"`, `Cache-Control: private, max-age=3600` and an

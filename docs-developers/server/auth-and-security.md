@@ -239,9 +239,10 @@ release list and nothing else:
   (`auth.IssueFeedToken(user, session)`: `generateToken`, the SHA-256 hash stored,
   no expiry, device name "Calendar feed") is refused to an API key (`denyAPIKey`,
   plain `403`), a kid (`403 kid_account`, by `notKid` and again by `refuseKid`
-  inside the write) and a demo account (`403 demo_account`). It records the session
-  it was made from (`created_on_token_id`), so a member signed in on their owner's
-  device makes the link "on" that device.
+  inside the write) and a demo account (`403 demo_account`). It copies the
+  `created_on_token_id` of the session it was made from (the owner's device that
+  sign-in was made on; none for a sign-in on the person's own device), so a member
+  signed in on their owner's device makes the link "on" that device.
 - **One per user.** A mint deletes the earlier row in the same durable transaction,
   and migration `0060`'s partial unique index `idx_tokens_feed_user`
   (`tokens(user_id) WHERE kind = 'feed' AND revoked = 0`) refuses a second live row

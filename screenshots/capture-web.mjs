@@ -2488,6 +2488,9 @@ if (wanted(...Object.values(UPCOMING_SHOTS))) {
     if (listed && wanted(UPCOMING_SHOTS.calendar)) {
       await step('upcoming: calendar link', async () => {
         if (!ADMIN_PASSWORD) throw new Error('ADMIN_PASSWORD not set: no account that can make a calendar link');
+        // A link left by an earlier run that stopped early would show "A link is active"
+        // in place of Get calendar link: start from none.
+        await asAdmin((token) => api(token, 'DELETE', '/me/upcoming/calendar'));
         const ctx = await newCaptureContext();
         const page = await ctx.newPage();
         try {

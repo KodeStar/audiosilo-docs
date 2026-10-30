@@ -180,7 +180,7 @@ audiobooks" into "remote file read on your NAS".
   (`web.htmlCSP` in `internal/web/web.go`).
 - **Confined token-in-URL**: the `?token=` media-auth fallback is accepted **only**
   on the cover, stream and community cover GETs (a book's `/meta/cover` and
-  `/me/upcoming/cover`) (`bearerToken(r, true)` via `requireBookMediaAuth` /
+  an upcoming release's `/me/upcoming/cover`) (`bearerToken(r, true)` via `requireBookMediaAuth` /
   `requireMediaAuth` in `internal/api/middleware.go`) and on the calendar feed,
   `GET /me/upcoming/releases.ics`, which takes a `feed` token and no other kind
   (`requireFeedAuth`); every other route is header-only, so session tokens can't
