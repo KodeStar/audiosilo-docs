@@ -699,7 +699,8 @@ await step('server settings: community metadata', async () => {
   try {
     await open(page, '/server?topic=metadata');
     await page.getByText('Keep a local copy', {exact: true}).waitFor({timeout: 8000});
-    // The upcoming releases switch and its last run (a fresh server: not run yet).
+    // The upcoming releases switch and its last run: the check capture-web.mjs's upcoming
+    // pass ran (Not run yet when that pass didn't run).
     await page.getByText('Check for upcoming releases', {exact: true}).waitFor({timeout: 8000});
     await sleep(800); // the status row reads the system status
     await shoot(page, 'admin/settings-metadata.png');

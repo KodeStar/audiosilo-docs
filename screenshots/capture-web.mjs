@@ -2395,6 +2395,97 @@ if (wanted(...Object.values(HOUSE_SHOTS))) {
   }
 }
 
+// ── Upcoming releases (Track U2) ────────────────────────────────────────────
+// Home's Coming up in your series and the Upcoming page need what the server's upcoming
+// releases job found, and the seeded books carry no ASIN, so the job has no community
+// series to follow. For this pass only, The Adventures of Sherlock Holmes gets the US
+// ASIN the admin series shot uses (a recording the live catalogue files under that work),
+// the admin switches the job off and on again (a server whose job never succeeded then
+// runs it at once) and the pass waits for GET /me/upcoming to answer `ok` with items:
+// Sherlock Holmes's real gaps from the live catalogue (the books below book 5 the seed
+// lacks, and the next one after it), all "Missing from your series" with their first
+// release dates and the "New" badge (the job listed them just now); the seeded series
+// have no preorder or recent release, so Coming soon and Just released don't show. The
+// ASIN is reverted afterwards. What the job stored, and its last run, stay until its
+// next run, so this pass comes after the other player shots, and the admin console's
+// Community metadata shot shows that last check. Needs the network (the live catalogue).
+const UPCOMING_SHOTS = {
+  home: 'web-player/home-upcoming.png',
+  page: 'web-player/upcoming.png',
+  phone: 'web-player/phone-upcoming.png',
+};
+const UPCOMING_MATCH = {author: 'Sir Arthur Conan Doyle', title: 'Adventures of Sherlock Holmes', asin: 'B00OQT6ZJ6'};
+
+// The demo listener's Upcoming page at `viewport`, once its rows show.
+async function upcomingPageShot(viewport, file) {
+  const ctx = await newCaptureContext({viewport, storageState: AUTH});
+  try {
+    const page = await ctx.newPage();
+    await page.goto(BASE + 'upcoming', {waitUntil: 'networkidle', timeout: 45000});
+    await tid(page, 'upcoming-row').waitFor({timeout: 30000});
+    await sleep(1500);
+    await page.mouse.move(0, 0);
+    await shoot(page, file);
+  } finally {
+    await ctx.close();
+  }
+}
+
+if (wanted(...Object.values(UPCOMING_SHOTS))) {
+  console.log('== upcoming releases ==');
+  let holmesEdit = '';
+  try {
+    await step('upcoming: run the job', () =>
+      asAdmin(async (token) => {
+        const list = await api(token, 'GET', `/admin/books?author=${encodeURIComponent(UPCOMING_MATCH.author)}&limit=50`);
+        const b = seededBook(list?.books ?? [], UPCOMING_MATCH.title);
+        holmesEdit = `/admin/libraries/${b.library_id}/book${pathQuery(b.path)}`;
+        await api(token, 'PATCH', holmesEdit, {set: {asin: UPCOMING_MATCH.asin}});
+        await api(token, 'PATCH', '/admin/settings', {metadata: {upcoming: false}});
+        await api(token, 'PATCH', '/admin/settings', {metadata: {upcoming: true}});
+        const ready = (up) => up?.status === 'ok' && up.items?.length > 0;
+        let up = null;
+        for (const until = Date.now() + 180000; Date.now() < until && !ready(up); ) {
+          await sleep(2000);
+          up = await api(token, 'GET', '/me/upcoming').catch(() => null);
+        }
+        if (!ready(up)) throw new Error(`no upcoming releases (status ${up?.status ?? 'none'}; the live catalogue may be unreachable)`);
+        console.log(`  ✓ the job listed ${up.items.length}: ${up.items.map((i) => `${i.series.name} ${i.series.position} (${i.kind})`).join(', ')}`);
+      }),
+    );
+
+    if (wanted(UPCOMING_SHOTS.home)) {
+      await step('upcoming: home', async () => {
+        const ctx = await newCaptureContext({viewport: {width: 1440, height: 900}, storageState: AUTH});
+        try {
+          const page = await ctx.newPage();
+          await page.goto(BASE, {waitUntil: 'networkidle', timeout: 45000});
+          const heading = firstVisible(page.getByText('Coming up in your series', {exact: true}));
+          await heading.waitFor({timeout: 30000});
+          await tid(page, 'upcoming-tile').waitFor({timeout: 15000});
+          await heading.evaluate((el) => el.scrollIntoView({block: 'start'}));
+          await page.mouse.wheel(0, -120);
+          await sleep(1500);
+          await page.mouse.move(0, 0);
+          await shoot(page, UPCOMING_SHOTS.home);
+        } finally {
+          await ctx.close();
+        }
+      });
+    }
+    if (wanted(UPCOMING_SHOTS.page)) {
+      await step('upcoming: page', () => upcomingPageShot({width: 1440, height: 900}, UPCOMING_SHOTS.page));
+    }
+    if (wanted(UPCOMING_SHOTS.phone)) {
+      await step('upcoming: phone', () => upcomingPageShot(PHONE, UPCOMING_SHOTS.phone));
+    }
+  } finally {
+    if (holmesEdit) {
+      await step('upcoming: revert the ASIN', () => asAdmin((token) => api(token, 'PATCH', holmesEdit, {revert: ['asin']})));
+    }
+  }
+}
+
 // ── Unauthenticated screens ─────────────────────────────────────────────────
 console.log('== public screens ==');
 // The connect flow on a fresh browser: the start screen with the probe card (the served
