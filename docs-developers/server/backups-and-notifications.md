@@ -223,6 +223,7 @@ kind. A nil `*Service` does nothing, so callers don't check.
 | `backup_failed` | `backup.Service.OnFailure` (scheduled or manual) | `trigger`, `error` (`disk_full`, `permission_denied`, `failed`) |
 | `bridge_job_finished` | `bridge.Service.OnTransition` (wired by `API.SetBridge`): a [Bridge](../bridge/index.md) job moved **into** `done` | `job_id`, `job_kind`, `state`, `library`, `library_id`, `path`, `title` (the book's title as indexed now, one plain line of at most 200 characters; `""` when it can't be read), and for a `chapters.detect` job (Phase 1d) `chapters_source` (where the book's chapters come from once the Bridge's attachments rescan has run: `generated`, `community` or `files`), and for a `sidecars.contribute` job (Phase 2b) that filed nothing because the community already had everything, `shared_nothing: true`, and for a `readalong.align` job (Phase 3c) `coverage` (its result's `coverage.text`, 0 to 1, when the result says) |
 | `bridge_job_failed` | the same hook: a job moved **into** `failed` (a Bridge's report, or a lease that ran out on the last attempt), or into `needs_attention` with a park that isn't transient (`bridge.Job.Notable`: never `agent_rate_limited`, `agent_unavailable` or `asr_worker_waiting`; a park changing its code in place counts when the new one isn't transient) | as `bridge_job_finished`, plus `code` (the park code, only for `needs_attention`) and `detail` (the job's `error`, the Bridge's own text, which can name a folder on its disk: **bell only**) |
+| `book_released` | the [upcoming releases](api/reference.md#upcoming-releases) job (`upcoming.Runner`, wired to `API.announceReleases`), at the end of a run that found works newly `released` (a preorder whose day came, or a new release within the window) in a series the server holds, of works the server holds no copy of anywhere. **One event per run**, and each work **once**: `upcoming_announced` remembers it for 400 days (longer than any release window), so a run repeated, a work listed by two series, or an item that leaves and comes back says nothing again. The first run, and the first read of a series, is a **silent baseline**: what is out already is marked, not announced. `dedup_key` is `released:` plus a digest of the run's work ids | `count`, `titles` (the first five, each `Title (Series #position)`, or `Title (Series)` without a position) |
 
 `notify.Kinds` lists them in this order, which is the order the console shows.
 
@@ -270,6 +271,11 @@ carries on; when the Bridge is signed in already, GitHub couldn't be reached to
 refresh its sign-in, so retry the job there once it can be), `core_needed`,
 `chapters_not_detected`; anything else "See the job in Settings > Bridge."). Both link to
 `/server?topic=bridge`. See [Characters and recaps](../bridge/generating.md#notifications).
+
+A `book_released` message reads `1 new release in your series` (`N new releases
+in your series`) with the titles one a line and `and N more` after the fifth,
+links to the console's Library > Series, and carries the ntfy tag `new` (priority 3). In the
+bell it shows the first three titles, then "and N more".
 
 A failed scan's `detail` (and a failed Bridge job's) is the tool's or the
 operating system's own message, which can name a folder on the server, so it stays
@@ -412,8 +418,8 @@ segment, so an ntfy behind a path prefix works), which accepts any title
 `message` falls back to the title when an event has no text; `click` is left
 out without a link. Priority is 4 for `scan_failed`, `library_unavailable` and
 `backup_failed`, 3 otherwise; tags are emoji shortcodes (`books`, `warning`,
-`electric_plug`, `iphone`, `envelope`, `package`, `white_check_mark` for a
-test).
+`electric_plug`, `iphone`, `envelope`, `package`, `new` for a release,
+`white_check_mark` for a test).
 
 ### Discord
 

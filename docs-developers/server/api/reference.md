@@ -2321,6 +2321,7 @@ Response `200` on a match:
           "authors": [{ "id": "andy-weir", "name": "Andy Weir" }],
           "cover_url": "https://…",
           "web_url": "https://meta.audiosilo.app/work?id=the-martian",
+          "release_date": "2013-03-22",
           "local": { "library_id": 1, "path": "Andy Weir/The Martian" }
         }
       ]
@@ -2338,7 +2339,13 @@ the upstream has none, and every `omitempty` string/number field (`subtitle`,
 the metadata service does not know it. `series[].position` is this
 work's position in that series; `series[].works` is the full ordered rail,
 **including the current work** (the client filters it out before drawing a "more
-in this series" row). Positions are strings ("1", "2.5", "1-3.5").
+in this series" row). Positions are strings ("1", "2.5", "1-3.5"). Each rail entry
+(in `series[].works[]` and `series[].orderings[].works[]`) carries `release_date`
+(2.6.0, additive): the work's first release, the earliest across its recordings and
+marketplaces, at the precision the community states it (`YYYY`, `YYYY-MM` or
+`YYYY-MM-DD`), omitted when unknown. A cached envelope gains it once its entry is
+next refreshed (within a day). The console's Series page dates its gaps by it, and
+[upcoming releases](#upcoming-releases) classify by the same date.
 
 #### Series rules
 
@@ -4133,6 +4140,113 @@ open), there whether or not a goal is set.
 `GET`: `400` `books_per_year must be a whole number from 1 to 1000`, or
 `invalid request` for a malformed body or an unknown field. `DELETE` clears it:
 `204 No Content`, idempotent.
+
+## Upcoming releases
+
+*Session.* Capability `upcoming` (2.6.0). What is coming and what is missing in the
+series the caller holds: preorders, recent releases and missing volumes, worked out
+from the community metadata by a background job (`internal/upcoming.Runner`), so a
+request reads only what the job stored and never asks the metadata service itself.
+No Bridge is needed.
+
+**The job.** It runs about an hour after the server starts, then once a day (give
+or take an hour), and a light pass once a burst of new or edited books settles (it
+looks up the new books' works and reads only community series it has never read). A
+run:
+
+1. gives each owned book with an ASIN or ISBN its community work id (the metadata
+   cache's answer, else a lookup under the service's own budget), and looks again
+   after 30 days (at most 500 of those month-old re-checks a run; a new or
+   changed book is always looked up);
+2. gives each local series (library and folded series name) the community series it
+   is (one or more), from its books' works' series named like it (the `/meta` rails' naming rule,
+   then give or take a leading article or a trailing "Series"), looked up again
+   after 30 days or when the series gains books;
+3. asks the metadata service's watch feed, 50 series a request, which series have
+   news;
+4. reads `series/{id}` for a series it has never read, one with news, or one read
+   over a week ago; a `404` marks the series gone, dropped a week later;
+5. classifies each local series against the community series (below) and replaces
+   its items.
+
+A failed read keeps what earlier runs stored (a series is replaced only by a read
+that worked), and a failed run is tried again an hour later, up to three times.
+With metadata off or the switch off, the job makes no call at all, and switching it
+off stops a run in flight. In [mirror mode](../configuration.md#mirror-mode-metadatamode-mirror)
+the local copy answers every read. The job's status (last run, last success, last
+error, next run, series and item counts) is the read-only `metadata.upcoming_status`
+on [`GET /admin/settings`](#get-apiv1adminsettings).
+
+**What counts.** For each local series, a member of the community series the series
+doesn't hold is:
+
+- `preorder` when its first release is still ahead (at the precision the date
+  states: `2026-11` is ahead for all of October);
+- `released` when it came out within the window (`upcoming.window_days`, 90 days by
+  default);
+- `missing` when it is below the highest volume the series holds (an interior gap),
+  or the single next volume after that highest one when it is out and is no preorder
+  or recent release already.
+
+A book whose community work is known holds that work's entry (a range: every entry
+inside it), whatever its own series number says; a book whose work isn't known holds
+the entry at its own series number. A box set counts as held when every volume
+inside it is. Only whole-number positions (and ranges starting on one) can be
+`missing`: a novella at 2.5 is never a gap, though it is a preorder or a release
+like any other member.
+
+### `GET /api/v1/me/upcoming`
+
+*Session.* Requires the `upcoming` capability; a kid's account gets `403`
+`code: "kid_account"`. A demo account reads it like anyone else.
+
+```json
+{
+  "status": "ok",
+  "generated_at": "2026-10-30T04:12:00.000Z",
+  "window_days": 90,
+  "items": [
+    {
+      "kind": "preorder",
+      "release_date": "2026-11-12",
+      "first_seen_at": "2026-10-29T04:10:41.000Z",
+      "work": {
+        "id": "the-expanse-10",
+        "title": "Book Ten",
+        "authors": [{ "id": "james-s-a-corey", "name": "James S. A. Corey" }],
+        "cover_url": "https://…",
+        "web_url": "https://meta.audiosilo.app/work?id=the-expanse-10"
+      },
+      "series": { "id": "the-expanse", "name": "The Expanse", "position": "10" },
+      "local": { "library_id": 3, "series": "The Expanse" }
+    }
+  ]
+}
+```
+
+| Field | Meaning |
+|---|---|
+| `status` | `ok` (a run succeeded within the last 48 hours), `pending` (no run has succeeded yet: `items` is empty or what a light pass found) or `stale` (none has for 48 hours: the items are the last ones stored) |
+| `generated_at` | the last successful run; absent while `pending` |
+| `window_days` | the recent-release window the server counts by |
+| `items[].kind` | `preorder`, `released` or `missing`, as above. A preorder whose day has come since the last run already reads `released` |
+| `items[].release_date` | the work's first release (the earliest across its recordings and marketplaces), at the precision the community states it: `YYYY`, `YYYY-MM` or `YYYY-MM-DD`; absent when unknown |
+| `items[].first_seen_at` | when the job first listed the item (a client's "new" badge) |
+| `items[].work` | the community work: `id`, `title`, `authors` (`{id, name}`), `cover_url` (absent when none) and `web_url` (its page on the metadata site) |
+| `items[].series` | the community series and the work's `position` in it (a string: `"10"`, `"2.5"`, `"1-3"`) |
+| `items[].local` | the caller's series view the item belongs to: `library_id` and the series' local spelling (`series`), to open it by name. No other DB id is sent |
+
+**Who sees what.** A series is the caller's only through a book of it they can see
+(their libraries and shares, `catalog.UserScopes`; the book's main series or one of
+its other series). An item is dropped when the caller can see a copy of that work
+anywhere, and each work is listed once (the first library in sort order). Podcast
+libraries never count. Items come in order: preorders soonest first, then releases
+newest first, then missing volumes by series and position.
+
+Errors: a kid's `403` `kid_account` comes first (the route's own check), then `404`
+`code: "metadata_off"` while community metadata is off, `404` `code: "upcoming_off"` while the job is switched off
+(`upcoming.enabled`, the console's Settings > Metadata). Either way the capability
+is `false`, so a client that honours it never asks.
 
 ## Listening in the house
 
@@ -7747,7 +7861,15 @@ and `AUDIOSILO_*` variable each one is, and whether it needs a restart (see
     "base_url": "https://meta.audiosilo.app",
     "region": "uk",
     "mode": "remote",
-    "available": true
+    "upcoming": true,
+    "available": true,
+    "upcoming_status": {
+      "last_run_at": "2026-10-30T04:12:00.000Z",
+      "last_success_at": "2026-10-30T04:12:00.000Z",
+      "next_run_at": "2026-10-31T04:40:12.000Z",
+      "series": 14,
+      "items": 9
+    }
   },
   "demo": {
     "enabled": false,
@@ -7794,6 +7916,8 @@ effect. Lists are never `null`.
 | `players.web_player` | read-only: where `/web` is served from - `"embedded"` (baked into the build), `"dir"` (from `web_dir`) or `""` (not mounted) |
 | `metadata.region` | the preferred Audible marketplace (`""` = none; see [Configuration](../configuration.md#community-metadata-metadata)) |
 | `metadata.mode` | `"remote"` (ask `base_url` for each book) or `"mirror"` (keep a local copy and answer from it; see [Mirror mode](../configuration.md#mirror-mode-metadatamode-mirror)). A restart setting: a saved change is listed in `restart_pending`, and `GET /admin/system`'s `metadata.mode` keeps the running mode until the restart |
+| `metadata.upcoming` | the [upcoming releases](#upcoming-releases) job's switch (config `upcoming.enabled`, default `true`). Applies at once: switched on (with metadata on) it runs soon when no run has succeeded for a day; switched off it stops a run in flight. The live `upcoming` [capability](#get-apiv1server) is `metadata` **and** this |
+| `metadata.upcoming_status` | read-only (2.6.0): how the job's runs went, absent without a metadata service. `last_run_at`, `last_success_at` (both absent before the first run; equal when the last run worked), `last_error` (the last failed run's error, cleared by a success), `next_run_at`, `series` (local series matched to a community series) and `items` (what they lack in all). The console's Settings > Metadata words it |
 | `metadata.available` | read-only: a metadata service exists (`base_url` was a valid absolute `http(s)` URL when the server started), so `enabled` can be turned on. The live `metadata` [capability](#get-apiv1server) is `enabled && available` |
 | `demo.max_users` | `null` = the default cap (`max_users_default`); `0` = no limit |
 | `demo.idle_ttl` | `""` = 24h |

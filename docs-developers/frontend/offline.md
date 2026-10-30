@@ -160,7 +160,10 @@ the `ChaptersResponse`, the ordered `files` (`relPath → localUri`, plus the
 `ebook`, when it couldn't be fetched, and on downloads made before it existed),
 `readalongGeneratedAt?` (the `generated_at` of the read-along map kept as
 `readalong.json`, Bridge Phase 3c; only with `ebookUri`, see
-[below](#the-read-along-map-in-downloads)), `savedAt`. The manifest is everything the player needs to build a queue and render
+[below](#the-read-along-map-in-downloads)), `readalongBytes?` (that map's size, counted
+in the entry's `bytes` and `totalBytes`), `ebookSha256?` (the sha256 of the ebook the
+first kept map was made from, so of `book.epub`; kept when the map is dropped),
+`savedAt`. The manifest is everything the player needs to build a queue and render
 with no network.
 
 ### Lifecycle
@@ -393,8 +396,9 @@ offline:
   `Authorization` header, checked span by span) and writes it with
   `engine.writeText` only once it has a `generated_at` and a sentence to follow, so
   nothing is written or removed before a checked map is in hand. Optional like the
-  EPUB: a failure keeps the book (without a map), a cancel cancels it. Its bytes are
-  not counted in the download's progress or size.
+  EPUB: a failure keeps the book (without a map), a cancel cancels it. Its bytes count
+  in the download's size and progress (`readalongBytes`; one progress step while a
+  map is likely, fe#193).
 - **The manifest** marks it by `readalongGeneratedAt` only (the file is read by
   name, and checked again on every read: `readReadalongFile`), and its `book.readalong`
   names the map kept (`namingReadalong`): offline that book is the item's seed, and
@@ -403,12 +407,21 @@ offline:
   web after paint) first takes the `/item` answers the query cache already holds,
   then watches the server's `/item` answers for a downloaded book. `readalongChange`
   decides: another `generated_at` (made again) fetches the map again (a failed
-  fetch keeps the copy and the manifest as they were); no ready map any more (stale,
-  or none) drops the file, and the book then says what the server said; else keep.
-  Each answer's map is tried once per launch (`readalongTried`).
+  fetch keeps the copy and the manifest as they were) **only if it was made from the
+  download's own ebook** (fe#193: `fitsEbook` against `ebookSha256`; a download that
+  never kept a map asks only while the server's `ebook.size` is the one it saved,
+  `knowsEbook`), so a map of a replaced ebook never joins the old `book.epub` and the
+  matching copy stays. No ready map any more drops the file (the book then says what
+  the server said), except a stale one under the same `knowsEbook` rule: it still
+  fits the download's own EPUB and audio, so it stays. Else keep. Each answer's map is
+  tried once per launch (`readalongTried`). A map the download refused is tried again
+  at the next launch (a known follow-up).
 - **Read offline**: the Text tab reads it with `readDownloadedReadalong`
   (`qk.readalongLocal`, `networkMode: 'always'`) with the EPUB on the device. A copy
-  that can't be read gives way to the server's map when the server has one ready.
+  that can't be read gives way to the server's map when the server has one ready, and
+  a server map made from another ebook than the download's is never used with it:
+  the Text tab says "The read-along is for a newer ebook" instead
+  ([The ebook reader](reader.md#the-map)).
 
 A download made before 3c-2, or one whose map fetch failed, has no map until
 `startReadalongRefresh` takes the book's next `/item` answer (`readalongChange` says

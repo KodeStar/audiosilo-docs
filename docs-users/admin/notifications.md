@@ -1,10 +1,10 @@
 ---
 title: "Notifications and the bell"
-description: "Have the AudioSilo server tell you when something happens - new books, a failed scan, an offline library, a new sign-in, a used invite, an update, a failed backup - through a webhook, an ntfy topic or a Discord channel, and in the admin console's bell. What each event means and what a message carries."
+description: "Have the AudioSilo server tell you when something happens - new books, a new release in a series you hold, a failed scan, an offline library, a new sign-in, a used invite, an update, a failed backup - through a webhook, an ntfy topic or a Discord channel, and in the admin console's bell. What each event means and what a message carries."
 ---
 
 The server keeps a list of things an admin may want to know about: new books,
-a scan that failed, a library whose folder went missing, someone signing in,
+a new release in a series your libraries hold, a scan that failed, a library whose folder went missing, someone signing in,
 an invite being used, a new version, a backup that failed. You see them in two
 places:
 
@@ -19,7 +19,8 @@ places:
 
 Click the bell in the top bar to see the newest eight events, newest first,
 each with when it happened. Click one to go where you can deal with it: new
-books open the library, a failed scan opens
+books open the library, new releases open
+[Library > Series](books.md#series), a failed scan opens
 [Health > Jobs](health.md#jobs), a sign-in opens
 [People > Devices](users-and-invites.md#the-devices-page), an update opens
 [Server > About](server.md#about-and-updates), a failed backup opens
@@ -115,6 +116,7 @@ Tick a box to send that event there; it saves as you tick.
 | **A backup failed** | A scheduled or manual [backup](backups.md) failed, with the reason. |
 | **A Bridge job finished** | The [Bridge](bridge.md) finished a job: "Characters and recaps ready" with the book's title, when it [generated them](generating-characters-and-recaps.md), "Description ready" when it [wrote a description](generating-characters-and-recaps.md#a-description-for-the-book) on its own, "Chapters found" when it [found a book's chapters](generating-characters-and-recaps.md#detect-chapters-without-characters-and-recaps), "Read-along made" with how much of the text lined up ("99% lined up") when it [made a read-along](making-read-along.md) (listeners can follow it once the player supports read-alongs), "Shared with the community" when it [shared a book's characters and recaps](bridge.md#share-with-the-community) ("Already in the community" when the community already had all of it, so nothing was sent), "Corrections sent" when it filed your [suggested corrections](bridge.md#suggest-corrections), or "Bridge check finished" with the library's name (the book's title when the check named a book) when it [verified a library](bridge.md#verify). In the bell, a share, a corrections job and a check show as "Bridge job finished" with the book's title (the library's name for a check of a whole library). |
 | **A Bridge job failed or needs attention** | A Bridge job stopped with an error, or paused waiting for someone to look at it, with the reason. Pauses that end by themselves (the agent's usage limit, the agent briefly away, waiting for an ASR worker) aren't sent. A job that was paused when the Bridge restarted may be announced again (a known issue). The bell shows the Bridge's own error; the message sent out only names the book and the reason. |
+| **New releases in your series** | A book came out in a series your libraries hold, and your server doesn't have it: a preorder whose day has come, or a book released in the last 90 days (by default). One message per daily check, with up to five titles ("Title (Series #10)"). Each book is announced **once**, never again, even if it drops off the list and comes back. The first check after you turn it on (or after a series first appears on your server) only notes what is already out, so you don't get a flood about old books. It needs community metadata and **Check for upcoming releases** to be on ([Community metadata](server.md#community-metadata)). |
 
 All of them show in the bell whether or not you send them anywhere.
 

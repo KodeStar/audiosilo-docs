@@ -293,6 +293,21 @@ chapter. The system scrubber is therefore **chapter-relative**, and the standard
 `COMMAND_SEEK_TO_{NEXT,PREVIOUS}_MEDIA_ITEM` buttons become **prev/next
 chapter** for free.
 
+**A very long MP4-family file plays whole** (fe#194, `ClipBudget` in
+`MediaItems.kt`). Media3's `Mp4Extractor` keeps the file's whole sample table on the
+Java heap (about 33 bytes per AAC frame: ~120 MB for a 23.5 h m4b), every clip is its
+own extractor, and two are alive at each chapter boundary (the next is prepared while
+the current one plays), so a long single-file m4b ran out of memory there. A file
+whose two tables plus 64 MB don't fit `Runtime.maxMemory()` drops its clips and plays
+as one whole-file item: no chapter-relative scrubber or prev/next chapter on the lock
+screen and notification for it (the app's own chapters, the chapter list and the
+sleep timer's end of chapter are unchanged, since the JS side is file-based anyway);
+other files keep their clips. A file of unknown duration counts as long as its clips
+reach (the last chapter's end). The module's manifest sets
+`android:largeHeap="true"`, which puts the line at about 41 hours of audio in one
+file on the phones measured (about 4 without it; the heap varies by device). Known limit: two very long files meeting at a boundary
+can still overflow, since the budget counts one file's extractors.
+
 - **`TimelineMap` keeps the bridge contract file-based.** The JS store and iOS
   think in `(fileIndex, positionInFile)`; the Android engine plays clip items.
   `TimelineMap.fileToItem` maps a file-relative position to `(clip index,

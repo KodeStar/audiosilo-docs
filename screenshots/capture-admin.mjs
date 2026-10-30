@@ -429,10 +429,13 @@ const open = async (p, route, ready = (pg) => pg.locator('h1.display').first(), 
   await sleep(1500);
 };
 const bookRoute = (b) => `/library/book?library=${b.library_id}&path=${encodeURIComponent(b.path)}`;
+// A seeded book by its author and a piece of its title (or path); undefined when none.
+const bookBy = async (author, title) =>
+  ((await api(token, 'GET', `/admin/books?author=${encodeURIComponent(author)}&limit=50`))?.books ?? [])
+    .find((b) => `${b.title} ${b.path}`.includes(title));
 // The seeded Call of the Wild, whose .audiosilo folder run.sh fills (section 2b).
 const callOfTheWild = async () => {
-  const list = await api(token, 'GET', `/admin/books?author=${encodeURIComponent('Jack London')}&limit=50`);
-  const book = (list?.books ?? []).find((b) => `${b.title} ${b.path}`.includes('Call of the Wild'));
+  const book = await bookBy('Jack London', 'Call of the Wild');
   if (!book) throw new Error('no seeded Call of the Wild');
   return book;
 };
@@ -527,15 +530,37 @@ await step('authors', async () => {
   await shoot(page, 'admin/authors.png');
 });
 
+// A matched book for the Series shot: the seeded books carry no ASIN, so no card
+// would show the community's gaps. For the shot only, The Adventures of Sherlock
+// Holmes gets the US ASIN of a recording the live catalogue files under that work
+// (b-j-harrison-2014), so the Sherlock Holmes card shows the books it lacks as dashed
+// gaps, each dated by its first release; the edit is reverted right after.
+const SERIES_MATCH = {author: 'Sir Arthur Conan Doyle', title: 'Adventures of Sherlock Holmes', asin: 'B00OQT6ZJ6'};
+
 await step('series', async () => {
-  await open(page, '/library/series');
-  await sleep(2000); // community series gaps load as each card scrolls into view
-  // The spines take their cover colours, which the server reads in the background
-  // shortly after a scan, and from the cover fans' thumbnails just loaded: load the
-  // page again so the spines have them.
-  await open(page, '/library/series');
-  await sleep(2000);
-  await shoot(page, 'admin/series.png');
+  if (!wanted('admin/series.png')) return;
+  const holmes = await bookBy(SERIES_MATCH.author, SERIES_MATCH.title);
+  const edit = holmes ? `/admin/libraries/${holmes.library_id}/book${pathQuery(holmes.path)}` : '';
+  if (edit) await api(token, 'PATCH', edit, {set: {asin: SERIES_MATCH.asin}});
+  else console.log(`  ! no "${SERIES_MATCH.title}": the series shot shows no gaps`);
+  try {
+    // Taller, so the Sherlock Holmes card's shelf (the second card) fits.
+    await page.setViewportSize({width: 1440, height: 1400});
+    await open(page, '/library/series');
+    await sleep(2000); // community series gaps load as each card scrolls into view
+    // The spines take their cover colours, which the server reads in the background
+    // shortly after a scan, and from the cover fans' thumbnails just loaded: load the
+    // page again so the spines have them.
+    await open(page, '/library/series');
+    if (edit) await page.locator('.spine-date').first().waitFor({timeout: 20000}).catch(() => {
+      console.log('  ! no dated gap showed (the live catalogue may be unreachable)');
+    });
+    await sleep(2000);
+    await shoot(page, 'admin/series.png');
+  } finally {
+    await page.setViewportSize(DESKTOP_CONTEXT.viewport);
+    if (edit) await api(token, 'PATCH', edit, {revert: ['asin']}).catch((e) => console.log(`  ! the ASIN edit stayed: ${e.message}`));
+  }
 });
 
 await step('folders', async () => {
@@ -669,11 +694,13 @@ await step('server settings: network & https', async () => {
 });
 
 await step('server settings: community metadata', async () => {
-  // Taller, so the switch, Source, Matching and Service cards fit.
-  await page.setViewportSize({width: 1440, height: 1300});
+  // Taller, so the switches, Source, Matching and Service cards fit.
+  await page.setViewportSize({width: 1440, height: 1400});
   try {
     await open(page, '/server?topic=metadata');
     await page.getByText('Keep a local copy', {exact: true}).waitFor({timeout: 8000});
+    // The upcoming releases switch and its last run (a fresh server: not run yet).
+    await page.getByText('Check for upcoming releases', {exact: true}).waitFor({timeout: 8000});
     await sleep(800); // the status row reads the system status
     await shoot(page, 'admin/settings-metadata.png');
   } finally {
@@ -934,7 +961,7 @@ await step('settings: backups', async () => {
 });
 
 await step('settings: notifications', async () => {
-  await page.setViewportSize({width: 1440, height: 1240});
+  await page.setViewportSize({width: 1440, height: 1320});
   try {
     await open(page, '/server?topic=notifications');
     await page.getByRole('list', {name: 'Where to send alerts'}).waitFor({timeout: 15000});
@@ -1398,8 +1425,7 @@ await step('bridge: detect chapters', async () => {
 await step('bridge: make a read-along', async () => {
   if (!wanted(...READALONG_SHOTS)) return;
   if (!bridgeToken || !bridgeStatus) throw new Error('no stand-in Bridge was paired');
-  const list = await api(token, 'GET', `/admin/books?author=${encodeURIComponent('Charles Dickens')}&limit=50`);
-  const carol = (list?.books ?? []).find((b) => `${b.title} ${b.path}`.includes('Christmas Carol'));
+  const carol = await bookBy('Charles Dickens', 'Christmas Carol');
   if (!carol) throw new Error('no seeded A Christmas Carol');
   if (!carol.ebook) throw new Error('A Christmas Carol has no ebook (run.sh section 2d)');
   const root = library?.id === carol.library_id ? library.root : null;

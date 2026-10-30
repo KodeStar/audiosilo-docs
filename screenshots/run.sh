@@ -118,6 +118,28 @@ if [ ! -f "$FRONTEND/dist/index.html" ]; then
   (cd "$SERVER" && FRONTEND_DIR="$FRONTEND" DEST="$FRONTEND/dist" scripts/build-web.sh)
 fi
 
+# Whether SHOTS_ONLY (see lib.mjs) keeps <file>: unset keeps everything, else
+# one of its comma-separated prefixes must start the path.
+shot_wanted() { # <file>
+  [ -z "${SHOTS_ONLY:-}" ] && return 0
+  local p
+  for p in ${SHOTS_ONLY//,/ }; do
+    case "$1" in "$p"*) return 0 ;; esac
+  done
+  return 1
+}
+
+# Whether SHOTS_ONLY keeps any manifest shot whose <field> is <value>: `capture
+# setup`, `capture bridge`, `readalong true`.
+manifest_wanted() { # <field> <value>
+  (cd "$HERE" && FIELD="$1" VALUE="$2" node --input-type=module -e '
+    import {SHOTS} from "./manifest.mjs";
+    import {wanted} from "./lib.mjs";
+    const {FIELD, VALUE} = process.env;
+    process.exit(wanted(...SHOTS.filter((s) => String(s[FIELD]) === VALUE).map((s) => s.file)) ? 0 : 1);
+  ')
+}
+
 # ── 2. Seed library (idempotent; ~8 short-capped books) ────────────────────
 if [ "${SKIP_SEED:-0}" != "1" ]; then
   echo "==> seeding library into $LIBRARY (MAX_FILES=${MAX_FILES:-3})"
@@ -197,7 +219,7 @@ fetch_epub() {
       mv "$cached.part" "$cached"
     else
       rm -f "$cached.part"
-      echo "  ! the EPUB fetch failed (offline, or not an EPUB): the $shots shots will fail"
+      echo "  ! the EPUB fetch failed (offline, or not an EPUB): no EPUB for the $shots shots"
       return 1
     fi
   fi
@@ -214,17 +236,32 @@ fi
 # ── 2e. A read-along (Bridge Phase 3c) ────────────────────────────────────
 # The Call of the Wild gets its EPUB (Project Gutenberg's ebook #215, fetched once
 # into .cache) and the read-along map a real Bridge made for it, cut to the seeded
-# audio files by seed-readalong.mjs (its header says how), for
-# web-player/player-text.png, reader-readalong.png and phone-player-text.png.
+# audio files by seed-readalong.mjs (its header says how), for the manifest's
+# `readalong: true` shots. Without the map, a run that wants any of them stops here
+# (docs#200; seed-readalong.mjs says why).
 RA_BOOK="$LIBRARY/Jack London/The Call of the Wild"
 RA_EPUB="$CACHE/the-call-of-the-wild.epub"
+RA_OK=0
 if [ -d "$RA_BOOK" ]; then
   if fetch_epub 215 "$RA_EPUB" "$RA_BOOK" "The Call of the Wild.epub" read-along; then
-    (cd "$HERE" && node seed-readalong.mjs "$RA_BOOK" "$RA_EPUB") \
-      || echo "  ! the read-along map could not be written: the read-along shots will fail"
+    if (cd "$HERE" && node seed-readalong.mjs "$RA_BOOK" "$RA_EPUB"); then
+      RA_OK=1
+    else
+      # A map left by an earlier run no longer fits this EPUB: drop it, so no other
+      # shot shows a stale read-along.
+      rm -f "$RA_BOOK/.audiosilo/readalong.json"
+      echo "  ! the read-along map could not be written"
+    fi
   fi
 else
-  echo "  ! no $RA_BOOK: the read-along shots will fail"
+  echo "  ! no $RA_BOOK"
+fi
+if [ "$RA_OK" != 1 ]; then
+  if manifest_wanted readalong true; then
+    echo "stopping: the read-along shots need the map (leave them out with SHOTS_ONLY)"
+    exit 1
+  fi
+  echo "  (no read-along shot is wanted: carrying on)"
 fi
 
 # ── 3. Servers ──────────────────────────────────────────────────────────────
@@ -242,26 +279,6 @@ trap cleanup EXIT
 # The first-run admin password a server printed to <log> ("" when it didn't).
 admin_password() { # <log>
   grep 'Admin password' "$1" | awk -F': ' '{print $2}' | tr -d ' ' || true
-}
-
-# Whether SHOTS_ONLY (see lib.mjs) keeps <file>: unset keeps everything, else
-# one of its comma-separated prefixes must start the path.
-shot_wanted() { # <file>
-  [ -z "${SHOTS_ONLY:-}" ] && return 0
-  local p
-  for p in ${SHOTS_ONLY//,/ }; do
-    case "$1" in "$p"*) return 0 ;; esac
-  done
-  return 1
-}
-
-# Whether SHOTS_ONLY keeps any shot the manifest gives to capture <name> (setup, bridge).
-capture_wanted() { # <name>
-  (cd "$HERE" && CAPTURE="$1" node --input-type=module -e '
-    import {SHOTS} from "./manifest.mjs";
-    import {wanted} from "./lib.mjs";
-    process.exit(wanted(...SHOTS.filter((s) => s.capture === process.env.CAPTURE).map((s) => s.file)) ? 0 : 1);
-  ')
 }
 
 wait_healthy() { # <url> <logfile> <name>
@@ -294,7 +311,7 @@ MAIN_PID=$!
 # console's first-run flow (with the web player, so its phone step offers it).
 # It starts only when a setup shot is wanted.
 WANT_SETUP=0
-if [ "${SKIP_ADMIN:-0}" != "1" ] && capture_wanted setup; then
+if [ "${SKIP_ADMIN:-0}" != "1" ] && manifest_wanted capture setup; then
   WANT_SETUP=1
 fi
 if [ "$WANT_SETUP" = 1 ]; then
@@ -416,7 +433,7 @@ fi
 
 # The Bridge's own page: a real Bridge, built with its page embedded, on a fresh
 # data dir, paired with the demo server by capture-bridge.mjs (see its header).
-if [ "${SKIP_BRIDGE:-0}" != "1" ] && capture_wanted bridge; then
+if [ "${SKIP_BRIDGE:-0}" != "1" ] && manifest_wanted capture bridge; then
   echo "==> capturing the Bridge's page"
   if [ ! -x "$BRIDGE/scripts/build-web.sh" ]; then
     echo "  ! no audiosilo-bridge checkout at $BRIDGE: the Bridge shots keep their previous images"

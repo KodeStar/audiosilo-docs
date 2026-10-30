@@ -232,6 +232,19 @@ cover images are still downloaded from their hosts.
   doing instead ("Local copy ready", "Local copy downloading", "Opening the
   local copy", "No local copy yet" or "Local copy couldn't download"), with a link to the details on
   [Health > System](health.md#the-local-copy-of-community-metadata).
+- **Check for upcoming releases** turns on a daily check of the series your
+  libraries hold: which books in them are preorders, which came out recently,
+  and which are missing (on by default). Today it gives you the
+  [notification](notifications.md#what-to-send) **New releases in your series**;
+  a list of these books in the players is planned. It asks the metadata service
+  only about series and books, never who is listening, and with a
+  [local copy](#keeping-a-local-copy) your server answers it itself. The switch
+  works only while the lookup is on (it is greyed out otherwise). Under it, while
+  the switch and the lookup are both on, the last check: "Not run yet" (the first check runs as soon as you switch it on,
+  or about an hour after the server starts), "Last checked *when*: *N* series,
+  *M* books coming or missing", or, in red, "Last check failed *when*" with the
+  reason. How far back a release still counts as new (90 days) is set in the
+  config file only.
 - **Audible marketplace** in the **Matching** card is the store you buy from
   (United Kingdom, United States, Germany and so on). When a recording sells in
   several stores, a match takes this store's ASIN; with **No preference** it
