@@ -239,7 +239,8 @@ plus index writes that failed). A moved or renamed book counts **once**, as
 [joined book](#joined-books-disc-sets) and the discs it splits back into are
 reshapes of books the library had, so neither counts as `added` (and no "books
 added" notification follows), and neither the joined discs nor the split-up
-book count as `removed`. The same counters, live, are on
+book count as `removed`. A first scan counts a book split across disc folders
+once in `added` (and among the titles it names), not once per disc (2.5.1). The same counters, live, are on
 `ScanProgress` (`added`, `updated`, `moved`, `removed`; `indexed` is now
 `added + updated`).
 
@@ -856,10 +857,11 @@ Which releases it runs for:
   empty UTF-16 ID3 strings). The official and LinuxServer.io images are both
   Alpine 3.24, whose ffprobe is 8.1.3.
 - **Any other release turns the probe off**, and ffprobe reads every file:
-  Ubuntu 24.04's 6.1, a master or nightly build (its version is no release, so
-  the BtbN builds the server
-  [downloads](configuration.md#ffmpegffprobe-resolution--auto-download) for
-  Linux and Windows get no speedup), or an ffprobe whose `-version` fails.
+  Ubuntu 24.04's 6.1, a master or nightly build (its version is no release: the
+  BtbN master builds a server before 2.5.1
+  [downloaded](configuration.md#ffmpegffprobe-resolution--auto-download) for
+  Linux and Windows, which 2.5.1 replaces with the 8.1 branch build), or an
+  ffprobe whose `-version` fails.
   Tags are still read in-process either way.
 
 The release is read once per ffprobe path per process from `ffprobe -version`
@@ -1180,7 +1182,8 @@ deliberate (a kids' library holding a book that is also in the main one), and
 players already show such copies once. Two books join a group when they have:
 
 - the same audio fingerprint (`content_hash`) and the same total size
-  (reason `same_files`), or
+  (reason `same_files` only when every member of the group shares that audio,
+  `dupSet.sameFiles`, 2.5.1), or
 - the same ASIN or the same ISBN, or
 - the same author, title and narrator (normalized) **and** lengths within a
   minute or 2%, whichever is more, so an abridged edition isn't called a copy

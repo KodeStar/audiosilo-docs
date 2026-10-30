@@ -8,7 +8,7 @@ The **Household** page is where you look after the people you listen with: who u
 ## Finding it
 
 - **On a phone**: the **Me** tab's **Household** section, between Settings and Account.
-- **On a tablet or computer**: **Household** in your [profile menu](browsing.md#getting-around) (top right).
+- **On a tablet or computer**: **Household** among the sections of [You](you.md), or in your [profile menu](browsing.md#getting-around) (top right).
 - From anywhere: **Manage household** on [Who's listening?](profiles.md#whos-listening), **Household** at the end of the App group in [Settings](settings.md#household), and **Sharing settings** beside Listening in the house on your Home page. In the web player's quick search, **Go to** lists it too.
 
 ![The Household page on a phone: the Me tab on Household, with On this device and the first person's card](/img/screenshots/web-player/phone-household.png)

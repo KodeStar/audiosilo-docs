@@ -19,8 +19,9 @@ The user-facing side is [Your household](/users/listening/household).
 ## The page
 
 `HouseholdPage` (`src/components/household/household-page.tsx`) is rendered in two
-places: the phone You hub's `household` segment (between Settings and Account,
-`embedded`, since the hub's large title already says Household) and the pushed page
+places: the You hub's `household` segment (on a phone between Settings and Account,
+`embedded`, since the hub's large title already says Household; from v2.5.1 also in
+the tablet and desktop sub-nav, after Journal) and the pushed page
 `/household` (`src/app/(app)/(home,library,search,offline,me)/household.tsx`, in the
 array group like `/settings`, so back returns where the listener was and a cold link
 opens it in Home). **Every way in to the pushed page** goes through `openHousehold()`

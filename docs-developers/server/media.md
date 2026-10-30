@@ -258,7 +258,14 @@ JSON says about the cover:
   `UpsertBook`, `SetCover`, `DeleteCover`, a move or a disc join carrying a custom
   cover). The wire's `cover_version` is its hash (`catalog.CoverVersion`: the
   first 10 hex characters of its SHA-256, so the wire carries no stamp, size or
-  path), present on every indexed book.
+  path), present on every indexed book. From 2.5.1 (server ADMIN-01) the scan
+  records file art by the art file's own version (`catalog.FileArtVersion`: the
+  sidecar or the first audio file, its kind, size and mtime, the scan's
+  `Book.ArtVersion`), the same name the cover handler gives its thumbnail, so a
+  re-index of unchanged art keeps its version and colour, and art replaced in
+  place gets a new version at the next scan (one that finds the audio unchanged
+  still records a replaced sidecar, `SetArtVersions`). The index form above is
+  left only for a row with no file version. The value changes, not its shape.
 - **`cover_color`**, the palette read from a thumbnail, stored as `version bg` or
   `version bg accent on_accent`: tagged with the `cover_version` it was read for,
   and decoded onto the book only while that tag is current. New art needs nothing

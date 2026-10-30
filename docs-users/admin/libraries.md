@@ -283,7 +283,7 @@ stay on top. On a book's page, the values taken from the folders are marked
 
 ## Library order
 
-Drag a library by its handle to reorder the list. With a keyboard, focus the
+A new library goes to the end of the list. Drag a library by its handle to reorder the list. With a keyboard, focus the
 handle, press **Space** (or **Enter**) to pick the library up, move it with the
 arrow keys, and press **Space** again to drop it (**Escape** cancels). On a
 wide screen the small up and down arrows beside the handle move a library one

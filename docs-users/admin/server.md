@@ -476,6 +476,14 @@ When an update exists, the version line on the
 [overview's Server card](console-tour.md#the-overview) also shows a
 "*version* available" link to this page.
 
+**A console tab left open during an update** still runs the console from before
+it. The first page you open there that the new server no longer has reloads the
+tab into the new console by itself, once (from 2.5.1). If the page still can't
+open, it says **AudioSilo was updated**: "This tab still has the console from
+before the update. Reload to open the new one.", with **Reload**. A page that
+fails for any other reason shows **This page hit a problem**, with **Reload** and
+**Go to the overview**, and the console's menu stays in place.
+
 The **About *name*** card lists the server's name, version, how it is installed
 (Docker container, Program or Local build), platform, how long it has been
 running, its data folder, the database's size and schema number, and its

@@ -1650,11 +1650,15 @@ not decode as an image fail. Success is `image/jpeg` with
 `X-Content-Type-Options: nosniff` and `Cache-Control: private, max-age=300`.
 A failed fetch is `502 artwork_unavailable`, answered again for a minute
 without refetching. Registrations last 15 minutes (at most 4,096; eviction can
-404 an id before its search expires), images are cached up to 32 MiB. Budgets:
-120 artwork requests/minute per user (burst 20, hits included), 60 image
-fetches/minute server-wide (burst 4) and four at once, refused with the same
-`429`/`503` codes as search. Show a placeholder when the artwork 404s or
-fails.
+404 an id before its search expires), images are cached up to 32 MiB. Budgets
+(from 2.5.1, BRIDGE-03: artwork's own, sized by a results page of 20, and never
+shared with search's): 120 artwork requests/minute per user (burst 40, hits
+included), 120 image fetches/minute server-wide (burst 40), four fetching at once
+and up to 40 more misses waiting for a slot, each for up to the five-second fetch
+budget. A miss past those 44, or one that got no slot in time, is `503
+discovery_busy` (`Retry-After: 1`; a miss that never fetched gives its image token
+back); a spent bucket is the same `429` codes as search. Show a placeholder when
+the artwork 404s or fails.
 
 ### OPML import and export
 
@@ -4845,7 +4849,8 @@ works immediately; the index fills in behind).
 | `ignore_patterns` | string array | no | ignore rules, one pattern per entry (an entry with line breaks is split into one pattern per line); lines are trimmed and blank ones dropped. At most 100 patterns of 200 bytes |
 | `metadata_source` | string | no | `"tags"` (default) or `"path"` - see `GET /admin/libraries` |
 
-Response `201`: the created library (the player's library object; the scan
+A new library goes last in the display order (`sort_order` one past the
+highest, from 2.5.1). Response `201`: the created library (the player's library object; the scan
 settings are not echoed - read them from
 [`GET /admin/libraries`](#get-apiv1adminlibraries)).
 
@@ -6727,7 +6732,7 @@ different libraries are usually deliberate and are grouped only with `across`).
   | `reason` | Meaning |
   |---|---|
   | `id_length_differs` | The books were grouped by a shared ASIN or ISBN but their lengths don't match (the group's shortest and longest known lengths are compared): one may be matched to the wrong recording, or a copy is incomplete. Not plain copies: the console marks none as the one to keep. |
-  | `same_files` | Two of the books have identical audio (same fingerprint and size). |
+  | `same_files` | Every book in the group has the same audio (same fingerprint and size). From 2.5.1 a group that identical audio joins only in part takes the reason of what joins the rest (before, two identical copies were enough). |
   | `same_id` | Two of the books share an ASIN or ISBN and their lengths match. |
   | `same_book` | The books share author, title and narrator and their lengths match. |
 
@@ -9326,7 +9331,7 @@ resends once on a `400` (an older server answers no `accepts`). See
 | `200` | `{ server_time, libraries, accepts }` |
 | `400` | `invalid status` (not JSON, too large, an unknown field), or a structure the checks refuse (`invalid: kind "…"`, `invalid: library 0`, `invalid: ui_url must be an http(s) URL`, …) |
 | `401` | no bridge token or a refused one, including one a pairing or an unpair revoked after the request arrived |
-| `503` | the token couldn't be checked |
+| `503` | the token couldn't be checked, or (from 2.5.1) the heartbeat couldn't be saved (`could not save the status`; a `500` before): the Bridge retries |
 
 ### `GET /api/v1/bridge/jobs/next`
 

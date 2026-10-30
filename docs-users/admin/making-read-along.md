@@ -22,9 +22,12 @@ the read-alongs you make now are what it will use.
   [Read the ebook](../listening/reading-the-ebook.md#which-books-have-it) opens:
   the book's page shows an **Ebook** chip for one. It has to be DRM-free, and the
   same book as the narration, ideally the same edition.
-- **A Bridge that is paired and online** and offers read-alongs. A Bridge that is
-  too old to make them doesn't offer it; update it (see
-  [Running a Bridge](../getting-started/running-a-bridge.md)).
+- **A Bridge that is paired and online**, **version 0.5.0 or newer** (the Bridge
+  that ships beside AudioSilo 2.5.1). An older Bridge, such as 0.4.0, can't make
+  read-alongs: the card says "This Bridge can't make read-alongs. Update it to
+  0.5.0 or newer." with a **Bridge settings** link, and offers no **Make
+  read-along**. Update it as in
+  [Running a Bridge](../getting-started/running-a-bridge.md#which-bridge-version).
 - **A library the Bridge can write to**, since the read-along is saved in the
   book's own folder: the library shows as **Ready** in
   [Settings > Bridge](bridge.md#libraries).
@@ -49,8 +52,22 @@ It says where the book stands:
 | **Out of date: the audio files changed** since the read-along was made. | the book's audio files were added, removed, renamed or re-encoded. Listeners don't see it until it is made again |
 
 The card shows only for a book with an ebook, and only when there is something to
-show: a read-along, a job, or a Bridge that can make one. The percentage is
-rounded down, so a read-along that lines up 99.6% of the text says 99%.
+show: a read-along, a job, a Bridge that can make one, or a line about the Bridge
+(below). The percentage is rounded down, so a read-along that lines up 99.6% of
+the text says 99%. Under a ready read-along, the job that made it shows only when
+it adds something ("the transcript was reused"); under one that is out of date,
+it doesn't show.
+
+When **Make read-along** can't be offered because of the Bridge, the card says why
+where it matters: for a read-along that is out of date, after a job that failed,
+and for a Bridge too old to make one. Each line links to
+[Settings > Bridge](bridge.md):
+
+| The line says | Means |
+|---|---|
+| Making a read-along needs a Bridge. **Set up a Bridge** | no Bridge is paired with the server |
+| The Bridge is offline: make the read-along once it's back. **Bridge settings** | the paired Bridge isn't reaching the server |
+| This Bridge can't make read-alongs. Update it to 0.5.0 or newer. **Bridge settings** | the Bridge is online, but a release from before read-alongs |
 
 ## Making one
 
@@ -65,11 +82,15 @@ happen before anything starts:
   [How long it takes](#how-long-it-takes)).
 - **Agent cost**: "None: no agent is used".
 - For **Make again** over a ready read-along, when the one it replaces was made.
+  The dialog's button then says **Make again** too.
 - That if less than half of the ebook lines up with the narration, the job stops
   and saves nothing.
 
 When the Bridge is offline, or can't write to the book's library, the dialog says
-so, and nothing can be queued while it can't write there. Press **Make
+so, and nothing can be queued while it can't write there (a job queued while the
+Bridge is offline waits for it). A Bridge too old to make read-alongs shows **The
+Bridge is too old for read-alongs**, saying which version to update to, and
+nothing can be queued. Press **Make
 read-along**: a toast says it is queued, and the Bridge picks it up within a few
 seconds.
 
@@ -103,7 +124,9 @@ worker), the card says why, with **Open in the Bridge** (see
 When it finishes, the card shows the new read-along, and the job says how much of
 the text lined up ("99% of the text lined up"), and "the transcript was reused"
 when nothing had to be transcribed. With [notifications](notifications.md) on, you
-hear "Read-along ready: *the book's title* (99% lined up)".
+hear "Read-along made: *the book's title* (99% lined up)", and the console's bell
+says "Read-along made for *the book's title*": "99% of the text lined up.
+Listeners can follow along once the player supports read-alongs."
 
 ## How much lines up, and a poor match
 
@@ -114,18 +137,20 @@ the right edition of the ebook, it is usually well over 90%.
 
 **Less than half is refused.** When under 50% of the text lines up, the ebook and
 the narration aren't the same book, or are very different editions. The job fails
-with "the ebook and the narration don't match: 23% lined up" (rounded down, so
-49.7% says 49%), and nothing is saved:
+and nothing is saved. The card and the job in Settings > Bridge say "The ebook and
+the narration don't match: only 23% lined up. Use the EPUB of the same edition as
+the audiobook, or check it's the right book, then make it again." (rounded down,
+so 49.7% says 49%). Nothing is saved because
 a read-along that is mostly wrong would only send listeners to the wrong place.
 Put the matching edition's EPUB beside the audio and make it again; the transcript
 is reused.
 
 Other reasons a job fails, each said in the job:
 
-- "this book has no ebook": the ebook is gone, or the server no longer counts one
+- "This book has no ebook": the ebook is gone, or the server no longer counts one
   (two EPUBs in the folder count as none);
 - the ebook is DRM-protected, isn't a readable EPUB, or is over 256 MiB;
-- "the ebook changed while aligning; run it again": the EPUB was replaced while
+- "The ebook changed while aligning; run it again": the EPUB was replaced while
   the job ran.
 
 ## When a read-along goes out of date

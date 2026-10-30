@@ -17,7 +17,9 @@ native macOS and Linux binaries that run a Bridge or an
 [ASR worker](workers.md#installing-a-worker), and the one-command worker install
 needs it. Bridge v0.3.0 is the release that speaks to server 2.4.0 (podcasts,
 contributions, generating and detecting chapters): v0.3.0 or later works with a
-2.4.0 or 2.5.0 server, and v0.4.0 ships beside 2.5.0. Nothing checks the version: the server offers each feature by the
+2.4.0, 2.5.0 or 2.5.1 server, v0.4.0 ships beside 2.5.0, and v0.5.0 ships beside
+2.5.1 as the release that makes read-alongs (`readalong.align`; the console names
+0.5.0 to an admin whose online Bridge lacks the `readalong` family). Nothing checks the version: the server offers each feature by the
 job kinds the Bridge's heartbeat reports, so an older Bridge pairs but lacks
 them. The Bridge is being built in phases. **Phase 0** laid
 the foundations: pairing, the heartbeat and the capability, the job queue with

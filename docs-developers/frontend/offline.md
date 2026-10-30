@@ -337,13 +337,19 @@ the car's headless task) reloads the registry and prunes it:
    there is no drift to correct, but a legacy download adopted into a connection
    on hydrate has been re-put under the new scoped prefix - relocation recomputes
    its URL there as well so the existence check finds it.
-3. **`reviveEntry(entry, allPresent)` decides what survives** (pure, tested). An
-   entry with no listed files, or with any listed file failing `engine.fileExists`,
-   is dropped and its folder removed. A `downloaded` entry stays as it is. Anything
-   else comes back as `error` keeping its files: a failure keeps its classified
-   `failure`, a download the app closed mid-way becomes `{ kind: 'interrupted' }`
-   ("The app closed before it finished"), and `kept`, `progress` and `bytes` are
-   recomputed from the files really on disk. The engines can't resume a
+3. **`reviveEntry(entry, allPresent)` decides what survives** (pure, tested). A
+   `downloaded` entry stays as it is, unless it lists no files or one fails
+   `engine.fileExists` (then it is dropped and its folder removed). Anything else
+   with finished files comes back as `error` keeping them (dropped too when one is
+   gone): a failure keeps its classified `failure`, a download the app closed
+   mid-way becomes `{ kind: 'interrupted' }` ("The app closed before it
+   finished"), or, on web with every file saved and no EPUB to come, `unservable`
+   (only the offline check was left: the service worker may not control the
+   page), and `kept`, `progress` and `bytes` are recomputed from the files really
+   on disk. From v2.5.1 (PLAYER-04) a failed or cut-short entry with **no**
+   finished file (most books are one file) stays too, as an `error` row with
+   `kept: 0` and Retry, its folder emptied by the caller; a `keep-ahead` one is
+   dropped instead (keep-ahead plans it again and never retries a failure). The engines can't resume a
    half-written file, so Retry starts that one again and skips the rest. No engine
    or storage format change came with this.
 4. Surviving `downloaded` manifests **seed the React Query cache** (`qk.item(connectionId, …)`
@@ -351,8 +357,14 @@ the car's headless task) reloads the registry and prunes it:
    offline, through `seedQuery` ([its rules](#seeding)), dated with the manifest's
    `savedAt`. Then the kept community metadata is restored
    ([the offline companion](#the-offline-companion-offline-metats)).
-5. On web, `probe()` then runs and may downgrade `supported` - the UI hides
-   downloads rather than offering ones that won't play offline.
+5. On web, `probe()` runs from the start of `hydrate` and is applied once the
+   registry is read: it may downgrade `supported`, and the UI hides downloads
+   rather than offering ones that won't play offline. From v2.5.1 (PLAYER-03)
+   `download` waits for that answer (`probing`, as it waits for `hydrating`) and
+   then refuses with `unsupported` before a byte is fetched (the control says
+   "Downloads unavailable"); before, a download started during the probe ran to
+   100% and was then refused, its bytes held. A `download` that waited gives up
+   (`declined`) when the book was cancelled or removed meanwhile (`stopCounts`).
 
 **Purge on connection removal.** The store registers an `onConnectionRemoved`
 handler (from `src/stores/session.ts`): when a connection is removed (Settings →
@@ -549,7 +561,13 @@ Three paths, the first two in `src/playback/store.ts`:
   (`relPath → localUri`, plus the local cover) to `buildBookQueue`, which
   points every track at its local URI and drops auth headers. Resume still
   works fully offline because `loadInitialProgress` falls back to the durable
-  local mirror / offline queue (see [Playback](playback.md)).
+  local mirror / offline queue (see [Playback](playback.md)). From v2.5.1
+  (PLAYER-01) a downloaded book's server place is kept in that mirror: the
+  download's start seeds it from a `getProgress` (else the cached `qk.progress`; `keepServerPlace`),
+  and `fetchBookProgress` writes each online answer for a book kept offline
+  (`setKeptOfflineCheck`, `writeMirror(progressToSave(...))`), keep-newest, so a
+  newer local save is never regressed, and a book downloaded at 70% opens offline
+  at 70%, not 0.
 - **Downloaded while streaming**: a `useDownloads.subscribe` listener watches
   for the currently-playing book flipping to `downloaded` and calls
   `switchCurrentBookToLocal`, which rebuilds the queue against the manifest and

@@ -456,6 +456,14 @@ query shape**:
 The Go predicate (`pathAllowedBy`) is authoritative; `pathFilterSQL` must stay
 behaviorally identical to it.
 
+**Taking access away is durable** (2.5.1, server#260): `DeleteShare`,
+`RemoveSharePath` and `RevokeShare` (the user's `user_share_access` row) commit
+through `store.DB.ExecDurable` (`synchronous = FULL` for that
+commit, see [SQLite choices](data-model.md#sqlite-choices)), so a power cut right
+after a revoke can't bring the access back. Not yet durable (server#260, for
+2.6.0): a share made read-only (`UpdateShare`), the share deletes of
+`DeleteLibrary`, and removing a viewer from a collection.
+
 A requested path can resolve to a book **above** it: a part of a folder book, or
 a disc folder of a book joined from its disc folders (`bookForPath`; see
 [On-demand indexing](scanner.md#on-demand-indexing-indexpath)). Allowing the
@@ -947,8 +955,8 @@ the [reference](api/reference.md#podcast-discovery)):
 |---|---|---|
 | Directory search, per user (both providers, cache hits included, admins too) | 10 / min, burst 3 | `429 discovery_rate_limited` |
 | Directory fetches, server-wide | iTunes 20 / min, burst 1; Podcast Index 30 / min, burst 2; 2 at once | `429 provider_rate_limited` |
-| Search artwork, per user | 120 / min, burst 20 | `429 discovery_rate_limited` |
-| Artwork image fetches, server-wide | 60 / min, burst 4; 4 at once | `429 provider_rate_limited` |
+| Search artwork, per user (cache hits included) | 120 / min, burst 40 (two results pages) | `429 discovery_rate_limited` |
+| Artwork image fetches, server-wide | 120 / min, burst 40; 4 at once, up to 40 more waiting for a slot (each up to the 5 s fetch budget) | `429 provider_rate_limited`, or `503 discovery_busy` when 44 are fetching or waiting, or no slot came free in time |
 | OPML import, per user | 2 / min, burst 1; 2 imports at once server-wide | `429 opml_rate_limited`, or `503 opml_busy` |
 | OPML export, per user | 6 / min, burst 2 | `429 opml_rate_limited` |
 

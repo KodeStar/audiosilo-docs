@@ -299,7 +299,10 @@ size, mtime and name of the file the rule names, readable or not; `''` for none)
 derived like `cover_path`, and filled for an unchanged book by the scan's backfill
 (`catalog.SetEbooks`) without a re-index; see [A book's ebook](scanner.md#a-books-ebook)),
 `ebook_size` (that file's size in bytes, recorded with `ebook_path`; the wire's
-`ebook.size`), `ebook_sha256` (the lowercase sha256 of the ebook of a book with a
+`ebook.size`; from 2.5.1 `/item` stats the recorded ebook and, when its signature
+changed since the index read it, checks it by the scan's rule and records the new
+`ebook_sig` and `ebook_size` (compare-and-set), so an EPUB replaced in place shows
+its new size before the next scan), `ebook_sha256` (the lowercase sha256 of the ebook of a book with a
 read-along map, `''` otherwise: only those are hashed) with `ebook_hashed_sig` (the
 `ebook_sig` it was computed for, so a digest whose file has changed since is known
 stale; see [Read-along](../bridge/readalong.md#on-the-server)),
@@ -358,7 +361,10 @@ user state:
   same expression). Every writer of those inputs recomputes it (`UpsertBook`,
   `SetCover`, `DeleteCover`, a move or join carrying a custom cover), and a book's
   first thumbnail of file art replaces it with the image's own version (its
-  file's size and mtime), so it follows a sidecar overwritten in place. Never sent;
+  file's size and mtime), so it follows a sidecar overwritten in place. From
+  2.5.1 the scan writes that file version itself (`catalog.FileArtVersion`), so
+  unchanged art keeps its identity across a re-index and a replaced file gets a
+  new one at the next scan. Never sent;
   the API sends its 10-character hash as the book's `cover_version`
   (`catalog.CoverVersion`).
 - `cover_color` - the palette read from a thumbnail, tagged with the
@@ -1339,8 +1345,9 @@ writer's one connection, sets `synchronous = FULL` for that commit and puts
 credential (a sign-out, a device or API key revoked, a password set or cleared,
 an account disabled, demoted, made a kid, moved between households or deleted,
 an invite or recovery code revoked, rotated, replaced, cleared or used, a
-pairing token used, a Bridge pairing code replaced, a Bridge paired or unpaired)
-and a Bridge job claim (its attempt number must never be handed out twice). Such
+pairing token used, a Bridge pairing code replaced, a Bridge paired or unpaired,
+and from 2.5.1 a share deleted, a share's path rule removed or a user's share
+revoked) and a Bridge job claim (its attempt number must never be handed out twice). Such
 a transaction commits durably whatever else it changes (`auth.UpdateUser` and
 `UpdateMember` take it for a rename too). Their fsync also flushes the `NORMAL`
 commits before them. Every other write stays `NORMAL`: listening progress and
