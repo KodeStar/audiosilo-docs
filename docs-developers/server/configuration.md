@@ -994,9 +994,10 @@ tools):
   that pair serves this run, and the 8.1 build is fetched in a goroutine into
   `<data>/tools/next` and self-checked; the next start's `promoteStaged` moves it
   into `<data>/tools/` (an incomplete or failing one is removed). A failed fetch
-  writes `<data>/tools/.release-fetch-failed` (an RFC 3339 time) and is retried no
-  sooner than 24 hours later (`releaseRetry`); a shutdown mid-fetch writes no
-  marker. The start never waits for it.
+  touches `<data>/tools/.release-fetch-failed` (an empty file whose modification
+  time is the failure's) and is retried no sooner than `releaseRetry` (24 hours)
+  after that time; a shutdown mid-fetch leaves the marker as it was, and a
+  success removes it. The start never waits for it.
 - **The start-up log** says which way the probe went
   (`pkg/launcher.resolveTools`, `metadata.ProbeRelease`): "in-process probe on"
   with the rules' release, or "in-process probe off: ffprobe is not a release it

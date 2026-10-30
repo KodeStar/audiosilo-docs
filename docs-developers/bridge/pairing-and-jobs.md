@@ -405,13 +405,32 @@ once, as before. An ending job stops its engine book before its end is recorded
 (`release`), so the waiting job starts only once the engine's cancel has
 returned.
 
-The console words a cancelled row (server 2.5.1, `cancelledView` in
-`generate-model.ts`): the server's own reason when it cancelled the job itself
-(the `cancelsOpen` errors and `MoveJobs`, shown as they are), else "Cancelled by
-an admin." for an admin's cancel and "Cancelled" otherwise,
-plus, for a job cancelled from a park, "It was waiting for attention: ..." and the
-park's plain hint. Any other `error` on a cancelled job (a supervisor's text, say)
-is never shown.
+**The server's cancel reasons** (server 2.5.1, BRIDGE-02). When the server stops a
+job itself it writes the reason as the job's `error`: the kinds' `cancelsOpen`
+strings ("a generate job for the book replaced it", "... replaced it; it finds the
+chapters itself", "... replaced what it was sharing", "... replaced it; make the
+read-along again after"), `CancelMoved` ("the book moved onto another job of this
+kind", `MoveJobs`) and `CancelReplacedRequest` ("a newer request replaced it", a
+podcast request replaced by `Enqueue` through `cancelOpenTx`). `IsCancelReason`
+names them. A queued or parked job is cancelled at once with it; for a claimed or
+running one `cancelOpenTx` sets `cancel_requested` and records the reason now
+(unless an admin asked first, whose cancel keeps its own error), and
+`UpdateHeld` keeps it through the Bridge's reports, which always send an error of
+their own, while the job works and when it ends `cancelled`. A job that ends
+`done`, `failed` or `needs_attention` anyway carries the Bridge's own error (or
+none), never the reason.
+
+The console words a cancelled row (`cancelledView` in `generate-model.ts`, which
+keeps a copy of those strings, `SERVER_CANCEL_REASONS`; `CancelledStatus` in
+`generate-status.tsx`; `en.json` `bridge.jobs.*`): a server reason as it is;
+else `bridge.jobs.cancelledByAdmin` "Cancelled by an admin." when
+`cancel_requested` (an admin's cancel), or `bridge.jobs.cancelledOther`
+"Cancelled." (the Bridge ended it itself), plus, for a job cancelled from a park,
+`bridge.jobs.cancelledPark` ("It was waiting for attention:" and the park's reason) and the
+park's plain hint. A working job with `cancel_requested` and a server reason
+(`isServerCancelReason`) shows that reason muted, not as an error
+(`bridge-jobs.tsx`). Any other `error` on a cancelled job (a supervisor's text,
+say) is never shown.
 
 ### Resuming after a restart
 

@@ -306,11 +306,18 @@ play it, ahead of waiting downloads. The player (2.4.0 and later) shows
 **Cancel** stops a job. A job that is waiting is cancelled at once; one the Bridge
 is working on shows **Cancelling** until the Bridge stops it, usually within half a
 minute. Once cancelled, the row reads "Cancelled by an admin." when an admin
-cancelled it, and "Cancelled" otherwise. A job that was waiting for attention when
-it was cancelled also says why it was waiting ("It was waiting for attention: ..."),
-in the same words its paused row used. When the server cancelled the job itself,
-the row gives its reason instead, such as "a generate job for the book replaced
-it". You can ask for a book's job again straight after cancelling one that was
+cancelled it, and "Cancelled." when the Bridge ended it some other way. A job that
+was waiting for attention when it was cancelled also says why it was waiting ("It
+was waiting for attention: ..."), in the same words its paused row used.
+
+When the server stops a job itself, the row gives its reason instead, in plain
+words: "a generate job for the book replaced it" (or "... replaced what it was
+sharing", "... replaced it; it finds the chapters itself", "... replaced it; make
+the read-along again after"), "the book moved onto another job of this kind", or,
+for a podcast request, "a newer request replaced it". A job the Bridge is still
+working on shows that reason in grey, not as an error, until the Bridge stops it.
+If the job finishes, fails or pauses before it stops, the row shows that outcome
+and the Bridge's own words instead. You can ask for a book's job again straight after cancelling one that was
 waiting for attention: the new job waits, up to about half a minute, for the
 Bridge to stop the cancelled one, then runs.
 
