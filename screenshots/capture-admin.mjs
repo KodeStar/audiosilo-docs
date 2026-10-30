@@ -543,9 +543,9 @@ await step('series', async () => {
   const edit = holmes ? `/admin/libraries/${holmes.library_id}/book${pathQuery(holmes.path)}` : '';
   if (edit) await api(token, 'PATCH', edit, {set: {asin: SERIES_MATCH.asin}});
   else console.log(`  ! no "${SERIES_MATCH.title}": the series shot shows no gaps`);
-  // Taller, so the Sherlock Holmes card's shelf (the second card) fits.
-  await page.setViewportSize({width: 1440, height: 1400});
   try {
+    // Taller, so the Sherlock Holmes card's shelf (the second card) fits.
+    await page.setViewportSize({width: 1440, height: 1400});
     await open(page, '/library/series');
     await sleep(2000); // community series gaps load as each card scrolls into view
     // The spines take their cover colours, which the server reads in the background
