@@ -2419,6 +2419,8 @@ async function upcomingPageShot(page, file) {
 if (wanted(...Object.values(UPCOMING_SHOTS))) {
   console.log('== upcoming releases ==');
   let holmesEdit = '';
+  let jobOff = false; // switched off and not yet back on: the finally switches it on
+  let listed = false; // the job listed items: the shots have something to show
   try {
     await step('upcoming: run the job', () =>
       asAdmin(async (token) => {
@@ -2426,8 +2428,10 @@ if (wanted(...Object.values(UPCOMING_SHOTS))) {
         const b = seededBook(list?.books ?? [], HOLMES_MATCH.title);
         holmesEdit = `/admin/libraries/${b.library_id}/book${pathQuery(b.path)}`;
         await api(token, 'PATCH', holmesEdit, {set: {asin: HOLMES_MATCH.asin}});
+        jobOff = true;
         await api(token, 'PATCH', '/admin/settings', {metadata: {upcoming: false}});
         await api(token, 'PATCH', '/admin/settings', {metadata: {upcoming: true}});
+        jobOff = false;
         const ready = (up) => up?.status === 'ok' && up.items?.length > 0;
         let up = null;
         for (const until = Date.now() + 180000; Date.now() < until && !ready(up); ) {
@@ -2435,11 +2439,12 @@ if (wanted(...Object.values(UPCOMING_SHOTS))) {
           up = await api(token, 'GET', '/me/upcoming').catch(() => null);
         }
         if (!ready(up)) throw new Error(`no upcoming releases (status ${up?.status ?? 'none'}; the live catalogue may be unreachable)`);
+        listed = true;
         console.log(`  ✓ the job listed ${up.items.length}: ${up.items.map((i) => `${i.series.name} ${i.series.position} (${i.kind})`).join(', ')}`);
       }),
     );
 
-    if (wanted(UPCOMING_SHOTS.home, UPCOMING_SHOTS.page)) {
+    if (listed && wanted(UPCOMING_SHOTS.home, UPCOMING_SHOTS.page)) {
       const ctx = await newCaptureContext({storageState: AUTH});
       try {
         const page = await ctx.newPage();
@@ -2461,7 +2466,7 @@ if (wanted(...Object.values(UPCOMING_SHOTS))) {
         await ctx.close();
       }
     }
-    if (wanted(UPCOMING_SHOTS.phone)) {
+    if (listed && wanted(UPCOMING_SHOTS.phone)) {
       await step('upcoming: phone', async () => {
         const ctx = await newCaptureContext({viewport: PHONE, storageState: AUTH});
         try {
@@ -2472,6 +2477,11 @@ if (wanted(...Object.values(UPCOMING_SHOTS))) {
       });
     }
   } finally {
+    if (jobOff) {
+      await step('upcoming: switch the job back on', () =>
+        asAdmin((token) => api(token, 'PATCH', '/admin/settings', {metadata: {upcoming: true}})),
+      );
+    }
     if (holmesEdit) {
       await step('upcoming: revert the ASIN', () => asAdmin((token) => api(token, 'PATCH', holmesEdit, {revert: ['asin']})));
     }

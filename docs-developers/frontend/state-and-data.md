@@ -920,7 +920,9 @@ merged across their servers. User guide: [Upcoming releases](/users/listening/up
   `useUpcomingAvailable` reads only that), `isLoading`, `statuses` (each answered
   server's `ok|pending|stale`), `failed` (the servers that didn't answer, including one
   whose `/server` flags couldn't be read, so a cold link settles instead of loading
-  forever) and `retry` (asks each failed one again, its flags included).
+  forever) and `retry` (refetches each errored one and reads the unreadable servers'
+  flags again; a request paused for the network is not re-asked, it resumes when the
+  network returns).
 - **The pure rules** (`src/lib/upcoming.ts`, tested apart): `upcomingEligibility` (who
   may be asked, and `available`), `mergeUpcoming` (tags each item with its connection,
   keeps the **first** connection's row of a `work.id`, then `compareUpcoming`: the
@@ -930,8 +932,9 @@ merged across their servers. User guide: [Upcoming releases](/users/listening/up
   `src/lib/release-date.ts`: `parseReleaseDate` and `releaseIsFuture` (a date at its
   own precision against the UTC day: "2026" or "2026-10" is ahead only while the whole
   period is). `formatReleaseDate` (`src/lib/format.ts`) prints "2027", "Nov 2026" or
-  "12 Nov 2026" (read in UTC, written in the app's locale, so "Nov 12, 2026" under
-  en-US; other text as it came), and `upcomingDateLabel` labels it by kind:
+  "Nov 12, 2026" (read in UTC, written in the app's UI language, `getLocale()`: a bare
+  code such as `en`, so English always reads "Nov 12, 2026" and German "12. Nov. 2026";
+  other text as it came), and `upcomingDateLabel` labels it by kind:
   "Out", "Released", "First released" (the metadata's one date is a work's **first**
   release), no line without a date.
 - **Surfaces** (`src/components/upcoming/`): `UpcomingRail` on Home, after Next in your
@@ -952,7 +955,7 @@ merged across their servers. User guide: [Upcoming releases](/users/listening/up
   `seriesHref(connectionId, local.library_id, { name: local.series, work: work.id })`.
 - **Series pages.** `railEntries` (`series-model.ts`) gives a ghost its `release_date`:
   `outDate` while it is still ahead (the list's `entryLine` and the face-out note show
-  "Out 12 Nov 2026" in place of "Not in your library"), else its year.
+  "Out Nov 12, 2026" in place of "Not in your library"), else its year.
 - **Kids and demo.** A kid gets no rail or You section, and the route shows the "not
   here" state. A demo account reads it like anyone else.
 

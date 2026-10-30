@@ -23,7 +23,7 @@ The Upcoming page lists everything, in up to three groups:
 
 - **Coming soon** - books you can preorder, the soonest first.
 - **Just released** - books that came out recently (in the last 90 days, unless your admin changed it), the newest first.
-- **Missing from your series** - books that are already out but not on your server: a gap below the latest book you have (you have books 3 and 5, so 4 is missing), or the next book after it.
+- **Missing from your series** - books that aren't on your server and aren't preorders: a gap below the latest book you have (you have books 3 and 5, so 4 is missing), or the next book after it.
 
 ![The Upcoming page on a computer: the Missing from your series group, with each missing Sherlock Holmes book, its series and number, and when it first came out](/img/screenshots/web-player/upcoming.png)
 
@@ -45,11 +45,11 @@ Each book shows one date, at the detail the community database knows (a day, a m
 
 | You see | It means |
 |---|---|
-| **Out 12 Nov 2026** | A preorder: the book comes out on that day. |
+| **Out Nov 12, 2026** | A preorder: the book comes out on that day. |
 | **Released Oct 2026** | It came out recently: in October 2026. |
 | **First released 2014** | A missing book: when it first came out. |
 
-Dates are written the way your device's language and region write them (*"Nov 12, 2026"* in the US, say).
+Dates are written the way the app's language writes them: in English *"Nov 12, 2026"*, in German *"12. Nov. 2026"*.
 
 The date is the book's **first** release anywhere: the earliest of every recording and store the community database lists for it. That's when the earliest *audiobook* it knows of came out, so a classic whose only listed recordings are recent shows a recent date, and your local store may get a new book a little later than the date says. A book with no known date has no date line.
 
@@ -72,7 +72,7 @@ A note above the list also says when a server is still running its first check w
 
 ## On series pages
 
-A [series page](browsing.md#series-pages) shows the books you don't have as pale "ghost" spines. A ghost that isn't out yet says when it will be: **Out 12 Nov 2026** in the list (instead of **Not in your library**), and *"Out 12 Nov 2026. Not on your servers yet."* under the shelf when you pick it. A ghost that's already out shows the year it first came out.
+A [series page](browsing.md#series-pages) shows the books you don't have as pale "ghost" spines. A ghost that isn't out yet says when it will be: **Out Nov 12, 2026** in the list (instead of **Not in your library**), and *"Out Nov 12, 2026. Not on your servers yet."* under the shelf when you pick it. A ghost that's already out shows the year it first came out.
 
 The dates come from the community database, so they show whenever your server's lookup is on, even if the daily check for upcoming releases is off.
 

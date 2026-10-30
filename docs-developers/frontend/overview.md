@@ -522,8 +522,8 @@ button `toggle`, a jump `at`; where each goes is
 
 `src/components/series/` holds the series and person pages: `series-model.ts`
 (entries, gaps, reading orders, progress track, the one action per entry; a ghost not
-released yet carries `outDate` from the rails' `release_date` and reads "Out 12 Nov
-2026"),
+released yet carries `outDate` from the rails' `release_date` and reads "Out Nov 12,
+2026" in English),
 `spine-fit.ts` (spine titles always fit: tighten, shrink, wrap, then ellipsize),
 `bookcase.tsx` / `spine.tsx`, `person-page.tsx`, and `use-series-data.ts`
 (the page's reads beyond the shared `src/api` hooks `useAllLibraryBooks` and

@@ -534,7 +534,7 @@ as `UpcomingResponse` in `types.ts` (`client.upcoming()`, `useUpcomingAll()`; on
 server that sends `upcoming`, never for a kid) for Home's Coming up in
 your series, the `/upcoming` page and the You hub's Upcoming section, opening an item's
 series page by its `local` view; the series page dates its not-yet-released ghosts from
-the rails' `release_date` ("Out 12 Nov 2026"). Details:
+the rails' `release_date` ("Out Nov 12, 2026"). Details:
 [Upcoming releases](../frontend/state-and-data.md#upcoming-releases).
 **Frontend:** the `BookMeta` envelope (hand-mirrored in `src/api/types.ts`) is
 fetched by `client.bookMeta` and rendered capability-gated on the book screen's
