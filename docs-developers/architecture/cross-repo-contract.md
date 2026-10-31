@@ -1231,8 +1231,10 @@ status per event. The workspace's CROSS-REPO.md §25 is the full seam.
   row (`other_place`), so a device that never saw that answer still offers it; the
   player's `offerOf` decides when to show it (another device's place, more than 30 s
   away, not answered yet), as a Jump / Stay toast and the book page's "Play from
-  there". Answering acknowledges the row, and the next span then clears the offer
-  on the server.
+  there". Answering acknowledges the row; the offer is cleared on the server by the
+  first span of that device applied on a version at or after the offer's
+  (`other_version`: when the server kept the stored row that is its next version, so
+  the span after the answer's first one).
 - **File places (fe#188).** Each end of a span may carry its audio file and the
   seconds into it; the server places it on the book's current file order, so
   listening on a download with an older order lands in the same file ([seam

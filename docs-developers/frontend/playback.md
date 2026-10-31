@@ -669,8 +669,8 @@ such a place and never moves to it by itself. `offerOf(row, deviceId, ackVersion
 enginePosition, answered)` (pure) finds it, in order:
 
 1. the kept row itself, when another device wrote it at a version above this device's
-   acknowledged one (`ack_version`), the book isn't finished, and it is more than
-   `MOVE_THRESHOLD_S` (30 s) from here;
+   acknowledged one (`ack_version`), the book isn't finished, it is more than
+   `MOVE_THRESHOLD_S` (30 s) from here, and it is not answered yet;
 2. else the row's `other_place`, when it is another device's, more than 30 s from here,
    and not answered yet (the mirror keeps the answered `device_id|updated_at` keys per
    book, `answered`).
@@ -678,7 +678,8 @@ enginePosition, answered)` (pure) finds it, in order:
 `offerLoadedPlace` shows it for the loaded book as a toast, `On {device} you were at
 {place}. Jump there?` (`describePlace`: the chapter and the time into it; "another
 device" when the server has no name), with **Jump** (acknowledge the row, then
-`seekBook` there: the next span is a `jump`) and the close button labelled **Stay**
+`seekBook` there: the next span is a `jump`, or `moved_back` when the place is
+behind) and the close button labelled **Stay**
 (acknowledge, then `standByPlace`: the next span begins as a `jump`, so the server
 applies this device's place over the other). A timed-out toast answers nothing. It is
 checked on each sync answer for the loaded book (`onSyncAnswer`; never moving a playing

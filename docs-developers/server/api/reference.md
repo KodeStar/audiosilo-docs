@@ -3253,8 +3253,8 @@ request body's). `other_place` is a place a **diverged** sync event did not keep
 (another device's listening made without seeing this row):
 `{position (whole-book seconds), device_id, device_name, updated_at}`, kept on the
 row until it is cleared ([the offered place](#how-a-batch-is-applied)). A player offers it ("On Sam's Watch you
-were at 2:50:40. Jump there?"). A `PUT` never sets or clears either and ignores them
-in its body.
+were at 2:50:40. Jump there?"). A `PUT` stores its token's name as `device_name` and
+never sets or clears `other_place`; both are ignored in its body.
 
 `started_at` and `finished_at` (RFC 3339, UTC) are the book's start and finish
 dates, on every progress response of a server with the `progress_edit`
@@ -3547,7 +3547,9 @@ length and its files' offsets in their current order), all before the write.
   within 30 s of the kept place, so a device that never saw this answer (the phone,
   after the watch synced) can still offer it. A device that sends a `base_version` at
   or after the version it was recorded at, and applies, clears it (it had seen it);
-  so do a newer diverged event, a `finish`, an edit and a move or join. A
+  so do a `finish`, an edit and a move or join. A newer diverged event replaces it
+  only when it records an offer of its own (by the same two conditions); otherwise
+  the offer stays. A
   `resume_behind` span that carries on (within 5 s) from its own device's offered
   place moves the offer to where it got to.
 - **finish / unfinish** apply only when newer than the row's last finish-state change

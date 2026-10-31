@@ -541,8 +541,10 @@ tables were rebuilt rather than migrated in place):
   not newer than it is `older`) and the persisted offer `other_position`,
   `other_device_id`, `other_device_name`, `other_at` and `other_version` (all
   `NULL` = none; the place a diverged sync event did not keep, answered as
-  `other_place`, and the row's version when it was recorded: an applied event with
-  a `base_version` at or after it clears it). A move or join carries `device_name`
+  `other_place`, and the version that sees it: the row's new version when the
+  event's place was kept, else the row's next one, since the row's own device had
+  acknowledged the current one before the offer existed; an applied event with a
+  `base_version` at or after it clears it). A move or join carries `device_name`
   and `finish_changed_at` and drops the offer.
 - **`listening_events`** *(0061, listening sync)* - the listening-event log behind
   [`POST /me/listening/sync`](api/reference.md#post-apiv1melisteningsync): every

@@ -457,7 +457,7 @@ headless task). Per answer:
   place reconcile is told of the rows (`onSyncAnswer`) to offer another device's place;
 - a network error, `401`, `403` or `5xx` keeps everything for the next trigger (a network
   error notes the failure for reachability); a `413` or `too_many_events` halves the
-  chunk; any other `400` sends that chunk's events one by one once, and one refused alone
+  chunk (a chunk of one moves to the list as `invalid`); any other `400` sends that chunk's events one by one once, and one refused alone
   moves to the list as `invalid`;
 - a `404`/`405` is a **rollback** only when the server's own `/server` answers without
   `listening_sync` (anything else at the address keeps the outbox): the connection is

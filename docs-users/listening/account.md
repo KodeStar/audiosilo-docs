@@ -69,12 +69,12 @@ The list appears on servers new enough to show it.
 
 On a recent server, the **Listening sync** card says whether what you listened to on this device has reached the server: **3 listens waiting to sync**, or *"Everything you listened to is on Home."*, and when this device last synced (*"Last synced 2 minutes ago"*). Listening waits here while you're offline and goes by itself when the server is reachable again; see [Listening on more than one device](playback.md#listening-on-more-than-one-device).
 
-If the server turns something down, it's listed under **Couldn't sync**, kept for 30 days: the book and what it was (*"The Way of Kings · 1:02:13 to 1:40:00"*, or *"Marked finished"*), and why:
+If the server turns something down, it's listed under **Couldn't sync**, kept for 30 days: the book and what it was (*"The Way of Kings · 1:02:13 to 1:40:00"*, *"Marked finished"* or *"Marked not finished"*), and why:
 
 - *"This copy of the book is a different length from the server's."* The download is a different edition from the one on the server now.
 - *"It's more than 90 days old."*
 - *"You can't open this book on the server any more."* or *"The book isn't on the server any more."*
-- *"The server couldn't read it."*
+- *"The server doesn't know this kind of listen."* or *"The server couldn't read it."*
 
 Your place on the server isn't affected by these. **Discard** removes one from the list.
 
