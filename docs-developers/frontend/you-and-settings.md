@@ -241,6 +241,19 @@ Each block is gated on its capability, so an older server shows less, quietly:
 | Personal API keys: list, create in a dialog, reveal once, revoke with a confirm | `ApiKeysSection`, `useApiKeysManager`, `ApiKeyCreatedModal` | `api_keys` (a notice when it's `false`); hidden for a demo or kid's account |
 | Sign out of the server | `useSignOut`, `SignOutConfirm` | - |
 
+**A password change says what the server did to the other devices.** A server since
+server#281 ends the caller's other sessions and open pairing codes on a change (a
+first password ends nothing), an older one ends none, and nothing on the wire tells
+them apart. So after a change `usePasswordEditor` reads the devices again
+(`useReadMyDevicesAgain` in `hooks.ts`: drops a read under way, asks once with
+`networkMode: 'always'` and no retry, into the list's cache) and picks the toast's
+body: no other `session` left is "Your other devices are signed out", one left is the
+old "Your other devices stay signed in", and no answer (no `my_devices`, or the read
+failed) is just "This device stays signed in". A first password keeps the old body.
+The dialog says other devices "may be signed out". `changes` counts the changes, and
+`AccountSection` keys `PairDeviceCard` on it, so a pairing code on screen, which the
+change ended, is put away.
+
 **The current device's row never offers a sign-out**: `canRevoke` refuses `current`,
 because revoking its own token would kill it before the app's sign-out teardown (save the
 final position, flush the queued progress) could run. This device signs out only through

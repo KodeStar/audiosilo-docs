@@ -157,6 +157,19 @@ personal **API keys**, each with **Revoke**. The number on the tab counts the
 devices only, as their card does. With no devices, **Pair a device** makes an
 invite for them.
 
+**Sign out everywhere**, under the list, signs the person out of every phone,
+tablet and browser at once, after you confirm ("Sign *name* out everywhere?").
+Anything they are casting stops, any open code they made to pair another device
+stops working, and so does a recovery code saved from an older app. Their API keys
+and calendar link keep working, and their password doesn't change. The
+confirmation says how they get back in: with their password, by pairing with a
+new invite when they have none, or, for a kid, from their owner in the player.
+The message afterwards says how many devices were signed out. On your own page
+it signs out everything but this console, and it isn't offered when this console
+is your only device. Like signing out one device on the
+[Devices page](#the-devices-page), it makes the server forget their browsers, so
+each one's next sign-in is announced as new.
+
 ### Invites
 
 This person's invites, with the same status, devices paired and expiry columns,
@@ -170,11 +183,16 @@ and the same **Rotate** and **Revoke** buttons, as the
   in, or uses “Set up their own device” in the player." For anyone else,
   **Set a password** (or **Change password**) for them. It must
   be at least 8 characters. A password lets them sign in to the web player by
-  username as well as on paired devices; their paired devices stay signed in.
-  The console can set or change a password but not remove one.
+  username as well as on paired devices. Setting a first password signs nothing
+  out: their paired devices stay signed in. **Changing** a password signs them
+  out of every phone, tablet and browser, as
+  [Sign out everywhere](#devices) does, and the dialog says so; their API keys
+  and calendar link keep working. Changing your own keeps this console signed
+  in. The console can set or change a password but not remove one.
 - **Recovery code** - only shown when the person saved one from an older app
   version. It can't be viewed, only revoked: **Revoke recovery code** stops it
-  working at once (their paired devices stay signed in).
+  working at once (their paired devices stay signed in). Changing their password
+  or signing them out everywhere removes it too.
 
 ### Account
 
@@ -324,7 +342,8 @@ player or this console, and each personal API key. For each one:
 - whose it is. Click the name to open their page.
 
 **Sign out** (**Revoke** for an API key) asks first, then stops that one device
-working at once. The person's other devices stay signed in, and they can pair
+working at once. The person's other devices stay signed in (to sign out all of
+them, use [Sign out everywhere](#devices) on their page), and they can pair
 the device again with an invite; a revoked API key can't be restored, but the
 person can create a new one. The device you're using can't be signed out here:
 use **Sign out** in the account menu instead.

@@ -102,8 +102,10 @@ Authorization: Bearer <session token>
 Admin routes (`/api/v1/admin/*`) additionally require the `admin` role (403
 otherwise). Tokens are opaque secrets, stored server-side only as SHA-256 hashes;
 sessions have **no expiry** and are revoked explicitly (`POST /auth/logout`, or
-by an admin disabling/deleting the account, or signing that one device out
-with `DELETE /admin/devices/{id}`). Every authenticated request bumps the
+by an admin disabling/deleting the account, signing that one device out
+with `DELETE /admin/devices/{id}` or all of the person's with
+`POST /admin/users/{id}/sign-out`, or by a change or reset of the account's
+password, which ends every session but the caller's). Every authenticated request bumps the
 token's `last_seen`, which is what surfaces as a user's "last activity", and
 records the request's address (`last_ip`) and, when it names one, its app (see
 [Client identification](#client-identification-x-audiosilo-client)) on the
