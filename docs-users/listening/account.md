@@ -20,7 +20,11 @@ Accounts created by invite often start **without** a password - you signed in wi
 
 - Tap **Set a password** (or **Change password**), enter a new password of at least 8 characters, and save.
 - Changing an existing password asks for your **current password** first.
-- Your other devices stay signed in either way.
+- Setting a first password signs nothing out: your other devices stay signed in.
+
+**Changing a password signs your other devices out.** The device you changed it on stays signed in. Every other phone, tablet and browser signed in to your account on this server stops working at once and needs to sign in again, with the new password or by pairing; anything one of them was casting stops too. A [Pair another device](#pair-another-device) code you had open stops working, and so does a recovery code saved from an older app. Your [personal API keys](#personal-api-keys) and your [calendar link](upcoming.md#add-to-your-calendar) keep working. That's on purpose: if someone else knew your old password, changing it locks them out wherever they used it.
+
+The dialog says *"This device stays signed in; your other devices may be signed out."*, and the message afterwards says what the server did: *"Your other devices are signed out. This one stays signed in."* When another device is still signed in (an older server leaves them all signed in), the message says *"Your other devices stay signed in."* When the app can't read the server's device list, it only says *"This device stays signed in."*
 
 Why it's worth doing, especially if you were invited by pairing and never set one: if you ever sign out or get a new phone, a username and password sign you straight back in with no help from anyone. Without one, getting back in means asking your admin for a fresh invite - so setting a password once is the safety net that keeps your account in your own hands.
 
@@ -57,7 +61,7 @@ When the server has a home address, an away address or both, an **At home and aw
 
 Every device signed in to your account on this server, **this device** first, then the others. Each row has the name the device signed in with, the app and its version, the platform, and when it was last used: *"AudioSilo 1.4.2 · iOS · last seen 3 days ago"*. (API keys aren't in this list; they have [their own section](#personal-api-keys).)
 
-To cut off a phone you've lost or sold, tap **Sign out** on its row and confirm. It loses access straight away and needs to sign in again to reach the server.
+To cut off a phone you've lost or sold, tap **Sign out** on its row and confirm. It loses access straight away and needs to sign in again to reach the server. If you think someone else knows your password, [change it](#password) instead: that signs out every other device at once. Your admin can also sign you out everywhere from the admin console.
 
 If you signed in members of [your household](household.md) on that phone (a kid you added there, say), the confirmation also offers **Also sign out Evie and Ellis on that device**, naming them, ticked. Leave it ticked and they're signed out of that phone too; the message afterwards says how many were. Untick it to sign out only yourself, as for a family tablet that stays at home. Their sign-ins on other devices, including their own phones, aren't touched.
 

@@ -5,7 +5,7 @@ description: "All the ways to sign in to an AudioSilo server: invite links, QR c
 
 To listen to anything, the AudioSilo player first needs to be connected to a server - the computer where your audiobooks live. There are several ways to get connected, and they all end in the same place: signed in, with your libraries ready to browse.
 
-You only have to do this once per device. After that the app stays signed in until you sign out.
+You only have to do this once per device. After that the app stays signed in until you sign out, your password is changed on another device, or an admin signs you out.
 
 ## The easy way: an invite link
 

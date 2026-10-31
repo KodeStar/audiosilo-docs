@@ -617,7 +617,15 @@ CSP-sensitive work against a real build served by Go. The console's own gate is
   first page of `GET /admin/sessions?user_id=` with a link to Activity >
   Sessions. The Devices tab reuses the devices list for `?user_id=`: the
   sessions first (the tab's count, as on the person card), then the person's
-  API keys under their own heading.
+  API keys under their own heading. Under the sessions, while one of them isn't
+  the console's own (`current`), **Sign out everywhere** (`SignOutEverywhere` in
+  `user-page.tsx`) confirms, with words for a password holder, a paired-only
+  person, a kid (naming the owner) or the admin themselves, then sends
+  `POST /admin/users/{id}/sign-out` and toasts its `signed_out` count. The
+  Sign-in tab's password dialog (`password-dialog.tsx`) says a change signs the
+  person out (the admin's own wording says "This console stays signed in"; a
+  first password keeps the old "Paired devices stay signed in"), and both
+  invalidate the devices lists (`invalidateDevices`) and the person.
 - **Progress menu** (`features/people/progress-actions.tsx`) - on each row of
   the Listening tab and each listener on the book page: Mark as finished (with
   an Undo that sends `finished: false` and the old `position`), Mark as not

@@ -173,7 +173,7 @@ key) or `system`. No IP address is stored.
 
 | Area | Actions |
 |---|---|
-| `user` | `create`, `update` (details gain `can_add_members` when the request sets it, and `managed_by` (the owner's username, or `null`), `member_kind` and `member_access`, as the account is afterwards, whenever the request carries `managed_by`), `delete` (details, only for someone who had household members: `members_deleted`, a count, and `members_kept`, usernames), `recovery_clear` |
+| `user` | `create`, `update` (details gain `can_add_members` when the request sets it, and `managed_by` (the owner's username, or `null`), `member_kind` and `member_access`, as the account is afterwards, whenever the request carries `managed_by`), `delete` (details, only for someone who had household members: `members_deleted`, a count, and `members_kept`, usernames), `recovery_clear`, `sign_out_everywhere` (details: `signed_out`, the sessions it ended) |
 | `member` | `create` (details: `member`, `kind`, `access`, `sign_in_here`), `update` (`member` plus what changed: `name`, `kind`, `access`, and `collections` as a count), `delete`, `session`, `pair`, `device_revoke` (`member`, `device_id`; also one per member signed out by `DELETE /me/devices/{id}?also_members=1`, with the owner's device id): [household members](api/reference.md#household-members) managed from the player. The actor is the owner (an admin too can be one), and the target the member's username |
 | `invite` | `create`, `rotate`, `revoke` |
 | `library` | `create`, `update`, `reorder`, `folder_override`, `delete` |
@@ -467,6 +467,6 @@ can only keep a notice quiet. Because of that, `auth.RevokeDevice` (an admin's
 "Sign out" in People > Devices) blanks the key on every session of that person
 that carries it, so a browser cut off for being someone else's is announced
 again when it comes back, even with the password. A new password
-(`auth.SetPassword`, the person's own change included) and disabling the account
-forget every browser of that person (`forgetBrowsers`): both are what follows a
-stolen password.
+(`auth.SetPassword`, the person's own change included), the admin's Sign out
+everywhere (`auth.SignOutEverywhere`) and disabling the account forget every browser
+of that person (`forgetBrowsers`): all three are what follows a stolen password.

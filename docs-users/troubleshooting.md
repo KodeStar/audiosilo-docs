@@ -173,7 +173,8 @@ and never set one.
 
 Being signed out is rare - app updates no longer sign you out. If it does
 happen, it usually means the server stopped accepting this device: an admin
-revoked it, or the server was rebuilt. The app doesn't fail silently - it shows
+revoked it or signed you out everywhere, your password was changed (on another
+device, or by an admin), or the server was rebuilt. The app doesn't fail silently - it shows
 a **Reconnect to &lt;your server&gt;** bar (tap it to sign in again, with the
 address already filled in), and after a full sign-out the connect screen lists
 your previous servers as one-tap **Reconnect** shortcuts. Home, the Library,

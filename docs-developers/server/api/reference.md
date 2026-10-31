@@ -412,8 +412,12 @@ session of the same person already carried, signed out or not, is not
 announced as a `new_device` [event](#get-apiv1adminevents); one without it
 always is. The admin console sends one; players may adopt it. An admin signing
 a session out (`DELETE /admin/devices/{id}`) forgets its `device_id` on every
-session of that person, and a new password or a disabled account forgets all of
-that person's, so the browser's next sign-in is announced again.
+session of that person, and a new password,
+[Sign out everywhere](#post-apiv1adminusersidsign-out) or a disabled account forgets
+all of that person's, so the browser's next sign-in is announced again.
+
+A sign-in racing a password change gets no session, only `401 invalid credentials`
+(server#281, [the sign-in race](../auth-and-security.md#password-changes-end-sessions)).
 
 Response `200`: `{ "token": "…", "user": { … }, "server_id": "…" }`, plus `addresses`
 on a server with that capability - the same shape as `/auth/exchange`.
@@ -536,6 +540,19 @@ password racing that switch is refused inside `auth.UpdateUser` instead
 | `current_password` | string | conditional | required only when the account already has a password |
 
 Response: `204 No Content`.
+
+**Changing a password ends the other sessions** (server#281). Replacing a password
+the account had revokes every `session` token of the caller but the one making the
+request, with their open pairing codes (unlinked `pairing` tokens from
+[`POST /auth/pair`](#post-apiv1authpair), or an owner's
+[`POST /me/household/members/{id}/pair`](#post-apiv1mehouseholdmembersidpair) for a member) and their recovery code (`has_recovery`
+turns `false`); API keys, the [calendar feed token](#the-calendar-feed) and Bridge
+tokens stay, and a first password ends nothing
+([Password changes end sessions](../auth-and-security.md#password-changes-end-sessions)).
+An ended token is refused (`401`) on its very next request, media `?token=` included;
+a shipped app takes its existing 401 path (signed out, pair again). The response
+carries no count: a client that wants to say what happened reads
+[`GET /me/devices`](#get-apiv1medevices) again.
 
 | Status | Meaning |
 |---|---|
@@ -4904,7 +4921,7 @@ Edit an account in place - any subset of:
 | Body field | Type | Notes |
 |---|---|---|
 | `role` | string | `"admin"` \| `"user"` |
-| `password` | string | `""` clears the password (non-admins only); a non-empty one is refused when the request leaves the account a kid (beside Make independent, or an assign as a grown-up, it is fine) |
+| `password` | string | `""` clears the password (non-admins only); a non-empty one is refused when the request leaves the account a kid (beside Make independent, or an assign as a grown-up, it is fine). Replacing or clearing a password the account had ends its sessions (below) |
 | `disabled` | bool | reversible lockout; disabling revokes nothing but blocks all token use |
 | `can_add_members` | bool | the per-person switch: may this person add household members |
 | `managed_by` | int \| `null` | an owner's id: "Assign to someone", with `member_kind` and `member_access` beside it. `null`: "Make independent" |
@@ -4935,6 +4952,11 @@ always is, or it is `400 admin_needs_password`).
   account keeps only its direct grants, and `display_name`. What it signs out is in
   [Moving between households](../auth-and-security.md#household-members). A no-op on
   an account that isn't a member.
+
+- **A password reset ends the person's sessions** (server#281): replacing or clearing
+  a password the account had ends their sessions exactly as a
+  [self-service change](#post-apiv1authpassword) does, in the same transaction. Only
+  the admin's own session survives, when the account is the admin's.
 
 Response `200`: the updated user object (with the fields above).
 
@@ -5007,11 +5029,35 @@ their devices (from the player). The refusal is read inside the minting transact
 (`auth.refuseKid`), so an owner's switch to kid can't slip between the check and the
 invite.
 
+### `POST /api/v1/admin/users/{id}/sign-out`
+
+The console's **Sign out everywhere** (server#281): ends the person's sessions as a
+[password change](#post-apiv1authpassword) does (the same tokens end and stay),
+keeping the admin's own when the account is the admin's, without changing the
+password. It also forgets the browsers they signed in from, so each one's next
+password sign-in is announced as a `new_device`. API keys stay, revoked one at a time
+with [`DELETE /admin/devices/{id}`](#delete-apiv1admindevicesid). No body.
+
+Response `200`, the number of sessions it ended (`0` when there were none):
+
+```json
+{ "signed_out": 3 }
+```
+
+| Status | Meaning |
+|---|---|
+| `400` | `invalid user id` |
+| `404` | `user not found` |
+
+Audited as `user.sign_out_everywhere` with `signed_out` in the details
+([Audit log](../backups-and-notifications.md#audit-log)).
+
 ### `DELETE /api/v1/admin/users/{id}/recovery`
 
 *Legacy - being retired alongside `POST /auth/recovery` once old clients age
-out.* Revokes a user's recovery code (the admin's only lever for a leaked one,
-since recovery codes are not listable). No-op if none. `204 No Content`.
+out.* Revokes a user's recovery code (the admin's lever for a leaked one, since
+recovery codes are not listable; a password reset or
+[Sign out everywhere](#post-apiv1adminusersidsign-out) removes it too). No-op if none. `204 No Content`.
 
 ### `POST /api/v1/admin/authcodes/{id}/rotate`
 

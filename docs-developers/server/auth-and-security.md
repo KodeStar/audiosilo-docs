@@ -59,7 +59,9 @@ the [Bridge's token](#bridge-tokens) (`auth.KindBridge`) and a listener's
   `sign_in_here` or `…/members/{id}/session`); revoked by `POST /auth/logout`, by
   the owner signing a device out (`DELETE /me/devices/{id}`, which with
   `?also_members=1` takes the members signed in on it too), by a member's owner
-  (`DELETE /me/household/members/{id}/devices/{device_id}`), or by admin action.
+  (`DELETE /me/household/members/{id}/devices/{device_id}`), by a change or reset
+  of the account's password, or by admin action (one device, or
+  [all of them](#password-changes-end-sessions)).
 - **Pairing tokens** are intermediaries minted by `POST /auth/redeem` (auth
   code → pairing) or `POST /auth/pair` (add another device from an existing
   session). `POST /auth/exchange` turns one into a device-named session token.
@@ -256,8 +258,10 @@ release list and nothing else:
   device (`leaveOwners`, with the sign-in made there; one made on the person's own
   device stays, as that sign-in does) delete the row. Deleting the account
   cascades; a disabled account's token is refused by `lookupToken` while it is
-  disabled. A password change revokes no token of any kind on this server, so it
-  leaves the link alone too.
+  disabled. A password change or reset and the admin's Sign out everywhere end
+  sessions but leave the link alone
+  ([Password changes end sessions](#password-changes-end-sessions)): the feed is
+  the person's to end, and the console has no lever for it.
 - **Behind the token, the person's own rules.** The route still applies `notKid`
   (`403` for a leftover token of a person who is now a kid) and the two `404`s, and
   reads the list with the owner's scopes at the request, so a share taken away is
@@ -335,7 +339,7 @@ four. `normalizeCode` strips spacing/case and maps look-alikes (`O→0`, `I/L→
 | Defaults | 5 uses / 1-day expiry (`defaultAuthCodeMaxUses`/`defaultAuthCodeTTLDays` in `handlers_admin.go`; explicit `0` means unlimited/never) | Unlimited uses, never expires |
 | Cardinality | One *active* invite per user | At most one recovery code per user |
 | Listable | Yes (`ListAuthCodes`, metadata only) | No - surfaces only as `User.HasRecovery` |
-| Revocation | `DELETE /admin/authcodes/{id}` | `DELETE /auth/recovery` (self) or `DELETE /admin/users/{id}/recovery` (admin, the only lever for a leaked code) |
+| Revocation | `DELETE /admin/authcodes/{id}` | `DELETE /auth/recovery` (self) or `DELETE /admin/users/{id}/recovery` (admin; a leaked code also goes with a password change or reset, or Sign out everywhere: [Password changes end sessions](#password-changes-end-sessions)) |
 
 Both redeem through the same path. The full onboarding flow:
 
@@ -436,6 +440,51 @@ or change their own password:
 - An **empty** password is rejected (clearing is admin-only via `PATCH
   /admin/users/{id}`), and the admin-must-keep-a-password guard still applies
   underneath (`SetPassword` refuses to clear an admin's password).
+- A change ends the caller's other sessions (below).
+
+## Password changes end sessions
+
+From server#281, replacing or clearing a password the account had ends the
+person's sessions: whoever knew the old password is signed out wherever they used
+it. It covers the self-service `POST /auth/password` and the admin's `PATCH
+/admin/users/{id}` alike (both go through `auth.UpdateUser`; `SetPassword` calls it with the
+password and the caller's token); clearing counts as a reset, and a **first** password ends nothing.
+Inside `UpdateUser`'s durable transaction, `endSessions` revokes every `session`
+token of that person but `UserChanges.KeepToken`, the token making the request. So
+changing your own password, or an admin resetting their own, keeps the device it was
+done on; an admin resetting someone else's ends all of theirs.
+
+With the sessions go the ways back in that a session can make without the password
+and that the person can neither see nor revoke:
+
+- their **open pairing codes** (unlinked `pairing` tokens: `POST /auth/pair`, and a
+  member's from their owner's `POST /me/household/members/{id}/pair`), each
+  of which would make a session after the change;
+- their **recovery code** (its linked pairing tokens cascade), so `has_recovery`
+  turns `false`.
+
+What stays: **API keys** (listed and revoked on their own, in the device lists and
+`/auth/tokens`), the [calendar feed token](#calendar-feed-tokens) (the person's to
+end) and [Bridge tokens](#bridge-tokens) (the Bridge's). An invite is the admin's,
+listed and revoked in the console. A [cast token](#cast-tokens) needs no write: its
+parent session is checked on every request, so it ends with the session that minted
+it. The write moves the content generation, so the token cache refuses an ended token
+on the very next request, media `?token=` included. A shipped app takes its existing
+401 path (signed out, pair again).
+
+**The sign-in race.** A password sign-in that verified the old hash while the change
+committed could otherwise make a session the change never saw. `IssueSession` takes
+`Authenticate`'s answer (which carries the hash it verified, unexported) and writes
+the session only while that hash is still the account's and the account enabled, in
+its writer transaction; otherwise it answers `ErrInvalidCreds` (`401`).
+
+**Sign out everywhere.** The admin's `POST /admin/users/{id}/sign-out`
+(`auth.SignOutEverywhere`, the console's button on a person's Devices tab) runs the
+same `endSessions` without a password change, keeping the admin's own session when the
+account is theirs, and forgets the person's browsers (`forgetBrowsers`), so each
+one's next password sign-in is announced as a new device. It answers
+`{"signed_out": n}` (the sessions it ended) and is audited as
+`user.sign_out_everywhere`. A new password forgets the browsers too, as it always has.
 
 ## Admin guards
 
