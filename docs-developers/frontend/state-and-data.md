@@ -1337,7 +1337,8 @@ The offline-safe write path for listening progress:
   8's did: [Connection identity](#connection-identity-server_iduser_id)). The **cache** axis (`audiosilo.cacheVersion`) wipes only the
   scoped cache (`audiosilo.downloads`, `audiosilo.progressMirror`,
   `audiosilo.progressQueue`, the reader's `audiosilo.readingMirror` and
-  `audiosilo.readingQueue`, `audiosilo.offlineServers`) and keeps every login: it is
+  `audiosilo.readingQueue`, the listening outbox's `audiosilo.listeningOutbox`,
+  `audiosilo.listeningOpenSpan` and `audiosilo.listeningSync`, `audiosilo.offlineServers`) and keeps every login: it is
   the knob for any change to how that cache is keyed (a pre-split install adopts the
   version without a wipe). Either reset makes `bootstrapPlayback` wipe the on-disk
   downloads too. After both axes, the same `migrateStorage()` run moves legacy
@@ -1345,6 +1346,19 @@ The offline-safe write path for listening progress:
   ([Connection identity](#connection-identity-server_iduser_id)), keeping every login.
   An `onConnectionRemoved` handler drops a removed connection's mirror
   records and queued saves.
+- **Sync v2 fields on the mirror.** A mirror record also keeps the playing file and the
+  seconds into it (`file`, `file_pos`: the resume by file, fe#188), and on a
+  `listening_sync` server the version of the book's server row this device has
+  acknowledged (`ack_version`, never lowered; `ackVersion`) and the offers it has
+  answered (`answered`, `device_id|updated_at` keys; `answerOffer`). Both are kept across
+  captures. A `PUT` never sends them. `ack_version` is what a listening span sends as its
+  `base_version`; it is set when a sync answer kept this device's event, when a resume or
+  an explicit start takes a server row, when the place reconcile moves to one, and when an
+  offer is answered ([the outbox](offline.md#listening-sync-the-outbox)).
+- **On a `listening_sync` server** the capture writes only the mirror: the place reaches
+  the server as listening events ([Playback](playback.md#listening-spans-sync-v2)), and
+  the legacy queue only drains what it already held. `pendingSaves` counts both (the
+  queue's saves and the outbox's listens).
 
 :::note[No realtime sync]
 Progress sync is REST-only. The server advertises a `websocket` capability flag
@@ -1412,7 +1426,7 @@ Two deliberate tiers - know which one you're writing to:
 
 | Layer | Module | Backing | Used for |
 |---|---|---|---|
-| Plain | `src/lib/storage.ts` (`getItem`/`setItem`/`removeItem`, JSON-serialized) | AsyncStorage (native) / localStorage (web, via AsyncStorage's web shim) | connection metadata, settings, language pref, downloads registry, progress mirror + queue, device id |
+| Plain | `src/lib/storage.ts` (`getItem`/`setItem`/`removeItem`, JSON-serialized) | AsyncStorage (native) / localStorage (web, via AsyncStorage's web shim) | connection metadata, settings, language pref, downloads registry, progress mirror + queue, the listening outbox, open span and sync state, device id |
 | Secret | `src/lib/secure-store.ts` (`getSecure`/`setSecure`/`deleteSecure`) | **expo-secure-store** (iOS Keychain / Android Keystore) on native (on iOS in the `audiosilo.tokens.afu` keychain service, readable after first unlock: [Native integrations](native-integrations.md#tokens-on-a-locked-phone-srclibsecure-storets)); localStorage on web, where SecureStore doesn't exist | **session tokens only** (`audiosilo.token.<connectionId>`) |
 
 The split exists because tokens are the only true secret the app holds:

@@ -786,6 +786,16 @@ its owner. They follow a few rules on top of share scope:
   demo accounts are never share targets. These two, and `PUT /me/household`
   ([below](#listening-in-the-house-what-other-people-see)), are the only `/me/*`
   routes with a demo refusal; none has its own rate-limit class.
+- **Listening sync checks each event's path.** [`POST /me/listening/sync`](api/reference.md#post-apiv1melisteningsync)
+  (capability `listening_sync`) is `requireAuth` too (a cast, feed or Bridge token is
+  `401`; kids and demo accounts may sync, as they may save progress). One batch can
+  name several books, so every distinct `(library_id, path)` goes through the same
+  scope check as `PUT .../progress` (`scopedPathIn`): an event outside the caller's
+  current access, on a library they hold no grant on or on a podcast library their
+  client doesn't see is that event's `rejected` `no_access`, a hidden path or an
+  admin's unknown library `not_found`, and the rest of the batch still applies. A
+  rejected event is never stored. The device name stored on the row is the token's,
+  never a body's, and event ids are deduplicated per user only.
 - **Stats never cross users.** `/me/stats` and `/me/listening` are computed for
   the caller alone (the admin Activity code with its accumulator limited to the
   caller): no other listener, username, `by_user`, `top_users`, funnel,

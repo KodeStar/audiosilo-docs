@@ -238,6 +238,7 @@ Each block is gated on its capability, so an older server shows less, quietly:
 | Password: set or change in a dialog that lifts above the keyboard | `PasswordCard`, `PasswordDialog`, `usePasswordEditor` | hidden for a demo account |
 | Pair another device: `api.pair()`, the QR, a countdown from arrival (`PAIRING_TTL_MS`, the server's 10-minute `pairingTTL`), Copy link on web, Share on native, Make a new code once expired | `PairDeviceCard`, `usePairing` | hidden for a kid's account (`isKidAccount`) |
 | Signed-in devices: sessions only, this device first (`signedInSessions`), app, platform, last seen (`lastSeen`) | `DevicesSection` | `my_devices` |
+| Listening sync: how many listens wait to reach this server ("3 listens waiting to sync", else "Everything you listened to is on `{server}`."), when this device last synced, and the "Couldn't sync" list (each rejected event as "Book · 1:02:13 to 1:40:00" or "Book · Marked finished", its reason in words, and **Discard**; kept 30 days) | `ListeningSyncCard`, `useListeningSync` (`src/playback/use-listening-sync.ts`) | `listening_sync`, or anything still waiting or listed (a server rolled back keeps showing what it left) |
 | Personal API keys: list, create in a dialog, reveal once, revoke with a confirm | `ApiKeysSection`, `useApiKeysManager`, `ApiKeyCreatedModal` | `api_keys` (a notice when it's `false`); hidden for a demo or kid's account |
 | Sign out of the server | `useSignOut`, `SignOutConfirm` | - |
 
@@ -258,7 +259,12 @@ change ended, is put away.
 because revoking its own token would kill it before the app's sign-out teardown (save the
 final position, flush the queued progress) could run. This device signs out only through
 `useSignOut`, which warns a password-less account first (with an offer to set one) and
-counts the downloads that signing out deletes. Another device's row signs out through
+counts the downloads that signing out deletes. Before either, Sync v2's listens get a last
+send (`unsentListens`), and any still unsent are confirmed first: "Listens not synced: 3
+listens haven't synced to Home. Sign out anyway?" (`unsynced`, `confirmUnsynced`).
+Removing a server (`useConnectionRemoval`) adds "3 listens haven't synced to Home and will
+be lost." to its confirm, and removing a person from the device (`useRemovePerson`) names
+the unsent listens per server the same way. Another device's row signs out through
 `useRevokeMyDevice` after a confirm, and a toast says what happened (signed out, already
 gone, or the server didn't answer).
 

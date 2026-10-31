@@ -391,7 +391,9 @@ module toggle, independent of the Bridge, sent `false` otherwise) and
 upcoming releases in the caller's series) with `upcoming_calendar` and
 `upcoming_covers` (Track U3, exactly `upcoming`: the
 [calendar feed](../server/api/reference.md#the-calendar-feed) and
-[`/me/upcoming/cover`](../server/api/reference.md#get-apiv1meupcomingcover)), plus the
+[`/me/upcoming/cover`](../server/api/reference.md#get-apiv1meupcomingcover)),
+`listening_sync` (Track W1, always true; listening as events,
+[§19](#19-listening-sync-sync-v2)), plus the
 server version
 (`api.Version`, stamped from the release tag via ldflags). `transcode` reflects
 ffmpeg availability; `web_player` reflects whether `/web` is populated; the
@@ -1156,8 +1158,9 @@ save keeps the further place and answers the other as `other_place`
 and the client's `readingProgress()` / `saveReadingProgress()` (read through
 `useReadingPlace`); the player's queue sends the last
 version it acknowledged ([the reading place](../frontend/reader.md#the-reading-place)).
-`device_name` is the server's, from the saving token. Listening progress is
-untouched; it adopts the same rule later.
+`device_name` is the server's, from the saving token. Listening sync (Track W1)
+reuses the rule for listening progress, and persists its other place on the row
+([§19](#19-listening-sync-sync-v2)).
 
 **The reader document.** The frontend builds `public/reader.html` (vendored
 foliate-js, one inline script); the web export ships it as `reader.html`; the server
@@ -1187,10 +1190,83 @@ player will show its Text panel only for a `ready` map of a book it can read
 (planned, 3c-2).
 
 **A change requires:** a new field on the place or the conflict rule changes both
-repos (and is the same rule listening progress will reuse); the reader document's
+repos (and is the same rule listening sync uses, [§19](#19-listening-sync-sync-v2)); the reader document's
 policy and the player's route names are coupled (`/web/reader*` is the document, so
 the player never has a `/reader` route); any URL credential for the ebook is a
 security-critical change with allowed and denied tests on the server.
+
+## 19. Listening sync (Sync v2)
+
+Track W1 (capability `listening_sync`), all additive. A player on such a server
+records listening as **events** (a span of playing, a finish, an unfinish), each
+with its own id, in a durable per-connection outbox, and posts them to
+[`POST /me/listening/sync`](../server/api/reference.md#post-apiv1melisteningsync);
+the server derives progress, listening sessions and history from them and answers a
+status per event. The workspace's CROSS-REPO.md §25 is the full seam.
+
+**What couples:**
+
+- **The wire.** The request (`device_id`, `sent_at` or `clock_offset`, 0-500
+  events), the per-event statuses (`applied`, `duplicate`, `diverged` with `kept`
+  and `other_place`, `not_applied` with `older` / `resume_behind`, `rejected` with
+  its reason) and the answer's `progress` rows, mirrored by hand in `types.ts`
+  (`ListeningSyncRequest`, `ListeningEvent`, `ListeningSyncResult`,
+  `ListeningSyncResponse`) and `client.syncListening(body, {keepalive})`. Every
+  progress response gains `device_name` and `other_place` (`Progress`,
+  `ListeningOtherPlace`), both omitempty.
+- **The ack rule.** Each span carries `base_version`, the progress version the
+  device last acknowledged for the book (kept in its local mirror as
+  `ack_version`, read when the span closes). The server resolves the place by
+  [the conflict rule](../server/api/reference.md#the-conflict-rule-sync-v2): an
+  event made without seeing the stored row is `diverged`, the further place is
+  kept and the other is offered. When the player acknowledges a row is listed in
+  [the mirror's Sync v2 fields](../frontend/state-and-data.md#progress-sync-srcplaybackprogress-syncts).
+  Changing when the player acknowledges changes what the server keeps: both sides
+  change together.
+- **The backstop.** A `resume` or `continue` span ending more than 60 s before an
+  unfinished stored place is `resume_behind`, so a cold start never pulls a book
+  back; the player's `start` reasons (`moved_back`, `jump`, `restart` for a
+  deliberate move) are what let a move back apply.
+- **The offered place.** The server persists a diverged event's lost place on the
+  row (`other_place`), so a device that never saw that answer still offers it; the
+  player's `offerOf` decides when to show it (another device's place, more than 30 s
+  away, not answered yet), as a Jump / Stay toast and the book page's "Play from
+  there". Answering acknowledges the row; the offer is cleared on the server by the
+  first span of that device applied on a version at or after the offer's
+  (`other_version`: when the server kept the stored row that is its next version, so
+  the span after the answer's first one).
+- **File places (fe#188).** Each end of a span may carry its audio file and the
+  seconds into it; the server places it on the book's current file order, so
+  listening on a download with an older order lands in the same file ([seam
+  6](#6-the-chapter--whole-book-timeline-model)).
+- **Sessions and history.** On this path the player stops its 15 s `PUT` loop and
+  its `POST /history`; the server builds both from the spans at their
+  clock-corrected device times. The player's 15 s online cut (`continue` spans)
+  keeps live sessions and Listening in the house working, against the server's
+  `livePlaying` and `SessionGap` ([data model](../server/data-model.md#listening-sessions-how-they-are-derived)).
+- **Rollback.** A `404`/`405` on the route that the server's own `/server`
+  confirms (no flag) turns the outbox into one legacy `PUT` per book and puts the
+  connection back on the `PUT` path.
+
+**Server:** `internal/api/handlers_listening_sync.go`, `internal/catalog/listening_sync.go`
+(`SyncListening`), migration `0061` (`listening_events`, the progress columns),
+`PruneListeningEvents` in the launcher's retention; the legacy `PUT` is logged as a
+`put` event (`SaveProgressFrom`).
+**Frontend:** `src/playback/listening-outbox.ts` (the outbox and sending),
+`listening-sync.ts` (triggers), the spans in `store.ts`, `ack_version` in
+`progress-sync.ts`, `offerOf` in `place-reconcile.ts`, `src/components/book/listening-offer.tsx`,
+`src/components/account/listening-sync-card.tsx`
+([offline](../frontend/offline.md#listening-sync-the-outbox)).
+
+**Old clients and old servers:** a shipped player keeps `PUT` and `POST /history`,
+which behave exactly as before (the `PUT` is only logged, and its answer gains the
+two omitempty fields); a new player on an older server sees no flag and does the
+same.
+
+**A change requires:** a new event field or status changes both repos (the server
+decodes events strictly, so an unknown field is that event's `rejected` `invalid`:
+gate a new field on a flag); a change to the cadence, the ack rule, the backstop or
+the offer thresholds is a change to the conflict model on both sides.
 
 ## The wire-change checklist
 

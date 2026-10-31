@@ -186,7 +186,10 @@ below), and they never leave your server.
 - **Listening sessions.** Who listened to which book, when, for how long, how
   far through the book, on which device and app, and whether it played directly
   or through the transcoder. These come from the progress saves the apps
-  already make.
+  already make, or on a recent server and app from the listening the apps
+  send: listening done offline then counts on the day and at the time it
+  happened, even when it reaches the server later or the device's clock was
+  wrong, and listening sent twice counts once.
 - **Start and finish dates** for each book a person reads. Books finished
   before this was added have their last listen as the finish date, and no start
   date. An admin can [correct the dates](users-and-invites.md#editing-someones-progress).

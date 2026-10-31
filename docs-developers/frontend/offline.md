@@ -428,6 +428,66 @@ A download made before 3c-2, or one whose map fetch failed, has no map until
 `fetch`, tried once per launch); until then the Text tab needs the server, as for a
 book that isn't downloaded.
 
+## Listening sync: the outbox
+
+On a server with `listening_sync`, listening made offline is kept as events and sent
+when the server can be reached (`src/playback/listening-outbox.ts`; the spans themselves
+are in [Playback](playback.md#listening-spans-sync-v2)). Three storage documents, all
+plain storage, scoped per connection, re-keyed by the identity migration and purged by
+`onConnectionRemoved` (and wiped with the rest of the scoped cache on a cache reset):
+
+| Key | Holds |
+|---|---|
+| `audiosilo.listeningOutbox` | the closed events waiting for their server, each with its `connectionId`, append-only: an event never changes once it is here (its id and content are fixed once a send was tried). Read-modify-writes run in a serial queue and, on the web, under a Web Lock shared by every tab where the browser has one (`navigator.locks`, a secure context only); another tab's change follows by the `storage` event (`refreshOutboxFrom`) |
+| `audiosilo.listeningOpenSpan` | the one span being played, rewritten each offline tick, so a span a kill left open is closed at its last stored values on the next launch |
+| `audiosilo.listeningSync` | per connection: when it last synced (`lastSyncAt`) and the "couldn't sync" list (rejected events with their reason, kept 30 days, at most 100) |
+
+**Sending** (`flushOutbox`): one flush in flight per connection (a call while one runs
+makes it go round once more), chunks of 200 events, `sent_at` set at each attempt, on
+the launch once the session is ready (after closing a recovered span), each closed span
+or cut, the server coming back, the app coming to the front (after the address check),
+and a sync that left more (`listening-sync.ts`, started by the root layout and the car's
+headless task). Per answer:
+
+- every status but `rejected` removes the event; `rejected` moves it to the couldn't-sync
+  list with its reason;
+- the answer's progress rows go into the query cache; a row this device's event was kept
+  for (`keptMine`: applied, or diverged with `kept: "event"`, and the row's `device_id`
+  is this device's) has its version acknowledged (`ackVersion`, never lowered); the
+  place reconcile is told of the rows (`onSyncAnswer`) to offer another device's place;
+- a network error, `401`, `403` or `5xx` keeps everything for the next trigger (a network
+  error notes the failure for reachability); a `413` or `too_many_events` halves the
+  chunk (a chunk of one moves to the list as `invalid`); any other `400` sends that chunk's events one by one once, and one refused alone
+  moves to the list as `invalid`;
+- a `404`/`405` is a **rollback** only when the server's own `/server` answers without
+  `listening_sync` (anything else at the address keeps the outbox): the connection is
+  marked rolled back for the launch, the outbox becomes one legacy `PUT` per book
+  (`legacySavesOf`: the newest span's end, finished when the newest finish-state event
+  is a `finish` not older than it) and is dropped, and the player saves by `PUT` from then
+  on.
+
+The web's `pagehide` sends what waits (oldest first, up to about 60 KB, `fitKeepalive`)
+with `keepalive`; an answer that still arrives is applied, and anything unanswered stays
+(a resend is a `duplicate`).
+
+**What the listener sees.** `pendingSaves` counts the outbox's events plus the open span
+while its server can't be reached: Home's pill reads "N listens waiting to sync"
+(`syncPill`; the last sync answer counts as "synced" when it is the newest), the
+account page's Listening sync card (`useListeningSync`, [Account](you-and-settings.md#account-srccomponentsaccount))
+shows the count, the last sync and the couldn't-sync list with Discard, and a book's
+history merges this device's unsent listens as sessions marked "Waiting to sync"
+(`usePendingListens`) until the server's rows replace them. **Sign-out, removing a server
+and removing a person** from the device first send what they can (`unsentListens`, when
+the server is reachable), then confirm when listens are still unsent ("3 listens haven't
+synced to Home. Sign out anyway?"): signing out purges them. A confirm, not a block.
+
+**Resume by file (fe#188).** The mirror's records carry the playing file and the
+seconds into it (`file`, `file_pos`), so a resume of this device's own place
+(`loadInitialProgress`) plays that file from that place when the queue holds it, even
+when the place was saved on a download's older file order; the server does the same
+with a span's file places. This holds on any server for the local resume; the server's
+remap needs `listening_sync`.
+
 ## The offline companion (`offline-meta.ts`)
 
 A downloaded book keeps its **community metadata**, so the book page (About,

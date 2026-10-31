@@ -26,7 +26,7 @@ import https from 'node:https';
 import {mkdir} from 'node:fs/promises';
 import {existsSync, readFileSync, statSync} from 'node:fs';
 import {execFileSync} from 'node:child_process';
-import {createHash} from 'node:crypto';
+import {createHash, randomUUID} from 'node:crypto';
 import {
   CACHE,
   DAY,
@@ -1126,6 +1126,56 @@ await capturePhone('phone', PHONE, {
   youStats: 'web-player/phone-you-stats.png',
   settings: 'web-player/phone-settings.png',
 });
+
+// ── Listening sync (Track W1): another device's place on the book page ──────
+// The demo listener's Looking-Glass row is this browser's (the warm-up played it). A
+// second device of the same account (paired through the API, named "Pixel 8") syncs a
+// zero-length jump well behind it, made without seeing the row (base 0): the
+// server keeps the further place and offers the Pixel's (other_place), which the book
+// page shows under its actions. Zero length, so it adds no session or history. The
+// listener's own edit of the place afterwards clears the offer again, so no later shot
+// sees it.
+if (wanted('web-player/book-place-offer.png')) {
+  await step('book place offer', async () => {
+    const ctx = await newCaptureContext({storageState: AUTH});
+    const page = await ctx.newPage();
+    let pixel = null;
+    let restore = null;
+    try {
+      await page.goto(BASE, {waitUntil: 'networkidle', timeout: 45000});
+      const token = await demoToken(page);
+      const {lib, find} = await seededBooks(token);
+      const b = find('Looking-Glass');
+      if (!b) throw new Error('no seeded book matching "Looking-Glass"');
+      const at = `/libraries/${lib.id}/progress${pathQuery(b.rel_path)}`;
+      const {progress} = await api(token, 'GET', at);
+      if (!progress) throw new Error('no progress on Looking-Glass');
+      const pairing = await api(token, 'POST', '/auth/pair', {ttl_seconds: 60});
+      pixel = (await api(null, 'POST', '/auth/exchange', {pairing_token: pairing.pairing_token, device_name: 'Pixel 8'})).token;
+      // Well behind the row (the server offers a place more than 30 s from the kept one).
+      const there = Math.round(progress.position * 0.4);
+      if (progress.position - there < 120) throw new Error(`Looking-Glass is only ${progress.position} s in`);
+      const now = new Date().toISOString();
+      const answer = await api(pixel, 'POST', '/me/listening/sync', {
+        device_id: 'shots-pixel-8',
+        sent_at: now,
+        events: [{id: randomUUID(), kind: 'listen', library_id: lib.id, path: b.rel_path, from_pos: there, to_pos: there,
+          started_at: now, ended_at: now, start: 'jump', base_version: 0}],
+      });
+      if (answer.results?.[0]?.status !== 'diverged') throw new Error(`the Pixel's place was ${JSON.stringify(answer.results)}`);
+      restore = () => api(token, 'PATCH', at, {position: Math.round(progress.position)});
+      await librarySection(page, 'Books');
+      await firstVisible(page.getByRole('button', {name: /Looking-Glass/})).click({timeout: 8000});
+      await tid(page, 'book-page').waitFor({timeout: 15000});
+      await tid(page, 'listening-offer').waitFor({timeout: 15000});
+      await settleShoot(page, 'web-player/book-place-offer.png', SETTLE_MS);
+    } finally {
+      if (restore) await restore().catch(() => {});
+      if (pixel) await api(pixel, 'POST', '/auth/logout').catch(() => {});
+      await ctx.close();
+    }
+  });
+}
 
 // ── Read-along (Bridge Phase 3c): the Text tab and Follow narration ─────────
 // run.sh seeds The Call of the Wild with its EPUB and the read-along map a Bridge made
@@ -2561,6 +2611,47 @@ await step('connect', async () => {
       await sleep(SETTLE_MS);
       await page.mouse.move(0, 0);
       await shoot(page, 'web-player/account.png');
+    }
+
+    if (wanted('web-player/account-listening-sync.png')) {
+      // The Listening sync card with a Couldn't sync row (Track W1): a listen of The Art
+      // of War whose book length is two minutes off the server's (another edition), put in
+      // this browser's outbox as the player keeps it and sent by a reload. The server
+      // rejects it (duration_mismatch), so nothing is stored; the context closes after.
+      const {cid, token} = await playerSession(page);
+      const info = await api(token, 'GET', '/server');
+      if (!info?.capabilities?.listening_sync) throw new Error('the server has no listening_sync capability');
+      const {lib, find} = await seededBooks(token);
+      const b = find('Art of War');
+      if (!b) throw new Error('no seeded book matching "Art of War"');
+      const from = Math.round(b.duration * 0.2);
+      const event = {
+        id: randomUUID(),
+        kind: 'listen',
+        library_id: lib.id,
+        path: b.rel_path,
+        from_pos: from,
+        to_pos: from + 1200,
+        duration: b.duration + 120,
+        playback_speed: 1,
+        started_at: isoAgo(2 * HOUR + 20 * MIN),
+        ended_at: isoAgo(2 * HOUR),
+        start: 'resume',
+        base_version: 0,
+      };
+      await page.evaluate(
+        ({key, entry}) => {
+          const list = JSON.parse(localStorage.getItem(key) || '[]');
+          list.push(entry);
+          localStorage.setItem(key, JSON.stringify(list));
+        },
+        {key: 'audiosilo.listeningOutbox', entry: {connectionId: cid, event}},
+      );
+      // 'load', not 'networkidle': the reload's own sync post is what the text wait gates on.
+      await page.reload({waitUntil: 'load', timeout: 45000});
+      const card = tid(page, 'listening-sync-card');
+      await card.getByText("Couldn't sync").waitFor({timeout: 20000});
+      await shootElement(page, card, 'web-player/account-listening-sync.png', 16);
     }
   } finally {
     // Sign the admin's player session out again, whatever happened above.
