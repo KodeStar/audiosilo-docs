@@ -623,7 +623,7 @@ CSP-sensitive work against a real build served by Go. The console's own gate is
   person, a kid (naming the owner) or the admin themselves, then sends
   `POST /admin/users/{id}/sign-out` and toasts its `signed_out` count. The
   Sign-in tab's password dialog (`password-dialog.tsx`) says a change signs the
-  person out (the admin's own wording keeps "This console stays signed in"; a
+  person out (the admin's own wording says "This console stays signed in"; a
   first password keeps the old "Paired devices stay signed in"), and both
   invalidate the devices lists (`invalidateDevices`) and the person.
 - **Progress menu** (`features/people/progress-actions.tsx`) - on each row of

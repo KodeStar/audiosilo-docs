@@ -544,7 +544,8 @@ Response: `204 No Content`.
 **Changing a password ends the other sessions** (server#281). Replacing a password
 the account had revokes every `session` token of the caller but the one making the
 request, with their open pairing codes (unlinked `pairing` tokens from
-[`POST /auth/pair`](#post-apiv1authpair)) and their recovery code (`has_recovery`
+[`POST /auth/pair`](#post-apiv1authpair), or an owner's
+[`POST /me/household/members/{id}/pair`](#post-apiv1mehouseholdmembersidpair) for a member) and their recovery code (`has_recovery`
 turns `false`); API keys, the [calendar feed token](#the-calendar-feed) and Bridge
 tokens stay, and a first password ends nothing
 ([Password changes end sessions](../auth-and-security.md#password-changes-end-sessions)).
@@ -5054,8 +5055,9 @@ Audited as `user.sign_out_everywhere` with `signed_out` in the details
 ### `DELETE /api/v1/admin/users/{id}/recovery`
 
 *Legacy - being retired alongside `POST /auth/recovery` once old clients age
-out.* Revokes a user's recovery code (the admin's only lever for a leaked one,
-since recovery codes are not listable). No-op if none. `204 No Content`.
+out.* Revokes a user's recovery code (the admin's lever for a leaked one, since
+recovery codes are not listable; a password reset or
+[Sign out everywhere](#post-apiv1adminusersidsign-out) removes it too). No-op if none. `204 No Content`.
 
 ### `POST /api/v1/admin/authcodes/{id}/rotate`
 

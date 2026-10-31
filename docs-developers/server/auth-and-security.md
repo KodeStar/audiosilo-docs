@@ -339,7 +339,7 @@ four. `normalizeCode` strips spacing/case and maps look-alikes (`O→0`, `I/L→
 | Defaults | 5 uses / 1-day expiry (`defaultAuthCodeMaxUses`/`defaultAuthCodeTTLDays` in `handlers_admin.go`; explicit `0` means unlimited/never) | Unlimited uses, never expires |
 | Cardinality | One *active* invite per user | At most one recovery code per user |
 | Listable | Yes (`ListAuthCodes`, metadata only) | No - surfaces only as `User.HasRecovery` |
-| Revocation | `DELETE /admin/authcodes/{id}` | `DELETE /auth/recovery` (self) or `DELETE /admin/users/{id}/recovery` (admin, the only lever for a leaked code) |
+| Revocation | `DELETE /admin/authcodes/{id}` | `DELETE /auth/recovery` (self) or `DELETE /admin/users/{id}/recovery` (admin; a leaked code also goes with a password change or reset, or Sign out everywhere: [Password changes end sessions](#password-changes-end-sessions)) |
 
 Both redeem through the same path. The full onboarding flow:
 
@@ -447,8 +447,8 @@ or change their own password:
 From server#281, replacing or clearing a password the account had ends the
 person's sessions: whoever knew the old password is signed out wherever they used
 it. It covers the self-service `POST /auth/password` and the admin's `PATCH
-/admin/users/{id}` alike (both go through `auth.UpdateUser`; `SetPassword` calls it with only
-a password); clearing counts as a reset, and a **first** password ends nothing.
+/admin/users/{id}` alike (both go through `auth.UpdateUser`; `SetPassword` calls it with the
+password and the caller's token); clearing counts as a reset, and a **first** password ends nothing.
 Inside `UpdateUser`'s durable transaction, `endSessions` revokes every `session`
 token of that person but `UserChanges.KeepToken`, the token making the request. So
 changing your own password, or an admin resetting their own, keeps the device it was
@@ -457,7 +457,8 @@ done on; an admin resetting someone else's ends all of theirs.
 With the sessions go the ways back in that a session can make without the password
 and that the person can neither see nor revoke:
 
-- their **open pairing codes** (unlinked `pairing` tokens, `POST /auth/pair`), each
+- their **open pairing codes** (unlinked `pairing` tokens: `POST /auth/pair`, and a
+  member's from their owner's `POST /me/household/members/{id}/pair`), each
   of which would make a session after the change;
 - their **recovery code** (its linked pairing tokens cascade), so `has_recovery`
   turns `false`.

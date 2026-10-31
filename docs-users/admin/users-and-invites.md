@@ -162,8 +162,9 @@ tablet and browser at once, after you confirm ("Sign *name* out everywhere?").
 Anything they are casting stops, any open code they made to pair another device
 stops working, and so does a recovery code saved from an older app. Their API keys
 and calendar link keep working, and their password doesn't change. The
-confirmation says how they get back in: with their password, by pairing with a
-new invite when they have none, or, for a kid, from their owner in the player.
+confirmation says how they get back in: their password doesn't change, someone
+with none pairs with a new invite, and a kid is signed in again by their owner
+from the player.
 The message afterwards says how many devices were signed out. On your own page
 it signs out everything but this console, and it isn't offered when this console
 is your only device. Like signing out one device on the

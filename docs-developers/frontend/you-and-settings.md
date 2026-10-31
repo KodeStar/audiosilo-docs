@@ -247,7 +247,7 @@ first password ends nothing), an older one ends none, and nothing on the wire te
 them apart. So after a change `usePasswordEditor` reads the devices again
 (`useReadMyDevicesAgain` in `hooks.ts`: drops a read under way, asks once with
 `networkMode: 'always'` and no retry, into the list's cache) and picks the toast's
-body: no other `session` left is "Your other devices are signed out", one left is the
+body: no other `session` left is "Your other devices are signed out", any left is the
 old "Your other devices stay signed in", and no answer (no `my_devices`, or the read
 failed) is just "This device stays signed in". A first password keeps the old body.
 The dialog says other devices "may be signed out". `changes` counts the changes, and
