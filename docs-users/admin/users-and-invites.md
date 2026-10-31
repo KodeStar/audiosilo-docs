@@ -186,9 +186,8 @@ and the same **Rotate** and **Revoke** buttons, as the
   username as well as on paired devices. Setting a first password signs nothing
   out: their paired devices stay signed in. **Changing** a password signs them
   out of every phone, tablet and browser, as
-  [Sign out everywhere](#devices) does, and the dialog says so; their API keys
-  and calendar link keep working. Changing your own keeps this console signed
-  in. The console can set or change a password but not remove one.
+  [Sign out everywhere](#devices) does, and the dialog says so. Changing your
+  own keeps this console signed in. The console can set or change a password but not remove one.
 - **Recovery code** - only shown when the person saved one from an older app
   version. It can't be viewed, only revoked: **Revoke recovery code** stops it
   working at once (their paired devices stay signed in). Changing their password
@@ -342,10 +341,10 @@ player or this console, and each personal API key. For each one:
 - whose it is. Click the name to open their page.
 
 **Sign out** (**Revoke** for an API key) asks first, then stops that one device
-working at once. The person's other devices stay signed in (to sign out all of
-them, use [Sign out everywhere](#devices) on their page), and they can pair
+working at once. The person's other devices stay signed in, and they can pair
 the device again with an invite; a revoked API key can't be restored, but the
-person can create a new one. The device you're using can't be signed out here:
+person can create a new one. To sign out all of their devices, use
+[Sign out everywhere](#devices) on their page. The device you're using can't be signed out here:
 use **Sign out** in the account menu instead.
 
 Signing a browser out here also makes the server forget it: if it signs in

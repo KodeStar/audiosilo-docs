@@ -416,10 +416,8 @@ session of that person, and a new password,
 [Sign out everywhere](#post-apiv1adminusersidsign-out) or a disabled account forgets
 all of that person's, so the browser's next sign-in is announced again.
 
-A sign-in racing a password change gets no session: the session is written only while
-the password it verified is still the account's (and the account enabled), checked in
-the same transaction, else `401 invalid credentials` (server#281), so a change can't
-miss a session that was being made from the old password.
+A sign-in racing a password change gets no session, only `401 invalid credentials`
+(server#281, [the sign-in race](../auth-and-security.md#password-changes-end-sessions)).
 
 Response `200`: `{ "token": "…", "user": { … }, "server_id": "…" }`, plus `addresses`
 on a server with that capability - the same shape as `/auth/exchange`.
@@ -545,17 +543,15 @@ Response: `204 No Content`.
 
 **Changing a password ends the other sessions** (server#281). Replacing a password
 the account had revokes every `session` token of the caller but the one making the
-request, in the same transaction (`auth.UpdateUser`, `endSessions`), and with them
-their open pairing codes (unlinked `pairing` tokens from
+request, with their open pairing codes (unlinked `pairing` tokens from
 [`POST /auth/pair`](#post-apiv1authpair)) and their recovery code (`has_recovery`
-turns `false`). Cast tokens minted from an ended session die with it. API keys, the
-[calendar feed token](#the-calendar-feed) and Bridge tokens stay. A first
-password ends nothing. The write moves the content generation, so an ended token is
-refused (`401`) on its very next request, media `?token=` included; a shipped app
-takes its existing 401 path (signed out, pair again). The response carries no count:
-a client that wants to say what happened reads
-[`GET /me/devices`](#get-apiv1medevices) again. As before, a new password forgets the
-person's browsers (`new_device`, [`POST /auth/login`](#post-apiv1authlogin)).
+turns `false`); API keys, the [calendar feed token](#the-calendar-feed) and Bridge
+tokens stay, and a first password ends nothing
+([Password changes end sessions](../auth-and-security.md#password-changes-end-sessions)).
+An ended token is refused (`401`) on its very next request, media `?token=` included;
+a shipped app takes its existing 401 path (signed out, pair again). The response
+carries no count: a client that wants to say what happened reads
+[`GET /me/devices`](#get-apiv1medevices) again.
 
 | Status | Meaning |
 |---|---|
@@ -4957,11 +4953,9 @@ always is, or it is `400 admin_needs_password`).
   an account that isn't a member.
 
 - **A password reset ends the person's sessions** (server#281): replacing or clearing
-  a password the account had revokes every `session` token of theirs, with their open
-  pairing codes and recovery code, exactly as a
+  a password the account had ends their sessions exactly as a
   [self-service change](#post-apiv1authpassword) does, in the same transaction. Only
-  the admin's own session survives, when the account is the admin's. A first password
-  ends nothing. API keys, the calendar feed token and Bridge tokens stay.
+  the admin's own session survives, when the account is the admin's.
 
 Response `200`: the updated user object (with the fields above).
 
@@ -5036,15 +5030,12 @@ invite.
 
 ### `POST /api/v1/admin/users/{id}/sign-out`
 
-The console's **Sign out everywhere** (server#281, `auth.SignOutEverywhere`): ends
-every `session` token of the person but the admin's own (when the account is the
-admin's), with their open pairing codes (unlinked `pairing` tokens) and their
-recovery code, as a [password change](#post-apiv1authpassword) does, without
-changing the password. It also forgets the browsers they signed in from, so each
-one's next password sign-in is announced as a `new_device`. Cast tokens minted from
-an ended session die with it. API keys (listed and revoked on their own,
-[`DELETE /admin/devices/{id}`](#delete-apiv1admindevicesid)), the calendar feed
-token and Bridge tokens stay. No body.
+The console's **Sign out everywhere** (server#281): ends the person's sessions as a
+[password change](#post-apiv1authpassword) does (the same tokens end and stay),
+keeping the admin's own when the account is the admin's, without changing the
+password. It also forgets the browsers they signed in from, so each one's next
+password sign-in is announced as a `new_device`. API keys stay, revoked one at a time
+with [`DELETE /admin/devices/{id}`](#delete-apiv1admindevicesid). No body.
 
 Response `200`, the number of sessions it ended (`0` when there were none):
 

@@ -447,8 +447,8 @@ or change their own password:
 From server#281, replacing or clearing a password the account had ends the
 person's sessions: whoever knew the old password is signed out wherever they used
 it. It covers the self-service `POST /auth/password` and the admin's `PATCH
-/admin/users/{id}` alike (both are `auth.UpdateUser`, `SetPassword` a password-only
-call of it); clearing counts as a reset, and a **first** password ends nothing.
+/admin/users/{id}` alike (both go through `auth.UpdateUser`; `SetPassword` calls it with only
+a password); clearing counts as a reset, and a **first** password ends nothing.
 Inside `UpdateUser`'s durable transaction, `endSessions` revokes every `session`
 token of that person but `UserChanges.KeepToken`, the token making the request. So
 changing your own password, or an admin resetting their own, keeps the device it was
