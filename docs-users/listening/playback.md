@@ -36,7 +36,7 @@ Your position keeps syncing as normal while playing to another device.
 
 ## Your position follows you
 
-AudioSilo saves your position to the server **every 15 seconds while playing**, and immediately whenever you pause, seek, change speed, or stop. Start a book on your phone in the car, open the web player at your desk, and it's waiting on the home screen at the right spot.
+AudioSilo saves your position to the server **every 15 seconds while playing**, and immediately whenever you pause, seek, change speed, or stop. Start a book on your phone in the car, open the web player at your desk, and it's waiting on the home screen at the right spot. On a recent server the app sends what you listened to rather than just where you are, so listening on two devices, or offline, comes together properly: see [Listening on more than one device](#listening-on-more-than-one-device).
 
 The player says where your place is: **Synced** (*Synced just now* while playing), **Saved on this device, will sync** while the book's server can't be reached or saves are waiting to go, or **Saved on this device, sign in again to sync** when that server needs you to sign in again.
 
@@ -45,8 +45,21 @@ A few protections work behind the scenes so you never lose your place:
 - Your position is stored **on the server and on the device**, and the most recent one wins - so a flaky connection can't quietly rewind you.
 - A book **never silently restarts from the beginning**. If a streamed book can't confirm your resume position (say, the server is briefly unreachable), the player shows an error with a **Retry** button rather than starting at zero.
 - Even if playback did slip back somehow, the app refuses to overwrite your real progress with a much earlier position - only a deliberate move backwards counts. In the mobile apps that includes a move from the lock screen, headphones or a [car](in-the-car.md): a scrub back there is saved as your new place straight away.
-- **Picking up where another device left off**: if a book is still loaded on this device when you come back to it (you open the app again, or press play after a pause of more than a minute) and you've listened further on another device meanwhile, the player jumps to that newer place before it saves anything, and says so: *"Picked up your place from another device"*, with **Undo** to go back.
+- **Picking up where another device left off**: if a book is still loaded on this device when you come back to it (you open the app again, or press play after a pause of more than a minute) and you've listened further on another device meanwhile, the player jumps to that newer place before it saves anything, and says so: *"Picked up your place from another device"*, with **Undo** to go back. On a recent server it asks instead when the two places don't follow on from each other (below).
 - **Auto-rewind on resume**: after a pause, playback backs up a few seconds (5 by default, adjustable up to 30 or off) so you regain the thread of the sentence.
+
+## Listening on more than one device
+
+On a recent server, each device sends the server **what you listened to**: from where to where, and when. The server puts it together from every device, so:
+
+- **Nothing moves your place back by itself.** If two devices each listened without seeing the other's place (say your watch played on a run while your phone was in a drawer, or the phone was offline), the server keeps the place further on and remembers the other one.
+- **You choose which place to carry on from.** When the other place is more than half a minute away, the player asks: *"On Sam's Watch you were at Chapter 12, 4:10. Jump there?"*. **Jump** takes you there; **Stay** (the button that closes the message) keeps the place you have, and the server takes this device's place from then on. Either way you're asked once. The [book's page](book-page.md#listening-and-the-buttons) offers the same place under its buttons: *"On Sam's Watch: Chapter 12, 4:10 · Play from there"*. The device is named as it signed in to your server ("another device" if the server doesn't know its name).
+- **A cold start never rewinds you.** A device that starts playing before it has heard from the server can't pull the book back to where it started.
+- **Finished stays finished.** A device that hadn't heard you finished the book doesn't undo it by playing on; starting the book again does.
+- **Listening counts when it happened.** Your [history](book-page.md#history), the Journal, your stats and the server's activity show offline listening on the day and at the time you listened, even when it reaches the server days later, and even when the device's clock was wrong. Listening sent twice is counted once.
+- **Your place in the right file.** For a book in several files, the app also notes which file you were in, so listening on a download that still has an older file order lands in the same file on the server.
+
+Until it reaches the server, what you listened to waits on the device: Home's line says **3 listens waiting to sync**, and your [account page](account.md#listening-sync) says how many are waiting and when this device last synced. If the server ever turns one down (say the downloaded copy is a different length from the server's book), it's listed there with the reason. On an older server, the app saves your place as it always has.
 
 ## Bookmarks, notes and history
 
@@ -58,7 +71,7 @@ If the connection drops mid-listen:
 
 - A **downloaded** book keeps playing as if nothing happened - see [Offline downloads](offline-downloads.md).
 - A **streamed** book will pause with an error and a **Retry** button once its buffer runs out. Offline, Home's card for a book that isn't downloaded says **Not downloaded** rather than offering Resume.
-- Either way, an *"Offline - changes sync when reconnected"* banner appears, and any progress, bookmarks, or finished-marks you make are **queued on the device and synced automatically** when the server is reachable again.
+- Either way, an *"Offline - changes sync when reconnected"* banner appears, and any progress, bookmarks, or finished-marks you make are **queued on the device and synced automatically** when the server is reachable again. On a recent server your listening waits too (*"3 listens waiting to sync"*), shows in the book's history marked **Waiting to sync**, and reaches the server at the time you listened: see [Listening on more than one device](#listening-on-more-than-one-device).
 
 ## Books a browser can't play directly
 

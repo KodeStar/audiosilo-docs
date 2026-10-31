@@ -100,6 +100,15 @@ Both ways to play go through the app's one play path, `usePlayBook`
   (`seekBook`, or `goToTrack`) and plays on, or starts this book there in place
   (`startBookInPlace`).
 
+**Another device's place** (Sync v2, `listening_sync`): under the actions, in the hero's
+footer, `ListeningOfferLine` (`listening-offer.tsx`) shows `On {device}: {chapter, time} ·
+Play from there` when `offerOf` finds a place for the book
+([the offer](playback.md#offering-another-devices-place-sync-v2)), measured from where
+the primary would play from (`resumePosition`); "On another device" when the server has
+no name. **Play from there** answers the offer (`answerOffer`: the row's version
+acknowledged, the place noted, so it isn't offered again) and plays the book there
+(`{ at: { position } }`). Nothing shows on a server without the flag.
+
 It rejects when the book can't start: with a `PlaybackStartError` when the engine
 couldn't (see [the player store](playback.md#the-player-store-storets)), or with the
 fetch's own error when the book couldn't be fetched. The page toasts

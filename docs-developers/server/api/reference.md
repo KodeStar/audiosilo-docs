@@ -3231,11 +3231,32 @@ revoked share isn't returned.
       "version": 7,
       "device_id": "pixel-9-sam",
       "updated_at": "2026-07-01T19:42:07Z",
-      "started_at": "2026-06-20T21:05:12Z"
+      "started_at": "2026-06-20T21:05:12Z",
+      "device_name": "Sam's Pixel",
+      "other_place": {
+        "position": 10240.0,
+        "device_id": "watch-sam",
+        "device_name": "Sam's Watch",
+        "updated_at": "2026-07-01T07:33:30.000Z"
+      }
     }
   ]
 }
 ```
+
+`device_name` and `other_place` come with [listening sync](#post-apiv1melisteningsync)
+(capability `listening_sync`), on every progress response (this list, the
+single-book read, the `PUT` and `PATCH` answers and the sync answer), each omitted
+when there is none. `device_name` is the name of the device that saved the row, as
+the server knows it from that device's sign-in (the saving token's name, never a
+request body's). `other_place` is a place a **diverged** sync event did not keep
+(another device's listening made without seeing this row):
+`{position (whole-book seconds), device_id, device_name, updated_at}`, kept on the
+row until a device that has seen it carries on from a version at or after it, a
+newer diverged event replaces it, a sync `finish`, an edit (`PATCH`, the listener's
+or an admin's) or a move or join of the book. A player offers it ("On Sam's Watch you
+were at 2:50:40. Jump there?"). A `PUT` never sets or clears either and ignores them
+in its body.
 
 `started_at` and `finished_at` (RFC 3339, UTC) are the book's start and finish
 dates, on every progress response of a server with the `progress_edit`
@@ -3243,7 +3264,9 @@ capability (this list, the single-book read and the `PUT` echo). Each is
 omitted when unknown or none: `started_at` on rows saved before the server
 recorded it, `finished_at` while the book is unfinished. How they are stamped is
 under [`PUT`](#put-apiv1librariesidprogress); a listener corrects them with
-[`PATCH`](#patch-apiv1librariesidprogress).
+[`PATCH`](#patch-apiv1librariesidprogress). On a sync, a `listen` stamps
+`started_at` with its corrected start when none is kept, and a `finish` stamps
+`finished_at` with its corrected time (an `unfinish` clears it).
 
 ### `GET /api/v1/libraries/{id}/progress`
 
@@ -3312,6 +3335,17 @@ implausible). With `progress_edit` they ride on the response; any
 them), so a client changes them only through
 [`PATCH`](#patch-apiv1librariesidprogress).
 
+On a server with `listening_sync` the `PUT` is otherwise unchanged (last-write-wins,
+`finished` included, its listening session at server time), so a shipped player
+behaves exactly as before. Three things are added: the save is logged as a `put`
+event in [the listening-event log](#post-apiv1melisteningsync) (id `put-<16 hex>`,
+`applied` or `not_applied` `older`, in the same transaction), the row stores the
+saving token's name as `device_name`, and a save that changes `finished` records
+when it did (`finish_changed_at`: the save's `updated_at`, never past the server's
+clock), so an older sync `finish` or `unfinish` can't undo it. A `device_name` or
+`other_place` in the body (a client echoing a row back) is accepted and ignored. A
+player that syncs listening sends no `PUT` for its listening.
+
 ### `PATCH /api/v1/libraries/{id}/progress`
 
 *Session.* Capability `progress_edit`. The caller's own edit of their progress
@@ -3339,7 +3373,9 @@ stamped with the server's time (to the sub-second, so a device save made just
 before the edit can't outrank it) and a higher `version`, so under last-write-wins
 it beats what a device saved before it, while a device that has the book loaded
 overrides it on its next save. It is not playback, so it records no
-[listening session](#admin-activity).
+[listening session](#admin-activity). On a server with `listening_sync` it also
+clears the row's `other_place` and, when it changes `finished`, records the
+change's time (now), so an older sync `finish` or `unfinish` can't undo it.
 
 Response `200`: `{ "progress": { … } }` - the player's progress object, with
 its dates.
@@ -3349,6 +3385,202 @@ its dates.
 | `400` | `path is required`; `invalid request` (a malformed body, an unknown key or an unparseable date); `those dates or that position don't fit this book` (no code) - a negative position or one past the book's end, an exact date more than 5 minutes ahead of server time (a day-only date more than 24 hours ahead), a finish before the start, or a finish date on a book that isn't (and isn't becoming) finished |
 | `403` | `no access to this path` - outside the caller's current access, **even when a progress row already exists there** (unlike the admin edit, a listener can't tidy progress on a book they can no longer open) |
 | `404` | `code: "book_not_found"` (`no progress or book at this path`) - no progress at that path and no indexed book there, or an empty edit on a book with no progress |
+
+### `POST /api/v1/me/listening/sync`
+
+*Session or API key* (cast, calendar feed and Bridge tokens are `401`; kids and
+demo accounts may sync). Capability `listening_sync`. **Sync v2** (Track W1): a
+player posts what it listened to as **events**, each with its own id, and the
+server derives the book's progress, the [listening sessions](#admin-activity) and
+the [history](#get-apiv1librariesidhistory) from them. Each event is resolved on
+its own and answered with a status, so one batch can carry a day of offline
+listening across several books. A player uses it only while `GET /server` says
+`listening_sync: true`; otherwise it keeps `PUT .../progress` and
+`POST .../history`, which stay unchanged for shipped apps.
+
+```json
+{
+  "device_id": "lq3x9-ab12cd34",
+  "sent_at": "2026-10-25T07:41:03.120Z",
+  "events": [
+    {
+      "id": "8c1e0f6a-4b1d-4f5e-9a7c-2d3e4f5a6b7c",
+      "kind": "listen",
+      "library_id": 3,
+      "path": "Author/Book",
+      "from_pos": 14400.0,
+      "to_pos": 16800.0,
+      "from_file": "Author/Book/04.mp3",
+      "from_file_pos": 812.4,
+      "to_file": "Author/Book/05.mp3",
+      "to_file_pos": 1203.9,
+      "duration": 61200.0,
+      "playback_speed": 1.2,
+      "started_at": "2026-10-25T07:00:12.000Z",
+      "ended_at": "2026-10-25T07:33:30.000Z",
+      "start": "resume",
+      "base_version": 41
+    },
+    {
+      "id": "9d20c1b7-0a2e-4c8d-b1f3-5e6a7b8c9d0e",
+      "kind": "finish",
+      "library_id": 3,
+      "path": "Author/Book",
+      "at": "2026-10-25T07:33:30.000Z",
+      "base_version": 41
+    }
+  ]
+}
+```
+
+| Body field | Type | Notes |
+|---|---|---|
+| `device_id` | string | required, 1-200 bytes: the device's own id (the player's `getDeviceId()`), the same one its progress rows carry |
+| `sent_at` | string | RFC 3339: the device's clock at **this** send attempt (set per attempt, never when the batch was built) |
+| `clock_offset` | float | seconds, server minus device, as a relay that measured it would send (at most `1e9` either way) |
+| `events` | array | 0-500 events; `[]` (or none) is a valid clock probe, answered with `server_time` |
+
+Send exactly one of `sent_at` and `clock_offset`. Unknown top-level fields are
+refused.
+
+**Events.** Every event has `id` (1-64 characters of `[A-Za-z0-9_-]`, the device's
+own, so a resend is recognised: the player's are UUIDs), `kind`, `library_id`
+(> 0), `path` (the book's path, or one of its files or parts: the event is keyed on
+[the progress path](#the-progress-path), as `PUT` does) and an optional
+`base_version` (>= 0: the progress `version` the device had acknowledged when it
+made the event; left out, the event resolves by last-write-wins).
+
+| `kind` | Fields | Notes |
+|---|---|---|
+| `listen` | `from_pos`, `to_pos` (required numbers), `started_at`, `ended_at`, `start`; optional `from_file` + `from_file_pos`, `to_file` + `to_file_pos`, `duration`, `playback_speed` | a span of playing: whole-book seconds on the device's timeline (finite, >= 0), RFC 3339 times with `ended_at >= started_at` at most 24 h apart. `start` is why the span began: `resume` (the loaded or resumed place), `continue` (carrying on after a cut), `moved_back` or `jump` (a deliberate move: a seek, a chapter, a bookmark, Undo, an offer's Jump), `restart` (starting again from 0). Each end may also carry its audio file (rel path) and the seconds into it (both of a pair or neither, seconds >= 0). `duration` is the device's length of the book (0 or absent: no fingerprint); `playback_speed` is in (0, 4] (0 or absent = 1) |
+| `finish`, `unfinish` | `at` (RFC 3339) | marking the book finished or not finished; no positions, and `base_version` is ignored |
+
+Response `200`:
+
+```json
+{
+  "server_time": "2026-10-25T07:41:03.480Z",
+  "results": [
+    {
+      "id": "8c1e0f6a-4b1d-4f5e-9a7c-2d3e4f5a6b7c",
+      "status": "diverged",
+      "kept": "stored",
+      "other_place": {
+        "position": 16800.0,
+        "device_id": "lq3x9-ab12cd34",
+        "device_name": "Sam's Watch",
+        "updated_at": "2026-10-25T07:33:30.000Z"
+      }
+    },
+    { "id": "9d20c1b7-0a2e-4c8d-b1f3-5e6a7b8c9d0e", "status": "applied" }
+  ],
+  "progress": [ { "library_id": 3, "path": "Author/Book", "position": 61200.0, "finished": true, "version": 43, "...": "..." } ]
+}
+```
+
+`results` holds one entry per request event, in request order. `progress` holds the
+progress row (the object of [`GET .../progress`](#get-apiv1librariesidprogress),
+with `device_name` and `other_place`) of every book a non-rejected event touched,
+read after the batch; `[]` when there is none. `server_time` is the server's clock,
+fixed-width UTC milliseconds.
+
+| `status` | Meaning |
+|---|---|
+| `applied` | the place moved to the event's end, or a finish/unfinish set the state |
+| `duplicate` | the id is already stored for this user, or it came earlier in the same batch: nothing was done again |
+| `diverged` | the event was made without seeing the stored row (below); `kept` is `event` or `stored`, and `other_place` is the place **not** kept |
+| `not_applied` | stored, but the place didn't move; `reason` is `older` (an older write under last-write-wins, or a finish/unfinish not newer than the row's last finish-state change) or `resume_behind` (a `resume`/`continue` span behind the stored place, below; `other_place` is the event's place) |
+| `rejected` | not stored and changed nothing; `reason` is `invalid` (a field check failed, the event couldn't be decoded, or its path cleans to nothing), `unknown_kind`, `too_old` (it ended more than 90 days ago, after the clock correction), `duration_mismatch` (the device's `duration` is more than 10 s from the indexed book's), `no_access` (the path is outside the caller's access, a library they hold no grant on, or a podcast library their client doesn't see: what `PUT` answers with a `403`) or `not_found` (an unknown library to an admin, or a hidden path) |
+
+Every status but `rejected` is final for the sender: the event is stored and a
+resend is a `duplicate`. Every stored `listen` counts for sessions and history,
+even when its place didn't move (listening that happened always counts).
+
+| Status | Meaning |
+|---|---|
+| `400` | `invalid request` (not JSON, an unknown top-level field, a body over 1 MiB); `device_id is required`; `device_id is too long`; `send sent_at or clock_offset` (neither, both, an unparseable `sent_at`, or a `clock_offset` beyond `1e9` either way); `code: "too_many_events"` (more than 500 events) |
+| `401` | no token, or one that isn't a session or an API key |
+| `500` | `could not sync listening`: nothing of the batch is stored, so a retry applies it once |
+
+A bad **event** never fails the batch: each event is decoded on its own and
+strictly (an unknown field inside it, a wrong type, or a `listen` without a number
+for `from_pos` or `to_pos` is that event's `rejected` `invalid`), so one malformed
+event can't block the rest of a device's backlog.
+
+#### How a batch is applied
+
+The handler checks the envelope, then resolves each distinct `(library_id, path)`
+once, as `PUT` does (the scope check, then the progress path, then the indexed book's
+length and its files' offsets in their current order), all before the write.
+`catalog.SyncListening` then runs the whole batch in **one** writer transaction:
+
+- **The clock.** The batch's shift is `received - sent_at` (or `clock_offset`), added
+  to every time in it, so a device whose clock is hours out still lands its
+  listening at the true time. A corrected time past the server's now is pulled back
+  to now, both ends of a span by the same amount, so its length stays.
+- **Order.** Events apply in corrected-time order (`ended_at`, or `at`; ties by
+  request position) and are answered in request order.
+- **Fingerprint.** Only when the sent path is the indexed book itself (not a file or
+  a part) and both lengths are known: more than 10 s apart is another edition
+  (`duration_mismatch`). A path with no indexed book applies path-keyed with no
+  check, as a `PUT` does.
+- **File places.** An end whose file is one of the book's files is placed at that
+  file's offset in the **current** order plus the seconds in it (clamped to the
+  file's length); otherwise the sent whole-book seconds are used. Each end on its
+  own. So a span played on a download that still has an older file order lands in
+  the same file. The stored event keeps the placed values.
+- **A listen's place** resolves against the stored row by
+  [the conflict rule](#the-conflict-rule-sync-v2) (`catalog.ResolvePlace`, with
+  whole-book seconds as the progression and the span's corrected end as its time):
+  `applied`, `not_applied` `older`, or `diverged` (the further place kept). Within one
+  batch a `base_version` of `0` on a book the batch already wrote resolves on that
+  version, so a device's first spans in one post don't diverge from each other.
+  **The backstop:** a `resume` or `continue` span ending more than 60 s before an
+  unfinished stored place is `not_applied` `resume_behind`, so a device that started
+  playing before it had the stored place (a cold start) never pulls the book back;
+  a deliberate move (`moved_back`, `jump`, `restart`) skips it. A span that diverged
+  from a place its device had seen (`base_version` > 0, another device's row since)
+  is real listening elsewhere, so it is resolved instead (the further place kept,
+  the span's offered). A listen writes the position, the length (when known), the
+  speed, the device, its `device_name`, `updated_at` (the corrected end) and
+  `version + 1`, and never touches `finished`.
+- **The offered place.** On `diverged`, the place not kept is stored on the row as
+  [`other_place`](#get-apiv1meprogress), unless it is the kept row's own device or
+  within 30 s of the kept place, so a device that never saw this answer (the phone,
+  after the watch synced) can still offer it. A device that sends a `base_version` at
+  or after the version it was recorded at, and applies, clears it (it had seen it);
+  so do a newer diverged event, a `finish`, an edit and a move or join. A
+  `resume_behind` span that carries on (within 5 s) from its own device's offered
+  place moves the offer to where it got to.
+- **finish / unfinish** apply only when newer than the row's last finish-state change
+  (else `not_applied` `older`), whoever made it: a `PUT`, an edit, an import or an
+  earlier sync event. `finish` marks the book finished (`finished_at` its date to
+  the second, kept when already finished), moves the place to the end when the
+  length is known and drops the offered place; `unfinish` clears the finish and
+  keeps the place (as `PATCH` does), and takes a finished row for its own device.
+  Both bump the version. A later listen never unfinishes a book: a device that never
+  saw the finish keeps playing without undoing it.
+- **Sessions.** A stored listen is folded into the token's session on the book at
+  its corrected times (`recordSpan`, the rules of [a save's](../data-model.md#listening-sessions-how-they-are-derived)): it extends
+  the session when it starts within 10 minutes of that session's last record (or
+  later with the position advanced by about the time that passed), otherwise it
+  opens one at its start. Listened time is the span's own wall time, capped by how
+  far it moved at its speed (`listenedBetween`), so a seek ahead is not listening.
+  Only a span ending within 60 s of now can be live or marked transcoded; an old
+  one never is. A player cuts a span every 15 s while it plays online, so live
+  sessions and Listening in the house work as with `PUT`. `finish` and `unfinish`
+  record no session.
+- **History.** A listen with at least 1 s listened extends the newest history row on
+  the book that ended up to 60 s before it began (2 s of overlap allowed) within 5 s
+  of where it starts, else it adds a row, so a run of 15 s spans is one row and
+  offline listening reaches history at the time it happened. A syncing player
+  posts no `POST .../history`.
+
+**The event log.** Stored events (migration `0061`, `listening_events`) are kept 120
+days (`catalog.PruneListeningEvents`, at startup and daily), while an event older
+than 90 days is refused, so a replay of a pruned id with a clock shift up to 30 days
+different still can't apply twice. The legacy `PUT` is logged there as a `put`
+event. See [the data model](../data-model.md#durable-per-user-state-path-keyed-no-fk-to-books).
 
 ### `GET /api/v1/libraries/{id}/bookmarks` · `POST /api/v1/libraries/{id}/bookmarks`
 
@@ -3602,6 +3834,9 @@ zero-length span); when neither does (or both are left out), both are the
 server's time now.
 
 Response: `201 Created`, empty body.
+
+A player on a server with [`listening_sync`](#post-apiv1melisteningsync) posts no
+spans here: the server writes history from its synced listening instead.
 
 ### `GET /api/v1/me/favourites`
 
@@ -7268,7 +7503,9 @@ All *Admin* (a non-admin gets `403`). Listening sessions, signed-in devices and
 an admin's edits of someone's progress: the API behind the admin console's
 Activity screens, People > Devices and the progress menus on a person's page
 and a book's page. Sessions are derived on the server from the
-progress saves players already make - see
+progress saves players already make, and on a server with `listening_sync` from
+the listening a player [syncs](#post-apiv1melisteningsync), at the time it
+happened (offline listening included) - see
 [Listening sessions](../data-model.md#listening-sessions-how-they-are-derived)
 for the rules (session gap and continuation, listened time, what isn't
 counted). A session with no listening recorded yet (a single save, such as a
@@ -7506,7 +7743,8 @@ Progress the person already has stays editable after their access is taken
 away, so an admin can still tidy it. The write is
 stamped with the server's time (to the sub-second) and a higher `version`, so it beats what a
 device saved before it under last-write-wins, while a device still playing the
-book overrides it on its next save.
+book overrides it on its next save. Like the listener's own edit, it clears the
+row's [`other_place`](#get-apiv1meprogress) and records when it changed `finished`.
 
 Response `200`: `{ "progress": { … } }` - the object of
 [`GET /admin/users/{id}/progress`](#get-apiv1adminusersidprogress).

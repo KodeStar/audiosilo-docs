@@ -533,7 +533,37 @@ tables were rebuilt rather than migrated in place):
   between); any future realtime layer must reuse that merge. Index `idx_progress_path` *(0016)* on
   `(library_id, rel_path)` serves the per-path lookups the primary key (which
   leads with `user_id`) can't: the admin book page's listeners and
-  `MoveDurableState`.
+  `MoveDurableState`. *(0061, listening sync)* `device_name` (the saving token's
+  name, `''` unknown), `finish_changed_at` (fixed-width UTC milliseconds: when
+  `finished` last changed, by any writer: a `PUT` at its `updated_at` capped at
+  now, an edit at now, an import's apply or undo, a sync `finish`/`unfinish` at its
+  corrected time, a move or join keeping the newer; a sync `finish` or `unfinish`
+  not newer than it is `older`) and the persisted offer `other_position`,
+  `other_device_id`, `other_device_name`, `other_at` and `other_version` (all
+  `NULL` = none; the place a diverged sync event did not keep, answered as
+  `other_place`, and the row's version when it was recorded: an applied event with
+  a `base_version` at or after it clears it). A move or join carries `device_name`
+  and `finish_changed_at` and drops the offer.
+- **`listening_events`** *(0061, listening sync)* - the listening-event log behind
+  [`POST /me/listening/sync`](api/reference.md#post-apiv1melisteningsync): every
+  synced `listen`, `finish` and `unfinish` that wasn't rejected, and every legacy
+  `PUT .../progress` (kind `put`, id `put-<16 hex>`). Columns: `user_id` and
+  `library_id` (FK CASCADE), `event_id` (the client's id; `UNIQUE (user_id,
+  event_id)`, so a replay is answered `duplicate` and counted once), `rel_path`
+  (the progress key: no FK to `books`), `kind`, `device_id`, `token_id` (no FK),
+  `from_pos` / `to_pos` (whole-book seconds after the file remap), `speed`,
+  `duration`, `started_at` / `ended_at` (the clock-corrected device times,
+  fixed-width UTC milliseconds; a finish, unfinish or put has both at its time),
+  `clock_shift` (the batch's correction, seconds), `start`, `base_version` (`NULL`
+  = not sent), `status`, `reason` and `received_at`. Progress, sessions and history
+  are derived from these events in the same transaction; the log itself is read
+  only by the sync (its dedupe). Rejected events are never stored. A move or join
+  re-keys a book's events with their positions shifted onto the new timeline
+  (`carryListeningState`). Indexes `idx_listening_events_path` on `(library_id,
+  rel_path)` (moves) and `idx_listening_events_ended` on `ended_at` (retention).
+  **Retention:** 120 days (`catalog.SyncRetention`, `PruneListeningEvents` from
+  `pkg/launcher.retention` at startup and daily, in batches of 5000), longer than
+  the 90 days a sync accepts, so a replay of a pruned id can't apply twice.
 - **`bookmarks`**, **`notes`** - id-PK rows keyed by
   `(user_id, library_id, rel_path)` plus `position` and text (a bookmark's
   `note`, at most `catalog.MaxBookmarkNote` characters; a note's `body`, at most
@@ -561,9 +591,14 @@ tables were rebuilt rather than migrated in place):
   time, neither is the server's now), so a span is never refused. Index `idx_history_user_path` *(0003)* on
   `(user_id, library_id, rel_path, started_at)` serves one book's history, and
   `idx_history_user_ended` *(0031)* on `(user_id, ended_at)` the paged
-  `GET /me/history` across books.
+  `GET /me/history` across books. On a server with `listening_sync` the server
+  also writes rows from synced listen spans (a span extends the book's newest row
+  that ended just before it, where it ended, else it adds one; see
+  [the sync](api/reference.md#how-a-batch-is-applied)), found by
+  `idx_history_user_path_ended` *(0061)* on `(user_id, library_id, rel_path,
+  ended_at)`; a syncing player posts none itself.
 - **`listening_sessions`** *(0018)* - one row per listening session, derived
-  on the server from progress saves (see
+  on the server from progress saves and synced listen spans (see
   [Listening sessions](#listening-sessions-how-they-are-derived)): `user_id`
   and `library_id` (FK CASCADE), `rel_path`, `token_id` (the device - **no FK**,
   a session outlives its token's sign-out, so `device_name` and `client_app` /
@@ -701,8 +736,26 @@ device and app and works for every client already shipped. The client-posted
 `listening_history` spans can't serve: they arrive only when playback stops,
 are dropped while the player is offline, and carry no device.
 
-- **Server time only.** Every time here is when the server received the save;
-  the save's own `updated_at` is not used (a device clock can be wrong).
+**Synced listen spans** (capability `listening_sync`). A player on such a server
+sends no `PUT` for its listening: it posts spans to
+[`POST /me/listening/sync`](api/reference.md#post-apiv1melisteningsync), and each
+stored `listen` is folded into the same sessions by `recordSpan`, which shares
+`RecordHeartbeat`'s insert and extend code with these differences: the times are
+the span's own, corrected by the batch's clock shift, not the server's (so
+offline listening lands when it happened, and a device with a wrong clock still
+lands at the true time); the session extended is the token's one on the book begun
+by the span's start with the latest last record (`latestSession`, not the newest
+id, since a span synced late opens a session dated in the past); a session opens at
+the span's start and `from_pos`; listened time is `listenedBetween` of the span's
+own wall time and how far it moved, so a seek ahead or an inflated span is not
+listening; and only a span ending within 60 s of now is live or can be marked
+transcoded. The player cuts its span every 15 s while it plays online, so the live
+list behaves as with saves. A span's recording is part of its batch's transaction,
+not best effort. Sync `finish` and `unfinish` events record no session.
+
+- **Server time only** (for a save). Every time here is when the server received
+  the save; the save's own `updated_at` is not used (a device clock can be wrong).
+  A synced span uses its corrected device times instead (above).
 - **Grouping.** A save extends the session the same token last saved on the
   same book when it comes within 10 minutes (`catalog.SessionGap`). After a
   longer gap it still continues the session if the position advanced by about
@@ -1363,6 +1416,7 @@ The migration history so far:
 | 0058 | `readalong` | `book_attachments.readalong` (`TEXT NOT NULL DEFAULT ''`, the checked head of a Bridge's `.audiosilo/readalong.json`, Phase 3c), `books.ebook_sha256` and `books.ebook_hashed_sig` (`TEXT NOT NULL DEFAULT ''`: the digest of the ebook of a book with a map and the `ebook_sig` it was computed for; only such books are hashed, since hashing every EPUB would read whole libraries over a network share), and `books.ebook_size` (`INTEGER NOT NULL DEFAULT 0`, server#228), filled from the leading size of each `ebook_sig`. A book with a map has a changed attachments signature (the name was unknown before), so the next scan reads it again, without re-indexing |
 | 0059 | `upcoming` | the [upcoming releases](#upcoming-releases) tables, all derived and path-keyed with no FK to `books` (cascaded with the library): `upcoming_owned` (index `idx_upcoming_owned_work`), `upcoming_series`, `meta_series`, `upcoming_items` (index `idx_upcoming_items_work`) and `upcoming_announced` |
 | 0060 | `feed_tokens` | `idx_tokens_feed_user`, a partial unique index on `tokens(user_id) WHERE kind = 'feed' AND revoked = 0`: at most one live [calendar feed token](auth-and-security.md#calendar-feed-tokens) per user. No column changes (`kind` is free text) |
+| 0061 | `listening_events` | listening sync (Sync v2, Track W1): the `listening_events` log (FK `users`/`libraries` `ON DELETE CASCADE`, no FK to `books`, unique `(user_id, event_id)`, indexes `idx_listening_events_path` and `idx_listening_events_ended`), `idx_history_user_path_ended` on `listening_history`, and the `progress` columns `device_name` (`TEXT NOT NULL DEFAULT ''`), `finish_changed_at`, `other_position`, `other_device_id`, `other_device_name`, `other_at` and `other_version` (all nullable, `NULL` on every existing row). No data moves (see [Durable per-user state](#durable-per-user-state-path-keyed-no-fk-to-books)) |
 
 ## SQLite choices
 

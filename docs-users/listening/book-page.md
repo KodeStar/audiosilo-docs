@@ -43,6 +43,8 @@ Beside it:
 
 If you're an admin and your server has a [Bridge](../admin/bridge.md) that can write characters and recaps, a book the community lacks characters or recaps for gets one more button, **Generate characters and recaps**, after the others (on a phone, on a row of its own). It opens a confirmation with what it will read and cost (while the book's chapters are still being [found in the narration](../admin/generating-characters-and-recaps.md#detect-chapters-without-characters-and-recaps), it says so and holds back: generate once that has finished, since it reuses the transcription; it does the same while the book's characters and recaps are being [shared with the community](../admin/bridge.md#share-with-the-community)); while the Bridge works on it, its progress shows under the buttons, with **Cancel**. For a book whose characters and recaps were generated on your server, **Regenerate characters and recaps** is in the **More** menu instead. When the community already has both, there's no button: a line under the buttons says "The community already has characters and recaps for this book", and **See characters** opens the book's **Characters** tab. See [Generating characters and recaps](../admin/generating-characters-and-recaps.md#which-books-offer-it).
 
+If you listened further somewhere else, or the server kept another device's place over this one, a line under the buttons offers it: *"On Sam's Watch: Chapter 12, 4:10 · Play from there"*. **Play from there** plays the book from that place; it isn't offered again. (On a recent server; see [Listening on more than one device](playback.md#listening-on-more-than-one-device).)
+
 In the web player, a book the browser can't play as it is says so under the buttons: *"AC-3 audio is converted to MP3 for this browser"* (see [Books a browser can't play directly](playback.md#books-a-browser-cant-play-directly)).
 
 Up next and collections need a recent server; on an older one those buttons simply don't appear.
@@ -99,7 +101,7 @@ A book with no chapter marks lists its files instead. If it's one long file, it 
 
 ### History
 
-Your listening sessions for the book, newest first: the day and the time you started, where you went (*"17:00:00 to 17:25:42 · Bridge Four"*), and how many minutes you listened. **Jump** takes you back to where a session ended (on a phone, in the full player). Sessions are split as in the [Journal's Diary](journal.md#the-diary), which has every book's, day by day.
+Your listening sessions for the book, newest first: the day and the time you started, where you went (*"17:00:00 to 17:25:42 · Bridge Four"*), and how many minutes you listened. Listening this device hasn't synced yet (you were offline) is there too, marked **Waiting to sync**, until the server has it. **Jump** takes you back to where a session ended (on a phone, in the full player). Sessions are split as in the [Journal's Diary](journal.md#the-diary), which has every book's, day by day.
 
 ### Details
 

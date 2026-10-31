@@ -65,6 +65,19 @@ If you signed in members of [your household](household.md) on that phone (a kid 
 
 The list appears on servers new enough to show it.
 
+## Listening sync
+
+On a recent server, the **Listening sync** card says whether what you listened to on this device has reached the server: **3 listens waiting to sync**, or *"Everything you listened to is on Home."*, and when this device last synced (*"Last synced 2 minutes ago"*). Listening waits here while you're offline and goes by itself when the server is reachable again; see [Listening on more than one device](playback.md#listening-on-more-than-one-device).
+
+If the server turns something down, it's listed under **Couldn't sync**, kept for 30 days: the book and what it was (*"The Way of Kings · 1:02:13 to 1:40:00"*, or *"Marked finished"*), and why:
+
+- *"This copy of the book is a different length from the server's."* The download is a different edition from the one on the server now.
+- *"It's more than 90 days old."*
+- *"You can't open this book on the server any more."* or *"The book isn't on the server any more."*
+- *"The server couldn't read it."*
+
+Your place on the server isn't affected by these. **Discard** removes one from the list.
+
 ## Personal API keys
 
 **Personal API keys** let dashboards, scripts and other tools reach your server on your behalf, such as a Home Assistant or Heimdall tile. See [API keys for integrations](api-keys.md) for creating, using and revoking them. On a server too old to offer them, the section says so; demo accounts don't have it.
@@ -76,6 +89,8 @@ The list appears on servers new enough to show it.
 If you're about to sign out **without a password set**, the app stops you with a warning - *"Without one you'll need a new invite from your admin to sign back in on this server"* - and offers to **Set a password** right there. Take the offer; it's the whole reason the warning exists. If books from this server are downloaded on the device, the warning also says how many you'd lose.
 
 For a member of someone's household, the warning names who can sign you in again instead: *"Without a password, Adam can sign you in again from their Household page."*, or for a kid's account, *"A kid's account has no password. Adam can sign it in again from their Household page."*, with no **Set a password** button, since a kid's account can't have one.
+
+If some of your listening hasn't reached the server yet, the app first tries to send it. If any is still waiting (you're offline, say), it asks: *"3 listens haven't synced to Home. Sign out anyway?"*, since signing out loses them. Cancel, and sign out once you're back online. **Removing a server** from [Settings](settings.md#accounts-and-devices) warns the same way (*"3 listens haven't synced to Home and will be lost."*).
 
 Signing out **takes this server out of your app** and deletes your downloads from it on this device, along with any of your progress that hasn't synced yet. Anyone else on this device signed in to the same server keeps theirs. (Books, progress, and bookmarks stored on the server are safe - sign back in and they're all there.)
 

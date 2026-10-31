@@ -364,6 +364,12 @@ rather than answered `503 discovery_busy` (the
 per-row results carry their own codes in a `200`. `HEAD` on the new GET routes
 is `405 method_not_allowed`.
 
+[Listening sync](reference.md#post-apiv1melisteningsync) adds `too_many_events`
+(`400`, a batch of more than 500 events); each event's `status` and `reason`
+(`older`, `resume_behind`, `invalid`, `unknown_kind`, `too_old`,
+`duration_mismatch`, `no_access`, `not_found`) ride in a `200`, never as the
+batch's error.
+
 **Branch on `code`, not on the English `error` text**, which is free to change.
 Errors without a `code` are ones a client can't help the person fix.
 
@@ -627,6 +633,12 @@ refused by the routes, not the flags):
 | `upcoming` | [upcoming releases](reference.md#upcoming-releases): [`GET /me/upcoming`](reference.md#get-apiv1meupcoming). It is `true` while community metadata is on **and** the upcoming releases job is switched on (`upcoming.enabled`, on by default; the console's Settings > Metadata), so it can change while the server runs; an older server omits it. The `release_date` on the `/meta` rails' works is additive and needs no flag |
 | `upcoming_calendar` | the [calendar feed](reference.md#the-calendar-feed) (Track U3): `GET`/`POST`/`DELETE /me/upcoming/calendar` and `GET /me/upcoming/releases.ics`. Exactly `upcoming` (`false`, never absent, while off) |
 | `upcoming_covers` | an upcoming release's cover from the server, [`GET /me/upcoming/cover`](reference.md#get-apiv1meupcomingcover) (Track U3). Exactly `upcoming`. Without it a client shows no cover for an item (the web player can't load the `cover_url` itself) |
+
+Track W1 adds one, always `true` on a server that has it:
+
+| Flag | Gates |
+|---|---|
+| `listening_sync` | listening sync (Sync v2): [`POST /me/listening/sync`](reference.md#post-apiv1melisteningsync), and `device_name` / `other_place` on every progress response. The player records listening as events only while it is `true`; unknown or `false`, it saves by `PUT .../progress` and `POST .../history` as before. A player that finds the route gone (`404`/`405`) after a rollback reads `/server` again and, without the flag, sends what waited as one legacy save per book |
 
 Then each [managed module](../modules.md) adds one flag, named after the module. A
 module ships off and an admin turns it on in the console's Settings > Modules, so the

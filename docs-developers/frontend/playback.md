@@ -656,9 +656,79 @@ anything this device's mirror knows for the book, is not finished, and is more t
 check was out wins (`localMoveCount`). The move is `seekBook` (so the resume floor and the
 undo chip see it), and a toast ("Picked up your place from another device") offers Undo.
 This module is the only place that reconciles a loaded book: never make `toggle()` look
-anything up.
+anything up. When the move is made, the row it moved to counts as seen: on a
+`listening_sync` server its version is acknowledged (`ackVersion`, below).
+
+### Offering another device's place (Sync v2)
+
+On a server with `listening_sync` the server never moves a place back silently: a span
+made without seeing the stored row is `diverged`, the further place is kept and the
+other is answered and kept on the row as `other_place`
+([the sync](../server/api/reference.md#post-apiv1melisteningsync)). The player **offers**
+such a place and never moves to it by itself. `offerOf(row, deviceId, ackVersion,
+enginePosition, answered)` (pure) finds it, in order:
+
+1. the kept row itself, when another device wrote it at a version above this device's
+   acknowledged one (`ack_version`), the book isn't finished, and it is more than
+   `MOVE_THRESHOLD_S` (30 s) from here;
+2. else the row's `other_place`, when it is another device's, more than 30 s from here,
+   and not answered yet (the mirror keeps the answered `device_id|updated_at` keys per
+   book, `answered`).
+
+`offerLoadedPlace` shows it for the loaded book as a toast, `On {device} you were at
+{place}. Jump there?` (`describePlace`: the chapter and the time into it; "another
+device" when the server has no name), with **Jump** (acknowledge the row, then
+`seekBook` there: the next span is a `jump`) and the close button labelled **Stay**
+(acknowledge, then `standByPlace`: the next span begins as a `jump`, so the server
+applies this device's place over the other). A timed-out toast answers nothing. It is
+checked on each sync answer for the loaded book (`onSyncAnswer`; never moving a playing
+book) and, where `placeToMoveTo` finds nothing to move to, on the foreground, reconnect
+and picked-up checks above. Each place is shown once per launch and a device's places
+at most once per book every 10 minutes (`OFFER_REPEAT_MS`: a device that plays on sends
+a new place with every span). On a server without the flag nothing is offered and the
+auto-move with Undo above stays as it was. The book page shows the same offer as a line
+(`ListeningOfferLine`, [Book page](book-page.md#the-primary-action-and-the-action-row)).
+
+### Listening spans (Sync v2)
+
+On a server with `listening_sync` (its cached `/server`, `usesListeningSync`) the place
+reaches the server as **listening events** instead of saves; the capture only keeps
+this device's mirror. A span runs from where playing began to where it ended, in
+whole-book seconds **and**, for each end, the playing track's audio file (from its
+track id) and the seconds into it (fe#188), with the audio's length (`queue.audio`,
+not the timeline's: the server fingerprints it), the speed, the device's times, why it
+began (`start`) and, read when it closes, the version this device has acknowledged for
+the book (`base_version`, `baseAtClose`: the higher of the one it opened with and the
+one now).
+
+- **Opens** when the engine starts playing. `start` says why: `resume` (the loaded or
+  resumed place), `jump` or `moved_back` (a seek, a chapter, a bookmark, Undo, an
+  offer's Jump or Stay, a lock-screen scrub), `restart` (starting again from 0;
+  a finished book first sends `unfinish`), `continue` (after a cut).
+- **Cut** (closed, and a `continue` span opened where it ended): each 15 s tick while
+  the server is reachable (`SAVE_INTERVAL_MS`, so live sessions work), a speed change,
+  the server coming back, the app going to the background (native) and the web page
+  going `hidden`.
+- **Closed** on a pause, a move (the new place opens the next span with the move's
+  reason; a move while paused is sent at once as a span that moved nowhere, as a save
+  would have been), a stop, a book switch, a sleep stop and the end of the book, which
+  then sends `finish` once (so does Mark finished). The web's `pagehide` closes it and
+  sends what waits with `keepalive`.
+- **Offline**, a tick only rewrites the open span in storage, so a day offline is a
+  handful of events and a kill loses at most one tick: the next launch closes the
+  stored span into the outbox (`recoverOpenSpan`).
+- The persist guards ([Resume protection](#resume-protection)) keep a suspicious place
+  out of a span too: the span then ends where it was last seen. A place that is not a
+  number (an engine reporting NaN) never goes in a span.
+
+The events go to the outbox and are sent from there:
+[Offline](offline.md#listening-sync-the-outbox). On this path the player posts no
+history spans (the server writes history from the listening) and saves no `PUT`.
 
 ### Progress autosave and sync triggers
+
+These are the saves of a server without `listening_sync` (a server with it gets
+[listening spans](#listening-spans-sync-v2) instead; the timer is the same).
 
 - A 15 s interval save loop (`SAVE_INTERVAL_MS`) runs **only while actually
   playing** - it is started by the engine's `playing` transition and stopped by
