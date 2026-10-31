@@ -126,13 +126,17 @@ year (`alive`, `c. 1500`) is never written, and `metacheck` refuses a
 A person's `id` is the one `model.PersonSlug` derives from their `name` (reserved
 names and the catch-all included), and `metacheck` refuses a record whose id is
 not, because the next import of that name would miss it and mint a second
-record. Two other forms are legal, both for a LibriVox reader, since the
-LibriVox import finds a reader by id before it reads a name:
+record. A LibriVox author who shares a name with a catalogued person is told
+apart by the years in the name itself ("James Grant (1822-1887)" is
+`james-grant-1822-1887`), so that id is an ordinary derived one. Two other
+forms are legal, both for a LibriVox reader, since the LibriVox import finds a
+reader by id before it reads a name:
 
 - `<name slug>-librivox-<reader id>` (`martina-librivox-634`,
-  `model.LibrivoxReaderSlug`) for a reader whose name another reader id already
-  holds. The name's part is shortened at a word boundary to keep the id within
-  100 characters; the reader id is always whole.
+  `model.LibrivoxReaderSlug`) for a reader whose name another reader id, or an
+  [author record](./contributing-data.md#librivox-the-public-domain-mirror),
+  already holds. The name's part is shortened at a word boundary to keep the id
+  within 100 characters; the reader id is always whole.
 - `librivox-reader-<reader id>` (`librivox-reader-11294`,
   `model.LibrivoxUnslugReaderSlug`) for a reader whose name slugs to nothing
   (Greek, Cyrillic, CJK), the name kept as written. It is legal only for such a
