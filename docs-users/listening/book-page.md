@@ -45,6 +45,8 @@ If you're an admin and your server has a [Bridge](../admin/bridge.md) that can w
 
 If you listened further somewhere else, or the server kept another device's place over this one, a line under the buttons offers it: *"On Sam's Watch: Chapter 12, 4:10 · Play from there"*. **Play from there** plays the book from that place; it isn't offered again. (On a recent server; see [Listening on more than one device](playback.md#listening-on-more-than-one-device).)
 
+![A book's page with the line On Pixel 8: Chapter 1, 4:09 and Play from there under its buttons](/img/screenshots/web-player/book-place-offer.png)
+
 In the web player, a book the browser can't play as it is says so under the buttons: *"AC-3 audio is converted to MP3 for this browser"* (see [Books a browser can't play directly](playback.md#books-a-browser-cant-play-directly)).
 
 Up next and collections need a recent server; on an older one those buttons simply don't appear.

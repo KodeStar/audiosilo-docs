@@ -5,7 +5,7 @@ description: "Each server's account page: setting or changing your password, pai
 
 Each server you're connected to has its own **account page**, covering your account on that one server: your password, your other devices, API keys, and signing out.
 
-![A server's account page on a computer: who you're signed in as, the Password and Pair another device cards, the signed-in devices and the API keys](/img/screenshots/web-player/account.png)
+![A server's account page on a computer: who you're signed in as, the Password and Pair another device cards, the signed-in devices, the Listening sync card and the API keys](/img/screenshots/web-player/account.png)
 
 ## Opening it
 
@@ -77,6 +77,8 @@ If the server turns something down, it's listed under **Couldn't sync**, kept fo
 - *"The server couldn't read it."*
 
 Your place on the server isn't affected by these. **Discard** removes one from the list.
+
+![The Listening sync card: everything is on the server, last synced now, and under Couldn't sync one listen of The Art of War turned down because the copy is a different length, with Discard](/img/screenshots/web-player/account-listening-sync.png)
 
 ## Personal API keys
 
