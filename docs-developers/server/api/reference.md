@@ -3252,9 +3252,7 @@ the server knows it from that device's sign-in (the saving token's name, never a
 request body's). `other_place` is a place a **diverged** sync event did not keep
 (another device's listening made without seeing this row):
 `{position (whole-book seconds), device_id, device_name, updated_at}`, kept on the
-row until a device that has seen it carries on from a version at or after it, a
-newer diverged event replaces it, a sync `finish`, an edit (`PATCH`, the listener's
-or an admin's) or a move or join of the book. A player offers it ("On Sam's Watch you
+row until it is cleared ([the offered place](#how-a-batch-is-applied)). A player offers it ("On Sam's Watch you
 were at 2:50:40. Jump there?"). A `PUT` never sets or clears either and ignores them
 in its body.
 
@@ -3561,15 +3559,9 @@ length and its files' offsets in their current order), all before the write.
   Both bump the version. A later listen never unfinishes a book: a device that never
   saw the finish keeps playing without undoing it.
 - **Sessions.** A stored listen is folded into the token's session on the book at
-  its corrected times (`recordSpan`, the rules of [a save's](../data-model.md#listening-sessions-how-they-are-derived)): it extends
-  the session when it starts within 10 minutes of that session's last record (or
-  later with the position advanced by about the time that passed), otherwise it
-  opens one at its start. Listened time is the span's own wall time, capped by how
-  far it moved at its speed (`listenedBetween`), so a seek ahead is not listening.
-  Only a span ending within 60 s of now can be live or marked transcoded; an old
-  one never is. A player cuts a span every 15 s while it plays online, so live
-  sessions and Listening in the house work as with `PUT`. `finish` and `unfinish`
-  record no session.
+  its corrected times (`recordSpan`, the rules in
+  [the data model](../data-model.md#listening-sessions-how-they-are-derived));
+  `finish` and `unfinish` record no session.
 - **History.** A listen with at least 1 s listened extends the newest history row on
   the book that ended up to 60 s before it began (2 s of overlap allowed) within 5 s
   of where it starts, else it adds a row, so a run of 15 s spans is one row and

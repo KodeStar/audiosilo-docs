@@ -1219,10 +1219,10 @@ status per event. The workspace's CROSS-REPO.md §25 is the full seam.
   `ack_version`, read when the span closes). The server resolves the place by
   [the conflict rule](../server/api/reference.md#the-conflict-rule-sync-v2): an
   event made without seeing the stored row is `diverged`, the further place is
-  kept and the other is offered. The player acknowledges a row when the server kept
-  its own event, when it resumes from a server row, when the place reconcile moves
-  it, and when the listener answers an offer. Changing when the player acknowledges
-  changes what the server keeps: both sides change together.
+  kept and the other is offered. When the player acknowledges a row is listed in
+  [the mirror's Sync v2 fields](../frontend/state-and-data.md#progress-sync-srcplaybackprogress-syncts).
+  Changing when the player acknowledges changes what the server keeps: both sides
+  change together.
 - **The backstop.** A `resume` or `continue` span ending more than 60 s before an
   unfinished stored place is `resume_behind`, so a cold start never pulls a book
   back; the player's `start` reasons (`moved_back`, `jump`, `restart` for a

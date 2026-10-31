@@ -1167,12 +1167,8 @@ if (wanted('web-player/book-place-offer.png')) {
       await librarySection(page, 'Books');
       await firstVisible(page.getByRole('button', {name: /Looking-Glass/})).click({timeout: 8000});
       await tid(page, 'book-page').waitFor({timeout: 15000});
-      await page.waitForLoadState('networkidle').catch(() => {});
-      const line = tid(page, 'listening-offer');
-      await line.waitFor({timeout: 15000});
-      await sleep(SETTLE_MS);
-      await page.mouse.move(0, 0);
-      await shoot(page, 'web-player/book-place-offer.png');
+      await tid(page, 'listening-offer').waitFor({timeout: 15000});
+      await settleShoot(page, 'web-player/book-place-offer.png', SETTLE_MS);
     } finally {
       if (restore) await restore().catch(() => {});
       if (pixel) await api(pixel, 'POST', '/auth/logout').catch(() => {});
@@ -2651,13 +2647,11 @@ await step('connect', async () => {
         },
         {key: 'audiosilo.listeningOutbox', entry: {connectionId: cid, event}},
       );
-      await page.reload({waitUntil: 'networkidle', timeout: 45000});
+      // 'load', not 'networkidle': the reload's own sync post is what the text wait gates on.
+      await page.reload({waitUntil: 'load', timeout: 45000});
       const card = tid(page, 'listening-sync-card');
       await card.getByText("Couldn't sync").waitFor({timeout: 20000});
-      await card.scrollIntoViewIfNeeded();
-      await sleep(SETTLE_MS);
-      await page.mouse.move(0, 0);
-      await shoot(page, 'web-player/account-listening-sync.png', {clip: around([await card.boundingBox()])});
+      await shootElement(page, card, 'web-player/account-listening-sync.png', 16);
     }
   } finally {
     // Sign the admin's player session out again, whatever happened above.
