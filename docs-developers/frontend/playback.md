@@ -719,8 +719,8 @@ one now).
   would have been), a stop, a book switch, a sleep stop and the end of the book, which
   then sends `finish` once (so does Mark finished). The web's `pagehide` closes it and
   sends what waits with `keepalive`.
-- **Offline**, the tick leaves the span open, so a day offline is a handful of
-  events. Online or offline the open span is stored every 5 s
+- **Offline**, the tick leaves the span open until it is an hour long
+  (`MAX_SPAN_MS`), so a day offline is a handful of events. Online or offline the open span is stored every 5 s
   (`OPEN_SPAN_KEEP_MS`) with the event id it took when it opened (`OpenSpan.id`,
   so a span closed twice is one event), so a kill loses at most 5 s: the next
   launch closes the stored span into the outbox (`recoverOpenSpan`). The keep

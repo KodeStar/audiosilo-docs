@@ -1269,7 +1269,8 @@ status per event. The workspace's CROSS-REPO.md §25 is the full seam.
   unknown too (an offline cold launch on a connection whose answer it never kept):
   the rollback covers an older server. Only `false` takes the `PUT` path.
 - **Batch size.** A body over 1 MiB is `413` code `too_large` (a `400` before W2);
-  the player halves its chunk on either.
+  the player halves its chunk on a `413` and resends one event at a time on a
+  `400`, so both reach it.
 
 **Server:** `internal/api/handlers_listening_sync.go`, `internal/catalog/listening_sync.go`
 (`SyncListening`), migration `0061` (`listening_events`, the progress columns),
