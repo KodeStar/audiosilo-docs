@@ -40,8 +40,8 @@ themselves.
   timeout as "server unreachable" while ignoring deliberate cancels. A fetch
   that gets no answer at all (no network, refused, DNS, TLS) throws
   `NetworkError`, a `TypeError` carrying the fetch's rejection as its `cause`,
-  on every platform: the app's fetch is Expo's, which rejects with a plain
-  `Error`, so before Track W2 an offline phone was never classed unreachable.
+  on every platform (the app's fetch is Expo's, which rejects with a plain
+  `Error`, so the wrapper is what lets an offline phone be classed unreachable).
 - **Client identification.** `request()` sends
   `X-AudioSilo-Client: AudioSilo/<APP_VERSION, or dev> (<Platform.OS>)` on every
   API call (`clientIdentity` in `src/lib/client-id.ts`), so the server records

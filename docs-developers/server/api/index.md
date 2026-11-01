@@ -655,7 +655,7 @@ Track W1 adds one, always `true` on a server that has it:
 
 | Flag | Gates |
 |---|---|
-| `listening_sync` | listening sync (Sync v2): [`POST /me/listening/sync`](reference.md#post-apiv1melisteningsync), and `device_name` / `other_place` on every progress response. The player records listening as events only while it is `true`; `false`, it saves by `PUT .../progress` and `POST .../history` as before. While the flag is unknown (an offline cold launch before the connection's server ever answered `/server`) it records events too; the player keeps each connection's last answer across launches, so this is rare. A player that finds the route gone (`404`/`405`) reads `/server` again and, without the flag, sends what waited as one legacy save per book |
+| `listening_sync` | listening sync (Sync v2): [`POST /me/listening/sync`](reference.md#post-apiv1melisteningsync), and `device_name` / `other_place` on every progress response. The player records listening as events only while it is `true`; `false`, it saves by `PUT .../progress` and `POST .../history` as before. While it is unknown the player records events too ([the outbox](../../frontend/offline.md#listening-sync-the-outbox)). A player that finds the route gone (`404`/`405`) reads `/server` again and, without the flag, sends what waited as one legacy save per book |
 
 Track W2 adds one that follows the server's setup:
 

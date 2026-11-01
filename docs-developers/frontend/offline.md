@@ -439,11 +439,10 @@ answered to a `/server` request, kept in the sync state (`listeningSync`) so an
 offline cold launch still knows it (Track W2; a copy seeded into the query cache
 says nothing), else the cached `/server`'s, else **unknown**, which records events
 too. An older server is covered by the rollback below (a `404` that a fresh
-`/server` confirms turns what waited into `PUT` saves), so nothing is lost; before
-W2 an unknown flag took the `PUT` path, which after an offline cold launch moved a
-place back by last-write-wins, could pick the wrong file after a reorder and wrote
-no history. Only `false` (or a rollback this launch) takes the `PUT` path. Three storage documents, all
-plain storage, scoped per connection, re-keyed by the identity migration and purged by
+`/server` confirms turns what waited into `PUT` saves), so nothing is lost. Only
+`false` (or a rollback this launch) takes the `PUT` path.
+
+Three storage documents, all plain storage, scoped per connection, re-keyed by the identity migration and purged by
 `onConnectionRemoved` (and wiped with the rest of the scoped cache on a cache reset):
 
 | Key | Holds |

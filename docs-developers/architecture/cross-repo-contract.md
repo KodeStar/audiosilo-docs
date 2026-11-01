@@ -406,10 +406,10 @@ upcoming releases in the caller's series) with `upcoming_calendar` and
 [calendar feed](../server/api/reference.md#the-calendar-feed) and
 [`/me/upcoming/cover`](../server/api/reference.md#get-apiv1meupcomingcover)),
 `listening_sync` (Track W1, always true; listening as events,
-[§19](#19-listening-sync-sync-v2)), `renditions` (Track W2: ffmpeg configured and a
-data directory, sent `false` otherwise; watch renditions, [seam 5](#5-transcode-negotiation-direct_playable-and-transcode1),
-with the kinds in a top-level `renditions` list beside `auth`, `["watch"]` or `[]`,
-so the flag stays a boolean), plus the
+[§19](#19-listening-sync-sync-v2)), `renditions` (Track W2, watch renditions,
+[seam 5](#5-transcode-negotiation-direct_playable-and-transcode1): true with ffmpeg
+and a data directory, else `false`; the kinds are a top-level `renditions` list),
+plus the
 server version
 (`api.Version`, stamped from the release tag via ldflags). `transcode` reflects
 ffmpeg availability; `web_player` reflects whether `/web` is populated; the
@@ -435,9 +435,8 @@ false or `/server` hasn't answered.
 
 **A change requires:** adding a capability is a two-repo change - flip the flag as
 the feature lands server-side, and gate the new UI on it client-side. Never assume
-a capability is present. (The one deliberate exception is `listening_sync` while it is
-unknown, [§19](#19-listening-sync-sync-v2): the player records events, and a `404`
-its server confirms turns them into `PUT` saves, so an older server loses nothing.) A module's flag is its id, mirrored in `Capabilities`
+a capability is present. (The one exception: `listening_sync` while unknown, see
+[§19](#19-listening-sync-sync-v2), The gate.) A module's flag is its id, mirrored in `Capabilities`
 (`types.ts`) like any other flag and named in the player's `ModuleFlag` too (see
 [Player modules](../frontend/state-and-data.md#player-modules-srcmodules)).
 
@@ -1285,8 +1284,7 @@ status per event. The workspace's CROSS-REPO.md §25 is the full seam.
 **Old clients and old servers:** a shipped player keeps `PUT` and `POST /history`,
 which behave exactly as before (the `PUT` is only logged, and its answer gains the
 two omitempty fields); a new player on an older server sees no flag and does the
-same (when it has never seen the server answer, it records events first and the
-confirmed `404` turns them into `PUT` saves).
+same (see The gate above).
 
 **A change requires:** a new event field or status changes both repos (the server
 decodes events strictly, so an unknown field is that event's `rejected` `invalid`:

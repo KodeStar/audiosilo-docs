@@ -728,7 +728,7 @@ one now).
   clock (`MAX_EVENT_SPAN_MS`), for timers that stood still while the app slept.
   Offline means the server is marked unreachable
   ([Reachability](state-and-data.md#reachability-srcapireachabilityts)), which on a
-  phone now follows the system's network.
+  phone follows the system's network.
 - The persist guards ([Resume protection](#resume-protection)) keep a suspicious place
   out of a span too: the span then ends where it was last seen. A place that is not a
   number (an engine reporting NaN) never goes in a span.

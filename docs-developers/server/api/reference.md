@@ -195,15 +195,11 @@ absent) otherwise; an older server omits them. See
 `listening_sync` (Track W1, always `true` on a server that has it) gates
 [listening sync](#post-apiv1melisteningsync).
 
-Track W2 adds `renditions`: `true` while ffmpeg is configured **and** the server
-has a data directory for its rendition cache, `false` (sent, not absent)
-otherwise, absent on an older server. It gates
-[watch renditions](#watch-renditions): `rendition=` on
+`renditions` (Track W2) gates [watch renditions](#watch-renditions): `rendition=` on
 [`/stream`](#get-apiv1librariesidstream) and the
-[renditions routes](#post-apiv1librariesidrenditions--get-apiv1librariesidrenditions).
-Which kinds the server makes is the top-level `renditions` list beside `auth`
-(`["watch"]`, `[]` while the flag is false); the flag stays a plain boolean
-because older clients read `capabilities` as a map of booleans.
+[renditions routes](#post-apiv1librariesidrenditions--get-apiv1librariesidrenditions),
+with the kinds in the top-level `renditions` list. When it is true is in
+[Capability flags](index.md#capability-flags---gate-your-features).
 
 `bridge` follows the Bridge rather than a setting, so it can change from one
 request to the next: it is `true` only while a [Bridge](#the-bridge) is paired and its last heartbeat is under two minutes
@@ -2905,6 +2901,16 @@ are transcoded after all. An `.mka` holding another codec (AAC, Opus, FLAC) is s
 as stored, `audio/x-matroska`. See
 [Remuxing Matroska](../media.md#remuxing-matroska-medianewremuxer).
 
+| Status | Meaning |
+|---|---|
+| `200` / `206` | file bytes (Range honored for direct serving, a remuxed `.mka` and a watch rendition) |
+| `400` | missing `path` / path escapes the root; `code: "bad_rendition"` for a `rendition` other than `watch`, or any rendition in a podcast library (the watch has no podcasts) |
+| `401` | missing/invalid token |
+| `403` | path outside the caller's scope |
+| `404` | file does not exist, or isn't audio; `code: "rendition_unavailable"` when the server has no ffmpeg or no data directory (`renditions` is `false`) |
+| `422` | `code: "rendition_failed"`: ffmpeg refused this file, or its copy came out more than 1 s short of the source; remembered for an hour (or until the file changes), then tried again |
+| `503` | `transcode=1` but ffmpeg is not configured (check the `transcode` capability), or every transcode slot is busy (`server busy transcoding; try again shortly`, with `Retry-After: 5`; also a cold `.mka` answered with the transcode); `the server is shutting down` for a remux or an encode cut short by shutdown; `code: "rendition_pending"` (`Retry-After: 15`) for a rendition still being made; `code: "rendition_error"` (`Retry-After: 60`) for an encode that failed for a reason that isn't the file's (low disk, a run cut short, the file changed while it was read, the encode queue full) |
+
 #### Watch renditions
 
 Track W2, capability `renditions`. With `rendition=watch` the answer is a small
@@ -2929,16 +2935,6 @@ directory (never into the library) and keeps it in a size-capped cache
   [`POST /renditions`](#post-apiv1librariesidrenditions--get-apiv1librariesidrenditions).
 - A rendition download is not listening: it opens no listening session and is not
   counted as a transcode.
-
-| Status | Meaning |
-|---|---|
-| `200` / `206` | file bytes (Range honored for direct serving, a remuxed `.mka` and a watch rendition) |
-| `400` | missing `path` / path escapes the root; `code: "bad_rendition"` for a `rendition` other than `watch`, or any rendition in a podcast library (the watch has no podcasts) |
-| `401` | missing/invalid token |
-| `403` | path outside the caller's scope |
-| `404` | file does not exist, or isn't audio; `code: "rendition_unavailable"` when the server has no ffmpeg or no data directory (`renditions` is `false`) |
-| `422` | `code: "rendition_failed"`: ffmpeg refused this file, or its copy came out more than 1 s short of the source; remembered for an hour (or until the file changes), then tried again |
-| `503` | `transcode=1` but ffmpeg is not configured (check the `transcode` capability), or every transcode slot is busy (`server busy transcoding; try again shortly`, with `Retry-After: 5`; also a cold `.mka` answered with the transcode); `the server is shutting down` for a remux or an encode cut short by shutdown; `code: "rendition_pending"` (`Retry-After: 15`) for a rendition still being made; `code: "rendition_error"` (`Retry-After: 60`) for an encode that failed for a reason that isn't the file's (low disk, a run cut short, the file changed while it was read, the encode queue full) |
 
 ### `POST /api/v1/libraries/{id}/renditions` · `GET /api/v1/libraries/{id}/renditions`
 
