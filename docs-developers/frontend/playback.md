@@ -681,7 +681,9 @@ device" when the server has no name), with **Jump** (acknowledge the row, then
 `seekBook` there: the next span is a `jump`, or `moved_back` when the place is
 behind) and the close button labelled **Stay**
 (acknowledge, then `standByPlace`: the next span begins as a `jump`, so the server
-applies this device's place over the other). A timed-out toast answers nothing. It is
+applies this device's place over the other). A timed-out toast acknowledges nothing;
+it only notes the place's key (`ignoreOffer`), so the same place is not offered again
+while this device's next spans still never move the other place back. It is
 checked on each sync answer for the loaded book (`onSyncAnswer`; never moving a playing
 book) and, where `placeToMoveTo` finds nothing to move to, on the foreground, reconnect
 and picked-up checks above. Each place is shown once per launch and a device's places
@@ -692,7 +694,9 @@ auto-move with Undo above stays as it was. The book page shows the same offer as
 
 ### Listening spans (Sync v2)
 
-On a server with `listening_sync` (its cached `/server`, `usesListeningSync`) the place
+On a server with `listening_sync` (`usesListeningSync`: the flag the connection's server
+last answered, kept across launches, else the cached `/server`'s; while it is unknown,
+events too, see [the outbox](offline.md#listening-sync-the-outbox)) the place
 reaches the server as **listening events** instead of saves; the capture only keeps
 this device's mirror. A span runs from where playing began to where it ended, in
 whole-book seconds **and**, for each end, the playing track's audio file (from its
@@ -715,9 +719,16 @@ one now).
   would have been), a stop, a book switch, a sleep stop and the end of the book, which
   then sends `finish` once (so does Mark finished). The web's `pagehide` closes it and
   sends what waits with `keepalive`.
-- **Offline**, a tick only rewrites the open span in storage, so a day offline is a
-  handful of events and a kill loses at most one tick: the next launch closes the
-  stored span into the outbox (`recoverOpenSpan`).
+- **Offline**, the tick leaves the span open, so a day offline is a handful of
+  events. Online or offline the open span is stored every 5 s
+  (`OPEN_SPAN_KEEP_MS`) with the event id it took when it opened (`OpenSpan.id`,
+  so a span closed twice is one event), so a kill loses at most 5 s: the next
+  launch closes the stored span into the outbox (`recoverOpenSpan`). The keep
+  never moves the span's end back. An event never claims more than 23 h of wall
+  clock (`MAX_EVENT_SPAN_MS`), for timers that stood still while the app slept.
+  Offline means the server is marked unreachable
+  ([Reachability](state-and-data.md#reachability-srcapireachabilityts)), which on a
+  phone now follows the system's network.
 - The persist guards ([Resume protection](#resume-protection)) keep a suspicious place
   out of a span too: the span then ends where it was last seen. A place that is not a
   number (an engine reporting NaN) never goes in a span.
@@ -773,7 +784,7 @@ server marks those books `direct_playable: false` and, when it has ffmpeg
 (capability `transcode`), streams them re-encoded to MP3 with
 `?transcode=1&t=<seconds>` ([cross-repo contract §5](../architecture/cross-repo-contract.md#5-transcode-negotiation-direct_playable-and-transcode1)).
 The exception is an `.mka` holding MP3 on a server with ffmpeg: the server
-[remuxes it](../server/media.md#remuxing-matroska-mediaremuxer) to MP3 at the
+[remuxes it](../server/media.md#remuxing-matroska-medianewremuxer) to MP3 at the
 same URL and reports `true`, so it plays like any MP3 (Range seeks, no `&t=`,
 browser download allowed).
 The web player negotiates that by itself; native engines never transcode (they rely

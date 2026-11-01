@@ -74,9 +74,12 @@ else and gate features on the flags.
     "readalong": true,
     "upcoming": true,
     "upcoming_calendar": true,
-    "upcoming_covers": true
+    "upcoming_covers": true,
+    "listening_sync": true,
+    "renditions": true
   },
   "auth": { "methods": ["auth_code", "password"] },
+  "renditions": ["watch"],
   "demo": { "enabled": false }
 }
 ```
@@ -188,6 +191,19 @@ is on **and** the upcoming releases job is switched on, and `false` (sent, not
 absent) otherwise; an older server omits them. See
 [Upcoming releases](#upcoming-releases) and
 [Capability flags](index.md#capability-flags---gate-your-features).
+
+`listening_sync` (Track W1, always `true` on a server that has it) gates
+[listening sync](#post-apiv1melisteningsync).
+
+Track W2 adds `renditions`: `true` while ffmpeg is configured **and** the server
+has a data directory for its rendition cache, `false` (sent, not absent)
+otherwise, absent on an older server. It gates
+[watch renditions](#watch-renditions): `rendition=` on
+[`/stream`](#get-apiv1librariesidstream) and the
+[renditions routes](#post-apiv1librariesidrenditions--get-apiv1librariesidrenditions).
+Which kinds the server makes is the top-level `renditions` list beside `auth`
+(`["watch"]`, `[]` while the flag is false); the flag stays a plain boolean
+because older clients read `capabilities` as a map of booleans.
 
 `bridge` follows the Bridge rather than a setting, so it can change from one
 request to the next: it is `true` only while a [Bridge](#the-bridge) is paired and its last heartbeat is under two minutes
@@ -2862,6 +2878,7 @@ path.
 | `transcode` | `1` | - | re-encode to MP3 via ffmpeg for codecs browsers can't decode |
 | `original` | `1` | - | an `.mka`: serve the stored Matroska bytes, never the remux (for API tools and backups) |
 | `t` | float | `0` | with `transcode=1`: start the transcode this many seconds in |
+| `rendition` | `watch` | - | serve the file's [watch rendition](#watch-renditions) instead, whatever else the query says (capability `renditions`); with `download=1` it is named `<stem>.m4a` |
 | `token` | string | - | session token (media-auth fallback), or a [cast token](#cast-tokens-as-media-auth) for this file's book |
 
 Direct serving (default) supports HTTP **Range** (`206 Partial Content`) and
@@ -2886,16 +2903,85 @@ up to 45 seconds (`remuxDownloadWait`), so a download saves the lossless copy
 rather than the transcode and a busy server doesn't answer `503`; past that they
 are transcoded after all. An `.mka` holding another codec (AAC, Opus, FLAC) is served
 as stored, `audio/x-matroska`. See
-[Remuxing Matroska](../media.md#remuxing-matroska-mediaremuxer).
+[Remuxing Matroska](../media.md#remuxing-matroska-medianewremuxer).
+
+#### Watch renditions
+
+Track W2, capability `renditions`. With `rendition=watch` the answer is a small
+copy of the audio file for a watch to download and keep: AAC-LC, mono, 48 kb/s,
+44.1 kHz, in MP4 (`.m4a`, the index first), about 430 MB for 20 hours. Its
+duration is the source file's, so whole-book positions, chapters and file places
+work on it unchanged. The server makes it once with ffmpeg into its data
+directory (never into the library) and keeps it in a size-capped cache
+([Watch renditions](../media.md#watch-renditions-medianewrenditioncache)).
+
+- **Auth** as the stream's: a session or API key header, `?token=`, or a cast
+  token for the file's book; the path is scope-checked as for any stream.
+- **Ready:** `200` / `206` with `Content-Type: audio/mp4`, `Accept-Ranges: bytes`,
+  Range and `If-Range`, a strong `ETag: "rw1-<key>-<size>"` and the copy's own
+  `Last-Modified`. The ETag names one encode, so a resumed download (`Range` with
+  `If-Range`) never splices bytes of two encodes; `Content-Disposition` only with
+  `download=1`.
+- **Not ready:** the request waits up to 45 seconds for the encode, then answers
+  `503` code `rendition_pending` with `Retry-After: 15` while the encode goes on in
+  the background. A rendition is never a live transcode (a watch couldn't resume
+  one). To prepare a whole book ahead, use
+  [`POST /renditions`](#post-apiv1librariesidrenditions--get-apiv1librariesidrenditions).
+- A rendition download is not listening: it opens no listening session and is not
+  counted as a transcode.
 
 | Status | Meaning |
 |---|---|
-| `200` / `206` | file bytes (Range honored for direct serving and a remuxed `.mka`) |
-| `400` | missing `path` / path escapes the root |
+| `200` / `206` | file bytes (Range honored for direct serving, a remuxed `.mka` and a watch rendition) |
+| `400` | missing `path` / path escapes the root; `code: "bad_rendition"` for a `rendition` other than `watch`, or any rendition in a podcast library (the watch has no podcasts) |
 | `401` | missing/invalid token |
 | `403` | path outside the caller's scope |
-| `404` | file does not exist |
-| `503` | `transcode=1` but ffmpeg is not configured (check the `transcode` capability), or every transcode slot is busy (`server busy transcoding; try again shortly`, with `Retry-After: 5`; also a cold `.mka` answered with the transcode); `the server is shutting down` for a remux cut short by shutdown |
+| `404` | file does not exist, or isn't audio; `code: "rendition_unavailable"` when the server has no ffmpeg or no data directory (`renditions` is `false`) |
+| `422` | `code: "rendition_failed"`: ffmpeg refused this file, or its copy came out more than 1 s short of the source; remembered for an hour (or until the file changes), then tried again |
+| `503` | `transcode=1` but ffmpeg is not configured (check the `transcode` capability), or every transcode slot is busy (`server busy transcoding; try again shortly`, with `Retry-After: 5`; also a cold `.mka` answered with the transcode); `the server is shutting down` for a remux or an encode cut short by shutdown; `code: "rendition_pending"` (`Retry-After: 15`) for a rendition still being made; `code: "rendition_error"` (`Retry-After: 60`) for an encode that failed for a reason that isn't the file's (low disk, a run cut short, the file changed while it was read, the encode queue full) |
+
+### `POST /api/v1/libraries/{id}/renditions` · `GET /api/v1/libraries/{id}/renditions`
+
+*Session or API key* (header only: no `?token=`). Capability `renditions`
+(Track W2). The [watch renditions](#watch-renditions) of a whole book: `POST`
+queues every audio file whose rendition is missing and answers `202`; `GET`
+queues nothing and answers `200`. A watch asks once, then downloads each file
+from [`/stream?rendition=watch`](#get-apiv1librariesidstream) as it turns
+`ready`.
+
+| | `POST` | `GET` |
+|---|---|---|
+| `path` (query) | the book's path (a part or file path names its book, as on [`/item`](#get-apiv1librariesiditem)) | the same |
+| kind | body `{"kind": "watch"}` | query `kind=watch` |
+
+```json
+{
+  "kind": "watch",
+  "files": [
+    { "path": "Author/Book/01.mp3", "state": "ready", "bytes": 21734912 },
+    { "path": "Author/Book/02.mp3", "state": "pending" },
+    { "path": "Author/Book/03.mp3", "state": "missing" }
+  ]
+}
+```
+
+`files` lists the book's audio files in play order (a single-file book is its
+one file), each `path` as `/stream` takes it, with its `state`:
+
+| `state` | Meaning |
+|---|---|
+| `ready` | the rendition is cached; `bytes` is its size (sent only for `ready`) |
+| `pending` | queued or encoding (one encode runs at a time across the server) |
+| `failed` | ffmpeg refused the file, or its copy came out short (the stream answers `422 rendition_failed`); tried again after an hour or once the file changes |
+| `missing` | not cached and not queued: always on a `GET` for a file never asked for; on a `POST` when the server's encode queue is full (at most 256 files wait or run across the server), so ask again later |
+
+| Status | Meaning |
+|---|---|
+| `200` / `202` | the answer above |
+| `400` | `invalid request` (a `POST` body that isn't JSON or has an unknown key); `code: "bad_rendition"` for a kind other than `watch` (a missing kind included), or a podcast library |
+| `401` | no token, or not a session or API key |
+| `403` | the path is outside the caller's access |
+| `404` | no book at that path; `code: "rendition_unavailable"` when the server has no ffmpeg or no data directory |
 
 ### `GET /api/v1/libraries/{id}/cover`
 
@@ -3393,7 +3479,8 @@ clears the row's `other_place` and, when it changes `finished`, records the
 change's time (now), so an older sync `finish` or `unfinish` can't undo it.
 
 Response `200`: `{ "progress": { … } }` - the player's progress object, with
-its dates.
+its dates and (from Track W2) the `device_name` of the device that saved the place,
+as the player's progress reads carry it.
 
 | Status | Meaning |
 |---|---|
@@ -3502,7 +3589,7 @@ fixed-width UTC milliseconds.
 | `status` | Meaning |
 |---|---|
 | `applied` | the place moved to the event's end, or a finish/unfinish set the state |
-| `duplicate` | the id is already stored for this user, or it came earlier in the same batch: nothing was done again |
+| `duplicate` | the id is already stored for this user, or an earlier copy in the same batch passed the checks: nothing was done again (a copy that was `rejected` doesn't count, so the next copy is checked on its own) |
 | `diverged` | the event was made without seeing the stored row (below); `kept` is `event` or `stored`, and `other_place` is the place **not** kept |
 | `not_applied` | stored, but the place didn't move; `reason` is `older` (an older write under last-write-wins, or a finish/unfinish not newer than the row's last finish-state change) or `resume_behind` (a `resume`/`continue` span behind the stored place, below; `other_place` is the event's place) |
 | `rejected` | not stored and changed nothing; `reason` is `invalid` (a field check failed, the event couldn't be decoded, or its path cleans to nothing), `unknown_kind`, `too_old` (it ended more than 90 days ago, after the clock correction), `duration_mismatch` (the device's `duration` is more than 10 s from the indexed book's), `no_access` (the path is outside the caller's access, a library they hold no grant on, or a podcast library their client doesn't see: what `PUT` answers with a `403`) or `not_found` (an unknown library to an admin, or a hidden path) |
@@ -3513,8 +3600,9 @@ even when its place didn't move (listening that happened always counts).
 
 | Status | Meaning |
 |---|---|
-| `400` | `invalid request` (not JSON, an unknown top-level field, a body over 1 MiB); `device_id is required`; `device_id is too long`; `send sent_at or clock_offset` (neither, both, an unparseable `sent_at`, or a `clock_offset` beyond `1e9` either way); `code: "too_many_events"` (more than 500 events) |
+| `400` | `invalid request` (not JSON, an unknown top-level field); `device_id is required`; `device_id is too long`; `send sent_at or clock_offset` (neither, both, an unparseable `sent_at`, or a `clock_offset` beyond `1e9` either way); `code: "too_many_events"` (more than 500 events) |
 | `401` | no token, or one that isn't a session or an API key |
+| `413` | `code: "too_large"`: the body is over 1 MiB (a `400` before Track W2); send fewer events per batch (the player halves its batch) |
 | `500` | `could not sync listening`: nothing of the batch is stored, so a retry applies it once |
 
 A bad **event** never fails the batch: each event is decoded on its own and
@@ -3527,7 +3615,9 @@ event can't block the rest of a device's backlog.
 The handler checks the envelope, then resolves each distinct `(library_id, path)`
 once, as `PUT` does (the scope check, then the progress path, then the indexed book's
 length and its files' offsets in their current order), all before the write.
-`catalog.SyncListening` then runs the whole batch in **one** writer transaction:
+`catalog.SyncListening` then runs the whole batch in **one** writer transaction (none
+when nothing is left to apply: an empty batch, or every event rejected or a
+duplicate):
 
 - **The clock.** The batch's shift is `received - sent_at` (or `clock_offset`), added
   to every time in it, so a device whose clock is hours out still lands its
@@ -3557,8 +3647,11 @@ length and its files' offsets in their current order), all before the write.
   from a place its device had seen (`base_version` > 0, another device's row since)
   is real listening elsewhere, so it is resolved instead (the further place kept,
   the span's offered). A listen writes the position, the length (when known), the
-  speed, the device, its `device_name`, `updated_at` (the corrected end) and
-  `version + 1`, and never touches `finished`.
+  speed, the device, its `device_name`, `updated_at` and `version + 1`, and never
+  touches `finished`. `updated_at` is the corrected end, or the row's own when that
+  is later: a diverged apply never moves the row's time back, so an older app's
+  `PUT` dated in between can't win last-write-wins against it (the device's later
+  spans in the same batch compare with their own span's end).
 - **The offered place.** On `diverged`, the place not kept is stored on the row as
   [`other_place`](#get-apiv1meprogress), unless it is the kept row's own device or
   within 30 s of the kept place, so a device that never saw this answer (the phone,

@@ -432,15 +432,31 @@ book that isn't downloaded.
 
 On a server with `listening_sync`, listening made offline is kept as events and sent
 when the server can be reached (`src/playback/listening-outbox.ts`; the spans themselves
-are in [Playback](playback.md#listening-spans-sync-v2)). Three storage documents, all
+are in [Playback](playback.md#listening-spans-sync-v2)).
+
+**Which path** (`usesListeningSync(cid)`): the flag the connection's server last
+answered to a `/server` request, kept in the sync state (`listeningSync`) so an
+offline cold launch still knows it (Track W2; a copy seeded into the query cache
+says nothing), else the cached `/server`'s, else **unknown**, which records events
+too. An older server is covered by the rollback below (a `404` that a fresh
+`/server` confirms turns what waited into `PUT` saves), so nothing is lost; before
+W2 an unknown flag took the `PUT` path, which after an offline cold launch moved a
+place back by last-write-wins, could pick the wrong file after a reorder and wrote
+no history. Only `false` (or a rollback this launch) takes the `PUT` path. Three storage documents, all
 plain storage, scoped per connection, re-keyed by the identity migration and purged by
 `onConnectionRemoved` (and wiped with the rest of the scoped cache on a cache reset):
 
 | Key | Holds |
 |---|---|
-| `audiosilo.listeningOutbox` | the closed events waiting for their server, each with its `connectionId`, append-only: an event never changes once it is here (its id and content are fixed once a send was tried). Read-modify-writes run in a serial queue and, on the web, under a Web Lock shared by every tab where the browser has one (`navigator.locks`, a secure context only); another tab's change follows by the `storage` event (`refreshOutboxFrom`) |
-| `audiosilo.listeningOpenSpan` | the one span being played, rewritten each offline tick, so a span a kill left open is closed at its last stored values on the next launch |
-| `audiosilo.listeningSync` | per connection: when it last synced (`lastSyncAt`) and the "couldn't sync" list (rejected events with their reason, kept 30 days, at most 100) |
+| `audiosilo.listeningOutbox` | the closed events waiting for their server, each with its `connectionId`, append-only: an event never changes once it is here (its id and content are fixed once a send was tried). Another tab's change follows by the `storage` event (`refreshOutboxFrom`) |
+| `audiosilo.listeningOpenSpan` | the spans being played, one per playing web tab, each with its `owner` and `keptAt` (a bare span is the pre-W2 form), stored every 5 s online or offline, so a span a kill left open is closed at its last stored values on the next launch (`recoverOpenSpan`). On the web another tab's span is left to it while it is live (kept within 30 s of now, `LIVE_SPAN_MS`; a tab on an older build, with no `owner`, while its end is under 45 s old); a tab whose span another tab took that way plays on under a new id from where the copy ended (`takenFrom` / `goingOnFrom`), so what it played since is not a `duplicate` |
+| `audiosilo.listeningSync` | per connection: when it last synced (`lastSyncAt`), the "couldn't sync" list (rejected events with their reason, kept 30 days, at most 100), the server's clock skew from the answers' `server_time` (`clockSkewMs`) and the last `listening_sync` answer (`listeningSync`) |
+
+The three documents' read-modify-writes run in a serial queue and under `tabLock`
+(`src/lib/tab-lock.ts`): a Web Lock shared by every tab where the browser has one
+(`navigator.locks`, a secure context only), else, on a plain-http address, a
+`localStorage` lease (fe#208), so two tabs can't lose each other's events; on the web
+each re-reads storage inside the lock.
 
 **Sending** (`flushOutbox`): one flush in flight per connection (a call while one runs
 makes it go round once more), chunks of 200 events, `sent_at` set at each attempt, on
@@ -457,8 +473,11 @@ headless task). Per answer:
   place reconcile is told of the rows (`onSyncAnswer`) to offer another device's place;
 - a network error, `401`, `403` or `5xx` keeps everything for the next trigger (a network
   error notes the failure for reachability); a `413` or `too_many_events` halves the
-  chunk (a chunk of one moves to the list as `invalid`); any other `400` sends that chunk's events one by one once, and one refused alone
+  chunk (one event alone still `413` moves to the list as `too_large`); any other `400` sends that chunk's events one by one once, and one refused alone
   moves to the list as `invalid`;
+- an event older than 89 days is not sent but moved to the list as `too_old` (the
+  server refuses 90), so an event that never gets an answer can't hold its book
+  "pending" forever;
 - a `404`/`405` is a **rollback** only when the server's own `/server` answers without
   `listening_sync` (anything else at the address keeps the outbox): the connection is
   marked rolled back for the launch, the outbox becomes one legacy `PUT` per book
@@ -467,11 +486,12 @@ headless task). Per answer:
   on.
 
 The web's `pagehide` sends what waits (oldest first, up to about 60 KB, `fitKeepalive`)
-with `keepalive`; an answer that still arrives is applied, and anything unanswered stays
+with `keepalive`, the span closes still queued behind a lock included (a lease's timer
+never fires on a page that is going); an answer that still arrives is applied, and anything unanswered stays
 (a resend is a `duplicate`).
 
-**What the listener sees.** `pendingSaves` counts the outbox's events plus the open span
-while its server can't be reached: Home's pill reads "N listens waiting to sync"
+**What the listener sees.** `pendingSaves` counts the outbox's listen events (not a
+finish or unfinish) plus the open span while its server can't be reached: Home's pill reads "N listens waiting to sync"
 (`syncPill`; the last sync answer counts as "synced" when it is the newest), the
 account page's Listening sync card (`useListeningSync`, [Account](you-and-settings.md#account-srccomponentsaccount))
 shows the count, the last sync and the couldn't-sync list with Discard, and a book's
@@ -479,14 +499,19 @@ history merges this device's unsent listens as sessions marked "Waiting to sync"
 (`usePendingListens`) until the server's rows replace them. **Sign-out, removing a server
 and removing a person** from the device first send what they can (`unsentListens`, when
 the server is reachable), then confirm when listens are still unsent ("3 listens haven't
-synced to Home. Sign out anyway?"): signing out purges them. A confirm, not a block.
+synced to Home. Sign out anyway?"; the count here is every waiting event, a finish
+too): signing out purges them. A confirm, not a block.
 
 **Resume by file (fe#188).** The mirror's records carry the playing file and the
 seconds into it (`file`, `file_pos`), so a resume of this device's own place
 (`loadInitialProgress`) plays that file from that place when the queue holds it, even
 when the place was saved on a download's older file order; the server does the same
 with a span's file places. This holds on any server for the local resume; the server's
-remap needs `listening_sync`.
+remap needs `listening_sync`. A file place is used only when it is not older than the
+record it is for, with 5 s of slack widened by how far the connection's server clock is
+known to be ahead (`holdsFilePlace`, the stored `clockSkewMs`), so a device whose clock
+runs slow keeps its file place and a mirror that lost writes never resumes at a stale
+file.
 
 ## The offline companion (`offline-meta.ts`)
 

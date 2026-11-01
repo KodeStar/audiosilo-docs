@@ -37,7 +37,11 @@ themselves.
   (default 15 s, enforced with an internal `AbortController`) throws
   `TimeoutError` - deliberately distinct from the `AbortError` a
   caller-supplied signal raises, so the reachability layer can classify a
-  timeout as "server unreachable" while ignoring deliberate cancels.
+  timeout as "server unreachable" while ignoring deliberate cancels. A fetch
+  that gets no answer at all (no network, refused, DNS, TLS) throws
+  `NetworkError`, a `TypeError` carrying the fetch's rejection as its `cause`,
+  on every platform: the app's fetch is Expo's, which rejects with a plain
+  `Error`, so before Track W2 an offline phone was never classed unreachable.
 - **Client identification.** `request()` sends
   `X-AudioSilo-Client: AudioSilo/<APP_VERSION, or dev> (<Platform.OS>)` on every
   API call (`clientIdentity` in `src/lib/client-id.ts`), so the server records
@@ -1378,7 +1382,8 @@ hammering a dead endpoint:
   the progress saves (`saveProgress`, `flushGroup`, which keep the save queued)
   and the listening span (`endHistory`). It
   only asks for a check (`checkReachability`), and only for no answer
-  (`isUnreachableError`: a `TimeoutError`, or a fetch's own `TypeError`) on a
+  (`isUnreachableError`: a `TimeoutError`, or a `TypeError`: the client's
+  `NetworkError`, or a browser's "Failed to fetch") on a
   connection not already marked down. A capability gate or a cancel says
   nothing. So one slow or broken read never marks a healthy server down, and a
   read answered from a local copy never marks a dead one up (2.4.1,
@@ -1399,7 +1404,9 @@ hammering a dead endpoint:
   moved to another address while it waited, or (for no answer) another request
   was answered meanwhile. `recheckReachability` runs it once more after a check
   already in flight, so a Retry that got through is not lost to a stale check.
-  The probe loop uses it too.
+  The probe loop uses it too. A check whose connection moved to another
+  address while it waited (the address runner left home as the network went)
+  asks the new address at once.
 - While offline, a 20 s probe loop runs `checkReachability` on each offline connection
   (through the client map `ApiProvider` registers via `setReachabilityClients`) until
   it answers.
@@ -1409,6 +1416,15 @@ hammering a dead endpoint:
 - On web only, the browser's `online`/`offline` events short-circuit the loop
   (an `online` event triggers an immediate probe - the NIC being up doesn't
   prove the *server* is).
+- On native (Track W2), `deviceNetworkChanged` follows the system's network
+  state (`expo-network`), acting only on a change of connected, type or
+  internet-reachable (Android repeats capability changes in bursts). Losing the
+  network checks every connection still marked up at once, so it is marked
+  down now and the playing span is kept on the device rather than cut into
+  sends that can't leave it. Getting it back asks every connection marked down
+  at once and again `REJOIN_RETRY_MS` (4 s) later, so the outbox and the
+  progress queue (`onReconnect`) go as soon as the server answers, even with
+  the app idle in the foreground.
 - `onReconnect(cb)` is the hook everything else builds on: the progress queue
   flush and the global query invalidation both register here. The offline
   banner (`src/components/layout/offline-banner.tsx`) reads the store

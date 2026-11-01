@@ -352,6 +352,15 @@ folder is safe to delete and needs no backup. Opening a book in the player
 starts its copies in the background, so they are usually ready by the time
 someone presses play.
 
+ffmpeg also makes the small copies a watch downloads to play a book away from
+your phone (for the planned AudioSilo watch app): one compact copy of each audio
+file (about 430 MB for a 20-hour book). They are made only when a watch asks for a book,
+kept in the data folder under `cache/renditions/watch`, and never written into
+your books folder. That folder holds at most 10 GiB: past that, the copies used
+longest ago are removed (and made again if a watch asks again). The same 1 GiB
+free-disk rule applies. The folder is safe to delete and needs no backup.
+Without ffmpeg the server offers no watch copies.
+
 Nothing here can be changed in the console. The server finds the two tools
 when it starts: next to its own program, on the system's PATH, or downloaded
 into the data folder. To use other copies, start it with the `--ffmpeg` and
