@@ -108,8 +108,8 @@ as "Chapter 10" is kept as written. A book that is one long chapter shows no cha
 
 - **Device** - the name the device gave when it signed in.
 - **App** - the app and its version, for example "AudioSilo 1.4.2 · iOS". A
-  watch (the AudioSilo watch app is planned) reads **Apple Watch** or
-  **Wear OS**, with a watch icon.
+  watch (the AudioSilo watch app is planned) shows **Apple Watch** or
+  **Wear OS** as its platform, with a watch icon.
 - **Playback** - **Direct** or **Transcode**, with the audio format.
 - **Address** - the network address the device last connected from.
 - **Started** - when this session began.

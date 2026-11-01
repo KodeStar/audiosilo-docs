@@ -2968,7 +2968,7 @@ one file), each `path` as `/stream` takes it, with its `state`:
 |---|---|
 | `ready` | the rendition is cached; `bytes` is its size (sent only for `ready`) |
 | `pending` | queued or encoding (one encode runs at a time across the server) |
-| `failed` | ffmpeg refused the file, or its copy came out short (the stream answers `422 rendition_failed`); tried again after an hour or once the file changes |
+| `failed` | ffmpeg refused the file, or its copy came out short or with no audio track (the stream answers `422 rendition_failed`), tried again after an hour or once the file changes; also no regular file at that path (gone, a folder: the stream answers `404`) |
 | `missing` | not cached and not queued: always on a `GET` for a file never asked for; on a `POST` when the server's encode queue is full (at most 256 files wait or run across the server), so ask again later |
 
 | Status | Meaning |
@@ -3613,7 +3613,8 @@ once, as `PUT` does (the scope check, then the progress path, then the indexed b
 length and its files' offsets in their current order), all before the write.
 `catalog.SyncListening` then runs the whole batch in **one** writer transaction (none
 when nothing is left to apply: an empty batch, or every event rejected or a
-duplicate):
+repeat of an earlier copy in the same batch; a replay of ids already stored still
+opens one):
 
 - **The clock.** The batch's shift is `received - sent_at` (or `clock_offset`), added
   to every time in it, so a device whose clock is hours out still lands its
@@ -3645,7 +3646,7 @@ duplicate):
   the span's offered). A listen writes the position, the length (when known), the
   speed, the device, its `device_name`, `updated_at` and `version + 1`, and never
   touches `finished`. `updated_at` is the corrected end, or the row's own when that
-  is later: a diverged apply never moves the row's time back, so an older app's
+  is later: an apply never moves the row's time back (a diverged one included), so an older app's
   `PUT` dated in between can't win last-write-wins against it (the device's later
   spans in the same batch compare with their own span's end).
 - **The offered place.** On `diverged`, the place not kept is stored on the row as
@@ -7876,7 +7877,8 @@ book overrides it on its next save. Like the listener's own edit, it clears the
 row's [`other_place`](#get-apiv1meprogress) and records when it changed `finished`.
 
 Response `200`: `{ "progress": { … } }` - the object of
-[`GET /admin/users/{id}/progress`](#get-apiv1adminusersidprogress).
+[`GET /admin/users/{id}/progress`](#get-apiv1adminusersidprogress), plus (from
+Track W2) the `device_name` of the device that saved the place, when known.
 
 | Status | Meaning |
 |---|---|

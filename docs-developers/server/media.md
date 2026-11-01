@@ -617,8 +617,9 @@ that changes while it is read is never cached under the old key. A refusal
 for an hour or until the file changes. A failed run's log carries the first and
 last 2 KiB of ffmpeg's output. Without ffmpeg (`--ffmpeg ""`) or without a data
 directory the cache is off: the `renditions` flag is `false`, the top-level
-`renditions` list is `[]`, and every rendition request answers
-`404 rendition_unavailable`.
+`renditions` list is `[]`, and a `watch` rendition request outside a podcast
+library answers `404 rendition_unavailable` (the kind and podcast checks come
+first, so those still answer `400 bad_rendition`).
 
 **Serving** (`serveRendition`, `api/handlers_renditions.go`). `handleStream` checks
 `rendition=` straight after the scope check, before the podcast and remux

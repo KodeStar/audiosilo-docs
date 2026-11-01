@@ -230,7 +230,7 @@ Who sends it:
   server bakes in (`AudioSilo/2.2.0 (web)` from Phase 2d-1). A development
   build opts in cross-origin with `EXPO_PUBLIC_IDENTIFY_CROSS_ORIGIN=1`.
 - **The admin console** - always (it is same-origin).
-- **A watch app** (Track W) sends `audiosilo-watch/<version> (watchos)` or
+- **A watch app** (Track W, planned) sends `audiosilo-watch/<version> (watchos)` or
   `(wearos)`. It parses like any other client; the console's devices, sessions
   and Activity name it "Apple Watch" or "Wear OS" with a watch icon, and the
   player's My devices names it the same way.
@@ -655,7 +655,7 @@ Track W1 adds one, always `true` on a server that has it:
 
 | Flag | Gates |
 |---|---|
-| `listening_sync` | listening sync (Sync v2): [`POST /me/listening/sync`](reference.md#post-apiv1melisteningsync), and `device_name` / `other_place` on every progress response. The player records listening as events only while it is `true`; `false`, it saves by `PUT .../progress` and `POST .../history` as before. While it is unknown the player records events too ([the outbox](../../frontend/offline.md#listening-sync-the-outbox)). A player that finds the route gone (`404`/`405`) reads `/server` again and, without the flag, sends what waited as one legacy save per book |
+| `listening_sync` | listening sync (Sync v2): [`POST /me/listening/sync`](reference.md#post-apiv1melisteningsync), and `device_name` / `other_place` on every progress response. The player records listening as events unless it is `false` (unknown counts as `true`, [the outbox](../../frontend/offline.md#listening-sync-the-outbox)); `false`, it saves by `PUT .../progress` and `POST .../history` as before. A player that finds the route gone (`404`/`405`) reads `/server` again and, without the flag, sends what waited as one legacy save per book |
 
 Track W2 adds one that follows the server's setup:
 

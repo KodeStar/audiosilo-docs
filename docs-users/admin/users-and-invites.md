@@ -335,7 +335,7 @@ player or this console, and each personal API key. For each one:
   a **This device** badge on the one you're using;
 - the app and its version ("AudioSilo 1.4.2 · iOS", "Admin console", "Personal
   API key", or "Unknown app" for an app from before apps named themselves; a
-  watch reads **Apple Watch** or **Wear OS** with a watch icon, for the planned
+  watch shows **Apple Watch** or **Wear OS** as its platform, with a watch icon, for the planned
   AudioSilo watch app),
   when it was last seen (or "never used") and the network address it last
   connected from;
