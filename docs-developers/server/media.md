@@ -1,6 +1,6 @@
 ---
 title: Media pipeline
-description: "How audio bytes reach the client: Range streaming, byte-sniffed Content-Type, covers, transcoding, and the normalized chapter model."
+description: "How audio bytes reach the client: Range streaming, byte-sniffed Content-Type, covers, transcoding, the remux and watch rendition caches, and the normalized chapter model."
 ---
 
 Everything that turns a `(library_id, rel_path)` into bytes a player can render
@@ -18,7 +18,8 @@ for the request/response shapes see the [API reference](api/reference.md).
 
 | Route | Handler | Purpose |
 |---|---|---|
-| `GET /api/v1/libraries/{id}/stream?path=` | `handleStream` | Serve one audio **file** (Range streaming), force a download with `?download=1`, or transcode with `?transcode=1&t=`; an MP3-in-Matroska `.mka` is served as its cached [remux to MP3](#remuxing-matroska-mediaremuxer) unless `?original=1` |
+| `GET /api/v1/libraries/{id}/stream?path=` | `handleStream` | Serve one audio **file** (Range streaming), force a download with `?download=1`, or transcode with `?transcode=1&t=`; an MP3-in-Matroska `.mka` is served as its cached [remux to MP3](#remuxing-matroska-medianewremuxer) unless `?original=1`; `?rendition=watch` serves the file's cached [watch rendition](#watch-renditions-medianewrenditioncache) |
+| `POST`/`GET /api/v1/libraries/{id}/renditions?path=` | `handlePrepareRenditions` / `handleRenditionStatus` | Queue / report the watch renditions of every audio file of a book |
 | `GET /api/v1/libraries/{id}/cover?path=` | `handleCover` | Serve a book's cover (custom cover, else sidecar image, else embedded art); with `?size=96\|160\|320\|640` a JPEG thumbnail of it (`handleCoverThumbnail`; `96` from 2.5.1) |
 | `POST /api/v1/admin/covers` | `handleAdminCovers` | Admin only: JPEG thumbnails of many books' covers as `data:` URLs, for the admin console |
 | `GET /api/v1/libraries/{id}/chapters?path=` | `handleChapters` | The normalized playable-units envelope `{chapters, files, duration, …}`; warms the book's remuxes |
@@ -75,7 +76,7 @@ players - iOS `AVPlayer` in particular - then refuse the stream outright
    | `0xFF` with `b[1] & 0xF6 == 0xF0` | `audio/aac` | Raw ADTS AAC (e.g. per-chapter `.aac` files). Checked **before** the MP3 case because the ADTS sync word also matches the MPEG mask |
    | `0xFF` with `b[1] & 0xE0 == 0xE0` | `audio/mpeg` | Bare MPEG audio frame sync (untagged MP3) |
    | `ftyp` at offset 4 | `audio/mp4` | ISO base media: `.m4a`/`.m4b`/`.mp4`, AAC or ALAC inside |
-   | `1A 45 DF A3` | `audio/x-matroska` | EBML header: Matroska audio (`.mka`), MP3 or another codec inside (2.4.0). Only the stored bytes are served with it: an MP3-in-Matroska file goes out as its [remux](#remuxing-matroska-mediaremuxer), `audio/mpeg`, while ffmpeg is configured |
+   | `1A 45 DF A3` | `audio/x-matroska` | EBML header: Matroska audio (`.mka`), MP3 or another codec inside (2.4.0). Only the stored bytes are served with it: an MP3-in-Matroska file goes out as its [remux](#remuxing-matroska-medianewremuxer), `audio/mpeg`, while ffmpeg is configured |
 
 2. **`audioContentType`** falls back to the extension when the sniff comes up
    empty: `.m4b`/`.m4a`/`.aax`/`.mp4` → `audio/mp4`, `.mp3` → `audio/mpeg`,
@@ -106,7 +107,7 @@ chapters read by ffprobe. No browser and no iOS player opens the container, so
 how it plays depends on what is inside and on ffmpeg:
 
 - **MP3 inside, ffmpeg configured**: the stream URL serves a lossless copy of
-  it as plain MP3 ([Remuxing Matroska](#remuxing-matroska-mediaremuxer),
+  it as plain MP3 ([Remuxing Matroska](#remuxing-matroska-medianewremuxer),
   server#174), so every client streams it, old native builds included, and
   `/item` and `/chapters` say `direct_playable: true`.
 - **Another codec inside** (AAC, Opus, FLAC), or **no ffmpeg**: the stored
@@ -339,7 +340,7 @@ whatever the codec inside; for a folder book every file's container counts, not
 only the first file's (`Book.PlaysInBrowsers`, part of what `/item` and
 `/chapters` say, below, and `directPlayableExpr`, built from
 `DirectPlayableSQL`, for the admin console, which stays
-[as stored](#remuxing-matroska-mediaremuxer)). Otherwise
+[as stored](#remuxing-matroska-medianewremuxer)). Otherwise
 the codec is checked against this allow-list (`browserCodecs`):
 
 ```
@@ -426,10 +427,12 @@ whose remux can't be had right now (below).
 flowchart TD
     A["GET /libraries/{id}/stream?path=…"] --> B["requireBookMediaAuth<br/>(header, or ?token= session or cast token)"]
     B --> C["authorizedPath: scope check<br/>library.SafeJoin: path safety"]
-    C --> D{"transcode=1?"}
+    C --> W{"rendition=?"}
+    W -- "yes" --> WR["serveRendition<br/>the cached AAC copy, Range, own ETag<br/>(503 rendition_pending after 45 s)"]
+    W -- "no" --> D{"transcode=1?"}
     D -- "no" --> R{".mka, remux on,<br/>no original=1?"}
     R -- "no" --> E["media.ServeFile<br/>Range + sniffed Content-Type<br/>(?download=1 → attachment)"]
-    R -- "yes" --> M{"Remuxer.Open<br/>(waits up to 2 s)"}
+    R -- "yes" --> M{"FileCache.Open (remux)<br/>(waits up to 2 s)"}
     M -- "cached copy" --> N["the remuxed MP3<br/>Range, own ETag"]
     M -- "not MP3 inside" --> E
     M -- "still running, low disk,<br/>ffmpeg failure" --> H
@@ -438,7 +441,16 @@ flowchart TD
     F -- "yes" --> H["media.Transcode<br/>ffmpeg → MP3 pipe, -ss from ?t=<br/>not byte-seekable"]
 ```
 
-## Remuxing Matroska: `media.Remuxer`
+## Remuxing Matroska: `media.NewRemuxer`
+
+The remux and the [watch rendition](#watch-renditions-medianewrenditioncache) are two
+caches of the same type, `media.FileCache` (`filecache.go`): copies ffmpeg makes
+of a library file into the data directory, described by a `cacheSpec` (the
+directory, extension, ffmpeg arguments, size cap, how many run at once, the
+timeout, the ETag and an optional check of the finished copy). Both share the
+LRU, single-flight, `.part` + rename, disk guard and refusal memory described
+below; `Open` waits for a copy, `Status` and `Queue` report or start one, and
+`WarmAll` warms a book's. `NewRemuxer` (`remux.go`) is the remux's spec.
 
 An `.mka` holding MP3 (server#174) is served at the **same stream URL** as a
 lossless copy of its audio into a plain MP3 file, so every client plays it with
@@ -477,9 +489,11 @@ ffmpeg -nostdin -loglevel error -xerror -protocol_whitelist fd -f matroska -i fd
 - `-xerror` fails the run on a read error rather than leaving a short copy.
 - **Is it MP3?** is decided by trying: ffmpeg's mp3 muxer refuses anything but
   exactly one MP3 audio stream, which also covers folder parts whose codec the
-  index doesn't hold. That refusal is `ErrNotRemuxable`, remembered in memory
-  per cache key (up to 1,024; a changed file is a new key, so it is tried
-  again) and answered with the stored bytes. An exit after ffmpeg wrote output (killed partway, a
+  index doesn't hold. That refusal is `ErrRefused`, remembered in memory per
+  cache key for an hour (`cacheRefusalTTL`, up to 1,024 keys: what looks like
+  the file's fault may be the environment's, an I/O error at open or an ffmpeg
+  missing an encoder; a changed file is a new key, tried again at once) and
+  answered with the stored bytes. An exit after ffmpeg wrote output (killed partway, a
   full disk, a read error) is not a refusal.
 
 **The cache.** `<data>/cache/remux/` (`0700`, made again if it went), one file
@@ -491,17 +505,19 @@ swept at start. It is an LRU by file mtime, which a hit bumps at most once every
 10 minutes (a player's run of Range requests is one use). After each new remux,
 and at start, the oldest copies are removed while the total is over **8 GiB**;
 the new copy is kept even when it alone is bigger. A remux is skipped
-(`ErrRemuxUnavailable`) when the disk would be left with under **1 GiB** free
-after it and the other remux still writing (`internal/diskspace`), with one
-warning per low-disk spell.
+(`ErrUnavailable`) when the disk would be left with under **1 GiB** free
+after it and the other runs still writing (`internal/diskspace`), with one
+warning per low-disk spell. Both caches live under `<data>/cache`, so they share
+one reservation (`FileCache.ShareDiskGuard`): a remux and a rendition encode
+running together count each other.
 
 **Concurrency.** One remux per key at a time (single-flight: every request for
 it waits on the same run), at most 2 at once across the server (their own
 limit, apart from the 4 transcode slots). The run belongs to the server's base
 context with a 30-minute timeout from when it gets a slot, never to a request,
 so a waiter that leaves (a seek, an `AVPlayer` probe) doesn't stop it; the
-launcher waits for the runs at shutdown (`API.WaitRemuxes`), killing their
-ffmpeg and removing their `.part`.
+launcher waits for the runs of both caches at shutdown (`API.WaitMediaCaches`),
+killing their ffmpeg and removing their `.part`.
 
 **A cold request.** `serveRemuxed` waits at most `remuxColdWait`, **2 s** (under
 the player's 3 s stall timer and Android's 8 s read timeout), for the copy.
@@ -522,7 +538,7 @@ server stops the answer is `503`.
 
 **Warming.** `/item` and `/chapters` start the remuxes of the book's
 MP3-in-Matroska files in the background (`API.warmRemux` →
-`Remuxer.WarmAll`), so the first stream is usually a hit. The answer never
+`FileCache.WarmAll`), so the first stream is usually a hit. The answer never
 waits for them.
 
 - Warms run one file and one book at a time across the server, so they hold at
@@ -545,6 +561,97 @@ Matroska. A remuxed stream is not a "transcoded" listening session.
 `direct_playable` filter, the book page's playback line and Files card, and the
 Health `transcode` issue describe the stored files, so an MP3-in-Matroska book
 still reads as needing transcoding there.
+
+## Watch renditions: `media.NewRenditionCache`
+
+Track W2 (capability `renditions`). A watch downloads a book to play it away from
+the phone, and the library's files are often too big for it (a 20-hour book as
+128 kb/s stereo MP3 is over a gigabyte). So the server makes a small copy of each
+audio file, a **rendition**, once, and serves it like any file, with Range. The
+library stays read-only: the copies live in the data directory.
+
+**The encode** (`renditionArgs`, `media/rendition.go`):
+
+```
+ffmpeg -nostdin -loglevel error -protocol_whitelist fd -i fd: \
+       -map 0:a:0 -vn -sn -dn -map_metadata -1 -map_chapters -1 \
+       -c:a aac -b:a 48k -ac 1 -ar 44100 -fflags +bitexact -flags:a +bitexact \
+       -movflags +faststart -f mp4 -y file:<cache>/<key>.<rand>.part
+```
+
+- **AAC-LC, mono, 48 kb/s, 44.1 kHz, MP4** (`.m4a`), about 430 MB for 20 hours.
+  ffmpeg's own `aac` encoder: HE-AAC would be smaller but needs the non-free
+  `libfdk_aac`.
+- **The same duration as the source** (within 0.1 s on MP3 and M4B), so whole-book
+  positions, chapters and the file places of listening sync hold on the copy
+  unchanged. No cover, tags or chapters: the watch reads those from the API.
+- `+faststart` puts the index first, so a player can start before the end
+  arrives; `+bitexact` makes the same ffmpeg write the same bytes every run.
+- The input is only the descriptor (`fd:`, or `pipe:0` for an older ffmpeg, as for
+  the transcode); the demuxer is ffmpeg's guess, since the library holds every
+  audio format.
+- Unlike the remux there is no `-xerror`: it fails the whole encode on one damaged
+  MP3 frame that playback would skip. A read error partway still exits 0, so the
+  finished copy is checked instead (`renditionCheck`): a copy with no audio track,
+  or more than 1 s shorter than the source's exact duration (the in-process probe,
+  `metadata.ExactDuration`; skipped when the source's length is only an estimate,
+  such as a VBR MP3 with no Xing header), is not cached and is remembered as a
+  refusal for an hour.
+
+**The cache.** `<data>/cache/renditions/watch/<key>.m4a`, a `FileCache` like the
+remux's (above) with its own bounds:
+
+| | Watch renditions | Remux (for comparison) |
+|---|---|---|
+| Key | SHA-256 of the absolute path, size, mtime and `watch-v1` | the absolute path, size and mtime |
+| Size cap (LRU by mtime) | **10 GiB** | 8 GiB |
+| At once | 1 encode (an encoder pins a core) | 2 stream copies |
+| Timeout from its slot | 2 hours | 30 minutes |
+| Waiting or running | at most 256 files, server-wide | warms: 16 books queued |
+| Disk guard | 1 GiB left free, one reservation shared with the remux | the same |
+
+The encode version (`renditionVersion`) is part of the key and the ETag, so a
+change to the encode is a new key and old copies age out of the LRU. A source
+that changes while it is read is never cached under the old key. A refusal
+(ffmpeg's exit before writing anything, a trackless or short copy) is remembered
+for an hour or until the file changes. A failed run's log carries the first and
+last 2 KiB of ffmpeg's output. Without ffmpeg (`--ffmpeg ""`) or without a data
+directory the cache is off: the `renditions` flag is `false`, the top-level
+`renditions` list is `[]`, and a `watch` rendition request outside a podcast
+library answers `404 rendition_unavailable` (the kind and podcast checks come
+first, so those still answer `400 bad_rendition`).
+
+**Serving** (`serveRendition`, `api/handlers_renditions.go`). `handleStream` checks
+`rendition=` straight after the scope check, before the podcast and remux
+branches, in this order: the kind (`400 bad_rendition` for anything but `watch`,
+and for a podcast library), the flag (`404 rendition_unavailable`), recognised
+audio and a regular file (`404`). Then `FileCache.Open` waits up to
+`renditionWait` (45 s, the remux's download wait) for the copy:
+
+- **Ready:** `serveCopy` answers through `media.ServeOpenedAs` (Range and
+  `If-Range`): `Content-Type: audio/mp4`, a strong `ETag: "rw1-<key>-<size>"` and
+  the copy's own mtime as `Last-Modified`; `download=1` adds
+  `Content-Disposition: attachment` named `<stem>.m4a`. The size in the ETag
+  tells two encodes apart should a re-encode after an eviction ever differ, so a
+  resumed download never splices bytes of two encodes.
+- **Still encoding:** `503 rendition_pending` with `Retry-After: 15`; the encode
+  goes on under the server's base context, never the request's. Never a live
+  transcode: its bytes aren't rangeable, so a watch couldn't resume it.
+- **Refused:** `422 rendition_failed` (remembered, as above).
+- **Failed otherwise** (the disk guard, a run killed partway, the source changed,
+  the 256-file queue full): `503 rendition_error` with `Retry-After: 60`.
+
+**Preparing a book.** `POST /libraries/{id}/renditions?path=<book>` with
+`{"kind":"watch"}` resolves the book as `/item` does (a part path names its book)
+and calls `FileCache.Queue` for each of its audio files (`Book.AudioFiles`, play
+order; a single-file book is its own file); `GET` with `?kind=watch` calls
+`Status` only. Both answer `{kind, files: [{path, state, bytes?}]}` with `state`
+`ready`, `pending`, `failed` or `missing` (see the
+[reference](api/reference.md#post-apiv1librariesidrenditions--get-apiv1librariesidrenditions)).
+They need a header credential (`requireAuth`, no `?token=`).
+
+A rendition request is **not a listen**: it opens no listening session and never
+marks one as transcoded.
 
 ## The chapters envelope: `{chapters, files, duration}`
 

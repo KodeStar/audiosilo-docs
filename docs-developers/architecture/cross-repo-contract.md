@@ -247,7 +247,7 @@ meaning **plays in browsers as the server serves it**: `Book.PlaysInBrowsers`
 is configured, `Book.PlaysRemuxed`. With ffmpeg an MP3-in-Matroska `.mka` is
 served at the same stream URL as MP3 (a cached lossless remux, `?original=1`
 for the stored bytes; see
-[Remuxing Matroska](../server/media.md#remuxing-matroska-mediaremuxer)), so it
+[Remuxing Matroska](../server/media.md#remuxing-matroska-medianewremuxer)), so it
 streams in every client, shipped native builds included, and is `true`. An
 `.mka` holding another codec stays `false`, so the web player transcodes it; the
 iOS app can't play it, and the Android app plays it only where Media3 decodes
@@ -279,6 +279,19 @@ params changes both sides. The negotiation degrades by design: an absent
 `true`), and
 an unknown or `false` `transcode` capability streams the file directly, exactly as
 before negotiation existed.
+
+**Watch renditions (Track W2).** The same stream route serves a different kind of
+copy for a watch: `?rendition=watch` answers with a cached AAC copy of the audio
+file (AAC-LC mono 48 kb/s in MP4, the **same duration** as the source, so
+whole-book positions, chapters and file places hold), made once into the data
+directory by the same `media.FileCache` the remux uses, with Range and a strong
+ETag so a watch resumes a download. A cold encode answers `503 rendition_pending`
+with `Retry-After`, never a live transcode; `POST`/`GET /libraries/{id}/renditions`
+prepare a whole book and report each file. Gated by the `renditions` capability
+(seam 8); the watch app (planned) is its client, the player only mirrors the flag
+and `ServerInfo.renditions`. Details:
+[Watch renditions](../server/media.md#watch-renditions-medianewrenditioncache) and
+the [reference](../server/api/reference.md#watch-renditions).
 
 ## 6. The chapter / whole-book timeline model
 
@@ -393,7 +406,10 @@ upcoming releases in the caller's series) with `upcoming_calendar` and
 [calendar feed](../server/api/reference.md#the-calendar-feed) and
 [`/me/upcoming/cover`](../server/api/reference.md#get-apiv1meupcomingcover)),
 `listening_sync` (Track W1, always true; listening as events,
-[§19](#19-listening-sync-sync-v2)), plus the
+[§19](#19-listening-sync-sync-v2)), `renditions` (Track W2, watch renditions,
+[seam 5](#5-transcode-negotiation-direct_playable-and-transcode1): true with ffmpeg
+and a data directory, else `false`; the kinds are a top-level `renditions` list),
+plus the
 server version
 (`api.Version`, stamped from the release tag via ldflags). `transcode` reflects
 ffmpeg availability; `web_player` reflects whether `/web` is populated; the
@@ -419,7 +435,8 @@ false or `/server` hasn't answered.
 
 **A change requires:** adding a capability is a two-repo change - flip the flag as
 the feature lands server-side, and gate the new UI on it client-side. Never assume
-a capability is present. A module's flag is its id, mirrored in `Capabilities`
+a capability is present. (The one exception: `listening_sync` while unknown, see
+[§19](#19-listening-sync-sync-v2), The gate.) A module's flag is its id, mirrored in `Capabilities`
 (`types.ts`) like any other flag and named in the player's `ModuleFlag` too (see
 [Player modules](../frontend/state-and-data.md#player-modules-srcmodules)).
 
@@ -1247,6 +1264,13 @@ status per event. The workspace's CROSS-REPO.md §25 is the full seam.
 - **Rollback.** A `404`/`405` on the route that the server's own `/server`
   confirms (no flag) turns the outbox into one legacy `PUT` per book and puts the
   connection back on the `PUT` path.
+- **The gate.** The player takes the events path on the flag the connection's
+  server last answered, kept across launches (Track W2), and while the flag is
+  unknown too (an offline cold launch on a connection whose answer it never kept):
+  the rollback covers an older server. Only `false` takes the `PUT` path.
+- **Batch size.** A body over 1 MiB is `413` code `too_large` (a `400` before W2);
+  the player halves its chunk on a `413` and resends one event at a time on a
+  `400`, so both reach it.
 
 **Server:** `internal/api/handlers_listening_sync.go`, `internal/catalog/listening_sync.go`
 (`SyncListening`), migration `0061` (`listening_events`, the progress columns),
@@ -1261,7 +1285,7 @@ status per event. The workspace's CROSS-REPO.md §25 is the full seam.
 **Old clients and old servers:** a shipped player keeps `PUT` and `POST /history`,
 which behave exactly as before (the `PUT` is only logged, and its answer gains the
 two omitempty fields); a new player on an older server sees no flag and does the
-same.
+same (see The gate above).
 
 **A change requires:** a new event field or status changes both repos (the server
 decodes events strictly, so an unknown field is that event's `rejected` `invalid`:

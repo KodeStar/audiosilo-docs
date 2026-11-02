@@ -198,6 +198,7 @@ The `--data` directory (mounted at `/data` under Docker) is the server's home. A
 - `certs/` - the Let's Encrypt (autocert) certificate cache. In self-signed TLS mode the certificate and key are written at the data directory root instead, as `selfsigned-cert.pem` / `selfsigned-key.pem`.
 - `tools/` - ffmpeg/ffprobe, if the native binary had to download them (see [Install the native binary](./install-binary.md)).
 - `cache/remux/` - MP3 copies of `.mka` books with MP3 inside, so every player can play them (size limits under [Server > Transcoding](../admin/server.md#transcoding)). Safe to delete, no backup needed: the copies are made again when played.
+- `cache/renditions/watch/` - small copies of the audio files a watch downloads (for the planned AudioSilo watch app; empty until a watch asks). At most 10 GiB (see [Server > Transcoding](../admin/server.md#transcoding)). Safe to delete, no backup needed.
 - `meta-mirror/` - only when the server [keeps a local copy of the community metadata](../admin/server.md#keeping-a-local-copy): that copy (about 1.8 GB). It is downloaded again whenever it's missing, so it needs no backup.
 
 Your audiobooks are **never** copied in here. The books folder you point a library at stays untouched, and stays the source of truth - see [Organizing your library](./organizing-your-library.md).

@@ -230,11 +230,15 @@ Who sends it:
   server bakes in (`AudioSilo/2.2.0 (web)` from Phase 2d-1). A development
   build opts in cross-origin with `EXPO_PUBLIC_IDENTIFY_CROSS_ORIGIN=1`.
 - **The admin console** - always (it is same-origin).
+- **A watch app** (Track W, planned) sends `audiosilo-watch/<version> (watchos)` or
+  `(wearos)`. It parses like any other client; the console's devices, sessions
+  and Activity name it "Apple Watch" or "Wear OS" with a watch icon, and the
+  player's My devices names it the same way.
 - Anything else may send it; nothing requires it.
 
 The header also decides whether a client sees podcast libraries at all: the
-console, `AudioSilo/dev` and players from **2.2.0** do, older players and
-anything unidentified do not. See
+console, `AudioSilo/dev` and players from **2.2.0** do, older players,
+watch apps (the watch has no podcasts) and anything unidentified do not. See
 [Podcast visibility](../auth-and-security.md#podcast-visibility).
 
 ## Error envelope and status conventions
@@ -269,7 +273,7 @@ Failures a person can fix also carry a machine-readable **`code`** next to
 | `module_off` | `404` | any route a [managed module](../modules.md) mounts, while that module is off (Settings > Modules), for a caller the route's auth check admits (it runs first). The route exists either way, so turning the module on needs no restart. The `podcasts` module mounts `POST`/`DELETE /podcasts/follow`, `POST /podcasts/check`, the `/podcasts/discovery/*` routes and `POST /podcasts/opml/import`. Also `POST /admin/bridge/jobs` for a job the module owns (Phase 2b: `sidecars.contribute`, `meta.correct`, `sidecars.generate` with `contribute: "issue"`, the `contributions` module), checked before anything else about the job |
 | `metadata_off` | `404` | a community match search, a `POST /admin/books/works` work-id batch, a community cover (`POST /admin/meta/covers`, `PUT /admin/libraries/{id}/cover/community`), or the metadata mirror (`GET /admin/meta/mirror`, `POST /admin/meta/mirror/check`) while community metadata is turned off; also [`GET /me/upcoming`](reference.md#get-apiv1meupcoming), [`GET`](reference.md#get-apiv1meupcomingcalendar)/[`POST /me/upcoming/calendar`](reference.md#post-apiv1meupcomingcalendar), [`/me/upcoming/releases.ics`](reference.md#get-apiv1meupcomingreleasesics) and [`/me/upcoming/cover`](reference.md#get-apiv1meupcomingcover) (checked after `kid_account` and, on the mint, the `demo_account` and API-key refusals; before `upcoming_off`). Never `DELETE /me/upcoming/calendar` |
 | `upcoming_off` | `404` | the same upcoming routes as `metadata_off` while community metadata is on but the upcoming releases job is switched off (`upcoming.enabled`, the console's Settings > Metadata) |
-| `too_large` | `400` / `413` | a bulk edit or an issue ignore over 1000 books, a cover batch over 60, a community cover batch over 12, or a work-id batch over 100 (`400`); a custom cover upload over 5 MiB, or a community cover over 16 MiB or 40 megapixels (`413`) |
+| `too_large` | `400` / `413` | a bulk edit or an issue ignore over 1000 books, a cover batch over 60, a community cover batch over 12, or a work-id batch over 100 (`400`); a custom cover upload over 5 MiB, or a community cover over 16 MiB or 40 megapixels (`413`); a [listening sync](reference.md#post-apiv1melisteningsync) body over 1 MiB (`413`, from Track W2) |
 | `unsupported_image` | `415` | a custom cover (uploaded or community) that is not a JPEG, PNG or WebP image |
 | `cover_unavailable` | `502` | `PUT /admin/libraries/{id}/cover/community`, `GET /libraries/{id}/meta/cover` or [`GET /me/upcoming/cover`](reference.md#get-apiv1meupcomingcover) when the server couldn't fetch the image (the latter two also for a minute after a failed fetch, without asking again) |
 | `not_found` | `404` | an [unknown API route](#error-envelope-and-status-conventions) (below), `DELETE /admin/libraries/{id}` for a library that doesn't exist, and [`GET /me/upcoming/cover`](reference.md#get-apiv1meupcomingcover) for a work the caller's upcoming list doesn't hand out a cover for (not listed for them, or listed without one) |
@@ -367,10 +371,19 @@ per-row results carry their own codes in a `200`. `HEAD` on the new GET routes
 is `405 method_not_allowed`.
 
 [Listening sync](reference.md#post-apiv1melisteningsync) adds `too_many_events`
-(`400`, a batch of more than 500 events); each event's `status` and `reason`
+(`400`, a batch of more than 500 events) and uses `too_large` (`413`, a body over
+1 MiB); each event's `status` and `reason`
 (`older`, `resume_behind`, `invalid`, `unknown_kind`, `too_old`,
 `duration_mismatch`, `no_access`, `not_found`) ride in a `200`, never as the
 batch's error.
+
+[Watch renditions](reference.md#watch-renditions) (Track W2) add
+`bad_rendition` (`400`: a kind other than `watch`, or a podcast library),
+`rendition_unavailable` (`404`: no ffmpeg or no data directory),
+`rendition_failed` (`422`: ffmpeg refused the file or its copy came out short,
+remembered for an hour), `rendition_pending` (`503`, `Retry-After: 15`: still
+encoding) and `rendition_error` (`503`, `Retry-After: 60`: a failure that isn't
+the file's).
 
 **Branch on `code`, not on the English `error` text**, which is free to change.
 Errors without a `code` are ones a client can't help the person fix.
@@ -395,7 +408,7 @@ Status mapping is consistent across handlers:
 | `403` | authenticated but not allowed: no share grants the library or path, `admin only`, demo accounts on the self-service routes (password/recovery/API keys), an API key on a credential-minting route (create key/recovery/pair/password/cast token) or on a household member route, a kid household member on the routes a kid can't use, a member managing members, adding a member while it is switched off, bad setup token |
 | `404` | library/user/share/invite not found, another user's (or an unknown) bookmark or note on an edit, `no book at that path`, a path with a hidden (dot) segment on any content route (it reads as missing, after the scope check: `library.ContentPath`), feature not configured (demo mode off, well-known files unset) |
 | `409` | conflicts: `name already taken` (library/share), last-enabled-admin guard, the household member cap, a session or pairing code for a member the admin disabled, the admin's household refusals, signing out the device making the request, starting someone's progress on a book they can't see, setup already completed |
-| `413` | a request body over an endpoint's size cap (a custom cover over 5 MiB) |
+| `413` | a request body over an endpoint's size cap (a custom cover over 5 MiB, a listening sync batch over 1 MiB) |
 | `415` | an upload of a type the endpoint doesn't take (a custom cover that isn't JPEG/PNG/WebP) |
 | `429` | a rate limiter tripped (see below) |
 | `500` | unexpected internal failure - the message is generic; details go to the server log only |
@@ -526,9 +539,11 @@ is never staler than one built fresh; nothing on the wire changes (see
     "podcast_discovery": false,
     "podcast_opml": true,
     "ebooks": true,
-    "readalong": true
+    "readalong": true,
+    "renditions": true
   },
   "auth": { "methods": ["auth_code", "password"] },
+  "renditions": ["watch"],
   "demo": { "enabled": false }
 }
 ```
@@ -640,7 +655,13 @@ Track W1 adds one, always `true` on a server that has it:
 
 | Flag | Gates |
 |---|---|
-| `listening_sync` | listening sync (Sync v2): [`POST /me/listening/sync`](reference.md#post-apiv1melisteningsync), and `device_name` / `other_place` on every progress response. The player records listening as events only while it is `true`; unknown or `false`, it saves by `PUT .../progress` and `POST .../history` as before. A player that finds the route gone (`404`/`405`) after a rollback reads `/server` again and, without the flag, sends what waited as one legacy save per book |
+| `listening_sync` | listening sync (Sync v2): [`POST /me/listening/sync`](reference.md#post-apiv1melisteningsync), and `device_name` / `other_place` on every progress response. The player records listening as events unless it is `false` (unknown counts as `true`, [the outbox](../../frontend/offline.md#listening-sync-the-outbox)); `false`, it saves by `PUT .../progress` and `POST .../history` as before. A player that finds the route gone (`404`/`405`) reads `/server` again and, without the flag, sends what waited as one legacy save per book |
+
+Track W2 adds one that follows the server's setup:
+
+| Flag | Gates |
+|---|---|
+| `renditions` | [watch renditions](reference.md#watch-renditions): `rendition=watch` on [`/stream`](reference.md#get-apiv1librariesidstream) and [`POST`/`GET /libraries/{id}/renditions`](reference.md#post-apiv1librariesidrenditions--get-apiv1librariesidrenditions). `true` while ffmpeg is configured **and** the server has a data directory; `false` (sent, not absent) otherwise; an older server omits it. The kinds the server makes are the top-level `renditions` list beside `auth` (`["watch"]`, `[]` while off), so the flag stays a boolean for clients that read `capabilities` as a map of booleans |
 
 Then each [managed module](../modules.md) adds one flag, named after the module. A
 module ships off and an admin turns it on in the console's Settings > Modules, so the

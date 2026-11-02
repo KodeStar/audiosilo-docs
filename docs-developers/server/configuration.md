@@ -51,9 +51,9 @@ updates only a declared library's root and default view).
 
 | Flag | Default | Meaning |
 |---|---|---|
-| `--data` | `./data` | Data directory: config, SQLite database, generated certs, downloaded tools, the Matroska remux cache (`cache/remux/`) |
+| `--data` | `./data` | Data directory: config, SQLite database, generated certs, downloaded tools, the Matroska remux cache (`cache/remux/`), the watch rendition cache (`cache/renditions/watch/`) |
 | `--ffprobe` | `ffprobe` | Path to ffprobe (durations, chapters, codec detection). With FFmpeg 7.1 or 8.1 the scanner reads most files in-process by that release's rules and runs it only for the rest; with any other release ffprobe reads every file (see [The in-process probe](scanner.md#the-in-process-probe)). **`""` disables it**, the in-process probe included - the scanner degrades to path-derived metadata and `direct_playable` defaults to true |
-| `--ffmpeg` | `ffmpeg` | Path to ffmpeg for on-the-fly transcoding and the MP3-in-Matroska remux. **`""` disables it** - `?transcode=1` returns 503, the `transcode` capability reports false, and an `.mka` is served as stored (no remux, `direct_playable: false`) |
+| `--ffmpeg` | `ffmpeg` | Path to ffmpeg for on-the-fly transcoding, the MP3-in-Matroska remux and the watch renditions. **`""` disables it** - `?transcode=1` returns 503, the `transcode` capability reports false, an `.mka` is served as stored (no remux, `direct_playable: false`), and the `renditions` capability is false (`rendition=` answers `404 rendition_unavailable`) |
 | `--setup` | `false` | First-run **setup page**: instead of auto-creating the admin and printing credentials once, mint a one-time token and enable the guarded `/setup` page, where the admin's username and password are chosen in the browser (see [Built-in web UI](web-ui.md#first-run-setup-page-setup)). Either way the admin console's [first-run setup flow](web-ui.md#the-first-run-setup-flow) then adds the books folder and the rest on the first `/admin` visit |
 
 **One command** (from 2.5.0, `command` in `cmd/audiosilo/main.go`): after the
@@ -1046,7 +1046,8 @@ tools):
 | `<data>/certs/` | autocert certificate cache |
 | `<data>/selfsigned-cert.pem`, `<data>/selfsigned-key.pem` | Persisted self-signed certificate (mode `selfsigned`, default paths) |
 | `<data>/tools/` | Auto-downloaded ffmpeg/ffprobe, when no local copy was found |
-| `<data>/cache/remux/` | MP3 copies of `.mka` files holding MP3, made while ffmpeg is configured (`0700`, a size-capped LRU: see [Remuxing Matroska](media.md#remuxing-matroska-mediaremuxer)). Rebuildable: safe to delete, and needs no backup |
+| `<data>/cache/remux/` | MP3 copies of `.mka` files holding MP3, made while ffmpeg is configured (`0700`, a size-capped LRU: see [Remuxing Matroska](media.md#remuxing-matroska-medianewremuxer)). Rebuildable: safe to delete, and needs no backup |
+| `<data>/cache/renditions/watch/` | Watch renditions: small AAC copies (`.m4a`) of the audio files a watch asked for, made while ffmpeg is configured (`0700`, an LRU capped at 10 GiB: see [Watch renditions](media.md#watch-renditions-medianewrenditioncache)). Rebuildable: safe to delete, and needs no backup |
 | `<data>/meta-mirror/` | [Mirror mode](#mirror-mode-metadatamode-mirror)'s local copy of the community metadata (what it holds: **The copy** there) |
 | `<data>/backups/` | Database backups (`audiosilo-<UTC time>-<kind>.db`), unless `backups.dir` puts them elsewhere |
 | `<data>/restore.json` | A restore waiting for the next start (removed when it is applied or refused) |
