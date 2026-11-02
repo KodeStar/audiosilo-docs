@@ -2904,11 +2904,11 @@ as stored, `audio/x-matroska`. See
 | Status | Meaning |
 |---|---|
 | `200` / `206` | file bytes (Range honored for direct serving, a remuxed `.mka` and a watch rendition) |
-| `400` | missing `path` / path escapes the root; `code: "bad_rendition"` for a `rendition` other than `watch`, or any rendition in a podcast library (the watch has no podcasts) |
+| `400` | missing `path` / path escapes the root / `path is too long` (over 4096 bytes); `code: "bad_rendition"` for a `rendition` other than `watch`, or any rendition in a podcast library (the watch has no podcasts) |
 | `401` | missing/invalid token |
 | `403` | path outside the caller's scope |
 | `404` | file does not exist, or isn't audio; `code: "rendition_unavailable"` when the server has no ffmpeg or no data directory (`renditions` is `false`) |
-| `422` | `code: "rendition_failed"`: ffmpeg refused this file, or its copy came out more than 1 s short of the source; remembered for an hour (or until the file changes), then tried again |
+| `422` | `code: "rendition_failed"`: ffmpeg refused this file, or its copy came out more than 1 s short of the source; remembered for an hour (or until the file changes), then tried again. `Retry-After` is the seconds the remembered refusal has left (1 to 3600) |
 | `503` | `transcode=1` but ffmpeg is not configured (check the `transcode` capability), or every transcode slot is busy (`server busy transcoding; try again shortly`, with `Retry-After: 5`; also a cold `.mka` answered with the transcode); `the server is shutting down` for a remux or an encode cut short by shutdown; `code: "rendition_pending"` (`Retry-After: 15`) for a rendition still being made; `code: "rendition_error"` (`Retry-After: 60`) for an encode that failed for a reason that isn't the file's (low disk, a run cut short, the file changed while it was read, the encode queue full) |
 
 #### Watch renditions
@@ -2956,7 +2956,8 @@ from [`/stream?rendition=watch`](#get-apiv1librariesidstream) as it turns
   "files": [
     { "path": "Author/Book/01.mp3", "state": "ready", "bytes": 21734912 },
     { "path": "Author/Book/02.mp3", "state": "pending" },
-    { "path": "Author/Book/03.mp3", "state": "missing" }
+    { "path": "Author/Book/03.mp3", "state": "failed", "retry_after_seconds": 2710 },
+    { "path": "Author/Book/04.mp3", "state": "missing" }
   ]
 }
 ```
@@ -2968,7 +2969,7 @@ one file), each `path` as `/stream` takes it, with its `state`:
 |---|---|
 | `ready` | the rendition is cached; `bytes` is its size (sent only for `ready`) |
 | `pending` | queued or encoding (one encode runs at a time across the server) |
-| `failed` | ffmpeg refused the file, or its copy came out short or with no audio track (the stream answers `422 rendition_failed`), tried again after an hour or once the file changes; also no regular file at that path (gone, a folder: the stream answers `404`) |
+| `failed` | ffmpeg refused the file, or its copy came out short or with no audio track (the stream answers `422 rendition_failed`), tried again after an hour or once the file changes; `retry_after_seconds` is then the seconds until it is tried again (sent only for a remembered refusal, additive). Also no regular file at that path (gone, a folder: the stream answers `404`; no `retry_after_seconds`) |
 | `missing` | not cached and not queued: always on a `GET` for a file never asked for; on a `POST` when the server's encode queue is full (at most 256 files wait or run across the server), so ask again later |
 
 | Status | Meaning |
@@ -3588,7 +3589,7 @@ fixed-width UTC milliseconds.
 | `duplicate` | the id is already stored for this user, or an earlier copy in the same batch passed the checks: nothing was done again (a copy that was `rejected` doesn't count, so the next copy is checked on its own) |
 | `diverged` | the event was made without seeing the stored row (below); `kept` is `event` or `stored`, and `other_place` is the place **not** kept |
 | `not_applied` | stored, but the place didn't move; `reason` is `older` (an older write under last-write-wins, or a finish/unfinish not newer than the row's last finish-state change) or `resume_behind` (a `resume`/`continue` span behind the stored place, below; `other_place` is the event's place) |
-| `rejected` | not stored and changed nothing; `reason` is `invalid` (a field check failed, the event couldn't be decoded, or its path cleans to nothing), `unknown_kind`, `too_old` (it ended more than 90 days ago, after the clock correction), `duration_mismatch` (the device's `duration` is more than 10 s from the indexed book's), `no_access` (the path is outside the caller's access, a library they hold no grant on, or a podcast library their client doesn't see: what `PUT` answers with a `403`) or `not_found` (an unknown library to an admin, or a hidden path) |
+| `rejected` | not stored and changed nothing; `reason` is `invalid` (a field check failed, the event couldn't be decoded, or its path cleans to nothing or is over 4096 bytes), `unknown_kind`, `too_old` (it ended more than 90 days ago, after the clock correction), `duration_mismatch` (the device's `duration` is more than 10 s from the indexed book's), `no_access` (the path is outside the caller's access, a library they hold no grant on, or a podcast library their client doesn't see: what `PUT` answers with a `403`) or `not_found` (an unknown library to an admin, or a hidden path) |
 
 Every status but `rejected` is final for the sender: the event is stored and a
 resend is a `duplicate`. Every stored `listen` counts for sessions and history,
@@ -3648,7 +3649,17 @@ opens one):
   touches `finished`. `updated_at` is the corrected end, or the row's own when that
   is later: an apply never moves the row's time back (a diverged one included), so an older app's
   `PUT` dated in between can't win last-write-wins against it (the device's later
-  spans in the same batch compare with their own span's end).
+  spans compare with the end of its own last span, in this batch or a later one:
+  below).
+- **The span chain across posts** (migration `0062`). The row keeps the end of the
+  span its place came from (`span_at`) at its version, so while no other writer has
+  touched it, the same device's next span in a **later** post compares with that
+  end too: a backlog split across posts (a `413` halving, a long outbox) isn't
+  answered `older`. Across posts a span with no base (`base_version` `0`) joins the
+  chain only when it starts within 60 s after the chain's end or within 5 s of its
+  place; otherwise it is judged on its own, and may diverge. **Send a
+  `base_version` on every span.** Any other writer (a `PUT`, an edit, an import, a
+  move or join) ends the chain.
 - **The offered place.** On `diverged`, the place not kept is stored on the row as
   [`other_place`](#get-apiv1meprogress), unless it is the kept row's own device or
   within 30 s of the kept place, so a device that never saw this answer (the phone,

@@ -449,8 +449,10 @@ of a library file into the data directory, described by a `cacheSpec` (the
 directory, extension, ffmpeg arguments, size cap, how many run at once, the
 timeout, the ETag and an optional check of the finished copy). Both share the
 LRU, single-flight, `.part` + rename, disk guard and refusal memory described
-below; `Open` waits for a copy, `Status` and `Queue` report or start one, and
-`WarmAll` warms a book's. `NewRemuxer` (`remux.go`) is the remux's spec.
+below; `Open` waits for a copy, `Status` reports where one stands, `Queue`
+starts one without waiting (only for a cache with a queue limit: the watch
+rendition's; the remux's `Queue` starts nothing and leaves the file `missing`),
+and `WarmAll` warms a book's. `NewRemuxer` (`remux.go`) is the remux's spec.
 
 An `.mka` holding MP3 (server#174) is served at the **same stream URL** as a
 lossless copy of its audio into a plain MP3 file, so every client plays it with
@@ -637,7 +639,8 @@ audio and a regular file (`404`). Then `FileCache.Open` waits up to
 - **Still encoding:** `503 rendition_pending` with `Retry-After: 15`; the encode
   goes on under the server's base context, never the request's. Never a live
   transcode: its bytes aren't rangeable, so a watch couldn't resume it.
-- **Refused:** `422 rendition_failed` (remembered, as above).
+- **Refused:** `422 rendition_failed` (remembered, as above), with `Retry-After`
+  the seconds the remembered refusal has left (`FileCache.RefusedFor`, 1 to 3600).
 - **Failed otherwise** (the disk guard, a run killed partway, the source changed,
   the 256-file queue full): `503 rendition_error` with `Retry-After: 60`.
 
@@ -645,8 +648,9 @@ audio and a regular file (`404`). Then `FileCache.Open` waits up to
 `{"kind":"watch"}` resolves the book as `/item` does (a part path names its book)
 and calls `FileCache.Queue` for each of its audio files (`Book.AudioFiles`, play
 order; a single-file book is its own file); `GET` with `?kind=watch` calls
-`Status` only. Both answer `{kind, files: [{path, state, bytes?}]}` with `state`
-`ready`, `pending`, `failed` or `missing` (see the
+`Status` only. Both answer `{kind, files: [{path, state, bytes?,
+retry_after_seconds?}]}` with `state` `ready`, `pending`, `failed` or `missing`
+(`retry_after_seconds` only on a `failed` file whose refusal is remembered; see the
 [reference](api/reference.md#post-apiv1librariesidrenditions--get-apiv1librariesidrenditions)).
 They need a header credential (`requireAuth`, no `?token=`).
 
