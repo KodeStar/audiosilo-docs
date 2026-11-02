@@ -380,8 +380,8 @@ batch's error.
 [Watch renditions](reference.md#watch-renditions) (Track W2) add
 `bad_rendition` (`400`: a kind other than `watch`, or a podcast library),
 `rendition_unavailable` (`404`: no ffmpeg or no data directory),
-`rendition_failed` (`422`: ffmpeg refused the file or its copy came out short,
-remembered for an hour), `rendition_pending` (`503`, `Retry-After: 15`: still
+`rendition_failed` (`422`, `Retry-After` the seconds left: ffmpeg refused the
+file or its copy came out short, remembered for an hour), `rendition_pending` (`503`, `Retry-After: 15`: still
 encoding) and `rendition_error` (`503`, `Retry-After: 60`: a failure that isn't
 the file's).
 
@@ -440,8 +440,18 @@ round-trips reliably. The value is the slash-separated path relative to the
 library root, exactly as returned by `/fs` listings, book `rel_path` fields, and
 chapter `file_path` fields.
 
-Two server-side guarantees apply to every `?path=`:
+Two server-side guarantees apply to every `?path=`, plus a length cap on the
+content routes:
 
+- **Length cap** - the content routes that address a book or file by
+  `?path=` (`item`, `chapters`, `cover`, `stream`, progress, bookmarks, notes,
+  history and the like, every route whose path goes through the server's
+  `pathInScope`) answer a path over 4096 bytes (as sent,
+  `catalog.MaxPathBytes`) with 400 `path is too long`, before it is cleaned,
+  looked up or stored. In a [listening sync](reference.md#post-apiv1melisteningsync)
+  batch such an event is `rejected` `invalid` and the rest of the batch applies.
+  Routes that take their path on their own (browse, removing from a list, the
+  podcast routes, the admin folder-override and enrichment routes) don't apply it.
 - **Traversal safety** - the path is resolved through `library.SafeJoin`, which
   rejects `..` escapes, absolute-path injection, and symlinks pointing outside
   the library root (400 `invalid path`).

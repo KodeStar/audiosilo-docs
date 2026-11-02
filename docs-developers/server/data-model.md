@@ -545,7 +545,13 @@ tables were rebuilt rather than migrated in place):
   event's place was kept, else the row's next one, since the row's own device had
   acknowledged the current one before the offer existed; an applied event with a
   `base_version` at or after it clears it). A move or join carries `device_name`
-  and `finish_changed_at` and drops the offer.
+  and `finish_changed_at` and drops the offer. *(0062)* `span_at` and
+  `span_version` (both `NULL` = none): the clock-corrected end of the span the
+  row's place came from and the row's version then, so the same device's next
+  span in a later sync post compares with it, not with `updated_at` (the span
+  chain lasts across posts, see
+  [How a batch is applied](api/reference.md#how-a-batch-is-applied)); every other
+  writer clears them, and a stale version is the old rule.
 - **`listening_events`** *(0061, listening sync)* - the listening-event log behind
   [`POST /me/listening/sync`](api/reference.md#post-apiv1melisteningsync): every
   synced `listen`, `finish` and `unfinish` that wasn't rejected, and every legacy
@@ -1419,6 +1425,7 @@ The migration history so far:
 | 0059 | `upcoming` | the [upcoming releases](#upcoming-releases) tables, all derived and path-keyed with no FK to `books` (cascaded with the library): `upcoming_owned` (index `idx_upcoming_owned_work`), `upcoming_series`, `meta_series`, `upcoming_items` (index `idx_upcoming_items_work`) and `upcoming_announced` |
 | 0060 | `feed_tokens` | `idx_tokens_feed_user`, a partial unique index on `tokens(user_id) WHERE kind = 'feed' AND revoked = 0`: at most one live [calendar feed token](auth-and-security.md#calendar-feed-tokens) per user. No column changes (`kind` is free text) |
 | 0061 | `listening_events` | listening sync (Sync v2, Track W1): the `listening_events` log (FK `users`/`libraries` `ON DELETE CASCADE`, no FK to `books`, unique `(user_id, event_id)`, indexes `idx_listening_events_path` and `idx_listening_events_ended`), `idx_history_user_path_ended` on `listening_history`, and the `progress` columns `device_name` (`TEXT NOT NULL DEFAULT ''`), `finish_changed_at`, `other_position`, `other_device_id`, `other_device_name`, `other_at` and `other_version` (all nullable, `NULL` on every existing row). No data moves (see [Durable per-user state](#durable-per-user-state-path-keyed-no-fk-to-books)) |
+| 0062 | `listening_span_chain` | listening sync (server#289): `progress.span_at` and `span_version` (nullable, `NULL` on every existing row), so a device's span chain lasts across posts of `POST /me/listening/sync`. No data moves |
 
 ## SQLite choices
 
