@@ -440,12 +440,18 @@ round-trips reliably. The value is the slash-separated path relative to the
 library root, exactly as returned by `/fs` listings, book `rel_path` fields, and
 chapter `file_path` fields.
 
-Three server-side guarantees apply to every `?path=`:
+Two server-side guarantees apply to every `?path=`, plus a length cap on the
+content routes:
 
-- **Length cap** - a path over 4096 bytes (as sent, `catalog.MaxPathBytes`)
-  is 400 `path is too long`, before it is cleaned, looked up or stored. In a
-  [listening sync](reference.md#post-apiv1melisteningsync) batch such an event
-  is `rejected` `invalid` and the rest of the batch applies.
+- **Length cap** - the content routes that address a book or file by
+  `?path=` (`item`, `chapters`, `cover`, `stream`, progress, bookmarks, notes,
+  history and the like, every route whose path goes through the server's
+  `pathInScope`) answer a path over 4096 bytes (as sent,
+  `catalog.MaxPathBytes`) with 400 `path is too long`, before it is cleaned,
+  looked up or stored. In a [listening sync](reference.md#post-apiv1melisteningsync)
+  batch such an event is `rejected` `invalid` and the rest of the batch applies.
+  Routes that take their path on their own (browse, removing from a list, the
+  podcast routes, the admin folder-override and enrichment routes) don't apply it.
 - **Traversal safety** - the path is resolved through `library.SafeJoin`, which
   rejects `..` escapes, absolute-path injection, and symlinks pointing outside
   the library root (400 `invalid path`).
