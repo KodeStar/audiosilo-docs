@@ -182,9 +182,10 @@ still does, if you are sure it isn't here.
 
 A contested title says which book it tied for and which titles matched it too:
 "Matched the same book as *Moon over Soho*: *Ben Aaronovitch/PG02 - Moon over
-Soho*, so this title isn't shown as here." The book is a link to its page in the
-console. Until the next check, a title last checked before this update says
-"Another Audible title matched the same book, so this one isn't shown as here."
+Soho*, so this title isn't shown as here. Add the right ASIN to that book and Check
+now, or back this title up if that book isn't it." The book is a link to its page
+in the console. Until the next check, a title last checked before this update
+says "Another Audible title matched the same book, so this one isn't shown as here."
 
 What to do:
 
@@ -256,7 +257,10 @@ If the account's placement template changed since the check, the row adds "The
 account's placement changed since then: this changes at the next check." (press
 [Check now](#check-now) to see the new place). A title with its own destination
 says "Your destination is checked when the backup starts." instead. Titles that
-can't be backed up (**Unavailable**, **No longer in the library**) show no plan.
+can't be backed up (**Unavailable**, **No longer in the library**) show no plan,
+and neither does a title marked [Not this book](#not-this-book): the Bridge still
+matches it to that book, so it plans nothing for it (its **Back up** places it by
+the same rules, or at its destination).
 
 ### What happens during a backup
 

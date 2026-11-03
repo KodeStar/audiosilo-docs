@@ -966,8 +966,9 @@ both repos, with a test on each side.
   with: [{asin, title}]}` or null); `audible.poll`'s params gain `template`
   (omitempty). Server migration `0065`, Bridge migration `0010` (the device
   profile). Neither side's Audible wire has shipped (server v2.5.1, Bridge v0.5.0),
-  so there is no gate: **deploy the Bridge with the server** (an older Bridge refuses the poll's `template`, an
-  older server the new title fields). Detail:
+  so there is no gate: **deploy the Bridge with the server** (an older Bridge
+  refuses the poll of an account with a placement template, `template` being
+  omitted only when `""`; an older server refuses the new title fields). Detail:
   [Planned destinations](../bridge/audible.md#planned-destinations).
 - **The player (Phase 1a):** its first admin-only UI, gated on `user.role ===
   'admin'` (never a demo account, a household member or a kid's account),

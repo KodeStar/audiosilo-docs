@@ -118,12 +118,14 @@ agent on every signed call and download is built from the same set
   constant set flags every account registered before it.
 - `denialKind` checks the customer's throttling (`customerthrottled`, "being
   throttled") **first**, as `audible.ErrThrottled` (a bare "Throttled", a rate
-  limit, stays `ErrDenied`). `Manager.signed` retries a throttled license once with
-  a newer sign-in, else marks the account refused with
+  limit, stays `ErrDenied`). `Manager.signed` retries a throttled license once when
+  a newer sign-in replaced the device meanwhile, else marks the account refused with
   `audibleacct.ThrottledText` and answers the denial. The import fails
   `audible_refused` with the advice to sign in again (never `no_rights`), and every
   later import of the account fails `audible_refused` at once, before the title
-  read or a license, until a sign-in again.
+  read or a license, until a sign-in again. (Any refused account's imports fail
+  this way, after a second read of the account: a sign-in refusal with Audible's
+  sign-in advice until a sign-in again or a poll that succeeds clears it.)
 - A sign-in again of the same Amazon account replaces the device and deregisters
   the old one (as before). Existing accounts keep their old registration until
   the owner signs in again after updating.
@@ -792,7 +794,9 @@ title shows `PlannedNote` (`plannedLine`: "Will go to &lt;path&gt;,
 beside N books of its series" and the like, "(planned at the last check)", warning
 tone on `exists` or `error`, a note when the plan's template isn't the account's
 now, and "Your destination is checked when the backup starts" instead while a
-`dest_path` is set; none on an `unavailable` or `gone` title), `ReasonNote`
+`dest_path` is set; none on an `unavailable` or `gone` title, nor on a matched
+one, a Not this book title included, since a stored match clears the plan),
+`ReasonNote`
 (`contested` explained with the other titles and the book linked through
 `bookRoute`, a plain sentence without data; a reason that is a machine code reads
 as a sentence, `reasonKey`; Audible's own words stay) and Destination...'s
