@@ -3447,6 +3447,9 @@ saving token's name as `device_name`, and a save that changes `finished` records
 when it did (`finish_changed_at`: the save's `updated_at`, never past the server's
 clock), so an older sync `finish` or `unfinish` can't undo it. A `device_name` or
 `other_place` in the body (a client echoing a row back) is accepted and ignored. A
+`device_id` starting `audible:` (an Audible account's row echoed back, Phase 4c) is
+saved as none, so the place still reaches Audible through
+[`GET /bridge/progress`](#get-apiv1bridgeprogress). A
 player that syncs listening sends no `PUT` for its listening.
 
 ### `PATCH /api/v1/libraries/{id}/progress`
@@ -3539,7 +3542,7 @@ listening across several books. A player uses it only while `GET /server` says
 
 | Body field | Type | Notes |
 |---|---|---|
-| `device_id` | string | required, 1-200 bytes: the device's own id (the player's `getDeviceId()`), the same one its progress rows carry |
+| `device_id` | string | required, 1-200 bytes: the device's own id (the player's `getDeviceId()`), the same one its progress rows carry. One starting `audible:` is refused: it is the [Audible listening route](#post-apiv1bridgeaudibleaccountsaccountlistening)'s alone (Phase 4c) |
 | `sent_at` | string | RFC 3339: the device's clock at **this** send attempt (set per attempt, never when the batch was built) |
 | `clock_offset` | float | seconds, server minus device, as a relay that measured it would send (at most `1e9` either way) |
 | `events` | array | 0-500 events; `[]` (or none) is a valid clock probe, answered with `server_time` |
@@ -3593,8 +3596,8 @@ fixed-width UTC milliseconds.
 | `applied` | the place moved to the event's end, or a finish/unfinish set the state |
 | `duplicate` | the id is already stored for this user, or an earlier copy in the same batch passed the checks: nothing was done again (a copy that was `rejected` doesn't count, so the next copy is checked on its own) |
 | `diverged` | the event was made without seeing the stored row (below); `kept` is `event` or `stored`, and `other_place` is the place **not** kept |
-| `not_applied` | stored, but the place didn't move; `reason` is `older` (an older write under last-write-wins, or a finish/unfinish not newer than the row's last finish-state change) or `resume_behind` (a `resume`/`continue` span behind the stored place, below; `other_place` is the event's place) |
-| `rejected` | not stored and changed nothing; `reason` is `invalid` (a field check failed, the event couldn't be decoded, or its path cleans to nothing or is over 4096 bytes), `unknown_kind`, `too_old` (it ended more than 90 days ago, after the clock correction), `duration_mismatch` (the device's `duration` is more than 10 s from the indexed book's), `no_access` (the path is outside the caller's access, a library they hold no grant on, or a podcast library their client doesn't see: what `PUT` answers with a `403`) or `not_found` (an unknown library to an admin, or a hidden path) |
+| `not_applied` | stored, but the place didn't move; `reason` is `older` (an older write under last-write-wins, or a finish/unfinish not newer than the row's last finish-state change) or `resume_behind` (a `resume`/`continue` span behind the stored place, below; `other_place` is the event's place); `behind` only on the Bridge's [Audible listening route](#post-apiv1bridgeaudibleaccountsaccountlistening) (furthest only) |
+| `rejected` | not stored and changed nothing; `reason` is `invalid` (a field check failed, the event couldn't be decoded, or its path cleans to nothing or is over 4096 bytes), `unknown_kind`, `too_old` (it ended more than 90 days ago, after the clock correction), `duration_mismatch` (the device's `duration` is more than 10 s from the indexed book's), `no_access` (the path is outside the caller's access, a library they hold no grant on, or a podcast library their client doesn't see: what `PUT` answers with a `403`) or `not_found` (an unknown library to an admin, or a hidden path); on the [Audible listening route](#post-apiv1bridgeaudibleaccountsaccountlistening) also `not_synced` (not a synced title's book), and `duration_mismatch` there means Audible's length disagrees |
 
 Every status but `rejected` is final for the sender: the event is stored and a
 resend is a `duplicate`. Every stored `listen` counts for sessions and history,
@@ -3602,7 +3605,7 @@ even when its place didn't move (listening that happened always counts).
 
 | Status | Meaning |
 |---|---|
-| `400` | `invalid request` (not JSON, an unknown top-level field); `device_id is required`; `device_id is too long`; `send sent_at or clock_offset` (neither, both, an unparseable `sent_at`, or a `clock_offset` beyond `1e9` either way); `code: "too_many_events"` (more than 500 events) |
+| `400` | `invalid request` (not JSON, an unknown top-level field); `device_id is required`; `device_id is too long`; `device_id is reserved` (one starting `audible:`); `send sent_at or clock_offset` (neither, both, an unparseable `sent_at`, or a `clock_offset` beyond `1e9` either way); `code: "too_many_events"` (more than 500 events) |
 | `401` | no token, or one that isn't a session or an API key |
 | `413` | `code: "too_large"`: the body is over 1 MiB (a `400` before Track W2); send fewer events per batch (the player halves its batch) |
 | `500` | `could not sync listening`: nothing of the batch is stored, so a retry applies it once |
@@ -7891,6 +7894,9 @@ stamped with the server's time (to the sub-second) and a higher `version`, so it
 device saved before it under last-write-wins, while a device still playing the
 book overrides it on its next save. Like the listener's own edit, it clears the
 row's [`other_place`](#get-apiv1meprogress) and records when it changed `finished`.
+An edit of a row an Audible account wrote (`device_id` `audible:<account>`, Phase
+4c) clears its device id, so the edit reaches Audible and Audible's next place
+can't undo it unseen.
 
 Response `200`: `{ "progress": { … } }` - the object of
 [`GET /admin/users/{id}/progress`](#get-apiv1adminusersidprogress), plus (from
@@ -10254,15 +10260,18 @@ through a hidden (dot) folder is never indexed. The body is at most 8 KiB.
 
 ## Audible accounts
 
-Bridge Phases 4a and 4b (`api/handlers_audible.go`, `catalog/audible.go`,
-`catalog/audible_import.go`, `internal/audible`; the design is in
+Bridge Phases 4a, 4b and 4c (`api/handlers_audible.go`, `catalog/audible.go`,
+`catalog/audible_import.go`, `internal/audible`, and 4c's
+`api/handlers_audible_sync.go` and `catalog/audible_sync.go`; the design is in
 [Audible](../../bridge/audible.md)). The Bridge signs in to Audible accounts and
 holds every credential; the server keeps only what it reports: each account's
 mapping (a person, a books library), the titles its polls found, and (4b) what to
 back up: an account's policy and placement template, a title's "Not this book" and
 destination, and the backups it queued (`audible.import` jobs, see
-[Backing up a title](../../bridge/audible.md#backing-up-a-title-audibleimport)).
-The server never talks to Audible.
+[Backing up a title](../../bridge/audible.md#backing-up-a-title-audibleimport)),
+and (4c) whether an account's listening places sync with Audible
+([Audible position sync](#audible-position-sync)). The server never talks to
+Audible.
 
 Two sets of routes, as for [the Bridge](#the-bridge):
 
@@ -10292,7 +10301,7 @@ one, an id that doesn't match is `404 unknown_account`.
   "library": { "id": 1, "name": "Books" },
   "paused": false,
   "policy": "manual",
-  "sync": true,
+  "sync": false,
   "poll_hours": 6,
   "created_at": "2026-11-02T10:00:00Z",
   "updated_at": "2026-11-02T10:00:00Z",
@@ -10300,6 +10309,8 @@ one, an id that doesn't match is `404 unknown_account`.
   "last_queued_at": "2026-11-02T10:00:05Z",
   "template": "",
   "policy_since": "2026-11-02T10:01:12Z",
+  "last_sync_at": null,
+  "refused_at": null,
   "titles": { "total": 30, "available": 22, "preorder": 4, "unavailable": 4, "gone": 0, "matched": 3 },
   "backup_estimate": { "count": 18, "bytes": 5299200000 }
 }
@@ -10312,13 +10323,15 @@ one, an id that doesn't match is `404 unknown_account`.
 | `library_id`, `library` | the books library its titles are matched against; both `null` and `paused: true` once that library was deleted |
 | `paused` | its library was deleted: no poll is queued and Check now is `409 account_paused` until the Bridge maps it again |
 | `policy` | `all`, `series` or `manual`: what the account backs up by itself after a poll (every new title, new titles in a series the person has, only what an admin picks). The Bridge sets it when it creates the account; after that only [`PATCH /admin/audible/accounts/{account}`](#patch-apiv1adminaudibleaccountsaccount) changes it |
-| `sync` | whether Phase 4c will keep the person's place in step with Audible |
+| `sync` | whether the account's listening places sync with Audible (Phase 4c): the console's alone ([`PATCH`](#patch-apiv1adminaudibleaccountsaccount) `{sync}`), off for a new account, turned off when the Bridge maps the account to another person |
 | `poll_hours` | how often the scheduler queues its poll (6) |
 | `last_poll_at` | when the Bridge last finished a poll (its `final` titles call), `null` before the first |
 | `last_queued_at` | when a poll was last queued (by the scheduler or Check now), `null` before the first |
 | `template` | the account's placement template for its backups, `""` for the Bridge's placement beside the series' other books (Phase 4b) |
 | `policy_since` | when its automatic policy began to act: a policy backs up only titles first seen after it. Set at the account's creation, when an automatic policy is turned on, and moved to the account's first complete poll (Phase 4b) |
 | `titles` | `GET /admin/audible/accounts` only: the titles counted by state, and how many are matched to a book here (`matched` leaves out a match marked "Not this book") |
+| `last_sync_at` | when its last `audible.sync` finished having read Audible's places, `null` before the first (and after a mapping to another person) (Phase 4c) |
+| `refused_at` | when a sync failed `audible_refused` (Audible refused the account's device): no sync is queued while it is set. Any `PUT /bridge/audible/accounts/{account}` (a sign-in again maps the account) or a complete poll clears it (Phase 4c) |
 | `backup_estimate` | `GET /admin/audible/accounts` only: what [Back up everything](#post-apiv1adminaudibleaccountsaccountbackup-all) would queue now, `count` titles and about `bytes` (each title's `runtime_s` x 8000, 64 kbps AAXC: approximate) (Phase 4b) |
 
 ### `GET /api/v1/bridge/users`
@@ -10340,11 +10353,15 @@ account's only, the console sets it after that). The body is strict JSON, at mos
 4 KiB:
 
 ```json
-{ "label": "Chris (US)", "marketplace": "us", "user_id": 3, "library_id": 1, "policy": "manual", "sync": true }
+{ "label": "Chris (US)", "marketplace": "us", "user_id": 3, "library_id": 1, "policy": "manual", "sync": false }
 ```
 
 `label` is cleaned and cut to 100 characters (`""` is fine: the console then names
-it after the person and the store).
+it after the person and the store). Since Phase 4c `sync` is read and ignored: a
+new account is created with sync off, and a PUT never turns it on. A PUT mapping
+the account to **another person** turns its sync off, forgets its `last_sync_at`
+and cancels its open `audible.sync` ("sync with Audible was turned off for the
+account"); every PUT clears `refused_at`.
 
 | Status | Meaning |
 |---|---|
@@ -10355,7 +10372,7 @@ it after the person and the store).
 ### `DELETE /api/v1/bridge/audible/accounts/{account}`
 
 *Bridge token.* The Bridge removed the account: it goes, with its titles, and its
-open poll and backups are cancelled ("the Audible account was removed"). `204`, whether or not
+open poll, sync and backups are cancelled ("the Audible account was removed"). `204`, whether or not
 the server knew it (the Bridge forgets locally first and may call again).
 
 ### `PUT /api/v1/bridge/audible/accounts/{account}/titles`
@@ -10447,7 +10464,8 @@ the server knew it (the Bridge forgets locally first and may call again).
   its book is indexed and the call names no other match for the title. On the
   **final** call, every title of the account this `poll_id` didn't send becomes
   `gone`, the account's `last_poll_at` is now (and, on its first complete poll, its
-  `policy_since`), and then, while the module is on and an online Bridge runs
+  `policy_since`), its `refused_at` is cleared (Phase 4c: Audible answered the
+  account), and then, while the module is on and an online Bridge runs
   `audible.import`, the server queues the backups the account's policy and pending
   preorder requests ask for (at most 10 s of it; a failure is logged and the next
   poll asks again: the call still answers `200`).
@@ -10561,6 +10579,7 @@ keyset-paged.
       "match": null,
       "rejected": false,
       "ignored": false,
+      "no_sync": false,
       "dest_path": "",
       "first_seen": "2026-11-02T10:01:10Z",
       "updated_at": "2026-11-02T10:01:10Z",
@@ -10581,10 +10600,11 @@ keyset-paged.
 |---|---|
 | `match.how` | `asin`, `fuzzy` (a poll's) or `import` (a done backup's) |
 | `rejected` | marked "Not this book": never backed up by Back up everything or a policy; a match it has isn't counted as on this server |
-| `ignored` | no route sets it yet; Back up everything and the policy skip an ignored title |
+| `ignored` | no route sets it yet; Back up everything and the policy skip an ignored title, and it doesn't sync |
+| `no_sync` | marked "Don't sync this book" (Phase 4c): neither direction of the account's sync touches its book. Separate from `rejected`; backups never read it |
 | `dest_path` | the console's destination for the title's backup, `""` for the account's placement |
 | `import_job_id` | the title's latest backup job, `null` for none |
-| `import` | the title's backup: `{job_id, state, code}` with `state` the job's ([job states](#the-job-object)) and `code` a failed or parked job's code (`not_released`, `no_rights`, `audible_refused`, `not_writable`, `exists`, `disk_full`, `offline_url_expired`, `unknown_account`, or `""`); `{job_id: null, state: "pending"}` for a Back up on a preorder waiting for its release; `null` for none |
+| `import` | the title's backup: `{job_id, state, code}` with `state` the job's ([job states](#the-job-object)) and `code` a failed or parked job's code (`not_released`, `no_rights`, `audible_refused`, `audible_sign_in`, `not_writable`, `exists`, `disk_full`, `offline_url_expired`, `unknown_account`, or `""`); `{job_id: null, state: "pending"}` for a Back up on a preorder waiting for its release; `null` for none |
 | `needs_attention` | a preorder still not available 14 days after its `release_date`: the account is no longer polled hourly for it |
 | `planned` | where a backup would go, as the Bridge planned it at its last poll (the object the [titles PUT](#put-apiv1bridgeaudibleaccountsaccounttitles) takes); `null` when matched, not planned, or the account is no longer mapped to the plan's library (paused or mapped again: none until its next poll) |
 | `contested` | for a title left unmatched as `contested`, `{library_id, path, with: [{asin, title}]}`: the book it tied for and the account's other titles (not `gone`) contested over that book or matched to it, by title, at most 10; `null` otherwise, or while the account isn't mapped to that library |
@@ -10664,11 +10684,12 @@ count and size it would queue are the account's `backup_estimate`.
 
 ### `PATCH /api/v1/admin/audible/titles/{account}/{asin}`
 
-*Admin, module on.* **Not this book** and a title's **destination** (Phase 4b).
-Strict JSON, at most 8 KiB; a field left out is left as it is:
+*Admin, module on.* **Not this book** and a title's **destination** (Phase 4b),
+and **Don't sync this book** (Phase 4c). Strict JSON, at most 8 KiB; a field left
+out is left as it is:
 
 ```json
-{ "rejected": true, "dest_path": "Wen Liang/Mapmakers/MM03 - The Cartographer's Return" }
+{ "rejected": true, "dest_path": "Wen Liang/Mapmakers/MM03 - The Cartographer's Return", "no_sync": false }
 ```
 
 - `rejected` `true` marks the title "Not this book" (and drops a pending preorder
@@ -10679,6 +10700,13 @@ Strict JSON, at most 8 KiB; a field left out is left as it is:
   leading or trailing `/`, no `.` segment), no hidden, dot-led segment, no
   backslash or control character. It is copied into a backup when it is queued;
   the Bridge checks it again against its mapping.
+- `no_sync` `true` keeps the title's book out of the account's
+  [position sync](#audible-position-sync), both ways; `false` lets it sync again.
+
+A `rejected` or `no_sync` sent queues the account's `audible.sync` at once (when
+the account syncs and an online Bridge offers the kind), with the titles that sync
+now, so the Bridge drops a left-out title straight away; a failure to queue is
+logged and the next scheduled sync carries the change.
 
 | Status | Meaning |
 |---|---|
@@ -10686,16 +10714,17 @@ Strict JSON, at most 8 KiB; a field left out is left as it is:
 | `400` | `invalid_request` - the JSON (an unknown field too); `invalid_dest_path` - with what is wrong in `error` |
 | `404` | `unknown_account`; `unknown_title`; `module_off` |
 
-Audited as **`bridge.audible.title`** (with `account`, `asin`, and `rejected`
-and `dest_path` when sent), even when nothing changed.
+Audited as **`bridge.audible.title`** (with `account`, `asin`, and `rejected`,
+`dest_path` and `no_sync` when sent), even when nothing changed.
 
 ### `PATCH /api/v1/admin/audible/accounts/{account}`
 
-*Admin, module on.* An account's **backup settings** (Phase 4b). Strict JSON, at
-most 8 KiB; a field left out is left as it is:
+*Admin, module on.* An account's **settings**: its backups (Phase 4b) and whether
+its places sync (Phase 4c). Strict JSON, at most 8 KiB; a field left out is left as
+it is:
 
 ```json
-{ "policy": "series", "template": "{Author}/{Series}/{ {PaddedSeq} - }{Title}" }
+{ "policy": "series", "template": "{Author}/{Series}/{ {PaddedSeq} - }{Title}", "sync": true }
 ```
 
 - `policy`: `all`, `series` or `manual`. Changing it to `all` or `series` sets
@@ -10705,6 +10734,11 @@ most 8 KiB; a field left out is left as it is:
   series' other books. At most 500 bytes, in the Bridge's
   [template grammar](../../bridge/audible.md#the-template-grammar) (its variables,
   mods and the segment rules the server checks).
+- `sync`: `true` turns the account's [position sync](#audible-position-sync) on
+  and queues its first `audible.sync` at once (when an online Bridge offers the
+  kind); `false` turns it off and cancels its open sync ("sync with Audible was
+  turned off for the account"; a running one posts nothing more: the listening
+  route answers `403 sync_off`).
 
 The account's person and library stay the Bridge's.
 
@@ -10714,8 +10748,8 @@ The account's person and library stay the Bridge's.
 | `400` | `invalid_request` - the JSON (an unknown field too); `invalid_policy`; `invalid_template` - with what is wrong in `error` |
 | `404` | `unknown_account`; `module_off` |
 
-Audited as `bridge.audible.account` (with `account`, and `policy` and `template`
-when sent).
+Audited as `bridge.audible.account` (with `account`, and `policy`, `template` and
+`sync` when sent).
 
 ### The `audible.import` job
 
@@ -10728,12 +10762,156 @@ result becomes the title's match (`how` `import`) when it names a book indexed i
 the job's library that is the title's own; removing the account cancels its open
 backups.
 
+### Audible position sync
+
+Phase 4c ([Position sync](../../bridge/audible.md#position-sync-audiblesync-and-the-push-loop)):
+the Bridge keeps an account's listening places in step with Audible for the
+account's **person**, both ways, furthest wins. Audible's places come in through
+`audible.sync` and the listening route below; the person's places go back through
+the progress feed, which the Bridge's push loop reads every minute. An account
+syncs while the module is on, its `sync` is on, it isn't paused, `refused_at` is
+unset and its person may still be synced for (not disabled, a kid or a demo
+account). A title syncs when it is matched, not `rejected`, `ignored`, `no_sync` or
+`gone`. Only places move: no listening session, `listening_daily` or history row
+is ever written for Audible's listening, and nothing is recorded against the
+bridge token.
+
+Both routes are *bridge token*, header only, and share these refusals:
+
+| Status | Meaning |
+|---|---|
+| `403` | `sync_off` - the `audible` module is off, the account's sync is off, or the account is paused (its library deleted); `user_unavailable` - the account's person was disabled, made a kid or a demo account since it was mapped: map the account to someone else |
+| `404` | `unknown_account` - no such account, an id the Bridge couldn't have made, or one whose person was deleted (the account goes with them) |
+
+### The `audible.sync` job
+
+Internal (refused by `POST /admin/bridge/jobs`), quiet, owned by the `audible`
+module (held while it is off), deduped per account (a queued one `promotes`: a
+newer queue gives it the newest titles), only the newest ended one of each account
+kept. Its params are the server's, strict, at most 1 MiB (the last titles past it
+are dropped and logged):
+
+```json
+{ "account": "k3v9x0p2m4q8r1t5", "titles": [ { "asin": "B0EXAMPLE1", "library_id": 1, "path": "A. Writer/The Example", "runtime_s": 36000 } ] }
+```
+
+The module's scheduler queues one at priority `-10` for each account that syncs,
+has at least one synced title and was last queued more than 15 minutes ago
+(`bridge.AudibleSyncEvery`), while an online Bridge offers `audible.sync`. Turning
+sync on, and a title's `rejected` or `no_sync` change, queue it at once (the
+latter even with no titles left). When it ends: done having read Audible's places
+(its result neither `waiting` nor `sync_off`) sets the account's `last_sync_at`;
+failed with code `audible_refused` (Audible refused the account's device) sets
+`refused_at`, and the scheduler queues none until a Bridge PUT or a complete poll
+clears it. `audible_sign_in` (Audible refused the sign-in for now) is an ordinary
+failure: syncs go on being queued. The Bridge's steps, result and codes are in
+[Position sync](../../bridge/audible.md#audible-to-the-server-audiblesync).
+
+### `POST /api/v1/bridge/audible/accounts/{account}/listening`
+
+*Bridge token.* The account's places on Audible, for its person. Strict JSON,
+`sent_at` required (RFC 3339, the Bridge's clock), `events` in the
+[Sync v2](#post-apiv1melisteningsync) shapes and limits (at most 500 a batch, 1 MiB):
+
+```json
+{
+  "sent_at": "2026-11-03T09:15:00Z",
+  "events": [
+    {
+      "id": "aud-0f3c9a1e5b7d2c4e6a8b0d1f3e5c7a9b",
+      "kind": "listen",
+      "library_id": 1,
+      "path": "A. Writer/The Example",
+      "from_pos": 5400.0,
+      "to_pos": 5400.0,
+      "started_at": "2026-11-03T08:58:41Z",
+      "ended_at": "2026-11-03T08:58:41Z",
+      "start": "jump"
+    }
+  ]
+}
+```
+
+The Bridge's event ids are `aud-` and the first 32 hex characters of
+`sha256(account|asin|position_ms|last_updated|kind|library_id|path)`, so an
+unchanged place is a `duplicate` at every sync.
+
+The route builds the batch itself, as device `audible:<account>` named
+`Audible (<label>)` (the store, upper-cased, for an account with no label), with
+no token and **furthest only**; no request body can ask for either. Each event's
+book is resolved under the **person's** access (outside it: `rejected`
+`no_access`) and must be the match of one of the account's synced titles (else
+`rejected` `not_synced`). It is `rejected` `duration_mismatch` when none of the
+book's titles has an Audible `runtime_s` within 5% of the longer plus 2 minutes of
+the indexed book's duration (an unknown length on either side agrees). Then:
+
+- a `listen` more than 1 s **ahead** of the stored place applies over any device's
+  row, whatever its time: the row's `updated_at` never moves back, and its
+  playback speed and offer are kept. A player reconciles as for any other device's
+  place, so it moves to it or offers it under the row's `device_name`;
+- one at or behind the stored place, on a finished row, or heard at or before the
+  row's last finish change (a place from before a finish or a restart here) is
+  `not_applied` with `reason` **`behind`**, storing nothing on the row and making no
+  offer;
+- a place past the book's end by more than 5% plus 2 minutes is `rejected`
+  `duration_mismatch`; one just past it is the end;
+- a `finish` is any finish; an `unfinish` is `behind`.
+
+| Status | Meaning |
+|---|---|
+| `200` | the Sync v2 answer, `{server_time, results, progress}` |
+| `400` | a bad envelope, as [`POST /me/listening/sync`](#post-apiv1melisteningsync)'s (`sent_at is required`; `code: "too_many_events"`) |
+| `413` | `code: "too_large"` |
+| `403` / `404` | [above](#audible-position-sync) |
+
+### `GET /api/v1/bridge/progress`
+
+*Bridge token.* The person's places the Bridge may push to Audible, a page at a
+time: `?account=` (required), `?since=` (the previous answer's `next`; none for
+the start), `?limit=` (default 200, at most 500). `Cache-Control: no-store`.
+
+```json
+{
+  "rows": [
+    {
+      "library_id": 1,
+      "path": "A. Writer/The Example",
+      "asin": "B0EXAMPLE1",
+      "position": 5520.4,
+      "duration": 36012.0,
+      "finished": false,
+      "updated_at": "2026-11-03T09:20:11.042Z",
+      "device_id": "lq3x9-ab12cd34",
+      "version": 44
+    }
+  ],
+  "next": "eyJxIjo0NCwicyI6IkIwRVhBTVBMRTEifQ",
+  "more": false
+}
+```
+
+The rows are the person's progress rows on the books of the account's synced
+titles that the person can still reach, **one per title** (two titles on one book
+are two rows), leaving out the rows the account itself wrote (`device_id`
+`audible:<account>`: no echo). They are ordered by `progress.change_seq`, the order
+this server wrote the person's rows in, then ASIN, after the opaque cursor `since`,
+so a row written late with an earlier `updated_at` (an offline backlog, a late
+finish, a client's clock behind) is still fed; `updated_at` is the row's own.
+`next` is the cursor of the last row read (`since` again when there is none): the
+Bridge keeps it between polls. `more` is `true` for a full page: ask again at once.
+
+| Status | Meaning |
+|---|---|
+| `200` | `{ rows, next, more }` |
+| `400` | `invalid_request` - no `account`, a bad `limit` or cursor |
+| `403` / `404` | [above](#audible-position-sync) |
+
 ### `DELETE /api/v1/admin/audible/accounts/{account}`
 
 *Admin*, **not** behind the module's toggle. Removes an account the Bridge can no
 longer remove (one from a Bridge since unpaired or replaced, or whose removal on the
 Bridge couldn't reach the server), exactly as the Bridge's delete does: its titles
-go, its open poll is cancelled, and so are its open backups. It signs nothing out of
+go, its open poll and sync are cancelled, and so are its open backups. It signs nothing out of
 Amazon: that is the Bridge's. `204`, known or not; audited as `bridge.audible.remove` (with `account`)
 when there was one. A bridge token is `401`.
 

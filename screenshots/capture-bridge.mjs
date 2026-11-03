@@ -253,7 +253,7 @@ async function audibleShots() {
       await card.getByText(/on this server/).first().waitFor({timeout: 15000});
       await clipShoot(consolePage, card, AUDIBLE_SHOTS.card);
     });
-    for (const [file, button] of [[AUDIBLE_SHOTS.settings, 'Backup settings...'],
+    for (const [file, button] of [[AUDIBLE_SHOTS.settings, 'Account settings...'],
       [AUDIBLE_SHOTS.backupAll, 'Back up everything...']]) {
       await step(`audible: ${button}`, async () => {
         if (!wanted(file)) return;

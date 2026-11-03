@@ -1,19 +1,15 @@
 ---
 title: Audible
-description: "See the books in the Audible accounts your Bridge signs in to, which of them are already on your server, and back up the rest into your library: the Audible module, the Audible accounts card on Settings > Bridge, the titles page, how titles are matched, Back up, Not this book, a destination, Back up everything, the backup policies, where backups go, preorders, what a failed backup means, Check now and removing an account."
+description: "See the books in the Audible accounts your Bridge signs in to, which of them are already on your server, back up the rest into your library, and keep listening places in step with Audible: the Audible module, the Audible accounts card on Settings > Bridge, the titles page, how titles are matched, Back up, Not this book, a destination, Back up everything, the backup policies, where backups go, preorders, what a failed backup means, syncing listening places and Don't sync, Check now and removing an account."
 ---
 
 Your [Bridge](bridge.md) can sign in to your Audible accounts, list the books each
 one owns and find the ones already on your server. The console shows the result,
 and from it you can have the Bridge **back up** the books you bought into your
 library: it downloads each one from Audible, removes its copy protection (a
-lossless copy, chapters kept) and places it beside your other books.
-
-:::info[What it does today]
-The Bridge **lists, matches and backs up**. It doesn't keep listening places in
-step with Audible yet: that comes in a later version, and the **Keep the listening
-place in step** choice for each account is kept for then.
-:::
+lossless copy, chapters kept) and places it beside your other books. When you turn
+it on for an account, the Bridge also keeps the account's **listening places** in
+step with Audible, both ways (see [Syncing listening places](#syncing-listening-places)).
 
 :::note[A personal backup of books you bought]
 Audible backups are for making **a personal backup of books you bought**, with your
@@ -68,13 +64,15 @@ For each account:
 | **Store** | the Audible store it buys from (US, UK, DE and so on) |
 | **Back up** | what the account backs up by itself after each check: **Every new book**, **New books in series you have** or **Only books you choose** (see [Backing up by itself](#backing-up-by-itself)) |
 | **Placement** | where its backups go: **Beside the series' other books**, or the account's placement template (see [Where backups go](#where-backups-go)) |
+| **Sync** | whether its listening places sync with Audible: **Off**, **On, not synced yet**, **On, synced** with when it last did, **On, paused with the account**, or **Stopped: Audible refused the account. Sign in again on the Bridge.** (see [Syncing listening places](#syncing-listening-places)) |
 | **Titles** | how many titles the account has, and how many of them are on this server |
 
-Each account has **Check now**, **Backup settings...** (its policy and placement
-template, [below](#backing-up-by-itself)), **Back up everything...**
+Each account has **Check now**, **Account settings...** (its policy and placement
+template, [below](#backing-up-by-itself), and whether its places
+[sync](#syncing-listening-places)), **Back up everything...**
 ([below](#back-up-everything)) and **Remove...** ([below](#removing-an-account)).
 
-![The Backup settings dialog: Back up by itself and the placement template](/img/screenshots/admin/audible-backup-settings.png)
+![The Account settings dialog: Back up by itself, the placement template and Sync listening places with Audible](/img/screenshots/admin/audible-backup-settings.png)
 
 With no account yet, the card says **No Audible accounts yet**, with **Open the
 Bridge's Accounts tab**.
@@ -97,13 +95,15 @@ accounts) which account owns it, and **To ...** when you gave it a
 [contested](#contested-titles) says which book it tied for. A title Audible won't
 let you download says why, and so does a backup that failed. Under it are the title's
 [backup buttons](#backing-up-a-book): **Back up**, **Not this book** and
-**Destination...**.
+**Destination...**, and for a title on this server **Don't sync**
+([below](#dont-sync-this-book)).
 
 On the right: its state, and **On this server** (a link to the book's page in the
 console) or **Not here**. **Matched by title** marks a match made from the title
 and author rather than the ASIN (see [How titles are matched](#how-titles-are-matched)),
-**Backed up here** a book the Bridge backed up, and **Not this book** a title you
-[marked](#not-this-book). Last comes the [backup's status](#a-titles-backup-status),
+**Backed up here** a book the Bridge backed up, **Not this book** a title you
+[marked](#not-this-book), and **Not synced** a title you marked
+[Don't sync](#dont-sync-this-book). Last comes the [backup's status](#a-titles-backup-status),
 when it has one.
 
 Above the list:
@@ -431,7 +431,7 @@ account**.
 
 ## Backing up by itself
 
-**Backup settings...** on an account's card sets **Back up by itself**: what the
+**Account settings...** on an account's card sets **Back up by itself**: what the
 account backs up without being asked, after each check.
 
 | Choice | Backs up |
@@ -453,8 +453,9 @@ everything does). It needs an online Bridge that can back up; a check
 while it can't queues nothing, and the next check asks again.
 
 The choice an account starts with is the one picked when it was signed in on the
-Bridge. After that it is set here; the Bridge's Accounts tab says so. Saving is in
-the [audit log](server.md#audit-log) as **Changed an Audible account's backups**.
+Bridge. After that it is set here; the Bridge's Accounts tab says so. Saving the
+account's settings is in the [audit log](server.md#audit-log) as **Changed an
+Audible account's backups**.
 
 ## Where backups go
 
@@ -466,7 +467,7 @@ series' folder and its numbering. For example, with book 6 of Dragon Heart in a
 book of a series you don't have yet goes in `Author/Series/` with a code made from the series' initials, and a book in no
 series in `Author/Title/`. The file is the title, as `Title.m4b`.
 
-**A placement template.** **Backup settings... > Placement template** names the
+**A placement template.** **Account settings... > Placement template** names the
 folders and file yourself, for example
 `{Author}/{Series}/{ {PaddedSeq} - }{Title}`:
 
@@ -505,6 +506,78 @@ moves a release date: check the title in the Audible app or website.
 Marking a preorder [Not this book](#not-this-book) drops the request. **Back up**
 on a preorder is in the [audit log](server.md#audit-log) as **Asked to back up an
 Audible book**.
+
+## Syncing listening places
+
+With sync on, an account's listening places follow you between Audible and
+AudioSilo: listen in the Audible app and your place here moves on; listen here and
+the Audible app picks up where you stopped. It is **off for every account** until
+you turn it on: **Account settings... > Sync listening places with Audible**, then
+**Save**. Each account syncs for the person it belongs to, on the books of its
+titles that are on this server.
+
+**From Audible to here.** Every 15 minutes (and straight away when you turn sync on
+or change which titles sync), the Bridge reads the account's places on Audible and
+brings each one here that is **further on** than your place on that book. Your
+player then moves to it, or offers it, naming the account: *"On Audible (Chris
+(US)) you were at Chapter 12, 4:10. Jump there?"*. A place from Audible **never
+moves yours back**: one behind your place here, or from before you finished or
+started the book again here, is left alone. Your playback speed here stays as it
+is. A place at the end of the book on Audible marks the book **finished** here.
+
+**From here to Audible.** A few minutes after you stop listening here (once your
+place has stayed put for 3 minutes), the Bridge sends it to Audible, as it is: a
+place you moved back to here goes back on Audible too. If you listened further on
+Audible in the meantime, your place here isn't sent: the place further on wins, and
+the next sync brings it here. When sync starts, only places you changed in the last
+10 minutes are sent; the others reach Audible the next time you listen to them.
+
+**Only places.** Listening on Audible never shows as listening here: it adds
+nothing to your history, your stats or the server's activity. Only the place moves,
+under a device named after the account, such as **Audible (Chris (US))**.
+
+A title's place syncs only when the title is **on this server** (matched to a book,
+not marked [Not this book](#not-this-book), not **No longer in the library**) and
+not marked [Don't sync](#dont-sync-this-book). A title whose length on Audible is
+quite different from the book here (more than about 5% plus two minutes: usually
+another recording matched by its title) doesn't sync here, and neither does a
+place past the end of the book.
+
+The syncs show in the Bridge's [Jobs](bridge.md#jobs) list as **Syncing places
+with Audible**, **Scheduled by the server**. Only the latest finished one of each
+account is kept there.
+
+**When it stops.** The card's **Sync** row says why:
+
+- **On, paused with the account**: the account's library was deleted. Choose
+  another library for it on the Bridge's Accounts tab.
+- **Stopped: Audible refused the account. Sign in again on the Bridge.**: Audible
+  refused the Bridge's device. Press **Sign in again** on the Bridge's
+  [Accounts tab](../getting-started/bridge-accounts.md#the-accounts-states): syncing
+  starts again after it. When Audible only turns a sign-in away for a while, the
+  Bridge keeps trying by itself, and a check that Audible answers ends it.
+- **Off** after you changed who the account belongs to on the Bridge: sync turns
+  off then, since you turned it on for someone else. Turn it on again for the new
+  person.
+
+When Audible is slow or busy, the Bridge waits (as long as Audible asks, and at
+least 2 minutes) and tries again; that never stops the account. The Bridge's setup checklist says
+when an account's places aren't syncing, and why. If the account's person is
+disabled or made a kid account, nothing syncs until you choose someone else for the
+account on the Bridge.
+
+Turning sync off stops a sync that is waiting or running. Saving the switch is in
+the [audit log](server.md#audit-log) as **Changed an Audible account's backups**.
+
+### Don't sync this book
+
+**Don't sync** on a title that is on this server keeps that one book out of the
+sync, both ways: Audible's place never moves it, and your place on it is never sent
+to Audible. The title shows **Not synced**; **Sync again** undoes it. It changes
+nothing else: the title stays on this server, and backups don't look at it (use
+[Not this book](#not-this-book) for a wrong match). Marking and unmarking it are in
+the audit log as **Changed an Audible book's match or destination**, and the
+account syncs straight away, so the change takes effect at once.
 
 ## Check now
 
@@ -548,6 +621,6 @@ on the server again.
 ## When the module is off
 
 Turning the Audible module off hides the Audible page and the accounts card, and
-the server stops asking for checks and backs nothing up by itself; a check or
-backup already queued waits until the module is on again. The accounts and their
+the server stops asking for checks, backs nothing up by itself and syncs no
+places; a check, backup or sync already queued waits until the module is on again. The accounts and their
 titles are kept, and signing in on the Bridge still works. To remove an account in the console, turn the module on first.

@@ -970,6 +970,27 @@ both repos, with a test on each side.
   refuses the poll of an account with a placement template, `template` being
   omitted only when `""`; an older server refuses the new title fields). Detail:
   [Planned destinations](../bridge/audible.md#planned-destinations).
+- **Audible position sync (Phase 4c):** a third kind, `audible.sync` (feature
+  `audible`; internal, quiet, deduped per account, promoting), params built by the
+  server (`{account, titles: [{asin, library_id, path, runtime_s}]}`, strict on
+  both sides, at most 1 MiB), queued every 15 minutes per account whose sync is on
+  and at once on a console change; failure codes `audible_refused` (the server
+  sets `refused_at` and stops queueing until a Bridge PUT or a complete poll) and
+  `audible_sign_in` (transient). Two new bridge-token routes, acting for the
+  account's person: `POST /bridge/audible/accounts/{account}/listening` (`{sent_at,
+  events}`, the Sync v2 event shapes, applied **furthest only** under device
+  `audible:<account>` named `Audible (<label>)`, token 0, no sessions or stats;
+  event ids `aud-` + 32 hex of
+  `sha256(account|asin|position_ms|last_updated|kind|library_id|path)`) and `GET
+  /bridge/progress?account=&since=&limit=` (`{rows, next, more}`, keyset on
+  `progress.change_seq`, the account's own rows left out). Both answer `403
+  sync_off`, `403 user_unavailable`, `404 unknown_account`; the feed also `400
+  invalid_request`. The account's `sync` is the console's now: the Bridge's PUT
+  sends it and the server ignores it. The `audible:` device id is reserved
+  (`/me/listening/sync` refuses it; a progress PUT saves it as none). Server
+  migration `0066`, Bridge `0011`; the heartbeat gains no block. The Bridge mirrors
+  it in `internal/link/audiblesync.go`. Detail:
+  [Position sync](../bridge/audible.md#position-sync-audiblesync-and-the-push-loop).
 - **The player (Phase 1a):** its first admin-only UI, gated on `user.role ===
   'admin'` (never a demo account, a household member or a kid's account),
   `capabilities.bridge`, `bridge.features` holding `sidecars` and
@@ -995,7 +1016,13 @@ fields as none. Phase 4a's are too: an older Bridge never advertises
 shipped player ignores the `audible` flag. Phase 4b's are too: an older Bridge
 never advertises `audible.import`, so nothing is queued for it (`kind_unavailable`,
 and a poll's policy pass queues nothing); its account PUT's `policy` still creates
-an account as before. The Bridge sends `X-AudioSilo-Client:
+an account as before. Phase 4c's are too: an older Bridge never advertises
+`audible.sync`, so none is queued and the feed is never read, and its account PUT's
+`sync` is ignored; a shipped player sees Audible's place as any other device's (by
+its `device_name`), and one echoing the row's `audible:` device id in a progress
+`PUT` saves under none. A 4c Bridge against an older server gets no sync queued and
+a `404` from the feed, which its push loop asks again each minute: deploy the
+Bridge with the server. The Bridge sends `X-AudioSilo-Client:
 AudioSilo Bridge/<version> (<os>)` on every call.
 
 **A change requires:** the server handler and its test, the mirrored type in the

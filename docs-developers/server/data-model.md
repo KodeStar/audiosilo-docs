@@ -551,7 +551,17 @@ tables were rebuilt rather than migrated in place):
   span in a later sync post compares with it, not with `updated_at` (the span
   chain lasts across posts, see
   [How a batch is applied](api/reference.md#how-a-batch-is-applied)); every other
-  writer clears them, and a stale version is the old rule.
+  writer clears them, and a stale version is the old rule. *(0066, Bridge Phase
+  4c)* `change_seq`: the order this server wrote the person's rows in, per user
+  (one more than their highest), set by two triggers on every insert and every
+  `UPDATE OF` `position`, `duration`, `finished`, `version`, `device_id` or
+  `updated_at` (the triggers' own update sets only `change_seq`, so it never fires
+  them again), existing rows numbered in `updated_at` order; index
+  `idx_progress_user_change` `(user_id, change_seq)`. It pages
+  [`GET /bridge/progress`](api/reference.md#get-apiv1bridgeprogress), so a row
+  written late with an earlier `updated_at` is still fed to Audible. It is free in
+  the user-state rule. A `device_id` of `audible:<account>` is an Audible account's
+  place, written only by the Bridge's listening route.
 - **`listening_events`** *(0061, listening sync)* - the listening-event log behind
   [`POST /me/listening/sync`](api/reference.md#post-apiv1melisteningsync): every
   synced `listen`, `finish` and `unfinish` that wasn't rejected, and every legacy
@@ -1082,6 +1092,20 @@ adds no table: a title's backup is its `import_job_id`, the `bridge_jobs` row.
 - **`audible_titles`** gains `import_pending`: a console Back up of a preorder,
   queued once a poll reports the title available. A column, so it survives a
   restart.
+
+`0066_audible_sync` (Bridge Phase 4c,
+[position sync](../bridge/audible.md#position-sync-audiblesync-and-the-push-loop))
+turns every account's `sync` off (the console's from now on, off for a new account)
+and adds:
+
+- to **`audible_accounts`**: `sync_queued_at` (the scheduler's last `audible.sync`
+  queue), `last_sync_at` (when one last finished having read Audible's places) and
+  `refused_at` (when one failed `audible_refused`: no sync is queued until a
+  Bridge PUT or a complete poll clears it). Mapping the account to another person
+  turns `sync` off and clears `sync_queued_at` and `last_sync_at`;
+- to **`audible_titles`**: `no_sync` (the console's "Don't sync this book", kept by
+  a poll like `rejected` and `ignored`; the sync's alone, backups never read it);
+- to **`progress`**: `change_seq` and its triggers (above).
 
 `0065_audible_planned` ([planned destinations and contested
 titles](../bridge/audible.md#migration-0065_audible_planned)) adds to
