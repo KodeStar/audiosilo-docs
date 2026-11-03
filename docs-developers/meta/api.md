@@ -1002,14 +1002,18 @@ Without `--trusted-proxy` every request through a proxy counts as the proxy, so
 the whole site shares one bucket. The shipped `docker-compose.yml` pins its
 network's subnet (`METASERVE_SUBNET`, default `10.217.53.0/28`) and sets
 `METASERVE_TRUSTED_PROXIES` to the loopback and that subnet alone
-(`127.0.0.0/8,::1,${METASERVE_SUBNET}`): a host proxy reaching the
-loopback-published port arrives from the network's gateway, inside it. Set
-`METASERVE_SUBNET` in `.env` if the default collides with a network on the host
-(`docker compose up` refuses with "Pool overlaps"); changing it on a running
-deployment recreates the network (`docker compose down && docker compose up -d`).
-Do **not** widen the list to the private ranges: if the proxy also serves a LAN,
-a LAN client's own address would then be a trusted hop, and the
-`X-Forwarded-For` it sends would pick its bucket. The proxy must send
+(`127.0.0.0/8,::1,${METASERVE_SUBNET}`). In practice that trusts only the
+compose network's **gateway**, which is where a host proxy (nginx on the host,
+proxying to the loopback-published port) arrives from - right for that setup and
+no other. A **containerised proxy on another Docker network** arrives from its
+own address, which is not trusted, so every visitor shares one rate-limit bucket:
+add that proxy's address to the list. Set `METASERVE_SUBNET` in `.env` if the
+default collides with a network on the host (`docker compose up` refuses with
+"Pool overlaps"). An existing deployment's first start after the subnet was
+pinned needs `docker compose down && docker compose up -d` **once**, which
+recreates the network. Do **not** widen the list to the private ranges: if the
+proxy also serves a LAN, a LAN client's own address would then be a trusted hop,
+and the `X-Forwarded-For` it sends would pick its bucket. The proxy must send
 `X-Forwarded-For` (nginx:
 `proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for`). If a CDN sits in
 front of that proxy, add the CDN's ranges too, or rewrite the header at the host

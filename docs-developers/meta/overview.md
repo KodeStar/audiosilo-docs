@@ -310,8 +310,9 @@ The practical consequences for a deployment:
   readiness/startup in the orchestrator instead.
 - **Name the reverse proxy.** The API is rate limited per client. Behind a
   proxy, set `METASERVE_TRUSTED_PROXIES` to the proxy's own address or network
-  (the shipped compose file pins its network's subnet for this), never a whole
-  private range, or every visitor shares the proxy's one bucket; see
+  (the shipped compose file trusts only its own network's gateway, right for a
+  host proxy on the loopback port; a containerised proxy must add its own
+  address), never a whole private range, or every visitor shares the proxy's one bucket; see
   [rate limit and caching](api.md#rate-limit-and-caching).
 
 ## How it connects to the rest of AudioSilo
