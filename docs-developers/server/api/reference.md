@@ -10361,7 +10361,7 @@ the server knew it (the Bridge forgets locally first and may call again).
 ### `PUT /api/v1/bridge/audible/accounts/{account}/titles`
 
 *Bridge token.* A page of one poll's titles: up to 500 a call, strict JSON, at most
-4 MiB. A poll sends all its pages under one `poll_id` (1 to 64 letters, digits,
+8 MiB. A poll sends all its pages under one `poll_id` (1 to 64 letters, digits,
 `.`, `-`, `_`), the last with `final: true`.
 
 ```json
@@ -10378,7 +10378,30 @@ the server knew it (the Bridge forgets locally first and may call again).
       "runtime_s": 36000,
       "state": "preorder",
       "reason": "pre-order",
-      "match": { "library_id": 1, "path": "A. Writer/The Example", "how": "fuzzy" }
+      "match": { "library_id": 1, "path": "A. Writer/The Example", "how": "fuzzy" },
+      "planned": null
+    },
+    {
+      "asin": "B0EXAMPLE2",
+      "title": "The Example (Dramatized)",
+      "authors": ["A. Writer"],
+      "series": [],
+      "release_date": "",
+      "runtime_s": 30600,
+      "state": "available",
+      "reason": "contested",
+      "match": null,
+      "contested_path": "A. Writer/The Example",
+      "planned": {
+        "library_id": 1,
+        "path": "A. Writer/The Example (Dramatized)/The Example (Dramatized).m4b",
+        "file": "The Example (Dramatized).m4b",
+        "kind": "standalone",
+        "siblings": 0,
+        "state": "joins",
+        "conflict": "",
+        "template": ""
+      }
     }
   ]
 }
@@ -10392,6 +10415,23 @@ the server knew it (the Bridge forgets locally first and may call again).
 - `reason` says why an `unavailable` or `preorder` title can't be downloaded,
   or is `contested` on an `available` one with no `match`: another title claimed
   the same book.
+- `contested_path` (optional, omitted when none; 4b owner fixes) is the book a
+  contested title tied for: a clean book path or `.`, as `match.path`. It is
+  stored for the account's library (not when the title's plan names another one:
+  the account was mapped elsewhere while the poll ran) and cleared when a match is
+  stored for the title.
+- `planned` (4b owner fixes) is `null` or where a backup of an unmatched title
+  would go, as the Bridge planned it during the poll
+  ([Planned destinations](../../bridge/audible.md#planned-destinations)):
+  `library_id` > 0; `path` a clean relative file path within the path limit and
+  `file` a name with no `/` (both `""` only when `state` is `error`); `kind`
+  `series_existing`, `series_new` or `standalone` (`""` only for `error`); `state`
+  `new`, `joins`, `exists` or `error`; `siblings` 0 to 100000; `template` (the
+  template the plan used) at most 500 bytes; `conflict` `file`, `book`, `audio`
+  or `""`, or for `error` the reason (cleaned and bounded). Anything else is
+  `400 invalid_request` for the whole call, except a `path` over the path limit,
+  stored as an `error` plan. A stored match drops it, and so does the final call
+  marking the title `gone`.
 - Free text is cleaned and bounded, never refused: `title` (500), `reason` (256),
   each author and series name (200), a position (32); authors past the first 20
   and series past the first 10 are dropped.
@@ -10526,7 +10566,9 @@ keyset-paged.
       "updated_at": "2026-11-02T10:01:10Z",
       "import_job_id": null,
       "import": { "job_id": null, "state": "pending", "code": "" },
-      "needs_attention": false
+      "needs_attention": false,
+      "planned": null,
+      "contested": null
     }
   ],
   "next": ""
@@ -10544,6 +10586,8 @@ keyset-paged.
 | `import_job_id` | the title's latest backup job, `null` for none |
 | `import` | the title's backup: `{job_id, state, code}` with `state` the job's ([job states](#the-job-object)) and `code` a failed or parked job's code (`not_released`, `no_rights`, `audible_refused`, `not_writable`, `exists`, `disk_full`, `offline_url_expired`, `unknown_account`, or `""`); `{job_id: null, state: "pending"}` for a Back up on a preorder waiting for its release; `null` for none |
 | `needs_attention` | a preorder still not available 14 days after its `release_date`: the account is no longer polled hourly for it |
+| `planned` | 4b owner fixes: where a backup would go, as the Bridge planned it at its last poll (the object the [titles PUT](#put-apiv1bridgeaudibleaccountsaccounttitles) takes); `null` when matched, not planned, or the account is no longer mapped to the plan's library (paused or mapped again: none until its next poll) |
+| `contested` | 4b owner fixes: for a title left unmatched as `contested`, `{library_id, path, with: [{asin, title}]}`: the book it tied for and the account's other titles (not `gone`) contested over that book or matched to it, by title, at most 10; `null` otherwise, or while the account isn't mapped to that library |
 
 | Status | Meaning |
 |---|---|
@@ -10567,8 +10611,10 @@ the [job](#the-job-object). A new poll is in the audit log as `bridge.job` (with
 | `409` | `account_paused` - its library was deleted; `kind_unavailable` - no Bridge has reported, or the paired one doesn't run `audible.poll` |
 
 `audible.poll` is internal: [`POST /admin/bridge/jobs`](#post-apiv1adminbridgejobs)
-refuses it with `400`. Its params are exactly `{"account"}`, with no library or
-path; it is quiet (no notifications) and held while the module is off. The
+refuses it with `400`. Its params are `{"account", "template"}` (`template` the
+account's placement template, omitted when `""`, at most 500 bytes and never
+parsed; 4b owner fixes: the Bridge plans unmatched titles by it), with no library or
+path; Check now on a poll still queued gives it the account's current template; it is quiet (no notifications) and held while the module is off. The
 module's scheduler queues each due account's poll every `poll_hours` at priority
 `-10` while an online Bridge offers the kind. Only the newest ended poll of each
 account is kept.

@@ -197,7 +197,8 @@ the server can't be reached nothing changes.
 |---|---|
 | **Not checked yet** | signed in; the server hasn't asked for a check yet (or the Audible module is off) |
 | **Signed in** | checked at least once. **Last checked** says when, with how many titles the account has and how many are already in the library |
-| **Sign in again** | Audible refused the sign-in, for example after you removed the device in your Amazon account or changed your password. The card says why; press **Sign in again**, which keeps the store and the account's settings. Until then its checks fail |
+| **Sign in again** | Audible refused the sign-in, for example after you removed the device in your Amazon account or changed your password. The card says why; press **Sign in again**, which keeps the store and the account's settings. Until then its checks fail. Also shown (in red) when Audible refused the device its downloads: the titles still list, but every backup fails until you sign in again |
+| **Sign in again** (amber) | the account was signed in by an earlier version of the Bridge, and Audible no longer allows downloads to devices registered that way (since about September 2026). Its checks still work; its backups don't. Press **Sign in again**: it registers a new AudioSilo device Audible accepts and removes the old one. See [Sign in again after updating the Bridge](../admin/audible.md#sign-in-again-after-updating-the-bridge) |
 | **Mapped on another server** | the account was set up while the Bridge was paired with another server. Press **Change** and save to set it up on this one |
 
 A check that failed for another reason (Amazon or the server couldn't be reached)

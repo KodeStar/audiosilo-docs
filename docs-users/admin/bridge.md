@@ -142,7 +142,7 @@ everything required is done ("Everything required is done").
 | **Agent credential set** | the agent container is ready, with a credential (the line names the tool). While it isn't, the line says what to do in plain words and what the agent is for: characters, recaps and descriptions. Read-alongs, chapters and podcasts don't need it |
 | **Monthly budget reviewed** | someone saved the agent's monthly budget on the Bridge's page, or the Bridge's environment sets it (the line says it, "$100 a month" or "no monthly cap") |
 | **GitHub signed in** (Optional) | the Bridge can share with the community (the line names the GitHub account, or says the token comes from the Bridge's environment or the gh command) |
-| **Audible signed in** (Optional) | a Bridge that supports Audible has at least one Audible account signed in and none that Audible refused (the line says "1 account signed in", or how many need signing in again). "Only needed to back up an Audible library." |
+| **Audible signed in** (Optional) | a Bridge that supports Audible has at least one Audible account signed in, none that Audible refused and none signed in by an earlier version of the Bridge (the line says "1 account signed in", or how many need signing in again, "... to keep backups working" for those signed in before the update: see [Sign in again after updating the Bridge](audible.md#sign-in-again-after-updating-the-bridge)). "Only needed to back up an Audible library." |
 
 Each step shows a green tick when done, an amber circle while still to do, or,
 for the optional one (marked **Optional**), a dashed circle until done. A step
