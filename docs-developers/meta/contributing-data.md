@@ -592,13 +592,13 @@ stops after `N` pages (`0`, the default, runs to the end).
 **`import` lands a tranche.** `--from` names the snapshot (the importer reads
 `pages/*.json` and nothing else, so a hand-assembled snapshot works too) and
 `--ids` is required: one project id (`527`), a range (`1-2000`), an open range
-(`5000-`) or a comma-separated union of them. On a snapshot `fetch` wrote (a
-manifest beside offset-named pages), a tranche decodes only the pages that can
-hold its ids: each page's first project id, read off the head of the file,
-bounds it, since the pages follow the feed's ascending id order (a 2,000-project
-tranche of the 22,449-project snapshot reads in 0.18 s instead of 2.0 s). A
-decoded page holding an id outside its bounds, or any other snapshot, is read
-whole. A project whose id is missing or unreadable is skipped with a warning
+(`5000-`) or a comma-separated union of them. `fetch` records each page's
+range of project ids in the manifest (`page_ids`), and a tranche decodes only
+the pages whose range meets its ids (a 2,000-project tranche of the
+22,449-project snapshot reads in 0.19 s instead of 2.0 s). A snapshot whose
+manifest does not range every page (one fetched before the ranges were
+recorded, a hand-assembled one), or a decoded page holding an id outside its
+range, is read whole. A project whose id is missing or unreadable is skipped with a warning
 naming its page and title, since no `--ids` could select it. The other flags
 are the usual ones: `--data`, `--dry-run`, `--date YYYY-MM-DD` (the
 `imported_at` stamp, today in UTC by default), `--conflicts <path>` (one NDJSON
