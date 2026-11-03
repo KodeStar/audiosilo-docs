@@ -10655,13 +10655,9 @@ most 8 KiB; a field left out is left as it is:
   `policy_since` to now, so the policy acts only on titles first seen after it;
   `manual` leaves it.
 - `template`: the placement template, `""` for the Bridge's placement beside the
-  series' other books. The Bridge's grammar: literal text, `{Var}` or `{Var:mods}`
-  (`Author`, `Series`, `Title`, `TitleShort`, `Seq`, `PaddedSeq`, `SHORTCODE`,
-  `ASIN`, `Narrator`, `Year`, `OriginalFilename`, `Ext`; mods `width=N`, `upper`,
-  `lower`, `trim`), optional groups `{ ... }`, `\` escaping. At most 500 bytes, no
-  control character, not starting with `/`, no `..` or hidden, dot-led segment. A
-  rendered last segment ending `.m4b`, `.m4a` or `.mp4` names the file; otherwise
-  it is a folder for the title's file.
+  series' other books. At most 500 bytes, in the Bridge's
+  [template grammar](../../bridge/audible.md#the-template-grammar) (its variables,
+  mods and the segment rules the server checks).
 
 The account's person and library stay the Bridge's.
 

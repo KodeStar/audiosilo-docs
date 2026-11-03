@@ -591,8 +591,9 @@ belongs to the `audible` module too: internal, a **writing** kind (a writable
 mapping of a books library, `library_not_writable` otherwise), no book path,
 params `{account, asin, library_id, dest_path, template}` built by the server,
 deduped per account and title, and **not** quiet (done and failed are notified,
-named by the title). The server queues it at `0` for a console Back up (and a
-preorder's pending request), `-10` for a policy and `-20` for Back up everything.
+named by the title). The server sets its priority by who asked (a console Back
+up, a policy or Back up everything; see
+[the priorities](audible.md#on-the-server-queueing-internalaudibleimportsgo-catalogaudible_importgo)).
 It runs in the `download` lane, one per account at a time, and its partial
 download survives a restart. See
 [Backing up a title](audible.md#backing-up-a-title-audibleimport).

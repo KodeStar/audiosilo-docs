@@ -38,8 +38,8 @@ The console repeats this on the titles page and in the backup dialogs.
   but nothing is checked until the Bridge is ready.** when you turn it on before
   then.
 - **To back up:** the account's library **Ready** for the Bridge (mapped and
-  writable, see [Libraries](bridge.md#libraries)), and room for the books, both in the Bridge's data
-  folder (where it downloads) and in the library.
+  writable, see [Libraries](bridge.md#libraries)), and room for the books, both
+  in the Bridge's data folder (where it downloads) and in the library.
 
 While the module is on, **Server > Settings** gains an **Audible** page, and
 **Settings > Bridge** an **Audible accounts** card. Listeners see nothing of it:
@@ -340,8 +340,8 @@ is nothing to back up and while the account is **Paused**.
 [one at a time](#what-happens-during-a-backup), after anything you back up one by
 one and after new podcast episodes, so a big library can take days. If the Bridge
 can't take them (it doesn't run backups, or can't write to the library), nothing is
-queued and the console says why; with the Bridge offline, they wait for it. It is in the
-[audit log](server.md#audit-log) as **Backed up everything from an Audible
+queued and the console says why; with the Bridge offline, they wait for it. It is
+in the [audit log](server.md#audit-log) as **Backed up everything from an Audible
 account**.
 
 ## Backing up by itself
@@ -361,10 +361,10 @@ use [Back up everything](#back-up-everything) for those. (For an account you jus
 added, the books found by its first check count as the ones it already had, even
 if you chose a policy when you signed it in on the Bridge.)
 
-After each check, a policy backs up a new purchase that is **Available**, not on
-this server, not marked [Not this book](#not-this-book), not contested, and never
-backed up before (a policy never tries one again after it failed: **Back up** or
-Back up everything does). It needs an online Bridge that can back up; a check
+After each check, a policy backs up a new purchase that
+[Back up everything](#back-up-everything) would, but only one never backed up
+before (a policy never tries one again after it failed: **Back up** or Back up
+everything does). It needs an online Bridge that can back up; a check
 while it can't queues nothing, and the next check asks again.
 
 The choice an account starts with is the one picked when it was signed in on the
@@ -377,8 +377,8 @@ the [audit log](server.md#audit-log) as **Changed an Audible account's backups**
 says **Beside the series' other books**), a backup goes where your library keeps
 its series, named like the books already there: the same author folder, the
 series' folder and its numbering. For example, with book 6 of Dragon Heart in a
-`DH06 - Land of Magic` folder, book 7 goes in a `DH07 - ...` folder beside it. A book of a series you don't have yet goes in
-`Author/Series/` with a code made from the series' initials, and a book in no
+`DH06 - Land of Magic` folder, book 7 goes in a `DH07 - ...` folder beside it. A
+book of a series you don't have yet goes in `Author/Series/` with a code made from the series' initials, and a book in no
 series in `Author/Title/`. The file is the title, as `Title.m4b`.
 
 **A placement template.** **Backup settings... > Placement template** names the
@@ -421,7 +421,8 @@ Marking a preorder [Not this book](#not-this-book) drops the request.
 ## Check now
 
 The server asks the Bridge to check each account every 6 hours while the module is
-on (every hour while one of its preorders is due, see [Preorders](#preorders)). **Check now** asks for a check straight away ("Checking Chris (US)"); if a check
+on (every hour while one of its preorders is due, see [Preorders](#preorders)).
+**Check now** asks for a check straight away ("Checking Chris (US)"); if a check
 is already waiting, it is moved to the front ("Chris (US) is already being
 checked"). If the last check is still being cancelled, it says so ("The check of
 Chris (US) is still stopping"): press **Check now** again once it has stopped. The
@@ -460,5 +461,5 @@ on the server again.
 
 Turning the Audible module off hides the Audible page and the accounts card, and
 the server stops asking for checks and backs nothing up by itself; a check or
-backup already queued waits until the module is on again. The accounts and their titles are kept, and signing in on the Bridge
-still works. To remove an account in the console, turn the module on first.
+backup already queued waits until the module is on again. The accounts and their
+titles are kept, and signing in on the Bridge still works. To remove an account in the console, turn the module on first.

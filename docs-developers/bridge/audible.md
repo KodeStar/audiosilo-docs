@@ -209,8 +209,8 @@ best keeps none, unless every tied title is the same work (`WorkKey`: the folded
 title, the folded authors in any order and the series position); then all keep it
 (one book owned twice, under two ASINs). The others are PUT with no `match` and
 `reason: "contested"` (`link.ReasonContested`, set only on a title with no other
-reason), so the console shows them as not here and Phase 4b's back up of
-everything skips them. A contested path gets no ASIN backfill, not even from the
+reason), so the console shows them as not here and Back up everything skips
+them. A contested path gets no ASIN backfill, not even from the
 title that kept it.
 
 ### Release dates
@@ -246,7 +246,7 @@ The poll leaves the rest of the backfill to the next poll after:
 Those books still have no ASIN, so the next poll picks them up again. Their count
 is the result's `enrich_deferred`. Only a cancelled job fails the poll.
 
-Registering the kind is what adds `audible` to the heartbeat's features
+Registering the `audible.poll` kind is what adds `audible` to the heartbeat's features
 (`bridge.FeatureAudible`), which the `audible` module needs.
 
 ## Backing up a title (`audible.import`)
@@ -278,9 +278,8 @@ upper-cased):
 - `dest_path`: the console's destination for the title (`audible_titles.dest_path`),
   `""` for none. A library-relative file path, or a **folder** when its last
   segment has no audio extension. The server checks it with
-  `bridge.CheckAudibleDestPath` (at most 1024 bytes; clean as `relpath.Clean`
-  leaves it; no `..`, no leading or trailing slash, no `.` or hidden, dot-led
-  segment; no backslash or control character).
+  `bridge.CheckAudibleDestPath` (the rules are in the
+  [API reference](../server/api/reference.md#patch-apiv1adminaudibletitlesaccountasin)).
 - `template`: the account's placement template (`audible_accounts.template`), `""`
   for the Bridge's automatic placement. Checked with `bridge.CheckAudibleTemplate`
   (below).
@@ -440,12 +439,12 @@ wrote one:
   folder, else `ErrDiskFull` (an unreadable free space is no refusal; ENOSPC/EDQUOT
   during the copy is `ErrDiskFull` too).
 
-**Joining an existing book is `exists`.** A backup is a book of its own: a
-destination whose folder is a book the library already lists, or a folder that
-already holds audio, is refused before the license (`vacant`), since the server's
-scan would make the placed file part of that book and the server refuses such a
-done import (`ErrImportNotOwn`, below). The one join left is a `dest_path` into a
-new disc folder of a disc set, which never takes the ASIN.
+**Why joining an existing book is `exists`.** A backup is a book of its own: the
+server's scan would make a file placed in a listed book's folder, or a folder that
+already holds audio, part of that book, and the server refuses such a done import
+(`ErrImportNotOwn`, below), so `vacant` refuses it before the license (step 3).
+The one join left is a `dest_path` into a new disc folder of a disc set, which
+never takes the ASIN.
 
 ### Enrichment after placing
 

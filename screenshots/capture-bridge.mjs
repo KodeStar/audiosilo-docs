@@ -110,6 +110,17 @@ const clipShoot = async (p, locator, file) => {
     await shoot(p, file, {clip: around([await locator.boundingBox()])});
   });
 };
+// Retries a server call that answers kind_unavailable until the Bridge's next heartbeat
+// lists the job kind (the module's kinds come with the module).
+const untilKind = async (method, path, ms = 60000) => {
+  for (const until = Date.now() + ms; ; await sleep(2000)) {
+    try {
+      return await server(admin, method, path);
+    } catch (e) {
+      if (Date.now() > until) throw e;
+    }
+  }
+};
 
 async function audibleShots() {
   await step('audible: library', async () => {
@@ -179,15 +190,7 @@ async function audibleShots() {
     await server(admin, 'PATCH', '/admin/settings', {general: {name: 'Hearthside'}, modules: {audible: true}});
     audible.moduleOn = true;
     // The module's scheduler queues the first check within a minute; Check now is sooner.
-    for (const until = Date.now() + 60000; ; await sleep(2000)) {
-      try {
-        await server(admin, 'POST', `/admin/audible/accounts/${audible.account}/poll`);
-        break;
-      } catch (e) {
-        // kind_unavailable until the Bridge's next heartbeat after the module came on.
-        if (Date.now() > until) throw e;
-      }
-    }
+    await untilKind('POST', `/admin/audible/accounts/${audible.account}/poll`);
     for (const until = Date.now() + 120000; Date.now() < until; await sleep(2000)) {
       const {accounts: list = []} = (await server(admin, 'GET', '/admin/audible/accounts')) ?? {};
       if (list.find((a) => a.id === audible.account)?.last_poll_at) return;
@@ -203,25 +206,17 @@ async function audibleShots() {
     await clipShoot(page, card, AUDIBLE_SHOTS.account);
   });
 
-  const consoleShots = [AUDIBLE_SHOTS.card, AUDIBLE_SHOTS.titles, AUDIBLE_SHOTS.settings, AUDIBLE_SHOTS.backupAll,
-    AUDIBLE_SHOTS.destination];
-  if (!wanted(...consoleShots)) return;
+  if (!wanted(...Object.values(AUDIBLE_SHOTS).filter((f) => f.startsWith('admin/')))) return;
 
   // Phase 4b: one title backed up for real (the fake's fixture M4B: licensed, downloaded,
   // decrypted by ffmpeg, placed beside the series' book the library has, rescanned) and
-  // one marked Not this book, so the titles page shows both.
+  // one marked Not this book, so the titles page shows both. Only the card and titles
+  // shots show them, so the slow backup runs only for those.
   await step('audible: a backup', async () => {
+    if (!wanted(AUDIBLE_SHOTS.card, AUDIBLE_SHOTS.titles)) return;
     const titlePath = (asin) => `/admin/audible/titles/${audible.account}/${asin}`;
     await server(admin, 'PATCH', titlePath(AUDIBLE_REJECT), {rejected: true});
-    // kind_unavailable until a heartbeat lists audible.import (it came with the module).
-    for (const until = Date.now() + 60000; ; await sleep(2000)) {
-      try {
-        await server(admin, 'POST', `${titlePath(AUDIBLE_BACKUP)}/backup`);
-        break;
-      } catch (e) {
-        if (Date.now() > until) throw e;
-      }
-    }
+    await untilKind('POST', `${titlePath(AUDIBLE_BACKUP)}/backup`);
     for (const until = Date.now() + 240000; Date.now() < until; await sleep(2000)) {
       const {titles = []} =
         (await server(admin, 'GET', `/admin/audible/titles?account=${audible.account}&q=${AUDIBLE_BACKUP}`)) ?? {};
@@ -258,16 +253,14 @@ async function audibleShots() {
       await card.getByText(/on this server/).first().waitFor({timeout: 15000});
       await clipShoot(consolePage, card, AUDIBLE_SHOTS.card);
     });
-    await step('audible: backup settings', async () => {
-      if (!wanted(AUDIBLE_SHOTS.settings)) return;
-      await card.getByRole('button', {name: 'Backup settings...', exact: true}).click({timeout: 8000});
-      await dialogShoot(AUDIBLE_SHOTS.settings);
-    });
-    await step('audible: back up everything', async () => {
-      if (!wanted(AUDIBLE_SHOTS.backupAll)) return;
-      await card.getByRole('button', {name: 'Back up everything...', exact: true}).click({timeout: 8000});
-      await dialogShoot(AUDIBLE_SHOTS.backupAll);
-    });
+    for (const [file, button] of [[AUDIBLE_SHOTS.settings, 'Backup settings...'],
+      [AUDIBLE_SHOTS.backupAll, 'Back up everything...']]) {
+      await step(`audible: ${button}`, async () => {
+        if (!wanted(file)) return;
+        await card.getByRole('button', {name: button, exact: true}).click({timeout: 8000});
+        await dialogShoot(file);
+      });
+    }
     await step('audible: console titles', async () => {
       await consolePage.goto(`${ORIGIN}/admin/server?topic=audible`, {waitUntil: 'networkidle', timeout: 45000});
       await consolePage.getByRole('list', {name: 'Audible titles'}).waitFor({timeout: 15000});
@@ -275,10 +268,9 @@ async function audibleShots() {
     });
     await step('audible: destination', async () => {
       if (!wanted(AUDIBLE_SHOTS.destination)) return;
-      await consolePage.setViewportSize(DESKTOP_CONTEXT.viewport);
       await consolePage.getByRole('button', {name: `Destination for ${AUDIBLE_DEST_TITLE}`, exact: true}).click({timeout: 8000});
       const field = consolePage.getByRole('dialog').getByLabel('Folders and file name');
-      await field.fill('Wen Liang/Mapmakers/MM03 - The Cartographer\'s Return');
+      await field.fill(`Wen Liang/Mapmakers/MM03 - ${AUDIBLE_DEST_TITLE}`);
       await dialogShoot(AUDIBLE_SHOTS.destination);
     });
   } finally {
