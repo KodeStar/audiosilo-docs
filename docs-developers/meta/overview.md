@@ -224,10 +224,11 @@ the base beside the head's run, for the advisory delta (a pull request touching
 no `data/` skips that, since it cannot introduce one). Jobs that need only Go
 code (`build`, `lint`, `vuln`) and the `site` job check out a sparse tree without
 `data/`, skipping most of a full checkout's time; `advisories` does too, reading
-the base's `data/` from git. Each test shard keeps its own `-race` build cache
-(`actions/cache`, keyed on the Go patch, the shard and `go.sum`): setup-go's
-cache has one key for every Go job, which the non-race `build` job saves first,
-so the shards used to recompile everything under the race detector on every run.
+the base's `data/` from git. The test shards also restore a shared `-race` build cache
+(`actions/cache`, keyed on the Go patch and `go.sum`, saved only on pushes to
+`main`): setup-go's cache has one key for every Go job, which the non-race
+`build` job saves first, so the shards used to recompile everything under the
+race detector on every run.
 
 **`check` is the verdict.** It needs `changes`, `build`, `test`, `metacheck`,
 `metafmt` and `advisories`, and passes only when every one of them but
