@@ -92,8 +92,10 @@ Accounts tab (**Change**) to carry on.
 Bridge last saw them, sorted by title. Each row shows the title, its authors and
 series, then its length, the release date of a preorder, its ASIN, (with several
 accounts) which account owns it, and **To ...** when you gave it a
-[destination](#choosing-a-destination). A title Audible won't let you download
-says why, and so does a backup that failed. Under it are the title's
+[destination](#choosing-a-destination). A title that isn't on this server says
+[where its backup would go](#where-a-title-would-go), and one that is
+[contested](#contested-titles) says which book it tied for. A title Audible won't
+let you download says why, and so does a backup that failed. Under it are the title's
 [backup buttons](#backing-up-a-book): **Back up**, **Not this book** and
 **Destination...**.
 
@@ -160,13 +162,45 @@ A few things help a title find its book:
   can. A pack can also match a folder numbered as its first book (`LAM05`); it
   shows as on this server, but that book's details are not updated from the pack.
 
-**When several titles match one book**, the best match keeps it. The others show
-**Not here**, with **contested** under the title: the book is probably here under
-another title. If the best titles tie, none keeps it, unless they are the same
-book owned twice (the same title, author and number): then all of them keep it.
-[Back up everything](#back-up-everything) and the
+**When several titles match one book**, one of them keeps it:
+
+1. a title matched **by the book's ASIN** keeps it;
+2. otherwise a title whose **number in the series is the book's** keeps it, even
+   over a title that matched more closely by name (so book 2 keeps the book 2
+   folder, and book 3 with a similar name doesn't take it);
+3. otherwise the **best match** keeps it.
+
+The titles that lose show **Not here**. One whose number says it is another
+volume of the series is simply not matched; the rest are
+[contested](#contested-titles): the book is probably here under another title. If the best titles tie, none keeps it,
+unless they are the same book owned twice (the same title, author and number):
+then all of them keep it. [Back up everything](#back-up-everything) and the
 [policies](#backing-up-by-itself) never back up a contested title; **Back up**
 still does, if you are sure it isn't here.
+
+### Contested titles
+
+A contested title says which book it tied for and which titles matched it too:
+"Matched the same book as *Moon over Soho*: *Ben Aaronovitch/PG02 - Moon over
+Soho*, so this title isn't shown as here. Add the right ASIN to that book and Check
+now, or back this title up if that book isn't it." The book is a link to its page
+in the console. Until the next check, a title last checked before this update
+says "Another Audible title matched the same book, so this one isn't shown as here."
+
+What to do:
+
+- **The book is this title.** Give the book this title's ASIN (on the book's page,
+  [Editing details](books.md#editing-details) > **ASIN**), then press
+  [Check now](#check-now). A match by ASIN always wins, so at the next check this
+  title keeps the book.
+- **The book isn't this title.** Press **Back up**: the title is backed up as a
+  book of its own (see [where it would go](#where-a-title-would-go)).
+
+Marking the other title **Not this book** doesn't settle a contest yet.
+
+A reason the console has no words for reads "The Bridge couldn't match it to a
+book on this server."; a reason Audible gave (such as why a title can't be
+downloaded) is shown as Audible wrote it.
 
 When a book matched by title and author has no ASIN yet, the Bridge gives it the
 Audible title's ASIN, so later checks, and the community metadata, match it exactly.
@@ -198,6 +232,35 @@ already on this server, or one already waiting, says so instead. A title Audible
 doesn't offer for download now (an **Unavailable** title, or one **No longer in the
 library**) can't be backed up. A queued backup is in the
 [audit log](server.md#audit-log) as **Queued a Bridge job**.
+
+### Where a title would go
+
+At each check the Bridge also works out where each title that isn't on this
+server would be backed up, by the same rules a backup uses
+([Where backups go](#where-backups-go)), and the row says so, **planned at the
+last check**:
+
+- "Will go to *Ben Aaronovitch/Rivers of London/2 - Moon over Soho/Moon over
+  Soho.m4b*, beside 7 books of its series";
+- "..., the first book of its series here", "..., in the author's existing folder"
+  or "..., into a folder that already exists";
+- **in warning colours** when the place is taken (by a file, another book, or a
+  folder that already holds audio): "Would go to ..., but a file is already there,
+  so the backup would stop. Choose a destination." A backup never overwrites
+  anything, so pick a [destination](#choosing-a-destination) for it first;
+- **in warning colours** too when the Bridge couldn't work out a place: "Couldn't
+  work out where it goes", with the reason (for example a placement template that
+  gives no valid path).
+
+It is a plan, not a promise: the backup works the place out again when it starts.
+If the account's placement template changed since the check, the row adds "The
+account's placement changed since then: this changes at the next check." (press
+[Check now](#check-now) to see the new place). A title with its own destination
+says "Your destination is checked when the backup starts." instead. Titles that
+can't be backed up (**Unavailable**, **No longer in the library**) show no plan,
+and neither does a title marked [Not this book](#not-this-book): the Bridge still
+matches it to that book, so it plans nothing for it (its **Back up** places it by
+the same rules, or at its destination).
 
 ### What happens during a backup
 
@@ -257,7 +320,7 @@ overwritten or left half copied.
 |---|---|
 | **Audible doesn't let it be downloaded yet.** | the title isn't released yet: a preorder, or Audible says it isn't out |
 | **This account doesn't have the right to download it.** | the title is no longer in the account, Audible won't let this account download it, or it is a podcast or periodical |
-| **Audible refused the download. Sign in again on the Bridge if it keeps happening.** | Audible refused the account's sign-in or the download: see [Sign in again](../getting-started/bridge-accounts.md#the-accounts-states) |
+| **Audible refused the download. Sign in again on the Bridge if it keeps happening.** | Audible refused the account's sign-in or the download, or refused the Bridge's device its downloads (see [below](#sign-in-again-after-updating-the-bridge)). The Bridge's [Accounts tab](../getting-started/bridge-accounts.md#the-accounts-states) then says **Sign in again** on the account, and its other backups fail the same way until you do |
 | **The Bridge can't write to this library. Check its mapping on the Bridge.** | the library isn't **Ready** on the Bridge's [Libraries](bridge.md#libraries) tab (mapped and writable), the account's library changed since the backup was queued, or the destination or template gives a path the Bridge can't use there (a hidden folder, an audio file name other than `.m4b`, `.m4a` or `.mp4`, a file where a folder should be) |
 | **A different file is already where it would go. Choose another destination.** | a file is already at the destination, or the destination is inside a book the library already has (a folder that is a book, or already holds audio files): a backup is a book of its own. Choose a [destination](#choosing-a-destination), or move that file |
 | **There isn't enough free space. Free some up, then back it up again.** | the Bridge needs room for about twice the book in its data folder (the download and the copy without DRM), and a little more than the book in the library |
@@ -270,6 +333,23 @@ without copy protection, which this version of the Bridge doesn't back up yet.
 
 Press **Back up** again to try once more. [Back up everything](#back-up-everything)
 also tries failed and cancelled backups again.
+
+Error messages never include your Amazon account's ids (the customer id, the
+device's serial number, your email address): the Bridge removes them from
+Audible's answers before they reach its log, its job list or the server.
+
+#### Sign in again after updating the Bridge
+
+Since about September 2026, Audible no longer allows downloads to devices
+registered the way earlier versions of the Bridge registered them: the account
+still lists its titles, but every backup is refused. The current Bridge registers
+a device Audible accepts. So an account signed in **before you updated the
+Bridge** shows **Sign in again** on the Bridge's
+[Accounts tab](../getting-started/bridge-accounts.md#the-accounts-states), and so
+does an account whose device Audible refused during a backup. Press **Sign in
+again** there: it registers a new AudioSilo device and removes the old one from
+your Amazon account, keeping the account's settings, titles and backups. Then
+press **Back up** (or **Back up everything...**) again for the titles that failed.
 
 ### Not this book
 
@@ -301,10 +381,15 @@ Type where in the account's library its backup goes, instead of the usual place
 - **a folder**, such as `Author/Series/Book 3`, for the book to go in (its file is
   named after the title).
 
-Leave it empty for the usual place. It must be a path inside the library: no
+The empty field shows, greyed, where the Bridge
+[planned the backup](#where-a-title-would-go) at its last check. That is only a
+hint: leave the field empty for the usual place (it follows the account's
+placement as it changes), or type your own. It must be a path inside the library: no
 `..`, no folder or file starting with a dot (the server never shows those), no
 backslashes. A destination wins over the account's placement template. The row
-shows it as **To ...**. Saving it is in the audit log as **Changed an Audible
+shows it as **To ...**. Your own destination is checked only when the backup
+starts, so one that is already taken stops the backup then (**A different file is
+already where it would go**). Saving it is in the audit log as **Changed an Audible
 book's match or destination**.
 
 ![The Destination dialog for one title: a folder in the library typed in](/img/screenshots/admin/audible-destination.png)

@@ -944,7 +944,14 @@ CSP-sensitive work against a real build served by Go. The console's own gate is
   **Not this book** and its undo and **Destination...**,
   [`PATCH /admin/audible/titles/{account}/{asin}`](api/reference.md#patch-apiv1adminaudibletitlesaccountasin)),
   the backup's state and code (`importStatus`, `audible.code.<code>`), and the
-  legal line under the filters. **Check now**
+  legal line under the filters. An unmatched title's row says where its backup
+  would go (`PlannedNote`, `plannedLine` over the title's `planned`: warning tone
+  when the place is taken or the plan failed, a note when the account's template
+  changed since, "Your destination is checked when the backup starts" while a
+  destination is set) and why it isn't here (`ReasonNote`: `contested` names the
+  other titles and links the book through `bookRoute`, a machine code reads as a
+  sentence, `reasonKey`); **Destination...**'s placeholder is the planned path
+  (`plannedPlaceholder`), never its value. **Check now**
   (`POST .../poll`; a toast for a new, an already open, or a still-stopping poll;
   `account_paused` and `unknown_account` worded by `errorMessage`) and **Remove...**
   (`remove-account-button.tsx`, a confirmation saying it removes the account from

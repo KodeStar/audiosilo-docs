@@ -1,6 +1,6 @@
 ---
 title: Audible
-description: "Bridge Phases 4a and 4b: Audible accounts on the Bridge (the paste-back PKCE sign-in, device registration and deregistration, the vault), the audible.poll job and its matching rules, the audible.import backup (params, steps, result and codes, resume and temp files, the hardened transfer, enrichment, secrets), the server's accounts and titles (0063, 0064), its queueing (priorities, policy_since, preorders, the done fold) and the audible module, the console, and the build-tagged Audible fake."
+description: "Bridge Phases 4a and 4b: Audible accounts on the Bridge (the paste-back PKCE sign-in, device registration and deregistration, the vault), the audible.poll job and its matching rules, the audible.import backup (params, steps, result and codes, resume and temp files, the hardened transfer, enrichment, secrets), the server's accounts and titles (0063, 0064, 0065), its queueing (priorities, policy_since, preorders, the done fold) and the audible module, the console, and the build-tagged Audible fake; the current device profile (Bridge 0010), redacted account ids, contests settled by series number and planned destinations."
 ---
 
 Phases 4a and 4b of the Bridge plan (BRIDGE-PLAN.md Phase 4, the workspace's
@@ -23,14 +23,15 @@ probe and OpenAudible sources were not imported.
 | Where | What |
 |---|---|
 | The Bridge's vault | each account's sign-in, sealed as `audible_<id>` (`secrets.AudibleName`): the access, refresh and adp tokens, the device's RSA key, its serial, the customer id and marketplace (`audible.Credentials.Marshal`). **Full Amazon account access**, so never anywhere else |
-| The Bridge's `bridge.db` | `audible_accounts` (migration `0009`): `id`, `label`, `marketplace`, `customer_hash` (sha256 of the customer id, never the id), `server_id` (the server the mapping was last recorded on), `user_id`/`user_name`, `library_id`, `policy`, `sync`, `created_at`, `last_ok_at`, `last_poll_at`, `last_titles`, `last_matched`, `refused_at`, `last_error`. Unique on `(customer_hash, marketplace)` where the hash isn't empty. No credential |
-| The server | the mapping and the titles (`0063`, `0064`, below), the poll schedule, and what to back up and when. It never talks to Audible and never holds a credential or a book's key |
+| The Bridge's `bridge.db` | `audible_accounts` (migration `0009`): `id`, `label`, `marketplace`, `customer_hash` (sha256 of the customer id, never the id), `server_id` (the server the mapping was last recorded on), `user_id`/`user_name`, `library_id`, `policy`, `sync`, `created_at`, `last_ok_at`, `last_poll_at`, `last_titles`, `last_matched`, `refused_at`, `last_error`, and `device_profile` (migration `0010`, [below](#the-device-profile)). Unique on `(customer_hash, marketplace)` where the hash isn't empty. No credential |
+| The server | the mapping and the titles (`0063`, `0064`, `0065`, below), the poll schedule, and what to back up and when. It never talks to Audible and never holds a credential or a book's key |
 
 No credential reaches the store, job params or results, logs, the heartbeat or the
 agent staging folder (the Bridge's tests walk all of them for every stub secret).
 The pasted sign-in address holds a one-time authorization code: the page API takes
 it and never answers it back or logs it. Errors carry Amazon's or the server's
-answer, never a request body or a token.
+answer, never a request body or a token, and that answer is
+[redacted of account ids](#redacted-account-ids) before it becomes an error.
 
 ## The sign-in (`internal/audibleacct`)
 
@@ -90,7 +91,44 @@ hides its Audible card and page while the module is off.
 refused (`refused_at`, `last_error`; the page's **Sign in again**), unless a sign-in
 again replaced the device meanwhile, in which case `Library` lists again. In 4a a
 refused account's poll **fails** (it isn't parked). Signing in again clears it, and
-so does a poll that succeeds.
+so does a poll that succeeds, except a **throttled** refusal (below): a throttled
+device still lists, so a poll keeps it and only a sign-in again ends it.
+
+### The device profile
+
+Since about September 2026 Amazon denies every license to a device registered with
+the older iPhone profile (app 3.56.2, iOS 15/17, software `35602678`, a 32-character
+upper-case hex serial), with three reasons (`Membership`/`RequesterEligibility`,
+`Ownership`/`CustomerThrottled`, `Client`/`RequesterEligibility`, the customer id
+quoted), while listing still works (mkb79/Audible#909 and PR #910; Libation's
+device-registration notes agree). The Bridge registers with the current one
+(`internal/audible/profile.go`): app `4.60`, os `26.2`, software `46000856`, one
+constant set that register, the token refresh and deregister share, and a
+40-character `[A-Za-z0-9]` serial from `crypto/rand` (`NewDeviceSerial`). The user
+agent on every signed call and download is built from the same set
+(`Audible/46000856 CFNetwork/3860.300.31 Darwin/25.2.0`).
+
+- `audible.ProfileVersion` (`"4.60/26.2/46000856"`) is recorded in
+  `Credentials.Profile` at `Register` and in the row's `device_profile` (Bridge
+  migration `0010_audible_profile`, `''` for an account signed in before it was
+  kept). `audibleacct.OldProfile(a)` flags an account whose profile isn't the
+  current one: the page's `old_profile` (an amber **Sign in again** badge and "Sign
+  in again to keep backups working. ..."), and the setup item `audible` is not done
+  ("N account(s) need signing in again to keep backups working"). Changing the
+  constant set flags every account registered before it.
+- `denialKind` checks the customer's throttling (`customerthrottled`, "being
+  throttled") **first**, as `audible.ErrThrottled` (a bare "Throttled", a rate
+  limit, stays `ErrDenied`). `Manager.signed` retries a throttled license once when
+  a newer sign-in replaced the device meanwhile, else marks the account refused with
+  `audibleacct.ThrottledText` and answers the denial. The import fails
+  `audible_refused` with the advice to sign in again (never `no_rights`), and every
+  later import of the account fails `audible_refused` at once, before the title
+  read or a license, until a sign-in again. (Any refused account's imports fail
+  this way, after a second read of the account: a sign-in refusal with Audible's
+  sign-in advice until a sign-in again or a poll that succeeds clears it.)
+- A sign-in again of the same Amazon account replaces the device and deregisters
+  the old one (as before). Existing accounts keep their old registration until
+  the owner signs in again after updating.
 
 The page's `GET /api/accounts/audible` answers `{accounts, marketplaces, policies,
 paired, libraries, users, users_error}`: the people are read live from the server's
@@ -120,11 +158,29 @@ resumable `Download`'s state file, `If-Range` and stall watchdog (see
 [Resume and temp files](#resume-and-temp-files)). The manager's `Source.Acquire`
 went: `audiblejob` runs the steps.
 
+### Redacted account ids
+
+Amazon's error bodies quote the customer id ("Customer id [A1...] being
+throttled"), so `audible.RedactAccountIDs` (`redact.go`) runs on Audible's answer as it
+becomes an error (the snippet, a license's denial reasons): customer ids (labelled,
+or `A` plus 10 or more capitals with a digit), `amzn1.*` ids, device serials
+(labelled, 32+ hex, or 40 letters and digits), emails and tokens go; the ASIN
+(`B0...` or 10 digits) and the human part stay. `RedactKnown` and
+`Credentials.Redact` also remove the account's own customer id and serial by value,
+and `audibleacct`'s `Service` wraps every error it answers with them. `audiblejob`'s
+job errors and recorded poll failures pass the redactor again (a `Failure` redacts
+the errors it quotes, never its library paths or titles; `RedactedError` keeps
+`errors.Is`). So no log, job error, result, progress or anything sent to the server
+carries an account id.
+
 ## The poll: `audible.poll`
 
 **On the server** (`internal/bridge/audible.go`) the kind is internal (refused by
 `POST /admin/bridge/jobs` with `400`) and quiet (no notifications), with params
-exactly `{"account"}` (strict), no library or path, deduped per account
+`{"account", "template"}` (strict; `template` is the account's placement template
+at queue time, omitted when `""`, bounded to 500 bytes but never parsed, so a
+template the grammar later refuses never stops the polls), no library or path,
+deduped per account
 (`audiblePollSuffix`), owned by the `audible` module (`ModuleFor`: a queued poll is
 held while the module is off), and it **promotes**: a request that finds the
 account's poll open raises its priority, never lowers it. Enqueue keeps only the
@@ -140,7 +196,9 @@ paused, mapped to a person an account may still be mapped to, `last_queued_at`
 older than `poll_hours`, 6 by default) at priority `-10` and records
 `last_queued_at`, so a failed poll waits its interval. The console's Check now
 (`POST /admin/audible/accounts/{account}/poll`) queues at a person's priority
-(`0`), or raises the open one to it.
+(`0`), or raises the open one to it; a request that finds the poll still queued
+also gives it the current template, so Check now after a template change plans by
+the new one (a claimed poll runs as claimed).
 
 **On the Bridge** (`internal/audiblejob`, the `light` lane) a poll:
 
@@ -160,10 +218,13 @@ older than `poll_hours`, 6 by default) at priority `-10` and records
    claimed by several titles. `how` is `asin` when the book's ASIN is the title's,
    else `fuzzy`. A book path goes out only as `.` (a library that is one book) or a
    clean path below the root, as the server takes it;
-6. PUTs the titles in calls of 500 under **one** poll id (the job, the attempt and a
+6. **plans** each unmatched title (contested included, never a matched one):
+   where a backup would go, `planned` (see [Planned destinations](#planned-destinations)),
+   with no Amazon request;
+7. PUTs the titles in calls of 500 under **one** poll id (the job, the attempt and a
    random suffix), the last one `final` (an empty library sends one empty final
    call, so every title becomes `gone`), with each title's authors cut to 20;
-7. **backfills ASINs** (`PUT /bridge/libraries/{id}/enrichment`) for each matched
+8. **backfills ASINs** (`PUT /bridge/libraries/{id}/enrichment`) for each matched
    book without one, unless the book is [contested](#matching-rules) (derive
    nothing durable from a doubtful match) or the title is a preorder (not out yet:
    the book is another edition). `asin_set` and a moved book are skipped, other
@@ -204,14 +265,60 @@ but not enriched (`importjob.SpanMismatch`), so the folder never takes the pack'
 ASIN. An ASIN match is never held back by any of this.
 
 **Contested books.** `importjob.KeepBest` settles a path claimed by several titles
-(`Claim{Path, Score, Work}`). The single best score keeps the match. A tie for the
+(`Claim{Path, Score, Work, Agrees, Disagrees}`). An ASIN match (`match.ScoreASIN`)
+keeps it. Otherwise, when some claims' series position agrees with the book's
+(`importjob.PositionAgrees(rec, b)`: the title's `SeriesPosition` as one number
+against the book's position in the title's series, else the book's main series'
+position, where the books listing puts a folder code's number; a range or no number
+on either side is neither), only those compete, so the volume whose number is the
+book's keeps it even over a higher score (`MatchScored` itself is not gated by
+it). Then the single best score keeps the match. A tie for the
 best keeps none, unless every tied title is the same work (`WorkKey`: the folded
 title, the folded authors in any order and the series position); then all keep it
-(one book owned twice, under two ASINs). The others are PUT with no `match` and
-`reason: "contested"` (`link.ReasonContested`, set only on a title with no other
-reason), so the console shows them as not here and Back up everything skips
-them. A contested path gets no ASIN backfill, not even from the
-title that kept it.
+(one book owned twice, under two ASINs). A losing title whose position
+**disagrees** with the book's is another volume: it goes out plainly unmatched, no
+reason. The other losers are PUT with no `match`, `reason: "contested"`
+(`link.ReasonContested`, set only on a title with no other reason) and
+`contested_path` (the book's path, omitted otherwise), so the console shows them as
+not here, names the book and the other titles, and Back up everything skips them.
+A contested path gets no ASIN backfill, not even from the title that kept it. Not
+this book doesn't settle a contest (the Bridge never reads `rejected`): a
+follow-up.
+
+### Planned destinations
+
+Each unmatched title of a poll carries `planned` (`audiblejob/plan.go`,
+`titlePlanner`): the import's own `destination()` for the same record, the same
+books listing and the params' `template`, **without** the title's `dest_path` (the
+console's override is checked when the backup starts):
+
+```json
+"planned": {
+  "library_id": 1,
+  "path": "Ben Aaronovitch/Rivers of London/2 - Moon over Soho/Moon over Soho.m4b",
+  "file": "Moon over Soho.m4b",
+  "kind": "series_existing",
+  "siblings": 7,
+  "state": "joins",
+  "conflict": "",
+  "template": ""
+}
+```
+
+- `path` is the file's path after `spelled` (as the disk spells the folders that
+  exist), `file` its name; both `""` when `state` is `error`.
+- `kind` is the placement's: `series_existing`, `series_new` or `standalone`;
+  `siblings` how many of the series' books the library lists.
+- `state`: `new`; `joins` (siblings, or the path's top folder is a listed book's
+  or, when mapped, a folder at the mount); `exists` with `conflict` `file`, `book`
+  or `audio` (`vacant`'s refusal, `link.ConflictFile|Book|Audio`); `error` with the
+  reason in `conflict` (a template that renders no valid path, say).
+- `template` is the template the plan used, as the params gave it (`""` for
+  Auto): the console notes when the account's template changed since.
+- Disk checks (`spelled`, `vacant`, free functions over a `transfer.LibraryFS`)
+  run only when the library is mapped at the Bridge's mount, through a per-poll
+  directory cache; otherwise the books listing alone decides (a listed book's
+  folder is `exists`/`book`).
 
 ### Release dates
 
@@ -318,7 +425,7 @@ a park's code, else the result's `code`, else an error starting with a known cod
 |---|---|
 | `not_released` | the title is a preorder, or Audible's license denial says it isn't out (`audible.ErrNotReleased`) |
 | `no_rights` | the title isn't in the account's library (`ErrNotInLibrary`), Audible won't let it be downloaded (`UnavailableReason`: no rights, a show or periodical), or the license is denied for rights (`ErrNoRights`) |
-| `audible_refused` | Audible refused the account's sign-in (`audibleacct.ErrRefused`: the account is marked refused) or the license for another reason (`ErrDenied`) |
+| `audible_refused` | Audible refused the account's sign-in (`audibleacct.ErrRefused`: the account is marked refused) or the license for another reason (`ErrDenied`); or denied the device as throttled (`ErrThrottled`, a device on an older [profile](#the-device-profile)): the message is `ThrottledText`'s advice to sign in again on the Bridge, the account is marked refused and its later imports fail at once until a sign-in again |
 | `not_writable` | the library isn't the account's, not a books library the server lists, or not mapped **and** writable at the mount in use; the destination or template gives no valid path (`transfer.CleanRel`'s refusals, a hidden segment included; another audio extension than `.m4b`, `.m4a`, `.mp4`); a path the Bridge can't follow (a file where a folder goes, a link out of the mapping, an unreadable folder); a read-only filesystem or a permission refusal at the install |
 | `exists` | anything at the destination (a different file, a folder, a link), or a destination inside a book the library already has (its folder is a listed book's, or already holds audio): checked **before** the license, and again at the install |
 | `disk_full` | free space short in the Bridge's temp folder (2.2x the size, less what the partial holds) or at the library's nearest existing folder (1.1x, `transfer.DefaultHeadroom`), checked before a byte is written; or ENOSPC/EDQUOT during the download, decrypt (ffmpeg's words too) or copy. A free space that can't be read is no refusal |
@@ -573,7 +680,35 @@ console removed it.
 
 No new table. `policy_since` joins the user-state rule's free columns of
 `audible_accounts` (`store/userstate.go`), as the two poll times; a titles write is
-a user-state write. The Bridge has no migration for 4b.
+a user-state write. The Bridge's `0010_audible_profile` is
+[the device profile](#the-device-profile)'s.
+
+### Migration `0065_audible_planned`
+
+What the console says of a title the Bridge left unmatched.
+
+- `audible_titles.planned TEXT NOT NULL DEFAULT ''`: the title's planned
+  destination as JSON, `''` for none.
+- `audible_titles.contest_library_id INTEGER` and `contest_path TEXT NOT NULL
+  DEFAULT ''` (NULL and `''` for none), with a partial index on both: the book a
+  contested title tied for. Path-keyed with no FK, carried by a move or a join like
+  a match's path, cleared by the library's delete.
+
+All three are the poll's: each titles PUT writes them, and a stored match (the
+poll's, a kept `import` match, `FoldAudibleImport`) clears them. A title the final
+call marks `gone` loses its plan. The PUT checks `planned` strictly
+(`checkAudiblePlan`, the rules in the
+[reference](../server/api/reference.md#put-apiv1bridgeaudibleaccountsaccounttitles)),
+bar a `path` over `MaxPathBytes` (Audible's long text through a template), stored
+as an `error` plan. A contest is
+stored only for the account's library. `GET /admin/audible/titles` shows `planned`
+only while the account is mapped to the plan's library, and `contested {library_id,
+path, with}` only while it is mapped to the contest's, `with` the account's other
+titles (not `gone`) contested over that book or matched to it, at most 10
+(`fillContests`, one query a page).
+
+**Deploy the Bridge with the server** (no capability gate: see the
+[cross-repo contract](../architecture/cross-repo-contract.md#16-the-bridge)).
 
 ### The template grammar
 
@@ -654,12 +789,23 @@ titles are fetched again every 5 s while a backup is queued or running,
 **Placement** row, **Backup settings...** (policy, template:
 `account-settings-button.tsx`) and **Back up everything...** with its "N books, ~X
 GB" confirm (`backup-all-button.tsx`, from `backup_estimate`, also at the top of the
-titles page); the legal line on the titles page and in both dialogs. The Bridge's
+titles page); the legal line on the titles page and in both dialogs. Each unmatched
+title shows `PlannedNote` (`plannedLine`: "Will go to &lt;path&gt;,
+beside N books of its series" and the like, "(planned at the last check)", warning
+tone on `exists` or `error`, a note when the plan's template isn't the account's
+now, and "Your destination is checked when the backup starts" instead while a
+`dest_path` is set; none on an `unavailable` or `gone` title, nor on a matched
+one, a Not this book title included, since a stored match clears the plan),
+`ReasonNote`
+(`contested` explained with the other titles and the book linked through
+`bookRoute`, a plain sentence without data; a reason that is a machine code reads
+as a sentence, `reasonKey`; Audible's own words stay) and Destination...'s
+placeholder from the planned path, never its value (`plannedPlaceholder`). The Bridge's
 job list names an `audible.import` by its ASIN, reads one with no requester as
 "Scheduled by the server", and its placed files are no verify check
 (`resultSummary`). The components are in the [console's catalogue](../server/web-ui.md#what-the-console-has-today).
-The Bridge's optional setup step `audible` (done with an account signed in and none
-refused) links its Accounts tab. See the
+The Bridge's optional setup step `audible` (done with an account signed in, none
+refused and none on an older device profile) links its Accounts tab. See the
 [User Guide's Audible page](/users/admin/audible).
 
 ## The routes
@@ -704,7 +850,12 @@ the verifier and client id and issues a device key, `/auth/token`,
 `/auth/deregister` (this device only, recorded), signed calls verified against the
 issued key (an unknown or deregistered device `401`, `/_fake/refuse` `403`),
 library paging, `lastpositions` with a `400` over its limit (10 by default), and
-`PUT lastpositions` recorded. Phase 4b (`content.go`): `GET /1.0/library/{asin}`;
+`PUT lastpositions` recorded. Register records each device's
+profile (its serial and app, os and software versions) and only the current
+profile with a 40-character serial gets licenses; any other device lists its library
+but every license is denied with the three throttled reasons, its customer id
+quoted (to prove the redaction). `POST /_fake/old-profile` ages every device
+registered so far. Phase 4b (`content.go`): `GET /1.0/library/{asin}`;
 `POST /1.0/content/{asin}/licenserequest` (denied for a title not owned, a preorder
 not released or one without download rights; else granted, with a voucher sealed
 from the device type, serial, customer id and ASIN carrying the key and IV
