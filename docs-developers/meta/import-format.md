@@ -63,16 +63,16 @@ required fields is skipped** with a warning. Every other field is optional;
 | `series` | string | The series name. |
 | `series_position` | string | A number (`"1"`, `"2.5"`) or an omnibus range (`"1-3.5"`). If it fails the position pattern the book still imports, but is **not placed in the series**. |
 | `asin` | string | The Audible ASIN. This is the **identity and dedup key**. The envelope carries no marketplace region, so a present ASIN defaults to region `us`. |
+| `isbn` | string | The recording's ISBN-10 or ISBN-13 (hyphens and spaces are stripped). It is recorded on a new recording and rides along on an ASIN merge (below); a row matching an existing recording without an ASIN adds nothing. Dropped when malformed or when another recording already holds it. Send the audiobook's own ISBN, not the print edition's. |
 | `language` | string | **Required.** An ISO 639-1 code (`en`) or the English language word (`English`). An absent or unmappable language **skips the book**. |
-| `release_date` | string | `YYYY-MM-DD`. |
+| `release_date` | string | `YYYY-MM-DD`, or `YYYY-MM` / `YYYY` when that is all the source states. |
 | `publisher` | string | The recording's publisher. |
 | `runtime_min` | integer | Total runtime in minutes (positive). |
 | `abridged` | boolean | Tri-state: **omit when unknown** - present only when the source actually states it. |
 | `cover_url` | string | Cover image URL. **`https://` only**; any other value is dropped. |
 | `chapters` | integer | A chapter *count*, not a per-chapter array. The importer ignores it (chapter timing lives on recordings, sourced elsewhere), so it is optional and informational. |
 
-**Not consumed.** `isbn` may appear in the shape but the bulk importer keys
-identity on ASIN alone and does not map ISBN in. Any field not listed above
+**Not consumed.** Any field not listed above
 (genre, ratings, publisher blurb, personal listening state, local file paths) is
 dropped - this is a facts-only database.
 
@@ -123,8 +123,9 @@ so the same identity and dedup rules apply as any other import (full detail unde
 - **Work identity** is (title slug + author set), with per-volume disambiguation
   so distinct series volumes never merge into one work.
 - **ASIN merge.** A same-work, same-narrator entry whose only new fact is another
-  ASIN merges that ASIN into the existing recording (guarded by runtime and
-  abridged deltas) rather than minting a duplicate recording.
+  ASIN merges that ASIN, and any `isbn` no other recording holds, into the
+  existing recording (guarded by runtime and abridged deltas) rather than
+  minting a duplicate recording.
 - **Series joining.** A series is found by its name, and a name is not an
   identity, so a row joins a same-named catalogued series only when the series
   fits it. Its **authors** must fit (a series one author dominates is closed to
