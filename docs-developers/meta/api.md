@@ -337,11 +337,16 @@ Like `lang` it narrows **lists** only: `works/{id}`, `people/{id}`,
 - It runs **inside** the query, through the artifact's `recording_sources` table
   (one `(work_id, recording_id, type)` row per source of each recording, indexed
   by type), so `?limit=20` returns up to 20 matching works, not the matches among
-  20. Both search boosts (the exact-title lead and the series volume) obey it.
-  It combines with `lang`.
-- `works/latest` orders by the **work's** `added_at`, so a LibriVox reading that
-  joined a work catalogued long before does not surface there as new; only a work
-  the LibriVox import created does.
+  20. Both search boosts (the exact-title lead and the series volume) obey it;
+  the exact-title probe applies it **inside** its bounded window of same-titled
+  works, so twenty retail "Poems" cannot crowd the LibriVox one out of
+  `q=poems&source=librivox`. It combines with `lang`.
+- Filtered, `works/latest` orders by the **newest recording from that source**,
+  not by the work: a work's date there is the latest `added_at` among its
+  recordings of that source type (the work's own `added_at` when none of them
+  carries one). So a LibriVox reading that joined a classic catalogued long
+  before surfaces as new, which is what a "new on LibriVox" list wants. The
+  unfiltered list, and `lang` alone, still order by the work.
 - **Version gate.** The table arrived with `schema_version` 8. Against an older
   artifact the value is still validated (an unknown type is still a 400) and a
   filtered list is **empty**, never the unfiltered page, which would claim every
@@ -354,8 +359,9 @@ rest of the LibriVox layer.
 
 The newest works, for the site's landing grid. `limit` defaults to 12, clamped to
 `[1, 50]`. Returns `{"works": [workCard...]}` ordered by `added_at` descending
-(then title), with at most two works from any one series so a bulk import sharing
-one date can't fill the grid. It takes the [`lang` filter](#the-lang-filter)
+(then title; under `source`, by the newest recording from that source - see the
+[`source` filter](#the-source-filter)), with at most two works from any one series
+so a bulk import sharing one date can't fill the grid. It takes the [`lang` filter](#the-lang-filter)
 and the [`source` filter](#the-source-filter).
 Two reading orders of one franchise - a series and a
 chronological or recommended variant of it - count as one series for that cap
@@ -960,7 +966,11 @@ the static site and the sitemaps.
 (default **100**) with a burst of `--rate-burst` (default **400**). The defaults
 are sized from the heaviest legitimate caller, an AudioSilo server's bulk match,
 which does not pace itself (about 90 requests a second at full speed on a fast
-link), and a console Series page's burst of lookups; a scraper looping flat out
+link), and a console Series page's burst of lookups. Those figures come from
+audiosilo-server's meta client concurrency (`internal/matchrun/runner.go`
+`workers`, `internal/meta/service.go` `maxConcurrentWorkFetches` and
+`maxConcurrentLookups`); `TestDefaultsHoldAnAudioSiloBulkMatch` replays a copy of
+them, so a change on the server side must re-check these defaults by hand; a scraper looping flat out
 wants far more, and its route is the
 [release artifact](overview.md#release-artifacts). A rate of `0` turns the
 limit off (a private metaserve on the same host or LAN as its server can outrun
@@ -989,15 +999,21 @@ read.
 
 :::warning[Behind a reverse proxy, name it]
 Without `--trusted-proxy` every request through a proxy counts as the proxy, so
-the whole site shares one bucket. The shipped `docker-compose.yml` sets
-`METASERVE_TRUSTED_PROXIES` to the loopback and private ranges
-(`127.0.0.0/8,::1,10.0.0.0/8,172.16.0.0/12,192.168.0.0/16,fc00::/7`), which is
-safe there because its port is published on loopback only, so only the host's
-proxy can connect. The proxy must send `X-Forwarded-For` (nginx:
+the whole site shares one bucket. The shipped `docker-compose.yml` pins its
+network's subnet (`METASERVE_SUBNET`, default `10.217.53.0/28`) and sets
+`METASERVE_TRUSTED_PROXIES` to the loopback and that subnet alone
+(`127.0.0.0/8,::1,${METASERVE_SUBNET}`): a host proxy reaching the
+loopback-published port arrives from the network's gateway, inside it. Set
+`METASERVE_SUBNET` in `.env` if the default collides with a network on the host
+(`docker compose up` refuses with "Pool overlaps"); changing it on a running
+deployment recreates the network (`docker compose down && docker compose up -d`).
+Do **not** widen the list to the private ranges: if the proxy also serves a LAN,
+a LAN client's own address would then be a trusted hop, and the
+`X-Forwarded-For` it sends would pick its bucket. The proxy must send
+`X-Forwarded-For` (nginx:
 `proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for`). If a CDN sits in
 front of that proxy, add the CDN's ranges too, or rewrite the header at the host
-proxy (nginx `real_ip`), or the CDN's edges become the clients. If the proxy also
-serves a LAN, narrow the trusted ranges.
+proxy (nginx `real_ip`), or the CDN's edges become the clients.
 :::
 
 **Cache-Control.** A **200** whose route states no `Cache-Control` of its own
