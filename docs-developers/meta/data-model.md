@@ -40,6 +40,16 @@ name on a retired slug joins the surviving series, and a work candidate on a
 retired slug is judged against its survivor by the same identity rules an
 ordinary duplicate would be.
 
+The table has a git merge driver of its own, `cmd/metaredirectmerge`, which
+`.gitattributes` names for that one path and the intake rebase sweep configures
+(the pack driver merges pack files only). Two pull requests that each record a
+tombstone touch adjacent sorted lines, so git's line merge would stop on them;
+the driver merges each family's map three ways instead. It keeps what either side
+added, collapses a chain the two sides make together (one retired `a` into `b`,
+the other `b` into `c`: both end at `c`, as `pkg/redirects.Add` would have
+written them one after the other), and refuses, with conflict markers, one slug
+sent to two different targets or deleted on one side and retargeted on the other.
+
 The JSON Schemas in `schema/*.schema.json` (JSON Schema draft 2020-12, every
 object `additionalProperties: false`) are the **authoritative, public contract**.
 They are embedded into the tooling via `schema.go`, so a schema edit is a code
