@@ -346,7 +346,7 @@ way. Which engine a build carries is decided by the build, not by a config key
 native). A value naming any engine other than the
 one that runs (`native` on a pure-Go build, or a typo) changes nothing and logs
 a warning at start. Read once at start. The start logs the engine and its SQLite
-release, for example `database: sqlite engine=native version=3.53.4`.
+release, for example `msg="database: sqlite" engine=native version=3.53.4`.
 
 ### Demo mode (`demo.*`)
 

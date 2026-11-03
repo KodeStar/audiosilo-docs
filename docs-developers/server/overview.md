@@ -109,12 +109,14 @@ native deep-link association files, and `WebDir`. See
 
 Opens SQLite through the build's engine (`engine*.go`): by default
 `modernc.org/sqlite`, pure Go, so the binary is CGO-free and cross-compiles
-anywhere; a cgo build with `-tags sqlite_native` uses the native C SQLite
-through `mattn/go-sqlite3` instead (see
+anywhere; a cgo build with
+`-tags "sqlite_native sqlite_fts5 sqlite_preupdate_hook"` uses the native C
+SQLite through `mattn/go-sqlite3` instead (see
 [SQLite choices](data-model.md#sqlite-choices) for which builds ship which). It
 applies the embedded, append-only migrations in `internal/store/migrations/`,
 and both pools keep each connection's statements prepared (`stmtcache.go`).
-`store.DB` routes reads and writes to separate pools (single-connection writer, read-only reader pool over WAL) and provides
+`store.DB` routes reads and writes to separate pools (single-connection writer,
+read-only reader pool over WAL) and provides
 `WithTx` with slow-transaction logging, and `ContentGeneration`, the content
 generation that moves after every write has finished except a user-state one
 (the API's [list answer cache](#the-list-answer-cache) keys on it, and so do the

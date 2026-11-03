@@ -17,7 +17,15 @@ frontend change, and remember that green CI in one repo says nothing about the
 cd ~/dev/audiosilo/audiosilo-server
 scripts/build-admin.sh   # the admin console (Node 24): npm ci + check + build
 go build ./... && go vet ./... && go test -race ./... && golangci-lint run
+# the native SQLite engine (CI's test-native job), needs a C compiler:
+TAGS="sqlite_native sqlite_fts5 sqlite_preupdate_hook"
+CGO_ENABLED=1 go vet -tags "$TAGS" ./... && CGO_ENABLED=1 go test -race -tags "$TAGS" ./... \
+  && CGO_ENABLED=1 golangci-lint run --build-tags=sqlite_native,sqlite_fts5,sqlite_preupdate_hook
 ```
+
+The native run matters most for a change under `internal/store/` or to SQL
+(the engine's files build only under its tags; see
+[SQLite choices](../server/data-model.md#sqlite-choices)).
 
 `scripts/build-admin.sh` is the admin console's gate: `npm ci`, then
 `npm run check` (`tsc -b`, ESLint including the CSP guard rules,

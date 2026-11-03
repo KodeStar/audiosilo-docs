@@ -90,7 +90,8 @@ The multi-stage `Dockerfile`:
     27% slower than on the pure-Go engine). `netgo` and `osusergo` keep it off
     glibc's NSS;
   - the build runs on the build host's platform; a cross leg installs the
-    target's cross compiler (`gcc-aarch64-linux-gnu` or `gcc-x86-64-linux-gnu`);
+    target's cross compiler and C library (`gcc-aarch64-linux-gnu` +
+    `libc6-dev-arm64-cross`, or `gcc-x86-64-linux-gnu` + `libc6-dev-amd64-cross`);
 - stamps the release version via
   `-ldflags "-X github.com/kodestar/audiosilo-server/internal/api.Version=${VERSION}"`
   (`image.yml` passes the semver on a tag build, else `dev-<short sha>`, as the
@@ -184,10 +185,10 @@ distro's `ffmpeg`.
 draft:
 
 - the exact linux archive names and the binary at each archive's root;
-- each binary's build settings (`go version -m`): a Linux binary's full tag list
-  (`embedplayer` and the native engine's), `CGO_ENABLED=1`, its architecture and
-  static linking (`readelf` finds no ELF interpreter); a macOS or Windows
-  binary's `embedplayer` tag, `CGO_ENABLED=0` and architecture;
+- each binary's build settings (`go version -m`): a Linux binary's tags
+  `embedplayer`, `sqlite_native`, `netgo` and `osusergo`, `CGO_ENABLED=1`, its
+  architecture and static linking (`readelf` finds no ELF interpreter); a macOS
+  or Windows binary's `embedplayer` tag, `CGO_ENABLED=0` and architecture;
 - an amd64 boot with `--data` only (the headless first run and the self-signed
   TLS default) that must serve `/healthz` and `/web/` and log `engine=native` at
   start.

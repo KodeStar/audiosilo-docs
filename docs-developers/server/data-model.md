@@ -1498,10 +1498,11 @@ per-connection prepared-statement cache (`store/stmtcache.go`), keyed by the
 SQL text: 256 statements per connection, least recently used out. It roughly
 halves a first scan on either engine. SQL built per call (a value formatted
 into the text, an `IN` list sized to its arguments) misses and churns the
-cache, so bind values as parameters. SQL holding several statements, and a
-statement whose rows are still open, bypass the cache, and a connection that
-runs DDL drops its cached statements. A hot join (one run per book or per row,
-such as the scan's joins in `catalog/communitychapters.go` and
+cache, so bind values as parameters. SQL holding several statements, a
+statement whose rows are still open and, on the native engine, an Exec of
+anything but plain DML bypass the cache, and a connection that runs DDL drops
+its cached statements. A hot join (one run per book or per row, such as the
+scan's joins in `catalog/communitychapters.go` and
 `catalog/overrides.go`) takes its parameters as `+?`: a bare `?` in a join
 makes SQLite 3.54's planner re-parse the statement whenever a new value is
 bound, and the unary plus hides the value from the planner without changing

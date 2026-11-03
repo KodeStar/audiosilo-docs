@@ -223,10 +223,11 @@ AudioSilo at any time and your library is just... still a folder of files.
 
 Yes. The server is a single Go binary with its database built in - no separate
 database server and no heavyweight runtime - and its search and browsing are
-built to stay fast on modest hardware even with large libraries. GitHub Releases include Linux builds for
-both **amd64** and **arm64** (as tarballs and `.deb`/`.rpm` packages), so a
-Raspberry Pi running a 64-bit OS works out of the box. There's currently no
-32-bit ARM build, so older Pis on a 32-bit OS aren't covered.
+built to stay fast on modest hardware even with large libraries. GitHub
+Releases include Linux builds for both **amd64** and **arm64** (as tarballs and
+`.deb`/`.rpm` packages), so a Raspberry Pi running a 64-bit OS works out of the
+box. There's currently no 32-bit ARM build, so older Pis on a 32-bit OS aren't
+covered.
 
 See [Install the binary](./getting-started/install-binary.md) to get set up.
 
