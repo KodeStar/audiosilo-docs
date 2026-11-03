@@ -40,6 +40,15 @@ name on a retired slug joins the surviving series, and a work candidate on a
 retired slug is judged against its survivor by the same identity rules an
 ordinary duplicate would be.
 
+The same table records a **retitle alias**. A work's slug never follows its
+title, so a retitle (a repair wave's `retitle-work`, or an intake title
+correction) can leave the work off the slugs its new title composes, and the next
+import of that title would miss it and mint a duplicate. So the retitle also
+records the slug that import would mint at as a tombstone onto the work, and the
+import merges into it instead. No alias is written when the new title still
+reaches the work, or for a serial volume at `<title>-book-<n>`, which its
+position already reaches.
+
 The JSON Schemas in `schema/*.schema.json` (JSON Schema draft 2020-12, every
 object `additionalProperties: false`) are the **authoritative, public contract**.
 They are embedded into the tooling via `schema.go`, so a schema edit is a code
