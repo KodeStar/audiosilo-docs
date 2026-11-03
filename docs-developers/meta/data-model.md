@@ -499,6 +499,14 @@ reject whose proposal no longer appears is listed as stale in `SUMMARY.md` and
 never applied - a reviewed decision can never resurrect a change the data no
 longer supports.
 
+A `reject` of a merge also reaches beyond the audit: `metacheck`'s advisory
+census stops naming the pair it covers, and the importer honours a `reject` of
+`merge-people` (how "two people, not one" is recorded for a courtesy-title pair
+such as Dr. Alex George and Alex George). The importer's honorific fold, which
+otherwise resolves a "Dr. X" credit onto the catalogued bare "X", never folds a
+pair a rejection names, in either direction, so an import cannot re-merge two
+people a maintainer separated.
+
 ## The expressive layer (CC BY-SA)
 
 Two **per-work sidecars** carry the community-authored, spoiler-tagged content:
