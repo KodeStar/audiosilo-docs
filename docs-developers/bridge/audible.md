@@ -80,8 +80,10 @@ meanwhile), then DELETEs on the server, then deregisters
 token within 2 minutes of expiry first). It runs to the end even if the page goes
 away. A server or Amazon failure is a `warning` for the page, never the account
 kept. When the server's DELETE failed, the server keeps an orphaned account until
-an admin removes it from the console
-([`DELETE /admin/audible/accounts/{account}`](../server/api/reference.md#delete-apiv1adminaudibleaccountsaccount)).
+an admin removes it
+([`DELETE /admin/audible/accounts/{account}`](../server/api/reference.md#delete-apiv1adminaudibleaccountsaccount)):
+from the console while the module is on, else as an API call, since the console
+hides its Audible card and page while the module is off.
 
 **Refused.** A `401`/`403` on a signed call (`audible.IsRefused`) marks the account
 refused (`refused_at`, `last_error`; the page's **Sign in again**), unless a sign-in

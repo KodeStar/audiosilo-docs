@@ -10350,7 +10350,7 @@ the server knew it (the Bridge forgets locally first and may call again).
 
 ```json
 {
-  "poll_id": "j12-a1-x7q",
+  "poll_id": "j12.1.9f3a2c7e",
   "final": false,
   "titles": [
     {
@@ -10492,6 +10492,12 @@ keyset-paged.
 
 `next` is `""` on the last page. `rejected`, `ignored`, `dest_path` and
 `import_job_id` are Phase 4b's (always their zero values in 4a).
+
+| Status | Meaning |
+|---|---|
+| `200` | `{ titles, next }` |
+| `400` | `invalid_request` - a `state` or `matched` value not listed above, a `limit` that isn't a positive number, a `q` over 200 bytes, or a bad cursor |
+| `404` | `module_off` |
 
 ### `POST /api/v1/admin/audible/accounts/{account}/poll`
 

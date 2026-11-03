@@ -911,7 +911,9 @@ CSP-sensitive work against a real build served by Go. The console's own gate is
   contribute, with **Open Accounts on the Bridge**; and the job list words
   `sidecars.contribute` ("Community share") and `meta.correct` ("Corrections")
   jobs with `GenerateStatus` too (`isBookKind`). Since Phase 4a, while the
-  `audible` module is on, an **Audible accounts** card sits under Libraries
+  `audible` module is on, an **Audible accounts** card sits under Libraries in
+  the paired view only (`bridge-topic.tsx` `Paired`; with no Bridge paired,
+  Settings > Audible's Remove is the console's way to clear an orphaned account)
   (`features/audible/audible-accounts-card.tsx`, over
   [`GET /admin/audible/accounts`](api/reference.md#get-apiv1adminaudibleaccounts),
   every 30 seconds): each account's mapping read-only, its title counts, **Check

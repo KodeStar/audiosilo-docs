@@ -52,10 +52,11 @@ const server = apiClient(ORIGIN);
 const bridgeApi = apiClient(BASE.replace(/\/$/, ''), '/api');
 
 // Settles, moves the pointer away and shoots the page as tall as its content.
-const tallShoot = async (page, file, {settle = 800, max = 1600, min = 400} = {}) => {
+// `settle` waits before fitting, `fitSettle` after the viewport is resized.
+const tallShoot = async (page, file, {settle = 800, max = 1600, fitSettle = 400} = {}) => {
   await sleep(settle);
   await page.mouse.move(0, 0);
-  await fitted(page, () => fitViewportToPage(page, 900, max, min), () => shoot(page, file));
+  await fitted(page, () => fitViewportToPage(page, 900, max, fitSettle), () => shoot(page, file));
 };
 
 const tab = async (page, name) => {
@@ -137,12 +138,16 @@ async function audibleShots() {
     // The Amazon sign-in opens in a new tab (the fake's): closed, its address read from
     // the card's own link and followed here, as the browser would.
     const closeTab = (p) => p.close().catch(() => {});
+    // Off again however this ends, or the console's page would be closed too.
     ctx.on('page', closeTab);
-    await card.getByRole('button', {name: 'Open Amazon sign-in', exact: true}).click();
     const link = card.getByRole('link', {name: 'open it here', exact: true});
-    await link.waitFor({timeout: 15000});
-    await sleep(1500); // the tab has opened (and been closed) by now
-    ctx.off('page', closeTab);
+    try {
+      await card.getByRole('button', {name: 'Open Amazon sign-in', exact: true}).click();
+      await link.waitFor({timeout: 15000});
+      await sleep(1500); // the tab has opened (and been closed) by now
+    } finally {
+      ctx.off('page', closeTab);
+    }
     const res = await fetch(await link.getAttribute('href'), {redirect: 'manual'});
     const landing = new URL(res.headers.get('location') || '', AUDIBLE_FAKE);
     if (!landing.searchParams.get('openid.oa2.authorization_code')) throw new Error(`the fake's sign-in answered ${res.status}`);
@@ -207,7 +212,7 @@ async function audibleShots() {
     await step('audible: console titles', async () => {
       await consolePage.goto(`${ORIGIN}/admin/server?topic=audible`, {waitUntil: 'networkidle', timeout: 45000});
       await consolePage.getByRole('list', {name: 'Audible titles'}).waitFor({timeout: 15000});
-      await tallShoot(consolePage, AUDIBLE_SHOTS.titles, {settle: 1000, max: 1800, min: 800});
+      await tallShoot(consolePage, AUDIBLE_SHOTS.titles, {settle: 1000, max: 1800, fitSettle: 800});
     });
   } finally {
     await consolePage.close().catch(() => {});

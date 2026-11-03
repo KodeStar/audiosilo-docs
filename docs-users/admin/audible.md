@@ -45,10 +45,12 @@ the player has no Audible screens.
 ![The Audible accounts card on Server > Settings > Bridge](/img/screenshots/admin/audible-accounts-card.png)
 
 On **Server > Settings > Bridge**, under Libraries, the **Audible accounts** card
-lists every account the Bridge has signed in to, as the Bridge set it up. It is
-read-only: you change an account on the Bridge's Accounts tab (the card links to
-it when the Bridge has told the server its page's address). **View titles** opens
-the [titles page](#the-titles-page).
+lists every account the Bridge has signed in to, as the Bridge set it up. The card
+is there only while a Bridge is paired; with none paired, use the
+[titles page](#the-titles-page). It is read-only: you change an account on the
+Bridge's Accounts tab (with no account yet, the card links to it when the Bridge
+has told the server its page's address). **View titles** opens the
+[titles page](#the-titles-page).
 
 For each account:
 
@@ -132,7 +134,9 @@ matches into it and pauses the accounts mapped to it.
 The server asks the Bridge to check each account every 6 hours while the module is
 on. **Check now** asks for a check straight away ("Checking Chris (US)"); if a check
 is already waiting, it is moved to the front ("Chris (US) is already being
-checked"). The titles update once the Bridge has finished. A paused account can't
+checked"). If the last check is still being cancelled, it says so ("The check of
+Chris (US) is still stopping"): press **Check now** again once it has stopped. The
+titles update once the Bridge has finished. A paused account can't
 be checked: the console says to choose another library on the Bridge's Accounts tab.
 
 Checks are jobs like the Bridge's others: they appear in the Bridge's
@@ -148,9 +152,11 @@ removes it from the Bridge and from this server, and removes its AudioSilo devic
 from your Amazon account (see
 [Bridge accounts](../getting-started/bridge-accounts.md#removing-an-account)).
 
-**Remove...** here is for an account the Bridge can no longer remove: one set up by
-a Bridge you unpaired or replaced, or one whose removal on the Bridge couldn't reach
-the server. Confirm with **Remove**: the account, its titles and any check waiting
+**Remove...** in the console (on the accounts card, or at the top of the titles
+page) is for an account the Bridge can no longer remove: one set up by a Bridge you
+unpaired or replaced, or one whose removal on the Bridge couldn't reach the server.
+With no Bridge paired the accounts card isn't shown, so use the titles page.
+Confirm with **Remove**: the account, its titles and any check waiting
 for the Bridge go from this server. The books already on your server stay. It
 removes the account from **this server only**: to sign the device out of Amazon,
 remove it on the Bridge's Accounts page too (or in your Amazon account's device

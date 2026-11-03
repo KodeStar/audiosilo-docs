@@ -215,7 +215,9 @@ The console's **Remove** under
 [Server > Settings > Audible](../admin/audible.md#removing-an-account) is different:
 it removes the account from **the server only**. Use it for an account the Bridge
 can no longer remove, for example after you unpaired or replaced the Bridge. It
-signs nothing out of Amazon, so remove the device in your Amazon account too.
+signs nothing out of Amazon, so remove the device in your Amazon account too. The
+console shows it only while the **Audible** module is on: turn the module on
+first.
 
 :::note[Backing up your own books]
 Backing up is for making **a personal backup of books you bought**, with your own
