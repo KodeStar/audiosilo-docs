@@ -1467,6 +1467,9 @@ The migration history so far:
   3 times faster on uncached queries. A native build missing cgo or either mattn
   tag doesn't compile (`engine_native_guard.go`): without `sqlite_preupdate_hook`
   mattn's pre-update hook is a silent no-op, and the user-state watch with it.
+  Its queries read rows through a fast path (`engine_native_rows.go`, one C
+  call a row) that relies on an unexported field of mattn's statement;
+  `TestNativeFastRows` fails if a mattn upgrade drops it.
 
 | Build | Engine |
 |---|---|
@@ -1476,22 +1479,19 @@ The migration history so far:
 | The desktop manager (`pkg/launcher` in-process), a plain `go build` | modernc |
 
 On a native build, `AUDIOSILO_SQLITE=modernc` runs that process on modernc
-instead, to compare the two on one binary or as a fallback (see
-[Environment variables](configuration.md#environment-variables)). The start logs
-which engine and SQLite release it runs:
-`database: sqlite engine=native version=3.53.4`.
+instead (see [The SQLite engine](configuration.md#the-sqlite-engine-audiosilo_sqlite)).
 
 One engine serves the whole process, chosen the first time it is needed. Every
 open of the database goes through its driver (`driverName()`: both pools,
 `VacuumFile`, `openReadOnly`), never `sql.Open("sqlite", ...)`: two SQLite
 copies on one file in one process don't see each other's POSIX locks, which
-corrupts it. Everything else that is a library's own goes through the engine
-too: the pre-update and commit hooks, SQL functions (`store.RegisterFunction`,
-called from an `init`) and `store.IsUniqueViolation`. The metadata mirror's own
-`meta.sqlite`, another file, is opened by modernc on either engine. SQL holding
-several statements takes no parameters (modernc hands each statement the whole
-argument list, mattn hands them out statement by statement): run one statement
-an Exec.
+corrupts the file. The engine also wraps everything library-specific: the
+pre-update and commit hooks, SQL functions (`store.RegisterFunction`, called
+from an `init`) and `store.IsUniqueViolation`. The metadata mirror's
+`meta.sqlite` is a separate file, which modernc opens on either engine. SQL
+holding several statements takes no parameters (modernc hands each statement the
+whole argument list, mattn hands them out statement by statement), so run one
+statement per Exec.
 
 **Prepared-statement cache.** Both pools open the engine's library behind a
 per-connection prepared-statement cache (`store/stmtcache.go`), keyed by the
@@ -1499,9 +1499,9 @@ SQL text: 256 statements per connection, least recently used out. It roughly
 halves a first scan on either engine. SQL built per call (a value formatted
 into the text, an `IN` list sized to its arguments) misses and churns the
 cache, so bind values as parameters. SQL holding several statements, and a
-statement whose rows are still open, take the library's own path, and a
-connection that runs DDL drops its cached statements. A hot join (one run per
-book or per row, such as the scan's in `catalog/communitychapters.go` and
+statement whose rows are still open, bypass the cache, and a connection that
+runs DDL drops its cached statements. A hot join (one run per book or per row,
+such as the scan's joins in `catalog/communitychapters.go` and
 `catalog/overrides.go`) takes its parameters as `+?`: a bare `?` in a join
 makes SQLite 3.54's planner re-parse the statement whenever a new value is
 bound, and the unary plus hides the value from the planner without changing

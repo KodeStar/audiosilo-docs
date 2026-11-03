@@ -75,13 +75,12 @@ The image builds the native SQLite engine in by default; add
 ### 2b. Native binaries (`release.yml`, name: *release (native binaries)*)
 
 The same tag runs GoReleaser (`.goreleaser.yml`) for home users who don't want
-Docker, linux/darwin/windows × amd64/arm64 from one Linux runner. The Linux
-binaries build the native SQLite engine in, static against glibc like the Docker
-image (the runner installs the arm64 C cross compiler); macOS and Windows are
-CGO-free on the pure-Go engine (modernc), so they need no C toolchain. A local
-`goreleaser build --snapshot` of a Linux target needs that target's C compiler
-(`x86_64-linux-gnu-gcc` or `aarch64-linux-gnu-gcc`; on a Mac, build in a
-`golang:1.26` container).
+Docker: linux/darwin/windows × amd64/arm64, all from one Linux runner. The Linux
+binaries build the native SQLite engine in and macOS and Windows stay pure Go
+(see [the release pipeline](../architecture/release-pipeline.md#3-native-binaries---releaseyml--goreleaseryml)).
+A local `goreleaser build --snapshot` of a Linux target needs that target's C
+compiler (`x86_64-linux-gnu-gcc` or `aarch64-linux-gnu-gcc`; on a Mac, build in
+a `golang:1.26` container).
 
 - **Web player embedded:** builds with `-tags embedplayer`;
   `scripts/fetch-web-player.sh` populates `internal/web/player/` from the pinned

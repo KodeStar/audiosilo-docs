@@ -79,18 +79,19 @@ The multi-stage `Dockerfile`:
   embedded (see [Built-in web UI](../server/web-ui.md#the-admin-console-admin-ui));
 
 - builds the server binary with the **native SQLite engine** by default
-  (`ARG SQLITE_ENGINE=native`: `CGO_ENABLED=1`, `-tags "sqlite_native
-  sqlite_fts5 sqlite_preupdate_hook sqlite_omit_load_extension netgo
-  osusergo"`, `-trimpath`), linked statically against glibc
-  (`-linkmode external -extldflags -static`) on the Debian-based `golang:1.26`
-  image, so the Alpine final stage runs it as it is and with glibc's allocator
-  (musl's cost a first scan 27% against the pure-Go engine). `netgo` and
-  `osusergo` keep the static binary off glibc's NSS. The build stays on the
-  build host's platform; a cross leg installs the target's cross compiler
-  (`gcc-aarch64-linux-gnu` or `gcc-x86-64-linux-gnu`). `--build-arg
-  SQLITE_ENGINE=modernc` builds the pure-Go engine without cgo instead (see
-  [SQLite choices](../server/data-model.md#sqlite-choices)). Either way it stamps the
-  release version via
+  (`ARG SQLITE_ENGINE=native`; `--build-arg SQLITE_ENGINE=modernc` builds the
+  pure-Go engine without cgo instead, see
+  [SQLite choices](../server/data-model.md#sqlite-choices)):
+  - `CGO_ENABLED=1`, `-tags "sqlite_native sqlite_fts5 sqlite_preupdate_hook
+    sqlite_omit_load_extension netgo osusergo"`, `-trimpath`;
+  - linked statically against glibc (`-linkmode external -extldflags -static`)
+    on the Debian-based `golang:1.26` image, so the binary runs unchanged on the
+    Alpine final stage and keeps glibc's allocator (with musl's, a first scan was
+    27% slower than on the pure-Go engine). `netgo` and `osusergo` keep it off
+    glibc's NSS;
+  - the build runs on the build host's platform; a cross leg installs the
+    target's cross compiler (`gcc-aarch64-linux-gnu` or `gcc-x86-64-linux-gnu`);
+- stamps the release version via
   `-ldflags "-X github.com/kodestar/audiosilo-server/internal/api.Version=${VERSION}"`
   (`image.yml` passes the semver on a tag build, else `dev-<short sha>`, as the
   `VERSION` build-arg; the default is `dev`);
@@ -109,22 +110,18 @@ negotiate via the `GET /api/v1/server` capability flags instead.
 The same `v*` tag triggers GoReleaser on a single Linux runner, in two builds:
 
 - **Linux** (`audiosilo-linux`, `amd64` and `arm64`, for the tarballs and the
-  `.deb`/`.rpm`): the **native SQLite engine**, built the way the Docker image's
-  build stage does it (`CGO_ENABLED=1`, tags
-  `embedplayer,sqlite_native,sqlite_fts5,sqlite_preupdate_hook,sqlite_omit_load_extension,netgo,osusergo`,
-  `-linkmode external -extldflags -static`): one static binary linked against
-  glibc that runs on any distro, Alpine included, with glibc's allocator. Each
-  architecture needs its C compiler, named by its triplet in `CC`
-  (`x86_64-linux-gnu-gcc`, `aarch64-linux-gnu-gcc`); `release.yml` installs the
-  arm64 cross compiler (`gcc-aarch64-linux-gnu`, `libc6-dev-arm64-cross`) on the
-  amd64 runner.
+  `.deb`/`.rpm`): the **native SQLite engine**, with the Docker build stage's
+  tags and static glibc link (section 2) plus `embedplayer`: one static binary
+  that runs on any distro, Alpine included. Each architecture needs its C
+  compiler, named by its triplet in `CC` (`x86_64-linux-gnu-gcc`,
+  `aarch64-linux-gnu-gcc`); `release.yml` installs the arm64 cross compiler
+  (`gcc-aarch64-linux-gnu`, `libc6-dev-arm64-cross`) on the amd64 runner.
 - **macOS and Windows** (`audiosilo`, `amd64` and `arm64`): CGO-free on the
   pure-Go SQLite engine (modernc), so they cross-compile from the same runner
   with no C toolchain.
 
-The rest is shared:
+Six binaries in all. The rest is shared:
 
-- **Targets:** `linux`, `darwin`, `windows` × `amd64`, `arm64` (six binaries).
 - **Archives:** `.tar.gz` (Linux/macOS) and `.zip` (Windows), named
   `audiosilo_<version>_<os>_<arch>`, containing the binary plus
   README/LICENSE/RELEASING.
@@ -184,21 +181,24 @@ distro's `ffmpeg`.
 ### Smoke test, and the LinuxServer.io image downstream
 
 `release.yml`'s last step smoke-tests the archives while the release is still a
-draft: the exact linux archive names, the binary at each archive's root, and
-each binary's build settings (`go version -m`): a Linux binary's full tag list
-(`embedplayer` and the native engine's), `CGO_ENABLED=1`, its architecture and
-static linking (`readelf` finds no ELF interpreter), and a macOS or Windows
-binary's `embedplayer` tag, `CGO_ENABLED=0` and architecture. Then an amd64 boot
-with `--data` only (the headless first run and the self-signed TLS default) must
-serve `/healthz` and `/web/` and log `engine=native` at start.
+draft:
+
+- the exact linux archive names and the binary at each archive's root;
+- each binary's build settings (`go version -m`): a Linux binary's full tag list
+  (`embedplayer` and the native engine's), `CGO_ENABLED=1`, its architecture and
+  static linking (`readelf` finds no ELF interpreter); a macOS or Windows
+  binary's `embedplayer` tag, `CGO_ENABLED=0` and architecture;
+- an amd64 boot with `--data` only (the headless first run and the self-signed
+  TLS default) that must serve `/healthz` and `/web/` and log `engine=native` at
+  start.
 
 That is a contract, because
 [linuxserver/docker-audiosilo](https://github.com/linuxserver/docker-audiosilo)
 (`lscr.io/linuxserver/audiosilo`, the image Unraid's Community Applications lists)
 installs `audiosilo_<version>_linux_{amd64,arm64}.tar.gz` from the published release
-onto Alpine, so that image runs the native engine too (the binary is static,
-so it needs no libc). Their CI polls `releases/latest` hourly, so publishing the draft is
-what triggers a new `<tag>-ls<N>` image. The full list is in
+onto Alpine. The binary is static, so that image runs the native engine too.
+Their CI polls `releases/latest` hourly, so publishing the draft is what
+triggers a new `<tag>-ls<N>` image. The full list is in
 `audiosilo-server/RELEASING.md` section 2c.
 
 ## Ordering and compatibility, in one place

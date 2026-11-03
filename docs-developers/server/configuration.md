@@ -338,14 +338,12 @@ database:
 
 #### The SQLite engine (`AUDIOSILO_SQLITE`)
 
-Which SQLite library runs the database is decided by the build, not by a config
-key: modernc (pure Go) in a default build and in the macOS and Windows release
-binaries, the native C SQLite in the Docker image and the Linux release binaries
-(see
-[SQLite choices](data-model.md#sqlite-choices)). On a native build,
-`AUDIOSILO_SQLITE=modernc` (exactly, lowercase) runs that process on the
-pure-Go engine instead, to compare the two on one binary or as a fallback; the
-database file is the same either way. A value naming any engine other than the
+On a build with the native C SQLite engine, `AUDIOSILO_SQLITE=modernc`
+(exactly, lowercase) runs that process on the pure-Go engine instead, to compare
+the two on one binary or as a fallback; the database file is the same either
+way. Which engine a build carries is decided by the build, not by a config key
+(see [SQLite choices](data-model.md#sqlite-choices) for which builds are
+native). A value naming any engine other than the
 one that runs (`native` on a pure-Go build, or a typo) changes nothing and logs
 a warning at start. Read once at start. The start logs the engine and its SQLite
 release, for example `database: sqlite engine=native version=3.53.4`.
@@ -761,9 +759,9 @@ by the settings table in `internal/config/settings.go` (`fields`: each entry's
 
 `AUDIOSILO_PODCAST_INDEX_KEY` and `AUDIOSILO_PODCAST_INDEX_SECRET` override
 no key, so they are not in this table (see
-[Podcast discovery](#podcast-discovery-podcastsdiscovery)). Neither is
-`AUDIOSILO_SQLITE` (`modernc` runs a native build on the pure-Go SQLite engine;
-see [The SQLite engine](#the-sqlite-engine-audiosilo_sqlite)).
+[Podcast discovery](#podcast-discovery-podcastsdiscovery)). `AUDIOSILO_SQLITE`
+overrides no key either (see
+[The SQLite engine](#the-sqlite-engine-audiosilo_sqlite)).
 
 List values are split on commas with whitespace trimmed and empties dropped
 (`splitList`). Numeric/boolean variables that fail to parse are **silently
