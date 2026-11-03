@@ -13,8 +13,9 @@ holds the outside accounts the Bridge uses:
   stays on your server.
 - **The agent's credential**, which the AI agent needs to write characters and
   recaps.
-- **Audible**, so the Bridge can list the books your Audible accounts own and find
-  the ones already on your server (see [Audible](#audible) below). Optional.
+- **Audible**, so the Bridge can list the books your Audible accounts own, find
+  the ones already on your server and back up the rest into your library (see
+  [Audible](#audible) below). Optional.
 
 You sign in here, on the Bridge's own page, and nowhere else: the server never
 connects to the Bridge, so the console's **Server > Settings > Bridge** only
@@ -121,18 +122,18 @@ its image.
 ### Audible
 
 The **Audible** card signs the Bridge in to one or more Audible accounts. For each
-account, the Bridge lists the books it owns and finds the ones already in your
-library; the console then shows them under
-[Server > Settings > Audible](../admin/audible.md). Each account belongs to **one
+account, the Bridge lists the books it owns, finds the ones already in your
+library and backs up the ones you ask for; the console shows them, and is where
+you ask, under [Server > Settings > Audible](../admin/audible.md). Each account belongs to **one
 person** on your server and goes with **one books library**. The sign-in stays
 sealed on the Bridge: the server only ever sees the account's name, who and which
 library it is for, and the list of titles.
 
 :::info[What it does today]
-This first version **lists and matches**: it shows which of your Audible books are
-already on your server and which aren't. It doesn't download anything yet, and it
-doesn't keep your listening place in step with Audible yet. Backing up the books
-you bought, and keeping places in step, are coming in later versions.
+The Bridge **lists, matches and backs up**: it shows which of your Audible books
+are already on your server, and downloads the ones you choose into the account's
+library (see [Backing up](../admin/audible.md#backing-up-a-book)). It doesn't keep
+your listening place in step with Audible yet: that comes in a later version.
 :::
 
 The server asks the Bridge to check each account's library every few hours, but
@@ -182,8 +183,8 @@ old device from your Amazon account.
 | Field | What it is |
 |---|---|
 | **Belongs to** | the person on your server whose books these are. The list holds the server's adults and admins, including grown-up household members; never a kid, the demo account or a disabled account |
-| **Library** | the books library the account's titles are matched against (and, once backups arrive, where they go). Podcast libraries aren't offered |
-| **Back up** | what a later version will back up for this account: **Every new title**, **New titles in a series they already have**, or **Only the titles picked in the console**. The Bridge keeps it with the account; this version downloads nothing |
+| **Library** | the books library the account's titles are matched against, and where its backups go. Podcast libraries aren't offered. The Bridge must have this library mapped and writable on its Libraries tab to back anything up |
+| **Back up** | only when you add an account: which **new** purchases the Bridge backs up on its own after each check: **Every new title**, **New titles in a series they already have**, or **Only the titles picked in the console**. After that you change it in the console (**Backup settings...** on the [Audible accounts card](../admin/audible.md#backing-up-by-itself)); **Change** here says so and leaves it as it is |
 | **Keep the listening place in step with Audible** | for when places sync, in a later version |
 | **Name (optional)** | how the console names the account. Left empty, it is the person and the store, such as "Chris (US)", and it follows the person if you change who the account belongs to |
 

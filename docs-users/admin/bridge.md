@@ -237,10 +237,11 @@ changing a library's folder there checks that library again.
 
 While the [Audible module](server.md#modules) is on and a Bridge is paired, an
 **Audible accounts** card sits under Libraries: the Audible accounts the Bridge signed in to, who and which
-library each is for, how many of its titles are on this server, and **Check now**
-and **Remove...** for each. You sign in and change them on the Bridge's
-[Accounts tab](../getting-started/bridge-accounts.md#audible); the card is
-read-only. See [Audible](audible.md#the-audible-accounts-card).
+library each is for, how many of its titles are on this server, and **Check now**,
+**Backup settings...**, **Back up everything...** and **Remove...** for each. You
+sign in, and choose who and which library an account is for, on the Bridge's
+[Accounts tab](../getting-started/bridge-accounts.md#audible); what it backs up is
+set here. See [Audible](audible.md#the-audible-accounts-card).
 
 ## Verify
 

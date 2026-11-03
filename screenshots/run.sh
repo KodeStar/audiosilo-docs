@@ -464,9 +464,13 @@ if [ "${SKIP_BRIDGE:-0}" != "1" ] && manifest_wanted capture bridge; then
       || { echo "  ! the Bridge build failed (see $CACHE/bridge-build.log)"; exit 1; }
     rm -rf "$BRIDGE_DATA" "$CACHE/bridge-home" && mkdir -p "$BRIDGE_DATA" "$CACHE/bridge-home"
     # As in a fresh container: none of this machine's tools on PATH (no gh sign-in,
-    # no local speech recognition) and a HOME of its own.
+    # no local speech recognition) and a HOME of its own. The Audible shots back a
+    # title up, which decrypts with ffmpeg (every image has one): this machine's.
+    BRIDGE_FFMPEG=""
+    [ -n "$AUDIBLE_FAKE_URL" ] && BRIDGE_FFMPEG="$(command -v ffmpeg || true)"
     env -i PATH=/usr/bin:/bin:/usr/sbin:/sbin HOME="$CACHE/bridge-home" \
       AUDIOSILO_BRIDGE_AUDIBLE_FAKE_URL="$AUDIBLE_FAKE_URL" \
+      AUDIOSILO_BRIDGE_TOOLS_FFMPEG_PATH="$BRIDGE_FFMPEG" \
       "$CACHE/audiosilo-bridge" serve --data "$BRIDGE_DATA" --listen "127.0.0.1:$BRIDGE_PORT" \
       > "$CACHE/bridge.log" 2>&1 &
     BRIDGE_PID=$!

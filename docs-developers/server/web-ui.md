@@ -916,11 +916,19 @@ CSP-sensitive work against a real build served by Go. The console's own gate is
   Settings > Audible's Remove is the console's way to clear an orphaned account)
   (`features/audible/audible-accounts-card.tsx`, over
   [`GET /admin/audible/accounts`](api/reference.md#get-apiv1adminaudibleaccounts),
-  every 30 seconds): each account's mapping read-only, its title counts, **Check
-  now** and **Remove...**, and **View titles**; the setup checklist's optional
+  every 30 seconds): each account's mapping read-only, its title counts and
+  **Placement** (its template, or "Beside the series' other books"), **Check
+  now**, **Backup settings...** (Phase 4b, `account-settings-button.tsx`: the
+  policy and the template, [`PATCH /admin/audible/accounts/{account}`](api/reference.md#patch-apiv1adminaudibleaccountsaccount)),
+  **Back up everything...** (`backup-all-button.tsx`: a confirm with
+  `backup_estimate`'s "N books, ~X GB", then
+  [`POST .../backup-all`](api/reference.md#post-apiv1adminaudibleaccountsaccountbackup-all);
+  off with nothing to back up or a paused account) and **Remove...**, and **View
+  titles**; the setup checklist's optional
   `audible` step links the Bridge's Accounts tab; an `audible.poll` reads
-  "Checking an Audible library", and a poll the scheduler queued "Scheduled by the
-  server" (`serverScheduled`).
+  "Checking an Audible library", an `audible.import` "Backing up an Audible book"
+  with its ASIN (`backupAsin`), and one the server queued "Scheduled by the server"
+  (`serverScheduled`).
 - **Settings > Audible** (`features/audible/audible-topic.tsx`, Bridge Phase 4a, a
   `MODULE_PAGES` page listed only while the `audible` module is on) - over
   [`GET /admin/audible/titles`](api/reference.md#get-apiv1adminaudibletitles)
@@ -928,14 +936,24 @@ CSP-sensitive work against a real build served by Go. The console's own gate is
   account (with more than one), state and on-this-server filters; each title's
   byline (`titleByline`), length, a preorder's release date, ASIN, state dot
   (`TITLE_STATE_TONE`), and **On this server** linking to the matched book or
-  **Not here**, with **Matched by title** for a `fuzzy` match. **Check now**
+  **Not here**, with **Matched by title** for a `fuzzy` match, **Backed up here**
+  for an `import` one and **Not this book** for a rejected title; Phase 4b's
+  per-title actions (`title-actions.tsx`: **Back up**, `canBackUp`, off while the
+  account is paused,
+  [`POST .../backup`](api/reference.md#post-apiv1adminaudibletitlesaccountasinbackup);
+  **Not this book** and its undo and **Destination...**,
+  [`PATCH /admin/audible/titles/{account}/{asin}`](api/reference.md#patch-apiv1adminaudibletitlesaccountasin)),
+  the backup's state and code (`importStatus`, `audible.code.<code>`), and the
+  legal line under the filters. **Check now**
   (`POST .../poll`; a toast for a new, an already open, or a still-stopping poll;
   `account_paused` and `unknown_account` worded by `errorMessage`) and **Remove...**
   (`remove-account-button.tsx`, a confirmation saying it removes the account from
   this server only, then
   [`DELETE /admin/audible/accounts/{account}`](api/reference.md#delete-apiv1adminaudibleaccountsaccount))
-  act on the chosen or only account (`pollTarget`). The loaded titles refresh when
-  an account's `last_poll_at` moves (`useTitlesAfterPolls`). See
+  act on the chosen or only account (`pollTarget`), with **Back up
+  everything...** between them. The loaded titles refresh when an account's
+  `last_poll_at` moves (`useTitlesAfterPolls`), and every 5 seconds while a
+  title's backup is queued or running (`backupRunning`). See
   [Audible](../bridge/audible.md#the-console).
 - **Settings > Modules** (`features/settings/modules-topic.tsx`, Bridge Phase 2a) -
   over [`GET /admin/modules`](api/reference.md#get-apiv1adminmodules) (`useModules`,
