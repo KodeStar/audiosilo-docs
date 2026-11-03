@@ -339,8 +339,9 @@ database:
 #### The SQLite engine (`AUDIOSILO_SQLITE`)
 
 Which SQLite library runs the database is decided by the build, not by a config
-key: modernc (pure Go) in a default build and in the release binaries, the
-native C SQLite in the Docker image (see
+key: modernc (pure Go) in a default build and in the macOS and Windows release
+binaries, the native C SQLite in the Docker image and the Linux release binaries
+(see
 [SQLite choices](data-model.md#sqlite-choices)). On a native build,
 `AUDIOSILO_SQLITE=modernc` (exactly, lowercase) runs that process on the
 pure-Go engine instead, to compare the two on one binary or as a fallback; the

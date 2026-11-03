@@ -110,7 +110,7 @@ native deep-link association files, and `WebDir`. See
 Opens SQLite through the build's engine (`engine*.go`): `modernc.org/sqlite`
 (pure Go, so a default build is CGO-free and cross-compiles anywhere) or, in a
 build with `-tags sqlite_native` and cgo, the native C SQLite through
-`mattn/go-sqlite3`, which the Docker image ships (see
+`mattn/go-sqlite3`, which the Docker image and the Linux release binaries ship (see
 [SQLite choices](data-model.md#sqlite-choices)). It applies the embedded,
 append-only migrations in `internal/store/migrations/`, and both pools keep
 each connection's statements prepared (`stmtcache.go`). `store.DB` routes reads and writes to separate

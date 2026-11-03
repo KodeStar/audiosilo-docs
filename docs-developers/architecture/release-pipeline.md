@@ -106,9 +106,23 @@ negotiate via the `GET /api/v1/server` capability flags instead.
 
 ## 3. Native binaries - `release.yml` + `.goreleaser.yml`
 
-The same `v*` tag triggers GoReleaser on a single Linux runner. These binaries
-are built CGO-free on the pure-Go SQLite engine (modernc), unlike the Docker
-image, so everything cross-compiles with no C toolchain:
+The same `v*` tag triggers GoReleaser on a single Linux runner, in two builds:
+
+- **Linux** (`audiosilo-linux`, `amd64` and `arm64`, for the tarballs and the
+  `.deb`/`.rpm`): the **native SQLite engine**, built the way the Docker image's
+  build stage does it (`CGO_ENABLED=1`, tags
+  `embedplayer,sqlite_native,sqlite_fts5,sqlite_preupdate_hook,sqlite_omit_load_extension,netgo,osusergo`,
+  `-linkmode external -extldflags -static`): one static binary linked against
+  glibc that runs on any distro, Alpine included, with glibc's allocator. Each
+  architecture needs its C compiler, named by its triplet in `CC`
+  (`x86_64-linux-gnu-gcc`, `aarch64-linux-gnu-gcc`); `release.yml` installs the
+  arm64 cross compiler (`gcc-aarch64-linux-gnu`, `libc6-dev-arm64-cross`) on the
+  amd64 runner.
+- **macOS and Windows** (`audiosilo`, `amd64` and `arm64`): CGO-free on the
+  pure-Go SQLite engine (modernc), so they cross-compile from the same runner
+  with no C toolchain.
+
+The rest is shared:
 
 - **Targets:** `linux`, `darwin`, `windows` × `amd64`, `arm64` (six binaries).
 - **Archives:** `.tar.gz` (Linux/macOS) and `.zip` (Windows), named
@@ -170,16 +184,20 @@ distro's `ffmpeg`.
 ### Smoke test, and the LinuxServer.io image downstream
 
 `release.yml`'s last step smoke-tests the archives while the release is still a
-draft: the exact linux archive names, the binary at each archive's root, each
-binary's `embedplayer` tag, `CGO_ENABLED=0` and architecture (`go version -m`), and
-an amd64 boot with `--data` only (the headless first run and the self-signed TLS
-default) that must serve `/healthz` and `/web/`.
+draft: the exact linux archive names, the binary at each archive's root, and
+each binary's build settings (`go version -m`): a Linux binary's full tag list
+(`embedplayer` and the native engine's), `CGO_ENABLED=1`, its architecture and
+static linking (`readelf` finds no ELF interpreter), and a macOS or Windows
+binary's `embedplayer` tag, `CGO_ENABLED=0` and architecture. Then an amd64 boot
+with `--data` only (the headless first run and the self-signed TLS default) must
+serve `/healthz` and `/web/` and log `engine=native` at start.
 
 That is a contract, because
 [linuxserver/docker-audiosilo](https://github.com/linuxserver/docker-audiosilo)
 (`lscr.io/linuxserver/audiosilo`, the image Unraid's Community Applications lists)
 installs `audiosilo_<version>_linux_{amd64,arm64}.tar.gz` from the published release
-onto Alpine. Their CI polls `releases/latest` hourly, so publishing the draft is
+onto Alpine, so that image runs the native engine too (the binary is static,
+so it needs no libc). Their CI polls `releases/latest` hourly, so publishing the draft is
 what triggers a new `<tag>-ls<N>` image. The full list is in
 `audiosilo-server/RELEASING.md` section 2c.
 
@@ -195,8 +213,10 @@ what triggers a new `<tag>-ls<N>` image. The full list is in
   publish only once the run is green, and tick *Set as a pre-release* for a `-rc`
   tag.
 - **Docker vs. native:** same server code, same pinned player; the differences are
-  ffmpeg (bundled in the image, resolved/fetched at runtime for binaries) and how
-  the player is attached (`/app/web` + `AUDIOSILO_WEB_DIR` vs. `-tags embedplayer`).
+  ffmpeg (bundled in the image, resolved/fetched at runtime for binaries), how
+  the player is attached (`/app/web` + `AUDIOSILO_WEB_DIR` vs. `-tags embedplayer`),
+  and the SQLite engine on macOS and Windows (pure Go there; native in the image
+  and the Linux binaries).
 - **Version stamping** is the same mechanism everywhere: ldflags →
   `api.Version` → reported by `GET /server` and surfaced in the UIs.
 - **Native app ↔ server compatibility** is *not* pinned - it's negotiated at

@@ -108,7 +108,7 @@ independent.
 ```sh
 go build -o bin/audiosilo ./cmd/audiosilo   # build the binary (pure-Go SQLite)
 CGO_ENABLED=1 go build -tags "sqlite_native sqlite_fts5 sqlite_preupdate_hook" \
-  -o bin/audiosilo ./cmd/audiosilo          # or with native C SQLite, as the Docker image
+  -o bin/audiosilo ./cmd/audiosilo          # or native C SQLite (Docker, Linux releases)
 ./bin/audiosilo --data ./data               # run (first run prints creds once)
 go test -race ./...                          # tests (in-memory SQLite + fixtures)
 scripts/build-web.sh                         # build the web export for AUDIOSILO_WEB_DIR

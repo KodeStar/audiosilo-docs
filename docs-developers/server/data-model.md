@@ -1457,8 +1457,8 @@ The migration history so far:
 (`store/engine*.go`):
 
 - **modernc** (the default build): `modernc.org/sqlite`, pure Go with no cgo
-  (SQLite 3.54.1), so the binary cross-compiles for every release target without
-  a C toolchain - which the native-distribution pipeline relies on (see
+  (SQLite 3.54.1), so the binary cross-compiles without a C toolchain - which
+  the macOS and Windows release binaries rely on (see
   [Release pipeline](../architecture/release-pipeline.md)).
 - **native**: a build with
   `CGO_ENABLED=1 -tags "sqlite_native sqlite_fts5 sqlite_preupdate_hook"`
@@ -1471,7 +1471,8 @@ The migration history so far:
 | Build | Engine |
 |---|---|
 | The Docker image (`ghcr.io/kodestar/audiosilo-server`) | native, a static binary linked against glibc on the Alpine base; the build arg `SQLITE_ENGINE=modernc` builds modernc instead |
-| GoReleaser release binaries (Linux, macOS, Windows), and so the LinuxServer.io image, which downloads them | modernc |
+| GoReleaser Linux binaries (tarballs, `.deb`/`.rpm`), and so the LinuxServer.io image, which downloads them | native, static against glibc as in the Docker image |
+| GoReleaser macOS and Windows binaries | modernc |
 | The desktop manager (`pkg/launcher` in-process), a plain `go build` | modernc |
 
 On a native build, `AUDIOSILO_SQLITE=modernc` runs that process on modernc
