@@ -94,6 +94,20 @@ tier (`internal/importer`). `Fold` is the Unicode-aware sibling of
 `Normalize` (lowercase, keep every script's letters and digits, drop spacing and
 punctuation); `Normalize` keeps ASCII only and is unchanged.
 
+`BestWith` is `Best` under opt-in `Options`, and also returns the winning score
+(`ScoreASIN`, 10, for an ASIN match). The zero `Options` is `Best`'s behaviour,
+which every server caller keeps. `ImportOptions()` turns on every rule, for
+matching a store's whole catalog onto a library where both sides are mostly right
+but spelled differently; only the Bridge's Audible matcher uses it (see
+[the Bridge's matching rules](../bridge/audible.md#matching-rules)).
+
+| Option | Rule |
+|---|---|
+| `SeriesMarker` | a candidate title with no position confirms the query's number when it names its place right after the series, `<series>[ Series][,:-( ]Book N` ("Iron Will: Dragon Heart Series, Book 2" is Dragon Heart 2). It only confirms, never vetoes; "Book 1-3" is no marker |
+| `ExactTitle` | the same title by the same person (case, spacing, punctuation, bracketed groups and edition words aside) adds a bonus to the pair's score that clears the match threshold on its own. So it matches across differently named series, and the series and number still rank two same-titled candidates. Not when a side's title is just its series name and number, which every volume shares |
+| `WordlessFallback` | a cleaned title left with no word and no digit ("The" of "The Mayor of Noobtown" in series "Mayor of Noobtown") falls back to the uncleaned one. If the restored title is the series name, the numbers must agree (none counts as 1) |
+| `DropUnabridged` | "(Unabridged)" is removed before a genre tail is judged ("The Primal Hunter 15: A LitRPG Adventure (Unabridged)" is volume 15) |
+
 ### `internal/config`
 
 YAML config (`config.yaml` in the data dir) plus `AUDIOSILO_*` environment
