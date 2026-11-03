@@ -142,7 +142,7 @@ everything required is done ("Everything required is done").
 | **Agent credential set** | the agent container is ready, with a credential (the line names the tool). While it isn't, the line says what to do in plain words and what the agent is for: characters, recaps and descriptions. Read-alongs, chapters and podcasts don't need it |
 | **Monthly budget reviewed** | someone saved the agent's monthly budget on the Bridge's page, or the Bridge's environment sets it (the line says it, "$100 a month" or "no monthly cap") |
 | **GitHub signed in** (Optional) | the Bridge can share with the community (the line names the GitHub account, or says the token comes from the Bridge's environment or the gh command) |
-| **Audible signed in** (Optional) | a Bridge that supports Audible has at least one Audible account signed in, none that Audible refused and none signed in by an earlier version of the Bridge. The line says "1 account signed in" or how many need signing in again ("... to keep backups working" after an update: see [Sign in again after updating the Bridge](audible.md#sign-in-again-after-updating-the-bridge); "places don't sync until then" while one is refused). When an account's [listening places](audible.md#syncing-listening-places) aren't syncing, it adds "places not syncing for 1 account" and the reason; that alone doesn't undo the step. "Only needed to back up an Audible library." |
+| **Audible signed in** (Optional) | a Bridge that supports Audible has at least one Audible account signed in, none that Audible refused and none signed in by an earlier version of the Bridge. The line says "1 account signed in" or how many need signing in again ("... to keep backups working" after an update: see [Sign in again after updating the Bridge](audible.md#sign-in-again-after-updating-the-bridge); "places don't sync until then" while one is refused). When an account's [listening places](audible.md#syncing-listening-places) aren't syncing, it adds "places not syncing for 1 account" and the reason; the step still counts as done. "Only needed to back up an Audible library." |
 
 Each step shows a green tick when done, an amber circle while still to do, or,
 for the optional one (marked **Optional**), a dashed circle until done. A step
@@ -241,8 +241,8 @@ While the [Audible module](server.md#modules) is on and a Bridge is paired, an
 library each is for, how many of its titles are on this server, and **Check now**,
 **Account settings...** (backups and [syncing listening places](audible.md#syncing-listening-places)), **Back up everything...** and **Remove...** for each. You
 sign in, and choose who and which library an account is for, on the Bridge's
-[Accounts tab](../getting-started/bridge-accounts.md#audible); what it backs up is
-set here. See [Audible](audible.md#the-audible-accounts-card).
+[Accounts tab](../getting-started/bridge-accounts.md#audible); what it backs up,
+and whether its places sync, is set here. See [Audible](audible.md#the-audible-accounts-card).
 
 ## Verify
 

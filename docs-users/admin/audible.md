@@ -38,9 +38,10 @@ The console repeats this on the titles page and in the backup dialogs.
   in the Bridge's data folder (where it downloads) and in the library.
 
 While the module is on, **Server > Settings** gains an **Audible** page, and
-**Settings > Bridge** an **Audible accounts** card. Listeners see nothing of it:
-the player has no Audible screens. A book once backed up is an ordinary book of
-the library, which its listeners see as usual.
+**Settings > Bridge** an **Audible accounts** card. The player has no Audible
+screens: a book once backed up is an ordinary book of the library, which its
+listeners see as usual, and with [sync](#syncing-listening-places) on, a place from
+Audible reaches the listener like a place from another device.
 
 ## The Audible accounts card
 
@@ -51,8 +52,8 @@ lists every account the Bridge has signed in to. The card is there only while a
 Bridge is paired; with none paired, use the [titles page](#the-titles-page). Who
 the account is for and its library are the Bridge's: you change them on the
 Bridge's Accounts tab (with no account yet, the card links to it when the Bridge
-has told the server its page's address). What the account backs up, and where, is
-set here. **View titles** opens the [titles page](#the-titles-page).
+has told the server its page's address). What the account backs up, where, and
+whether its places sync is set here. **View titles** opens the [titles page](#the-titles-page).
 
 For each account:
 
@@ -64,7 +65,7 @@ For each account:
 | **Store** | the Audible store it buys from (US, UK, DE and so on) |
 | **Back up** | what the account backs up by itself after each check: **Every new book**, **New books in series you have** or **Only books you choose** (see [Backing up by itself](#backing-up-by-itself)) |
 | **Placement** | where its backups go: **Beside the series' other books**, or the account's placement template (see [Where backups go](#where-backups-go)) |
-| **Sync** | whether its listening places sync with Audible: **Off**, **On, not synced yet**, **On, synced** with when it last did, **On, paused with the account**, or **Stopped: Audible refused the account. Sign in again on the Bridge.** (see [Syncing listening places](#syncing-listening-places)) |
+| **Sync** | whether its listening places sync with Audible and when they last did, or why it has stopped (see [When it stops](#when-it-stops)) |
 | **Titles** | how many titles the account has, and how many of them are on this server |
 
 Each account has **Check now**, **Account settings...** (its policy and placement
@@ -525,10 +526,9 @@ moves yours back**: one behind your place here, or from before you finished or
 started the book again here, is left alone. Your playback speed here stays as it
 is. A place at the end of the book on Audible marks the book **finished** here.
 
-**From here to Audible.** A few minutes after you stop listening here (once your
-place has stayed put for 3 minutes, so up to about 4 minutes), the Bridge sends it
-to Audible, as it is: a
-place you moved back to here goes back on Audible too. If you listened further on
+**From here to Audible.** About 3 to 4 minutes after you stop listening here (once
+your place has stayed put for 3 minutes), the Bridge sends your place to Audible as
+it is, so a place you moved back to here moves back on Audible too. If you listened further on
 Audible in the meantime, your place here isn't sent: the place further on wins, and
 the next sync brings it here. When sync starts, only places you changed in the last
 10 minutes are sent; the others reach Audible the next time you listen to them.
@@ -548,24 +548,26 @@ The syncs show in the Bridge's [Jobs](bridge.md#jobs) list as **Syncing places
 with Audible**, **Scheduled by the server**. Only the latest finished one of each
 account is kept there.
 
-**When it stops.** The card's **Sync** row says why:
+### When it stops
+
+The card's **Sync** row says **Off**, **On, not synced yet**, **On, synced** with
+when it last did, or why it has stopped:
 
 - **On, paused with the account**: the account's library was deleted. Choose
   another library for it on the Bridge's Accounts tab.
 - **Stopped: Audible refused the account. Sign in again on the Bridge.**: Audible
   refused the Bridge's device. Press **Sign in again** on the Bridge's
   [Accounts tab](../getting-started/bridge-accounts.md#the-accounts-states): syncing
-  starts again after it. When Audible only turns a sign-in away for a while, the
-  Bridge keeps trying by itself, and a check that Audible answers ends it.
+  starts again after it.
 - **Off** after you changed who the account belongs to on the Bridge: sync turns
   off then, since you turned it on for someone else. Turn it on again for the new
   person.
 
-When Audible is slow or busy, the Bridge waits (as long as Audible asks, and at
-least 2 minutes) and tries again; that never stops the account. The Bridge's setup checklist says
-when an account's places aren't syncing, and why. If the account's person is
-disabled or made a kid account, nothing syncs until you choose someone else for the
-account on the Bridge.
+When Audible is busy, or turns a sign-in away only for a while, sync doesn't stop:
+the Bridge waits a few minutes and tries again by itself. If the account's person
+is disabled or made a kid account, nothing syncs until you choose someone else for
+the account on the Bridge. The Bridge's setup checklist says when an account's
+places aren't syncing, and why.
 
 Turning sync off stops a sync that is waiting or running. Saving the switch is in
 the [audit log](server.md#audit-log) as **Changed an Audible account's backups**.
@@ -577,8 +579,8 @@ sync, both ways: Audible's place never moves it, and your place on it is never s
 to Audible. The title shows **Not synced**; **Sync again** undoes it. It changes
 nothing else: the title stays on this server, and backups don't look at it (use
 [Not this book](#not-this-book) for a wrong match). Marking and unmarking it are in
-the audit log as **Changed an Audible book's match or destination**, and the
-account syncs straight away, so the change takes effect at once.
+the audit log as **Changed an Audible book's match or destination**, and take
+effect straight away.
 
 ## Check now
 

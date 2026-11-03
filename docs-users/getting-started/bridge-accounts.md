@@ -129,12 +129,11 @@ belongs to **one person** on your server and goes with **one books library**. Th
 sign-in stays sealed on the Bridge: the server only ever sees the account's name, who and which
 library it is for, the list of titles and how each backup went.
 
-:::info[What it does today]
+:::info[What it does]
 The Bridge **lists, matches and backs up**: it shows which of your Audible books
 are already on your server, and downloads the ones you choose into the account's
 library (see [Backing up](../admin/audible.md#backing-up-a-book)). It can also
-keep the account's listening places in step with Audible, both ways, once you turn
-that on for the account in the console (see
+keep the account's listening places in step with Audible, both ways (see
 [Syncing listening places](../admin/audible.md#syncing-listening-places)).
 :::
 

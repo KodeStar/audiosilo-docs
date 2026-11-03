@@ -8152,7 +8152,10 @@ estimates, progress and bookmarks), and marks it `applied`. A session already
 older than the session retention (`activity.session_days` as set when the
 apply runs) is written as the `listening_daily` totals the daily prune would
 make of it rather than as a session, so it shows in the stats and history but
-not in `GET /admin/sessions`. The request's cancellation
+not in `GET /admin/sessions`. A progress row an Audible account wrote (`device_id`
+`audible:<account>`, Bridge Phase 4c) that the apply moves on loses that device id
+and name (`importer.mergeProgress`, as an edit does), so the import's place reaches
+Audible. The request's cancellation
 doesn't stop it. A failure puts it back in `review`. Answers `200` with the
 import (`applied`, `summary` as written). Audited as `import.apply` (`import`,
 `sessions`, `listened`).
@@ -8169,12 +8172,9 @@ history spans and bookmarks are deleted (by `import_id`; a bookmark the person
 edited or labelled since is kept and becomes theirs), and each progress row it
 changed is restored to what it was before, unless it changed since (a player's
 save or an edit: then it stays). Answers `200` with the import (`undone`). Audited as
-`import.undo` (`import`). A row an Audible account wrote (`device_id`
-`audible:<account>`, Bridge Phase 4c) that the apply moved on lost that device id
-and name at the apply (`importer.mergeProgress`, as an edit does), so the import's
-place reaches Audible; the undo restores the earlier place under **no** device
-either (`progressPrior.restored`), never as `Audible (<label>)` again, so the feed
-sends the undo to Audible too.
+`import.undo` (`import`). A row restored from one an Audible account wrote (Bridge
+Phase 4c) comes back under **no** device (`progressPrior.restored`), never as
+`Audible (<label>)` again, so the feed sends the undo to Audible too.
 
 | Status | Meaning |
 |---|---|
@@ -10793,23 +10793,12 @@ Both routes are *bridge token*, header only, and share these refusals:
 Internal (refused by `POST /admin/bridge/jobs`), quiet, owned by the `audible`
 module (held while it is off), deduped per account (a queued one `promotes`: a
 newer queue gives it the newest titles), only the newest ended one of each account
-kept. Its params are the server's, strict, at most 1 MiB (the last titles past it
-are dropped and logged):
-
-```json
-{ "account": "k3v9x0p2m4q8r1t5", "titles": [ { "asin": "B0EXAMPLE1", "library_id": 1, "path": "A. Writer/The Example", "runtime_s": 36000 } ] }
-```
-
-The module's scheduler queues one at priority `-10` for each account that syncs,
-has at least one synced title and was last queued more than 15 minutes ago
-(`bridge.AudibleSyncEvery`), while an online Bridge offers `audible.sync`. Turning
-sync on, and a title's `rejected` or `no_sync` change, queue it at once (the
-latter even with no titles left). When it ends: done having read Audible's places
-(its result neither `waiting` nor `sync_off`) sets the account's `last_sync_at`;
-failed with code `audible_refused` (Audible refused the account's device) sets
-`refused_at`, and the scheduler queues none until a Bridge PUT or a complete poll
-clears it. `audible_sign_in` (Audible refused the sign-in for now) is an ordinary
-failure: syncs go on being queued. The Bridge's steps, result and codes are in
+kept, with server-built strict params `{account, titles}`. The scheduler queues
+one every 15 minutes for each account that syncs; turning sync on, and a title's
+`rejected` or `no_sync` change, queue it at once. Done having read Audible's places
+sets the account's `last_sync_at`; failed `audible_refused` sets `refused_at`, and
+none is queued until a Bridge PUT or a complete poll clears it. Its params,
+queueing, steps, result and failure codes are in
 [Position sync](../../bridge/audible.md#audible-to-the-server-audiblesync).
 
 ### `POST /api/v1/bridge/audible/accounts/{account}/listening`
@@ -10837,9 +10826,9 @@ failure: syncs go on being queued. The Bridge's steps, result and codes are in
 }
 ```
 
-The Bridge's event ids are `aud-` and the first 32 hex characters of
-`sha256(account|asin|position_ms|last_updated|kind|library_id|path)`, so an
-unchanged place is a `duplicate` at every sync.
+The Bridge's event ids are stable per place
+([how](../../bridge/audible.md#audible-to-the-server-audiblesync)), so an unchanged
+place is a `duplicate` at every sync.
 
 The route builds the batch itself, as device `audible:<account>` named
 `Audible (<label>)` (the store, upper-cased, for an account with no label), with

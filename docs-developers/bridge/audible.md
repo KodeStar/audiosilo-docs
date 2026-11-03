@@ -98,8 +98,7 @@ device still lists, so a poll keeps it and only a sign-in again ends it. Since 4
 (bridge#46) the refusal's kind is its own column, `refusal_kind` (`store.RefusalSignIn`
 `sign_in` or `store.RefusalDevice` `device`; migration `0011` set 4b's rows from
 their `last_error` text), so `Throttled` reads the kind and `ThrottledText` is copy
-only. The identity calls (`/auth/register`, `/auth/token`, `/auth/deregister`) send
-the device profile's User-Agent too.
+only.
 
 ### The device profile
 
@@ -112,8 +111,9 @@ device-registration notes agree). The Bridge registers with the current one
 (`internal/audible/profile.go`): app `4.60`, os `26.2`, software `46000856`, one
 constant set that register, the token refresh and deregister share, and a
 40-character `[A-Za-z0-9]` serial from `crypto/rand` (`NewDeviceSerial`). The user
-agent on every signed call and download is built from the same set
-(`Audible/46000856 CFNetwork/3860.300.31 Darwin/25.2.0`).
+agent on every signed call and download, and (since 4c, bridge#46) on the identity
+calls (`/auth/register`, `/auth/token`, `/auth/deregister`), is built from the same
+set (`Audible/46000856 CFNetwork/3860.300.31 Darwin/25.2.0`).
 
 - `audible.ProfileVersion` (`"4.60/26.2/46000856"`) is recorded in
   `Credentials.Profile` at `Register` and in the row's `device_profile` (Bridge
@@ -857,29 +857,17 @@ The listening route builds the batch itself: `SyncBatch{UserID: the account's
 person, DeviceID: "audible:<account>", DeviceName: "Audible (<label or STORE>)",
 TokenID: 0, FurthestOnly: true}`. No request body can set `FurthestOnly` or
 `TokenID`: `POST /me/listening/sync` refuses an unknown field. Each event's book is
-resolved under the **person's** scopes (`userPathResolver`, `catalog.UserScopes`:
-no access is `rejected` `no_access`), then must be a synced title's match
-(`AudibleSyncBooks`, else `rejected` `not_synced`). It is `rejected`
-`duration_mismatch`, listen and finish alike, when no title on the book has an
-Audible `runtime_s` within 5% of the longer plus 2 minutes of the indexed book's
-duration (`audibleRuntimeAgrees`: matched to another recording; an unknown length
-on either side agrees).
-
-`FurthestOnly` (`furthestListen`):
-
-- a listen **more than 1 s ahead** of the stored place (`furthestSlack`) applies
-  over any device's row whatever its time. The row's `updated_at` never moves back
-  and its playback speed and offer are kept; the player's own reconcile then moves
-  or offers, and a device's diverged span offers Audible's place by name (the
-  row's `device_name`, in `other_place`);
-- at or behind the stored place, on a finished row, or heard at or before the row's
-  `finish_changed_at` (a place from before a finish or a restart here is the old
-  reading's): `not_applied` **`behind`**, with no offer and nothing stored on the
-  row;
-- a place past the book's end by more than 5% plus 2 minutes
-  (`furthestPastEndRatio`, the manager's wrong-match guard) is `rejected`
-  `duration_mismatch`; one just past it is clamped to the end;
-- an `unfinish` is `behind`; a `finish` is any finish.
+resolved under the **person's** scopes (`userPathResolver`, `catalog.UserScopes`),
+then must be a synced title's match (`AudibleSyncBooks`) whose Audible length
+agrees with the book's (`audibleRuntimeAgrees`, listen and finish alike).
+`FurthestOnly` (`furthestListen`) then applies only a place more than
+`furthestSlack` ahead, over any device's row, keeping the row's `updated_at`,
+speed and offer, and compares `finish_changed_at` for a place from before a finish
+or a restart; `furthestPastEndRatio` (the manager's wrong-match guard) refuses a
+place well past the end. A device's diverged span then offers Audible's place by
+name (the row's `device_name`, in `other_place`). The rules and each event's
+`rejected`/`not_applied` reason are in the
+[API reference](../server/api/reference.md#post-apiv1bridgeaudibleaccountsaccountlistening).
 
 The device id `audible:<account>` (`catalog.AudibleDevicePrefix`) is the route's
 alone: `POST /me/listening/sync` refuses a batch naming one (`400 device_id is
@@ -932,30 +920,22 @@ never whether it is done.
 
 ### The two Bridge routes
 
-Both are *bridge token*, header only, act for the account's **person** (never the
-paired admin), and answer `403 sync_off` while the module or the account's sync is
-off or the account is paused (no library), `403 user_unavailable` when the person
-was disabled, made a kid or a demo account since, and `404 unknown_account` for no
-such account, a bad id, or one whose person was deleted (the account cascades).
-Detail in the [API reference](../server/api/reference.md#audible-position-sync).
+Both are *bridge token*, header only, and act for the account's **person** (never
+the paired admin); their shared refusals (`403 sync_off`, `403 user_unavailable`,
+`404 unknown_account`) are in the
+[API reference](../server/api/reference.md#audible-position-sync).
 
 | Route | What |
 |---|---|
 | `POST /bridge/audible/accounts/{account}/listening` | `{sent_at, events}` (strict; `sent_at` required; the Sync v2 event shapes and limits): the account's places on Audible, furthest only. `200` the Sync v2 answer |
 | `GET /bridge/progress?account=&since=&limit=` | the person's places on the synced titles' books, one row per title, the account's own rows left out, and a row whose own title's `runtime_s` disagrees with the book's length left out (per title), keyset by `(change_seq, asin)`: `{rows, next, more}`. `400 invalid_request` for no account, a bad limit or cursor |
 
-`progress.change_seq` (`0066`) is the order the server wrote progress rows in:
-drawn from the one-row, server-wide `progress_change_counter`, which only goes up
-and is never reused (a deleted row can't hand its number to the next write, which
-a cursor already past it would skip). Triggers bump it on every insert and every
-`UPDATE OF` position, duration, finished, version, device_id or updated_at, so no
-write path can miss it: a row written late with an earlier `updated_at` (an
-offline backlog, a client's clock behind) is still fed. Triggers on
-`audible_titles` also move the person's row on a title's book to the next number
-when the title is newly matched or matched again, synced again (`no_sync`,
-`rejected` or `ignored` cleared, back from `gone`) or its `runtime_s` changes (a
-row left out for a length that may agree now), so the feed offers that book's
-place again (the Bridge drops a place it already holds).
+The feed is keyset on `progress.change_seq` (`0066`), the order the server wrote
+progress rows in, set by triggers so no write path can miss it: a row written late
+with an earlier `updated_at` (an offline backlog, a client's clock behind) is still
+fed, and a title newly matched, synced again or whose runtime changed offers its
+book's place again (the Bridge drops a place it already holds). The counter and its
+triggers are in the [data model](../server/data-model.md#the-bridge).
 
 The Bridge mirrors them by hand in `internal/link/audiblesync.go`
 (`AudibleSyncParams`/`AudibleSyncTitle`, `PostAudibleListening`, `AudibleProgress`;
@@ -1034,8 +1014,8 @@ account is paused), **Not this book** and its undo, and **Destination...**
 (`title-actions.tsx`), the import's state and code (`importStatus`; the loaded
 titles are fetched again every 5 s while a backup is queued or running,
 `backupRunning`), **Backed up here** for an `import` match; per account the
-**Placement** row, **Backup settings...** (policy, template:
-`account-settings-button.tsx`) and **Back up everything...** with its "N books, ~X
+**Placement** row, **Account settings...** (policy, template and, since 4c, the
+sync switch: `account-settings-button.tsx`; called Backup settings in 4b) and **Back up everything...** with its "N books, ~X
 GB" confirm (`backup-all-button.tsx`, from `backup_estimate`, also at the top of the
 titles page); the legal line on the titles page and in both dialogs. Each unmatched
 title shows `PlannedNote` (`plannedLine`: "Will go to &lt;path&gt;,
@@ -1051,14 +1031,9 @@ as a sentence, `reasonKey`; Audible's own words stay) and Destination...'s
 placeholder from the planned path, never its value (`plannedPlaceholder`). The Bridge's
 job list names an `audible.import` by its ASIN, reads one with no requester as
 "Scheduled by the server", and its placed files are no verify check
-(`resultSummary`). Phase 4c: **Backup settings...** became **Account settings...** (title "Settings
-for &lt;name&gt;") and holds the **Sync listening places with Audible** switch; the
-account card's **Sync** row says off, on (not synced yet, or synced &lt;when&gt;
-from `last_sync_at`), paused with the account, or stopped since Audible refused it
-(`refused_at`); a title on this server has **Don't sync** / **Sync again**
-(`canSync`) and a **Not synced** badge; an `audible.sync` reads "Syncing places with
-Audible", scheduled by the server, and `audible_sign_in` reads as its own code. The
-components are in the [console's catalogue](../server/web-ui.md#what-the-console-has-today).
+(`resultSummary`). Phase 4c adds the account card's **Sync** row, per title
+**Don't sync** / **Sync again** with a **Not synced** badge, and the job list's
+"Syncing places with Audible". The components are in the [console's catalogue](../server/web-ui.md#what-the-console-has-today).
 The Bridge's optional setup step `audible` (done with an account signed in, none
 refused and none on an older device profile) links its Accounts tab. See the
 [User Guide's Audible page](/users/admin/audible).
@@ -1093,7 +1068,7 @@ the ASIN with the enrichment PUT.
 
 The Bridge mirrors the bridge-token routes by hand in `internal/link/audible.go`
 (`Users`, `PutAudibleAccount`, `DeleteAudibleAccount`, `PutAudibleTitles`,
-`LibraryBooks`, `Enrich`; 4c's in `internal/link/audiblesync.go`) and decodes
+`LibraryBooks`, `Enrich`; 4c's are [above](#the-two-bridge-routes)) and decodes
 nothing it doesn't need; the server decodes
 accounts and titles strictly, so the Bridge sends only the documented fields.
 

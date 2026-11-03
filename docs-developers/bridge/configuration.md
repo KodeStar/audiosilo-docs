@@ -180,8 +180,8 @@ signs in and maps each account on the Accounts tab, and its sign-in is sealed in
 the vault as `audible_<id>` (below). The server's `audible` module decides whether
 the accounts are polled and backed up (`modules.audible.enabled` on the server, see
 [its configuration](../server/configuration.md#managed-modules-modules)); an
-account's backup policy, placement template and position sync (Phase 4c; the
-page's old sync checkbox went) are set in the console.
+account's backup policy, placement template and position sync (Phase 4c) are set
+in the console.
 
 Backups (Phase 4b) download into `<data>/audible/tmp/` (`0700`), so the data
 folder needs room for about 2.2 times the largest book being backed up; a partial

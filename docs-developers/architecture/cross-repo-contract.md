@@ -980,8 +980,7 @@ both repos, with a test on each side.
   account's person: `POST /bridge/audible/accounts/{account}/listening` (`{sent_at,
   events}`, the Sync v2 event shapes, applied **furthest only** under device
   `audible:<account>` named `Audible (<label>)`, token 0, no sessions or stats;
-  event ids `aud-` + 32 hex of
-  `sha256(account|asin|position_ms|last_updated|kind|library_id|path)`) and `GET
+  event ids stable per place, so a resend is a `duplicate`) and `GET
   /bridge/progress?account=&since=&limit=` (`{rows, next, more}`, keyset on
   `progress.change_seq`, the account's own rows left out). Both answer `403
   sync_off`, `403 user_unavailable`, `404 unknown_account`; the feed also `400
