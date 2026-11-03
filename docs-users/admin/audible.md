@@ -131,11 +131,12 @@ A few things help a title find its book:
   your tags don't give it, a code at the start of the book's folder name does:
   `DH06 - Land of Magic` is book 6 of Dragon Heart, `BDM01 - Oathbound Healer` book
   1 of Beneath the Dragoneye Moons. The code's letters must be the series' initials
-  (all of them or some, in order). Other codes, like `HALO 07` in a Halo folder,
+  (all of them or some, in order). Other codes, like `HALO 07` in the Halo series,
   are ignored. This doesn't change the book's position anywhere else on your
   server.
 - **A folder covering several books**, like `LAM05-06`, is treated as an omnibus,
-  so Audible's book 5 on its own won't match it.
+  so Audible's book 5 on its own won't match it. An Audible pack of books 5 and 6
+  can.
 
 **When several titles match one book**, the best match keeps it. The others show
 **Not here**, with **contested** under the title: the book is probably here under
@@ -145,9 +146,9 @@ book owned twice (the same title, author and number): then all of them keep it.
 When a book matched by title and author has no ASIN yet, the Bridge gives it the
 Audible title's ASIN, so later checks, and the community metadata, match it exactly.
 It doesn't when more than one title matched the book, even if one of them kept it
-(the match is in doubt), when the title is a preorder (the book you have is another edition), or
-when the book already has an ASIN, including one you set or cleared in the console:
-those are never replaced.
+(the match is in doubt), when the title is a preorder (the book you have is another
+edition), or when the book already has an ASIN, including one you set or cleared in
+the console: those are never replaced.
 
 Matches follow your books: when a book is renamed or moved (or joined with another
 in the console), its titles stay matched to it. Deleting a library clears the

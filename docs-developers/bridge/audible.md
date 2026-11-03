@@ -156,10 +156,10 @@ older than `poll_hours`, 6 by default) at priority `-10` and records
    random suffix), the last one `final` (an empty library sends one empty final
    call, so every title becomes `gone`), with each title's authors cut to 20;
 7. **backfills ASINs** (`PUT /bridge/libraries/{id}/enrichment`) for each matched
-   book without one, unless the book is [contested](#matching-rules)
-   (`importjob.Contested`: derive nothing durable from a doubtful match) or the
-   title is a preorder (not out yet: the book is another edition). `asin_set` and a
-   moved book are skipped, other failures counted. The PUTs are paced (see
+   book without one, unless the book is [contested](#matching-rules) (derive
+   nothing durable from a doubtful match) or the title is a preorder (not out yet:
+   the book is another edition). `asin_set` and a moved book are skipped, other
+   failures counted. The PUTs are paced (see
    [Enrichment pacing](#enrichment-pacing)).
 
 The result is counts only, never a title or a credential: `account`, `poll_id`,
@@ -172,8 +172,9 @@ Bridge's row; one stopped, cancelled or lost records nothing.
 
 ### Matching rules
 
-`BookMatcher` calls `match.BestWith` under `match.ImportOptions()`, which turns on
-every opt-in rule of the server's `pkg/match` (the table is in
+`BookMatcher` runs the ASIN step over every candidate, then `match.BestWith` under
+`match.ImportOptions()` over the candidates past the person gate. The options turn
+on every opt-in rule of the server's `pkg/match` (the table is in
 [the server's `pkg/match`](../server/overview.md#pkgmatch-public)); the server's own
 callers keep the default rules. `BookMatcher.MatchScored` hands the winning score
 (`match.ScoreASIN` for an ASIN match) to the contested rule.
@@ -182,11 +183,15 @@ callers keep the default rules. `BookMatcher.MatchScored` hands the winning scor
 an empty main series position from a code leading the book's folder name
 (`DH06 - ...` is `"6"`, `LAM05-06` the range `"5-6"`; the full rule is at
 [`GET /bridge/libraries/{id}/books`](../server/api/reference.md#get-apiv1bridgelibrariesidbooks)).
-On the Bridge a position that isn't one number (a range) gives the candidate no
-number, so a single Audible volume's number never confirms an omnibus folder. An
-Audible title with a range position and no sequence is placed at the range's start
-(`rangeStart`), so a number in its title ("Pack 3") never stands in for the
-position Audible gave.
+On the Bridge a book with a range position in any of its series spans books: its
+candidates sit at the range's start (`rangeStart`), and a title that is no range
+never sees them, so a single Audible volume never matches an omnibus folder (and
+never gives it that volume's ASIN). An Audible title with a range position and no
+sequence is placed at the range's start, so a number in its title ("Pack 3") never
+stands in for the position Audible gave. Such a title tries the spanning books
+that start where it does first, then the single volumes (a pack may be stored as a
+folder numbered as its first volume); a spanning book that starts elsewhere is
+another pack. An ASIN match is never held back by any of this.
 
 **Contested books.** `importjob.KeepBest` settles a path claimed by several titles
 (`Claim{Path, Score, Work}`). The single best score keeps the match. A tie for the

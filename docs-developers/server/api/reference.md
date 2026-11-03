@@ -10373,9 +10373,9 @@ the server knew it (the Bridge forgets locally first and may call again).
 - `asin` must be an ASIN (upper-cased); `state` is `available`, `preorder` or
   `unavailable` (`gone` is the server's); `release_date` is `YYYY-MM-DD` or `""`;
   `runtime_s` 0 to 1,000,000. These are refused `400 invalid_request`.
-- `reason` says why an `unavailable` title can't be downloaded, or is
-  `contested` on an `available` one with no `match`: another title claimed the
-  same book.
+- `reason` says why an `unavailable` or `preorder` title can't be downloaded,
+  or is `contested` on an `available` one with no `match`: another title claimed
+  the same book.
 - Free text is cleaned and bounded, never refused: `title` (500), `reason` (256),
   each author and series name (200), a position (32); authors past the first 20
   and series past the first 10 are dropped.
@@ -10427,10 +10427,12 @@ its position as stored (`"3"`, `"1-3"`, `""`); `duration` in seconds. `next` is
 `null` on the last page.
 
 When the main series has no position, this listing takes it from a code at the
-start of the book's folder name (`metadata.FolderCodePosition`, called by
-`bridgeSeries`): one to five letters, an optional space, then a number of one to
-three digits with an optional decimal part. The letters must be the series'
-initials, all or some in order:
+start of the book's folder name, or its file name for a single-file book
+(`metadata.FolderCodePosition`, called by `bridgeSeries`): one to five letters, an
+optional space, then a number of one to three digits with an optional decimal part,
+or two such numbers joined by a hyphen or an en dash. The code must end where a
+word does (`DF15.5x` gives none). The letters must be the series' initials (case
+aside), all or some in order:
 
 - `DH06 - Land of Magic` in "Dragon Heart" is `"6"`, `DF15.5 Brief Cases` in
   "Dresden Files" `"15.5"`, `BDM01 - ...` in "Beneath the Dragoneye Moons" `"1"`;

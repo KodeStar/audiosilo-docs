@@ -105,7 +105,7 @@ but spelled differently; only the Bridge's Audible matcher uses it (see
 |---|---|
 | `SeriesMarker` | a candidate title with no position confirms the query's number when it names its place right after the series, `<series>[ Series][,:-( ]Book N` ("Iron Will: Dragon Heart Series, Book 2" is Dragon Heart 2). It only confirms, never vetoes; "Book 1-3" is no marker |
 | `ExactTitle` | the same title by the same person (case, spacing, punctuation, bracketed groups and edition words aside) adds a bonus to the pair's score that clears the match threshold on its own. So it matches across differently named series, and the series and number still rank two same-titled candidates. Not when a side's title is just its series name and number, which every volume shares |
-| `WordlessFallback` | a cleaned title left with no word and no digit ("The" of "The Mayor of Noobtown" in series "Mayor of Noobtown") falls back to the uncleaned one. If the restored title is the series name, the numbers must agree (none counts as 1) |
+| `WordlessFallback` | a cleaned title left with no word and no digit ("The" of "The Mayor of Noobtown" in series "Mayor of Noobtown") falls back to the uncleaned one. When a candidate's title is just its series name and the query has a number, the numbers must agree (a candidate with none counts as 1) |
 | `DropUnabridged` | "(Unabridged)" is removed before a genre tail is judged ("The Primal Hunter 15: A LitRPG Adventure (Unabridged)" is volume 15) |
 
 ### `internal/config`
