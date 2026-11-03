@@ -333,11 +333,14 @@ Failures a person can fix also carry a machine-readable **`code`** next to
 | `no_heartbeat` | `409` | the Bridge's `GET /bridge/jobs/next` before its first heartbeat |
 | `no_book` | `404` | the Bridge's `GET /bridge/libraries/{id}/book` with no indexed book at the path (or in the library) |
 | `unknown_account` | `404` | an [Audible account](reference.md#audible-accounts) route naming an account id the Bridge couldn't have made, a titles call or Check now for an account the server doesn't have |
-| `account_paused` | `409` | `POST /admin/audible/accounts/{account}/poll` (Check now) for an account whose library was deleted, until the Bridge maps it again |
+| `account_paused` | `409` | `POST /admin/audible/accounts/{account}/poll` (Check now), a backup or Back up everything for an account whose library was deleted, until the Bridge maps it again |
+| `unknown_title` | `404` | an Audible title route (a backup, `PATCH /admin/audible/titles/{account}/{asin}`) naming no title of the account |
+| `already_matched` / `import_open` / `not_available` | `409` | [`POST /admin/audible/titles/{account}/{asin}/backup`](reference.md#post-apiv1adminaudibletitlesaccountasinbackup): the title is on this server; its backup is waiting, running or pending; it is `unavailable` or `gone` |
+| `invalid_dest_path` / `invalid_template` | `400` | a title's `dest_path` or an account's `template` the server refuses (the reason in `error`) |
 | `unknown_user` | `404` | the Bridge's `PUT /bridge/audible/accounts/{account}` naming no user, or one an account may not be mapped to (a kid household member, a demo or a disabled account) |
 | `unknown_library` | `404` | the Bridge's `PUT /bridge/audible/accounts/{account}` or `GET /bridge/libraries/{id}/books` naming no library |
 | `not_books` | `400` | the same two routes naming a podcast library |
-| `invalid_policy` / `invalid_marketplace` | `400` | an Audible account's `policy` (not `all`, `series` or `manual`) or `marketplace` (not one of the metadata regions) |
+| `invalid_policy` / `invalid_marketplace` | `400` | an Audible account's `policy` (not `all`, `series` or `manual`; the Bridge's PUT or the console's PATCH) or `marketplace` (not one of the metadata regions) |
 | `asin_set` | `409` | the Bridge's `PUT /bridge/libraries/{id}/enrichment` for a book that has another ASIN, or an admin's ASIN edit |
 
 Podcast actions add `invalid_request` and `invalid_feed_url` (`400`),
@@ -690,7 +693,7 @@ needs; it is `false` (sent, not absent) otherwise. An older server omits it:
 | Flag | Gates |
 |---|---|
 | `podcasts` | the Podcasts module: follow/unfollow/check, new downloads, retention writes and feed/download/retention scheduling. Needs the `podcast` Bridge feature; false unless the toggle is on and that Bridge is online. Reads and valid present-pin reuse stay core, with client/private scope on player content. Players older than 2.2.0 remain excluded; the player shows Follow only while it is `true`; see [Podcasts](reference.md#podcasts) |
-| `audible` | the Audible module (Bridge Phase 4a): the console's [Audible routes](reference.md#audible-accounts) (`404 module_off` while off) and the scheduled `audible.poll`. Needs the Bridge's `audible` feature. Only the console reads it; the player has no Audible surface and doesn't mirror it yet |
+| `audible` | the Audible module (Bridge Phases 4a and 4b): the console's [Audible routes](reference.md#audible-accounts) (`404 module_off` while off), the scheduled `audible.poll` and the `audible.import` backups. Needs the Bridge's `audible` feature. Only the console reads it; the player has no Audible surface and doesn't mirror it yet |
 | `contributions` | the Contributions module: sending corrections and generated characters and recaps to the community database through the Bridge. Needs the Bridge's `contribute` feature. The console reads it (the generate dialog's contribute switch, Share with the community, Suggest corrections; with `meta` in `bridge.features` for corrections); the player never contributes and doesn't read it |
 
 Gate on the flag rather than on the server version: an older server answers

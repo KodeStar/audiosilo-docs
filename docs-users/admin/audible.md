@@ -1,24 +1,26 @@
 ---
 title: Audible
-description: "See the books in the Audible accounts your Bridge signs in to and which of them are already on your server: the Audible module, the Audible accounts card on Settings > Bridge, the titles page with its filters, the title states, how titles are matched to your books, Check now, removing an account, and what isn't there yet."
+description: "See the books in the Audible accounts your Bridge signs in to, which of them are already on your server, and back up the rest into your library: the Audible module, the Audible accounts card on Settings > Bridge, the titles page, how titles are matched, Back up, Not this book, a destination, Back up everything, the backup policies, where backups go, preorders, what a failed backup means, Check now and removing an account."
 ---
 
 Your [Bridge](bridge.md) can sign in to your Audible accounts, list the books each
-one owns and find the ones already on your server. The console shows the result:
-which of your Audible books you have here, and which you don't yet.
+one owns and find the ones already on your server. The console shows the result,
+and from it you can have the Bridge **back up** the books you bought into your
+library: it downloads each one from Audible, removes its copy protection (a
+lossless copy, chapters kept) and places it beside your other books.
 
 :::info[What it does today]
-This first version **lists and matches**. It doesn't download anything, and it
-doesn't keep listening places in step with Audible. Backing up the books you bought
-into your library, and keeping places in step, are coming in later versions. The
-**Back up** choice you make for each account is kept for then.
+The Bridge **lists, matches and backs up**. It doesn't keep listening places in
+step with Audible yet: that comes in a later version, and the **Keep the listening
+place in step** choice for each account is kept for then.
 :::
 
 :::note[A personal backup of books you bought]
 Audible backups are for making **a personal backup of books you bought**, with your
-own account. Laws on removing DRM, even from your own purchases, differ from
-country to country, and in some places it is not allowed at all. Check your local
-law, and keep the copies for yourself.
+own account, for your own listening. Laws on removing DRM, even from your own
+purchases, differ from country to country, and in some places it is not allowed at
+all, even for personal use. Check your local law, and keep the copies for yourself.
+The console repeats this on the titles page and in the backup dialogs.
 :::
 
 ## What it needs
@@ -35,22 +37,26 @@ law, and keep the copies for yourself.
   **An online Bridge that supports Audible** until the Bridge is ready, and **On,
   but nothing is checked until the Bridge is ready.** when you turn it on before
   then.
+- **To back up:** the account's library **Ready** for the Bridge (mapped and
+  writable, see [Libraries](bridge.md#libraries)), and room for the books, both
+  in the Bridge's data folder (where it downloads) and in the library.
 
 While the module is on, **Server > Settings** gains an **Audible** page, and
 **Settings > Bridge** an **Audible accounts** card. Listeners see nothing of it:
-the player has no Audible screens.
+the player has no Audible screens. A book once backed up is an ordinary book of
+the library, which its listeners see as usual.
 
 ## The Audible accounts card
 
 ![The Audible accounts card on Server > Settings > Bridge](/img/screenshots/admin/audible-accounts-card.png)
 
 On **Server > Settings > Bridge**, under Libraries, the **Audible accounts** card
-lists every account the Bridge has signed in to, as the Bridge set it up. The card
-is there only while a Bridge is paired; with none paired, use the
-[titles page](#the-titles-page). It is read-only: you change an account on the
+lists every account the Bridge has signed in to. The card is there only while a
+Bridge is paired; with none paired, use the [titles page](#the-titles-page). Who
+the account is for and its library are the Bridge's: you change them on the
 Bridge's Accounts tab (with no account yet, the card links to it when the Bridge
-has told the server its page's address). **View titles** opens the
-[titles page](#the-titles-page).
+has told the server its page's address). What the account backs up, and where, is
+set here. **View titles** opens the [titles page](#the-titles-page).
 
 For each account:
 
@@ -60,17 +66,23 @@ For each account:
 | **For** | the person on your server the account belongs to |
 | **Library** | the books library its titles are matched against |
 | **Store** | the Audible store it buys from (US, UK, DE and so on) |
-| **Back up** | what a later version will back up: **Every new book**, **New books in series you have** or **Only books you choose** |
+| **Back up** | what the account backs up by itself after each check: **Every new book**, **New books in series you have** or **Only books you choose** (see [Backing up by itself](#backing-up-by-itself)) |
+| **Placement** | where its backups go: **Beside the series' other books**, or the account's placement template (see [Where backups go](#where-backups-go)) |
 | **Titles** | how many titles the account has, and how many of them are on this server |
 
-Each account has **Check now** and **Remove...** (below).
+Each account has **Check now**, **Backup settings...** (its policy and placement
+template, [below](#backing-up-by-itself)), **Back up everything...**
+([below](#back-up-everything)) and **Remove...** ([below](#removing-an-account)).
+
+![The Backup settings dialog: Back up by itself and the placement template](/img/screenshots/admin/audible-backup-settings.png)
 
 With no account yet, the card says **No Audible accounts yet**, with **Open the
 Bridge's Accounts tab**.
 
 **Paused** marks an account whose library was deleted: the Bridge isn't asked to
-check it, and its titles lose their matches. Choose another library for it on the
-Bridge's Accounts tab (**Change**) to carry on.
+check it, its titles lose their matches, and nothing of it can be backed up (its
+**Back up** buttons are off). Choose another library for it on the Bridge's
+Accounts tab (**Change**) to carry on.
 
 ## The titles page
 
@@ -78,11 +90,19 @@ Bridge's Accounts tab (**Change**) to carry on.
 
 **Server > Settings > Audible** lists every title your Audible accounts own, as the
 Bridge last saw them, sorted by title. Each row shows the title, its authors and
-series, then its length, the release date of a preorder, its ASIN and (with several
-accounts) which account owns it. A title Audible won't let you download says why.
+series, then its length, the release date of a preorder, its ASIN, (with several
+accounts) which account owns it, and **To ...** when you gave it a
+[destination](#choosing-a-destination). A title Audible won't let you download
+says why, and so does a backup that failed. Under it are the title's
+[backup buttons](#backing-up-a-book): **Back up**, **Not this book** and
+**Destination...**.
+
 On the right: its state, and **On this server** (a link to the book's page in the
 console) or **Not here**. **Matched by title** marks a match made from the title
-and author rather than the ASIN (see [How titles are matched](#how-titles-are-matched)).
+and author rather than the ASIN (see [How titles are matched](#how-titles-are-matched)),
+**Backed up here** a book the Bridge backed up, and **Not this book** a title you
+[marked](#not-this-book). Last comes the [backup's status](#a-titles-backup-status),
+when it has one.
 
 Above the list:
 
@@ -91,13 +111,14 @@ Above the list:
 - **Account** (only with more than one account) shows one account's titles.
 - **State** shows titles in one state.
 - **On this server** shows only the titles that are here, or only those that are
-  **Not here yet**.
+  **Not here yet** (a title marked **Not this book** counts as not here).
 
 The page shows 50 titles at a time; **Load more** adds the next ones. The list
-refreshes on its own when the Bridge finishes a check.
+refreshes on its own when the Bridge finishes a check, and every few seconds while
+a backup is waiting or running.
 
-**Check now** and **Remove...** sit at the top of the page for the account you
-chose under **Account**, or for the only one there is.
+**Check now**, **Back up everything...** and **Remove...** sit at the top of the
+page for the account you chose under **Account**, or for the only one there is.
 
 ### Title states
 
@@ -143,6 +164,9 @@ A few things help a title find its book:
 **Not here**, with **contested** under the title: the book is probably here under
 another title. If the best titles tie, none keeps it, unless they are the same
 book owned twice (the same title, author and number): then all of them keep it.
+[Back up everything](#back-up-everything) and the
+[policies](#backing-up-by-itself) never back up a contested title; **Back up**
+still does, if you are sure it isn't here.
 
 When a book matched by title and author has no ASIN yet, the Bridge gives it the
 Audible title's ASIN, so later checks, and the community metadata, match it exactly.
@@ -152,13 +176,256 @@ edition), or when the book already has an ASIN, including one you set or cleared
 the console: those are never replaced.
 
 Matches follow your books: when a book is renamed or moved (or joined with another
-in the console), its titles stay matched to it. Deleting a library clears the
-matches into it and pauses the accounts mapped to it.
+in the console), its titles stay matched to it. A book the Bridge
+[backed up](#backing-up-a-book) stays its title's match on later checks while it is
+in the library. Deleting a library clears the matches into it and pauses the
+accounts mapped to it.
+
+## Backing up a book
+
+Each title on the titles page has its own buttons:
+
+- **Back up**: for a title that is **Available** (or a **Preorder**, see
+  [Preorders](#preorders)) and not on this server, with no backup already waiting
+  or running. It is off while the account is **Paused**.
+- **Not this book** (and **Undo Not this book**): see [below](#not-this-book).
+- **Destination...**: where this one title goes, for a title not on this server
+  (see [Choosing a destination](#choosing-a-destination)).
+
+Press **Back up** and the console says **Backing up** with the title: the Bridge
+downloads it in turn, one book at a time per account. Asking for a book that is
+already on this server, or one already waiting, says so instead. A title Audible
+doesn't offer for download now (an **Unavailable** title, or one **No longer in the
+library**) can't be backed up. A queued backup is in the
+[audit log](server.md#audit-log) as **Queued a Bridge job**.
+
+### What happens during a backup
+
+The Bridge:
+
+1. checks the account and that it can write to the account's library, and works
+   out where the book goes ([Where backups go](#where-backups-go)), before it
+   downloads anything: a file already there, or a book of the library already in
+   that folder, stops it here;
+2. asks Audible for the book (a license for this account);
+3. downloads it into its data folder;
+4. removes the copy protection, a lossless copy with the chapters kept;
+5. copies it into the library, never over a file that is already there;
+6. has the server index it straight away, and gives the new book the title's ASIN,
+   so later checks and the community metadata match it exactly.
+
+The backup shows in the Bridge's [Jobs](bridge.md#jobs) list as **Backing up an
+Audible book**, with the title's ASIN, the step it is on and how far it has got.
+**Scheduled by the server** marks one a policy or a preorder queued. **Cancel**
+there stops it, and the partly downloaded file is deleted. When it is done, the
+title shows **On this server** with **Backed up here**, and listeners of the
+library find the book like any other. A finished or failed backup, and one that
+needs attention, is [notified](notifications.md) like the Bridge's other jobs,
+named by the book's title.
+
+**One at a time.** The Bridge backs up one book of each account at a time, and it
+downloads one thing at a time in all, so backups take turns with new podcast
+episodes: a book you asked for with **Back up** comes first, then new episodes and
+what a [policy](#backing-up-by-itself) queued, then
+[Back up everything](#back-up-everything)'s books. A big library takes a while;
+new episodes still arrive in between.
+
+**Interrupted downloads carry on.** A download cut off by a dropped connection
+picks up where it stopped. So does one interrupted by the Bridge stopping or
+restarting: the part it had is kept for up to 7 days and the backup resumes from it
+when the Bridge is back. A cancelled or failed backup deletes it.
+
+### A title's backup status
+
+| Status | Means |
+|---|---|
+| **Backs up on release** | you pressed **Back up** on a preorder: it is backed up once Audible makes it available |
+| **Backup waiting** | queued for the Bridge, or picked up and about to start |
+| **Backing up** | the Bridge is working on it |
+| **Backup needs attention** | the Bridge stopped part way and is waiting for you, with the reason under the title. Usually the library stopped being writable: the backup carries on by itself once the Bridge can write there again |
+| **Backed up** | done |
+| **Backup failed** | it didn't work: the reason is under the title (below) |
+| **Backup cancelled** | it was cancelled in the Bridge's Jobs list |
+| **Still not released: check it on Audible** | a preorder still not available 14 days after its release date (see [Preorders](#preorders)) |
+
+### When a backup fails
+
+The reason under the title says what to do. Nothing in your library is ever
+overwritten or left half copied.
+
+| Reason | Means |
+|---|---|
+| **Audible doesn't let it be downloaded yet.** | the title isn't released yet: a preorder, or Audible says it isn't out |
+| **This account doesn't have the right to download it.** | the title is no longer in the account, Audible won't let this account download it, or it is a podcast or periodical |
+| **Audible refused the download. Sign in again on the Bridge if it keeps happening.** | Audible refused the account's sign-in or the download: see [Sign in again](../getting-started/bridge-accounts.md#the-accounts-states) |
+| **The Bridge can't write to this library. Check its mapping on the Bridge.** | the library isn't **Ready** on the Bridge's [Libraries](bridge.md#libraries) tab (mapped and writable), the account's library changed since the backup was queued, or the destination or template gives a path the Bridge can't use there (a hidden folder, an audio file name other than `.m4b`, `.m4a` or `.mp4`, a file where a folder should be) |
+| **A different file is already where it would go. Choose another destination.** | a file is already at the destination, or the destination is inside a book the library already has (a folder that is a book, or already holds audio files): a backup is a book of its own. Choose a [destination](#choosing-a-destination), or move that file |
+| **There isn't enough free space. Free some up, then back it up again.** | the Bridge needs room for about twice the book in its data folder (the download and the copy without DRM), and a little more than the book in the library |
+| **The download link ran out twice. Back it up again.** | Audible's download link expired, and expired again after the Bridge asked for a new one |
+| **The Bridge no longer has this account. Sign in again on the Bridge.** | the account was removed on the Bridge, signed in on another Bridge, or set up while the Bridge was paired with another server |
+
+A failure without one of these reasons shows the Bridge's own message in its
+[Jobs](bridge.md#jobs) list. One you may see: a book Audible offers only as an MP3
+without copy protection, which this version of the Bridge doesn't back up yet.
+
+Press **Back up** again to try once more. [Back up everything](#back-up-everything)
+also tries failed and cancelled backups again.
+
+### Not this book
+
+**Not this book** is for a title the Bridge matched to the wrong book, or one you
+never want backed up on its own:
+
+- A title marked **Not this book** is never backed up by
+  [Back up everything](#back-up-everything) or a [policy](#backing-up-by-itself).
+  **Back up** still works for it, one at a time.
+- If it was matched to a book here, that book is no longer counted as this
+  title's: the title shows **Not this book** next to the link, counts as **Not here
+  yet** in the filter and the account's counts, and **Back up** and
+  **Destination...** are offered for it. Later checks keep the mark.
+- On a preorder you asked to back up, it drops that request.
+
+**Undo Not this book** removes the mark. A backup of the title that finishes
+removes it too: the backed-up book is the title's own. Marking and unmarking are in
+the [audit log](server.md#audit-log) as **Changed an Audible book's match or
+destination**.
+
+### Choosing a destination
+
+**Destination...** opens **Where ... goes**, for one title not on this server.
+Type where in the account's library its backup goes, instead of the usual place
+([Where backups go](#where-backups-go)):
+
+- **a file**, such as `Author/Series/Title.m4b` (ending in `.m4b`, `.m4a` or
+  `.mp4`), or
+- **a folder**, such as `Author/Series/Book 3`, for the book to go in (its file is
+  named after the title).
+
+Leave it empty for the usual place. It must be a path inside the library: no
+`..`, no folder or file starting with a dot (the server never shows those), no
+backslashes. A destination wins over the account's placement template. The row
+shows it as **To ...**. Saving it is in the audit log as **Changed an Audible
+book's match or destination**.
+
+![The Destination dialog for one title: a folder in the library typed in](/img/screenshots/admin/audible-destination.png)
+
+The destination, like the account's template, is read when the backup is queued:
+changing it later doesn't move a backup that is already waiting.
+
+## Back up everything
+
+**Back up everything...**, on each account's card and at the top of the titles
+page, backs up the account's books that aren't on this server yet, all at once. It
+first asks you to confirm, with how many books and about how much space they take,
+such as **"212 books, ~96 GB"**. The size is an estimate from each book's length;
+the library needs about that much free space.
+
+![Back up everything's confirmation: how many books, about how much space, and the legal note](/img/screenshots/admin/audible-backup-all.png)
+
+It backs up every title of the account that is **Available** and not on this
+server, **except**:
+
+- titles marked [Not this book](#not-this-book);
+- **contested** titles (the book is probably here under another title, see
+  [How titles are matched](#how-titles-are-matched));
+- titles already backed up, while the backed-up book is still in the library;
+- titles with a backup already waiting or running;
+- preorders and unavailable titles (a preorder can still be backed up on release,
+  see [Preorders](#preorders)).
+
+A backup that failed or was cancelled is tried again. The button is off when there
+is nothing to back up and while the account is **Paused**.
+
+**Back up N books** queues them ("212 backups queued for Chris (US)"). They run
+[one at a time](#what-happens-during-a-backup), after anything you back up one by
+one and after new podcast episodes, so a big library can take days. If the Bridge
+can't take them (it doesn't run backups, or can't write to the library), nothing is
+queued and the console says why; with the Bridge offline, they wait for it. It is
+in the [audit log](server.md#audit-log) as **Backed up everything from an Audible
+account**.
+
+## Backing up by itself
+
+**Backup settings...** on an account's card sets **Back up by itself**: what the
+account backs up without being asked, after each check.
+
+| Choice | Backs up |
+|---|---|
+| **Every new book** | every book bought from now on |
+| **New books in series you have** | a book bought from now on, when a book of one of its series is already on the server for the account's person (in a library they can see) |
+| **Only books you choose** | nothing by itself: only what you back up from the console |
+
+**New purchases only.** A policy acts only on titles the Bridge first sees after
+you chose it. The books the account already had are never backed up by a policy:
+use [Back up everything](#back-up-everything) for those. (For an account you just
+added, the books found by its first check count as the ones it already had, even
+if you chose a policy when you signed it in on the Bridge.)
+
+After each check, a policy backs up a new purchase that
+[Back up everything](#back-up-everything) would, but only one never backed up
+before (a policy never tries one again after it failed: **Back up** or Back up
+everything does). It needs an online Bridge that can back up; a check
+while it can't queues nothing, and the next check asks again.
+
+The choice an account starts with is the one picked when it was signed in on the
+Bridge. After that it is set here; the Bridge's Accounts tab says so. Saving is in
+the [audit log](server.md#audit-log) as **Changed an Audible account's backups**.
+
+## Where backups go
+
+**Beside the series' other books.** With no template (the card's **Placement**
+says **Beside the series' other books**), a backup goes where your library keeps
+its series, named like the books already there: the same author folder, the
+series' folder and its numbering. For example, with book 6 of Dragon Heart in a
+`DH06 - Land of Magic` folder, book 7 goes in a `DH07 - ...` folder beside it. A
+book of a series you don't have yet goes in `Author/Series/` with a code made from the series' initials, and a book in no
+series in `Author/Title/`. The file is the title, as `Title.m4b`.
+
+**A placement template.** **Backup settings... > Placement template** names the
+folders and file yourself, for example
+`{Author}/{Series}/{ {PaddedSeq} - }{Title}`:
+
+- Variables: `{Author}`, `{Series}`, `{Title}`, `{PaddedSeq}` (the number in the
+  series, padded as your folders are), `{Narrator}`, `{Year}` and `{ASIN}`, among
+  others.
+- `{ ... }` around part of it is dropped when a variable inside is empty: above,
+  a book in no series has no number and no ` - `.
+- A last part ending in `.m4b`, `.m4a` or `.mp4` names the file. Another audio
+  file name (such as `.mp3`) can't be used: the backup is always an M4B. Anything
+  else is a folder, and the book's file (named after the title) goes in it.
+- It must stay inside the library: not starting with `/`, no `..`, no part starting
+  with a dot. A template the server can't read (an unknown variable, a `{` without
+  its `}`) isn't saved, and the dialog says why.
+
+Leave it empty for the placement beside the series' other books. A title's own
+[destination](#choosing-a-destination) wins over both. Whatever the placement,
+folders that already exist are used as the disk spells them, and nothing is ever
+overwritten.
+
+## Preorders
+
+A **Preorder** can't be downloaded yet. **Back up** on one remembers it: the title
+shows **Backs up on release**, and the request is kept through restarts.
+
+From the title's release date, the server checks the account **every hour**
+instead of every 6 hours. The first check that finds it **Available** backs it up:
+because you asked, or because the account's [policy](#backing-up-by-itself) covers
+it as a new purchase.
+
+If it still isn't available 14 days after its release date, the title shows
+**Still not released: check it on Audible** and the hourly checks for it stop (the
+account's usual checks go on, and back it up if it does turn up). Audible sometimes
+moves a release date: check the title in the Audible app or website.
+
+Marking a preorder [Not this book](#not-this-book) drops the request. **Back up**
+on a preorder is in the [audit log](server.md#audit-log) as **Asked to back up an
+Audible book**.
 
 ## Check now
 
 The server asks the Bridge to check each account every 6 hours while the module is
-on. **Check now** asks for a check straight away ("Checking Chris (US)"); if a check
+on (every hour while one of its preorders is due, see [Preorders](#preorders)).
+**Check now** asks for a check straight away ("Checking Chris (US)"); if a check
 is already waiting, it is moved to the front ("Chris (US) is already being
 checked"). If the last check is still being cancelled, it says so ("The check of
 Chris (US) is still stopping"): press **Check now** again once it has stopped. The
@@ -174,8 +441,8 @@ now** is in the [audit log](server.md#audit-log) as **Queued a Bridge job**.
 ## Removing an account
 
 The usual way to remove an account is **Remove** on the Bridge's Accounts tab: it
-removes it from the Bridge and from this server, and removes its AudioSilo device
-from your Amazon account (see
+removes it from the Bridge and from this server, cancels its backups that are
+waiting or running, and removes its AudioSilo device from your Amazon account (see
 [Bridge accounts](../getting-started/bridge-accounts.md#removing-an-account)).
 
 **Remove...** in the console (on the accounts card, or at the top of the titles
@@ -183,7 +450,8 @@ page) is for an account the Bridge can no longer remove: one set up by a Bridge 
 unpaired or replaced, or one whose removal on the Bridge couldn't reach the server.
 With no Bridge paired the accounts card isn't shown, so use the titles page.
 Confirm with **Remove**: the account, its titles and any check waiting
-for the Bridge go from this server. The books already on your server stay. It
+for the Bridge go from this server, and its backups that are waiting or running are
+cancelled. The books already on your server stay, backed-up ones included. It
 removes the account from **this server only**: to sign the device out of Amazon,
 remove it on the Bridge's Accounts page too (or in your Amazon account's device
 list). It is in the [audit log](server.md#audit-log) as **Removed an Audible
@@ -195,6 +463,6 @@ on the server again.
 ## When the module is off
 
 Turning the Audible module off hides the Audible page and the accounts card, and
-the server stops asking for checks; a check already queued waits until the module
-is on again. The accounts and their titles are kept, and signing in on the Bridge
-still works. To remove an account in the console, turn the module on first.
+the server stops asking for checks and backs nothing up by itself; a check or
+backup already queued waits until the module is on again. The accounts and their
+titles are kept, and signing in on the Bridge still works. To remove an account in the console, turn the module on first.

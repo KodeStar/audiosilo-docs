@@ -9377,7 +9377,8 @@ that read the block, ask with their token.
   each known kind before its dot (`bridge.verify` is `bridge`, `sidecars.generate`,
   `sidecars.describe` and `sidecars.contribute` are `sidecars`, `chapters.detect`
   is `chapters`, `meta.correct` is `meta`, `readalong.align` is `readalong`, and
-  the podcast kinds give `podcast`, `audible.poll` gives `audible`),
+  the podcast kinds give `podcast`, `audible.poll` and `audible.import` give
+  `audible`),
   plus `contribute` while the Bridge can
   file contributions (the last heartbeat's `setup.can_contribute`, else its
   `estimates.sidecars.can_contribute`), which the `contributions`
@@ -9641,9 +9642,11 @@ reads; a private feed URL appears only in the Bridge's claim answer. See
 ### `POST /api/v1/admin/bridge/jobs`
 
 *Admin.* Queues a job. `podcast.subscribe`, `podcast.poll`, `podcast.fetch`,
-`podcast.retain` and `audible.poll` are server-internal and refused here with `400`
-(no code): use listener follow/check, the admin storage routes,
-[Check now](#post-apiv1adminaudibleaccountsaccountpoll) or the scheduler instead.
+`podcast.retain`, `audible.poll` and `audible.import` are server-internal and
+refused here with `400` (no code): use listener follow/check, the admin storage
+routes, [Check now](#post-apiv1adminaudibleaccountsaccountpoll),
+[Back up](#post-apiv1adminaudibletitlesaccountasinbackup) or the scheduler
+instead.
 Book-writing kinds on a podcast library return `409 not_book_library`;
 podcast kinds are only ever queued for a podcast library (follow and check answer
 `409 not_podcast_library` for a books library before queuing).
@@ -10251,11 +10254,15 @@ through a hidden (dot) folder is never indexed. The body is at most 8 KiB.
 
 ## Audible accounts
 
-Bridge Phase 4a (`api/handlers_audible.go`, `catalog/audible.go`; the design is in
+Bridge Phases 4a and 4b (`api/handlers_audible.go`, `catalog/audible.go`,
+`catalog/audible_import.go`, `internal/audible`; the design is in
 [Audible](../../bridge/audible.md)). The Bridge signs in to Audible accounts and
 holds every credential; the server keeps only what it reports: each account's
-mapping (a person, a books library, a policy) and the titles its polls found. The
-server never talks to Audible.
+mapping (a person, a books library), the titles its polls found, and (4b) what to
+back up: an account's policy and placement template, a title's "Not this book" and
+destination, and the backups it queued (`audible.import` jobs, see
+[Backing up a title](../../bridge/audible.md#backing-up-a-title-audibleimport)).
+The server never talks to Audible.
 
 Two sets of routes, as for [the Bridge](#the-bridge):
 
@@ -10263,10 +10270,11 @@ Two sets of routes, as for [the Bridge](#the-bridge):
   only; every other credential (a session, an API key, a cast or feed token) is
   `401`. They are **not** behind the `audible` module's toggle, so the Bridge's page
   can sign in and map accounts while the module is off.
-- **The console's**, under `/admin/audible`: *Admin* (a member's token `403`, a
-  bridge token `401`). All but `DELETE /admin/audible/accounts/{account}` answer
-  **`404 module_off`** while the `audible` [module](../modules.md) is off; the
-  delete works either way.
+- **The console's**, under `/admin/audible`: *Admin*, an admin's session or
+  personal API key (a member's session or API key `403`; a bridge, cast or calendar
+  feed token `401`, and so is any token in `?token=`). All but
+  `DELETE /admin/audible/accounts/{account}` answer **`404 module_off`** while the
+  `audible` [module](../modules.md) is off; the delete works either way.
 
 An account id is the Bridge's own, `^[a-z0-9]{8,32}$`. On every route that names
 one, an id that doesn't match is `404 unknown_account`.
@@ -10290,7 +10298,10 @@ one, an id that doesn't match is `404 unknown_account`.
   "updated_at": "2026-11-02T10:00:00Z",
   "last_poll_at": "2026-11-02T10:01:12Z",
   "last_queued_at": "2026-11-02T10:00:05Z",
-  "titles": { "total": 30, "available": 22, "preorder": 4, "unavailable": 4, "gone": 0, "matched": 3 }
+  "template": "",
+  "policy_since": "2026-11-02T10:01:12Z",
+  "titles": { "total": 30, "available": 22, "preorder": 4, "unavailable": 4, "gone": 0, "matched": 3 },
+  "backup_estimate": { "count": 18, "bytes": 5299200000 }
 }
 ```
 
@@ -10300,12 +10311,15 @@ one, an id that doesn't match is `404 unknown_account`.
 | `user` | the person it is mapped to (`display_name` falls back to the username) |
 | `library_id`, `library` | the books library its titles are matched against; both `null` and `paused: true` once that library was deleted |
 | `paused` | its library was deleted: no poll is queued and Check now is `409 account_paused` until the Bridge maps it again |
-| `policy` | `all`, `series` or `manual`: what Phase 4b will back up (every new title, new titles in a series the person has, only what an admin picks) |
+| `policy` | `all`, `series` or `manual`: what the account backs up by itself after a poll (every new title, new titles in a series the person has, only what an admin picks). The Bridge sets it when it creates the account; after that only [`PATCH /admin/audible/accounts/{account}`](#patch-apiv1adminaudibleaccountsaccount) changes it |
 | `sync` | whether Phase 4c will keep the person's place in step with Audible |
 | `poll_hours` | how often the scheduler queues its poll (6) |
 | `last_poll_at` | when the Bridge last finished a poll (its `final` titles call), `null` before the first |
 | `last_queued_at` | when a poll was last queued (by the scheduler or Check now), `null` before the first |
-| `titles` | `GET /admin/audible/accounts` only: the titles counted by state, and how many are matched to a book here |
+| `template` | the account's placement template for its backups, `""` for the Bridge's placement beside the series' other books (Phase 4b) |
+| `policy_since` | when its automatic policy began to act: a policy backs up only titles first seen after it. Set at the account's creation, when an automatic policy is turned on, and moved to the account's first complete poll (Phase 4b) |
+| `titles` | `GET /admin/audible/accounts` only: the titles counted by state, and how many are matched to a book here (`matched` leaves out a match marked "Not this book") |
+| `backup_estimate` | `GET /admin/audible/accounts` only: what [Back up everything](#post-apiv1adminaudibleaccountsaccountbackup-all) would queue now, `count` titles and about `bytes` (each title's `runtime_s` x 8000, 64 kbps AAXC: approximate) (Phase 4b) |
 
 ### `GET /api/v1/bridge/users`
 
@@ -10321,7 +10335,9 @@ or a disabled account. No emails. `Cache-Control: no-store`.
 
 *Bridge token.* Records the Bridge's mapping of an account it signed in to,
 creating it or mapping it again (a paused account resumes; its titles and poll
-times stay). The body is strict JSON, at most 4 KiB:
+times stay, and so do its `policy` and `template`: the body's `policy` is a new
+account's only, the console sets it after that). The body is strict JSON, at most
+4 KiB:
 
 ```json
 { "label": "Chris (US)", "marketplace": "us", "user_id": 3, "library_id": 1, "policy": "manual", "sync": true }
@@ -10339,7 +10355,7 @@ it after the person and the store).
 ### `DELETE /api/v1/bridge/audible/accounts/{account}`
 
 *Bridge token.* The Bridge removed the account: it goes, with its titles, and its
-open poll is cancelled ("the Audible account was removed"). `204`, whether or not
+open poll and backups are cancelled ("the Audible account was removed"). `204`, whether or not
 the server knew it (the Bridge forgets locally first and may call again).
 
 ### `PUT /api/v1/bridge/audible/accounts/{account}/titles`
@@ -10387,9 +10403,14 @@ the server knew it (the Bridge forgets locally first and may call again).
   path-keyed with no FK: a rebuild keeps it, a book's move carries it, and
   deleting the library clears it.
 - Each title replaces what an earlier poll said of it, keeping `first_seen` and the
-  console's and an import's columns. On the **final** call, every title of the
-  account this `poll_id` didn't send becomes `gone`, and the account's
-  `last_poll_at` is now.
+  console's and an import's columns. A backup's match (`how` `import`) stays while
+  its book is indexed and the call names no other match for the title. On the
+  **final** call, every title of the account this `poll_id` didn't send becomes
+  `gone`, the account's `last_poll_at` is now (and, on its first complete poll, its
+  `policy_since`), and then, while the module is on and an online Bridge runs
+  `audible.import`, the server queues the backups the account's policy and pending
+  preorder requests ask for (at most 10 s of it; a failure is logged and the next
+  poll asks again: the call still answers `200`).
 
 | Status | Meaning |
 |---|---|
@@ -10479,7 +10500,7 @@ keyset-paged.
 |---|---|
 | `account` | one account's titles |
 | `state` | `available`, `preorder`, `unavailable` or `gone` (another value is `400`) |
-| `matched` | `1` (or `true`) only titles matched to a book here, `0` (or `false`) only the rest |
+| `matched` | `1` (or `true`) only titles matched to a book here (not marked "Not this book"), `0` (or `false`) only the rest |
 | `q` | in the title, any author as written, or an exact ASIN (at most 200 characters) |
 | `after` | the previous page's `next` |
 | `limit` | 1 to 200, default 50 |
@@ -10503,15 +10524,26 @@ keyset-paged.
       "dest_path": "",
       "first_seen": "2026-11-02T10:01:10Z",
       "updated_at": "2026-11-02T10:01:10Z",
-      "import_job_id": null
+      "import_job_id": null,
+      "import": { "job_id": null, "state": "pending", "code": "" },
+      "needs_attention": false
     }
   ],
   "next": ""
 }
 ```
 
-`next` is `""` on the last page. `rejected`, `ignored`, `dest_path` and
-`import_job_id` are Phase 4b's (always their zero values in 4a).
+`next` is `""` on the last page. Phase 4b's fields:
+
+| Field | Meaning |
+|---|---|
+| `match.how` | `asin`, `fuzzy` (a poll's) or `import` (a done backup's) |
+| `rejected` | marked "Not this book": never backed up by Back up everything or a policy; a match it has isn't counted as on this server |
+| `ignored` | no route sets it yet; Back up everything and the policy skip an ignored title |
+| `dest_path` | the console's destination for the title's backup, `""` for the account's placement |
+| `import_job_id` | the title's latest backup job, `null` for none |
+| `import` | the title's backup: `{job_id, state, code}` with `state` the job's ([job states](#the-job-object)) and `code` a failed or parked job's code (`not_released`, `no_rights`, `audible_refused`, `not_writable`, `exists`, `disk_full`, `offline_url_expired`, `unknown_account`, or `""`); `{job_id: null, state: "pending"}` for a Back up on a preorder waiting for its release; `null` for none |
+| `needs_attention` | a preorder still not available 14 days after its `release_date`: the account is no longer polled hourly for it |
 
 | Status | Meaning |
 |---|---|
@@ -10541,13 +10573,121 @@ module's scheduler queues each due account's poll every `poll_hours` at priority
 `-10` while an online Bridge offers the kind. Only the newest ended poll of each
 account is kept.
 
+### `POST /api/v1/admin/audible/titles/{account}/{asin}/backup`
+
+*Admin, module on.* **Back up** one title (Phase 4b): queues its `audible.import`
+at a person's priority (`0`), with params built from the account and the title
+(`{account, asin, library_id, dest_path, template}`: the account's library and
+template and the title's `dest_path`, as they are now). No body. A preorder isn't
+queued: the request is stored and queued (at the same priority, with no requester)
+by the first poll that reports the title available.
+
+| Status | Meaning |
+|---|---|
+| `202` | `{ "pending": false, "job_id": N }`: queued (or the title's open backup, when a request at the same moment queued it first) |
+| `200` | `{ "pending": true, "job_id": null }`: a preorder, backed up on release |
+| `404` | `unknown_account`; `unknown_title` (also an `{asin}` that isn't an ASIN); `module_off` |
+| `409` | `already_matched` - the title is on this server (matched, not marked "Not this book"); `import_open` - its backup is waiting, running or parked, or a preorder request is pending; `not_available` - the title is `unavailable` or `gone`; `account_paused`; `kind_unavailable` - no Bridge has reported, or the paired one doesn't run `audible.import`; `library_not_writable` - the Bridge can't write to the account's library |
+
+A contested title, and one whose last backup is done but which is no longer on
+this server, can be backed up this way (the admin decides). A queued backup is
+audited as `bridge.job` (with `job`, `kind`, `account`, `asin`), a pending one as
+`bridge.audible.backup` (with `account`, `asin`, `pending`).
+
+### `POST /api/v1/admin/audible/accounts/{account}/backup-all`
+
+*Admin, module on.* **Back up everything** (Phase 4b): queues an `audible.import`
+for every title of the account that is `available`, not on this server, not
+`rejected` or `ignored`, not contested (`reason` `contested`), with no backup
+waiting or running, and not already backed up (its latest backup `done` and the
+book its result names still indexed). A failed or cancelled backup is queued
+again. Priority `-20`, below the podcast scheduler's fetches (`-10`), so a bulk
+backup never holds back new episodes; the jobs are the admin's. No body.
+
+| Status | Meaning |
+|---|---|
+| `200` | `{ "queued": N }` (`0` with nothing to back up) |
+| `404` | `unknown_account`; `module_off` |
+| `409` | `account_paused`; `kind_unavailable`; `library_not_writable` - nothing was queued: the Bridge can't take them |
+
+It stops at the first refusal of the queue; when some were queued before it, the
+answer is still `200` with their count (the rest is logged). Audited as
+`bridge.audible.backup_all` (with `account`, `queued`) when it queued any. The
+count and size it would queue are the account's `backup_estimate`.
+
+### `PATCH /api/v1/admin/audible/titles/{account}/{asin}`
+
+*Admin, module on.* **Not this book** and a title's **destination** (Phase 4b).
+Strict JSON, at most 8 KiB; a field left out is left as it is:
+
+```json
+{ "rejected": true, "dest_path": "Wen Liang/Mapmakers/MM03 - The Cartographer's Return" }
+```
+
+- `rejected` `true` marks the title "Not this book" (and drops a pending preorder
+  request); `false` clears it. A done backup clears it too.
+- `dest_path` is where in the account's library its backup goes, `""` for the
+  account's placement: a file path, or a folder (a last segment without an audio
+  extension) the title's file goes in. At most 1024 bytes, clean (no `..`, no
+  leading or trailing `/`, no `.` segment), no hidden, dot-led segment, no
+  backslash or control character. It is copied into a backup when it is queued;
+  the Bridge checks it again against its mapping.
+
+| Status | Meaning |
+|---|---|
+| `200` | the [title](#get-apiv1adminaudibletitles) (not wrapped) |
+| `400` | `invalid_request` - the JSON (an unknown field too); `invalid_dest_path` - with what is wrong in `error` |
+| `404` | `unknown_account`; `unknown_title`; `module_off` |
+
+Audited as **`bridge.audible.title`** (with `account`, `asin`, and `rejected`
+and `dest_path` when sent), even when nothing changed.
+
+### `PATCH /api/v1/admin/audible/accounts/{account}`
+
+*Admin, module on.* An account's **backup settings** (Phase 4b). Strict JSON, at
+most 8 KiB; a field left out is left as it is:
+
+```json
+{ "policy": "series", "template": "{Author}/{Series}/{ {PaddedSeq} - }{Title}" }
+```
+
+- `policy`: `all`, `series` or `manual`. Changing it to `all` or `series` sets
+  `policy_since` to now, so the policy acts only on titles first seen after it;
+  `manual` leaves it.
+- `template`: the placement template, `""` for the Bridge's placement beside the
+  series' other books. At most 500 bytes, in the Bridge's
+  [template grammar](../../bridge/audible.md#the-template-grammar) (its variables,
+  mods and the segment rules the server checks).
+
+The account's person and library stay the Bridge's.
+
+| Status | Meaning |
+|---|---|
+| `200` | `{ "account": Account }` (without `titles` and `backup_estimate`) |
+| `400` | `invalid_request` - the JSON (an unknown field too); `invalid_policy`; `invalid_template` - with what is wrong in `error` |
+| `404` | `unknown_account`; `module_off` |
+
+Audited as `bridge.audible.account` (with `account`, and `policy` and `template`
+when sent).
+
+### The `audible.import` job
+
+Internal (refused by `POST /admin/bridge/jobs`), owned by the `audible` module
+(held while it is off), deduped per account and title, a writing kind (it needs a
+writable mapping of the account's books library), and notified when it ends done
+or failed (named by the title). Its params, progress steps, result and failure
+codes are in [Backing up a title](../../bridge/audible.md#the-job). A done job's
+result becomes the title's match (`how` `import`) when it names a book indexed in
+the job's library that is the title's own; removing the account cancels its open
+backups.
+
 ### `DELETE /api/v1/admin/audible/accounts/{account}`
 
 *Admin*, **not** behind the module's toggle. Removes an account the Bridge can no
 longer remove (one from a Bridge since unpaired or replaced, or whose removal on the
 Bridge couldn't reach the server), exactly as the Bridge's delete does: its titles
-go and its open poll is cancelled. It signs nothing out of Amazon: that is the
-Bridge's. `204`, known or not; audited as `bridge.audible.remove` (with `account`)
+go, its open poll is cancelled, and so are its open backups. It signs nothing out of
+Amazon: that is the Bridge's. `204`, known or not; audited as `bridge.audible.remove` (with `account`)
 when there was one. A bridge token is `401`.
 
 ## Well-known

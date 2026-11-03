@@ -1059,7 +1059,7 @@ hold only what it reports:
 - **`audible_titles`** - `account` (FK `ON DELETE CASCADE`) + `asin`; `title`,
   `authors` and `series` (JSON), `release_date`, `runtime_s`, `state` (`available` |
   `preorder` | `unavailable` | `gone`), `reason`, the match (`match_library_id`,
-  `match_path`, `match_how` `asin` | `fuzzy`): **path-keyed with no FK to the
+  `match_path`, `match_how` `asin` | `fuzzy` | `import`, the last set by a done backup): **path-keyed with no FK to the
   index**, carried by `MoveDurableState` (`moveBookState`) and by a join
   (`joinBookState`), cleared by `DeleteLibrary` in the library's own transaction;
   `first_seen`, `updated_at`, `poll_id`, and Phase 4b's `rejected`, `ignored`,
@@ -1068,6 +1068,20 @@ hold only what it reports:
 
 Both are user-state writes (`store/userstate.go`): titles and the two poll times
 don't move the content generation; a mapping change does.
+
+`0064_audible_import` (Bridge Phase 4b, [backups](../bridge/audible.md#backing-up-a-title-audibleimport))
+adds no table: a title's backup is its `import_job_id`, the `bridge_jobs` row.
+
+- **`audible_accounts`** gains `template` (the account's placement template, `''`
+  for the Bridge's placement beside the series' other books) and `policy_since`
+  (when its automatic policy began to act: only a title first seen after it is
+  backed up by the policy). The migration backfills `policy_since` with
+  `COALESCE(last_poll_at, created_at)`; a new account starts at its creation, and
+  the first complete poll moves it to that poll. `policy_since` is a free column
+  of the user-state rule, as the two poll times are.
+- **`audible_titles`** gains `import_pending`: a console Back up of a preorder,
+  queued once a poll reports the title available. A column, so it survives a
+  restart.
 
 ### Podcasts
 

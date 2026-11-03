@@ -178,8 +178,17 @@ tab) and hand it to the container per run:
 Audible accounts (Phase 4a, [Audible](audible.md)) have **no settings**: an admin
 signs in and maps each account on the Accounts tab, and its sign-in is sealed in
 the vault as `audible_<id>` (below). The server's `audible` module decides whether
-the accounts are polled (`modules.audible.enabled` on the server, see
-[its configuration](../server/configuration.md#managed-modules-modules)).
+the accounts are polled and backed up (`modules.audible.enabled` on the server, see
+[its configuration](../server/configuration.md#managed-modules-modules)); an
+account's backup policy and placement template are set in the console.
+
+Backups (Phase 4b) download into `<data>/audible/tmp/` (`0700`), so the data
+folder needs room for about 2.2 times the largest book being backed up; a partial
+download there is kept across a restart for up to 7 days (see
+[Resume and temp files](audible.md#resume-and-temp-files)). They decrypt with the
+same ffmpeg the Bridge's other jobs use (the one its engine resolved at start, else
+`tools.ffmpeg_path`, `AUDIOSILO_BRIDGE_TOOLS_FFMPEG_PATH`, else ffmpeg on the
+`PATH`); every image has one.
 
 Two variables exist **only in a build with the `audiblefake` tag**, for development
 and tests. Release builds and images never carry the tag, so there they do nothing:

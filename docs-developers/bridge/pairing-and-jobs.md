@@ -114,7 +114,7 @@ pairing and after a mapping check finishes:
 | Field | What it carries |
 |---|---|
 | `version` | the Bridge's version |
-| `kinds` | the job kinds it runs (`bridge.verify`, `sidecars.generate` since Phase 1a, `sidecars.describe` since Phase 1c, `chapters.detect` since Phase 1d, `sidecars.contribute` and `meta.correct` since Phase 2b, `readalong.align` since Phase 3c, and `audible.poll` since Phase 4a) |
+| `kinds` | the job kinds it runs (`bridge.verify`, `sidecars.generate` since Phase 1a, `sidecars.describe` since Phase 1c, `chapters.detect` since Phase 1d, `sidecars.contribute` and `meta.correct` since Phase 2b, `readalong.align` since Phase 3c, `audible.poll` since Phase 4a, and `audible.import` since Phase 4b) |
 | `libraries` | its last [mapping check](mappings.md) of each library |
 | `workers` | its [ASR workers](workers.md) that have connected at least once: `name`, `version`, `platform` (the GOOS/GOARCH and the speech recognition in one line, e.g. `darwin/arm64, mlx-whisper (metal)`) and `last_seen` |
 | `ui_url` | its own page as the local network reaches it (its `public_url` setting), which the console links to |
@@ -585,6 +585,18 @@ priority when Check now asks. It runs in the `light` lane and writes nothing int
 library (an ASIN it backfills goes through the server). The module's scheduler
 queues it; queued polls are held while the module is off. See
 [Audible](audible.md#the-poll-audiblepoll).
+
+`audible.import` (Phase 4b) backs up one title into the account's library. It
+belongs to the `audible` module too: internal, a **writing** kind (a writable
+mapping of a books library, `library_not_writable` otherwise), no book path,
+params `{account, asin, library_id, dest_path, template}` built by the server,
+deduped per account and title, and **not** quiet (done and failed are notified,
+named by the title). The server sets its priority by who asked (a console Back
+up, a policy or Back up everything; see
+[the priorities](audible.md#on-the-server-queueing-internalaudibleimportsgo-catalogaudible_importgo)).
+It runs in the `download` lane, one per account at a time, and its partial
+download survives a restart. See
+[Backing up a title](audible.md#backing-up-a-title-audibleimport).
 
 ### Notifications
 

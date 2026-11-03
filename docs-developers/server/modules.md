@@ -19,7 +19,8 @@ fetch/retention jobs and admin storage actions (see [Podcasts](../bridge/podcast
 Phase 2c-2b adds on-demand fetches, status/Retry and queue prefetch; player
 views remain deferred. Phase 4a adds `audible`, requiring the `audible` Bridge
 feature: admin routes behind the toggle, a scheduler, and one job kind
-(`audible.poll`); see [Audible](../bridge/audible.md).
+(`audible.poll`); Phase 4b a second, `audible.import` (backups), and the policy
+pass after each poll; see [Audible](../bridge/audible.md).
 `transcode`, `metadata` and `bridge`
 are not modules: their keys, variables and flags shipped before the framework, and
 none is just a toggle (`transcode` follows ffmpeg, `metadata` needs its service built
@@ -172,8 +173,9 @@ checks and starts no new module-off work. See
 The `audible` module's `Start` runs `audible.RunScheduler`: a pass at once, then
 every minute, queueing up to 20 due accounts' `audible.poll` at priority `-10`
 while an online Bridge offers the kind (see
-[Audible](../bridge/audible.md#the-poll-audiblepoll)). Off stops it and holds the
-queued polls.
+[Audible](../bridge/audible.md#the-poll-audiblepoll)), every hour for an account
+with a released preorder it waits for. Off stops it, holds the queued polls and
+backups, and skips the policy pass after a poll.
 
 ## `GET /api/v1/admin/modules`
 

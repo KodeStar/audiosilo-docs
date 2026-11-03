@@ -946,6 +946,18 @@ both repos, with a test on each side.
   title's match is path-keyed with no FK, carried by a book's move. The player
   doesn't mirror the `audible` flag: it has no Audible surface yet. Detail:
   [Audible](../bridge/audible.md).
+- **Audible backups (Phase 4b):** a second kind, `audible.import` (feature
+  `audible`; internal, writing, not quiet, deduped per account and title), whose
+  params the server builds (`{account, asin, library_id, dest_path, template}`;
+  the Bridge reads them leniently and ignores unknown fields). The Bridge reports
+  progress steps `license|download|decrypt|place|rescan|enrich`, a result
+  `{library_id, path, files, bytes, enriched}` (`path` the book path
+  `POST /bridge/rescan` answered) or a failure `{code, message}` with one of
+  eight codes, and uses no new route. The server folds a done result into the
+  title's match (`how: "import"`) only for the title's own book. New console
+  routes only (admin, behind the toggle); the Bridge's account PUT now sets
+  `policy` on create only. Detail:
+  [Backing up a title](../bridge/audible.md#backing-up-a-title-audibleimport).
 - **The player (Phase 1a):** its first admin-only UI, gated on `user.role ===
   'admin'` (never a demo account, a household member or a kid's account),
   `capabilities.bridge`, `bridge.features` holding `sidecars` and
@@ -968,7 +980,10 @@ advertise the new kinds; a signed-in player still gets the `bridge` block. Phase
 never advertises `readalong.align`; a newer one reads an older server's missing
 fields as none. Phase 4a's are too: an older Bridge never advertises
 `audible.poll`, an older console ignores the `audible` setup item and module, and a
-shipped player ignores the `audible` flag. The Bridge sends `X-AudioSilo-Client:
+shipped player ignores the `audible` flag. Phase 4b's are too: an older Bridge
+never advertises `audible.import`, so nothing is queued for it (`kind_unavailable`,
+and a poll's policy pass queues nothing); its account PUT's `policy` still creates
+an account as before. The Bridge sends `X-AudioSilo-Client:
 AudioSilo Bridge/<version> (<os>)` on every call.
 
 **A change requires:** the server handler and its test, the mirrored type in the

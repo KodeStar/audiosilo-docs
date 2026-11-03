@@ -56,8 +56,10 @@ with no Bridge change, and **Phase 2d-2** its
 its narration, with no agent, and the server serves the map (the player's Text
 panel is Phase 3c-2, not built yet). **Phase 4a** adds [Audible accounts](audible.md):
 the Bridge signs in to Audible, lists what each account owns and matches it against
-a books library (`audible.poll`); downloading (4b), place sync (4c) and file moves
-arrive later.
+a books library (`audible.poll`). **Phase 4b** [backs titles up](audible.md#backing-up-a-title-audibleimport)
+into the library (`audible.import`: download, DRM removal, a no-replace install,
+rescan and ASIN), queued by the console, an account's policy or a released
+preorder; place sync (4c) and file moves arrive later.
 :::
 
 ## What it is for
@@ -198,8 +200,9 @@ the mark; see [generated content](../server/api/reference.md#generated-content))
   sign-in, the agent credentials), `sidecars.contribute` and `meta.correct`.
 - [Podcasts](podcasts.md) - feed files, polling, downloads, retention,
   generation/publication recovery, CHAP, private credentials and the HTTP guard.
-- [Audible](audible.md) - Phase 4a: the Audible sign-in and the vault,
-  `audible.poll` and its matching, the server's accounts and titles, the `audible`
+- [Audible](audible.md) - Phases 4a and 4b: the Audible sign-in and the vault,
+  `audible.poll` and its matching, `audible.import` (backups: resume, the hardened
+  transfer, secrets), the server's accounts, titles and queueing, the `audible`
   module and the build-tagged fake.
 - [Configuration](configuration.md) - the Bridge's settings and environment, the
   images and the compose example.

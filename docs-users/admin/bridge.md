@@ -33,8 +33,9 @@ play through a compatible client, downloads episodes selected by policy and remo
 eligible older downloads according to an admin's per-show retention policy
 (see [Podcasts](podcasts.md#downloads-and-retention) for the default,
 protections and API calls).
-With the **Audible** module on, it lists the books in your Audible accounts and
-finds the ones already on your server (see [Audible](audible.md)).
+With the **Audible** module on, it lists the books in your Audible accounts,
+finds the ones already on your server and backs up the others you choose into
+your library (see [Audible](audible.md)).
 :::
 
 To set one up, see [Running a Bridge](../getting-started/running-a-bridge.md). This
@@ -237,10 +238,11 @@ changing a library's folder there checks that library again.
 
 While the [Audible module](server.md#modules) is on and a Bridge is paired, an
 **Audible accounts** card sits under Libraries: the Audible accounts the Bridge signed in to, who and which
-library each is for, how many of its titles are on this server, and **Check now**
-and **Remove...** for each. You sign in and change them on the Bridge's
-[Accounts tab](../getting-started/bridge-accounts.md#audible); the card is
-read-only. See [Audible](audible.md#the-audible-accounts-card).
+library each is for, how many of its titles are on this server, and **Check now**,
+**Backup settings...**, **Back up everything...** and **Remove...** for each. You
+sign in, and choose who and which library an account is for, on the Bridge's
+[Accounts tab](../getting-started/bridge-accounts.md#audible); what it backs up is
+set here. See [Audible](audible.md#the-audible-accounts-card).
 
 ## Verify
 
@@ -279,8 +281,9 @@ filters it by state:
 | **Cancelled** | an admin cancelled it, the server did, or the Bridge ended it itself (see below) |
 
 Each job shows the library (and book), its progress, who asked and when: "Asked
-by" a person, "Scheduled by the server" for the podcast feed checks, episode
-downloads and retention checks the server queues itself, or "Asked by a
+by" a person, "Scheduled by the server" for the jobs the server queues itself
+(podcast feed checks, episode downloads and retention checks, Audible checks, and
+backups a policy or a preorder queued), or "Asked by a
 deleted account". A finished
 Verify sums up what it found (how many files matched, whether it can write, how long
 it took); **Details** shows everything it reported.
