@@ -434,7 +434,12 @@ proposal, the verdict goes into one checked-in list,
 `internal/audit/reviewed.json`, rather than into a one-off worklist. Each entry
 names the proposal by its own fields (op, target, series, field, from, to,
 others; retired slugs are read through the tombstone table) with a decision and
-a one-line reason:
+a one-line reason. One exception to that reading: an accepted or asserted
+`drop-membership` or `retitle-work` whose work was since retired is **stale**,
+never moved onto the survivor, even when the survivor sits at the very position
+or carries the very title the decision names. The work it named is gone, and the
+survivor is another record nobody reviewed: a reviewed drop of a duplicate
+*Philosopher's Stone*, once the two were merged, must not remove the real one.
 
 - `reject` turns a mechanical proposal advisory, so a fresh audit never offers
   it to the repair pass again (a link whose "original" is itself a translation,
@@ -479,10 +484,9 @@ that its records still exist. Its outcome in `SUMMARY.md` is one of:
   should be rewritten as one;
 - **stale**: a record it names is gone, or it has been applied (every loser now
   resolves to the target, the series already lists an added work at that
-  position, or no longer lists a dropped one - including a dropped work since
-  merged into a survivor the series lists only at other positions, or the work
-  already carries a retitle's new title, or a retitled work was since merged into
-  a survivor carrying neither title), so a re-run proposes nothing;
+  position, or no longer lists a dropped one, or the work already carries a
+  retitle's new title), so a re-run proposes nothing. A dropped or retitled work
+  since merged into another is stale whatever the survivor holds (see above);
 - **refused**, with the reason named: it would contradict another mechanical
   proposal (a drop also contradicts any other mechanical change to the same
   membership, or a merge folding its work or its series; a retitle, as for an
