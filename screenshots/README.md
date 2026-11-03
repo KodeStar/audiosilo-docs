@@ -519,6 +519,27 @@ a Mac picks mlx-whisper. At the end
 it unpairs on both sides. The agent container never
 runs, so the Agent card and the setup checklist say it is not running.
 
+The Audible shots (`bridge/audible-sign-in.png`, `bridge/accounts-audible.png`,
+`admin/audible-accounts-card.png`, `admin/audible-titles.png`, Bridge Phase 4a)
+come from the same script, so they are `capture: 'bridge'` in the manifest even
+though two show the console. No Audible account is used: when one of them is
+wanted and the checkout has `cmd/audiblefake`, `run.sh` builds the Bridge with
+`-tags embedui,audiblefake` (a development build; release images never carry the
+tag), builds and starts the Audible fake on `:8794` (`SHOTS_AUDIBLE_PORT`) and
+points the Bridge at it (`AUDIOSILO_BRIDGE_AUDIBLE_FAKE_URL`). After the Accounts
+shot, the script makes an **Audiobooks** library in `.cache/audible-library`
+(three short silent books, needing **ffmpeg**, shaped like three of the fake's
+30 made-up titles; one given its title's ASIN with an admin edit), signs in to
+Audible on the Accounts tab (the fake's sign-in address is followed here and its
+landing page pasted back with `www.amazon.com` as the host, as a US sign-in shows
+it; the Bridge reads only the code), maps the account to that library, turns the
+server's `audible` module on and asks Check now, waits for the Bridge's poll to
+finish (one match by ASIN, two by title), and shoots the Bridge's card, then the
+console's Audible accounts card and its Settings > Audible page after signing in
+to the console in the same browser. At the end it removes the account on the
+Bridge (which deregisters the fake's device and deletes it on the server), turns
+the module off and deletes the library. The seeded library is never touched.
+
 ## AudioSilo Meta site captures
 
 The `meta/` shots come from `capture-meta.mjs`, which drives the

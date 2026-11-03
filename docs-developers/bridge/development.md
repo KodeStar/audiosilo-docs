@@ -28,9 +28,21 @@ docker build --target slim .   # a Dockerfile change: slim | cuda | full | agent
   findings, don't widen the excludes.
 - A Go version bump is three edits: `go.mod`, `.go-version` and the Dockerfile's
   `golang:` tag.
+- **The Audible fake** (Phase 4a) and its tests build only with the
+  `audiblefake` tag, so the untagged gate skips them. A change to the Audible
+  packages also runs:
+
+  ```sh
+  go vet -tags audiblefake ./internal/audible/... ./internal/audibleacct ./internal/audiblejob ./internal/app ./cmd/audiblefake
+  go test -race -tags audiblefake ./internal/audible/... ./internal/audibleacct ./internal/audiblejob
+  go test -race -tags audiblefake -run Audible ./internal/app
+  ```
+
+  See [Audible](audible.md#the-audible-fake).
 
 CI (`.github/workflows/ci.yml`) runs both sides on every pull request and every
-push to `main`: a **go** job (build, vet, `go test -race`, golangci-lint) and a
+push to `main`: a **go** job (build, vet, `go test -race`, the `audiblefake`
+steps above, golangci-lint) and a
 **web** job (`npm ci`, typecheck, lint, the prettier check, the tests and a
 production build). `image.yml` builds and pushes the four images to the public
 GHCR package on `v*` tags and on manual dispatch (`full`, `slim` and `agent` for

@@ -223,6 +223,11 @@ Bridge offering `podcast`. It gates follow/check, new fetches, policy writes
 and scheduling. [Core reads and ready media](#podcasts) remain available
 offline/module-off; `podcast_fetch` advertises protocol support separately.
 
+`audible` (Bridge Phase 4a) is true only with its toggle on and an online Bridge
+offering `audible`. It gates the console's [Audible routes](#audible-accounts) and
+the scheduled polls; the Bridge's own Audible routes work either way. Only the
+console reads it: the player has no Audible surface and doesn't mirror it.
+
 ### `GET /healthz` · `GET /api/v1/healthz`
 
 *Public.* Liveness/readiness probe: checks database read-reachability under a
@@ -8560,8 +8565,8 @@ and after each settings save).
 | `requires_bridge` | the Bridge feature the module needs (one of `bridge.features`); omitted for a module that needs no Bridge |
 | `bridge_state` | omitted with `requires_bridge`. `offline`: no paired Bridge has sent a heartbeat in the last two minutes; `no_feature`: the online Bridge doesn't offer the feature (for `contribute`: it can't contribute, having no GitHub token GitHub accepts, whether its Accounts sign-in, `AUDIOSILO_BRIDGE_GITHUB_TOKEN` or `gh`); `ready`: it does |
 
-The registry also includes `podcasts`, with `requires_bridge: "podcast"`;
-both modules ship disabled. Setting it uses
+The registry also includes `podcasts`, with `requires_bridge: "podcast"`, and
+`audible`, with `requires_bridge: "audible"`; every module ships disabled. Setting it uses
 `{"modules":{"podcasts":true}}` on `PATCH /admin/settings`.
 
 `modules` is `[]` on a server with none. Whether a toggle is locked is the settings
@@ -9372,7 +9377,7 @@ that read the block, ask with their token.
   each known kind before its dot (`bridge.verify` is `bridge`, `sidecars.generate`,
   `sidecars.describe` and `sidecars.contribute` are `sidecars`, `chapters.detect`
   is `chapters`, `meta.correct` is `meta`, `readalong.align` is `readalong`, and
-  the podcast kinds give `podcast`),
+  the podcast kinds give `podcast`, `audible.poll` gives `audible`),
   plus `contribute` while the Bridge can
   file contributions (the last heartbeat's `setup.can_contribute`, else its
   `estimates.sidecars.can_contribute`), which the `contributions`
@@ -9635,9 +9640,10 @@ reads; a private feed URL appears only in the Bridge's claim answer. See
 
 ### `POST /api/v1/admin/bridge/jobs`
 
-*Admin.* Queues a job. `podcast.subscribe`, `podcast.poll`, `podcast.fetch` and
-`podcast.retain` are server-internal and refused here with `400` (no code): use
-listener follow/check, the admin storage routes or the scheduler instead.
+*Admin.* Queues a job. `podcast.subscribe`, `podcast.poll`, `podcast.fetch`,
+`podcast.retain` and `audible.poll` are server-internal and refused here with `400`
+(no code): use listener follow/check, the admin storage routes,
+[Check now](#post-apiv1adminaudibleaccountsaccountpoll) or the scheduler instead.
 Book-writing kinds on a podcast library return `409 not_book_library`;
 podcast kinds are only ever queued for a podcast library (follow and check answer
 `409 not_podcast_library` for a books library before queuing).
@@ -10242,6 +10248,281 @@ through a hidden (dot) folder is never indexed. The body is at most 8 KiB.
 | `200` | `{ path }` (`full`), or `{ path, attachments }` (`attachments`) |
 | `400` | `library_id and path are required`; `mode must be full or attachments`; `invalid from`; `from is only for a full rescan` |
 | `404` | `library not found`; `code: "not_indexable"` - nothing indexable at that path (gone, not a book, in a hidden folder, outside the library, or skipped by its ignore rules), or for `attachments` no indexed book there |
+
+## Audible accounts
+
+Bridge Phase 4a (`api/handlers_audible.go`, `catalog/audible.go`; the design is in
+[Audible](../../bridge/audible.md)). The Bridge signs in to Audible accounts and
+holds every credential; the server keeps only what it reports: each account's
+mapping (a person, a books library, a policy) and the titles its polls found. The
+server never talks to Audible.
+
+Two sets of routes, as for [the Bridge](#the-bridge):
+
+- **The Bridge's**, under `/bridge`: *Bridge token*, in the `Authorization` header
+  only; every other credential (a session, an API key, a cast or feed token) is
+  `401`. They are **not** behind the `audible` module's toggle, so the Bridge's page
+  can sign in and map accounts while the module is off.
+- **The console's**, under `/admin/audible`: *Admin* (a member's token `403`, a
+  bridge token `401`). All but `DELETE /admin/audible/accounts/{account}` answer
+  **`404 module_off`** while the `audible` [module](../modules.md) is off; the
+  delete works either way.
+
+An account id is the Bridge's own, `^[a-z0-9]{8,32}$`. On every route that names
+one, an id that doesn't match is `404 unknown_account`.
+
+### The account object
+
+```json
+{
+  "id": "k3v9x0p2m4q8r1t5",
+  "label": "Chris (US)",
+  "marketplace": "us",
+  "user_id": 3,
+  "user": { "id": 3, "display_name": "Chris" },
+  "library_id": 1,
+  "library": { "id": 1, "name": "Books" },
+  "paused": false,
+  "policy": "manual",
+  "sync": true,
+  "poll_hours": 6,
+  "created_at": "2026-11-02T10:00:00Z",
+  "updated_at": "2026-11-02T10:00:00Z",
+  "last_poll_at": "2026-11-02T10:01:12Z",
+  "last_queued_at": "2026-11-02T10:00:05Z",
+  "titles": { "total": 30, "available": 22, "preorder": 4, "unavailable": 4, "gone": 0, "matched": 3 }
+}
+```
+
+| Field | Meaning |
+|---|---|
+| `marketplace` | the Audible store, one of the server's metadata regions (`us`, `uk`, `de`, ...) |
+| `user` | the person it is mapped to (`display_name` falls back to the username) |
+| `library_id`, `library` | the books library its titles are matched against; both `null` and `paused: true` once that library was deleted |
+| `paused` | its library was deleted: no poll is queued and Check now is `409 account_paused` until the Bridge maps it again |
+| `policy` | `all`, `series` or `manual`: what Phase 4b will back up (every new title, new titles in a series the person has, only what an admin picks) |
+| `sync` | whether Phase 4c will keep the person's place in step with Audible |
+| `poll_hours` | how often the scheduler queues its poll (6) |
+| `last_poll_at` | when the Bridge last finished a poll (its `final` titles call), `null` before the first |
+| `last_queued_at` | when a poll was last queued (by the scheduler or Check now), `null` before the first |
+| `titles` | `GET /admin/audible/accounts` only: the titles counted by state, and how many are matched to a book here |
+
+### `GET /api/v1/bridge/users`
+
+*Bridge token.* Who an Audible account may be mapped to: enabled adults and admins,
+grown-up household members included; never a kid household member, a demo account
+or a disabled account. No emails. `Cache-Control: no-store`.
+
+```json
+{ "users": [ { "id": 3, "username": "chris", "display_name": "Chris", "admin": true } ] }
+```
+
+### `PUT /api/v1/bridge/audible/accounts/{account}`
+
+*Bridge token.* Records the Bridge's mapping of an account it signed in to,
+creating it or mapping it again (a paused account resumes; its titles and poll
+times stay). The body is strict JSON, at most 4 KiB:
+
+```json
+{ "label": "Chris (US)", "marketplace": "us", "user_id": 3, "library_id": 1, "policy": "manual", "sync": true }
+```
+
+`label` is cleaned and cut to 100 characters (`""` is fine: the console then names
+it after the person and the store).
+
+| Status | Meaning |
+|---|---|
+| `200` | `{ "account": Account }` (without `titles`) |
+| `400` | `invalid_request` (the JSON); `invalid_policy`; `invalid_marketplace`; `not_books` - the library is a podcast library |
+| `404` | `unknown_account` - an id the Bridge couldn't have made; `unknown_user` - no such user, or one an account may not be mapped to (above); `unknown_library` |
+
+### `DELETE /api/v1/bridge/audible/accounts/{account}`
+
+*Bridge token.* The Bridge removed the account: it goes, with its titles, and its
+open poll is cancelled ("the Audible account was removed"). `204`, whether or not
+the server knew it (the Bridge forgets locally first and may call again).
+
+### `PUT /api/v1/bridge/audible/accounts/{account}/titles`
+
+*Bridge token.* A page of one poll's titles: up to 500 a call, strict JSON, at most
+4 MiB. A poll sends all its pages under one `poll_id` (1 to 64 letters, digits,
+`.`, `-`, `_`), the last with `final: true`.
+
+```json
+{
+  "poll_id": "j12-a1-x7q",
+  "final": false,
+  "titles": [
+    {
+      "asin": "B0EXAMPLE1",
+      "title": "The Example",
+      "authors": ["A. Writer"],
+      "series": [{ "name": "Examples", "position": "3" }],
+      "release_date": "2026-11-20",
+      "runtime_s": 36000,
+      "state": "preorder",
+      "reason": "pre-order",
+      "match": { "library_id": 1, "path": "A. Writer/The Example", "how": "fuzzy" }
+    }
+  ]
+}
+```
+
+- `titles` is required: a call without it is `400`, never "the account owns
+  nothing" (an empty library sends one final call with `[]`).
+- `asin` must be an ASIN (upper-cased); `state` is `available`, `preorder` or
+  `unavailable` (`gone` is the server's); `release_date` is `YYYY-MM-DD` or `""`;
+  `runtime_s` 0 to 1,000,000. These are refused `400 invalid_request`.
+- Free text is cleaned and bounded, never refused: `title` (500), `reason` (256),
+  each author and series name (200), a position (32); authors past the first 20
+  and series past the first 10 are dropped.
+- `match` is `null` or names a library, the book's path as
+  [`GET /bridge/libraries/{id}/books`](#get-apiv1bridgelibrariesidbooks) gives it (a
+  clean relative path, or `.` for a book that is the library's root) and `how`
+  (`asin` when the book's ASIN is the title's, else `fuzzy`). A match into a library
+  that is missing or not a books library is stored as none. The match is
+  path-keyed with no FK: a rebuild keeps it, a book's move carries it, and
+  deleting the library clears it.
+- Each title replaces what an earlier poll said of it, keeping `first_seen` and the
+  console's and an import's columns. On the **final** call, every title of the
+  account this `poll_id` didn't send becomes `gone`, and the account's
+  `last_poll_at` is now.
+
+| Status | Meaning |
+|---|---|
+| `200` | `{ "stored": N }` |
+| `400` | `invalid_request` - the JSON, no `titles`, over 500, a bad `poll_id`, or a title refused (above) |
+| `404` | `unknown_account` |
+
+### `GET /api/v1/bridge/libraries/{id}/books`
+
+*Bridge token.* A books library's indexed books by path, a page at a time, for the
+Bridge's Audible matching. `?limit=` 1 to 500 (default and cap 500; not a positive
+number is `400`), `?after=` the previous page's `next`. `Cache-Control: no-store`.
+
+```json
+{
+  "books": [
+    {
+      "path": "Andy Weir/Project Hail Mary",
+      "title": "Project Hail Mary",
+      "authors": ["Andy Weir"],
+      "narrators": ["Ray Porter"],
+      "series": [],
+      "asin": "B08G9PRS1K",
+      "isbn": "",
+      "duration": 58008.4
+    }
+  ],
+  "next": "QW5keSBXZWlyL1Byb2plY3QgSGFpbCBNYXJ5"
+}
+```
+
+The effective values: `authors` and `narrators` split as the server splits credits
+(`[]` for none), `series` every series the book is in, the main one first, each with
+its position as stored (`"3"`, `"1-3"`, `""`); `duration` in seconds. `next` is
+`null` on the last page.
+
+| Status | Meaning |
+|---|---|
+| `200` | `{ books, next }` |
+| `400` | `invalid_request` - a bad `limit` or cursor; `not_books` - a podcast library |
+| `404` | `unknown_library` |
+
+### `PUT /api/v1/bridge/libraries/{id}/enrichment`
+
+*Bridge token.* Gives a book the ASIN of the Audible title the Bridge matched to it
+without doubt. `?path=` names the book (as the books list gives it); the body is
+`{"asin": "B0..."}`. It is stored as the book's enrichment (durable, path-keyed, as
+a community match's ASIN is) and on the index row at once. Only a write moves the
+content generation: the same ASIN again is a no-op `204`.
+
+| Status | Meaning |
+|---|---|
+| `204` | stored, or the book had that ASIN already |
+| `400` | `invalid_request` - no `path` (or over the path limit), no valid `asin` |
+| `404` | `book_not_found` - no book of a books library indexed at that path |
+| `409` | `asin_set` - the book has another ASIN, or an admin's ASIN edit (a cleared one too): a backfill never goes under one |
+
+### `GET /api/v1/admin/audible/accounts`
+
+*Admin, module on.* Every account, by label, each with its `titles` counts (see
+[the account object](#the-account-object)): `200 { "accounts": [Account] }`, `[]`
+for none.
+
+### `GET /api/v1/admin/audible/titles`
+
+*Admin, module on.* The titles, sorted by title (any case), then account and ASIN,
+keyset-paged.
+
+| Param | Meaning |
+|---|---|
+| `account` | one account's titles |
+| `state` | `available`, `preorder`, `unavailable` or `gone` (another value is `400`) |
+| `matched` | `1` (or `true`) only titles matched to a book here, `0` (or `false`) only the rest |
+| `q` | in the title, any author as written, or an exact ASIN (at most 200 characters) |
+| `after` | the previous page's `next` |
+| `limit` | 1 to 200, default 50 |
+
+```json
+{
+  "titles": [
+    {
+      "account": "k3v9x0p2m4q8r1t5",
+      "asin": "B0EXAMPLE1",
+      "title": "The Example",
+      "authors": ["A. Writer"],
+      "series": [{ "name": "Examples", "position": "3" }],
+      "release_date": "2026-11-20",
+      "runtime_s": 36000,
+      "state": "preorder",
+      "reason": "pre-order",
+      "match": null,
+      "rejected": false,
+      "ignored": false,
+      "dest_path": "",
+      "first_seen": "2026-11-02T10:01:10Z",
+      "updated_at": "2026-11-02T10:01:10Z",
+      "import_job_id": null
+    }
+  ],
+  "next": ""
+}
+```
+
+`next` is `""` on the last page. `rejected`, `ignored`, `dest_path` and
+`import_job_id` are Phase 4b's (always their zero values in 4a).
+
+### `POST /api/v1/admin/audible/accounts/{account}/poll`
+
+*Admin, module on.* **Check now**: queues the account's `audible.poll` at a
+person's priority. Polls are deduped per account: when one is open already, it is
+returned, raised to this priority if the scheduler queued it lower. The answer is
+the [job](#the-job-object). A new poll is in the audit log as `bridge.job` (with
+`account`).
+
+| Status | Meaning |
+|---|---|
+| `201` | a new poll |
+| `200` | the open one |
+| `404` | `unknown_account`; `module_off` |
+| `409` | `account_paused` - its library was deleted; `kind_unavailable` - no Bridge has reported, or the paired one doesn't run `audible.poll` |
+
+`audible.poll` is internal: [`POST /admin/bridge/jobs`](#post-apiv1adminbridgejobs)
+refuses it with `400`. Its params are exactly `{"account"}`, with no library or
+path; it is quiet (no notifications) and held while the module is off. The
+module's scheduler queues each due account's poll every `poll_hours` at priority
+`-10` while an online Bridge offers the kind. Only the newest ended poll of each
+account is kept.
+
+### `DELETE /api/v1/admin/audible/accounts/{account}`
+
+*Admin*, **not** behind the module's toggle. Removes an account the Bridge can no
+longer remove (one from a Bridge since unpaired or replaced, or whose removal on the
+Bridge couldn't reach the server), exactly as the Bridge's delete does: its titles
+go and its open poll is cancelled. It signs nothing out of Amazon: that is the
+Bridge's. `204`, known or not; audited as `bridge.audible.remove` (with `account`)
+when there was one. A bridge token is `401`.
 
 ## Well-known
 

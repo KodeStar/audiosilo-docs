@@ -1,6 +1,6 @@
 ---
 title: Bridge configuration
-description: "The Bridge's config.yaml and AUDIOSILO_BRIDGE_* variables, its data folder, the settings for characters and recaps (the agent container, the budgets, the transcript retention), contributing (the GitHub App's client ID, AUDIOSILO_BRIDGE_GITHUB_TOKEN read live), the sealed secrets and their key, PUID/PGID, the slim, full, cuda and agent images, and the compose example that runs it beside a server."
+description: "The Bridge's config.yaml and AUDIOSILO_BRIDGE_* variables, its data folder, the settings for characters and recaps (the agent container, the budgets, the transcript retention), contributing (the GitHub App's client ID, AUDIOSILO_BRIDGE_GITHUB_TOKEN read live), Audible (no settings; the fake's variables exist only in an audiblefake build), the sealed secrets and their key, PUID/PGID, the slim, full, cuda and agent images, and the compose example that runs it beside a server."
 ---
 
 The Bridge's own settings. The server has none for it (see
@@ -173,13 +173,30 @@ Since Phase 2b the Bridge can hold the agent's credential instead (the Accounts
 tab) and hand it to the container per run:
 [The credential hand-off](agent-container.md#the-credential-hand-off).
 
+## Audible
+
+Audible accounts (Phase 4a, [Audible](audible.md)) have **no settings**: an admin
+signs in and maps each account on the Accounts tab, and its sign-in is sealed in
+the vault as `audible_<id>` (below). The server's `audible` module decides whether
+the accounts are polled (`modules.audible.enabled` on the server, see
+[its configuration](../server/configuration.md#managed-modules-modules)).
+
+Two variables exist **only in a build with the `audiblefake` tag**, for development
+and tests. Release builds and images never carry the tag, so there they do nothing:
+
+| Environment | What it is |
+|---|---|
+| `AUDIOSILO_BRIDGE_AUDIBLE_FAKE_URL` | the base URL of an Audible fake (`go run -tags audiblefake ./cmd/audiblefake`): every Audible and Amazon endpoint goes there instead |
+| `AUDIOSILO_BRIDGE_AUDIBLE_RECORD_DIR` | records every Audible exchange into a `0600` JSON-lines file in this folder, scrubbed of credentials as it is written: for recording fixtures from a real account |
+
 ## Secrets
 
 The Bridge's secrets are **never in `config.yaml`**: the token from the server,
 the GitHub sign-in (`github_user_token`: the access token, the refresh token and
 both expiries sealed as **one** value, so a refresh replaces the pair in one
 write) and the agent credentials set on the Accounts tab (`claude_oauth_token`,
-`anthropic_api_key`, `openai_api_key`). `github_pat` is only ever deleted now
+`anthropic_api_key`, `openai_api_key`), and each Audible account's sign-in
+(`audible_<id>`: its tokens and device key, full Amazon account access). `github_pat` is only ever deleted now
 (above). Each is an AES-256-GCM sealed file in `<data>/secrets/`
 (`0600`), bound to its name so a file renamed onto another name doesn't open. One
 master key seals them all:
@@ -192,7 +209,8 @@ master key seals them all:
 If the key changes (a different variable, a replaced key file), the stored server
 token can't be opened and the Bridge refuses to start, saying so; a GitHub sign-in
 or an agent credential sealed with the old key reads as not set (sign in and set
-it again). The page's API never returns a secret: `GET /api/accounts` says which
+it again; an Audible account sealed with it can't be opened either: sign in to it
+again). The page's API never returns a secret: `GET /api/accounts` says which
 are set and when (for the agent, when its credentials last changed, `set_at`, and
 when each was saved, `set_at_by_kind`, which the page shows). Generate a key with,
 for example, `openssl rand -hex 32`. The startup log says where the key came from

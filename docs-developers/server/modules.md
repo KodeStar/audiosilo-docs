@@ -17,7 +17,9 @@ background work. Phase 2c-1 adds `podcasts`, requiring the `podcast` Bridge
 feature, user actions and a scheduler. Phase 2c-2a extends it with episode
 fetch/retention jobs and admin storage actions (see [Podcasts](../bridge/podcasts.md)).
 Phase 2c-2b adds on-demand fetches, status/Retry and queue prefetch; player
-views remain deferred.
+views remain deferred. Phase 4a adds `audible`, requiring the `audible` Bridge
+feature: admin routes behind the toggle, a scheduler, and one job kind
+(`audible.poll`); see [Audible](../bridge/audible.md).
 `transcode`, `metadata` and `bridge`
 are not modules: their keys, variables and flags shipped before the framework, and
 none is just a toggle (`transcode` follows ffmpeg, `metadata` needs its service built
@@ -103,7 +105,17 @@ Bridge kind and writable mapping in `EnsurePodcastFetch`; existing intents can
 be returned/promoted and valid ready files reused. Demo streams cannot create
 new intents. The core `podcast_fetch:true` capability advertises protocol
 support independently of the live module flag. The
-`podcasts` module needs `podcast`; `contributions` needs `contribute`.
+`podcasts` module needs `podcast`; `contributions` needs `contribute`; `audible`
+needs `audible`.
+
+The `audible` module mounts its console routes (`GET /admin/audible/accounts`,
+`GET /admin/audible/titles`, `POST /admin/audible/accounts/{account}/poll`) with the
+admin wrapper (`moduleRoutes.Admin`), as podcasts' admin storage routes are, and its
+Bridge routes are not gated (the Bridge's page signs in either way).
+`DELETE /admin/audible/accounts/{account}` is deliberately mounted outside the
+toggle (`requireAdmin` only): it removes an account the Bridge can no longer
+remove, which the scheduler would otherwise poll for good, so it must work after
+the module is turned off.
 
 Phase 2c-3's directory search (`/podcasts/discovery/*`) and OPML import use
 the same adult user wrapper plus the client gate; the OPML export is core
@@ -156,6 +168,12 @@ unavailable while the module is off, even for claimed/running work that may
 finish; ready status wins. The one-ahead prefetch hook uses the same intent
 checks and starts no new module-off work. See
 [on-demand play](../bridge/podcasts.md#on-demand-play-and-shared-intents).
+
+The `audible` module's `Start` runs `audible.RunScheduler`: a pass at once, then
+every minute, queueing up to 20 due accounts' `audible.poll` at priority `-10`
+while an online Bridge offers the kind (see
+[Audible](../bridge/audible.md#the-poll-audiblepoll)). Off stops it and holds the
+queued polls.
 
 ## `GET /api/v1/admin/modules`
 

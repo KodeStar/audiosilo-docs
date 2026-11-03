@@ -457,6 +457,14 @@ The modules today:
   share, which is cancelled if the book's characters and recaps are generated
   again meanwhile. Listeners see nothing of it. See
   [Contributing from your server](../community/contributing-from-your-server.md).
+- **Audible** - shows the books in the Audible accounts your Bridge signs in to,
+  and which of them are already on this server. It needs an online Bridge that
+  supports Audible (**An online Bridge that supports Audible** until there is one).
+  While it is on, the server asks the Bridge to check each account's library every
+  6 hours, Settings gains an **Audible** page and Settings > Bridge an **Audible
+  accounts** card. Turned off, both are hidden and no checks are made; the
+  accounts and their titles are kept. Listeners see nothing of it. See
+  [Audible](audible.md).
 
 A module's environment variable (`AUDIOSILO_MODULES_CONTRIBUTIONS_ENABLED=true`
 turns Contributions on) sets its switch too, and then locks it here, like any

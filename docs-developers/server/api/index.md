@@ -268,7 +268,7 @@ Failures a person can fix also carry a machine-readable **`code`** next to
 | `path_not_absolute` | `400` | `GET /admin/fs/dirs` or `POST /admin/setup/preview` with a relative path |
 | `folder_unreadable` | `404` | `GET /admin/fs/dirs` or `POST /admin/setup/preview` on a missing or unreadable folder |
 | `invalid_setup_step` | `400` | `PUT /admin/setup` naming a step id the flow doesn't have, or an outcome other than `done` / `skipped` |
-| `book_not_found` | `404` | an admin catalog call on a path that is not an indexed book (book page, edit, bulk edit, match, cover upload, community cover); an admin progress edit on a path with no progress and no indexed book; `POST /admin/bridge/jobs` and `GET /admin/bridge/estimate` on a path that is not an indexed book |
+| `book_not_found` | `404` | the Bridge's `PUT /bridge/libraries/{id}/enrichment` for no book of a books library at the path; an admin catalog call on a path that is not an indexed book (book page, edit, bulk edit, match, cover upload, community cover); an admin progress edit on a path with no progress and no indexed book; `POST /admin/bridge/jobs` and `GET /admin/bridge/estimate` on a path that is not an indexed book |
 | `invalid_override` | `400` | a metadata edit the server refuses; the body also carries a `field` key naming the offending field (`PATCH /admin/libraries/{id}/book`, `POST /admin/books/bulk`) |
 | `module_off` | `404` | any route a [managed module](../modules.md) mounts, while that module is off (Settings > Modules), for a caller the route's auth check admits (it runs first). The route exists either way, so turning the module on needs no restart. The `podcasts` module mounts `POST`/`DELETE /podcasts/follow`, `POST /podcasts/check`, the `/podcasts/discovery/*` routes and `POST /podcasts/opml/import`. Also `POST /admin/bridge/jobs` for a job the module owns (Phase 2b: `sidecars.contribute`, `meta.correct`, `sidecars.generate` with `contribute: "issue"`, the `contributions` module), checked before anything else about the job |
 | `metadata_off` | `404` | a community match search, a `POST /admin/books/works` work-id batch, a community cover (`POST /admin/meta/covers`, `PUT /admin/libraries/{id}/cover/community`), or the metadata mirror (`GET /admin/meta/mirror`, `POST /admin/meta/mirror/check`) while community metadata is turned off; also [`GET /me/upcoming`](reference.md#get-apiv1meupcoming), [`GET`](reference.md#get-apiv1meupcomingcalendar)/[`POST /me/upcoming/calendar`](reference.md#post-apiv1meupcomingcalendar), [`/me/upcoming/releases.ics`](reference.md#get-apiv1meupcomingreleasesics) and [`/me/upcoming/cover`](reference.md#get-apiv1meupcomingcover) (checked after `kid_account` and, on the mint, the `demo_account` and API-key refusals; before `upcoming_off`). Never `DELETE /me/upcoming/calendar` |
@@ -332,6 +332,13 @@ Failures a person can fix also carry a machine-readable **`code`** next to
 | `not_held` | `409` | the Bridge's `PATCH /bridge/jobs/{id}` from a claim that no longer holds the job (it ended, was cancelled, its lease ran out, or it no longer exists) |
 | `no_heartbeat` | `409` | the Bridge's `GET /bridge/jobs/next` before its first heartbeat |
 | `no_book` | `404` | the Bridge's `GET /bridge/libraries/{id}/book` with no indexed book at the path (or in the library) |
+| `unknown_account` | `404` | an [Audible account](reference.md#audible-accounts) route naming an account id the Bridge couldn't have made, a titles call or Check now for an account the server doesn't have |
+| `account_paused` | `409` | `POST /admin/audible/accounts/{account}/poll` (Check now) for an account whose library was deleted, until the Bridge maps it again |
+| `unknown_user` | `404` | the Bridge's `PUT /bridge/audible/accounts/{account}` naming no user, or one an account may not be mapped to (a kid household member, a demo or a disabled account) |
+| `unknown_library` | `404` | the Bridge's `PUT /bridge/audible/accounts/{account}` or `GET /bridge/libraries/{id}/books` naming no library |
+| `not_books` | `400` | the same two routes naming a podcast library |
+| `invalid_policy` / `invalid_marketplace` | `400` | an Audible account's `policy` (not `all`, `series` or `manual`) or `marketplace` (not one of the metadata regions) |
+| `asin_set` | `409` | the Bridge's `PUT /bridge/libraries/{id}/enrichment` for a book that has another ASIN, or an admin's ASIN edit |
 
 Podcast actions add `invalid_request` and `invalid_feed_url` (`400`),
 `no_library_access` (`403`), `show_not_found` (`404`), `not_podcast_library`,
@@ -545,6 +552,7 @@ is never staler than one built fresh; nothing on the wire changes (see
     "bridge": false,
     "contributions": false,
     "podcasts": false,
+    "audible": false,
     "podcast_fetch": true,
     "podcast_discovery": false,
     "podcast_opml": true,
@@ -682,6 +690,7 @@ needs; it is `false` (sent, not absent) otherwise. An older server omits it:
 | Flag | Gates |
 |---|---|
 | `podcasts` | the Podcasts module: follow/unfollow/check, new downloads, retention writes and feed/download/retention scheduling. Needs the `podcast` Bridge feature; false unless the toggle is on and that Bridge is online. Reads and valid present-pin reuse stay core, with client/private scope on player content. Players older than 2.2.0 remain excluded; the player shows Follow only while it is `true`; see [Podcasts](reference.md#podcasts) |
+| `audible` | the Audible module (Bridge Phase 4a): the console's [Audible routes](reference.md#audible-accounts) (`404 module_off` while off) and the scheduled `audible.poll`. Needs the Bridge's `audible` feature. Only the console reads it; the player has no Audible surface and doesn't mirror it yet |
 | `contributions` | the Contributions module: sending corrections and generated characters and recaps to the community database through the Bridge. Needs the Bridge's `contribute` feature. The console reads it (the generate dialog's contribute switch, Share with the community, Suggest corrections; with `meta` in `bridge.features` for corrections); the player never contributes and doesn't read it |
 
 Gate on the flag rather than on the server version: an older server answers

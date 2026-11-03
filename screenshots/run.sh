@@ -56,8 +56,8 @@
 #            BRIDGE_VERSION (the version the Bridge page shows, default the
 #              checkout's git describe; set the release's, e.g. 0.3.0),
 #            SHOTS_PORT / SHOTS_SETUP_PORT / SHOTS_META_PORT /
-#              SHOTS_MIRROR_PORT / SHOTS_BRIDGE_PORT (default 8790 / 8791 / 8795 /
-#              8792 / 8793 - move them
+#              SHOTS_MIRROR_PORT / SHOTS_BRIDGE_PORT / SHOTS_AUDIBLE_PORT (default
+#              8790 / 8791 / 8795 / 8792 / 8793 / 8794 - move them
 #              when a run in another checkout holds those ports; two runs in one
 #              checkout share .cache/ and clash).
 set -euo pipefail
@@ -82,6 +82,7 @@ SETUP_PORT="${SHOTS_SETUP_PORT:-8791}"
 META_PORT="${SHOTS_META_PORT:-8795}"
 MIRROR_PORT="${SHOTS_MIRROR_PORT:-8792}"
 BRIDGE_PORT="${SHOTS_BRIDGE_PORT:-8793}"
+AUDIBLE_PORT="${SHOTS_AUDIBLE_PORT:-8794}"
 BRIDGE_DATA="$CACHE/bridge-data"
 MIRROR_DATA="$CACHE/mirror-data"
 
@@ -270,6 +271,7 @@ cleanup() {
   [ -n "${SETUP_PID:-}" ] && kill "$SETUP_PID" 2>/dev/null || true
   [ -n "${META_PID:-}" ] && kill "$META_PID" 2>/dev/null || true
   [ -n "${BRIDGE_PID:-}" ] && kill "$BRIDGE_PID" 2>/dev/null || true
+  [ -n "${AUDIBLE_PID:-}" ] && kill "$AUDIBLE_PID" 2>/dev/null || true
   # Stopped before its folder goes, so nothing writes there meanwhile.
   [ -n "${MIRROR_PID:-}" ] && { kill "$MIRROR_PID" 2>/dev/null; wait "$MIRROR_PID" 2>/dev/null; } || true
   rm -rf "$MIRROR_DATA"
@@ -441,14 +443,32 @@ if [ "${SKIP_BRIDGE:-0}" != "1" ] && manifest_wanted capture bridge; then
     # Its page synced into the checkout (built, never committed), the binary into
     # .cache, stamped with BRIDGE_VERSION (default: git describe, no leading v).
     BRIDGE_VERSION="${BRIDGE_VERSION:-$(git -C "$BRIDGE" describe --tags --always 2>/dev/null | sed 's/^v//')}"
+    # The Audible shots (Bridge Phase 4a) need the Audible fake, which exists only in
+    # a build with the audiblefake tag (never a release build): that build, and the
+    # fake, only when one is wanted and the checkout has it.
+    BRIDGE_TAGS=embedui
+    AUDIBLE_FAKE_URL=""
+    if { shot_wanted bridge/audible-sign-in.png || shot_wanted bridge/accounts-audible.png \
+        || shot_wanted admin/audible-accounts-card.png || shot_wanted admin/audible-titles.png; } \
+        && [ -d "$BRIDGE/cmd/audiblefake" ]; then
+      BRIDGE_TAGS=embedui,audiblefake
+      (cd "$BRIDGE" && go build -tags audiblefake -o "$CACHE/audiblefake" ./cmd/audiblefake) \
+        > "$CACHE/audiblefake-build.log" 2>&1 \
+        || { echo "  ! the Audible fake build failed (see $CACHE/audiblefake-build.log)"; exit 1; }
+      "$CACHE/audiblefake" --listen "127.0.0.1:$AUDIBLE_PORT" > "$CACHE/audiblefake.log" 2>&1 &
+      AUDIBLE_PID=$!
+      AUDIBLE_FAKE_URL="http://127.0.0.1:$AUDIBLE_PORT"
+      wait_healthy "$AUDIBLE_FAKE_URL/_fake/calls" "$CACHE/audiblefake.log" "Audible fake"
+    fi
     (cd "$BRIDGE" && scripts/build-web.sh --sync-only \
-        && go build -tags embedui -ldflags "-X main.version=${BRIDGE_VERSION:-dev}" \
+        && go build -tags "$BRIDGE_TAGS" -ldflags "-X main.version=${BRIDGE_VERSION:-dev}" \
           -o "$CACHE/audiosilo-bridge" ./cmd/audiosilo-bridge) > "$CACHE/bridge-build.log" 2>&1 \
       || { echo "  ! the Bridge build failed (see $CACHE/bridge-build.log)"; exit 1; }
     rm -rf "$BRIDGE_DATA" "$CACHE/bridge-home" && mkdir -p "$BRIDGE_DATA" "$CACHE/bridge-home"
     # As in a fresh container: none of this machine's tools on PATH (no gh sign-in,
     # no local speech recognition) and a HOME of its own.
     env -i PATH=/usr/bin:/bin:/usr/sbin:/sbin HOME="$CACHE/bridge-home" \
+      AUDIOSILO_BRIDGE_AUDIBLE_FAKE_URL="$AUDIBLE_FAKE_URL" \
       "$CACHE/audiosilo-bridge" serve --data "$BRIDGE_DATA" --listen "127.0.0.1:$BRIDGE_PORT" \
       > "$CACHE/bridge.log" 2>&1 &
     BRIDGE_PID=$!
@@ -459,10 +479,11 @@ if [ "${SKIP_BRIDGE:-0}" != "1" ] && manifest_wanted capture bridge; then
     else
       BRIDGE_BASE="http://127.0.0.1:$BRIDGE_PORT/" BRIDGE_PASSWORD="$BRIDGE_PASSWORD" \
         AS_ORIGIN="http://127.0.0.1:$PORT" ADMIN_PASSWORD="$ADMIN_PASSWORD" \
-        node capture-bridge.mjs
+        AUDIBLE_FAKE_URL="$AUDIBLE_FAKE_URL" node capture-bridge.mjs
     fi
     kill "$BRIDGE_PID" 2>/dev/null || true
     BRIDGE_PID=""
+    if [ -n "${AUDIBLE_PID:-}" ]; then kill "$AUDIBLE_PID" 2>/dev/null || true; AUDIBLE_PID=""; fi
   fi
 fi
 
