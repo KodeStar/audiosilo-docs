@@ -198,6 +198,15 @@ That is a contract, because
 (`lscr.io/linuxserver/audiosilo`, the image Unraid's Community Applications lists)
 installs `audiosilo_<version>_linux_{amd64,arm64}.tar.gz` from the published release
 onto Alpine. The binary is static, so that image runs the native engine too.
+
+A static glibc binary carries two obligations of its own. glibc is LGPL-2.1-or-later,
+so `NOTICE` (where the glibc source is, and how to relink: the full source and
+build recipe are public) ships in every archive, at
+`/usr/share/doc/audiosilo/NOTICE` in the `.deb`/`.rpm` and the Docker image, and the
+packages' license reads `MIT and LGPL-2.1-or-later`. And glibc starts threads with
+`clone3`, which Docker's seccomp profile refused with `EPERM` before **20.10.10**, so in
+a container the server needs Docker 20.10.10 or newer (it stops at start-up with
+`pthread_create failed` on older ones). The release notes' footer says both.
 Their CI polls `releases/latest` hourly, so publishing the draft is what
 triggers a new `<tag>-ls<N>` image. The full list is in
 `audiosilo-server/RELEASING.md` section 2c.

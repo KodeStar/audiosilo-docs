@@ -32,6 +32,17 @@ Work through these in order:
 4. **Reaching it from outside your home?** That needs its own setup - see
    [Remote access](./getting-started/remote-access.md).
 
+### The container stops at start-up with "pthread_create failed"
+
+If the Docker container exits as soon as it starts and its log shows
+`runtime/cgo: pthread_create failed: Operation not permitted`, your Docker is
+older than **20.10.10**. The server is built with the GNU C Library, which
+starts threads with a system call older Docker blocks by mistake. Update Docker
+(on a NAS, update its container app or system), then start the container again.
+`docker version` shows the version you have. Running the
+[release binary](./getting-started/install-binary.md) outside Docker isn't
+affected.
+
 ### My browser warns about the certificate
 
 That's expected with the default setup. The server generates a **self-signed

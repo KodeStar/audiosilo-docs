@@ -17,6 +17,8 @@ Each release includes:
 - `.deb` and `.rpm` packages for Linux, which also install a systemd service (see below).
 - `checksums.txt`, so you can verify your download.
 
+The Linux downloads contain the GNU C Library, which is licensed under the LGPL; each archive (and the `.deb`/`.rpm`, under `/usr/share/doc/audiosilo/`) includes a `NOTICE` file saying where its source is. AudioSilo itself is MIT licensed.
+
 Unpack the archive and you have one executable, `audiosilo`. **The web player is built into the release binary**, so `/web` works out of the box - no extra downloads or configuration.
 
 ### ffmpeg and ffprobe
