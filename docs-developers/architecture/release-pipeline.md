@@ -78,7 +78,18 @@ The multi-stage `Dockerfile`:
   JS/CSS) and copies `internal/web/adminui/dist` into the Go stage, where it is
   embedded (see [Built-in web UI](../server/web-ui.md#the-admin-console-admin-ui));
 
-- builds the CGO-free server binary (`CGO_ENABLED=0`, `-trimpath`), stamping the
+- builds the server binary with the **native SQLite engine** by default
+  (`ARG SQLITE_ENGINE=native`: `CGO_ENABLED=1`, `-tags "sqlite_native
+  sqlite_fts5 sqlite_preupdate_hook sqlite_omit_load_extension netgo
+  osusergo"`, `-trimpath`), linked statically against glibc
+  (`-linkmode external -extldflags -static`) on the Debian-based `golang:1.26`
+  image, so the Alpine final stage runs it as it is and with glibc's allocator
+  (musl's cost a first scan 27% against the pure-Go engine). `netgo` and
+  `osusergo` keep the static binary off glibc's NSS. The build stays on the
+  build host's platform; a cross leg installs the target's cross compiler
+  (`gcc-aarch64-linux-gnu` or `gcc-x86-64-linux-gnu`). `--build-arg
+  SQLITE_ENGINE=modernc` builds the pure-Go engine without cgo instead (see
+  [SQLite choices](../server/data-model.md#sqlite-choices)). Either way it stamps the
   release version via
   `-ldflags "-X github.com/kodestar/audiosilo-server/internal/api.Version=${VERSION}"`
   (`image.yml` passes the semver on a tag build, else `dev-<short sha>`, as the
@@ -95,8 +106,9 @@ negotiate via the `GET /api/v1/server` capability flags instead.
 
 ## 3. Native binaries - `release.yml` + `.goreleaser.yml`
 
-The same `v*` tag triggers GoReleaser on a single Linux runner. The server is
-CGO-free (modernc SQLite), so everything cross-compiles with no C toolchain:
+The same `v*` tag triggers GoReleaser on a single Linux runner. These binaries
+are built CGO-free on the pure-Go SQLite engine (modernc), unlike the Docker
+image, so everything cross-compiles with no C toolchain:
 
 - **Targets:** `linux`, `darwin`, `windows` × `amd64`, `arm64` (six binaries).
 - **Archives:** `.tar.gz` (Linux/macOS) and `.zip` (Windows), named

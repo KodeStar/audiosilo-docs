@@ -92,7 +92,10 @@ for the admin catalog's author/narrator merge keys and the community match
 search's title cleaning and comparison, and the listening import's title
 tier (`internal/importer`). `Fold` is the Unicode-aware sibling of
 `Normalize` (lowercase, keep every script's letters and digits, drop spacing and
-punctuation); `Normalize` keeps ASCII only and is unchanged.
+punctuation); `Normalize` keeps ASCII only and is unchanged. `NewIndex` prepares
+a candidate list once for many `Best` calls (the listening import's per-author
+pools), and `scan.go` holds hand-written scanners for its title patterns,
+checked against the regular expressions they replace in `scan_test.go`.
 
 ### `internal/config`
 
@@ -104,9 +107,13 @@ native deep-link association files, and `WebDir`. See
 
 ### `internal/store`
 
-Opens SQLite via `modernc.org/sqlite` (pure Go - the binary is CGO-free and
-cross-compiles anywhere) and applies the embedded, append-only migrations in
-`internal/store/migrations/`. `store.DB` routes reads and writes to separate
+Opens SQLite through the build's engine (`engine*.go`): `modernc.org/sqlite`
+(pure Go, so a default build is CGO-free and cross-compiles anywhere) or, in a
+build with `-tags sqlite_native` and cgo, the native C SQLite through
+`mattn/go-sqlite3`, which the Docker image ships (see
+[SQLite choices](data-model.md#sqlite-choices)). It applies the embedded,
+append-only migrations in `internal/store/migrations/`, and both pools keep
+each connection's statements prepared (`stmtcache.go`). `store.DB` routes reads and writes to separate
 pools (single-connection writer, read-only reader pool over WAL) and provides
 `WithTx` with slow-transaction logging, and `ContentGeneration`, the content
 generation that moves after every write has finished except a user-state one

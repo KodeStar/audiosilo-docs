@@ -68,11 +68,16 @@ docker build --build-arg WEB_IMAGE=ghcr.io/kodestar/audiosilo-web:latest \
 docker push ghcr.io/kodestar/audiosilo-server:dev
 ```
 
+The image builds the native SQLite engine in by default; add
+`--build-arg SQLITE_ENGINE=modernc` for the pure-Go one (see
+[SQLite choices](../server/data-model.md#sqlite-choices)).
+
 ### 2b. Native binaries (`release.yml`, name: *release (native binaries)*)
 
 The same tag runs GoReleaser (`.goreleaser.yml`) for home users who don't want
-Docker. The server is CGO-free (modernc SQLite), so linux/darwin/windows ×
-amd64/arm64 all cross-compile from one Linux runner.
+Docker. They are built CGO-free on the pure-Go SQLite engine (modernc; the
+Docker image builds the native one), so linux/darwin/windows × amd64/arm64 all
+cross-compile from one Linux runner.
 
 - **Web player embedded:** builds with `-tags embedplayer`;
   `scripts/fetch-web-player.sh` populates `internal/web/player/` from the pinned
