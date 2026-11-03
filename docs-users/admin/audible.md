@@ -526,7 +526,8 @@ started the book again here, is left alone. Your playback speed here stays as it
 is. A place at the end of the book on Audible marks the book **finished** here.
 
 **From here to Audible.** A few minutes after you stop listening here (once your
-place has stayed put for 3 minutes), the Bridge sends it to Audible, as it is: a
+place has stayed put for 3 minutes, so up to about 4 minutes), the Bridge sends it
+to Audible, as it is: a
 place you moved back to here goes back on Audible too. If you listened further on
 Audible in the meantime, your place here isn't sent: the place further on wins, and
 the next sync brings it here. When sync starts, only places you changed in the last
@@ -540,8 +541,8 @@ A title's place syncs only when the title is **on this server** (matched to a bo
 not marked [Not this book](#not-this-book), not **No longer in the library**) and
 not marked [Don't sync](#dont-sync-this-book). A title whose length on Audible is
 quite different from the book here (more than about 5% plus two minutes: usually
-another recording matched by its title) doesn't sync here, and neither does a
-place past the end of the book.
+another recording matched by its title) doesn't sync either way, and neither does
+a place past the end of the book.
 
 The syncs show in the Bridge's [Jobs](bridge.md#jobs) list as **Syncing places
 with Audible**, **Scheduled by the server**. Only the latest finished one of each

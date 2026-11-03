@@ -884,7 +884,10 @@ alone: `POST /me/listening/sync` refuses a batch naming one (`400 device_id is
 reserved`), a `PUT .../progress` naming one (a row echoed back) saves under no
 device id, and an edit of the row (`EditProgress`, the listener's or an admin's)
 clears it, so the edit reaches the feed and Audible's next place can't undo it
-unseen.
+unseen. A listening import (Audiobookshelf) that moves on such a row clears its
+device id and name the same way (`importer.mergeProgress`), and its undo restores
+the earlier place under no device either (`progressPrior.restored`), never as
+Audible's, so the feed carries the undo to Audible too.
 
 ### The server to Audible: the push loop
 
@@ -897,9 +900,12 @@ library). It skips rows written by `audible:<account>`, and keeps a row on a tit
 the last sync didn't list for that book pending (`listed` 0,
 `store.PendAudiblePush`) until a sync lists it.
 
-For each place **still for 3 minutes** (`StillFor`: its row unchanged), it drops one
-under 1 s, within 5 s of `last_ms` (debounce) or `heard_ms` (echo), or past the
-runtime; reads Audible's places once (`Positions`) and drops one Audible moved on
+For each place **still for 3 minutes** (`StillFor`: the Bridge has seen the same
+row for that long on its own clock, so a push lands up to about 4 minutes after
+the listener stops), it drops one under 1 s, within 5 s of `last_ms` (debounce) or
+`heard_ms` (echo), past the runtime, or on a book whose length disagrees with
+Audible's runtime (5% of the longer plus 2 minutes: the server's
+`duration_mismatch` rule); reads Audible's places once (`Positions`) and drops one Audible moved on
 from since (over 5 s further on and neither `last_ms` nor `heard_ms`: furthest wins,
 and the next sync brings it in); else writes it: `ContentACR` once per ASIN (cached;
 a cached one a write answers `400`/`404` for is read again and the write tried once

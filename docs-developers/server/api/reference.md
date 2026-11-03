@@ -8169,7 +8169,12 @@ history spans and bookmarks are deleted (by `import_id`; a bookmark the person
 edited or labelled since is kept and becomes theirs), and each progress row it
 changed is restored to what it was before, unless it changed since (a player's
 save or an edit: then it stays). Answers `200` with the import (`undone`). Audited as
-`import.undo` (`import`).
+`import.undo` (`import`). A row an Audible account wrote (`device_id`
+`audible:<account>`, Bridge Phase 4c) that the apply moved on lost that device id
+and name at the apply (`importer.mergeProgress`, as an edit does), so the import's
+place reaches Audible; the undo restores the earlier place under **no** device
+either (`progressPrior.restored`), never as `Audible (<label>)` again, so the feed
+sends the undo to Audible too.
 
 | Status | Meaning |
 |---|---|
