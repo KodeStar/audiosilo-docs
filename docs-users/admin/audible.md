@@ -136,7 +136,8 @@ A few things help a title find its book:
   server.
 - **A folder covering several books**, like `LAM05-06`, is treated as an omnibus,
   so Audible's book 5 on its own won't match it. An Audible pack of books 5 and 6
-  can.
+  can. A pack can also match a folder numbered as its first book (`LAM05`); it
+  shows as on this server, but that book's details are not updated from the pack.
 
 **When several titles match one book**, the best match keeps it. The others show
 **Not here**, with **contested** under the title: the book is probably here under

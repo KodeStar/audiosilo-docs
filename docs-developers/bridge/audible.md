@@ -191,7 +191,9 @@ sequence is placed at the range's start, so a number in its title ("Pack 3") nev
 stands in for the position Audible gave. Such a title tries the spanning books
 that start where it does first, then the single volumes (a pack may be stored as a
 folder numbered as its first volume); a spanning book that starts elsewhere is
-another pack. An ASIN match is never held back by any of this.
+another pack. A pack matched that way to a single-volume folder is kept as a match
+but not enriched (`importjob.SpanMismatch`), so the folder never takes the pack's
+ASIN. An ASIN match is never held back by any of this.
 
 **Contested books.** `importjob.KeepBest` settles a path claimed by several titles
 (`Claim{Path, Score, Work}`). The single best score keeps the match. A tie for the
