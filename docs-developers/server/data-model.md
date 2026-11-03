@@ -552,15 +552,21 @@ tables were rebuilt rather than migrated in place):
   chain lasts across posts, see
   [How a batch is applied](api/reference.md#how-a-batch-is-applied)); every other
   writer clears them, and a stale version is the old rule. *(0066, Bridge Phase
-  4c)* `change_seq`: the order this server wrote the person's rows in, per user
-  (one more than their highest), set by two triggers on every insert and every
-  `UPDATE OF` `position`, `duration`, `finished`, `version`, `device_id` or
-  `updated_at` (the triggers' own update sets only `change_seq`, so it never fires
-  them again), existing rows numbered in `updated_at` order; index
+  4c)* `change_seq`: the order this server wrote progress rows in, drawn from the
+  one-row, server-wide **`progress_change_counter`** (`id` 1, `seq`), which only
+  goes up and is never reused, so a deleted row can't hand its number to the next
+  write. Two triggers bump it on every insert and every `UPDATE OF` `position`,
+  `duration`, `finished`, `version`, `device_id` or `updated_at` (the triggers' own
+  update sets only `change_seq`, so it never fires them again), and two on
+  `audible_titles` move the person's row on a title's book to the next number when
+  the title is inserted with a match, matched again, synced again (`no_sync`,
+  `rejected` or `ignored` cleared, back from `gone`) or its `runtime_s` changes, so
+  the feed offers that place again. Existing rows are numbered in `updated_at`
+  order; index
   `idx_progress_user_change` `(user_id, change_seq)`. It pages
   [`GET /bridge/progress`](api/reference.md#get-apiv1bridgeprogress), so a row
   written late with an earlier `updated_at` is still fed to Audible. It is free in
-  the user-state rule. A `device_id` of `audible:<account>` is an Audible account's
+  the user-state rule, and so is the counter's `seq`. A `device_id` of `audible:<account>` is an Audible account's
   place, written only by the Bridge's listening route.
 - **`listening_events`** *(0061, listening sync)* - the listening-event log behind
   [`POST /me/listening/sync`](api/reference.md#post-apiv1melisteningsync): every
@@ -1105,7 +1111,8 @@ and adds:
   turns `sync` off and clears `sync_queued_at` and `last_sync_at`;
 - to **`audible_titles`**: `no_sync` (the console's "Don't sync this book", kept by
   a poll like `rejected` and `ignored`; the sync's alone, backups never read it);
-- to **`progress`**: `change_seq` and its triggers (above).
+- **`progress_change_counter`**, and to **`progress`** `change_seq` with its
+  triggers (above).
 
 `0065_audible_planned` ([planned destinations and contested
 titles](../bridge/audible.md#migration-0065_audible_planned)) adds to

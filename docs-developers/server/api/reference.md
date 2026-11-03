@@ -10898,12 +10898,19 @@ the start), `?limit=` (default 200, at most 500). `Cache-Control: no-store`.
 The rows are the person's progress rows on the books of the account's synced
 titles that the person can still reach, **one per title** (two titles on one book
 are two rows), leaving out the rows the account itself wrote (`device_id`
-`audible:<account>`: no echo). They are ordered by `progress.change_seq`, the order
-this server wrote the person's rows in, then ASIN, after the opaque cursor `since`,
-so a row written late with an earlier `updated_at` (an offline backlog, a late
-finish, a client's clock behind) is still fed; `updated_at` is the row's own.
-`next` is the cursor of the last row read (`since` again when there is none): the
-Bridge keeps it between polls. `more` is `true` for a full page: ask again at once.
+`audible:<account>`: no echo) and, per title, a row whose own title's `runtime_s`
+disagrees with the book's length (5% of the longer plus 2 minutes, the listening
+route's `duration_mismatch`; the indexed duration, else the row's stored
+`duration`; both unknown agree): with two titles on one book, only the agreeing
+one is offered. They are ordered by `progress.change_seq`, the order this server
+wrote progress rows in (a server-wide counter that only goes up, also bumped when a
+title is newly matched, synced again or its runtime changes, so that book's place
+is offered again), then ASIN, after the opaque cursor `since`, so a row written
+late with an earlier `updated_at` (an offline backlog, a late finish, a client's
+clock behind) is still fed; `updated_at` is the row's own. `next` is the cursor of
+the last row read, a left-out one included (`since` again when there is none): the
+Bridge keeps it between polls. `more` is `true` for a full page read (its rows may
+be fewer): ask again at once.
 
 | Status | Meaning |
 |---|---|

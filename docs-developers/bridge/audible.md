@@ -838,7 +838,9 @@ again to another book is a new event.
 The job's **result** is counts and flags only: `account`, `titles`, `heard`,
 `sent`, `finished`, the server's `applied`, `duplicate`, `behind`, `not_applied`,
 `rejected`, and the skips (`skipped_echo`, `skipped_past_runtime`, `skipped_old`,
-`skipped_start`); `waiting` with `wait_until`, or `sync_off`. A failure's result is
+`skipped_start`), `mismatched` (events the server rejected `duration_mismatch`:
+counted, sent once a job and never retried in it); `waiting` with `wait_until`, or
+`sync_off`. A failure's result is
 `{code, message}`.
 
 **The server's fold** (`OnEnded`, `catalog.FoldAudibleSync`): a done sync that read
@@ -894,18 +896,23 @@ Audible's, so the feed carries the undo to Audible too.
 `audiblesync.Pusher` is not a job (no row a minute). Every minute (`PushEvery`), for
 each account mapped here that isn't refused, waiting or paused, it reads the feed
 [`GET /bridge/progress`](#the-two-bridge-routes) from the account's `push_cursor`
-(the first read takes only rows of the last 10 minutes, later ones nothing older
-than `push_from`, both started again by a mapping to another server, person or
-library). It skips rows written by `audible:<account>`, and keeps a row on a title
+(both started again by a mapping to another server, person or library). The feed
+pages in the server's write order and may give a row again with `updated_at`
+unchanged, so a row is new by its **place** alone, never its time or version: a new
+version at the same place never re-arms a push. The baseline (every read until one
+reaches the feed's end) takes only rows of the last 10 minutes by `updated_at`;
+history before it is none. A row the Bridge fails to record keeps the cursor, so
+the pass reads it again. It skips rows written by `audible:<account>`, and keeps a row on a title
 the last sync didn't list for that book pending (`listed` 0,
 `store.PendAudiblePush`) until a sync lists it.
 
-For each place **still for 3 minutes** (`StillFor`: the Bridge has seen the same
-row for that long on its own clock, so a push lands up to about 4 minutes after
-the listener stops), it drops one under 1 s, within 5 s of `last_ms` (debounce) or
-`heard_ms` (echo), past the runtime, or on a book whose length disagrees with
-Audible's runtime (5% of the longer plus 2 minutes: the server's
-`duration_mismatch` rule); reads Audible's places once (`Positions`) and drops one Audible moved on
+For each place **still for 3 minutes** (`StillFor`, since `row_seen`: the Bridge
+has seen the same place for that long on its own clock, so a push lands up to
+about 4 minutes after the listener stops), it drops one under 1 s, within 5 s of
+`last_ms` (debounce) or `heard_ms` (echo), or past the runtime. It checks no length
+of its own: a book whose length disagrees with the title's runtime never reaches
+it, since the feed leaves that row out (the server's `duration_mismatch` rule). It
+reads Audible's places once (`Positions`) and drops one Audible moved on
 from since (over 5 s further on and neither `last_ms` nor `heard_ms`: furthest wins,
 and the next sync brings it in); else writes it: `ContentACR` once per ASIN (cached;
 a cached one a write answers `400`/`404` for is read again and the write tried once
@@ -935,13 +942,20 @@ Detail in the [API reference](../server/api/reference.md#audible-position-sync).
 | Route | What |
 |---|---|
 | `POST /bridge/audible/accounts/{account}/listening` | `{sent_at, events}` (strict; `sent_at` required; the Sync v2 event shapes and limits): the account's places on Audible, furthest only. `200` the Sync v2 answer |
-| `GET /bridge/progress?account=&since=&limit=` | the person's places on the synced titles' books, one row per title, the account's own rows left out, keyset by `(change_seq, asin)`: `{rows, next, more}`. `400 invalid_request` for no account, a bad limit or cursor |
+| `GET /bridge/progress?account=&since=&limit=` | the person's places on the synced titles' books, one row per title, the account's own rows left out, and a row whose own title's `runtime_s` disagrees with the book's length left out (per title), keyset by `(change_seq, asin)`: `{rows, next, more}`. `400 invalid_request` for no account, a bad limit or cursor |
 
-`progress.change_seq` (`0066`) is the order the server wrote the person's rows in,
-set by two triggers on every insert and every `UPDATE OF` position, duration,
-finished, version, device_id or updated_at, so no write path can miss it: a row
-written late with an earlier `updated_at` (an offline backlog, a client's clock
-behind) is still fed.
+`progress.change_seq` (`0066`) is the order the server wrote progress rows in:
+drawn from the one-row, server-wide `progress_change_counter`, which only goes up
+and is never reused (a deleted row can't hand its number to the next write, which
+a cursor already past it would skip). Triggers bump it on every insert and every
+`UPDATE OF` position, duration, finished, version, device_id or updated_at, so no
+write path can miss it: a row written late with an earlier `updated_at` (an
+offline backlog, a client's clock behind) is still fed. Triggers on
+`audible_titles` also move the person's row on a title's book to the next number
+when the title is newly matched or matched again, synced again (`no_sync`,
+`rejected` or `ignored` cleared, back from `gone`) or its `runtime_s` changes (a
+row left out for a length that may agree now), so the feed offers that book's
+place again (the Bridge drops a place it already holds).
 
 The Bridge mirrors them by hand in `internal/link/audiblesync.go`
 (`AudibleSyncParams`/`AudibleSyncTitle`, `PostAudibleListening`, `AudibleProgress`;
