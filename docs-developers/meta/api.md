@@ -695,6 +695,13 @@ a client should treat all of it as optional. An artifact that *claims* 8 but
 lacks part of the layer is refused at load
 ([schema versioning](data-model.md#the-compiled-artifact-and-schema-versioning)).
 
+`schema_version` 9 adds the **LibriVox recording layer**: a project's own title,
+section numbers, translators, section readers and genre names (in the data
+model, a recording's `librivox_title`, `librivox_genres` and `credits`, and a
+chapter's `section_number` and `readers`), which the feed below answers with. A
+version 8 artifact serves the feed's earlier answer; one that claims 9 without
+the layer is refused at load.
+
 ## `/api/v1/librivox/audiobooks`
 
 **LibriVox's own audiobooks feed** (`librivox.org/api/feed/audiobooks`),
@@ -718,9 +725,9 @@ holds every LibriVox recording and is what the feed reads.
 |---|---|
 | `id` | one LibriVox project id; not a positive integer is a 400 |
 | `since` | a UNIX time: the projects that **reached the mirror** on or after that day (below); not an integer is a 400 |
-| `title` | the work's title, matched exactly and case-insensitively (ASCII letters only, as SQLite folds case); a leading `^` makes it a prefix match |
+| `title` | the project's own title (LibriVox's, its `(version N)` marker kept), matched exactly and case-insensitively (ASCII letters only, as SQLite folds case); a leading `^` makes it a prefix match |
 | `author` | an author's **last name** (the last word of the stored name), exact and case-insensitive (ASCII letters only), or a prefix with a leading `^`. A translator never matches |
-| `genre` | a LibriVox genre name the importer maps (`Science Fiction`) or a genre of this project's vocabulary (`science-fiction`), case-insensitive, or a prefix with `^` |
+| `genre` | one of the project's own LibriVox genre names (`Science Fiction`), exact and case-insensitive, or a prefix with `^`. Never widened through this project's vocabulary: `Mathematics` matches the projects LibriVox files under Mathematics, not every science work |
 | `extended` | `1` adds `url_iarchive`, `sections`, `genres` and `translators` |
 | `coverart` | `1` adds `coverart_jpg` (`null` when the recording has no cover URL), `coverart_pdf` and `coverart_thumbnail` |
 | `fields` | keep only these top-level fields: `{id,title}`, a comma list, or repeated as `fields[]` |
@@ -766,36 +773,37 @@ answers with what it holds and nothing more:
 - `description` is **always `""`**: LibriVox's descriptions are often quoted from
   elsewhere and are never imported. `url_project` and `url_other` are `""`;
   `coverart_pdf` and `coverart_thumbnail` are `null`.
-- `title` is the **catalogue work's** title, so a project attached to an
-  existing work reads in that work's spelling and case, without LibriVox's
-  `(version N)` marker (which numbers projects, not works, and is not stored).
-- `genres` are this project's vocabulary values (`science-fiction`), never
-  LibriVox's taxonomy verbatim, each with an empty `id`. The `genre` parameter
-  accepts either spelling.
-- `authors` and `translators` are the work's: an author's `first_name` /
-  `last_name` are the stored name split at its last word, and `dob` / `dod` are
-  years or `""` (LibriVox's `alive` is not a year). Translators are the work's
-  translator credits, not the project's: a project attached to a work already in
-  the catalogue records no new credits, so it lists that work's translators,
-  which may differ from LibriVox's: the project's other translators are not
-  listed ([credits not recorded](contributing-data.md#credits-not-recorded)), and
-  a listed translator's id and years are whatever their person record holds:
-  stamped by this project when it credits them too, by another project that
-  credited them, or none.
+- `genres` carry an empty `id` (LibriVox's genre ids are not stored), and a
+  genre LibriVox lists twice on one project is listed once.
+- An author's or translator's `first_name` / `last_name` are the stored name
+  split at its last word, and `dob` / `dod` are years or `""` (LibriVox's
+  `alive` is not a year). A person's LibriVox id and years come from their
+  person record, so a translator the mirror credited by name alone (no person
+  carried their LibriVox author id) has neither.
 - `^` on `author` is the documented **prefix** match; LibriVox's own
   implementation matches the end of the name.
-- A section's `id` is `""`, its `section_number` its 1-based position (LibriVox
-  numbers some projects from 0), its `file_name` `null` (`listen_url` names the
+- A section's `id` is `""`, its `file_name` `null` (`listen_url` names the
   file), and its `language` the project's language (LibriVox sometimes states a
   different one per section).
-- Per-section readers are not stored: a recording with **one** narrator names
-  that reader on every section, a recording read by several names none.
 - `totaltimesecs` is the sum of the sections' playtimes (the runtime when a
   recording has no sections).
 
-Everything else (the ids, the language name, `copyright_year`, the URLs, the
-section titles, files and playtimes, the author ids and years) is LibriVox's
-value as the mirror stored it.
+Everything else is LibriVox's value as the mirror stored it (artifact
+`schema_version` 9, the LibriVox recording layer): the project's own `title`,
+`(version N)` marker and spelling kept (`librivox_title`); each section's
+`section_number`, LibriVox's own (some projects count from 0); each section's
+`readers`, its own (a recording read by one narrator throughout names that
+narrator on every section); the project's own `translators` (the recording's
+credits, never the work's, so two translations of one work each list their own);
+its LibriVox `genres` names; and the ids, the language name, `copyright_year`,
+the URLs, the section titles, files and playtimes, the author ids and years.
+
+**On an artifact older than 9** the feed answers as it did before: the
+catalogue work's title without the `(version N)` marker, 1-based positions as
+section numbers, the work's translator credits, this project's vocabulary as the
+`genres` (and the `genre` filter, which then also takes a vocabulary value such
+as `science-fiction`), and a section reader only for a recording with one
+narrator.
 
 ## Coverage endpoints
 
