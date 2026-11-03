@@ -108,6 +108,10 @@ chose under **Account**, or for the only one there is.
 | **Unavailable** | the account has it but Audible won't let it be downloaded (for example a podcast or a periodical, or a title without download rights); the row says why |
 | **No longer in the library** | it was in the account before, but the Bridge's last complete check didn't find it (returned, or removed from the account) |
 
+Audible sometimes gives a title it has had for years a placeholder release date
+far in the future (such as the year 2200). A date more than two years ahead is
+ignored, so such a title is **Available**, not a **Preorder**.
+
 ## How titles are matched
 
 At each check, the Bridge reads the account's library from Audible and your books
@@ -115,15 +119,37 @@ library from the server, and matches each title to a book there:
 
 1. **By ASIN first.** A book whose ASIN (in its tags, or set in the console) is the
    title's matches at once.
-2. **Then by title and author**, with the series and narrators to help. These show
-   **Matched by title**.
+2. **Then by title and author**, with the series, the book's number in it and the
+   narrators to help. These show **Matched by title**.
+
+A few things help a title find its book:
+
+- **The same title by the same author** matches, even when Audible files the book
+  under a differently named series than your tags do. A title that is just the
+  series name and a number ("Dragon Heart: Book 6") needs the number to agree.
+- **The book's number in the series** tells the volumes of a series apart. When
+  your tags don't give it, a code at the start of the book's folder name does:
+  `DH06 - Land of Magic` is book 6 of Dragon Heart, `BDM01 - Oathbound Healer` book
+  1 of Beneath the Dragoneye Moons. The code's letters must be the series' initials
+  (all of them or some, in order). Other codes, like `HALO 07` in the Halo series,
+  are ignored. This doesn't change the book's position anywhere else on your
+  server.
+- **A folder covering several books**, like `LAM05-06`, is treated as an omnibus,
+  so Audible's book 5 on its own won't match it. An Audible pack of books 5 and 6
+  can. A pack can also match a folder numbered as its first book (`LAM05`); it
+  shows as on this server, but that book's details are not updated from the pack.
+
+**When several titles match one book**, the best match keeps it. The others show
+**Not here**, with **contested** under the title: the book is probably here under
+another title. If the best titles tie, none keeps it, unless they are the same
+book owned twice (the same title, author and number): then all of them keep it.
 
 When a book matched by title and author has no ASIN yet, the Bridge gives it the
 Audible title's ASIN, so later checks, and the community metadata, match it exactly.
-It doesn't when two Audible titles match the same book (it can't tell which is
-right), when the title is a preorder (the book you have is another edition), or
-when the book already has an ASIN, including one you set or cleared in the console:
-those are never replaced.
+It doesn't when more than one title matched the book, even if one of them kept it
+(the match is in doubt), when the title is a preorder (the book you have is another
+edition), or when the book already has an ASIN, including one you set or cleared in
+the console: those are never replaced.
 
 Matches follow your books: when a book is renamed or moved (or joined with another
 in the console), its titles stay matched to it. Deleting a library clears the

@@ -1,6 +1,6 @@
 ---
 title: Audible
-description: "Bridge Phase 4a: Audible accounts on the Bridge (the paste-back PKCE sign-in, device registration and deregistration, the vault), the audible.poll job and its matching and ASIN backfill, the server's accounts and titles (0063), its scheduler and the audible module, the console's card and titles page, and the build-tagged Audible fake."
+description: "Bridge Phase 4a: Audible accounts on the Bridge (the paste-back PKCE sign-in, device registration and deregistration, the vault), the audible.poll job, its matching rules, release dates and paced ASIN backfill, the server's accounts and titles (0063), its scheduler and the audible module, the console's card and titles page, and the build-tagged Audible fake."
 ---
 
 Phase 4a of the Bridge plan (BRIDGE-PLAN.md Phase 4, the workspace's
@@ -145,25 +145,98 @@ older than `poll_hours`, 6 by default) at priority `-10` and records
    `UnavailableReason`: `""` is `available`, `"pre-order"` `preorder`, anything
    else `unavailable` with the reason;
 5. matches them with `importjob.BookMatcher` over `[]link.LibraryBook`
-   (`audiosilo-server/pkg/match.Best`: ASIN exact first, then author + series +
-   title tokens; a book in several series is a candidate under each; narrators
-   join the person gate). `how` is `asin` when the book's ASIN is the title's, else
-   `fuzzy`. A book path goes out only as `.` (a library that is one book) or a
+   (`audiosilo-server/pkg/match.BestWith` under `match.ImportOptions()`: ASIN exact
+   first, then author + series + title tokens; a book in several series is a
+   candidate under each; narrators join the person gate; see
+   [Matching rules](#matching-rules)), then `importjob.KeepBest` settles books
+   claimed by several titles. `how` is `asin` when the book's ASIN is the title's,
+   else `fuzzy`. A book path goes out only as `.` (a library that is one book) or a
    clean path below the root, as the server takes it;
 6. PUTs the titles in calls of 500 under **one** poll id (the job, the attempt and a
    random suffix), the last one `final` (an empty library sends one empty final
    call, so every title becomes `gone`), with each title's authors cut to 20;
 7. **backfills ASINs** (`PUT /bridge/libraries/{id}/enrichment`) for each matched
-   book without one, unless a second title claims the same book
-   (`importjob.Contested`: derive nothing durable from a doubtful match) or the
-   title is a preorder (not out yet: the book is another edition). `asin_set` and a
-   moved book are skipped, other failures counted.
+   book without one, unless the book is [contested](#matching-rules) (derive
+   nothing durable from a doubtful match) or the title is a preorder (not out yet:
+   the book is another edition). `asin_set` and a moved book are skipped, other
+   failures counted. The PUTs are paced (see
+   [Enrichment pacing](#enrichment-pacing)).
 
 The result is counts only, never a title or a credential: `account`, `poll_id`,
 `titles`, `available`, `preorder`, `unavailable`, `skipped`, `matched`,
-`matched_asin`, `matched_fuzzy`, `contested`, `enriched`, `enrich_failed`, `books`.
+`matched_asin`, `matched_fuzzy`, `contested` (books more than one title claimed),
+`enriched`, `enrich_failed`, `enrich_deferred` (omitted when 0), `books`.
+`matched` counts the titles that kept a match.
 A poll that finished records `last_poll_at`, the counts and clears a refusal on the
 Bridge's row; one stopped, cancelled or lost records nothing.
+
+### Matching rules
+
+`BookMatcher` runs the ASIN step over every candidate, then `match.BestWith` under
+`match.ImportOptions()` over the candidates past the person gate. The options turn
+on every opt-in rule of the server's `pkg/match` (the table is in
+[the server's `pkg/match`](../server/overview.md#pkgmatch-public)); the server's own
+callers keep the default rules. `BookMatcher.MatchScored` hands the winning score
+(`match.ScoreASIN` for an ASIN match) to the contested rule.
+
+**Positions.** The books listing sends each series' position as a string, and fills
+an empty main series position from a code leading the book's folder name
+(`DH06 - ...` is `"6"`, `LAM05-06` the range `"5-6"`; the full rule is at
+[`GET /bridge/libraries/{id}/books`](../server/api/reference.md#get-apiv1bridgelibrariesidbooks)).
+On the Bridge a book with a range position in any of its series spans books: its
+candidates sit at the range's start (`rangeStart`), and a title that is no range
+never sees them, so a single Audible volume never matches an omnibus folder (and
+never gives it that volume's ASIN). An Audible title with a range position and no
+sequence is placed at the range's start, so a number in its title ("Pack 3") never
+stands in for the position Audible gave. Such a title tries the spanning books
+that start where it does first, then the single volumes (a pack may be stored as a
+folder numbered as its first volume); a spanning book that starts elsewhere is
+another pack. A pack matched that way to a single-volume folder is kept as a match
+but not enriched (`importjob.SpanMismatch`), so the folder never takes the pack's
+ASIN. An ASIN match is never held back by any of this.
+
+**Contested books.** `importjob.KeepBest` settles a path claimed by several titles
+(`Claim{Path, Score, Work}`). The single best score keeps the match. A tie for the
+best keeps none, unless every tied title is the same work (`WorkKey`: the folded
+title, the folded authors in any order and the series position); then all keep it
+(one book owned twice, under two ASINs). The others are PUT with no `match` and
+`reason: "contested"` (`link.ReasonContested`, set only on a title with no other
+reason), so the console shows them as not here and Phase 4b's back up of
+everything skips them. A contested path gets no ASIN backfill, not even from the
+title that kept it.
+
+### Release dates
+
+`audible.Library` takes a title's date from `release_date`, else `issue_date`,
+keeping only a plausible one (`plausibleDate`: parseable, a year before 2100 and at
+most two years after now). With neither, the date is unknown (`release_date` `""`)
+and reads as released: Audible sends placeholders such as 2200-01-01 for titles it
+has had for years, and those must never be stored as preorders. `unavailableReason`
+checks the delivery type (`Periodical`, `PodcastParent`) and `customer_rights`
+before the preorder rule, so a show or a title without download rights is never
+called a preorder. A title whose date was set aside is logged once per listing
+(its ASIN and title, both dates, `content_delivery_type`, `content_type` and
+`is_consumable_offline`; never a token or the customer id) through the client's
+`WithLogger`.
+
+### Enrichment pacing
+
+A first poll can backfill hundreds of ASINs, one PUT each, and the server's
+[address limiter](../server/auth-and-security.md#rate-limiting) (shared with the
+house's players) answers a quick run `429`. The server is unchanged; the Bridge
+paces the PUTs (`audiblejob.enrich`): at most one per 200 ms (`enrichGap`). On a
+`429` it waits for the `Retry-After` (seconds or an HTTP date, read into
+`link.APIError.RetryAfter`), or else 2 s, doubling with each `429` in a row. It
+then retries the same book and doubles the gap, up to 2 s.
+
+The poll leaves the rest of the backfill to the next poll after:
+
+- more than five `429`s in a row;
+- a `Retry-After` over a minute;
+- 10 minutes of enriching (`enrichBudget`).
+
+Those books still have no ASIN, so the next poll picks them up again. Their count
+is the result's `enrich_deferred`. Only a cancelled job fails the poll.
 
 Registering the kind is what adds `audible` to the heartbeat's features
 (`bridge.FeatureAudible`), which the `audible` module needs.
