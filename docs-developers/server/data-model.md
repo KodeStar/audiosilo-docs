@@ -1083,13 +1083,13 @@ adds no table: a title's backup is its `import_job_id`, the `bridge_jobs` row.
   queued once a poll reports the title available. A column, so it survives a
   restart.
 
-`0065_audible_planned` (the 4b owner fixes, [planned destinations and contested
+`0065_audible_planned` ([planned destinations and contested
 titles](../bridge/audible.md#migration-0065_audible_planned)) adds to
 **`audible_titles`** `planned` (JSON, `''` for none: where the Bridge planned the
 title's backup at its last poll) and `contest_library_id` + `contest_path` (NULL
-and `''` for none: the book a contested title tied for; path-keyed with no FK,
-carried by a move or a join, cleared with its library), with a partial index on
-the contest. All three are the poll's, and a stored match clears them.
+and `''` for none), the book a contested title tied for, with a partial index.
+Like a match's path, the contest is path-keyed with no FK, carried by a move or a
+join and cleared with its library. All three are the poll's, and a stored match clears them.
 
 ### Podcasts
 

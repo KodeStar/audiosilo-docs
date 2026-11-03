@@ -168,7 +168,7 @@ Bridge's pure `setup.Checklist` from what the app already knows, in a fixed orde
 | `agent` | yes | the agent container is available (with its own or a handed-over credential) | the backend, or why it isn't ready in plain words (below) |
 | `budget` | yes | the monthly budget was saved on the page or is set by the environment (`Config.BudgetReviewed`) | "$100 a month" or "no monthly cap" |
 | `github` | no | a GitHub token resolves and isn't refused | the login, "a token from the environment" or "the gh CLI's token" |
-| `audible` | no | Phase 4a: at least one Audible account signed in, none refused and (4b owner fixes) none on an older device profile (an additive id: older servers and pages leave it out) | "1 account signed in", "1 account needs signing in again", or "... signing in again to keep backups working" when any is on an older profile |
+| `audible` | no | Phase 4a: at least one Audible account signed in, none refused and none on an older device profile (an additive id: older servers and pages leave it out) | "1 account signed in", "1 account needs signing in again", or "... signing in again to keep backups working" when any is on an older profile |
 
 ```json
 "setup": {
@@ -580,9 +580,9 @@ listener routes.
 
 `audible.poll` (Phase 4a) belongs to the `audible` module: internal (refused by
 `POST /admin/bridge/jobs` with `400`), quiet, params `{"account", "template"}`
-(`template` the account's placement template, omitted when empty; 4b owner fixes)
-with no library or path, deduped per account, and it promotes an open poll to a person's
-priority when Check now asks. It runs in the `light` lane and writes nothing into a
+(`template` the account's placement template, omitted when empty) with no library
+or path, deduped per account, and it promotes an open poll to a person's priority
+when Check now asks. It runs in the `light` lane and writes nothing into a
 library (an ASIN it backfills goes through the server). The module's scheduler
 queues it; queued polls are held while the module is off. See
 [Audible](audible.md#the-poll-audiblepoll).

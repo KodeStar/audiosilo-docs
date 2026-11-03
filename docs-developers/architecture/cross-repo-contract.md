@@ -958,15 +958,15 @@ both repos, with a test on each side.
   routes only (admin, behind the toggle); the Bridge's account PUT now sets
   `policy` on create only. Detail:
   [Backing up a title](../bridge/audible.md#backing-up-a-title-audibleimport).
-- **Audible 4b owner fixes:** each title of the titles PUT gains `planned`
+- **Audible (Phase 4b, follow-up):** each title of the titles PUT gains `planned`
   (`{library_id, path, file, kind, siblings, state, conflict, template}` or null:
   where a backup would go, planned by the Bridge during the poll) and
   `contested_path` (omitempty: the book a contested title tied for);
   `GET /admin/audible/titles` gains `planned` and `contested` (`{library_id, path,
   with: [{asin, title}]}` or null); `audible.poll`'s params gain `template`
   (omitempty). Server migration `0065`, Bridge migration `0010` (the device
-  profile). Neither side's Audible wire has shipped, so there is no gate: **deploy
-  the Bridge with the server** (an older Bridge refuses the poll's `template`, an
+  profile). Neither side's Audible wire has shipped (server v2.5.1, Bridge v0.5.0),
+  so there is no gate: **deploy the Bridge with the server** (an older Bridge refuses the poll's `template`, an
   older server the new title fields). Detail:
   [Planned destinations](../bridge/audible.md#planned-destinations).
 - **The player (Phase 1a):** its first admin-only UI, gated on `user.role ===

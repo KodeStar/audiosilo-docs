@@ -170,9 +170,9 @@ A few things help a title find its book:
    folder, and book 3 with a similar name doesn't take it);
 3. otherwise the **best match** keeps it.
 
-A title whose number says it is another volume of the series just shows **Not
-here**. The others show **Not here** and are [contested](#contested-titles): the
-book is probably here under another title. If the best titles tie, none keeps it,
+The titles that lose show **Not here**. One whose number says it is another
+volume of the series is simply not matched; the rest are
+[contested](#contested-titles): the book is probably here under another title. If the best titles tie, none keeps it,
 unless they are the same book owned twice (the same title, author and number):
 then all of them keep it. [Back up everything](#back-up-everything) and the
 [policies](#backing-up-by-itself) never back up a contested title; **Back up**
@@ -183,9 +183,8 @@ still does, if you are sure it isn't here.
 A contested title says which book it tied for and which titles matched it too:
 "Matched the same book as *Moon over Soho*: *Ben Aaronovitch/PG02 - Moon over
 Soho*, so this title isn't shown as here." The book is a link to its page in the
-console. When the console doesn't know the other titles (a title checked before
-this version, until the next check), it says "Another Audible title matched the
-same book, so this one isn't shown as here."
+console. Until the next check, a title last checked before this update says
+"Another Audible title matched the same book, so this one isn't shown as here."
 
 What to do:
 
@@ -235,18 +234,19 @@ library**) can't be backed up. A queued backup is in the
 
 ### Where a title would go
 
-At each check the Bridge also works out where each title that isn't on this server
-would be backed up, by the same rules a backup uses ([Where backups go](#where-backups-go)),
-and the row says so, **planned at the last check**:
+At each check the Bridge also works out where each title that isn't on this
+server would be backed up, by the same rules a backup uses
+([Where backups go](#where-backups-go)), and the row says so, **planned at the
+last check**:
 
 - "Will go to *Ben Aaronovitch/Rivers of London/2 - Moon over Soho/Moon over
   Soho.m4b*, beside 7 books of its series";
 - "..., the first book of its series here", "..., in the author's existing folder"
   or "..., into a folder that already exists";
-- **in warning colours** when the place is taken: "Would go to ..., but a file is
-  already there" (or another book is, or that folder already holds audio), "so the
-  backup would stop. Choose a destination." A backup never overwrites anything, so
-  pick a [destination](#choosing-a-destination) for it first;
+- **in warning colours** when the place is taken (by a file, another book, or a
+  folder that already holds audio): "Would go to ..., but a file is already there,
+  so the backup would stop. Choose a destination." A backup never overwrites
+  anything, so pick a [destination](#choosing-a-destination) for it first;
 - **in warning colours** too when the Bridge couldn't work out a place: "Couldn't
   work out where it goes", with the reason (for example a placement template that
   gives no valid path).
@@ -383,9 +383,8 @@ hint: leave the field empty for the usual place (it follows the account's
 placement as it changes), or type your own. It must be a path inside the library: no
 `..`, no folder or file starting with a dot (the server never shows those), no
 backslashes. A destination wins over the account's placement template. The row
-shows it as **To ...**, and "Your destination is checked when the backup starts.":
-the Bridge doesn't check your own destination ahead of time, so a destination
-that is already taken stops the backup when it starts (**A different file is
+shows it as **To ...**. Your own destination is checked only when the backup
+starts, so one that is already taken stops the backup then (**A different file is
 already where it would go**). Saving it is in the audit log as **Changed an Audible
 book's match or destination**.
 

@@ -10415,12 +10415,12 @@ the server knew it (the Bridge forgets locally first and may call again).
 - `reason` says why an `unavailable` or `preorder` title can't be downloaded,
   or is `contested` on an `available` one with no `match`: another title claimed
   the same book.
-- `contested_path` (optional, omitted when none; 4b owner fixes) is the book a
+- `contested_path` (optional, omitted when none) is the book a
   contested title tied for: a clean book path or `.`, as `match.path`. It is
   stored for the account's library (not when the title's plan names another one:
   the account was mapped elsewhere while the poll ran) and cleared when a match is
   stored for the title.
-- `planned` (4b owner fixes) is `null` or where a backup of an unmatched title
+- `planned` is `null` or where a backup of an unmatched title
   would go, as the Bridge planned it during the poll
   ([Planned destinations](../../bridge/audible.md#planned-destinations)):
   `library_id` > 0; `path` a clean relative file path within the path limit and
@@ -10586,8 +10586,8 @@ keyset-paged.
 | `import_job_id` | the title's latest backup job, `null` for none |
 | `import` | the title's backup: `{job_id, state, code}` with `state` the job's ([job states](#the-job-object)) and `code` a failed or parked job's code (`not_released`, `no_rights`, `audible_refused`, `not_writable`, `exists`, `disk_full`, `offline_url_expired`, `unknown_account`, or `""`); `{job_id: null, state: "pending"}` for a Back up on a preorder waiting for its release; `null` for none |
 | `needs_attention` | a preorder still not available 14 days after its `release_date`: the account is no longer polled hourly for it |
-| `planned` | 4b owner fixes: where a backup would go, as the Bridge planned it at its last poll (the object the [titles PUT](#put-apiv1bridgeaudibleaccountsaccounttitles) takes); `null` when matched, not planned, or the account is no longer mapped to the plan's library (paused or mapped again: none until its next poll) |
-| `contested` | 4b owner fixes: for a title left unmatched as `contested`, `{library_id, path, with: [{asin, title}]}`: the book it tied for and the account's other titles (not `gone`) contested over that book or matched to it, by title, at most 10; `null` otherwise, or while the account isn't mapped to that library |
+| `planned` | where a backup would go, as the Bridge planned it at its last poll (the object the [titles PUT](#put-apiv1bridgeaudibleaccountsaccounttitles) takes); `null` when matched, not planned, or the account is no longer mapped to the plan's library (paused or mapped again: none until its next poll) |
+| `contested` | for a title left unmatched as `contested`, `{library_id, path, with: [{asin, title}]}`: the book it tied for and the account's other titles (not `gone`) contested over that book or matched to it, by title, at most 10; `null` otherwise, or while the account isn't mapped to that library |
 
 | Status | Meaning |
 |---|---|
@@ -10613,8 +10613,9 @@ the [job](#the-job-object). A new poll is in the audit log as `bridge.job` (with
 `audible.poll` is internal: [`POST /admin/bridge/jobs`](#post-apiv1adminbridgejobs)
 refuses it with `400`. Its params are `{"account", "template"}` (`template` the
 account's placement template, omitted when `""`, at most 500 bytes and never
-parsed; 4b owner fixes: the Bridge plans unmatched titles by it), with no library or
-path; Check now on a poll still queued gives it the account's current template; it is quiet (no notifications) and held while the module is off. The
+parsed: the Bridge plans unmatched titles by it), with no library or path; Check
+now on a poll still queued gives it the account's current template. It is quiet
+(no notifications) and held while the module is off. The
 module's scheduler queues each due account's poll every `poll_hours` at priority
 `-10` while an online Bridge offers the kind. Only the newest ended poll of each
 account is kept.

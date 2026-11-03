@@ -1,6 +1,6 @@
 ---
 title: Audible
-description: "Bridge Phases 4a and 4b: Audible accounts on the Bridge (the paste-back PKCE sign-in, device registration and deregistration, the vault), the audible.poll job and its matching rules, the audible.import backup (params, steps, result and codes, resume and temp files, the hardened transfer, enrichment, secrets), the server's accounts and titles (0063, 0064, 0065), its queueing (priorities, policy_since, preorders, the done fold) and the audible module, the console, and the build-tagged Audible fake; the 4b owner fixes (the current device profile and Bridge migration 0010, redacted account ids, contested titles settled by series number, planned destinations)."
+description: "Bridge Phases 4a and 4b: Audible accounts on the Bridge (the paste-back PKCE sign-in, device registration and deregistration, the vault), the audible.poll job and its matching rules, the audible.import backup (params, steps, result and codes, resume and temp files, the hardened transfer, enrichment, secrets), the server's accounts and titles (0063, 0064, 0065), its queueing (priorities, policy_since, preorders, the done fold) and the audible module, the console, and the build-tagged Audible fake; the current device profile (Bridge 0010), redacted account ids, contests settled by series number and planned destinations."
 ---
 
 Phases 4a and 4b of the Bridge plan (BRIDGE-PLAN.md Phase 4, the workspace's
@@ -101,7 +101,7 @@ the older iPhone profile (app 3.56.2, iOS 15/17, software `35602678`, a 32-chara
 upper-case hex serial), with three reasons (`Membership`/`RequesterEligibility`,
 `Ownership`/`CustomerThrottled`, `Client`/`RequesterEligibility`, the customer id
 quoted), while listing still works (mkb79/Audible#909 and PR #910; Libation's
-device-registration notes agree). The 4b owner fixes register with the current one
+device-registration notes agree). The Bridge registers with the current one
 (`internal/audible/profile.go`): app `4.60`, os `26.2`, software `46000856`, one
 constant set that register, the token refresh and deregister share, and a
 40-character `[A-Za-z0-9]` serial from `crypto/rand` (`NewDeviceSerial`). The user
@@ -159,8 +159,7 @@ went: `audiblejob` runs the steps.
 ### Redacted account ids
 
 Amazon's error bodies quote the customer id ("Customer id [A1...] being
-throttled"), and 4b's first real backups stored it in job errors and the Bridge's
-log. `audible.RedactAccountIDs` (`redact.go`) runs on Audible's answer as it
+throttled"), so `audible.RedactAccountIDs` (`redact.go`) runs on Audible's answer as it
 becomes an error (the snippet, a license's denial reasons): customer ids (labelled,
 or `A` plus 10 or more capitals with a digit), `amzn1.*` ids, device serials
 (labelled, 32+ hex, or 40 letters and digits), emails and tokens go; the ASIN
@@ -178,7 +177,8 @@ carries an account id.
 `POST /admin/bridge/jobs` with `400`) and quiet (no notifications), with params
 `{"account", "template"}` (strict; `template` is the account's placement template
 at queue time, omitted when `""`, bounded to 500 bytes but never parsed, so a
-template the grammar later refuses never stops the polls; 4b owner fixes), no library or path, deduped per account
+template the grammar later refuses never stops the polls), no library or path,
+deduped per account
 (`audiblePollSuffix`), owned by the `audible` module (`ModuleFor`: a queued poll is
 held while the module is off), and it **promotes**: a request that finds the
 account's poll open raises its priority, never lowers it. Enqueue keeps only the
@@ -269,8 +269,8 @@ keeps it. Otherwise, when some claims' series position agrees with the book's
 against the book's position in the title's series, else the book's main series'
 position, where the books listing puts a folder code's number; a range or no number
 on either side is neither), only those compete, so the volume whose number is the
-book's keeps it even over a higher score (4b owner fixes; `MatchScored` itself is
-not gated by it). Then the single best score keeps the match. A tie for the
+book's keeps it even over a higher score (`MatchScored` itself is not gated by
+it). Then the single best score keeps the match. A tie for the
 best keeps none, unless every tied title is the same work (`WorkKey`: the folded
 title, the folded authors in any order and the series position); then all keep it
 (one book owned twice, under two ASINs). A losing title whose position
@@ -678,13 +678,12 @@ console removed it.
 
 No new table. `policy_since` joins the user-state rule's free columns of
 `audible_accounts` (`store/userstate.go`), as the two poll times; a titles write is
-a user-state write. The Bridge had no migration for 4b; the 4b owner fixes add
-the Bridge's `0010_audible_profile` ([the device profile](#the-device-profile))
-and the server's [`0065`](#migration-0065_audible_planned).
+a user-state write. The Bridge's `0010_audible_profile` is
+[the device profile](#the-device-profile)'s.
 
 ### Migration `0065_audible_planned`
 
-The 4b owner fixes: what the console says of a title the Bridge left unmatched.
+What the console says of a title the Bridge left unmatched.
 
 - `audible_titles.planned TEXT NOT NULL DEFAULT ''`: the title's planned
   destination as JSON, `''` for none.
@@ -696,23 +695,18 @@ The 4b owner fixes: what the console says of a title the Bridge left unmatched.
 All three are the poll's: each titles PUT writes them, and a stored match (the
 poll's, a kept `import` match, `FoldAudibleImport`) clears them. A title the final
 call marks `gone` loses its plan. The PUT checks `planned` strictly
-(`checkAudiblePlan`: library > 0, a clean relative `path` within `MaxPathBytes` and
-a `file` with no `/`, both `""` only for `error`, `kind` and `state` from their
-sets, `siblings` 0 to 100000, `template` within `MaxAudibleTemplate`, `conflict`
-`file|book|audio|""` or the `error`'s reason, cleaned and bounded): anything else is
-`400 invalid_request` for the whole call, bar a `path` over `MaxPathBytes`
-(Audible's long text through a template), stored as an `error` plan. A contest is
+(`checkAudiblePlan`, the rules in the
+[reference](../server/api/reference.md#put-apiv1bridgeaudibleaccountsaccounttitles)),
+bar a `path` over `MaxPathBytes` (Audible's long text through a template), stored
+as an `error` plan. A contest is
 stored only for the account's library. `GET /admin/audible/titles` shows `planned`
 only while the account is mapped to the plan's library, and `contested {library_id,
 path, with}` only while it is mapped to the contest's, `with` the account's other
 titles (not `gone`) contested over that book or matched to it, at most 10
 (`fillContests`, one query a page).
 
-**Deploy the Bridge with the server.** Neither side's Audible wire has shipped
-(server v2.5.1, Bridge v0.5.0), so there is no capability gate: the server now sends
-the poll's `template`, which an older Bridge's strict params refuse, and a newer
-Bridge's `planned` and `contested_path` would be refused by an older server's strict
-titles decoding.
+**Deploy the Bridge with the server** (no capability gate: see the
+[cross-repo contract](../architecture/cross-repo-contract.md#16-the-bridge)).
 
 ### The template grammar
 
@@ -793,8 +787,8 @@ titles are fetched again every 5 s while a backup is queued or running,
 **Placement** row, **Backup settings...** (policy, template:
 `account-settings-button.tsx`) and **Back up everything...** with its "N books, ~X
 GB" confirm (`backup-all-button.tsx`, from `backup_estimate`, also at the top of the
-titles page); the legal line on the titles page and in both dialogs. The 4b owner
-fixes add, per unmatched title, `PlannedNote` (`plannedLine`: "Will go to &lt;path&gt;,
+titles page); the legal line on the titles page and in both dialogs. Each unmatched
+title shows `PlannedNote` (`plannedLine`: "Will go to &lt;path&gt;,
 beside N books of its series" and the like, "(planned at the last check)", warning
 tone on `exists` or `error`, a note when the plan's template isn't the account's
 now, and "Your destination is checked when the backup starts" instead while a
@@ -852,7 +846,7 @@ the verifier and client id and issues a device key, `/auth/token`,
 `/auth/deregister` (this device only, recorded), signed calls verified against the
 issued key (an unknown or deregistered device `401`, `/_fake/refuse` `403`),
 library paging, `lastpositions` with a `400` over its limit (10 by default), and
-`PUT lastpositions` recorded. The 4b owner fixes: register records each device's
+`PUT lastpositions` recorded. Register records each device's
 profile (its serial and app, os and software versions) and only the current
 profile with a 40-character serial gets licenses; any other device lists its library
 but every license is denied with the three throttled reasons, its customer id
