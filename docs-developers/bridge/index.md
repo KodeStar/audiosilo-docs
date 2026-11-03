@@ -54,7 +54,10 @@ with no Bridge change, and **Phase 2d-2** its
 (a CORS change on the server only). **Phase 3c-1** adds
 [read-along maps](readalong.md): `readalong.align` lines a book's ebook up with
 its narration, with no agent, and the server serves the map (the player's Text
-panel is Phase 3c-2, not built yet). Audible backups and file moves arrive later.
+panel is Phase 3c-2, not built yet). **Phase 4a** adds [Audible accounts](audible.md):
+the Bridge signs in to Audible, lists what each account owns and matches it against
+a books library (`audible.poll`); downloading (4b), place sync (4c) and file moves
+arrive later.
 :::
 
 ## What it is for
@@ -195,6 +198,9 @@ the mark; see [generated content](../server/api/reference.md#generated-content))
   sign-in, the agent credentials), `sidecars.contribute` and `meta.correct`.
 - [Podcasts](podcasts.md) - feed files, polling, downloads, retention,
   generation/publication recovery, CHAP, private credentials and the HTTP guard.
+- [Audible](audible.md) - Phase 4a: the Audible sign-in and the vault,
+  `audible.poll` and its matching, the server's accounts and titles, the `audible`
+  module and the build-tagged fake.
 - [Configuration](configuration.md) - the Bridge's settings and environment, the
   images and the compose example.
 - [Development](development.md) - the gate, the layout and the Bridge's own page.

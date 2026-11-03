@@ -1045,6 +1045,30 @@ report; the Bridge's own record of running them lives on its side.
   code's hash; the token is the `tokens` row. Pairing a new Bridge clears the
   status; unpairing deletes the row.
 
+`0063` (Bridge Phase 4a) adds the Bridge's Audible accounts
+([Audible](../bridge/audible.md)). The credentials stay in the Bridge's vault; these
+hold only what it reports:
+
+- **`audible_accounts`** - `account` (the Bridge's id `^[a-z0-9]{8,32}$`, primary
+  key), `label`, `marketplace`, `user_id` (FK to `users` `ON DELETE CASCADE`),
+  `library_id` (FK to `libraries` `ON DELETE SET NULL`: `NULL` is a **paused**
+  account, whose library was deleted), `policy` (`all` | `series` | `manual`),
+  `sync`, `poll_hours` (6), `created_at`, `updated_at`, `last_poll_at` (the Bridge's
+  last final titles call), `last_queued_at` (the scheduler's or Check now's last
+  queue).
+- **`audible_titles`** - `account` (FK `ON DELETE CASCADE`) + `asin`; `title`,
+  `authors` and `series` (JSON), `release_date`, `runtime_s`, `state` (`available` |
+  `preorder` | `unavailable` | `gone`), `reason`, the match (`match_library_id`,
+  `match_path`, `match_how` `asin` | `fuzzy`): **path-keyed with no FK to the
+  index**, carried by `MoveDurableState` (`moveBookState`) and by a join
+  (`joinBookState`), cleared by `DeleteLibrary` in the library's own transaction;
+  `first_seen`, `updated_at`, `poll_id`, and Phase 4b's `rejected`, `ignored`,
+  `dest_path`, `import_job_id`, which a titles call never overwrites. Indexed by
+  match, by title and by account then title (the console's orders).
+
+Both are user-state writes (`store/userstate.go`): titles and the two poll times
+don't move the content generation; a mapping change does.
+
 ### Podcasts
 
 Migration `0052_podcasts` adds the library kind and initial tables;

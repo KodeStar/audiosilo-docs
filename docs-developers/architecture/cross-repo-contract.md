@@ -927,6 +927,25 @@ both repos, with a test on each side.
   ([§13](#13-community-metadata-a-three-repo-seam)); its GitHub sign-in and the
   agent credential it hands to the agent container live on its own page and never
   cross to the server. Detail: [Contributions](../bridge/contributions.md).
+- **Audible accounts (Phase 4a):** the Bridge signs in to Audible (a paste-back
+  PKCE sign-in on its Accounts tab) and keeps every credential in its vault; the
+  server never talks to Audible. Bridge-token routes, **not** behind the module's
+  toggle: `GET /bridge/users` (who an account may be mapped to: enabled adults and
+  admins, never a kid, demo or disabled account), `PUT`/`DELETE
+  /bridge/audible/accounts/{account}` (the mapping; the delete `204` known or not),
+  `PUT .../titles` (up to 500 a call under one `poll_id`, the last `final`, which
+  marks the rest `gone`), `GET /bridge/libraries/{id}/books` (a books library's
+  books by path, 500 a page, for matching) and `PUT
+  /bridge/libraries/{id}/enrichment?path=` (an unambiguous match's ASIN; `409
+  asin_set` never goes under one). One kind, `audible.poll` (feature `audible`,
+  params `{account}`, no library; internal, quiet, deduped per account), queued by
+  the `audible` module's scheduler every `poll_hours` and by the console's Check
+  now. The module (`modules.audible.enabled`, off by default) gates the console's
+  `/admin/audible/*` routes (`404 module_off`; the admin `DELETE
+  /admin/audible/accounts/{account}` works either way) and holds the polls. A
+  title's match is path-keyed with no FK, carried by a book's move. The player
+  doesn't mirror the `audible` flag: it has no Audible surface yet. Detail:
+  [Audible](../bridge/audible.md).
 - **The player (Phase 1a):** its first admin-only UI, gated on `user.role ===
   'admin'` (never a demo account, a household member or a kid's account),
   `capabilities.bridge`, `bridge.features` holding `sidecars` and
@@ -947,7 +966,9 @@ sends no `accepts`, so a newer Bridge sends it no `setup`; an older Bridge doesn
 advertise the new kinds; a signed-in player still gets the `bridge` block. Phase
 3c-1's are too: an older Bridge ignores the book route's `duration` and `ebook` and
 never advertises `readalong.align`; a newer one reads an older server's missing
-fields as none. The Bridge sends `X-AudioSilo-Client:
+fields as none. Phase 4a's are too: an older Bridge never advertises
+`audible.poll`, an older console ignores the `audible` setup item and module, and a
+shipped player ignores the `audible` flag. The Bridge sends `X-AudioSilo-Client:
 AudioSilo Bridge/<version> (<os>)` on every call.
 
 **A change requires:** the server handler and its test, the mirrored type in the

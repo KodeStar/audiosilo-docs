@@ -33,6 +33,8 @@ play through a compatible client, downloads episodes selected by policy and remo
 eligible older downloads according to an admin's per-show retention policy
 (see [Podcasts](podcasts.md#downloads-and-retention) for the default,
 protections and API calls).
+With the **Audible** module on, it lists the books in your Audible accounts and
+finds the ones already on your server (see [Audible](audible.md)).
 :::
 
 To set one up, see [Running a Bridge](../getting-started/running-a-bridge.md). This
@@ -139,6 +141,7 @@ everything required is done ("Everything required is done").
 | **Agent credential set** | the agent container is ready, with a credential (the line names the tool). While it isn't, the line says what to do in plain words and what the agent is for: characters, recaps and descriptions. Read-alongs, chapters and podcasts don't need it |
 | **Monthly budget reviewed** | someone saved the agent's monthly budget on the Bridge's page, or the Bridge's environment sets it (the line says it, "$100 a month" or "no monthly cap") |
 | **GitHub signed in** (Optional) | the Bridge can share with the community (the line names the GitHub account, or says the token comes from the Bridge's environment or the gh command) |
+| **Audible signed in** (Optional) | a Bridge that supports Audible has at least one Audible account signed in and none that Audible refused (the line says "1 account signed in", or how many need signing in again). "Only needed to back up an Audible library." |
 
 Each step shows a green tick when done, an amber circle while still to do, or,
 for the optional one (marked **Optional**), a dashed circle until done. A step
@@ -229,6 +232,15 @@ The Bridge checks its libraries after pairing, when your libraries change, and
 every 10 minutes after that by default (not on every report, so it doesn't keep
 sleeping disks awake). On its own page, **Check now** checks them all at once, and
 changing a library's folder there checks that library again.
+
+## Audible accounts
+
+While the [Audible module](server.md#modules) is on and a Bridge is paired, an
+**Audible accounts** card sits under Libraries: the Audible accounts the Bridge signed in to, who and which
+library each is for, how many of its titles are on this server, and **Check now**
+and **Remove...** for each. You sign in and change them on the Bridge's
+[Accounts tab](../getting-started/bridge-accounts.md#audible); the card is
+read-only. See [Audible](audible.md#the-audible-accounts-card).
 
 ## Verify
 

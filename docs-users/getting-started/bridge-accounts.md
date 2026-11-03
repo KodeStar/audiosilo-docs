@@ -1,18 +1,20 @@
 ---
 title: Bridge accounts
-description: "The Bridge page's Accounts tab: signing the Bridge in to GitHub (through the AudioSilo Contributions app, with a code you enter on GitHub) so it can share with the community, signing out and revoking it, the agent's credential the Bridge hands to the agent container, and the environment settings that take precedence over both."
+description: "The Bridge page's Accounts tab: signing the Bridge in to GitHub (through the AudioSilo Contributions app, with a code you enter on GitHub) so it can share with the community, signing out and revoking it, the agent's credential the Bridge hands to the agent container, signing in to Audible accounts and mapping each to a person and a library, and the environment settings that take precedence."
 ---
 
 ## Bridge accounts
 
 The **Accounts** tab on the [Bridge's page](running-a-bridge.md#3-open-the-bridges-page)
-holds the two outside accounts the Bridge uses:
+holds the outside accounts the Bridge uses:
 
 - **GitHub**, so the Bridge can share characters, recaps and corrections with the
   community metadata database. Optional: without it, everything the Bridge makes
   stays on your server.
 - **The agent's credential**, which the AI agent needs to write characters and
   recaps.
+- **Audible**, so the Bridge can list the books your Audible accounts own and find
+  the ones already on your server (see [Audible](#audible) below). Optional.
 
 You sign in here, on the Bridge's own page, and nowhere else: the server never
 connects to the Bridge, so the console's **Server > Settings > Bridge** only
@@ -115,6 +117,114 @@ provider refused lets the jobs that paused for it carry on.
 The agent container must be the same version as the Bridge to take a credential
 this way. An older one says so on the card ("the container is too old"): update
 its image.
+
+### Audible
+
+The **Audible** card signs the Bridge in to one or more Audible accounts. For each
+account, the Bridge lists the books it owns and finds the ones already in your
+library; the console then shows them under
+[Server > Settings > Audible](../admin/audible.md). Each account belongs to **one
+person** on your server and goes with **one books library**. The sign-in stays
+sealed on the Bridge: the server only ever sees the account's name, who and which
+library it is for, and the list of titles.
+
+:::info[What it does today]
+This first version **lists and matches**: it shows which of your Audible books are
+already on your server and which aren't. It doesn't download anything yet, and it
+doesn't keep your listening place in step with Audible yet. Backing up the books
+you bought, and keeping places in step, are coming in later versions.
+:::
+
+The server asks the Bridge to check each account's library every few hours, but
+only while the **Audible** [module](../admin/server.md#modules) is on in the
+console. The card says so. You can sign in here with the module off; nothing is
+checked until it is on.
+
+The Bridge must be [paired](running-a-bridge.md) first: the card asks you to pair
+it until it is, since an account is always set up for a person on the server.
+
+![The Bridge's Accounts tab: the Audible card with one account signed in](/img/screenshots/bridge/accounts-audible.png)
+
+#### Signing in
+
+Amazon doesn't let other programs show its sign-in page, so you sign in on
+Amazon's own page in your browser and then paste back the address it ends on:
+
+1. Press **Sign in to Audible** (**Add another Audible account** once there is
+   one).
+2. Pick the **Audible store** the account buys from (United States, United
+   Kingdom, Germany and so on) and press **Open Amazon sign-in**. Amazon's sign-in
+   page opens in a new tab (if your browser blocked it, use the card's **open it
+   here** link).
+3. Sign in to Amazon as you normally would, including any code Amazon asks for.
+4. Amazon then shows a page that says it can't be found. **That is expected.**
+   Copy that page's whole address from the browser's address bar.
+5. Back on the Bridge's page, paste it into **The address Amazon showed**. You have
+   15 minutes from pressing **Open Amazon sign-in**; after that, open the sign-in
+   again.
+6. Choose who and where the account is for (below), then press **Finish the
+   sign-in**.
+
+![The Audible sign-in on the Accounts tab: the store, the pasted address and who the account is for](/img/screenshots/bridge/audible-sign-in.png)
+
+The card says **Signed in to Audible**, and the account appears with the badge
+**Not checked yet** until its first check. The Bridge appears in your Amazon
+account's list of devices as **"&lt;your first name&gt;'s AudioSilo"**. Your
+Amazon password never reaches the Bridge: Amazon gives it a sign-in for that
+device, which the Bridge keeps encrypted in its data folder.
+
+Signing in to the same Amazon account (in the same store) again doesn't add a
+second account: it replaces the sign-in of the one already here, and removes the
+old device from your Amazon account.
+
+#### Who and where each account is for
+
+| Field | What it is |
+|---|---|
+| **Belongs to** | the person on your server whose books these are. The list holds the server's adults and admins, including grown-up household members; never a kid, the demo account or a disabled account |
+| **Library** | the books library the account's titles are matched against (and, once backups arrive, where they go). Podcast libraries aren't offered |
+| **Back up** | what a later version will back up for this account: **Every new title**, **New titles in a series they already have**, or **Only the titles picked in the console**. The Bridge keeps it with the account; this version downloads nothing |
+| **Keep the listening place in step with Audible** | for when places sync, in a later version |
+| **Name (optional)** | how the console names the account. Left empty, it is the person and the store, such as "Chris (US)", and it follows the person if you change who the account belongs to |
+
+**Change** on an account edits these. A change is saved on the server first, so if
+the server can't be reached nothing changes.
+
+#### The account's states
+
+| Badge | Means |
+|---|---|
+| **Not checked yet** | signed in; the server hasn't asked for a check yet (or the Audible module is off) |
+| **Signed in** | checked at least once. **Last checked** says when, with how many titles the account has and how many are already in the library |
+| **Sign in again** | Audible refused the sign-in, for example after you removed the device in your Amazon account or changed your password. The card says why; press **Sign in again**, which keeps the store and the account's settings. Until then its checks fail |
+| **Mapped on another server** | the account was set up while the Bridge was paired with another server. Press **Change** and save to set it up on this one |
+
+A check that failed for another reason (Amazon or the server couldn't be reached)
+shows its error on the account; the next check tries again.
+
+#### Removing an account
+
+**Remove**, then **Remove the account**, removes it everywhere: the Bridge forgets
+the sign-in, the server forgets the account and its titles, and the Bridge removes
+its AudioSilo device from your Amazon account. The books already in your library
+stay. If the server or Amazon couldn't be reached, the account is removed from the
+Bridge anyway and the card says what didn't happen: remove the device yourself in
+your Amazon account's device list, or the account in the console (below).
+
+The console's **Remove** under
+[Server > Settings > Audible](../admin/audible.md#removing-an-account) is different:
+it removes the account from **the server only**. Use it for an account the Bridge
+can no longer remove, for example after you unpaired or replaced the Bridge. It
+signs nothing out of Amazon, so remove the device in your Amazon account too. The
+console shows it only while the **Audible** module is on: turn the module on
+first.
+
+:::note[Backing up your own books]
+Backing up is for making **a personal backup of books you bought**, with your own
+account. Laws on removing DRM, even from your own purchases, differ from country to
+country, and in some places it is not allowed at all. Check your local law before
+you use it, and keep the copies for yourself.
+:::
 
 ### Settings that take precedence
 

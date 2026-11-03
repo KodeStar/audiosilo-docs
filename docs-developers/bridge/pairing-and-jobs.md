@@ -114,7 +114,7 @@ pairing and after a mapping check finishes:
 | Field | What it carries |
 |---|---|
 | `version` | the Bridge's version |
-| `kinds` | the job kinds it runs (`bridge.verify`, `sidecars.generate` since Phase 1a, `sidecars.describe` since Phase 1c, `chapters.detect` since Phase 1d, `sidecars.contribute` and `meta.correct` since Phase 2b, and `readalong.align` since Phase 3c) |
+| `kinds` | the job kinds it runs (`bridge.verify`, `sidecars.generate` since Phase 1a, `sidecars.describe` since Phase 1c, `chapters.detect` since Phase 1d, `sidecars.contribute` and `meta.correct` since Phase 2b, `readalong.align` since Phase 3c, and `audible.poll` since Phase 4a) |
 | `libraries` | its last [mapping check](mappings.md) of each library |
 | `workers` | its [ASR workers](workers.md) that have connected at least once: `name`, `version`, `platform` (the GOOS/GOARCH and the speech recognition in one line, e.g. `darwin/arm64, mlx-whisper (metal)`) and `last_seen` |
 | `ui_url` | its own page as the local network reaches it (its `public_url` setting), which the console links to |
@@ -168,6 +168,7 @@ Bridge's pure `setup.Checklist` from what the app already knows, in a fixed orde
 | `agent` | yes | the agent container is available (with its own or a handed-over credential) | the backend, or why it isn't ready in plain words (below) |
 | `budget` | yes | the monthly budget was saved on the page or is set by the environment (`Config.BudgetReviewed`) | "$100 a month" or "no monthly cap" |
 | `github` | no | a GitHub token resolves and isn't refused | the login, "a token from the environment" or "the gh CLI's token" |
+| `audible` | no | Phase 4a: at least one Audible account signed in and none refused (an additive id: older servers and pages leave it out) | "1 account signed in", or "1 account needs signing in again" |
 
 ```json
 "setup": {
@@ -574,6 +575,16 @@ params, dedupe, priorities and promotion are in
 [Podcasts](podcasts.md) describes job params/results, scheduling, privacy and
 file ownership; the [reference](../server/api/reference.md#podcasts) lists the
 listener routes.
+
+### Audible jobs
+
+`audible.poll` (Phase 4a) belongs to the `audible` module: internal (refused by
+`POST /admin/bridge/jobs` with `400`), quiet, params exactly `{"account"}` with no
+library or path, deduped per account, and it promotes an open poll to a person's
+priority when Check now asks. It runs in the `light` lane and writes nothing into a
+library (an ASIN it backfills goes through the server). The module's scheduler
+queues it; queued polls are held while the module is off. See
+[Audible](audible.md#the-poll-audiblepoll).
 
 ### Notifications
 

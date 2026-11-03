@@ -40,6 +40,7 @@ const sidebars: SidebarsConfig = {
         'admin/bridge',
         'admin/generating-characters-and-recaps',
         'admin/making-read-along',
+        'admin/audible',
       ],
     },
     {

@@ -79,6 +79,7 @@ const sidebars: SidebarsConfig = {
         'bridge/agent-container',
         'bridge/contributions',
         'bridge/podcasts',
+        'bridge/audible',
         'bridge/workers',
         'bridge/configuration',
         'bridge/development',

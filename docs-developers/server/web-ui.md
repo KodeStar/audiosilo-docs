@@ -790,7 +790,7 @@ CSP-sensitive work against a real build served by Go. The console's own gate is
   [`GET`/`PATCH /admin/settings`](api/reference.md#admin-settings): an in-page
   topic list in `?topic=` (`general` is the default and has no param;
   `network`, `players`, `metadata`, `transcoding`, `household`, `demo`, `backups`,
-  `notifications`, `import`, `bridge`, `modules`; `settings-model.ts` `SETTINGS_PAGES`,
+  `notifications`, `import`, `bridge`, `modules`, and `audible` while its module is on; `settings-model.ts` `SETTINGS_PAGES`,
   less a module's page, mapped in `MODULE_PAGES`, while its toggle is off: `visiblePages`). Each card is a `SettingsForm`
   (`settings-form.tsx`): a draft of its fields, Reset and Save changes, only
   the changed fields sent (`sectionPatch`); list settings are edited as one
@@ -910,7 +910,33 @@ CSP-sensitive work against a real build served by Go. The console's own gate is
   then the GitHub account, the agent credential and whether the Bridge can
   contribute, with **Open Accounts on the Bridge**; and the job list words
   `sidecars.contribute` ("Community share") and `meta.correct` ("Corrections")
-  jobs with `GenerateStatus` too (`isBookKind`).
+  jobs with `GenerateStatus` too (`isBookKind`). Since Phase 4a, while the
+  `audible` module is on, an **Audible accounts** card sits under Libraries in
+  the paired view only (`bridge-topic.tsx` `Paired`; with no Bridge paired,
+  Settings > Audible's Remove is the console's way to clear an orphaned account)
+  (`features/audible/audible-accounts-card.tsx`, over
+  [`GET /admin/audible/accounts`](api/reference.md#get-apiv1adminaudibleaccounts),
+  every 30 seconds): each account's mapping read-only, its title counts, **Check
+  now** and **Remove...**, and **View titles**; the setup checklist's optional
+  `audible` step links the Bridge's Accounts tab; an `audible.poll` reads
+  "Checking an Audible library", and a poll the scheduler queued "Scheduled by the
+  server" (`serverScheduled`).
+- **Settings > Audible** (`features/audible/audible-topic.tsx`, Bridge Phase 4a, a
+  `MODULE_PAGES` page listed only while the `audible` module is on) - over
+  [`GET /admin/audible/titles`](api/reference.md#get-apiv1adminaudibletitles)
+  (pages of 50, **Load more**): a search (title, author, exact ASIN) and the
+  account (with more than one), state and on-this-server filters; each title's
+  byline (`titleByline`), length, a preorder's release date, ASIN, state dot
+  (`TITLE_STATE_TONE`), and **On this server** linking to the matched book or
+  **Not here**, with **Matched by title** for a `fuzzy` match. **Check now**
+  (`POST .../poll`; a toast for a new, an already open, or a still-stopping poll;
+  `account_paused` and `unknown_account` worded by `errorMessage`) and **Remove...**
+  (`remove-account-button.tsx`, a confirmation saying it removes the account from
+  this server only, then
+  [`DELETE /admin/audible/accounts/{account}`](api/reference.md#delete-apiv1adminaudibleaccountsaccount))
+  act on the chosen or only account (`pollTarget`). The loaded titles refresh when
+  an account's `last_poll_at` moves (`useTitlesAfterPolls`). See
+  [Audible](../bridge/audible.md#the-console).
 - **Settings > Modules** (`features/settings/modules-topic.tsx`, Bridge Phase 2a) -
   over [`GET /admin/modules`](api/reference.md#get-apiv1adminmodules) (`useModules`,
   every 15 seconds like the Bridge's status, and refetched after every settings
