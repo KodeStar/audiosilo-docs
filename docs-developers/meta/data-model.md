@@ -435,9 +435,12 @@ proposal, the verdict goes into one checked-in list,
 names the proposal by its own fields (op, target, series, field, from, to,
 others; retired slugs are read through the tombstone table) with a decision and
 a one-line reason. One exception to that reading: an accepted or asserted
-`drop-membership` or `retitle-work` whose work was since retired is **stale**,
-never moved onto the survivor, even when the survivor sits at the very position
-or carries the very title the decision names. The work it named is gone, and the
+decision about one work's own record - `drop-membership`, `move-membership`,
+`restate-position`, `retitle-work`, `set-work-language` or `fill-field` - whose
+work was since retired is **stale**, never moved onto the survivor, even when the
+survivor sits at the very position, carries the very title or lacks the very
+field the decision names. A merge, an added membership or an added link still
+follows the tombstone, since a merge carries those facts over. The work it named is gone, and the
 survivor is another record nobody reviewed: a reviewed drop of a duplicate
 *Philosopher's Stone*, once the two were merged, must not remove the real one.
 
