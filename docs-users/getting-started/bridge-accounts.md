@@ -125,9 +125,9 @@ The **Audible** card signs the Bridge in to one or more Audible accounts. For ea
 account, the Bridge lists the books it owns, finds the ones already in your
 library and backs up the ones you ask for; the console shows them, and is where
 you ask, under [Server > Settings > Audible](../admin/audible.md). Each account
-belongs to **one person** on your server and goes with **one books library**. The sign-in stays
-sealed on the Bridge: the server only ever sees the account's name, who and which
-library it is for, and the list of titles.
+belongs to **one person** on your server and goes with **one books library**. The
+sign-in stays sealed on the Bridge: the server only ever sees the account's name, who and which
+library it is for, the list of titles and how each backup went.
 
 :::info[What it does today]
 The Bridge **lists, matches and backs up**: it shows which of your Audible books

@@ -326,8 +326,8 @@ a park's code, else the result's `code`, else an error starting with a known cod
 | `unknown_account` | not this Bridge's account, or mapped on another server |
 
 A title offered only as a DRM-free MP3 (`audible.ErrDRMFree`) fails with no code
-(not backed up in 4b), as do a download over `audible.MaxBytes` (4 GiB) and other
-errors.
+(not backed up in 4b), as do a download over `DownloadOptions.MaxBytes`
+(`audible.DefaultMaxDownloadBytes`, 4 GiB) and other errors.
 
 **Not writable while running.** A mapping check not made yet for the mount is
 waited for (`mappingPoll`, 1 s), no park. An unwritable mapping refuses a **new**
@@ -495,7 +495,9 @@ accounts' `matched` count all read it so.
 `account_paused`; `already_matched`; `import_open` (an open job, or a pending
 request); a **preorder** stores `import_pending = 1` and answers pending (no job;
 the request survives a restart); `not_available` for `unavailable` or `gone`.
-Contested and done titles are allowed (the admin decides).
+Contested titles are allowed, and so is one whose last backup is done once it is
+no longer on this server (the admin decides; `retryImportSQL` is Back up
+everything's only).
 
 **Back up everything** (`AudibleBackupAll`, `backupAllSQL`, also the
 `backup_estimate`): `state = 'available'`, no match, not `rejected`, not `ignored`,

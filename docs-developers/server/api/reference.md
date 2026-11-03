@@ -10589,10 +10589,10 @@ by the first poll that reports the title available.
 | `404` | `unknown_account`; `unknown_title` (also an `{asin}` that isn't an ASIN); `module_off` |
 | `409` | `already_matched` - the title is on this server (matched, not marked "Not this book"); `import_open` - its backup is waiting, running or parked, or a preorder request is pending; `not_available` - the title is `unavailable` or `gone`; `account_paused`; `kind_unavailable` - no Bridge has reported, or the paired one doesn't run `audible.import`; `library_not_writable` - the Bridge can't write to the account's library |
 
-A contested title, and one whose last backup is done, can be backed up this way
-(the admin decides). A queued backup is audited as `bridge.job` (with `job`,
-`kind`, `account`, `asin`), a pending one as `bridge.audible.backup` (with
-`account`, `asin`, `pending`).
+A contested title, and one whose last backup is done but which is no longer on
+this server, can be backed up this way (the admin decides). A queued backup is
+audited as `bridge.job` (with `job`, `kind`, `account`, `asin`), a pending one as
+`bridge.audible.backup` (with `account`, `asin`, `pending`).
 
 ### `POST /api/v1/admin/audible/accounts/{account}/backup-all`
 

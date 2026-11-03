@@ -219,9 +219,9 @@ Audible book**, with the title's ASIN, the step it is on and how far it has got.
 **Scheduled by the server** marks one a policy or a preorder queued. **Cancel**
 there stops it, and the partly downloaded file is deleted. When it is done, the
 title shows **On this server** with **Backed up here**, and listeners of the
-library find the book like any other. A finished or failed backup is
-[notified](notifications.md) like the Bridge's other jobs, named by the book's
-title.
+library find the book like any other. A finished or failed backup, and one that
+needs attention, is [notified](notifications.md) like the Bridge's other jobs,
+named by the book's title.
 
 **One at a time.** The Bridge backs up one book of each account at a time, and it
 downloads one thing at a time in all, so backups take turns with new podcast
@@ -258,7 +258,7 @@ overwritten or left half copied.
 | **Audible doesn't let it be downloaded yet.** | the title isn't released yet: a preorder, or Audible says it isn't out |
 | **This account doesn't have the right to download it.** | the title is no longer in the account, Audible won't let this account download it, or it is a podcast or periodical |
 | **Audible refused the download. Sign in again on the Bridge if it keeps happening.** | Audible refused the account's sign-in or the download: see [Sign in again](../getting-started/bridge-accounts.md#the-accounts-states) |
-| **The Bridge can't write to this library. Check its mapping on the Bridge.** | the library isn't **Ready** on the Bridge's [Libraries](bridge.md#libraries) tab (mapped and writable), the account's library changed since the backup was queued, or the destination or template gives a path the Bridge can't use there (a hidden folder, a file name that isn't `.m4b`, `.m4a` or `.mp4`, a file where a folder should be) |
+| **The Bridge can't write to this library. Check its mapping on the Bridge.** | the library isn't **Ready** on the Bridge's [Libraries](bridge.md#libraries) tab (mapped and writable), the account's library changed since the backup was queued, or the destination or template gives a path the Bridge can't use there (a hidden folder, an audio file name other than `.m4b`, `.m4a` or `.mp4`, a file where a folder should be) |
 | **A different file is already where it would go. Choose another destination.** | a file is already at the destination, or the destination is inside a book the library already has (a folder that is a book, or already holds audio files): a backup is a book of its own. Choose a [destination](#choosing-a-destination), or move that file |
 | **There isn't enough free space. Free some up, then back it up again.** | the Bridge needs room for about twice the book in its data folder (the download and the copy without DRM), and a little more than the book in the library |
 | **The download link ran out twice. Back it up again.** | Audible's download link expired, and expired again after the Bridge asked for a new one |
@@ -390,8 +390,9 @@ folders and file yourself, for example
   others.
 - `{ ... }` around part of it is dropped when a variable inside is empty: above,
   a book in no series has no number and no ` - `.
-- A last part ending in `.m4b`, `.m4a` or `.mp4` names the file. Anything else is
-  a folder, and the book's file (named after the title) goes in it.
+- A last part ending in `.m4b`, `.m4a` or `.mp4` names the file. Another audio
+  file name (such as `.mp3`) can't be used: the backup is always an M4B. Anything
+  else is a folder, and the book's file (named after the title) goes in it.
 - It must stay inside the library: not starting with `/`, no `..`, no part starting
   with a dot. A template the server can't read (an unknown variable, a `{` without
   its `}`) isn't saved, and the dialog says why.
@@ -416,7 +417,9 @@ If it still isn't available 14 days after its release date, the title shows
 account's usual checks go on, and back it up if it does turn up). Audible sometimes
 moves a release date: check the title in the Audible app or website.
 
-Marking a preorder [Not this book](#not-this-book) drops the request.
+Marking a preorder [Not this book](#not-this-book) drops the request. **Back up**
+on a preorder is in the [audit log](server.md#audit-log) as **Asked to back up an
+Audible book**.
 
 ## Check now
 
