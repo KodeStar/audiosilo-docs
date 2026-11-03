@@ -187,9 +187,13 @@ go run ./cmd/metafmt --check --profile core # canonical formatting (--write to f
 (the whole database in one tree) for backward compatibility, so CI and this
 snippet pass `--profile core` explicitly rather than relying on that default.
 
-The `-race` suite takes under a minute: every test that walks the real data tree
-skips under the race detector, since the fixture suites cover the concurrent code
-and `metacheck`/`metafmt` validate the real tree anyway. Those real-data tests
+The `-race` suite takes about a minute on a fast machine; CI splits it into three
+shards that take 3 to 6 minutes each. Almost every test that walks the real data
+tree skips under the race detector, since the fixture suites cover the concurrent
+code and `metacheck`/`metafmt` validate the real tree anyway. The exception is
+`internal/recorddiff`'s real-checkout test, which diffs the last commit under
+`-race` too: a few seconds on most changes, a few minutes after a large data
+change. The skipped real-data tests
 still run in CI: the `real-data.yml` workflow runs the whole suite without
 `-race` every day, on demand, and on every push to `main` that touches anything
 the Go gate would run on (a `paths:` filter skipping `data/**` other than
