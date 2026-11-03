@@ -522,7 +522,7 @@ runs, so the Agent card and the setup checklist say it is not running.
 The Audible shots (`bridge/audible-sign-in.png`, `bridge/accounts-audible.png`,
 `admin/audible-accounts-card.png`, `admin/audible-titles.png`, Bridge Phase 4a)
 come from the same script, so they are `capture: 'bridge'` in the manifest even
-though two show the console. No Audible account is used: when one of them is
+though two show the console. No Audible account is used: when one of them (the manifest's `audible: true`) is
 wanted and the checkout has `cmd/audiblefake`, `run.sh` builds the Bridge with
 `-tags embedui,audiblefake` (a development build; release images never carry the
 tag), builds and starts the Audible fake on `:8794` (`SHOTS_AUDIBLE_PORT`) and

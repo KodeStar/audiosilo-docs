@@ -12,14 +12,8 @@
 // The Bridge is unpaired again at the end (both sides).
 //
 // The Audible shots (Bridge Phase 4a) need a Bridge built with -tags audiblefake and the
-// Audible fake (AUDIBLE_FAKE_URL; run.sh starts both when they are wanted): the page
-// signs in to the fake, which answers with 30 made-up titles. The account is mapped to
-// an "Audiobooks" library made for it (three silent books shaped like fixture titles,
-// so the poll matches one by ASIN and two by title), the server's audible module is
-// turned on and Check now asked, then the Bridge's card and the console's Audible
-// accounts card and titles page are shot. Afterwards the account is removed on the
-// Bridge (which deregisters it from the fake), the module turned off again and the
-// library deleted. Nothing touches the seeded library.
+// Audible fake (AUDIBLE_FAKE_URL); screenshots/README.md says how the run goes. Nothing
+// touches the seeded library.
 //
 // Env: BRIDGE_BASE (the page, http://127.0.0.1:<port>/), BRIDGE_PASSWORD (its
 // one-time password), AS_ORIGIN + ADMIN_PASSWORD (the demo server), AUDIBLE_FAKE_URL
@@ -58,10 +52,10 @@ const server = apiClient(ORIGIN);
 const bridgeApi = apiClient(BASE.replace(/\/$/, ''), '/api');
 
 // Settles, moves the pointer away and shoots the page as tall as its content.
-const tallShoot = async (page, file) => {
-  await sleep(800);
+const tallShoot = async (page, file, {settle = 800, max = 1600, min = 400} = {}) => {
+  await sleep(settle);
   await page.mouse.move(0, 0);
-  await fitted(page, () => fitViewportToPage(page, 900, 1600, 400), () => shoot(page, file));
+  await fitted(page, () => fitViewportToPage(page, 900, max, min), () => shoot(page, file));
 };
 
 const tab = async (page, name) => {
@@ -213,9 +207,7 @@ async function audibleShots() {
     await step('audible: console titles', async () => {
       await consolePage.goto(`${ORIGIN}/admin/server?topic=audible`, {waitUntil: 'networkidle', timeout: 45000});
       await consolePage.getByRole('list', {name: 'Audible titles'}).waitFor({timeout: 15000});
-      await sleep(1000);
-      await consolePage.mouse.move(0, 0);
-      await fitted(consolePage, () => fitViewportToPage(consolePage, 900, 1800, 800), () => shoot(consolePage, AUDIBLE_SHOTS.titles));
+      await tallShoot(consolePage, AUDIBLE_SHOTS.titles, {settle: 1000, max: 1800, min: 800});
     });
   } finally {
     await consolePage.close().catch(() => {});

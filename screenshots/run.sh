@@ -131,7 +131,7 @@ shot_wanted() { # <file>
 }
 
 # Whether SHOTS_ONLY keeps any manifest shot whose <field> is <value>: `capture
-# setup`, `capture bridge`, `readalong true`.
+# setup`, `capture bridge`, `readalong true`, `audible true`.
 manifest_wanted() { # <field> <value>
   (cd "$HERE" && FIELD="$1" VALUE="$2" node --input-type=module -e '
     import {SHOTS} from "./manifest.mjs";
@@ -448,9 +448,7 @@ if [ "${SKIP_BRIDGE:-0}" != "1" ] && manifest_wanted capture bridge; then
     # fake, only when one is wanted and the checkout has it.
     BRIDGE_TAGS=embedui
     AUDIBLE_FAKE_URL=""
-    if { shot_wanted bridge/audible-sign-in.png || shot_wanted bridge/accounts-audible.png \
-        || shot_wanted admin/audible-accounts-card.png || shot_wanted admin/audible-titles.png; } \
-        && [ -d "$BRIDGE/cmd/audiblefake" ]; then
+    if [ -d "$BRIDGE/cmd/audiblefake" ] && manifest_wanted audible true; then
       BRIDGE_TAGS=embedui,audiblefake
       (cd "$BRIDGE" && go build -tags audiblefake -o "$CACHE/audiblefake" ./cmd/audiblefake) \
         > "$CACHE/audiblefake-build.log" 2>&1 \

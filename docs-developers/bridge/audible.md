@@ -168,18 +168,10 @@ Registering the kind is what adds `audible` to the heartbeat's features
 
 ## On the server (`0063`, `catalog/audible.go`)
 
-`audible_accounts`: `account` (the Bridge's id, primary key), `label`,
-`marketplace` (one of `config.Regions`), `user_id` -> users `ON DELETE CASCADE`,
-`library_id` -> libraries `ON DELETE SET NULL`, `policy` (`all` | `series` |
-`manual`), `sync`, `poll_hours` (default 6), `created_at`, `updated_at`,
-`last_poll_at` (the Bridge's last final titles call), `last_queued_at`.
-
-`audible_titles`: `account` (CASCADE) + `asin`; `title`, `authors` and `series`
-(JSON), `release_date`, `runtime_s`, `state` (`available` | `preorder` |
-`unavailable` | `gone`), `reason`, the match (`match_library_id`, `match_path`,
-`match_how`: path-keyed with **no FK**, so a rebuild keeps it), `first_seen`,
-`updated_at`, `poll_id`, and the columns 4b fills (`rejected`, `ignored`,
-`dest_path`, `import_job_id`), which a titles PUT never overwrites.
+Two tables, `audible_accounts` (the mapping, `poll_hours`, `last_poll_at`,
+`last_queued_at`) and `audible_titles` (one row per account and ASIN, with its state
+and match, plus the columns 4b fills, which a titles PUT never overwrites): the
+columns are in the [data model](../server/data-model.md#the-bridge).
 
 - **Paused** is `library_id` NULL: the library was deleted. `DeleteLibrary`, in the
   library's own transaction, clears the matches into it and cancels the paused
@@ -220,17 +212,12 @@ flag.
 
 ## The console
 
-Settings > Bridge's **Audible accounts** card (`features/audible/
-audible-accounts-card.tsx`, while the module is on: the mapping read-only, title
-counts, Check now and Remove per account, a link to the Bridge's Accounts tab) and
-Settings > Audible (`audible-topic.tsx`, a `MODULE_PAGES` page: the titles with
-account, state and on-this-server filters, a search over the title, each author and
-an exact ASIN, Check now and Remove for the chosen or only account). Remove
-(`remove-account-button.tsx`) confirms first, saying it removes the account from
-this server only. The loaded titles refresh when an account's `last_poll_at` moves
-(`useTitlesAfterPolls`). A scheduled poll reads "Scheduled by the server" in the job
-list. The Bridge's optional setup step `audible` (done with an account signed in
-and none refused) links its Accounts tab. See the
+While the module is on, Settings > Bridge gains an **Audible accounts** card (the
+mapping read-only, title counts, Check now and Remove per account) and Settings >
+Audible lists the titles with their filters; Remove removes the account from this
+server only. The components are in the [console's catalogue](../server/web-ui.md#what-the-console-has-today).
+The Bridge's optional setup step `audible` (done with an account signed in and none
+refused) links its Accounts tab. See the
 [User Guide's Audible page](/users/admin/audible).
 
 ## The routes
