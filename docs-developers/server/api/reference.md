@@ -10373,6 +10373,9 @@ the server knew it (the Bridge forgets locally first and may call again).
 - `asin` must be an ASIN (upper-cased); `state` is `available`, `preorder` or
   `unavailable` (`gone` is the server's); `release_date` is `YYYY-MM-DD` or `""`;
   `runtime_s` 0 to 1,000,000. These are refused `400 invalid_request`.
+- `reason` says why an `unavailable` title can't be downloaded, or is
+  `contested` on an `available` one with no `match`: it matched a book another
+  title claimed with a better or equal score.
 - Free text is cleaned and bounded, never refused: `title` (500), `reason` (256),
   each author and series name (200), a position (32); authors past the first 20
   and series past the first 10 are dropped.
@@ -10421,7 +10424,11 @@ number is `400`), `?after=` the previous page's `next`. `Cache-Control: no-store
 The effective values: `authors` and `narrators` split as the server splits credits
 (`[]` for none), `series` every series the book is in, the main one first, each with
 its position as stored (`"3"`, `"1-3"`, `""`); `duration` in seconds. `next` is
-`null` on the last page.
+`null` on the last page. A main series with no position takes the one the code
+leading the book's folder name gives, when its letters are the series' initials
+(`DH06 - ...` in "Dragon Heart" is `"6"`, a range code `LAM05-06` `"5-6"`): this
+listing only, never the scan's position (see
+[the Bridge's matching rules](../../bridge/audible.md#matching-rules)).
 
 | Status | Meaning |
 |---|---|

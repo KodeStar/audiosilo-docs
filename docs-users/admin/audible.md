@@ -115,8 +115,34 @@ library from the server, and matches each title to a book there:
 
 1. **By ASIN first.** A book whose ASIN (in its tags, or set in the console) is the
    title's matches at once.
-2. **Then by title and author**, with the series and narrators to help. These show
-   **Matched by title**.
+2. **Then by title and author**, with the series, the book's number in it and the
+   narrators to help. These show **Matched by title**.
+
+A title that matched a book shows **On this server**; one that didn't shows **Not
+here**. A few things help a title find its book:
+
+- **The same title by the same author** matches, even when Audible files the book
+  under a differently named series than your tags do. A title that is just the
+  series name and a number ("Dragon Heart: Book 6") needs the number to agree.
+- **The book's number in the series** tells the volumes of a series apart. When
+  your tags don't give it, a code at the start of the book's folder name does:
+  `DH06 - Land of Magic` is book 6 of Dragon Heart, `BDM01 - Oathbound Healer` book
+  1 of Beneath the Dragoneye Moons. The code's letters must be the series' initials
+  (all of them or some, in order), so a code that is something else, like `HALO
+  07` in a Halo folder, is ignored. This doesn't change the book's position
+  anywhere else on your server.
+- **A folder covering several books**, like `LAM05-06`, is read as an omnibus,
+  not as book 5, so Audible's book 5 on its own isn't matched to it.
+
+**When several titles land on one book**, only the clearly best match keeps it;
+the others show as **Not here**, with **contested** under the title (the book is
+probably here under the other title). When no title is clearly best, none keeps
+it. The exception is the same book owned twice (two editions with the same title,
+author and number): both keep it.
+
+**Release dates.** Audible sometimes gives a title it has had for years a
+placeholder release date far in the future (such as the year 2200). A date over
+two years ahead is ignored, so such a title is **Available**, not a **Preorder**.
 
 When a book matched by title and author has no ASIN yet, the Bridge gives it the
 Audible title's ASIN, so later checks, and the community metadata, match it exactly.
