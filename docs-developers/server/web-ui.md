@@ -950,8 +950,8 @@ CSP-sensitive work against a real build served by Go. The console's own gate is
   account is paused,
   [`POST .../backup`](api/reference.md#post-apiv1adminaudibletitlesaccountasinbackup);
   **Not this book** and its undo and **Destination...**, and Phase 4c's **Don't
-  sync** / **Sync again** for a title on this server (`canSync`: matched, not
-  rejected, ignored or gone, or already `no_sync`),
+  sync** / **Sync again**, shown while `canSync` (matched, not rejected, ignored,
+  gone or `no_sync`) or the title is already `no_sync`,
   [`PATCH /admin/audible/titles/{account}/{asin}`](api/reference.md#patch-apiv1adminaudibletitlesaccountasin)),
   the backup's state and code (`importStatus`, `audible.code.<code>`), and the
   legal line under the filters. An unmatched title's row says where its backup

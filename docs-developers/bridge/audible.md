@@ -810,9 +810,10 @@ not negative.
    none, is `unknown_account`;
 2. stores the titles (`store.ListAudibleSync`), then while the account's
    `sync_retry_at` is ahead ends done with `waiting` without calling Audible;
-3. reads Audible's places (`lastpositions`, 25 ASINs a request, 25 s, split on a
-   `400` or `414`; a failure waits Audible's `Retry-After` from when it came back,
-   at least 2 minutes, and fails `audible_error`);
+3. reads Audible's places (`lastpositions`, 25 ASINs a request, split on a
+   `400` or `414`); a failure fails `audible_error`, and a `429`/`503` also waits
+   Audible's `Retry-After` from when it came back, at least 2 minutes
+   (`sync_retry_at`);
 4. skips a place under 1 s, one past the runtime (more than 5% plus 2 minutes:
    Audible's runtime is minute-rounded, so past it means a wrong match), one older
    than 85 days (the server refuses events past 90), and one within 5 s of the place
@@ -888,8 +889,9 @@ each account mapped here that isn't refused, waiting or paused, it reads the fee
 pages in the server's write order and may give a row again with `updated_at`
 unchanged, so a row is new by its **place** alone, never its time or version: a new
 version at the same place never re-arms a push. The baseline (every read until one
-reaches the feed's end) takes only rows of the last 10 minutes by `updated_at`;
-history before it is none. A row the Bridge fails to record keeps the cursor, so
+reaches the feed's end) takes only rows of the last 10 minutes by `updated_at`
+and records the older ones as history, never pushed; after it, every row read is
+new. A row the Bridge fails to record keeps the cursor, so
 the pass reads it again. It skips rows written by `audible:<account>`, and keeps a row on a title
 the last sync didn't list for that book pending (`listed` 0,
 `store.PendAudiblePush`) until a sync lists it.
@@ -945,10 +947,11 @@ The Bridge mirrors them by hand in `internal/link/audiblesync.go`
 
 `audible_push`, keyed `(account, asin)`: the book the last `audible.sync` listed
 (or, with `listed` 0, the one a feed row named, pending until a sync lists it),
-`runtime_s`, the cached content reference (`acr`), `last_ms`/`last_at` written to
-Audible, `heard_ms` sent from it (each clears the other: `AudiblePushed`, and
-`AudibleHeard` for a write before the job began), and `want_ms` + `row_updated`
-waiting. On `audible_accounts`: `push_cursor`/`push_from`, the health columns
+`library_id`/`path`, `runtime_s`, `listed`, the cached content reference (`acr`),
+`last_ms`/`at` written to Audible, `heard_ms` sent from it (each clears the other:
+`AudiblePushed`, and `AudibleHeard` for a write before the job began), `want_ms`
+waiting, and the feed row last read: `row_ms` and `row_seen` (when this Bridge
+first read that place, the stillness clock). On `audible_accounts`: `push_cursor`/`push_from`, the health columns
 `sync_at`/`sync_error`/`sync_retry_at`, and `refusal_kind` (above).
 
 ## On the server (`0063`, `catalog/audible.go`)
@@ -966,7 +969,8 @@ the accounts, `no_sync` to the titles and `change_seq` to `progress` (see
 
 - **Paused** is `library_id` NULL: the library was deleted. `DeleteLibrary`, in the
   library's own transaction, clears the matches into it and cancels the paused
-  accounts' open polls, so no titles call can match into it in between. The
+  accounts' open polls (and, since 4c, their open syncs: "the Audible account's
+  library was deleted"), so no titles call can match into it in between. The
   scheduler skips a paused account and Check now is `409 account_paused` until the
   Bridge maps it again.
 - A title's match **moves with its book**: a move (`moveBookState`, a scan's move

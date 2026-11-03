@@ -563,8 +563,11 @@ when it last did, or why it has stopped:
   off then, since you turned it on for someone else. Turn it on again for the new
   person.
 
-When Audible is busy, or turns a sign-in away only for a while, sync doesn't stop:
-the Bridge waits a few minutes and tries again by itself. If the account's person
+When Audible is busy, sync doesn't stop: the Bridge waits as long as Audible asks
+(a few minutes) and tries again by itself. When Audible turns the account's sign-in
+away (the Bridge's Accounts tab says **Sign in again**), places don't sync until the
+next check Audible answers, or until you sign in again; **Check now** tries at
+once. If the account's person
 is disabled or made a kid account, nothing syncs until you choose someone else for
 the account on the Bridge. The Bridge's setup checklist says when an account's
 places aren't syncing, and why.
