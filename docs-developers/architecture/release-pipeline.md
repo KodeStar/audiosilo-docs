@@ -78,8 +78,21 @@ The multi-stage `Dockerfile`:
   JS/CSS) and copies `internal/web/adminui/dist` into the Go stage, where it is
   embedded (see [Built-in web UI](../server/web-ui.md#the-admin-console-admin-ui));
 
-- builds the CGO-free server binary (`CGO_ENABLED=0`, `-trimpath`), stamping the
-  release version via
+- builds the server binary with the **native SQLite engine** by default
+  (`ARG SQLITE_ENGINE=native`; `--build-arg SQLITE_ENGINE=modernc` builds the
+  pure-Go engine without cgo instead, see
+  [SQLite choices](../server/data-model.md#sqlite-choices)):
+  - `CGO_ENABLED=1`, `-tags "sqlite_native sqlite_fts5 sqlite_preupdate_hook
+    sqlite_omit_load_extension netgo osusergo"`, `-trimpath`;
+  - linked statically against glibc (`-linkmode external -extldflags -static`)
+    on the Debian-based `golang:1.26` image, so the binary runs unchanged on the
+    Alpine final stage and keeps glibc's allocator (with musl's, a first scan was
+    27% slower than on the pure-Go engine). `netgo` and `osusergo` keep it off
+    glibc's NSS;
+  - the build runs on the build host's platform; a cross leg installs the
+    target's cross compiler and C library (`gcc-aarch64-linux-gnu` +
+    `libc6-dev-arm64-cross`, or `gcc-x86-64-linux-gnu` + `libc6-dev-amd64-cross`);
+- stamps the release version via
   `-ldflags "-X github.com/kodestar/audiosilo-server/internal/api.Version=${VERSION}"`
   (`image.yml` passes the semver on a tag build, else `dev-<short sha>`, as the
   `VERSION` build-arg; the default is `dev`);
@@ -95,10 +108,21 @@ negotiate via the `GET /api/v1/server` capability flags instead.
 
 ## 3. Native binaries - `release.yml` + `.goreleaser.yml`
 
-The same `v*` tag triggers GoReleaser on a single Linux runner. The server is
-CGO-free (modernc SQLite), so everything cross-compiles with no C toolchain:
+The same `v*` tag triggers GoReleaser on a single Linux runner, in two builds:
 
-- **Targets:** `linux`, `darwin`, `windows` × `amd64`, `arm64` (six binaries).
+- **Linux** (`audiosilo-linux`, `amd64` and `arm64`, for the tarballs and the
+  `.deb`/`.rpm`): the **native SQLite engine**, with the Docker build stage's
+  tags and static glibc link (section 2) plus `embedplayer`: one static binary
+  that runs on any distro, Alpine included. Each architecture needs its C
+  compiler, named by its triplet in `CC` (`x86_64-linux-gnu-gcc`,
+  `aarch64-linux-gnu-gcc`); `release.yml` installs the arm64 cross compiler
+  (`gcc-aarch64-linux-gnu`, `libc6-dev-arm64-cross`) on the amd64 runner.
+- **macOS and Windows** (`audiosilo`, `amd64` and `arm64`): CGO-free on the
+  pure-Go SQLite engine (modernc), so they cross-compile from the same runner
+  with no C toolchain.
+
+Six binaries in all. The rest is shared:
+
 - **Archives:** `.tar.gz` (Linux/macOS) and `.zip` (Windows), named
   `audiosilo_<version>_<os>_<arch>`, containing the binary plus
   README/LICENSE/RELEASING.
@@ -158,17 +182,33 @@ distro's `ffmpeg`.
 ### Smoke test, and the LinuxServer.io image downstream
 
 `release.yml`'s last step smoke-tests the archives while the release is still a
-draft: the exact linux archive names, the binary at each archive's root, each
-binary's `embedplayer` tag, `CGO_ENABLED=0` and architecture (`go version -m`), and
-an amd64 boot with `--data` only (the headless first run and the self-signed TLS
-default) that must serve `/healthz` and `/web/`.
+draft:
+
+- the exact linux archive names and the binary at each archive's root;
+- each binary's build settings (`go version -m`): a Linux binary's tags
+  `embedplayer`, `sqlite_native`, `netgo` and `osusergo`, `CGO_ENABLED=1`, its
+  architecture and static linking (`readelf` finds no ELF interpreter); a macOS
+  or Windows binary's `embedplayer` tag, `CGO_ENABLED=0` and architecture;
+- an amd64 boot with `--data` only (the headless first run and the self-signed
+  TLS default) that must serve `/healthz` and `/web/` and log `engine=native` at
+  start.
 
 That is a contract, because
 [linuxserver/docker-audiosilo](https://github.com/linuxserver/docker-audiosilo)
 (`lscr.io/linuxserver/audiosilo`, the image Unraid's Community Applications lists)
 installs `audiosilo_<version>_linux_{amd64,arm64}.tar.gz` from the published release
-onto Alpine. Their CI polls `releases/latest` hourly, so publishing the draft is
-what triggers a new `<tag>-ls<N>` image. The full list is in
+onto Alpine. The binary is static, so that image runs the native engine too.
+
+A static glibc binary carries two obligations of its own. glibc is LGPL-2.1-or-later,
+so `NOTICE` (where the glibc source is, and how to relink: the full source and
+build recipe are public) ships in every archive, at
+`/usr/share/doc/audiosilo/NOTICE` in the `.deb`/`.rpm` and the Docker image, and the
+packages' license reads `MIT and LGPL-2.1-or-later`. And glibc starts threads with
+`clone3`, which Docker's seccomp profile refused with `EPERM` before **20.10.10**, so in
+a container the server needs Docker 20.10.10 or newer (it stops at start-up with
+`pthread_create failed` on older ones). The release notes' footer says both.
+Their CI polls `releases/latest` hourly, so publishing the draft is what
+triggers a new `<tag>-ls<N>` image. The full list is in
 `audiosilo-server/RELEASING.md` section 2c.
 
 ## Ordering and compatibility, in one place
@@ -183,8 +223,10 @@ what triggers a new `<tag>-ls<N>` image. The full list is in
   publish only once the run is green, and tick *Set as a pre-release* for a `-rc`
   tag.
 - **Docker vs. native:** same server code, same pinned player; the differences are
-  ffmpeg (bundled in the image, resolved/fetched at runtime for binaries) and how
-  the player is attached (`/app/web` + `AUDIOSILO_WEB_DIR` vs. `-tags embedplayer`).
+  ffmpeg (bundled in the image, resolved/fetched at runtime for binaries), how
+  the player is attached (`/app/web` + `AUDIOSILO_WEB_DIR` vs. `-tags embedplayer`),
+  and the SQLite engine on macOS and Windows (pure Go there; native in the image
+  and the Linux binaries).
 - **Version stamping** is the same mechanism everywhere: ldflags →
   `api.Version` → reported by `GET /server` and surfaced in the UIs.
 - **Native app ↔ server compatibility** is *not* pinned - it's negotiated at

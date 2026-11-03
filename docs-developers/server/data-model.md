@@ -1453,10 +1453,60 @@ The migration history so far:
 
 ## SQLite choices
 
-**Pure-Go driver.** The server uses `modernc.org/sqlite` (no CGO), so the
-binary cross-compiles for every release target without a C toolchain - a hard
-requirement of the native-distribution pipeline (see
-[Release pipeline](../architecture/release-pipeline.md)).
+**Two SQLite engines.** The SQLite library is the build's engine
+(`store/engine*.go`):
+
+- **modernc** (the default build): `modernc.org/sqlite`, pure Go with no cgo
+  (SQLite 3.54.1), so the binary cross-compiles without a C toolchain - which
+  the macOS and Windows release binaries rely on (see
+  [Release pipeline](../architecture/release-pipeline.md)).
+- **native**: a build with
+  `CGO_ENABLED=1 -tags "sqlite_native sqlite_fts5 sqlite_preupdate_hook"`
+  compiles in the C SQLite through `mattn/go-sqlite3` v1.14.52 (SQLite 3.53.4).
+  It runs SQLite's own work (full-text search, joins, aggregates) roughly 1.5 to
+  3 times faster on uncached queries. A native build missing cgo or either mattn
+  tag doesn't compile (`engine_native_guard.go`): without `sqlite_preupdate_hook`
+  mattn's pre-update hook is a silent no-op, and the user-state watch with it.
+  Its queries read rows through a fast path (`engine_native_rows.go`, one C
+  call a row) that relies on an unexported field of mattn's statement;
+  `TestNativeFastRows` fails if a mattn upgrade drops it.
+
+| Build | Engine |
+|---|---|
+| The Docker image (`ghcr.io/kodestar/audiosilo-server`) | native, a static binary linked against glibc on the Alpine base; the build arg `SQLITE_ENGINE=modernc` builds modernc instead |
+| GoReleaser Linux binaries (tarballs, `.deb`/`.rpm`), and so the LinuxServer.io image, which downloads them | native, static against glibc as in the Docker image |
+| GoReleaser macOS and Windows binaries | modernc |
+| The desktop manager (`pkg/launcher` in-process), a plain `go build` | modernc |
+
+On a native build, `AUDIOSILO_SQLITE=modernc` runs that process on modernc
+instead (see [The SQLite engine](configuration.md#the-sqlite-engine-audiosilo_sqlite)).
+
+One engine serves the whole process, chosen the first time it is needed. Every
+open of the database goes through its driver (`driverName()`: both pools,
+`VacuumFile`, `openReadOnly`), never `sql.Open("sqlite", ...)`: two SQLite
+copies on one file in one process don't see each other's POSIX locks, which
+corrupts the file. The engine also wraps everything library-specific: the
+pre-update and commit hooks, SQL functions (`store.RegisterFunction`, called
+from an `init`) and `store.IsUniqueViolation`. The metadata mirror's
+`meta.sqlite` is a separate file, which modernc opens on either engine. SQL
+holding several statements takes no parameters (modernc hands each statement the
+whole argument list, mattn hands them out statement by statement), so run one
+statement per Exec.
+
+**Prepared-statement cache.** Both pools open the engine's library behind a
+per-connection prepared-statement cache (`store/stmtcache.go`), keyed by the
+SQL text: 256 statements per connection, least recently used out. It roughly
+halves a first scan on either engine. SQL built per call (a value formatted
+into the text, an `IN` list sized to its arguments) misses and churns the
+cache, so bind values as parameters. SQL holding several statements, a
+statement whose rows are still open and, on the native engine, an Exec of
+anything but plain DML bypass the cache, and a connection that runs DDL drops
+its cached statements. A hot join (one run per book or per row, such as the
+scan's joins in `catalog/communitychapters.go` and
+`catalog/overrides.go`) takes its parameters as `+?`: a bare `?` in a join
+makes SQLite 3.54's planner re-parse the statement whenever a new value is
+bound, and the unary plus hides the value from the planner without changing
+the plan or the comparison.
 
 **Pragmas.** Every connection gets `journal_mode(WAL)`, `synchronous(NORMAL)`,
 `busy_timeout(5000)` and `foreign_keys(ON)` appended to its DSN (`store.dsnPragmas`).

@@ -318,7 +318,7 @@ so `auto` leaves it off there. It stays off on every other FUSE filesystem
 and on network shares too. mergerfs (with `cache.files=off`) runs `direct_io`,
 where a mapping fails or, on some kernels, can show readers stale pages after the
 writer's direct writes. On sshfs, rclone, s3fs, ntfs-3g, NFS or SMB a read can
-fail, and an I/O error under a mapping is a `SIGBUS`, which stops the pure-Go
+fail, and an I/O error under a mapping is a `SIGBUS`, which stops the
 server, where a plain read would fail one request. `on` takes those risks on
 purpose. The 256 MiB is a cap on address space, not memory: the mapped pages
 are the kernel's reclaimable file cache.
@@ -335,6 +335,18 @@ database file in place would also raise `SIGBUS`, so nothing does: backups are
 database:
   mmap: auto # [AUDIOSILO_DB_MMAP] auto | on | off
 ```
+
+#### The SQLite engine (`AUDIOSILO_SQLITE`)
+
+On a build with the native C SQLite engine, `AUDIOSILO_SQLITE=modernc`
+(exactly, lowercase) runs that process on the pure-Go engine instead, to compare
+the two on one binary or as a fallback; the database file is the same either
+way. Which engine a build carries is decided by the build, not by a config key
+(see [SQLite choices](data-model.md#sqlite-choices) for which builds are
+native). A value naming any engine other than the
+one that runs (`native` on a pure-Go build, or a typo) changes nothing and logs
+a warning at start. Read once at start. The start logs the engine and its SQLite
+release, for example `msg="database: sqlite" engine=native version=3.53.4`.
 
 ### Demo mode (`demo.*`)
 
@@ -747,7 +759,9 @@ by the settings table in `internal/config/settings.go` (`fields`: each entry's
 
 `AUDIOSILO_PODCAST_INDEX_KEY` and `AUDIOSILO_PODCAST_INDEX_SECRET` override
 no key, so they are not in this table (see
-[Podcast discovery](#podcast-discovery-podcastsdiscovery)).
+[Podcast discovery](#podcast-discovery-podcastsdiscovery)). `AUDIOSILO_SQLITE`
+overrides no key either (see
+[The SQLite engine](#the-sqlite-engine-audiosilo_sqlite)).
 
 List values are split on commas with whitespace trimmed and empties dropped
 (`splitList`). Numeric/boolean variables that fail to parse are **silently

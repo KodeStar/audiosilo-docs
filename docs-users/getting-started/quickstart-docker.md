@@ -17,7 +17,7 @@ For an HTTPS setup with a reverse proxy from the start, follow the illustrated [
 
 ### What you need
 
-- Docker with the Compose plugin (`docker compose`).
+- Docker **20.10.10 or newer** with the Compose plugin (`docker compose`). `docker version` shows yours. Older Docker blocks something the server needs to start, so the container stops straight away (see [Troubleshooting](../troubleshooting.md#the-container-stops-at-start-up-with-pthread_create-failed)).
 - A folder of audiobooks somewhere on the host (for example `/srv/audiobooks`). Don't worry about its layout yet - see [Organizing your library](./organizing-your-library.md).
 
 ### 1. Create a compose file
