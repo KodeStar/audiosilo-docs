@@ -101,7 +101,7 @@ rides on the identifiers and the imprint, never on a second record.
 | `links` | no | where the recording is published, each URL as the source stated it and `https://` only: `librivox` (the catalogue page), `zip` (every file in one archive), `rss` (the podcast feed), `text` (the text the recording reads from; LibriVox's `url_text_source`). At least one key; no others |
 | `librivox_title` | no | the LibriVox project's own title, verbatim (`Candide (version 2)`), its repeat markers and spelling kept: the work's `title` is the work's. Requires `librivox_id` |
 | `librivox_genres` | no | the LibriVox project's own genre names, verbatim, each once, in LibriVox's order (the licence's public-domain exception). Never the work's `genres`, which stay this project's vocabulary. Requires `librivox_id` |
-| `credits` | no | the recording's own role credits, as on work (`{person, role}`): a LibriVox project's translators, since a translation is a fact about the project, not the work |
+| `credits` | no | the recording's own role credits (`{person, role}`), in addition to the work's: a LibriVox project's translators, since a translation is a fact about the project. `role` is `translator` only (the one role a recording states today); the work keeps the translator credits its sources stated, and `authors` stays the identity list |
 | `copyright_year` | no | the copyright year of the **text** this recording reads, as the source stated it (LibriVox's `copyright_year`; its `0`, meaning unstated, is never written). A signed integer, negative for a year BC, never `0`. Deliberately not the work's `first_published`, which another source may own |
 | `added_at` | no | as on work |
 | `license` | yes | `CC0-1.0` |
