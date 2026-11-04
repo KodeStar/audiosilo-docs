@@ -521,7 +521,7 @@ runs, so the Agent card and the setup checklist say it is not running.
 
 The Audible shots (`bridge/audible-sign-in.png`, `bridge/accounts-audible.png`,
 `admin/audible-accounts-card.png`, `admin/audible-titles.png`, Bridge Phase 4a, and
-4b's `admin/audible-backup-settings.png`, `admin/audible-backup-all.png` and
+4b's `admin/audible-backup-settings.png` (the Account settings dialog since 4c), `admin/audible-backup-all.png` and
 `admin/audible-destination.png`)
 come from the same script, so they are `capture: 'bridge'` in the manifest even
 though two show the console. No Audible account is used: when one of them (the manifest's `audible: true`) is
@@ -543,7 +543,7 @@ it marks one title Not this book and backs up another for real through the
 console's API (book 4 of the series the library has book 1 of: the fake licenses
 its fixture M4B, the Bridge downloads it, decrypts it with ffmpeg, places it beside
 book 1 and has the server index it; up to 4 minutes), signs in to the console in
-the same browser and shoots the Audible accounts card, its Backup settings and
+the same browser and shoots the Audible accounts card, its Account settings and
 Back up everything dialogs (closed again, nothing saved or queued), the Settings >
 Audible page, and one title's Destination dialog (a folder typed, not saved). At the end it removes the account on the
 Bridge (which deregisters the fake's device and deletes it on the server), turns

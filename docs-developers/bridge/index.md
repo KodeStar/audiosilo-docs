@@ -59,7 +59,9 @@ the Bridge signs in to Audible, lists what each account owns and matches it agai
 a books library (`audible.poll`). **Phase 4b** [backs titles up](audible.md#backing-up-a-title-audibleimport)
 into the library (`audible.import`: download, DRM removal, a no-replace install,
 rescan and ASIN), queued by the console, an account's policy or a released
-preorder; place sync (4c) and file moves arrive later.
+preorder. **Phase 4c** [syncs listening places](audible.md#position-sync-audiblesync-and-the-push-loop)
+both ways, furthest only (`audible.sync` and a push loop over `GET /bridge/progress`),
+for the accounts the console turns sync on for; file moves arrive later.
 :::
 
 ## What it is for
@@ -200,10 +202,10 @@ the mark; see [generated content](../server/api/reference.md#generated-content))
   sign-in, the agent credentials), `sidecars.contribute` and `meta.correct`.
 - [Podcasts](podcasts.md) - feed files, polling, downloads, retention,
   generation/publication recovery, CHAP, private credentials and the HTTP guard.
-- [Audible](audible.md) - Phases 4a and 4b: the Audible sign-in and the vault,
+- [Audible](audible.md) - Phases 4a, 4b and 4c: the Audible sign-in and the vault,
   `audible.poll` and its matching, `audible.import` (backups: resume, the hardened
-  transfer, secrets), the server's accounts, titles and queueing, the `audible`
-  module and the build-tagged fake.
+  transfer, secrets), position sync (`audible.sync`, the push loop), the server's
+  accounts, titles and queueing, the `audible` module and the build-tagged fake.
 - [Configuration](configuration.md) - the Bridge's settings and environment, the
   images and the compose example.
 - [Development](development.md) - the gate, the layout and the Bridge's own page.

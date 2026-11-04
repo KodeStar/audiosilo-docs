@@ -107,7 +107,9 @@ Seven behaviors are worth knowing:
   ASIN is classified before the verdict, so their order never changes it. A
   title that differs is only a note, and identity is never rewritten. Only an
   ASIN match takes a record over: a mirror-seeded record met by title, ISBN or
-  narrator set is `needs-human`, and on the add forms the message names the
+  narrator set is `needs-human` (the verdict names the mirror that seeded the
+  record - "the libex mirror", "the LibriVox mirror" - never libex for a
+  LibriVox record), and on the add forms the message names the
   record's mirror-only ASINs (adding the matching one to the issue turns it
   into a takeover). The rule itself is LICENSING.md's "Trust tiers and the
   user-overwrite rule" (in `audiosilo-meta`).
@@ -161,6 +163,13 @@ Seven behaviors are worth knowing:
   schema's own spelling (`Publisher` becomes `publisher`). A correction that
   restates the value the record already carries is a no-op `duplicate` that
   writes nothing.
+- **A title correction can add a retitle alias.** A work's slug stays put when
+  its title is corrected, so when the new title no longer reaches the slug, the
+  bot also records the slug the next import of that title would mint at as a
+  tombstone onto the work in `data/redirects.json` (the
+  [retitle alias](data-model.md#slug-is-identity-the-file-is-only-storage)),
+  and the pull request carries that file beside the work's pack. The
+  correction-batch form does the same for its title changes.
 - **Translation and reading-order links are correctable one at a time**, and
   judged by the same link rules `metacheck` runs (the
   [data model's](data-model.md#translations-and-reading-orders)) before anything
@@ -537,9 +546,14 @@ The exception names LibriVox only; another catalogue would need its own case
 argued in LICENSING.md before any tooling points at it.
 
 **Facts only.** A LibriVox record carries the title, the authors, the readers
-(as narrators), the translators (as `translator` credits), the language, the
-runtime, the sections (as chapters, each with its `audio_url`), the genres mapped
-onto the vocabulary where one fits, the LibriVox ids, the archive.org identifier,
+(as narrators, and on each chapter its section's own `readers`), the translators
+(as `translator` credits on the recording, since a translation is the project's
+fact, not the work's), the language, the runtime, the sections (as chapters,
+each with its `audio_url` and, where it differs from the 1-based position,
+LibriVox's `section_number`), the genres mapped onto the vocabulary where one
+fits, the project's own title and genre names verbatim (`librivox_title`,
+`librivox_genres`, which the LibriVox-shaped feed answers and filters with),
+the LibriVox ids, the archive.org identifier,
 the `links` (catalogue page, zip, RSS feed and the source text's URL), the
 `copyright_year` LibriVox states for the text, the authors' and translators'
 birth and death years where LibriVox states them as years, the cover URL
@@ -571,7 +585,8 @@ clients and asks them to slow down:
   (seconds or an HTTP date, never less than the 5-second spacing) and otherwise
   waiting exponentially from 30 seconds up to 10 minutes, for at most six retries
   (seven requests for one page) before the run stops, resumably. Any other error
-  status stops the run at once.
+  status stops the run at once, and so does a response body over 64 MiB (no
+  feed page comes near it, so it is never cut off and decoded).
 
 The snapshot is a directory that is **never committed**: `manifest.json` (the
 fetch's resume state: feed, query, limit, next offset, page and project counts,
@@ -587,13 +602,24 @@ makes no request, so a fresh reading goes into a new directory. `--max-pages N`
 stops after `N` pages (`0`, the default, runs to the end).
 
 **`import` lands a tranche.** `--from` names the snapshot (the importer reads
-every `pages/*.json` and nothing else, so a hand-assembled snapshot works too)
-and `--ids` is required: one project id (`527`), a range (`1-2000`), an open
-range (`5000-`) or a comma-separated union of them. The other flags are the
-usual ones: `--data`, `--dry-run`, `--date YYYY-MM-DD` (the `imported_at` stamp,
-today in UTC by default) and `--conflicts <path>` (one NDJSON row per refused
-contradiction). A real run writes the packs, then validates the whole tree. For
-each selected project:
+`pages/*.json` and nothing else, so a hand-assembled snapshot works too) and
+`--ids` is required: one project id (`527`), a range (`1-2000`), an open range
+(`5000-`) or a comma-separated union of them. `fetch` records each page's
+range of project ids in the manifest (`page_ids`), and a tranche decodes only
+the pages whose range meets its ids (a 2,000-project tranche of the
+22,449-project snapshot reads in 0.19 s instead of 2.0 s). A snapshot whose
+manifest does not range every page (one fetched before the ranges were
+recorded, a hand-assembled one), or a decoded page holding an id outside its
+range, is read whole. A project whose id is missing or unreadable is skipped with a warning
+naming its page and title, since no `--ids` could select it. The other flags
+are the usual ones: `--data`, `--dry-run`, `--date YYYY-MM-DD` (the
+`imported_at` stamp, today in UTC by default), `--conflicts <path>` (one NDJSON
+row per refused contradiction) and `--skipped <path>` (one
+`{"librivox_id","reason"}` NDJSON line per project refused under a refusal
+code - an unknown language, no narrator or author, or the duplicate-identity
+guard's `identity-duplicate` - the `metaimport libex --skipped` shape with the
+project id in place of the ASIN, written once the run completed). A real run
+writes the packs, then validates the whole tree. For each selected project:
 
 - **An in-progress project is set aside first**: a row with no runtime
   (`totaltimesecs` 0, missing or not a number) and no archive.org item (no
@@ -606,7 +632,10 @@ each selected project:
   archive.org item appears). A zero-runtime row with an archive.org item is
   imported normally.
 - **Dedup is on `librivox_id`**, never the title: a project whose id is already
-  catalogued is skipped, so a rerun of a range never imports a project twice.
+  catalogued is skipped, so a rerun of a range never imports a project twice. A
+  skipped project's recording still has LibriVox's own facts restated on it (the
+  recording pass, below), so a rerun over a snapshot backfills them and a second
+  rerun changes nothing.
 - Otherwise it becomes a **new recording**, never merged into another one (two
   LibriVox projects of one text are two productions). Its work is found by the
   [matching rules](#which-work-a-librivox-project-joins) below.
@@ -626,14 +655,42 @@ each selected project:
   apply. An author or translator whose name slugs to nothing is credited
   nowhere: [Names that slug to nothing](#which-work-a-librivox-project-joins).
   An author's or translator's `dob` / `dod` become the person's `birth_year` /
-  `death_year` as the run records that person's LibriVox author id, only when
-  LibriVox states a plain year (`1883`, `-428`, `428 BC`), and only when the
-  person states neither yet: a year another source or a hand edit wrote is never
-  overwritten, and a pair whose death precedes its birth is dropped whole.
+  `death_year` on every run, landed project or held, for the person carrying
+  that LibriVox author id, only when LibriVox states a plain year (`1883`,
+  `-428`, `428 BC`), and only where the person lacks it: a year another source
+  or a hand edit wrote is never overwritten (a year LibriVox contradicts is kept
+  and the run warns, writing nothing for that person), a filled half must pair
+  with the other, and a pair whose death precedes its birth is dropped whole.
+- **The recording pass** (`internal/importer/librivoxrecording.go`) runs last,
+  on every project whose recording the catalogue holds (landed or held). It
+  writes the project's own title (`librivox_title`, markers kept) and genre
+  names (`librivox_genres`), its translators as the recording's `credits` (the
+  person carrying the translator's LibriVox author id, else the name's person
+  when that carries no other author id, else a person created for them carrying
+  the id and years - an attach records no work credit, so the recording is what
+  credits them; a name another author id holds, or one that slugs to nothing,
+  is left off and counted), and,
+  when the stored chapters are the project's sections one to one, each section's
+  `section_number` where LibriVox's differs from the position and its `readers`
+  (always among the recording's narrators; one reader that resolves to none of
+  them leaves the recording with no chapter readers, counted; a recording one
+  narrator reads throughout states none). Apart from those translators it never
+  creates or stamps a person. A rerun never deletes what its row does not
+  contradict: a row stating no genres or no translators keeps the stored ones,
+  and a stored translator is dropped only when the row names its translators,
+  every one resolves, and that person is not among them. The run prints one line of its counts.
 - **A new author id is checked against the person its name meets.** It is
   not simply credited to whoever holds its name's slug
   (`internal/importer/librivoxpeople.go`). Only new projects are judged; a
   project already catalogued, and the people it credits, are left as they are.
+  The decision is taken once per author id, for the whole run and before any
+  project is placed, against the person the import would actually credit
+  (after its spelling rules, the initials step included: "A.B. Kovacs" is
+  judged as the catalogued "AB Kovacs" it would land on). Every credit of the
+  id then carries that person, whatever its spelling, so the work it lands
+  on, its credits and the id stamp all name one person, and the outcome does
+  not depend on the order the run reads its projects in (ids are decided in
+  the order of the lowest project crediting each).
   - **Same-name authors.** The catalogued person is someone else when:
     - they carry another `librivox_author_id` and the two do not state the
       same birth and death years;
@@ -642,12 +699,15 @@ each selected project:
     - with neither id nor years, they are credited only as a narrator (a
       LibriVox reader meeting an undated author is taken to be the same
       volunteer), or only on works first published more than 25 years after
-      the author's death (or flourished year) that share no title with the
-      author's projects. A generic title ("Poems") is not a title in common.
-      A work's first publication is its `first_published`, else its
-      recordings' earliest release date; a work with no date at all, or one
-      co-credited with someone who died within those 25 years (a translator
-      of an old text), is evidence for the match, not against it.
+      the author's death (or flourished year; with a birth year alone, after a
+      hundred-year life from it: no one born in 1840 wrote a 2020 first
+      edition) that share no title with the author's projects. A generic title
+      ("Poems") is not a title in common, though "Poems (Ballads of a
+      Cheechako)" is. A work's first publication is its text's date - its
+      `first_published`, else the `copyright_year` a LibriVox recording of it
+      states - else its recordings' earliest release date; a work with no date
+      at all, or one co-credited with someone who died within those 25 years
+      (a translator of an old text), is evidence for the match, not against it.
 
     When it is someone else, the author becomes a person of their own, named
     with LibriVox's years: "James Grant (1822-1887)" at
@@ -658,16 +718,31 @@ each selected project:
     catalogued person's late works is dated only by its recordings' release
     dates (a modern book and a modern edition of an old one look alike there),
     the project goes to the [worklist](#the-worklist) as `same-name-author`,
-    naming that person's works. A second author id in the same run with the
-    same name is the first's person only when both state the same birth and
-    death years; otherwise it gets a dated id, or goes to the worklist when it
-    states no year. Settling a row means putting the `librivox_author_id` on
+    naming that person's works. Release dates stop counting against the author
+    when a project they wrote, alone or with one other author (never an
+    anthology), shows they are editions: the catalogue holds that
+    text under its full title, credited to a co-author the project names (that
+    catalogued person, not merely someone of the same surname), dated only by a release long past the author's death ("Narrative of
+    Sojourner Truth", 1850 by LibriVox, beside Olive Gilbert's 2009 edition).
+    A project they only translated proves nothing of the kind (it is another
+    author's book: Thomas Taylor's 1816 Proclus says nothing of a modern
+    novelist named Thomas Taylor), and a qualified title names one edition
+    ("Metamorphoses (Howard Version)"), so J. J. Howard (fl. 1807) meeting a
+    modern J.J. Howard still waits on the worklist. A second author id in the same run with the same name is the
+    first's person only when both state the same birth and death years;
+    otherwise it gets a dated id, or goes to the worklist when it states no
+    year, naming the first id's works as a later run would. Settling a row means putting the `librivox_author_id` on
     the right person (the catalogued one or a new dated record); re-importing
     the id then finds that person by id.
-  - **Courtesy titles and ranks.** A titled credit is not folded onto its bare
-    twin when LibriVox lists the two as different author ids that do not
-    state the same birth and death years ("Mrs. William Platt" beside
-    "William Platt"), nor onto a catalogued bare record that the
+  - **Courtesy titles and ranks.** A titled credit is never folded onto its
+    bare twin when LibriVox lists the two as different author ids in one run,
+    whatever their years: "Mrs. William Platt" beside "William Platt" are two
+    people, "Mrs. C. M. Livingston" beside "C. M. Livingston" is LibriVox's
+    own duplicate record of one, and only a person can tell which. Both
+    records are kept, the run report lists the pair under `librivox worklist:
+    N author id pairs one courtesy title apart` for a person to merge or
+    confirm, and metacheck's honorific-person-pair advisory names it too. Nor
+    is a titled credit folded onto a catalogued bare record that the
     same-name test above finds is someone else ("Sir Hugh Fraser" is not
     `hugh-fraser`, an actor who narrates); when that test cannot tell, the
     project goes to the worklist as `same-name-author`. A credit whose id the
@@ -685,16 +760,22 @@ each selected project:
   earlier in the run took) a **different** reader id, the reader gets a person
   of their own at `<name slug>-librivox-<reader id>` (`martina-librivox-634`,
   the [person id rule](data-model.md#person---an-entry-in-the-datapeople-family)),
-  created with that id, and the first holder of the name keeps the plain slug. A
+  created with that id, and the first holder of the name keeps the plain slug
+  (decided per reader id before any project is placed, by lowest project id,
+  so the run's row order never matters; a reader first credited on a project
+  that goes to the worklist still holds the name). A
   later project by the same reader finds that person by id, so no reader is ever
   minted twice. A person at the plain slug who carries no reader id (a narrator
   another source catalogued) is not another reader: the first LibriVox reader of
   that name is stamped onto them, unless that person is an **author record**
-  (carrying a `librivox_author_id`, or a death year before 2005, when LibriVox
-  began: its own, or that of a new author id of the run landing on it, whether
-  the run meets the author or the reader first). The reader is then split off
-  the same way: a reader called Adam Smith is `adam-smith-librivox-19341`,
-  never Adam Smith (1723-1790). Collective credits ("Various", "Full Cast") and
+  (carrying a catalogued `librivox_author_id`, or a life that ended before
+  2005, when LibriVox began - a birth year alone counts: no one born in 1840
+  read for LibriVox - its own, or that of a new author id of the run landing on
+  it, whether the run meets the author or the reader first). The reader is
+  then split off the same way: a reader called Adam Smith is
+  `adam-smith-librivox-19341`, never Adam Smith (1723-1790). A living or
+  undated author id of the same run and a reader of the same name are one
+  person, whichever project the run meets first. Collective credits ("Various", "Full Cast") and
   the synthetic voice stand for no one person and are never split: a second
   reader id of one is the keep-and-warn case above. The run never writes over an
   existing or retired person id that the composed id happens to match: it
@@ -921,8 +1002,9 @@ Once a person has settled the work (merged the duplicates, fixed the credit),
 re-importing the project's id lands it. A `differently-spelled-title` project is
 also the guard's ordinary skip: it is counted among the run's duplicate-identity
 skips and, with `--conflicts`, writes that guard's `work_identity` row, which
-carries `librivox_id` since a LibriVox row has no ASIN. The other reasons
-appear on the worklist alone.
+carries `librivox_id` since a LibriVox row has no ASIN; with `--skipped` it is
+an `identity-duplicate` line keyed by `librivox_id`. The other reasons appear on
+the worklist alone.
 
 #### Credits not recorded
 

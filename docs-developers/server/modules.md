@@ -20,7 +20,8 @@ Phase 2c-2b adds on-demand fetches, status/Retry and queue prefetch; player
 views remain deferred. Phase 4a adds `audible`, requiring the `audible` Bridge
 feature: admin routes behind the toggle, a scheduler, and one job kind
 (`audible.poll`); Phase 4b a second, `audible.import` (backups), and the policy
-pass after each poll; see [Audible](../bridge/audible.md).
+pass after each poll; Phase 4c a third, `audible.sync` (listening places); see
+[Audible](../bridge/audible.md).
 `transcode`, `metadata` and `bridge`
 are not modules: their keys, variables and flags shipped before the framework, and
 none is just a toggle (`transcode` follows ffmpeg, `metadata` needs its service built
@@ -112,7 +113,9 @@ needs `audible`.
 The `audible` module mounts its console routes (`GET /admin/audible/accounts`,
 `GET /admin/audible/titles`, `POST /admin/audible/accounts/{account}/poll`) with the
 admin wrapper (`moduleRoutes.Admin`), as podcasts' admin storage routes are, and its
-Bridge routes are not gated (the Bridge's page signs in either way).
+Bridge routes are not gated (the Bridge's page signs in either way), except Phase
+4c's two position sync routes, which act for a person and answer `403 sync_off`
+while the module is off.
 `DELETE /admin/audible/accounts/{account}` is deliberately mounted outside the
 toggle (`requireAdmin` only): it removes an account the Bridge can no longer
 remove, which the scheduler would otherwise poll for good, so it must work after
@@ -174,8 +177,12 @@ The `audible` module's `Start` runs `audible.RunScheduler`: a pass at once, then
 every minute, queueing up to 20 due accounts' `audible.poll` at priority `-10`
 while an online Bridge offers the kind (see
 [Audible](../bridge/audible.md#the-poll-audiblepoll)), every hour for an account
-with a released preorder it waits for. Off stops it, holds the queued polls and
-backups, and skips the policy pass after a poll.
+with a released preorder it waits for. Phase 4c: the same pass queues one
+`audible.sync` every 15 minutes for each account whose sync is on (while the Bridge
+offers that kind; see
+[Position sync](../bridge/audible.md#audible-to-the-server-audiblesync)). Off stops
+it, holds the queued polls, backups and syncs, and skips the policy pass after a
+poll.
 
 ## `GET /api/v1/admin/modules`
 
