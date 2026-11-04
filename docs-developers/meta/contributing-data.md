@@ -670,7 +670,8 @@ each selected project:
     dates (a modern book and a modern edition of an old one look alike there),
     the project goes to the [worklist](#the-worklist) as `same-name-author`,
     naming that person's works. Release dates stop counting against the author
-    when a project they wrote shows they are editions: the catalogue holds that
+    when a project they wrote, alone or with one other author (never an
+    anthology), shows they are editions: the catalogue holds that
     text under its full title, credited to a co-author the project names (that
     catalogued person, not merely someone of the same surname), dated only by a release long past the author's death ("Narrative of
     Sojourner Truth", 1850 by LibriVox, beside Olive Gilbert's 2009 edition).
