@@ -224,7 +224,11 @@ the base beside the head's run, for the advisory delta (a pull request touching
 no `data/` skips that, since it cannot introduce one). Jobs that need only Go
 code (`build`, `lint`, `vuln`) and the `site` job check out a sparse tree without
 `data/`, skipping most of a full checkout's time; `advisories` does too, reading
-the base's `data/` from git.
+the base's `data/` from git. The test shards also restore a shared `-race` build cache
+(`actions/cache`, keyed on the Go patch and `go.sum`, saved only on pushes to
+`main`): setup-go's cache has one key for every Go job, which the non-race
+`build` job saves first, so the shards used to recompile everything under the
+race detector on every run.
 
 **`check` is the verdict.** It needs `changes`, `build`, `test`, `metacheck`,
 `metafmt` and `advisories`, and passes only when every one of them but
@@ -235,7 +239,11 @@ the sync bot. `advisories` can never end red (every step continues on error,
 each under its own timeout), since the sync bot treats any failed check run on a
 head as a failure, required or not.
 `check` writes the advisories a pull request introduces into its job summary, and
-when it fails its log ends with the tails of the failing jobs' own output. The
+when it fails its log ends with the tails of the failing jobs' own output, which
+it fetches from the Actions API for the current run attempt only
+(`.github/scripts/failed-job-logs.sh`, so it needs `actions: read`). A re-run of
+the failed jobs therefore never prints a log from an earlier attempt, as the old
+uploaded-artifact logs could. The
 name is load-bearing: branch protection requires `check` and `compose`, and the
 [sync bot](sync-bot.md) gates its merge on `check` (with `compose`, `site` and
 `verify`) by name and hands the tail of

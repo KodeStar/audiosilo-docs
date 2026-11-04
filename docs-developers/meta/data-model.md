@@ -49,6 +49,16 @@ import merges into it instead. No alias is written when the new title still
 reaches the work, or for a serial volume at `<title>-book-<n>`, which its
 position already reaches.
 
+The table has a git merge driver of its own, `cmd/metaredirectmerge`, which
+`.gitattributes` names for that one path and the intake rebase sweep configures
+(the pack driver merges pack files only). Two pull requests that each record a
+tombstone (two intake retitles, say) touch adjacent sorted lines, so git's line
+merge would stop on them; the driver merges each family's map three ways instead. It keeps what either side
+added, collapses a chain the two sides make together (one retired `a` into `b`,
+the other `b` into `c`: both end at `c`, as `pkg/redirects.Add` would have
+written them one after the other), and refuses, with conflict markers, one slug
+sent to two different targets or deleted on one side and retargeted on the other.
+
 The JSON Schemas in `schema/*.schema.json` (JSON Schema draft 2020-12, every
 object `additionalProperties: false`) are the **authoritative, public contract**.
 They are embedded into the tooling via `schema.go`, so a schema edit is a code
@@ -534,8 +544,18 @@ census stops naming the pair it covers, and the importer honours a `reject` of
 `merge-people` (how "two people, not one" is recorded for a courtesy-title pair
 such as Dr. Alex George and Alex George). The importer's honorific fold, which
 otherwise resolves a "Dr. X" credit onto the catalogued bare "X", never folds a
-pair a rejection names, in either direction, so an import cannot re-merge two
-people a maintainer separated.
+pair a rejection names, in either direction, and neither does the credential
+fold ("X PhD" onto "X"); both judge the records the two spellings land on
+(through the initials merge) as well as the slugs they spell, so an import
+cannot re-merge two people a maintainer separated. The series author rule and
+the intake form's duplicate-title, takeover and series checks read the pair as
+two authors too, so the doctor's book never joins the novelist's series.
+
+Because the importer honours a `merge-people` rejection whatever is live, the
+audit never calls one stale merely because one of its two records is missing
+(deleted, not yet created, or a mistyped slug): it is reported **unresolved**
+and listed in `SUMMARY.md`, so a typo still surfaces but triage does not prune
+a decision that is still in force.
 
 ## The expressive layer (CC BY-SA)
 
@@ -596,6 +616,13 @@ earlier books in a series. A consumer maps its own recording-chapter timeline
 onto these ordinals; text-to-audio alignment is a consumer concern, out of schema
 scope. The object shape is deliberately extensible - a later `paragraph` or
 `offset_ms` can be added without a breaking change.
+
+For a **play**, `chapter` is the **act**, never the scene (`0` = before the play
+begins): a character entering in Act II, Scene 3 is revealed at `2`, a recap
+stands only at an act boundary, and a play with no act divisions is a single act.
+Acts are how most play recordings are tracked and they are stable across
+editions, where scene numbering is not. The authoring rule is in the community
+repository's `AUTHORING.md`.
 
 ## Provenance on every entity
 
