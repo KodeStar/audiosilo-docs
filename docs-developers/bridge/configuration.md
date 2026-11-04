@@ -276,7 +276,8 @@ The `latest` tags move **only for a release tag** (`v1.2.3`, not a pre-release
 such as `v1.2.3-rc.1`), which also publishes `<tag>`, `<tag>-slim`, `<tag>-cuda`
 and `<tag>-agent`. A manual dispatch from a branch publishes under the branch's
 name (`<branch>`, `<branch>-slim`, `<branch>-cuda`, `<branch>-agent`), never over
-`latest`. The whisper.cpp builds are downloaded at image build time,
+`latest`. The whisper.cpp builds are release assets of the archived
+audiosilo-sidecars repository (its releases stay downloadable), downloaded at image build time,
 pinned by release tag (the same one the Bridge's own downloader uses), each checked
 against the sha256 that release's `checksums.txt` lists, and each image fetches only
 the build it carries; the speech models are not baked

@@ -654,7 +654,7 @@ its next run.
 
 ## The engine wiring
 
-`internal/app/engine.go` builds the engine the way audiosilo-sidecars' daemon
+`internal/app/engine.go` builds the engine the way the (now archived) audiosilo-sidecars daemon
 did, minus its folder scan, and starts it in the background once the Bridge runs:
 
 - the event hub with its durable persister (events kept 30 days);

@@ -144,8 +144,8 @@ Seven behaviors are worth knowing:
   (for an issue carrying a `data:` label). An issue opened with its routing
   label fires that label's `labeled` event too, so admitting `opened` as well
   ran intake twice and posted every verdict twice. And the GitHub API silently
-  drops labels on issues opened by non-collaborators (the sibling
-  `audiosilo-sidecars` contributor tool creates intake issues over the API), so
+  drops labels on issues opened by non-collaborators (a Bridge that files with a
+  plain token creates intake issues over the API), so
   such an issue arrives label-less and is admitted when a maintainer applies the
   routing label later - a `labeled` event. (An issue filed through the AudioSilo
   App comes in by a third door, `workflow_call` from `route.yml`:
@@ -1093,7 +1093,8 @@ old paths), while the tooling they use stays in `audiosilo-meta`:
   notes-only synthesis, adversarial spoiler audit), supported by
   `metaextract split` + `ngram`.
 - `EXTRACTION-AUDIO.md` - the audio-only variant (chapter-isolated ASR +
-  proper-noun verification), the process the `audiosilo-sidecars` tool automates.
+  proper-noun verification), the process the Bridge's
+  [generating](../bridge/generating.md) job automates.
 - `GOVERNANCE.md` (in `audiosilo-meta`) - the merge policy and contributor trust tiers
   (schema/tooling/`.github` changes always need maintainer review via
   CODEOWNERS).

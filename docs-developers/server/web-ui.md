@@ -1506,7 +1506,7 @@ that admins have a password) and answers `201 {user}`; the page then shows
 visit opens the console's flow.
 
 `POST /setup` still accepts the old library fields, so a caller that scripts
-it (an older page, the desktop manager) keeps working: with both
+it (an older page, or the archived desktop manager) keeps working: with both
 `library_name` and `library_root` it checks the folder exists **before** making
 the admin, then creates the library with the defaults, enqueues a manual scan,
 records the flow's `folder` step as done (its `naming` step stays open, so the

@@ -23,10 +23,16 @@ it, gitignored by the meta repo:
 ├── audiosilo-frontend/    github.com/KodeStar/audiosilo-frontend  (Expo / React Native)
 ├── audiosilo-bridge/      github.com/KodeStar/audiosilo-bridge    (the Bridge)
 ├── audiosilo-meta/        github.com/KodeStar/audiosilo-meta      (community metadata DB)
-├── audiosilo-sidecars/    github.com/KodeStar/audiosilo-sidecars  (contributor extraction tool)
 ├── audiosilo-site/        github.com/KodeStar/audiosilo-site      (marketing site)
 └── audiosilo-docs/        this documentation site (Docusaurus)
 ```
+
+Two former repos are **archived** (November 2026) and no longer part of the
+workspace: `audiosilo-manager`, the desktop manager, and `audiosilo-sidecars`,
+the contributor extraction tool. The [Bridge](../bridge/index.md) does their jobs
+now (generating characters and recaps, contributing them, backing up an Audible
+library). The bootstrap script doesn't clone them; an existing checkout of
+either stays gitignored, so it doesn't show up as untracked.
 
 Setting up from scratch is two commands - the bootstrap script clones any child
 repo that's missing (`PROTO=https` to clone over HTTPS instead of SSH):

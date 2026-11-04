@@ -1529,7 +1529,7 @@ The migration history so far:
 | The Docker image (`ghcr.io/kodestar/audiosilo-server`) | native, a static binary linked against glibc on the Alpine base; the build arg `SQLITE_ENGINE=modernc` builds modernc instead |
 | GoReleaser Linux binaries (tarballs, `.deb`/`.rpm`), and so the LinuxServer.io image, which downloads them | native, static against glibc as in the Docker image |
 | GoReleaser macOS and Windows binaries | modernc |
-| The desktop manager (`pkg/launcher` in-process), a plain `go build` | modernc |
+| An embedder running `pkg/launcher` in-process, a plain `go build` | modernc |
 
 On a native build, `AUDIOSILO_SQLITE=modernc` runs that process on modernc
 instead (see [The SQLite engine](configuration.md#the-sqlite-engine-audiosilo_sqlite)).
