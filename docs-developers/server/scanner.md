@@ -348,7 +348,10 @@ before migration `0049` (`books.genres_checked = 0`) has its genre tag read with
 the same one read of its primary file (tags and ffprobe) that the `0037` date
 backfill makes; `catalog.SetGenres` writes the genres into the book's scanned
 snapshot and re-resolves it only when that changes it (most books have no genre,
-or only a placeholder), flushed with the path readings.
+or only a placeholder), flushed with the path readings. A skipped book indexed
+before migration `0067` (`books.hints_checked = 0`) has its
+[tag hints](data-model.md#tag-hints) read the same way (`catalog.SetTagHints`),
+waiting while ffprobe fails on it.
 
 A skipped folder book also has its **Audiobookshelf `metadata.json`** read again
 when it is new, changed or gone: ABS rewrites the file without touching the
@@ -791,6 +794,10 @@ embedded data winning where it is trustworthy:
    A book already indexed keeps the composer it was read with until its files are
    read again (a change to them, or the console's Read the files again,
    `POST /admin/libraries/{id}/book/rescan`): an unchanged book is skipped by the scan.
+   The [tag hints](data-model.md#tag-hints) are read in both tag passes
+   (`Metadata.setHints`), an ASIN or ISBN only in its proper form
+   (`match.ValidASIN` / `ValidISBN`), so `N/A` beside a real tag or a repeated tag's
+   joined `A;A` still reads the real one.
 3. **Generic-title guard**: `chooseTitle` keeps the path-derived title when the
    embedded one is missing or generic - `metadata.IsGenericTitle` flags bare
    numbers and "Track 01"/"Disc 2"/"CD1"-style labels (token-based, so a real
@@ -1169,7 +1176,7 @@ predicate over `books b`, shared by the counts (`IssueCounts`) and the lists
 | `suspect` | `suspect_parts >= 2`, and the folder has no `book` override |
 | `split_discs` | it is the **first** disc (by `rel_path`) of a book split across disc folders: `split_parent` is set and that folder has no override of either mode (one settles how it reads). Its fix sets `book` on `split_parent`, which joins the discs |
 | `no_cover` | a scan has checked it (`has_cover` not `NULL`) and it has no sidecar image, no embedded art and no custom cover |
-| `unmatched` | it has no ASIN and no ISBN. Only offered while community metadata is on |
+| `unmatched` | it has no ASIN and no ISBN ([tag hints](data-model.md#tag-hints) don't count). Only offered while community metadata is on |
 | `series_spellings` | another book of its library spells its main series another way: the same `series_key`, a different `series` (two range seeks on `idx_books_series_key`, a spelling below its own or above). `SeriesSpellingGroups` lists them per series from the same predicate; the console's fix sets one spelling with a bulk edit |
 | `no_chapters` | it is longer than **2 hours** and has at most one chapter. The console shows why community chapters weren't used from the row's `chapters_check` (a failed [community chapter check](community-chapters.md)) |
 | `detailed_chapters` | its last community chapter check is `refine` (the community's finer chapters fit) and it has no `chapter_source` choice; picking either source settles it |

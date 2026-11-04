@@ -551,14 +551,18 @@ names nothing on this server) from the same cache, for the earlier books of a
 series the caller does not own. The `metadata` capability on `GET /server`
 reflects whether either lookup is live. The admin console's match dialog
 (`GET /admin/libraries/{id}/book/match`) asks `metaserve`'s structured
-`GET /works/match` with the book's tag and path facts, falling back to
+`GET /works/match` with the book's tag and path facts (with its `language` and
+repeatable `narrator`, which an older `metaserve` ignores, and its tag hints as
+`asin` / `isbn`), falling back to
 `lookup` + `works/search` against a `metaserve` that predates the route; its
 candidates pass `metaserve`'s `score` and `reasons` through to the console's
 hand-mirrored types (`admin-ui/src/api/types.ts`), not to the player. Each
 recording's ASINs keep their `region` (`asin_refs`), and `asins` is ordered by
 the server's preferred marketplace (`metadata.region`), so the server, not the
 console, decides which ASIN a match attaches; bulk match runs reuse the same
-match per book. Community chapters (`internal/chaptercheck`) fetch the chapter
+match per book, and the server decides what is confident (`matchrun.Classify`, the
+`ReviewFloor`). Mirror-mode servers get `metaserve`'s scoring with the
+`audiosilo-meta` version in `go.mod`, online servers when `metaserve` is redeployed. Community chapters (`internal/chaptercheck`) fetch the chapter
 list of the lookup's exact `recording_id` only (never the first recording a
 work lists), fit it onto the book's audio server-side, and reach the player as
 ordinary chapters with the additive `chapters_source: "community"` (see

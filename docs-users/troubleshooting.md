@@ -452,7 +452,8 @@ most recordings:
 
 1. Make sure community metadata is on (**Server > Settings > Community
    metadata** in the admin console).
-2. **Match the book.** AudioSilo doesn't read ASINs from the files' tags, so a
+2. **Match the book.** An ASIN in the files' tags is only a
+   [hint for a match](./admin/health.md#asin-and-isbn-tags-are-hints), so a
    book is only checked once it is matched: open it in **Library** and use
    **Match with community metadata**, or match many at once with **Match
    automatically** on the Health page.

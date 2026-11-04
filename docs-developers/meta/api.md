@@ -180,7 +180,9 @@ the server's [match endpoint](../server/api/reference.md#get-apiv1adminlibraries
 | `author` | An author guess, **repeatable**; the first 4 are read. `A & B`, `A, B` and `A; B` are read as each person, `Cornwell, Bernard` as Bernard Cornwell. Matched by surname, then first name or initial. |
 | `series` | A series name guess (the folder a book sits in, a series tag), **repeatable**; the first 2 are read. Each is judged and the better counts, so a wrong guess beside a right one costs nothing. Numbering is taken off (`03 - Tawny Man` is `Tawny Man`). |
 | `position` | The book's position in `series` (`8`, `08`, `7.5`), one value, compared numerically and applied to whichever series guess agrees best. A value that isn't a position is ignored. |
-| `runtime` | The book's length in seconds. Within 3% of a recording agrees fully, within 10% partly. Non-numeric, non-positive or above 1,000,000 is ignored. |
+| `runtime` | The book's length in seconds. Within 3% of a recording agrees fully, within 10% partly. More than 25% off the closest recording (allowing the minute a stored runtime is rounded to) is another edition, and scales the work's score down. Non-numeric, non-positive or above 1,000,000 is ignored. |
+| `language` | The book's language: a BCP-47 tag (`en`, `en-US`; only the primary subtag is compared), an ISO 639-2 code (`eng`, `ger`) or a language's name (`English`, `Deutsch`). A work in another known language (a translation stored as its own work) has its score scaled down. A value that names no language this API reads, or a work whose language is unknown, isn't judged. It finds no candidates on its own. |
+| `narrator` | A narrator guess, **repeatable**; the first 4 are read, each split and matched like `author`. When a recording of a work credits narrators, the best-agreeing recording's agreement counts as a fact weighted 10, and that recording is the `recording_id` (the closest runtime choosing between agreeing recordings) unless it is more than 25% off `runtime`. A work whose recordings credit no narrator isn't judged on it. It finds no candidates on its own. |
 | `asin` · `isbn` | Looked up exactly as on [`/api/v1/lookup`](#apiv1lookupasinisbnlibrivox_id); a hit scores 100. An ASIN longer than 20 characters, or an ISBN longer than 20 once hyphens and spaces are taken out, is ignored. |
 | `limit` | Default 10, capped at 20; a non-numeric or non-positive value falls back to the default. |
 
@@ -205,7 +207,16 @@ text is scored separately, read per candidate as the facts it states about that
 work (its author words as the author, its series words plus a volume number as
 that volume, the rest as a title), and the better of the two scores counts. A
 named title that clearly disagrees outranks a numbering match, and named
-authors none of whom wrote a work scale its score down. A title guess that is
+authors none of whom wrote a work scale its score down (0.75). With `narrator`
+stated, narrator agreement is a further fact weighted 10. Three more factors scale
+a score (start values from a benchmark, tuned on the server's harness, each pinned in
+`match_factors_test.go`): a work in the named series at another position than the
+stated one (`positionConflictFactor`, 0.8, unless a membership's range covers it, an
+omnibus), a work in another known language than a stated `language`
+(`languageMismatchFactor`, 0.8), and a closest recording more than 25% off `runtime`
+(`runtimeMismatchFactor`, 0.85). The language and runtime factors never touch an
+identifier hit. A request without `language` and `narrator` scores as before, except
+for the position and runtime factors, which apply to every request. A title guess that is
 only the `series` name (what `FWM04 - He Who Fights with Monsters - Book 4`
 leaves once its numbering is cut) says nothing about which volume, so it never
 lets another volume outrank a stated one. It still counts for a work titled that
@@ -231,14 +242,18 @@ names raw.
   a `works/search` work result plus:
 - `score` - 0-100: 100 for an identifier hit, otherwise the better of the
   structured-facts score and the typed-text score.
-- `recording_id` - the recording the identifier named, else the one whose
-  runtime is closest to `runtime`; omitted when neither applies.
+- `recording_id` - the recording the identifier named, else the one a `narrator`
+  agrees with best, else the one whose runtime is closest to `runtime`; omitted
+  when none applies.
 - `reasons` - which facts agreed, each field omitted when the request didn't let
   it be judged: `title` (the best title similarity, 0-1), `text` (the typed
   text's similarity, 0-1; 1 when it named the work's series and volume, as in
   `sharpe 8`), `author` (`full`, `surname` or `none`), `series` (`position`,
   `name`, `conflict` or `none`), `runtime` (the relative difference of the
-  closest recording, `0.02` = 2%) and `identifier` (`asin` or `isbn`).
+  closest recording, `0.02` = 2%), `identifier` (`asin` or `isbn`), `narrator`
+  (`full`, `surname` or `none`; only when `narrator` was given and a recording of
+  the work credits narrators) and `language` (`same` or `other`; only when both are
+  known).
 
 **Bounds.** Like every route here it is unauthenticated and CORS-open, so a
 request can't price itself: each text value is cut to 256 bytes, an author

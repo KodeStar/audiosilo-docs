@@ -197,7 +197,8 @@ see.
 Matching a book in the admin console sends more, since its job is to find a
 book that has no ASIN or ISBN yet: when you open **Match with community
 metadata** on a book, the book's tagged title, author and series, its length,
-any ASIN or ISBN, what you type, and the names of up to three of its folders
+narrators and language, any ASIN or ISBN (from its tags too, when it has neither
+of its own), what you type, and the names of up to three of its folders
 (the top folder, the folder holding the book, and the book's own folder or
 file name) go to the metadata service. Nothing is sent until you open the
 dialog (or start [Match automatically](health.md#matching-every-book-at-once),
@@ -253,7 +254,8 @@ cover images are still downloaded from their hosts.
 - **Audible marketplace** in the **Matching** card is the store you buy from
   (United Kingdom, United States, Germany and so on). When a recording sells in
   several stores, a match takes this store's ASIN; with **No preference** it
-  takes the US store's. It applies to the next match, and
+  takes the US store's. It says nothing about what language your library is in:
+  a match reads that from each book. It applies to the next match, and
   [Use *country* ASINs](health.md#which-asin-a-match-takes) can switch books
   matched earlier.
 - **Service address** in the **Service** card is the metadata service your
@@ -269,10 +271,10 @@ cover images are still downloaded from their hosts.
   you accepted it by hand or
   [in bulk](health.md#matching-every-book-at-once), along with the match runs
   and any review still waiting. Your own edits, the covers you uploaded and an
-  ASIN or ISBN from a book's own tags stay. The books go back to what their tags
-  and folders say and show under
-  [Not matched](health.md#matching-every-book-at-once) again (unless their tags
-  carry an ASIN or ISBN), ready for **Find matches**. Nothing is sent to the
+  ASIN or ISBN from a book's Audiobookshelf `metadata.json` stay. The books go
+  back to what their tags and folders say and show under
+  [Not matched](health.md#matching-every-book-at-once) again (unless their
+  `metadata.json` carries an ASIN or ISBN), ready for **Find matches**. Nothing is sent to the
   metadata service, so it works with the switch off too. It can't be undone:
   only matching again brings the values back. While a match run is working it
   asks you to wait for it, or stop it, first.

@@ -50,7 +50,7 @@ below.
 | **One book split into disc folders** | A book ripped from CDs sits in one folder per disc (`CD1`, `CD2`, ...), so each disc reads as its own book. The row is the first disc, and says "*folder* reads as one book per disc folder". | **Join into one book** sets the folder holding the discs to **Always one book** ("Joining the discs of *folder*"). The library rescans, then they play as one book, with listening progress carried over. See [Books split into disc folders](libraries.md#books-split-into-disc-folders). |
 | **Likely duplicates** | Copies of one book in the same library (and, when you ask, in other libraries). See [Duplicates](#duplicates). | A side-by-side comparison. |
 | **Missing covers** | No cover image in the book's folder and none inside its files. | **Upload a cover** opens the book's page, where **Change cover** adds one (see [Covers](books.md#covers)). |
-| **Not matched to community metadata** | The book has no ASIN or ISBN, so community metadata can't find it. Only shown while [community metadata](server.md#community-metadata) is on. | **Review match** opens the book's page with the match dialog open (see [Matching](books.md#matching-with-community-metadata)). To match the whole list at once, use **Match automatically** above it (see [Matching every book at once](#matching-every-book-at-once)). |
+| **Not matched to community metadata** | The book has no ASIN or ISBN of its own, so community metadata can't find it. One in its tags doesn't count until a match applies (see [ASIN and ISBN tags are hints](#asin-and-isbn-tags-are-hints)), so such a book is listed here too and its row says "No ASIN or ISBN". Only shown while [community metadata](server.md#community-metadata) is on. | **Review match** opens the book's page with the match dialog open (see [Matching](books.md#matching-with-community-metadata)). To match the whole list at once, use **Match automatically** above it (see [Matching every book at once](#matching-every-book-at-once)). |
 | **Series spelled several ways** | Books of one series that spell its name differently, for example "He Who Fights With Monsters" on some books and "He Who Fights with Monsters" on others. AudioSilo already shows them as one series; this is only about every book saying the same. See [Series spelled several ways](#series-spelled-several-ways). | **Use this spelling** sets one spelling on every book of the series. |
 | **Long books without chapters** | Books over two hours long with no chapter marks (or a single chapter). Listeners can play them but can't jump between chapters. When the book was checked against the community's chapter lists and they couldn't be used, a second line says why, for example "Community chapters: for another edition" or "Community chapters: cross from one file into the next. Merging the files would let them fit" (see [Community chapters](books.md#community-chapters)). | **Detect chapters**, while your [Bridge](bridge.md) is online and offers it: the Bridge transcribes the book and finds the chapters in the narration, with no agent cost (see [Detect chapters](generating-characters-and-recaps.md#detect-chapters-without-characters-and-recaps)). A book whose chapter source was chosen on its page says so instead. Otherwise, [match](books.md#matching-with-community-metadata) the book so its community chapters can be used (a book with no chapters of its own gets them automatically once they fit), add chapters to the file with your tagging tool, or ignore it. |
 | **More detailed chapters available** | The book has chapters, and the community has finer ones that fit this copy ("Has 34 chapters; the community's finer ones fit this copy"). Nothing changes until you use them. | **Use detailed chapters** switches the book to the community's chapters. Using them on the book's page does the same. Once you have chosen, the book stays off this list, even if you later switch it back to the file's chapters. |
@@ -101,8 +101,9 @@ what it found and apply it.
    - **ASIN and ISBN only** marks each book matched, so players show its
      "About this book", and changes nothing else.
    - **Fill in what's missing** (the default) also fills every field the book
-     has empty (narrator, series, published year, description) and takes the
-     community cover for a book with no cover at all. Nothing the book already
+     has empty (narrator, series, published year, description), takes the
+     community cover for a book with no cover at all, and
+     [tidies a cluttered title](#tidied-titles). Nothing else the book already
      has is replaced.
    - **Use community values** also replaces fields that differ, as accepting a
      match by hand does. A book's series become the community's: any series an
@@ -123,7 +124,7 @@ what it found and apply it.
    Alice in Wonderland #2"), and the ASIN with its store. A match to the wrong
    book of a series, or to another series altogether, shows at a glance.
 5. **Confident** matches are ticked; untick any you don't want. **To review**
-   lists matches that scored lower, or only just ahead of another work, and
+   lists matches that scored 60% to 89%, or only just ahead of another work, and
    matches whose recording is another length than the book, however well they
    scored. Those say so in both lengths ("Held for review: the book is 10h 34m
    long, this recording 7h 2m"), as the closest recording can be
@@ -136,11 +137,12 @@ what it found and apply it.
    that list to this one the same tick (books already applied, gone or matched
    since are skipped, and so is a book you just matched by hand until its row
    updates). **Not found** and **Not checked** list
-   the rest. Each list is ordered best match first.
+   the rest, [weak matches](#weak-matches) among them. Each list is ordered best
+   match first.
 
    An apply never writes over a book matched since the run looked, whatever you
    choose to write: by hand from the review, on its book page, by another admin,
-   or from an ASIN a rescan found in its tags.
+   or from an ASIN a rescan found in its Audiobookshelf `metadata.json`.
 6. Click **Apply to *N* books**. The server applies them in the background
    ("Applying *N* of *M* matches"). **Stop** finishes the books in hand and
    leaves the rest to apply later from the same review.
@@ -151,11 +153,26 @@ A match is confident when it scores 90% or more, at least 10 points ahead of
 the next candidate, its recording has an ASIN or ISBN to attach, and its
 recording's length is within 10% of the book's (when both are known: the
 closest recording can still be another edition, such as a dramatization of an
-unabridged book). Whatever a
+unabridged book). An ASIN or ISBN from the book's tags that the community knows
+needs no lead: see [ASIN and ISBN tags are hints](#asin-and-isbn-tags-are-hints).
+Whatever a
 run writes shows as a **Community** value on the book's page, and you can
 revert it like any other. To undo every community match at once and start
 again, use [Clear community matches](server.md#community-metadata) in Server
 settings.
+
+The score weighs the book's title, author, series and length, and also:
+
+- **Its place in a series.** A work in the book's series at another position
+  scores lower, so book 4 is no rival to a book that says it is book 1 (an
+  omnibus that covers the position isn't marked down).
+- **Its narrators.** A recording read by the book's narrators counts in the
+  work's favour, and is the recording the match picks if its length fits.
+- **Its language.** A work the community knows to be in another language scores
+  lower. Only the book's own language counts: from its tags, an Audiobookshelf
+  `metadata.json`, or your edit. A book that states none isn't judged on it, and
+  **Audible marketplace** plays no part, since the store you buy from says
+  nothing about what language a library is in.
 
 Books you've ignored under **Not matched** are left out of a run. If the
 catalogue stops answering, or community metadata is turned off, the run stops
@@ -163,20 +180,96 @@ by itself and the card says why. A run sends the same as matching a book by
 hand (see [What matching sends](books.md#matching-with-community-metadata)), a
 couple of books at a time.
 
+#### Weak matches
+
+A run doesn't offer a weak match for review. When the best candidate scores
+under 60%, the community most likely doesn't have the book, so it is listed under
+**Not found** with the score in its wording ("Only weak community matches (the
+best scored 48 of 100)"). There is nothing to tick on it, but **Match by hand**
+still works, and the [match dialog](books.md#matching-with-community-metadata)
+still lists every candidate, however low it scored.
+
+#### ASIN and ISBN tags are hints
+
+A scan reads an ASIN, ISBN and language from the audio files' tags as hints for
+a match. They never become the book's own ASIN or ISBN, so a book with an ASIN
+tag still shows under **Not matched**, and players treat it as unmatched, until
+a match applies. Books already on your server have these tags read at the next
+scan.
+
+A match sends the hint when the book has no ASIN or ISBN of its own. A hint the
+community knows scores 100% and is confident whatever the next candidate scored,
+as long as its recording's length is within 10% of the book's. It goes to
+**To review** instead when the length doesn't fit, or when the next candidate was
+found by an identifier too. A hint the community doesn't know costs nothing: the
+book is matched on its other details.
+
+:::warning[A wrong ASIN in a tag can apply the wrong book]
+Nothing else checks a hint. An ASIN in a tag that names another work of about the
+same length is confident, and ticked, like any other: it can apply the wrong
+book, or the right book's other recording. Look through **Confident** before you
+apply when your tags came from a source you don't trust. To undo one, revert the
+values on the book's page or use
+[Clear community matches](server.md#community-metadata). The next run will find
+the same tag again, so correct the tag, or match the book by hand, which keeps it
+out of later runs.
+:::
+
+**Why not just take the tag as the book's ASIN?** Tags are often wrong about this.
+On one benchmark of real audiobooks, 16% of the books with an ASIN tag carried an
+ASIN that wasn't the book's confirmed listing: another store's, another edition's,
+or simply wrong. A stored ASIN takes a book out of match runs, and
+[Fill in matched books](#filling-in-books-that-are-already-matched) never matches
+it again by title, so a wrong tag would lock the book out of matching.
+An Audiobookshelf `metadata.json` is different: Audiobookshelf wrote it after a
+match, so its ASIN or ISBN counts as the book's straight away (see
+[Coming from Audiobookshelf](../getting-started/organizing-your-library.md#coming-from-audiobookshelf)).
+
+#### Tidied titles
+
+**Fill in what's missing** replaces a book's title only when the title from its
+files is the community's title plus nothing but clutter: the series name, a number
+that the book's position or the community's title states, the community's
+subtitle, words such as "book", "volume" or "unabridged", and a store's genre labels
+such as "LitRPG". So "Emergence: The Mystic Knight, Book 1 (Unabridged)" becomes
+"Emergence".
+
+Anything else keeps the file's title:
+
+- a real extra word;
+- "Part 1" or "Part 2", which split the book, and "abridged", which names another
+  edition;
+- a number nothing states, such as "Book 2" on a work the community places at
+  number 1;
+- a title you edited yourself.
+
+A title of just the community's words changes only when it is all in one case
+("the martian" becomes "The Martian"), so your own styling stays.
+
+Under each book, the review lists the change with the others ("Sets Title,
+Narrator, and ASIN"). It applies to whatever you apply with that choice: **To
+review** matches you tick and **Fill in matched books** too. **ASIN and ISBN only**
+leaves titles alone, and **Use community values** replaces any title that differs
+anyway. A tidied title is a **Community** value: reverting it brings the file's
+title back, but a later **Fill in what's missing** can tidy it again, so type the
+title you want to keep it for good.
+
 #### Which ASIN a match takes
 
 A recording sold in several Audible stores has an ASIN in each. A match takes
 the one from the store set as **Audible marketplace** in
 [Server settings](server.md#community-metadata), then the US store's, then any
 other. The review shows each ASIN's store ("B0... · UK"). With no marketplace
-set, the US store's comes first.
+set, the US store's comes first. An ASIN in the book's tags decides which recording
+it is, not which ASIN is stored, except that it leads where its recording sells
+under two in one store.
 
 Once a marketplace is set, the card also offers **Use *country* ASINs**. It
 looks again at the books matched earlier, by hand or in bulk, and offers to
 switch each one to its recording's ASIN in your store, where the community
 catalogue now has one (it gains them over time). Review and apply it the same
-way. It never changes an ASIN from your tags, or one you typed, and a book
-matched again by hand since the run looked keeps that match.
+way. It never changes an ASIN from an Audiobookshelf `metadata.json`, or one you
+typed, and a book matched again by hand since the run looked keeps that match.
 
 #### Filling in books that are already matched
 
