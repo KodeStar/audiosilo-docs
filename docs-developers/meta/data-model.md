@@ -86,7 +86,7 @@ edit is a read-modify-write of its work.
 | `genres` | no | values from the project's controlled vocabulary (`$defs/genre`, a flat retailer-neutral list), sorted ascending. A mirror-derived set is the vote over the work's recordings, with format categories counting only when nothing else maps - see [genres](./contributing-data.md#genres-the-format-rule-the-recording-vote-and-regeneration) |
 | `credits` | no | role-qualified contributors as `{person, role}` pairs; `role` from the `$defs/credit_role` enum (adaptation, afterword, contributor, editor, foreword, illustrator, introduction, preface, translator). Additive and parallel to `authors`; emitted only when a source stated the role |
 | `translation_of` | no | the work(s) this one is a **translation** of, as a set of work slugs (`$defs/slug_set`: at least one, unique, ascending). Almost always one; a translated omnibus names every original it collects. Stated evidence only, never inferred - see [translations and reading orders](#translations-and-reading-orders) |
-| `xref` | no | `wikidata` (`Q\d+`), `openlibrary` (`OL\d+W`), `goodreads`, print `isbn[]` |
+| `xref` | no | `wikidata` (`Q\d+`), `openlibrary` (`OL\d+W`), `goodreads`, print `isbn[]`. A recording may not carry a work's print ISBN, in its ISBN-10 or ISBN-13 spelling: `metacheck` fails the tree. |
 | `added_at` | no | `YYYY-MM-DD`, or a full RFC 3339 timestamp for migration-backfilled records |
 | `recordings` | yes | the nested map of this work's recordings (below) |
 | `license` | yes | `CC0-1.0` |
