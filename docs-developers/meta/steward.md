@@ -133,7 +133,10 @@ The steward pushes only to `intake/issue-*` branches and its own `steward/*`
 branches. A data pull request on anyone else's branch is fixed on a superseding
 `steward/pr-N` pull request instead; the original stays open until the
 superseding one has merged and its content is verified to be on `main`, and only
-then is it closed with a link.
+then is it closed with a link. If a person closes the original without merging
+first, the superseding pull request is withdrawn with it: closed with a comment,
+its branch deleted. If a person merges the original first, the superseding one
+is left open and handled as usual, since it may carry a fix `main` lacks.
 
 Attempts back off - immediately, then 1 hour, 4 hours, 12 hours, then daily -
 and never end in a closure. A fix whose next verdict states a **new** finding
