@@ -810,9 +810,12 @@ credits, never the work's, so two translations of one work each list their own);
 its LibriVox `genres` names; and the ids, the language name, `copyright_year`,
 the URLs, the section titles, files and playtimes, the author ids and years.
 
-**On an artifact older than 9**, or a version 9 one whose recording layer is
-still empty (a release cut before the backfill data landed), the feed answers as
-it did before: the
+**On an artifact older than 9** the feed answers as it did before, and on a
+version 9 one it falls back **per recording**: a recording the import has not
+yet restated (no project title stored - a release cut while the backfill is
+part-landed) answers its genres and translators, and matches `genre`, as
+before, while every restated recording answers from its own facts. As it did
+before means: the
 catalogue work's title without the `(version N)` marker, 1-based positions as
 section numbers, the work's translator credits, this project's vocabulary as the
 `genres` (and the `genre` filter, which then also takes a vocabulary value such

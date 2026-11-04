@@ -661,7 +661,10 @@ each selected project:
   (always among the recording's narrators; one reader that resolves to none of
   them leaves the recording with no chapter readers, counted; a recording one
   narrator reads throughout states none). Apart from those translators it never
-  creates or stamps a person. The run prints one line of its counts.
+  creates or stamps a person. A rerun never deletes what its row does not
+  contradict: a row stating no genres or no translators keeps the stored ones,
+  and a stored translator is dropped only when the row names its translators,
+  every one resolves, and that person is not among them. The run prints one line of its counts.
 - **A new author id is checked against the person its name meets.** It is
   not simply credited to whoever holds its name's slug
   (`internal/importer/librivoxpeople.go`). Only new projects are judged; a
