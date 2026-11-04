@@ -546,9 +546,14 @@ The exception names LibriVox only; another catalogue would need its own case
 argued in LICENSING.md before any tooling points at it.
 
 **Facts only.** A LibriVox record carries the title, the authors, the readers
-(as narrators), the translators (as `translator` credits), the language, the
-runtime, the sections (as chapters, each with its `audio_url`), the genres mapped
-onto the vocabulary where one fits, the LibriVox ids, the archive.org identifier,
+(as narrators, and on each chapter its section's own `readers`), the translators
+(as `translator` credits on the recording, since a translation is the project's
+fact, not the work's), the language, the runtime, the sections (as chapters,
+each with its `audio_url` and, where it differs from the 1-based position,
+LibriVox's `section_number`), the genres mapped onto the vocabulary where one
+fits, the project's own title and genre names verbatim (`librivox_title`,
+`librivox_genres`, which the LibriVox-shaped feed answers and filters with),
+the LibriVox ids, the archive.org identifier,
 the `links` (catalogue page, zip, RSS feed and the source text's URL), the
 `copyright_year` LibriVox states for the text, the authors' and translators'
 birth and death years where LibriVox states them as years, the cover URL
@@ -634,7 +639,10 @@ writes the packs, then validates the whole tree. For each selected project:
   imported normally, and an in-progress project the catalogue already holds is
   counted as already present rather than listed.
 - **Dedup is on `librivox_id`**, never the title: a project whose id is already
-  catalogued is skipped, so a rerun of a range never imports a project twice.
+  catalogued is skipped, so a rerun of a range never imports a project twice. A
+  skipped project's recording still has LibriVox's own facts restated on it (the
+  recording pass, below), so a rerun over a snapshot backfills them and a second
+  rerun changes nothing.
 - Otherwise it becomes a **new recording**, never merged into another one (two
   LibriVox projects of one text are two productions). Its work is found by the
   [matching rules](#which-work-a-librivox-project-joins) below.
@@ -655,10 +663,30 @@ writes the packs, then validates the whole tree. For each selected project:
   their own at `librivox-author-<author id>`, or with no id credited nowhere:
   [Names that slug to nothing](#which-work-a-librivox-project-joins).
   An author's or translator's `dob` / `dod` become the person's `birth_year` /
-  `death_year` as the run records that person's LibriVox author id, only when
-  LibriVox states a plain year (`1883`, `-428`, `428 BC`), and only when the
-  person states neither yet: a year another source or a hand edit wrote is never
-  overwritten, and a pair whose death precedes its birth is dropped whole.
+  `death_year` on every run, landed project or held, for the person carrying
+  that LibriVox author id, only when LibriVox states a plain year (`1883`,
+  `-428`, `428 BC`), and only where the person lacks it: a year another source
+  or a hand edit wrote is never overwritten (a year LibriVox contradicts is kept
+  and the run warns, writing nothing for that person), a filled half must pair
+  with the other, and a pair whose death precedes its birth is dropped whole.
+- **The recording pass** (`internal/importer/librivoxrecording.go`) runs last,
+  on every project whose recording the catalogue holds (landed or held). It
+  writes the project's own title (`librivox_title`, markers kept) and genre
+  names (`librivox_genres`), its translators as the recording's `credits` (the
+  person carrying the translator's LibriVox author id, else the name's person
+  when that carries no other author id, else a person created for them carrying
+  the id and years - an attach records no work credit, so the recording is what
+  credits them; a name another author id holds, or one that slugs to nothing,
+  is left off and counted), and,
+  when the stored chapters are the project's sections one to one, each section's
+  `section_number` where LibriVox's differs from the position and its `readers`
+  (always among the recording's narrators; one reader that resolves to none of
+  them leaves the recording with no chapter readers, counted; a recording one
+  narrator reads throughout states none). Apart from those translators it never
+  creates or stamps a person. A rerun never deletes what its row does not
+  contradict: a row stating no genres or no translators keeps the stored ones,
+  and a stored translator is dropped only when the row names its translators,
+  every one resolves, and that person is not among them. The run prints one line of its counts.
 - **A new author id is checked against the person its name meets.** It is
   not simply credited to whoever holds its name's slug
   (`internal/importer/librivoxpeople.go`). Only new projects are judged; a
