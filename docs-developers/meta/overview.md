@@ -192,8 +192,9 @@ shards that take 3 to 6 minutes each. Almost every test that walks the real data
 tree skips under the race detector, since the fixture suites cover the concurrent
 code and `metacheck`/`metafmt` validate the real tree anyway. The exception is
 `internal/recorddiff`'s real-checkout test, which diffs the last commit under
-`-race` too: a few seconds on most changes, a few minutes after a large data
-change. The skipped real-data tests
+`-race` too - but only a bounded sample of its changed packs (every family the
+commit touched keeps one), so it takes a few seconds whatever merged last; without
+`-race` it diffs the whole commit. The skipped real-data tests
 still run in CI: the `real-data.yml` workflow runs the whole suite without
 `-race` every day, on demand, and on every push to `main` that touches anything
 the Go gate would run on (a `paths:` filter skipping `data/**` other than
@@ -309,8 +310,11 @@ The practical consequences for a deployment:
   above into the crash loop it exists to avoid. Wire `/healthz` as
   readiness/startup in the orchestrator instead.
 - **Name the reverse proxy.** The API is rate limited per client. Behind a
-  proxy, set `METASERVE_TRUSTED_PROXIES` or every visitor shares the proxy's one
-  bucket; see [rate limit and caching](api.md#rate-limit-and-caching).
+  proxy, set `METASERVE_TRUSTED_PROXIES` to the proxy's own address or network
+  (the shipped compose file trusts only its own network's gateway, right for a
+  host proxy on the loopback port; a containerised proxy must add its own
+  address), never a whole private range, or every visitor shares the proxy's one bucket; see
+  [rate limit and caching](api.md#rate-limit-and-caching).
 
 ## How it connects to the rest of AudioSilo
 

@@ -337,11 +337,16 @@ Like `lang` it narrows **lists** only: `works/{id}`, `people/{id}`,
 - It runs **inside** the query, through the artifact's `recording_sources` table
   (one `(work_id, recording_id, type)` row per source of each recording, indexed
   by type), so `?limit=20` returns up to 20 matching works, not the matches among
-  20. Both search boosts (the exact-title lead and the series volume) obey it.
-  It combines with `lang`.
-- `works/latest` orders by the **work's** `added_at`, so a LibriVox reading that
-  joined a work catalogued long before does not surface there as new; only a work
-  the LibriVox import created does.
+  20. Both search boosts (the exact-title lead and the series volume) obey it;
+  the exact-title probe applies it **inside** its bounded window of same-titled
+  works, so twenty retail "Poems" cannot crowd the LibriVox one out of
+  `q=poems&source=librivox`. It combines with `lang`.
+- Filtered, `works/latest` orders by the **newest recording from that source**,
+  not by the work: a work's date there is the latest `added_at` among its
+  recordings of that source type (the work's own `added_at` when none of them
+  carries one). So a LibriVox reading that joined a classic catalogued long
+  before surfaces as new, which is what a "new on LibriVox" list wants. The
+  unfiltered list, and `lang` alone, still order by the work.
 - **Version gate.** The table arrived with `schema_version` 8. Against an older
   artifact the value is still validated (an unknown type is still a 400) and a
   filtered list is **empty**, never the unfiltered page, which would claim every
@@ -354,8 +359,9 @@ rest of the LibriVox layer.
 
 The newest works, for the site's landing grid. `limit` defaults to 12, clamped to
 `[1, 50]`. Returns `{"works": [workCard...]}` ordered by `added_at` descending
-(then title), with at most two works from any one series so a bulk import sharing
-one date can't fill the grid. It takes the [`lang` filter](#the-lang-filter)
+(then title; under `source`, by the newest recording from that source - see the
+[`source` filter](#the-source-filter)), with at most two works from any one series
+so a bulk import sharing one date can't fill the grid. It takes the [`lang` filter](#the-lang-filter)
 and the [`source` filter](#the-source-filter).
 Two reading orders of one franchise - a series and a
 chronological or recommended variant of it - count as one series for that cap
@@ -595,6 +601,12 @@ default rather than erroring. The window applies to `authored` and `narrated`
 of each. A client must page against those totals rather than assume the arrays are
 complete - a prolific narrator will exceed one page.
 
+`translated` / `translated_total` (artifact `schema_version` 9) list, in the same
+window and shape as `narrated`, the recordings that credit the person as their
+own **translator** (a LibriVox project's translator, credited on the recording
+rather than the work). Both are omitted when there are none and on an older
+artifact; a translator a work credits is already in `authored`.
+
 ## `/api/v1/series/{id}?limit=&offset=`
 
 A series with its ordered member works, or 404 `series not found`:
@@ -695,6 +707,13 @@ a client should treat all of it as optional. An artifact that *claims* 8 but
 lacks part of the layer is refused at load
 ([schema versioning](data-model.md#the-compiled-artifact-and-schema-versioning)).
 
+`schema_version` 9 adds the **LibriVox recording layer**: a project's own title,
+section numbers, translators, section readers and genre names (in the data
+model, a recording's `librivox_title`, `librivox_genres` and `credits`, and a
+chapter's `section_number` and `readers`), which the feed below answers with. A
+version 8 artifact serves the feed's earlier answer; one that claims 9 without
+the layer is refused at load.
+
 ## `/api/v1/librivox/audiobooks`
 
 **LibriVox's own audiobooks feed** (`librivox.org/api/feed/audiobooks`),
@@ -718,9 +737,9 @@ holds every LibriVox recording and is what the feed reads.
 |---|---|
 | `id` | one LibriVox project id; not a positive integer is a 400 |
 | `since` | a UNIX time: the projects that **reached the mirror** on or after that day (below); not an integer is a 400 |
-| `title` | the work's title, matched exactly and case-insensitively (ASCII letters only, as SQLite folds case); a leading `^` makes it a prefix match |
+| `title` | the project's own title (LibriVox's, its `(version N)` marker kept), matched exactly and case-insensitively (ASCII letters only, as SQLite folds case); a leading `^` makes it a prefix match |
 | `author` | an author's **last name** (the last word of the stored name), exact and case-insensitive (ASCII letters only), or a prefix with a leading `^`. A translator never matches |
-| `genre` | a LibriVox genre name the importer maps (`Science Fiction`) or a genre of this project's vocabulary (`science-fiction`), case-insensitive, or a prefix with `^` |
+| `genre` | one of the project's own LibriVox genre names (`Science Fiction`), exact and case-insensitive, or a prefix with `^`. Never widened through this project's vocabulary: `Mathematics` matches the projects LibriVox files under Mathematics, not every science work |
 | `extended` | `1` adds `url_iarchive`, `sections`, `genres` and `translators` |
 | `coverart` | `1` adds `coverart_jpg` (`null` when the recording has no cover URL), `coverart_pdf` and `coverart_thumbnail` |
 | `fields` | keep only these top-level fields: `{id,title}`, a comma list, or repeated as `fields[]` |
@@ -766,36 +785,42 @@ answers with what it holds and nothing more:
 - `description` is **always `""`**: LibriVox's descriptions are often quoted from
   elsewhere and are never imported. `url_project` and `url_other` are `""`;
   `coverart_pdf` and `coverart_thumbnail` are `null`.
-- `title` is the **catalogue work's** title, so a project attached to an
-  existing work reads in that work's spelling and case, without LibriVox's
-  `(version N)` marker (which numbers projects, not works, and is not stored).
-- `genres` are this project's vocabulary values (`science-fiction`), never
-  LibriVox's taxonomy verbatim, each with an empty `id`. The `genre` parameter
-  accepts either spelling.
-- `authors` and `translators` are the work's: an author's `first_name` /
-  `last_name` are the stored name split at its last word, and `dob` / `dod` are
-  years or `""` (LibriVox's `alive` is not a year). Translators are the work's
-  translator credits, not the project's: a project attached to a work already in
-  the catalogue records no new credits, so it lists that work's translators,
-  which may differ from LibriVox's: the project's other translators are not
-  listed ([credits not recorded](contributing-data.md#credits-not-recorded)), and
-  a listed translator's id and years are whatever their person record holds:
-  stamped by this project when it credits them too, by another project that
-  credited them, or none.
+- `genres` carry an empty `id` (LibriVox's genre ids are not stored), and a
+  genre LibriVox lists twice on one project is listed once.
+- An author's or translator's `first_name` / `last_name` are the stored name
+  split at its last word, and `dob` / `dod` are years or `""` (LibriVox's
+  `alive` is not a year). A person's LibriVox id and years come from their
+  person record, so a translator the mirror credited by name alone (no person
+  carried their LibriVox author id) has neither.
 - `^` on `author` is the documented **prefix** match; LibriVox's own
   implementation matches the end of the name.
-- A section's `id` is `""`, its `section_number` its 1-based position (LibriVox
-  numbers some projects from 0), its `file_name` `null` (`listen_url` names the
+- A section's `id` is `""`, its `file_name` `null` (`listen_url` names the
   file), and its `language` the project's language (LibriVox sometimes states a
   different one per section).
-- Per-section readers are not stored: a recording with **one** narrator names
-  that reader on every section, a recording read by several names none.
 - `totaltimesecs` is the sum of the sections' playtimes (the runtime when a
   recording has no sections).
 
-Everything else (the ids, the language name, `copyright_year`, the URLs, the
-section titles, files and playtimes, the author ids and years) is LibriVox's
-value as the mirror stored it.
+Everything else is LibriVox's value as the mirror stored it (artifact
+`schema_version` 9, the LibriVox recording layer): the project's own `title`,
+`(version N)` marker and spelling kept (`librivox_title`); each section's
+`section_number`, LibriVox's own (some projects count from 0); each section's
+`readers`, its own (a recording read by one narrator throughout names that
+narrator on every section); the project's own `translators` (the recording's
+credits, never the work's, so two translations of one work each list their own);
+its LibriVox `genres` names; and the ids, the language name, `copyright_year`,
+the URLs, the section titles, files and playtimes, the author ids and years.
+
+**On an artifact older than 9** the feed answers as it did before, and on a
+version 9 one it falls back **per recording**: a recording the import has not
+yet restated (no project title stored - a release cut while the backfill is
+part-landed) answers its genres and translators, and matches `genre`, as
+before, while every restated recording answers from its own facts. As it did
+before means: the
+catalogue work's title without the `(version N)` marker, 1-based positions as
+section numbers, the work's translator credits, this project's vocabulary as the
+`genres` (and the `genre` filter, which then also takes a vocabulary value such
+as `science-fiction`), and a section reader only for a recording with one
+narrator.
 
 ## Coverage endpoints
 
@@ -960,7 +985,11 @@ the static site and the sitemaps.
 (default **100**) with a burst of `--rate-burst` (default **400**). The defaults
 are sized from the heaviest legitimate caller, an AudioSilo server's bulk match,
 which does not pace itself (about 90 requests a second at full speed on a fast
-link), and a console Series page's burst of lookups; a scraper looping flat out
+link), and a console Series page's burst of lookups. Those figures come from
+audiosilo-server's meta client concurrency (`internal/matchrun/runner.go`
+`workers`, `internal/meta/service.go` `maxConcurrentWorkFetches` and
+`maxConcurrentLookups`); `TestDefaultsHoldAnAudioSiloBulkMatch` replays a copy of
+them, so a change on the server side must re-check these defaults by hand; a scraper looping flat out
 wants far more, and its route is the
 [release artifact](overview.md#release-artifacts). A rate of `0` turns the
 limit off (a private metaserve on the same host or LAN as its server can outrun
@@ -989,15 +1018,25 @@ read.
 
 :::warning[Behind a reverse proxy, name it]
 Without `--trusted-proxy` every request through a proxy counts as the proxy, so
-the whole site shares one bucket. The shipped `docker-compose.yml` sets
-`METASERVE_TRUSTED_PROXIES` to the loopback and private ranges
-(`127.0.0.0/8,::1,10.0.0.0/8,172.16.0.0/12,192.168.0.0/16,fc00::/7`), which is
-safe there because its port is published on loopback only, so only the host's
-proxy can connect. The proxy must send `X-Forwarded-For` (nginx:
+the whole site shares one bucket. The shipped `docker-compose.yml` pins its
+network's subnet (`METASERVE_SUBNET`, default `10.217.53.0/28`) and sets
+`METASERVE_TRUSTED_PROXIES` to the loopback and that subnet alone
+(`127.0.0.0/8,::1,${METASERVE_SUBNET}`). In practice that trusts only the
+compose network's **gateway**, which is where a host proxy (nginx on the host,
+proxying to the loopback-published port) arrives from - right for that setup and
+no other. A **containerised proxy on another Docker network** arrives from its
+own address, which is not trusted, so every visitor shares one rate-limit bucket:
+add that proxy's address to the list. Set `METASERVE_SUBNET` in `.env` if the
+default collides with a network on the host (`docker compose up` refuses with
+"Pool overlaps"). An existing deployment's first start after the subnet was
+pinned needs `docker compose down && docker compose up -d` **once**, which
+recreates the network. Do **not** widen the list to the private ranges: if the
+proxy also serves a LAN, a LAN client's own address would then be a trusted hop,
+and the `X-Forwarded-For` it sends would pick its bucket. The proxy must send
+`X-Forwarded-For` (nginx:
 `proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for`). If a CDN sits in
 front of that proxy, add the CDN's ranges too, or rewrite the header at the host
-proxy (nginx `real_ip`), or the CDN's edges become the clients. If the proxy also
-serves a LAN, narrow the trusted ranges.
+proxy (nginx `real_ip`), or the CDN's edges become the clients.
 :::
 
 **Cache-Control.** A **200** whose route states no `Cache-Control` of its own
