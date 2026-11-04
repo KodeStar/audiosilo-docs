@@ -583,7 +583,10 @@ fold ("X PhD" onto "X"); both judge the records the two spellings land on
 (through the initials merge) as well as the slugs they spell, so an import
 cannot re-merge two people a maintainer separated. The series author rule and
 the intake form's duplicate-title, takeover and series checks read the pair as
-two authors too, so the doctor's book never joins the novelist's series.
+two authors too, so the doctor's book never joins the novelist's series, not even
+through a third spelling of both: "A. George" counts as one of the two, never
+both, so a series or a batch never groups the pair as one author by way of it. When an import decides a batch's initials spellings, a fold it refused beforehand
+stays refused, so the decision cannot undo the review.
 
 Because the importer honours a `merge-people` rejection whatever is live, the
 audit never calls one stale merely because one of its two records is missing

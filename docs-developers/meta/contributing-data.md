@@ -764,7 +764,9 @@ writes the packs, then validates the whole tree. For each selected project:
     is a titled credit folded onto a catalogued bare record that the
     same-name test above finds is someone else ("Sir Hugh Fraser" is not
     `hugh-fraser`, an actor who narrates); when that test cannot tell, the
-    project goes to the worklist as `same-name-author`. A credit whose id the
+    project goes to the worklist as `same-name-author`, unless a reviewed
+    rejection already says the records the two spellings land on are two people,
+    in which case the credit stays on its own. A credit whose id the
     catalogue already holds keeps its holder's spelling. The other way round, a
     bare name that would otherwise be a new person lands on the one catalogued
     record with a courtesy title or a military rank in front of it ("Frederick
