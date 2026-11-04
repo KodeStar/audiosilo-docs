@@ -1035,8 +1035,10 @@ Once the evidence says one person:
 An import resolves an alias exactly as it does the record's own id, whatever the
 feed calls the person, so the twin is never minted again. `metacheck` holds each
 list sorted and each alias unique against every id and alias of its namespace,
-and refuses a list on a record without its own id. No import ever writes these
-lists, and a record's slug composes from its own id, never an alias.
+refuses a list on a record without its own id, and refuses a retired slug of a
+LibriVox id form (`x-librivox-1775`) whose target does not answer to that id. No
+import ever writes these lists, and a record's slug composes from its own id,
+never an alias.
 
 Evidence of two people goes the other way: a reviewed `merge-people` rejection
 in `internal/audit/reviewed.json`, which names the pair as distinct. A shared
