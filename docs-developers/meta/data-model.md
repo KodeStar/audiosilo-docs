@@ -481,8 +481,10 @@ when:
 - the two recordings state one language;
 - both runtimes are stated and the retail one is never longer than the project
   beyond rounding (2 minutes, or 1% of a long project) and at most a minute a
-  LibriVox section shorter (5 minutes at least), the spoken preambles a
-  repackage trims; or, a runtime unstated, its publisher carries at least three
+  LibriVox section shorter, the spoken preambles a repackage trims. A project of
+  few sections may be up to 5 minutes shorter, but never by more than a fifth of
+  its length (one minute at least, for rounding), so a one-minute track is never
+  read as a six-minute poem's audio; or, a runtime unstated, its publisher carries at least three
   runtime-confirmed proposals across the catalogue. A stated runtime outside the
   window refuses the pair whatever the publisher: that is a narrator
   re-recording a book they read for LibriVox.
@@ -515,8 +517,9 @@ survivor is another record nobody reviewed: a reviewed drop of a duplicate
   that would make two mechanical proposals contradict each other is refused at
   audit time, and an accept of a proposal no repair carries out - a `review`, a
   `rename-candidate` or a `repoint-sidecar` - is refused outright, since it has
-  nothing to apply (the one exception is `link-librivox-repackage`, below, whose
-  accept applies nothing either: it records the link). An accepted `retitle-work` is a reviewer's title for that
+  nothing to apply. The one exception is the **record-only** op
+  `link-librivox-repackage` (below): its accept applies nothing and promotes
+  nothing to mechanical, because the accept itself is the record of the link. An accepted `retitle-work` is a reviewer's title for that
   record, exactly as an asserted one is: it is refused beside a mechanical merge
   folding its work away (even when the detector already proposed the retitle and
   the accept would change nothing, in which case the detector's retitle stays as
@@ -590,14 +593,22 @@ a decision that is still in force.
 
 A `link-librivox-repackage` decision is **record-only**: the entry in the list
 IS the record of the link, and no repair pass ever applies it or writes `data/`.
-`accept` records the link (reported **linked**) and `reject` records "not this
-project's audio" (**suppressed**); either takes the pair out of `R-REPACKAGE`, so
-it is never asked again. The entry names the work (`target`, read through the
-tombstone table, since a merge carries both recordings to the survivor), the
-retail recording (`from`) and the LibriVox recording (`to`), and nothing else; it
-cannot be asserted. It stays in force while the work holds both recordings,
-whether or not a fresh audit still proposes the pair, and reads **stale** only
-once a recording it names has left the work (or the two have swapped kinds).
+The entry names the work (`target`, read through the tombstone table, since a
+merge carries both recordings to the survivor), the retail recording (`from`) and
+the LibriVox recording (`to`), and nothing else; it cannot be asserted. It stays
+in force while the work holds both recordings, whether or not a fresh audit still
+proposes the pair. One retail recording repackages one project, so its outcome in
+`SUMMARY.md` is one of:
+
+- **linked**: an `accept`, recording the link. It takes EVERY pair of that retail
+  recording out of `R-REPACKAGE`, not only the accepted one;
+- **suppressed**: a `reject`, recording "not this project's audio". It takes that
+  pair out of `R-REPACKAGE`, so it is never asked again;
+- **refused**, with the reason named: a `reject` of the same pair outranks the
+  `accept`, or an earlier `accept` already records that retail recording as a
+  repackage of another LibriVox recording;
+- **stale**: a recording it names has left the work (or the two have swapped
+  kinds).
 
 ## The expressive layer (CC BY-SA)
 
