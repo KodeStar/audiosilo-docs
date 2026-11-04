@@ -602,10 +602,11 @@ the shared cache, on a copy**, and never stored in it. `?include=previous` adds
 behind the `meta_bundle` capability; spoiler gating still **stays on the device
 by default** (the player gates against its live position and does not send the
 param). `reveal` and `through` are numbers a gate compares with the listener's
-chapter, so when the work states a `position_scale` of another length than the book's
-chapter count the server answers them
+chapter, so when the book has more chapters than the work's `position_scale` states the
+server answers them
 [on this book's chapters](../server/api/reference.md#positions-on-this-books-chapters),
-per request and never cached; only the server can do that for a shipped app. A failure
+per request and never cached, always erring later; only the server can do that for a
+shipped app. A failure
 placing the caller's books sends the envelope without `local` rather than failing it. `GET /libraries/{id}/next` follows every series the book
 is in (main first, then its other series): of the community rails in that order
 (rails named like none of its series last), the first with a next work that

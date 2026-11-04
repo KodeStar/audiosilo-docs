@@ -670,7 +670,7 @@ chapter (1-based), where `0` means front matter or knowledge carried in from
 earlier books in a series. A consumer maps its own recording-chapter timeline
 onto these ordinals (AudioSilo's server answers them
 [on the book's own chapters](../server/api/reference.md#positions-on-this-books-chapters)
-when a work's `position_scale` differs from the book's chapter count);
+when the book splits finer than a work's `position_scale`);
 text-to-audio alignment is a consumer concern, out of schema scope. The object shape is deliberately extensible - a later `paragraph` or
 `offset_ms` can be added without a breaking change.
 

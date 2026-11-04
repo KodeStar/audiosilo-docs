@@ -2511,8 +2511,8 @@ all three are `omitempty`, so they are absent when the upstream has none. A
 **position** is
 `{ "chapter": <int >= 0> }` on the work's own, edition-independent timeline (the
 logical work chapter, 1-based; `0` = front matter / prior-book knowledge). On this
-route that holds only while the book's chapters are on the work's own scale;
-[otherwise the server answers them on this book's chapters](#positions-on-this-books-chapters).
+route, for a book split finer than the work's own scale,
+[the server answers them on this book's chapters](#positions-on-this-books-chapters).
 
 - Each **character** carries an `id` (unique within the work, not global), a
   `name`, optional `aliases` and `role` (`protagonist`/`antagonist`/`supporting`/
@@ -2612,33 +2612,34 @@ A work may state the scale its positions are numbered on, as `position_scale`
 
 `length` is the book's length in that `unit` (a chapter, an act, a section...), and
 `partial`, optional, says the sidecars stop short of it on purpose. A client's gate
-compares a position with the number of the chapter the listener is in, so numbers on
-another scale would be wrong: at track 6 of a 43-track Hamlet whose sidecars are on 5
+compares a position with the number of the chapter the listener is in, so numbers on a
+coarser scale would come early: at track 6 of a 43-track Hamlet whose sidecars are on 5
 acts, Act 5's recap reads as already past. So for the **current work on this route**,
-when the work states a scale and the book's chapter count differs from `length`, the
+when the work states a scale and the book has **more chapters than `length`**, the
 server answers every `reveal` and `through` as a chapter of **this book**, and
-omits `position_scale` (a present one always describes the numbers beside it):
+omits `position_scale` (a present one always describes the numbers beside it). The rule
+throughout is that later is safe and early is not:
 
 | Position | Answered as |
 |---|---|
-| `0` | `0` (before this book) |
-| `p` of `length`, `0 < p < length` | the first chapter starting at or past fraction `p / length` of the book, or the last chapter when none does |
-| `p >= length` | the last chapter |
+| `0`, either kind | `0` (before this book) |
+| `reveal` `p`: the character appears in unit `p`, and shows on reaching the number | the first chapter starting at or past the unit's start, fraction `(p - 1) / length`. `1` is chapter 1, so the opening cast shows from the start |
+| `through` `p`: the recap covers up to the unit's end, and shows once past the number | the first chapter ending at or past fraction `p / length`, so it opens on entering the next chapter with the unit over |
+| `through` `p >= length` | the last chapter, shown only once the book is finished |
 
-The fraction is read on the chapters' `book_offset`s against the book's `duration`,
-because tracks vary. When those can't be trusted (not strictly ascending, or no
-length past the last start) it is read on the chapter count, each chapter an equal
-share of the book. Rounding is always towards later: a chapter that merely contains
-the fraction is not yet past it, so a character is never early and a recap can be one
-chapter late.
+Each answer is the later of two estimates: by time (the chapters' `book_offset`s against
+the book's `duration`) and by count (each chapter an equal share). So uneven tracks can't
+bring a position forward, as they could with 41 tracks on 40 chapters. When the offsets
+can't be trusted (out of order, all alike, or no length past the last start) the count
+stands alone. On that Hamlet the reveals are 1, 10, 19, 27, 36 and the throughs 9, 18, 26,
+35, 43. This is proportional: it can't know how long a real act runs.
 
-The numbers pass through unchanged, `position_scale` included, when the work states
-no scale, the chapter count equals `length`, or the book has fewer than two chapters
-(a lone chapter says nothing about a place: every position would land on it and the
-whole cast would show from the start). A translated answer is per request and never
-cached, so two books with one ASIN each get their own. Generated content carries no
-scale and is already numbered on the book, so it is untouched. Consequently a label
-built from such a number names this book's chapter, not the work's.
+The numbers pass through unchanged, `position_scale` included, when the work states no
+scale, the book has no chapters, or it is no finer than the scale (the same count, fewer
+chapters, a lone chapter), where they can only come late. A translated answer is per
+request and never cached, so two books with one ASIN each get their own. Generated content
+carries no scale and is already numbered on the book, so it is untouched. Consequently a
+label built from such a number names this book's chapter, not the work's.
 
 #### Previous books and spoiler gating
 
@@ -2654,7 +2655,9 @@ none.
 
 `spoilers=hide` gates the envelope by the **caller's own saved progress** on this
 book (the server's progress record, mapped onto the book's chapters by
-`book_offset`; no saved progress counts as not started):
+`book_offset`; no saved progress counts as not started). When the offsets say nothing
+about a place (every chapter at the same one) the progress is read by count against the
+duration, rounded down, and with no duration as not started, never as the last chapter:
 
 | Content | Kept when |
 |---|---|

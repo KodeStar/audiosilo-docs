@@ -716,12 +716,14 @@ The saved-progress side comes from `useBookProgress(libraryId, path, cid?)`, whi
 reuses the existing `qk.progress(cid, lib, path)` key rather than introducing a
 second progress cache. A work's positions are numbered on its own scale, and `/meta`
 answers them [on this book's chapters](../server/api/reference.md#positions-on-this-books-chapters)
-when the work states a scale of another length, so the gate compares like with like
-and has nothing to convert (a label such as "Up to chapter 10" then names this book's
-chapter). Offline, a download keeps the numbers the server sent. A work stating no
-scale, or an older server, sends the work's own numbers, which only approximate a
-given recording's edition - hence the deliberate escape hatches (the toggle, and a
-finished book showing everything).
+when the book splits finer than the work's scale, so the gate compares like with like
+and has nothing to convert (a label such as "Up to chapter 9" then names this book's
+chapter). Offline, a download keeps the numbers the server sent. A book no finer than
+the scale, a work stating no scale, or an older server gets the work's own numbers, which
+only approximate a given recording's edition - hence the deliberate escape hatches (the
+toggle, and a finished book showing everything). `chapterNumberAt` reads starts that say
+nothing about a place (every chapter at offset 0) as chapter 0, not started, never as the
+last chapter.
 
 The **live** side is `src/components/player/use-listening-position.ts`:
 `useListeningPosition` (the book page, at `LIVE_POSITION_BUCKET_S`, 15 s; the
