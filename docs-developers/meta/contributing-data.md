@@ -671,8 +671,8 @@ each selected project:
     the project goes to the [worklist](#the-worklist) as `same-name-author`,
     naming that person's works. Release dates stop counting against the author
     when a project they wrote shows they are editions: the catalogue holds that
-    text under its full title, credited to someone of a surname the project
-    names, dated only by a release long past the author's death ("Narrative of
+    text under its full title, credited to a co-author the project names (that
+    catalogued person, not merely someone of the same surname), dated only by a release long past the author's death ("Narrative of
     Sojourner Truth", 1850 by LibriVox, beside Olive Gilbert's 2009 edition).
     A project they only translated proves nothing of the kind (it is another
     author's book: Thomas Taylor's 1816 Proclus says nothing of a modern
