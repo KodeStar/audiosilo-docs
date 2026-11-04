@@ -163,6 +163,13 @@ Seven behaviors are worth knowing:
   schema's own spelling (`Publisher` becomes `publisher`). A correction that
   restates the value the record already carries is a no-op `duplicate` that
   writes nothing.
+- **A title correction can add a retitle alias.** A work's slug stays put when
+  its title is corrected, so when the new title no longer reaches the slug, the
+  bot also records the slug the next import of that title would mint at as a
+  tombstone onto the work in `data/redirects.json` (the
+  [retitle alias](data-model.md#slug-is-identity-the-file-is-only-storage)),
+  and the pull request carries that file beside the work's pack. The
+  correction-batch form does the same for its title changes.
 - **Translation and reading-order links are correctable one at a time**, and
   judged by the same link rules `metacheck` runs (the
   [data model's](data-model.md#translations-and-reading-orders)) before anything
