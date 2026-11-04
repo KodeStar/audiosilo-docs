@@ -47,7 +47,7 @@ Every open pull request on audiosilo-meta is classified each tick
 | Draft | Nothing (but its branch is never pushed to or deleted). |
 | Code - any file outside `data/`, or a symlink or submodule in the tree | Never merged, never pushed to. One agent-written review is posted per head, and a maintainer decides. |
 | Fork, or a base other than `main` | Listed on the report. `ai-verify` cannot run on a fork, so it can never pass the gate. |
-| Oversize - a data change larger than the merge review bound | Split into parts within the bound (see below), each merged through the gate; the original is closed once every part has landed. |
+| Oversize - a data change larger than the merge review bound | Split into parts within the bound (see below), each merged through the gate; the original is closed once every part has landed (and the parts are closed if the original is merged or closed first). |
 | Data | Merged through the gate below, or fixed. |
 
 ### The gate
@@ -117,6 +117,13 @@ whole and not left for a person. The steward carries it to `main` in **parts**:
   its part was built is carried again too, so a correction is never lost.
 - Once every part has landed and each merged part's content is verified on
   `main`, the original is closed with a link, and so is the issue it came from.
+- If a person merges the original whole, or closes it without merging, before
+  its parts have landed, the parts have nothing left to carry. On its next tick
+  the steward closes every open part with a comment linking the original, and
+  deletes its branch - before anything else is judged, so no rebase, fix or
+  agent run is spent on it. This holds after a lost state too: a part's
+  original is read from its `steward/pr-N-part-K` branch. Reopening a closed
+  original carries its change again, in new parts.
 
 A pull request whose entries all reference each other cannot be made smaller:
 it goes through the gate whole. So does one whose first part could not be
