@@ -123,7 +123,10 @@ whole and not left for a person. The steward carries it to `main` in **parts**:
   deletes its branch - before anything else is judged, so no rebase, fix or
   agent run is spent on it. This holds after a lost state too: a part's
   original is read from its `steward/pr-N-part-K` branch. Reopening a closed
-  original carries its change again, in new parts.
+  original carries its change again, in new parts. A part the steward had
+  fixed is closed too (the merge decided the original's values), but its
+  comment says the fix is not on `main` and its branch is kept, so you can
+  reopen it if the fix is still wanted; a part you reopen is never closed again.
 
 A pull request whose entries all reference each other cannot be made smaller:
 it goes through the gate whole. So does one whose first part could not be
@@ -134,9 +137,12 @@ branches. A data pull request on anyone else's branch is fixed on a superseding
 `steward/pr-N` pull request instead; the original stays open until the
 superseding one has merged and its content is verified to be on `main`, and only
 then is it closed with a link. If a person closes the original without merging
-first, the superseding pull request is withdrawn with it: closed with a comment,
-its branch deleted. If a person merges the original first, the superseding one
-is left open and handled as usual, since it may carry a fix `main` lacks.
+first, the superseding pull request is **held**: the steward never fixes,
+rebases or merges it, keeps its branch, and comments once (per head) that a
+maintainer merges it by hand if the original was closed in favour of it, or
+closes it. Its report line says held, and reopening the original returns it to
+normal handling. If a person merges the original first, the superseding one is
+left open and handled as usual, since it may carry a fix `main` lacks.
 
 Attempts back off - immediately, then 1 hour, 4 hours, 12 hours, then daily -
 and never end in a closure. A fix whose next verdict states a **new** finding
