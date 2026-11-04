@@ -595,6 +595,12 @@ default rather than erroring. The window applies to `authored` and `narrated`
 of each. A client must page against those totals rather than assume the arrays are
 complete - a prolific narrator will exceed one page.
 
+`translated` / `translated_total` (artifact `schema_version` 9) list, in the same
+window and shape as `narrated`, the recordings that credit the person as their
+own **translator** (a LibriVox project's translator, credited on the recording
+rather than the work). Both are omitted when there are none and on an older
+artifact; a translator a work credits is already in `authored`.
+
 ## `/api/v1/series/{id}?limit=&offset=`
 
 A series with its ordered member works, or 404 `series not found`:
@@ -798,7 +804,9 @@ credits, never the work's, so two translations of one work each list their own);
 its LibriVox `genres` names; and the ids, the language name, `copyright_year`,
 the URLs, the section titles, files and playtimes, the author ids and years.
 
-**On an artifact older than 9** the feed answers as it did before: the
+**On an artifact older than 9**, or a version 9 one whose recording layer is
+still empty (a release cut before the backfill data landed), the feed answers as
+it did before: the
 catalogue work's title without the `(version N)` marker, 1-based positions as
 section numbers, the work's translator credits, this project's vocabulary as the
 `genres` (and the `genre` filter, which then also takes a vocabulary value such
