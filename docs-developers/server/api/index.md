@@ -45,7 +45,7 @@ JSON answers to `GET` requests under `/api/v1/` are gzipped (`gzip.BestSpeed`)
 for a client that sends `Accept-Encoding: gzip` (`api/compress.go`, server
 v2.5.1). A 200-book page is about 71 KB of JSON and about 10 KB gzipped. The
 JSON shape is unchanged and nothing needs opting in: browsers, the apps' `fetch`
-and Go's `http.Transport` (the Bridge, the manager) all send the header and
+and Go's `http.Transport` (the Bridge) all send the header and
 decode the answer themselves. A client that sends no `Accept-Encoding`, or one
 without gzip, gets the plain bytes as before.
 

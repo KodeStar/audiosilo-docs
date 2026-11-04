@@ -10979,7 +10979,7 @@ console's [first-run setup flow](#admin-first-run-setup) does the rest. See
 
 *Public (token-guarded).* Creates the first admin. The page sends only the
 token and the account; the library fields are still accepted so a caller that
-scripts this route (an older page, the desktop manager) keeps working.
+scripts this route (an older page, or the archived desktop manager) keeps working.
 
 | Body field | Type | Required | Notes |
 |---|---|---|---|

@@ -78,7 +78,20 @@ imported **with their history**, so `git log --follow` and `git blame` still rea
 the reliability fixes made there. The shell around it (the server link, the job
 runner, the mapping checks, the Bridge's own page) is new and smaller. Since Phase
 1a the engine runs, behind `sidecars.generate`
-([the engine wiring](generating.md#the-engine-wiring)).
+([the engine wiring](generating.md#the-engine-wiring)). The Audible client came
+the same way from **audiosilo-manager** (Phase 4a, [Audible accounts](audible.md)).
+
+:::note[The old tools are archived]
+Both former tools were archived in November 2026 and get no new features or
+fixes; the Bridge does their jobs now. **audiosilo-sidecars** (the contributor
+extraction tool) is replaced by [generating](generating.md) and
+[contributions](contributions.md); its existing releases and images (including
+`-cuda`) stay downloadable. **audiosilo-manager** (the desktop manager) is
+replaced by the Bridge's [Audible accounts](audible.md) for backing up and
+syncing an Audible library (its server set-up and book transfers over SFTP were
+not carried over); it never published installers, and its source was never
+public.
+:::
 
 ## The pull-only rule
 

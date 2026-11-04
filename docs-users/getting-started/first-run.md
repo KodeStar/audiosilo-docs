@@ -90,7 +90,7 @@ How it works:
 - **The list on the left** marks each step done (a tick) or skipped (a dashed circle), and any step is a click away.
 - **Finish later**, at the top, takes you to the console. The flow opens again the next time you open the console in a new browser session, until you finish it, and it picks up at the first step you haven't answered.
 - **Everything you choose is an ordinary setting.** Each step saves to the same place as [Server > Settings](../admin/server.md#settings) and [Libraries](../admin/libraries.md), so you can change any of it there later.
-- **Set somewhere else.** A setting fixed by an `AUDIOSILO_*` environment variable shows a lock and which variable sets it ("Set by AUDIOSILO_PUBLIC_URL"), as in Settings; one the desktop app sets says **Managed by the desktop app**. Either can't be changed here.
+- **Set somewhere else.** A setting fixed by an `AUDIOSILO_*` environment variable shows a lock and which variable sets it ("Set by AUDIOSILO_PUBLIC_URL"), as in Settings; one fixed by the program that started the server says **Set by the program that started the server**. Either can't be changed here.
 
 A server that was already in use before this flow existed (it had a library, or more than one account) never shows it.
 

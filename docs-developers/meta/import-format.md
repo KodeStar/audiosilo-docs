@@ -196,8 +196,8 @@ for the verdicts and the pull-request flow.
 Your tool can also create that issue over the GitHub API. Note that the API drops
 labels on issues opened by non-collaborators, so an API-created intake issue
 arrives label-less and waits for a maintainer to apply the routing label before
-the workflow admits it (the `labeled` trigger handles this). The sibling
-`audiosilo-sidecars` tool submits this way.
+the workflow admits it (the `labeled` trigger handles this). A Bridge filing
+with its own token (from its environment or `gh`) submits this way.
 
 ## Testing before you submit
 

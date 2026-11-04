@@ -15,6 +15,12 @@ player shows when nothing else describes it. A book with no chapters gets its
 chapters first, found in the narration (see
 [Books without chapters](#books-without-chapters)).
 
+:::note[Used the AudioSilo Sidecars tool?]
+The separate Sidecars contributor tool was archived in November 2026: the Bridge
+does its job now, from your server. Its existing releases and images stay
+downloadable, but it gets no new features or fixes.
+:::
+
 ## Who can, and what it needs
 
 - **An admin.** Only admins see the button, in the console and in the player.

@@ -139,7 +139,7 @@ their types); `verify -> {jobs, link, mapping}`; `jobs -> {link, store}`;
 metaops}`; `setup -> link`;
 `agentbox -> {agent, agentproto}`, `agentrun -> agentproto`; `link` and
 `agentproto` are leaves. The engine keeps the directions it had in
-audiosilo-sidecars (`PACKAGES.md`).
+audiosilo-sidecars (the Bridge's `PACKAGES.md` records them).
 
 Conventions that carry the design:
 

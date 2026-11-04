@@ -63,16 +63,15 @@ shape, so an app that reads LibriVox can switch its base URL
 
 The tooling follows the same discipline as the rest of the workspace: thin CLIs
 under `cmd/`, all logic in reusable packages, and a clean split between the
-public `pkg/*` (consumed as ordinary dependencies by the sibling
-`audiosilo-sidecars` module and, for `pkg/query` and `pkg/release`, by the
-AudioSilo server; see [Public Go packages](#public-go-packages)) and the private
-`internal/*`.
+public `pkg/*` (consumed as ordinary dependencies by `audiosilo-bridge` and,
+for `pkg/query` and `pkg/release`, by the AudioSilo server; see
+[Public Go packages](#public-go-packages)) and the private `internal/*`.
 
 `data/` carries its own `data/go.mod` - a nested Go module with no code in it,
 so the go command leaves the whole ~1.6 GB JSON tree out of this module's
 source zip. Without it, that zip passed Go's 500 MiB module-source limit and
 `go get` of any tag after v0.8.0 failed for a `pkg/*` consumer such as
-`audiosilo-sidecars`; with it the zip is about 3.4 MiB. The nested module holds
+the Bridge; with it the zip is about 3.4 MiB. The nested module holds
 no data of its own, so a pull request that only touches it runs the Go gate
 (not the data-only path) and triggers neither a data release nor `ai-verify`.
 
