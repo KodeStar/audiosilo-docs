@@ -788,8 +788,8 @@ writes the packs, then validates the whole tree. For each selected project:
   and the name kept as written, so two such readers are never one record and a
   rerun finds each by id; a `librivox:` summary line of its own counts them.
   When that id is already another person's or a retired one, the run warns and
-  the credit falls to the shared catch-all person, which `metacheck` refuses for
-  LibriVox, so a real run's post-write validation fails (it exits non-zero)
+  the credit falls to the shared catch-all person, which `metacheck` refuses
+  whatever the source, so a real run's post-write validation fails (it exits non-zero)
   rather than such a reader ever being committed there.
 - **A rerun splits readers on recordings it skips.** When a held recording
   credits a reader to a person carrying another reader id of the same name, or
