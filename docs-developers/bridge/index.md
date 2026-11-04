@@ -88,8 +88,9 @@ extraction tool) is replaced by [generating](generating.md) and
 [contributions](contributions.md); its existing releases and images (including
 `-cuda`) stay downloadable. **audiosilo-manager** (the desktop manager) is
 replaced by the Bridge's [Audible accounts](audible.md) for backing up and
-syncing an Audible library; it never published installers, and its source was
-never public.
+syncing an Audible library (its server set-up and book transfers over SFTP were
+not carried over); it never published installers, and its source was never
+public.
 :::
 
 ## The pull-only rule

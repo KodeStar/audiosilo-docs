@@ -144,9 +144,9 @@ Seven behaviors are worth knowing:
   (for an issue carrying a `data:` label). An issue opened with its routing
   label fires that label's `labeled` event too, so admitting `opened` as well
   ran intake twice and posted every verdict twice. And the GitHub API silently
-  drops labels on issues opened by non-collaborators (a Bridge filing with its
-  own token creates intake issues over the API), so such an issue arrives
-  label-less and is admitted when a maintainer applies the
+  drops labels on issues opened by non-collaborators (a Bridge filing with a
+  token from its environment or `gh` creates intake issues over the API), so
+  such an issue arrives label-less and is admitted when a maintainer applies the
   routing label later - a `labeled` event. (An issue filed through the AudioSilo
   App comes in by a third door, `workflow_call` from `route.yml`:
   [below](#issues-filed-through-the-audiosilo-app).) The job gate excludes the workflow's
