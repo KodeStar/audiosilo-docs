@@ -586,6 +586,13 @@ onto these ordinals; text-to-audio alignment is a consumer concern, out of schem
 scope. The object shape is deliberately extensible - a later `paragraph` or
 `offset_ms` can be added without a breaking change.
 
+For a **play**, `chapter` is the **act**, never the scene (`0` = before the play
+begins): a character entering in Act II, Scene 3 is revealed at `2`, a recap
+stands only at an act boundary, and a play with no act divisions is a single act.
+Acts are how most play recordings are tracked and they are stable across
+editions, where scene numbering is not. The authoring rule is in the community
+repository's `AUTHORING.md`.
+
 ## Provenance on every entity
 
 Every record carries a `sources[]` array (`$defs/sources`, at least one entry).
