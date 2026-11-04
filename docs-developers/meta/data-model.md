@@ -523,8 +523,18 @@ census stops naming the pair it covers, and the importer honours a `reject` of
 `merge-people` (how "two people, not one" is recorded for a courtesy-title pair
 such as Dr. Alex George and Alex George). The importer's honorific fold, which
 otherwise resolves a "Dr. X" credit onto the catalogued bare "X", never folds a
-pair a rejection names, in either direction, so an import cannot re-merge two
-people a maintainer separated.
+pair a rejection names, in either direction, and neither does the credential
+fold ("X PhD" onto "X"); both judge the records the two spellings land on
+(through the initials merge) as well as the slugs they spell, so an import
+cannot re-merge two people a maintainer separated. The series author rule and
+the intake form's duplicate-title, takeover and series checks read the pair as
+two authors too, so the doctor's book never joins the novelist's series.
+
+Because the importer honours a `merge-people` rejection whatever is live, the
+audit never calls one stale merely because one of its two records is missing
+(deleted, not yet created, or a mistyped slug): it is reported **unresolved**
+and listed in `SUMMARY.md`, so a typo still surfaces but triage does not prune
+a decision that is still in force.
 
 ## The expressive layer (CC BY-SA)
 
