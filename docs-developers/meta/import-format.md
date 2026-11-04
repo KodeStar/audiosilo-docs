@@ -163,6 +163,15 @@ so the same identity and dedup rules apply as any other import (full detail unde
   claim that adds a membership to a series stored under a genuinely different
   name (not merely another case or bracket spelling) is listed in the run's
   notes. The intake bot and `libex-select` resolve series through this same rule.
+- **Names that slug to nothing.** A person's identity is the slug of their name,
+  so a name written entirely in a script the slug rule folds away (Cyrillic
+  `Йордан Йовков`, Korean `김영하`) has none of its own. Such an author,
+  contributor or narrator is never credited to a shared catch-all record: the
+  book is imported with that credit left off, and the import lists it under
+  "credits not recorded" with the reason `unsluggable` (the intake bot puts the
+  same lines in its notes). A book left with no individual author is skipped as
+  `missing-author`, and one left with no narrator as `missing-narrator`, each
+  with a warning naming the names.
 - **Edition markers.** A trailing `(Unabridged)`/`(Abridged)` in the title is
   stripped before identity and, if `abridged` was not set, seeds the recording's
   tri-state abridged flag.
