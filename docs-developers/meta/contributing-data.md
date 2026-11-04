@@ -620,7 +620,8 @@ code - an unknown language, no narrator or author, or the duplicate-identity
 guard's `identity-duplicate` - the `metaimport libex --skipped` shape with the
 project id in place of the ASIN, written once the run completed), plus
 `--worklist <path>`, which appends the [worklist](#the-worklist) to a file as
-well, one NDJSON row per project. A real run
+well, one NDJSON row per project (both files are written on a `--dry-run`
+too). A real run
 writes the packs, then validates the whole tree. For each selected project:
 
 - **A retired project number is set aside**: LibriVox gives a number it retired
@@ -806,8 +807,9 @@ writes the packs, then validates the whole tree. For each selected project:
   `librivox-reader-<reader id>` (`librivox-reader-11294`), created with that id
   and the name kept as written, so two such readers are never one record and a
   rerun finds each by id; a `librivox:` summary line of its own counts them.
-  When that id is already another person's or a retired one, or the credit
-  carries no reader id, the project is skipped with a warning before anything
+  When that id is already another person's or a retired one (before the run, or
+  because a row of the run created a person there), or the credit carries no
+  reader id, the project is skipped with a warning before anything
   is planned (it stays re-importable), never credited to the shared catch-all
   person, which `metacheck` refuses whatever the source.
 - **A rerun splits readers on recordings it skips.** When a held recording
