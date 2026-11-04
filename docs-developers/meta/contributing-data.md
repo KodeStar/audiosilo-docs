@@ -107,7 +107,9 @@ Seven behaviors are worth knowing:
   ASIN is classified before the verdict, so their order never changes it. A
   title that differs is only a note, and identity is never rewritten. Only an
   ASIN match takes a record over: a mirror-seeded record met by title, ISBN or
-  narrator set is `needs-human`, and on the add forms the message names the
+  narrator set is `needs-human` (the verdict names the mirror that seeded the
+  record - "the libex mirror", "the LibriVox mirror" - never libex for a
+  LibriVox record), and on the add forms the message names the
   record's mirror-only ASINs (adding the matching one to the issue turns it
   into a takeover). The rule itself is LICENSING.md's "Trust tiers and the
   user-overwrite rule" (in `audiosilo-meta`).
@@ -578,7 +580,8 @@ clients and asks them to slow down:
   (seconds or an HTTP date, never less than the 5-second spacing) and otherwise
   waiting exponentially from 30 seconds up to 10 minutes, for at most six retries
   (seven requests for one page) before the run stops, resumably. Any other error
-  status stops the run at once.
+  status stops the run at once, and so does a response body over 64 MiB (no
+  feed page comes near it, so it is never cut off and decoded).
 
 The snapshot is a directory that is **never committed**: `manifest.json` (the
 fetch's resume state: feed, query, limit, next offset, page and project counts,
@@ -594,13 +597,24 @@ makes no request, so a fresh reading goes into a new directory. `--max-pages N`
 stops after `N` pages (`0`, the default, runs to the end).
 
 **`import` lands a tranche.** `--from` names the snapshot (the importer reads
-every `pages/*.json` and nothing else, so a hand-assembled snapshot works too)
-and `--ids` is required: one project id (`527`), a range (`1-2000`), an open
-range (`5000-`) or a comma-separated union of them. The other flags are the
-usual ones: `--data`, `--dry-run`, `--date YYYY-MM-DD` (the `imported_at` stamp,
-today in UTC by default) and `--conflicts <path>` (one NDJSON row per refused
-contradiction). A real run writes the packs, then validates the whole tree. For
-each selected project:
+`pages/*.json` and nothing else, so a hand-assembled snapshot works too) and
+`--ids` is required: one project id (`527`), a range (`1-2000`), an open range
+(`5000-`) or a comma-separated union of them. `fetch` records each page's
+range of project ids in the manifest (`page_ids`), and a tranche decodes only
+the pages whose range meets its ids (a 2,000-project tranche of the
+22,449-project snapshot reads in 0.19 s instead of 2.0 s). A snapshot whose
+manifest does not range every page (one fetched before the ranges were
+recorded, a hand-assembled one), or a decoded page holding an id outside its
+range, is read whole. A project whose id is missing or unreadable is skipped with a warning
+naming its page and title, since no `--ids` could select it. The other flags
+are the usual ones: `--data`, `--dry-run`, `--date YYYY-MM-DD` (the
+`imported_at` stamp, today in UTC by default), `--conflicts <path>` (one NDJSON
+row per refused contradiction) and `--skipped <path>` (one
+`{"librivox_id","reason"}` NDJSON line per project refused under a refusal
+code - an unknown language, no narrator or author, or the duplicate-identity
+guard's `identity-duplicate` - the `metaimport libex --skipped` shape with the
+project id in place of the ASIN, written once the run completed). A real run
+writes the packs, then validates the whole tree. For each selected project:
 
 - **An in-progress project is set aside first**: a row with no runtime
   (`totaltimesecs` 0, missing or not a number) and no archive.org item (no
@@ -960,8 +974,9 @@ Once a person has settled the work (merged the duplicates, fixed the credit),
 re-importing the project's id lands it. A `differently-spelled-title` project is
 also the guard's ordinary skip: it is counted among the run's duplicate-identity
 skips and, with `--conflicts`, writes that guard's `work_identity` row, which
-carries `librivox_id` since a LibriVox row has no ASIN. The other reasons
-appear on the worklist alone.
+carries `librivox_id` since a LibriVox row has no ASIN; with `--skipped` it is
+an `identity-duplicate` line keyed by `librivox_id`. The other reasons appear on
+the worklist alone.
 
 #### Credits not recorded
 
