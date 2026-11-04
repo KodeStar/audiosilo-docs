@@ -859,7 +859,9 @@ dropped (Names that slug to nothing, below):
    le/la/les/l', German der/die/das, Spanish el/los/las, Italian il/lo and Dutch
    de/het/een, in any language. A volume number is one key however it is
    spelled ("Vol. 1 of 3" joins "Volume 1"), but two stated totals that differ
-   are two volume sets ("Vol. 1 of 3" never joins "Vol. 1 of 5"), and numbers
+   are two volume sets ("Vol. 1 of 3" never joins "Vol. 1 of 5", nor a work
+   titled "Volume 1" that already holds a "Vol. 1 of 3" recording: that project
+   is the worklist's `volume-total`), and numbers
    stay apart ("Vol. 1, 2" is not "Vol. 12", "Vol. 1" is not "Vol. 2"). Two or more such works is the worklist's `several-works`, even
    when one of them matches the credits exactly.
 3. **An author spelled with more or fewer words.** Otherwise, when a work
@@ -1028,6 +1030,7 @@ librivox worklist: 2 projects skipped for a person to resolve (re-import the ids
 | `author-unsluggable` | no individual author is left once the names that slug to nothing and carry no LibriVox author id are dropped ([Names that slug to nothing](#which-work-a-librivox-project-joins), above) |
 | `differently-spelled-title` | the duplicate-identity guard holds the book under a title rule 2 does not read as the same, such as one with a subtitle, or the one work rule 4 matches |
 | `same-name-author` | a new author id meets, by name, a catalogued person (or another new id of the run) that the same-name test (under the mirror's people rules, [above](#librivox-the-public-domain-mirror)) cannot tell apart, or finds is someone else when no record of its own can be made (the name is a collective's, or the dated or author-id slot is taken or retired); the line names a few of that catalogued person's works |
+| `volume-total` | the one work rule 2 finds holds a LibriVox recording stating another volume total than the project's title ("Vol. 1 of 3" on a work titled "Volume 1", the project "Vol. 1 of 5"), so the work may be either volume set |
 | `fallback-slug-taken` | a non-Latin title's `librivox-<project id>` slug is already held by another record, or retired |
 
 `--worklist <path>` appends the same entries to a file, one NDJSON row per
