@@ -171,7 +171,10 @@ so the same identity and dedup rules apply as any other import (full detail unde
   "credits not recorded" with the reason `unsluggable` (the intake bot puts the
   same lines in its notes). A book left with no individual author is skipped as
   `missing-author`, and one left with no narrator as `missing-narrator`, each
-  with a warning naming the names.
+  with a warning naming the names. The intake verdict says how many books were
+  skipped this way and that they need a maintainer - an export of nothing but
+  such books is `needs-human` for that reason, not because the file is the
+  wrong format.
 - **Edition markers.** A trailing `(Unabridged)`/`(Abridged)` in the title is
   stripped before identity and, if `abridged` was not set, seeds the recording's
   tri-state abridged flag.
