@@ -676,8 +676,9 @@ writes the packs, then validates the whole tree. For each selected project:
   person carrying the translator's LibriVox author id, else the name's person
   when that carries no other author id, else a person created for them carrying
   the id and years - an attach records no work credit, so the recording is what
-  credits them; a name another author id holds, or one that slugs to nothing,
-  is left off and counted), and,
+  credits them; a name another author id holds, or one that slugs to nothing
+  with no LibriVox author id, is left off and counted, while one that slugs to
+  nothing with an id is its `librivox-author-<id>` person), and,
   when the stored chapters are the project's sections one to one, each section's
   `section_number` where LibriVox's differs from the position and its `readers`
   (always among the recording's narrators; one reader that resolves to none of
