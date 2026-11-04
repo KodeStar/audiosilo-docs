@@ -543,6 +543,13 @@ All three are `omitempty` and gated on the artifact `schema_version`
 (characters/recaps at 2, recap summary at 3), so an older artifact simply omits
 them (see [the data model](data-model.md#the-compiled-artifact-and-schema-versioning)).
 
+`position_scale` - `{length, unit, partial?}` - is the ruler those positions are on
+(`schema_version` 10, omitted when the work states none): the book's whole length in
+`unit`s (`act`, `chapter`, `entry`, `episode`, `letter`, `part`, `piece`, `poem`, `scene`,
+`section`, `track`), with `partial: true` when the sidecars stop short of it on purpose.
+Use it to place a `reveal` or `through` on a recording whose tracks differ from those
+units.
+
 Two more fields carry the work's **translation links** (`schema_version` 7),
 both `[{id, title, language}]` in work id order and both omitted when empty:
 
