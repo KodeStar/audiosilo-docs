@@ -33,8 +33,8 @@ docker build --target slim .   # a Dockerfile change: slim | cuda | full | agent
   packages also runs:
 
   ```sh
-  go vet -tags audiblefake ./internal/audible/... ./internal/audibleacct ./internal/audiblejob ./internal/app ./cmd/audiblefake
-  go test -race -tags audiblefake ./internal/audible/... ./internal/audibleacct ./internal/audiblejob
+  go vet -tags audiblefake ./internal/audible/... ./internal/audibleacct ./internal/audiblejob ./internal/audiblesync ./internal/app ./cmd/audiblefake
+  go test -race -tags audiblefake ./internal/audible/... ./internal/audibleacct ./internal/audiblejob ./internal/audiblesync
   go test -race -tags audiblefake -run Audible ./internal/app
   ```
 

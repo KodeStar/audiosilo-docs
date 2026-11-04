@@ -114,7 +114,7 @@ pairing and after a mapping check finishes:
 | Field | What it carries |
 |---|---|
 | `version` | the Bridge's version |
-| `kinds` | the job kinds it runs (`bridge.verify`, `sidecars.generate` since Phase 1a, `sidecars.describe` since Phase 1c, `chapters.detect` since Phase 1d, `sidecars.contribute` and `meta.correct` since Phase 2b, `readalong.align` since Phase 3c, `audible.poll` since Phase 4a, and `audible.import` since Phase 4b) |
+| `kinds` | the job kinds it runs (`bridge.verify`, `sidecars.generate` since Phase 1a, `sidecars.describe` since Phase 1c, `chapters.detect` since Phase 1d, `sidecars.contribute` and `meta.correct` since Phase 2b, `readalong.align` since Phase 3c, `audible.poll` since Phase 4a, `audible.import` since Phase 4b, and `audible.sync` since Phase 4c) |
 | `libraries` | its last [mapping check](mappings.md) of each library |
 | `workers` | its [ASR workers](workers.md) that have connected at least once: `name`, `version`, `platform` (the GOOS/GOARCH and the speech recognition in one line, e.g. `darwin/arm64, mlx-whisper (metal)`) and `last_seen` |
 | `ui_url` | its own page as the local network reaches it (its `public_url` setting), which the console links to |
@@ -168,7 +168,7 @@ Bridge's pure `setup.Checklist` from what the app already knows, in a fixed orde
 | `agent` | yes | the agent container is available (with its own or a handed-over credential) | the backend, or why it isn't ready in plain words (below) |
 | `budget` | yes | the monthly budget was saved on the page or is set by the environment (`Config.BudgetReviewed`) | "$100 a month" or "no monthly cap" |
 | `github` | no | a GitHub token resolves and isn't refused | the login, "a token from the environment" or "the gh CLI's token" |
-| `audible` | no | Phase 4a: at least one Audible account signed in, none refused and none on an older device profile (an additive id: older servers and pages leave it out) | "1 account signed in", "1 account needs signing in again", or "... signing in again to keep backups working" when any is on an older profile |
+| `audible` | no | Phase 4a: at least one Audible account signed in, none refused and none on an older device profile (an additive id: older servers and pages leave it out) | "1 account signed in", "1 account needs signing in again", or "... signing in again to keep backups working" when any is on an older profile; Phase 4c adds "; places don't sync until then" while one is refused, and "; places not syncing for 1 account: " and the reason when an account's last position sync failed (that alone never makes it not done) |
 
 ```json
 "setup": {
@@ -598,6 +598,19 @@ up, a policy or Back up everything; see
 It runs in the `download` lane, one per account at a time, and its partial
 download survives a restart. See
 [Backing up a title](audible.md#backing-up-a-title-audibleimport).
+
+`audible.sync` (Phase 4c) brings an account's places on Audible to the server. It
+belongs to the `audible` module: internal, quiet, no library or book path, params
+`{account, titles: [{asin, library_id, path, runtime_s}]}` built by the server (at
+most 1 MiB), deduped per account (a queued one takes the newest titles), only the
+newest ended one kept. The scheduler queues it every 15 minutes for each account
+whose sync is on, at priority `-10`, and the console queues it at once when sync is
+turned on or a title's sync changes. It runs in the `light` lane and writes nothing
+into a library. Its failure codes are `audible_refused` (the server stops queueing
+until a sign-in again), `audible_sign_in`, `unknown_account`, `user_unavailable`
+and `audible_error`. The push back to Audible is no job: a loop reads
+`GET /bridge/progress` every minute. See
+[Position sync](audible.md#position-sync-audiblesync-and-the-push-loop).
 
 ### Notifications
 

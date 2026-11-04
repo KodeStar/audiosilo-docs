@@ -129,11 +129,12 @@ belongs to **one person** on your server and goes with **one books library**. Th
 sign-in stays sealed on the Bridge: the server only ever sees the account's name, who and which
 library it is for, the list of titles and how each backup went.
 
-:::info[What it does today]
+:::info[What it does]
 The Bridge **lists, matches and backs up**: it shows which of your Audible books
 are already on your server, and downloads the ones you choose into the account's
-library (see [Backing up](../admin/audible.md#backing-up-a-book)). It doesn't keep
-your listening place in step with Audible yet: that comes in a later version.
+library (see [Backing up](../admin/audible.md#backing-up-a-book)). It can also
+keep the account's listening places in step with Audible, both ways (see
+[Syncing listening places](../admin/audible.md#syncing-listening-places)).
 :::
 
 The server asks the Bridge to check each account's library every few hours, but
@@ -184,12 +185,16 @@ old device from your Amazon account.
 |---|---|
 | **Belongs to** | the person on your server whose books these are. The list holds the server's adults and admins, including grown-up household members; never a kid, the demo account or a disabled account |
 | **Library** | the books library the account's titles are matched against, and where its backups go. Podcast libraries aren't offered. The Bridge must have this library mapped and writable on its Libraries tab to back anything up |
-| **Back up** | only when you add an account: which **new** purchases the Bridge backs up on its own after each check: **Every new title**, **New titles in a series they already have**, or **Only the titles picked in the console**. After that you change it in the console (**Backup settings...** on the [Audible accounts card](../admin/audible.md#backing-up-by-itself)); **Change** here says so and leaves it as it is |
-| **Keep the listening place in step with Audible** | for when places sync, in a later version |
+| **Back up** | only when you add an account: which **new** purchases the Bridge backs up on its own after each check: **Every new title**, **New titles in a series they already have**, or **Only the titles picked in the console**. After that you change it in the console (**Account settings...** on the [Audible accounts card](../admin/audible.md#backing-up-by-itself)); **Change** here says so and leaves it as it is |
 | **Name (optional)** | how the console names the account. Left empty, it is the person and the store, such as "Chris (US)", and it follows the person if you change who the account belongs to |
 
 **Change** on an account edits these. A change is saved on the server first, so if
 the server can't be reached nothing changes.
+
+Whether the account's listening places sync with Audible isn't set here: it is off
+for a new account, and you turn it on in the console (**Account settings...** on the
+[Audible accounts card](../admin/audible.md#syncing-listening-places)). Changing who
+an account belongs to turns its sync off again.
 
 #### The account's states
 
@@ -197,7 +202,7 @@ the server can't be reached nothing changes.
 |---|---|
 | **Not checked yet** | signed in; the server hasn't asked for a check yet (or the Audible module is off) |
 | **Signed in** | checked at least once. **Last checked** says when, with how many titles the account has and how many are already in the library |
-| **Sign in again** | Audible refused the sign-in, for example after you removed the device in your Amazon account or changed your password. The card says why; press **Sign in again**, which keeps the store and the account's settings. Until then its checks fail. Also shown (in red) when Audible refused the device its downloads: the titles still list, but every backup fails until you sign in again |
+| **Sign in again** | Audible refused the sign-in, for example after you removed the device in your Amazon account or changed your password. The card says why; press **Sign in again**, which keeps the store and the account's settings. Until then its checks fail, and its listening places don't [sync](../admin/audible.md#syncing-listening-places) until a check goes through or you sign in again. Also shown (in red) when Audible refused the device its downloads: the titles still list, but every backup fails, and its listening places don't [sync](../admin/audible.md#syncing-listening-places), until you sign in again |
 | **Sign in again** (amber) | the account was signed in by an earlier version of the Bridge, whose device Audible no longer lets download. Its checks still work; its backups don't. Press **Sign in again**; see [Sign in again after updating the Bridge](../admin/audible.md#sign-in-again-after-updating-the-bridge) |
 | **Mapped on another server** | the account was set up while the Bridge was paired with another server. Press **Change** and save to set it up on this one |
 
