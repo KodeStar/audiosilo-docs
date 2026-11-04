@@ -917,9 +917,14 @@ CSP-sensitive work against a real build served by Go. The console's own gate is
   (`features/audible/audible-accounts-card.tsx`, over
   [`GET /admin/audible/accounts`](api/reference.md#get-apiv1adminaudibleaccounts),
   every 30 seconds): each account's mapping read-only, its title counts and
-  **Placement** (its template, or "Beside the series' other books"), **Check
-  now**, **Backup settings...** (Phase 4b, `account-settings-button.tsx`: the
-  policy and the template, [`PATCH /admin/audible/accounts/{account}`](api/reference.md#patch-apiv1adminaudibleaccountsaccount)),
+  **Placement** (its template, or "Beside the series' other books"), Phase 4c's
+  **Sync** row (`SyncState`: Off; On, not synced yet; On, synced &lt;when&gt; from
+  `last_sync_at`; On, paused with the account; or, in warning tone, stopped since
+  Audible refused the account, `refused_at`), **Check
+  now**, **Account settings...** (Phase 4b, `account-settings-button.tsx`, called
+  Backup settings until 4c: the policy, the template and 4c's **Sync listening
+  places with Audible** switch, [`PATCH /admin/audible/accounts/{account}`](api/reference.md#patch-apiv1adminaudibleaccountsaccount),
+  each field sent only when changed),
   **Back up everything...** (`backup-all-button.tsx`: a confirm with
   `backup_estimate`'s "N books, ~X GB", then
   [`POST .../backup-all`](api/reference.md#post-apiv1adminaudibleaccountsaccountbackup-all);
@@ -927,8 +932,10 @@ CSP-sensitive work against a real build served by Go. The console's own gate is
   titles**; the setup checklist's optional
   `audible` step links the Bridge's Accounts tab; an `audible.poll` reads
   "Checking an Audible library", an `audible.import` "Backing up an Audible book"
-  with its ASIN (`backupAsin`), and one the server queued "Scheduled by the server"
-  (`serverScheduled`).
+  with its ASIN (`backupAsin`), an `audible.sync` "Syncing places with Audible", and
+  one the server queued "Scheduled by the server" (`serverScheduled`, which counts
+  `audible.sync`); a sync cancelled by turning sync off shows the server's reason
+  ("sync with Audible was turned off for the account", `SERVER_CANCEL_REASONS`).
 - **Settings > Audible** (`features/audible/audible-topic.tsx`, Bridge Phase 4a, a
   `MODULE_PAGES` page listed only while the `audible` module is on) - over
   [`GET /admin/audible/titles`](api/reference.md#get-apiv1adminaudibletitles)
@@ -937,11 +944,14 @@ CSP-sensitive work against a real build served by Go. The console's own gate is
   byline (`titleByline`), length, a preorder's release date, ASIN, state dot
   (`TITLE_STATE_TONE`), and **On this server** linking to the matched book or
   **Not here**, with **Matched by title** for a `fuzzy` match, **Backed up here**
-  for an `import` one and **Not this book** for a rejected title; Phase 4b's
+  for an `import` one, **Not this book** for a rejected title and **Not synced** for
+  a `no_sync` one; Phase 4b's
   per-title actions (`title-actions.tsx`: **Back up**, `canBackUp`, off while the
   account is paused,
   [`POST .../backup`](api/reference.md#post-apiv1adminaudibletitlesaccountasinbackup);
-  **Not this book** and its undo and **Destination...**,
+  **Not this book** and its undo and **Destination...**, and Phase 4c's **Don't
+  sync** / **Sync again**, shown while `canSync` (matched, not rejected, ignored,
+  gone or `no_sync`) or the title is already `no_sync`,
   [`PATCH /admin/audible/titles/{account}/{asin}`](api/reference.md#patch-apiv1adminaudibletitlesaccountasin)),
   the backup's state and code (`importStatus`, `audible.code.<code>`), and the
   legal line under the filters. An unmatched title's row says where its backup

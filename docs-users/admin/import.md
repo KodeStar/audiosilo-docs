@@ -244,6 +244,10 @@ where it was before the import. Progress the person has changed since (they
 kept listening, or an admin edited it) is kept as it is now, and so is an
 imported bookmark they have edited or labelled since: it becomes theirs.
 
+With [Audible sync](audible.md#syncing-listening-places) on, a place the import
+sets is sent to Audible like any other place, and so is the earlier place an undo
+puts back.
+
 An undone (or failed) import can be removed with **Delete**. An applied import
 can't be deleted; undo it first.
 

@@ -59,6 +59,8 @@ On a recent server, each device sends the server **what you listened to**: from 
 - **Listening counts when it happened.** Your [history](book-page.md#history), the Journal, your stats and the server's activity show offline listening on the day and at the time you listened, even when it reaches the server days later, and even when the device's clock was wrong. Listening sent twice is counted once.
 - **Your place in the right file.** For a book in several files, the app also notes which file you were in, so listening on a download that still has an older file order lands in the same file on the server.
 
+**Places from Audible.** When your server's admin has [Audible sync](../admin/audible.md#syncing-listening-places) on for an Audible account of yours, Audible is one more device: a place further on in the Audible app reaches your books here within about 15 minutes, and the player moves to it or offers it as *"On Audible (Chris (US)) ..."*. It never moves your place back, and it adds nothing to your history or stats. Your place here goes back to Audible a few minutes after you stop listening.
+
 Until it reaches the server, what you listened to waits on the device: Home's line says **3 listens waiting to sync**, and your [account page](account.md#listening-sync) says how many are waiting and when this device last synced. If the server ever turns one down (say the downloaded copy is a different length from the server's book), it's listed there with the reason. On an older server, the app saves your place as it always has.
 
 ## Bookmarks, notes and history
