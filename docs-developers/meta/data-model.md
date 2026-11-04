@@ -464,6 +464,34 @@ evidence is named in the reason but never vetoes, and a work
 evidence in its notes. Either way the correction is applied only through an
 `accept` in the reviewed-decision list below.
 
+**When a retail recording is a LibriVox project's audio.** Retailers resell
+LibriVox projects under their own imprint: *Metamorphosis* holds
+`david-barnes-2016` (Paperless, 152 minutes) beside the LibriVox recording of
+project 527, read by the same David Barnes in 154. The two stay two recordings -
+the retail edition has its own ASINs, cover and publisher, the project its own
+links and per-section audio - so the audit's `R-REPACKAGE` class proposes a
+**link** for a person to review (`link-librivox-repackage`: the work as target,
+the retail recording as `from`, the LibriVox recording as `to`), never a merge,
+and it is advisory throughout. It proposes a pair only inside one work, and only
+when:
+
+- the retail recording's narrators are exactly the LibriVox recording's readers
+  (person slugs, any order) - a reader set that merely overlaps is a group
+  project's volunteer, counted in `SUMMARY.md` and never proposed;
+- the two recordings state one language;
+- both runtimes are stated and the retail one is never longer than the project
+  beyond rounding (2 minutes, or 1% of a long project) and at most a minute a
+  LibriVox section shorter (5 minutes at least), the spoken preambles a
+  repackage trims; or, a runtime unstated, its publisher carries at least three
+  runtime-confirmed proposals across the catalogue. A stated runtime outside the
+  window refuses the pair whatever the publisher: that is a narrator
+  re-recording a book they read for LibriVox.
+
+Each proposal names the LibriVox project id and its evidence (readers, both
+runtimes and the window, the publisher and how many runtime-confirmed proposals
+it carries). Over the 2026-11 tree it made 149 proposals from 158 same-reader
+pairs.
+
 **Reviewed decisions are recorded, not re-made.** When a maintainer reviews a
 proposal, the verdict goes into one checked-in list,
 `internal/audit/reviewed.json`, rather than into a one-off worklist. Each entry
@@ -487,7 +515,8 @@ survivor is another record nobody reviewed: a reviewed drop of a duplicate
   that would make two mechanical proposals contradict each other is refused at
   audit time, and an accept of a proposal no repair carries out - a `review`, a
   `rename-candidate` or a `repoint-sidecar` - is refused outright, since it has
-  nothing to apply. An accepted `retitle-work` is a reviewer's title for that
+  nothing to apply (the one exception is `link-librivox-repackage`, below, whose
+  accept applies nothing either: it records the link). An accepted `retitle-work` is a reviewer's title for that
   record, exactly as an asserted one is: it is refused beside a mechanical merge
   folding its work away (even when the detector already proposed the retitle and
   the accept would change nothing, in which case the detector's retitle stays as
@@ -558,6 +587,17 @@ audit never calls one stale merely because one of its two records is missing
 (deleted, not yet created, or a mistyped slug): it is reported **unresolved**
 and listed in `SUMMARY.md`, so a typo still surfaces but triage does not prune
 a decision that is still in force.
+
+A `link-librivox-repackage` decision is **record-only**: the entry in the list
+IS the record of the link, and no repair pass ever applies it or writes `data/`.
+`accept` records the link (reported **linked**) and `reject` records "not this
+project's audio" (**suppressed**); either takes the pair out of `R-REPACKAGE`, so
+it is never asked again. The entry names the work (`target`, read through the
+tombstone table, since a merge carries both recordings to the survivor), the
+retail recording (`from`) and the LibriVox recording (`to`), and nothing else; it
+cannot be asserted. It stays in force while the work holds both recordings,
+whether or not a fresh audit still proposes the pair, and reads **stale** only
+once a recording it names has left the work (or the two have swapped kinds).
 
 ## The expressive layer (CC BY-SA)
 
