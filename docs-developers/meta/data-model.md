@@ -137,9 +137,10 @@ names and the catch-all included), and `metacheck` refuses a record whose id is
 not, because the next import of that name would miss it and mint a second
 record. A LibriVox author who shares a name with a catalogued person is told
 apart by the years in the name itself ("James Grant (1822-1887)" is
-`james-grant-1822-1887`), so that id is an ordinary derived one. Two other
-forms are legal, both for a LibriVox reader, since the LibriVox import finds a
-reader by id before it reads a name:
+`james-grant-1822-1887`), so that id is an ordinary derived one. Four other
+forms are legal, two for a LibriVox reader and two for a LibriVox author or
+translator, since the LibriVox import finds a person by id before it reads a
+name:
 
 - `<name slug>-librivox-<reader id>` (`martina-librivox-634`,
   `model.LibrivoxReaderSlug`) for a reader whose name another reader id, or an
@@ -151,8 +152,18 @@ reader by id before it reads a name:
   (Greek, Cyrillic, CJK), the name kept as written. It is legal only for such a
   name.
 
-`metacheck` accepts either only on a record carrying exactly that
-`librivox_reader_id`. The rule is `model.PersonIDMatches`.
+- `<name slug>-librivox-author-<author id>` (`ralph-scott-librivox-author-16428`,
+  `model.LibrivoxAuthorSlug`) for an author whose name a person who is someone
+  else holds, when LibriVox states no year to date the name by.
+- `librivox-author-<author id>` (`librivox-author-17538`,
+  `model.LibrivoxUnslugAuthorSlug`) for an author or translator whose name slugs
+  to nothing, the name kept as written. It is legal only for such a name.
+
+`metacheck` accepts a reader form only on a record carrying exactly that
+`librivox_reader_id`, and an author form only on one carrying exactly that
+`librivox_author_id`. The rule is `model.PersonIDMatches`; a refusal suggests
+`model.WantPersonID`, so a name that slugs to nothing is pointed at its LibriVox
+form, never the catch-all `person`.
 
 The catch-all person, `person`, is where every name that slugs to nothing would
 otherwise land. It stays legal for the user-library imports but never for
