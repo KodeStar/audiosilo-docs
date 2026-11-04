@@ -710,7 +710,10 @@ each selected project:
   earlier in the run took) a **different** reader id, the reader gets a person
   of their own at `<name slug>-librivox-<reader id>` (`martina-librivox-634`,
   the [person id rule](data-model.md#person---an-entry-in-the-datapeople-family)),
-  created with that id, and the first holder of the name keeps the plain slug. A
+  created with that id, and the first holder of the name keeps the plain slug
+  (decided per reader id before any project is placed, by lowest project id,
+  so the run's row order never matters; a reader first credited on a project
+  that goes to the worklist still holds the name). A
   later project by the same reader finds that person by id, so no reader is ever
   minted twice. A person at the plain slug who carries no reader id (a narrator
   another source catalogued) is not another reader: the first LibriVox reader of
