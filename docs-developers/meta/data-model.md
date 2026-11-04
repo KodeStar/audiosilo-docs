@@ -179,11 +179,13 @@ name:
 form, never the catch-all `person`.
 
 The catch-all person, `person`, is where every name that slugs to nothing would
-otherwise land. It stays legal for the user-library imports but never for
-LibriVox: `metacheck` refuses a `person` record with a `librivox` source or a
-LibriVox reader or author id, and a LibriVox recording (a `librivox` source or
-a `librivox_id`) keyed on or narrated by it. One record would otherwise narrate
-every unrelated project such a name read.
+otherwise land. No import credits it: libex refuses the row, and every other
+import (LibriVox, OpenAudible, Libation, AudioSilo books) leaves the credit off
+and reports it as a credit not recorded, reason `unsluggable`. `metacheck`
+refuses a `person` record whose name slugs to nothing, and - unless a person
+really named "Person" holds the id - a work authoring or crediting `person` and
+a recording keyed on or narrated by it, whatever the source. One record would
+otherwise author or narrate every unrelated book such a name wrote or read.
 
 ### series - an entry in the `data/series/` family
 

@@ -809,7 +809,7 @@ writes the packs, then validates the whole tree. For each selected project:
   When that id is already another person's or a retired one, or the credit
   carries no reader id, the project is skipped with a warning before anything
   is planned (it stays re-importable), never credited to the shared catch-all
-  person, which `metacheck` refuses for LibriVox.
+  person, which `metacheck` refuses whatever the source.
 - **A rerun splits readers on recordings it skips.** When a held recording
   credits a reader to a person carrying another reader id of the same name, or
   to anyone other than the person the catalogue already holds that reader's id
