@@ -86,10 +86,10 @@ Both former tools were archived in November 2026 and get no new features or
 fixes; the Bridge does their jobs now. **audiosilo-sidecars** (the contributor
 extraction tool) is replaced by [generating](generating.md) and
 [contributions](contributions.md); its existing releases and images (including
-`-cuda`) stay downloadable, and its repository stays readable.
-**audiosilo-manager** (the desktop manager) is replaced by the Bridge's
-[Audible accounts](audible.md) for backing up and syncing an Audible library; it
-never published installers, and its source stays readable.
+`-cuda`) stay downloadable. **audiosilo-manager** (the desktop manager) is
+replaced by the Bridge's [Audible accounts](audible.md) for backing up and
+syncing an Audible library; it never published installers, and its source was
+never public.
 :::
 
 ## The pull-only rule

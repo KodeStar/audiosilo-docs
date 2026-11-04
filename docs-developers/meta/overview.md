@@ -63,9 +63,8 @@ shape, so an app that reads LibriVox can switch its base URL
 
 The tooling follows the same discipline as the rest of the workspace: thin CLIs
 under `cmd/`, all logic in reusable packages, and a clean split between the
-public `pkg/*` (consumed as ordinary dependencies by the Bridge,
-`audiosilo-bridge`, and, for `pkg/query` and `pkg/release`, by the
-AudioSilo server; see [Public Go packages](#public-go-packages)) and the private
+public `pkg/*` (consumed as ordinary dependencies by `audiosilo-bridge`
+and, for `pkg/query` and `pkg/release`, by the AudioSilo server; see [Public Go packages](#public-go-packages)) and the private
 `internal/*`.
 
 `data/` carries its own `data/go.mod` - a nested Go module with no code in it,
