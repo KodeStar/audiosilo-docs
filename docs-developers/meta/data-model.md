@@ -49,6 +49,16 @@ import merges into it instead. No alias is written when the new title still
 reaches the work, or for a serial volume at `<title>-book-<n>`, which its
 position already reaches.
 
+The table has a git merge driver of its own, `cmd/metaredirectmerge`, which
+`.gitattributes` names for that one path and the intake rebase sweep configures
+(the pack driver merges pack files only). Two pull requests that each record a
+tombstone (two intake retitles, say) touch adjacent sorted lines, so git's line
+merge would stop on them; the driver merges each family's map three ways instead. It keeps what either side
+added, collapses a chain the two sides make together (one retired `a` into `b`,
+the other `b` into `c`: both end at `c`, as `pkg/redirects.Add` would have
+written them one after the other), and refuses, with conflict markers, one slug
+sent to two different targets or deleted on one side and retargeted on the other.
+
 The JSON Schemas in `schema/*.schema.json` (JSON Schema draft 2020-12, every
 object `additionalProperties: false`) are the **authoritative, public contract**.
 They are embedded into the tooling via `schema.go`, so a schema edit is a code
@@ -158,11 +168,13 @@ reader by id before it reads a name:
 `librivox_reader_id`. The rule is `model.PersonIDMatches`.
 
 The catch-all person, `person`, is where every name that slugs to nothing would
-otherwise land. It stays legal for the user-library imports but never for
-LibriVox: `metacheck` refuses a `person` record with a `librivox` source or a
-LibriVox reader or author id, and a LibriVox recording (a `librivox` source or
-a `librivox_id`) keyed on or narrated by it. One record would otherwise narrate
-every unrelated project such a name read.
+otherwise land. No import credits it: libex refuses the row, and every other
+import (LibriVox, OpenAudible, Libation, AudioSilo books) leaves the credit off
+and reports it as a credit not recorded, reason `unsluggable`. `metacheck`
+refuses a `person` record whose name slugs to nothing, and - unless a person
+really named "Person" holds the id - a work authoring or crediting `person` and
+a recording keyed on or narrated by it, whatever the source. One record would
+otherwise author or narrate every unrelated book such a name wrote or read.
 
 ### series - an entry in the `data/series/` family
 
