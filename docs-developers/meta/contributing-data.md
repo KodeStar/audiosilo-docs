@@ -829,8 +829,9 @@ dropped (Names that slug to nothing, below):
    Franz Kafka). The articles set aside are the English the/a/an, French
    le/la/les/l', German der/die/das, Spanish el/los/las, Italian il/lo and Dutch
    de/het/een, in any language. A volume number is one key however it is
-   spelled ("Vol. 1 of 3" joins "Volume 1"), and numbers stay apart ("Vol. 1, 2"
-   is not "Vol. 12", "Vol. 1" is not "Vol. 2"). Two or more such works is the worklist's `several-works`, even
+   spelled ("Vol. 1 of 3" joins "Volume 1"), but two stated totals that differ
+   are two volume sets ("Vol. 1 of 3" never joins "Vol. 1 of 5"), and numbers
+   stay apart ("Vol. 1, 2" is not "Vol. 12", "Vol. 1" is not "Vol. 2"). Two or more such works is the worklist's `several-works`, even
    when one of them matches the credits exactly.
 3. **An author spelled with more or fewer words.** Otherwise, when a work
    under the project's title (rule 2's spelling) is by an author the project
