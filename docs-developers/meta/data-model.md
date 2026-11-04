@@ -130,9 +130,11 @@ rides on the identifiers and the imprint, never on a second record.
 
 One person, shared across roles: authors on works and narrators on recordings are
 the same entity type, and a person can be both. Fields: `id`, `name`, optional
-`sort_name`, optional `kind` (`person` / `group` / `publisher` - marks records
-that are not an individual, such as a full cast or a corporate credit of record;
-**absence means person or unclassified**, never a guess), optional `description`,
+`sort_name`, optional `kind` (`person` / `group` / `publisher` / `synthetic` -
+marks records that are not an individual, such as a full cast, a corporate credit
+of record or a text-to-speech voice; **absence means person or unclassified**,
+never a guess, and the field stays in the data tree: the SQLite artifact and the
+API do not carry it), optional `description`,
 optional `xref` (`wikidata`, `openlibrary` `OL\d+A`, `audible` ASIN), optional
 `librivox_reader_id` and `librivox_author_id` (the person's LibriVox catalogue
 ids, integers of at least 1; a translator's id is an author id), optional
