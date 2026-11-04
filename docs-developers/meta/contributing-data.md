@@ -962,7 +962,9 @@ other project would, or creates a work under the plain title. `librivoxTitle`
   and the Green Knight (Weston Translation Version 2)" is "... (Weston
   Translation)", and "Alice's Adventures in Wonderland (abridged, version 2)"
   is "... (abridged)", an abridged recording of the plain work as a project
-  titled "(abridged)" always is.
+  titled "(abridged)" always is. A translation whose name ends in "Version"
+  keeps the word: "Bible (King James Version 2)" is "Bible (King James
+  Version)".
 
 The strip repeats until no marker is left at the end, so stacked markers go in
 any order ("Wonderful Wizard of Oz (version 3) (Dramatic Reading)", "Emma
@@ -1028,6 +1030,7 @@ librivox worklist: 2 projects skipped for a person to resolve (re-import the ids
 | `author-unmatched` | a work carries the title but its authors only partly agree with the project's |
 | `author-spelling` | a work carries the title by an author of the same surname that rule 3 does not attach (a looser spelling, another LibriVox author id, or a variant beside other candidates) |
 | `author-unsluggable` | no individual author is left once the names that slug to nothing and carry no LibriVox author id are dropped ([Names that slug to nothing](#which-work-a-librivox-project-joins), above) |
+| `author-slot-taken` | as `author-unsluggable`, but an author's LibriVox id could have filed them at `librivox-author-<id>` and that slot is another person's or a retired one (the run warns; a co-author's credit is listed under credits not recorded as `librivox-author-slot-taken`) |
 | `differently-spelled-title` | the duplicate-identity guard holds the book under a title rule 2 does not read as the same, such as one with a subtitle, or the one work rule 4 matches |
 | `same-name-author` | a new author id meets, by name, a catalogued person (or another new id of the run) that the same-name test (under the mirror's people rules, [above](#librivox-the-public-domain-mirror)) cannot tell apart, or finds is someone else when no record of its own can be made (the name is a collective's, or the dated or author-id slot is taken or retired); the line names a few of that catalogued person's works |
 | `volume-total` | the one work rule 2 finds holds a LibriVox recording stating another volume total than the project's title ("Vol. 1 of 3" on a work titled "Volume 1", the project "Vol. 1 of 5"), so the work may be either volume set |
