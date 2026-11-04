@@ -668,8 +668,10 @@ Spoiler positions use one shape everywhere (`common.schema.json` `$defs/position
 `chapter` is a non-negative integer: the **logical, edition-independent** work
 chapter (1-based), where `0` means front matter or knowledge carried in from
 earlier books in a series. A consumer maps its own recording-chapter timeline
-onto these ordinals; text-to-audio alignment is a consumer concern, out of schema
-scope. The object shape is deliberately extensible - a later `paragraph` or
+onto these ordinals (AudioSilo's server answers them
+[on the book's own chapters](../server/api/reference.md#positions-on-this-books-chapters)
+when a work's `position_scale` differs from the book's chapter count);
+text-to-audio alignment is a consumer concern, out of schema scope. The object shape is deliberately extensible - a later `paragraph` or
 `offset_ms` can be added without a breaking change.
 
 For a **play**, `chapter` is the **act**, never the scene (`0` = before the play

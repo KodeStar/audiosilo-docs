@@ -714,9 +714,14 @@ in a framework-free module of pure functions:
 
 The saved-progress side comes from `useBookProgress(libraryId, path, cid?)`, which
 reuses the existing `qk.progress(cid, lib, path)` key rather than introducing a
-second progress cache. Chapter numbers are the *work's* logical chapters, which
-only approximate a given recording's edition - hence the deliberate escape hatches
-(the toggle, and a finished book showing everything).
+second progress cache. A work's positions are numbered on its own scale, and `/meta`
+answers them [on this book's chapters](../server/api/reference.md#positions-on-this-books-chapters)
+when the work states a scale of another length, so the gate compares like with like
+and has nothing to convert (a label such as "Up to chapter 10" then names this book's
+chapter). Offline, a download keeps the numbers the server sent. A work stating no
+scale, or an older server, sends the work's own numbers, which only approximate a
+given recording's edition - hence the deliberate escape hatches (the toggle, and a
+finished book showing everything).
 
 The **live** side is `src/components/player/use-listening-position.ts`:
 `useListeningPosition` (the book page, at `LIVE_POSITION_BUCKET_S`, 15 s; the
