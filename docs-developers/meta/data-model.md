@@ -141,7 +141,11 @@ ids, integers of at least 1; a translator's id is an author id), optional
 (`CC0-1.0`), `sources`. The two LibriVox ids are separate namespaces (a reader
 id and an author id of the same number are not a collision), and `metacheck`
 holds each unique across the dataset, because a LibriVox import keys people on
-them. A life year is a fact or it is absent: a stated value that is not plainly a
+them. Optional `librivox_reader_aliases` and `librivox_author_aliases` name further
+ids of one person LibriVox lists twice (sorted integers, each unique against every
+id and alias of its namespace, the record's own id required beside them): an import
+resolves an alias to the record, and only an evidenced fold writes one
+([how](contributing-data.md#one-person-under-two-librivox-ids)). A life year is a fact or it is absent: a stated value that is not plainly a
 year (`alive`, `c. 1500`) is never written, and `metacheck` refuses a
 `death_year` before the `birth_year` (`pkg/check/librivox.go`).
 
