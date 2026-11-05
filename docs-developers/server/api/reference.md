@@ -6873,8 +6873,9 @@ many books at once, see [Bulk community matching](#bulk-community-matching).
 The console's **Match automatically** (Health > Not matched). A **match run**
 matches many books against the community service in the background, exactly
 as [`…/book/match`](#get-apiv1adminlibrariesidbookmatch) matches one (the same
-facts, the preferred marketplace's ASIN), but expands only the best two works
-per book and asks a couple of books at a time. It only **looks**: each book's
+facts, the preferred marketplace's ASIN), but reads only the best two works per
+book and asks six books at a time
+([what that costs the service](#what-a-run-asks-of-the-community-service)). It only **looks**: each book's
 best candidate and what it offers are recorded for the admin to review, and
 nothing changes until the run is **applied**. Applying writes community
 overrides (as [`PATCH …/book`](#patch-apiv1adminlibrariesidbook) with
@@ -6912,7 +6913,7 @@ Each book's **outcome**:
 | `auto` | Confident (`matchrun.Classify`): the best candidate scores **90** or more, at least **10** ahead of the next, its recording has an ASIN or ISBN, and, when both lengths are known, the recording's runtime is within **10%** of the book's (the closest recording of a work can still be another edition). An identifier hit (`reasons.identifier`: in a match run always a tag hint) needs no lead, unless the next candidate is one too (`review`; a guard, as metaserve names one work per request today). So a wrong tag ASIN within 10% of the length is `auto`. Applied unless the admin leaves it out. A repick's offers are all `auto`. |
 | `review` | A candidate that isn't confident. Applied only if the admin puts it in. One held because its recording's length is more than 10% from the book's (a match run's or a refresh's) carries `detail: "length_differs"` (from 2.4.0), worded with the item's `book.duration` and the proposal's `runtime_min`. |
 | `none` | No candidate; or, in a match run, a best candidate scoring under **60** (`matchrun.ReviewFloor`) on metaserve's scale, with `detail: "weak_match"` (`DetailWeakMatch`), its `score` kept for the review's wording and its `proposal` empty (from 2.6.0). A candidate without `reasons` (an older metaserve's fallback search, on another scale) stays `review`. The match dialog has no such floor: it lists its candidates (up to 6) however low they scored. |
-| `error` | The service failed for this book (`detail: "metadata_unavailable"`). Five in a row stop the run. |
+| `error` | The service failed for this book (`detail: "metadata_unavailable"`). [Ten in a row](#what-a-run-asks-of-the-community-service) stop the run. |
 
 Run **statuses**: `matching` → `ready` (waiting for review) → `applying` →
 `applied`; `cancelled` (stopped while matching), `failed` (stopped by itself:
@@ -6920,6 +6921,56 @@ Run **statuses**: `matching` → `ready` (waiting for review) → `applying` →
 `metadata_unavailable` when the service kept failing, `internal`), and
 `interrupted` (the server stopped mid-match; a run stopped mid-apply goes back
 to `ready` at the next start, its applied books marked).
+
+#### What a run asks of the community service
+
+The service is shared and nearly all of a run's time online is round trips, so from
+2.6.0 a run (`internal/matchrun/runner.go`, `internal/meta/pacer.go`) asks for as few
+as it can.
+
+- **One round trip per book.** A `match` run sends
+  [`works/match?limit=2&expand=work`](../../meta/api.md#expandwork)
+  (`MatchQuery.BestOnly`, which the dialog never sets), and the answer's `work` and
+  `series_facts` are all it reads of the best candidate (`bestCandidates`). Of the
+  next it reads only the score and whether an identifier found it (`Classify`), so
+  that one is never fetched.
+- **Fallback.** A best result with no `work` (a metaserve before v0.24.0, one out of
+  budget, a read that failed) costs the `works/{id}` and series reads for that result
+  alone, and nothing at all when it scores under `ReviewFloor` and no identifier found
+  it, as it would be dropped anyway. That is never a failure, and its outcomes are the
+  same. A best that can't be read gives way to the next. A metaserve with no
+  `works/match` takes the search path under
+  [Older community service](#get-apiv1adminlibrariesidbookmatch), on its own scale. Through
+  a proxy adding 80 ms to a local metaserve, over 4,044 books, a run took 3.44 requests a
+  book before this, 1.00 with `expand` and 2.37 on the fetch path.
+- **6 workers, about 60 requests a second.** `workers` only fill the round trips:
+  `maxRequestsPerSecond` (60, against metaserve's
+  [per-client 100](../../meta/api.md#rate-limit-and-caching)) is what holds a run under
+  the limit, whichever path it takes. Each run has a `meta.Pacer` in its context, and
+  the remote leg's transport (`pacedTransport`) spaces its requests evenly with no
+  saved-up burst, each retry and redirect taking a slot. So only the run is paced: the
+  dialog and a listener's lookups beside it are not, and a run takes no `workSem`
+  slot from them. A local copy (`metadata.mode: mirror`) answers before that
+  transport, so it takes no slot; there the workers are simply how many of the
+  server's cores a run uses. A request that fails over to the remote service does
+  take one.
+- **A `429` or `503` is waited out.** Inside a run both wait for `Retry-After` (1 s
+  when it gives none, capped at 10 s) and ask again, up to 3 times, never starting a
+  wait the book's 15-second budget would cut short. Each wait is logged at `INFO`
+  with the run's total, and the run's end logs the total once more. Outside a run a
+  `503` is an outage at once (the dialog's `502`), as someone is waiting on the
+  answer. See [configuration](../configuration.md#community-metadata-metadata).
+- **A run stops after 10 consecutive errors.** A book still failing after that is an
+  `error` item, and `maxFailStreak` (`workers` + 4 = 10) consecutive ones end the run
+  as `failed`, `error: "metadata_unavailable"`. It stands above the workers because one
+  moment's failure meets them all at once (a lost connection takes every stream on
+  it). Any book the service answers for resets the count. A failed run can't be applied
+  (`409 match_run_not_ready`), so what it found is lost and the answer to a long outage
+  is another run.
+
+`refresh` and `repick` runs share the workers, the pacing, the waits and the stop, but
+they are identifier lookups (`lookup`, `works/{id}`, series facts), never `works/match`,
+so they keep their several round trips per book.
 
 #### `GET /api/v1/admin/match-runs`
 

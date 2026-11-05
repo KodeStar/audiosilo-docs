@@ -562,7 +562,14 @@ the server's preferred marketplace (`metadata.region`), so the server, not the
 console, decides which ASIN a match attaches; bulk match runs reuse the same
 match per book, and the server decides what is confident (`matchrun.Classify`, the
 `ReviewFloor`). Mirror-mode servers get `metaserve`'s scoring with the
-`audiosilo-meta` version in `go.mod`, online servers when `metaserve` is redeployed. Community chapters (`internal/chaptercheck`) fetch the chapter
+`audiosilo-meta` version in `go.mod` (v0.24.0), online servers from the service they
+ask: meta.audiosilo.app runs v0.24.0 since 2026-11-05, so the position and runtime
+factors are live for every online server, `language` and `narrator` count only from a
+server that sends them (2.6.0), and the identifier rule, the floor, title tidying and tag
+hints are server-side in 2.6.0. A match run also sends
+[`expand=work`](../meta/api.md#expandwork), from the bulk path only, so one answer per book
+carries the best work and its series facts; an old `metaserve` ignores it, and then the
+server [fetches them](../server/api/reference.md#what-a-run-asks-of-the-community-service). Community chapters (`internal/chaptercheck`) fetch the chapter
 list of the lookup's exact `recording_id` only (never the first recording a
 work lists), fit it onto the book's audio server-side, and reach the player as
 ordinary chapters with the additive `chapters_source: "community"` (see
