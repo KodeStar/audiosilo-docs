@@ -230,6 +230,15 @@ as long as its recording's length is within 10% of the book's. It goes to
 found by an identifier too. A hint the community doesn't know costs nothing: the
 book is matched on its other details.
 
+With [Help complete the community database](server.md#helping-complete-the-community-database)
+on, a tag ASIN the community doesn't know is also reported, for a book with no
+ASIN or ISBN of its own when no other book's tags carry the same ASIN. The
+community adds only a real Audible listing, but a wrong ASIN in a tag can still
+be a real listing of another book, and then that book is added to the community
+database. From then on the community knows that ASIN, so the next match treats
+the tag like any hint it knows (see the warning below). Correct a tag you know is
+wrong, and it stops being reported after the next scan.
+
 :::warning[A wrong ASIN in a tag can apply the wrong book]
 Nothing else checks a hint. An ASIN in a tag that names another work of about the
 same length is confident, and ticked, like any other: it can apply the wrong

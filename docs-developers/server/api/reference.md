@@ -8564,6 +8564,7 @@ and `AUDIOSILO_*` variable each one is, and whether it needs a restart (see
     "region": "uk",
     "mode": "remote",
     "upcoming": true,
+    "report_unknown": false,
     "available": true,
     "upcoming_status": {
       "last_run_at": "2026-10-30T04:12:00.000Z",
@@ -8571,7 +8572,8 @@ and `AUDIOSILO_*` variable each one is, and whether it needs a restart (see
       "next_run_at": "2026-10-31T04:40:12.000Z",
       "series": 14,
       "items": 9
-    }
+    },
+    "report_status": { "state": "never", "last_sent": 0 }
   },
   "demo": {
     "enabled": false,
@@ -8620,6 +8622,8 @@ effect. Lists are never `null`.
 | `metadata.mode` | `"remote"` (ask `base_url` for each book) or `"mirror"` (keep a local copy and answer from it; see [Mirror mode](../configuration.md#mirror-mode-metadatamode-mirror)). A restart setting: a saved change is listed in `restart_pending`, and `GET /admin/system`'s `metadata.mode` keeps the running mode until the restart |
 | `metadata.upcoming` | the [upcoming releases](#upcoming-releases) job's switch (config `upcoming.enabled`, default `true`). Applies at once: switched on (with metadata on) it runs soon when no run has succeeded for a day; switched off it stops a run in flight. The live `upcoming` [capability](#get-apiv1server) is `metadata` **and** this |
 | `metadata.upcoming_status` | read-only (2.6.0): how the job's runs went, absent without a metadata service. `last_run_at`, `last_success_at` (both absent before the first run; equal when the last run worked), `last_error` (the last failed run's error, cleared by a success), `next_run_at`, `series` (local series matched to a community series) and `items` (what they lack in all). The console's Settings > Metadata words it |
+| `metadata.report_unknown` | the opt-in [unknown-ASIN report](../configuration.md#the-unknown-asin-report-metadatareport_unknown)'s switch (2.6.0; config `metadata.report_unknown`, default `false`). Applies at once: switched on (with metadata on) it runs now unless a run was made in the last 23 hours; switched off it stops a run in flight |
+| `metadata.report_status` | read-only (2.6.0): the report's last run, absent without a metadata service and on a demo server. `state` is `never` (no run yet), `ok` (the run worked; `last_sent` ASINs were accepted, `0` = nothing new to send), `not_offered` (the `base_url` is plain `http` off this machine, or the service took no reports: a 404, 405, 3xx or a 2xx without `accepted`; it is left alone for 7 days) or `failed` (the service failed or refused, tried the next day); `last_run_at` (absent before the first run) and `last_sent`. The console's Settings > Metadata words it |
 | `metadata.available` | read-only: a metadata service exists (`base_url` was a valid absolute `http(s)` URL when the server started), so `enabled` can be turned on. The live `metadata` [capability](#get-apiv1server) is `enabled && available` |
 | `demo.max_users` | `null` = the default cap (`max_users_default`); `0` = no limit |
 | `demo.idle_ttl` | `""` = 24h |

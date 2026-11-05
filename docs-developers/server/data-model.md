@@ -1025,6 +1025,12 @@ Its keys:
   `last_error`, `failures` (failed runs since the last success, for the hourly
   retries), `next_run_at`, `series` and `items`. The console reads it as
   `metadata.upcoming_status` on `GET /admin/settings`.
+- `unknown_asin_report`: the [unknown-ASIN report](#unknown-asin-reports)'s run
+  status (`catalog.UnknownASINReport`): `state` (`ok`, `not_offered` or `failed`;
+  absent before the first run), `last_run_at`, `last_sent` (how many ASINs the
+  last run's accepted reports held) and `quiet_until` (when a `not_offered`
+  service is tried again, a week on). The console reads it as
+  `metadata.report_status` on `GET /admin/settings`.
 
 ### The Bridge
 
@@ -1242,6 +1248,22 @@ The job's run status is the `upcoming` key of [`server_state`](#server-state). T
 calendar feed (Track U3) adds no table: its secret is a `tokens` row of kind `feed`
 (above, `0060`), and the calendar and the Upcoming covers are read from these tables
 at the request.
+
+### Unknown ASIN reports
+
+*(0068, LibraForge C3)* - what the opt-in
+[unknown-ASIN report](configuration.md#the-unknown-asin-report-metadatareport_unknown)
+(`internal/coverage`, `catalog/coverage.go`) has looked up and sent.
+**`unknown_asin_reports`** has one row per ASIN the job looked up: `asin`
+(primary key, upper case), `checked_at` (when it was last looked up), `unknown`
+(`1` when that answer was "not in the community database"; `0` = known, never
+sent) and `sent_at` (when a report holding it was accepted, `NULL` for never; an
+`unknown` row a later lookup finds known forgets it). It names no book, library
+or path: a row whose ASIN no book holds any more is deleted at the start of the
+next run. Derived and disposable (losing it only means the ASINs are looked up
+and sent again), written through the user-state path (no content cache reads it).
+`MAX(sent_at)` keeps the report to once a day across restarts; the run status is
+the `unknown_asin_report` key of [`server_state`](#server-state).
 
 ### Durable per-library config (path-keyed, no FK to books)
 
@@ -1522,6 +1544,7 @@ The migration history so far:
 | 0061 | `listening_events` | listening sync (Sync v2, Track W1): the `listening_events` log (FK `users`/`libraries` `ON DELETE CASCADE`, no FK to `books`, unique `(user_id, event_id)`, indexes `idx_listening_events_path` and `idx_listening_events_ended`), `idx_history_user_path_ended` on `listening_history`, and the `progress` columns `device_name` (`TEXT NOT NULL DEFAULT ''`), `finish_changed_at`, `other_position`, `other_device_id`, `other_device_name`, `other_at` and `other_version` (all nullable, `NULL` on every existing row). No data moves (see [Durable per-user state](#durable-per-user-state-path-keyed-no-fk-to-books)) |
 | 0062 | `listening_span_chain` | listening sync (server#289): `progress.span_at` and `span_version` (nullable, `NULL` on every existing row), so a device's span chain lasts across posts of `POST /me/listening/sync`. No data moves |
 | 0067 | `tag_hints` | [tag hints](#tag-hints): `books.tag_asin`, `tag_isbn` and `tag_language` (`TEXT NOT NULL DEFAULT ''`) and `books.hints_checked` (`INTEGER NOT NULL DEFAULT 0`, so the next scan reads each unchanged book's tags once) |
+| 0068 | `unknown_asin_reports` | the [unknown-ASIN report](#unknown-asin-reports)'s `unknown_asin_reports` table (`asin` primary key, `checked_at`, `unknown`, `sent_at`; `WITHOUT ROWID`), derived and naming no book. No data moves |
 
 ## SQLite choices
 

@@ -692,13 +692,15 @@ await step('server settings: network & https', async () => {
 
 await step('server settings: community metadata', async () => {
   // Taller, so the switches, Source, Matching and Service cards fit.
-  await page.setViewportSize({width: 1440, height: 1400});
+  await page.setViewportSize({width: 1440, height: 1540});
   try {
     await open(page, '/server?topic=metadata');
     await page.getByText('Keep a local copy', {exact: true}).waitFor({timeout: 8000});
     // The upcoming releases switch and its last run: the check capture-web.mjs's upcoming
     // pass ran (Not run yet when that pass didn't run).
     await page.getByText('Check for upcoming releases', {exact: true}).waitFor({timeout: 8000});
+    // The unknown-ASIN report's switch, off as on every new server (2.6.0).
+    await page.getByText('Help complete the community database', {exact: true}).waitFor({timeout: 8000});
     await sleep(800); // the status row reads the system status
     await shoot(page, 'admin/settings-metadata.png');
   } finally {
