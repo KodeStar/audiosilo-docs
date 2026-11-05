@@ -6898,6 +6898,9 @@ again. A `503` (over metaserve's match budget) or any other `5xx` from
   winning a tie. The console's dialog and a bulk run both start from it. An ASIN
   an identifier hit was found by leads its marketplace's in `asins`, so a book the
   store lists under two keeps its tags' when that store is the preferred one.
+  A plain book never takes a dramatization this way, unless an identifier or one of its narrators names it (see
+  [the contract](../../architecture/cross-repo-contract.md)). When a work holds nothing else, this field is absent and
+  `dramatization_only: true` is set, so the dialog preselects no recording.
 - No hits is `200 { "candidates": [] }`.
 
 `cover_url` is an image on its own host (Audible's CDN, Open Library), which
@@ -6960,7 +6963,7 @@ Each book's **outcome**:
 | Outcome | Meaning |
 |---|---|
 | `auto` | Confident (`matchrun.Classify`): the best candidate scores **90** or more, at least **10** ahead of the next, its recording has an ASIN or ISBN, and, when both lengths are known, the recording's runtime is within **10%** of the book's (the closest recording of a work can still be another edition). An identifier hit (`reasons.identifier`: in a match run always a tag hint) needs no lead, unless the next candidate is one too (`review`; a guard, as metaserve names one work per request today). So a wrong tag ASIN within 10% of the length is `auto`. Applied unless the admin leaves it out. A repick's offers are all `auto`. |
-| `review` | A candidate that isn't confident. Applied only if the admin puts it in. One held because its recording's length is more than 10% from the book's (a match run's or a refresh's) carries `detail: "length_differs"` (from 2.4.0), worded with the item's `book.duration` and the proposal's `runtime_min`. |
+| `review` | A candidate that isn't confident. Applied only if the admin puts it in. One held because its recording's length is more than 10% from the book's (a match run's or a refresh's) carries `detail: "length_differs"` (from 2.4.0), worded with the item's `book.duration` and the proposal's `runtime_min`. One whose work holds only a dramatization, which the book doesn't state it is, carries `detail: "dramatization_only"` (`DetailDramatizationOnly`) and no recording, so nothing is attached unasked. |
 | `none` | No candidate; or, in a match run, a best candidate scoring under **60** (`matchrun.ReviewFloor`) on metaserve's scale, with `detail: "weak_match"` (`DetailWeakMatch`), its `score` kept for the review's wording and its `proposal` empty (from 2.6.0). A candidate without `reasons` (an older metaserve's fallback search, on another scale) stays `review`. The match dialog has no such floor: it lists its candidates (up to 6) however low they scored. |
 | `error` | The service failed for this book (`detail: "metadata_unavailable"`). [Ten in a row](#what-a-run-asks-of-the-community-service) stop the run. |
 

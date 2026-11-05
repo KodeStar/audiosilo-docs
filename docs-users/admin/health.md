@@ -130,7 +130,9 @@ what it found and apply it.
    long, this recording 7h 2m"), as the closest recording can be
    another edition. A work that holds only a dramatization of the book is held too, unless
    the book's title, folder or narrator says it's a dramatization or its ASIN names that
-   recording: it's the right book, but not your recording. Tick the ones that are right, or click **Match by hand** to open that book's
+   recording: it's the right book, but not your recording. The match dialog preselects no
+   recording for such a book either: **Choose an edition** only if your files are that
+   production. Tick the ones that are right, or click **Match by hand** to open that book's
    match dialog over the review. When you accept a match there, you're back on
    the review where you left it, and the book reads **Matched since this run**.
    To look closer first, or to listen to it, the icon beside **Match by hand**
