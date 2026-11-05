@@ -371,7 +371,7 @@ like an account and deliberately isn't: the **series watchlist** behind
 owned, which entries they have already been shown, and which series they have
 dismissed all live in a single `localStorage` key in the reader's browser
 (`site/src/lib/watchlist.ts`), never in a database and never in a request body -
-the API is read-only and there is nothing to attach a reader to. The rules are
+the catalogue API is read-only and there is nothing to attach a reader to. The rules are
 pure functions over a store value, the library-import path shares its matching
 code with `/import`, and the only network traffic the page generates is the same
 public series lookups the series page makes. The consequences are the honest
