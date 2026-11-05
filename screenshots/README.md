@@ -40,6 +40,19 @@ that use the exact English labels from the server's
 the same rename in the script (a failed step is logged and its shot falls back
 to the previous image or a placeholder).
 
+## Device shots
+
+`watch/*.png` (`capture: 'device'` in the manifest) show the Apple Watch app and
+the iPhone's native side of it, which the web pipeline can't reach. `run.sh`
+never writes them: they're taken by hand from the simulators with
+`xcrun simctl io <udid> screenshot`, on a scratch server with sample books,
+following the frontend's `CONVENTIONS.md` ("Apple Watch app", the DEBUG launch
+variables). `simctl` can't tap, so a screen past the watch's home needs
+`idb ui tap`. The two `watch/phone-*.png` are cropped to the card and the sheet
+(`sips -c <height> <width> --cropOffset <y> 0`). No private data in them: a
+scratch server's name and sample books only. A placeholder fills in for a
+missing one, as for any other shot.
+
 No shot shows this machine's folders. `capture-admin.mjs` and
 `capture-setup.mjs` route every `/api/` answer through `showDockerPaths` in
 `lib.mjs`, which swaps the capture paths for the ones a Docker install has:

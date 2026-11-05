@@ -44,6 +44,7 @@ const sidebars: SidebarsConfig = {
         'frontend/playback',
         'frontend/audio-effects',
         'frontend/native-integrations',
+        'frontend/apple-watch',
         'frontend/chromecast',
         'frontend/end-of-book',
         'frontend/sleep-timer',

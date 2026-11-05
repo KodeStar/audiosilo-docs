@@ -24,6 +24,7 @@ content by `(library_id, rel_path)`, and owns exactly one hard problem:
 | Audio | A **custom native Expo module**, `modules/audiosilo-player`: `AVQueuePlayer` on iOS, `Media3/ExoPlayer` on Android; **HTML5 Audio + Media Session** on web. There is no react-native-track-player dependency - older docs that mention it are stale. |
 | Icons | FontAwesome Pro 7 glyphs **vendored as raw SVG path data** in `src/components/ui/icon-data.ts`, drawn with `react-native-svg`. No `@fortawesome/*` dependency, so no private npm token is needed to build. |
 | Secrets | **expo-secure-store** (Keychain/Keystore) for session tokens (on iOS readable after first unlock, for CarPlay: see [Native integrations](native-integrations.md#tokens-on-a-locked-phone-srclibsecure-storets)); **AsyncStorage** for everything else (`src/lib/secure-store.ts` / `src/lib/storage.ts`) |
+| Apple Watch | A standalone **SwiftUI** watchOS app (`targets/watch/`, added by `@bacons/apple-targets`), with a WatchConnectivity module on the phone (`modules/audiosilo-watch`) - see [Apple Watch](apple-watch.md) |
 | Car and widgets | **CarPlay** (our own `CPTemplateApplicationScene` code) and **Android Auto** (a Media3 `MediaLibraryService`) in the native module; iOS widgets and the sleep timer Live Activity through **expo-widgets** - see [Native integrations](native-integrations.md) |
 | i18n | **i18next + react-i18next + expo-localization** (`src/i18n/`) - see [Internationalisation](i18n.md) |
 
@@ -76,6 +77,8 @@ src/reader/         the ebook reader: the screen, the web host (iframe) and the 
                     protocol, the reading-place queue (see The ebook reader)
 src/widgets/        iOS widget + sleep timer Live Activity ('widget' functions) and
                     their sync (widget-model, widget-sync.ios)
+src/watch/          the phone's side of the Apple Watch: the message model, the link
+                    (a no-op off iOS), the store, Send to watch (see Apple Watch)
 src/stores/         Zustand: session (connections + tokens), profiles (people on this
                     device), settings, search
                     (+ recent searches), series-orderings, library-selection
@@ -92,8 +95,12 @@ src/lib/            storage, secure-store, paths, format, hhmm (wall-clock "HH:M
                     bootstrap (the launch steps, shared with the car task),
                     register-sw, and other pure helpers
 modules/audiosilo-player/  the local Expo module (Swift + Kotlin + TS bridge)
-plugins/            config plugins (CarPlay scenes, Cast, the Xcode 26 and widget
-                    fixes); withCarPlay, withCast and withWidgetsNoPush have jest tests
+modules/audiosilo-watch/   the phone's WatchConnectivity link (apple only)
+targets/watch/      the Apple Watch app (Swift, not bundled by Metro): Core/ (Foundation
+                    only), Net/, Storage/, Phone/, Playback/, UI/
+watch-core/         SwiftPM package over targets/watch/Core, for its tests on the host
+plugins/            config plugins (CarPlay scenes, Cast, the watch scheme, the Xcode 26
+                    and widget fixes); withCarPlay, withCast and withWidgetsNoPush have jest tests
 index.ts            the app entry (package.json main): registers the car's headless
                     task, then expo-router/entry
 public/             sw.js (service worker) + manifest.json (PWA), copied verbatim

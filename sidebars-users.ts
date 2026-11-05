@@ -64,6 +64,7 @@ const sidebars: SidebarsConfig = {
         'listening/podcasts',
         'listening/offline-downloads',
         'listening/mobile-apps',
+        'listening/apple-watch',
         'listening/in-the-car',
         'listening/chromecast',
         'listening/household',

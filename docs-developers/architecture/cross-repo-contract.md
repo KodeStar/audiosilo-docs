@@ -288,7 +288,7 @@ directory by the same `media.FileCache` the remux uses, with Range and a strong
 ETag so a watch resumes a download. A cold encode answers `503 rendition_pending`
 with `Retry-After`, never a live transcode; `POST`/`GET /libraries/{id}/renditions`
 prepare a whole book and report each file. Gated by the `renditions` capability
-(seam 8); the watch app (planned) is its client, the player only mirrors the flag
+(seam 8); the [Apple Watch app](../frontend/apple-watch.md) is its client, the player only mirrors the flag
 and `ServerInfo.renditions`. Details:
 [Watch renditions](../server/media.md#watch-renditions-medianewrenditioncache) and
 the [reference](../server/api/reference.md#watch-renditions).
@@ -373,6 +373,13 @@ Details: [Connect and home/away addresses](../frontend/connect-and-addresses.md#
 player skips the exchange when it is already signed in as `uid` on `sid`, and ends the flow
 on that book (rebuilt with `bookHref`, never a URL from the link). Details:
 [Connect and onboarding](../frontend/connect-and-addresses.md#a-link-that-names-a-book).
+
+**Handing a pairing to an Apple Watch.** The phone mints a token for its own user (`POST
+/auth/pair {"ttl_seconds": 600}`) and sends it to the watch in a `pair` message over
+WatchConnectivity, not a link; the watch exchanges it with `POST /auth/exchange` under the same
+address rules. It identifies as `audiosilo-watch/<ver> (watchos)`. The messages between phone and
+watch are a contract inside the frontend repo, not the server's:
+[The message contract](../frontend/apple-watch.md#the-message-contract).
 
 **A change requires:** the scheme, the query keys (`server`, `token`, and the optional
 `home`, `away`, `sid`, and `uid`, `book`, `path`), and the `/web/connect` route path are a contract - change the server

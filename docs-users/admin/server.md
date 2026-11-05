@@ -354,7 +354,7 @@ folder is safe to delete and needs no backup. Opening a book in the player
 starts its copies in the background, so they are usually ready by the time
 someone presses play.
 
-For the planned AudioSilo watch app, ffmpeg also makes a small copy of each audio
+For the [Apple Watch app](../listening/apple-watch.md), ffmpeg also makes a small copy of each audio
 file for a watch to download and play away from your phone (about 430 MB for a
 20-hour book). They are made only when a watch asks for a book,
 kept in the data folder under `cache/renditions/watch`, and never written into

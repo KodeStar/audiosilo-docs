@@ -83,6 +83,10 @@ That matters when you disconnect a server:
 If you just want to free up space, use **Remove** on a single book instead - that removes one book and leaves the server connected.
 :::
 
+:::note[On an Apple Watch]
+A watch has its own downloads, with their own rules: a smaller copy of each book, and nothing removed for you. Your phone's downloads and the watch's are separate. See [Apple Watch](apple-watch.md#storage).
+:::
+
 ## How downloaded playback differs
 
 Honestly? Barely at all - that's the point:

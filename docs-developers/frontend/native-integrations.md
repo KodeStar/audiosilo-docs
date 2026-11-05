@@ -31,6 +31,9 @@ the users' [Availability](/users/listening/mobile-apps#availability).
 | Tokens readable on a locked iPhone | `src/lib/secure-store.ts` |
 | Widgets and the Live Activity (iOS) | `src/widgets/`, `expo-widgets`, `plugins/withWidgetsNoPush.js`, `plugins/withXcode26SwiftUICoreFix.js`; their links open through `src/app/+native-intent.tsx` |
 
+The Apple Watch app is a Swift target of its own, with a WatchConnectivity module on the
+phone: [Apple Watch](apple-watch.md).
+
 Not built (deliberately, for now): a phone "car mode", Siri / App Intents, interactive
 widgets, an Android widget, search in the car, a server-computed silence map, and Smart speed
 on iOS ([why](audio-effects.md#why-smart-speed-isnt-on-iphone-yet)).

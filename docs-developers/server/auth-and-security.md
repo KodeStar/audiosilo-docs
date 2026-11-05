@@ -599,8 +599,8 @@ Podcast scope adds two checks after authentication:
    an empty minimum would hide every released player. The served `/web`
    export sends its `app.json` version same-origin, so a `/web` build from
    2.2.0 passes and an older web image does not. Missing/malformed/other apps, API tools
-   without a recognized client, the Bridge and a watch app (planned; `audiosilo-watch/<ver>
-   (watchos|wearos)`, Track W: watch v1 has no podcasts) fail the gate.
+   without a recognized client, the Bridge and a watch app (`audiosilo-watch/<ver>
+   (watchos|wearos)`: watch v1 has no podcasts) fail the gate.
    `callerByID` defaults it false; internal podcast scheduling/retention
    explicitly enables it before resolving actual follower grants. Admin role grants no
    exception. `CallerScope`, `CallerScopes` and `CallerLibraries` apply it before

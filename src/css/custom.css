@@ -467,6 +467,11 @@ article[class*='searchResultItem_'] > h2 > a {
   max-width: 320px;
 }
 
+/* A watch screen is smaller still. */
+.markdown img[src*='/watch-'] {
+  max-width: 220px;
+}
+
 /* 8. Buttons + cards. "One pink thing per view": primary buttons are ink. */
 .button--primary {
   --ifm-button-background-color: var(--primary);
