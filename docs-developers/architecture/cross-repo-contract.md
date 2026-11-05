@@ -598,11 +598,10 @@ the rails' `release_date` ("Out Nov 12, 2026"). Track U3 adds each item's real c
 The server's one write to `metaserve` is the opt-in unknown-ASIN report (2.6.0,
 `internal/coverage`, `metadata.report_unknown`, off by default): once a day,
 [`POST /api/v1/intake/unknown-asins`](../meta/api.md#post-apiv1intakeunknown-asins)
-with exactly `{"asins":[...]}`, only the ASINs a lookup answered 404 for, over
-https only (plain http only to a loopback host), with no client, server or auth
-headers and no redirects followed; a 404 or 405 is "not offered" (an older
-`metaserve`, or intake off) and quiet for a week (see
-[Configuration](../server/configuration.md#the-unknown-asin-report-metadatareport_unknown)).
+with exactly `{"asins":[...]}`, only the ASINs a lookup answered 404 for. The
+transport rules (https only, no identifying headers, no redirects) and how an
+older `metaserve` or intake off is handled are in
+[Configuration](../server/configuration.md#the-unknown-asin-report-metadatareport_unknown).
 **Frontend:** the `BookMeta` envelope (hand-mirrored in `src/api/types.ts`) is
 fetched by `client.bookMeta` and rendered capability-gated on the book screen's
 Recaps/Characters/Series tabs, and also read by the series page, Home (the Now card

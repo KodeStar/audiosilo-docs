@@ -257,8 +257,7 @@ still goes to the metadata service).
   sends the metadata service, once a day, the Audible ASINs of your books that
   the community database doesn't know, so the community can add them. See
   [Helping complete the community database](#helping-complete-the-community-database)
-  below for what it sends and what the line under it says. Like the upcoming
-  check, it works only while the lookup is on.
+  below for what it sends and what the line under it says.
 - **Audible marketplace** in the **Matching** card is the store you buy from
   (United Kingdom, United States, Germany and so on). When a recording sells in
   several stores, a match takes this store's ASIN; with **No preference** it
@@ -333,10 +332,8 @@ report went:
 - "Last report *when*: *N* unknown ASINs sent", or "Last checked *when*:
   nothing new to send" when every ASIN is known or was sent recently.
 - "Last tried *when*: the metadata service doesn't take reports (it needs an
-  https address and a service that accepts them)." Either the service address
-  is not HTTPS, so nothing was sent, or the service is an older one (or one run
-  with reports turned off) that doesn't accept them, and the server then leaves
-  it alone for a week before it tries again.
+  https address and a service that accepts them)." An older service, or one
+  run with reports turned off, is then left alone for a week.
 - In red, "Last report failed *when*; it's tried again tomorrow." The service
   didn't answer, or was too busy; nothing was marked as sent.
 
@@ -354,11 +351,9 @@ The **Source** card has two choices:
 - **Keep a local copy.** The server downloads a copy of the whole community
   database and answers every lookup from it, so **no book is looked up over
   the internet**: not the "About this book" lookups, not the match dialog or
-  Match automatically, not the community chapter checks. If you turn on the
-  optional
-  [report of unknown ASINs](#helping-complete-the-community-database), the
-  copy answers its lookups too, and only the report itself goes to the
-  metadata service.
+  Match automatically, not the community chapter checks. Only the optional
+  [report of unknown ASINs](#helping-complete-the-community-database) still
+  goes out, if it is on.
 
 What a local copy costs:
 
