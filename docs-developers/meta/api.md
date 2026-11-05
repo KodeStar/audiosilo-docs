@@ -807,7 +807,10 @@ answers with what it holds and nothing more:
   split at its last word, and `dob` / `dod` are years or `""` (LibriVox's
   `alive` is not a year). A person's LibriVox id and years come from their
   person record, so a translator the mirror credited by name alone (no person
-  carried their LibriVox author id) has neither.
+  carried their LibriVox author id) has neither. A person LibriVox lists under
+  two ids states their record's own id on every project, also where LibriVox's
+  answer states the second (F. P. Walter is 6492 on project 4385, where LibriVox
+  says 6858).
 - `^` on `author` is the documented **prefix** match; LibriVox's own
   implementation matches the end of the name.
 - A section's `id` is `""`, its `file_name` `null` (`listen_url` names the
