@@ -126,6 +126,10 @@ so the same identity and dedup rules apply as any other import (full detail unde
   ASIN merges that ASIN, and any `isbn` no other recording holds, into the
   existing recording (guarded by runtime and abridged deltas) rather than
   minting a duplicate recording.
+- **An ASIN must name this book.** A row whose `asin` sits on a work it shares no
+  author surname and no title word with is refused and reported: that ASIN belongs to
+  another book, so check how your tool matched it. Send a row with no `asin` rather than
+  one your tool found by a fuzzy title search.
 - **Series joining.** A series is found by its name, and a name is not an
   identity, so a row joins a same-named catalogued series only when the series
   fits it. Its **authors** must fit (a series one author dominates is closed to
