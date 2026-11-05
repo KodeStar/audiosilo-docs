@@ -1041,6 +1041,13 @@ nothing in it reaches the catalogue by itself (`internal/serve/intake.go`,
 `intake_queue.go`). The routes are metaserve's own and not `pkg/query`'s, so a mirror-mode
 AudioSilo server does not have them.
 
+The token holder is the series-completion bot's
+[reported-ASIN lane](./sync-bot.md#the-reported-asin-lane), when enabled: it reads the
+queue with the `GET` below, looks each ASIN up as a real retailer listing, and imports
+what passes in a bounded, reviewed pull request. That pull request is the only way a
+report reaches the catalogue, and the queue's `count` only decides which ASINs it looks
+at first.
+
 **It is off unless configured**, by two environment variables:
 
 | Variable | What it does |
@@ -1151,7 +1158,9 @@ Authorization: Bearer <METASERVE_INTAKE_TOKEN>
 | **429** | Past the [API's own limit](#rate-limit-and-caching), when that limit is on. A read spends no report. |
 | **503** | The queue could not be read. |
 
-There is no acknowledgement: reading removes nothing.
+There is no acknowledgement: reading removes nothing. An ASIN the reported-ASIN lane
+imports leaves as below once a data release holds it; one it refuses stays on the queue,
+and the lane keeps its own record of having refused it.
 
 ### How a row leaves
 
