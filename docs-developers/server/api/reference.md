@@ -6729,8 +6729,18 @@ wrong:
   names another series than the folder), the tagged position (only when no
   different series folder goes up with it, since one position applies to every
   series guess), and its runtime;
+- `language`: the book's, else its language tag (`meta.NormalizeLanguage`: the
+  first of several, a BCP-47 tag's primary subtag, a placeholder such as `und` or
+  `N/A` read as none), else none. Never the marketplace's: `metadata.region` names a
+  store, not what language a library is in;
+- up to 4 `narrator`: the narrator credit's names (`names.Split`), less a name that
+  is the book's author (mostly a composer tag filled with the author, which says
+  nothing of the recording);
 - `q`, and the ASIN/ISBN: the typed ones, or the book's own when nothing was
-  typed, which metaserve looks up itself.
+  typed, or with neither of its own its [tag hints](../data-model.md#tag-hints),
+  which metaserve looks up itself.
+
+An older metaserve ignores `language` and `narrator`.
 
 Each value is cut to 256 bytes, as metaserve reads it. A typed `asin`/`isbn`
 with no `q` only looks that identifier up. A book with nothing to match on
@@ -6796,8 +6806,10 @@ again. A `503` (over metaserve's match budget) or any other `5xx` from
   account through unchanged, each field present only when the request let it be
   judged: `title` and `text` (similarity, 0-1), `author` (`full`, `surname` or
   `none`), `series` (`position`, `name`, `conflict` or `none`), `runtime` (the
-  relative difference of the closest recording, `0.02` = 2%) and `identifier`
-  (`asin` or `isbn`). `recording_id` is the recording an identifier named.
+  relative difference of the closest recording, `0.02` = 2%), `identifier`
+  (`asin` or `isbn`), `narrator` (`full`, `surname` or `none`, sent narrators only)
+  and `language` (`same` or `other`, when both are known). `recording_id` is the
+  recording an identifier named. At one score an identifier hit comes first.
 - On the fallback search an identifier hit scores 100 (with
   `reasons.identifier`) and names the recording it resolved to in
   `recording_id`; a search hit has no `reasons`, and its score weighs
@@ -6829,10 +6841,14 @@ again. A `503` (over metaserve's match budget) or any other `5xx` from
   `br`), as the service lists them; a publisher-direct ASIN sold under one id
   in several stores appears once per region. `asin_region` names the store of
   `asins[0]`.
-- `default_recording_id` is the recording the book most likely is: the one an
-  identifier named, else the one whose runtime is closest to the book's, a
-  recording selling in the preferred marketplace winning a tie. The console's
-  dialog and a bulk run both start from it.
+- `default_recording_id` is the recording the book most likely is
+  (`meta.DefaultRecording`): the one an identifier named, else, among the
+  recordings one of the book's narrators reads that fit its length
+  (`meta.PlausibleRuntimeOff`; all of them when none does), the one whose runtime
+  is closest to the book's, a recording selling in the preferred marketplace
+  winning a tie. The console's dialog and a bulk run both start from it. An ASIN
+  an identifier hit was found by leads its marketplace's in `asins`, so a book the
+  store lists under two keeps its tags' when that store is the preferred one.
 - No hits is `200 { "candidates": [] }`.
 
 `cover_url` is an image on its own host (Audible's CDN, Open Library), which
@@ -6870,8 +6886,8 @@ every change is reversible. Admin only; every endpoint answers `404 code:
 
 A run is a `match` run (the books with no ASIN or ISBN: the Health page's
 "Not matched", less those ignored there), a `repick` run (the books whose
-ASIN is a **community** override, never one from the tags, an admin's edit or
-an enrichment write: each is looked up, and when its recording now sells
+ASIN is a **community** override, never one from an Audiobookshelf
+`metadata.json`, an admin's edit or an enrichment write: each is looked up, and when its recording now sells
 in the preferred marketplace under another ASIN, that is offered) or a
 `refresh` run (every book with an ASIN or ISBN, whoever set it: each is looked
 up by its own identifier alone, the ISBN when the ASIN finds nothing, and the
@@ -6893,9 +6909,9 @@ Each book's **outcome**:
 
 | Outcome | Meaning |
 |---|---|
-| `auto` | Confident: the best candidate scores **90** or more, at least **10** ahead of the next, its recording has an ASIN or ISBN, and, when both lengths are known, the recording's runtime is within **10%** of the book's (the closest recording of a work can still be another edition). Applied unless the admin leaves it out. A repick's offers are all `auto`. |
+| `auto` | Confident (`matchrun.Classify`): the best candidate scores **90** or more, at least **10** ahead of the next, its recording has an ASIN or ISBN, and, when both lengths are known, the recording's runtime is within **10%** of the book's (the closest recording of a work can still be another edition). An identifier hit (`reasons.identifier`: in a match run always a tag hint) needs no lead, unless the next candidate is one too (`review`; a guard, as metaserve names one work per request today). So a wrong tag ASIN within 10% of the length is `auto`. Applied unless the admin leaves it out. A repick's offers are all `auto`. |
 | `review` | A candidate that isn't confident. Applied only if the admin puts it in. One held because its recording's length is more than 10% from the book's (a match run's or a refresh's) carries `detail: "length_differs"` (from 2.4.0), worded with the item's `book.duration` and the proposal's `runtime_min`. |
-| `none` | No candidate. |
+| `none` | No candidate; or, in a match run, a best candidate scoring under **60** (`matchrun.ReviewFloor`) on metaserve's scale, with `detail: "weak_match"` (`DetailWeakMatch`), its `score` kept for the review's wording and its `proposal` empty (from 2.6.0). A candidate without `reasons` (an older metaserve's fallback search, on another scale) stays `review`. The match dialog has no such floor: it lists its candidates (up to 6) however low they scored. |
 | `error` | The service failed for this book (`detail: "metadata_unavailable"`). Five in a row stop the run. |
 
 Run **statuses**: `matching` → `ready` (waiting for review) → `applying` →
@@ -7055,8 +7071,23 @@ book gets, under each **scope**:
 | Scope | Writes |
 |---|---|
 | `ids` | The ASIN and ISBN, where the book has none. |
-| `fill` | Also every field the book has empty, and the community cover when it has no cover (a checked book with none, and no custom cover). |
+| `fill` | Also every field the book has empty, and the community cover when it has no cover (a checked book with none, and no custom cover). Replaces only one thing the book has: a title that is the community's plus clutter (`matchrun.tidyTitle`, below). |
 | `overwrite` | Also every field whose value differs, as accepting the dialog's default ticks does; the cover only when it has none. The book's series are **replaced** by the community's for its recording (the [series rules](#series-rules)): a `series`, `series_index` or `more_series` value the community wrote earlier that it no longer offers (a series it deleted or merged, an edition or a translation) is reverted to what the files say. |
+
+**Title tidy** (`matchrun.tidyTitle`, `fill` only, any applied item of a match or
+refresh run; the review lists it, as `changes` comes from the same `Plan`). The
+community title goes over the book's when the book's title isn't an admin edit and,
+with the community title's words taken out, what is left of it is only: the community
+subtitle; the series names, the community's and the book's own, as `match.SeriesForms`
+spells them; `clutterWords` (book, vol, volume, no, unabridged, novel, edition, series,
+audiobook, store labels such as litrpg and fantasy, and the joining words of, the, a,
+an); and numbers the positions (the community's and the book's own, in every series)
+or the community title state (`statedNumbers`: digits, ordinals, number words, roman
+numerals). Any other word or number keeps the
+file's title: "part" names a split of the book, "abridged" another edition, "Book 2"
+of a work at position 1 another volume. A title of the community's words and nothing
+more is replaced only when it is all in one case. A reverted title has no `edited`
+source, so a later `fill` can tidy it again.
 
 Under every scope a field an admin **edited** (`source: "edited"`) is never
 replaced, a value the book already has isn't rewritten, and a series position

@@ -85,9 +85,10 @@ and returns at once; `Runner.Checking` reports it from that moment, which is the
 admin book page's `community_checking`. A book already being checked is not
 checked twice (`ErrBusy` for the background pass, a no-op for `Start`).
 
-Note that the scanner reads no ASIN from tags: a book gets its identifier from
-an admin edit, an accepted match, a bulk match or an enrichment write, and
-is checked from then on.
+Note that the scanner sets no ASIN from tags (it reads them as
+[match hints](data-model.md#tag-hints) only): a book gets its identifier from
+an admin edit, an accepted match, a bulk match, an Audiobookshelf `metadata.json` or
+an enrichment write, and is checked from then on.
 
 ## The fit (`chapteralign.Align`)
 

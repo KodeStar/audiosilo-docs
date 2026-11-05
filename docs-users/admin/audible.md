@@ -141,8 +141,9 @@ ignored, so such a title is **Available**, not a **Preorder**.
 At each check, the Bridge reads the account's library from Audible and your books
 library from the server, and matches each title to a book there:
 
-1. **By ASIN first.** A book whose ASIN (in its tags, or set in the console) is the
-   title's matches at once.
+1. **By ASIN first.** A book whose ASIN (from a community match, an Audiobookshelf
+   `metadata.json`, or set in the console) is the title's matches at once. An ASIN
+   only in the audio tags [doesn't count](health.md#asin-and-isbn-tags-are-hints).
 2. **Then by title and author**, with the series, the book's number in it and the
    narrators to help. These show **Matched by title**.
 
