@@ -730,8 +730,9 @@ writes the packs, then validates the whole tree. For each selected project:
     `ralph-scott-librivox-author-16428`, the reader form's twin (the
     [person id rule](data-model.md#person---an-entry-in-the-datapeople-family)),
     and the run report lists each such split under `librivox worklist: N author
-    ids filed at <name>-librivox-author-<id>` for a person to merge or confirm,
-    since LibriVox may list one person under two ids. A collective ("Anonymous"
+    ids filed at <name>-librivox-author-<id>` to merge or confirm, since LibriVox
+    may list one person under two ids
+    ([one person under two ids](#one-person-under-two-librivox-ids)). A collective ("Anonymous"
     under another id) is never split this way, and a slot another person or a
     tombstone holds sends the project to the worklist instead. When any of the
     catalogued person's late works is dated only by its recordings' release
@@ -747,7 +748,7 @@ writes the packs, then validates the whole tree. For each selected project:
     author's book: Thomas Taylor's 1816 Proclus says nothing of a modern
     novelist named Thomas Taylor), and a qualified title names one edition
     ("Metamorphoses (Howard Version)"), so J. J. Howard (fl. 1807) meeting a
-    modern J.J. Howard still waits on the worklist. A second author id in the same run with the same name is the
+    modern J.J. Howard waited on the worklist until a dated record settled it. A second author id in the same run with the same name is the
     first's person only when both state the same birth and death years;
     otherwise it gets a dated id, or the author-id form when it states no
     year, as a later run would decide it. Settling a row means putting the
@@ -757,14 +758,17 @@ writes the packs, then validates the whole tree. For each selected project:
     bare twin when LibriVox lists the two as different author ids in one run,
     whatever their years: "Mrs. William Platt" beside "William Platt" are two
     people, "Mrs. C. M. Livingston" beside "C. M. Livingston" is LibriVox's
-    own duplicate record of one, and only a person can tell which. Both
+    own duplicate record of one (15071 is now an alias on her record), and a run
+    cannot tell which. Both
     records are kept, the run report lists the pair under `librivox worklist:
     N author id pairs one courtesy title apart` for a person to merge or
     confirm, and metacheck's honorific-person-pair advisory names it too. Nor
     is a titled credit folded onto a catalogued bare record that the
     same-name test above finds is someone else ("Sir Hugh Fraser" is not
     `hugh-fraser`, an actor who narrates); when that test cannot tell, the
-    project goes to the worklist as `same-name-author`. A credit whose id the
+    project goes to the worklist as `same-name-author`, unless a reviewed
+    rejection already says the records the two spellings land on are two people,
+    in which case the credit stays on its own. A credit whose id the
     catalogue already holds keeps its holder's spelling. The other way round, a
     bare name that would otherwise be a new person lands on the one catalogued
     record with a courtesy title or a military rank in front of it ("Frederick
@@ -1012,6 +1016,36 @@ by the same authors in a compatible language, finds that `librivox-<project
 id>` work by the same key rather than minting a duplicate beside it. A rerun is
 idempotent: the project id is already catalogued, so it writes nothing beyond
 the [reader split](#librivox-the-public-domain-mirror) on recordings it skips.
+
+#### One person under two LibriVox ids
+
+LibriVox lists some people twice: two author records (F. P. Walter is 6492 and
+6858, the same translation of the same Gutenberg text), or two reader accounts
+(Branko Collin is 778 and 1775, with the same website on both pages). A person
+record holds one `librivox_author_id` and one `librivox_reader_id`, each unique,
+and an import never folds two ids by itself, so the second id is filed as a twin
+record beside the first.
+
+Once the evidence says one person:
+
+1. Move the twin's credits onto the survivor (authors, work and recording
+   `credits`, narrators, chapter `readers`) and union the two records' `sources`.
+2. Retire the twin's slug in `data/redirects.json`, through `pkg/redirects`.
+3. Record the second id in the survivor's `librivox_author_aliases` or
+   `librivox_reader_aliases`.
+
+An import resolves an alias exactly as it does the record's own id, whatever the
+feed calls the person, so the twin is never minted again. `metacheck` holds each
+list sorted and each alias unique against every id and alias of its namespace,
+refuses a list on a record without its own id, and refuses a retired slug of a
+LibriVox id form (`x-librivox-1775`) whose target does not answer to that id. No
+import ever writes these lists, and a record's slug composes from its own id,
+never an alias.
+
+Evidence of two people goes the other way: a reviewed `merge-people` rejection
+in `internal/audit/reviewed.json`, which names the pair as distinct. A shared
+name on its own is no evidence of either. Two bare forenames on two forum
+accounts stay two records, with nothing to record.
 
 #### The worklist
 

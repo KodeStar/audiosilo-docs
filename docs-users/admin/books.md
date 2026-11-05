@@ -309,8 +309,10 @@ the **Community chapters** panel at the top of the Chapters card says what it
 found.
 
 :::note[Match the book first]
-AudioSilo doesn't read an ASIN from the files' tags, so a book is only checked
-once it is matched: with **Match with community metadata** on its page, or
+An ASIN in the files' tags is only a
+[hint for a match](health.md#asin-and-isbn-tags-are-hints), never the book's own,
+so a book is only checked once it is matched: with **Match with community
+metadata** on its page, or
 [Match automatically](health.md#matching-every-book-at-once) for many books at
 once. Until the first check, a matched book's panel says "Not checked against
 the community's chapter lists yet."
@@ -505,8 +507,10 @@ to offer yet.
 
 1. Click **Match with community metadata** on the book's page (or **Find a
    match** in its **Community metadata** card). The dialog looks for the book
-   straight away, using what its tags say (title, author, series), its length,
-   its ASIN or ISBN, and what its **folders** say: the top folder as the
+   straight away, using what its tags say (title, author, series, narrators,
+   language), its length, its ASIN or ISBN (with neither, any
+   [in its tags](health.md#asin-and-isbn-tags-are-hints)), and what its
+   **folders** say: the top folder as the
    author, the folder holding the book as the series, and the book's own folder
    or file name as the title. So a book whose tags are wrong or swapped (a
    title tag that holds the author's name, say) is still found when its
@@ -522,7 +526,8 @@ to offer yet.
 3. **Possible matches** lists what was found, each with its cover, how
    closely it matches ("92% match"), its narrators and whether its length matches your
    files. The score counts whichever fits the book best: its tags, its
-   folders or what you typed. An ASIN or ISBN that matches scores 100%. Pick
+   folders or what you typed. An ASIN or ISBN that matches scores 100%. The
+   closest few are listed, however low they scored. Pick
    one and click **Compare fields**.
 4. If the book was recorded more than once, pick the right **Edition**. A
    recording sold in several Audible stores has an ASIN in each; the match
@@ -568,9 +573,10 @@ dialog says "meta.audiosilo.app isn't answering" - try again in a minute.
 
 :::note[What matching sends]
 Opening the match dialog sends the book's tagged title, author and series, its
-length, its ASIN or ISBN, anything you type, and up to three of its folder
-names (the top folder, the folder holding the book, and the book's own folder
-or file name) to the metadata service. It sends nothing about your server or
+length, narrators and language, its ASIN or ISBN (with neither, any in its tags),
+anything you type, and up to three of its folder names (the top folder, the
+folder holding the book, and the book's own folder or file name) to the metadata
+service. It sends nothing about your server or
 who listens. For a player's "About this book", the server sends only the ASIN
 or ISBN (see [Community metadata](server.md#community-metadata)). With a
 [local copy](server.md#keeping-a-local-copy) of the community metadata (once it

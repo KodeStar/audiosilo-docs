@@ -86,7 +86,7 @@ edit is a read-modify-write of its work.
 | `genres` | no | values from the project's controlled vocabulary (`$defs/genre`, a flat retailer-neutral list), sorted ascending. A mirror-derived set is the vote over the work's recordings, with format categories counting only when nothing else maps - see [genres](./contributing-data.md#genres-the-format-rule-the-recording-vote-and-regeneration) |
 | `credits` | no | role-qualified contributors as `{person, role}` pairs; `role` from the `$defs/credit_role` enum (adaptation, afterword, contributor, editor, foreword, illustrator, introduction, preface, translator). Additive and parallel to `authors`; emitted only when a source stated the role |
 | `translation_of` | no | the work(s) this one is a **translation** of, as a set of work slugs (`$defs/slug_set`: at least one, unique, ascending). Almost always one; a translated omnibus names every original it collects. Stated evidence only, never inferred - see [translations and reading orders](#translations-and-reading-orders) |
-| `xref` | no | `wikidata` (`Q\d+`), `openlibrary` (`OL\d+W`), `goodreads`, print `isbn[]` |
+| `xref` | no | `wikidata` (`Q\d+`), `openlibrary` (`OL\d+W`), `goodreads`, print `isbn[]`. A recording may not carry a work's print ISBN, in its ISBN-10 or ISBN-13 spelling: `metacheck` fails the tree. |
 | `added_at` | no | `YYYY-MM-DD`, or a full RFC 3339 timestamp for migration-backfilled records |
 | `recordings` | yes | the nested map of this work's recordings (below) |
 | `license` | yes | `CC0-1.0` |
@@ -143,7 +143,11 @@ ids, integers of at least 1; a translator's id is an author id), optional
 (`CC0-1.0`), `sources`. The two LibriVox ids are separate namespaces (a reader
 id and an author id of the same number are not a collision), and `metacheck`
 holds each unique across the dataset, because a LibriVox import keys people on
-them. A life year is a fact or it is absent: a stated value that is not plainly a
+them. Optional `librivox_reader_aliases` and `librivox_author_aliases` name further
+ids of one person LibriVox lists twice (sorted integers, each unique against every
+id and alias of its namespace, the record's own id required beside them): an import
+resolves an alias to the record, and only an evidenced fold writes one
+([how](contributing-data.md#one-person-under-two-librivox-ids)). A life year is a fact or it is absent: a stated value that is not plainly a
 year (`alive`, `c. 1500`) is never written, and `metacheck` refuses a
 `death_year` before the `birth_year` (`pkg/check/librivox.go`).
 
@@ -585,7 +589,11 @@ fold ("X PhD" onto "X"); both judge the records the two spellings land on
 (through the initials merge) as well as the slugs they spell, so an import
 cannot re-merge two people a maintainer separated. The series author rule and
 the intake form's duplicate-title, takeover and series checks read the pair as
-two authors too, so the doctor's book never joins the novelist's series.
+two authors too, so the doctor's book never joins the novelist's series, not even
+through a third spelling of both: beside the two of them "A. George" counts as a
+person of its own, so a series or a batch never groups the pair as one author by
+way of it. The audit's series checks read the pair as two authors as well. When an import decides a batch's initials spellings, a fold it refused beforehand
+stays refused, so the decision cannot undo the review.
 
 Because the importer honours a `merge-people` rejection whatever is live, the
 audit never calls one stale merely because one of its two records is missing
@@ -639,6 +647,17 @@ An array of character entries under a `work` slug. Each character has:
 
 Recurring characters are **re-described per book**, so what a reader sees stays
 bounded by which book they are currently in.
+
+### position_scale - the ruler those positions are on
+
+An optional member of the same works-community entry, `{"length": 5, "unit": "act"}`,
+stating the book's whole length in the units its positions count: `act`, `chapter`,
+`entry`, `episode`, `letter`, `part`, `piece`, `poem`, `scene`, `section` or `track`.
+`"partial": true` says the sidecars stop short of it on purpose. A consumer uses it to
+place a position on a recording whose tracks are finer or coarser than the book's units.
+`metacheck` measures the sidecars against it instead of the recording's track count (a
+ruler, not an exemption: it still reports one stopping far short), refuses a position
+past it, and refuses a scale with no characters or recaps beside it.
 
 ### recaps - the `recaps` member of the same works-community entry
 
@@ -723,11 +742,12 @@ expressive layer was added in later versions:
 | 7 | the languages layer: the `translations` table (every work and series `translation_of` link), the series table's derived `language`, `ordering` and `ordering_of` columns, and a `language` column on the search index |
 | 8 | the LibriVox layer: the recordings' `librivox_id` (indexed), `archive_id`, `link_librivox` / `link_zip` / `link_rss` / `link_text`, `copyright_year` and `added_at` columns, the chapters' `audio_url`, the people's `librivox_reader_id`, `librivox_author_id`, `birth_year` and `death_year`, the `work_credits` table (a work's credited people by role, so the feed can tell a translator from an author), and the `recording_sources` table (`work_id, recording_id, type`, indexed by type) behind the API's `source` filter |
 | 9 | the LibriVox recording layer: `recordings.librivox_title`, `chapters.section_number`, and the `recording_credits` (`work_id, recording_id, person_id, role, ord`), `chapter_readers` (`work_id, recording_id, chapter_idx, person_id, ord`) and `recording_librivox_genres` (`work_id, recording_id, genre, ord`) tables, which the LibriVox-shaped feed answers its title, section numbers, translators, section readers and genres from, and `recording_sources.added_at` (each recording's own, so `works/latest?source=` orders by the source's recordings straight off its index) |
+| 10 | the `position_scales` table (the ruler a work's sidecars are numbered on) |
 
 `metaserve` returns characters, recaps, genres, the community description and
 the translation links inline on `GET /works/{id}` (`characters` / `recaps` /
-`recap_summary` / `genres` / `community_description` / `translation_of` /
-`translations`, all `omitempty`), and a series' language, ordering and ordering
+`recap_summary` / `genres` / `community_description` / `position_scale` /
+`translation_of` / `translations`, all `omitempty`), and a series' language, ordering and ordering
 family on `GET /series/{id}` (see [the API](api.md#apiv1seriesidlimitoffset)).
 From version 8 it also serves the LibriVox layer
 ([the API](api.md#the-librivox-layer)).

@@ -261,7 +261,7 @@ covered in [Auth & security](auth-and-security.md#authorization-shares--scope).
 `scan_error_file`, `scan_error_detail` and `suspect_parts` in 0017; `split_parent` in
 0022; `cover_art` and `cover_color` in 0023; `chapters_source`, `chapters_fit`,
 `scanned_chapters` and `chapters_hash` in 0035; `released` and `released_checked`
-in 0037; `series_key` in 0041; `series_index_end` in 0045; `abs_sig`, `abs_indexed_at` and `abs_file` in 0046; `attachments_sig` and `attachments_indexed_at` in 0048; `subtitle`, `publisher`, `language`, `abridged`, `genres`, `tags` and `genres_checked` in 0049; `file_order` and `file_order_indexed_at` in 0055; `ebook_path` and `ebook_sig` in 0056; `ebook_size`, `ebook_sha256` and `ebook_hashed_sig` in 0058)* - one row per book,
+in 0037; `series_key` in 0041; `series_index_end` in 0045; `abs_sig`, `abs_indexed_at` and `abs_file` in 0046; `attachments_sig` and `attachments_indexed_at` in 0048; `subtitle`, `publisher`, `language`, `abridged`, `genres`, `tags` and `genres_checked` in 0049; `file_order` and `file_order_indexed_at` in 0055; `ebook_path` and `ebook_sig` in 0056; `ebook_size`, `ebook_sha256` and `ebook_hashed_sig` in 0058; `tag_asin`, `tag_isbn`, `tag_language` and `hints_checked` in 0067)* - one row per book,
 `UNIQUE (library_id, rel_path)`. Columns: `is_folder` (folder book vs
 single-file book), identity metadata (`title`, `author`, `series`,
 `series_index`, `narrator`; `series_index_end` is the end of a main series
@@ -1387,6 +1387,24 @@ same in either mode, so `UpdateLibrary` re-resolves every book of the library
 when the stored source changes - no rescan, no disk access (about 1 s per
 5,000 books).
 
+### Tag hints
+
+`books.tag_asin`, `tag_isbn`, `tag_language` (migration 0067) are
+what a book's file tags say of its identifiers and language: `asin`, `audible_asin`,
+an iTunes freeform or ID3 TXXX ASIN, `isbn`, `language` / TLAN. They are hints for a
+community match only, never `books.asin` / `isbn` and never on the wire: only
+`GetBook` and a run's subjects read them, and a tagged book stays `unmatched`.
+`matchrun.QueryFor` sends a hint as `BookASIN` / `BookISBN` when the book has
+neither of its own, so one the community knows whose length fits is confident
+(see [the outcomes](api/reference.md#bulk-community-matching)) and becomes the book's
+ASIN only by an apply. Why not the book's ASIN: on the LibraForge benchmark 272 of
+1,677 tagged books (16%) carried an ASIN that was not their confirmed listing
+(another store, another edition, or wrong); a stored ASIN takes the book out of
+match runs and a refresh never re-matches it by title, so a wrong tag would lock
+the book out, and every community feature hangs off the ASIN. An Audiobookshelf
+`metadata.json`'s ASIN differs: ABS wrote it after a match, so it stays an
+identifier. Scanned values, like `released`, rewritten by every index.
+
 ### Labels: genres and tags
 
 `genres` and `tags` (`catalog/labels.go`) are override fields like any other
@@ -1503,6 +1521,7 @@ The migration history so far:
 | 0060 | `feed_tokens` | `idx_tokens_feed_user`, a partial unique index on `tokens(user_id) WHERE kind = 'feed' AND revoked = 0`: at most one live [calendar feed token](auth-and-security.md#calendar-feed-tokens) per user. No column changes (`kind` is free text) |
 | 0061 | `listening_events` | listening sync (Sync v2, Track W1): the `listening_events` log (FK `users`/`libraries` `ON DELETE CASCADE`, no FK to `books`, unique `(user_id, event_id)`, indexes `idx_listening_events_path` and `idx_listening_events_ended`), `idx_history_user_path_ended` on `listening_history`, and the `progress` columns `device_name` (`TEXT NOT NULL DEFAULT ''`), `finish_changed_at`, `other_position`, `other_device_id`, `other_device_name`, `other_at` and `other_version` (all nullable, `NULL` on every existing row). No data moves (see [Durable per-user state](#durable-per-user-state-path-keyed-no-fk-to-books)) |
 | 0062 | `listening_span_chain` | listening sync (server#289): `progress.span_at` and `span_version` (nullable, `NULL` on every existing row), so a device's span chain lasts across posts of `POST /me/listening/sync`. No data moves |
+| 0067 | `tag_hints` | [tag hints](#tag-hints): `books.tag_asin`, `tag_isbn` and `tag_language` (`TEXT NOT NULL DEFAULT ''`) and `books.hints_checked` (`INTEGER NOT NULL DEFAULT 0`, so the next scan reads each unchanged book's tags once) |
 
 ## SQLite choices
 

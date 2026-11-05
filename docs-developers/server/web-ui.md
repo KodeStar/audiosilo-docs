@@ -698,7 +698,9 @@ CSP-sensitive work against a real build served by Go. The console's own gate is
   (and, with a preferred marketplace set, "Use *country* ASINs", a repick), its
   progress with Stop, then the counts and "Review and apply". The review dialog
   pages each outcome's items (`GET …/items?outcome=`), ticks the confident ones,
-  shows what the chosen scope writes from each item's server-computed `changes`,
+  shows what the chosen scope writes from each item's server-computed `changes`
+  (a tidied title among them, under fill), words a `none` item from its `detail`
+  (`weak_match` with its `score`, `identifier_unknown`),
   and posts the admin's picks as `exclude`/`include` ids. When the newest run's
   status changes to one that isn't working, the book lists, issues, book pages
   and covers are refetched (`invalidateMatches`; a small apply can finish

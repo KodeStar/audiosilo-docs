@@ -149,8 +149,9 @@ to the catalogue yourself - see
 Only as much as a lookup needs. To fetch the extra "About this book"
 information, the server asks meta.audiosilo.app about a book by its ASIN or
 ISBN, so the service sees those identifiers; matching a book in the admin
-console also sends what the match needs (title, author, series, folder names
-and the like; see [Server settings](./admin/server.md#community-metadata)).
+console also sends what the match needs (title, author, series, narrators,
+language, any ASIN or ISBN in its tags, folder names and the like; see
+[Server settings](./admin/server.md#community-metadata)).
 Nothing about who listens, and no file paths, is ever sent.
 
 If you'd rather not look books up over the internet at all, the admin can
