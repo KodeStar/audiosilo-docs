@@ -690,6 +690,10 @@ Settings and the series page's `KeepAheadCard` show the same control and status
 line (`KeepAheadControl`, `KeepAheadStatusLine`). The summary line is published into the sub-nav with
 `SubNavActions`.
 
+In the iOS app the page also holds **On your Apple Watch** (`WatchSection`), between In progress and
+Ready offline. Those are the watch's copies, not this device's, and none of the above applies to
+them: [The watch in Downloads](apple-watch.md#the-watch-in-downloads).
+
 ## Playing downloaded content
 
 Three paths, the first two in `src/playback/store.ts`:

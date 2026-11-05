@@ -48,7 +48,7 @@ never captures them: they're taken by hand from the simulators with
 `xcrun simctl io <udid> screenshot`, on a scratch server with sample books,
 following the frontend's `CONVENTIONS.md` ("Apple Watch app", the DEBUG launch
 variables). `simctl` can't tap, so a screen past the watch's home needs
-`idb ui tap`. The two `watch/phone-*.png` are cropped to the card and the sheet
+`idb ui tap`. The `watch/phone-*.png` shots are cropped to the card, the section and the sheet
 (`sips -c <height> <width> --cropOffset <y> 0`). Then run the pipeline's pass by
 hand: `pngquant --quality=65-90 --strip --skip-if-larger --force --output f.png f.png`.
 No private data in them: a scratch server's name and sample books only. A
