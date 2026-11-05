@@ -230,8 +230,8 @@ Who sends it:
   server bakes in (`AudioSilo/2.2.0 (web)` from Phase 2d-1). A development
   build opts in cross-origin with `EXPO_PUBLIC_IDENTIFY_CROSS_ORIGIN=1`.
 - **The admin console** - always (it is same-origin).
-- **A watch app** (Track W, planned) sends `audiosilo-watch/<version> (watchos)` or
-  `(wearos)`. It parses like any other client; the console's devices, sessions
+- **A watch app** sends `audiosilo-watch/<version> (watchos)`
+  ([Apple Watch](../../frontend/apple-watch.md)), and a Wear OS one, when there is one, `(wearos)`. It parses like any other client; the console's devices, sessions
   and Activity name it "Apple Watch" or "Wear OS" with a watch icon, and the
   player's My devices names it the same way.
 - Anything else may send it; nothing requires it.

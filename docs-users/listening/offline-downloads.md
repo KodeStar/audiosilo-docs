@@ -35,6 +35,7 @@ The **Downloads** tab is everything stored on the device you're using:
 - **Storage** - a bar with a colour for each server you've downloaded from, so you can see which server's books are taking the room. On a phone or tablet the bar also shows the space **Other apps** use, and a line under it says how much is still free. (A browser can't see other apps, so the web player shows the room it has left instead.)
 - **Automatic downloads** - the rules for downloads you don't start by hand (below).
 - **In progress** - downloads running now, waiting their turn, or stopped. A running one shows its percentage and how much is left to fetch ("42% · 210 MB to go") with **Cancel**.
+- **On your Apple Watch** - in the iPhone app with a paired watch that has AudioSilo on it: the books on your watch and how the ones you sent are getting on, with **Remove**. These are the watch's copies, not this device's. See [Apple Watch](apple-watch.md#in-downloads-on-your-iphone).
 - **Ready offline** - the books on this device, newest first, grouped by server when you have more than one (each group says how much room it takes). Each book shows where you are in it (Not started, a percentage, or Finished). Tap a book to open its page, or its play button to start it. **Remove** asks first, then deletes the book's audio from the device. The book itself, and all your progress and bookmarks, are untouched on the server - you can stream it again or download it again any time.
 
 Downloads are per-device: what you downloaded on your phone isn't automatically on your tablet.
@@ -81,6 +82,10 @@ That matters when you disconnect a server:
 
 :::tip
 If you just want to free up space, use **Remove** on a single book instead - that removes one book and leaves the server connected.
+:::
+
+:::note[On an Apple Watch]
+A watch has its own downloads, with their own rules: a smaller copy of each book, and nothing removed for you. Your phone's downloads and the watch's are separate, so removing one leaves the other. The automatic download rules don't reach the watch either. See [Apple Watch](apple-watch.md#storage).
 :::
 
 ## How downloaded playback differs

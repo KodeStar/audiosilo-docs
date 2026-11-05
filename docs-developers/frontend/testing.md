@@ -321,7 +321,8 @@ Co-located suites exist for:
 | Playback | `src/playback/book-queue.test.ts`, `progress-sync.test.ts`, `store.test.ts`, `service.web.test.ts`, `sleep-timer.test.ts`, `auto-sleep.test.ts`, `auto-sleep-controller.test.ts`, `rate.test.ts`, `next-book.test.ts`, `prettify-title.test.ts`, `types.test.ts`, `transcode.test.ts` (the web negotiation rules), `up-next-resolver.test.ts` (what plays next), `up-next-sources.test.ts`, `jump-undo.test.ts`, `time-left.test.ts`, `drift.test.ts`, `drift-controller.test.ts`, `last-interaction.test.ts`, `use-shake-to-extend.test.ts` (the burst detector and sensitivity tunings), `place-reconcile.test.ts` (a loaded book picks up another device's place), `engine-ticks.test.ts` (`engineTicker`), `service.native.test.ts` (the native bridge: the newer events, `load`'s `book` only on a binary that takes it), `store-adopt.test.ts` (`adoptLoaded`: no engine reload, saves under the adopted book, the floor is the adopted place, the service's book read again; in the engine's file order: the server's chapters in that order, streaming a file the download lacks, else a reload at the same file and in-file place), `effects.test.ts` (where Smart speed and Voice boost apply), `time-saved.test.ts`, `book-source.test.ts` (where a book plays and resumes from), `store-race.test.ts` (the bridge created once however many callers race; a remote move while a book loads is ignored) |
 | Downloads | `src/downloads/store.test.ts`, `offline-meta.test.ts`, `offline-companion.test.tsx` (a downloaded book's community data end to end, offline), `keep-ahead.test.ts`, `keep-ahead-controller.test.ts`, `failure.test.ts`, `downloads-view.test.ts`, `use-download-controls.test.ts`; `src/components/downloads/downloads-screen.test.tsx` |
 | Car and widgets | `src/car/car-model.test.ts` (the snapshot, item ids, play specs), `car-artwork.test.ts`, `car-controller.test.ts` (writes, play requests, bookmarks, a kept bookmark's file across a re-ordered download, adopting), `car-task.test.ts`; `src/widgets/widget-model.test.ts`, `widget-sync.ios.test.ts`; `src/lib/bootstrap.test.ts` (the shared launch steps) |
-| Config plugins | `plugins/withCarPlay.test.ts` (the scene manifest, the AppDelegate rewrite over an SDK 56 fixture, the default-on entitlement and its `AUDIOSILO_CARPLAY=0` opt-out), `plugins/withCast.test.ts` (the Cast options, the Android expanded controller, both plugins in `app.json` order over the SDK 56 AppDelegate), `plugins/withWidgetsNoPush.test.ts`, `plugins/build-properties.test.ts` (the `expo-build-properties` options: cleartext http and R8 on Android, React Native from source on iOS) |
+| Config plugins | `plugins/withCarPlay.test.ts` (the scene manifest, the AppDelegate rewrite over an SDK 56 fixture, the default-on entitlement and its `AUDIOSILO_CARPLAY=0` opt-out), `plugins/withCast.test.ts` (the Cast options, the Android expanded controller, both plugins in `app.json` order over the SDK 56 AppDelegate), `plugins/withWidgetsNoPush.test.ts`, `plugins/withWatchScheme.test.ts` (finding the watch target, a scheme that builds only it), `plugins/build-properties.test.ts` (the `expo-build-properties` options: cleartext http and R8 on Android, React Native from source on iOS) |
+| Apple Watch, the phone's side | `src/watch/watch-model.test.ts` (messages, visibility, expiry), `send.test.ts`, `use-watch.test.tsx`; `watch-rows.test.ts` and `watch-ledger.test.ts` (the Downloads section's rows and the ledger); `src/components/account/apple-watch-card.test.tsx`, `src/components/downloads/watch-section.test.tsx`. The watch's Core is Swift: [`npm run test:watch`](#the-watch-core) |
 | Cast | `src/cast/cast-media.test.ts` (the pure casting rules), `cast-token.test.ts`, `cast-prepare.test.ts`, `cast-service.test.ts`, `routed-service.test.ts` (the route switch), `cast-session.test.ts`, `cast-store.test.ts`, `cast-button-model.test.ts`, `cast-button.test.tsx`, `driver.native.test.ts`, `driver.web.test.ts` (one tab owns a session), `sdk-shapes.test.ts`, `web-sender.test.ts` |
 | Listening in the house | `src/components/house/house-model.test.ts`, `house-row.test.tsx`, `in-the-house-card.test.tsx`, `house-sharing-row.test.tsx`; `src/components/series/portrait.test.tsx` (the avatar and its ring); `src/api/hooks-household.test.tsx` (gating and polling) |
 | Profiles | `src/stores/profiles.test.ts`, `src/lib/profile-pin.test.ts`, `sha256.test.ts`, `random.test.ts`; `src/components/profiles/profiles-model.test.ts`, `profiles-screen.test.tsx`, `pin-dialog.test.tsx`; `src/components/shell/auth-gate.test.tsx`, `profile-menu.test.tsx` |
@@ -375,6 +376,8 @@ Simulator. Jest and the web prove nothing about Swift or Kotlin.
 |---|---|
 | Android `TimelineMap` (in `MediaItems.kt`) or the effects processors | [the Android JVM tests](#android-jvm-tests) |
 | iOS `VoiceBoostDSP.swift` or `ChapterClips.swift` | [the iOS self-check](#the-ios-self-check) |
+| The watch's `targets/watch/Core/` | [`npm run test:watch`](#the-watch-core) |
+| The rest of the watch app, the phone's `modules/audiosilo-watch` | a simulator, then [a device](#on-devices) for what only a device shows ([Apple Watch](apple-watch.md#tests)) |
 | Android Auto (the service, the browse tree, the `MediaItems` queue builder and extras, the car snapshot, the car JS) | [the DHU](#android-auto-on-the-desktop-head-unit) |
 | CarPlay, the UIScene life cycle (`withCarPlay.js`, the scene delegates) | [the CarPlay Simulator](#carplay-in-the-ios-simulator) |
 | Lock screens, the audio effects by ear, widgets, the Live Activity, the token store | [a device](#on-devices) |
@@ -420,6 +423,16 @@ failure:
 
 ```sh
 modules/audiosilo-player/ios/SelfCheck/run.sh
+```
+
+### The watch Core
+
+No Simulator either: SwiftPM builds the Apple Watch app's Foundation-only `targets/watch/Core/`
+through `watch-core/` and runs its XCTest on the host. It skips, and passes, without `swift`, and
+CI's `watch.yml` runs it on a macOS runner. See [Apple Watch](apple-watch.md#tests).
+
+```sh
+npm run test:watch
 ```
 
 ### Android Auto on the Desktop Head Unit
@@ -508,7 +521,10 @@ Nothing else can show these:
 - the widget and the sleep timer Live Activity (lock screen and Dynamic Island); the widget
   extension in a dev build beside the store app needs its own ids (below);
 - a token read with the iPhone locked, after the token has moved to the after-first-unlock
-  store.
+  store;
+- the watch's books arriving from the phone (`transferUserInfo` does not deliver between paired
+  simulators: [Apple Watch](apple-watch.md#what-paired-simulators-cant-do)), its background
+  playback with the wrist down, and its background sync.
 
 A dev build installed beside the store app (say `app.audiosilo.dev`) must not claim the
 store app's ids, and prebuild writes the store's ids into every target. After prebuild,

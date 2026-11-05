@@ -12,6 +12,7 @@
 //   'setup'   - capture-setup.mjs (the --setup page and the console's first-run flow)
 //   'meta'    - capture-meta.mjs (the meta.audiosilo.app site via a local metaserve)
 //   'bridge'  - capture-bridge.mjs (the Bridge's own page, a real Bridge paired with the demo server)
+//   'device'  - no script: taken by hand from the simulators (the README's "Device shots")
 //
 // `readalong: true` marks a shot that needs the read-along map run.sh seeds (section
 // 2e): a run that wants one stops early when the map can't be seeded.
@@ -216,4 +217,19 @@ export const SHOTS = [
   {file: 'meta/languages.png', capture: 'meta', title: 'Meta - Languages', hint: 'the header Languages selector open: every catalogue language with its book count'},
   {file: 'meta/language-prompt.png', capture: 'meta', title: 'Meta - Language suggestion', hint: 'a German browser with nothing stored: "Show only Deutsch audiobooks?" under the header'},
   {file: 'meta/language-search.png', capture: 'meta', title: 'Meta - Search (language filter)', hint: 'the search panel with "Only Deutsch" chosen: the filter line and Search all languages'},
+
+  // ── Apple Watch and the iPhone's side of it (simulators, by hand) ───────
+  {file: 'watch/watch-set-up.png', capture: 'device', title: 'Watch - Set up', hint: 'the watch before it is signed in: Open AudioSilo on your iPhone and choose Set up Apple Watch'},
+  {file: 'watch/watch-continue-listening.png', capture: 'device', title: 'Watch - Continue listening', hint: 'the home screen: Continue listening with a book, its author, % heard and Download'},
+  {file: 'watch/watch-now-playing.png', capture: 'device', title: 'Watch - Now playing', hint: 'Now playing mid-chapter: chapter, book, progress, back 15, pause, forward 30'},
+  {file: 'watch/watch-now-playing-speed.png', capture: 'device', title: 'Watch - Now playing at 2x', hint: 'Now playing at 2x: both figures in audio time, and the small line 59m left at 2x'},
+  {file: 'watch/watch-on-the-way.png', capture: 'device', title: 'Watch - On the way', hint: 'the home screen: On the way above Continue listening, a book Preparing on the server with its hint'},
+  {file: 'watch/watch-on-this-watch.png', capture: 'device', title: 'Watch - On this watch', hint: 'On this watch: one downloaded book with its size and the swipe hint'},
+  {file: 'watch/watch-from-your-iphone.png', capture: 'device', title: 'Watch - From your iPhone', hint: 'On this watch scrolled to From your iPhone: a held book, Waiting until this watch can take it'},
+  {file: 'watch/watch-sync.png', capture: 'device', title: 'Watch - Sync', hint: 'Sync with the server down: last sync, 2 waiting, Can\'t reach your server'},
+  {file: 'watch/watch-too-old.png', capture: 'device', title: 'Watch - Server too old', hint: 'a server without Sync v2: This server is too old for the watch app, Try again, Sign out'},
+  {file: 'watch/watch-sign-out-blocked.png', capture: 'device', title: 'Watch - Sign out blocked', hint: 'Sign out with 2 listening updates not synced yet: Sync now, Discard and sign out'},
+  {file: 'watch/phone-card.png', capture: 'device', title: 'iPhone - Apple Watch card', hint: 'the account page\'s Apple Watch card, cropped: signed in as, not synced yet, Send again, Books on your watch'},
+  {file: 'watch/phone-downloads-section.png', capture: 'device', title: 'iPhone - On your Apple Watch', hint: 'the Downloads page\'s On your Apple Watch section, cropped: three books On your watch with sizes, one Delivered'},
+  {file: 'watch/phone-send-to-watch.png', capture: 'device', title: 'iPhone - Send to watch', hint: 'a book page\'s More sheet on the iPhone, cropped to the sheet: Add to collection, Send to watch, Mark as finished'},
 ];

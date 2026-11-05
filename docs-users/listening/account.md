@@ -53,13 +53,17 @@ Once the code has expired it fades, and **Make a new code** gives you a fresh on
 
 Or, if you've [set a password](#password), just sign in with your username and password on the new device.
 
+## Apple Watch
+
+On an iPhone with a paired Apple Watch, the **Apple Watch** card signs the watch in to this server with no typing (**Set up Apple Watch**, then **Send again** if you need it). After that it shows who the watch is signed in as, the listening it still has to send and when it last synced. The books on the watch are in [Downloads](apple-watch.md#in-downloads-on-your-iphone), and **Books on your watch** takes you there. Kids' accounts and demos don't have it. See [Apple Watch](apple-watch.md).
+
 ## At home and away
 
 When the server has a home address, an away address or both, an **At home and away** card lists them. In the iOS and Android apps, the one in use right now is marked **In use**, with a line such as *"Using your home address. The app switches between them by itself."* How the switching works, and what to check when it doesn't happen: [At home and away](connecting.md#at-home-and-away).
 
 ## Signed-in devices
 
-Every device signed in to your account on this server, **this device** first, then the others. Each row has the name the device signed in with, the app and its version, the platform, and when it was last used: *"AudioSilo 1.4.2 · iOS · last seen 3 days ago"*. A watch (the AudioSilo watch app is planned) shows **Apple Watch** or **Wear OS** as its platform. (API keys aren't in this list; they have [their own section](#personal-api-keys).)
+Every device signed in to your account on this server, **this device** first, then the others. Each row has the name the device signed in with, the app and its version, the platform, and when it was last used: *"AudioSilo 1.4.2 · iOS · last seen 3 days ago"*. An [Apple Watch](apple-watch.md) has a watch icon and the name **Apple Watch**, whatever you've called it, with **Apple Watch** as its platform too: *"AudioSilo 2.6.0 · Apple Watch · last seen 3 days ago"*. (API keys aren't in this list; they have [their own section](#personal-api-keys).)
 
 To cut off a phone you've lost or sold, tap **Sign out** on its row and confirm. It loses access straight away and needs to sign in again to reach the server. If you think someone else knows your password, [change it](#password) instead: that signs out every other device at once. Your admin can also sign you out everywhere from the admin console.
 

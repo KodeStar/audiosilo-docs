@@ -186,6 +186,8 @@ meta repo at the workspace root). The honest summary:
   `eas.json` uses `appVersionSource: remote` with `autoIncrement: true`, so build
   numbers are managed by EAS; the user-facing **marketing version** is bumped by
   hand in `app.json` → `expo.version` for each real release.
+- **The first production IPA with the watch app:** check its watch `CFBundleVersion` matches
+  the phone's before submitting ([The release check](../frontend/apple-watch.md#the-release-check)).
 - **The first iOS build with the widget extension** signs two targets: the App
   Group `group.app.audiosilo` has to be registered with Apple and enabled on both
   `app.audiosilo` and `app.audiosilo.widget`, and EAS needs a provisioning profile

@@ -1,6 +1,6 @@
 ---
 title: The mobile apps
-description: "The native iOS and Android apps: current availability, installing on Android without Google Play (the APK and Obtainium), connecting, getting around with the tab bar, background playback, lock-screen controls, the car, iPhone widgets and the sleep timer Live Activity, and gapless listening."
+description: "The native iOS and Android apps: current availability, installing on Android without Google Play (the APK and Obtainium), connecting, getting around with the tab bar, background playback, lock-screen controls, the car, Apple Watch, iPhone widgets and the sleep timer Live Activity, and gapless listening."
 ---
 
 AudioSilo has native apps for **iOS** and **Android**. They're the same player you know from the web - same screens, same shelves, same account - plus the things only a real app can do well: rock-solid background playback, lock-screen controls, and downloads that live comfortably on your phone.
@@ -15,6 +15,7 @@ AudioSilo has native apps for **iOS** and **Android**. They're the same player y
 - **Android Auto**: built into the Android app; see [In the car](in-the-car.md#android-auto) for getting it onto the car's screen.
 - **iPhone widgets and the sleep timer Live Activity**: in the iPhone app from **version 2.4.1**; see [Widgets on iPhone](#widgets-on-iphone).
 - **Reading ebooks**: in the apps from **version 2.5.0**, as in the web player, offline too for a downloaded book (see [Reading the ebook](reading-the-ebook.md)). An older version of the app doesn't show **Read the ebook**, so update it if you don't see it on a book that has its EPUB.
+- **Apple Watch**: the watch app comes with the iPhone app from **version 2.6.0**, and needs a server on 2.6 or later; see [Apple Watch](apple-watch.md).
 - **Podcasts**: need **version 2.4.0** or later of the app. An older version doesn't show your server's podcast libraries at all, so update it if your server has podcasts and you don't see them. See [Podcasts](podcasts.md).
 
 And you don't need the app to listen on your phone: the **web player works great on mobile** and can be [installed to your home screen](offline-downloads.md), downloads included.
@@ -86,6 +87,10 @@ Both apps show the current chapter on the lock screen, with a chapter scrubber a
 ## In the car
 
 The apps put your books on the car's screen through **Android Auto** and **CarPlay** (see [Availability](#availability)). See [In the car](in-the-car.md).
+
+## On your wrist
+
+The iPhone app can sign an Apple Watch in and send it books, so you can leave the phone at home. See [Apple Watch](apple-watch.md).
 
 ## Casting to a TV or speaker
 

@@ -3390,7 +3390,7 @@ revoked share isn't returned.
       "other_place": {
         "position": 10240.0,
         "device_id": "watch-sam",
-        "device_name": "Sam's Watch",
+        "device_name": "Apple Watch",
         "updated_at": "2026-07-01T07:33:30.000Z"
       }
     }
@@ -3406,7 +3406,7 @@ the server knows it from that device's sign-in (the saving token's name, never a
 request body's). `other_place` is a place a **diverged** sync event did not keep
 (another device's listening made without seeing this row):
 `{position (whole-book seconds), device_id, device_name, updated_at}`, kept on the
-row until it is cleared ([the offered place](#how-a-batch-is-applied)). A player offers it ("On Sam's Watch you
+row until it is cleared ([the offered place](#how-a-batch-is-applied)). A player offers it ("On Apple Watch you
 were at 2:50:40. Jump there?"). A `PUT` stores its token's name as `device_name` and
 never sets or clears `other_place`; both are ignored in its body.
 
@@ -3624,7 +3624,7 @@ Response `200`:
       "other_place": {
         "position": 16800.0,
         "device_id": "lq3x9-ab12cd34",
-        "device_name": "Sam's Watch",
+        "device_name": "Apple Watch",
         "updated_at": "2026-10-25T07:33:30.000Z"
       }
     },

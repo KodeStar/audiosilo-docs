@@ -134,6 +134,7 @@ Already signed in on one device and want another? You don't need a new invite:
 
 - Open your [account page](account.md#opening-it) for the server and tap **Show a pairing code** under **Pair another device**. Scan the QR with the other device, or send it the link. The code works for 10 minutes. See [Pair another device](account.md#pair-another-device).
 - Or, if you've [set a password](account.md#password), just sign in with your username and password on the new device.
+- An **Apple Watch** signs in from your iPhone instead, with no code to scan: see [Apple Watch](apple-watch.md#setting-it-up).
 
 You can even connect the app to **more than one server** - **Add a server** in your profile menu, or under [Settings > Accounts and devices](settings.md#accounts-and-devices). Your home screen and search then span all of them. The web player has no **Add a server**: it can only reach the server it's served from, so use the iOS or Android app to listen from several servers in one place.
 
@@ -147,7 +148,7 @@ The app learns the two addresses when it connects, whichever way you sign in, an
 
 Before using the home address, the app checks that the server answering there really is yours, so your sign-in never goes to another machine that happens to have the same address on someone else's network. If that check fails, it simply uses the away address.
 
-The **web player** doesn't switch: it keeps using the address you opened it at.
+The **web player** doesn't switch: it keeps using the address you opened it at. An **Apple Watch** follows the same rule as the phone apps, with [a few differences of its own](apple-watch.md#at-home-and-away).
 
 ### If the app doesn't switch to the home address
 

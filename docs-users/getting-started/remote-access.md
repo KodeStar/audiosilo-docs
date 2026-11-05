@@ -30,6 +30,8 @@ A browser lets you click through the certificate warning; the iPhone and Android
 
 You don't have to set anything up on the server. Connect the app while your phone is on the same Wi-Fi as the server: scan the pairing QR code or open an invite link, and the app signs in over `http://` on the same address and port, remembering it as the server's [home address](#tell-the-server-its-home-address). To type the address instead, put `http://` in front of it, like `http://192.168.1.20:8080` (without it, the app tries `https://`, which it can't trust here).
 
+An [Apple Watch](../listening/apple-watch.md#a-self-signed-server) connects the same way: plain HTTP at home, and only a certificate it trusts away from home.
+
 **Away from home** the apps still need a certificate they trust: use [autocert](#a-real-certificate-with-autocert-lets-encrypt) or a [reverse proxy](#behind-a-reverse-proxy), and set the [public address](#tell-the-server-its-public-address). The apps then switch between the two by themselves.
 
 To turn plain HTTP off, set `tls.home_http: false` (`AUDIOSILO_TLS_HOME_HTTP=false`, or switch off **Plain HTTP at home** under the console's Server > Settings > Network & HTTPS; it takes effect at the next restart). The phone apps then can't connect to a self-signed server.

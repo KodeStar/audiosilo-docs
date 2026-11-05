@@ -33,7 +33,10 @@ const pageHtml = (title, hint) => `<!doctype html><html><head><meta charset="utf
 
 const missing = SHOTS.filter((s) => {
   if (group && s.capture !== group) return false;
-  return force || !existsSync(path.join(OUT_ROOT, s.file));
+  const exists = existsSync(path.join(OUT_ROOT, s.file));
+  // A device shot has no script to take it again: only `--force device` overwrites one.
+  if (exists && s.capture === 'device' && group !== 'device') return false;
+  return force || !exists;
 });
 
 if (!missing.length) {
@@ -43,10 +46,11 @@ if (!missing.length) {
 
 const browser = await chromium.launch();
 for (const s of missing) {
-  const phone = path.basename(s.file).startsWith('phone-');
-  const page = await browser.newPage({
-    viewport: phone ? {width: 430, height: 932} : {width: 1440, height: 900},
-  });
+  const name = path.basename(s.file);
+  const viewport = name.startsWith('phone-') ? {width: 430, height: 932}
+    : name.startsWith('watch-') ? {width: 396, height: 484}
+    : {width: 1440, height: 900};
+  const page = await browser.newPage({viewport});
   await page.setContent(pageHtml(s.title, s.hint));
   const file = path.join(OUT_ROOT, s.file);
   await mkdir(path.dirname(file), {recursive: true});
