@@ -644,6 +644,17 @@ An array of character entries under a `work` slug. Each character has:
 Recurring characters are **re-described per book**, so what a reader sees stays
 bounded by which book they are currently in.
 
+### position_scale - the ruler those positions are on
+
+An optional member of the same works-community entry, `{"length": 5, "unit": "act"}`,
+stating the book's whole length in the units its positions count: `act`, `chapter`,
+`entry`, `episode`, `letter`, `part`, `piece`, `poem`, `scene`, `section` or `track`.
+`"partial": true` says the sidecars stop short of it on purpose. A consumer uses it to
+place a position on a recording whose tracks are finer or coarser than the book's units.
+`metacheck` measures the sidecars against it instead of the recording's track count (a
+ruler, not an exemption: it still reports one stopping far short), refuses a position
+past it, and refuses a scale with no characters or recaps beside it.
+
 ### recaps - the `recaps` member of the same works-community entry
 
 Position-keyed "story so far" summaries under a `work` slug, plus two optional
@@ -725,11 +736,12 @@ expressive layer was added in later versions:
 | 7 | the languages layer: the `translations` table (every work and series `translation_of` link), the series table's derived `language`, `ordering` and `ordering_of` columns, and a `language` column on the search index |
 | 8 | the LibriVox layer: the recordings' `librivox_id` (indexed), `archive_id`, `link_librivox` / `link_zip` / `link_rss` / `link_text`, `copyright_year` and `added_at` columns, the chapters' `audio_url`, the people's `librivox_reader_id`, `librivox_author_id`, `birth_year` and `death_year`, the `work_credits` table (a work's credited people by role, so the feed can tell a translator from an author), and the `recording_sources` table (`work_id, recording_id, type`, indexed by type) behind the API's `source` filter |
 | 9 | the LibriVox recording layer: `recordings.librivox_title`, `chapters.section_number`, and the `recording_credits` (`work_id, recording_id, person_id, role, ord`), `chapter_readers` (`work_id, recording_id, chapter_idx, person_id, ord`) and `recording_librivox_genres` (`work_id, recording_id, genre, ord`) tables, which the LibriVox-shaped feed answers its title, section numbers, translators, section readers and genres from, and `recording_sources.added_at` (each recording's own, so `works/latest?source=` orders by the source's recordings straight off its index) |
+| 10 | the `position_scales` table (the ruler a work's sidecars are numbered on) |
 
 `metaserve` returns characters, recaps, genres, the community description and
 the translation links inline on `GET /works/{id}` (`characters` / `recaps` /
-`recap_summary` / `genres` / `community_description` / `translation_of` /
-`translations`, all `omitempty`), and a series' language, ordering and ordering
+`recap_summary` / `genres` / `community_description` / `position_scale` /
+`translation_of` / `translations`, all `omitempty`), and a series' language, ordering and ordering
 family on `GET /series/{id}` (see [the API](api.md#apiv1seriesidlimitoffset)).
 From version 8 it also serves the LibriVox layer
 ([the API](api.md#the-librivox-layer)).
