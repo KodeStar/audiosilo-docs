@@ -228,5 +228,5 @@ export const SHOTS = [
   {file: 'watch/watch-too-old.png', capture: 'device', title: 'Watch - Server too old', hint: 'a server without Sync v2: This server is too old for the watch app, Try again, Sign out'},
   {file: 'watch/watch-sign-out-blocked.png', capture: 'device', title: 'Watch - Sign out blocked', hint: 'Sign out with 2 listening updates not synced yet: Sync now, Discard and sign out'},
   {file: 'watch/phone-card.png', capture: 'device', title: 'iPhone - Apple Watch card', hint: 'the account page\'s Apple Watch card, cropped: signed in, 1 listen waiting, last synced, two books with sizes'},
-  {file: 'watch/phone-send-to-watch.png', capture: 'device', title: 'iPhone - Send to watch', hint: 'a book\'s menu on the iPhone, cropped to the sheet: Add to collection, Send to watch, Mark as finished'},
+  {file: 'watch/phone-send-to-watch.png', capture: 'device', title: 'iPhone - Send to watch', hint: 'a book page\'s More sheet on the iPhone, cropped to the sheet: Add to collection, Send to watch, Mark as finished'},
 ];

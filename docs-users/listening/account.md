@@ -63,7 +63,7 @@ When the server has a home address, an away address or both, an **At home and aw
 
 ## Signed-in devices
 
-Every device signed in to your account on this server, **this device** first, then the others. Each row has the name the device signed in with, the app and its version, the platform, and when it was last used: *"AudioSilo 1.4.2 · iOS · last seen 3 days ago"*. An [Apple Watch](apple-watch.md) shows **Apple Watch** as its platform, and the name of the watch. (API keys aren't in this list; they have [their own section](#personal-api-keys).)
+Every device signed in to your account on this server, **this device** first, then the others. Each row has the name the device signed in with, the app and its version, the platform, and when it was last used: *"AudioSilo 1.4.2 · iOS · last seen 3 days ago"*. An [Apple Watch](apple-watch.md) shows **Apple Watch** as its platform. (API keys aren't in this list; they have [their own section](#personal-api-keys).)
 
 To cut off a phone you've lost or sold, tap **Sign out** on its row and confirm. It loses access straight away and needs to sign in again to reach the server. If you think someone else knows your password, [change it](#password) instead: that signs out every other device at once. Your admin can also sign you out everywhere from the admin console.
 

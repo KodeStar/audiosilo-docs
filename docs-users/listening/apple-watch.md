@@ -58,11 +58,11 @@ The watch's home screen lists the books you've started and not finished, the mos
 
 ### From your iPhone: Send to watch
 
-On your iPhone, a book's [menu](browsing.md#the-book-menu) has **Send to watch**. It shows when your watch has the app and the server can serve a watch. It's not offered for a podcast episode.
+On your iPhone, **Send to watch** is in a book's [menu](browsing.md#the-book-menu) and under **More** on its [page](book-page.md). It shows when your watch has the app and the server can serve a watch. It's not offered for a podcast episode.
 
-![The book menu on an iPhone with Send to watch between Add to collection and Mark as finished](/img/screenshots/watch/phone-send-to-watch.png)
+![The More sheet of a book page on an iPhone, with Send to watch between Add to collection and Mark as finished](/img/screenshots/watch/phone-send-to-watch.png)
 
-You get a short *"Sent to your watch"* message. If the watch isn't signed in to this account yet, Send to watch signs it in first, and the message adds *"Open AudioSilo on your watch to finish signing in."*
+You get a short *"Sent to your watch"* message. If the watch isn't signed in to this account yet, Send to watch signs it in first, and the message adds *"If AudioSilo isn't open on your watch, open it to finish signing in."*
 
 ### How a download goes
 
@@ -77,11 +77,13 @@ You get a short *"Sent to your watch"* message. If the watch isn't signed in to 
 
 A book you send isn't lost if the watch can't take it yet: while it's still signing in, after a sign-in failed, on a server that is too old, or when the book is for an account the watch isn't signed in to.
 
-It waits on the watch under **From your iPhone** at the bottom of **On this watch**, saying *"Waiting until this watch can take it"*. Before the watch is signed in, the same line sits under the message on the setup screen. As soon as the watch can take the book, it starts downloading by itself.
+It waits on the watch under **From your iPhone** at the bottom of **On this watch**, saying *"Waiting until this watch can take it"*. Before the watch is signed in, the same line sits under the message on the setup screen. As soon as the watch can take the book, it joins the downloads by itself, with no need to send it again. Like any download, it only gets going [while the app is open](#how-a-download-goes).
 
 ![From your iPhone on the watch: a book waiting, with the line Waiting until this watch can take it](/img/screenshots/watch/watch-from-your-iphone.png)
 
 A book waits for 7 days, and up to 20 can wait at once. Past that, or if you refused the account it's for, it says *"Not delivered. Send it again from your iPhone."* for another 7 days, then goes. Sending it again makes it wait afresh. Signing out, or switching to another account, removes that account's waiting books too.
+
+Your iPhone's card lists one of these books only when it's for the account the watch is signed in to, as **Waiting**, then **Couldn't download** once it's no longer waiting. The watch's own screens show them all.
 
 ## Storage
 
@@ -97,7 +99,7 @@ Tap **Play** on a downloaded book in Continue listening, or tap the book in **On
 
 ![Now playing on the watch: the chapter and book, a progress bar with the time heard and the time left, back 15, pause and forward 30](/img/screenshots/watch/watch-now-playing.png)
 
-The screen has the chapter, the time heard in it and the time left at your speed, **back 15 seconds**, play and pause, **forward 30 seconds**, and previous and next chapter. Below those: **Chapters**, **Speed** (0.8x to 2x; each book keeps its own) and the **Sleep timer** (15, 30, 45 or 60 minutes, or **End of chapter**).
+The screen has the chapter, the time heard in it and the time left at your speed, **back 15 seconds**, play and pause, **forward 30 seconds**, and previous and next chapter. Below those: **Chapters**, **Speed** (0.8x to 2x; each book keeps its own) and the **Sleep timer** (15, 30, 45 or 60 minutes, or **End of chapter**). A book without chapters has no chapter buttons and no **Chapters**.
 
 Before it plays, the watch asks your server for the book's place if it can, and goes on from there. With no connection, it uses the place it last knew, so a book you were halfway through on your phone doesn't open at the start. If another device is somewhere else in the book, the watch offers it, as the other apps do: *"Living room is at 1:12:40."* with **Jump there** and **Stay here**. See [Listening on more than one device](playback.md#listening-on-more-than-one-device).
 
@@ -113,7 +115,7 @@ The watch is meant for headphones: when you press play with none connected, watc
 
 1. **Before you go**, while the watch can reach your server, download the book and check **On this watch** shows it with its size.
 2. **Leave the phone.** Open AudioSilo, connect your headphones and play. Playing needs no connection at all, since the book is on the watch. The app is set up to keep playing when you lower your wrist.
-3. **Come back.** What you listened to is kept on the watch until it reaches your server, with the time you heard it, so it lands on the right day in your history and stats and never moves your place backwards.
+3. **Come back.** What you listened to is kept on the watch until it reaches your server, with the time you heard it, so it lands on the right day in your history and stats and never moves your place back by itself. A rewind you made on the watch still counts.
 
 The listening goes in two ways:
 
@@ -131,9 +133,9 @@ The watch reaches your server by whatever connection watchOS gives it, through y
 - **Couldn't sync** lists anything the server turned down, and why: *"Too old to sync (over 89 days)"*, *"Too large to send"*, *"The book is no longer yours to sync"*, *"The book is no longer on the server"*, *"The book has changed on the server"*, or *"The server refused it"* with its code. Swipe one to **Dismiss** it. Your place on the server isn't affected.
 - **Server**: its **Name**, the **Address** in use right now, and its **Version**.
 
-![Sync on the watch: last sync 3 min ago, 2 waiting, and Can't reach your server. Listening is kept here and sent when it can be](/img/screenshots/watch/watch-sync.png)
+![Sync on the watch: last sync 3 min ago, 2 waiting, and a line saying the server can not be reached and listening is kept on the watch](/img/screenshots/watch/watch-sync.png)
 
-Your iPhone's card repeats the short version as the watch last told it: *"1 listen waiting on your watch"* or *"Everything from your watch has synced"*, *"Last synced 2 minutes ago"*, and *"1 listen couldn't sync. See Sync on the watch."*
+Your iPhone's card repeats the short version as the watch last told it: *"1 listen waiting on your watch"*, *"1 listen couldn't sync. See Sync on the watch."* and *"Last synced 2 minutes ago"* (*"Not synced from your watch yet"* before its first sync). *"Everything from your watch has synced"* shows only after a sync, with nothing waiting and nothing that couldn't sync.
 
 ## If the server is too old
 
@@ -148,7 +150,7 @@ After fixing it, tap **Try again**. **Sign out** is there too, and any books you
 
 ## At home and away
 
-The watch follows the same rule as the phone apps ([At home and away](connecting.md#at-home-and-away)). **Address** on [Sync](#sync-status) shows which address is in use. If your server has no away address, your listening syncs when you open the app at home.
+The watch follows the same rule as the phone apps ([At home and away](connecting.md#at-home-and-away)). **Address** on [Sync](#sync-status) shows which address is in use. If the home address is the only one the watch knows for your server, your listening syncs when you open the app at home.
 
 ### A self-signed server
 
@@ -159,7 +161,7 @@ The watch can't accept a self-signed certificate, and there's no way to click th
 
 Without a trusted away address, the watch still plays its books anywhere, but can only reach your server at home.
 
-If watchOS asks whether AudioSilo may use your local network, allow it, or the watch can't find the server at home. A home address written as an IP address or a `.local` name works.
+If watchOS asks whether AudioSilo may use your local network, allow it, or the watch can't find the server at home. Over plain HTTP, a home address written as an IP address, a `.local` name or a single word like `audiosilo` works. A name like `nas.lan` doesn't.
 
 ## Signing out and switching accounts
 
@@ -167,6 +169,6 @@ If watchOS asks whether AudioSilo may use your local network, allow it, or the w
 
 ![Sign out on the watch with 2 listening updates not synced yet, and Sync now](/img/screenshots/watch/watch-sign-out-blocked.png)
 
-To switch accounts, tap **Set up Apple Watch** on the other account's card. The watch asks on its home screen: *"Another account wants this watch."* with **Switch** and **Keep this account**. With listening still unsent it says how much, and offers **Sync now** and **Discard and switch** in place of **Switch**, until nothing waits. Switching removes the old account's books from the watch.
+To switch accounts, tap **Set up Apple Watch** on the other account's card. With nothing waiting to sync, the watch switches as soon as it takes the sign-in, and says **Switching accounts**. With listening still unsent, it asks on its home screen first: *"Another account wants this watch, but 2 listening updates have not synced yet."* with **Sync now**, **Discard and switch** and **Keep this account**. Once nothing waits, that becomes *"Another account wants this watch."* with **Switch** and **Keep this account**. Switching removes the old account's books from the watch.
 
 Signing out on your iPhone leaves the watch signed in, since it's a device of its own. To cut off a lost or sold watch, use **Sign out** on its row under [Signed-in devices](account.md#signed-in-devices). Changing your password also signs it out on a recent server. Either way, Continue listening then says *"Signed out. Set up the watch again from your iPhone."*

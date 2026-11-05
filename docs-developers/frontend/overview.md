@@ -100,7 +100,8 @@ targets/watch/      the Apple Watch app (Swift, not bundled by Metro): Core/ (Fo
                     only), Net/, Storage/, Phone/, Playback/, UI/
 watch-core/         SwiftPM package over targets/watch/Core, for its tests on the host
 plugins/            config plugins (CarPlay scenes, Cast, the watch scheme, the Xcode 26
-                    and widget fixes); withCarPlay, withCast and withWidgetsNoPush have jest tests
+                    and widget fixes); withCarPlay, withCast, withWatchScheme and
+                    withWidgetsNoPush have jest tests
 index.ts            the app entry (package.json main): registers the car's headless
                     task, then expo-router/entry
 public/             sw.js (service worker) + manifest.json (PWA), copied verbatim

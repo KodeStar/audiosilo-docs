@@ -53,7 +53,7 @@ variables). `simctl` can't tap, so a screen past the watch's home needs
 hand: `pngquant --quality=65-90 --strip --skip-if-larger --force --output f.png f.png`.
 No private data in them: a scratch server's name and sample books only. A
 placeholder fills in for a missing one, as for any other shot, and
-`placeholders.mjs --force` with no group overwrites them (restore from git).
+only `placeholders.mjs --force device` overwrites them (restore from git).
 
 The `phone-` filename prefix caps a shot at 320px (`custom.css`). Watch shots are
 capped by page, not by name, since most are under Docusaurus's 10 KB limit and

@@ -33,7 +33,10 @@ const pageHtml = (title, hint) => `<!doctype html><html><head><meta charset="utf
 
 const missing = SHOTS.filter((s) => {
   if (group && s.capture !== group) return false;
-  return force || !existsSync(path.join(OUT_ROOT, s.file));
+  const exists = existsSync(path.join(OUT_ROOT, s.file));
+  // A device shot has no script to take it again: only `--force device` overwrites one.
+  if (exists && s.capture === 'device' && group !== 'device') return false;
+  return force || !exists;
 });
 
 if (!missing.length) {

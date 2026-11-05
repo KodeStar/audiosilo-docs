@@ -147,8 +147,9 @@ changed in one changes in the other, with tests on both. Plain property lists on
 ```
 
 The phone mints it with `POST /auth/pair {"ttl_seconds": 600}`. `expires_at` counts from before
-the request, so it is never later than the server's own. Past it the watch tries nothing and asks
-to send again. Otherwise it exchanges at once (`POST /auth/exchange {pairing_token, device_name}`):
+the request, but the server truncates its own to whole seconds, so this one can run under a second
+later: only a hint, since the watch's exchange is what decides. Past it the watch tries nothing and
+asks to send again. Otherwise it exchanges at once (`POST /auth/exchange {pairing_token, device_name}`):
 at `base_url`, then `away`, then the home http address under
 [`pairingFallback`'s rule](connect-and-addresses.md#pairing-at-a-self-signed-servers-home-http).
 A server's own answer at any address ends it, since the token is single use.
