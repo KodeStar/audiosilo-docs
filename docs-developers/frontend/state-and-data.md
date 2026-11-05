@@ -721,9 +721,10 @@ and has nothing to convert (a label such as "Up to chapter 9" then names this bo
 chapter). Offline, a download keeps the numbers the server sent. A book no finer than
 the scale, a work stating no scale, or an older server gets the work's own numbers, which
 only approximate a given recording's edition - hence the deliberate escape hatches (the
-toggle, and a finished book showing everything). `chapterNumberAt` reads starts that say
-nothing about a place (every chapter at offset 0) as chapter 0, not started, never as the
-last chapter.
+toggle, and a finished book showing everything). A `reveal` past the book's last chapter
+is one no place reaches, so it stays hidden until finished. `chapterNumberAt` reads starts
+that say nothing about a place (every chapter at offset 0) as chapter 0, not started, never
+as the last chapter, and a run of starts alike at the end as the run's first chapter.
 
 The **live** side is `src/components/player/use-listening-position.ts`:
 `useListeningPosition` (the book page, at `LIVE_POSITION_BUCKET_S`, 15 s; the

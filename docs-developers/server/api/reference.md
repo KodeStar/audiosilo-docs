@@ -2623,7 +2623,7 @@ throughout is that later is safe and early is not:
 | Position | Answered as |
 |---|---|
 | `0`, either kind | `0` (before this book) |
-| `reveal` `p`: the character appears in unit `p`, and shows on reaching the number | the first chapter starting at or past the unit's start, fraction `(p - 1) / length`. `1` is chapter 1, so the opening cast shows from the start |
+| `reveal` `p`: the character appears in unit `p`, and shows on reaching the number | the first chapter starting at or past the unit's start, fraction `(p - 1) / length`. `1` is chapter 1, so the opening cast shows from the start. When no chapter starts that late, one past the last chapter: no place reaches it, so it stays hidden until the book is finished |
 | `through` `p`: the recap covers up to the unit's end, and shows once past the number | the first chapter ending at or past fraction `p / length`, so it opens on entering the next chapter with the unit over |
 | `through` `p >= length` | the last chapter, shown only once the book is finished |
 
@@ -2636,7 +2636,9 @@ stands alone. On that Hamlet the reveals are 1, 10, 19, 27, 36 and the throughs 
 
 The numbers pass through unchanged, `position_scale` included, when the work states no
 scale, the book has no chapters, or it is no finer than the scale (the same count, fewer
-chapters, a lone chapter), where they can only come late. A translated answer is per
+chapters, a lone chapter), where they come late track for track. So a `reveal` can be past
+a book's last chapter on either path, and a client treats it the same way: hidden until
+finished. A translated answer is per
 request and never cached, so two books with one ASIN each get their own. Generated content
 carries no scale and is already numbered on the book, so it is untouched. Consequently a
 label built from such a number names this book's chapter, not the work's.
@@ -2656,8 +2658,11 @@ none.
 `spoilers=hide` gates the envelope by the **caller's own saved progress** on this
 book (the server's progress record, mapped onto the book's chapters by
 `book_offset`; no saved progress counts as not started). When the offsets say nothing
-about a place (every chapter at the same one) the progress is read by count against the
-duration, rounded down, and with no duration as not started, never as the last chapter:
+about a place (every chapter at the same one) the book reads as not started, however far
+along the progress is, never as the last chapter. Past the last start, a run of offsets
+alike at the end (files of unknown length after the last known one) reads as the run's
+first chapter. A work the gate leaves with no characters or recaps loses its
+`position_scale` too:
 
 | Content | Kept when |
 |---|---|
