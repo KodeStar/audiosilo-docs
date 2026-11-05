@@ -18,8 +18,9 @@ workflow agree.
 
 It serves no public traffic. It talks only to libexdb.com, api.github.com,
 Audible's public catalog API (`api.audible.*`, only when libex says it cannot
-reach Audible) and, with [the reported-ASIN lane](#the-reported-asin-lane)
-enabled, the metadata service's intake queue.
+reach Audible, and not at all with `SYNC_AUDIBLE_FALLBACK=off`) and, with
+[the reported-ASIN lane](#the-reported-asin-lane) enabled, the metadata service's
+intake queue.
 
 The same container can also run [the steward](./steward.md) (`SYNC_STEWARD=on`),
 which reviews and merges everyone else's data pull requests and triages data
@@ -230,16 +231,20 @@ last pull request. It also needs a `META_REF` whose selector takes `--reported`
 
 1. **Read the queue**, in its order. Malformed ASINs (anything not
    `^[A-Z0-9]{10}$`), rows under `SYNC_INTAKE_MIN_COUNT` (1), ASINs the catalogue
-   already holds and ASINs the lane has already concluded about are dropped. The
-   answer is capped at 4 MiB.
-2. **Look each one up** on libex, one listing at a time, at most 150 a turn.
+   already holds and ASINs with a live memo entry (the lane's own conclusions and
+   series completion's refusals alike) are dropped. The answer is capped at 4 MiB.
+2. **Look each one up** on libex, one listing at a time, at most 150 a turn,
+   and on Audible's catalog API when libex says it cannot answer right now
+   (the same fallback as every book read, `SYNC_AUDIBLE_FALLBACK`).
    A real retailer listing is required, and only a book is kept, by the
    listing's content type (`SinglePartBook` or `MultiPartBook`, the bulk
    export's own rule). What comes back decides what the lane remembers:
-   - **memoized**: an ASIN libex does not hold, a listing that is not a book (a
-     podcast episode, a periodical issue, a listing stating no type), and an
-     answer no retry changes (a refused request, a record for another ASIN);
-   - **nothing**: libex saying it cannot answer right now;
+   - **memoized for 45 days**: an ASIN libex does not hold, a listing that is
+     not a book (a podcast episode, a periodical issue, a listing stating no
+     type), and an answer no retry changes (a refused request, a record for
+     another ASIN);
+   - **nothing**: libex saying it cannot answer right now, and the fallback
+     not answering either;
    - **held off for 7 days**: any other lookup with no answer.
 
    Three failures in a row end the lookups for the turn.
@@ -250,10 +255,17 @@ last pull request. It also needs a `META_REF` whose selector takes `--reported`
 
 A turn that sits out, finds nothing, or fails before a pull request exists falls
 through to series completion in the same cycle, and none of it counts as a failed
-cycle. A queue that cannot be read (network, 401, 404, 5xx, a malformed or
-oversized answer) is one log line and costs nothing. A failed selection or import
-rests the lane for 48 hours, and a failed import also holds its rows off for 7
-days, so one bad row cannot pin the head of the queue.
+cycle. Two exceptions end the cycle as an error instead: a clone that will not
+sync back to main after a turn that touched it (completion's own first step would
+fail the same way), and a request to open the pull request that may have landed,
+or that GitHub refused while the branch could not be deleted, since completion
+would push to the same branch. A queue that cannot be read (network, 401, 404,
+5xx, a redirect, a malformed or oversized answer) is one log line and costs
+nothing. Any other failed step past the lookups (the rows, selection, the cap,
+the chapter lists, the import, `metafmt`, `metacheck`, the no-new-series check or
+the push) rests the lane for `SYNC_INTAKE_EVERY` (48 hours at least) outside a
+dry run, and a failed import or tree check also holds its rows off for 7 days, so
+one bad row cannot pin the head of the queue.
 
 ### What it takes, and what it refuses
 
@@ -494,6 +506,7 @@ config surface is exactly this table. Only `GITHUB_TOKEN` is required.
 | `SYNC_REGIONS` | all 11 | `us uk ca au de fr es it jp in br` - exactly the meta schema's region enum. |
 | `SYNC_DRY_RUN` | off | Do everything except push and open a pull request. Leaves the diff in the clone and prints the pull request body. |
 | `LIBEX_BASE` | `https://libexdb.com` | For tests and local fakes. |
+| `SYNC_AUDIBLE_FALLBACK` | on | Ask Audible's public catalog API for a book record or series listing libex says it cannot give right now. `off` keeps the service to libex alone. |
 | `SYNC_TOOLS_DIR` | `/app/bin` | Where `metaimport`/`metafmt`/`metacheck` live. Empty means resolve on `PATH`. |
 | `SYNC_INTAKE_URL` | - | The metadata service's address, for [the reported-ASIN lane](#the-reported-asin-lane), which runs only with this and the token both set. https, or plain http to a loopback host only. |
 | `SYNC_INTAKE_TOKEN` | - | The Bearer token of the intake queue's `GET` (metaserve's `METASERVE_INTAKE_TOKEN`). |
@@ -534,8 +547,10 @@ core tree (works, people, series, `redirects.json`) while the tools default to
 `all`, and the difference is a failed file accounting.
 
 The pinned commit is the `META_REF` build argument in the service's Dockerfile.
-It is reported by `metasync version`, by `GET /status` and in every pull request
-footer, so "which importer produced this data" is always answerable.
+It is reported by `metasync version`, by `GET /status` and in the footer of every
+series-completion pull request, so "which importer produced this data" is always
+answerable for those. A [reported-ASIN lane](#sharing-the-one-slot) pull
+request's body carries no footer and does not name the pin.
 
 The lane depends on that pin: it runs only when the pinned
 `metaimport libex-select --help` lists `--reported`. On an older pin it sits
@@ -578,7 +593,9 @@ is `SETUP.md` in the private `audiosilo-meta-sync` repository. It is not
 reproduced here: it carries host-specific and credential-handling steps that
 belong with the service rather than in public documentation. Its section 9 is
 the reported-ASIN lane's: it needs metaserve serving the intake queue (v0.25.1 or
-later, `METASERVE_INTAKE_TOKEN` set), and a compose file with an explicit
+later, with both `METASERVE_INTAKE_DB` and a `METASERVE_INTAKE_TOKEN` of at least
+32 bytes set, since the `GET` is registered only with both; see
+[the queue's configuration](./api.md#unknown-asin-intake-queue-optional)), and a compose file with an explicit
 `environment:` list needs the `SYNC_INTAKE_*` keys there as well as in `.env`, or
 the lane stays off with no error.
 

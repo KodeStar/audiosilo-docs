@@ -1158,8 +1158,10 @@ Authorization: Bearer <METASERVE_INTAKE_TOKEN>
 | **503** | The queue could not be read. |
 
 There is no acknowledgement: reading removes nothing. An ASIN the reported-ASIN lane
-imports leaves as below once a data release holds it; one it refuses stays on the queue,
-and the lane keeps its own record of having refused it.
+imports leaves as below once a data release holds it; one it refuses leaves only by
+expiry or eviction, and the lane keeps its own record of having refused it, which
+itself expires (after 45 days for most, sooner for a lookup or import that failed), so the ASIN
+is looked up again if it is still queued.
 
 ### How a row leaves
 
