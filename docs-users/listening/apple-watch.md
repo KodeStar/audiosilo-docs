@@ -120,7 +120,7 @@ The listening goes in two ways:
 - **With the app open**, it's sent when you open the app, each time you stop, and about once a minute while anything is waiting.
 - **With the app closed**, the watch hands what's waiting to watchOS as you leave the app, to send when a network appears. How soon that happens is up to watchOS, and it only uses your away address ([below](#at-home-and-away)). **Opening the app is the sure way to send it**, and **Sync now** is there if you want it to go this minute.
 
-The watch reaches your server by whatever connection watchOS gives it, through your iPhone when that's near. AudioSilo adds no relay of its own.
+The watch reaches your server by whatever connection watchOS gives it, through your iPhone when that's near.
 
 ## Sync status
 
@@ -148,22 +148,18 @@ After fixing it, tap **Try again**. **Sign out** is there too, and any books you
 
 ## At home and away
 
-The watch follows the same rule as the phone apps ([At home and away](connecting.md#at-home-and-away)). It learns your server's home and away addresses when it signs in. It uses the home address only after checking, without sending your sign-in, that the server answering there really is yours. Otherwise it uses the away address. **Address** on [Sync](#sync-status) shows which one is in use.
+The watch follows the same rule as the phone apps ([At home and away](connecting.md#at-home-and-away)). **Address** on [Sync](#sync-status) shows which address is in use. If your server has no away address, your listening syncs when you open the app at home.
 
 ### A self-signed server
 
 The watch can't accept a self-signed certificate, and there's no way to click through a warning on it. So, as on your phone:
 
 - **At home**, it connects over the server's [plain HTTP at home](../getting-started/remote-access.md#plain-http-at-home-how-the-phone-apps-connect). Set the watch up on the same network as the server, or sign-in ends with *"Can't reach your server."*
-- **Away from home**, it needs an address it can trust: [autocert](../getting-started/remote-access.md#a-real-certificate-with-autocert-lets-encrypt) or a [reverse proxy](../getting-started/remote-access.md#behind-a-reverse-proxy), plus the [public address](../getting-started/remote-access.md#tell-the-server-its-public-address).
+- **Away from home**, it needs an address with a certificate it can trust, [set up as for the phone apps](../getting-started/remote-access.md#plain-http-at-home-how-the-phone-apps-connect).
 
 Without a trusted away address, the watch still plays its books anywhere, but can only reach your server at home.
 
 If watchOS asks whether AudioSilo may use your local network, allow it, or the watch can't find the server at home. A home address written as an IP address or a `.local` name works.
-
-### A server with only a home address
-
-Sending with the app closed never uses a home address, since on some other network nothing could check who answers there first. So if your server has no away address, your listening syncs when you open the app at home.
 
 ## Signing out and switching accounts
 

@@ -12,9 +12,7 @@
 //   'setup'   - capture-setup.mjs (the --setup page and the console's first-run flow)
 //   'meta'    - capture-meta.mjs (the meta.audiosilo.app site via a local metaserve)
 //   'bridge'  - capture-bridge.mjs (the Bridge's own page, a real Bridge paired with the demo server)
-//   'device'  - no script: taken by hand from the iOS and watchOS simulators (see the README's
-//               "Device shots"), since the web pipeline can't show a watch or the iPhone's native app.
-//               run.sh never writes these.
+//   'device'  - no script: taken by hand from the simulators (the README's "Device shots")
 //
 // `readalong: true` marks a shot that needs the read-along map run.sh seeds (section
 // 2e): a run that wants one stops early when the map can't be seeded.

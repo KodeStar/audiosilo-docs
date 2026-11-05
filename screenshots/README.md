@@ -44,14 +44,20 @@ to the previous image or a placeholder).
 
 `watch/*.png` (`capture: 'device'` in the manifest) show the Apple Watch app and
 the iPhone's native side of it, which the web pipeline can't reach. `run.sh`
-never writes them: they're taken by hand from the simulators with
+never captures them: they're taken by hand from the simulators with
 `xcrun simctl io <udid> screenshot`, on a scratch server with sample books,
 following the frontend's `CONVENTIONS.md` ("Apple Watch app", the DEBUG launch
 variables). `simctl` can't tap, so a screen past the watch's home needs
 `idb ui tap`. The two `watch/phone-*.png` are cropped to the card and the sheet
-(`sips -c <height> <width> --cropOffset <y> 0`). No private data in them: a
-scratch server's name and sample books only. A placeholder fills in for a
-missing one, as for any other shot.
+(`sips -c <height> <width> --cropOffset <y> 0`). Then run the pipeline's pass by
+hand: `pngquant --quality=65-90 --strip --skip-if-larger --force --output f.png f.png`.
+No private data in them: a scratch server's name and sample books only. A
+placeholder fills in for a missing one, as for any other shot, and
+`placeholders.mjs --force` with no group overwrites them (restore from git).
+
+The `phone-` filename prefix caps a shot at 320px (`custom.css`). Watch shots are
+capped by page, not by name, since most are under Docusaurus's 10 KB limit and
+inlined as data URIs with no filename to match.
 
 No shot shows this machine's folders. `capture-admin.mjs` and
 `capture-setup.mjs` route every `/api/` answer through `showDockerPaths` in

@@ -248,9 +248,7 @@ names a self-signed certificate as a likely cause (`selfSignedMayBeWhy`: native,
 not a timeout, and no http retry was made).
 
 The Apple Watch gets its pairing token from the phone in a `pair` message rather than a link,
-and follows the same rules in Swift (`Core/AddressPicker.swift`): exchange at `base_url`, then
-`away`, then the home http address under `pairingFallback`'s rule, and never a token to a home
-address before the `server_id` probe. See
+and follows the same rules in Swift (`Core/AddressPicker.swift`):
 [Apple Watch](apple-watch.md#the-message-contract).
 
 ### Where the pick lives (`src/api/address-route.ts`)

@@ -43,10 +43,11 @@ if (!missing.length) {
 
 const browser = await chromium.launch();
 for (const s of missing) {
-  const phone = path.basename(s.file).startsWith('phone-');
-  const page = await browser.newPage({
-    viewport: phone ? {width: 430, height: 932} : {width: 1440, height: 900},
-  });
+  const name = path.basename(s.file);
+  const viewport = name.startsWith('phone-') ? {width: 430, height: 932}
+    : name.startsWith('watch-') ? {width: 396, height: 484}
+    : {width: 1440, height: 900};
+  const page = await browser.newPage({viewport});
   await page.setContent(pageHtml(s.title, s.hint));
   const file = path.join(OUT_ROOT, s.file);
   await mkdir(path.dirname(file), {recursive: true});

@@ -47,10 +47,10 @@ xcodebuild -workspace ios/AudioSilo.xcworkspace -scheme AudioSiloWatch -sdk watc
 Build the phone scheme with `-destination` only, never `-sdk iphonesimulator`.
 
 `Info.plist` sets `WKRunsIndependentlyOfCompanionApp`, `UIBackgroundModes: [audio]` and ATS
-`NSAllowsLocalNetworking` with `NSLocalNetworkUsageDescription`, and no arbitrary loads. As on
-the phone, that admits IP addresses, `.local` and single-label names, not a `.lan` or
-`.home.arpa` name. There is no certificate override. A self-signed server is reached over its
-[home HTTP](connect-and-addresses.md#pairing-at-a-self-signed-servers-home-http).
+`NSAllowsLocalNetworking` with `NSLocalNetworkUsageDescription`, and no arbitrary loads. There is
+no certificate override. A self-signed server is reached over its
+[home HTTP](connect-and-addresses.md#pairing-at-a-self-signed-servers-home-http), with the same
+home names as the phone.
 
 ## The Core boundary
 
@@ -83,8 +83,8 @@ Preparing is polled in the foreground. Each ready file goes through the one back
 `URLSession` (`Net/BackgroundDownloads.swift`), after a free-space check of the rendition's
 bytes plus 200 MB.
 
-**Addresses.** A home address is used only after a tokenless `GET <home>/api/v1/server` answered
-the account's `server_id`. The pick is dropped on backgrounding and probed again while active.
+**Addresses.** The home rule is the [phone's](connect-and-addresses.md#the-pick-rule-srclibserver-addressts):
+no token before the `server_id` probe. The pick is dropped on backgrounding and probed again while active.
 The background upload goes to the away or paired address, never home
 (`AddressPicker.unattended`), so a server with only a home address syncs in the foreground.
 
@@ -110,8 +110,7 @@ or the script change, since the Linux `ci` job has no Swift toolchain. The Swift
 TS test vectors. They cover the timeline, spans, the outbox, acks and offers, addresses, message
 decoding, the rendition plan and held books.
 
-The phone's side is ordinary jest with the module mocked: `src/watch/watch-model.test.ts`,
-`send.test.ts`, `use-watch.test.tsx`, `src/components/account/apple-watch-card.test.tsx`.
+The phone's side is ordinary jest with the module mocked ([the list](testing.md#whats-covered-today)).
 
 Neither proves anything about the shell. How to run the app on a simulator, including the
 `DEBUG`-only launch variables (`AUDIOSILO_DEBUG_PAIR`, `_BOOK`, `_PLAY`, compiled out of
@@ -150,9 +149,9 @@ changed in one changes in the other, with tests on both. Plain property lists on
 The phone mints it with `POST /auth/pair {"ttl_seconds": 600}`. `expires_at` counts from before
 the request, so it is never later than the server's own. Past it the watch tries nothing and asks
 to send again. Otherwise it exchanges at once (`POST /auth/exchange {pairing_token, device_name}`):
-at `base_url`, then `away`, then the home http address under `pairingFallback`'s rule (the https
-attempt failed with no server answer and no timeout, same host and port, the probe matched
-`server_id`). A server's own answer at any address ends it, since the token is single use.
+at `base_url`, then `away`, then the home http address under
+[`pairingFallback`'s rule](connect-and-addresses.md#pairing-at-a-self-signed-servers-home-http).
+A server's own answer at any address ends it, since the token is single use.
 
 **`book`, phone to watch** (always `transferUserInfo`, which survives the watch app being closed):
 

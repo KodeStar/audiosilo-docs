@@ -38,7 +38,8 @@ Node 24 (workspace convention; `.nvmrc` in the sibling repos).
   `screenshots/manifest.mjs` (as `/img/screenshots/<area>/<name>.png`).
   Add the manifest entry first; regenerate with `screenshots/run.sh` (see
   `screenshots/README.md`). Never hand-edit a captured PNG - fix the capture
-  script/seed state and re-run. Placeholders backfill anything uncapturable so
+  script/seed state and re-run (device shots have no script: the README's
+  "Device shots"). Placeholders backfill anything uncapturable so
   the build never breaks.
 - **Accuracy over completeness**: verify behaviour in the sibling repos'
   source before documenting it; never document a route/flag/UI element you
