@@ -259,6 +259,12 @@ names raw.
 - `recording_id` - the recording the identifier named, else the one a `narrator`
   agrees with best, else the one whose runtime is closest to `runtime`; omitted
   when none applies.
+  Length never names a dramatization (GraphicAudio's imprint, a full-cast credit, a
+  title keeping a statement such as `(Dramatized)`, or a recording stating no publisher
+  on a work still titled with the adaptation label) unless the request's own text says
+  the book is one: the work still matches and scores as before, because a dramatization
+  is a recording of its book, but `recording_id` is omitted when nothing else fits. A
+  narrator credited on both a plain reading and a dramatization names the plain reading.
 - `reasons` - which facts agreed, each field omitted when the request didn't let
   it be judged: `title` (the best title similarity, 0-1), `text` (the typed
   text's similarity, 0-1; 1 when it named the work's series and volume, as in
