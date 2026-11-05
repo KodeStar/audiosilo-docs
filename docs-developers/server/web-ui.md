@@ -1057,7 +1057,7 @@ CSP-sensitive work against a real build served by Go. The console's own gate is
   (`useBookMeta`, the full work, not `?spoilers=hide`) read-only, in a
   **Characters** and a **Recaps** tab, each with its count (the Recaps count
   includes the whole-book summary's row). Characters list the name, role
-  (`roleKey`), aliases, description and "From chapter N" (or "From the start");
+  (`roleKey`), aliases, description and "From chapter N" (or "From the start", or "Near the end" for a reveal past the book's last chapter);
   recaps one row each in chapter order (`recapRows`; at chapter 0
   `recapHeading` reads "Previously, in earlier books" for a `series` scope and
   "Before this book" otherwise) plus "The whole book" for the `recap_summary`,

@@ -722,7 +722,8 @@ chapter). Offline, a download keeps the numbers the server sent. A book no finer
 the scale, a work stating no scale, or an older server gets the work's own numbers, which
 only approximate a given recording's edition - hence the deliberate escape hatches (the
 toggle, and a finished book showing everything). A `reveal` past the book's last chapter
-is one no place reaches, so it stays hidden until finished. `chapterNumberAt` reads starts
+is one no place reaches, so it stays hidden until finished, and once shown it reads "Near
+the end" rather than naming a chapter the book lacks (`revealIsPastEnd`). `chapterNumberAt` reads starts
 that say nothing about a place (every chapter at offset 0) as chapter 0, not started, never
 as the last chapter, and a run of starts alike at the end as the run's first chapter.
 
