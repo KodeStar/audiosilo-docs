@@ -1,34 +1,33 @@
 ---
 title: Meta HTTP API
-description: "The metaserve JSON API reference: every /api/v1 route over the read-only catalogue, works/match for identifying a file, the lang and source filters, the LibriVox layer and its LibriVox-shaped feed, the Audiobookshelf provider, rate limiting and caching, the optional release webhook and unknown-ASIN intake queue, CORS, deadlines and security headers, and how the server refreshes its artifact from GitHub Releases."
+description: "The metaserve JSON API reference: every /api/v1 route, works/match for identifying a file, the lang and source filters, the LibriVox layer and its LibriVox-shaped feed, the Audiobookshelf provider, rate limiting and caching, the optional release webhook and unknown-ASIN intake queue, CORS, deadlines and security headers, and how the server refreshes its artifact from GitHub Releases."
 ---
 
 `metaserve` (`cmd/metaserve` over `internal/serve`) is a JSON API over the compiled
 SQLite artifact. **The catalogue is read-only**: nothing a client sends changes it.
-A deployment may also register two routes of another kind, each off unless
-configured: the signed [release webhook](#production-release-webhook-optional) and
-the [unknown-ASIN intake queue](#unknown-asin-intake-queue-optional), a small file
-of its own beside the catalogue. The queries and the API handler are the
+Two optional features, each off unless configured, accept input: the signed
+[release webhook](#production-release-webhook-optional) and the
+[unknown-ASIN intake queue](#unknown-asin-intake-queue-optional), which writes only
+to a small file of its own. The queries and the API handler are the
 public `pkg/query` (`NewHandler`), which metaserve serves behind its own CORS and
 gzip, and which a mirror-mode AudioSilo server mounts in-process over a
 downloaded copy of the artifact, so the same responses come from either (see
-[Public Go packages](overview.md#public-go-packages)). All catalogue data is public, so there is **no auth**;
-every catalogue `/api/v1` route (and both Audiobookshelf provider routes) responds with permissive CORS
+[Public Go packages](overview.md#public-go-packages)). All catalogue data is public,
+so there is **no auth**; every catalogue `/api/v1` route (and both Audiobookshelf
+provider routes) responds with permissive CORS
 (`Access-Control-Allow-Origin: *`, `Vary: Origin`), and responses are
 gzip-compressed. Cross-origin `GET`s work from any browser, and an `OPTIONS`
 preflight answers 204 allowing `GET` and any request header. `Retry-After` is
 exposed, so a script on another origin can read how long to wait after a 429. The
 same routes are [rate limited per client and carry a `Cache-Control`](#rate-limit-and-caching).
-The intake queue is the exception to all of that: it has no CORS and no gzip, its
-own limit, and a bearer token on its read route.
-It can also serve a static site at `/` (`--site`) and hot-swaps a newer release
+`metaserve` can also serve a static site at `/` (`--site`) and hot-swaps a newer release
 artifact without a restart.
 
-Errors are a JSON envelope `{"error": "..."}` with the matching HTTP status, except
-on a path no route claims, which is not JSON ([the intake queue when it is off](#when-the-queue-is-off)
-is one). The catalogue routes are all `GET`. Every **500** carries the same fixed body regardless of what
-actually failed - the real error (a SQL statement, a cache-volume path, a driver
-message) goes to the server log instead, since every route here is public and
+Errors are a JSON envelope `{"error": "..."}` with the matching HTTP status. A
+request no route claims does not answer JSON ([the intake queue when it is
+off](#when-the-queue-is-off) is one). The catalogue routes are all `GET`. Every
+**500** carries the same fixed body regardless of what actually failed - the real error (a SQL statement, a cache-volume path, a driver
+message) goes to the server log instead, since every catalogue route is public and
 CORS-open and would otherwise reflect that detail to anyone who could provoke it.
 
 The same surface is published in two other forms: an interactive, human-readable
@@ -36,8 +35,7 @@ reference at [meta.audiosilo.app/docs/api](https://meta.audiosilo.app/docs/api),
 and the machine-readable OpenAPI document it is rendered from at
 [meta.audiosilo.app/api/v1/openapi.json](https://meta.audiosilo.app/api/v1/openapi.json).
 Both come from one file (`internal/serve/openapi.json`), so the reference, the
-served spec, and this page describe one API. The file describes the whole surface;
-a server leaves out of its served copy the intake routes it does not offer.
+served spec, and this page describe one API.
 
 ## `/healthz`
 
@@ -73,12 +71,12 @@ verdict is exactly what triggers an automatic restart, and the orchestrator wire
 
 The **OpenAPI 3.1** description of every route on this page, embedded in the
 binary (`//go:embed openapi.json` in `internal/serve/openapi.go`) and served
-as written, less the [intake queue](#unknown-asin-intake-queue-optional) members this
-deployment does not offer (`Server.servedSpec`): with the queue off it names no intake
-path or schema, and with the POST alone it has no `GET`. It is static - it reads no snapshot and touches no database - so it is
-registered **outside** the loaded-artifact gate and never answers 503: a client
+as written, less the [intake queue](#unknown-asin-intake-queue-optional) members
+this deployment does not offer (`Server.servedSpec`): with the queue off it names no
+intake path or schema, and with the `POST` alone it has no `GET`. It is static - it
+reads no snapshot and touches no database - so it is registered **outside** the loaded-artifact gate and never answers 503: a client
 discovering the API on a boot that is still downloading its first release still
-gets the contract. Like the rest of `/api/v1` it is CORS-open and gzipped, and it
+gets the contract. Like the catalogue routes it is CORS-open and gzipped, and it
 is served with an `ETag` and `Cache-Control: public, max-age=3600` - a
 revalidating `If-None-Match` request gets a bodiless **304**.
 
@@ -270,7 +268,7 @@ names raw.
   the work credits narrators) and `language` (`same` or `other`; only when both are
   known).
 
-**Bounds.** Like every route here it is unauthenticated and CORS-open, so a
+**Bounds.** Like every catalogue route it is unauthenticated and CORS-open, so a
 request can't price itself: each text value is cut to 256 bytes, an author
 resolves through a bounded window of people, the author and series probes add
 at most **2,500** works, and comparisons run in Go over batched, indexed reads.
@@ -1028,12 +1026,12 @@ response code, or the reason it could not be sent) is now reported in the
 
 ## Unknown-ASIN intake queue (optional)
 
-A deployment can offer a queue of Audible ASINs the catalogue does not hold, for a
-sync process to read as a list of listings worth looking up. It is the one place
-metaserve takes anything from an anonymous caller. A report is a suggestion of where
-to look and never a record: the queue is a file of its own (`internal/serve/intake.go`,
-`intake_queue.go`), outside the artifact and its swaps, and nothing in it reaches the
-catalogue by itself.
+A deployment can offer a queue of Audible ASINs the catalogue does not hold, which
+a token holder reads as ASINs worth looking up. It is the one place metaserve takes
+anything from an anonymous caller. A report is a suggestion of where to look and
+never a record: the queue is a separate file, outside the artifact and its swaps, and
+nothing in it reaches the catalogue by itself (`internal/serve/intake.go`,
+`intake_queue.go`).
 
 **It is off unless configured**, by two environment variables:
 
@@ -1048,19 +1046,17 @@ nothing of the catalogue's, and a client can report again.
 ### When the queue is off
 
 With `METASERVE_INTAKE_DB` unset, or a file that would not open, both `POST` and `GET`
-answer **404**, and the served OpenAPI document does not list the path. A metaserve
-that predates the route answers the same way, so a client should read a 404 as "not
-offered".
+answer **404**, and the [served OpenAPI document](#apiv1openapijson) does not list the
+path. A metaserve that predates the route answers the same way, so a client should
+read a 404 as "not offered". With the `POST` on and no valid token, the `GET` alone is
+not registered: it answers the site's HTML 404, or a **405** from the router on a
+deployment with no site.
 
-:::warning[That 404 is not JSON]
-These routes do not exist on such a deployment, so the 404 is not the API's error
-envelope. On a deployment with a static site it is **the site's HTML 404 page**, and
-without one it is the Go router's plain text. A client must check the status and must
-not parse the body as JSON.
+:::warning[These answers are not JSON]
+A route that is not registered has no error envelope. On a deployment with a static
+site the answer is **the site's HTML 404 page**, and without one it is the Go router's
+plain text. A client must check the status and must not parse the body as JSON.
 :::
-
-With the `POST` on and no valid token, the `GET` is not registered either: it answers
-the site's HTML 404, or a **405** from the router on a deployment with no site.
 
 ### `POST /api/v1/intake/unknown-asins`
 
@@ -1099,21 +1095,18 @@ A taken report is **202**, and an empty `asins` array is a 202 with three zeros:
 | **400** | The body is not a JSON object with an array member `asins`, or the array holds more than 200 items. A bad item alone is not a 400. |
 | **413** | The body is over **8 KiB**. |
 | **415** | The `Content-Type` is not `application/json` (a charset parameter is allowed). |
-| **429** | Past this client's limit, with `Retry-After` in whole seconds until its next report is allowed. |
+| **429** | Past this client's limit (below; a refused POST counts), with `Retry-After` in whole seconds until its next report is allowed. |
 | **503** | The queue could not store the report. Nothing was recorded. |
 
 Errors are the usual `{"error": "..."}` envelope.
 
 **The limit** is **6 POSTs a day per client** with a burst of 6: six at once, then one
-every four hours as the bucket refills. It is separate from the
-[API's own limit](#rate-limit-and-caching) and holds with that limit turned off, and
-the `POST` does not pass through the API's limit at all. The limiter runs first, so **a
-POST refused for size, type or format still spends one of the six**. A client is keyed
-as on the rest of the API, an IPv6 address as its /64, and the limiter holds at most
-100,000 clients (past that, a new client costs an arbitrary one its bucket). Behind a
-proxy, `METASERVE_TRUSTED_PROXIES` matters even more than it does for the API: [name
-the proxy](#rate-limit-and-caching), or every reporting client shares one 6-a-day
-bucket.
+every four hours as the bucket refills. The `POST` skips the
+[API's own limit](#rate-limit-and-caching) and keeps this one with that limit turned
+off. The limiter runs first, so **a POST refused for size, type or format still spends
+one of the six**. A client is keyed as on the rest of the API. Behind a proxy, [name
+it](#rate-limit-and-caching) in `METASERVE_TRUSTED_PROXIES`, or every reporting client
+shares one 6-a-day bucket.
 
 **No script on another origin can call it.** The route carries no CORS headers and has
 no `OPTIONS` route, and `application/json` is required, so a browser's preflight fails.
@@ -1121,7 +1114,7 @@ Every answer, on both methods, is `Cache-Control: no-store` and is not gzipped.
 
 ### `GET /api/v1/intake/unknown-asins`
 
-The token holder's read of the whole queue, bounded by its cap:
+The token holder's read of the whole queue, at most 20,000 rows:
 
 ```http
 GET /api/v1/intake/unknown-asins
@@ -1142,7 +1135,7 @@ Authorization: Bearer <METASERVE_INTAKE_TOKEN>
 | Status | When |
 |---|---|
 | **200** | The queue, as above. |
-| **401** | A missing or wrong bearer token, with `WWW-Authenticate: Bearer`. The token is compared in constant time. |
+| **401** | A missing or wrong bearer token, with `WWW-Authenticate: Bearer`. |
 | **429** | Past the [API's own limit](#rate-limit-and-caching), when that limit is on. A read spends no report. |
 | **503** | The queue could not be read. |
 
@@ -1171,11 +1164,11 @@ with mode 0600.
 - **Held in memory only:** to enforce the limit, the client's address (an IPv6 address
   as its /64), until about a day after its last report. It never reaches the file.
 - **Arrival order:** the rows hold only days, and no rowid, so they cannot say which ASINs
-  arrived together. The file's layout could, since an SQLite page lists its rows as they
-  arrived, so the housekeeping loop's one-minute tick rewrites the file in key order (`VACUUM`)
-  after any report, on the first tick after a start, and again at shutdown. **At most about the last minute's
-  reports are ever in arrival order on disk.** `journal_mode=DELETE` means no WAL file
-  holds batches in arrival order, and `secure_delete=ON` zeroes a freed row's content.
+  arrived together. An SQLite page does list its rows as they arrived, so metaserve
+  rewrites the file in key order (`VACUUM`) on the one-minute housekeeping tick after any
+  report, on the first tick after a start, and at shutdown. **At most about the last
+  minute's reports are ever in arrival order on disk.** `journal_mode=DELETE` means no WAL
+  file holds batches in arrival order, and `secure_delete=ON` zeroes a freed row's content.
 
 That covers metaserve alone: a reverse proxy in front logs what it is set to log, so
 check its access log for this route.
@@ -1195,8 +1188,8 @@ check its access log for this route.
 | `--cache` | `./cache` | directory for downloaded artifacts |
 | `GITHUB_TOKEN` (env) | (none) | raises the GitHub API rate limit |
 | `METASERVE_WEBHOOK_SECRET` (env) | (none) | enables the signed release webhook (requires `--poll`) |
-| `METASERVE_INTAKE_DB` (env) | (none) | the intake queue's file; registers its `POST` ([the queue](#unknown-asin-intake-queue-optional)) |
-| `METASERVE_INTAKE_TOKEN` (env) | (none) | at least 32 bytes; with `METASERVE_INTAKE_DB`, also registers the queue's bearer-token `GET` |
+| `METASERVE_INTAKE_DB` (env) | (none) | the [intake queue](#unknown-asin-intake-queue-optional)'s file; setting it turns the queue on |
+| `METASERVE_INTAKE_TOKEN` (env) | (none) | the bearer token of the queue's `GET`; needs `METASERVE_INTAKE_DB` |
 | `--rate-limit` / `METASERVE_RATE_LIMIT` | `100` | per-client requests a second on the API; `0` turns the limit off ([below](#rate-limit-and-caching)) |
 | `--rate-burst` / `METASERVE_RATE_BURST` | `400` | the per-client burst; at least 1 while the limit is on |
 | `--trusted-proxy` / `METASERVE_TRUSTED_PROXIES` | (none) | comma-separated proxy addresses and CIDR prefixes whose `X-Forwarded-For` names the client |
@@ -1209,7 +1202,7 @@ startup.
 
 ## Rate limit and caching
 
-The API is public, unauthenticated and CORS-open, and the
+The catalogue API is public, unauthenticated and CORS-open, and the
 [LibriVox-shaped feed](#apiv1librivoxaudiobooks) invites apps that used to call
 a volunteer-run server, so metaserve limits each client
 (`internal/serve/ratelimit.go`). This is metaserve's own middleware: a
@@ -1219,9 +1212,8 @@ no `Cache-Control` defaults.
 **What is limited.** Every route of the API stack: `/api/v1/*` (the OpenAPI
 document and the feed included) and both Audiobookshelf provider routes.
 `/healthz` is exempt (a probe, not a browser's call), and so are the HTML pages,
-the static site and the sitemaps. The [intake queue](#unknown-asin-intake-queue-optional)
-has its own stack: its `POST` is limited only by its own 6 a day, and its `GET` by
-this limit.
+the static site and the sitemaps. The one exception under `/api/v1` is the
+[intake queue's `POST`](#post-apiv1intakeunknown-asins), which has its own limit.
 
 **The bucket.** One token bucket per client: `--rate-limit` requests a second
 (default **100**) with a burst of `--rate-burst` (default **400**). The defaults
@@ -1290,8 +1282,8 @@ day), or `public, max-age=60` on the searches (`/api/v1/search`,
 `works/search`, `people/search`, `series/search`, both `/abs` provider routes)
 and `works/match`, which a reader expects to track the search box. A route that
 states its own keeps it: the [watch feeds](#caching) and the
-[OpenAPI document](#apiv1openapijson) (`max-age=3600`), and every answer of the
-[intake queue](#unknown-asin-intake-queue-optional) is `no-store`. Every other status
+[OpenAPI document](#apiv1openapijson) (`max-age=3600`), and the
+[intake queue](#unknown-asin-intake-queue-optional) (`no-store`). Every other status
 gets no default (`internal/serve/cache.go`): an error or a 503 carries no
 `Cache-Control`, a 429 carries `no-store`, and only the answers whose handler
 states one keep it (a retired slug's 301 and a watch feed's 304, both
@@ -1306,7 +1298,7 @@ request (the release webhook answers 202 and refreshes in the background):
 | Deadline | Value | Bounds |
 |---|---|---|
 | `ReadHeaderTimeout` | 10s | the request line and headers |
-| `ReadTimeout` | 30s | the whole request read - every route is a bodyless `GET` except the webhook, whose body is capped at 1 MiB, and the intake queue's `POST`, capped at 8 KiB |
+| `ReadTimeout` | 30s | the whole request read - only the two optional `POST`s carry a body: the webhook's capped at 1 MiB, the intake queue's at 8 KiB |
 | `WriteTimeout` | 2m | the handler plus the response transfer, sized so the largest body (a 50,000-URL sitemap shard) still reaches a slow client |
 | `IdleTimeout` | 3m | how long a keep-alive connection waits for its next request |
 
