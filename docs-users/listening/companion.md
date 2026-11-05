@@ -25,7 +25,7 @@ Who's who and Story so far follow the book page's [spoiler rule](recaps-and-char
 
 ## Who's who
 
-The people you've met, the most recently met first, as the same cards as on the book's page: an initial, the name, other names they go by, when they first appear (*"From chapter 7"*) and their role. A character's description is written for the whole book and can give away later events, so it stays closed until you **tap the card**.
+The people you've met, the most recently met first, as the same cards as on the book's page: an initial, the name, other names they go by, when they first appear (*"From chapter 7"*, or *"Near the end"* when that falls past the book's last chapter) and their role. A character's description is written for the whole book and can give away later events, so it stays closed until you **tap the card**.
 
 ### Meeting someone new
 

@@ -2510,8 +2510,9 @@ now one rail, at its first position.
 all three are `omitempty`, so they are absent when the upstream has none. A
 **position** is
 `{ "chapter": <int >= 0> }` on the work's own, edition-independent timeline (the
-logical work chapter, 1-based; `0` = front matter / prior-book knowledge), which
-the client maps onto its recording's chapters.
+logical work chapter, 1-based; `0` = front matter / prior-book knowledge). On this
+route, for a book split finer than the work's own scale,
+[the server answers them on this book's chapters](#positions-on-this-books-chapters).
 
 - Each **character** carries an `id` (unique within the work, not global), a
   `name`, optional `aliases` and `role` (`protagonist`/`antagonist`/`supporting`/
@@ -2600,6 +2601,48 @@ path.
 `local` is an extra: when the caller's books can't be read, the envelope is sent
 without it (the failure is logged) rather than failing the lookup.
 
+#### Positions on this book's chapters
+
+A work may state the scale its positions are numbered on, as `position_scale`
+(`omitempty`, the same on `previous[]` and [`/meta/work`](#get-apiv1metawork)):
+
+```json
+"position_scale": { "length": 5, "unit": "act", "partial": false }
+```
+
+`length` is the book's length in that `unit` (a chapter, an act, a section...), and
+`partial`, optional, says the sidecars stop short of it on purpose. A client's gate
+compares a position with the number of the chapter the listener is in, so numbers on a
+coarser scale would come early: at track 6 of a 43-track Hamlet whose sidecars are on 5
+acts, Act 5's recap reads as already past. So for the **current work on this route**,
+when the work states a scale and the book has **more chapters than `length`**, the
+server answers every `reveal` and `through` as a chapter of **this book**, and
+omits `position_scale` (a present one always describes the numbers beside it). The rule
+throughout is that later is safe and early is not:
+
+| Position | Answered as |
+|---|---|
+| `0`, either kind | `0` (before this book) |
+| `reveal` `p`: the character appears in unit `p`, and shows on reaching the number | the first chapter starting at or past the unit's start, fraction `(p - 1) / length`. `1` is chapter 1, so the opening cast shows from the start. When no chapter starts that late, one past the last chapter: no place reaches it, so it stays hidden until the book is finished |
+| `through` `p`: the recap covers up to the unit's end, and shows once past the number | the first chapter ending at or past fraction `p / length`, so it opens on entering the next chapter with the unit over |
+| `through` `p >= length` | the last chapter, shown only once the book is finished |
+
+Each answer is the later of two estimates: by time (the chapters' `book_offset`s against
+the book's `duration`) and by count (each chapter an equal share). So uneven tracks can't
+bring a position forward, as they could with 41 tracks on 40 chapters. When the offsets
+can't be trusted (out of order, all alike, or no length past the last start) the count
+stands alone. On that Hamlet the reveals are 1, 10, 19, 27, 36 and the throughs 9, 18, 26,
+35, 43. This is proportional: it can't know how long a real act runs.
+
+The numbers pass through unchanged, `position_scale` included, when the work states no
+scale, the book has no chapters, or it is no finer than the scale (the same count, fewer
+chapters, a lone chapter), where they come late track for track. So a `reveal` can be past
+a book's last chapter on either path, and a client treats it the same way: hidden until
+finished. A translated answer is per
+request and never cached, so two books with one ASIN each get their own. Generated content
+carries no scale and is already numbered on the book, so it is untouched. Consequently a
+label built from such a number names this book's chapter, not the work's.
+
 #### Previous books and spoiler gating
 
 `include=previous` adds `previous`: the works **before** this one in its series,
@@ -2614,12 +2657,17 @@ none.
 
 `spoilers=hide` gates the envelope by the **caller's own saved progress** on this
 book (the server's progress record, mapped onto the book's chapters by
-`book_offset`; no saved progress counts as not started):
+`book_offset`; no saved progress counts as not started). When the offsets say nothing
+about a place (every chapter at the same one) the book reads as not started, however far
+along the progress is, never as the last chapter. Past the last start, a run of offsets
+alike at the end (files of unknown length after the last known one) reads as the run's
+first chapter. A work the gate leaves with no characters or recaps loses its
+`position_scale` too:
 
 | Content | Kept when |
 |---|---|
 | the current work, whole | the book is finished |
-| a character | its `reveal.chapter` is at most the current chapter (at least chapter 1, so a book not yet started still shows its opening cast) |
+| a character | its `reveal.chapter` (already [on this book's chapters](#positions-on-this-books-chapters)) is at most the current chapter (at least chapter 1, so a book not yet started still shows its opening cast) |
 | a recap | its `through.chapter` is `0`, or below the current chapter (the chapter being heard is not over) |
 | `recap_summary` | the book is finished (`in_short` and `ending` both summarize the whole book) |
 | a `previous[]` work | always, except its `recap_summary.ending` |
@@ -2849,7 +2897,8 @@ Response `200`:
 envelope (documented above, same `omitempty` rules, including
 `community_description` and [`attribution`](#attribution)) - there is deliberately
 no second work type. The enrichment fields that only make sense for a matched local
-book (`matched`, `recording`, `series`, `web_url`) are **not** returned here.
+book (`matched`, `recording`, `series`, `web_url`) are **not** returned here. There
+is no book here either, so positions are the work's own, beside their `position_scale`.
 
 | Status | Meaning |
 |---|---|

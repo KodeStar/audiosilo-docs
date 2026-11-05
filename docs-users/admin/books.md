@@ -448,7 +448,7 @@ the same ones the players show: from the community database, or written by your
   (the whole-book summary counts as one of the recaps).
   Each character shows its name, its role (**Protagonist**, **Antagonist**,
   **Supporting** or **Minor**), any other names ("Also known as ..."), a
-  description and where it first appears ("From chapter 3", or "From the start").
+  description and where it first appears ("From chapter 3", "From the start", or "Near the end" when it falls past the book's last chapter).
 - **Recaps give the story away**, so each stays closed until you open it: one row
   per chapter ("Through chapter 4"), "Previously, in earlier books" for a recap of
   the series so far, "Before this book" for one about what comes before the first
