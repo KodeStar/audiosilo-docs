@@ -16,10 +16,11 @@ downloaded copy of the artifact, so the same responses come from either (see
 so there is **no auth**; every catalogue `/api/v1` route (and both Audiobookshelf
 provider routes) responds with permissive CORS
 (`Access-Control-Allow-Origin: *`, `Vary: Origin`), and responses are
-gzip-compressed. Cross-origin `GET`s work from any browser, and an `OPTIONS`
-preflight answers 204 allowing `GET` and any request header. `Retry-After` is
-exposed, so a script on another origin can read how long to wait after a 429. The
-same routes are [rate limited per client and carry a `Cache-Control`](#rate-limit-and-caching).
+gzip-compressed. A cross-origin `GET` that needs no preflight works from any browser.
+No route answers `OPTIONS`: a preflight gets the site's HTML 404, or a 405 from the
+router on a deployment with no site, so a request that would trigger one, such as one
+with a custom header, fails. `Retry-After` is exposed, so a script on another origin
+can read how long to wait after a 429. The same routes are [rate limited per client and carry a `Cache-Control`](#rate-limit-and-caching).
 `metaserve` can also serve a static site at `/` (`--site`) and hot-swaps a newer release
 artifact without a restart.
 
@@ -1031,7 +1032,8 @@ a token holder reads as ASINs worth looking up. It is the one place metaserve ta
 anything from an anonymous caller. A report is a suggestion of where to look and
 never a record: the queue is a separate file, outside the artifact and its swaps, and
 nothing in it reaches the catalogue by itself (`internal/serve/intake.go`,
-`intake_queue.go`).
+`intake_queue.go`). The routes are metaserve's own and not `pkg/query`'s, so a mirror-mode
+AudioSilo server does not have them.
 
 **It is off unless configured**, by two environment variables:
 
@@ -1092,11 +1094,11 @@ A taken report is **202**, and an empty `asins` array is a 202 with three zeros:
 | Status | When |
 |---|---|
 | **202** | Taken, as above. |
-| **400** | The body is not a JSON object with an array member `asins`, or the array holds more than 200 items. A bad item alone is not a 400. |
+| **400** | The body could not be read, is not a JSON object with an array member `asins`, or holds more than 200 items in that array. A bad item alone is not a 400. |
 | **413** | The body is over **8 KiB**. |
 | **415** | The `Content-Type` is not `application/json` (a charset parameter is allowed). |
 | **429** | Past this client's limit (below; a refused POST counts), with `Retry-After` in whole seconds until its next report is allowed. |
-| **503** | The queue could not store the report. Nothing was recorded. |
+| **503** | The report could not be checked against the artifact or stored. Nothing was recorded. |
 
 Errors are the usual `{"error": "..."}` envelope.
 
@@ -1108,8 +1110,12 @@ one of the six**. A client is keyed as on the rest of the API. Behind a proxy, [
 it](#rate-limit-and-caching) in `METASERVE_TRUSTED_PROXIES`, or every reporting client
 shares one 6-a-day bucket.
 
-**No script on another origin can call it.** The route carries no CORS headers and has
-no `OPTIONS` route, and `application/json` is required, so a browser's preflight fails.
+**A script on another origin cannot get a report taken.** The route carries no CORS
+headers and has no `OPTIONS` route, and `application/json` is required, so a browser's
+preflight fails. The only cross-origin `POST` a browser sends without a preflight has
+another `Content-Type`, which is a 415 here: nothing is stored, but like any refused POST
+it spends one of that visitor's six.
+
 Every answer, on both methods, is `Cache-Control: no-store` and is not gzipped.
 
 ### `GET /api/v1/intake/unknown-asins`
@@ -1145,7 +1151,8 @@ There is no acknowledgement: reading removes nothing.
 
 - **A newer data release holds its ASIN.** The housekeeping loop notices a new artifact
   on its one-minute tick and purges against it, so this can land up to about a minute
-  after the swap.
+  after the swap. A purge that fails is logged, and its rows stay until the next artifact
+  or restart.
 - **90 days with no report.** Expiry runs at boot and once a UTC day.
 - **The queue is at its cap of 20,000 rows and a new ASIN arrives.** Each one evicts the
   lowest row by `count`, then `last_day`, then `asin`, leaving alone any row the same
@@ -1154,20 +1161,23 @@ There is no acknowledgement: reading removes nothing.
 ### What is stored and what is not
 
 The file is one table, `intake_asins(asin, count, first_day, last_day)`, `WITHOUT ROWID`,
-with mode 0600.
+created with mode 0600 (a file that already exists keeps its own mode).
 
 - **Stored:** each reported ASIN, a count of the reports naming it, and the first and
   last UTC day it was reported.
-- **Not stored:** a client address, a timestamp, a user agent, a batch or anything else
+- **Not stored:** a client address, a timestamp, a user agent, a batch id or anything else
   a report's body carried. Nothing on this path logs an address, a user agent or an ASIN
   either.
 - **Held in memory only:** to enforce the limit, the client's address (an IPv6 address
-  as its /64), until about a day after its last report. It never reaches the file.
-- **Arrival order:** the rows hold only days, and no rowid, so they cannot say which ASINs
-  arrived together. An SQLite page does list its rows as they arrived, so metaserve
+  as its /64), until about a day after its last POST, refused or not. It never reaches
+  the file.
+- **Arrival order:** the rows hold only days, and no rowid, so they can say no more than
+  that ASINs were reported on the same UTC day, which on a day with one report is that
+  report's whole list. An SQLite page does list its rows as they arrived, so metaserve
   rewrites the file in key order (`VACUUM`) on the one-minute housekeeping tick after any
   report, on the first tick after a start, and at shutdown. **At most about the last
-  minute's reports are ever in arrival order on disk.** `journal_mode=DELETE` means no WAL
+  minute's reports are in arrival order on disk**, for as long as the rewrite succeeds: one
+  that fails is logged and tried again on the next tick. `journal_mode=DELETE` means no WAL
   file holds batches in arrival order, and `secure_delete=ON` zeroes a freed row's content.
 
 That covers metaserve alone: a reverse proxy in front logs what it is set to log, so
@@ -1284,10 +1294,10 @@ and `works/match`, which a reader expects to track the search box. A route that
 states its own keeps it: the [watch feeds](#caching) and the
 [OpenAPI document](#apiv1openapijson) (`max-age=3600`), and the
 [intake queue](#unknown-asin-intake-queue-optional) (`no-store`). Every other status
-gets no default (`internal/serve/cache.go`): an error or a 503 carries no
+gets no default (`internal/serve/cache.go`): a catalogue error or 503 carries no
 `Cache-Control`, a 429 carries `no-store`, and only the answers whose handler
 states one keep it (a retired slug's 301 and a watch feed's 304, both
-`max-age=3600`).
+`max-age=3600`, and every intake queue answer, `no-store`).
 
 ## Deadlines, security headers, and reverse proxies
 
