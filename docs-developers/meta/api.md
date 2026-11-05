@@ -1045,8 +1045,7 @@ The token holder is the series-completion bot's
 [reported-ASIN lane](./sync-bot.md#the-reported-asin-lane), when enabled: it reads the
 queue with the `GET` below, looks each ASIN up as a real retailer listing, and imports
 what passes in a bounded, reviewed pull request. That pull request is the only way a
-report reaches the catalogue, and the queue's `count` only decides which ASINs it looks
-at first.
+report reaches the catalogue.
 
 **It is off unless configured**, by two environment variables:
 

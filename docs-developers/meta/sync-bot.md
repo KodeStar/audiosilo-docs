@@ -16,10 +16,10 @@ volume), and
 opens one pull request - which it merges itself once CI and the `ai-verify`
 workflow agree.
 
-It serves no public traffic. It talks to libexdb.com and api.github.com, to
-Audible's public catalog API (`api.audible.*`) only when libex says it cannot
-reach Audible, and, with [the reported-ASIN lane](#the-reported-asin-lane)
-enabled, to the metadata service's intake queue; to nothing else.
+It serves no public traffic. It talks only to libexdb.com, api.github.com,
+Audible's public catalog API (`api.audible.*`, only when libex says it cannot
+reach Audible) and, with [the reported-ASIN lane](#the-reported-asin-lane)
+enabled, the metadata service's intake queue.
 
 The same container can also run [the steward](./steward.md) (`SYNC_STEWARD=on`),
 which reviews and merges everyone else's data pull requests and triages data
@@ -31,7 +31,7 @@ tranche and never a mirror of a retailer database, but a catalogue whose series
 stop at the volume that was out on the day it was seeded decays. Something has
 to notice that book seven exists. That job is what this service automates. Its
 one other way in, [the reported-ASIN lane](#the-reported-asin-lane), is narrower
-still and off unless configured.
+and off unless configured.
 
 ### The bound
 
@@ -44,10 +44,11 @@ repo's `GOVERNANCE.md`.
   discovery, and after the import the importer's own summary is re-read: a run
   reporting any new series discards its whole tree instead of opening a pull
   request.
-- **It never adds a second work at an occupied position.** From the feeds, a
-  new work only ever fills a free position in a catalogued series; the one other
-  kind of new work is a reported standalone in no series, from the
-  [lane](#the-reported-asin-lane). A row for a volume the
+- **Its one other kind of new work is a reported standalone.** Only the
+  reported-ASIN lane may add a work in no series, under its own
+  [identity guard](#what-it-takes-and-what-it-refuses).
+- **It never adds a second work at an occupied position.** A new work from the
+  feeds only ever fills a free position in a catalogued series. A row for a volume the
   catalogue already holds is attached to that work - as another recording, or
   as another ASIN on an existing recording - only when its series, position,
   authors and title match the incumbent (audiosilo-meta's own work-identity
@@ -72,11 +73,9 @@ repo's `GOVERNANCE.md`.
   (default 100) land at a time, whole series first, in position order, so a
   cycle stays something a person can read. What the cap cuts is not discarded -
   the series those rows came from stay queued, and a later cycle expands them
-  again. A lane pull request has its own, tighter cap: 25 records, new works and
-  attached editions counted together.
-- **One pull request at a time.** A cycle that finds one still open stops before
-  it touches libex or the intake queue. The lane shares that one slot; it never
-  runs beside a completion pull request.
+  again. A lane pull request has its own, tighter cap ([its limits](#its-limits)).
+- **One pull request at a time**, the lane's included. A cycle that finds one
+  still open stops before it touches libex or the intake queue.
 - **Coming-soon (preorder) titles are included**, imported with their announced
   release date.
 - **Every record it writes carries the typed `libex-import` provenance**, so the
@@ -128,9 +127,7 @@ overwrites a recorded value.
 
 The lane's turn comes after the open-pull-request and parked checks and the
 clone's refresh, before discovery. It runs on its own record of the cycle and
-touches nothing in the series queue, so whatever happens to it before a pull
-request exists, series completion runs next in the same cycle. Its steps are
-[below](#the-reported-asin-lane).
+touches nothing in the series queue; its steps are [below](#a-turn).
 
 A few properties of the completion pass are worth knowing:
 
@@ -221,32 +218,31 @@ its own bound.
 lane, and with one but not the other the lane stays off with one warning at
 startup. The address must be https, or plain http to a loopback host only, since
 the request carries a Bearer token; anything else stops the service at startup.
-To turn the lane off, unset either key and restart. Nothing else about the bot
-changes.
+To turn it off, unset either key and restart.
 
 ### A turn
 
 A turn is taken only when the lane is due: not in the first cycle after one of
 its own pull requests (that cycle is series completion's, however long the pull
 request stayed open), not while it is paused, and not within 48 hours of its
-last pull request. The pinned `metaimport` must list
-`libex-select --reported`, or the lane sits the cycle out before it reads
-anything (see [the pinned CLI contract](#the-pinned-cli-contract-meta_ref)).
-Then:
+last pull request. It also needs a `META_REF` whose selector takes `--reported`
+([the pinned CLI contract](#the-pinned-cli-contract-meta_ref)). Then:
 
 1. **Read the queue**, in its order. Malformed ASINs (anything not
    `^[A-Z0-9]{10}$`), rows under `SYNC_INTAKE_MIN_COUNT` (1), ASINs the catalogue
    already holds and ASINs the lane has already concluded about are dropped. The
    answer is capped at 4 MiB.
 2. **Look each one up** on libex, one listing at a time, at most 150 a turn.
-   A real retailer listing is required: an ASIN libex does not hold writes
-   nothing and is memoized. Only a book is kept, by the listing's content type
-   (`SinglePartBook` or `MultiPartBook`, the bulk export's own rule): a podcast
-   episode, a periodical issue or a listing stating no type is refused and never
-   becomes a row. An answer no retry changes (a refused request, a record for
-   another ASIN) is memoized too. libex saying it cannot answer right now
-   memoizes nothing, any other lookup with no answer holds that ASIN off for 7
-   days, and three failures in a row end the lookups for the turn.
+   A real retailer listing is required, and only a book is kept, by the
+   listing's content type (`SinglePartBook` or `MultiPartBook`, the bulk
+   export's own rule). What comes back decides what the lane remembers:
+   - **memoized**: an ASIN libex does not hold, a listing that is not a book (a
+     podcast episode, a periodical issue, a listing stating no type), and an
+     answer no retry changes (a refused request, a record for another ASIN);
+   - **nothing**: libex saying it cannot answer right now;
+   - **held off for 7 days**: any other lookup with no answer.
+
+   Three failures in a row end the lookups for the turn.
 3. **Select and import** with completion's own tools: the same allow-list
    projection, `metaimport libex-select --reported --attach-editions`, the lane's
    own cap, the create import with `--existing-series-only`, `metafmt`,
@@ -277,12 +273,11 @@ days, so one bad row cannot pin the head of the queue.
   sharing a main title with a held book by the same author is refused too. What it
   still misses mints a work: a title whose key differs ("Daisy Jones and the Six"
   beside "Daisy Jones & The Six"), and two spellings of one new book in the same
-  tranche, since only held works are compared. A `bot-sync` pull request is never
-  flagged for duplicate advisories, so neither is caught at the merge gate either.
+  tranche, since only held works are compared. `bot-sync` pull requests are never
+  flagged for duplicate advisories, so the merge gate catches neither.
 - **A reported volume of a held series** takes exactly the rules of
   [the bound](#the-bound).
-- **A series the catalogue does not hold** is refused, as it is from the feeds. The
-  lane never founds a series.
+- **A series the catalogue does not hold** is refused, as it is from the feeds.
 
 What the lane concludes about a row (not found, not a book, refused, excluded) is
 scoped to the lane: series completion still judges that row for itself, so a
@@ -299,13 +294,12 @@ report can never keep a real volume out of completion.
 
 The first three are clamped: a value past the bound is lowered to it with one
 startup warning, so the environment can only tighten them. Rows past the cap are
-not memoized and come back on a later turn. The 48 hours are spent just before
-the pull request opens, so one GitHub refuses, or one later closed or recycled,
-still used its turn.
+not memoized and come back on a later turn. The 48-hour clock starts just before
+the pull request opens, so the turn still counts if GitHub refuses the pull
+request or it is later closed or recycled.
 
-The queue's `count` only orders the work. Reports are anonymous and unverified,
-so it says nothing about how many servers, libraries or people stand behind an
-ASIN, and it is never evidence for a record.
+The queue's `count` only orders the work and is never evidence for a record
+([it is unverified](./api.md#get-apiv1intakeunknown-asins)).
 
 ### Sharing the one slot
 
@@ -333,9 +327,7 @@ It stays off the systemic stop:
   work or a recording ASIN to a lane pull request is refused, and the attempt is
   spent.
 
-`GET /status` carries an `intake` block (`on`, `last_pr`, `paused_until`), and
-`last_cycle.intake` says how the last turn went. Neither ever holds the address or
-the token.
+Its state is the `intake` block of [`GET /status`](#operating-it).
 
 ## The merge gate
 
@@ -383,13 +375,13 @@ state ends in a decision the service makes itself:
   wrong with the data. Three of these in a row, with no merge and no verdict in
   between, stop the next cycle from starting at once - it waits for the normal
   interval - and `/healthz` reports degraded until a pull request merges or
-  `ai-verify` gives a verdict again, so a broken `ai-verify` cannot spin. A
-  [lane](#the-reported-asin-lane) pull request's recycle does not count toward
-  those three.
+  `ai-verify` gives a verdict again, so a broken `ai-verify` cannot spin. A lane
+  pull request's recycle does not count ([why](#sharing-the-one-slot)).
 
 Only **configuration errors** still **park** a pull request - label it
 `sync:needs-human`, comment and stop watching it: `SYNC_AGENT=none` when there
-is evidence to resolve (a lane pull request is excluded instead), and a 403 from
+is evidence to resolve (a [lane](#sharing-the-one-slot) pull request is excluded
+instead), and a 403 from
 dispatching `ai-verify` or re-running a check (the PAT lacks Actions: read and
 write). Removing the label hands it back.
 
@@ -422,10 +414,8 @@ how many pull requests have been excluded.
 A **circuit breaker** stops a systemic failure from excluding every pull request
 back to back: from the second exclusion in a row (no merge in between) the
 service still excludes, but the next cycle waits for the normal interval and
-`/healthz` reports degraded, naming the count and the last reason. A
-[reported-ASIN lane](#the-reported-asin-lane) pull request's exclusion does not
-count toward it: it pauses the lane for 7 days instead, and its rows are refused
-for the lane alone.
+`/healthz` reports degraded, naming the count and the last reason. A lane pull
+request's exclusion does not count toward it ([why](#sharing-the-one-slot)).
 
 ## The resolver
 
@@ -498,19 +488,19 @@ config surface is exactly this table. Only `GITHUB_TOKEN` is required.
 | `SYNC_RESOLVE_MAX_TOTAL` | `8` | Ceiling on resolver attempts per pull request across all findings; an attempt on a NEW finding is progress and does not count against `SYNC_RESOLVE_ATTEMPTS`. |
 | `SYNC_VERIFY_REDISPATCHES` | `4` | Maximum `ai-verify.yml` re-dispatches per head after runs that failed without a verdict; then the pull request is recycled. |
 | `SYNC_MAX_PARKED` | `3` | Stop opening new pull requests once this many are parked (configuration errors only; an excluded pull request never counts). |
-| `SYNC_AGENT` | `none` | `claude`, `codex` or `none`. With `none` a flagged pull request parks, because nobody can climb the ladder; a reported-ASIN lane pull request is excluded instead. |
+| `SYNC_AGENT` | `none` | `claude`, `codex` or `none`. With `none` a flagged pull request parks, because nobody can climb the ladder; a [lane](#sharing-the-one-slot) pull request is excluded instead. |
 | `CLAUDE_CODE_OAUTH_TOKEN` | - | Claude's subscription token (`claude setup-token`). Preferred over mounting `~/.claude`. |
 | `SYNC_AGENT_MODEL` | - | Optional backend-specific model id for the resolver. |
 | `SYNC_REGIONS` | all 11 | `us uk ca au de fr es it jp in br` - exactly the meta schema's region enum. |
 | `SYNC_DRY_RUN` | off | Do everything except push and open a pull request. Leaves the diff in the clone and prints the pull request body. |
 | `LIBEX_BASE` | `https://libexdb.com` | For tests and local fakes. |
 | `SYNC_TOOLS_DIR` | `/app/bin` | Where `metaimport`/`metafmt`/`metacheck` live. Empty means resolve on `PATH`. |
-| `SYNC_INTAKE_URL` | - | The metadata service's address, for [the reported-ASIN lane](#the-reported-asin-lane). https, or plain http to a loopback host only. The lane is off unless this and the token are both set; one without the other is off with one startup warning. |
+| `SYNC_INTAKE_URL` | - | The metadata service's address, for [the reported-ASIN lane](#the-reported-asin-lane), which runs only with this and the token both set. https, or plain http to a loopback host only. |
 | `SYNC_INTAKE_TOKEN` | - | The Bearer token of the intake queue's `GET` (metaserve's `METASERVE_INTAKE_TOKEN`). |
 | `SYNC_INTAKE_MIN_COUNT` | `1` | Skip queue rows reported fewer times than this. |
-| `SYNC_INTAKE_MAX_LOOKUPS` | `150` | Listing lookups per lane turn. A higher value is clamped to 150. |
-| `SYNC_INTAKE_MAX_WORKS` | `25` | Records per lane pull request, new works and attached editions together. A higher value is clamped to 25. |
-| `SYNC_INTAKE_EVERY` | `48h` | At most one lane pull request per this long. A shorter value is clamped to 48h. |
+| `SYNC_INTAKE_MAX_LOOKUPS` | `150` | Listing lookups per lane turn, at most 150 ([its limits](#its-limits)). |
+| `SYNC_INTAKE_MAX_WORKS` | `25` | Records per lane pull request, new works and attached editions together, at most 25. |
+| `SYNC_INTAKE_EVERY` | `48h` | At most one lane pull request per this long, at least 48h. |
 
 Two further operational notes: tokens never reach a log line (the PAT is handed
 to `git` as an `Authorization` header in the child environment, never in a URL or
@@ -522,8 +512,8 @@ invocation, its output and every watcher decision goes to
 :::note[The kill switch]
 Revoke the bot's PAT, or stop its container. It has no other way into
 audiosilo-meta, and nothing in the catalogue depends on it running. The
-reported-ASIN lane alone stops by unsetting `SYNC_INTAKE_URL` or
-`SYNC_INTAKE_TOKEN` and restarting.
+[reported-ASIN lane](#the-reported-asin-lane) alone stops by unsetting either of
+its two keys and restarting.
 :::
 
 ## The pinned CLI contract (`META_REF`)
@@ -588,10 +578,9 @@ is `SETUP.md` in the private `audiosilo-meta-sync` repository. It is not
 reproduced here: it carries host-specific and credential-handling steps that
 belong with the service rather than in public documentation. Its section 9 is
 the reported-ASIN lane's: it needs metaserve serving the intake queue (v0.25.1 or
-later, `METASERVE_INTAKE_TOKEN` set) and a `META_REF` that lists `--reported`, and
-a compose file with an explicit `environment:` list needs the `SYNC_INTAKE_*` keys
-there as well as in `.env`, or they never reach the container and the lane stays
-off with no error.
+later, `METASERVE_INTAKE_TOKEN` set), and a compose file with an explicit
+`environment:` list needs the `SYNC_INTAKE_*` keys there as well as in `.env`, or
+the lane stays off with no error.
 
 Worth knowing before a first run either way: the first cycle clones
 audiosilo-meta at depth 1 (roughly 4GB) and reads its pack tree, and `metacheck`
