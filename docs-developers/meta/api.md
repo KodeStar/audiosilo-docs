@@ -1062,8 +1062,9 @@ requests a second at full speed on a fast link), and one from 2.6.0 paces a whol
 to about 60 a second across 6 workers, whichever path it falls back to. Those figures
 come from audiosilo-server's meta client (`internal/matchrun/runner.go` `workers` and
 `maxRequestsPerSecond`, `internal/meta/service.go` `maxConcurrentWorkFetches` and
-`maxConcurrentLookups`); `TestDefaultsHoldAnAudioSiloBulkMatch` replays a copy of
-them, so a change on the server side must re-check these defaults by hand; a scraper looping flat out
+`maxConcurrentLookups`; `workers` is 6 from 2.6.0, 2 before it);
+`TestDefaultsHoldAnAudioSiloBulkMatch` replays a copy of the unpaced generation's, the
+faster of the two on the same bucket, so a change on the server side must re-check these defaults by hand; a scraper looping flat out
 wants far more, and its route is the
 [release artifact](overview.md#release-artifacts). A rate of `0` turns the
 limit off (a private metaserve on the same host or LAN as its server can outrun

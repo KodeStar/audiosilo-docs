@@ -6873,8 +6873,8 @@ many books at once, see [Bulk community matching](#bulk-community-matching).
 The console's **Match automatically** (Health > Not matched). A **match run**
 matches many books against the community service in the background, exactly
 as [`…/book/match`](#get-apiv1adminlibrariesidbookmatch) matches one (the same
-facts, the preferred marketplace's ASIN), but reads only the best two works per
-book and asks six books at a time
+facts, the preferred marketplace's ASIN), but asks for only the best two works per
+book, reads the details of the first alone, and asks six books at a time
 ([what that costs the service](#what-a-run-asks-of-the-community-service)). It only **looks**: each book's
 best candidate and what it offers are recorded for the admin to review, and
 nothing changes until the run is **applied**. Applying writes community
@@ -6965,12 +6965,12 @@ as it can.
   as `failed`, `error: "metadata_unavailable"`. It stands above the workers because one
   moment's failure meets them all at once (a lost connection takes every stream on
   it). Any book the service answers for resets the count. A failed run can't be applied
-  (`409 match_run_not_ready`), so what it found is lost and the answer to a long outage
-  is another run.
+  (`409 match_run_not_ready`) and the console offers no review of it (its items can still
+  be read), so what it found goes unused and the answer to a long outage is another run.
 
 `refresh` and `repick` runs share the workers, the pacing, the waits and the stop, but
-they are identifier lookups (`lookup`, `works/{id}`, series facts), never `works/match`,
-so they keep their several round trips per book.
+they are identifier lookups (`lookup`, `works/{id}`, and for a refresh the series facts),
+never `works/match`, so they keep their several round trips per book.
 
 #### `GET /api/v1/admin/match-runs`
 
