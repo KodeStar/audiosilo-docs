@@ -171,7 +171,8 @@ its folders are named well (`Bernard Cornwell/Richard Sharpe/Sharpe - 08 -
 Sharpe's Eagle`). This route takes the facts **separately**, gathers candidates
 along each of them, and ranks every candidate by how well its own facts agree.
 audiosilo-server's "Match with community metadata" dialog is its client (see
-the server's [match endpoint](../server/api/reference.md#get-apiv1adminlibrariesidbookmatch)).
+the server's [match endpoint](../server/api/reference.md#get-apiv1adminlibrariesidbookmatch)),
+and so is its [bulk match run](../server/api/reference.md#what-a-run-asks-of-the-community-service).
 
 | Query param | Notes |
 |---|---|
@@ -185,6 +186,7 @@ the server's [match endpoint](../server/api/reference.md#get-apiv1adminlibraries
 | `narrator` | A narrator guess, **repeatable**; the first 4 are read, each split and matched like `author`. When a recording of a work credits narrators, the best-agreeing recording's agreement counts as a fact weighted 10, and that recording is the `recording_id` (the closest runtime choosing between agreeing recordings) unless it is more than 25% off `runtime`. A work whose recordings credit no narrator isn't judged on it. It finds no candidates on its own. |
 | `asin` · `isbn` | Looked up exactly as on [`/api/v1/lookup`](#apiv1lookupasinisbnlibrivox_id); a hit scores 100. An ASIN longer than 20 characters, or an ISBN longer than 20 once hyphens and spaces are taken out, is ignored. |
 | `limit` | Default 10, capped at 20; a non-numeric or non-positive value falls back to the default. |
+| `expand` | What to inline, as a comma-separated list or by repeating the parameter. `work` is the one value read ([below](#expandwork)); any other is ignored. |
 
 At least one of `q`, `title`, `author`, `series`, `asin` or `isbn` must carry a
 value (400 `one of q, title, author, series, asin or isbn is required`). A
@@ -273,6 +275,50 @@ artifact.
 
 `match` is a [reserved slug](data-model.md) in all three families, like `search`
 and `latest`, since it is a literal segment of this route.
+
+### `expand=work`
+
+From v0.24.0. Over the public service the network is most of a bulk match's time,
+so `expand=work` carries in one answer what a client matching a whole library
+would otherwise fetch per book. **Only the best result** gains two members; every
+other result, and every other member, is as it was, and without `expand` the answer
+is byte-identical.
+
+```json
+{ "results": [
+  { "kind": "work", "id": "the-colour-of-magic", "…": "every works/search field",
+    "score": 97, "recording_id": "the-colour-of-magic-1", "reasons": { "title": 1, "author": "full" },
+    "work": { "…": "byte for byte GET /api/v1/works/the-colour-of-magic" },
+    "series_facts": {
+      "discworld": { "language": "en" },
+      "scheibenwelt": { "language": "de", "translation_of": ["discworld"] }
+    } },
+  { "kind": "work", "id": "runner-up", "…": "every works/search field",
+    "score": 71, "reasons": { "title": 0.8 } }
+] }
+```
+
+- `work` - exactly what [`GET /api/v1/works/{id}`](#apiv1worksid) serves, characters
+  and recaps included when the work has them.
+- `series_facts` - by series id, what the work's series records say: `language`
+  (omitted where the series' members tie, or on an artifact that predates it) and
+  `translation_of` (bare ids, omitted when it translates none), each the value
+  `GET /api/v1/series/{id}` serves. It covers the work's memberships in order, each
+  once, up to 16, leaving out a variant reading order (`ordering_of`). It is never
+  a member list, so one answer adds one work and at most 16 small objects whatever
+  the series' length. A series with no entry is one nothing is known about, and
+  the member is omitted when it would be empty.
+- **Which result.** The first, or at its score the one an identifier found. This
+  route's own ranking ties on the title, so an identifier hit can rank second: find
+  the best by that rule rather than taking `results[0]`.
+
+**A client must not assume it.** The expansion is read after the match has its
+answer, inside the same slot and the same 2-second budget, and it is all or nothing:
+`work` present means the facts were read too. Out of budget or on a read error the
+answer goes out as it would have without `expand`, never a 503 of its own (a match
+that itself runs out of budget is still the 503 above). An older metaserve ignores
+the parameter. So `work` absent on the best is a normal answer that means "fetch it
+yourself", and a client needs that path anyway.
 
 ## The `lang` filter
 
@@ -1010,12 +1056,15 @@ the static site and the sitemaps.
 **The bucket.** One token bucket per client: `--rate-limit` requests a second
 (default **100**) with a burst of `--rate-burst` (default **400**). The defaults
 are sized from the heaviest legitimate caller, an AudioSilo server's bulk match,
-which does not pace itself (about 90 requests a second at full speed on a fast
-link), and a console Series page's burst of lookups. Those figures come from
-audiosilo-server's meta client concurrency (`internal/matchrun/runner.go`
-`workers`, `internal/meta/service.go` `maxConcurrentWorkFetches` and
-`maxConcurrentLookups`); `TestDefaultsHoldAnAudioSiloBulkMatch` replays a copy of
-them, so a change on the server side must re-check these defaults by hand; a scraper looping flat out
+and a console Series page's burst of lookups. Two generations of that server talk to
+this service at once: one before 2.6.0 does not pace itself (2 workers, about 90
+requests a second at full speed on a fast link), and one from 2.6.0 paces a whole run
+to about 60 a second across 6 workers, whichever path it falls back to. Those figures
+come from audiosilo-server's meta client (`internal/matchrun/runner.go` `workers` and
+`maxRequestsPerSecond`, `internal/meta/service.go` `maxConcurrentWorkFetches` and
+`maxConcurrentLookups`; `workers` is 6 from 2.6.0, 2 before it);
+`TestDefaultsHoldAnAudioSiloBulkMatch` replays a copy of the unpaced generation's, the
+faster of the two on the same bucket, so a change on the server side must re-check these defaults by hand; a scraper looping flat out
 wants far more, and its route is the
 [release artifact](overview.md#release-artifacts). A rate of `0` turns the
 limit off (a private metaserve on the same host or LAN as its server can outrun

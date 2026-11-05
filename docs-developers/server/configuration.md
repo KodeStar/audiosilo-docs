@@ -540,7 +540,11 @@ limits how often one client asks; a `429` from it (`internal/meta/client.go`,
 date; 1 s when it gives none; capped at 10 s, `maxRetryAfter`) and asks again, up to
 3 times (`rateLimitRetries`), so a bulk match's burst slows down instead of failing
 books. A wait the caller's deadline would cut short isn't started, and a `429` still
-there after the retries is an upstream failure like any other.
+there after the retries is an upstream failure like any other. From 2.6.0 a
+[match run](api/reference.md#what-a-run-asks-of-the-community-service) also waits out a
+`503` this way, as metaserve answers one past a match's budget, and paces itself to about
+60 requests a second (no setting for either). Anywhere else a `503` is an outage at once:
+an admin or a listener is waiting on the answer.
 
 #### The persistent cache
 

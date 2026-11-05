@@ -174,14 +174,32 @@ The score weighs the book's title, author, series and length, and also:
   **Audible marketplace** plays no part, since the store you buy from says
   nothing about what language a library is in.
 
-A server with a [local copy](server.md#keeping-a-local-copy) scores this way from
-2.6.0. One that asks meta.audiosilo.app does once that service has been updated too.
+meta.audiosilo.app already scores a book's place in a series this way, and marks
+down a length that's far off, for any server that asks it. Narrators and language count from
+2.6.0, the first version that sends them. A server with a
+[local copy](server.md#keeping-a-local-copy) scores all of this from 2.6.0.
+[ASIN and ISBN tags as hints](#asin-and-isbn-tags-are-hints),
+[weak matches](#weak-matches) and [tidied titles](#tidied-titles) come with the
+server itself, from 2.6.0, however it asks.
 
-Books you've ignored under **Not matched** are left out of a run. If the
-catalogue stops answering, or community metadata is turned off, the run stops
-by itself and the card says why. A run sends the same as matching a book by
-hand (see [What matching sends](books.md#matching-with-community-metadata)), a
-couple of books at a time.
+Books you've ignored under **Not matched** are left out of a run. A run sends the
+same as matching a book by hand (see
+[What matching sends](books.md#matching-with-community-metadata)), for several
+books at a time.
+
+From 2.6.0 a run against the community service is much faster, as it mostly asks
+once per book. A server with a [local copy](server.md#keeping-a-local-copy) answers
+from that copy once it is ready, so it has no round trips to wait on; until then,
+and whenever the copy runs into an error, its lookups go to the online service.
+
+If the service is only busy, the run waits and carries on. If it stays unreachable,
+the run stops by itself, and the card says "The last run stopped: the community
+metadata service didn't answer. Try again later." A run that stops this way has no
+review: nothing was changed, and what it had found so far is gone, so run it again
+once the service is back. The same goes for turning community metadata off while a
+run is still looking ("The last run stopped: community metadata was turned off.").
+Turned off while a run is applying, it stops as **Stop** does: what went in stays, and
+the rest is left to apply later from the same review.
 
 #### Weak matches
 
