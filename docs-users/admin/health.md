@@ -124,9 +124,9 @@ what it found and apply it.
    Alice in Wonderland #2"), and the ASIN with its store. A match to the wrong
    book of a series, or to another series altogether, shows at a glance.
 5. **Confident** matches are ticked; untick any you don't want. **To review**
-   lists matches that scored 60% to 89%, or only just ahead of another work, and
-   matches whose recording is another length than the book, however well they
-   scored. Those say so in both lengths ("Held for review: the book is 10h 34m
+   lists matches that scored 60% to 89%, only just ahead of another work, or with
+   no ASIN or ISBN to attach, and matches whose recording is another length than
+   the book, however well they scored. Those say so in both lengths ("Held for review: the book is 10h 34m
    long, this recording 7h 2m"), as the closest recording can be
    another edition. Tick the ones that are right, or click **Match by hand** to open that book's
    match dialog over the review. When you accept a match there, you're back on
@@ -174,6 +174,9 @@ The score weighs the book's title, author, series and length, and also:
   **Audible marketplace** plays no part, since the store you buy from says
   nothing about what language a library is in.
 
+A server with a [local copy](server.md#keeping-a-local-copy) scores this way from
+2.6.0. One that asks meta.audiosilo.app does once that service has been updated too.
+
 Books you've ignored under **Not matched** are left out of a run. If the
 catalogue stops answering, or community metadata is turned off, the run stops
 by itself and the card says why. A run sends the same as matching a book by
@@ -185,9 +188,10 @@ couple of books at a time.
 A run doesn't offer a weak match for review. When the best candidate scores
 under 60%, the community most likely doesn't have the book, so it is listed under
 **Not found** with the score in its wording ("Only weak community matches (the
-best scored 48 of 100)"). There is nothing to tick on it, but **Match by hand**
-still works, and the [match dialog](books.md#matching-with-community-metadata)
-still lists every candidate, however low it scored.
+best scored 48 of 100): find it by hand from the book page"). There is nothing to
+tick on it, but **Match by hand** still works, and the
+[match dialog](books.md#matching-with-community-metadata) still lists the closest
+candidates, however low they scored.
 
 #### ASIN and ISBN tags are hints
 
@@ -229,8 +233,8 @@ match, so its ASIN or ISBN counts as the book's straight away (see
 
 **Fill in what's missing** replaces a book's title only when the title from its
 files is the community's title plus nothing but clutter: the series name, a number
-that the book's position or the community's title states, the community's
-subtitle, words such as "book", "volume" or "unabridged", and a store's genre labels
+that the book's position (its own or the community's) or the community's title
+states, the community's subtitle, words such as "book", "volume" or "unabridged", and a store's genre labels
 such as "LitRPG". So "Emergence: The Mystic Knight, Book 1 (Unabridged)" becomes
 "Emergence".
 

@@ -526,8 +526,8 @@ to offer yet.
 3. **Possible matches** lists what was found, each with its cover, how
    closely it matches ("92% match"), its narrators and whether its length matches your
    files. The score counts whichever fits the book best: its tags, its
-   folders or what you typed. An ASIN or ISBN that matches scores 100%. Every
-   candidate is listed, however low it scored. Pick
+   folders or what you typed. An ASIN or ISBN that matches scores 100%. The
+   closest few are listed, however low they scored. Pick
    one and click **Compare fields**.
 4. If the book was recorded more than once, pick the right **Edition**. A
    recording sold in several Audible stores has an ASIN in each; the match

@@ -6911,7 +6911,7 @@ Each book's **outcome**:
 |---|---|
 | `auto` | Confident (`matchrun.Classify`): the best candidate scores **90** or more, at least **10** ahead of the next, its recording has an ASIN or ISBN, and, when both lengths are known, the recording's runtime is within **10%** of the book's (the closest recording of a work can still be another edition). An identifier hit (`reasons.identifier`: in a match run always a tag hint) needs no lead, unless the next candidate is one too (`review`; a guard, as metaserve names one work per request today). So a wrong tag ASIN within 10% of the length is `auto`. Applied unless the admin leaves it out. A repick's offers are all `auto`. |
 | `review` | A candidate that isn't confident. Applied only if the admin puts it in. One held because its recording's length is more than 10% from the book's (a match run's or a refresh's) carries `detail: "length_differs"` (from 2.4.0), worded with the item's `book.duration` and the proposal's `runtime_min`. |
-| `none` | No candidate; or, in a match run, a best candidate scoring under **60** (`matchrun.ReviewFloor`) on metaserve's scale, with `detail: "weak_match"` (`DetailWeakMatch`), its `score` kept for the review's wording and its `proposal` empty (from 2.6.0). A candidate without `reasons` (an older metaserve's fallback search, on another scale) stays `review`. The match dialog still lists every candidate. |
+| `none` | No candidate; or, in a match run, a best candidate scoring under **60** (`matchrun.ReviewFloor`) on metaserve's scale, with `detail: "weak_match"` (`DetailWeakMatch`), its `score` kept for the review's wording and its `proposal` empty (from 2.6.0). A candidate without `reasons` (an older metaserve's fallback search, on another scale) stays `review`. The match dialog has no such floor: it lists its candidates (up to 6) however low they scored. |
 | `error` | The service failed for this book (`detail: "metadata_unavailable"`). Five in a row stop the run. |
 
 Run **statuses**: `matching` → `ready` (waiting for review) → `applying` →
@@ -7081,8 +7081,9 @@ with the community title's words taken out, what is left of it is only: the comm
 subtitle; the series names, the community's and the book's own, as `match.SeriesForms`
 spells them; `clutterWords` (book, vol, volume, no, unabridged, novel, edition, series,
 audiobook, store labels such as litrpg and fantasy, and the joining words of, the, a,
-an); and numbers the book's positions or the community title state (`statedNumbers`:
-digits, ordinals, number words, roman numerals). Any other word or number keeps the
+an); and numbers the positions (the community's and the book's own, in every series)
+or the community title state (`statedNumbers`: digits, ordinals, number words, roman
+numerals). Any other word or number keeps the
 file's title: "part" names a split of the book, "abridged" another edition, "Book 2"
 of a work at position 1 another volume. A title of the community's words and nothing
 more is replaced only when it is all in one case. A reverted title has no `edited`

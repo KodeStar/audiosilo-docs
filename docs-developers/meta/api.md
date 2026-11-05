@@ -214,9 +214,10 @@ a score (start values from a benchmark, tuned on the server's harness, each pinn
 stated one (`positionConflictFactor`, 0.8, unless a membership's range covers it, an
 omnibus), a work in another known language than a stated `language`
 (`languageMismatchFactor`, 0.8), and a closest recording more than 25% off `runtime`
-(`runtimeMismatchFactor`, 0.85). The language and runtime factors never touch an
-identifier hit. A request without `language` and `narrator` scores as before, except
-for the position and runtime factors, which apply to every request. A title guess that is
+(`runtimeMismatchFactor`, 0.85). No factor touches an identifier hit, which scores
+100 whatever else disagrees. A request without `language` and `narrator` scores as before, except
+for the position and runtime factors, which apply to any request stating a position or
+a runtime. A title guess that is
 only the `series` name (what `FWM04 - He Who Fights with Monsters - Book 4`
 leaves once its numbering is cut) says nothing about which volume, so it never
 lets another volume outrank a stated one. It still counts for a work titled that

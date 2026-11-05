@@ -351,7 +351,8 @@ snapshot and re-resolves it only when that changes it (most books have no genre,
 or only a placeholder), flushed with the path readings. A skipped book indexed
 before migration `0067` (`books.hints_checked = 0`) has its
 [tag hints](data-model.md#tag-hints) read the same way (`catalog.SetTagHints`),
-waiting while ffprobe fails on it.
+waiting while ffprobe fails on it, unless its last index already recorded that
+failure (`probe_failed`), when it takes what its tags give.
 
 A skipped folder book also has its **Audiobookshelf `metadata.json`** read again
 when it is new, changed or gone: ABS rewrites the file without touching the
