@@ -434,19 +434,23 @@ them. A run:
 
 - **Candidates**: books libraries only, upper-cased and format-checked. Each
   book's `asin` (except one a community match gave it, which is known by
-  definition), plus a tag ASIN only for a book with no ASIN or ISBN of its own
-  and a tag no other book carries (`catalog.UnknownASINCandidates`).
+  definition), plus a tag ASIN only for a book with no ASIN or ISBN of its own,
+  no admin edit of its ASIN (a cleared one too) and a tag no other book carries
+  (`catalog.UnknownASINCandidates`).
 - **Lookup first**: up to 500 candidates a run (never looked up, or looked up 30+
   days ago) go through the ordinary lookup (`meta.Service.KnownASIN`); only a 404
-  counts as unknown, and any other failure stops the lookups until the next day.
+  counts as unknown, and any other failure stops the lookups until the next day
+  (the run is then `failed`, but the unknown ASINs already confirmed are still
+  reported).
   In mirror mode the run waits until the local copy is ready, the copy answers the
   lookups, and only the report goes to `base_url`.
 - **The report**: the unknown ASINs not sent in the last 30 days, shuffled, 200 to
   a `POST <base_url>/api/v1/intake/unknown-asins` with the body exactly
-  `{"asins":[...]}`, at most 5 a run and none within 23 hours of the last. Headers
-  are only `Content-Type: application/json` and a fixed `User-Agent: AudioSilo`:
-  no `X-AudioSilo-Client`, server id, auth or version. Redirects are never
-  followed.
+  `{"asins":[...]}`, at most 5 a run and none within 23 hours of the last. The only
+  headers it sets are `Content-Type: application/json` and a fixed
+  `User-Agent: AudioSilo` (beside the HTTP client's own `Host`, `Content-Length`
+  and `Accept-Encoding`): no `X-AudioSilo-Client`, server id, auth or version.
+  Redirects are never followed.
 - **HTTPS only**: a `base_url` with plain `http` is reported to only when its host
   is loopback (`127.0.0.0/8`, `::1`, `localhost`); any other is `not_offered`
   with no call.

@@ -1257,8 +1257,8 @@ at the request.
 **`unknown_asin_reports`** has one row per ASIN the job looked up: `asin`
 (primary key, upper case), `checked_at` (when it was last looked up), `unknown`
 (`1` when that answer was "not in the community database"; `0` = known, never
-sent) and `sent_at` (when a report holding it was accepted, `NULL` for never; an
-`unknown` row a later lookup finds known forgets it). It names no book, library
+sent) and `sent_at` (when a report holding it was accepted, `NULL` for never; a
+later lookup that finds an `unknown` row known clears it). It names no book, library
 or path: a row whose ASIN no book holds any more is deleted at the start of the
 next run. Derived and disposable (losing it only means the ASINs are looked up
 and sent again), written through the user-state path (no content cache reads it).

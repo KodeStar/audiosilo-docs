@@ -295,7 +295,7 @@ on (it is greyed out otherwise). Once a day, while it is on:
 
 1. The server collects your books' Audible ASINs: each book's own ASIN, and an
    ASIN from a book's tags only when the book has no ASIN or ISBN of its own
-   and no other book's tags carry the same ASIN.
+   (nor one you edited or cleared) and no other book's tags carry the same ASIN.
 2. It looks each one up in the community database first, as the lookup always
    does, and keeps only the ones the database doesn't know.
 3. It sends those ASINs to the metadata service, and nothing else: no titles,
@@ -335,7 +335,8 @@ report went:
   https address and a service that accepts them)." An older service, or one
   run with reports turned off, is then left alone for a week.
 - In red, "Last report failed *when*; it's tried again tomorrow." The service
-  didn't answer, or was too busy; nothing was marked as sent.
+  didn't answer or was too busy, or a lookup failed; any ASIN it didn't accept
+  is sent again next time.
 
 #### Keeping a local copy
 
