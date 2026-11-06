@@ -859,7 +859,8 @@ tags-first library an untagged leaf book keeps the whole leaf as its title. A
 [path-first library](data-model.md#metadata-overrides-and-effective-values)
 reads the leaf's parts too (before, the whole leaf was the title), and so does
 the console's [`match_query`](api/reference.md#get-apiv1adminlibrariesidbook)
-(`Dark Road 1-5 Bruno Miller` for a leaf with no title part). On the LibraForge
+where it replaces a junk or swapped tag (`Dark Road 1-5 Bruno Miller` for a
+leaf with no title part). On the LibraForge
 benchmark's library of these leaves (about 600 books) the reading took
 auto-right matches up by 39 and auto-wrong from 8 to 7.
 
@@ -938,8 +939,9 @@ snapshot's `@rev` went from 1 to 2 for this rule, and from 2 to 3 for
   revision until its next re-index or path reading.
 - A stamped book is never tested again, so a later change that makes the
   reading change more books (`TitleNotSeries` more titles, `MaybeSeriesTitle`
-  or `LeafSeries` more flags) needs a new revision and its own `NamesCheck`
-  term.
+  or `LeafSeries` more flags) needs a new revision, its own `NamesCheck`
+  term, and the revision it replaces added to `revOlderOwn`'s list, so that
+  revision's snapshots are stamped too.
 
 ### The in-process probe
 

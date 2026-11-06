@@ -256,11 +256,11 @@ Such a work's series agreement isn't marked down for a weak title, and its title
 counts at least as much as a generic record's at the stated volume: the
 series-named first volume whose file names only the subtitle, a pack against
 its range, `American Dragons, Book 3`. The series guess resolves to the series
-spelled as named when one is (`Dark Road Series` is `Dark Road`), else to every
-series that fits, so a fuzzy sub-series (`Frontlines: Evolution` for
-`Frontlines`), a shorter name (`Summoner` beside `Summoner School`) or a
-spin-off gains nothing. A title guess that names a sibling at another position
-more clearly still wins, unless the runtime rules that sibling out
+spelled as named when the pool holds one (`Dark Road Series` is `Dark Road`),
+else to every series that fits. So beside the series it names, a fuzzy
+sub-series (`Frontlines: Evolution` for `Frontlines`), a shorter name
+(`Summoner` beside `Summoner School`) or a spin-off gains nothing. A title
+guess that names a sibling at another position more clearly still wins, unless the runtime rules that sibling out
 (`Sharpe's Siege` filed at 20 is not Sharpe's Revenge however close its length).
 
 metaserve is the one place a title's numbering is read, so clients send folder

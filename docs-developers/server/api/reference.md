@@ -6643,10 +6643,10 @@ book path).
   `Track 01`, `03`) or a junk author (`Unknown`, `Various Artists`) is replaced
   on its own. A fact the path doesn't give keeps the tag's value. A path with
   no title (`Stormlight Archive/03`, or `Bruno Miller; Dark Road; Book 01-05`)
-  gives the series and its position or range instead (`Dark Road 1-5`). It
-  only fills the box: the match itself always sends the book's own facts, and `q` is what
-  the admin then searches for. Always present (`""` for a book with nothing to
-  say).
+  gives the series and its position or range instead (`Dark Road 1-5`; the
+  series alone for `Book XX`). It only fills the box: the match itself always
+  sends the book's own facts, and `q` is what the admin then searches for.
+  Always present (`""` for a book with nothing to say).
 - `generated_description` - the description the [Bridge](#the-bridge) generated
   for the book (its checked `.audiosilo/description.json`, Phase 1c), with
   `generated_at` the time `bridge.json`'s `description` object gives (omitted when

@@ -418,8 +418,8 @@ title; the next scan checks a snapshot of revision 1 or none once, as
 [the scanner](scanner.md#an-album-that-is-only-the-series) describes. Revision 3
 (2.6.0, server#319) is the one where a leaf named `Author; Series; Book NN[;
 Title]` came to state its series and position; the next scan reads a snapshot
-older than 3 with such a leaf once, and stamps the rest, as
-[the scanner](scanner.md#a-leaf-that-states-its-series) describes. A snapshot
+older than 3 with such a leaf once, and stamps an unflagged revision 1 or 2
+snapshot, as [the scanner](scanner.md#a-leaf-that-states-its-series) describes. A snapshot
 with no revision (any server before revision 1) was read when the lone folder above a book
 (`Charles Dickens/Great Expectations`) was its series rather than its author. For
 a book one folder deep, `Catalog.Signatures` sorts such a snapshot out in SQL

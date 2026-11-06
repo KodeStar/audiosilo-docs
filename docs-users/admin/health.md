@@ -173,10 +173,11 @@ The score weighs the book's title, author, series and length, and also:
   series name and a number ("Dungeon Diving 102") is read as a title, not a
   position, when the book says it is another number.
 - **The series' own listing.** A work the series lists at exactly the book's
-  number (or a box set's range), with a length within 2% of the book's, keeps
-  its full score even when the book's title doesn't name it, for example a
-  first volume whose file carries only its subtitle. So more of a series'
-  volumes are applied automatically.
+  number (or a box set's range), with a length within 2% of the book's, isn't
+  marked down when the book's title doesn't name it, for example a first
+  volume whose file carries only its subtitle. A title that clearly names
+  another volume of the series still wins. So more of a series' volumes are
+  applied automatically.
 - **Its narrators.** A recording read by the book's narrators counts in the
   work's favour, and is the recording the match picks if its length fits.
 - **Its language.** A work the community knows to be in another language scores

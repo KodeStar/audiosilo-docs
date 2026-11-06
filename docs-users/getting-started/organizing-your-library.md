@@ -106,11 +106,11 @@ Some library tools name each book's folder and file `Author; Series; Book NN; Ti
 - `Book XX` and `Book 00` put the book in the series with no number.
 - The part after `Book` must be a number or `XX`, so a name like `Oprah; Picks; Book Club` says nothing about a series.
 
-A series tag in the files still wins over the name. When the tags give a series but no number, the number in the name is kept.
+With the files' tags first (the default), a series tag in the files still wins over the name, and when the tags give a series but no number, the number in the name is kept. With folder names first, the name's series and number win over the tags.
 
 The title depends on where the library takes [book details from](../admin/libraries.md#where-book-details-come-from):
 
-- **The files' tags first** (the default): a book with no title tag keeps the whole name as its title, and a title tag or the album tag is used as usual (see [When the album tag is the series](#when-the-album-tag-is-the-series)).
+- **The files' tags first** (the default): a book with no title or album tag keeps the whole name as its title, and a title tag or the album tag is used as usual (see [When the album tag is the series](#when-the-album-tag-is-the-series)).
 - **Folder names first**: the title is the name's title part ("From The Ashes"). A name with no title part leaves the title to the tags.
 
 Books already on your server get their series and number at the first scan after the upgrade, from one read of each such book's tags, without reading the audio again. Your own edits stay on top.
