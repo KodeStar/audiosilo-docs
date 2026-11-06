@@ -6975,8 +6975,9 @@ up by its own identifier alone, the ISBN when the ASIN finds nothing, and the
 record it names is the book, `auto` whatever its score unless its recording's
 length is more than 10% from the book's, which makes it `review` (from 2.6.0, 20%
 when the book's own narrator credit names a reader of that recording,
-`matchrun.readsRecording`, as the lookup sends no narrator: a book a run applied on
-its narrator's say-so stays up to date); an identifier the
+`matchrun.readsRecording`, a placeholder credit never counting, as the lookup
+sends no narrator: a book a run applied on its narrator's say-so stays up to
+date); an identifier the
 community doesn't know is `none` with `detail: "identifier_unknown"`, never a
 fuzzy match by title). A refresh fills in, or with `overwrite` replaces, the
 details an identifier alone didn't bring (an enrichment write, an `ids`
