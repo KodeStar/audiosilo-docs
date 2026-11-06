@@ -262,8 +262,9 @@ still goes to the metadata service).
   (United Kingdom, United States, Germany and so on). When a recording sells in
   several stores, a match takes this store's ASIN; with **No preference** it
   takes the US store's. It says nothing about what language your library is in:
-  a match reads that from each book (from 2.6.0, for a book stating none, from
-  the [rest of its library](health.md#matching-every-book-at-once)). It applies to the next match, and
+  a match reads that from each book, or, from 2.6.0, from
+  [the rest of its library](health.md#matching-every-book-at-once) when the book
+  states none. It applies to the next match, and
   [Use *country* ASINs](health.md#which-asin-a-match-takes) can switch books
   matched earlier.
 - **Service address** in the **Service** card is the metadata service your
