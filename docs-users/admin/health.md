@@ -164,9 +164,13 @@ A match is confident when it scores 90% or more, at least 10 points ahead of
 the next candidate, its recording has an ASIN or ISBN to attach, and its
 recording's length is within 10% of the book's (when both are known: the
 closest recording can still be another edition, such as a dramatization of an
-unabridged book). An ASIN or ISBN from the book's tags that the community knows
-needs no lead: see [ASIN and ISBN tags are hints](#asin-and-isbn-tags-are-hints).
-Whatever a
+unabridged book). From 2.6.0 the length may be up to 20% off when the book's
+narrator reads that recording: the community agrees on the narrator and the
+recording's own credit names them, so it's the same production timed
+differently. A credit such as Full Cast, GraphicAudio, Various or Unknown names
+no one and doesn't count. An ASIN or ISBN from the book's tags that the
+community knows needs no lead: see
+[ASIN and ISBN tags are hints](#asin-and-isbn-tags-are-hints). Whatever a
 run writes shows as a **Community** value on the book's page, and you can
 revert it like any other. To undo every community match at once and start
 again, use [Clear community matches](server.md#community-metadata) in Server
@@ -246,7 +250,8 @@ scan.
 
 A match sends the hint when the book has no ASIN or ISBN of its own. A hint the
 community knows scores 100% and is confident whatever the next candidate scored,
-as long as its recording's length is within 10% of the book's. It goes to
+as long as its recording's length is within 10% of the book's (from 2.6.0, 20%
+when the book's narrator reads it). It goes to
 **To review** instead when the length doesn't fit, or when the next candidate was
 found by an identifier too.
 
@@ -255,7 +260,8 @@ none of the book's narrators reads, and the same work has another recording with
 10%, **Match automatically** proposes that one instead: a tag's ASIN can name
 another edition of the right book. As its length fits, that match is confident
 when the recording has an ASIN or ISBN. If the book's narrator reads the hint's
-recording, the match keeps it and holds the book for review by its length. A book
+recording, the match keeps it: confident within 20% of the book's length, held for
+review by its length further off. A book
 that doesn't say it's a dramatization moves onto one only if its narrator reads it
 or its length names it (see [Matching every book at once](#matching-every-book-at-once)).
 The match dialog still starts from the hint's recording; choose the edition there.
@@ -349,7 +355,11 @@ series. Review and apply it as above, choosing **Fill in what's missing** or
 ISBN only** isn't offered). Books that are already up to date aren't listed.
 A book whose ASIN or ISBN the community doesn't
 know is listed under **Not found** ("The community doesn't know this book's
-ASIN or ISBN"); it is never matched to another book by its title.
+ASIN or ISBN"); it is never matched to another book by its title. A book whose
+recording is more than 10% off its length goes to **To review** (from 2.6.0, 20%
+when the book's narrator reads that recording, as in
+[a match](#matching-every-book-at-once)), so a book matched on its narrator's
+say-so is still kept up to date.
 
 To clean up series an earlier match added (every edition and reading order of
 a series, say), run **Fill in matched books** and apply it with **Use
