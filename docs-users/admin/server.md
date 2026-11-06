@@ -304,8 +304,9 @@ on (it is greyed out otherwise). Once a day, while it is on:
    a count and the dates it was reported, with no address. It holds the
    address in memory for about a day after its last request, for a rate limit.
    meta.audiosilo.app keeps no access log for these reports over HTTPS, which
-   is how AudioSilo servers send them; if the service fails while
-   answering one, the web server's error log can record the address. Its
+   is how AudioSilo servers send them. The web server's error log can still
+   record the address of a request that goes wrong, such as a report that
+   cannot reach the service while it is restarting. Its
    [privacy page](https://meta.audiosilo.app/privacy) ("Reports of unknown
    books") has the details.
 
