@@ -1415,8 +1415,9 @@ book for its series even when it is a disc folder's book, so
 goes with the series: the layout's own, else the scanned one only while the
 series it numbers stays (the same series, by any case). A tag title that IS the
 leaf's name, number and all (`13 Reasons Why`), is kept whole with no position
-read from it (never a `LeafSeries` leaf, whose parts the layout reads even when
-the title is the whole leaf, as an untagged book's is). It is a resolve rule, not a scan rule: `books.scanned` is the
+read from it, except a `LeafSeries` leaf, whose parts the layout reads even
+when the title is the whole leaf (an untagged book's). It is a resolve rule, not
+a scan rule: `books.scanned` is the
 same in either mode, so `UpdateLibrary` re-resolves every book of the library
 (`refreshLibrary`, `refreshEffective` per book) in the edit's own transaction
 when the stored source changes - no rescan, no disk access (about 1 s per

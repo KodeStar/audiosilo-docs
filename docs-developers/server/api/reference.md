@@ -6642,10 +6642,9 @@ book path).
   (`Dune/Dune` by Frank Herbert). A junk title (`Unknown`, `Untitled`,
   `Track 01`, `03`) or a junk author (`Unknown`, `Various Artists`) is replaced
   on its own. A fact the path doesn't give keeps the tag's value. A path with
-  no title (`Stormlight Archive/03`, or a leaf `Bruno Miller; Dark Road; Book
-  01-05` with no title part) gives the series and its position or range
-  instead (`Dark Road 1-5`). It only fills
-  the box: the match itself always sends the book's own facts, and `q` is what
+  no title (`Stormlight Archive/03`, or `Bruno Miller; Dark Road; Book 01-05`)
+  gives the series and its position or range instead (`Dark Road 1-5`). It
+  only fills the box: the match itself always sends the book's own facts, and `q` is what
   the admin then searches for. Always present (`""` for a book with nothing to
   say).
 - `generated_description` - the description the [Bridge](#the-bridge) generated

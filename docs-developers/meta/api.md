@@ -241,13 +241,18 @@ second guess naming another volume (`Throne of Glass 1` beside `02 - Throne of
 Glass`) doesn't count. A generic record
 ("Dork Diaries 12") at the stated volume counts a little below a real title
 there that a guess matches well, unless a guess spells the record exactly.
+
 **A listing vouches for a work** when the request states `position` and
-`runtime`: a series the request's `series` guesses name lists the work at
-exactly that position (a range included, an omnibus or a publisher's pack),
-its closest recording is within 2% of `runtime` (plus the minute a stored
-runtime is rounded to), and it is in the request's `language` when one is
-given (else it isn't listed only through a series that translates another).
-Then its series agreement isn't marked down for a weak title, and its title
+`runtime` and:
+
+- a series the request's `series` guesses name lists the work at exactly that
+  position (a range included: an omnibus or a publisher's pack);
+- its closest recording is within 2% of `runtime`, plus the minute a stored
+  runtime is rounded to;
+- it is in the request's `language` when one is given. With no language, a
+  listing only through a series that translates another doesn't count.
+
+Such a work's series agreement isn't marked down for a weak title, and its title
 counts at least as much as a generic record's at the stated volume: the
 series-named first volume whose file names only the subtitle, a pack against
 its range, `American Dragons, Book 3`. The series guess resolves to the series
@@ -257,6 +262,7 @@ series that fits, so a fuzzy sub-series (`Frontlines: Evolution` for
 spin-off gains nothing. A title guess that names a sibling at another position
 more clearly still wins, unless the runtime rules that sibling out
 (`Sharpe's Siege` filed at 20 is not Sharpe's Revenge however close its length).
+
 metaserve is the one place a title's numbering is read, so clients send folder
 names raw.
 

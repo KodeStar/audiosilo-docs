@@ -272,7 +272,8 @@ Whichever comes second fills what the first leaves empty, so with **Folder
 names first** the tags still give the narrator, and a series for a book the
 folders don't name one for. A tag title that is exactly the folder's name,
 number and all (`13 Reasons Why`), is kept whole, so a number that is part of
-the title isn't read as a series number.
+the title isn't read as a series number (a name like `Author; Series; Book 04;
+Title` is still read as its parts).
 
 Either way, a book whose folder has an Audiobookshelf `metadata.json` takes the
 values in that file over both (see
