@@ -262,8 +262,10 @@ still goes to the metadata service).
   (United Kingdom, United States, Germany and so on). When a recording sells in
   several stores, a match takes this store's ASIN; with **No preference** it
   takes the US store's. It says nothing about what language your library is in:
-  a match reads that from each book. It applies to the next match, and
-  [Use *country* ASINs](health.md#which-asin-a-match-takes) can switch books
+  a match reads that from each book, or, from 2.6.0, from
+  [the rest of its library](health.md#matching-every-book-at-once) when the book
+  states none and nearly all its library's books agree on one. It applies to the
+  next match, and [Use *country* ASINs](health.md#which-asin-a-match-takes) can switch books
   matched earlier.
 - **Service address** in the **Service** card is the metadata service your
   server uses (`https://meta.audiosilo.app` out of the box). Change it only if

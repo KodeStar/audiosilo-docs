@@ -508,7 +508,9 @@ to offer yet.
 1. Click **Match with community metadata** on the book's page (or **Find a
    match** in its **Community metadata** card). The dialog looks for the book
    straight away, using what its tags say (title, author, series, narrators,
-   language), its length, its ASIN or ISBN (with neither, any
+   language; from 2.6.0, with no language,
+   [its library's](health.md#matching-every-book-at-once) when nearly all the
+   library's books that state one agree), its length, its ASIN or ISBN (with neither, any
    [in its tags](health.md#asin-and-isbn-tags-are-hints)), and what its
    **folders** say: the top folder as the
    author, the folder holding the book as the series, and the book's own folder
@@ -573,8 +575,8 @@ dialog says "meta.audiosilo.app isn't answering" - try again in a minute.
 
 :::note[What matching sends]
 Opening the match dialog sends the book's tagged title, author and series, its
-length, narrators and language, its ASIN or ISBN (with neither, any in its tags),
-anything you type, and up to three of its folder names (the top folder, the
+length, narrators and language (or its library's, worked out on your server), its
+ASIN or ISBN (with neither, any in its tags), anything you type, and up to three of its folder names (the top folder, the
 folder holding the book, and the book's own folder or file name) to the metadata
 service. It sends nothing about your server or
 who listens. For a player's "About this book", the server sends only the ASIN
