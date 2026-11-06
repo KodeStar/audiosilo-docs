@@ -812,7 +812,7 @@ embedded data winning where it is trustworthy:
 The scanner does not record where each value came from. The admin console's
 per-field provenance works it out when the book is read
 (`bookLayers.resolve`): a scanned value equal to what `DeriveFromPath` yields
-for the book's path is `path`, a value an Audiobookshelf `metadata.json` gave is
+for the book's path (or a title equal to `metadata.PathTitle`, below) is `path`, a value an Audiobookshelf `metadata.json` gave is
 `abs`, anything else `tag` - one rule for every row, old
 or new (see [Data model](data-model.md#metadata-overrides-and-effective-values)).
 A library whose `metadata_source` is `path` takes the folder layout over the
@@ -877,9 +877,10 @@ name and doesn't count either. Then, in order:
 5. Otherwise the album stays.
 
 The result is the stored title, so the player, search and the match's query all
-see the book's own. The console's provenance still works it out by comparison
-(above): a title taken from a `LeafSeries` leaf's title part differs from
-`DeriveFromPath`'s whole leaf, so it reads as `tag` there.
+see the book's own. The console's provenance labels a title taken from the path
+as `path`: besides `DeriveFromPath`'s title, `resolve` compares the title with
+`metadata.PathTitle`, the path's title `TitleNotSeries` reads (a `LeafSeries`
+leaf's title part, or the book folder above a disc or part folder).
 
 **Books already indexed** are put right without a re-index or a migration: the
 snapshot's `@rev` went from 1 to 2 (see
