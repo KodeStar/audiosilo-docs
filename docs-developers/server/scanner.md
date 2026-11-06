@@ -759,8 +759,8 @@ embedded data winning where it is trustworthy:
    first part for folder books) overlay the baseline: tags via `dhowden/tag`
    in-process (album ≻ title for the book title, `metadata.bookTitle` - except when the title tag
    extends the album with a real subtitle, the Audible shape where album holds
-   the *series* and only the title tag carries the actual book title, and,
-   from 2.6.0, an album that only names the book's series:
+   the *series* and only the title tag carries the actual book title; from
+   2.6.0 an album that only names the book's series gives way too, see
    [below](#an-album-that-is-only-the-series); album-artist
    ≻ artist for the author, a narrator tag ≻ composer for the narrator (below), plus raw-tag lookups for
    the series atoms and the release date - MP4 `©day`, ID3 `TDRC`/`TYER`,
@@ -839,8 +839,8 @@ and paths only (probing in-process with no ffprobe is a possible follow-up).
 Many libraries tag the series as the album and the book as the title
 (`Mark Tufo/Mark Tufo; Indian Hill; Book 04; From The Ashes`, album "Indian
 Hill"; `Eric Vall/Without Law/Book 10`, album "Without Law", title "Without Law
-10"), so `bookTitle`'s album-over-title named every book of the series alike, and
-`matchrun.QueryFor` sent the series as the title, which matched book 1. From
+10"). `bookTitle` prefers the album, so every book of the series got the same
+title, and `matchrun.QueryFor` sent the series as the title, which matched book 1. From
 2.6.0 (server#317) `readNames` passes the title through
 `metadata.TitleNotSeries` (`metadata/seriestitle.go`). It applies when the title
 is the album (`Metadata.AlbumTag` / `TitleTag` record the pair `bookTitle` chose
@@ -877,26 +877,28 @@ name and doesn't count either. Then, in order:
 5. Otherwise the album stays.
 
 The result is the stored title, so the player, search and the match's query all
-see the book's own. The console's provenance labels a title taken from the path
-as `path`: besides `DeriveFromPath`'s title, `resolve` compares the title with
-`metadata.PathTitle`, the path's title `TitleNotSeries` reads (a `LeafSeries`
-leaf's title part, or the book folder above a disc or part folder).
+see the book's own. `metadata.PathTitle` is the path's title `TitleNotSeries`
+reads (a `LeafSeries` leaf's title part, or the book folder above a disc or part
+folder), which the console's provenance labels `path` (above).
 
 **Books already indexed** are put right without a re-index or a migration: the
 snapshot's `@rev` went from 1 to 2 (see
-[Data model](data-model.md#the-rebuildable-index)). `Catalog.Signatures` flags a
-snapshot of revision 1 or none whose stored title and series could be such a
-reading (`metadata.MaybeSeriesTitle`, about 2 µs a row, into
-`Signature.TitleCheck`); the next scan reads that book's first file once, with
-the same read as the path backfill, and `Catalog.SetPathReading` rewrites its
-snapshot (it now skips only a snapshot already at the current revision). A book
-the snapshot alone could settle for the lone-folder check waits for this read
-too, so an unreadable file never records revision 2 with its title unread. A
-current revision-1 snapshot that isn't flagged (`Signature.RevStamp`) is stamped
-at revision 2 by that scan (`Catalog.StampScannedRev`, a compare-and-set that
-changes only the revision), so later scans don't test it again. A stamped book is
-never tested again, so a later change that makes `TitleNotSeries` change more
-titles needs a new revision.
+[Data model](data-model.md#the-rebuildable-index)).
+
+- **Flagged:** `Catalog.Signatures` flags a snapshot of revision 1 or none whose
+  stored title and series could be such a reading (`metadata.MaybeSeriesTitle`,
+  about 2 µs a row, into `Signature.TitleCheck`). The next scan reads that book's
+  first file once, with the same read as the path backfill, and
+  `Catalog.SetPathReading` rewrites its snapshot (it now skips only a snapshot
+  already at the current revision). A book the snapshot alone could settle for
+  the lone-folder check waits for this read too, so an unreadable file never
+  records revision 2 with its title unread.
+- **Not flagged:** a current revision-1 snapshot (`Signature.RevStamp`) is
+  stamped at revision 2 by that scan (`Catalog.StampScannedRev`, a
+  compare-and-set that changes only the revision), so later scans don't test it
+  again.
+- A stamped book is never tested again, so a later change that makes
+  `TitleNotSeries` change more titles needs a new revision.
 
 ### The in-process probe
 

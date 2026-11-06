@@ -19,12 +19,10 @@ keys people on their LibriVox ids and writes fields this envelope has no
 column for (`archive_id`, `links`, `copyright_year`, a chapter's `audio_url`,
 the people's LibriVox ids and life years). See [the LibriVox mirror](./contributing-data.md#librivox-the-public-domain-mirror).
 
-Store listings are not imported through this envelope either. `metaimport store`
-reads a maintainer's reviewed file of Audiobook Guild or GraphicAudio product
-listings in the libex row shape, with `store` and the page's `url` in place of an
-ASIN, deduplicates on that page and writes it to the recording's `links`, which
-this envelope has no column for. It is a maintainer tool for books they name, not
-a format for external tools to target. See
+Store listings are not imported through this envelope either: `metaimport store`
+is a maintainer tool for Audiobook Guild and GraphicAudio listings they name, not
+a format for external tools to target, and it writes the recording's `links`,
+which this envelope has no column for. See
 [store listings](./contributing-data.md#store-listings-audiobook-guild-and-graphicaudio).
 
 ## Target the `audiosilo-books` envelope

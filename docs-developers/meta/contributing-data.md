@@ -369,7 +369,7 @@ library" form - still needs a maintainer's approval however green it is.
 records, for contributors who already have a library manager's export (LibriVox's
 public-domain catalogue has its own two-step path, described
 [below](#librivox-the-public-domain-mirror), and a maintainer's store listings
-theirs, [`metaimport store`](#store-listings-audiobook-guild-and-graphicaudio)):
+use [`metaimport store`](#store-listings-audiobook-guild-and-graphicaudio)):
 
 ```sh
 go run ./cmd/metaimport openaudible <books.json>  [--dry-run] [--date YYYY-MM-DD]
@@ -592,7 +592,8 @@ import" (and GOVERNANCE.md's "Store listings (maintainer imports)") in
 `audiosilo-meta`: bounded to books a maintainer names and reviews, landed as an
 ordinary `data/` pull request, never on a schedule, and not used by the
 [series-completion bot](./sync-bot.md) or the LibriVox lane. `store-listing`
-ranks with the bulk mirror, so a user's own library or hand edit outranks it.
+ranks with the bulk mirror, so a user's own library or hand edit outranks it (see
+[provenance](./data-model.md#provenance-on-every-entity)).
 Adding a store is a schema change (its `links` key and host check) and an edit to
 that section.
 

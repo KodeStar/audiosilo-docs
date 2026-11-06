@@ -411,12 +411,12 @@ row itself (as migration 0016 did) instead of blanking the fields, and
 [Metadata overrides and effective values](#metadata-overrides-and-effective-values).
 
 A scan also writes an `@rev` key (`catalog.scannedRevKey`): the revision of the
-scan's reading of the names (the path baseline, `metadata.DeriveFromPath`, and the
-tags over it) the snapshot was read with, `2` today (`catalog.scannedRev`).
-Revision 2 (2.6.0) is the one where an album tag that only names the book's
-series stopped being its title; a revision-1 snapshot is checked once by the
-next scan, as [the scanner](scanner.md#an-album-that-is-only-the-series)
-describes. A snapshot without any revision (any server before revision 1) was read when the lone folder above a book
+name-reading rules (the path baseline, `metadata.DeriveFromPath`, plus the tags
+over it) the snapshot used, `2` today (`catalog.scannedRev`). Revision 2 (2.6.0)
+is the one where an album tag that only names the book's series stopped being its
+title; the next scan checks a revision-1 snapshot once, as
+[the scanner](scanner.md#an-album-that-is-only-the-series) describes. A snapshot
+with no revision (any server before revision 1) was read when the lone folder above a book
 (`Charles Dickens/Great Expectations`) was its series rather than its author. For
 a book one folder deep, `Catalog.Signatures` sorts such a snapshot out in SQL
 (`pathCheckExpr`):

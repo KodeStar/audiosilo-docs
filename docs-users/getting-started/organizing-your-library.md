@@ -95,22 +95,22 @@ For each book, AudioSilo starts with the names on disk, then lets the audio file
 Older versions missed an M4B's narrator tag and used its composer tag instead. A book your server had already read keeps that narrator until its files are read again: when a file changes, or when an admin uses [Read the files again](../admin/books.md#a-books-page) on the book. Books added from now on get the narrator tag straight away.
 :::
 
+Audiobook tags are famously messy, which is why the folder names always provide a sane baseline - a well-named folder beats a badly-tagged file. If a library's folders are named well and its tags aren't, you can set it to take book details from the [folder names first](../admin/libraries.md#where-book-details-come-from) instead. Anything still wrong can be corrected in the admin console without touching the files: see [Books and metadata](../admin/books.md).
+
 #### When the album tag is the series
 
-Many tools write the **series** into the album tag and the book's own name into the title tag, so every book of a series has the same album. From 2.6.0, an album that is only the name of the book's series is not used as the title. The series counts when it is the book's series tag, the folder holding the book, or the series part of a name like `Mark Tufo; Indian Hill; Book 04; From The Ashes`. The book takes its own title instead:
+Many tools write the **series** into the album tag and the book's own name into the title tag, so every book of a series has the same album. From 2.6.0, an album that is only the name of the book's series is not used as the title. The server knows the series from the series tag, from the folder the book sits in, or from a name like `Mark Tufo; Indian Hill; Book 04; From The Ashes`. The book takes its own title instead:
 
-- for a book that is one file, its **title tag** ("Without Law 10" for `Eric Vall/Without Law/Book 10.m4b`), else its **file name** (the title part of `Mark Tufo; Indian Hill; Book 04; From The Ashes.m4b`, "From The Ashes"). When the file has a name of its own and the title tag repeats the series name around something else, the file name wins;
-- for a book of several files, its **folder name** first, since the title tag it has is its first file's, often a chapter's name ("Prologue"). That tag counts only when it carries the series name too.
+- for a book that is one file, its **title tag** ("Without Law 10" for `Eric Vall/Without Law/Book 10.m4b`), else its **file name** (the title part of `Mark Tufo; Indian Hill; Book 04; From The Ashes.m4b`, "From The Ashes");
+- for a book of several files, its **folder name** first, since its title tag is its first file's, often a chapter's name ("Prologue"). That tag is used only when it carries the series name too.
 
-A bare volume marker such as `Book 10` or `Vol. 2`, or the series name with the number 1, doesn't count as a name. A few cases keep the album:
+Names like `Book 10` or `Vol. 2`, or the series name with a 1 (`Arena Road 1`), are too vague to use as a title. A few cases keep the album:
 
 - A book named after its series, such as `Frank Herbert/Dune/Dune` or `Frank Herbert - Dune.m4b`, keeps the album, because there it is the title.
-- The first book of a series keeps the album rather than take a title tag its file or folder name doesn't confirm: a series is often named after its first book, whose title tag may then be a chapter's ("End Credits").
+- The first book of a series keeps the album rather than take a title tag that its file or folder name doesn't back up: a series is often named after its first book, and that book's title tag may be a chapter's name ("End Credits").
 - A book with nothing better, such as a folder of several files named only `Book 3` whose first file is tagged "Prologue", keeps the album.
 
-Books already on your server get their own titles at the first scan after the upgrade. The server reads the tags of the books that might be affected once and doesn't re-index them, so their listening progress and your edits stay. A title you set yourself in the admin console still wins.
-
-Audiobook tags are famously messy, which is why the folder names always provide a sane baseline - a well-named folder beats a badly-tagged file. If a library's folders are named well and its tags aren't, you can set it to take book details from the [folder names first](../admin/libraries.md#where-book-details-come-from) instead. Anything still wrong can be corrected in the admin console without touching the files: see [Books and metadata](../admin/books.md).
+Books already on your server get their own titles at the first scan after the upgrade, with their listening progress and your edits kept. A title you set yourself in the admin console still wins.
 
 ### Coming from Audiobookshelf
 
