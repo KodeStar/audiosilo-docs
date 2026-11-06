@@ -97,6 +97,21 @@ Older versions missed an M4B's narrator tag and used its composer tag instead. A
 
 Audiobook tags are famously messy, which is why the folder names always provide a sane baseline - a well-named folder beats a badly-tagged file. If a library's folders are named well and its tags aren't, you can set it to take book details from the [folder names first](../admin/libraries.md#where-book-details-come-from) instead. Anything still wrong can be corrected in the admin console without touching the files: see [Books and metadata](../admin/books.md).
 
+#### Names like `Author; Series; Book 04; Title`
+
+Some library tools name each book's folder and file `Author; Series; Book NN; Title`, for example `Mark Tufo/Mark Tufo; Indian Hill; Book 04; From The Ashes`. From 2.6.0, such a name states the book's series and its number itself, wherever the folder sits: this book is number 4 of Indian Hill, and the admin console and the player show it in that series and group it with the rest. The title part at the end is optional (`A.R. Wise; Deadlocked; Book 01`).
+
+- `Book 04` is number 4, and `Book 2.5` is 2.5.
+- `Book 01-05` is a box set of books 1 to 5.
+- `Book XX` and `Book 00` put the book in the series with no number.
+- The part after `Book` must be a number or `XX`, so a name like `Oprah; Picks; Book Club` says nothing about a series.
+
+A series tag in the files still wins over the name. When the tags give a series but no number, the number in the name is kept.
+
+The title depends on where the library takes book details from. With **The files' tags first** (the default), a book with no title tag keeps the whole name as its title, and a title tag or the album tag is used as usual (see [When the album tag is the series](#when-the-album-tag-is-the-series)). With [Folder names first](../admin/libraries.md#where-book-details-come-from), the book takes the series, number and title part from the name ("From The Ashes"; a name with no title part leaves the title to the tags).
+
+Books already on your server get their series and number at the first scan after the upgrade, from one read of each such book's tags, without reading the audio again. Your own edits stay on top.
+
 #### When the album tag is the series
 
 Many tools write the **series** into the album tag and the book's own name into the title tag, so every book of a series has the same album. From 2.6.0, an album that is only the name of the book's series is not used as the title. The server knows the series from the series tag, from the folder the book sits in, or from a name like `Mark Tufo; Indian Hill; Book 04; From The Ashes`. The book takes its own title instead:

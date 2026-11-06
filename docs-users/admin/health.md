@@ -169,7 +169,13 @@ The score weighs the book's title, author, series and length, and also:
 
 - **Its place in a series.** A work in the book's series at another position
   scores lower, so book 4 is no rival to a book that says it is book 1 (an
-  omnibus that covers the position isn't marked down).
+  omnibus that covers the position isn't marked down). A title that is the
+  series name and a number ("Dungeon Diving 102") is read as a title, not a
+  position, when the book says it is another number. And a work the series
+  lists at exactly the book's number (or the range of a box set), whose length
+  is within 2% of the book's, isn't marked down when the book's title doesn't
+  name it (a first volume whose file carries only its subtitle, say), so more
+  of a series' volumes are applied automatically.
 - **Its narrators.** A recording read by the book's narrators counts in the
   work's favour, and is the recording the match picks if its length fits.
 - **Its language.** A work the community knows to be in another language scores

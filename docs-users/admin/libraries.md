@@ -263,7 +263,10 @@ and series number from:
   read as its number in the series. A book directly inside its author's folder
   (`George Orwell/Animal Farm`) gets an author and a title but no series from
   the folders. Disc and track folders (`CD1`, `Disc 2`) are parts of the book
-  above them, never its title.
+  above them, never its title. A book named
+  [`Author; Series; Book 04; Title`](../getting-started/organizing-your-library.md#names-like-author-series-book-04-title)
+  takes its series, number and title from those parts (from 2.6.0; before,
+  the whole name was its title).
 
 Whichever comes second fills what the first leaves empty, so with **Folder
 names first** the tags still give the narrator, and a series for a book the

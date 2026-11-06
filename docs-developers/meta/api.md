@@ -188,7 +188,7 @@ and so is its [bulk match run](../server/api/reference.md#what-a-run-asks-of-the
 | Query param | Notes |
 |---|---|
 | `q` | Free text as a person typed it, title, author and series words in any order. |
-| `title` | A title guess (a tag, a folder or file name), **repeatable**; the first 4 are read. Send it as named: numbering and edition fluff are taken off here (`02 - `, `SW06 - `, `Sharpe - 08 - `, `(Unabridged)`, `: Series, Book 5`), and the number the numbering carried is the position when `position` is absent. A title that is a `series` guess's name and then a volume number (`He Who Fights with Monsters 4: A LitRPG Adventure`, `The Expanse, Book 3`) states that volume, ahead of the number a numbering prefix carried in the same guess (`01 - `, `SW06 - `); across guesses the first one stating a number decides. |
+| `title` | A title guess (a tag, a folder or file name), **repeatable**; the first 4 are read. Send it as named: numbering and edition fluff are taken off here (`02 - `, `SW06 - `, `Sharpe - 08 - `, `(Unabridged)`, `: Series, Book 5`), and the number the numbering carried is the position when `position` is absent. A title that is a `series` guess's name and then a volume number (`He Who Fights with Monsters 4: A LitRPG Adventure`, `The Expanse, Book 3`) states that volume, ahead of the number a numbering prefix carried in the same guess (`01 - `, `SW06 - `); across guesses the first one stating a number decides. With `position` stated, such a number counts as a volume only when it agrees with the position; otherwise it stays a title (a series whose volumes are titled with their own numbers: `Dungeon Diving 102` at position 2). |
 | `author` | An author guess, **repeatable**; the first 4 are read. `A & B`, `A, B` and `A; B` are read as each person, `Cornwell, Bernard` as Bernard Cornwell. Matched by surname, then first name or initial. |
 | `series` | A series name guess (the folder a book sits in, a series tag), **repeatable**; the first 2 are read. Each is judged and the better counts, so a wrong guess beside a right one costs nothing. Numbering is taken off (`03 - Tawny Man` is `Tawny Man`). |
 | `position` | The book's position in `series` (`8`, `08`, `7.5`), one value, compared numerically and applied to whichever series guess agrees best. A value that isn't a position is ignored. |
@@ -241,6 +241,22 @@ second guess naming another volume (`Throne of Glass 1` beside `02 - Throne of
 Glass`) doesn't count. A generic record
 ("Dork Diaries 12") at the stated volume counts a little below a real title
 there that a guess matches well, unless a guess spells the record exactly.
+**A listing vouches for a work** when the request states `position` and
+`runtime`: a series the request's `series` guesses name lists the work at
+exactly that position (a range included, an omnibus or a publisher's pack),
+its closest recording is within 2% of `runtime` (plus the minute a stored
+runtime is rounded to), and it is in the request's `language` when one is
+given (else it isn't listed only through a series that translates another).
+Then its series agreement isn't marked down for a weak title, and its title
+counts at least as much as a generic record's at the stated volume: the
+series-named first volume whose file names only the subtitle, a pack against
+its range, `American Dragons, Book 3`. The series guess resolves to the series
+spelled as named when one is (`Dark Road Series` is `Dark Road`), else to every
+series that fits, so a fuzzy sub-series (`Frontlines: Evolution` for
+`Frontlines`), a shorter name (`Summoner` beside `Summoner School`) or a
+spin-off gains nothing. A title guess that names a sibling at another position
+more clearly still wins, unless the runtime rules that sibling out
+(`Sharpe's Siege` filed at 20 is not Sharpe's Revenge however close its length).
 metaserve is the one place a title's numbering is read, so clients send folder
 names raw.
 
