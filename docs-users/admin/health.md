@@ -166,11 +166,11 @@ recording's length is within 10% of the book's (when both are known: the
 closest recording can still be another edition, such as a dramatization of an
 unabridged book). From 2.6.0 the length may be up to 20% off when the book's
 narrator reads that recording: the community agrees on the narrator and the
-recording's own credit names them, so it's the same production timed differently.
-A credit such as Full Cast, GraphicAudio, Various or Unknown names no one and
-doesn't count. Further off than 20%, the book is held for review. An ASIN or ISBN from the book's tags that the community knows
-needs no lead: see [ASIN and ISBN tags are hints](#asin-and-isbn-tags-are-hints).
-Whatever a
+recording's own credit names them, so it's the same production timed
+differently. A credit such as Full Cast, GraphicAudio, Various or Unknown names
+no one and doesn't count. An ASIN or ISBN from the book's tags that the
+community knows needs no lead: see
+[ASIN and ISBN tags are hints](#asin-and-isbn-tags-are-hints). Whatever a
 run writes shows as a **Community** value on the book's page, and you can
 revert it like any other. To undo every community match at once and start
 again, use [Clear community matches](server.md#community-metadata) in Server
@@ -356,9 +356,10 @@ ISBN only** isn't offered). Books that are already up to date aren't listed.
 A book whose ASIN or ISBN the community doesn't
 know is listed under **Not found** ("The community doesn't know this book's
 ASIN or ISBN"); it is never matched to another book by its title. A book whose
-recording is more than 10% off its length goes to **To review**, or, from 2.6.0,
-more than 20% when the book's narrator reads that recording, so a book matched on
-its narrator's say-so stays matched.
+recording is more than 10% off its length goes to **To review** (from 2.6.0, 20%
+when the book's narrator reads that recording, as in
+[a match](#matching-every-book-at-once)), so a book matched on its narrator's
+say-so is still kept up to date.
 
 To clean up series an earlier match added (every edition and reading order of
 a series, say), run **Fill in matched books** and apply it with **Use
