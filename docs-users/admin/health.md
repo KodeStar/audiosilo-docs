@@ -132,9 +132,10 @@ what it found and apply it.
    - the book says it's a dramatization: its title, folder or narrator, or, from 2.6.0,
      its author (such as "Michael J. Sullivan - Graphic Audio") or a genre such as
      Radio Drama, Audio Drama or Hörspiel;
+   - one of its narrators reads that recording, at a length that fits;
    - its ASIN names that recording; or
    - from 2.6.0, the dramatization is your book's length to within 1% (or 2 minutes,
-     whichever is more), as only a copy of that production is that close.
+     whichever is more), as another production of the book is hardly ever that close.
 
    Otherwise it's the right book, but not your recording, and the match dialog
    preselects no recording for it either: **Choose an edition** only if your files
@@ -192,8 +193,9 @@ The score weighs the book's title, author, series and length, and also:
   its library's language, when the library has one: at least 20 of its books
   state a language and at least 90% of those agree ("English", "eng" and "en"
   count as one; "Multilingual" counts as none). There is nothing to set: the
-  match dialog and **Match automatically** both work it out. In a library of
-  mixed languages a book that states none isn't judged on it. **Audible
+  match dialog and **Match automatically** both work it out. Otherwise (a library
+  of mixed languages, or fewer than 20 books stating one) a book that states none
+  isn't judged on it. **Audible
   marketplace** plays no part, since the store you buy from says nothing about
   what language a library is in.
 
@@ -251,12 +253,12 @@ found by an identifier too.
 From 2.6.0, when the hint names a recording more than 10% off the book's length that
 none of the book's narrators reads, and the same work has another recording within
 10%, **Match automatically** proposes that one instead: a tag's ASIN can name
-another edition of the right book. If the book's narrator reads the hint's
+another edition of the right book. As its length fits, that match is confident
+when the recording has an ASIN or ISBN. If the book's narrator reads the hint's
 recording, the match keeps it and holds the book for review by its length. A book
 that doesn't say it's a dramatization moves onto one only if its narrator reads it
 or its length names it (see [Matching every book at once](#matching-every-book-at-once)).
-The match dialog shows the hint's recording as before; pick the edition
-there.
+The match dialog still starts from the hint's recording; choose the edition there.
 
 A hint the community doesn't know costs nothing: the book is matched on its other
 details.
