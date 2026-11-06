@@ -117,7 +117,7 @@ rides on the identifiers and the imprint, never on a second record.
 | `chapters` | no | array of `{title, start_ms, length_ms, audio_url?, readers?, section_number?}`. `audio_url` (an `https://` URL) is the audio file the chapter *is*, for a recording published one file per section; `metacheck` requires the recording's `librivox_id` beside it. `readers` is who reads the chapter (person slugs, each one of the recording's narrators): when no chapter carries them every chapter is read by the narrators, and once one does a chapter without them states none. `metacheck` refuses readers on every chapter of a one-narrator recording (their absence already says that narrator reads them all), and requires the recording's `librivox_id` beside any readers. `section_number` is LibriVox's own number for the section, written only where it differs from the 1-based position (LibriVox numbers some projects from 0); `metacheck` requires `librivox_id` beside it and refuses one equal to the position |
 | `librivox_id` | no | the LibriVox project id this recording *is* (integer, at least 1). The identity a LibriVox import deduplicates on (never the title); `metacheck` holds it unique across the dataset |
 | `archive_id` | no | the Internet Archive item holding the recording's files (`archive.org/details/<archive_id>`), pattern `^[A-Za-z0-9][A-Za-z0-9._-]*$` |
-| `links` | no | where the recording is published, each URL as the source stated it and `https://` only: `librivox` (the catalogue page), `zip` (every file in one archive), `rss` (the podcast feed), `text` (the text the recording reads from; LibriVox's `url_text_source`). At least one key; no others |
+| `links` | no | where the recording is published, each URL as the source stated it and `https://` only: `librivox` (the catalogue page), `zip` (every file in one archive), `rss` (the podcast feed), `text` (the text the recording reads from; LibriVox's `url_text_source`), and the recording's product page on a store the identifier-derived purchase links can't reach: `audiobookguild` (Audiobook Guild) and `graphicaudio` (GraphicAudio). At least one key; no others. `metacheck` holds a store key to a page on that store's own host (`model.StoreLinkOK`: `https://`, the bare or `www.` host, no port or credentials, a path past the host, no query string or fragment) and each store page unique across the dataset by `model.StoreLinkKey` (host case, a leading `www.` and a trailing `/` folded; the stored link keeps its spelling). A store page is a route, not an identifier: a dead link is a data edit. The vocabulary is `pkg/model/storelinks.go`; see [store listings](./contributing-data.md#store-listings-audiobook-guild-and-graphicaudio) |
 | `librivox_title` | no | the LibriVox project's own title, verbatim (`Candide (version 2)`), its repeat markers and spelling kept: the work's `title` is the work's. Requires `librivox_id` |
 | `librivox_genres` | no | the LibriVox project's own genre names, verbatim, each once, in LibriVox's order (the licence's public-domain exception). Never the work's `genres`, which stay this project's vocabulary. Requires `librivox_id` |
 | `credits` | no | the recording's own role credits (`{person, role}`), in addition to the work's: a LibriVox project's translators, since a translation is a fact about the project. `role` is `translator` only (the one role a recording states today), and `metacheck` requires `librivox_id` beside them; the work keeps the translator credits its sources stated, and `authors` stays the identity list |
@@ -705,11 +705,11 @@ repository's `AUTHORING.md`.
 Every record carries a `sources[]` array (`$defs/sources`, at least one entry).
 Each source is `{type, ref?, imported_at?}`, where `type` is one of a fixed enum
 (`user`, `openaudible-import`, `libation-import`, `audiosilo-books-import`,
-`libex-import`, `librivox`, `audible-lookup`, `openlibrary`, `wikidata`,
-`inventaire`, `community`) and
+`libex-import`, `librivox`, `store-listing`, `audible-lookup`, `openlibrary`,
+`wikidata`, `inventaire`, `community`) and
 `imported_at` is `YYYY-MM-DD`. Because every fact records where it came from, a
 whole source can be audited or retracted. (A `librivox` entry's `ref` is the
-LibriVox project id.)
+LibriVox project id; a `store-listing` entry's is the store page's URL.)
 
 The source types are also ranked into trust tiers (`pkg/model/trust.go`; the
 policy is LICENSING.md's "Trust tiers and the user-overwrite rule"), applied at
@@ -719,10 +719,13 @@ record granularity:
 |---|---|---|
 | User library | `user` (issue forms and hand edits), `openaudible-import`, `libation-import`, `audiosilo-books-import` | may overwrite a record whose sources are bulk-mirror only |
 | Reference | `audible-lookup`, `openlibrary`, `wikidata`, `inventaire`, `community`, anything unclassified | no overwrite authority; its presence also means a record is not mirror-only |
-| Bulk mirror | `libex-import`, `librivox` | overwritable by the user-library tier: a hand edit outranks either |
+| Bulk mirror | `libex-import`, `librivox`, `store-listing` | overwritable by the user-library tier: a hand edit outranks any of them |
 
 Why `librivox` may mirror a whole catalogue, and how its records are written, is
 in [the LibriVox mirror](./contributing-data.md#librivox-the-public-domain-mirror).
+`store-listing` is a maintainer's import of a store's public listings for books
+they name, never a mirror: see
+[store listings](./contributing-data.md#store-listings-audiobook-guild-and-graphicaudio).
 
 ## The compiled artifact and schema versioning
 
@@ -743,6 +746,7 @@ expressive layer was added in later versions:
 | 8 | the LibriVox layer: the recordings' `librivox_id` (indexed), `archive_id`, `link_librivox` / `link_zip` / `link_rss` / `link_text`, `copyright_year` and `added_at` columns, the chapters' `audio_url`, the people's `librivox_reader_id`, `librivox_author_id`, `birth_year` and `death_year`, the `work_credits` table (a work's credited people by role, so the feed can tell a translator from an author), and the `recording_sources` table (`work_id, recording_id, type`, indexed by type) behind the API's `source` filter |
 | 9 | the LibriVox recording layer: `recordings.librivox_title`, `chapters.section_number`, and the `recording_credits` (`work_id, recording_id, person_id, role, ord`), `chapter_readers` (`work_id, recording_id, chapter_idx, person_id, ord`) and `recording_librivox_genres` (`work_id, recording_id, genre, ord`) tables, which the LibriVox-shaped feed answers its title, section numbers, translators, section readers and genres from, and `recording_sources.added_at` (each recording's own, so `works/latest?source=` orders by the source's recordings straight off its index) |
 | 10 | the `position_scales` table (the ruler a work's sidecars are numbered on) |
+| 11 | the store links: `recordings.link_audiobookguild` and `recordings.link_graphicaudio` (one column per store, not a table), which the API returns in the recording's `links` and as purchase links |
 
 `metaserve` returns characters, recaps, genres, the community description and
 the translation links inline on `GET /works/{id}` (`characters` / `recaps` /
@@ -754,13 +758,15 @@ From version 8 it also serves the LibriVox layer
 The serve queries **degrade gracefully** when a newer binary briefly serves an
 older release: the characters/recaps queries no-op below `schema_version` 2, the
 recap summary below 3, genres below 4, redirects below 5, the description below 6,
-the languages layer below 7 and the LibriVox layer below 8, so a missing table
-reads as "no data", never a 500. An artifact that *claims* version 5, 6, 7 or 8
-but lacks what that version adds (for 7: the `translations` table or any of the
-series table's `language`, `ordering` and `ordering_of` columns; for 8: any of
-its columns or the `work_credits` and `recording_sources` tables) is refused
-when it is loaded, naming the claim, because the builder always writes the two
-together. The same versioning drives the [coverage endpoints](api.md#coverage-endpoints), which omit a
+the languages layer below 7, the LibriVox layer below 8, the LibriVox recording
+layer below 9, position scales below 10 and the store links below 11, so a
+missing table or column reads as "no data", never a 500. An artifact that
+*claims* any version from 5 to 11 but lacks what that version adds (for 7: the
+`translations` table or any of the series table's `language`, `ordering` and
+`ordering_of` columns; for 8: any of its columns or the `work_credits` and
+`recording_sources` tables; for 9: any of its columns or tables; for 10: the
+`position_scales` table; for 11: either store link column) is refused when it is
+loaded, naming the claim, because the builder always writes the two together. The same versioning drives the [coverage endpoints](api.md#coverage-endpoints), which omit a
 dimension's count rather than report it as a misleading zero when the artifact
 predates its table.
 

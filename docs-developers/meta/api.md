@@ -649,6 +649,25 @@ to check, not a claim the product is listed. A LibriVox recording carries more
 fields and leads this list with a free link; see
 [the LibriVox layer](#the-librivox-layer).
 
+**Store pages** (`schema_version` 11). A recording sold by a store the
+identifier-derived links can't reach carries its product page there in `links`
+(`audiobookguild`, `graphicaudio`, each the store's URL as stated, each omitted
+when unstated; see [store listings](contributing-data.md#store-listings-audiobook-guild-and-graphicaudio)),
+and each stated page is also a purchase link, with the store key as `retailer`
+and the URL as both `id` and `url`:
+
+```json
+{"retailer": "graphicaudio", "id": "https://www.graphicaudio.net/mistborn-1-the-final-empire-1-of-3.html",
+ "url": "https://www.graphicaudio.net/mistborn-1-the-final-empire-1-of-3.html", "availability": "unknown"}
+```
+
+The order is the free LibriVox link, then the store pages (`audiobookguild`
+before `graphicaudio`), then the derived `audible` and `libro-fm` links: a stated
+page before a constructed route. Its `availability` is `unknown` like every
+other, since no store feed reports it. The fact sheet and the site label them
+"Audiobook Guild" and "GraphicAudio". A client that doesn't know a `links` key
+or a `retailer` ignores it; against an artifact older than 11 neither appears.
+
 The two AudioSilo consumers of this route choose by `ordering_of` rather than by
 that order, so neither depends on it: audiosilo-server collapses each ordering
 family into one series rail whose main view is the first membership with no
