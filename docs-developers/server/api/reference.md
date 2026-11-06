@@ -6635,7 +6635,8 @@ book path).
 - `match_query` - the text the console's
   [match dialog](#get-apiv1adminlibrariesidbookmatch) opens its search box
   with (`meta.SearchPrefill`): the book's title and author, unless the tags
-  look swapped or junk, where the folders' reading of the path
+  look swapped or junk, or the title is a whole `Author; Series; Book NN`
+  leaf (an untagged book's), where the folders' reading of the path
   (`metadata.FromPathLayout`) replaces them. Swapped means the title is the
   author folder's name, or the author, cleaned of series and numbering, is the
   path's title; a tag that matches its own path fact is never swapped

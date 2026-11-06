@@ -859,8 +859,8 @@ tags-first library an untagged leaf book keeps the whole leaf as its title. A
 [path-first library](data-model.md#metadata-overrides-and-effective-values)
 reads the leaf's parts too (before, the whole leaf was the title), and so does
 the console's [`match_query`](api/reference.md#get-apiv1adminlibrariesidbook)
-where it replaces a junk or swapped tag (`Dark Road 1-5 Bruno Miller` for a
-leaf with no title part). On the LibraForge
+where it replaces a junk or swapped tag or an untagged book's whole-leaf title
+(`Dark Road 1-5 Bruno Miller` for a leaf with no title part). On the LibraForge
 benchmark's library of these leaves (about 600 books) the reading took
 auto-right matches up by 39 and auto-wrong from 8 to 7.
 
