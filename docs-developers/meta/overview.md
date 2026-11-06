@@ -58,6 +58,11 @@ describes. The API serves those recordings like any other and adds a
 `source=librivox` filter, `lookup?librivox_id=` and a feed in LibriVox's own
 shape, so an app that reads LibriVox can switch its base URL
 ([the LibriVox layer](api.md#the-librivox-layer)).
+A maintainer may also import the public product listings of two stores the
+identifier-derived links don't reach, Audiobook Guild and GraphicAudio, for books
+they name: facts only, under the `store-listing` source type, with the store page
+kept on the recording's `links` and served as a purchase link
+([store listings](contributing-data.md#store-listings-audiobook-guild-and-graphicaudio)).
 
 ## Package layout
 
@@ -162,7 +167,7 @@ run ./cmd/<name>`.
 | `metabuild` | Compiles `data/` into the SQLite artifact (`-o meta.sqlite`). Runs the full validation first and refuses to build invalid data. Deterministic: identical data produces an identical artifact; each record is dated by its own `added_at`, falling back to its newest `sources[].imported_at`. |
 | `metaserve` | Serves the compiled artifact read-only over HTTP (and optionally the static site at `/`), hot-swapping newer GitHub releases. See [the HTTP API](api.md). |
 | `metascan` | Scans a local audiobook folder into an import JSON - see [contributing data](contributing-data.md#scanning-local-files-metascan). |
-| `metaimport` | Ingests external sources into `data/`: OpenAudible/Libation library exports, libex rows and the LibriVox mirror (`metaimport librivox fetch` and `import`) - see [contributing data](contributing-data.md#bulk-importers-metaimport) and [the LibriVox mirror](contributing-data.md#librivox-the-public-domain-mirror). |
+| `metaimport` | Ingests external sources into `data/`: OpenAudible/Libation library exports, libex rows, a maintainer's store listings (`metaimport store`) and the LibriVox mirror (`metaimport librivox fetch` and `import`) - see [contributing data](contributing-data.md#bulk-importers-metaimport), [store listings](contributing-data.md#store-listings-audiobook-guild-and-graphicaudio) and [the LibriVox mirror](contributing-data.md#librivox-the-public-domain-mirror). |
 | `metaissue` | Issue-form body to canonical records + verdict, for the intake bot - see [contributing data](contributing-data.md#intake-automation-issue-form-to-bot-pull-request). |
 | `metaextract` | Supports the source-to-sidecar extraction pipeline: `split` (epub -> chapter text + manifest) and `ngram` (near-verbatim overlap check against the source text). `split` refuses a crafted epub rather than exhausting memory: any archive member over 64 MiB decompressed, or a spine over 256 MiB in total, rejects the whole book before anything is written. |
 

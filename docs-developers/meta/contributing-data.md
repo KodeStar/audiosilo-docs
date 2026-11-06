@@ -368,7 +368,8 @@ library" form - still needs a maintainer's approval however green it is.
 `metaimport` ingests an external library export into `data/` as reviewable
 records, for contributors who already have a library manager's export (LibriVox's
 public-domain catalogue has its own two-step path, described
-[below](#librivox-the-public-domain-mirror)):
+[below](#librivox-the-public-domain-mirror), and a maintainer's store listings
+use [`metaimport store`](#store-listings-audiobook-guild-and-graphicaudio)):
 
 ```sh
 go run ./cmd/metaimport openaudible <books.json>  [--dry-run] [--date YYYY-MM-DD]
@@ -533,6 +534,70 @@ go run ./cmd/metaimport libex /tmp/all-rows.ndjson --regenerate-genres \
 The summary line counts the works set to the vote, added to, unchanged and
 reached by no row, and the genre instances added and removed; notes count the
 contradicted rows and the works held back as newer than the rows.
+
+### Store listings: Audiobook Guild and GraphicAudio
+
+Some books are sold only by a store the identifier-derived purchase links don't
+reach (Audible by ASIN, Libro.fm by ISBN): today Audiobook Guild and GraphicAudio.
+A recording can carry its product page there (`links.audiobookguild`,
+`links.graphicaudio`; see [the data model](./data-model.md#recording---a-member-of-its-work-entrys-recordings-map)), and a
+maintainer can import such a store's **public listing** for books they name:
+
+```sh
+go run ./cmd/metaimport store <listings.ndjson> [--data data] [--dry-run] [--date YYYY-MM-DD] \
+  [--attach-editions] [--existing-series-only] [--conflicts <path>]
+```
+
+The input is a reviewed file in the libex row shape (NDJSON, one JSON array, or a
+single object), with `store` and the page's `url` in place of an ASIN:
+
+```json
+{"store": "audiobookguild", "url": "https://audiobookguild.com/products/without-law-17",
+ "title": "Without Law 17", "authors": [{"name": "Eric Vall"}],
+ "narrators": [{"name": "Joshua Story"}], "series": [{"name": "Without Law", "position": "17"}],
+ "lengthMinutes": 612, "releaseDate": "2024-03-05", "publisher": "Royal Guard Publishing",
+ "imageUrl": "https://cdn.shopify.com/...", "language": "english"}
+```
+
+- **Facts only.** The importer reads the title, subtitle (as the libex import
+  does: never stored as the work's subtitle, only joined to the title where it
+  tells two same-titled volumes apart), authors, narrators,
+  series, `lengthMinutes`, `releaseDate`, `publisher`, `imageUrl` (an `https://`
+  cover URL; any other is dropped with a warning) and `language`. Nothing else in a
+  row is read, so a blurb, rating, price or store genre in the file stores
+  nothing.
+- **Refused at parse**, with a warning: an unknown `store`, a `url` that isn't a
+  product page on that store's own host (`model.StoreLinkOK`), a row carrying an
+  `asin` (a listing with an ASIN belongs to `metaimport libex`), and the libex
+  credit refusals.
+- **Deduplicated on the page.** A row whose page the catalogue (or the run so far)
+  already holds is a skip, keyed by `model.StoreLinkKey` (host case, a leading
+  `www.` and a trailing `/` folded), the key `metacheck` holds unique. A rerun of
+  the same file is all skips.
+- **A page joins a held production only on proof.** When the work the identity
+  walk reaches already holds a retail recording with the row's narrators (LibriVox
+  projects aside), the page is added to the **one** such recording that is
+  provably the row's production: both state a runtime, the runtimes agree, and no
+  abridged or series-position conflict (the ISBN attach's test). None or several
+  qualifying, or the one stating another page for that store, refuses the row
+  with a warning and creates nothing (no work, person or series claim). The
+  summary counts the pages added this way.
+- Otherwise the row is a new recording or work through the ordinary identity,
+  duplicate, person and series rules, with the store page on its `links` and a
+  `store-listing` source whose `ref` is the page's URL.
+- **Create mode only**, with its `--attach-editions`, `--existing-series-only`
+  and `--conflicts`: the other modes key on an ASIN, which a store row never
+  has.
+
+The licence posture is LICENSING.md's "Store listings: a maintainer-named
+import" (and GOVERNANCE.md's "Store listings (maintainer imports)") in
+`audiosilo-meta`: bounded to books a maintainer names and reviews, landed as an
+ordinary `data/` pull request, never on a schedule, and not used by the
+[series-completion bot](./sync-bot.md) or the LibriVox lane. `store-listing`
+ranks with the bulk mirror, so a user's own library or hand edit outranks it (see
+[provenance](./data-model.md#provenance-on-every-entity)).
+Adding a store is a schema change (its `links` key and host check) and an edit to
+that section.
 
 ### LibriVox: the public-domain mirror
 

@@ -411,8 +411,12 @@ row itself (as migration 0016 did) instead of blanking the fields, and
 [Metadata overrides and effective values](#metadata-overrides-and-effective-values).
 
 A scan also writes an `@rev` key (`catalog.scannedRevKey`): the revision of the
-path baseline (`metadata.DeriveFromPath`) the snapshot was read with. A snapshot
-without one (any older server's) was read when the lone folder above a book
+name-reading rules (the path baseline, `metadata.DeriveFromPath`, plus the tags
+over it) the snapshot used, `2` today (`catalog.scannedRev`). Revision 2 (2.6.0)
+is the one where an album tag that only names the book's series stopped being its
+title; the next scan checks a snapshot of revision 1 or none once, as
+[the scanner](scanner.md#an-album-that-is-only-the-series) describes. A snapshot
+with no revision (any server before revision 1) was read when the lone folder above a book
 (`Charles Dickens/Great Expectations`) was its series rather than its author. For
 a book one folder deep, `Catalog.Signatures` sorts such a snapshot out in SQL
 (`pathCheckExpr`):
@@ -1357,7 +1361,9 @@ Per field, `resolve` yields the effective value, its source, the scanned
 value, whether it is locked, and who last edited it. Sources are not stored: a
 scanned value is `path` when it equals what `metadata.DeriveFromPath` yields for
 the book's path (or, in a path-first library, what `metadata.FromPathLayout`
-yields), otherwise `tag`; a value the ABS file gives is `abs`; an ASIN/ISBN from
+yields), or, for the title, `metadata.PathTitle` (the path's title the
+scanner's [album rule](scanner.md#an-album-that-is-only-the-series) may take),
+otherwise `tag`; a value the ABS file gives is `abs`; an ASIN/ISBN from
 enrichment is `community`;
 an override carries its own (`edited` or `community`); `""` means no value. The
 rule is the same for every row, so the rows migration 0016 backfilled `scanned`

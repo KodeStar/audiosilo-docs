@@ -19,6 +19,12 @@ keys people on their LibriVox ids and writes fields this envelope has no
 column for (`archive_id`, `links`, `copyright_year`, a chapter's `audio_url`,
 the people's LibriVox ids and life years). See [the LibriVox mirror](./contributing-data.md#librivox-the-public-domain-mirror).
 
+Store listings are not imported through this envelope either: `metaimport store`
+is a maintainer tool for Audiobook Guild and GraphicAudio listings they name, not
+a format for external tools to target, and it writes the recording's `links`,
+which this envelope has no column for. See
+[store listings](./contributing-data.md#store-listings-audiobook-guild-and-graphicaudio).
+
 ## Target the `audiosilo-books` envelope
 
 Emit a single self-identifying JSON object. The `format` field is the contract:
