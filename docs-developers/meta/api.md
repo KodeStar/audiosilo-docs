@@ -790,7 +790,8 @@ every route above serves them; what the layer adds:
   unstated, the object omitted when all are) and `copyright_year` (the year
   LibriVox states for the source text, an integer, negative for a year BC;
   omitted when unstated). All are `omitempty`, so a non-LibriVox recording looks
-  as it always did.
+  as it always did, apart from the `links` a store page adds (`schema_version`
+  11, [above](#apiv1worksid)).
 - Its `purchase_links[]` **lead** with
   `{"retailer": "librivox", "id": "<project id>", "url": "<links.librivox>", "availability": "unknown", "free": true}`:
   the catalogue page, the one route that costs nothing. `free` is present only

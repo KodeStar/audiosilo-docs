@@ -414,7 +414,7 @@ A scan also writes an `@rev` key (`catalog.scannedRevKey`): the revision of the
 name-reading rules (the path baseline, `metadata.DeriveFromPath`, plus the tags
 over it) the snapshot used, `2` today (`catalog.scannedRev`). Revision 2 (2.6.0)
 is the one where an album tag that only names the book's series stopped being its
-title; the next scan checks a revision-1 snapshot once, as
+title; the next scan checks a snapshot of revision 1 or none once, as
 [the scanner](scanner.md#an-album-that-is-only-the-series) describes. A snapshot
 with no revision (any server before revision 1) was read when the lone folder above a book
 (`Charles Dickens/Great Expectations`) was its series rather than its author. For

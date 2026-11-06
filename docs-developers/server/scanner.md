@@ -858,9 +858,10 @@ The album stays when the leaf names the book the same way (`Frank
 Herbert/Dune/Dune`), alone or beside only the author, a year, a volume marker or
 the series and the number 1 (`Frank Herbert - Dune`, `1965 - Dune`). Otherwise
 the candidates are the title tag and the path's title (a `LeafSeries` leaf's
-title part, else `DeriveFromPath`'s). Neither counts when it is a volume marker
-(`Book 10`, `Vol. 2`), a part label, only bracketed text, or the series and the
-number 1 (`Arena Road 1`, `01 Monster Core`). For a book of several files, a
+title part, the book folder above a disc or part folder, else `DeriveFromPath`'s).
+Neither counts when it is a volume marker (`Book 10`, `Vol. 2`), a part label or
+other generic title (`IsGenericTitle`: "Track 01"), only bracketed text, the
+series' name itself, or the series and the number 1 (`Arena Road 1`, `01 Monster Core`). For a book of several files, a
 title tag that is the album plus a track marker ("Indian Hill 03") is a file's
 name and doesn't count either. Then, in order:
 
@@ -878,8 +879,9 @@ name and doesn't count either. Then, in order:
 
 The result is the stored title, so the player, search and the match's query all
 see the book's own. `metadata.PathTitle` is the path's title `TitleNotSeries`
-reads (a `LeafSeries` leaf's title part, or the book folder above a disc or part
-folder), which the console's provenance labels `path` (above).
+reads (a `LeafSeries` leaf's title part, the book folder above a disc or part
+folder, else `DeriveFromPath`'s; `""` for a `LeafSeries` leaf without a title
+part), which the console's provenance labels `path` (above).
 
 **Books already indexed** are put right without a re-index or a migration: the
 snapshot's `@rev` went from 1 to 2 (see
@@ -896,7 +898,8 @@ snapshot's `@rev` went from 1 to 2 (see
 - **Not flagged:** a current revision-1 snapshot (`Signature.RevStamp`) is
   stamped at revision 2 by that scan (`Catalog.StampScannedRev`, a
   compare-and-set that changes only the revision), so later scans don't test it
-  again.
+  again. A snapshot of no revision that isn't flagged is not stamped: it keeps no
+  revision until its next re-index or path reading.
 - A stamped book is never tested again, so a later change that makes
   `TitleNotSeries` change more titles needs a new revision.
 

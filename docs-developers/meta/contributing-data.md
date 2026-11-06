@@ -559,7 +559,9 @@ single object), with `store` and the page's `url` in place of an ASIN:
  "imageUrl": "https://cdn.shopify.com/...", "language": "english"}
 ```
 
-- **Facts only.** The importer reads the title, subtitle, authors, narrators,
+- **Facts only.** The importer reads the title, subtitle (as the libex import
+  does: never stored as the work's subtitle, only joined to the title where it
+  tells two same-titled volumes apart), authors, narrators,
   series, `lengthMinutes`, `releaseDate`, `publisher`, `imageUrl` (an `https://`
   cover URL; any other is dropped with a warning) and `language`. Nothing else in a
   row is read, so a blurb, rating, price or store genre in the file stores

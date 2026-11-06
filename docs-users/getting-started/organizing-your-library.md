@@ -101,7 +101,7 @@ Audiobook tags are famously messy, which is why the folder names always provide 
 
 Many tools write the **series** into the album tag and the book's own name into the title tag, so every book of a series has the same album. From 2.6.0, an album that is only the name of the book's series is not used as the title. The server knows the series from the series tag, from the folder the book sits in, or from a name like `Mark Tufo; Indian Hill; Book 04; From The Ashes`. The book takes its own title instead:
 
-- for a book that is one file, its **title tag** ("Without Law 10" for `Eric Vall/Without Law/Book 10.m4b`), else its **file name** (the title part of `Mark Tufo; Indian Hill; Book 04; From The Ashes.m4b`, "From The Ashes");
+- for a book that is one file, its **title tag** ("Without Law 10" for `Eric Vall/Without Law/Book 10.m4b`), else its **file name**, or its folder's name when it has a folder of its own (the title part of `Mark Tufo; Indian Hill; Book 04; From The Ashes.m4b`, "From The Ashes"). When the title tag holds the series name as well and the file or folder name gives a title, the name wins: `Terry Mancour/Spellmonger/Book 2 - Warmage` tagged "002 - Spellmonger - Book 002 - Warmage" is "Warmage";
 - for a book of several files, its **folder name** first, since its title tag is its first file's, often a chapter's name ("Prologue"). That tag is used only when it carries the series name too.
 
 Names like `Book 10` or `Vol. 2`, or the series name with a 1 (`Arena Road 1`), are too vague to use as a title. A few cases keep the album:
