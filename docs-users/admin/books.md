@@ -580,7 +580,9 @@ service. It sends nothing about your server or
 who listens. For a player's "About this book", the server sends only the ASIN
 or ISBN (see [Community metadata](server.md#community-metadata)). With a
 [local copy](server.md#keeping-a-local-copy) of the community metadata (once it
-is ready), none of this leaves your server.
+is ready), none of this leaves your server; only the optional daily
+[report of unknown ASINs](server.md#helping-complete-the-community-database)
+still goes out, when you turn it on.
 
 To show the candidates' covers, your server also downloads each cover image
 from wherever the catalogue keeps it (Audible's image servers or Open

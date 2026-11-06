@@ -154,10 +154,22 @@ language, any ASIN or ISBN in its tags, folder names and the like; see
 [Server settings](./admin/server.md#community-metadata)).
 Nothing about who listens, and no file paths, is ever sent.
 
+One more thing is sent only if the admin turns it on: with **Help complete the
+community database** (from 2.6.0, off by default), the server sends
+meta.audiosilo.app, once a day, the Audible ASINs of its books that the
+community database doesn't know, so the community can add them. No titles,
+file paths, server name or listener details go with them. The service stores
+each ASIN with a count and dates and no address with them; it holds your
+server's address in memory for about a day after its last request, for a rate
+limit (see
+[Helping complete the community database](./admin/server.md#helping-complete-the-community-database)).
+
 If you'd rather not look books up over the internet at all, the admin can
 choose **Keep a local copy** for community metadata: the server then downloads
 the whole community database from GitHub and answers every lookup from it.
 Until the first copy has downloaded, lookups still go to meta.audiosilo.app.
+The optional daily report above still goes to meta.audiosilo.app with a local
+copy, if it is turned on.
 What it costs in disk space and downloads is in
 [Keeping a local copy](./admin/server.md#keeping-a-local-copy). Or switch the
 community metadata off entirely, and the server contacts neither.

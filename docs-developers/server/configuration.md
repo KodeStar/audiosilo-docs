@@ -395,6 +395,7 @@ database and answers the same questions itself (see
 | `metadata.base_url` | string, `"https://meta.audiosilo.app"` | Base URL of the metadata service (the site is served at `/` and the API at `/api/v1`). **Must be an absolute `http`/`https` URL when metadata is enabled**. Still needed in mirror mode: it is the fallback, and the site links (`web_url`, the attribution's `source_url`) name it |
 | `metadata.mode` | string, `"remote"` | Where the lookups are answered: `remote` asks `base_url` for each book; `mirror` keeps a local copy of the service's database in `<data>/meta-mirror/` and answers from it ([below](#mirror-mode-metadatamode-mirror)). Any case, stored lower case; empty (a `config.yaml` written before the key existed) reads as `remote`; any other value is a config error naming the allowed ones. **Read at start** (a restart setting) |
 | `metadata.region` | string, `""` | The Audible marketplace a community match prefers when a recording sells in several: one of `us`, `uk`, `ca`, `au`, `de`, `fr`, `es`, `it`, `jp`, `in`, `br` (the community metadata's region vocabulary; any case, stored lower case). `""` = no preference: the US store's ASIN first. Orders each match candidate's `asins` (preferred store's, then `us`, then the rest), breaks a runtime tie between recordings for the one selling there, and is what a [bulk match](api/reference.md#bulk-community-matching) repick looks for. It says nothing about a library's language: a match sends only the book's own. Applies live |
+| `metadata.report_unknown` | bool, `false` | The opt-in daily report of unknown Audible ASINs (2.6.0; [below](#the-unknown-asin-report-metadatareport_unknown)). Runs only while `metadata.enabled` is on too, never on a demo server. Applies live (console: **Server > Settings > Community metadata**, *Help complete the community database*, setting id `metadata.report_unknown`, greyed out while the lookup is off); `AUDIOSILO_METADATA_REPORT_UNKNOWN` wins at every start and locks it |
 
 `metadata.enabled` applies **live**: an admin can switch the lookup on or off
 from the console's **Server > Settings > Community metadata** (or via
@@ -422,6 +423,52 @@ when there is one; while it is off nothing is checked and
 Chapters already in use stay until an admin switches a book back. Enrichment is
 strictly additive and cached - a slow or unreachable service degrades to no
 section, never a broken page.
+
+#### The unknown-ASIN report (`metadata.report_unknown`)
+
+Off by default. While it and `metadata.enabled` are on, a daily job
+(`internal/coverage`) sends the metadata service the Audible ASINs of this
+server's books that the community database doesn't know, so the community's
+[reported-ASIN lane](../meta/sync-bot.md#the-reported-asin-lane) can import
+them. A run:
+
+- **Candidates**: books libraries only, upper-cased and format-checked. Each
+  book's `asin` (except one a community match gave it, which is known by
+  definition), plus a tag ASIN only for a book with no ASIN or ISBN of its own,
+  no admin edit of its ASIN (a cleared one too) and a tag no other book carries
+  (`catalog.UnknownASINCandidates`).
+- **Lookup first**: up to 500 candidates a run (never looked up, or looked up 30+
+  days ago) go through the ordinary lookup (`meta.Service.KnownASIN`); only a 404
+  counts as unknown, and any other failure stops the lookups until the next day
+  (the run is then `failed`, but the unknown ASINs already confirmed are still
+  reported).
+  In mirror mode the run waits until the local copy is ready, the copy answers the
+  lookups, and only the report goes to `base_url`.
+- **The report**: the unknown ASINs not sent in the last 30 days, shuffled, 200 to
+  a `POST <base_url>/api/v1/intake/unknown-asins` with the body exactly
+  `{"asins":[...]}`, at most 5 a run and none within 23 hours of the last. The only
+  headers it sets are `Content-Type: application/json` and a fixed
+  `User-Agent: AudioSilo` (beside the HTTP client's own `Host`, `Content-Length`
+  and `Accept-Encoding`): no `X-AudioSilo-Client`, server id, auth or version.
+  Redirects are never followed.
+- **HTTPS only**: a `base_url` with plain `http` is reported to only when its host
+  is loopback (`127.0.0.0/8`, `::1`, `localhost`); any other is `not_offered`
+  with no call.
+- **Answers**: a 202 with `accepted` marks that chunk sent; a 404, 405, 3xx or a
+  2xx without `accepted` (an older metaserve, or intake off; see
+  [the intake queue](../meta/api.md#unknown-asin-intake-queue-optional)) is
+  `not_offered` and the service is left alone for 7 days; 429, 5xx or anything
+  else marks nothing (`failed`, tried the next day).
+- **Schedule**: the first run an hour after the start (or a day after the last
+  run), then daily +-1 hour. Switching it (or metadata) on runs it at once unless
+  one ran in the last 23 hours. The run state is kept in `server_state`, so a
+  restart never runs it again early.
+
+The console words the run from `GET /admin/settings`'s read-only
+`metadata.report_status` (see the
+[API reference](api/reference.md#get-apiv1adminsettings)). What it stores is in
+[Data model](data-model.md#unknown-asin-reports): ASINs only, never a book or
+path.
 
 #### Mirror mode (`metadata.mode: mirror`)
 
@@ -742,6 +789,7 @@ by the settings table in `internal/config/settings.go` (`fields`: each entry's
 | `AUDIOSILO_METADATA_BASE_URL` | `metadata.base_url` | URL |
 | `AUDIOSILO_METADATA_REGION` | `metadata.region` | marketplace code (`uk`) |
 | `AUDIOSILO_METADATA_MODE` | `metadata.mode` | `remote` or `mirror` (any case) |
+| `AUDIOSILO_METADATA_REPORT_UNKNOWN` | `metadata.report_unknown` | `strconv.ParseBool` (`true`/`1`/…) |
 | `AUDIOSILO_UPCOMING_ENABLED` | `upcoming.enabled` | `strconv.ParseBool` (`false`/`0`/… turns it off) |
 | `AUDIOSILO_UPCOMING_WINDOW_DAYS` | `upcoming.window_days` | integer, 1-365; read at start |
 | `AUDIOSILO_UPDATE_CHECK` | `update_check` | `strconv.ParseBool` (`false`/`0`/… turns it off) |
@@ -814,6 +862,7 @@ restart, and whether the console may change it at all:
 | `metadata.region` | `metadata.region` | `AUDIOSILO_METADATA_REGION` | at once |
 | `metadata.mode` | `metadata.mode` | `AUDIOSILO_METADATA_MODE` | restart |
 | `metadata.upcoming` | `upcoming.enabled` | `AUDIOSILO_UPCOMING_ENABLED` | at once |
+| `metadata.report_unknown` | `metadata.report_unknown` | `AUDIOSILO_METADATA_REPORT_UNKNOWN` | at once |
 | `demo.enabled` | `demo.enabled` | `AUDIOSILO_DEMO_ENABLED` | restart |
 | `demo.library` | `demo.library` | `AUDIOSILO_DEMO_LIBRARY` | at once |
 | `demo.max_users` | `demo.max_users` | `AUDIOSILO_DEMO_MAX_USERS` | at once |

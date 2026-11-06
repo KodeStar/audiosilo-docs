@@ -221,7 +221,9 @@ listeners' devices never contact those image hosts.
 
 With a [local copy](#keeping-a-local-copy) (once it is ready), the lookup,
 matching and the chapter checks are all answered on your server; only the
-cover images are still downloaded from their hosts.
+cover images are still downloaded from their hosts (and, if you turned it on,
+the daily [report of unknown ASINs](#helping-complete-the-community-database)
+still goes to the metadata service).
 
 - Flipping the switch takes effect immediately for **everyone connected**, and
   the choice is remembered across restarts.
@@ -251,6 +253,11 @@ cover images are still downloaded from their hosts.
   *M* books coming or missing", or, in red, "Last check failed *when*" with the
   reason. How far back a release still counts as new (90 days) is set in the
   config file only.
+- **Help complete the community database** (from 2.6.0, **off** by default)
+  sends the metadata service, once a day, the Audible ASINs of your books that
+  the community database doesn't know, so the community can add them. See
+  [Helping complete the community database](#helping-complete-the-community-database)
+  below for what it sends and what the line under it says.
 - **Audible marketplace** in the **Matching** card is the store you buy from
   (United Kingdom, United States, Germany and so on). When a recording sells in
   several stores, a match takes this store's ASIN; with **No preference** it
@@ -279,6 +286,59 @@ cover images are still downloaded from their hosts.
   only matching again brings the values back. While a match run is working it
   asks you to wait for it, or stop it, first.
 
+#### Helping complete the community database
+
+From 2.6.0, the **Help complete the community database** switch lets your
+server tell the community which of your books it is missing. It is **off**
+until you turn it on, and it works only while **Look up community metadata** is
+on (it is greyed out otherwise). Once a day, while it is on:
+
+1. The server collects your books' Audible ASINs: each book's own ASIN, and an
+   ASIN from a book's tags only when the book has no ASIN or ISBN of its own
+   (nor one you edited or cleared) and no other book's tags carry the same ASIN.
+2. It looks each one up in the community database first, as the lookup always
+   does, and keeps only the ones the database doesn't know.
+3. It sends those ASINs to the metadata service, and nothing else: no titles,
+   file paths, server name, or anything about who listens. The service sees
+   your server's IP address while it receives them and stores only each ASIN,
+   a count and the dates it was reported, with no address. It holds the
+   address in memory for about a day after its last request, for a rate limit.
+   meta.audiosilo.app keeps no access log for these reports over HTTPS, which
+   is how AudioSilo servers send them. The web server's error log can still
+   record the address of a request that goes wrong, such as a report that
+   cannot reach the service while it is restarting. Its
+   [privacy page](https://meta.audiosilo.app/privacy) ("Reports of unknown
+   books") has the details.
+
+A report is a suggestion of where to look, never a record: the community's
+catalogue bot can look each reported ASIN up as a real Audible listing and add
+the book in a reviewed change, so a later lookup of that book finds it.
+
+Some limits on what it does:
+
+- It sends only over **HTTPS**. With a **Service address** that starts with
+  `http://` (other than one on this same machine, for testing), nothing is sent.
+- With a [local copy](#keeping-a-local-copy), the lookups are answered by the
+  copy on your server, and only the report itself goes to the metadata service.
+  Nothing is sent until the copy is ready.
+- A server in [demo mode](#demo-mode) never sends a report.
+- An ASIN already sent isn't sent again for a month, and one the database later
+  adds stops being sent.
+
+While the switch and the lookup are both on, a line under it says how the last
+report went:
+
+- "Not sent yet: the first report goes out as soon as this is switched on, or
+  about an hour after the server starts."
+- "Last report *when*: *N* unknown ASINs sent", or "Last checked *when*:
+  nothing new to send" when every ASIN is known or was sent recently.
+- "Last tried *when*: the metadata service doesn't take reports (it needs an
+  https address and a service that accepts them)." An older service, or one
+  run with reports turned off, is then left alone for a week.
+- In red, "Last report failed *when*; it's tried again tomorrow." The service
+  didn't answer or was too busy, or a lookup failed; any ASIN it didn't accept
+  is sent again next time.
+
 #### Keeping a local copy
 
 Choose a local copy if you'd rather no book were looked up over the internet:
@@ -293,7 +353,9 @@ The **Source** card has two choices:
 - **Keep a local copy.** The server downloads a copy of the whole community
   database and answers every lookup from it, so **no book is looked up over
   the internet**: not the "About this book" lookups, not the match dialog or
-  Match automatically, not the community chapter checks.
+  Match automatically, not the community chapter checks. Only the optional
+  [report of unknown ASINs](#helping-complete-the-community-database) still
+  goes out, if it is on.
 
 What a local copy costs:
 
