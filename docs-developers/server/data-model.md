@@ -412,10 +412,14 @@ row itself (as migration 0016 did) instead of blanking the fields, and
 
 A scan also writes an `@rev` key (`catalog.scannedRevKey`): the revision of the
 name-reading rules (the path baseline, `metadata.DeriveFromPath`, plus the tags
-over it) the snapshot used, `2` today (`catalog.scannedRev`). Revision 2 (2.6.0)
+over it) the snapshot used, `3` today (`catalog.scannedRev`). Revision 2 (2.6.0)
 is the one where an album tag that only names the book's series stopped being its
 title; the next scan checks a snapshot of revision 1 or none once, as
-[the scanner](scanner.md#an-album-that-is-only-the-series) describes. A snapshot
+[the scanner](scanner.md#an-album-that-is-only-the-series) describes. Revision 3
+(2.6.0, server#319) is the one where a leaf named `Author; Series; Book NN[;
+Title]` came to state its series and position; the next scan reads a snapshot
+older than 3 with such a leaf once, and stamps an unflagged revision 1 or 2
+snapshot, as [the scanner](scanner.md#a-leaf-that-states-its-series) describes. A snapshot
 with no revision (any server before revision 1) was read when the lone folder above a book
 (`Charles Dickens/Great Expectations`) was its series rather than its author. For
 a book one folder deep, `Catalog.Signatures` sorts such a snapshot out in SQL
@@ -1400,7 +1404,9 @@ first layer. In a `'path'` library, `bookLayers.scannedFields` reads the
 book's path with `metadata.FromPathLayout` (the folder LAYOUT from
 `metadata.ReadPathLayout`: the top folder is the author, the folder holding the
 book the series when there is an author folder above it, the leaf the title
-with its leading number split off as the position; disc and track folders are
+with its leading number split off as the position, except a leaf named
+`Author; Series; Book NN[; Title]`, which gives its series, position or range
+and title part (`metadata.LeafSeries`, from 2.6.0); disc and track folders are
 parts) and puts its title, author and series over the scanned ones wherever it
 says anything. Where it says nothing it still replaces a scanned value that is
 only the scan's own path reading (`DeriveFromPath` takes the folder holding a
@@ -1409,7 +1415,9 @@ book for its series even when it is a disc folder's book, so
 goes with the series: the layout's own, else the scanned one only while the
 series it numbers stays (the same series, by any case). A tag title that IS the
 leaf's name, number and all (`13 Reasons Why`), is kept whole with no position
-read from it. It is a resolve rule, not a scan rule: `books.scanned` is the
+read from it, except a `LeafSeries` leaf, whose parts the layout reads even
+when the title is the whole leaf (an untagged book's). It is a resolve rule, not
+a scan rule: `books.scanned` is the
 same in either mode, so `UpdateLibrary` re-resolves every book of the library
 (`refreshLibrary`, `refreshEffective` per book) in the edit's own transaction
 when the stored source changes - no rescan, no disk access (about 1 s per

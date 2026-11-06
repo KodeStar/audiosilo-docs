@@ -483,7 +483,8 @@ CSP-sensitive work against a real build served by Go. The console's own gate is
   and path facts through metaserve's `works/match`; its search box opens with
   the book page's `match_query`, which the server builds with
   `meta.SearchPrefill`: the title and author, or the folders' reading of the
-  path when the tags look swapped or junk, so the console never works this out
+  path when the tags look swapped or junk or the title is a whole
+  `Author; Series; Book NN` leaf, so the console never works this out
   itself; the ticked fields, ASIN and ISBN
   included, are accepted as one `PATCH …/book` with `source: "community"`;
   candidates' covers are thumbnails the server fetched, `POST /admin/meta/covers`,

@@ -6635,16 +6635,19 @@ book path).
 - `match_query` - the text the console's
   [match dialog](#get-apiv1adminlibrariesidbookmatch) opens its search box
   with (`meta.SearchPrefill`): the book's title and author, unless the tags
-  look swapped or junk, where the folders' reading of the path
+  look swapped or junk, or the title is a whole `Author; Series; Book NN`
+  leaf (an untagged book's), where the folders' reading of the path
   (`metadata.FromPathLayout`) replaces them. Swapped means the title is the
   author folder's name, or the author, cleaned of series and numbering, is the
   path's title; a tag that matches its own path fact is never swapped
   (`Dune/Dune` by Frank Herbert). A junk title (`Unknown`, `Untitled`,
   `Track 01`, `03`) or a junk author (`Unknown`, `Various Artists`) is replaced
-  on its own. A fact the path doesn't give keeps the tag's value. It only fills
-  the box: the match itself always sends the book's own facts, and `q` is what
-  the admin then searches for. Always present (`""` for a book with nothing to
-  say).
+  on its own. A fact the path doesn't give keeps the tag's value. A path with
+  no title (`Stormlight Archive/03`, or `Bruno Miller; Dark Road; Book 01-05`)
+  gives the series and its position or range instead (`Dark Road 1-5`; the
+  series alone for `Book XX`). It only fills the box: the match itself always
+  sends the book's own facts, and `q` is what the admin then searches for.
+  Always present (`""` for a book with nothing to say).
 - `generated_description` - the description the [Bridge](#the-bridge) generated
   for the book (its checked `.audiosilo/description.json`, Phase 1c), with
   `generated_at` the time `bridge.json`'s `description` object gives (omitted when

@@ -749,7 +749,10 @@ embedded data winning where it is trustworthy:
    one above it the author (`Author/Series/01 - Title.m4b`), except a lone
    ancestor, which is the author with no series (`Author/Title/`, the commonest
    layout; `ReadPathLayout` reads it the same way). A book at the library root
-   simply has no ancestors - the old "flat" layout falls out for free. A lone
+   simply has no ancestors - the old "flat" layout falls out for free. One leaf
+   name wins over the folders: `Author; Series; Book NN[; Title]` states its own
+   series and position (`metadata.LeafSeries`, from 2.6.0; see
+   [below](#a-leaf-that-states-its-series)). A lone
    ancestor used to be read as the series; a snapshot from then (no `@rev`, see
    [Data model](data-model.md#the-rebuildable-index)) is put
    right by the next scan without a re-index: from the snapshot alone where it
@@ -834,6 +837,37 @@ through the transcoder). See
 [in-process probe](#the-in-process-probe) is off too, so the server reads tags
 and paths only (probing in-process with no ffprobe is a possible follow-up).
 
+### A leaf that states its series
+
+Some library tools name a book's folder and file `Author; Series; Book NN[;
+Title]` (`Mark Tufo/Mark Tufo; Indian Hill; Book 04; From The Ashes`). From
+2.6.0 (server#319) `DeriveFromPath` reads such a leaf with `metadata.LeafSeries`
+and takes its series and position over the folder holding the book:
+
+- `Book 04` is position 4 (`Book 2.5` is 2.5);
+- `Book 01-05` and `Book 10-12` are a range (`ParseSeriesRange`: the start as
+  `SeriesIndex`, the end as `SeriesIndexEnd`, an omnibus);
+- `Book XX` (or `??`) and `Book 00` state the series and no position;
+- the marker must be a number or that placeholder (`leafVolume`), so
+  `Oprah; Picks; Book Club` is no such leaf and states nothing.
+
+The leaf's title stays the whole name in `DeriveFromPath`; `TitleNotSeries`
+reads the title part ([below](#an-album-that-is-only-the-series)). As the path
+baseline, the leaf's series is used only when the tags give none (`readNames`),
+and its position is kept when the tags give a series but no position. In a
+tags-first library an untagged leaf book keeps the whole leaf as its title. A
+[path-first library](data-model.md#metadata-overrides-and-effective-values)
+reads the leaf's parts too (before, the whole leaf was the title), and so does
+the console's [`match_query`](api/reference.md#get-apiv1adminlibrariesidbook)
+where it replaces a junk or swapped tag or an untagged book's whole-leaf title
+(`Dark Road 1-5 Bruno Miller` for a leaf with no title part). On the LibraForge
+benchmark's library of these leaves (about 600 books) the reading took
+auto-right matches up by 39 and auto-wrong from 8 to 7.
+
+**Books already indexed** are put right by the next scan, with no re-index
+(`@rev` 3, `metadata.PathLeafSeries`): see
+[the backfill](#books-already-indexed) below.
+
 ### An album that is only the series
 
 Many libraries tag the series as the album and the book as the title
@@ -851,8 +885,7 @@ bracketed groups such as "(Unabridged)" left out:
 - the folder holding the book, unless the book is a disc or part folder
   (`Bastion/CD1`), whose folder is the book;
 - the series part of a leaf named `Author; Series; Book NN[; Title]`
-  (`metadata.LeafSeries`; the volume is any marker after `Book`, `Book 01-03`
-  and `Book XX` included).
+  (`metadata.LeafSeries`, [above](#a-leaf-that-states-its-series)).
 
 The album stays when the leaf names the book the same way (`Frank
 Herbert/Dune/Dune`), alone or beside only the author, a year, a volume marker or
@@ -883,25 +916,32 @@ reads (a `LeafSeries` leaf's title part, the book folder above a disc or part
 folder, else `DeriveFromPath`'s; `""` for a `LeafSeries` leaf without a title
 part), which the console's provenance labels `path` (above).
 
-**Books already indexed** are put right without a re-index or a migration: the
-snapshot's `@rev` went from 1 to 2 (see
+#### Books already indexed
+
+Books already indexed are put right without a re-index or a migration: the
+snapshot's `@rev` went from 1 to 2 for this rule, and from 2 to 3 for
+[a leaf that states its series](#a-leaf-that-states-its-series) (see
 [Data model](data-model.md#the-rebuildable-index)).
 
-- **Flagged:** `Catalog.Signatures` flags a snapshot of revision 1 or none whose
-  stored title and series could be such a reading (`metadata.MaybeSeriesTitle`,
-  about 2 µs a row, into `Signature.TitleCheck`). The next scan reads that book's
+- **Flagged:** `Catalog.Signatures` sets `Signature.NamesCheck` on a snapshot of
+  revision 1 or none whose stored title and series could be such a reading
+  (`metadata.MaybeSeriesTitle`, about 2 µs a row), and on a snapshot older than
+  revision 3 whose leaf `metadata.PathLeafSeries` reads. The next scan reads that book's
   first file once, with the same read as the path backfill, and
   `Catalog.SetPathReading` rewrites its snapshot (it now skips only a snapshot
   already at the current revision). A book the snapshot alone could settle for
   the lone-folder check waits for this read too, so an unreadable file never
-  records revision 2 with its title unread.
-- **Not flagged:** a current revision-1 snapshot (`Signature.RevStamp`) is
-  stamped at revision 2 by that scan (`Catalog.StampScannedRev`, a
-  compare-and-set that changes only the revision), so later scans don't test it
-  again. A snapshot of no revision that isn't flagged is not stamped: it keeps no
+  records today's revision with its title or the leaf's series unread.
+- **Not flagged:** a current revision-1 or revision-2 snapshot
+  (`Signature.RevStamp`) is stamped at today's revision by that scan
+  (`Catalog.StampScannedRev` with `revOlderOwn`, a compare-and-set that changes
+  only the revision), so later scans don't test it again. A snapshot of no revision that isn't flagged is not stamped: it keeps no
   revision until its next re-index or path reading.
-- A stamped book is never tested again, so a later change that makes
-  `TitleNotSeries` change more titles needs a new revision.
+- A stamped book is never tested again, so a later change that makes the
+  reading change more books (`TitleNotSeries` more titles, `MaybeSeriesTitle`
+  or `LeafSeries` more flags) needs a new revision, its own `NamesCheck`
+  term, and the revision it replaces added to `revOlderOwn`'s list, so that
+  revision's snapshots are stamped too.
 
 ### The in-process probe
 
