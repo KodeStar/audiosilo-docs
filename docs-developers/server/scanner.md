@@ -757,9 +757,11 @@ embedded data winning where it is trustworthy:
    backfill reads them.
 2. **Embedded tags + probe** (`metadata.Extract` on the primary file - the
    first part for folder books) overlay the baseline: tags via `dhowden/tag`
-   in-process (album ≻ title for the book title - except when the title tag
+   in-process (album ≻ title for the book title, `metadata.bookTitle` - except when the title tag
    extends the album with a real subtitle, the Audible shape where album holds
-   the *series* and only the title tag carries the actual book title; album-artist
+   the *series* and only the title tag carries the actual book title, and,
+   from 2.6.0, an album that only names the book's series:
+   [below](#an-album-that-is-only-the-series); album-artist
    ≻ artist for the author, a narrator tag ≻ composer for the narrator (below), plus raw-tag lookups for
    the series atoms and the release date - MP4 `©day`, ID3 `TDRC`/`TYER`,
    Vorbis `date`, read by `metadata.ReleaseDate` into `books.released`, never
@@ -831,6 +833,69 @@ through the transcoder). See
 [Media & streaming](media.md). With ffprobe disabled (`--ffprobe ""`) the
 [in-process probe](#the-in-process-probe) is off too, so the server reads tags
 and paths only (probing in-process with no ffprobe is a possible follow-up).
+
+### An album that is only the series
+
+Many libraries tag the series as the album and the book as the title
+(`Mark Tufo/Mark Tufo; Indian Hill; Book 04; From The Ashes`, album "Indian
+Hill"; `Eric Vall/Without Law/Book 10`, album "Without Law", title "Without Law
+10"), so `bookTitle`'s album-over-title named every book of the series alike, and
+`matchrun.QueryFor` sent the series as the title, which matched book 1. From
+2.6.0 (server#317) `readNames` passes the title through
+`metadata.TitleNotSeries` (`metadata/seriestitle.go`). It applies when the title
+is the album (`Metadata.AlbumTag` / `TitleTag` record the pair `bookTitle` chose
+from) and the album names a series the book is in, compared by series key with
+bracketed groups such as "(Unabridged)" left out:
+
+- the series tag;
+- the folder holding the book, unless the book is a disc or part folder
+  (`Bastion/CD1`), whose folder is the book;
+- the series part of a leaf named `Author; Series; Book NN[; Title]`
+  (`metadata.LeafSeries`; the volume is any marker after `Book`, `Book 01-03`
+  and `Book XX` included).
+
+The album stays when the leaf names the book the same way (`Frank
+Herbert/Dune/Dune`), alone or beside only the author, a year, a volume marker or
+the series and the number 1 (`Frank Herbert - Dune`, `1965 - Dune`). Otherwise
+the candidates are the title tag and the path's title (a `LeafSeries` leaf's
+title part, else `DeriveFromPath`'s). Neither counts when it is a volume marker
+(`Book 10`, `Vol. 2`), a part label, only bracketed text, or the series and the
+number 1 (`Arena Road 1`, `01 Monster Core`). For a book of several files, a
+title tag that is the album plus a track marker ("Indian Hill 03") is a file's
+name and doesn't count either. Then, in order:
+
+1. The two agree: that is the title.
+2. The path's title, for a book of several files (its title tag is its first
+   file's), when no title tag counts, or beside a tag carrying the series' name
+   ("002 - Spellmonger - Book 002 - Warmage" beside "Book 2 - Warmage").
+3. A book at position 1 (the tags' position, else the leaf's volume) keeps the
+   album: a series is often named for its first book, whose title tag may be a
+   chapter's ("End Credits").
+4. The title tag, except for a book of several files, whose lone first-file tag
+   ("Prologue" in `Indian Hill/Book 3`) counts only when it carries the
+   series' name.
+5. Otherwise the album stays.
+
+The result is the stored title, so the player, search and the match's query all
+see the book's own. The console's provenance still works it out by comparison
+(above): a title taken from a `LeafSeries` leaf's title part differs from
+`DeriveFromPath`'s whole leaf, so it reads as `tag` there.
+
+**Books already indexed** are put right without a re-index or a migration: the
+snapshot's `@rev` went from 1 to 2 (see
+[Data model](data-model.md#the-rebuildable-index)). `Catalog.Signatures` flags a
+snapshot of revision 1 or none whose stored title and series could be such a
+reading (`metadata.MaybeSeriesTitle`, about 2 µs a row, into
+`Signature.TitleCheck`); the next scan reads that book's first file once, with
+the same read as the path backfill, and `Catalog.SetPathReading` rewrites its
+snapshot (it now skips only a snapshot already at the current revision). A book
+the snapshot alone could settle for the lone-folder check waits for this read
+too, so an unreadable file never records revision 2 with its title unread. A
+current revision-1 snapshot that isn't flagged (`Signature.RevStamp`) is stamped
+at revision 2 by that scan (`Catalog.StampScannedRev`, a compare-and-set that
+changes only the revision), so later scans don't test it again. A stamped book is
+never tested again, so a later change that makes `TitleNotSeries` change more
+titles needs a new revision.
 
 ### The in-process probe
 
