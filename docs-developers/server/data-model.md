@@ -1433,7 +1433,11 @@ community match only, never `books.asin` / `isbn` and never on the wire: only
 `matchrun.QueryFor` sends a hint as `BookASIN` / `BookISBN` when the book has
 neither of its own, so one the community knows whose length fits is confident
 (see [the outcomes](api/reference.md#bulk-community-matching)) and becomes the book's
-ASIN only by an apply. Why not the book's ASIN: on the LibraForge benchmark 272 of
+ASIN only by an apply; from 2.6.0 a match run proposes another recording of the hint's work
+when the hint's is more than 10% off the book's length and the other fits (`meta.FitRecording`, the
+[`default_recording_id`](api/reference.md#get-apiv1adminlibrariesidbookmatch) rules). `tag_language`
+also counts toward the library's derived language (`catalog.LanguageCounts`), which a book stating
+none is matched in. Why not the book's ASIN: on the LibraForge benchmark 272 of
 1,677 tagged books (16%) carried an ASIN that was not their confirmed listing
 (another store, another edition, or wrong); a stored ASIN takes the book out of
 match runs and a refresh never re-matches it by title, so a wrong tag would lock

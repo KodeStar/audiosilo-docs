@@ -129,10 +129,13 @@ what it found and apply it.
    the book, however well they scored. Those say so in both lengths ("Held for review: the book is 10h 34m
    long, this recording 7h 2m"), as the closest recording can be
    another edition. A work that holds only a dramatization of the book is held too, unless
-   the book's title, folder or narrator says it's a dramatization or its ASIN names that
-   recording: it's the right book, but not your recording. The match dialog preselects no
-   recording for such a book either: **Choose an edition** only if your files are that
-   production. Tick the ones that are right, or click **Match by hand** to open that book's
+   the book says it's a dramatization (its title, folder or narrator, and from 2.6.0 its
+   author, such as "Michael J. Sullivan - Graphic Audio", or a genre such as Radio Drama,
+   Audio Drama or Hörspiel), its ASIN names that recording, or, from 2.6.0, the dramatization's length is
+   your book's to within 1% (or 2 minutes, whichever is more): a copy of that production
+   is that close, another reading hardly ever. Otherwise it's the right book, but not
+   your recording, and the match dialog preselects no recording for it either:
+   **Choose an edition** only if your files are that production. Tick the ones that are right, or click **Match by hand** to open that book's
    match dialog over the review. When you accept a match there, you're back on
    the review where you left it, and the book reads **Matched since this run**.
    To look closer first, or to listen to it, the icon beside **Match by hand**
@@ -181,10 +184,15 @@ The score weighs the book's title, author, series and length, and also:
 - **Its narrators.** A recording read by the book's narrators counts in the
   work's favour, and is the recording the match picks if its length fits.
 - **Its language.** A work the community knows to be in another language scores
-  lower. Only the book's own language counts: from its tags, an Audiobookshelf
-  `metadata.json`, or your edit. A book that states none isn't judged on it, and
-  **Audible marketplace** plays no part, since the store you buy from says
-  nothing about what language a library is in.
+  lower. The book's own language counts: from its tags, an Audiobookshelf
+  `metadata.json`, or your edit. From 2.6.0 a book that states none is matched in
+  its library's language, when the library has one: at least 20 of its books
+  state a language and at least 90% of those agree ("English", "eng" and "en"
+  count as one; "Multilingual" counts as none). There is nothing to set: the
+  match dialog and **Match automatically** both work it out. In a library of
+  mixed languages a book that states none isn't judged on it. **Audible
+  marketplace** plays no part, since the store you buy from says nothing about
+  what language a library is in.
 
 meta.audiosilo.app already scores a book's place in a series this way, and marks
 down a length that's far off, for any server that asks it. Narrators and language count from
@@ -235,7 +243,17 @@ A match sends the hint when the book has no ASIN or ISBN of its own. A hint the
 community knows scores 100% and is confident whatever the next candidate scored,
 as long as its recording's length is within 10% of the book's. It goes to
 **To review** instead when the length doesn't fit, or when the next candidate was
-found by an identifier too. A hint the community doesn't know costs nothing: the
+found by an identifier too.
+
+From 2.6.0, when the hint names a recording more than 10% off the book's length that
+none of the book's narrators reads, and the same work has another recording within
+10%, **Match automatically** proposes that one instead: a tag's ASIN can name
+another edition of the right book. When the book's narrator does read the hint's
+recording, it stays, held for review by its length. A book that doesn't say it's a
+dramatization is never moved onto one this way. The match dialog shows the hint's
+recording as before; pick the edition there.
+
+A hint the community doesn't know costs nothing: the
 book is matched on its other details.
 
 With [Help complete the community database](server.md#helping-complete-the-community-database)
