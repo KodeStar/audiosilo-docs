@@ -16,7 +16,7 @@
 import path from 'node:path';
 import {fileURLToPath} from 'node:url';
 import {chromium} from 'playwright';
-import {sleep, shoot, wanted, DESKTOP_CONTEXT} from './lib.mjs';
+import {sleep, shoot, wanted, fitted, fitViewportTo, DESKTOP_CONTEXT} from './lib.mjs';
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 const BASE = (process.env.META_BASE || 'http://127.0.0.1:8795').replace(/\/$/, '');
@@ -112,10 +112,15 @@ await step('work', async () => {
 });
 
 await step('browse', async () => {
-  await goto('/browse/works');
-  await page.getByRole('heading', {name: 'Audiobooks', exact: true}).waitFor();
-  await page.locator('main a[href^="/works/"]').first().waitFor();
-  await shoot(page, 'meta/browse.png');
+  await goto('/browse/series?letter=M');
+  await page.getByRole('heading', {name: 'Series', exact: true}).waitFor();
+  await page.getByRole('searchbox', {name: 'Search this directory'}).waitFor();
+  await page.locator('main a.directory-card[href^="/series/"]').first().waitFor();
+  await page.getByRole('link', {name: 'M', exact: true}).waitFor();
+  // Keep the filters, navigation and first two rows of series in one frame.
+  await fitted(page,
+    () => fitViewportTo(page, page.locator('main a.directory-card').nth(3), {max: 1250}),
+    () => shoot(page, 'meta/browse.png'));
 });
 
 await step('work-comparison', async () => {
