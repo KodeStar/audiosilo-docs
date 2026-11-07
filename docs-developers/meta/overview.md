@@ -155,6 +155,20 @@ Being public, they follow the
 rules: the handler's responses change additively, and so does the artifact
 schema ([how its versions are gated](data-model.md#the-compiled-artifact-and-schema-versioning)).
 
+The catalogue query surface also includes `SeriesListeningGuide` and
+`PersonRecordings`: bounded member/credit pages with batched recording summaries
+and narrator credits, without constructing a `WorkDetail` per member. `Browse`
+reads directory pages and `RecordingChapters` reads a validated recording's
+chapter window. Their HTTP contracts are in [the API reference](api.md).
+
+Artifact **schema 12** adds the nullable `recordings.abridgement` column and
+indexes for catalogue reads. It retains an explicitly stated `abridged: false`
+as `unabridged`, while an absent flag stays unknown. `model.Recording` preserves
+that distinction through JSON round trips using `AbridgedKnown`; the legacy
+`Abridged` field remains compatible. On older artifacts only legacy true proves
+`abridged`; false does not prove `unabridged`. The API's optional `abridgement`
+and recording `language` fields are additive.
+
 ## The CLI tool set at a glance
 
 Each command is a thin `cmd/*` wrapper over a package; run any of them with `go
@@ -367,6 +381,36 @@ own pull requests.
 provider** (`GET /abs/search`, plus `GET /abs/{lang}/search`, which ranks one
 language's matches first) for that competitor's users - see
 [the HTTP API](api.md#get-abssearch-audiobookshelf-provider).
+
+## The HTML catalogue
+
+`internal/serve` injects entity facts and embedded payloads into the Astro shells;
+React islands reuse that payload instead of showing a loading screen first.
+Work comparisons link to stable recording anchors and paginated chapter pages.
+The `/browse` directories provide normal links to works, series, people and
+existing community guides. Series guides and person recording credits use
+50-row pages; recording chapter pages use 100 rows. See
+[HTML routes and sitemaps](api.md#html-routes-and-sitemaps) for canonical URLs
+and error responses.
+
+Character aliases/descriptions and recap bodies remain in the rendered DOM
+inside closed native `details`/`summary` disclosures, with `data-nosnippet` on
+spoiler bodies. Work tab panels stay mounted with `hidden` semantics. These
+changes expose existing community prose; they do not generate missing content.
+
+Series recording choices and runtime subtotals apply only to the current page.
+The guide shows at most five alternatives per work, with the true recording
+count and a link to all alternatives. Narrator continuity and person credit
+groups describe that page's rows, not a complete series. A complete listening
+plan requires explicit choices, known runtimes and non-overlapping positions
+for every catalogued entry; a partial subtotal never sums alternatives. Neither
+recording presence nor retailer links establish availability or production format.
+
+The artifact has creation/import dates, not trustworthy entity revision dates.
+Entity sitemap URLs therefore omit `lastmod`; the sitemap index can still date
+the generated shards by artifact build time. Per-entity revision tracking,
+source-verified enrichment and measured Search Console experiments remain
+follow-up work, not evidence supplied by this change.
 
 ## The site's watchlist is client-side only
 

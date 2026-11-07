@@ -611,6 +611,14 @@ covers, so missing cover art never fails a shot.
 `capture-meta.mjs` is standalone: point `META_BASE` at any `metaserve` (or the
 live site) and run `META_BASE=http://127.0.0.1:8795 node capture-meta.mjs` - it
 needs no other services (the /import fixture is vendored in `fixtures/`).
+Rebuild the selected checkout explicitly before starting its server when
+capturing changed UI, for example `cd "$META/site" && yarn build` under Node 24.
+Use `SHOTS_ONLY=meta/browse,meta/work,meta/chapters,meta/characters,meta/series,meta/person-recordings`
+for the catalogue views. The meta script skips unselected captures and exits
+nonzero if a requested capture fails; inspect the generated PNGs as well.
+Its work, series and person routes are canonical paths, and character captures
+open native `details`/`summary` disclosures. The series guide chooses two real
+catalogued alternatives on the current page without modifying the artifact.
 
 The two watchlist shots (`meta/series-watching.png`, `meta/watching.png`) need a
 site build that has the `/watching` page in it, and they run as a **pair**: the
