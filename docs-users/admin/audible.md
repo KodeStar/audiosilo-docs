@@ -98,8 +98,8 @@ Accounts tab (**Change**) to carry on.
 
 ![Server > Settings > Audible: the titles of the signed-in accounts, with their states and whether each is on this server](/img/screenshots/admin/audible-titles.png)
 
-**Server > Settings > Audible** lists every title your Audible accounts own, as the
-Bridge last saw them, sorted by title. Each row shows the title, its authors and
+**Server > Settings > Audible** lists every title your Audible accounts own or have
+[preordered](#preorders), as the Bridge last saw them, sorted by title. Each row shows the title, its authors and
 series, then its length, the release date of a preorder, its ASIN, (with several
 accounts) which account owns it, and **To ...** when you gave it a
 [destination](#choosing-a-destination). A title that isn't on this server says
@@ -139,7 +139,7 @@ page for the account you chose under **Account**, or for the only one there is.
 | State | Means |
 |---|---|
 | **Available** | the account owns it and can download it |
-| **Preorder** | not released yet; the row says when it is |
+| **Preorder** | ordered but not released yet; the row says when it is (see [Preorders](#preorders)) |
 | **Unavailable** | the account has it but Audible won't let it be downloaded (for example a podcast or a periodical, or a title without download rights); the row says why |
 | **No longer in the library** | it was in the account before, but the Bridge's last complete check didn't find it (returned, or removed from the account) |
 
@@ -503,8 +503,33 @@ overwritten.
 
 ## Preorders
 
+Audible doesn't put a preorder in your Audible library until it comes out, so at
+each check the Bridge also reads the account's orders and lists every preorder
+still waiting there, with its title, authors, series and release date from
+Audible's catalogue. A preorder shows from the first check after you order it:
+press [Check now](#check-now) to see it sooner. A release date Audible moves is
+picked up at the next check.
+
+Once a check has seen a preorder, the Bridge remembers it, and it stays a
+**Preorder** until the account's library lists it (then it turns **Available**),
+even after the order has dropped out of Audible's order history. It leaves the list
+when you cancel the order, or when it still isn't in the library 30 days after its
+release date. If the Bridge can't read the orders or the catalogue at a check, the
+check still finishes and lists the preorders it remembers, as it last saw them.
+
+:::note[Older preorders]
+Audible's order history only goes back about six months. A preorder ordered more
+than about six months before the Bridge first checks the account with preorder
+support (Bridge releases after 0.6.0) can't be found, so it isn't listed until it
+comes out; it then shows as **Available** like any other title. A preorder ordered
+later is remembered, however long it waits for release.
+:::
+
 A **Preorder** can't be downloaded yet. **Back up** on one remembers it: the title
 shows **Backs up on release**, and the request is kept through restarts.
+**Destination...** works on a preorder as on any other title, and the row shows
+[where it would go](#where-a-title-would-go) once Audible's catalogue has
+described it.
 
 From the title's release date, the server checks the account **every hour**
 instead of every 6 hours. The first check that finds it **Available** backs it up:

@@ -10668,7 +10668,7 @@ the server knew it (the Bridge forgets locally first and may call again).
       "release_date": "2026-11-20",
       "runtime_s": 36000,
       "state": "preorder",
-      "reason": "pre-order",
+      "reason": "Not released yet (pre-order)",
       "match": { "library_id": 1, "path": "A. Writer/The Example", "how": "fuzzy" },
       "planned": null
     },
@@ -10849,7 +10849,7 @@ keyset-paged.
       "release_date": "2026-11-20",
       "runtime_s": 36000,
       "state": "preorder",
-      "reason": "pre-order",
+      "reason": "Not released yet (pre-order)",
       "match": null,
       "rejected": false,
       "ignored": false,

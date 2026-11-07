@@ -1,6 +1,6 @@
 ---
 title: Audible
-description: "Bridge Phases 4a, 4b and 4c: Audible accounts on the Bridge (the paste-back PKCE sign-in, device registration and deregistration, the vault), the audible.poll job and its matching rules, the audible.import backup (params, steps, result and codes, resume and temp files, the hardened transfer, enrichment, secrets), the server's accounts and titles (0063, 0064, 0065), its queueing (priorities, policy_since, preorders, the done fold) and the audible module, the console, and the build-tagged Audible fake; the current device profile (Bridge 0010), redacted account ids, contests settled by series number and planned destinations; position sync both ways (4c: audible.sync, the push loop, furthest only, the two Bridge routes, server 0066 and Bridge 0011)."
+description: "Bridge Phases 4a, 4b and 4c: Audible accounts on the Bridge (the paste-back PKCE sign-in, device registration and deregistration, the vault), the audible.poll job and its matching rules, preorders from the orders and the catalog (remembered, Bridge 0012), the audible.import backup (params, steps, result and codes, resume and temp files, the hardened transfer, enrichment, secrets), the server's accounts and titles (0063, 0064, 0065), its queueing (priorities, policy_since, preorders, the done fold) and the audible module, the console, and the build-tagged Audible fake; the current device profile (Bridge 0010), redacted account ids, contests settled by series number and planned destinations; position sync both ways (4c: audible.sync, the push loop, furthest only, the two Bridge routes, server 0066 and Bridge 0011)."
 ---
 
 Phases 4a, 4b and 4c of the Bridge plan (BRIDGE-PLAN.md Phase 4, the workspace's
@@ -25,7 +25,7 @@ probe and OpenAudible sources were not imported.
 | Where | What |
 |---|---|
 | The Bridge's vault | each account's sign-in, sealed as `audible_<id>` (`secrets.AudibleName`): the access, refresh and adp tokens, the device's RSA key, its serial, the customer id and marketplace (`audible.Credentials.Marshal`). **Full Amazon account access**, so never anywhere else |
-| The Bridge's `bridge.db` | `audible_accounts` (migration `0009`): `id`, `label`, `marketplace`, `customer_hash` (sha256 of the customer id, never the id), `server_id` (the server the mapping was last recorded on), `user_id`/`user_name`, `library_id`, `policy`, `sync` (sent to the server, which ignores it since 4c), `created_at`, `last_ok_at`, `last_poll_at`, `last_titles`, `last_matched`, `refused_at`, `last_error`, `device_profile` (migration `0010`, [below](#the-device-profile)), and 4c's push and sync health columns and `refusal_kind` with the `audible_push` table (migration `0011`, [below](#bridge-migration-0011_audible_push)). Unique on `(customer_hash, marketplace)` where the hash isn't empty. No credential |
+| The Bridge's `bridge.db` | `audible_accounts` (migration `0009`): `id`, `label`, `marketplace`, `customer_hash` (sha256 of the customer id, never the id), `server_id` (the server the mapping was last recorded on), `user_id`/`user_name`, `library_id`, `policy`, `sync` (sent to the server, which ignores it since 4c), `created_at`, `last_ok_at`, `last_poll_at`, `last_titles`, `last_matched`, `refused_at`, `last_error`, `device_profile` (migration `0010`, [below](#the-device-profile)), and 4c's push and sync health columns and `refusal_kind` with the `audible_push` table (migration `0011`, [below](#bridge-migration-0011_audible_push)). The remembered pending preorders: `audible_preorders` (migration `0012`, [below](#preorders)). Unique on `(customer_hash, marketplace)` where the hash isn't empty. No credential |
 | The server | the mapping and the titles (`0063`, `0064`, `0065`, `0066`, below), the poll and sync schedules, what to back up and when, and whether an account's places sync. It never talks to Audible and never holds a credential or a book's key |
 
 No credential reaches the store, job params or results, logs, the heartbeat or the
@@ -169,6 +169,8 @@ reads a `429`/`503`'s `Retry-After` (kept on the error, read up to a day);
 `ContentACR` (a license request asking only for the content reference a written
 place needs) wraps a `200` denying the license as `License` does, and
 `IsDenial(err)` says whether an error is one of the four denials.
+Preorders (after 0.6.0): `Client.Orders` (`GET /1.0/orders`) and `Client.Products`
+(the catalog), see [Preorders](#preorders).
 
 ### Redacted account ids
 
@@ -216,23 +218,33 @@ the new one (a claimed poll runs as claimed).
 
 1. checks the account is this Bridge's and was mapped on the paired server (else
    it fails, asking to map it again);
-2. lists the Audible library (a refusal is the account's: the job just fails);
+2. lists the Audible library (a refusal is the account's: the job just fails),
+   then adds the account's pending [preorders](#preorders)
+   (`audibleacct.Manager.Preorders`: from the orders, remembered, described by the
+   catalog; it never fails the poll). The library never lists a pending preorder,
+   and an ASIN the library lists is never one;
 3. reads the account's library on the server, 500 books a page
    (`GET /bridge/libraries/{id}/books`, at most 2000 pages);
 4. skips records without a usable ASIN, and states the rest from
-   `UnavailableReason`: `""` is `available`, `"pre-order"` `preorder`, anything
-   else `unavailable` with the reason;
+   `UnavailableReason` and `Preorder`: no reason is `available`; a reason with
+   `Preorder` set is `preorder` (the reason `audible.PreorderReason`, "Not released
+   yet (pre-order)", as every preorder from the orders carries), any other
+   `unavailable` with the reason;
 5. matches them with `importjob.BookMatcher` over `[]link.LibraryBook`
    (`audiosilo-server/pkg/match.BestWith` under `match.ImportOptions()`: ASIN exact
    first, then author + series + title tokens; a book in several series is a
    candidate under each; narrators join the person gate; see
-   [Matching rules](#matching-rules)), then `importjob.KeepBest` settles books
+   [Matching rules](#matching-rules); a preorder the catalog hasn't described yet,
+   with no title, matches by ASIN only (`matchTitled`), and a preorder claiming a
+   book a library title claims too gives way to it, uncontested), then
+   `importjob.KeepBest` settles books
    claimed by several titles. `how` is `asin` when the book's ASIN is the title's,
    else `fuzzy`. A book path goes out only as `.` (a library that is one book) or a
    clean path below the root, within the server's 4096-byte limit. The Bridge
    skips over-limit candidates before building a titles PUT batch, so one
    invalid path does not reject the other matches;
-6. **plans** each unmatched title (contested included, never a matched one):
+6. **plans** each unmatched title (contested included, never a matched one, nor a
+   preorder with no title yet):
    where a backup would go, `planned` (see [Planned destinations](#planned-destinations)),
    with no Amazon request;
 7. PUTs the titles in calls of 500 under **one** poll id (the job, the attempt and a
@@ -341,12 +353,95 @@ keeping only a plausible one (`plausibleDate`: parseable, a year before 2100 and
 most two years after now). With neither, the date is unknown (`release_date` `""`)
 and reads as released: Audible sends placeholders such as 2200-01-01 for titles it
 has had for years, and those must never be stored as preorders. `unavailableReason`
-checks the delivery type (`Periodical`, `PodcastParent`) and `customer_rights`
-before the preorder rule, so a show or a title without download rights is never
-called a preorder. A title whose date was set aside is logged once per listing
+checks the delivery type (`Periodical`, `PodcastParent`) first, so a show is never
+called a preorder; then a plausible release date still ahead
+(`ReleaseIsUpcoming`) is a preorder whatever `customer_rights` says (Audible grants
+no rights to a title not out yet); only then do missing download rights make a
+title unavailable. A title whose date was set aside is logged once per listing
 (its ASIN and title, both dates, `content_delivery_type`, `content_type` and
 `is_consumable_offline`; never a token or the customer id) through the client's
 `WithLogger`.
+
+### Preorders
+
+A pending preorder is **not** in the account's Audible library until it is
+released: `GET /1.0/library` lists none, and `GET /1.0/library/{asin}` is a `404`.
+Seen on a real UK account (2026-11), the orders listing is the only place the API
+shows one, so each poll reads it (`audibleacct.Manager.Preorders`, which owns the
+store, the sign-in and the service; `audiblejob` appends its records to the
+library's):
+
+- **The orders** (`audible.Client.Orders`, `GET /1.0/orders`, signed): an order
+  has `date`, `preorder`, `state`, `detail_state`, `type` and `items` (each with
+  `asin` and `is_preorder`, beside payment fields the client never decodes). A
+  title is a pending preorder when its order has `preorder: true` **and** `state`
+  `ORDER_PENDING_PREORDER` (`Order.PendingPreorder`); a delivered order is
+  `ORDER_CLOSED`/`ORDER_SUCCEEDED`. The listing reaches back about six months and
+  ignores every query parameter tried (`page`, `num_results`, `start_date` and
+  `end_date`, `purchased_after`, `date_range`, `period`); any `response_groups` but
+  the default is a `500`, so none is sent. The paging fields read `0`; `Orders`
+  still follows `max_number_of_pages` should it ever page (at most 20 pages,
+  stopping at a page that adds no new order).
+- **The catalog** (`audible.Client.Products`) describes each pending preorder,
+  read again every poll so a moved release date is picked up: `GET
+  /1.0/catalog/products?asins=a,b,...` in batches of 25, split on a `400`/`414` as
+  `lastpositions` is (`splitOnOverflow`), with `response_groups`
+  `contributors,product_attrs,product_desc,series` (without `product_desc` the
+  catalog sends `title` null). An ASIN a batch leaves out, one still refused alone,
+  or a batch that failed is read alone (`GET /1.0/catalog/products/{asin}`); one the
+  catalog doesn't know is left out. Records are built as the library's
+  (`toRecord`), with no customer rights, then marked `Preorder` with
+  `audible.PreorderReason`.
+- **Remembered** (Bridge migration `0012_audible_preorders`, `store.AudiblePreorder`,
+  `store/audiblepreorders.go`): one row per `(account, asin)` with `ordered_at`
+  (the order's date, else when first seen), `last_seen_at` (last seen pending in the
+  orders), `record` (the catalog's last description as JSON, `''` until a read
+  succeeds; a cache the next fill replaces) and `filled_at`. No credential, no
+  payment field. Each poll reports every remembered row, so a preorder whose order
+  has left the six-month window is still reported. The rows go with the account
+  (`ON DELETE CASCADE`).
+
+**Drop rules** (`reconcilePreorders`, `dropReleased`), by ASIN:
+
+- the library lists it (the library wins; it is reported from there);
+- an order holds it cancelled and no order holds it pending: any state but pending
+  or delivered drops it, while a delivered order (`Order.Delivered`: `state`
+  `ORDER_CLOSED`, `detail_state` `ORDER_SUCCEEDED`) keeps it a preorder until the
+  library lists it (the library may list it a little after the order closes), so it
+  never drops out of a final poll in between;
+- the listing's oldest order is older than its `ordered_at` and the listing doesn't
+  hold it: it was in the window and is gone, so it was cancelled (an empty listing,
+  or one with no dated order, drops nothing);
+- its release date is `PreorderDropAfter` (30 days) past and the library still
+  doesn't list it; one the catalog never dated counts as released two years
+  (`undatedPreorderYears`) after it was last seen pending.
+
+A dropped preorder is no longer reported, so the server marks the title `gone` at
+the next final titles PUT.
+
+**Soft failure.** Neither the orders nor the catalog ever fails the poll. A failed
+orders listing (or a sign-in that can't be opened) adds and drops nothing beyond
+the library rule; the remembered rows are reported with the catalog's last
+description, and one warning is logged (Audible's answer redacted, never a
+credential). A `429`/`503` on the orders skips the catalog for that poll; a catalog
+that fails part way still describes the titles it read. A preorder the catalog never
+described is reported by ASIN alone: the server takes a title with no title (state
+`preorder`, the reason, no match, no plan). A store failure is a warning too, and
+nothing is written back.
+
+**Elsewhere.** `Manager.Title` answers a remembered pending preorder's record on
+`ErrNotInLibrary`, so an import of one fails `not_released`, not `no_rights`.
+Position sync never touches a remembered pending preorder (a fuzzy match can put
+one on a book, another edition): `audible.sync` leaves it out of the titles it
+reads (counted `skipped_preorder`), and the push loop never writes its place
+(Audible would deny the content reference every pass). Both read the store; when it
+can't say, they run as before with a warning.
+
+**Limit.** A preorder ordered more than about six months before the account's first
+poll with this code can't be found (Audible's order history has no older pages;
+the catalog's `customer_rights`, `is_preorderable` and `preorder_release_date` say
+nothing about this customer's order). It is reported once released, from the
+library. Every preorder ordered later is remembered.
 
 ### Enrichment pacing
 
@@ -440,8 +535,8 @@ a park's code, else the result's `code`, else an error starting with a known cod
 
 | Code | When |
 |---|---|
-| `not_released` | the title is a preorder, or Audible's license denial says it isn't out (`audible.ErrNotReleased`) |
-| `no_rights` | the title isn't in the account's library (`ErrNotInLibrary`), Audible won't let it be downloaded (`UnavailableReason`: no rights, a show or periodical), or the license is denied for rights (`ErrNoRights`) |
+| `not_released` | the title is a preorder (a remembered pending one, or a library title with a release date ahead), or Audible's license denial says it isn't out (`audible.ErrNotReleased`) |
+| `no_rights` | the title isn't in the account's library (`ErrNotInLibrary`) nor a remembered pending preorder, Audible won't let it be downloaded (`UnavailableReason`: no rights, a show or periodical), or the license is denied for rights (`ErrNoRights`) |
 | `audible_refused` | Audible refused the account's sign-in (`audibleacct.ErrRefused`: the account is marked refused) or the license for another reason (`ErrDenied`); or denied the device as throttled (`ErrThrottled`, a device on an older [profile](#the-device-profile)): the message is `ThrottledText`'s advice to sign in again on the Bridge, the account is marked refused and its later imports fail at once until a sign-in again |
 | `not_writable` | the library isn't the account's, not a books library the server lists, or not mapped **and** writable at the mount in use; the destination or template gives no valid path (`transfer.CleanRel`'s refusals, a hidden segment included; another audio extension than `.m4b`, `.m4a`, `.mp4`); a path the Bridge can't follow (a file where a folder goes, a link out of the mapping, an unreadable folder); a read-only filesystem or a permission refusal at the install |
 | `exists` | anything at the destination (a different file, a folder, a link), or a destination inside a book the library already has (its folder is a listed book's, or already holds audio): checked **before** the license, and again at the install |
@@ -467,8 +562,10 @@ mapping is writable again, keeping its download.
 1. **Gate and checks.** Takes the account's gate, checks the account (this Bridge's,
    mapped on the paired server) and the library (the account's, mapped and
    writable).
-2. **The title** (`Manager.Title`, `GET /1.0/library/{asin}` signed): a preorder
-   is `not_released`, an unavailable reason `no_rights`.
+2. **The title** (`Manager.Title`, `GET /1.0/library/{asin}` signed; a pending
+   preorder isn't in the library, so on `ErrNotInLibrary` it answers the
+   [remembered preorder](#preorders)'s record): a preorder is `not_released`, an
+   unavailable reason `no_rights`.
 3. **The destination** (`audiblejob.Destination`): `dest_path` first (the template
    isn't consulted), else the template (`placement.ModeTemplate`), else Auto
    (`importjob.Plan` over the paged books listing: the series siblings' folder and
@@ -813,7 +910,8 @@ not negative.
    **`audible_sign_in`**, which the server treats as an ordinary failure and keeps
    queueing: the next poll Audible answers ends it. Another server's account, or
    none, is `unknown_account`;
-2. stores the titles (`store.ListAudibleSync`), then while the account's
+2. leaves out the titles the account remembers as pending [preorders](#preorders)
+   (`skipped_preorder`), stores the rest (`store.ListAudibleSync`), then while the account's
    `sync_retry_at` is ahead ends done with `waiting` without calling Audible;
 3. reads Audible's places (`lastpositions`, 25 ASINs a request, split on a
    `400` or `414`); a failure fails `audible_error`, and a `429`/`503` also waits
@@ -844,7 +942,7 @@ again to another book is a new event.
 The job's **result** is counts and flags only: `account`, `titles`, `heard`,
 `sent`, `finished`, the server's `applied`, `duplicate`, `behind`, `not_applied`,
 `rejected`, and the skips (`skipped_echo`, `skipped_past_runtime`, `skipped_old`,
-`skipped_start`), `mismatched` (events the server rejected `duration_mismatch`:
+`skipped_start`, `skipped_preorder`), `mismatched` (events the server rejected `duration_mismatch`:
 counted, sent once a job and never retried in it); `waiting` with `wait_until`, or
 `sync_off`. A failure's result is
 `{code, message}`.
@@ -1117,10 +1215,21 @@ against the fake. Its controls are `GET /_fake/calls` (licenses, and downloads w
 their `Range`/`If-Range`), `POST /_fake/refuse`, `GET /_fake/titles`, and 4b's
 `POST /_fake/cut?after=N` (the next download drops after N bytes),
 `POST /_fake/expire` (the download URLs expire) and `POST /_fake/release?asin=` (a
-preorder out today). Phase 4c: each `PUT lastpositions` is recorded with its time
+preorder out today: it joins the library, available, and its order closes). Phase 4c: each `PUT lastpositions` is recorded with its time
 (`put_positions[].at` on `/_fake/calls`), `POST /_fake/position?asin=&ms=&ago=` sets a
 place heard on another device (`SetPosition`), and `GET /_fake/positions` lists
 every place it holds.
+Preorders (`orders.go`), shaped as the real account answered: a fixture preorder
+is **not** in `/1.0/library` and is a `404` on `/1.0/library/{asin}` until
+released (the library lists the 26 titles that are out); `GET /1.0/orders` lists
+one order per fixture title within `OrdersWindow` (183 days; the preorders pending
+in `ORDER_PENDING_PREORDER`, the others `ORDER_CLOSED`/`ORDER_SUCCEEDED`) plus a
+cancelled preorder (`CancelledPreorder`, `ORDER_CANCELLED`: the real cancelled
+state was not seen), each with synthetic payment fields, a `500` for any
+`response_groups`, and no paging; `GET /1.0/catalog/products` (`?asins=`, a `400`
+over `LastPositionsMax`) and `/1.0/catalog/products/{asin}` answer any fixture
+title, its `title` only when `product_desc` is asked. A pending preorder's license
+is denied as not released. The recorder scrubs order payment fields and prices.
 
 In a tagged build, `AUDIOSILO_BRIDGE_AUDIBLE_FAKE_URL` points every Audible and
 Amazon endpoint at a fake, and `AUDIOSILO_BRIDGE_AUDIBLE_RECORD_DIR` records every
