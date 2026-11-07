@@ -1352,8 +1352,10 @@ neither `priority` nor `changefreq` is emitted. True entity revision tracking
 remains follow-up work. Sitemap validators include artifact identity, renderer
 version, site URL and available build revision; this is cache invalidation, not
 a content-revision date, and release builds without VCS metadata may have no
-build revision. A missing artifact or failed shard composition returns **503**
-with `Retry-After` and `no-store`.
+build revision. A missing artifact or failed shard composition makes a generated
+shard return **503** with `Retry-After` and `no-store`. Without an artifact, the
+index serves the site's static index with `no-store` when available; otherwise
+it also returns **503**.
 
 ## Flags
 
