@@ -48,6 +48,8 @@ internal/chapteralign/ fits community chapter lists onto a book's audio
 internal/chaptercheck/ background community chapter checks
 internal/toolfetch/   ffmpeg/ffprobe download
 internal/metamirror/  metadata mirror mode's local copy
+internal/coverage/    optional daily report of unknown ASINs
+internal/upcoming/    daily series release and missing-volume checks
 internal/diskspace/   free disk space per OS
 internal/api/         HTTP transport
 internal/server/      HTTP(S) server + TLS
@@ -110,6 +112,21 @@ but spelled differently; only the Bridge's Audible matcher uses it (see
 | `ExactTitle` | the same title by the same person (case, spacing, punctuation, bracketed groups and edition words aside) adds a bonus to the pair's score that clears the match threshold on its own. So it matches across differently named series, and the series and number still rank two same-titled candidates. Not when a side's title is just its series name and number, which every volume shares |
 | `WordlessFallback` | a cleaned title left with no word and no digit ("The" of "The Mayor of Noobtown" in series "Mayor of Noobtown") falls back to the uncleaned one. When a candidate's title is just its series name and the query has a number, the numbers must agree (a candidate with none counts as 1) |
 | `DropUnabridged` | "(Unabridged)" is removed before a genre tail is judged ("The Primal Hunter 15: A LitRPG Adventure (Unabridged)" is volume 15) |
+
+### `internal/coverage` and `internal/upcoming`
+
+`coverage.Runner` sends the opt-in daily report of unknown ASINs while community
+metadata and `metadata.report_unknown` are on. In mirror mode it waits for the
+local copy before checking which identifiers are unknown; the report itself
+still goes to the service. A service that does not offer reporting is left
+alone for seven days. See [Community metadata](/users/admin/server#community-metadata).
+
+`upcoming.Runner` checks the community catalogue for preorders, recent releases
+and missing volumes in the series the server holds, while metadata and
+`upcoming.enabled` are on. It keeps the daily schedule, refreshes affected
+series after library changes, and announces newly released books after a
+silent first baseline. The API filters its stored rows to the caller's scope.
+See [Upcoming releases](api/reference.md#upcoming-releases).
 
 ### `internal/config`
 

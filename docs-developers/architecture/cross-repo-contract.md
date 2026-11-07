@@ -1003,10 +1003,14 @@ both repos, with a test on each side.
   `GET /admin/audible/titles` gains `planned` and `contested` (`{library_id, path,
   with: [{asin, title}]}` or null); `audible.poll`'s params gain `template`
   (omitempty). Server migration `0065`, Bridge migration `0010` (the device
-  profile). Neither side's Audible wire has shipped (server v2.5.1, Bridge v0.5.0),
-  so there is no gate: **deploy the Bridge with the server** (an older Bridge
-  refuses the poll of an account with a placement template, `template` being
-  omitted only when `""`; an older server refuses the new title fields). Detail:
+  profile). **Server 2.6.0 and its accompanying new Bridge release must be
+  deployed together for Audible.** Server 2.5.1 and Bridge 0.5.0 predate this
+  wire format. An older Bridge's strict decoder refuses a poll with a placement
+  template (`template` is omitted only when `""`); an older server's strict
+  decoder refuses the new title fields. Older servers also lack the progress
+  feed needed by position sync below. Pairing or a heartbeat alone does not
+  prove compatibility, and there is no separate version gate on these payloads.
+  Use the actual paired release tags from the release notes. Detail:
   [Planned destinations](../bridge/audible.md#planned-destinations).
 - **Audible position sync (Phase 4c):** a third kind, `audible.sync` (feature
   `audible`; internal, quiet, deduped per account, promoting), params built by the
@@ -1262,7 +1266,7 @@ See [Podcasts](../bridge/podcasts.md) and the
 Bridge Phase 3b-1 (capability `ebooks`, the web) and 3b-2 (the apps and the ebook in
 downloads, no server change), all additive: an older client ignores the field, and
 an older server has no flag, so no Read. Phase 3c-1 adds read-along maps (below);
-the player's side, following the narration in the text, is 3c-2 and not built yet.
+the player's side, following the narration in the text, is 3c-2 (server and player 2.6.0).
 
 **The book's ebook.** Every `Book` the server returns carries `ebook: {path, size}`
 when the scan found one readable `.epub` beside its audio (the Bridge's own rule,
@@ -1315,8 +1319,8 @@ map only, and answers `Book.readalong` on `/item` (never a list row):
 auth only, as `/ebook`, re-checks the file against the book on every request, and
 answers `404 no_readalong` or `409 readalong_stale`
 ([the reference](../server/api/reference.md#get-apiv1librariesidreadalong)). The
-player will show its Text panel only for a `ready` map of a book it can read
-(planned, 3c-2).
+player shows its Text panel only for a `ready` map of a book it can read
+(3c-2).
 
 **A change requires:** a new field on the place or the conflict rule changes both
 repos (and is the same rule listening sync uses, [§19](#19-listening-sync-sync-v2)); the reader document's

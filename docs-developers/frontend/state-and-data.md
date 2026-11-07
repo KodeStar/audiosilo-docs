@@ -943,7 +943,8 @@ merged across their servers. User guide: [Upcoming releases](/users/listening/up
   keeps the **first** connection's row of a `work.id`, then `compareUpcoming`: the
   server's order across servers, preorders soonest first, releases newest first, then
   missing by series name and numeric position), `upcomingSectionOf` and `isNewUpcoming`
-  (`first_seen_at` within seven days: the "New" badge). A date's own rules are
+  (`kind` is `preorder` or `released`, and `first_seen_at` is within seven days:
+  the "New" badge; `missing` never qualifies). A date's own rules are
   `src/lib/release-date.ts`: `parseReleaseDate` and `releaseIsFuture` (a date at its
   own precision against the UTC day: "2026" or "2026-10" is ahead only while the whole
   period is). `formatReleaseDate` (`src/lib/format.ts`) prints "2027", "Nov 2026" or
@@ -958,13 +959,18 @@ merged across their servers. User guide: [Upcoming releases](/users/listening/up
   offers it, so Home never holds a skeleton for a rail that may never show.
   `UpcomingContent` (`upcoming-screen.tsx`) is the `/upcoming` page's body and the You
   hub's Upcoming section: Coming soon, Just released, Missing from your series (an empty
-  section hidden), and its states (rows standing in while loading, "Checking for
-  releases" while every answering server is `pending`, "Nothing coming up", "No upcoming
+  section hidden), and its states (rows standing in while loading, "First full
+  check pending" while every answering server is `pending` and there are no items,
+  "Nothing coming up", "No upcoming
   releases here" where no server offers it, and "Couldn't load" with Retry when no server
   answered, never "Nothing coming up" for a failure); a failed server beside answering
   ones, a `stale` one or a `pending` one is a note over the list. Under the list,
-  while `available`, the [calendar card](#the-upcoming-calendar). The server name (`useServerFlag`: only a non-default server, only with
-  several connections) reads "From &lt;server&gt;". A tap opens
+  while `available`, the [calendar card](#the-upcoming-calendar). A `pending` status
+  means the first full check has not completed; light-pass rows can already be
+  present and stay visible under that note. Each item's source reads
+  "Not on &lt;server&gt;", using the supplied server label or its `connectionName`.
+  This is absence on the source server, with no cross-server ownership check.
+  A tap opens
   `seriesHref(connectionId, local.library_id, { name: local.series, work: work.id })`.
 - **Covers** (Track U3, `upcoming-cover.tsx`). Every item is an `UpcomingCover`: a
   `GhostCover` with the work's real cover drawn over it only when the item's **own**

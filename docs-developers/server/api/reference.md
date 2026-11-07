@@ -4814,7 +4814,9 @@ It is not an image proxy: the server reads the caller's list for that one work
 and serves only the `cover_url` it holds, from the database alone (no metadata
 traffic). Then it is [`/meta/cover`](#get-apiv1librariesidmetacover)'s tail: the
 same guarded fetch (16 MiB cap, one fetch at a time per image), thumbnail cache,
-`ETag` and `Cache-Control`.
+and URL/size-based `ETag`. Its `Cache-Control` is `private, no-cache`: an unchanged
+cover revalidates with `304`, while a changed stored `cover_url` produces a new
+image and ETag at the same work/size route. A client cache-buster is not required.
 
 Errors, in order: `401`; `403` `kid_account`; `404` `metadata_off`; `404`
 `upcoming_off`; `400` without `work` or with a `size` outside the list; `404`
@@ -5608,8 +5610,8 @@ Sending the existing `kind` is accepted; a different kind is
 `400 kind_immutable`. Root changes enforce the same `409 root_overlaps` rule
 as create.
 
-A library the server's config declares (`config.yaml`, or the app embedding
-the server: `launcher.Options.Libraries`; no environment variable declares one) keeps the name and
+A library the server's config declares (`config.yaml`, or an embedder using
+the public `launcher.Options.Libraries` API; no environment variable declares one) keeps the name and
 folder declared there, since every start upserts it by name
 (`launcher.syncLibraries`) and the server never writes a library to
 `config.yaml`. A different `name` or `root` on such a library is
@@ -7312,7 +7314,7 @@ stopped apply takes the rest.
 
 | Status | Meaning |
 |---|---|
-| `400` | `invalid request`; `scope must be …` (also a scope the run's mode doesn't take: `ids` for a refresh); `code: "too_large"` - more than 20,000 ids in `include` or `exclude` |
+| `400` | `invalid request` (including a body over 1 MiB); `scope must be …` (also a scope the run's mode doesn't take: `ids` for a refresh); `code: "too_large"` - more than 20,000 ids in `include`. Exclusions are bounded by the body size, so an unchanged refresh can exclude every book in a large library. |
 | `404` | `no such match run` |
 | `409` | `code: "match_run_busy"` - a run is matching or applying; `code: "match_run_not_ready"` - this run isn't `ready` |
 

@@ -5,7 +5,7 @@ description: "What's coming in the series you listen to: preorders, books just r
 
 AudioSilo keeps an eye on the series in your library and tells you what's coming in them: books you can preorder, books that came out recently, and the volumes your library is missing. You see them on the home screen, on an **Upcoming** page of their own, and on each series page, and you can [add the release days to your calendar](#add-to-your-calendar).
 
-The list comes from the [community metadata database](../community/meta-site.md). Your server checks it once a day for the series your libraries hold (an admin turns the check on or off in [Server settings](../admin/server.md#community-metadata)), so the list only covers series you have at least one book of, and never a book you already have.
+The list comes from the [community metadata database](../community/meta-site.md). Your server checks it once a day for the series your libraries hold (an admin turns the check on or off in [Server settings](../admin/server.md#community-metadata)), so the list only covers series you have at least one book of and books missing from that server. Another server you use may already have one.
 
 ## Coming up in your series on Home
 
@@ -17,7 +17,7 @@ Each book shows its cover from the community database, with its title, the serie
 
 Your server fetches the covers and passes them on, so your device never contacts the sites they come from.
 
-The shelf only appears once there's something in it. While your server hasn't checked yet, or when there's nothing coming up, Home simply doesn't show it.
+The shelf only appears once there's something in it. When there's nothing to show, whether your server hasn't found anything yet or nothing is coming up, Home simply doesn't show it.
 
 ## The Upcoming page
 
@@ -34,7 +34,7 @@ A group with nothing in it doesn't show. Tap a book to open its series page.
 To get there:
 
 - **See all** on Home's Coming up in your series.
-- **On a phone**, the **Upcoming** section in the [Me tab](you.md#finding-you), after Account.
+- **On a phone**, the **Upcoming** section in the [Me tab](you.md#finding-you), after Account. Scroll the section row sideways, or use its arrow, to reach more sections.
 - **On a tablet or computer**, **Upcoming** under **You** in the top bar.
 
 The You section is there whenever your server offers upcoming releases, so you can find the page even while Home has nothing to show.
@@ -57,20 +57,29 @@ The date is the book's **first** release anywhere: the earliest of every recordi
 
 ### New
 
-A small **New** badge marks a book your server first listed in the last seven days, so you can see at a glance what turned up since you last looked.
+A small **New** badge marks a preorder or just-released book your server first
+listed in the last seven days. Older missing volumes never get the badge,
+including when a new server first discovers the gaps in your series.
 
 ### Several servers
 
-If you're connected to more than one server, the shelf and the page combine all of them. A book shows once, even when two of your servers both lack it. One listed by a server other than your main one says which (*"From Maya's Shelf"*), and tapping a book opens the series page on the server that listed it.
+Every book carries a **Not on Maya's Shelf** line naming the server that listed
+it, even with one server. If you're connected to more than one server, the shelf
+and the page combine all of them, and a book shows once even when two servers
+both lack it. Tapping opens its series page on the server named. The label
+describes that server's library: you may already have the book on another
+connected server.
 
 ### When the page is empty
 
-- **Checking for releases** - your server hasn't finished its first check yet. The list fills once it has (the first check runs soon after an admin turns it on, or about an hour after the server starts).
+- **First full check pending** - your server hasn't completed its first full check yet. It is queued, usually for about an hour after startup, or soon after an admin enables it. A quick check after library changes can already have found books, so you may see rows while the full check is still pending.
 - **Nothing coming up** - your server has checked, and there's nothing new or missing in the series you have.
 - **No upcoming releases here** - none of your servers lists upcoming releases (see [below](#when-you-dont-see-it)).
 - **Couldn't load upcoming releases** - your server didn't answer. Nothing is lost: **Retry** asks again. If one of several servers didn't answer, a note above the list says so and the rest still shows.
 
-A note above the list also says when a server is still running its first check while others have answered, or when one hasn't checked in over two days (the list may be out of date).
+A note above the list also says when a server has not completed its first full
+check, even if it already has rows, or when one hasn't checked in over two days
+(the list may be out of date).
 
 ## Add to your calendar
 
@@ -103,7 +112,7 @@ The link uses your server's public address when your admin has set one ([Tell th
 
 ### Keep the link private
 
-Anyone who has the link can see your upcoming releases (only those, nothing else on your server), so don't share it. The server shows it only when it's made: your device keeps its own copy, as it keeps your sign-in, and forgets it when you sign out of that server. If you made the link on another device (or signed out since), the card says **A link is active. Reset it to see it here.**
+Anyone who has the link can see your upcoming releases (only those, nothing else on your server), so don't share it. The server shows it only when it's made: your device keeps its own copy, as it keeps your sign-in, and forgets it when you sign out of that server. If you made the link on another device (or signed out since), the card explains that an active link is shown only on the device that created it, and that resetting replaces it and stops existing subscriptions from updating until you subscribe with the new link.
 
 - **Reset link** makes a new link and stops the old one. Every calendar subscribed to the old link stops updating until you subscribe again with the new one, so reset when you think the link got out, or to see it on this device.
 - **Turn off** stops the link. A calendar subscribed to it stops updating (most calendar apps keep the events they already have until you remove the subscription).

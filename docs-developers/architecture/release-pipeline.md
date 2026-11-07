@@ -203,7 +203,7 @@ A static glibc binary carries two obligations of its own. glibc is LGPL-2.1-or-l
 so `NOTICE` (where the glibc source is, and how to relink: the full source and
 build recipe are public) ships in every archive, at
 `/usr/share/doc/audiosilo/NOTICE` in the `.deb`/`.rpm` and the Docker image, and the
-packages' license reads `MIT and LGPL-2.1-or-later`. And glibc starts threads with
+packages' license reads `AGPL-3.0 and LGPL-2.1-or-later`. And glibc starts threads with
 `clone3`, which Docker's seccomp profile refused with `EPERM` before **20.10.10**, so in
 a container the server needs Docker 20.10.10 or newer (it stops at start-up with
 `pthread_create failed` on older ones). The release notes' footer says both.

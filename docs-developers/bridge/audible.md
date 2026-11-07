@@ -229,7 +229,9 @@ the new one (a claimed poll runs as claimed).
    [Matching rules](#matching-rules)), then `importjob.KeepBest` settles books
    claimed by several titles. `how` is `asin` when the book's ASIN is the title's,
    else `fuzzy`. A book path goes out only as `.` (a library that is one book) or a
-   clean path below the root, as the server takes it;
+   clean path below the root, within the server's 4096-byte limit. The Bridge
+   skips over-limit candidates before building a titles PUT batch, so one
+   invalid path does not reject the other matches;
 6. **plans** each unmatched title (contested included, never a matched one):
    where a backup would go, `planned` (see [Planned destinations](#planned-destinations)),
    with no Amazon request;
@@ -353,12 +355,15 @@ A first poll can backfill hundreds of ASINs, one PUT each, and the server's
 house's players) answers a quick run `429`. The server is unchanged; the Bridge
 paces the PUTs (`audiblejob.enrich`): at most one per 200 ms (`enrichGap`). On a
 `429` it waits for the `Retry-After` (seconds or an HTTP date, read into
-`link.APIError.RetryAfter`), or else 2 s, doubling with each `429` in a row. It
+`link.APIError.RetryAfter`, with `RetryAfterSet` recording whether it was
+provided), or else 2 s, doubling with each `429` in a row. An explicit
+`Retry-After: 0`, including an HTTP date in the past, retries immediately
+within the same attempt cap; an absent header uses the backoff. It
 then retries the same book and doubles the gap, up to 2 s.
 
 The poll leaves the rest of the backfill to the next poll after:
 
-- more than five `429`s in a row;
+- five `429`s in a row;
 - a `Retry-After` over a minute;
 - 10 minutes of enriching (`enrichBudget`).
 
@@ -919,6 +924,11 @@ for 5 minutes, `user_unavailable` or `unknown_account` for 15, a `429`/`503` its
 (`sync_at`, `sync_error`, and `sync_retry_at`, which no later call shortens) feeds
 the `audible` setup item's detail only ("places not syncing for N accounts: ..."),
 never whether it is done.
+
+A successful new Audible sign-in clears the stored `sync_error` and
+`sync_retry_at`, as does a `sync_off` response in either sync direction. These
+clear stale health and retry information without recording a successful sync;
+turning sync off does not claim that a place reached Audible.
 
 ### The two Bridge routes
 

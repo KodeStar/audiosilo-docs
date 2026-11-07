@@ -10,19 +10,22 @@ the build machinery assumes it.
 ## The layout
 
 The workspace root is itself a small git repo - the
-**`audiosilo-workspace` meta repo** - holding the cross-repo glue (the
+**`KodeStar/audiosilo` meta repo** - holding the cross-repo glue (the
 integration contract, code-health checklist, distribution/store runbooks, and
 the app-store asset pipeline). The code repos are independent clones **inside**
 it, gitignored by the meta repo:
 
 ```
-~/dev/audiosilo/           github.com/KodeStar/audiosilo-workspace (the glue)
+~/dev/audiosilo/           github.com/KodeStar/audiosilo (the glue)
 ├── CLAUDE.md, CROSS-REPO.md, CODE-HEALTH.md,     workspace-level guides
 │   DISTRIBUTION.md, store/, ...                  (the integration contract lives here)
 ├── audiosilo-server/      github.com/KodeStar/audiosilo-server    (Go)
 ├── audiosilo-frontend/    github.com/KodeStar/audiosilo-frontend  (Expo / React Native)
 ├── audiosilo-bridge/      github.com/KodeStar/audiosilo-bridge    (the Bridge)
 ├── audiosilo-meta/        github.com/KodeStar/audiosilo-meta      (community metadata DB)
+├── audiosilo-meta-community/ github.com/KodeStar/audiosilo-meta-community (CC BY-SA community packs)
+├── audiosilo-meta-sync/   github.com/KodeStar/audiosilo-meta-sync (private series-completion bot)
+├── audiosilo-meta-bot/    github.com/KodeStar/audiosilo-meta-bot  (private Discord notification bot)
 ├── audiosilo-site/        github.com/KodeStar/audiosilo-site      (marketing site)
 └── audiosilo-docs/        this documentation site (Docusaurus)
 ```
@@ -37,9 +40,12 @@ Setting up from scratch is two commands - the bootstrap script clones any child
 repo that's missing (`PROTO=https` to clone over HTTPS instead of SSH):
 
 ```sh
-git clone https://github.com/KodeStar/audiosilo-workspace.git ~/dev/audiosilo
+git clone https://github.com/KodeStar/audiosilo.git ~/dev/audiosilo
 cd ~/dev/audiosilo && scripts/bootstrap.sh
 ```
+
+The two private bots need repository access. The bootstrap script skips either
+one it cannot clone and continues with the public repositories.
 
 ### Why one workspace
 
