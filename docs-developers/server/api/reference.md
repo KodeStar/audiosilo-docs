@@ -6771,7 +6771,8 @@ than the three above (`field: "chapter_source"`), chapter problems
 (`field: "chapters"`: a chapter the book doesn't have, an empty title, one index
 both renamed and reverted), and a `match` the server refuses (`field: "match"`:
 a nonempty work id without `source: "community"`, a whitespace-only work id,
-or an id over 200 characters or holding a control character). An unknown key
+a `match` with no `work_id` (absent or null), or an id over 200 characters or
+holding a control character). An unknown key
 inside `match` is `invalid request`.
 
 An edit is audited as `book.edit` (`chapter_source` in its details when
@@ -7022,14 +7023,15 @@ ASIN is a **community** override, never one from an Audiobookshelf
 in the preferred marketplace under another ASIN, that is offered) or a
 `refresh` run (every matched book: one with an ASIN or ISBN, whoever set it, is
 looked up by its own identifier first, the ISBN when the ASIN finds nothing, and
-from 2.6.0 one with neither, or whose identifiers are all unknown, by its recorded
+from 2.6.0 one with neither, or whose identifiers are all unknown and none is an admin
+edit, by its recorded
 community match when present, below; the
 record it names is the book, `auto` whatever its score unless its recording's
 length is more than 10% from the book's, which makes it `review` (from 2.6.0, 20%
 when the book's own narrator credit names a reader of that recording,
 `matchrun.readsRecording`, a placeholder credit never counting, as the lookup
 sends no narrator: a book a run applied on its narrator's say-so stays up to
-date); unknown identifiers with no recorded match are `none` with
+date); unknown identifiers with an admin edit or no recorded match are `none` with
 `detail: "identifier_unknown"`, never a fuzzy match by title). A refresh fills
 in, or with `overwrite` replaces, the
 details an identifier alone didn't bring (an enrichment write, an `ids`
@@ -7045,15 +7047,18 @@ book that no longer has that identifier (matched again since, by hand).
 **A refresh by the recorded match** (from 2.6.0). A book with neither an ASIN
 nor an ISBN is looked up by its `community_match`. This is also the fallback
 when the identifier lookup would otherwise give `identifier_unknown`: the
-ASIN, and then the ISBN when present, found no record. Only an unknown identifier
-triggers this fallback, never a service error or a successful lookup, even when
+ASIN, and then the ISBN when present, found no record, and neither nonempty identifier
+is an admin edit (`source: "edited"`). Tag, scan and community identifiers still allow
+the fallback. An admin-edited identifier keeps `none` / `identifier_unknown` and writes
+nothing. A service error or a successful lookup never triggers the fallback, even when
 the identifier resolves to a different work. The recorded work lookup uses
 `meta.MatchQuery.WorkID`:
 the service's `works/{id}`, a retired slug's `301` followed online and in mirror
 mode. The proposal's `found_by` is `"work:<work id>"` or
 `"work:<work id>/<recording id>"`. A fallback after unknown identifiers appends
 `";asin:<ASIN>;isbn:<ISBN>"`, including empty values: applying it requires both
-identifiers to remain unchanged as well as the recorded work and recording.
+identifiers to remain unchanged as well as the recorded work and recording, and neither
+identifier may have become an admin edit since the lookup, even with the same value.
 The recorded recording is kept while the work still lists it (else the likeliest by
 length, as for an identifier). It is classified as an identifier's record is:
 `auto`, or `review` when its length is off. A work the community no longer has (`404`) is

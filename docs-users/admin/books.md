@@ -612,8 +612,9 @@ While any match run is finding or applying matches, **Unlink** is refused:
 "A match run is working. Wait for it to finish, or stop it, then try again."
 Wait for the run to finish, or use **Stop** on the
 [Health page](health.md#matching-every-book-at-once), then retry **Unlink** once
-the run has finished stopping. The refusal leaves the book's match and values
-in place.
+the run has finished stopping. If a run is ever left stuck working, restart the
+server to release it, then try Unlink again. The refusal leaves the book's
+match and values in place.
 
 :::warning[Known issue in 2.6.0: a cleared ASIN can return]
 Clearing or reverting an ASIN leaves the book's community match in place.

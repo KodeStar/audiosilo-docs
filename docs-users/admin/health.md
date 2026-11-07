@@ -395,7 +395,10 @@ community's details for it: title, series, narrator, description and cover.
 From 2.6.0 it looks up a book with neither identifier by the community work it
 is matched to (see [store listings](#store-listings-with-no-asin-or-isbn)). It
 also tries that recorded work when the community knows none of the book's
-identifiers. The lookup follows the work if the community merged or renamed it.
+identifiers, unless you set an ASIN or ISBN yourself. Your own identifier takes
+precedence, so an unknown one leaves the book unchanged. Identifiers from the
+files or a community match still allow this lookup. The lookup follows the work
+if the community merged or renamed it.
 A known identifier takes precedence, even if it names another work. If a book
 with neither identifier is matched to a recording that has gained an ASIN or
 ISBN since, the review offers it too; existing identifiers stay as they are.
