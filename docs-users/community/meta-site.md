@@ -34,10 +34,19 @@ the community has catalogued so far.
 
 **Browse** in the header, home page and footer opens directories of audiobooks,
 series, authors and narrators, character guides and recap guides. Each directory
-has ordinary links and pages of up to 50 entries, so you can explore without a
-search term.
+has its own **Search this directory** box and **All**, **A-Z**, **0-9** and
+**Other** links. Search and letter filters work together; **Clear filters**
+returns to the full directory. Entries are sorted by their displayed title or
+name as written. A-Z groups English initials, 0-9 groups
+numeric initials, and Other includes punctuation and other scripts.
 
-![The audiobook browse directory](/img/screenshots/meta/browse.png)
+Pages hold up to 50 entries. Use the numbered links, **First** and **Last**, or
+enter a number in **Go to page** to jump directly through a large directory.
+Page links and jumps keep your search and letter filter; changing either filter
+starts again at page one. These controls and the catalogue links work with
+JavaScript disabled.
+
+![The series directory filtered to M, with search, letter filters and page navigation](/img/screenshots/meta/browse.png)
 
 ![Search results for a series query](/img/screenshots/meta/search.png)
 

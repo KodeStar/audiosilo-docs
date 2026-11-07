@@ -1318,14 +1318,37 @@ before React hydrates. These are HTML routes, not additional JSON endpoints:
 | Route | Content |
 |---|---|
 | `/browse` | Directory links to works, series, people and existing guides |
-| `/browse/works`, `/browse/series`, `/browse/people`, `/browse/characters`, `/browse/recaps` | Up to 50 entries per page, in stable id order |
+| `/browse/works`, `/browse/series`, `/browse/people`, `/browse/characters`, `/browse/recaps` | Up to 50 entries per page, sorted by displayed title/name (`COLLATE NOCASE`), then id |
 | `/works/{id}` | Every recording, comparison links to `#recording-{rid}`, and detailed cards |
 | `/works/{id}/characters`, `/works/{id}/recap` | Existing community guides with closed spoiler disclosures |
 | `/series/{id}` | Up to 50 ordered works and their bounded listening-guide alternatives |
 | `/people/{id}` | Authorship/translation lists and 50 narrated recording credits per page |
 | `/works/{id}/recordings/{rid}/chapters` | Up to 100 chapter titles, starts and durations for a validated recording |
 
-Paged routes use `?page=N`; page one omits the query and later pages keep it in
+The five browse directories accept `q` (search within that directory), `letter`
+(`A`-`Z`, `0-9` or `Other`; omitted means All) and `page`. Search and letter
+filters compose. A-Z groups ASCII initials without regard to case, 0-9 groups
+numeric initials, and Other includes punctuation and non-ASCII initials. Guide
+directories search only works with the corresponding guide. Search uses the
+same escaped, bounded FTS expression as public search; the public JSON API is
+unchanged. `BrowseFiltered` in `pkg/query/discovery.go` implements these reads;
+`internal/serve/catalogue.go` handles the HTML controls and URLs.
+
+`q` must be valid UTF-8 and at most 256 bytes before whitespace is trimmed and
+collapsed. Repeated `q`/`letter`, invalid letter values, malformed query encoding,
+or a raw query string over 8,192 bytes return **400**. Letter values normalize
+case (`m` becomes `M`, `other` becomes `Other`); empty/`all` means no letter
+filter. Empty normalized searches are omitted. Canonical directory query order
+is `letter`, `page`, `q`, with page one omitted. Valid alternate spellings, query
+ordering and extra parameters redirect to that URL. Each filtered page has its
+own canonical and ETag; a nonempty normalized `q` adds `noindex,follow`, while
+letter-only pages remain indexable.
+
+Directory search and letter changes reset to page one. Previous/next,
+first/last, nearby numbered links and native page-jump forms retain `q` and
+`letter`; the controls work without JavaScript. Clear filters removes both.
+
+Paged routes use `?page=N`; page one omits `page` and later pages keep it in
 their canonical URL and normal previous/next links. Malformed, empty, repeated,
 non-positive or above-1,000,000 page values are **400**. Out-of-range pages and
 missing entities/recordings are **404**. Empty catalogued directories and
