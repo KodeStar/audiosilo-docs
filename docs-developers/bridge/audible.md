@@ -349,7 +349,9 @@ console's override is checked when the backup starts):
 keeping only a plausible one (`plausibleDate`: parseable, a year before 2100 and at
 most two years after now). With neither, the date is unknown (`release_date` `""`)
 and reads as released: Audible sends placeholders such as 2200-01-01 for titles it
-has had for years, and those must never be stored as preorders. `unavailableReason`
+has had for years, and those must never be stored as preorders (a library title's
+rule: a pending preorder from the orders is one whatever its date, see
+[Preorders](#preorders)). `unavailableReason`
 checks the delivery type (`Periodical`, `PodcastParent`) first, so a show is never
 called a preorder; then a plausible release date still ahead
 (`ReleaseIsUpcoming`) is a preorder whatever `customer_rights` says (Audible grants
@@ -384,9 +386,12 @@ library's):
   /1.0/catalog/products?asins=a,b,...` in batches of 25, split on a `400`/`414` as
   `lastpositions` is (`splitOnOverflow`), with `response_groups`
   `contributors,product_attrs,product_desc,series` (without `product_desc` the
-  catalog sends `title` null). An ASIN a batch leaves out, one still refused alone,
-  or a batch that failed is read alone (`GET /1.0/catalog/products/{asin}`); one the
-  catalog doesn't know is left out. Records are built as the library's
+  catalog sends `title` null). A failed batch ends the batches; then every ASIN not
+  yet answered with its title (left out of a batch, one still refused alone, or in
+  the failed batch or after it) is read alone (`GET /1.0/catalog/products/{asin}`),
+  unless Audible asked to wait (`429`/`503`) or the context ended, which ends the
+  reads too; a single read failing ends them as well. One the catalog doesn't know
+  (a `404` or `400` alone) is left out. Records are built as the library's
   (`toRecord`), with no customer rights, then marked `Preorder` with
   `audible.PreorderReason`.
 - **Remembered** (Bridge migration `0012_audible_preorders`, `store.AudiblePreorder`,
@@ -423,9 +428,10 @@ clock, the 14 days, a pending request):
 
 **Soft failure.** Neither the orders nor the catalog ever fails the poll. A failed
 orders listing (or a sign-in that can't be opened) adds and drops nothing beyond
-the library rule; the remembered rows are reported with the catalog's last
-description, and one warning is logged (Audible's answer redacted, never a
-credential). A `429`/`503` on the orders skips the catalog for that poll; a catalog
+the library and release-date rules, and one warning is logged (Audible's answer
+redacted, never a credential). A sign-in that can't be opened, or a `429`/`503` on
+the orders, skips the catalog for that poll, so the remembered rows are reported
+with its last description; any other orders failure still reads the catalog. A catalog
 that fails part way still describes the titles it read. A preorder the catalog never
 described is reported by ASIN alone: the server stores it untitled (state
 `preorder`, the reason, no match, no plan). A store failure is a warning too, and
@@ -943,9 +949,10 @@ again to another book is a new event.
 The job's **result** is counts and flags only: `account`, `titles`, `heard`,
 `sent`, `finished`, the server's `applied`, `duplicate`, `behind`, `not_applied`,
 `rejected`, and the skips (`skipped_echo`, `skipped_past_runtime`, `skipped_old`,
-`skipped_start`, `skipped_preorder`), `mismatched` (events the server rejected `duration_mismatch`:
-counted, sent once a job and never retried in it); `waiting` with `wait_until`, or
-`sync_off`. A failure's result is
+`skipped_start`, `skipped_preorder`), `mismatched` (events the server rejected
+`duration_mismatch`: counted, sent once a job and never retried in it); `waiting`
+with `wait_until`, or `sync_off`. `titles` counts the titles kept, after
+`skipped_preorder`. A failure's result is
 `{code, message}`.
 
 **The server's fold** (`OnEnded`, `catalog.FoldAudibleSync`): a done sync that read
@@ -1216,10 +1223,11 @@ against the fake. Its controls are `GET /_fake/calls` (licenses, and downloads w
 their `Range`/`If-Range`), `POST /_fake/refuse`, `GET /_fake/titles`, and 4b's
 `POST /_fake/cut?after=N` (the next download drops after N bytes),
 `POST /_fake/expire` (the download URLs expire) and `POST /_fake/release?asin=` (a
-preorder out today: it joins the library, available, and its order closes). Phase 4c: each `PUT lastpositions` is recorded with its time
-(`put_positions[].at` on `/_fake/calls`), `POST /_fake/position?asin=&ms=&ago=` sets a
-place heard on another device (`SetPosition`), and `GET /_fake/positions` lists
-every place it holds.
+preorder out today: it joins the library, available, and its order closes). Phase
+4c: each `PUT lastpositions` is recorded with its time (`put_positions[].at` on
+`/_fake/calls`), `POST /_fake/position?asin=&ms=&ago=` sets a place heard on
+another device (`SetPosition`), and `GET /_fake/positions` lists every place it
+holds.
 Preorders (`orders.go`), shaped as the real account answered: a fixture preorder
 is **not** in `/1.0/library` and is a `404` on `/1.0/library/{asin}` until
 released (the library lists the 26 titles that are out); `GET /1.0/orders` lists
@@ -1229,7 +1237,8 @@ cancelled preorder (`CancelledPreorder`, `ORDER_CANCELLED`: the real cancelled
 state was not seen), each with synthetic payment fields, a `500` for any
 `response_groups`, and no paging; `GET /1.0/catalog/products` (`?asins=`, a `400`
 over `LastPositionsMax`) and `/1.0/catalog/products/{asin}` answer any fixture
-title, its `title` only when `product_desc` is asked. The recorder scrubs order payment fields and prices.
+title and the cancelled preorder, its `title` only when `product_desc` is asked.
+The recorder scrubs order payment fields and prices.
 
 In a tagged build, `AUDIOSILO_BRIDGE_AUDIBLE_FAKE_URL` points every Audible and
 Amazon endpoint at a fake, and `AUDIOSILO_BRIDGE_AUDIBLE_RECORD_DIR` records every
