@@ -6705,6 +6705,17 @@ matches](#delete-apiv1admincommunity-matches) does for a library, before the res
 of the edit applies), so it is `matched: false` again unless it has an ASIN or
 ISBN of its own. An admin's own edits and uploads stay. There is no undo.
 
+Only an explicitly empty `match.work_id` unlinks. A nonempty value containing
+only whitespace (including Unicode whitespace) is `400 invalid_override` with
+`field: "match"`; nothing in the request is written.
+
+While any run is `matching` or `applying`, Unlink returns `409 match_run_busy`:
+"a match run is already working; stop it or wait for it to finish before
+unlinking". The status check and clear share the edit's writer transaction, so
+a refused Unlink also refuses any other edits in the request. Ordinary field
+edits remain allowed. After a stop request, Unlink stays blocked until the
+apply's workers finish, including cover writes; retry once the run has settled.
+
 ```json
 {
   "set": { "title": "The Martian: Classroom Edition", "published": "2011" },
@@ -6746,6 +6757,7 @@ afterwards is an ordinary revert, so it swaps back as above.
 | `200` | the updated book page |
 | `400` | `nothing to change` (empty body); `invalid request` (malformed JSON or an unknown key); `code: "invalid_override"` with a `field` key for an edit the server refuses - see below |
 | `404` | `library not found`; `code: "book_not_found"` |
+| `409` | `code: "match_run_busy"` - Unlink while any run is `matching` or `applying`; the whole request is refused |
 
 ```json
 { "error": "asin: must be 10 letters or digits", "code": "invalid_override", "field": "asin" }
@@ -6758,8 +6770,9 @@ series swap whose old main series can't be listed (`field: "series"`), a
 than the three above (`field: "chapter_source"`), chapter problems
 (`field: "chapters"`: a chapter the book doesn't have, an empty title, one index
 both renamed and reverted), and a `match` the server refuses (`field: "match"`:
-a work id without `source: "community"`, or an id over 200 characters or holding
-a control character). An unknown key inside `match` is `invalid request`.
+a nonempty work id without `source: "community"`, a whitespace-only work id,
+or an id over 200 characters or holding a control character). An unknown key
+inside `match` is `invalid request`.
 
 An edit is audited as `book.edit` (`chapter_source` in its details when
 sent, and `match`, the work id, `""` for an unlink). It also wakes the [community chapter checks](../community-chapters.md#when-a-book-is-checked),
@@ -7008,31 +7021,40 @@ ASIN is a **community** override, never one from an Audiobookshelf
 `metadata.json`, an admin's edit or an enrichment write: each is looked up, and when its recording now sells
 in the preferred marketplace under another ASIN, that is offered) or a
 `refresh` run (every matched book: one with an ASIN or ISBN, whoever set it, is
-looked up by its own identifier alone, the ISBN when the ASIN finds nothing, and
-from 2.6.0 one with neither by its recorded community match, below; the
+looked up by its own identifier first, the ISBN when the ASIN finds nothing, and
+from 2.6.0 one with neither, or whose identifiers are all unknown, by its recorded
+community match when present, below; the
 record it names is the book, `auto` whatever its score unless its recording's
 length is more than 10% from the book's, which makes it `review` (from 2.6.0, 20%
 when the book's own narrator credit names a reader of that recording,
 `matchrun.readsRecording`, a placeholder credit never counting, as the lookup
 sends no narrator: a book a run applied on its narrator's say-so stays up to
-date); an identifier the
-community doesn't know is `none` with `detail: "identifier_unknown"`, never a
-fuzzy match by title). A refresh fills in, or with `overwrite` replaces, the
+date); unknown identifiers with no recorded match are `none` with
+`detail: "identifier_unknown"`, never a fuzzy match by title). A refresh fills
+in, or with `overwrite` replaces, the
 details an identifier alone didn't bring (an enrichment write, an `ids`
 apply), and cleans up the series an earlier match wrote (see the `overwrite`
 scope below); it never changes an identifier the book has. Only books a scope would
 change are recorded (a book already up to date leaves no item, as a repick
-records only books with a new ASIN), and each refresh proposal names the
-identifier it was found by (`proposal.found_by`, `"asin:<ASIN>"` or
+records only books with a new ASIN), and each refresh proposal found by an
+identifier names it (`proposal.found_by`, `"asin:<ASIN>"` or
 `"isbn:<ISBN>"`), as each repick proposal names the ASIN it looked up (from
 2.4.0; a repick recorded earlier has none): applying it changes nothing on a
 book that no longer has that identifier (matched again since, by hand).
 
 **A refresh by the recorded match** (from 2.6.0). A book with neither an ASIN
-nor an ISBN is looked up by its `community_match` alone (`meta.MatchQuery.WorkID`:
+nor an ISBN is looked up by its `community_match`. This is also the fallback
+when the identifier lookup would otherwise give `identifier_unknown`: the
+ASIN, and then the ISBN when present, found no record. Only an unknown identifier
+triggers this fallback, never a service error or a successful lookup, even when
+the identifier resolves to a different work. The recorded work lookup uses
+`meta.MatchQuery.WorkID`:
 the service's `works/{id}`, a retired slug's `301` followed online and in mirror
-mode), `found_by` `"work:<work id>"` or `"work:<work id>/<recording id>"`. Its
-recorded recording is kept while the work still lists it (else the likeliest by
+mode. The proposal's `found_by` is `"work:<work id>"` or
+`"work:<work id>/<recording id>"`. A fallback after unknown identifiers appends
+`";asin:<ASIN>;isbn:<ISBN>"`, including empty values: applying it requires both
+identifiers to remain unchanged as well as the recorded work and recording.
+The recorded recording is kept while the work still lists it (else the likeliest by
 length, as for an identifier). It is classified as an identifier's record is:
 `auto`, or `review` when its length is off. A work the community no longer has (`404`) is
 `none` with `detail: "work_unknown"`, and the book keeps its match. The proposal
@@ -7114,9 +7136,10 @@ as it can.
   (`409 match_run_not_ready`) and the console offers no review of it (its items can still
   be read), so what it found goes unused and the answer to a long outage is another run.
 
-`refresh` and `repick` runs share the workers, the pacing, the waits and the stop, but
-they are identifier lookups (`lookup`, `works/{id}`, and for a refresh the series facts),
-never `works/match`, so they keep their several round trips per book.
+`refresh` and `repick` runs share the workers, the pacing, the waits and the stop.
+They use identifier or recorded-work lookups (`lookup`, `works/{id}`, and for a
+refresh the series facts), never `works/match`, so they keep their several round
+trips per book.
 
 #### `GET /api/v1/admin/match-runs`
 
