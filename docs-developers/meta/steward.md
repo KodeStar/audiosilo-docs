@@ -148,9 +148,97 @@ Attempts back off - immediately, then 1 hour, 4 hours, 12 hours, then daily -
 and never end in a closure. A fix whose next verdict states a **new** finding
 is progress: the backoff stays at its first hour, and a verdict posted after the
 last attempt that states a new finding is fixed at once rather than waiting that
-hour out. Only the same finding again climbs the backoff. An item that has failed three times is listed as
+hour out. Only the same finding again climbs the backoff. A backoff holds only
+fix attempts, never a merge: a pull request whose head turns green merges
+whatever its backoff. An item that has failed three times is listed as
 **stuck** on the report with its last evidence, which is the signal to find out
 why and fix the cause.
+
+## The community layer
+
+With `SYNC_STEWARD_COMMUNITY_REPO` set, the steward also looks after
+audiosilo-meta-community, the CC BY-SA layer (characters, recaps,
+descriptions), on the same terms and through that repository's own gate: the
+`keys`, `structure` and `verify` checks and `ai-verified` on the exact head. Its
+items appear in the community section of `GET /status`, never in the
+`SYNC_STEWARD_REPORT_ISSUE` body, which is the data repository's alone. What
+differs: a community fix is **delete-only**: the agent has not read the
+book, so it may cut words, sentences or whole members the pull request added or
+changed, and never writes, rephrases or moves prose. It triages no
+community issues: a contributor's pull request answers them, never prose the
+steward writes. And a `keys` failure that is `main`'s gets no fix at all
+(below).
+
+### When `keys` fails because of `main`
+
+The `keys` check resolves **every** entry key in the tree, not only those the
+pull request touches, against core's newest data release. When a core release
+[retires](./data-model.md#slug-is-identity-the-file-is-only-storage) a work slug
+the layer is keyed by, `keys` fails on every open community pull request at
+once, whatever it changes.
+
+So once a failed `keys` check has had its one re-run, the steward reads the
+job's log before planning any fix. When the log is complete and every entry it
+names is one the pull request did not add, remove or change, the pull request is
+**blocked by main**:
+
+- No fix agent runs, no attempt is spent and no backoff grows. Fix attempts
+  already spent on that `keys` failure are given back.
+- The pull request gets a comment (at most one per head, and not again while
+  nothing changed) naming each key and what becomes of it: the re-key pull
+  request that renames it, "needs a person" for a collision, or "waits for the
+  next data release" for an **unknown** key (a work newer than the release).
+  While a retired key waits for the re-key's first build nothing is said, so
+  the comment can name the re-key pull request.
+- Its line in `/status` reads `blocked by main`.
+
+Anything less certain - a log the steward cannot parse, or a failing entry the
+pull request did change - takes the ordinary fix path. A new head is judged
+afresh.
+
+### The re-key pull request
+
+The steward then re-keys `main` itself, mechanically, never with an agent. It
+builds the branch `steward/rekey-retired` from `main`'s tip and renames each
+retired key the log names to the survivor the log gives: the entry's key and
+every member's `work` field, nothing else. It runs `metafmt --write` and
+`metacheck --profile community`, checks that the change adds exactly the
+survivors, removes exactly the retired keys and modifies nothing, and opens
+`[steward] re-key retired work slugs`, labelled `data`, `bot-intake` and
+`bot-steward`, its body listing each old key, its survivor, the data release
+and any collision. From there it merges through the community gate like any
+other data pull request, except that no fix agent ever touches it (below).
+
+Once the re-key merges, the intake sweep rebases the blocked pull requests,
+`keys` passes on their new heads, and they merge on their first green head,
+whatever their backoff, without a person. A pull request whose log also named
+an unknown key or a collision stays blocked until that is settled.
+
+- **A collision** - a survivor that already has a community entry on `main`,
+  or that another rename in the same build already renames into - is left for
+  a person, since merging two entries is prose: it is listed in `/status` and
+  in the blocked pull requests' comment. The other renames still go in.
+- **Unknown keys** are never touched.
+- **A chain** (a survivor that is itself retired) takes the one hop the log
+  names; the next data release names the next hop.
+- At most half the smaller of `SYNC_STEWARD_MAX_ENTRIES` and
+  `SYNC_STEWARD_MERGE_MAX_ENTRIES` renames go in one pull request (a rename is
+  two entries), the rest in the next once it has merged.
+- When that smaller bound is under 2, no re-key pull request is opened:
+  `/status` says why and names the variable, and the blocked pull requests'
+  comment says a person re-keys `main`.
+- **No fix of any kind touches a re-key pull request**, since the delete-only
+  fix would delete prose already on `main`. An ai-verify flag, a required check
+  still red after its one re-run, a failed commit status, or a conflict the
+  steward cannot turn into a rebuild makes it wait for a person, with one
+  comment per head and cause and a line in `/status`. A `keys` failure that is
+  `main`'s waits on `main` as above, and a rebuild from `main` (below) still
+  proceeds.
+- It is idempotent: an open re-key pull request already carrying the renames
+  due is left alone, and a different set rebuilds the branch from `main`. When
+  `main` no longer holds any of its keys (a person's hand re-key landed first),
+  or only collisions are left, it closes itself, as long as it is still a plain
+  data pull request.
 
 ## Issues
 
@@ -195,8 +283,9 @@ request text is **untrusted**, so the agent is contained rather than trusted:
   no system or global config).
 - It cannot push. The service verifies what it left - data-only against the
   merge base, no symlinks or dotfiles, the entry cap, `metafmt --write` then
-  `metacheck --profile core`, a non-empty change, and a secret scan of the diff -
-  and only then commits and pushes.
+  `metacheck` under the repository's profile (`core` or `community`), a
+  non-empty change, and a secret scan of the diff - and only then commits and
+  pushes.
 
 The one thing the boundary cannot stop is the agent sending out **its own**
 subscription token, which it must hold to work and which a prompt-injected run
@@ -226,6 +315,7 @@ loopback.
 | `SYNC_STEWARD_TIMEOUT` | `60m` | Wall-clock budget for one agent task. |
 | `SYNC_STEWARD_MAX_ENTRIES` | `25` | The most entries one steward-authored change may touch. |
 | `SYNC_STEWARD_MERGE_MAX_ENTRIES` | `100` | The largest data pull request the steward merges whole; a larger one is split into parts of at most this many entries. |
+| `SYNC_STEWARD_COMMUNITY_REPO` | - | Optional `owner/name` of the community layer (`KodeStar/audiosilo-meta-community`) the steward also looks after, through that repository's own gate. The PAT needs the same permissions on it. |
 | `SYNC_STEWARD_REPORT_ISSUE` | - | Optional `owner/repo#n` whose body carries the report. |
 | `SYNC_STEWARD_MIN_AVAILABLE_MB` | `3072` | An agent task starts only when at least this much memory is available (the host's, or the container limit's headroom). |
 | `SYNC_STEWARD_DAILY_AGENT_RUNS` | `24` | The most agent runs the steward starts per UTC day (`0` = no cap). |
