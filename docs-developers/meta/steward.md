@@ -159,12 +159,15 @@ why and fix the cause.
 With `SYNC_STEWARD_COMMUNITY_REPO` set, the steward also looks after
 audiosilo-meta-community, the CC BY-SA layer (characters, recaps,
 descriptions), on the same terms and through that repository's own gate: the
-`keys`, `structure` and `verify` checks and `ai-verified` on the exact head. Two
-things differ. A community fix is **delete-only**: the agent has not read the
+`keys`, `structure` and `verify` checks and `ai-verified` on the exact head. Its
+items appear in the community section of `GET /status`, never in the
+`SYNC_STEWARD_REPORT_ISSUE` body, which is the data repository's alone. What
+differs: a community fix is **delete-only**: the agent has not read the
 book, so it may cut words, sentences or whole members the pull request added or
-changed, and never writes, rephrases or moves prose. And it triages no
+changed, and never writes, rephrases or moves prose. It triages no
 community issues: a contributor's pull request answers them, never prose the
-steward writes.
+steward writes. And a `keys` failure that is `main`'s gets no fix at all
+(below).
 
 ### When `keys` fails because of `main`
 
@@ -181,11 +184,13 @@ names is one the pull request did not add, remove or change, the pull request is
 
 - No fix agent runs, no attempt is spent and no backoff grows. Fix attempts
   already spent on that `keys` failure are given back.
-- The pull request gets one comment (per head, and not again while nothing
-  changed) naming each key and what becomes of it: the re-key pull request that
-  renames it, "needs a person" for a collision, or "waits for the next data
-  release" for an **unknown** key (a work newer than the release).
-- Its report line reads `blocked by main`.
+- The pull request gets a comment (at most one per head, and not again while
+  nothing changed) naming each key and what becomes of it: the re-key pull
+  request that renames it, "needs a person" for a collision, or "waits for the
+  next data release" for an **unknown** key (a work newer than the release).
+  While a retired key waits for the re-key's first build nothing is said, so
+  the comment can name the re-key pull request.
+- Its line in `/status` reads `blocked by main`.
 
 Anything less certain - a log the steward cannot parse, or a failing entry the
 pull request did change - takes the ordinary fix path. A new head is judged
@@ -199,32 +204,36 @@ retired key the log names to the survivor the log gives: the entry's key and
 every member's `work` field, nothing else. It runs `metafmt --write` and
 `metacheck --profile community`, checks that the change adds exactly the
 survivors, removes exactly the retired keys and modifies nothing, and opens
-`[steward] re-key retired work slugs`, labelled `data`, its body listing each
-old key, its survivor and the data release. From there it merges through the
-community gate like any other data pull request.
+`[steward] re-key retired work slugs`, labelled `data`, `bot-intake` and
+`bot-steward`, its body listing each old key, its survivor, the data release
+and any collision. From there it merges through the community gate like any
+other data pull request.
 
 Once the re-key merges, the intake sweep rebases the blocked pull requests,
 `keys` passes on their new heads, and they merge on their first green head,
-whatever their backoff, without a person.
+whatever their backoff, without a person. A pull request whose log also named
+an unknown key or a collision stays blocked until that is settled.
 
-- **A collision** - a survivor that already has a community entry on `main` -
-  is left for a person, since merging two entries is prose: it is listed on the
-  report and in the blocked pull requests' comment. The other renames still go
-  in.
+- **A collision** - a survivor that already has a community entry on `main`,
+  or that another rename in the same build already renames into - is left for
+  a person, since merging two entries is prose: it is listed in `/status` and
+  in the blocked pull requests' comment. The other renames still go in.
 - **Unknown keys** are never touched.
 - **A chain** (a survivor that is itself retired) takes the one hop the log
   names; the next data release names the next hop.
 - At most `SYNC_STEWARD_MAX_ENTRIES / 2` renames go in one pull request (a
   rename is two entries), the rest in the next once it has merged.
-- With a merge bound (`SYNC_STEWARD_MERGE_MAX_ENTRIES`) below 2, no re-key pull
-  request is opened, and the report says why.
+- With `SYNC_STEWARD_MAX_ENTRIES` at 1 (under the two entries one rename is),
+  no re-key pull request is opened: `/status` says why, and the blocked pull
+  requests' comment says a person re-keys `main`.
 - **A flagged re-key pull request** never gets the delete-only fix, which would
   delete prose already on `main`: it waits for a person, with one comment per
-  head and a line on the report.
+  head and a line in `/status`. A rebuild from `main` (below) still proceeds.
 - It is idempotent: an open re-key pull request already carrying the renames
   due is left alone, and a different set rebuilds the branch from `main`. When
   `main` no longer holds any of its keys (a person's hand re-key landed first),
-  or only collisions are left, it closes itself.
+  or only collisions are left, it closes itself, as long as it is still a plain
+  data pull request.
 
 ## Issues
 
@@ -269,8 +278,9 @@ request text is **untrusted**, so the agent is contained rather than trusted:
   no system or global config).
 - It cannot push. The service verifies what it left - data-only against the
   merge base, no symlinks or dotfiles, the entry cap, `metafmt --write` then
-  `metacheck --profile core`, a non-empty change, and a secret scan of the diff -
-  and only then commits and pushes.
+  `metacheck` under the repository's profile (`core` or `community`), a
+  non-empty change, and a secret scan of the diff - and only then commits and
+  pushes.
 
 The one thing the boundary cannot stop is the agent sending out **its own**
 subscription token, which it must hold to work and which a prompt-injected run
