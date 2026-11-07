@@ -178,11 +178,11 @@ await step('series-listening-guide', async () => {
   for (let i = 0; i < Math.min(2, await choices.count()); i += 1) {
     await choices.nth(i).selectOption({index: 1});
   }
-  await guide.getByText('Chosen-list subtotal:', {exact: false}).waitFor();
+  await guide.getByText('Chosen-list subtotal', {exact: false}).waitFor();
   await sleep(800);
   // Full-cast credits can make continuity long. Frame the first work's actual
   // alternatives and choice controls instead of the middle of that section.
-  await guide.locator(':scope > ol > li').first().evaluate((el) => window.scrollTo(0, el.getBoundingClientRect().top + window.scrollY - 90));
+  await guide.locator('ol').first().locator(':scope > li').first().evaluate((el) => window.scrollTo(0, el.getBoundingClientRect().top + window.scrollY - 90));
   await shoot(page, 'meta/series-listening-guide.png');
 });
 
