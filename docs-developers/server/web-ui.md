@@ -439,9 +439,12 @@ CSP-sensitive work against a real build served by Go. The console's own gate is
   adding books to a share).
 - **Library > Authors / Narrators / Series** - `GET /admin/authors`,
   `/admin/narrators` (merge suggestions applied as a bulk edit, with Undo) and
-  `/admin/series` (community series gaps from each series' matched book's
-  `GET /libraries/{id}/meta`, hidden when metadata is off). Each card then
-  resolves its matched books to community work ids through
+  `/admin/series` (community series gaps from the `GET /libraries/{id}/meta` of
+  each series' first book with an ASIN or ISBN, `metaCandidate` /
+  `hasIdentifier`, as `/meta` is identifier-keyed; hidden when metadata is off;
+  "Match a book" only when that `/meta` found no match, or with no such book, when
+  no book of the series is matched). Each card then
+  resolves its books with an ASIN or ISBN to community work ids through
   `POST /admin/books/works` (`useBookWorks`; `src/api/work-batch.ts` batches every
   card's books asked for in the same moment, up to 100, on the same
   `createBatcher` as the covers) and places each book on the rail entry of its
@@ -486,7 +489,13 @@ CSP-sensitive work against a real build served by Go. The console's own gate is
   path when the tags look swapped or junk or the title is a whole
   `Author; Series; Book NN` leaf, so the console never works this out
   itself; the ticked fields, ASIN and ISBN
-  included, are accepted as one `PATCH …/book` with `source: "community"`;
+  included, are accepted as one `PATCH …/book` with `source: "community"` and
+  `match: {work_id, recording_id}` (`acceptRequest`), which records the book's
+  match; the dialog starts from the book's `community_match` when the search lists
+  it, and for a book with no ASIN or ISBN a pick other than its recorded match is
+  itself something to accept: with nothing ticked the button reads "Match to this
+  work" and sends `match` alone (after a ticked cover, so a cover-only accept
+  records it too);
   candidates' covers are thumbnails the server fetched, `POST /admin/meta/covers`,
   batched by URL in `src/api/cover-batch.ts`, since the CSP loads no other
   host's images; a ticked Cover row, ticked by default only for a book with no
@@ -506,11 +515,17 @@ CSP-sensitive work against a real build served by Go. The console's own gate is
   and toasts. What the player does with the link is in
   [Connect and onboarding](../frontend/connect-and-addresses.md#a-link-that-names-a-book). `?match=1` opens the
   match dialog on arrival (Health's "Review match"); closing it drops the param.
+  The aside's Community card (`book-aside.tsx`) shows a book with no ASIN or ISBN
+  by its `community_match` (from 2.6.0): the work id linking `web_url`, how and
+  when ("matched to its store listing by a bulk match" for `auto`), and **Unlink**,
+  behind a `ConfirmDialog` (no undo), which sends `PATCH …/book {match: {work_id:
+  ""}}` and refreshes the issues.
   The Chapters card opens with the **Community chapters** panel
   (`features/book/community-chapters.tsx`; its words and its one action come
   from `communityState` in `book-model.ts`, a pure function of the page's
   `community_chapters`, `chapter_source` and `chapter_choice`). It shows for a
-  matched book or one with a check: the status line, the notes ("Not in this
+  book with an ASIN or ISBN (`canCheckChapters`, not `matched`: a store listing
+  matched with neither has nothing to check) or one with a check: the status line, the notes ("Not in this
   copy: …", the approximate starts while community chapters are in use, the
   merge hint for `crosses_files`), the source switch as one `PATCH …/book
   {chapter_source}` ("Use the community's" / "Use detailed chapters" /
@@ -519,7 +534,7 @@ CSP-sensitive work against a real build served by Go. The console's own gate is
   `chapters.set` rename, so they are ordinary revertable renames; a title the
   admin already took drops out of the list), and "Check now" / "Check again"
   (`POST …/book/community-chapters`, shown with the `metadata` capability on a
-  matched book). While `community_checking` is set the page polls the book
+  book with an ASIN or ISBN). While `community_checking` is set the page polls the book
   (`useAdminBook`) and the panel shows a spinner; when the check ends it
   refetches the book lists and the Health issues. With community chapters in
   use, a rename's toast and the revert hint name the community's title instead
@@ -701,7 +716,9 @@ CSP-sensitive work against a real build served by Go. The console's own gate is
   pages each outcome's items (`GET …/items?outcome=`), ticks the confident ones,
   shows what the chosen scope writes from each item's server-computed `changes`
   (a tidied title among them, under fill), words a `none` item from its `detail`
-  (`weak_match` with its `score`, `identifier_unknown`),
+  (`weak_match` with its `score`, `identifier_unknown`, `work_unknown`), lists a
+  change's `match` as "the community match" when no ASIN or ISBN is written beside
+  it (`changeParts`),
   and posts the admin's picks as `exclude`/`include` ids. When the newest run's
   status changes to one that isn't working, the book lists, issues, book pages
   and covers are refetched (`invalidateMatches`; a small apply can finish

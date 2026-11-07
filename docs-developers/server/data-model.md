@@ -21,8 +21,8 @@ thing to understand before touching it:
 - **Durable state** - `progress`, `bookmarks`, `notes`, `listening_history`,
   `listening_sessions`, `listening_daily`, `favourites`, `up_next`,
   `collection_items` and `ratings` (per-user), plus `folder_overrides`, `book_enrichment`,
-  `issue_ignores`, `book_overrides`, `chapter_overrides`, `chapter_choices` and
-  `book_covers` (per-library config) - is keyed by **`(library_id, rel_path)`**, with **no
+  `issue_ignores`, `book_overrides`, `chapter_overrides`, `chapter_choices`,
+  `book_covers` and `book_matches` (per-library config) - is keyed by **`(library_id, rel_path)`**, with **no
   foreign key to `books`**. The rest of a listener's own state hangs off the
   account rather than a path: `collections`, `collection_shares`,
   `listening_goals` and `household_sharing` (see
@@ -103,6 +103,7 @@ erDiagram
     libraries ||--o{ book_overrides : "durable config"
     libraries ||--o{ chapter_overrides : "durable config"
     libraries ||--o{ book_covers : "durable config"
+    libraries ||--o{ book_matches : "durable config"
     libraries ||--o{ issue_ignores : "durable config"
     libraries ||--o{ scan_runs : "scan history"
     libraries ||--o{ community_chapters : "path-keyed, NO FK to books"
@@ -1319,6 +1320,29 @@ the `unknown_asin_report` key of [`server_state`](#server-state).
   data-dir file, so it is path-keyed durable state that moves with
   `MoveDurableState` and is part of any database backup.
 
+- **`book_matches`** *(0069, LibraForge E6)* - PK `(library_id, path)`,
+  `work_id`, `recording_id` (`''` for none), `how` (`auto` = a match run's
+  confident item applied unasked, `accepted` = the match dialog or a review item
+  the admin included; a `CHECK`), `run_id` (the run that applied it), `set_by`
+  (the admin) and `set_at`. A book's recorded community match: the work an accept
+  or an apply took, with or without an ASIN or ISBN. `run_id` and `set_by` have no
+  foreign keys, as runs are pruned and the row outlives either. Written only by a
+  community edit, in its own transaction (`catalog.BookEdit.Match`, a
+  `catalog.MatchAnchor`; a bulk edit refuses one); an empty work id unlinks the
+  book, which clears that one book's community values, cover and row as
+  [clearing the community matches](api/reference.md#delete-apiv1admincommunity-matches)
+  does for a library. A store listing the community holds with no ASIN or ISBN
+  is matched by this row alone: `catalog.matchedExpr` (`b.asin <> '' OR b.isbn
+  <> '' OR EXISTS(book_matches ...)`) is the admin list's `matched` and its
+  facet, Health's `unmatched` (so a match run's books), Activity's `identified`,
+  the spelling Series spelled several ways suggests, and a refresh run's
+  `MatchedBooks`. What needs an
+  identifier tests `asin` / `isbn` itself: community chapters, the unknown-ASIN
+  report, upcoming releases, a repick, the Bridge's estimate and the player's
+  `/meta`. Moved with the book (`moveBookState`, as one set with its edits),
+  copied from the first part on a join, kept through a rescan or rebuild, and
+  dropped by `catalog.ClearCommunityMatches`. No backfill: a book matched before
+  0069 has no row until it is matched again.
 - **`issue_ignores`** *(0017)* - PK `(library_id, path, kind)`, `created_by`
   (FK to `users`, `ON DELETE SET NULL`), `created_at`. An admin's "ignore this"
   on a Health issue; `kind` is one of `catalog.IssueKinds` (`scan_error`,
@@ -1562,6 +1586,7 @@ The migration history so far:
 | 0062 | `listening_span_chain` | listening sync (server#289): `progress.span_at` and `span_version` (nullable, `NULL` on every existing row), so a device's span chain lasts across posts of `POST /me/listening/sync`. No data moves |
 | 0067 | `tag_hints` | [tag hints](#tag-hints): `books.tag_asin`, `tag_isbn` and `tag_language` (`TEXT NOT NULL DEFAULT ''`) and `books.hints_checked` (`INTEGER NOT NULL DEFAULT 0`, so the next scan reads each unchanged book's tags once) |
 | 0068 | `unknown_asin_reports` | the [unknown-ASIN report](#unknown-asin-reports)'s `unknown_asin_reports` table (`asin` primary key, `checked_at`, `unknown`, `sent_at`; `WITHOUT ROWID`), derived and naming no book. No data moves |
+| 0069 | `book_matches` | the [recorded community match](#durable-per-library-config-path-keyed-no-fk-to-books) `book_matches` (`library_id`, `path`, `work_id`, `recording_id`, `how` `auto`\|`accepted`, `run_id`, `set_by`, `set_at`; primary key `(library_id, path)`, `library_id` `ON DELETE CASCADE`). No data moves |
 
 ## SQLite choices
 

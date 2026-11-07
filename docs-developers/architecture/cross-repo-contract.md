@@ -568,7 +568,12 @@ recording's ASINs keep their `region` (`asin_refs`), and `asins` is ordered by
 the server's preferred marketplace (`metadata.region`), so the server, not the
 console, decides which ASIN a match attaches; bulk match runs reuse the same
 match per book, and the server decides what is confident (`matchrun.Classify`, the
-`ReviewFloor`). Mirror-mode servers get `metaserve`'s scoring with the
+`ReviewFloor`). From 2.6.0 a match is recorded on the server by its work id
+(`book_matches`), so a store listing `metaserve` holds with no ASIN or ISBN counts as
+matched: a run applies one unasked only on `metaserve`'s `reasons.author` `full` and
+`reasons.series` `position` with the lengths within 2%, and a refresh looks such a book
+up by `works/{id}` (a retired slug's `301` followed). The player's `/meta` stays
+identifier-keyed, so it shows no community content for such a book yet. Mirror-mode servers get `metaserve`'s scoring with the
 `audiosilo-meta` version in `go.mod` (v0.24.0), online servers from the service they
 ask: meta.audiosilo.app runs v0.24.0 since 2026-11-05, so the position and runtime
 factors are live for every online server that asks `works/match`, `language` and `narrator` count only from a

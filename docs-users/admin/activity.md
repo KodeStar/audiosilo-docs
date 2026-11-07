@@ -80,8 +80,10 @@ Whatever the period, two cards describe your collection:
 
 - **Library growth**: how many books your libraries held over the period.
 - **Storage and coverage**: the space your books take, by library and by
-  format, and the share of books that have an ASIN or ISBN, chapters and a
-  cover.
+  format, and the share of books that are matched to the community (an ASIN
+  or ISBN, or from 2.6.0 a match to a
+  [store listing](books.md#books-matched-to-a-store-listing) without one;
+  "Matched to the community"), that have chapters and that have a cover.
 
 If people haven't been active for 60 days, a notice lists them, with when each
 was last seen (or "never signed in"); click a name to open their page. When
